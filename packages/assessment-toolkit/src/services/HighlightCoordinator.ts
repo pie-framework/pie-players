@@ -75,7 +75,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private supported = false;
 	private rangeSerializer: RangeSerializer;
 	private themeObserver: MutationObserver | null = null;
-	private explicitTTSColorOverride: { color: string; opacity: number } | null = null;
+	private explicitTTSColorOverride: { color: string; opacity: number } | null =
+		null;
 
 	constructor(config: HighlightCoordinatorConfig = {}) {
 		this.config = config;
@@ -124,7 +125,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		}
 	}
 
-	private parseColor(input: string | null | undefined): [number, number, number] | null {
+	private parseColor(
+		input: string | null | undefined,
+	): [number, number, number] | null {
 		if (!input) return null;
 		const value = input.trim();
 		if (!value) return null;
@@ -238,7 +241,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
 		const background =
 			this.parseColor(
-				computed?.getPropertyValue("--pie-background") || computed?.backgroundColor,
+				computed?.getPropertyValue("--pie-background") ||
+					computed?.backgroundColor,
 			) || fallbackBackground;
 		const text =
 			this.parseColor(computed?.getPropertyValue("--pie-text")) || fallbackText;
@@ -269,16 +273,27 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 			}
 		}
 
-		const sentenceOpacity = Math.max(0.24, Math.min(0.85, selectedOpacity * 0.55));
-		const underlineOpacity = Math.max(0.55, Math.min(0.95, selectedOpacity + 0.2));
+		const sentenceOpacity = Math.max(
+			0.24,
+			Math.min(0.85, selectedOpacity * 0.55),
+		);
+		const underlineOpacity = Math.max(
+			0.55,
+			Math.min(0.95, selectedOpacity + 0.2),
+		);
 		const shadowOpacity = Math.max(0.22, Math.min(0.6, selectedOpacity * 0.45));
 
 		const underlineColor = text;
-		const underlineBlend = this.blend(underlineColor, background, underlineOpacity);
+		const underlineBlend = this.blend(
+			underlineColor,
+			background,
+			underlineOpacity,
+		);
 		const underlineDelta = this.contrastRatio(underlineBlend, background);
 		const fallbackUnderline: [number, number, number] =
 			this.relativeLuminance(background) > 0.45 ? [0, 0, 0] : [255, 255, 255];
-		const finalUnderline = underlineDelta >= 1.35 ? underlineColor : fallbackUnderline;
+		const finalUnderline =
+			underlineDelta >= 1.35 ? underlineColor : fallbackUnderline;
 
 		const wordHighlight = `rgba(${accent[0]}, ${accent[1]}, ${accent[2]}, ${selectedOpacity})`;
 		const sentenceHighlight = `rgba(${accent[0]}, ${accent[1]}, ${accent[2]}, ${sentenceOpacity})`;

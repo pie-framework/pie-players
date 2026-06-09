@@ -3,6 +3,21 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Apply the persisted theme before first paint so a full document
+			// reload (e.g. the IIFE/ESM loader switch) does not flash or drop
+			// the theme. The <pie-theme> host takes over once hydrated; this
+			// only seeds data-theme. Keep the storage key in sync with
+			// src/lib/stores/theme.ts.
+			(function () {
+				try {
+					const stored = localStorage.getItem("pie:item-demos:theme");
+					if (stored) {
+						document.documentElement.setAttribute("data-theme", stored);
+					}
+				} catch (e) {}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

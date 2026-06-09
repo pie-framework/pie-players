@@ -40,10 +40,7 @@ export function normalizeItemSessionContainer(
 		const candidate = input as Record<string, unknown>;
 		if (Array.isArray(candidate.data)) {
 			return {
-				id:
-					typeof candidate.id === "string"
-						? candidate.id
-						: fallbackSessionId,
+				id: typeof candidate.id === "string" ? candidate.id : fallbackSessionId,
 				data: candidate.data,
 			};
 		}
@@ -60,9 +57,12 @@ export function normalizeItemSessionContainer(
 
 export function hasResponseValue(value: unknown): boolean {
 	if (value == null) return false;
-	if (Array.isArray(value)) return value.some((entry) => hasResponseValue(entry));
+	if (Array.isArray(value))
+		return value.some((entry) => hasResponseValue(entry));
 	if (typeof value !== "object") return false;
-	for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+	for (const [key, nested] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
 		if (
 			key === "value" &&
 			nested !== undefined &&
@@ -79,9 +79,12 @@ export function hasResponseValue(value: unknown): boolean {
 
 export function hasResponseField(value: unknown): boolean {
 	if (value == null) return false;
-	if (Array.isArray(value)) return value.some((entry) => hasResponseField(entry));
+	if (Array.isArray(value))
+		return value.some((entry) => hasResponseField(entry));
 	if (typeof value !== "object") return false;
-	for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+	for (const [key, nested] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
 		if (key === "value") {
 			return true;
 		}
@@ -90,7 +93,26 @@ export function hasResponseField(value: unknown): boolean {
 	return false;
 }
 
-function mergeElementIntoSession(
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeSessionEntry(
+	existing: Record<string, unknown>,
+	incoming: Record<string, unknown>,
+): Record<string, unknown> {
+	const merged = { ...existing };
+	for (const [key, value] of Object.entries(incoming)) {
+		const previous = merged[key];
+		merged[key] =
+			isPlainObject(previous) && isPlainObject(value)
+				? mergeSessionEntry(previous, value)
+				: value;
+	}
+	return merged;
+}
+
+export function mergeElementIntoSession(
 	itemId: string,
 	previousItemSession: unknown,
 	entryId: string,
@@ -106,7 +128,7 @@ function mergeElementIntoSession(
 		const existing = nextData[existingIndex];
 		nextData[existingIndex] =
 			existing && typeof existing === "object"
-				? { ...(existing as Record<string, unknown>), ...entry }
+				? mergeSessionEntry(existing as Record<string, unknown>, entry)
 				: entry;
 	} else {
 		nextData.push(entry);
@@ -124,14 +146,17 @@ export function normalizeItemSessionChange(args: {
 }): NormalizedItemSessionChange {
 	const sessionDetail = (args.sessionDetail || {}) as Record<string, unknown>;
 	const actualSession =
-		sessionDetail && typeof sessionDetail === "object" && "session" in sessionDetail
+		sessionDetail &&
+		typeof sessionDetail === "object" &&
+		"session" in sessionDetail
 			? sessionDetail.session
 			: args.sessionDetail;
 
 	const safeItemId =
 		typeof args.itemId === "string" && args.itemId
 			? args.itemId
-			: typeof (actualSession as Record<string, unknown> | null)?.id === "string"
+			: typeof (actualSession as Record<string, unknown> | null)?.id ===
+					"string"
 				? String((actualSession as Record<string, unknown>).id)
 				: "";
 
@@ -141,15 +166,22 @@ export function normalizeItemSessionChange(args: {
 			session: null,
 			intent: "metadata-only",
 			component:
-				typeof sessionDetail.component === "string" ? sessionDetail.component : undefined,
+				typeof sessionDetail.component === "string"
+					? sessionDetail.component
+					: undefined,
 			complete:
-				typeof sessionDetail.complete === "boolean" ? sessionDetail.complete : undefined,
+				typeof sessionDetail.complete === "boolean"
+					? sessionDetail.complete
+					: undefined,
 		};
 	}
 
 	const candidate = actualSession as Record<string, unknown>;
 	if (Array.isArray(candidate.data)) {
-		const normalizedCandidate = normalizeItemSessionContainer(candidate, safeItemId);
+		const normalizedCandidate = normalizeItemSessionContainer(
+			candidate,
+			safeItemId,
+		);
 		const previousNormalized =
 			args.previousItemSession !== undefined
 				? normalizeItemSessionContainer(args.previousItemSession, safeItemId)
@@ -189,9 +221,13 @@ export function normalizeItemSessionChange(args: {
 			session: normalizedCandidate,
 			intent: "replace-item-session",
 			component:
-				typeof sessionDetail.component === "string" ? sessionDetail.component : undefined,
+				typeof sessionDetail.component === "string"
+					? sessionDetail.component
+					: undefined,
 			complete:
-				typeof sessionDetail.complete === "boolean" ? sessionDetail.complete : undefined,
+				typeof sessionDetail.complete === "boolean"
+					? sessionDetail.complete
+					: undefined,
 		};
 	}
 
@@ -211,9 +247,13 @@ export function normalizeItemSessionChange(args: {
 			session: null,
 			intent: "metadata-only",
 			component:
-				typeof sessionDetail.component === "string" ? sessionDetail.component : undefined,
+				typeof sessionDetail.component === "string"
+					? sessionDetail.component
+					: undefined,
 			complete:
-				typeof sessionDetail.complete === "boolean" ? sessionDetail.complete : undefined,
+				typeof sessionDetail.complete === "boolean"
+					? sessionDetail.complete
+					: undefined,
 		};
 	}
 
@@ -237,6 +277,8 @@ export function normalizeItemSessionChange(args: {
 		intent: "merge-element-session",
 		component,
 		complete:
-			typeof sessionDetail.complete === "boolean" ? sessionDetail.complete : undefined,
+			typeof sessionDetail.complete === "boolean"
+				? sessionDetail.complete
+				: undefined,
 	};
 }

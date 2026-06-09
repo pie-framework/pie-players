@@ -5,7 +5,15 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const TARGET_DIRS = [path.join(ROOT, "apps")];
-const VALID_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".svelte"]);
+const VALID_EXTENSIONS = new Set([
+	".js",
+	".mjs",
+	".cjs",
+	".ts",
+	".mts",
+	".cts",
+	".svelte",
+]);
 
 const FORBIDDEN_RULES = [
 	{
@@ -16,7 +24,8 @@ const FORBIDDEN_RULES = [
 	{
 		id: "custom-element-query-import",
 		description: "Do not import package Svelte files via ?customElement",
-		test: (specifier) => /^@pie-players\/.+\.svelte\?customElement$/.test(specifier),
+		test: (specifier) =>
+			/^@pie-players\/.+\.svelte\?customElement$/.test(specifier),
 	},
 	{
 		id: "raw-component-svelte-import",
@@ -97,4 +106,6 @@ if (violations.length > 0) {
 	process.exit(1);
 }
 
-console.log("[check-consumer-boundaries] OK: no import boundary violations found");
+console.log(
+	"[check-consumer-boundaries] OK: no import boundary violations found",
+);

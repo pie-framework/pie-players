@@ -20,12 +20,11 @@ export function collectSectionElementsMap(
 	const out: Record<string, string> = {};
 	let collisionCounter = 0;
 
-	const addElements = (
-		elements: unknown,
-		scope: string,
-	): void => {
+	const addElements = (elements: unknown, scope: string): void => {
 		if (!elements || typeof elements !== "object") return;
-		for (const [tagKey, spec] of Object.entries(elements as Record<string, unknown>)) {
+		for (const [tagKey, spec] of Object.entries(
+			elements as Record<string, unknown>,
+		)) {
 			if (typeof spec !== "string" || spec.length === 0) continue;
 			if (out[tagKey] === undefined) {
 				out[tagKey] = spec;
@@ -46,7 +45,10 @@ export function collectSectionElementsMap(
 
 		for (const rb of current.rubricBlocks || []) {
 			const config = (rb as any)?.passage?.config;
-			addElements(config?.elements, `passage-${(rb as any)?.identifier || "unknown"}`);
+			addElements(
+				config?.elements,
+				`passage-${(rb as any)?.identifier || "unknown"}`,
+			);
 		}
 
 		for (const nested of current.sections || []) {
@@ -78,7 +80,9 @@ export function aggregateElementsAcrossPages(
 					continue;
 				}
 				if (merged[tagKey] === spec) continue;
-				merged[`${tagKey}__page-${page.id || "unknown"}__${collisionCounter++}`] = spec;
+				merged[
+					`${tagKey}__page-${page.id || "unknown"}__${collisionCounter++}`
+				] = spec;
 			}
 		}
 		return merged;

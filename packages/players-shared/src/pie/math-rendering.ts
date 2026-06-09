@@ -93,9 +93,7 @@ export async function initializeMathRendering(
 			);
 			setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
 
-			logger.debug(
-				"Math rendering module initialized (both globals set)",
-			);
+			logger.debug("Math rendering module initialized (both globals set)");
 		} catch (error) {
 			logger.error("Failed to initialize math rendering:", error);
 			throw error;

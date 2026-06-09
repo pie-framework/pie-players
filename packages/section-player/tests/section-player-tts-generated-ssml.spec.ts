@@ -23,27 +23,39 @@ async function gotoDemo(page: Page) {
 	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 }
 
-async function openSessionPanel(page: Page) {
-	const toggle = page.getByRole("button", { name: "Toggle session panel" });
-	const panel = page.locator("pie-section-player-tools-session-debugger");
-	const heading = panel.getByRole("heading", { name: "Session Data" });
-	if (!(await heading.isVisible())) {
-		await toggle.click();
-	}
-	await expect(heading).toBeVisible();
-	return panel;
+/**
+ * Wait for the demo's page-lifetime ToolkitCoordinator to be exposed on the
+ * stable `window.__pieDemoToolkitCoordinator` seam. This survives panel
+ * open/close, so tests don't need to open the session panel just to reach the
+ * live coordinator.
+ */
+async function waitForCoordinator(page: Page): Promise<void> {
+	await page.waitForFunction(
+		() =>
+			Boolean(
+				(window as unknown as { __pieDemoToolkitCoordinator?: unknown })
+					.__pieDemoToolkitCoordinator,
+			),
+		undefined,
+		{ timeout: 15_000 },
+	);
 }
 
 async function forceBrowserTtsRuntime(page: Page): Promise<void> {
-	await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
-		const coordinator = (element as { toolkitCoordinator?: any }).toolkitCoordinator;
+	await waitForCoordinator(page);
+	await page.evaluate(async () => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
 		if (!coordinator?.updateToolConfig) return;
 		coordinator.updateToolConfig("textToSpeech", {
 			enabled: true,
 			backend: "browser",
 			transportMode: "pie",
 		});
-		await coordinator?.ensureTTSReady?.(coordinator?.getToolConfig?.("textToSpeech"));
+		await coordinator?.ensureTTSReady?.(
+			coordinator?.getToolConfig?.("textToSpeech"),
+		);
 	});
 }
 
@@ -54,7 +66,12 @@ async function mockPollyVoices(page: Page): Promise<void> {
 			contentType: "application/json",
 			body: JSON.stringify({
 				voices: [
-					{ id: "Joanna", name: "Joanna", languageCode: "en-US", gender: "female" },
+					{
+						id: "Joanna",
+						name: "Joanna",
+						languageCode: "en-US",
+						gender: "female",
+					},
 				],
 			}),
 		});
@@ -137,9 +154,9 @@ async function captureBrowserUtterances(page: Page): Promise<void> {
 				] as unknown as SpeechSynthesisVoice[],
 			speak: (utterance: SpeechSynthesisUtterance) => {
 				try {
-					(window as unknown as { __ttsUtterances: string[] }).__ttsUtterances.push(
-						String(utterance.text || ""),
-					);
+					(
+						window as unknown as { __ttsUtterances: string[] }
+					).__ttsUtterances.push(String(utterance.text || ""));
 				} catch {
 					/* ignore */
 				}
@@ -335,67 +352,69 @@ async function mockSynthesizeWithWordMarks(page: Page): Promise<void> {
  *    rather than only as a single block.
  */
 async function installHighlightRecorder(page: Page): Promise<void> {
-	const installed = await page
-		.locator("pie-section-player-tools-session-debugger")
-		.evaluate((element) => {
-			const coordinator = (element as { toolkitCoordinator?: any })
-				.toolkitCoordinator;
-			const hc = coordinator?.highlightCoordinator;
-			const store = {
-				proseWords: [] as Array<{ text: string; visible: boolean }>,
-				mathTokens: [] as Array<{ text: string; visible: boolean }>,
-				sentences: [] as string[],
-			};
-			(window as any).__hl = store;
-			if (!hc) return false;
-			const insideMath = (el: any): boolean =>
-				Boolean(el && typeof el.closest === "function" && el.closest("math"));
-			const isVisible = (el: any): boolean => {
+	await waitForCoordinator(page);
+	const installed = await page.evaluate(() => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
+		const hc = coordinator?.highlightCoordinator;
+		const store = {
+			proseWords: [] as Array<{ text: string; visible: boolean }>,
+			mathTokens: [] as Array<{ text: string; visible: boolean }>,
+			sentences: [] as string[],
+		};
+		(window as any).__hl = store;
+		if (!hc) return false;
+		const insideMath = (el: any): boolean =>
+			Boolean(el && typeof el.closest === "function" && el.closest("math"));
+		const isVisible = (el: any): boolean => {
+			try {
+				const rect = el?.getBoundingClientRect?.();
+				return Boolean(rect && rect.width > 0 && rect.height > 0);
+			} catch {
+				return false;
+			}
+		};
+		const wrap = (name: string, record: (...args: any[]) => void) => {
+			const original = hc[name];
+			if (typeof original !== "function") return;
+			hc[name] = function patched(...args: any[]) {
 				try {
-					const rect = el?.getBoundingClientRect?.();
-					return Boolean(rect && rect.width > 0 && rect.height > 0);
+					record(...args);
 				} catch {
-					return false;
+					/* ignore */
 				}
+				return original.apply(hc, args);
 			};
-			const wrap = (name: string, record: (...args: any[]) => void) => {
-				const original = hc[name];
-				if (typeof original !== "function") return;
-				hc[name] = function patched(...args: any[]) {
-					try {
-						record(...args);
-					} catch {
-						/* ignore */
-					}
-					return original.apply(hc, args);
-				};
-			};
-			wrap("highlightTTSWord", (node: any, start: number, end: number) => {
-				const text = String(node?.textContent || "")
-					.slice(start, end)
-					.trim();
-				if (!text) return;
-				const parent = node?.parentElement;
-				const record = { text, visible: isVisible(parent) };
-				if (insideMath(parent)) store.mathTokens.push(record);
-				else store.proseWords.push(record);
-			});
-			wrap("highlightTTSWordElement", (el: any) => {
-				const record = {
-					text: String(el?.localName || "unknown"),
-					visible: isVisible(el),
-				};
-				if (insideMath(el)) store.mathTokens.push(record);
-				else store.proseWords.push(record);
-			});
-			wrap("highlightTTSSentence", (ranges: any[]) => {
-				for (const range of ranges || []) {
-					store.sentences.push(String(range?.toString?.() || ""));
-				}
-			});
-			return true;
+		};
+		wrap("highlightTTSWord", (node: any, start: number, end: number) => {
+			const text = String(node?.textContent || "")
+				.slice(start, end)
+				.trim();
+			if (!text) return;
+			const parent = node?.parentElement;
+			const record = { text, visible: isVisible(parent) };
+			if (insideMath(parent)) store.mathTokens.push(record);
+			else store.proseWords.push(record);
 		});
-	expect(installed, "highlight coordinator must be available to wrap").toBe(true);
+		wrap("highlightTTSWordElement", (el: any) => {
+			const record = {
+				text: String(el?.localName || "unknown"),
+				visible: isVisible(el),
+			};
+			if (insideMath(el)) store.mathTokens.push(record);
+			else store.proseWords.push(record);
+		});
+		wrap("highlightTTSSentence", (ranges: any[]) => {
+			for (const range of ranges || []) {
+				store.sentences.push(String(range?.toString?.() || ""));
+			}
+		});
+		return true;
+	});
+	expect(installed, "highlight coordinator must be available to wrap").toBe(
+		true,
+	);
 }
 
 interface RecordedHighlight {
@@ -439,9 +458,6 @@ async function readPassageAndRecordHighlights(
 		timeout: 15_000,
 	});
 
-	// The session-debugger element (our handle on the live ToolkitCoordinator)
-	// only mounts once the session panel is opened.
-	await openSessionPanel(page);
 	await installHighlightRecorder(page);
 
 	const passageInlineTts = passageRegion
@@ -510,7 +526,10 @@ test.describe("section player TTS highlighting parity (authored vs generated SSM
 	// highlighting went unnoticed.
 	for (const demo of [
 		{ name: "authored SSML (tts-ssml)", path: "/tts-ssml" },
-		{ name: "generated SSML (tts-generated-ssml)", path: "/tts-generated-ssml" },
+		{
+			name: "generated SSML (tts-generated-ssml)",
+			path: "/tts-generated-ssml",
+		},
 	]) {
 		test(`highlights prose words and math tokens during a passage read — ${demo.name}`, async ({
 			page,
@@ -569,11 +588,15 @@ test.describe("section player demo tts-generated-ssml", () => {
 
 		// Sanity: the quadratic-formula passage and its MathML render.
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
-		await expect(passageRegion.locator("p.formula math")).toBeVisible({ timeout: 15_000 });
+		await expect(passageRegion.locator("p.formula math")).toBeVisible({
+			timeout: 15_000,
+		});
 
 		// The demo defaults to the SSML-capable AWS Polly preset, so playing the
 		// passage must route generated math SSML through the synthesis endpoint.
-		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible").first();
+		const passageInlineTts = passageRegion
+			.locator("pie-tool-tts-inline:visible")
+			.first();
 		await expect(passageInlineTts).toBeVisible();
 
 		const ssmlSynthRequest = page.waitForRequest(
@@ -584,7 +607,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 			{ timeout: 45_000 },
 		);
 
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		const passagePanel = passageInlineTts.locator(
 			'[role="toolbar"][aria-label="Reading controls"]',
 		);
@@ -611,18 +636,23 @@ test.describe("section player demo tts-generated-ssml", () => {
 		await expect(passagePanel).toBeVisible();
 	});
 
-	test("sends plain spoken math (no SSML markup) to the browser provider", async ({ page }) => {
+	test("sends plain spoken math (no SSML markup) to the browser provider", async ({
+		page,
+	}) => {
 		test.setTimeout(120_000);
 		await captureBrowserUtterances(page);
 		await gotoDemo(page);
-		await openSessionPanel(page);
 		await forceBrowserTtsRuntime(page);
 
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
-		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible").first();
+		const passageInlineTts = passageRegion
+			.locator("pie-tool-tts-inline:visible")
+			.first();
 		await expect(passageInlineTts).toBeVisible();
 
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		const passagePanel = passageInlineTts.locator(
 			'[role="toolbar"][aria-label="Reading controls"]',
 		);
@@ -635,9 +665,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 				async () =>
 					page.evaluate(
 						() =>
-							(window as unknown as { __ttsUtterances?: string[] }).__ttsUtterances?.join(
-								"\n",
-							) || "",
+							(
+								window as unknown as { __ttsUtterances?: string[] }
+							).__ttsUtterances?.join("\n") || "",
 					),
 				{
 					timeout: 45_000,
@@ -648,7 +678,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 
 		const spoken = await page.evaluate(
 			() =>
-				(window as unknown as { __ttsUtterances?: string[] }).__ttsUtterances?.join("\n") || "",
+				(
+					window as unknown as { __ttsUtterances?: string[] }
+				).__ttsUtterances?.join("\n") || "",
 		);
 		expect(spoken).not.toContain("<speak");
 		expect(spoken).not.toContain("<math");

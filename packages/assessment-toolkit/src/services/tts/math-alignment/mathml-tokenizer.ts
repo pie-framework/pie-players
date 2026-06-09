@@ -369,7 +369,8 @@ const visitElement = (
 				const childName = localNameOf(child);
 				return childName !== "annotation" && childName !== "annotation-xml";
 			});
-			if (presentation) visitElement(presentation, state, `${path}/presentation`);
+			if (presentation)
+				visitElement(presentation, state, `${path}/presentation`);
 			return;
 		}
 		case "mi":
@@ -412,7 +413,9 @@ const visitElement = (
 	}
 };
 
-export const tokenizeMathML = (mathElement: Element): MathMLTokenizationResult => {
+export const tokenizeMathML = (
+	mathElement: Element,
+): MathMLTokenizationResult => {
 	const state: TokenizerState = {
 		tokens: [],
 		layoutTargets: [],

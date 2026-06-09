@@ -193,9 +193,9 @@ test.describe("section swap across changed element set", () => {
 			if (!host) throw new Error("section-player host not found");
 			host.section = section;
 		}, sectionA);
-		await expect(
-			page.locator('[data-swap-section="a"]').first(),
-		).toBeAttached({ timeout: 30_000 });
+		await expect(page.locator('[data-swap-section="a"]').first()).toBeAttached({
+			timeout: 30_000,
+		});
 
 		// Swap to section B. This is the exact motion that reproduces Darin's
 		// bug in production.
@@ -272,9 +272,9 @@ test.describe("section swap across changed element set", () => {
 		).toEqual([]);
 
 		// Assertion 5: section B is ultimately rendered.
-		await expect(
-			page.locator('[data-swap-section="b"]').first(),
-		).toBeAttached({ timeout: 5_000 });
+		await expect(page.locator('[data-swap-section="b"]').first()).toBeAttached({
+			timeout: 5_000,
+		});
 	});
 
 	test("embedded item-player strategy matches the section-player strategy (no substitution)", async ({
@@ -297,9 +297,7 @@ test.describe("section swap across changed element set", () => {
 
 		const reportedStrategies = await page
 			.locator("pie-item-player")
-			.evaluateAll((els) =>
-				els.map((el) => el.getAttribute("strategy") ?? ""),
-			);
+			.evaluateAll((els) => els.map((el) => el.getAttribute("strategy") ?? ""));
 
 		expect(
 			reportedStrategies.length,

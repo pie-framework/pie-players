@@ -1,8 +1,5 @@
 import { json } from "@sveltejs/kit";
-import {
-	mergeSessionUpdates,
-	runModelControllers,
-} from "../controllers";
+import { mergeSessionUpdates, runModelControllers } from "../controllers";
 import { ensureSession, getDemoItem, getDemoItemId, saveSession } from "../db";
 import type { RequestHandler } from "./$types";
 
@@ -37,7 +34,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		sessionData: session.data,
 		env,
 	});
-	const sessionUpdates = modelResults.flatMap((result) => result.sessionUpdates);
+	const sessionUpdates = modelResults.flatMap(
+		(result) => result.sessionUpdates,
+	);
 	const persistedSession =
 		sessionUpdates.length > 0
 			? saveSession(

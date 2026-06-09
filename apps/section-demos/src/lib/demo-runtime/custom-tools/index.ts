@@ -1,8 +1,8 @@
-import {
-	createPackagedToolRegistry,
-	type ToolbarItem,
-	type ToolRegistry,
+import type {
+	ToolbarItem,
+	ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
+import { createSectionDemoToolRegistry } from "../default-tool-registry";
 import { sectionMetaInfoToolRegistration } from "./progress-jump";
 import { wordCounterToolRegistration } from "./word-counter";
 
@@ -14,7 +14,7 @@ export interface DemoCustomToolsIntegration {
 }
 
 export function createDemoCustomToolsIntegration(): DemoCustomToolsIntegration {
-	const toolRegistry = createPackagedToolRegistry();
+	const toolRegistry = createSectionDemoToolRegistry();
 	toolRegistry.register(wordCounterToolRegistration);
 	toolRegistry.register(sectionMetaInfoToolRegistration);
 

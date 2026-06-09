@@ -1,0 +1,10 @@
+declare module "@pie-players/pie-tool-annotation-toolbar";
+declare module "@pie-players/pie-tool-answer-eliminator";
+declare module "@pie-players/pie-tool-calculator-desmos";
+declare module "@pie-players/pie-tool-graph";
+declare module "@pie-players/pie-tool-line-reader";
+declare module "@pie-players/pie-tool-periodic-table";
+declare module "@pie-players/pie-tool-protractor";
+declare module "@pie-players/pie-tool-ruler";
+declare module "@pie-players/pie-tool-theme";
+declare module "@pie-players/pie-tool-tts-inline";

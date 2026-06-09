@@ -22,9 +22,7 @@ pre-push:
       run: bun run verify:ci-lint-typecheck
     section-player-critical-e2e:
       run: bun run test:e2e:section-player:critical
-    item-player-multiple-choice-e2e:
-      run: bun run test:e2e:item-player:multiple-choice
+    item-player-critical-e2e:
+      run: bun run test:e2e:item-player:critical
     assessment-player-smoke-e2e:
       run: bun run test:e2e:assessment-player
-    check-consumer-boundaries:
-      run: bun run check:consumer-boundaries

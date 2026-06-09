@@ -1,7 +1,5 @@
 import { getAssessmentDemoById } from "$lib/content/assessments";
-import {
-	createSessionDemoSeedPayload,
-} from "$lib/demo-runtime/session-demo-db-client";
+import { createSessionDemoSeedPayload } from "$lib/demo-runtime/session-demo-db-client";
 import { json } from "@sveltejs/kit";
 import {
 	getAssessmentSnapshot,
@@ -11,7 +9,11 @@ import {
 } from "../../db";
 import type { RequestHandler } from "./$types";
 
-function seedIfNeeded(assessmentId: string, attemptId: string, reset: boolean): void {
+function seedIfNeeded(
+	assessmentId: string,
+	attemptId: string,
+	reset: boolean,
+): void {
 	const key: SessionDemoKey = {
 		assessmentId,
 		attemptId,
@@ -71,7 +73,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	seedIfNeeded(assessmentId, attemptId, body.reset === true);
 	const key: SessionDemoKey = { assessmentId, attemptId };
 	const demo = getAssessmentDemoById("session-hydrate-db");
-	const assessment = (demo?.assessment || null) as Record<string, unknown> | null;
+	const assessment = (demo?.assessment || null) as Record<
+		string,
+		unknown
+	> | null;
 	const stats = getStats(assessment);
 	const sessionState = getAssessmentSnapshot(key);
 	return json({
@@ -80,7 +85,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		assessment,
 		sessionState: sessionState as AssessmentSessionSnapshot | null,
 		activityDefinition: {
-			sections: assessment ? (((assessment as any).testParts?.[0]?.sections as Array<Record<string, unknown>>) || []) : [],
+			sections: assessment
+				? ((assessment as any).testParts?.[0]?.sections as Array<
+						Record<string, unknown>
+					>) || []
+				: [],
 			stats,
 		},
 	});
@@ -97,7 +106,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 	const key: SessionDemoKey = { assessmentId, attemptId };
 	const demo = getAssessmentDemoById("session-hydrate-db");
-	const assessment = (demo?.assessment || null) as Record<string, unknown> | null;
+	const assessment = (demo?.assessment || null) as Record<
+		string,
+		unknown
+	> | null;
 	const stats = getStats(assessment);
 	return json({
 		ok: true,
@@ -105,7 +117,11 @@ export const GET: RequestHandler = async ({ url }) => {
 		assessment,
 		sessionState: getAssessmentSnapshot(key),
 		activityDefinition: {
-			sections: assessment ? (((assessment as any).testParts?.[0]?.sections as Array<Record<string, unknown>>) || []) : [],
+			sections: assessment
+				? ((assessment as any).testParts?.[0]?.sections as Array<
+						Record<string, unknown>
+					>) || []
+				: [],
 			stats,
 		},
 	});

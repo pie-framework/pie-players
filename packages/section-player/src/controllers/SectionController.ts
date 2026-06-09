@@ -66,7 +66,9 @@ interface NormalizedApplySession {
 	itemSessionCount: number;
 }
 
-const logger = createPieLogger("section-controller", () => isGlobalDebugEnabled());
+const logger = createPieLogger("section-controller", () =>
+	isGlobalDebugEnabled(),
+);
 
 export class SectionController implements SectionControllerHandle {
 	// SectionController intentionally owns aggregate section state only.
@@ -124,7 +126,9 @@ export class SectionController implements SectionControllerHandle {
 		const typedInput = input as SectionControllerInput | undefined;
 		if (!typedInput) return;
 		const previousSectionId =
-			this.state.input?.section?.identifier || this.state.input?.sectionId || undefined;
+			this.state.input?.section?.identifier ||
+			this.state.input?.sectionId ||
+			undefined;
 
 		const content = this.contentService.build(
 			typedInput.section,
@@ -811,7 +815,9 @@ export class SectionController implements SectionControllerHandle {
 		}
 		let completedCount = 0;
 		for (const item of itemViewModels) {
-			const complete = this.itemCompletionByCanonicalId.get(item.canonicalItemId);
+			const complete = this.itemCompletionByCanonicalId.get(
+				item.canonicalItemId,
+			);
 			if (complete === true) {
 				completedCount += 1;
 			}
@@ -885,7 +891,9 @@ export class SectionController implements SectionControllerHandle {
 				: {};
 		const allowedCanonicalIds = new Set<string>(
 			this.state.viewModel.adapterItemRefs
-				.map((itemRef) => this.getCanonicalItemId(itemRef.identifier || itemRef.item?.id || ""))
+				.map((itemRef) =>
+					this.getCanonicalItemId(itemRef.identifier || itemRef.item?.id || ""),
+				)
 				.filter((id): id is string => typeof id === "string" && !!id),
 		);
 		const normalizedItemSessions: TestAttemptSession["itemSessions"] = {};
@@ -908,7 +916,7 @@ export class SectionController implements SectionControllerHandle {
 							.map((id) => this.getCanonicalItemId(id))
 							.filter((id): id is string => allowedCanonicalIds.has(id)),
 					),
-			  )
+				)
 			: undefined;
 		const maxIndex = Math.max(0, this.state.viewModel.items.length - 1);
 		const nextCurrentItemIndex =
@@ -953,9 +961,10 @@ export class SectionController implements SectionControllerHandle {
 				session: typedCandidate.session as Record<string, unknown>,
 			};
 		}
-		const rawSession = typedCandidate.session && typeof typedCandidate.session === "object"
-			? (typedCandidate.session as Record<string, unknown>)
-			: candidate;
+		const rawSession =
+			typedCandidate.session && typeof typedCandidate.session === "object"
+				? (typedCandidate.session as Record<string, unknown>)
+				: candidate;
 		return {
 			itemIdentifier,
 			attemptCount: 1,

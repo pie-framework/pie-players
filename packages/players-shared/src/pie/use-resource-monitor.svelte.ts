@@ -54,9 +54,9 @@ export function useResourceMonitor(
 	let isInitialized = $state(false);
 	let activeHostElement = $state<HTMLElement | null>(null);
 	let monitorConfigKey = $state<string>("");
-	let activeProvider = $state<LoaderConfig["instrumentationProvider"] | undefined>(
-		undefined,
-	);
+	let activeProvider = $state<
+		LoaderConfig["instrumentationProvider"] | undefined
+	>(undefined);
 
 	// Initialize resource monitor when conditions are met.
 	//
@@ -105,11 +105,14 @@ export function useResourceMonitor(
 				retryDelay: resolvedRetryDelay,
 				debugEnabled,
 			});
-			const providerChanged = activeProvider !== resolvedInstrumentationProvider;
+			const providerChanged =
+				activeProvider !== resolvedInstrumentationProvider;
 			const hostChanged = activeHostElement !== hostElement;
 			const configChanged = monitorConfigKey !== nextConfigKey;
 			const shouldReinitialize =
-				hostElement && isInitialized && (hostChanged || configChanged || providerChanged);
+				hostElement &&
+				isInitialized &&
+				(hostChanged || configChanged || providerChanged);
 
 			if (!hostElement && monitor) {
 				logger.debug(

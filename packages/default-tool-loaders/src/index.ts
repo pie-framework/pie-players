@@ -1,12 +1,13 @@
 export type ToolModuleLoader = () => Promise<unknown>;
 
 export interface ToolRegistryLike {
-	setToolModuleLoaders(loaders: Partial<Record<string, ToolModuleLoader>>): void;
+	setToolModuleLoaders(
+		loaders: Partial<Record<string, ToolModuleLoader>>,
+	): void;
 }
 
-const loadSideEffectModule = (
-	load: () => Promise<unknown>,
-): Promise<void> => load().then(() => undefined);
+const loadSideEffectModule = (load: () => Promise<unknown>): Promise<void> =>
+	load().then(() => undefined);
 
 function loadCalculatorModule(): Promise<unknown> {
 	if (
@@ -16,15 +17,19 @@ function loadCalculatorModule(): Promise<unknown> {
 	) {
 		return Promise.resolve();
 	}
-	return loadSideEffectModule(() => import("@pie-players/pie-tool-calculator-desmos"));
+	return loadSideEffectModule(
+		() => import("@pie-players/pie-tool-calculator-desmos"),
+	);
 }
 
 export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	calculator: loadCalculatorModule,
-	graph: () => loadSideEffectModule(() => import("@pie-players/pie-tool-graph")),
+	graph: () =>
+		loadSideEffectModule(() => import("@pie-players/pie-tool-graph")),
 	periodicTable: () =>
 		loadSideEffectModule(() => import("@pie-players/pie-tool-periodic-table")),
-	ruler: () => loadSideEffectModule(() => import("@pie-players/pie-tool-ruler")),
+	ruler: () =>
+		loadSideEffectModule(() => import("@pie-players/pie-tool-ruler")),
 	protractor: () =>
 		loadSideEffectModule(() => import("@pie-players/pie-tool-protractor")),
 	lineReader: () =>
@@ -34,14 +39,21 @@ export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	calculator: loadCalculatorModule,
 	textToSpeech: () =>
-		loadSideEffectModule(() => import("@pie-players/pie-tool-text-to-speech")),
+		loadSideEffectModule(() => import("@pie-players/pie-tool-tts-inline")),
 	answerEliminator: () =>
-		loadSideEffectModule(() => import("@pie-players/pie-tool-answer-eliminator")),
+		loadSideEffectModule(
+			() => import("@pie-players/pie-tool-answer-eliminator"),
+		),
 	highlighter: () =>
-		loadSideEffectModule(() => import("@pie-players/pie-tool-annotation-toolbar")),
+		loadSideEffectModule(
+			() => import("@pie-players/pie-tool-annotation-toolbar"),
+		),
 	annotationToolbar: () =>
-		loadSideEffectModule(() => import("@pie-players/pie-tool-annotation-toolbar")),
-	theme: () => loadSideEffectModule(() => import("@pie-players/pie-tool-theme")),
+		loadSideEffectModule(
+			() => import("@pie-players/pie-tool-annotation-toolbar"),
+		),
+	theme: () =>
+		loadSideEffectModule(() => import("@pie-players/pie-tool-theme")),
 };
 
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {

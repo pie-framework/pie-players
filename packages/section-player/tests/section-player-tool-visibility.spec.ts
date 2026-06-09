@@ -7,6 +7,44 @@ async function gotoDemo(page: Page) {
 	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 }
 
+async function mockDesmosCalculatorScript(page: Page): Promise<void> {
+	await page.route("https://www.desmos.com/api/**/calculator.js**", async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/javascript",
+			body: `
+				(() => {
+					const createCalculator = (container) => {
+						const surface = document.createElement("div");
+						surface.className = "dcg-container dcg-calculator-api-container";
+						surface.style.width = "100%";
+						surface.style.height = "100%";
+						surface.style.minHeight = "220px";
+						surface.tabIndex = 0;
+						container.replaceChildren(surface);
+						return {
+							destroy() { container.replaceChildren(); },
+							resize() {},
+							setBlank() {},
+							getState() { return {}; },
+							setState() {},
+							setExpression() {},
+							removeExpression() {},
+							HelperExpression() { return { numericValue: 0 }; },
+							focusFirstExpression() { surface.focus(); }
+						};
+					};
+					window.Desmos = {
+						GraphingCalculator: createCalculator,
+						ScientificCalculator: createCalculator,
+						FourFunctionCalculator: createCalculator
+					};
+				})();
+			`,
+		});
+	});
+}
+
 function calculatorSurface(calculator: Locator): Locator {
 	return calculator
 		.locator(
@@ -25,6 +63,7 @@ test.describe("section demo tool visibility from item data", () => {
 		page,
 	}) => {
 		test.setTimeout(60_000);
+		await mockDesmosCalculatorScript(page);
 		await gotoDemo(page);
 
 		const itemCards = page.locator("pie-section-player-item-card");

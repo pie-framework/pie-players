@@ -278,4 +278,3 @@ export class VariantResolverImpl implements VariantResolver {
 			.replace(/\b\w/g, (char) => char.toUpperCase());
 	}
 }
-

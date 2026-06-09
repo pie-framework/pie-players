@@ -272,8 +272,12 @@ function hasAnySupport(profileIds: string[], supportIds: string[]): boolean {
 	return supportIds.some((supportId) => profileIds.includes(supportId));
 }
 
-function normalizeSupportedLevels(tool: ToolRegistrationLike): ToolPlacementLevel[] {
-	const rawLevels = Array.isArray(tool.supportedLevels) ? tool.supportedLevels : [];
+function normalizeSupportedLevels(
+	tool: ToolRegistrationLike,
+): ToolPlacementLevel[] {
+	const rawLevels = Array.isArray(tool.supportedLevels)
+		? tool.supportedLevels
+		: [];
 	return TOOL_PLACEMENT_LEVELS.filter((level) => rawLevels.includes(level));
 }
 
@@ -387,8 +391,13 @@ export function createPatchedPnpProfile(
  * `$derived.by`) — this helper is pure.
  */
 export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
-	const { sectionData, roleType, floatingTools, defaultPnpProfile, coordinator } =
-		inputs;
+	const {
+		sectionData,
+		roleType,
+		floatingTools,
+		defaultPnpProfile,
+		coordinator,
+	} = inputs;
 
 	const { profile, source, note } = resolvePnpProfile(
 		sectionData,
@@ -397,7 +406,11 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 
 	const scopeId = sectionData?.id || sectionData?.identifier || "section";
 	const decision = fetchPolicyDecision(coordinator, "section", scopeId);
-	const itemDecision = fetchPolicyDecision(coordinator, "item", `${scopeId}:item`);
+	const itemDecision = fetchPolicyDecision(
+		coordinator,
+		"item",
+		`${scopeId}:item`,
+	);
 	const passageDecision = fetchPolicyDecision(
 		coordinator,
 		"passage",

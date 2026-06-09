@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ThemeSwitcher from "./ThemeSwitcher.svelte";
+	import ThemeSelect from "./ThemeSelect.svelte";
 
 	type Props = {
 		title?: string;
@@ -32,7 +32,7 @@
 			</a>
 		</div>
 		<div class="navbar-end gap-1">
-			<ThemeSwitcher />
+			<ThemeSelect />
 		</div>
 	</div>
 </header>

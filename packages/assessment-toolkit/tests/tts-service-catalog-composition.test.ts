@@ -277,7 +277,9 @@ describe("TTSService catalog speech composition", () => {
 			},
 			{
 				identifier: "formula",
-				cards: [{ catalog: "spoken", language: "en-US", content: formulaSpeech }],
+				cards: [
+					{ catalog: "spoken", language: "en-US", content: formulaSpeech },
+				],
 			},
 			{
 				identifier: "prompt",
@@ -285,9 +287,7 @@ describe("TTSService catalog speech composition", () => {
 			},
 			{
 				identifier: "outro",
-				cards: [
-					{ catalog: "spoken", language: "en-US", content: "End here." },
-				],
+				cards: [{ catalog: "spoken", language: "en-US", content: "End here." }],
 			},
 		]);
 		service.setCatalogResolver(resolver);
@@ -551,7 +551,9 @@ describe("TTSService catalog speech composition", () => {
 			new AccessibilityCatalogResolver([
 				{
 					identifier: "choice-text",
-					cards: [{ catalog: "spoken", language: "en-US", content: proseSpeech }],
+					cards: [
+						{ catalog: "spoken", language: "en-US", content: proseSpeech },
+					],
 				},
 				{
 					identifier: "choice-equation",

@@ -45,9 +45,9 @@ describe("math alignment sequence aligner", () => {
 			"element-range",
 			"element-range",
 		]);
-		expect(result.segments.map((segment) => segment.mathTokenIds.length)).toEqual([
-			1, 1, 1,
-		]);
+		expect(
+			result.segments.map((segment) => segment.mathTokenIds.length),
+		).toEqual([1, 1, 1]);
 	});
 
 	test("falls back to the expression target for low-confidence stacked arithmetic", () => {

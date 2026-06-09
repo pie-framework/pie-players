@@ -8,7 +8,9 @@ async function gotoDemo(page: Page) {
 }
 
 test.describe("section theme and color scheme integration", () => {
-	test("propagates themed css variables to light and shadow dom", async ({ page }) => {
+	test("propagates themed css variables to light and shadow dom", async ({
+		page,
+	}) => {
 		await gotoDemo(page);
 
 		const vars = await page.evaluate(() => {
@@ -31,8 +33,12 @@ test.describe("section theme and color scheme integration", () => {
 			document.body.appendChild(shadowHost);
 
 			return {
-				light: getComputedStyle(lightNode).getPropertyValue("--pie-primary").trim(),
-				shadow: getComputedStyle(shadowNode).getPropertyValue("--pie-primary").trim(),
+				light: getComputedStyle(lightNode)
+					.getPropertyValue("--pie-primary")
+					.trim(),
+				shadow: getComputedStyle(shadowNode)
+					.getPropertyValue("--pie-primary")
+					.trim(),
 			};
 		});
 
@@ -68,8 +74,12 @@ test.describe("section theme and color scheme integration", () => {
 			document.body.appendChild(shadowHost);
 
 			const readVars = () => ({
-				light: getComputedStyle(lightNode).getPropertyValue("--pie-primary").trim(),
-				shadow: getComputedStyle(shadowNode).getPropertyValue("--pie-primary").trim(),
+				light: getComputedStyle(lightNode)
+					.getPropertyValue("--pie-primary")
+					.trim(),
+				shadow: getComputedStyle(shadowNode)
+					.getPropertyValue("--pie-primary")
+					.trim(),
 			});
 
 			themeHost.setAttribute("scheme", "black-on-white");
@@ -87,4 +97,3 @@ test.describe("section theme and color scheme integration", () => {
 		expect(vars.whiteOnBlack.light).not.toBe(vars.blackOnWhite.light);
 	});
 });
-

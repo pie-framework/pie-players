@@ -49,9 +49,7 @@ const PRESERVE_PROSE_CHUNK_ROLES = new Set([
 	"radio",
 ]);
 
-const shouldPreserveProseChunk = (
-	chunk: MathAwareSpeechChunk,
-): boolean => {
+const shouldPreserveProseChunk = (chunk: MathAwareSpeechChunk): boolean => {
 	if (chunk.type !== "text" || !chunk.sourceElement) return false;
 	const tagName = chunk.sourceElement.tagName.toUpperCase();
 	const role = (chunk.sourceElement.getAttribute("role") || "").toLowerCase();

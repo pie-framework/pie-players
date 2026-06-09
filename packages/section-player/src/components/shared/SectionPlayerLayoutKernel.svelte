@@ -8,6 +8,8 @@
 		ToolbarItem,
 		ToolConfigStrictness,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { createPackagedToolRegistry } from "@pie-players/pie-assessment-toolkit";
+	import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";
 	import {
 		SECTION_RUNTIME_ENGINE_KEY,
 		SectionRuntimeEngine,
@@ -229,6 +231,10 @@
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
 	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
+	const defaultToolRegistry = createPackagedToolRegistry({
+		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+	});
+	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
 	const playerRuntime = $derived(runtimeState.playerRuntime);
 	// Per-region toolbar-tools strings derived from the canonical
 	// `tools.placement.{item,passage}` arrays. Internal card / pane
@@ -692,7 +698,7 @@
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={effectiveSectionToolbarTools}
-	{toolRegistry}
+	toolRegistry={effectiveToolRegistry}
 	{sectionHostButtons}
 	cardRenderContext={cardRenderContextValue}
 >
@@ -709,7 +715,7 @@
 			playerStrategy,
 			iifeBundleHost,
 			paneElementsLoaded,
-			toolRegistry,
+			toolRegistry: effectiveToolRegistry,
 			itemHostButtons,
 			passageHostButtons,
 			readinessDetail,
@@ -731,7 +737,7 @@
 		{playerStrategy}
 		{iifeBundleHost}
 		{paneElementsLoaded}
-		{toolRegistry}
+		toolRegistry={effectiveToolRegistry}
 		{itemHostButtons}
 		{passageHostButtons}
 		{readinessDetail}

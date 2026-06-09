@@ -46,6 +46,7 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import {
 		buildBundleKey,
 		collectElementPackages,
@@ -54,6 +55,7 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const toolRegistry = createSectionDemoToolRegistry();
 
 	// Level 5: route-owned session hydration, save, and reset strategy.
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
@@ -87,6 +89,7 @@
 		const toolsConfigResult = createToolsConfig({
 			source: 'section-demos.session-hydrate-db',
 			strictness: 'error',
+			toolRegistry,
 			tools: {
 				providers: {
 					textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
@@ -120,6 +123,7 @@
 			toolkitToolsConfig: toolsConfigResult.config,
 			coordinator: new ToolkitCoordinator({
 			assessmentId: DEMO_ASSESSMENT_ID,
+			toolRegistry,
 			toolConfigStrictness: 'error',
 			tools: toolsConfigResult.config,
 			hooks: {
@@ -589,6 +593,7 @@
 						coordinator: coordinator
 					} }
 					section={resolvedSectionForPlayer}
+					{toolRegistry}
 					toolbar-position="right"
 					show-toolbar={true}
 				></pie-section-player-vertical>
@@ -607,6 +612,7 @@
 						coordinator: coordinator
 					} }
 					section={resolvedSectionForPlayer}
+					{toolRegistry}
 					toolbar-position="right"
 					show-toolbar={true}
 				></pie-section-player-splitpane>

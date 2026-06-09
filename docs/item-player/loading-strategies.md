@@ -3,7 +3,7 @@
 `<pie-item-player>` supports three loading strategies, set via the `strategy` attribute. All strategies route through the `ElementLoader` primitive (`@pie-players/pie-players-shared/loaders`); the strategy selects which backend the primitive uses (or, for `preloaded`, asserts that no backend is needed):
 
 | Strategy | Backend | Source | Best for |
-|----------|---------|--------|----------|
+| -------- | ------- | ------ | -------- |
 | `iife` | IIFE backend | Bundle host (script injection) | Production deployments using PIE bundle infrastructure |
 | `esm` | ESM backend | ESM CDN (URL or import-map resolution) | Modern ESM-compatible element packages |
 | `preloaded` | _none_ (uses `assertRegistered`) | Host-preloaded bundles | Section-level preloading, static builds, offline use |
@@ -37,19 +37,23 @@ const player = document.querySelector("pie-item-player");
 player.loaderOptions = {
   bundleHost: "https://proxy.pie-api.com/bundles",
   esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+  esmCdnProvider: "jsdelivr",
   moduleResolution: "url",
   view: "delivery",
   loadControllers: true,
+  runtimeSupportCheck: "off",
 };
 ```
 
 | Option | Used by | Default | Description |
-|--------|---------|---------|-------------|
+| ------ | ------- | ------- | ----------- |
 | `bundleHost` | `iife`, `preloaded` | `https://proxy.pie-api.com/bundles/` | Base URL for IIFE bundle downloads |
 | `esmCdnUrl` | `esm` | `https://cdn.jsdelivr.net/npm` | Base URL for ESM module resolution |
+| `esmCdnProvider` | `esm` | inferred from `esmCdnUrl` | CDN route strategy. Use `"jsdelivr"`, `"esm.sh"`, or a provider object with package and shared-dependency URL builders |
 | `moduleResolution` | `esm` | `"url"` | Module resolution mode: `"url"` (fully-qualified CDN imports) or `"import-map"` |
 | `view` | `esm` | resolved from `env.mode` | ESM view: `"delivery"`, `"author"`, or `"print"` |
 | `loadControllers` | `esm` | `true` | Whether to load PIE controllers alongside elements |
+| `runtimeSupportCheck` | `iife`, `esm`, `preloaded` | `"off"` | When `"on"`, reads optional `./runtime-support` metadata and surfaces unsupported strategy/view hints before loading |
 
 ## Strategy details
 
@@ -74,10 +78,26 @@ player.loaderOptions = {
 
 Loads ESM modules from a CDN with dynamic `import()`. By default, the player imports fully-qualified CDN URLs (`moduleResolution: "url"`), which avoids one-time import-map staleness across repeated loads. You can still opt into import-map mode with `moduleResolution: "import-map"`.
 
+The ESM loader consumes the static browser ESM package surface defined by the
+producer-side `pie-elements-ng` package contract.
+For an item element such as `@pie-element/multiple-choice@13.2.2`, it loads
+published files like:
+
+- `dist/browser/delivery/index.js` for delivery mode
+- `dist/browser/author/index.js` for authoring mode
+- `dist/browser/controller/index.js` when `loadControllers` is enabled
+
+The player does not transform element package entrypoints through jsDelivr
+`+esm`. Shared browser singletons such as React are resolved from exact
+`pie.browserSharedDependencies` metadata in the element package's
+`package.json`; dependency and peer-dependency ranges are install metadata, not
+runtime fallback contracts.
+
 ```ts
 player.strategy = "esm";
 player.loaderOptions = {
   esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+  esmCdnProvider: "jsdelivr",
   moduleResolution: "url",
   view: "delivery",
   loadControllers: true,
@@ -85,6 +105,18 @@ player.loaderOptions = {
 ```
 
 The view defaults to `"delivery"` unless `mode="author"` (which resolves to `"author"`), or explicitly overridden via `loaderOptions.view`.
+
+For esm.sh, pass both the provider name and base URL:
+
+```ts
+player.loaderOptions = {
+  esmCdnProvider: "esm.sh",
+  esmCdnUrl: "https://esm.sh",
+};
+```
+
+With this provider, PIE package artifacts are fetched from `raw.esm.sh` while
+shared browser dependencies are fetched from `esm.sh`.
 
 ### `strategy="preloaded"`
 
@@ -121,7 +153,7 @@ CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-
 The section player renders each item via `<pie-item-player>`. Its `player-type` attribute maps directly to the item player's `strategy`:
 
 | Section player `player-type` | Item player `strategy` |
-|------------------------------|------------------------|
+| ---------------------------- | ---------------------- |
 | `iife` | `iife` |
 | `esm` | `esm` |
 | `preloaded` | `preloaded` |

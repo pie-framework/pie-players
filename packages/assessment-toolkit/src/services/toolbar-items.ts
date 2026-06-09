@@ -32,12 +32,17 @@ export function isValidToolbarItemShape(value: unknown): value is ToolbarItem {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
 	const item = value as Record<string, unknown>;
 	if (typeof item.id !== "string" || item.id.trim().length === 0) return false;
-	if (typeof item.label !== "string" || item.label.trim().length === 0) return false;
-	if (item.ariaLabel !== undefined && typeof item.ariaLabel !== "string") return false;
+	if (typeof item.label !== "string" || item.label.trim().length === 0)
+		return false;
+	if (item.ariaLabel !== undefined && typeof item.ariaLabel !== "string")
+		return false;
 	if (item.icon !== undefined && typeof item.icon !== "string") return false;
-	if (item.tooltip !== undefined && typeof item.tooltip !== "string") return false;
-	if (item.active !== undefined && typeof item.active !== "boolean") return false;
-	if (item.disabled !== undefined && typeof item.disabled !== "boolean") return false;
+	if (item.tooltip !== undefined && typeof item.tooltip !== "string")
+		return false;
+	if (item.active !== undefined && typeof item.active !== "boolean")
+		return false;
+	if (item.disabled !== undefined && typeof item.disabled !== "boolean")
+		return false;
 
 	const hasHref = typeof item.href === "string";
 	const hasOnClick = typeof item.onClick === "function";

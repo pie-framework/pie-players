@@ -5,7 +5,12 @@
  * This module has NO runtime dependencies on other PIE modules.
  */
 
-import type { ConfigEntity, Env, PieController, PieModel } from "../types/index.js";
+import type {
+	ConfigEntity,
+	Env,
+	PieController,
+	PieModel,
+} from "../types/index.js";
 
 /**
  * Player modes
@@ -109,6 +114,17 @@ export interface UpdatePieElementOptions {
 	invokeControllerForModel?: boolean;
 	eventListeners?: EventListeners;
 	container?: Element | Document; // Optional container to scope querySelector (defaults to document)
+	/**
+	 * Invoked when an element controller persists derived session state via its
+	 * `updateSession` callback (e.g. a shuffled-choice order). Lets the host write
+	 * the update back to the authoritative session so subsequent renders reuse it
+	 * instead of regenerating it. Element-agnostic: keyed by element id.
+	 */
+	onElementSessionUpdate?: (
+		elementId: string,
+		elementName: string,
+		properties: Record<string, unknown>,
+	) => void;
 }
 
 /**

@@ -20,13 +20,11 @@ export const GET: RequestHandler = async ({ url }) => {
 };
 
 export const PUT: RequestHandler = async ({ request }) => {
-	const body = (await request.json().catch(() => null)) as
-		| {
-				assessmentId?: string;
-				attemptId?: string;
-				snapshot?: Record<string, unknown>;
-		  }
-		| null;
+	const body = (await request.json().catch(() => null)) as {
+		assessmentId?: string;
+		attemptId?: string;
+		snapshot?: Record<string, unknown>;
+	} | null;
 	if (!body) {
 		return json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
 	}

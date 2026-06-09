@@ -123,9 +123,7 @@ export function resolveOnFrameworkError(args: {
 	return args.onFrameworkError;
 }
 
-export function resolveToolsConfig(args: {
-	runtime: RuntimeConfig | null;
-}) {
+export function resolveToolsConfig(args: { runtime: RuntimeConfig | null }) {
 	const runtimeTools = (args.runtime?.tools || {}) as Record<string, unknown>;
 	const placement = (runtimeTools.placement || {}) as Record<string, unknown>;
 	const overlayToolsConfig = { ...runtimeTools, placement: { ...placement } };

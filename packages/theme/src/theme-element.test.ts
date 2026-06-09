@@ -46,4 +46,3 @@ describe("pie-theme color scheme registry", () => {
 		expect(defaultScheme?.id).toBe("default");
 	});
 });
-

@@ -26,8 +26,12 @@ describe("SectionSessionService.applyItemSessionChanged", () => {
 		expect(result.eventDetail.itemId).toBe("item-1");
 		expect(result.eventDetail.intent).toBe("merge-element-session");
 		expect(result.eventDetail.complete).toBe(true);
-		expect("sessionState" in (result.eventDetail as Record<string, unknown>)).toBe(false);
-		expect("itemSessions" in (result.eventDetail as Record<string, unknown>)).toBe(false);
+		expect(
+			"sessionState" in (result.eventDetail as Record<string, unknown>),
+		).toBe(false);
+		expect(
+			"itemSessions" in (result.eventDetail as Record<string, unknown>),
+		).toBe(false);
 		expect((result.eventDetail.session as any).data).toEqual([
 			{ id: "input-1", value: "A" },
 		]);

@@ -24,28 +24,36 @@ async function readJson<T>(locator: Locator): Promise<T> {
 }
 
 async function gotoAuthoringContract(page: Page, query = "") {
-	await page.goto(`${AUTHORING_CONTRACT_PATH}${query}`, { waitUntil: "networkidle" });
+	await page.goto(`${AUTHORING_CONTRACT_PATH}${query}`, {
+		waitUntil: "networkidle",
+	});
 	await expect(
 		page.getByRole("heading", { name: "Authoring Contract Fixture" }),
 	).toBeVisible();
 	await expect(page.getByTestId("authoring-contract-harness")).toBeVisible();
 }
 
-async function readConfigureConfiguration(page: Page): Promise<Record<string, unknown> | null> {
+async function readConfigureConfiguration(
+	page: Page,
+): Promise<Record<string, unknown> | null> {
 	return await page.evaluate(() => {
-		const configureElement = Array.from(document.querySelectorAll("pie-item-player *")).find(
-			(element) => element.localName.endsWith("-config"),
-		) as any;
+		const configureElement = Array.from(
+			document.querySelectorAll("pie-item-player *"),
+		).find((element) => element.localName.endsWith("-config")) as any;
 		return configureElement?.configuration ?? null;
 	});
 }
 
-async function dispatchFromAuthoringRoot(page: Page, type: string, detail: Record<string, unknown>) {
+async function dispatchFromAuthoringRoot(
+	page: Page,
+	type: string,
+	detail: Record<string, unknown>,
+) {
 	await page.evaluate(
 		({ eventType, eventDetail }) => {
 			const target =
-				Array.from(document.querySelectorAll("pie-item-player *")).find((element) =>
-					element.localName.endsWith("-config"),
+				Array.from(document.querySelectorAll("pie-item-player *")).find(
+					(element) => element.localName.endsWith("-config"),
 				) ?? document.querySelector("pie-item-player");
 			const detail =
 				eventType === "insert.image"
@@ -166,7 +174,10 @@ test.describe("item-player authoring contract", () => {
 		await page.getByTestId("run-validation").click();
 		const validationResult = await readJson<{
 			hasErrors: boolean;
-			validatedModels: Array<{ id: string; validation?: { authoringOnly?: string } }>;
+			validatedModels: Array<{
+				id: string;
+				validation?: { authoringOnly?: string };
+			}>;
 		}>(page.getByTestId("validation-result"));
 		expect(validationResult.hasErrors).toBe(false);
 		expect(validationResult.validatedModels[0]).toMatchObject({
@@ -194,24 +205,82 @@ test.describe("item-player authoring contract", () => {
 			})
 			.toBe("Updated by authoring contract e2e");
 
-		await dispatchFromAuthoringRoot(page, "insert.image", {
-		});
+		await dispatchFromAuthoringRoot(page, "insert.image", {});
 		await dispatchFromAuthoringRoot(page, "delete.image", {
 			src: "/fixture/image.png",
 		});
-		await dispatchFromAuthoringRoot(page, "insert.sound", {
-		});
+		await dispatchFromAuthoringRoot(page, "insert.sound", {});
 		await dispatchFromAuthoringRoot(page, "delete.sound", {
 			src: "/fixture/sound.wav",
 		});
 		await expect
 			.poll(async () => {
-				const mediaCalls = await readJson<Array<{ type: string; src?: string }>>(
-					page.getByTestId("media-call-log"),
-				);
+				const mediaCalls = await readJson<
+					Array<{ type: string; src?: string }>
+				>(page.getByTestId("media-call-log"));
 				return mediaCalls.map((call) => call.type);
 			})
-			.toEqual(["insert-image", "delete-image", "insert-sound", "delete-sound"]);
+			.toEqual([
+				"insert-image",
+				"delete-image",
+				"insert-sound",
+				"delete-sound",
+			]);
+	});
+
+	test("does not remount authoring renderer for cloned equivalent config", async ({
+		page,
+	}) => {
+		await gotoAuthoringContract(page);
+		await expect(page.getByTestId("authoring-fixture")).toBeVisible();
+
+		await page.evaluate(() => {
+			const player = document.querySelector("pie-item-player");
+			if (!(player instanceof HTMLElement)) {
+				throw new Error("pie-item-player host not found");
+			}
+			(window as any).__authoringRemountProbe = {
+				addedConfigureElements: 0,
+				removedConfigureElements: 0,
+			};
+			const isConfigureSubtree = (node: Node): boolean => {
+				if (!(node instanceof Element)) return false;
+				if (node.localName.endsWith("-config")) return true;
+				return !!node.querySelector("[data-testid='authoring-fixture']");
+			};
+			const observer = new MutationObserver((mutations) => {
+				const probe = (window as any).__authoringRemountProbe;
+				for (const mutation of mutations) {
+					for (const node of mutation.addedNodes) {
+						if (isConfigureSubtree(node)) {
+							probe.addedConfigureElements += 1;
+						}
+					}
+					for (const node of mutation.removedNodes) {
+						if (isConfigureSubtree(node)) {
+							probe.removedConfigureElements += 1;
+						}
+					}
+				}
+			});
+			observer.observe(player, { childList: true, subtree: true });
+			(window as any).__authoringRemountObserver = observer;
+		});
+
+		await page.evaluate(() => {
+			const player = document.querySelector("pie-item-player") as any;
+			player.config = JSON.parse(JSON.stringify(player.config));
+		});
+		await page.waitForTimeout(500);
+
+		const probe = await page.evaluate(() => {
+			(window as any).__authoringRemountObserver?.disconnect?.();
+			return (window as any).__authoringRemountProbe;
+		});
+		expect(probe).toEqual({
+			addedConfigureElements: 0,
+			removedConfigureElements: 0,
+		});
 	});
 
 	test("required authoring backend blocks authoring UI when callbacks are missing", async ({
@@ -219,14 +288,17 @@ test.describe("item-player authoring contract", () => {
 	}) => {
 		await gotoAuthoringContract(page, "&missingBackend=1");
 
-		await expect(page.getByText("Authoring Backend Configuration Error")).toBeVisible();
+		await expect(
+			page.getByText("Authoring Backend Configuration Error"),
+		).toBeVisible();
 		await expect(page.getByTestId("authoring-fixture")).toHaveCount(0);
 		await expect
 			.poll(async () => {
 				const eventLog = await readJson<Array<{ type: string; detail: any }>>(
 					page.getByTestId("event-log"),
 				);
-				return eventLog.find((entry) => entry.type === "player-error")?.detail?.code;
+				return eventLog.find((entry) => entry.type === "player-error")?.detail
+					?.code;
 			})
 			.toBe("AUTHORING_BACKEND_CONFIG_ERROR");
 	});

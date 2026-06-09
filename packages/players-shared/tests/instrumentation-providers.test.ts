@@ -39,7 +39,11 @@ class FakeReadyProvider implements InstrumentationProvider {
 	trackEvent(eventName: string, _attributes: EventAttributes): void {
 		this.events.push(eventName);
 	}
-	trackMetric(metricName: string, _value: number, _attributes?: MetricAttributes): void {
+	trackMetric(
+		metricName: string,
+		_value: number,
+		_attributes?: MetricAttributes,
+	): void {
 		this.metrics.push(metricName);
 	}
 }
@@ -104,7 +108,10 @@ describe("DebugPanelInstrumentationProvider", () => {
 		const provider = new DebugPanelInstrumentationProvider();
 		await provider.initialize();
 
-		provider.trackMetric("duration", 42, { unit: "ms", category: "performance" });
+		provider.trackMetric("duration", 42, {
+			unit: "ms",
+			category: "performance",
+		});
 		const records = getBufferedInstrumentationDebugRecords();
 		const metricEvent = records.find(
 			(record) =>

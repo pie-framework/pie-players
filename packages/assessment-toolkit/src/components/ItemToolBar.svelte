@@ -69,7 +69,6 @@
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
-	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
 	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
@@ -192,9 +191,11 @@
 		return {};
 	};
 
-	const fallbackToolRegistry = createPackagedToolRegistry({
-		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
-	});
+	// Metadata-only fallback: assessment-toolkit must not import the stock
+	// module-loader package because those loaders depend on concrete tool
+	// custom-element packages that themselves depend on the toolkit. Hosts that
+	// want stock tool auto-registration pass a loader-backed ToolRegistry.
+	const fallbackToolRegistry = createPackagedToolRegistry();
 
 	let activeToolState = $state<Record<string, boolean>>({});
 

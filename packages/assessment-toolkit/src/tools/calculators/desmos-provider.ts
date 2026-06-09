@@ -483,4 +483,3 @@ class DesmosCalculator implements Calculator {
 		}
 	}
 }
-

@@ -36,7 +36,10 @@ export interface ToolRuntimeProviderBridge {
 	/**
 	 * Optional host event emitter.
 	 */
-	emit?: (eventName: string, payload?: Record<string, unknown>) => void | Promise<void>;
+	emit?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
 	/**
 	 * Optional host event subscription bridge.
 	 */
@@ -77,7 +80,10 @@ export interface TextToSpeechToolProviderConfig
 
 export interface ToolProvidersConfig {
 	textToSpeech?: TextToSpeechToolProviderConfig;
-	[key: string]: ToolProviderConfig | TextToSpeechToolProviderConfig | undefined;
+	[key: string]:
+		| ToolProviderConfig
+		| TextToSpeechToolProviderConfig
+		| undefined;
 }
 
 /**
@@ -135,7 +141,9 @@ function assertStringArray(value: unknown, fieldPath: string): string[] {
 	return value as string[];
 }
 
-function assertPlacementConfig(value: unknown): ToolPlacementConfig | undefined {
+function assertPlacementConfig(
+	value: unknown,
+): ToolPlacementConfig | undefined {
 	if (value == null) return undefined;
 	if (!isPlainObject(value)) {
 		throw new Error(
@@ -219,7 +227,9 @@ export function normalizeToolAlias(toolId: string): string {
 	return trimmed;
 }
 
-export function normalizeToolList(toolIds: string[] | undefined | null): string[] {
+export function normalizeToolList(
+	toolIds: string[] | undefined | null,
+): string[] {
 	if (!toolIds || toolIds.length === 0) return [];
 	const deduped = new Set<string>();
 	for (const rawToolId of toolIds) {
@@ -274,23 +284,34 @@ export function normalizeToolsConfig(
 
 	const config: CanonicalToolsConfig = {
 		policy: {
-			allowed: normalizeToolList(assertStringArray(policy?.allowed, "policy.allowed")),
-			blocked: normalizeToolList(assertStringArray(policy?.blocked, "policy.blocked")),
+			allowed: normalizeToolList(
+				assertStringArray(policy?.allowed, "policy.allowed"),
+			),
+			blocked: normalizeToolList(
+				assertStringArray(policy?.blocked, "policy.blocked"),
+			),
 		},
 		placement: {
 			section: normalizeToolList(
 				assertStringArray(placement?.section, "placement.section"),
 			).length
-				? normalizeToolList(assertStringArray(placement?.section, "placement.section"))
+				? normalizeToolList(
+						assertStringArray(placement?.section, "placement.section"),
+					)
 				: [...DEFAULT_PLACEMENT.section],
-			item: normalizeToolList(assertStringArray(placement?.item, "placement.item"))
-				.length
-				? normalizeToolList(assertStringArray(placement?.item, "placement.item"))
+			item: normalizeToolList(
+				assertStringArray(placement?.item, "placement.item"),
+			).length
+				? normalizeToolList(
+						assertStringArray(placement?.item, "placement.item"),
+					)
 				: [...DEFAULT_PLACEMENT.item],
 			passage: normalizeToolList(
 				assertStringArray(placement?.passage, "placement.passage"),
 			).length
-				? normalizeToolList(assertStringArray(placement?.passage, "placement.passage"))
+				? normalizeToolList(
+						assertStringArray(placement?.passage, "placement.passage"),
+					)
 				: [...DEFAULT_PLACEMENT.passage],
 		},
 		providers,
@@ -300,4 +321,3 @@ export function normalizeToolsConfig(
 	}
 	return config;
 }
-

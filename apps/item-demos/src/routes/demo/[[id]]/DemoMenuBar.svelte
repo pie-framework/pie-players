@@ -1,11 +1,14 @@
 <script lang="ts">
+	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
+
 	interface Props {
 		demoName: string;
 		demoPackage: string;
-		activeView: 'delivery' | 'author' | 'source';
+		activeView: 'delivery' | 'author' | 'source' | 'controller';
 		loaderStrategy: 'iife' | 'esm';
 		deliveryHref: string;
 		authorHref: string;
+		controllerHref: string;
 		sourceHref: string;
 		studentHref: string;
 		scorerHref: string;
@@ -27,6 +30,7 @@
 		loaderStrategy,
 		deliveryHref,
 		authorHref,
+		controllerHref,
 		sourceHref,
 		studentHref,
 		scorerHref,
@@ -71,6 +75,16 @@
 			>
 				Author
 			</a>
+			{#if !authorOnly}
+				<a
+					href={controllerHref}
+					class="btn btn-sm join-item"
+					class:btn-active={activeView === 'controller'}
+					aria-current={activeView === 'controller' ? 'page' : undefined}
+				>
+					Controller
+				</a>
+			{/if}
 			<a
 				href={sourceHref}
 				class="btn btn-sm join-item"
@@ -81,7 +95,7 @@
 			</a>
 		</div>
 
-		{#if activeView !== 'source' && !authorOnly}
+		{#if (activeView === 'delivery' || activeView === 'author') && !authorOnly}
 			<div class="join" aria-label="Loader strategy">
 				<button
 					type="button"
@@ -137,6 +151,7 @@
 	</div>
 
 	<div class="navbar-end gap-2">
+		<ThemeSelect />
 		{#if showSessionToggle}
 			<button
 				class="btn btn-sm btn-outline btn-square"

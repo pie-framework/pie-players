@@ -6,7 +6,10 @@ import path from "node:path";
 const ROOT = process.cwd();
 const PACKAGE_ROOT = path.join(ROOT, "packages");
 const CHANGESET_DIR = path.join(ROOT, ".changeset");
-const CHANGESET_FILE = path.join(CHANGESET_DIR, "temporary-release-all-packages.md");
+const CHANGESET_FILE = path.join(
+	CHANGESET_DIR,
+	"temporary-release-all-packages.md",
+);
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
@@ -46,7 +49,9 @@ if (packageNames.length === 0) {
 	fail("No publishable @pie-players packages discovered under packages/*.");
 }
 
-const frontmatterLines = packageNames.map((packageName) => `"${packageName}": patch`);
+const frontmatterLines = packageNames.map(
+	(packageName) => `"${packageName}": patch`,
+);
 const contents = [
 	"---",
 	...frontmatterLines,

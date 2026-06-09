@@ -26,7 +26,12 @@ import { createLogger } from "../utils/logger.js";
 const log = createLogger("I18nService");
 
 // Re-export types for convenience
-export type { I18nConfig, I18nServiceApi, PluralTranslation, TranslationBundle };
+export type {
+	I18nConfig,
+	I18nServiceApi,
+	PluralTranslation,
+	TranslationBundle,
+};
 
 /**
  * I18nService

@@ -117,7 +117,10 @@ export function createDefaultToolRegistry(
 		});
 	}
 
-	if (options.toolModuleLoaders && Object.keys(options.toolModuleLoaders).length > 0) {
+	if (
+		options.toolModuleLoaders &&
+		Object.keys(options.toolModuleLoaders).length > 0
+	) {
 		registry.setToolModuleLoaders(options.toolModuleLoaders);
 	}
 
@@ -142,7 +145,9 @@ export function registerPackagedTools(
 		options.toolIds && options.toolIds.length > 0
 			? new Set(options.toolIds)
 			: null;
-	const applyOverrides = options.applyOverrides || ((registration: ToolRegistration) => registration);
+	const applyOverrides =
+		options.applyOverrides ||
+		((registration: ToolRegistration) => registration);
 	for (const registration of PACKAGED_TOOL_REGISTRATIONS) {
 		if (selectedToolIds && !selectedToolIds.has(registration.toolId)) {
 			continue;

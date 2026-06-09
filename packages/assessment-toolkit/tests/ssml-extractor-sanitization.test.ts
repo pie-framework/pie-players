@@ -1,5 +1,12 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 
 import {
 	SSMLExtractor,
@@ -7,7 +14,10 @@ import {
 } from "../src/services/SSMLExtractor";
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });
@@ -34,8 +44,7 @@ function extractSsml(markup: string): string {
 
 describe("SSMLExtractor sanitization", () => {
 	test("strips <script> tags smuggled inside <speak>", () => {
-		const markup =
-			'<p><speak>Hello <script>alert(1)</script>world</speak></p>';
+		const markup = "<p><speak>Hello <script>alert(1)</script>world</speak></p>";
 		const ssml = extractSsml(markup);
 		expect(ssml).not.toContain("<script");
 		expect(ssml).not.toContain("alert");
@@ -44,8 +53,7 @@ describe("SSMLExtractor sanitization", () => {
 	});
 
 	test("unwraps disallowed HTML elements while preserving text", () => {
-		const markup =
-			'<p><speak>Hello <b>bold</b> <img src="x" /></speak></p>';
+		const markup = '<p><speak>Hello <b>bold</b> <img src="x" /></speak></p>';
 		const ssml = extractSsml(markup);
 		expect(ssml).not.toContain("<b>");
 		expect(ssml).not.toContain("<img");

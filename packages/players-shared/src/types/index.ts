@@ -620,13 +620,18 @@ export type BundleInfo = {
 	hash: string;
 };
 
-interface PieDefaultModel {
+export type ItemSession = {
+	id: string;
+	data: any[];
+};
+
+export interface PieDefaultModel {
 	// supports 'excess' properties as may be defined in pie models
 	// https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#strict-object-literal-assignment-checking
 	[x: string]: any;
 }
 
-interface PieContent {
+export interface PieContent {
 	id: string;
 	/**
 	 * Set of elements to include in the pie, provided in the format `{'element-name': 'mpm-package-name'}`
@@ -640,12 +645,22 @@ interface PieContent {
 
 	bundle?: BundleInfo;
 
+	resources?: ConfigResource;
+
 	defaultExtraModels?: {
 		[key: string]: PieDefaultModel;
 	};
 }
 
-interface AdvancedItemConfig {
+export interface ConfigResource {
+	stylesheets?: {
+		url: string;
+	}[];
+	containerClass?: string;
+	passageContainerClass?: string;
+}
+
+export interface AdvancedItemConfig {
 	id: string;
 	pie: PieContent;
 	passage?: PieContent;

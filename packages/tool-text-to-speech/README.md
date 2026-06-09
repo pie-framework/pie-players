@@ -204,4 +204,4 @@ The tool handles these error scenarios:
 - [TTS Architecture](../../docs/accessibility/tts-architecture.md) - TTS system overview
 - [TTS Server Polly](../tts-server-polly/README.md) - AWS Polly server provider
 - [TTS Client Server](../tts-client-server/README.md) - Server-backed client provider
-- [Toolbars package](../toolbars/) - Tool management
+- [Assessment Toolkit](../assessment-toolkit/README.md) - Toolbar and tool management

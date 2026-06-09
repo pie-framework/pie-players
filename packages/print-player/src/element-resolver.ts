@@ -6,11 +6,22 @@
  */
 
 import { define, status, whenDefined } from "./ce-registry.js";
+import {
+	ensureRegistered,
+	type EsmCdnProviderOption,
+	type ViewConfig,
+} from "@pie-players/pie-players-shared/loaders";
 import type {
 	LoadResolutionResult,
 	PkgResolution,
 	ResolverFn,
 } from "./types.js";
+
+const DEFAULT_CDN_BASE_URL = "https://cdn.jsdelivr.net/npm";
+const BROWSER_PRINT_VIEW_CONFIG: ViewConfig = {
+	subpath: "/print",
+	tagSuffix: "",
+};
 
 /**
  * Default resolver - resolves package names to jsdelivr CDN URLs
@@ -26,8 +37,11 @@ export const defaultResolve: ResolverFn = (
 	return Promise.resolve({
 		tagName,
 		pkg,
-		url: `https://cdn.jsdelivr.net/npm/${pkg}/dist/print/index.js`,
+		url: `${DEFAULT_CDN_BASE_URL}/${pkg}/dist/browser/print/index.js`,
 		module: true,
+		loader: "browser-esm",
+		cdnBaseUrl: DEFAULT_CDN_BASE_URL,
+		cdnProvider: "jsdelivr",
 	});
 };
 
@@ -77,6 +91,34 @@ export const defaultLoadResolution = async (
 			pkg: r,
 			message: "Print module is not configured for this item type",
 		};
+	}
+
+	if (r.loader === "browser-esm") {
+		try {
+			await ensureRegistered(
+				{ [r.printTagName]: r.pkg },
+				{
+					backend: {
+						kind: "esm",
+						cdnBaseUrl: r.cdnBaseUrl || DEFAULT_CDN_BASE_URL,
+						cdnProvider: (r.cdnProvider || "jsdelivr") as EsmCdnProviderOption,
+						moduleResolution: "url",
+						view: "print",
+						viewConfig: BROWSER_PRINT_VIEW_CONFIG,
+						loadControllers: false,
+					},
+					doc: document,
+				},
+			);
+			return { success: true, pkg: r };
+		} catch (e: any) {
+			console.error(
+				"[element-resolver] Failed to load browser ESM module",
+				r.url,
+				e,
+			);
+			return { success: false, pkg: r, message: e.message };
+		}
 	}
 
 	if (r.module) {

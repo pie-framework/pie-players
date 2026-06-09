@@ -84,9 +84,15 @@ describe("TTS math speech generation", () => {
 		);
 
 		expect(result.speechText).toBe("b squared minus 4 a c");
-		expect(result.ssml).toContain('<say-as interpret-as="character">b</say-as>');
-		expect(result.ssml).toContain('<say-as interpret-as="character">a</say-as>');
-		expect(result.ssml).toContain('<say-as interpret-as="character">c</say-as>');
+		expect(result.ssml).toContain(
+			'<say-as interpret-as="character">b</say-as>',
+		);
+		expect(result.ssml).toContain(
+			'<say-as interpret-as="character">a</say-as>',
+		);
+		expect(result.ssml).toContain(
+			'<say-as interpret-as="character">c</say-as>',
+		);
 	});
 
 	test("preserves SRE speech for adjacent parenthesized factors", async () => {
@@ -110,7 +116,7 @@ describe("TTS math speech generation", () => {
 					engineReady: async () => {},
 					toSpeech: () =>
 						markup === "ssml"
-							? '<speak>open paren x minus 2 close paren times open paren x minus 3 close paren</speak>'
+							? "<speak>open paren x minus 2 close paren times open paren x minus 3 close paren</speak>"
 							: "open paren x minus 2 close paren times open paren x minus 3 close paren",
 				}),
 			},
@@ -138,7 +144,9 @@ describe("TTS math speech generation", () => {
 		);
 
 		expect(result.speechText).toMatch(/open paren x minus 2 close paren/i);
-		expect(result.speechText).toMatch(/times open paren x minus 3 close paren/i);
+		expect(result.speechText).toMatch(
+			/times open paren x minus 3 close paren/i,
+		);
 		expect(result.ssml).toContain("open paren");
 	});
 

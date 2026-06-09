@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { isValidToolbarItemShape } from "../src/services/toolbar-items.js";
+
+const ITEM_TOOLBAR_PATH = resolve(
+	__dirname,
+	"../src/components/ItemToolBar.svelte",
+);
 
 describe("toolbar-items validation", () => {
 	test("accepts valid button item shape", () => {
@@ -60,6 +67,20 @@ describe("toolbar-items validation", () => {
 			},
 		];
 		const valid = mixedInputs.filter((entry) => isValidToolbarItemShape(entry));
-		expect(valid.map((entry) => entry.id)).toEqual(["valid-button", "valid-link"]);
+		expect(valid.map((entry) => entry.id)).toEqual([
+			"valid-button",
+			"valid-link",
+		]);
+	});
+
+	test("keeps the standalone toolbar fallback metadata-only", () => {
+		const source = readFileSync(ITEM_TOOLBAR_PATH, "utf8");
+
+		expect(source).toContain("Metadata-only fallback");
+		expect(source).toContain(
+			"const fallbackToolRegistry = createPackagedToolRegistry();",
+		);
+		expect(source).not.toContain("@pie-players/pie-default-tool-loaders");
+		expect(source).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
 	});
 });

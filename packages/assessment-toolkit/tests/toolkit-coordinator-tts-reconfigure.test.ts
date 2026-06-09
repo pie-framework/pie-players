@@ -95,6 +95,36 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		}
 	});
 
+	test("browser readiness resolves when voice events are unavailable", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-browser-voice-no-events-test",
+			lazyInit: true,
+		});
+		const synthMock = {
+			getVoices: () => [] as SpeechSynthesisVoice[],
+		} as unknown as SpeechSynthesis;
+		const previousWindow = (globalThis as any).window;
+		(globalThis as any).window = {
+			setTimeout,
+			clearTimeout,
+			speechSynthesis: synthMock,
+		};
+		try {
+			const result = await Promise.race([
+				(coordinator as any).ensureBrowserVoicesReady(
+					{
+						providerId: "browser",
+					},
+					1,
+				).then(() => "ready"),
+				new Promise((resolve) => setTimeout(() => resolve("timeout"), 20)),
+			]);
+			expect(result).toBe("ready");
+		} finally {
+			(globalThis as any).window = previousWindow;
+		}
+	});
+
 	test("browser readiness is a no-op for non-browser providers", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-prewarm-noop-test",
@@ -146,7 +176,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-				assessmentId: "tts-removed-provider-key-test",
+					assessmentId: "tts-removed-provider-key-test",
 					lazyInit: true,
 					toolConfigStrictness: "error",
 					tools: {
@@ -165,7 +195,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-				assessmentId: "tts-removed-default-strictness-test",
+					assessmentId: "tts-removed-default-strictness-test",
 					lazyInit: true,
 					tools: {
 						providers: {
@@ -249,7 +279,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
 		internals.toolProviderRegistry = { has: () => false };
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -282,7 +315,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		internals._reconfigureTTSProvider = async () => {
 			internals.ttsInitialized = false;
 		};
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -333,7 +369,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		internals._reconfigureTTSProvider = async () => {
 			internals.ttsInitialized = false;
 		};
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -381,7 +420,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		internals._reconfigureTTSProvider = async () => {
 			internals.ttsInitialized = false;
 		};
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -420,7 +462,9 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			internals.ttsInitialized = true;
 		};
 
-		await expect(coordinator.ensureTTSReady()).rejects.toThrow("simulated init failure");
+		await expect(coordinator.ensureTTSReady()).rejects.toThrow(
+			"simulated init failure",
+		);
 		expect(internals.ttsInitialized).toBe(false);
 
 		await coordinator.ensureTTSReady();
@@ -442,7 +486,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			internals.ttsInitialized = true;
 		};
 
-		await Promise.all([coordinator.ensureTTSReady(), coordinator.ensureTTSReady()]);
+		await Promise.all([
+			coordinator.ensureTTSReady(),
+			coordinator.ensureTTSReady(),
+		]);
 		expect(initCalls).toBe(1);
 		expect(internals.ttsInitialized).toBe(true);
 	});

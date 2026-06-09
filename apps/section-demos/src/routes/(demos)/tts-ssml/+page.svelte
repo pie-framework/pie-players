@@ -45,6 +45,7 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import {
 		buildBundleKey,
 		collectElementTags,
@@ -56,6 +57,7 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const toolRegistry = createSectionDemoToolRegistry();
 
 	// Level 4: CE setup plus controller JS API subscriptions.
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
@@ -83,6 +85,7 @@
 		const toolsConfigResult = createToolsConfig({
 			source: 'section-demos.tts-ssml',
 			strictness: 'error',
+			toolRegistry,
 			tools: {
 				providers: {
 					textToSpeech: SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER,
@@ -113,6 +116,7 @@
 			toolkitToolsConfig: toolsConfigResult.config,
 			coordinator: new ToolkitCoordinator({
 			assessmentId: DEMO_ASSESSMENT_ID,
+			toolRegistry,
 			toolConfigStrictness: 'error',
 			tools: toolsConfigResult.config
 		})
@@ -475,13 +479,6 @@ const sectionPlayerHooks = $derived.by(() =>
 	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 >
-	{#if coordinatorReady && coordinator}
-		<pie-tool-annotation-toolbar
-			enabled={true}
-			ttsService={coordinator?.ttsService}
-			highlightCoordinator={coordinator?.highlightCoordinator}
-		></pie-tool-annotation-toolbar>
-	{/if}
 	{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
 		{#if selectedPlayerType === 'preloaded' && !preloadedReady}
 			<div class="preload-status">Preloading section item bundles...</div>
@@ -502,6 +499,7 @@ const sectionPlayerHooks = $derived.by(() =>
 					coordinator: coordinator
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				hooks={sectionPlayerHooks}
@@ -522,6 +520,7 @@ const sectionPlayerHooks = $derived.by(() =>
 					coordinator: coordinator
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				hooks={sectionPlayerHooks}

@@ -20,7 +20,9 @@ type SessionDemoState = {
 	reconstructedSnapshots?: Record<string, SectionSnapshot>;
 };
 
-async function resolveAttemptId(page: import("@playwright/test").Page): Promise<string> {
+async function resolveAttemptId(
+	page: import("@playwright/test").Page,
+): Promise<string> {
 	for (let index = 0; index < 25; index += 1) {
 		const urlAttemptId = new URL(page.url()).searchParams.get("attempt") || "";
 		if (urlAttemptId) return urlAttemptId;
@@ -33,7 +35,10 @@ async function resolveAttemptId(page: import("@playwright/test").Page): Promise<
 	throw new Error("Attempt id was not resolved from URL or localStorage");
 }
 
-function getChoiceValue(snapshot: SectionSnapshot | null, itemId: string): string {
+function getChoiceValue(
+	snapshot: SectionSnapshot | null,
+	itemId: string,
+): string {
 	const entry = snapshot?.itemSessions?.[itemId];
 	const values = Array.isArray(entry?.session?.data) ? entry.session.data : [];
 	const first = values[0];
@@ -71,10 +76,13 @@ async function readSectionSnapshot(args: {
 	return payload.snapshot || null;
 }
 
-async function readSessionDemoState(
-	args: { page: import("@playwright/test").Page; origin: string },
-): Promise<SessionDemoState> {
-	const response = await args.page.request.get(`${args.origin}/api/session-demo/state`);
+async function readSessionDemoState(args: {
+	page: import("@playwright/test").Page;
+	origin: string;
+}): Promise<SessionDemoState> {
+	const response = await args.page.request.get(
+		`${args.origin}/api/session-demo/state`,
+	);
 	expect(response.ok()).toBe(true);
 	const payload = (await response.json()) as {
 		ok?: boolean;
@@ -84,7 +92,9 @@ async function readSessionDemoState(
 	return payload.state || {};
 }
 
-async function openSessionDbPanel(page: import("@playwright/test").Page): Promise<void> {
+async function openSessionDbPanel(
+	page: import("@playwright/test").Page,
+): Promise<void> {
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle database state panel",
 	});
@@ -95,7 +105,9 @@ async function openSessionDbPanel(page: import("@playwright/test").Page): Promis
 	}
 }
 
-async function clickResetDbButton(page: import("@playwright/test").Page): Promise<void> {
+async function clickResetDbButton(
+	page: import("@playwright/test").Page,
+): Promise<void> {
 	const clicked = await page.evaluate(() => {
 		const scan = (root: Document | ShadowRoot): HTMLButtonElement | null => {
 			const buttons = Array.from(root.querySelectorAll("button"));
@@ -128,7 +140,10 @@ async function clickResetDbButton(page: import("@playwright/test").Page): Promis
 async function chooseVisibleUncheckedAnswer(
 	page: import("@playwright/test").Page,
 ): Promise<void> {
-	const choiceLabel = page.getByText("It could appoint the Holy Roman Emperor", { exact: true });
+	const choiceLabel = page.getByText(
+		"It could appoint the Holy Roman Emperor",
+		{ exact: true },
+	);
 	await expect(choiceLabel).toBeVisible({ timeout: 30000 });
 	await choiceLabel.click();
 }
@@ -140,7 +155,9 @@ test.describe("session hydrate db flow", () => {
 		const sectionPort = process.env.SECTION_DEMOS_PORT || "5300";
 		const baseUrl =
 			process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${sectionPort}`;
-		await page.goto(new URL(DEMO_PATH, baseUrl).toString(), { waitUntil: "domcontentloaded" });
+		await page.goto(new URL(DEMO_PATH, baseUrl).toString(), {
+			waitUntil: "domcontentloaded",
+		});
 		const origin = new URL(page.url()).origin;
 		const attemptId = await resolveAttemptId(page);
 		const baselineSnapshot = await readSectionSnapshot({
@@ -179,15 +196,18 @@ test.describe("session hydrate db flow", () => {
 		await chooseVisibleUncheckedAnswer(page);
 
 		await expect
-			.poll(async () => {
-				const snapshot = await readSectionSnapshot({
-					page,
-					origin,
-					attemptId,
-					sectionId: SECTION_PAGE_ONE,
-				});
-				return getSnapshotFingerprint(snapshot);
-			}, { timeout: 10000 })
+			.poll(
+				async () => {
+					const snapshot = await readSectionSnapshot({
+						page,
+						origin,
+						attemptId,
+						sectionId: SECTION_PAGE_ONE,
+					});
+					return getSnapshotFingerprint(snapshot);
+				},
+				{ timeout: 10000 },
+			)
 			.not.toBe(baselineFingerprint);
 
 		const updatedSnapshot = await readSectionSnapshot({
@@ -199,11 +219,16 @@ test.describe("session hydrate db flow", () => {
 		const updatedFingerprint = getSnapshotFingerprint(updatedSnapshot);
 
 		await expect
-			.poll(async () => {
-				const state = await readSessionDemoState({ page, origin });
-				const key = `${ASSESSMENT_ID}:${SECTION_PAGE_ONE}:${attemptId}`;
-				return getSnapshotFingerprint(state.reconstructedSnapshots?.[key] || null);
-			}, { timeout: 10000 })
+			.poll(
+				async () => {
+					const state = await readSessionDemoState({ page, origin });
+					const key = `${ASSESSMENT_ID}:${SECTION_PAGE_ONE}:${attemptId}`;
+					return getSnapshotFingerprint(
+						state.reconstructedSnapshots?.[key] || null,
+					);
+				},
+				{ timeout: 10000 },
+			)
 			.toBe(updatedFingerprint);
 
 		await page.reload({ waitUntil: "domcontentloaded" });
@@ -239,7 +264,9 @@ test.describe("session hydrate db flow", () => {
 			.poll(async () => {
 				const state = await readSessionDemoState({ page, origin });
 				const key = `${ASSESSMENT_ID}:${SECTION_PAGE_ONE}:${attemptId}`;
-				return getSnapshotFingerprint(state.reconstructedSnapshots?.[key] || null);
+				return getSnapshotFingerprint(
+					state.reconstructedSnapshots?.[key] || null,
+				);
 			})
 			.toBe(baselineFingerprint);
 

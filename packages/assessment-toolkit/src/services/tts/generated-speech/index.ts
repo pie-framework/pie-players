@@ -11,7 +11,10 @@
  */
 
 export * from "./types.js";
-export { assembleGeneratedSpeech, type MathSpeechResolver } from "./assemble-plan.js";
+export {
+	assembleGeneratedSpeech,
+	type MathSpeechResolver,
+} from "./assemble-plan.js";
 export {
 	createMemoizedMathSpeechResolver,
 	type MathSpeechCacheOptions,

@@ -44,6 +44,7 @@
 <script lang="ts">
 	import type {
 		ConfigEntity,
+		ConfigResource,
 		Env,
 		IifeBundleRetryStatus,
 		ItemMarkupSanitizer,
@@ -61,6 +62,7 @@
 		ImageHandler,
 		SoundHandler,
 	} from "./types.js";
+	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
 	import {
 		getDeliveryAutosaveOptions,
 		getDeliveryBackend,
@@ -82,18 +84,19 @@
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
+		mapEsmViewElements,
 		makeUniqueTags,
 		validatePieConfigContract,
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
 		resolveInstrumentationProvider,
-		resolveItemPlayerView,
 		scorePieItem,
 		updatePieElements,
 	} from "@pie-players/pie-players-shared";
 	import type {
 		EsmBackendConfig,
+		EsmCdnProviderOption,
 		IifeBackendConfig,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
@@ -112,6 +115,7 @@
 	type UnifiedLoaderOptions = {
 		bundleHost?: string;
 		esmCdnUrl?: string;
+		esmCdnProvider?: EsmCdnProviderOption;
 		view?: string;
 		loadControllers?: boolean;
 		moduleResolution?: "url" | "import-map";
@@ -359,6 +363,24 @@
 	let latestLoadRequestToken = 0;
 	const effectiveConfig = $derived(backendConfigOverride ?? config);
 	const effectiveSession = $derived(backendSessionOverride ?? session);
+	function configResourcesFor(configEntity: ConfigEntity | null): ConfigResource | null {
+		const resources = (configEntity as unknown as { resources?: unknown } | null)?.resources;
+		return resources && typeof resources === "object" ? (resources as ConfigResource) : null;
+	}
+
+	const itemConfigResources = $derived(configResourcesFor(itemConfig));
+	// pie-item contract compatibility: legacy <pie-player> let config.resources
+	// drive host and passage container classes.
+	const resolvedContainerClass = $derived(
+		typeof itemConfigResources?.containerClass === "string"
+			? itemConfigResources.containerClass
+			: containerClass,
+	);
+	const resolvedPassageContainerClass = $derived(
+		typeof itemConfigResources?.passageContainerClass === "string"
+			? itemConfigResources.passageContainerClass
+			: passageContainerClass,
+	);
 
 	function beginLoadRequest(): number {
 		latestLoadRequestToken += 1;
@@ -449,7 +471,29 @@
 	}
 	function stableStringifyForKey(value: unknown): string {
 		try {
-			return JSON.stringify(value);
+			const seen = new WeakSet<object>();
+			return JSON.stringify(value, (_key, nestedValue) => {
+				if (
+					!nestedValue ||
+					typeof nestedValue !== "object" ||
+					Array.isArray(nestedValue)
+				) {
+					return nestedValue;
+				}
+				if (seen.has(nestedValue)) {
+					return "[Circular]";
+				}
+				seen.add(nestedValue);
+				return Object.keys(nestedValue as Record<string, unknown>)
+					.sort()
+					.reduce(
+						(acc, key) => {
+							acc[key] = (nestedValue as Record<string, unknown>)[key];
+							return acc;
+						},
+						{} as Record<string, unknown>,
+					);
+			});
 		} catch {
 			return String(value);
 		}
@@ -507,7 +551,7 @@
 	// so this guard exists purely to skip the outer pipeline (config parsing,
 	// transform, runtime-support, etc.) when the effect re-fires with the
 	// same props. It does not gate readiness.
-	let lastProcessedConfig: any = null;
+	let lastProcessedConfigSignature = "";
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
 	let lastProcessedLoaderRetrySignature = "";
@@ -692,10 +736,17 @@
 		return {
 			kind: "esm",
 			cdnBaseUrl: resolvedEsmCdnUrl,
+			cdnProvider: loaderOptions?.esmCdnProvider,
 			moduleResolution,
-			view: view === "author" ? "author" : "delivery",
+			view: view || "delivery",
 			loadControllers: loaderOptions?.loadControllers ?? true,
+			trackPageActions: loaderConfig?.trackPageActions,
+			instrumentationProvider: resolvedInstrumentationProvider,
 		};
+	}
+
+	function resolveEffectiveEsmView(): string {
+		return loaderOptions?.view || (resolvedMode === "author" ? "author" : "delivery");
 	}
 
 	function tagsForConfig(
@@ -723,6 +774,7 @@
 	}
 
 	async function loadConfig(currentConfig: any) {
+		const configSignature = stableStringifyForKey(currentConfig);
 		const loaderOptionsSignature = JSON.stringify({
 			bundleHost: resolvedIifeBundleHost,
 			esmCdnUrl: resolvedEsmCdnUrl,
@@ -735,7 +787,7 @@
 			reFetchBundle,
 		});
 		if (
-			currentConfig === lastProcessedConfig &&
+			configSignature === lastProcessedConfigSignature &&
 			normalizedStrategy === lastProcessedStrategy &&
 			resolvedMode === lastProcessedMode &&
 			loaderRetrySignature === lastProcessedLoaderRetrySignature &&
@@ -752,6 +804,11 @@
 		};
 
 		if (!currentConfig) {
+			lastProcessedConfigSignature = configSignature;
+			lastProcessedStrategy = normalizedStrategy;
+			lastProcessedMode = resolvedMode;
+			lastProcessedLoaderRetrySignature = loaderRetrySignature;
+			lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
 			commitIfCurrent(() => {
 				itemConfig = null;
 				passageConfig = null;
@@ -762,7 +819,7 @@
 			return;
 		}
 
-		lastProcessedConfig = currentConfig;
+		lastProcessedConfigSignature = configSignature;
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
 		lastProcessedLoaderRetrySignature = loaderRetrySignature;
@@ -816,14 +873,18 @@
 				(loaderOptions as UnifiedLoaderOptions | undefined)?.runtimeSupportCheck,
 				"off",
 			);
-			const runtimeSupportView =
-				(loaderOptions as UnifiedLoaderOptions | undefined)?.view ||
-				resolveItemPlayerView(env?.mode, "delivery");
+			const effectiveRuntimeSupportCheck = shouldProbeRuntimeSupport(
+				normalizedStrategy,
+				runtimeSupportCheck,
+			)
+				? runtimeSupportCheck
+				: "off";
+			const runtimeSupportView = resolveEffectiveEsmView();
 			const runtimeSupportHints = await collectRuntimeSupportHints(
 				mergeElementMaps(transformedConfig, transformedPassageConfig),
 				normalizedStrategy,
 				runtimeSupportView as "delivery" | "author" | "print",
-				runtimeSupportCheck,
+				effectiveRuntimeSupportCheck,
 			);
 			if (!isCurrentLoadRequest(requestToken)) return;
 			const strategyForChecks: "esm" | "iife" =
@@ -863,9 +924,12 @@
 				});
 			} else {
 				stage = "esm-load";
-				const view =
-					loaderOptions?.view || resolveItemPlayerView(env?.mode, "delivery");
-				await ensureRegistered(elementMap, {
+				const view = resolveEffectiveEsmView();
+				const expectedElements = mapEsmViewElements(
+					elementMap,
+					view,
+				);
+				await ensureRegistered(expectedElements, {
 					backend: buildEsmBackendConfig(view),
 				});
 			}
@@ -1288,7 +1352,13 @@
 			models: nextModels,
 		};
 		await tick();
-		updatePieElements(itemConfig, rendererSession, parseEnvValue(env), hostElement ?? undefined);
+		void updatePieElements(
+			itemConfig,
+			rendererSession,
+			parseEnvValue(env),
+			hostElement ?? undefined,
+			handleElementSessionUpdate,
+		);
 	}
 
 	export async function validateModels(): Promise<{ hasErrors: boolean; validatedModels: any[] }> {
@@ -1300,6 +1370,32 @@
 		}
 		return rendererElement.validateModels();
 	}
+
+	// An element controller persisted derived, non-response state (e.g. a shuffled
+	// choice order). Write it back to the authoritative session and notify the host
+	// so future prop updates/remounts reuse it instead of regenerating it (PIE-631).
+	// Do not bump sessionRevision: the in-flight element already has the order, and
+	// forcing an immediate re-render would re-trigger the controller update path.
+	const handleElementSessionUpdate = (
+		elementId: string,
+		_elementName: string,
+		properties: Record<string, unknown>,
+	) => {
+		const controller = ensureSessionController(
+			itemConfig?.id || "pie-item-player",
+			parseSessionProp(effectiveSession),
+		);
+		const beforeSignature = sessionSignature;
+		const merged = controller.mergeElementSession(elementId, properties, {
+			persist: false,
+		});
+		const nextSignature = JSON.stringify(merged);
+		if (nextSignature === beforeSignature) {
+			return;
+		}
+		sessionSignature = nextSignature;
+		handlePlayerEvent(new CustomEvent("session-changed", { detail: { session: merged } }));
+	};
 
 	const handleSessionChanged = (detail: unknown) => {
 		const detailObj =
@@ -1386,7 +1482,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="pie-player-item-container {containerClass}">
+		<div class="pie-player-item-container {resolvedContainerClass}">
 			{#key rendererKey}
 				<PieItemRenderer
 					bind:this={rendererElement}
@@ -1397,7 +1493,7 @@
 					{addCorrectResponse}
 					{allowedResize}
 					customClassName={scopeClass}
-					{passageContainerClass}
+					passageContainerClass={resolvedPassageContainerClass}
 					baseHeadingLevel={resolvedBaseHeadingLevel}
 					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
 					{loaderConfig}
@@ -1417,6 +1513,7 @@
 					onPlayerError={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("player-error", { detail }))}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
+					onElementSessionUpdate={handleElementSessionUpdate}
 					onModelUpdated={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
 					onModelLoaded={(detail: unknown) =>

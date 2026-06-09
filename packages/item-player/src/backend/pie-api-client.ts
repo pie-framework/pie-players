@@ -105,7 +105,10 @@ export async function callPieApiDeliveryLoad(
 	sharedAuth: BackendAuthConfig | undefined,
 	context: BackendDeliveryLoadContext,
 ): Promise<BackendDeliveryLoadResult> {
-	const endpoint = normalizeEndpoint(config.endpoints?.load, DEFAULT_ENDPOINTS.load);
+	const endpoint = normalizeEndpoint(
+		config.endpoints?.load,
+		DEFAULT_ENDPOINTS.load,
+	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	return callJson<BackendDeliveryLoadResult>(
 		resolveUrl(config.baseUrl, endpoint.path),
@@ -152,7 +155,10 @@ export async function callPieApiDeliveryModel(
 	sharedAuth: BackendAuthConfig | undefined,
 	context: BackendDeliverySessionContext,
 ): Promise<unknown> {
-	const endpoint = normalizeEndpoint(config.endpoints?.model, DEFAULT_ENDPOINTS.model);
+	const endpoint = normalizeEndpoint(
+		config.endpoints?.model,
+		DEFAULT_ENDPOINTS.model,
+	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	const sessionId = context.session.id || context.sessionId;
 	return callJson(
@@ -175,7 +181,10 @@ export async function callPieApiDeliveryScore(
 	sharedAuth: BackendAuthConfig | undefined,
 	context: BackendDeliveryScoreContext,
 ): Promise<unknown> {
-	const endpoint = normalizeEndpoint(config.endpoints?.score, DEFAULT_ENDPOINTS.score);
+	const endpoint = normalizeEndpoint(
+		config.endpoints?.score,
+		DEFAULT_ENDPOINTS.score,
+	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	const sessionId = context.session.id || context.sessionId;
 	return callJson(

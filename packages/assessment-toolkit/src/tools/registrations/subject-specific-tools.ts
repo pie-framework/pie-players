@@ -18,7 +18,10 @@ import type {
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
-import { hasMathContent, hasScienceContent } from "../../services/tool-context.js";
+import {
+	hasMathContent,
+	hasScienceContent,
+} from "../../services/tool-context.js";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
@@ -63,7 +66,10 @@ export const graphToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
+		const visibility = createScopedVisibilityBinding(
+			this.toolId,
+			toolbarContext,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -75,7 +81,9 @@ export const graphToolRegistration: ToolRegistration = {
 			active: visibility.isActive(),
 		};
 		const componentOverrides =
-			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+			(toolbarContext.componentOverrides as
+				| ToolComponentOverrides
+				| undefined) ?? {};
 		const overlay = createToolElement(
 			this.toolId,
 			context,
@@ -151,7 +159,10 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
+		const visibility = createScopedVisibilityBinding(
+			this.toolId,
+			toolbarContext,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -163,7 +174,9 @@ export const periodicTableToolRegistration: ToolRegistration = {
 			active: visibility.isActive(),
 		};
 		const componentOverrides =
-			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+			(toolbarContext.componentOverrides as
+				| ToolComponentOverrides
+				| undefined) ?? {};
 		const overlay = createToolElement(
 			this.toolId,
 			context,

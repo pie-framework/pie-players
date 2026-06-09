@@ -99,7 +99,8 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 						{
 							id: "knav-q1",
 							element: "multiple-choice",
-							prompt: "According to the passage, how many tab stops does a radio button group receive?",
+							prompt:
+								"According to the passage, how many tab stops does a radio button group receive?",
 							choiceMode: "radio",
 							choices: [
 								{
@@ -145,7 +146,8 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 						{
 							id: "knav-q2",
 							element: "multiple-choice",
-							prompt: "Which key does the passage identify as the primary way to toggle a checkbox using a keyboard?",
+							prompt:
+								"Which key does the passage identify as the primary way to toggle a checkbox using a keyboard?",
 							choiceMode: "radio",
 							choices: [
 								{
@@ -185,7 +187,7 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 				config: {
 					markup: '<ebsr id="knav-q3"></ebsr>',
 					elements: {
-						"ebsr": "@pie-element/ebsr@14.2.0-next.19",
+						ebsr: "@pie-element/ebsr@14.2.0-next.19",
 					},
 					models: [
 						{
@@ -195,39 +197,57 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 							partA: {
 								id: "knav-q3",
 								element: "ebsr",
-								prompt: "Part A: Which WCAG Success Criterion specifically requires that the keyboard focus indicator always be visible?",
+								prompt:
+									"Part A: Which WCAG Success Criterion specifically requires that the keyboard focus indicator always be visible?",
 								choiceMode: "radio",
 								choices: [
-									{ value: "a", label: "SC 1.3.1 – Info and Relationships", correct: false },
+									{
+										value: "a",
+										label: "SC 1.3.1 – Info and Relationships",
+										correct: false,
+									},
 									{ value: "b", label: "SC 2.1.1 – Keyboard", correct: false },
-									{ value: "c", label: "SC 2.4.7 – Focus Visible", correct: true },
-									{ value: "d", label: "SC 4.1.2 – Name, Role, Value", correct: false },
+									{
+										value: "c",
+										label: "SC 2.4.7 – Focus Visible",
+										correct: true,
+									},
+									{
+										value: "d",
+										label: "SC 4.1.2 – Name, Role, Value",
+										correct: false,
+									},
 								],
 							},
 							partB: {
 								id: "knav-q3",
 								element: "ebsr",
-								prompt: "Part B: Select TWO statements from the passage that explain what can go wrong with focus indicators.",
+								prompt:
+									"Part B: Select TWO statements from the passage that explain what can go wrong with focus indicators.",
 								choiceMode: "checkbox",
 								choices: [
 									{
 										value: "a",
-										label: "A focus indicator that disappears fails SC 2.4.7 and leaves keyboard users unable to track focus",
+										label:
+											"A focus indicator that disappears fails SC 2.4.7 and leaves keyboard users unable to track focus",
 										correct: true,
 									},
 									{
 										value: "b",
-										label: "WCAG 2.2 SC 2.4.11 sets minimum size and contrast requirements for the focus ring",
+										label:
+											"WCAG 2.2 SC 2.4.11 sets minimum size and contrast requirements for the focus ring",
 										correct: true,
 									},
 									{
 										value: "c",
-										label: "Radio buttons that use arrow keys also satisfy SC 2.4.7 automatically",
+										label:
+											"Radio buttons that use arrow keys also satisfy SC 2.4.7 automatically",
 										correct: false,
 									},
 									{
 										value: "d",
-										label: "Checkboxes do not need a visible focus ring because they use Space to toggle",
+										label:
+											"Checkboxes do not need a visible focus ring because they use Space to toggle",
 										correct: false,
 									},
 								],
@@ -248,7 +268,7 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 				config: {
 					markup: '<ebsr id="knav-q4"></ebsr>',
 					elements: {
-						"ebsr": "@pie-element/ebsr@14.2.0-next.19",
+						ebsr: "@pie-element/ebsr@14.2.0-next.19",
 					},
 					models: [
 						{
@@ -258,19 +278,37 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 							partA: {
 								id: "knav-q4",
 								element: "ebsr",
-								prompt: "Part A: According to the passage, what does a form control need so that screen readers can announce what it represents?",
+								prompt:
+									"Part A: According to the passage, what does a form control need so that screen readers can announce what it represents?",
 								choiceMode: "radio",
 								choices: [
-									{ value: "a", label: "A visible placeholder attribute", correct: false },
-									{ value: "b", label: "An accessible name via a label or aria-label", correct: true },
-									{ value: "c", label: "A tooltip revealed on hover", correct: false },
-									{ value: "d", label: "A role=\"button\" attribute", correct: false },
+									{
+										value: "a",
+										label: "A visible placeholder attribute",
+										correct: false,
+									},
+									{
+										value: "b",
+										label: "An accessible name via a label or aria-label",
+										correct: true,
+									},
+									{
+										value: "c",
+										label: "A tooltip revealed on hover",
+										correct: false,
+									},
+									{
+										value: "d",
+										label: 'A role="button" attribute',
+										correct: false,
+									},
 								],
 							},
 							partB: {
 								id: "knav-q4",
 								element: "ebsr",
-								prompt: "Part B: Select the TWO WCAG Success Criteria the passage cites as being violated when a checkbox lacks a meaningful accessible name.",
+								prompt:
+									"Part B: Select the TWO WCAG Success Criteria the passage cites as being violated when a checkbox lacks a meaningful accessible name.",
 								choiceMode: "checkbox",
 								choices: [
 									{

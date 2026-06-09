@@ -69,7 +69,8 @@ export const pie512SectionA: AssessmentSection = {
 						{
 							id: "pie-512-a-q1",
 							element: "multiple-choice",
-							prompt: "Which institution is described as supporting Amsterdam merchants in the passage above?",
+							prompt:
+								"Which institution is described as supporting Amsterdam merchants in the passage above?",
 							choiceMode: "radio",
 							choices: [
 								{

@@ -59,7 +59,8 @@ const hasSourceContent = (sourcesContent, index) =>
 
 const resolvePackedSource = (mapFile, sourceMap, sourcePath) => {
 	if (isVirtualSource(sourcePath)) return null;
-	if (isExternalSource(sourcePath)) return { packedPath: null, reason: "external" };
+	if (isExternalSource(sourcePath))
+		return { packedPath: null, reason: "external" };
 
 	const sourceRoot =
 		typeof sourceMap.sourceRoot === "string" ? sourceMap.sourceRoot : "";
@@ -86,7 +87,9 @@ const collectMissingSources = (dir, packedFiles) => {
 	for (const mapFile of getPackedSourcemapFiles(packedFiles)) {
 		const mapPath = path.join(dir, ...mapFile.split("/"));
 		if (!existsSync(mapPath)) {
-			missingSources.push(`${mapFile} is listed by npm pack but missing on disk`);
+			missingSources.push(
+				`${mapFile} is listed by npm pack but missing on disk`,
+			);
 			continue;
 		}
 

@@ -23,11 +23,9 @@ describe("TTS contract compatibility", () => {
 
 	test("onWordBoundary callback accepts optional length", () => {
 		let receivedLength: number | undefined;
-		const callback: NonNullable<ITTSProviderImplementation["onWordBoundary"]> = (
-			_word,
-			_position,
-			length,
-		) => {
+		const callback: NonNullable<
+			ITTSProviderImplementation["onWordBoundary"]
+		> = (_word, _position, length) => {
 			receivedLength = length;
 		};
 

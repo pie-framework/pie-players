@@ -36,7 +36,9 @@ let filesChecked = 0;
 for (const targetDir of TARGET_DIRS) {
 	const absTargetDir = path.join(ROOT, targetDir);
 	if (!existsSync(absTargetDir)) {
-		failures.push(`[bundle-safety] missing build output directory: ${targetDir}`);
+		failures.push(
+			`[bundle-safety] missing build output directory: ${targetDir}`,
+		);
 		continue;
 	}
 

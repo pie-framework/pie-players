@@ -52,7 +52,10 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	private proxyEndpoint?: string;
 	private isDevelopment = false;
 	private onTelemetry:
-		| ((eventName: string, payload?: Record<string, unknown>) => void | Promise<void>)
+		| ((
+				eventName: string,
+				payload?: Record<string, unknown>,
+		  ) => void | Promise<void>)
 		| undefined;
 
 	private async emitTelemetry(

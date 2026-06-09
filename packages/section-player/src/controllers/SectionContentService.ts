@@ -1,4 +1,7 @@
-import type { AssessmentSection, PassageEntity } from "@pie-players/pie-players-shared";
+import type {
+	AssessmentSection,
+	PassageEntity,
+} from "@pie-players/pie-players-shared";
 import type {
 	SectionContentModel,
 	SectionRenderable,
@@ -43,7 +46,11 @@ export class SectionContentService {
 		fallbackPrefix: string,
 	): PassageWithId {
 		const baseId = this.resolvePassageBaseId(passage, fallbackPrefix);
-		const resolvedId = this.createUniqueId(baseId, usedPassageIds, fallbackPrefix);
+		const resolvedId = this.createUniqueId(
+			baseId,
+			usedPassageIds,
+			fallbackPrefix,
+		);
 		return {
 			...passage,
 			id: resolvedId,
@@ -68,8 +75,12 @@ export class SectionContentService {
 		const passageMap = new Map<string, PassageEntity>();
 		const usedPassageIds = new Set<string>();
 		const usedItemIds = new Set<string>();
-		const rubricBlocks = (section.rubricBlocks || []).filter((rb) => rb.view.includes(view));
-		const instructions = rubricBlocks.filter((rb) => rb.class === "instructions");
+		const rubricBlocks = (section.rubricBlocks || []).filter((rb) =>
+			rb.view.includes(view),
+		);
+		const instructions = rubricBlocks.filter(
+			(rb) => rb.class === "instructions",
+		);
 
 		for (const [rubricIndex, rb] of (section.rubricBlocks || []).entries()) {
 			if (rb.class === "stimulus" && rb.passage) {
@@ -89,7 +100,9 @@ export class SectionContentService {
 			identifier: string;
 			item: { id: string; identifier: string };
 		}> = [];
-		for (const [itemIndex, itemRef] of (section.assessmentItemRefs || []).entries()) {
+		for (const [itemIndex, itemRef] of (
+			section.assessmentItemRefs || []
+		).entries()) {
 			if (!itemRef.item) continue;
 			const itemBaseId =
 				itemRef.item.id ||
@@ -102,8 +115,7 @@ export class SectionContentService {
 				`item-${itemIndex + 1}`,
 			);
 			const normalizedPassage =
-				itemRef.item.passage &&
-				typeof itemRef.item.passage === "object"
+				itemRef.item.passage && typeof itemRef.item.passage === "object"
 					? (() => {
 							const existingPassageId =
 								typeof itemRef.item?.passage?.id === "string"
@@ -117,7 +129,7 @@ export class SectionContentService {
 								usedPassageIds,
 								`passage-${itemIndex + 1}`,
 							);
-					  })()
+						})()
 					: undefined;
 			const normalizedItem = {
 				...itemRef.item,
@@ -161,7 +173,7 @@ export class SectionContentService {
 								rb.passage,
 								usedPassageIds,
 								`rubric-passage-${rubricIndex + 1}`,
-						  )
+							)
 						: null,
 				)
 				.filter((p): p is PassageWithId => Boolean(p?.config))

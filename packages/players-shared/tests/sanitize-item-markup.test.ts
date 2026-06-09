@@ -1,5 +1,12 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 
 import {
 	buildAuthoringAllowList,
@@ -9,7 +16,10 @@ import {
 } from "../src/security/sanitize-item-markup.js";
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });
@@ -26,8 +36,7 @@ beforeEach(() => {
 
 describe("sanitizeItemMarkup", () => {
 	test("strips <script> tags entirely", () => {
-		const html =
-			"<p>Hello</p><script>alert('xss')</script><p>World</p>";
+		const html = "<p>Hello</p><script>alert('xss')</script><p>World</p>";
 		const out = sanitizeItemMarkup(html);
 		expect(out).not.toContain("<script");
 		expect(out).not.toContain("alert");
@@ -86,9 +95,7 @@ describe("sanitizeItemMarkup", () => {
 	test("allows the authoring-mode -config variants when included in allow-list", () => {
 		const html =
 			'<pie-multiple-choice-config id="q1"></pie-multiple-choice-config>';
-		const allowList = buildAuthoringAllowList([
-			"pie-multiple-choice",
-		]);
+		const allowList = buildAuthoringAllowList(["pie-multiple-choice"]);
 		const out = sanitizeItemMarkup(html, {
 			allowedCustomElements: allowList,
 		});

@@ -11,7 +11,9 @@ const FIXED_PRELOADED_EXPECTED_TAGS = [
 ];
 
 test.describe("section player preloaded strategy", () => {
-	test("splitpane renders item shells with preloaded strategy", async ({ page }) => {
+	test("splitpane renders item shells with preloaded strategy", async ({
+		page,
+	}) => {
 		const bundleRequests: string[] = [];
 		const esmRequests: string[] = [];
 		page.on("request", (request) => {
@@ -21,7 +23,9 @@ test.describe("section player preloaded strategy", () => {
 		});
 
 		await page.goto(SPLITPANE_PRELOADED_PATH, { waitUntil: "networkidle" });
-		await expect(page.locator(".preload-status")).toHaveCount(0, { timeout: 30_000 });
+		await expect(page.locator(".preload-status")).toHaveCount(0, {
+			timeout: 30_000,
+		});
 		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
 			timeout: 30_000,
 		});
@@ -29,11 +33,13 @@ test.describe("section player preloaded strategy", () => {
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
 		).toHaveCount(3, { timeout: 30_000 });
 
-		const playerAttrs = await page.locator("pie-item-player").evaluateAll((els) =>
-			els.map((el) => ({
-				strategy: el.getAttribute("strategy"),
-			})),
-		);
+		const playerAttrs = await page
+			.locator("pie-item-player")
+			.evaluateAll((els) =>
+				els.map((el) => ({
+					strategy: el.getAttribute("strategy"),
+				})),
+			);
 		expect(playerAttrs.length).toBeGreaterThan(0);
 		for (const attrs of playerAttrs) {
 			expect(attrs.strategy).toBe("preloaded");
@@ -45,7 +51,9 @@ test.describe("section player preloaded strategy", () => {
 
 	test("vertical layout renders with preloaded strategy", async ({ page }) => {
 		await page.goto(VERTICAL_PRELOADED_PATH, { waitUntil: "networkidle" });
-		await expect(page.locator(".preload-status")).toHaveCount(0, { timeout: 30_000 });
+		await expect(page.locator(".preload-status")).toHaveCount(0, {
+			timeout: 30_000,
+		});
 		await expect(page.locator(".preload-status.error")).toHaveCount(0);
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
@@ -60,14 +68,19 @@ test.describe("section player preloaded strategy", () => {
 			const url = request.url();
 			if (url.includes("/bundles/")) bundleRequests.push(url);
 		});
-		const fixedUrl = new URL("http://section-demos.local/preloaded-fixed-elements");
+		const fixedUrl = new URL(
+			"http://section-demos.local/preloaded-fixed-elements",
+		);
 		fixedUrl.searchParams.set("mode", "candidate");
 		fixedUrl.searchParams.set("layout", "splitpane");
 		fixedUrl.searchParams.set(
 			"pie-overrides[@pie-element/multiple-choice]",
 			"latest",
 		);
-		fixedUrl.searchParams.set("pie-overrides[@pie-element/categorize]", "latest");
+		fixedUrl.searchParams.set(
+			"pie-overrides[@pie-element/categorize]",
+			"latest",
+		);
 		fixedUrl.searchParams.set("pie-overrides[@pie-element/passage]", "latest");
 
 		await page.goto(`${fixedUrl.pathname}${fixedUrl.search}`, {
@@ -84,12 +97,14 @@ test.describe("section player preloaded strategy", () => {
 			page.getByText("Which field fixes the multiple-choice package version"),
 		).toBeVisible();
 		await expect(
-			page.getByText("Sort each demo responsibility into the part of the preloaded flow"),
+			page.getByText(
+				"Sort each demo responsibility into the part of the preloaded flow",
+			),
 		).toBeVisible();
 
-		const strategyValues = await page.locator("pie-item-player").evaluateAll((els) =>
-			els.map((el) => el.getAttribute("strategy")),
-		);
+		const strategyValues = await page
+			.locator("pie-item-player")
+			.evaluateAll((els) => els.map((el) => el.getAttribute("strategy")));
 		expect(strategyValues.length).toBeGreaterThan(0);
 		for (const strategy of strategyValues) {
 			expect(strategy).toBe("preloaded");
@@ -147,9 +162,9 @@ test.describe("section player preloaded strategy", () => {
 		});
 
 		await page.waitForFunction(() => {
-			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
-				HTMLElement & { loaderConfig?: Record<string, unknown> }
-			>;
+			const players = Array.from(
+				document.querySelectorAll("pie-item-player"),
+			) as Array<HTMLElement & { loaderConfig?: Record<string, unknown> }>;
 			if (!players.length) return false;
 			return players.every((player) => {
 				const cfg = player.loaderConfig;
@@ -191,7 +206,9 @@ test.describe("section player preloaded strategy", () => {
 		});
 
 		await page.waitForFunction(() => {
-			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+			const players = Array.from(
+				document.querySelectorAll("pie-item-player"),
+			) as Array<
 				HTMLElement & {
 					loaderConfig?: {
 						maxResourceRetries?: number;
@@ -226,7 +243,9 @@ test.describe("section player preloaded strategy", () => {
 		});
 
 		await page.waitForFunction(() => {
-			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+			const players = Array.from(
+				document.querySelectorAll("pie-item-player"),
+			) as Array<
 				HTMLElement & {
 					loaderConfig?: {
 						maxResourceRetries?: number;
@@ -266,9 +285,9 @@ test.describe("section player preloaded strategy", () => {
 		await expect(page.locator("pie-item-player").first()).toBeVisible({
 			timeout: 30_000,
 		});
-		const strategyValues = await page.locator("pie-item-player").evaluateAll((els) =>
-			els.map((el) => el.getAttribute("strategy")),
-		);
+		const strategyValues = await page
+			.locator("pie-item-player")
+			.evaluateAll((els) => els.map((el) => el.getAttribute("strategy")));
 		expect(strategyValues.length).toBeGreaterThan(0);
 		for (const strategy of strategyValues) {
 			expect(strategy).toBe("iife");

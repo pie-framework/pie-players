@@ -125,7 +125,9 @@ describe("attachInstrumentationEventBridge", () => {
 			],
 		});
 
-		host.dispatchEvent(new CustomEvent("ready", { detail: { phase: "ready" } }));
+		host.dispatchEvent(
+			new CustomEvent("ready", { detail: { phase: "ready" } }),
+		);
 		expect(provider.trackedErrors.length).toBeGreaterThan(0);
 		expect(provider.trackedErrors[0]?.attributes.errorType).toBe(
 			"InstrumentationBridgeError",
@@ -160,8 +162,12 @@ describe("attachInstrumentationEventBridge", () => {
 			}),
 		);
 		expect(provider.trackedEvents).toHaveLength(1);
-		expect(provider.trackedEvents[0]?.attributes.component).toBe("bridge-owner");
-		expect(provider.trackedEvents[0]?.attributes.sourceEventName).toBe("framework-error");
+		expect(provider.trackedEvents[0]?.attributes.component).toBe(
+			"bridge-owner",
+		);
+		expect(provider.trackedEvents[0]?.attributes.sourceEventName).toBe(
+			"framework-error",
+		);
 		expect(provider.trackedEvents[0]?.attributes.timestamp).not.toBe(
 			"1900-01-01T00:00:00.000Z",
 		);

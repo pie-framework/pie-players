@@ -20,7 +20,9 @@ async function validateControllerAccess(args: {
 		const host = document.querySelector(hostSelector) as
 			| (HTMLElement & {
 					getSectionController?: () => unknown | null;
-					waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
+					waitForSectionController?: (
+						timeoutMs?: number,
+					) => Promise<unknown | null>;
 					selectNavigation?: () => { canNext?: boolean; canPrevious?: boolean };
 					navigateNext?: () => boolean;
 					navigatePrevious?: () => boolean;

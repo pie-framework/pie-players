@@ -63,7 +63,11 @@ export function createSessionDemoEmptySeedPayload(
 	};
 }
 
-function snapshotQuery(assessmentId: string, sectionId: string, attemptId: string): string {
+function snapshotQuery(
+	assessmentId: string,
+	sectionId: string,
+	attemptId: string,
+): string {
 	const query = new URLSearchParams({
 		assessmentId,
 		sectionId,
@@ -72,7 +76,9 @@ function snapshotQuery(assessmentId: string, sectionId: string, attemptId: strin
 	return query.toString();
 }
 
-export async function bootstrapSessionDemoDb(payload: SessionDemoSeedPayload): Promise<void> {
+export async function bootstrapSessionDemoDb(
+	payload: SessionDemoSeedPayload,
+): Promise<void> {
 	const response = await fetch("/api/session-demo/bootstrap", {
 		method: "POST",
 		headers: {

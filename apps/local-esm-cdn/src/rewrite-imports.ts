@@ -19,6 +19,29 @@ function shouldRewriteToEsmSh(specifier: string): boolean {
 
 type BunModuleResolution = { packageName: string; subpath: string };
 
+const PINNED_EXTERNAL_VERSIONS: Record<string, string> = {
+	react: "18.2.0",
+	"react-dom": "18.2.0",
+};
+
+function externalCdnUrl(specifier: string, opts: RewriteOptions): string {
+	const base = opts.esmShBaseUrl.endsWith("/")
+		? opts.esmShBaseUrl
+		: `${opts.esmShBaseUrl}/`;
+
+	for (const [packageName, version] of Object.entries(
+		PINNED_EXTERNAL_VERSIONS,
+	)) {
+		if (specifier === packageName || specifier.startsWith(`${packageName}/`)) {
+			const subpath =
+				specifier === packageName ? "" : specifier.slice(packageName.length);
+			return `${base}${packageName}@${version}${subpath}`;
+		}
+	}
+
+	return `${base}${specifier}`;
+}
+
 function parseBunNodeModulesSpecifier(
 	specifier: string,
 ): BunModuleResolution | null {
@@ -60,10 +83,7 @@ function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
 
 	// Rewrite external packages to esm.sh
 	if (shouldRewriteToEsmSh(specifier)) {
-		const base = opts.esmShBaseUrl.endsWith("/")
-			? opts.esmShBaseUrl
-			: `${opts.esmShBaseUrl}/`;
-		return `${base}${specifier}`;
+		return externalCdnUrl(specifier, opts);
 	}
 
 	// Rewrite relative imports to absolute package imports
@@ -75,11 +95,8 @@ function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
 			// e.g., "./node_modules/.bun/react-transition-group@4.4.5_abc/node_modules/react-transition-group/esm/CSSTransition.js"
 			const parsed = parseBunNodeModulesSpecifier(specifier);
 			if (parsed) {
-				const base = opts.esmShBaseUrl.endsWith("/")
-					? opts.esmShBaseUrl
-					: `${opts.esmShBaseUrl}/`;
 				const suffix = parsed.subpath ? `/${parsed.subpath}` : "";
-				return `${base}${parsed.packageName}${suffix}`;
+				return externalCdnUrl(`${parsed.packageName}${suffix}`, opts);
 			}
 			// If we can't parse it, skip rewriting (will likely fail, but better than creating invalid path)
 			return specifier;

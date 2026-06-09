@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import {
-	defineCustomElementSafely,
-} from "../src/pie/custom-element-define.js";
+import { defineCustomElementSafely } from "../src/pie/custom-element-define.js";
 
 const HTMLElementBase =
 	typeof HTMLElement === "undefined"
@@ -37,7 +35,9 @@ describe("defineCustomElementSafely", () => {
 		};
 		const ctor = createCtor();
 
-		expect(defineCustomElementSafely("pie-test-safe", ctor).status).toBe("defined");
+		expect(defineCustomElementSafely("pie-test-safe", ctor).status).toBe(
+			"defined",
+		);
 		expect(defineCustomElementSafely("pie-test-safe", ctor).status).toBe(
 			"already-defined",
 		);

@@ -1,5 +1,12 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 
 import { scorePieItem } from "../src/pie/scoring.js";
 import { BundleType, Status } from "../src/pie/types.js";
@@ -18,7 +25,10 @@ const config: ConfigEntity = {
 };
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });
@@ -60,12 +70,17 @@ describe("scorePieItem", () => {
 					mode: env.mode,
 					partialScoring: env.partialScoring,
 				});
-				return { id: model.id, element: model.element, score: session.value === "B" ? 1 : 0 };
+				return {
+					id: model.id,
+					element: model.element,
+					score: session.value === "B" ? 1 : 0,
+				};
 			},
 		});
 
 		const otherPlayer = document.createElement("section");
-		otherPlayer.innerHTML = '<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
+		otherPlayer.innerHTML =
+			'<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
 		document.body.append(otherPlayer);
 
 		const currentPlayer = document.createElement("section");
@@ -88,8 +103,18 @@ describe("scorePieItem", () => {
 		);
 
 		expect(calls).toEqual([
-			{ modelId: "q1", sessionValue: "B", mode: "evaluate", partialScoring: true },
-			{ modelId: "q2", sessionValue: "C", mode: "evaluate", partialScoring: true },
+			{
+				modelId: "q1",
+				sessionValue: "B",
+				mode: "evaluate",
+				partialScoring: true,
+			},
+			{
+				modelId: "q2",
+				sessionValue: "C",
+				mode: "evaluate",
+				partialScoring: true,
+			},
 		]);
 		expect(results).toEqual([
 			{ id: "q1", element: "pie-mc--version-1-0-0", value: "B", score: 1 },
@@ -100,10 +125,13 @@ describe("scorePieItem", () => {
 	test("keeps existing filtered result shape unless missing slots are requested", async () => {
 		registerController({});
 		const currentPlayer = document.createElement("section");
-		currentPlayer.innerHTML = '<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
+		currentPlayer.innerHTML =
+			'<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
 		document.body.append(currentPlayer);
 
-		const filtered = await scorePieItem(config, [], { container: currentPlayer });
+		const filtered = await scorePieItem(config, [], {
+			container: currentPlayer,
+		});
 		expect(filtered.results).toEqual([]);
 
 		const aligned = await scorePieItem(config, [], {
@@ -122,7 +150,8 @@ describe("scorePieItem", () => {
 			},
 		});
 		const currentPlayer = document.createElement("section");
-		currentPlayer.innerHTML = '<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
+		currentPlayer.innerHTML =
+			'<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
 		document.body.append(currentPlayer);
 
 		const { results } = await scorePieItem(

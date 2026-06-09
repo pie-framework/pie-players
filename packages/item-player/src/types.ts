@@ -2,7 +2,10 @@ export type AuthoringBackendMode = "demo" | "required";
 
 import type {
 	DeleteDone,
+	Env,
 	ImageHandler,
+	ItemConfig,
+	ItemSession,
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
@@ -22,9 +25,9 @@ export type AuthoringValidationResult = {
 };
 
 export interface PieItemPlayerElement extends HTMLElement {
-	config: unknown;
-	session: unknown;
-	env: unknown;
+	config: ItemConfig;
+	session: ItemSession;
+	env: Env;
 	strategy?: "iife" | "esm" | "preloaded";
 	mode?: "view" | "author";
 	configuration?: Record<string, unknown>;

@@ -24,7 +24,10 @@ describe("local-esm-cdn errors and safety behavior", () => {
 		cleanups.push(fixture.cleanup);
 		const context = createFixtureContext(fixture);
 
-		const response = await handleRequest(makeRequest("/not-a-package-route"), context);
+		const response = await handleRequest(
+			makeRequest("/not-a-package-route"),
+			context,
+		);
 		expect(response.status).toBe(404);
 		expect(response.headers.get("content-type")).toContain("text/plain");
 		const body = await response.text();

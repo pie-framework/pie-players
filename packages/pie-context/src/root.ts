@@ -1,7 +1,4 @@
-import {
-	type ContextProviderEvent,
-	ContextRequestEvent,
-} from "./events.js";
+import { type ContextProviderEvent, ContextRequestEvent } from "./events.js";
 import type { UnknownContext } from "./types.js";
 
 type ContextCallback = (value: unknown, unsubscribe?: () => void) => void;

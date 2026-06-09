@@ -121,7 +121,11 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 
 	private isStudioMarkUnsupportedError(error: unknown): boolean {
 		const message =
-			error instanceof Error ? error.message : typeof error === "string" ? error : "";
+			error instanceof Error
+				? error.message
+				: typeof error === "string"
+					? error
+					: "";
 		return (
 			message.includes("<mark>") &&
 			message.toLowerCase().includes("not currently supported") &&

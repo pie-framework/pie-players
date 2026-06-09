@@ -1,1 +1,1 @@
-declare module '*.svelte?customElement';
+declare module "*.svelte?customElement";

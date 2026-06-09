@@ -17,6 +17,7 @@
 		session as sessionStore,
 	} from '$lib/stores/demo-state';
 	import { getDemoSessionSeed } from '$lib/demo-session-seeds';
+	import { demoViewFromPath } from '$lib/utils/demo-view';
 	import {
 		initializeDemoState,
 		mode as modeStore,
@@ -113,7 +114,7 @@
 		if (untrack(() => $modeStore) !== nextMode) modeStore.set(nextMode);
 	});
 
-	function tabHref(view: 'delivery' | 'author' | 'source') {
+	function tabHref(view: 'delivery' | 'author' | 'source' | 'controller') {
 		return `/demo/${data.demoId}/${view}?${$page.url.searchParams}`;
 	}
 
@@ -146,10 +147,7 @@
 	}
 
 	const activeView = $derived.by(() => {
-		const path = $page.url.pathname;
-		if (path.includes('/author')) return 'author';
-		if (path.includes('/source')) return 'source';
-		return 'delivery';
+		return demoViewFromPath($page.url.pathname);
 	});
 	const catalogElements = $derived(
 		(data?.demo?.item?.config?.elements ?? {}) as Record<string, string>,
@@ -234,6 +232,7 @@
 		{loaderStrategy}
 		deliveryHref={tabHref('delivery')}
 		authorHref={tabHref('author')}
+		controllerHref={tabHref('controller')}
 		sourceHref={tabHref('source')}
 		studentHref={modeHref('student')}
 		scorerHref={modeHref('scorer')}
@@ -260,7 +259,7 @@
 				<p class="mt-2 text-base-content/90">{data.demo.description}</p>
 			{/if}
 		</div>
-		{#if (activeView === 'delivery' || activeView === 'author') && data.demo?.id !== 'authoring-contract-fixture'}
+		{#if (activeView === 'delivery' || activeView === 'author' || activeView === 'controller') && data.demo?.id !== 'authoring-contract-fixture'}
 			<ElementVersionToolbar
 				elements={catalogElements}
 				overrides={elementOverrides}

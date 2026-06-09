@@ -57,7 +57,9 @@ describe("ResourceMonitor instrumentation provider wiring", () => {
 			trackPageActions: true,
 		});
 
-		expect((monitor as any).provider).toBeInstanceOf(NewRelicInstrumentationProvider);
+		expect((monitor as any).provider).toBeInstanceOf(
+			NewRelicInstrumentationProvider,
+		);
 	});
 
 	test("falls back to New Relic provider when custom provider is malformed", () => {
@@ -72,7 +74,9 @@ describe("ResourceMonitor instrumentation provider wiring", () => {
 				malformedProvider as unknown as InstrumentationProvider,
 		});
 
-		expect((monitor as any).provider).toBeInstanceOf(NewRelicInstrumentationProvider);
+		expect((monitor as any).provider).toBeInstanceOf(
+			NewRelicInstrumentationProvider,
+		);
 	});
 
 	test("can manage lifecycle for injected provider when requested", () => {

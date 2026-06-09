@@ -33,7 +33,9 @@ describe("local-esm-cdn help and CORS", () => {
 			const body = await response.text();
 			expect(body).toContain("PIE local ESM CDN");
 			expect(body).toContain("GET  /health");
-			expect(body).toContain(`PIE_ELEMENTS_NG_PATH=${fixture.pieElementsNgRoot}`);
+			expect(body).toContain(
+				`PIE_ELEMENTS_NG_PATH=${fixture.pieElementsNgRoot}`,
+			);
 			expect(body).toContain("LOCAL_ESM_CDN_ESM_SH_BASE_URL=https://esm.sh");
 		}
 	});

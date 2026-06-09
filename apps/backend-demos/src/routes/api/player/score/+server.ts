@@ -16,7 +16,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	const existing = getSession(body.sessionId);
 	const item = getItemForSession(body.sessionId);
 	if (!existing || !item) {
-		return json({ error: `Unknown demo sessionId: ${body.sessionId}` }, { status: 404 });
+		return json(
+			{ error: `Unknown demo sessionId: ${body.sessionId}` },
+			{ status: 404 },
+		);
 	}
 	const data = Array.isArray(body.data) ? body.data : existing.data;
 	const session = saveSession(body.sessionId, data, item.id);

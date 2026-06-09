@@ -71,9 +71,7 @@ if (shouldRebuild) {
 
 	removeDirIfExists(resolve(sectionDemosDir, ".svelte-kit"));
 	removeDirIfExists(resolve(sectionDemosDir, ".vite"));
-	removeDirIfExists(
-		resolve(sectionDemosDir, "node_modules/.vite"),
-	);
+	removeDirIfExists(resolve(sectionDemosDir, "node_modules/.vite"));
 	removeDirIfExists(resolve(workspaceRootDir, "node_modules/.vite"));
 
 	console.log("[dev:section] Rebuilding workspace packages...");

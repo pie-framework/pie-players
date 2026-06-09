@@ -11,16 +11,15 @@
 
 import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
-import type { ToolProviderApi, ToolProviderCapabilities } from "./ToolProviderApi.js";
+import type {
+	ToolProviderApi,
+	ToolProviderCapabilities,
+} from "./ToolProviderApi.js";
 
 /**
  * TTS backend type
  */
-export type TTSBackend =
-	| "browser"
-	| "polly"
-	| "google"
-	| "server";
+export type TTSBackend = "browser" | "polly" | "google" | "server";
 
 /**
  * TTS tool provider configuration
@@ -244,7 +243,7 @@ export class TTSToolProvider
 				return loaded;
 			} catch (error) {
 				await this.emitTelemetry("pie-tool-library-load-error", {
-				toolId: "textToSpeech",
+					toolId: "textToSpeech",
 					operation: "server-provider-module-import",
 					backend: config.serverProvider || config.backend,
 					duration: Date.now() - moduleLoadStartedAt,

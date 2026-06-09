@@ -57,7 +57,9 @@ describe("resolvePlayerRuntime", () => {
 			env: null,
 		});
 
-		expect((runtime.resolvedPlayerProps as any).loaderConfig).toBe(loaderConfig);
+		expect((runtime.resolvedPlayerProps as any).loaderConfig).toBe(
+			loaderConfig,
+		);
 		expect(
 			(runtime.resolvedPlayerProps as any).loaderConfig.instrumentationProvider,
 		).toBe(instrumentationProvider);
@@ -81,9 +83,9 @@ describe("resolvePlayerRuntime", () => {
 		expect((runtime.resolvedPlayerProps as any).loaderOptions.bundleHost).toBe(
 			"https://proxy.pie-api.com/bundles",
 		);
-		expect((runtime.resolvedPlayerProps as any).loaderOptions.moduleResolution).toBe(
-			"import-map",
-		);
+		expect(
+			(runtime.resolvedPlayerProps as any).loaderOptions.moduleResolution,
+		).toBe("import-map");
 	});
 
 	test("passes backend config through resolved player props unchanged", async () => {
@@ -192,10 +194,7 @@ describe("mapRenderablesToItems", () => {
 		const { mapRenderablesToItems } = await loadHostRuntime();
 		const a = { id: "a" } as unknown;
 		const b = { id: "b" } as unknown;
-		const result = mapRenderablesToItems([
-			{ entity: a },
-			{ entity: b },
-		]);
+		const result = mapRenderablesToItems([{ entity: a }, { entity: b }]);
 		expect(result[0]).toBe(a as never);
 		expect(result[1]).toBe(b as never);
 	});

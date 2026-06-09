@@ -1,11 +1,11 @@
 /**
  * ESM backend adapter for the ElementLoader primitive.
  *
- * Loads PIE elements via dynamic `import()` from an ESM CDN (esm.sh,
- * jsDelivr, etc.), optionally resolving bare specifiers through an
- * `<script type="importmap">` injected into the host document. On any
- * per-tag failure (module load, non-constructor element class, define
- * failure), throws `AdapterFailure` with a structured `reasons` map.
+ * Loads PIE elements via dynamic `import()` from static browser ESM files on a
+ * CDN, optionally resolving bare specifiers through an import map injected into
+ * the host document. On any per-tag failure (module load, non-constructor
+ * element class, define failure), throws `AdapterFailure` with a structured
+ * `reasons` map.
  *
  * Like the IIFE adapter, this module does not gate its own promise on
  * `customElements.whenDefined`; the primitive performs that verification
@@ -14,6 +14,8 @@
  */
 
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { pieRegistry } from "../pie/registry.js";
 import { validateCustomElementTag } from "../pie/tag-names.js";
 import { isCustomElementConstructor, Status } from "../pie/types.js";
@@ -39,10 +41,29 @@ export const BUILT_IN_VIEWS: Record<string, ViewConfig> = {
 	print: { subpath: "/print", tagSuffix: "-print", fallback: "delivery" },
 };
 
+export type BuiltInEsmCdnProviderName = "jsdelivr" | "esm.sh";
+export type EsmCdnProviderName = BuiltInEsmCdnProviderName | (string & {});
+
+export type EsmCdnProvider = {
+	name: EsmCdnProviderName;
+	packageJsonUrl(packageVersion: string): string;
+	browserViewUrl(packageVersion: string, view: string): string;
+	browserControllerUrl(packageVersion: string): string;
+	sharedDependencyUrl(
+		dependencyName: string,
+		version: string,
+		subpath?: string,
+	): string;
+};
+
+export type EsmCdnProviderOption = EsmCdnProviderName | EsmCdnProvider;
+
 export type EsmBackendConfig = {
 	kind: "esm";
 	/** Base URL for the ESM CDN (e.g., "https://esm.sh"). */
 	cdnBaseUrl: string;
+	/** CDN URL strategy. Defaults to jsDelivr, or is inferred from cdnBaseUrl when possible. */
+	cdnProvider?: EsmCdnProviderOption;
 	/** `"url"` loads via fully-qualified URLs; `"import-map"` uses bare specifiers. */
 	moduleResolution?: "url" | "import-map";
 	/** View to load (`delivery`, `author`, `print`, or a custom name). */
@@ -53,12 +74,31 @@ export type EsmBackendConfig = {
 	loadControllers?: boolean;
 	/** Debug flag hook. */
 	debugEnabled?: () => boolean;
+	/** Whether ESM dependency conflict/failure events should be instrumented. */
+	trackPageActions?: boolean;
+	/** Instrumentation provider for ESM dependency conflict/failure events. */
+	instrumentationProvider?: InstrumentationProvider;
+};
+
+type PackageMetadata = {
+	exports?: Record<string, unknown>;
+	dependencies?: Record<string, string>;
+	optionalDependencies?: Record<string, string>;
+	peerDependencies?: Record<string, string>;
+	pie?: {
+		browserSharedDependencies?: Record<string, string>;
+	};
 };
 
 /** @internal */
 export type EsmModuleImporter = (specifier: string) => Promise<unknown>;
 /** @internal */
 export type EsmImportMapObserver = (json: string, doc: Document) => void;
+/** @internal */
+export type EsmPackageMetadataLoader = (
+	packageVersion: string,
+	packageJsonUrl: string,
+) => Promise<PackageMetadata | null>;
 
 /**
  * Test-only seam exposed via `EsmBackend.__seams`. Lets contract tests
@@ -71,6 +111,7 @@ export type EsmImportMapObserver = (json: string, doc: Document) => void;
 export type EsmBackendTestSeams = {
 	replaceImporter(fn: EsmModuleImporter): void;
 	observeImportMapInjection(cb: EsmImportMapObserver): void;
+	replacePackageMetadataLoader(fn: EsmPackageMetadataLoader): void;
 	restore(): void;
 };
 
@@ -81,16 +122,18 @@ export type EsmBackend = ElementLoaderBackend & {
 
 export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	const cdnBaseUrl = config.cdnBaseUrl.replace(/\/+$/, "");
+	const cdnProvider = resolveCdnProvider(config.cdnProvider, cdnBaseUrl);
 	const moduleResolution = config.moduleResolution ?? "url";
 	const view = config.view ?? "delivery";
 	const loadControllers = config.loadControllers ?? true;
-	const viewConfig =
-		config.viewConfig ??
-		BUILT_IN_VIEWS[view] ??
-		BUILT_IN_VIEWS.delivery;
+	const viewConfig = resolveEsmViewConfig(view, config.viewConfig);
 
-	const injectedPackages = new Set<string>();
+	const injectedPackageVersions = new Set<string>();
+	const importMappedPackageVersions = new Map<string, string>();
+	let sharedDependencyVersions: Record<string, string> = {};
 	let importer: EsmModuleImporter = defaultImporter;
+	let packageMetadataLoader: EsmPackageMetadataLoader =
+		defaultPackageMetadataLoader;
 	let importMapObserver: EsmImportMapObserver | undefined;
 
 	const __seams: EsmBackendTestSeams = {
@@ -100,10 +143,16 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		observeImportMapInjection(cb) {
 			importMapObserver = cb;
 		},
+		replacePackageMetadataLoader(fn) {
+			packageMetadataLoader = fn;
+		},
 		restore() {
 			importer = defaultImporter;
+			packageMetadataLoader = defaultPackageMetadataLoader;
 			importMapObserver = undefined;
-			injectedPackages.clear();
+			injectedPackageVersions.clear();
+			importMappedPackageVersions.clear();
+			sharedDependencyVersions = {};
 		},
 	};
 
@@ -112,26 +161,54 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		context: BackendContext,
 	): Promise<void> {
 		if (!elements || Object.keys(elements).length === 0) return;
-
 		if (moduleResolution === "import-map") {
 			assertImportMapSupported();
-			const newEntries: ElementMap = {};
-			for (const [tag, pkg] of Object.entries(elements)) {
-				const packageName = extractPackageName(pkg);
-				if (!injectedPackages.has(packageName)) {
-					newEntries[tag] = pkg;
-					injectedPackages.add(packageName);
+		}
+
+		const newEntries: ElementMap = {};
+		for (const [tag, pkg] of Object.entries(elements)) {
+			const packageName = extractPackageName(pkg);
+			if (moduleResolution === "import-map") {
+				const existingVersion = importMappedPackageVersions.get(packageName);
+				if (existingVersion && existingVersion !== pkg) {
+					throw new Error(
+						`Conflicting browser ESM package version for ${packageName}: ${existingVersion} is already mapped, but ${pkg} was requested`,
+					);
 				}
 			}
-			if (Object.keys(newEntries).length > 0) {
-				const json = buildImportMapJson(
+			if (!injectedPackageVersions.has(pkg)) {
+				newEntries[tag] = pkg;
+			}
+		}
+		if (Object.keys(newEntries).length > 0) {
+			let importMapResult: BrowserImportMapBuildResult;
+			try {
+				importMapResult = await buildImportMapJson(
 					newEntries,
 					viewConfig,
-					cdnBaseUrl,
+					cdnProvider,
 					loadControllers,
+					moduleResolution === "import-map",
+					packageMetadataLoader,
+					sharedDependencyVersions,
+					reportSharedDependencyConflict,
 				);
+			} catch (err) {
+				reportSharedDependencyError(err);
+				throw err;
+			}
+			const json = importMapResult.json;
+			if (json) {
+				assertImportMapSupported();
 				injectImportMap(json, context.doc);
 				importMapObserver?.(json, context.doc);
+			}
+			sharedDependencyVersions = importMapResult.sharedDependencyVersions;
+			for (const pkg of Object.values(newEntries)) {
+				injectedPackageVersions.add(pkg);
+				if (moduleResolution === "import-map") {
+					importMappedPackageVersions.set(extractPackageName(pkg), pkg);
+				}
 			}
 		}
 
@@ -144,7 +221,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				let actualTag: string;
 				try {
 					actualTag = validateCustomElementTag(
-						`${tag}${viewConfig.tagSuffix}`,
+						tag,
 						`element tag for ${packageName}`,
 					);
 				} catch (err) {
@@ -161,7 +238,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					packageVersion,
 					viewConfig,
 					moduleResolution,
-					cdnBaseUrl,
+					cdnProvider,
+					view,
 				);
 
 				let module: any;
@@ -176,7 +254,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 							packageVersion,
 							fallbackConfig,
 							moduleResolution,
-							cdnBaseUrl,
+							cdnProvider,
+							viewConfig.fallback,
 						);
 						try {
 							module = await importer(fallbackSpecifier);
@@ -243,7 +322,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 						packageName,
 						packageVersion,
 						moduleResolution,
-						cdnBaseUrl,
+						cdnProvider,
 					);
 					try {
 						const controllerModule: any = await importer(controllerSpecifier);
@@ -271,6 +350,49 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		}
 	}
 
+	function getInstrumentationProvider(): InstrumentationProvider | undefined {
+		if (!config.trackPageActions) return undefined;
+		const provider = config.instrumentationProvider;
+		if (!isInstrumentationProvider(provider)) return undefined;
+		if (!provider.isReady()) return undefined;
+		return provider;
+	}
+
+	function reportSharedDependencyConflict(
+		attributes: Record<string, unknown>,
+	): void {
+		if (typeof console !== "undefined" && console.warn) {
+			console.warn(
+				`[pie-esm] Shared dependency version conflict resolved for ${String(attributes.dependencyName)}`,
+				attributes,
+			);
+		}
+		const provider = getInstrumentationProvider();
+		if (!provider) return;
+		try {
+			provider.trackEvent("pie-esm-shared-dependency-conflict", attributes);
+		} catch {
+			// Swallow: instrumentation must never break loading.
+		}
+	}
+
+	function reportSharedDependencyError(error: unknown): void {
+		const err = error instanceof Error ? error : new Error(String(error));
+		if (typeof console !== "undefined" && console.error) {
+			console.error("[pie-esm] Shared dependency resolution failed", err);
+		}
+		const provider = getInstrumentationProvider();
+		if (!provider) return;
+		try {
+			provider.trackError(err, {
+				component: "esm-adapter",
+				errorType: "EsmSharedDependencyError",
+			});
+		} catch {
+			// Swallow: instrumentation must never break loading.
+		}
+	}
+
 	return {
 		load,
 		get __seams() {
@@ -281,9 +403,157 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+export function mapEsmViewElements(
+	elements: ElementMap,
+	view = "delivery",
+	viewConfig?: ViewConfig,
+): ElementMap {
+	const resolvedViewConfig = resolveEsmViewConfig(view, viewConfig);
+	return Object.fromEntries(
+		Object.entries(elements).map(([tag, packageVersion]) => [
+			`${tag}${resolvedViewConfig.tagSuffix}`,
+			packageVersion,
+		]),
+	);
+}
+
 function defaultImporter(specifier: string): Promise<unknown> {
 	// @vite-ignore — dynamic import resolved at runtime.
 	return import(/* @vite-ignore */ specifier);
+}
+
+async function defaultPackageMetadataLoader(
+	packageVersion: string,
+	packageJsonUrl: string,
+): Promise<PackageMetadata | null> {
+	const browserFetch =
+		typeof window !== "undefined" &&
+		typeof (window as Window & { fetch?: typeof fetch }).fetch === "function"
+			? (window as Window & { fetch: typeof fetch }).fetch.bind(window)
+			: undefined;
+	if (!browserFetch) {
+		return null;
+	}
+
+	const response = await browserFetch(packageJsonUrl);
+	if (!response.ok) {
+		return null;
+	}
+	return (await response.json()) as PackageMetadata;
+}
+
+function resolveCdnProvider(
+	provider: EsmCdnProviderOption | undefined,
+	cdnBaseUrl: string,
+): EsmCdnProvider {
+	if (isEsmCdnProvider(provider)) return provider;
+	const resolvedProviderName =
+		provider ?? (cdnBaseUrl.includes("esm.sh") ? "esm.sh" : "jsdelivr");
+	if (resolvedProviderName === "esm.sh") {
+		return createEsmShProvider(cdnBaseUrl);
+	}
+	return createJsDelivrProvider(cdnBaseUrl, resolvedProviderName);
+}
+
+function isEsmCdnProvider(value: unknown): value is EsmCdnProvider {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Partial<Record<keyof EsmCdnProvider, unknown>>;
+	return (
+		typeof candidate.name === "string" &&
+		typeof candidate.packageJsonUrl === "function" &&
+		typeof candidate.browserViewUrl === "function" &&
+		typeof candidate.browserControllerUrl === "function" &&
+		typeof candidate.sharedDependencyUrl === "function"
+	);
+}
+
+function createJsDelivrProvider(
+	cdnBaseUrl: string,
+	name: EsmCdnProviderName = "jsdelivr",
+): EsmCdnProvider {
+	return {
+		name,
+		packageJsonUrl: (packageVersion) =>
+			`${cdnBaseUrl}/${packageVersion}/package.json`,
+		browserViewUrl: (packageVersion, view) =>
+			`${cdnBaseUrl}/${packageVersion}/dist/browser/${view}/index.js`,
+		browserControllerUrl: (packageVersion) =>
+			`${cdnBaseUrl}/${packageVersion}/dist/browser/controller/index.js`,
+		sharedDependencyUrl: (dependencyName, version, subpath) => {
+			const suffix = subpath ? `/${subpath}/+esm` : "/+esm";
+			return `${cdnBaseUrl}/${dependencyName}@${version}${suffix}`;
+		},
+	};
+}
+
+function createEsmShProvider(cdnBaseUrl: string): EsmCdnProvider {
+	const esmBaseUrl = cdnBaseUrl.replace(/\/+$/, "");
+	const rawBaseUrl = toRawEsmShBaseUrl(esmBaseUrl);
+	return {
+		name: "esm.sh",
+		packageJsonUrl: (packageVersion) =>
+			`${rawBaseUrl}/${packageVersion}/package.json`,
+		browserViewUrl: (packageVersion, view) =>
+			`${rawBaseUrl}/${packageVersion}/dist/browser/${view}/index.js`,
+		browserControllerUrl: (packageVersion) =>
+			`${rawBaseUrl}/${packageVersion}/dist/browser/controller/index.js`,
+		sharedDependencyUrl: (dependencyName, version, subpath) => {
+			const suffix = subpath ? `/${subpath}` : "";
+			return `${esmBaseUrl}/${dependencyName}@${version}${suffix}`;
+		},
+	};
+}
+
+function toRawEsmShBaseUrl(cdnBaseUrl: string): string {
+	try {
+		const url = new URL(cdnBaseUrl);
+		if (url.hostname === "raw.esm.sh")
+			return url.toString().replace(/\/+$/, "");
+		if (url.hostname === "esm.sh") {
+			url.hostname = "raw.esm.sh";
+			return url.toString().replace(/\/+$/, "");
+		}
+	} catch {
+		// Fall through to the public raw endpoint for non-URL test fixtures.
+	}
+	return "https://raw.esm.sh";
+}
+
+function resolveEsmViewConfig(view: string, viewConfig?: ViewConfig): ViewConfig {
+	return viewConfig ?? BUILT_IN_VIEWS[view] ?? BUILT_IN_VIEWS.delivery;
+}
+
+function assertBrowserEsmExports(
+	metadata: PackageMetadata | null,
+	packageVersion: string,
+	viewConfig: ViewConfig,
+	loadControllers: boolean,
+	viewName: string,
+): void {
+	if (!metadata?.exports) return;
+
+	const requiredExports = new Set<string>([
+		`./browser/${browserViewName(viewConfig, viewName)}`,
+	]);
+	if (viewConfig.fallback) {
+		const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
+		if (fallbackConfig) {
+			requiredExports.add(
+				`./browser/${browserViewName(fallbackConfig, viewConfig.fallback)}`,
+			);
+		}
+	}
+	if (loadControllers) {
+		requiredExports.add("./browser/controller");
+	}
+
+	for (const exportKey of requiredExports) {
+		if (!(exportKey in metadata.exports)) {
+			throw new Error(
+				`${packageVersion} does not publish browser ESM export ${exportKey}; use IIFE/preloaded mode or publish browser ESM artifacts first`,
+			);
+		}
+	}
 }
 
 function extractPackageName(packageVersion: string): string {
@@ -291,37 +561,34 @@ function extractPackageName(packageVersion: string): string {
 	return parts.length >= 3 ? `@${parts[1]}` : parts[0];
 }
 
-function isJsDelivrNpm(cdnBaseUrl: string): boolean {
-	return cdnBaseUrl.includes("cdn.jsdelivr.net/npm");
+function cleanViewSubpath(subpath: string): string | null {
+	const cleanSubpath = subpath.replace(/^\/+|\/+$/g, "");
+	return cleanSubpath.length > 0 ? cleanSubpath : null;
 }
 
-function resolvePackageUrl(packageVersion: string, cdnBaseUrl: string): string {
-	if (isJsDelivrNpm(cdnBaseUrl)) {
-		return `${cdnBaseUrl}/${packageVersion}/+esm`;
-	}
-	return `${cdnBaseUrl}/${packageVersion}`;
-}
-
-function resolveSubpathUrl(
-	packageVersion: string,
-	subpath: string,
-	cdnBaseUrl: string,
+function browserViewName(
+	viewConfig: ViewConfig,
+	viewName = "delivery",
 ): string {
-	const cleanSubpath = subpath.startsWith("/") ? subpath.slice(1) : subpath;
-	if (isJsDelivrNpm(cdnBaseUrl)) {
-		return `${cdnBaseUrl}/${packageVersion}/${cleanSubpath}/+esm`;
-	}
-	return `${cdnBaseUrl}/${packageVersion}/${cleanSubpath}`;
+	const subpathView = cleanViewSubpath(viewConfig.subpath);
+	return subpathView ?? viewName;
 }
 
-function resolveControllerUrl(
+function resolveBrowserViewUrl(
 	packageVersion: string,
-	cdnBaseUrl: string,
+	viewConfig: ViewConfig,
+	cdnProvider: EsmCdnProvider,
+	viewName = "delivery",
 ): string {
-	if (isJsDelivrNpm(cdnBaseUrl)) {
-		return `${cdnBaseUrl}/${packageVersion}/controller/+esm`;
-	}
-	return `${cdnBaseUrl}/${packageVersion}/controller`;
+	const view = browserViewName(viewConfig, viewName);
+	return cdnProvider.browserViewUrl(packageVersion, view);
+}
+
+function resolveBrowserControllerUrl(
+	packageVersion: string,
+	cdnProvider: EsmCdnProvider,
+): string {
+	return cdnProvider.browserControllerUrl(packageVersion);
 }
 
 function resolveElementSpecifier(
@@ -329,28 +596,32 @@ function resolveElementSpecifier(
 	packageVersion: string,
 	viewConfig: ViewConfig,
 	moduleResolution: "url" | "import-map",
-	cdnBaseUrl: string,
+	cdnProvider: EsmCdnProvider,
+	viewName: string,
 ): string {
 	if (moduleResolution === "import-map") {
 		return viewConfig.subpath
 			? `${packageName}${viewConfig.subpath}`
 			: packageName;
 	}
-	return viewConfig.subpath
-		? resolveSubpathUrl(packageVersion, viewConfig.subpath, cdnBaseUrl)
-		: resolvePackageUrl(packageVersion, cdnBaseUrl);
+	return resolveBrowserViewUrl(
+		packageVersion,
+		viewConfig,
+		cdnProvider,
+		viewName,
+	);
 }
 
 function resolveControllerSpecifier(
 	packageName: string,
 	packageVersion: string,
 	moduleResolution: "url" | "import-map",
-	cdnBaseUrl: string,
+	cdnProvider: EsmCdnProvider,
 ): string {
 	if (moduleResolution === "import-map") {
 		return `${packageName}/controller`;
 	}
-	return resolveControllerUrl(packageVersion, cdnBaseUrl);
+	return resolveBrowserControllerUrl(packageVersion, cdnProvider);
 }
 
 function pickElementClass(module: any, view: string): unknown {
@@ -364,41 +635,243 @@ function pickElementClass(module: any, view: string): unknown {
 	return module.default ?? module.Element;
 }
 
-function buildImportMapJson(
+const SHARED_BROWSER_DEPENDENCIES = ["react", "react-dom"] as const;
+
+function declaredSharedDependencyVersion(
+	metadata: PackageMetadata | null,
+	dependencyName: (typeof SHARED_BROWSER_DEPENDENCIES)[number],
+	packageVersion: string,
+): string | undefined {
+	const version = metadata?.pie?.browserSharedDependencies?.[dependencyName];
+	if (!version) {
+		throw new Error(
+			`${packageVersion} is missing required pie.browserSharedDependencies.${dependencyName}`,
+		);
+	}
+	if (!isExactVersion(version)) {
+		throw new Error(
+			`${packageVersion} pie.browserSharedDependencies.${dependencyName} must be an exact version; received "${version}"`,
+		);
+	}
+	return version;
+}
+
+function packageUsesSharedDependency(
+	metadata: PackageMetadata | null,
+	dependencyName: (typeof SHARED_BROWSER_DEPENDENCIES)[number],
+): boolean {
+	return Boolean(
+		metadata?.pie?.browserSharedDependencies?.[dependencyName] ||
+			metadata?.peerDependencies?.[dependencyName] ||
+			metadata?.dependencies?.[dependencyName] ||
+			metadata?.optionalDependencies?.[dependencyName],
+	);
+}
+
+function addSharedDependencyImports(
+	imports: Record<string, string>,
+	selectedVersions: Record<string, string>,
+	lockedVersions: Set<string>,
+	dependencyName: (typeof SHARED_BROWSER_DEPENDENCIES)[number],
+	version: string | undefined,
+	cdnProvider: EsmCdnProvider,
+	packageVersion: string,
+	onConflict: (attributes: Record<string, unknown>) => void,
+): void {
+	if (!version) {
+		return;
+	}
+
+	const currentVersion = selectedVersions[dependencyName];
+	let resolvedVersion = version;
+	if (currentVersion && currentVersion !== version) {
+		resolvedVersion = resolveSharedDependencyVersion(
+			dependencyName,
+			currentVersion,
+			version,
+			packageVersion,
+			lockedVersions.has(dependencyName),
+		);
+		onConflict({
+			dependencyName,
+			existingVersion: currentVersion,
+			requestedVersion: version,
+			resolvedVersion,
+			packageVersion,
+		});
+	}
+	selectedVersions[dependencyName] = resolvedVersion;
+
+	imports[dependencyName] = cdnProvider.sharedDependencyUrl(
+		dependencyName,
+		resolvedVersion,
+	);
+	if (dependencyName === "react") {
+		imports["react/jsx-runtime"] = cdnProvider.sharedDependencyUrl(
+			"react",
+			resolvedVersion,
+			"jsx-runtime",
+		);
+		imports["react/jsx-dev-runtime"] = cdnProvider.sharedDependencyUrl(
+			"react",
+			resolvedVersion,
+			"jsx-dev-runtime",
+		);
+	}
+	if (dependencyName === "react-dom") {
+		imports["react-dom/client"] = cdnProvider.sharedDependencyUrl(
+			"react-dom",
+			resolvedVersion,
+			"client",
+		);
+	}
+}
+
+function isExactVersion(version: string): boolean {
+	return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version);
+}
+
+function parseVersion(version: string): {
+	major: number;
+	minor: number;
+	patch: number;
+} {
+	const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+	if (!match) {
+		throw new Error(`Invalid shared browser dependency version "${version}"`);
+	}
+	return {
+		major: Number(match[1]),
+		minor: Number(match[2]),
+		patch: Number(match[3]),
+	};
+}
+
+function compareVersions(a: string, b: string): number {
+	const parsedA = parseVersion(a);
+	const parsedB = parseVersion(b);
+	if (parsedA.major !== parsedB.major) return parsedA.major - parsedB.major;
+	if (parsedA.minor !== parsedB.minor) return parsedA.minor - parsedB.minor;
+	return parsedA.patch - parsedB.patch;
+}
+
+function resolveSharedDependencyVersion(
+	dependencyName: string,
+	currentVersion: string,
+	requestedVersion: string,
+	packageVersion: string,
+	isLocked: boolean,
+): string {
+	const current = parseVersion(currentVersion);
+	const requested = parseVersion(requestedVersion);
+	if (current.major !== requested.major) {
+		throw new Error(
+			`Conflicting shared browser dependency ${dependencyName}: ${currentVersion} vs ${requestedVersion} from ${packageVersion}; different major versions cannot share one browser singleton`,
+		);
+	}
+	if (isLocked && compareVersions(requestedVersion, currentVersion) > 0) {
+		throw new Error(
+			`Conflicting shared browser dependency ${dependencyName}: ${currentVersion} is already selected, but ${packageVersion} requires higher version ${requestedVersion}; the browser singleton cannot be upgraded after import-map injection`,
+		);
+	}
+	return compareVersions(currentVersion, requestedVersion) >= 0
+		? currentVersion
+		: requestedVersion;
+}
+
+type BrowserImportMapBuildResult = {
+	json: string | null;
+	sharedDependencyVersions: Record<string, string>;
+};
+
+async function buildImportMapJson(
 	elements: ElementMap,
 	viewConfig: ViewConfig,
-	cdnBaseUrl: string,
+	cdnProvider: EsmCdnProvider,
 	loadControllers: boolean,
-): string {
+	includeElementImports: boolean,
+	packageMetadataLoader: EsmPackageMetadataLoader,
+	currentSharedDependencyVersions: Record<string, string>,
+	onConflict: (attributes: Record<string, unknown>) => void,
+): Promise<BrowserImportMapBuildResult> {
 	const imports: Record<string, string> = {};
+	const selectedVersions: Record<string, string> = {
+		...currentSharedDependencyVersions,
+	};
+	const lockedVersions = new Set(Object.keys(currentSharedDependencyVersions));
 	for (const [, pkg] of Object.entries(elements)) {
 		const packageName = extractPackageName(pkg);
-		imports[packageName] = resolvePackageUrl(pkg, cdnBaseUrl);
-		if (viewConfig.subpath) {
-			imports[`${packageName}${viewConfig.subpath}`] = resolveSubpathUrl(
+		if (includeElementImports) {
+			imports[packageName] = resolveBrowserViewUrl(
 				pkg,
-				viewConfig.subpath,
-				cdnBaseUrl,
+				BUILT_IN_VIEWS.delivery,
+				cdnProvider,
+				"delivery",
 			);
-		}
-		if (loadControllers) {
-			imports[`${packageName}/controller`] = resolveControllerUrl(
-				pkg,
-				cdnBaseUrl,
-			);
-		}
-		if (viewConfig.fallback) {
-			const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
-			if (fallbackConfig?.subpath) {
-				imports[`${packageName}${fallbackConfig.subpath}`] = resolveSubpathUrl(
+			if (viewConfig.subpath) {
+				imports[`${packageName}${viewConfig.subpath}`] = resolveBrowserViewUrl(
 					pkg,
-					fallbackConfig.subpath,
-					cdnBaseUrl,
+					viewConfig,
+					cdnProvider,
+					cleanViewSubpath(viewConfig.subpath) ?? "delivery",
 				);
 			}
+			if (loadControllers) {
+				imports[`${packageName}/controller`] = resolveBrowserControllerUrl(
+					pkg,
+					cdnProvider,
+				);
+			}
+			if (viewConfig.fallback) {
+				const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
+				if (fallbackConfig) {
+					const fallbackSpecifier = fallbackConfig.subpath
+						? `${packageName}${fallbackConfig.subpath}`
+						: packageName;
+					imports[fallbackSpecifier] = resolveBrowserViewUrl(
+						pkg,
+						fallbackConfig,
+						cdnProvider,
+						viewConfig.fallback,
+					);
+				}
+			}
+		}
+
+		const metadata = await packageMetadataLoader(
+			pkg,
+			cdnProvider.packageJsonUrl(pkg),
+		);
+		assertBrowserEsmExports(
+			metadata,
+			pkg,
+			viewConfig,
+			loadControllers,
+			cleanViewSubpath(viewConfig.subpath) ?? "delivery",
+		);
+		for (const dependencyName of SHARED_BROWSER_DEPENDENCIES) {
+			if (!packageUsesSharedDependency(metadata, dependencyName)) {
+				continue;
+			}
+			addSharedDependencyImports(
+				imports,
+				selectedVersions,
+				lockedVersions,
+				dependencyName,
+				declaredSharedDependencyVersion(metadata, dependencyName, pkg),
+				cdnProvider,
+				pkg,
+				onConflict,
+			);
 		}
 	}
-	return JSON.stringify({ imports }, null, 2);
+	if (Object.keys(imports).length === 0) {
+		return { json: null, sharedDependencyVersions: selectedVersions };
+	}
+	return {
+		json: JSON.stringify({ imports }, null, 2),
+		sharedDependencyVersions: selectedVersions,
+	};
 }
 
 function injectImportMap(json: string, doc: Document): void {
@@ -410,12 +883,12 @@ function injectImportMap(json: string, doc: Document): void {
 
 function assertImportMapSupported(): void {
 	const htmlScriptElement = (
-		typeof HTMLScriptElement !== "undefined"
-			? HTMLScriptElement
-			: undefined
-	) as (typeof HTMLScriptElement & {
-		supports?: (type: string) => boolean;
-	}) | undefined;
+		typeof HTMLScriptElement !== "undefined" ? HTMLScriptElement : undefined
+	) as
+		| (typeof HTMLScriptElement & {
+				supports?: (type: string) => boolean;
+		  })
+		| undefined;
 	const supports =
 		typeof htmlScriptElement?.supports === "function" &&
 		htmlScriptElement.supports("importmap");

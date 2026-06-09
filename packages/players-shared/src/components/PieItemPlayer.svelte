@@ -14,6 +14,8 @@
   import {
     buildAuthoringAllowList,
     createDefaultItemMarkupSanitizer,
+    wrapOverwideImagesInElement,
+    wrapOverwideTablesInElement,
     type ItemMarkupSanitizer,
   } from "../security/index.js";
   import {
@@ -84,6 +86,7 @@
     onSessionChanged,
     onModelUpdated,
     onModelLoaded,
+    onElementSessionUpdate,
     baseHeadingLevel = undefined,
     includeSrHeading = true,
   }: {
@@ -116,6 +119,16 @@
     onSessionChanged?: (detail?: any) => void;
     onModelUpdated?: (detail?: any) => void;
     onModelLoaded?: (detail?: any) => void;
+    /**
+     * Invoked when an element controller persists derived session state (e.g. a
+     * shuffled-choice order) via its updateSession callback. The host writes it
+     * back to the authoritative session so re-renders reuse it (PIE-631).
+     */
+    onElementSessionUpdate?: (
+      elementId: string,
+      elementName: string,
+      properties: Record<string, unknown>,
+    ) => void;
     /**
      * The level of the first heading emitted inside this player.
      *
@@ -468,9 +481,21 @@
       // Svelte reactivity won't necessarily re-run effects on in-place mutation,
       // so we must push the updated session into the PIE elements explicitly.
       try {
-        updatePieElements(itemConfig, session, env, rootElement ?? undefined);
+        void updatePieElements(
+          itemConfig,
+          session,
+          env,
+          rootElement ?? undefined,
+          onElementSessionUpdate
+        );
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env, rootElement ?? undefined);
+          void updatePieElements(
+            passageConfig,
+            session,
+            env,
+            rootElement ?? undefined,
+            onElementSessionUpdate
+          );
         }
       } catch (e) {
         logger.warn(
@@ -651,10 +676,22 @@
               session.length +
               ")"
           );
-          updatePieElements(itemConfig, session, env, rootElement ?? undefined);
+          await updatePieElements(
+            itemConfig,
+            session,
+            env,
+            rootElement ?? undefined,
+            onElementSessionUpdate
+          );
 
           if (passageConfig) {
-            updatePieElements(passageConfig, session, env, rootElement ?? undefined);
+            await updatePieElements(
+              passageConfig,
+              session,
+              env,
+              rootElement ?? undefined,
+              onElementSessionUpdate
+            );
           }
         }
 
@@ -826,9 +863,56 @@
 
   // Update PIE elements when env or session changes (after initialization) - using $effect
   let isUpdating = false;
+  let updateQueued = false;
+  function runElementUpdate() {
+    if (isUpdating) {
+      updateQueued = true;
+      return;
+    }
+    isUpdating = true;
+    untrack(() => {
+      void updatePieElements(
+        itemConfig,
+        session,
+        env,
+        rootElement ?? undefined,
+        onElementSessionUpdate
+      )
+        .then(() =>
+          passageConfig
+            ? updatePieElements(
+                passageConfig,
+                session,
+                env,
+                rootElement ?? undefined,
+                onElementSessionUpdate
+              )
+            : undefined
+        )
+        .catch((e: any) => {
+          reportPlayerError(
+            {
+              code: "ITEM_PLAYER_UPDATE_ERROR",
+              message: e instanceof Error ? e.message : String(e),
+              cause: e instanceof Error ? e.stack || e.message : String(e),
+            },
+            "ITEM_PLAYER_UPDATE_ERROR"
+          );
+        })
+        .finally(() => {
+          isUpdating = false;
+          if (updateQueued) {
+            updateQueued = false;
+            setTimeout(() => {
+              runElementUpdate();
+            }, 0);
+          }
+        });
+    });
+  }
+
   $effect(() => {
     if (!initialized || !env || !itemConfig || !session) return;
-    if (isUpdating) return; // Prevent re-entry
 
     // Log changes
     logger.debug("[PieItemPlayer] Dependencies changed, updating elements");
@@ -838,27 +922,10 @@
       session
     );
 
-    isUpdating = true;
-    untrack(() => {
-      try {
-        updatePieElements(itemConfig, session, env, rootElement ?? undefined);
-
-        if (passageConfig) {
-          updatePieElements(passageConfig, session, env, rootElement ?? undefined);
-        }
-      } catch (e: any) {
-        reportPlayerError(
-          {
-            code: "ITEM_PLAYER_UPDATE_ERROR",
-            message: e instanceof Error ? e.message : String(e),
-            cause: e instanceof Error ? e.stack || e.message : String(e),
-          },
-          "ITEM_PLAYER_UPDATE_ERROR"
-        );
-      } finally {
-        isUpdating = false;
-      }
-    });
+    // Keep the update guard active until controller-derived session writes have
+    // landed; if props change during that window, run once more with the latest
+    // state instead of dropping the update.
+    runElementUpdate();
   });
 
   $effect(() => {
@@ -876,6 +943,30 @@
         "pie-controller-error",
         handleControllerError as EventListener
       );
+    };
+  });
+
+  // Run a post-render pass over the player's live subtree using the same
+  // per-element wrappers as the string pipeline (so the produced
+  // pie-image-scroll / pie-table-scroll markup is byte-identical) and
+  // re-run on every mutation tick so element-painted content is wrapped as
+  // soon as it lands. The wrap is idempotent.
+  $effect(() => {
+    if (!rootElement) return;
+    const root = rootElement;
+    const tickWrap = () => {
+      console.log("[PieItemPlayer] Running post-render wrap pass");
+      wrapOverwideImagesInElement(root);
+      wrapOverwideTablesInElement(root);
+    };
+    tickWrap();
+    if (typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(() => {
+      tickWrap();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
     };
   });
 

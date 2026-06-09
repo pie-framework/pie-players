@@ -27,7 +27,10 @@ const getChunkSourceKey = (chunkInfo: {
 		(Array.isArray(chunkInfo.moduleIds) ? chunkInfo.moduleIds[0] : undefined);
 	const sourceKey = sanitizeChunkKey(moduleSource || chunkInfo.name || "chunk");
 	const chunkName = sanitizeChunkKey(chunkInfo.name || "chunk");
-	const sourceHash = createHash("sha1").update(sourceKey).digest("hex").slice(0, 8);
+	const sourceHash = createHash("sha1")
+		.update(sourceKey)
+		.digest("hex")
+		.slice(0, 8);
 	return `${chunkName}-${sourceHash}`;
 };
 
@@ -87,11 +90,7 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: [
-				"@pie-players/pie-toolbars",
-				"@pie-players/pie-toolbars/components/item-toolbar-element",
-				"@pie-players/pie-toolbars/components/section-toolbar-element",
-			],
+			external: ["@pie-players/pie-default-tool-loaders"],
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",

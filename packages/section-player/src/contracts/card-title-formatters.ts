@@ -1,4 +1,7 @@
-import type { ItemEntity, PassageEntity } from "@pie-players/pie-players-shared/types";
+import type {
+	ItemEntity,
+	PassageEntity,
+} from "@pie-players/pie-players-shared/types";
 
 export type SectionPlayerItemTitleContext = {
 	kind: "item";

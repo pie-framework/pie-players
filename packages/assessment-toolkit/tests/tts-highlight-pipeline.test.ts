@@ -108,7 +108,7 @@ describe("TTS highlight pipeline", () => {
 			"math",
 		);
 		math.innerHTML = "<mi>x</mi><mo>+</mo><mn>1</mn>";
-		const speechText = "<speak><prosody rate=\"100%\">x plus 1</prosody></speak>";
+		const speechText = '<speak><prosody rate="100%">x plus 1</prosody></speak>';
 		const alignment = createMathAwareAlignment({
 			mathElement: math,
 			speechText,
@@ -755,9 +755,9 @@ describe("TTS highlight pipeline", () => {
 			type: "element",
 			quality: "semantic-token",
 		});
-		expect((onToken.activeTarget as { element: Element }).element.localName).toBe(
-			"mo",
-		);
+		expect(
+			(onToken.activeTarget as { element: Element }).element.localName,
+		).toBe("mo");
 
 		// Then a gap (a break / contradictory boundary that maps to no token).
 		const onGap = plan.resolveBoundary({

@@ -57,7 +57,9 @@ function getDebugState(debugWindow: PieDebugWindow): DebugWindowState {
 	return debugWindow.__pieInstrumentationDebugState;
 }
 
-function cloneRecord(record: InstrumentationDebugRecord): InstrumentationDebugRecord {
+function cloneRecord(
+	record: InstrumentationDebugRecord,
+): InstrumentationDebugRecord {
 	return {
 		...record,
 		attributes: record.attributes ? { ...record.attributes } : undefined,
@@ -79,9 +81,12 @@ export function emitInstrumentationDebugRecord(
 		state.records.splice(0, state.records.length - MAX_DEBUG_RECORDS);
 	}
 	debugWindow.dispatchEvent(
-		new CustomEvent<InstrumentationDebugRecord>(INSTRUMENTATION_DEBUG_EVENT_NAME, {
-			detail: cloneRecord(nextRecord),
-		}),
+		new CustomEvent<InstrumentationDebugRecord>(
+			INSTRUMENTATION_DEBUG_EVENT_NAME,
+			{
+				detail: cloneRecord(nextRecord),
+			},
+		),
 	);
 }
 

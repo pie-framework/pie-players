@@ -1,5 +1,30 @@
 # @pie-players/pie-print-player
 
+## 0.3.50
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.50
+
+## 0.3.49
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.49
+
+## 0.3.48
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0c20d0f]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.48
+
 ## 0.3.47
 
 ### Patch Changes

@@ -1,7 +1,13 @@
 import { resolvePieColorSchemeVariables } from "./color-schemes.js";
 import { DARK_THEME_VARS, LIGHT_THEME_VARS } from "./theme-defaults.js";
 import { resolveProviderVariables } from "./providers.js";
-import { isThemeMode, isThemeScope, type ThemeMode, type ThemeScope, type ThemeVariables } from "./theme-types.js";
+import {
+	isThemeMode,
+	isThemeScope,
+	type ThemeMode,
+	type ThemeScope,
+	type ThemeVariables,
+} from "./theme-types.js";
 
 const HTMLElementBase =
 	typeof HTMLElement === "undefined"

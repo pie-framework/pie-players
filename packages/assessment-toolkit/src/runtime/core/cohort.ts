@@ -33,7 +33,10 @@ export function cohortKey(cohort: CohortKey | null): string {
  * Treats both inputs as identifying the cohort by value, never by
  * reference.
  */
-export function cohortsEqual(a: CohortKey | null, b: CohortKey | null): boolean {
+export function cohortsEqual(
+	a: CohortKey | null,
+	b: CohortKey | null,
+): boolean {
 	if (a === b) return true;
 	if (!a || !b) return false;
 	return a.sectionId === b.sectionId && a.attemptId === b.attemptId;

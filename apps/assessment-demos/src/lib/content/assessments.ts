@@ -63,7 +63,8 @@ const sectionOne: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "Control of the strategic maritime choke point and spice trade routes",
+									label:
+										"Control of the strategic maritime choke point and spice trade routes",
 									correct: true,
 								},
 								{
@@ -110,7 +111,8 @@ const sectionOne: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "The VOC operated as a chartered corporation with quasi-state powers",
+									label:
+										"The VOC operated as a chartered corporation with quasi-state powers",
 									correct: true,
 								},
 								{
@@ -186,7 +188,8 @@ const sectionTwo: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "Spain relied more heavily on church-mission networks and galleon trade integration",
+									label:
+										"Spain relied more heavily on church-mission networks and galleon trade integration",
 									correct: true,
 								},
 								{
@@ -196,12 +199,14 @@ const sectionTwo: AssessmentSection = {
 								},
 								{
 									value: "c",
-									label: "Spain had no military presence and used only private merchants",
+									label:
+										"Spain had no military presence and used only private merchants",
 									correct: false,
 								},
 								{
 									value: "d",
-									label: "Spain was absent from the Philippines until the late 1800s",
+									label:
+										"Spain was absent from the Philippines until the late 1800s",
 									correct: false,
 								},
 							],
@@ -233,7 +238,8 @@ const sectionTwo: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "Created clear British and Dutch spheres in maritime Southeast Asia",
+									label:
+										"Created clear British and Dutch spheres in maritime Southeast Asia",
 									correct: true,
 								},
 								{
@@ -315,17 +321,20 @@ const sectionThree: AssessmentSection = {
 								},
 								{
 									value: "b",
-									label: "A complete collapse of global trade networks before 1900",
+									label:
+										"A complete collapse of global trade networks before 1900",
 									correct: false,
 								},
 								{
 									value: "c",
-									label: "Immediate military withdrawal by all colonial powers in 1939",
+									label:
+										"Immediate military withdrawal by all colonial powers in 1939",
 									correct: false,
 								},
 								{
 									value: "d",
-									label: "A unified single-party government across all colonies",
+									label:
+										"A unified single-party government across all colonies",
 									correct: false,
 								},
 							],
@@ -357,7 +366,8 @@ const sectionThree: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "A nuanced interpretation balancing continuity and change",
+									label:
+										"A nuanced interpretation balancing continuity and change",
 									correct: true,
 								},
 								{
@@ -488,7 +498,11 @@ const sessionDbSectionOne: AssessmentSection = {
 							choiceMode: "radio",
 							choices: [
 								{ value: "a", label: "getRuntimeState output", correct: false },
-								{ value: "b", label: "AssessmentSession snapshot", correct: true },
+								{
+									value: "b",
+									label: "AssessmentSession snapshot",
+									correct: true,
+								},
 								{
 									value: "c",
 									label: "Only route-changed event payloads",
@@ -557,7 +571,8 @@ const sessionDbSectionTwo: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "One fixed product workflow with many hardcoded policies",
+									label:
+										"One fixed product workflow with many hardcoded policies",
 									correct: false,
 								},
 								{

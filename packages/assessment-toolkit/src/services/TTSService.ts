@@ -164,7 +164,12 @@ const sameRenderableHighlightTarget = (
 	right: RenderableHighlightTarget | null,
 ): boolean => {
 	if (left === right) return true;
-	if (!left || !right || left.type !== right.type || left.quality !== right.quality) {
+	if (
+		!left ||
+		!right ||
+		left.type !== right.type ||
+		left.quality !== right.quality
+	) {
 		return false;
 	}
 	if (left.type === "range" && right.type === "range") {
@@ -1480,15 +1485,18 @@ export class TTSService {
 		// emits playback chunks. The aggregate `contentToSpeak` stays plain text
 		// (`plan.plainSpeechText`) so seek/structural-pause planning is unaffected.
 		const playbackFormat = this.resolveGeneratedPlaybackFormat();
-		const { plan, containsMathMarkup, visibleText: collectedVisibleText } =
-			await buildGeneratedSpeechFromRoot({
-				contentRoot: contentElement,
-				language,
-				mathSpeech: this.getMathSpeechOptions(),
-				textProcessingOptions: this.getTextProcessingOptions(language),
-				produceSsml: playbackFormat === "ssml",
-				resolveMathSpeech: this.generatedMathSpeechResolver,
-			});
+		const {
+			plan,
+			containsMathMarkup,
+			visibleText: collectedVisibleText,
+		} = await buildGeneratedSpeechFromRoot({
+			contentRoot: contentElement,
+			language,
+			mathSpeech: this.getMathSpeechOptions(),
+			textProcessingOptions: this.getTextProcessingOptions(language),
+			produceSsml: playbackFormat === "ssml",
+			resolveMathSpeech: this.generatedMathSpeechResolver,
+		});
 		const visibleText = collectedVisibleText || normalizedInputText;
 		if (!containsMathMarkup) {
 			return {
@@ -1800,7 +1808,8 @@ export class TTSService {
 			: null;
 		// Carried through the config channel (see buildRuntimeTTSConfig); defaults
 		// to per-token math highlighting unless a host explicitly disables it.
-		const mathTokenHighlighting = this.ttsConfig.mathTokenHighlighting !== false;
+		const mathTokenHighlighting =
+			this.ttsConfig.mathTokenHighlighting !== false;
 		const highlightPlan = pipelineChunk
 			? createTTSHighlightPlan({
 					chunks: [pipelineChunk],

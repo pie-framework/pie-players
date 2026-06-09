@@ -68,7 +68,9 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 	test("returns false for null / undefined / bare assessment", () => {
 		expect(assessmentHasPnpPolicyInputs(null)).toBe(false);
 		expect(assessmentHasPnpPolicyInputs(undefined)).toBe(false);
-		expect(assessmentHasPnpPolicyInputs({ id: "a1" } as AssessmentEntity)).toBe(false);
+		expect(assessmentHasPnpPolicyInputs({ id: "a1" } as AssessmentEntity)).toBe(
+			false,
+		);
 		expect(
 			assessmentHasPnpPolicyInputs({
 				id: "a1",
@@ -141,7 +143,9 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 		expect(
 			assessmentHasPnpPolicyInputs({
 				id: "a1",
-				settings: { districtPolicy: { policies: { calculator: { mode: "basic" } } } },
+				settings: {
+					districtPolicy: { policies: { calculator: { mode: "basic" } } },
+				},
 			} as AssessmentEntity),
 		).toBe(true);
 	});
@@ -174,7 +178,11 @@ describe("itemRefHasPnpPolicyInputs — structural PNP/profile policy material o
 		expect(
 			itemRefHasPnpPolicyInputs({
 				identifier: "i1",
-				settings: { requiredTools: [], restrictedTools: [], toolParameters: {} },
+				settings: {
+					requiredTools: [],
+					restrictedTools: [],
+					toolParameters: {},
+				},
 			} as AssessmentItemRef),
 		).toBe(false);
 	});

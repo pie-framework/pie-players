@@ -3,6 +3,8 @@ import { BrowserTTSProvider } from "../src/services/tts/browser-provider";
 
 const originalWindow = (globalThis as any).window;
 const originalSpeechSynthesis = (globalThis as any).speechSynthesis;
+const originalSpeechSynthesisUtterance = (globalThis as any).SpeechSynthesisUtterance;
+const originalNavigator = (globalThis as any).navigator;
 const originalSegmenter = (globalThis as any).Intl?.Segmenter;
 
 const installSpeechMocks = () => {
@@ -21,6 +23,12 @@ describe("browser provider segmentation", () => {
 	afterEach(() => {
 		(globalThis as any).window = originalWindow;
 		(globalThis as any).speechSynthesis = originalSpeechSynthesis;
+		(globalThis as any).SpeechSynthesisUtterance =
+			originalSpeechSynthesisUtterance;
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: originalNavigator,
+		});
 		if ((globalThis as any).Intl) {
 			(globalThis as any).Intl.Segmenter = originalSegmenter;
 		}
@@ -82,5 +90,209 @@ describe("browser provider segmentation", () => {
 		expect(impl.inferWordLength("oxygen energy", 0)).toBe(6);
 		expect(impl.inferWordLength("oxygen energy", 2)).toBe(4);
 		expect(impl.inferWordLength("oxygen energy", 7)).toBe(6);
+	});
+
+	test("chooses a local language-matched voice when no voice is configured", async () => {
+		let spokenVoiceName: string | null = null;
+		const voices = [
+			{
+				default: true,
+				lang: "en-US",
+				localService: false,
+				name: "Remote Default Voice",
+				voiceURI: "remote-default",
+			},
+			{
+				default: false,
+				lang: "en-US",
+				localService: true,
+				name: "Samantha",
+				voiceURI: "samantha",
+			},
+			{
+				default: false,
+				lang: "en-US",
+				localService: true,
+				name: "Local English Voice",
+				voiceURI: "local-english",
+			},
+		] as SpeechSynthesisVoice[];
+		const synth = {
+			getVoices: () => voices,
+			speak: (utterance: SpeechSynthesisUtterance) => {
+				spokenVoiceName = utterance.voice?.name || null;
+				utterance.onend?.({} as SpeechSynthesisEvent);
+			},
+			cancel: () => {},
+			pause: () => {},
+			resume: () => {},
+		};
+		(globalThis as any).SpeechSynthesisUtterance = class {
+			text: string;
+			voice: SpeechSynthesisVoice | null = null;
+			onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+
+			constructor(text: string) {
+				this.text = text;
+			}
+		};
+		(globalThis as any).speechSynthesis = synth;
+		(globalThis as any).window = { speechSynthesis: synth };
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: { language: "en-US", languages: ["en-US"] },
+		});
+
+		const impl = await new BrowserTTSProvider().initialize({} as any);
+		await impl.speak("Read this text");
+
+		expect(spokenVoiceName).toBe("Samantha");
+	});
+
+	test("preserves an explicitly configured browser voice", async () => {
+		let spokenVoiceName: string | null = null;
+		const voices = [
+			{
+				default: false,
+				lang: "en-US",
+				localService: true,
+				name: "Samantha",
+				voiceURI: "samantha",
+			},
+			{
+				default: false,
+				lang: "en-US",
+				localService: true,
+				name: "Local English Voice",
+				voiceURI: "local-english",
+			},
+		] as SpeechSynthesisVoice[];
+		const synth = {
+			getVoices: () => voices,
+			speak: (utterance: SpeechSynthesisUtterance) => {
+				spokenVoiceName = utterance.voice?.name || null;
+				utterance.onend?.({} as SpeechSynthesisEvent);
+			},
+			cancel: () => {},
+			pause: () => {},
+			resume: () => {},
+		};
+		(globalThis as any).SpeechSynthesisUtterance = class {
+			text: string;
+			voice: SpeechSynthesisVoice | null = null;
+			onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+
+			constructor(text: string) {
+				this.text = text;
+			}
+		};
+		(globalThis as any).speechSynthesis = synth;
+		(globalThis as any).window = { speechSynthesis: synth };
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: { language: "en-US", languages: ["en-US"] },
+		});
+
+		const impl = await new BrowserTTSProvider().initialize({
+			voice: "Local English Voice",
+		} as any);
+		await impl.speak("Read this text");
+
+		expect(spokenVoiceName).toBe("Local English Voice");
+	});
+
+	test("leaves fallback browser default unassigned when no recommended or local voice exists", async () => {
+		let spokenVoiceName: string | null = null;
+		const voices = [
+			{
+				default: true,
+				lang: "en-US",
+				localService: false,
+				name: "Remote Default Voice",
+				voiceURI: "remote-default",
+			},
+			{
+				default: false,
+				lang: "en-US",
+				localService: false,
+				name: "Remote Secondary Voice",
+				voiceURI: "remote-secondary",
+			},
+		] as SpeechSynthesisVoice[];
+		const synth = {
+			getVoices: () => voices,
+			speak: (utterance: SpeechSynthesisUtterance) => {
+				spokenVoiceName = utterance.voice?.name || null;
+				utterance.onend?.({} as SpeechSynthesisEvent);
+			},
+			cancel: () => {},
+			pause: () => {},
+			resume: () => {},
+		};
+		(globalThis as any).SpeechSynthesisUtterance = class {
+			text: string;
+			voice: SpeechSynthesisVoice | null = null;
+			onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+
+			constructor(text: string) {
+				this.text = text;
+			}
+		};
+		(globalThis as any).speechSynthesis = synth;
+		(globalThis as any).window = { speechSynthesis: synth };
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: { language: "en-US", languages: ["en-US"] },
+		});
+
+		const impl = await new BrowserTTSProvider().initialize({} as any);
+		await impl.speak("Read this text");
+
+		expect(spokenVoiceName).toBeNull();
+	});
+
+	test("leaves the browser default voice unassigned for native default playback", async () => {
+		let spokenVoiceName: string | null = "not-called";
+		const voices = [
+			{
+				default: true,
+				lang: "en-US",
+				localService: true,
+				name: "Samantha",
+				voiceURI: "samantha",
+			},
+		] as SpeechSynthesisVoice[];
+		const synth = {
+			getVoices: () => voices,
+			speak: (utterance: SpeechSynthesisUtterance) => {
+				spokenVoiceName = utterance.voice?.name || null;
+				utterance.onend?.({} as SpeechSynthesisEvent);
+			},
+			cancel: () => {},
+			pause: () => {},
+			resume: () => {},
+		};
+		(globalThis as any).SpeechSynthesisUtterance = class {
+			text: string;
+			voice: SpeechSynthesisVoice | null = null;
+			onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+
+			constructor(text: string) {
+				this.text = text;
+			}
+		};
+		(globalThis as any).speechSynthesis = synth;
+		(globalThis as any).window = { speechSynthesis: synth };
+		Object.defineProperty(globalThis, "navigator", {
+			configurable: true,
+			value: { language: "en-US", languages: ["en-US"] },
+		});
+
+		const impl = await new BrowserTTSProvider().initialize({
+			voice: "Samantha",
+		} as any);
+		await impl.speak("Read this text");
+
+		expect(spokenVoiceName).toBeNull();
 	});
 });

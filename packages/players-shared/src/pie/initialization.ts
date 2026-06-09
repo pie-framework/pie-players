@@ -7,6 +7,7 @@
 
 import { BUILDER_BUNDLE_URL } from "../config/profile.js";
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
+import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { editorPostFix } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
@@ -130,7 +131,7 @@ const initializePieElement = (
 		});
 
 		// Set model directly - server already processed it
-		element.model = model;
+		element.model = wrapModelRichContent(model);
 	} else {
 		// Controller available - run client-side processing (client-player.js bundle)
 		// Note: updatePieElementWithRef handles controller invocation
@@ -248,13 +249,7 @@ const registerPieElementsFromBundle = (
 					elementTagName,
 					String(pkg),
 				);
-				updateRegisteredElement(
-					editorElName,
-					config,
-					session,
-					options,
-					true,
-				);
+				updateRegisteredElement(editorElName, config, session, options, true);
 			}
 			return;
 		}
@@ -405,12 +400,7 @@ const registerPieElementsFromBundle = (
 							if (mutation.type === "childList") {
 								mutation.addedNodes.forEach((node) => {
 									if (node.nodeType === Node.ELEMENT_NODE) {
-										if (
-											!isNodeWithinContainer(
-												node,
-												context.container,
-											)
-										) {
+										if (!isNodeWithinContainer(node, context.container)) {
 											return;
 										}
 										const tagName = (node as Element).tagName.toLowerCase();
@@ -428,10 +418,7 @@ const registerPieElementsFromBundle = (
 											.querySelectorAll("*")
 											.forEach((childNode) => {
 												if (
-													!isNodeWithinContainer(
-														childNode,
-														context.container,
-													)
+													!isNodeWithinContainer(childNode, context.container)
 												) {
 													return;
 												}

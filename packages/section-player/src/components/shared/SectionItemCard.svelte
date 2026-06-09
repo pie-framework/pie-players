@@ -22,7 +22,7 @@
 <script lang="ts">
 	import { onMount, untrack } from "svelte";
 	import "../item-shell-element.js";
-	import "@pie-players/pie-toolbars/components/item-toolbar-element";
+	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import type {
 		ToolRegistry,
 		ToolbarItem,

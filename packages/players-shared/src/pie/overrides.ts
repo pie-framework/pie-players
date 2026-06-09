@@ -131,7 +131,8 @@ export function applyElementVersionOverridesPreserveTags(
 			const packageBase = parsed.path
 				? `${parsed.name}/${parsed.path}`
 				: parsed.name;
-			updatedConfig.elements[elementKey] = `${packageBase}@${String(nextVersion).trim()}`;
+			updatedConfig.elements[elementKey] =
+				`${packageBase}@${String(nextVersion).trim()}`;
 		} catch {
 			logger.debug(
 				`Couldn't parse element package value: ${elementPackageStr}`,

@@ -1,6 +1,4 @@
-import {
-	createSessionDemoSeedPayload,
-} from "$lib/demo-runtime/session-demo-db-client";
+import { createSessionDemoSeedPayload } from "$lib/demo-runtime/session-demo-db-client";
 import { json } from "@sveltejs/kit";
 import {
 	clearAllSessionDemoData,
@@ -27,7 +25,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (body.clearOnly) {
 		clearAllSessionDemoData();
 	} else {
-		const defaultSeed = createSessionDemoSeedPayload(assessmentId, attemptId).snapshot;
+		const defaultSeed = createSessionDemoSeedPayload(
+			assessmentId,
+			attemptId,
+		).snapshot;
 		seedSessionDemoData({
 			assessmentId,
 			attemptId,

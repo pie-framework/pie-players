@@ -283,7 +283,9 @@ function setCurrentSectionPosition(
 		currentSectionIdentifier?: string;
 	},
 ): AssessmentSession {
-	const visited = new Set(session.navigationState.visitedSectionIdentifiers || []);
+	const visited = new Set(
+		session.navigationState.visitedSectionIdentifiers || [],
+	);
 	if (args.currentSectionIdentifier) visited.add(args.currentSectionIdentifier);
 	return {
 		...session,
@@ -296,7 +298,9 @@ function setCurrentSectionPosition(
 	};
 }
 
-function flattenSections(assessment: AssessmentDefinition | null): AssessmentSectionInstance[] {
+function flattenSections(
+	assessment: AssessmentDefinition | null,
+): AssessmentSectionInstance[] {
 	if (!assessment) return [];
 	const instances: AssessmentSectionInstance[] = [];
 	const testParts = assessment.testParts || [];
@@ -331,7 +335,8 @@ export class AssessmentController implements AssessmentControllerHandle {
 	private listeners = new Set<(event: AssessmentControllerEvent) => void>();
 	private deliveryPlan: AssessmentDeliveryPlan = { sections: [] };
 	private session: AssessmentSession | null = null;
-	private readiness: AssessmentControllerRuntimeState["readiness"] = "bootstrapping";
+	private readiness: AssessmentControllerRuntimeState["readiness"] =
+		"bootstrapping";
 	private submitted = false;
 	private persistenceStrategy?: AssessmentSessionPersistenceStrategy;
 	private readonly storageContext;
@@ -417,19 +422,24 @@ export class AssessmentController implements AssessmentControllerHandle {
 			assessment: this.args.assessment,
 		};
 		return (
-			(await this.args.hooks?.createAssessmentDeliveryPlan?.(context, defaults)) ??
-			defaults.createDefaultDeliveryPlan()
+			(await this.args.hooks?.createAssessmentDeliveryPlan?.(
+				context,
+				defaults,
+			)) ?? defaults.createDefaultDeliveryPlan()
 		);
 	}
 
 	private ensureSession(): AssessmentSession {
 		if (this.session) return this.session;
-		const sectionIds = this.deliveryPlan.sections.map((s) => s.sectionIdentifier);
+		const sectionIds = this.deliveryPlan.sections.map(
+			(s) => s.sectionIdentifier,
+		);
 		this.session = createNewAssessmentSession({
-			assessmentAttemptSessionIdentifier: createAssessmentAttemptSessionIdentifier({
-				assessmentId: this.args.assessmentId,
-				attemptId: this.args.attemptId,
-			}),
+			assessmentAttemptSessionIdentifier:
+				createAssessmentAttemptSessionIdentifier({
+					assessmentId: this.args.assessmentId,
+					attemptId: this.args.attemptId,
+				}),
 			assessmentId: this.args.assessmentId,
 			seed: `${this.args.assessmentId}:${this.args.attemptId || "default"}`,
 			sectionIdentifiers: sectionIds,

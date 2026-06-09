@@ -130,14 +130,17 @@ export const ttsToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const resolveRuntimeSettings = () =>
 			resolveTTSRuntimeSettings(
-				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) || undefined,
+				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
+					undefined,
 			);
 		const resolveElementSpeedOptions = (): number[] => {
 			const runtimeSettings = resolveRuntimeSettings();
 			return normalizeTTSSpeedOptions(runtimeSettings.speedOptions);
 		};
-		const resolveLayoutMode = () => resolveTTSLayoutMode(resolveRuntimeSettings());
-		const resolveHostLayout = () => resolveTTSHostToolbarLayout(resolveRuntimeSettings());
+		const resolveLayoutMode = () =>
+			resolveTTSLayoutMode(resolveRuntimeSettings());
+		const resolveHostLayout = () =>
+			resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -151,7 +154,8 @@ export const ttsToolRegistration: ToolRegistration = {
 			let element = inlineTTSControls.get(fullToolId);
 			if (
 				element &&
-				typeof (element as { isConnected?: boolean }).isConnected === "boolean" &&
+				typeof (element as { isConnected?: boolean }).isConnected ===
+					"boolean" &&
 				!(element as { isConnected?: boolean }).isConnected
 			) {
 				inlineTTSControls.delete(fullToolId);
@@ -171,7 +175,10 @@ export const ttsToolRegistration: ToolRegistration = {
 				inlineTTSControls.set(fullToolId, element);
 			}
 			element.setAttribute("tool-id", fullToolId);
-			element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+			element.setAttribute(
+				"catalog-id",
+				toolbarContext.catalogId || toolbarContext.itemId,
+			);
 			element.setAttribute("language", toolbarContext.language || "en-US");
 			element.setAttribute("size", resolveControlSize());
 			element.setAttribute("layout-mode", resolveLayoutMode());
@@ -210,7 +217,10 @@ export const ttsToolRegistration: ToolRegistration = {
 			sync: () => {
 				const element = ensureElement();
 				element.setAttribute("tool-id", fullToolId);
-				element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+				element.setAttribute(
+					"catalog-id",
+					toolbarContext.catalogId || toolbarContext.itemId,
+				);
 				element.setAttribute("language", toolbarContext.language || "en-US");
 				element.setAttribute("size", resolveControlSize());
 				element.setAttribute("layout-mode", resolveLayoutMode());

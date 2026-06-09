@@ -13,7 +13,9 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 }) => {
 	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
 	await page.goto("/", { waitUntil: "networkidle" });
-	await expect(page.getByRole("heading", { name: "Delivery backend integration" })).toBeVisible();
+	await expect(
+		page.getByRole("heading", { name: "Delivery backend integration" }),
+	).toBeVisible();
 	await expect(
 		page.getByText(
 			"Backend demo: which is the largest planet in our solar system?",
@@ -137,7 +139,9 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		timeout: 10_000,
 	});
 
-	await page.getByLabel("Demo item from SQLite").selectOption("backend-delivery-arithmetic");
+	await page
+		.getByLabel("Demo item from SQLite")
+		.selectOption("backend-delivery-arithmetic");
 	await expect(page.getByText("Backend demo: what is 3 + 5?")).toBeVisible({
 		timeout: 30_000,
 	});

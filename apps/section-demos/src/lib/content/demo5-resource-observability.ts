@@ -82,12 +82,14 @@ export const demo5Section: AssessmentSection = {
 								},
 								{
 									value: "b",
-									label: "To disable all instrumentation providers during rendering.",
+									label:
+										"To disable all instrumentation providers during rendering.",
 									correct: false,
 								},
 								{
 									value: "c",
-									label: "To bypass section runtime and render static HTML only.",
+									label:
+										"To bypass section runtime and render static HTML only.",
 									correct: false,
 								},
 								{
@@ -129,7 +131,8 @@ export const demo5Section: AssessmentSection = {
 								},
 								{
 									value: "b",
-									label: "Only scorer-mode events; no resource telemetry is emitted.",
+									label:
+										"Only scorer-mode events; no resource telemetry is emitted.",
 									correct: false,
 								},
 								{

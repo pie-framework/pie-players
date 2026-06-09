@@ -1,5 +1,32 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 0.3.50
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.50
+  - @pie-players/pie-theme@0.3.50
+
+## 0.3.49
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.49
+  - @pie-players/pie-theme@0.3.49
+
+## 0.3.48
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.48
+  - @pie-players/pie-theme@0.3.48
+
 ## 0.3.47
 
 ### Patch Changes

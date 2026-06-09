@@ -22,7 +22,11 @@ describe("test attempt session adapter", () => {
 				currentItemIndex: 1,
 				visitedItemIdentifiers: ["item-1"],
 				itemSessions: {
-					"item-1": { id: "pie-session-1", data: [{ value: "A" }], complete: false },
+					"item-1": {
+						id: "pie-session-1",
+						data: [{ value: "A" }],
+						complete: false,
+					},
 				},
 			},
 		});

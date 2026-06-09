@@ -126,11 +126,7 @@ function applyReadinessUpdate(
 	// Canonical `loading-complete` emission. One-shot per cohort, gated
 	// on the readiness signals indicating every item has finished
 	// loading.
-	if (
-		detail.allLoadingComplete &&
-		state.cohort &&
-		!loadingCompleteEmitted
-	) {
+	if (detail.allLoadingComplete && state.cohort && !loadingCompleteEmitted) {
 		loadingCompleteEmitted = true;
 		outputs.push({
 			kind: "loading-complete",

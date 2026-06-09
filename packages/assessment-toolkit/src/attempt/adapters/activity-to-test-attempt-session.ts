@@ -58,22 +58,24 @@ function nowIso(): string {
 
 function getItemIdentifier(itemRef: PieBackendActivityItemRef): string | null {
 	return (
-		itemRef.identifier ||
-		itemRef.item?.identifier ||
-		itemRef.item?.id ||
-		null
+		itemRef.identifier || itemRef.item?.identifier || itemRef.item?.id || null
 	);
 }
 
-function resolveItemIdentifiers(args: MapActivityToTestAttemptSessionArgs): string[] {
-	const refs = args.itemRefs || args.activityDefinition?.assessmentItemRefs || [];
+function resolveItemIdentifiers(
+	args: MapActivityToTestAttemptSessionArgs,
+): string[] {
+	const refs =
+		args.itemRefs || args.activityDefinition?.assessmentItemRefs || [];
 	const identifiers = refs
 		.map((itemRef) => getItemIdentifier(itemRef))
 		.filter((itemIdentifier): itemIdentifier is string => !!itemIdentifier);
 	return Array.from(new Set(identifiers));
 }
 
-function resolveAssessmentId(args: MapActivityToTestAttemptSessionArgs): string {
+function resolveAssessmentId(
+	args: MapActivityToTestAttemptSessionArgs,
+): string {
 	return (
 		args.assessmentId ||
 		args.activityDefinition?.assessmentId ||
@@ -118,7 +120,8 @@ function mapItemSessions(
 			const pieSessionId =
 				typeof rawSession.id === "string" ? rawSession.id : undefined;
 			const attemptCount =
-				typeof rawSession.attemptCount === "number" && rawSession.attemptCount > 0
+				typeof rawSession.attemptCount === "number" &&
+				rawSession.attemptCount > 0
 					? rawSession.attemptCount
 					: pieSessionId
 						? 1
@@ -128,9 +131,13 @@ function mapItemSessions(
 					? rawSession.isCompleted
 					: Boolean(rawSession.complete);
 			const startedAt =
-				typeof rawSession.startedAt === "string" ? rawSession.startedAt : undefined;
+				typeof rawSession.startedAt === "string"
+					? rawSession.startedAt
+					: undefined;
 			const updatedAt =
-				typeof rawSession.updatedAt === "string" ? rawSession.updatedAt : undefined;
+				typeof rawSession.updatedAt === "string"
+					? rawSession.updatedAt
+					: undefined;
 			const completedAt =
 				typeof rawSession.completedAt === "string"
 					? rawSession.completedAt
@@ -235,7 +242,9 @@ export function buildActivitySessionItemUpdate(
 			visitedItemIdentifiers: [
 				...testAttemptSession.navigationState.visitedItemIdentifiers,
 			],
-			itemSessions: itemSession?.session ? { [itemIdentifier]: itemSession.session } : {},
+			itemSessions: itemSession?.session
+				? { [itemIdentifier]: itemSession.session }
+				: {},
 		},
 	};
 }

@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
-import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	readFileSync,
+	readdirSync,
+	realpathSync,
+} from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -27,7 +33,9 @@ const fail = (message) => {
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
 if (!existsSync(SOURCE_MANIFEST)) {
-	fail(`Missing source-of-truth manifest: ${path.relative(ROOT, SOURCE_MANIFEST)}`);
+	fail(
+		`Missing source-of-truth manifest: ${path.relative(ROOT, SOURCE_MANIFEST)}`,
+	);
 }
 
 const sourceManifest = readJson(SOURCE_MANIFEST);
@@ -154,7 +162,11 @@ if (existsSync(nodeModulesDir)) {
 		}
 	}
 
-	const rootLink = path.join(nodeModulesDir, "@pie-lib", "math-rendering-module");
+	const rootLink = path.join(
+		nodeModulesDir,
+		"@pie-lib",
+		"math-rendering-module",
+	);
 	if (existsSync(rootLink)) {
 		const stat = lstatSync(rootLink);
 		if (stat.isSymbolicLink()) {

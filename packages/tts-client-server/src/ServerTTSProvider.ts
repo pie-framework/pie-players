@@ -108,7 +108,8 @@ function parseAssetUrl(
 	}
 	try {
 		const base =
-			typeof config.apiEndpoint === "string" && /^https?:\/\//i.test(config.apiEndpoint)
+			typeof config.apiEndpoint === "string" &&
+			/^https?:\/\//i.test(config.apiEndpoint)
 				? config.apiEndpoint
 				: undefined;
 		const parsed = base ? new URL(rawUrl, base) : new URL(rawUrl);
@@ -132,7 +133,10 @@ function isOriginTrustedForAuth(
 ): boolean {
 	const configured = Array.isArray(config.assetOrigins)
 		? config.assetOrigins
-				.filter((value): value is string => typeof value === "string" && value.length > 0)
+				.filter(
+					(value): value is string =>
+						typeof value === "string" && value.length > 0,
+				)
 				.map((value) => {
 					try {
 						return new URL(value).origin;
@@ -340,7 +344,10 @@ const resolveValidationMode = (
 };
 
 const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
-	const providerOptions = (config.providerOptions || {}) as Record<string, unknown>;
+	const providerOptions = (config.providerOptions || {}) as Record<
+		string,
+		unknown
+	>;
 	if (typeof providerOptions.speedRate === "string") {
 		return providerOptions.speedRate;
 	}
@@ -350,7 +357,9 @@ const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
 	return "medium";
 };
 
-const parseJSONLSpeechMarks = (raw: string): NormalizedSynthesisResult["speechMarks"] => {
+const parseJSONLSpeechMarks = (
+	raw: string,
+): NormalizedSynthesisResult["speechMarks"] => {
 	const marks: NormalizedSynthesisResult["speechMarks"] = [];
 	let fallbackIndex = 0;
 	const lines = raw
@@ -377,7 +386,7 @@ const parseJSONLSpeechMarks = (raw: string): NormalizedSynthesisResult["speechMa
 			const start = explicitStart ?? fallbackIndex;
 			const computedEnd =
 				explicitEnd ??
-				(start + Math.max(1, value.length || String(parsed.value || "").length));
+				start + Math.max(1, value.length || String(parsed.value || "").length);
 			fallbackIndex = Math.max(computedEnd + 1, fallbackIndex);
 			marks.push({
 				time,
@@ -416,8 +425,7 @@ const parseInlineSpeechMarks = (
 				? entry.end
 				: null;
 		const start = explicitStart ?? fallbackIndex;
-		const end =
-			explicitEnd ?? (start + Math.max(1, value.length || 1));
+		const end = explicitEnd ?? start + Math.max(1, value.length || 1);
 		fallbackIndex = Math.max(fallbackIndex, end + 1);
 		marks.push({ time, type, start, end, value });
 	}
@@ -436,8 +444,10 @@ const pieAdapter: TransportAdapter = {
 		return endpointMode === "rootPost" ? base : `${base}/synthesize`;
 	},
 	buildRequestBody: (text, config) => {
-		const providerOptions = (config.providerOptions ||
-			{}) as Record<string, unknown>;
+		const providerOptions = (config.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
 		const engine =
 			typeof config.engine === "string"
 				? config.engine
@@ -495,7 +505,10 @@ const customAdapter: TransportAdapter = {
 		return endpointMode === "synthesizePath" ? `${base}/synthesize` : base;
 	},
 	buildRequestBody: (text, config) => {
-		const providerOptions = (config.providerOptions || {}) as Record<string, unknown>;
+		const providerOptions = (config.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
 		const langId =
 			typeof providerOptions.lang_id === "string"
 				? providerOptions.lang_id

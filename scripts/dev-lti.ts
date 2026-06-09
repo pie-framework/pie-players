@@ -80,7 +80,9 @@ if (!existsSync(svelteKitTsconfigPath)) {
 if (!shouldRebuild) {
 	const missingArtifacts = getMissingDistArtifacts();
 	if (missingArtifacts.length > 0) {
-		console.error("[dev:lti] Missing package build artifacts required by LTI demos:");
+		console.error(
+			"[dev:lti] Missing package build artifacts required by LTI demos:",
+		);
 		for (const artifact of missingArtifacts) {
 			console.error(`  - ${artifact}`);
 		}

@@ -5,11 +5,7 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const PACKAGES_DIR = path.join(ROOT, "packages");
-const INVENTORY_PATH = path.join(
-	ROOT,
-	"docs",
-	"CUSTOM_ELEMENTS_INVENTORY.md",
-);
+const INVENTORY_PATH = path.join(ROOT, "docs", "CUSTOM_ELEMENTS_INVENTORY.md");
 
 const hasArg = (flag) => process.argv.includes(flag);
 const readText = (filePath) => readFileSync(filePath, "utf8");
@@ -73,7 +69,9 @@ const discoverCustomElementPackages = () => {
 		if (customElementSvelteFiles.length === 0) continue;
 
 		const tags = [
-			...new Set(customElementSvelteFiles.flatMap((f) => getTagsFromSvelteFile(f))),
+			...new Set(
+				customElementSvelteFiles.flatMap((f) => getTagsFromSvelteFile(f)),
+			),
 		];
 		discovered.push({
 			pkgDir,
@@ -82,9 +80,7 @@ const discoverCustomElementPackages = () => {
 			tags,
 		});
 	}
-	return discovered.sort((a, b) =>
-		rel(a.pkgDir).localeCompare(rel(b.pkgDir)),
-	);
+	return discovered.sort((a, b) => rel(a.pkgDir).localeCompare(rel(b.pkgDir)));
 };
 
 const validatePackage = (pkgInfo) => {
@@ -125,7 +121,9 @@ const validatePackage = (pkgInfo) => {
 	if (!pkg.jsdelivr) failures.push('missing "jsdelivr"');
 
 	const files = Array.isArray(pkg.files) ? pkg.files : [];
-	const hasDistInFiles = files.some((f) => f === "dist" || f.startsWith("dist/"));
+	const hasDistInFiles = files.some(
+		(f) => f === "dist" || f.startsWith("dist/"),
+	);
 	if (!hasDistInFiles) {
 		failures.push('"files" must include dist artifacts');
 	}
@@ -187,7 +185,10 @@ const writeInventory = (entries) => {
 	];
 
 	for (const entry of entries) {
-		const svelteConfigPath = path.join(entry.pkgInfo.pkgDir, "svelte.config.js");
+		const svelteConfigPath = path.join(
+			entry.pkgInfo.pkgDir,
+			"svelte.config.js",
+		);
 		const hasSvelteConfig = existsSync(svelteConfigPath);
 		const scripts = entry.pkg?.scripts ?? {};
 		const hasEntryFields =
@@ -227,7 +228,9 @@ const run = () => {
 
 	if (hasArg("--write-inventory")) {
 		writeInventory(results);
-		console.log(`[check-custom-elements] Wrote inventory: ${rel(INVENTORY_PATH)}`);
+		console.log(
+			`[check-custom-elements] Wrote inventory: ${rel(INVENTORY_PATH)}`,
+		);
 	}
 
 	const failing = results.filter((r) => r.failures.length > 0);
@@ -236,7 +239,9 @@ const run = () => {
 			`[check-custom-elements] Found ${failing.length} package(s) with custom-element compliance issues`,
 		);
 		for (const f of failing) {
-			console.error(`\n- ${f.pkg?.name ?? rel(f.pkgInfo.pkgDir)} (${rel(f.pkgInfo.pkgDir)})`);
+			console.error(
+				`\n- ${f.pkg?.name ?? rel(f.pkgInfo.pkgDir)} (${rel(f.pkgInfo.pkgDir)})`,
+			);
 			for (const issue of f.failures) {
 				console.error(`  - ${issue}`);
 			}

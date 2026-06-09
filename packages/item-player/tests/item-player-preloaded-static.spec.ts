@@ -3,12 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const DEMO_ID = "multiple-choice-radio-simple";
-const PRELOADED_DELIVERY_PATH =
-	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=preloaded`;
-const IIFE_DELIVERY_PATH =
-	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=iife`;
-const ESM_DELIVERY_PATH =
-	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=esm`;
+const PRELOADED_DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=preloaded`;
+const IIFE_DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=iife`;
+const ESM_DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=esm`;
 const DELIVERY_PROMPT = "Which is the largest planet in our solar system?";
 const SESSION_ENTRY_ID = "2";
 
@@ -23,7 +20,9 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 	const panel = page.locator("pie-item-player-session-debugger");
 	const sessionTab = page.getByRole("tab", { name: "Session" });
 	if (!(await sessionTab.isVisible().catch(() => false))) {
-		await page.getByRole("button", { name: "Toggle item session panel" }).click();
+		await page
+			.getByRole("button", { name: "Toggle item session panel" })
+			.click();
 	}
 	await expect(sessionTab).toBeVisible();
 	await sessionTab.click();
@@ -44,7 +43,10 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 	throw new Error("Session JSON did not become parseable in time");
 }
 
-async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise<void> {
+async function assertMediaRetryBridge(
+	page: Page,
+	deliveryPath: string,
+): Promise<void> {
 	const audioFixturePath = join(
 		import.meta.dirname,
 		"../../../apps/section-demos/static/demo-assets/resource-observability/signal-chime.wav",
@@ -65,7 +67,9 @@ async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise
 	});
 
 	await page.goto(deliveryPath, { waitUntil: "networkidle" });
-	await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+	await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+		timeout: 20_000,
+	});
 
 	await page.evaluate(() => {
 		(window as any).__pieMediaRetryReadyCount = 0;
@@ -117,8 +121,7 @@ async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise
 			"#pie-audio-retry-fixture [data-testid='audio-retry-button']",
 		);
 		return {
-			disabled:
-				button instanceof HTMLButtonElement ? button.disabled : true,
+			disabled: button instanceof HTMLButtonElement ? button.disabled : true,
 			readyCount: Number((window as any).__pieMediaRetryReadyCount || 0),
 		};
 	});
@@ -132,7 +135,9 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.route("**/bundles/**", async (route) => {
 			const url = route.request().url();
@@ -198,7 +203,9 @@ test.describe("item-player strategy regressions", () => {
 		}, freshPrompt);
 
 		const fixture = page.locator("#pie-stale-load-order-fixture");
-		await expect(fixture.getByText(freshPrompt)).toBeVisible({ timeout: 20_000 });
+		await expect(fixture.getByText(freshPrompt)).toBeVisible({
+			timeout: 20_000,
+		});
 		await page.waitForTimeout(800);
 
 		const staleState = await page.evaluate(() => {
@@ -208,8 +215,11 @@ test.describe("item-player strategy regressions", () => {
 			if (!host) {
 				return { errorText: "missing-host", renderedPrompt: null };
 			}
-			const errorText = host.querySelector(".pie-player-error p")?.textContent || null;
-			const renderedPrompt = host.textContent?.includes("Fresh iife config should win")
+			const errorText =
+				host.querySelector(".pie-player-error p")?.textContent || null;
+			const renderedPrompt = host.textContent?.includes(
+				"Fresh iife config should win",
+			)
 				? "fresh"
 				: host.textContent?.includes("Stale iife config")
 					? "stale"
@@ -221,7 +231,9 @@ test.describe("item-player strategy regressions", () => {
 		expect(staleState.renderedPrompt).toBe("fresh");
 	});
 
-	test("renders and updates session using preloaded bundles", async ({ page }) => {
+	test("renders and updates session using preloaded bundles", async ({
+		page,
+	}) => {
 		const bundleRequests: string[] = [];
 		const esmRequests: string[] = [];
 		page.on("request", (request) => {
@@ -232,7 +244,9 @@ test.describe("item-player strategy regressions", () => {
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
 
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page
 			.locator('label[for^="choice-"]')
@@ -257,7 +271,9 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		const bundledVersionTag = await page.evaluate(() => {
 			const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS as
@@ -265,7 +281,9 @@ test.describe("item-player strategy regressions", () => {
 				| undefined;
 			const bundledSpec = preloadedElements?.["@pie-element/multiple-choice"];
 			if (!bundledSpec) {
-				throw new Error("Expected preloaded mapping for @pie-element/multiple-choice");
+				throw new Error(
+					"Expected preloaded mapping for @pie-element/multiple-choice",
+				);
 			}
 			const match = bundledSpec.match(/@(\d+\.\d+\.\d+)$/);
 			if (!match?.[1]) {
@@ -316,7 +334,8 @@ test.describe("item-player strategy regressions", () => {
 				};
 			}
 			const host = fixture.querySelector("pie-item-player");
-			const errorText = host?.querySelector(".pie-player-error p")?.textContent || null;
+			const errorText =
+				host?.querySelector(".pie-player-error p")?.textContent || null;
 			return {
 				hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
 				hasStaleVersionTag: !!fixture.querySelector(
@@ -341,7 +360,9 @@ test.describe("item-player strategy regressions", () => {
 		});
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 		const baselineCount = bundleRequests.length;
 
 		await page.evaluate(() => {
@@ -368,14 +389,15 @@ test.describe("item-player strategy regressions", () => {
 						],
 					},
 				],
-				markup: '<pie-runtime-missing id="missing-tags-model"></pie-runtime-missing>',
+				markup:
+					'<pie-runtime-missing id="missing-tags-model"></pie-runtime-missing>',
 			};
 			fixture.appendChild(player);
 		});
 
-		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
-			{ timeout: 20_000 },
-		);
+		await expect(
+			page.getByText("Error loading elements (preloaded-readiness):"),
+		).toBeVisible({ timeout: 20_000 });
 		expect(bundleRequests.length).toBe(baselineCount);
 	});
 
@@ -383,7 +405,9 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.evaluate(() => {
 			const fixture = document.createElement("div");
@@ -416,15 +440,16 @@ test.describe("item-player strategy regressions", () => {
 							],
 						},
 					],
-					markup: '<pie-passage-missing id="missing-passage-model"></pie-passage-missing>',
+					markup:
+						'<pie-passage-missing id="missing-passage-model"></pie-passage-missing>',
 				},
 			};
 			fixture.appendChild(player);
 		});
 
-		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
-			{ timeout: 20_000 },
-		);
+		await expect(
+			page.getByText("Error loading elements (preloaded-readiness):"),
+		).toBeVisible({ timeout: 20_000 });
 	});
 
 	test("legacy disableBundler maps to preloaded readiness without runtime loading", async ({
@@ -437,7 +462,9 @@ test.describe("item-player strategy regressions", () => {
 		});
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 		const baselineCount = bundleRequests.length;
 
 		await page.evaluate(() => {
@@ -470,9 +497,9 @@ test.describe("item-player strategy regressions", () => {
 			fixture.appendChild(player);
 		});
 
-		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
-			{ timeout: 20_000 },
-		);
+		await expect(
+			page.getByText("Error loading elements (preloaded-readiness):"),
+		).toBeVisible({ timeout: 20_000 });
 		expect(bundleRequests.length).toBe(baselineCount);
 	});
 
@@ -490,7 +517,9 @@ test.describe("item-player strategy regressions", () => {
 		});
 
 		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.evaluate(() => {
 			const fixture = document.createElement("div");
@@ -525,7 +554,9 @@ test.describe("item-player strategy regressions", () => {
 		await expect
 			.poll(() => requestedUrls.length, { timeout: 20_000 })
 			.toBeGreaterThan(0);
-		expect(requestedUrls[0]).toContain("https://legacy-bundles.example/bundles/");
+		expect(requestedUrls[0]).toContain(
+			"https://legacy-bundles.example/bundles/",
+		);
 	});
 
 	// NOTE: the previous "preloaded fallback can be explicitly opted in" test
@@ -539,7 +570,9 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.evaluate(() => {
 			const fixture = document.createElement("div");
@@ -564,12 +597,16 @@ test.describe("item-player strategy regressions", () => {
 			fixture.appendChild(player);
 		});
 
-		await expect(page.getByText("Error loading elements (validate-config):")).toBeVisible({
+		await expect(
+			page.getByText("Error loading elements (validate-config):"),
+		).toBeVisible({
 			timeout: 20_000,
 		});
 	});
 
-	test("iife emits media-retry-ready after first audio load failure", async ({ page }) => {
+	test("iife emits media-retry-ready after first audio load failure", async ({
+		page,
+	}) => {
 		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
 	});
 
@@ -583,7 +620,9 @@ test.describe("item-player strategy regressions", () => {
 		});
 
 		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.evaluate(() => {
 			const fixture = document.createElement("div");
@@ -606,7 +645,8 @@ test.describe("item-player strategy regressions", () => {
 						],
 					},
 				],
-				markup: '<pie-multiple-choice id="hosted-mode-check"></pie-multiple-choice>',
+				markup:
+					'<pie-multiple-choice id="hosted-mode-check"></pie-multiple-choice>',
 			};
 
 			const standalone = document.createElement("pie-item-player") as any;
@@ -634,14 +674,18 @@ test.describe("item-player strategy regressions", () => {
 			.toBe(true);
 	});
 
-test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
+	test.skip("esm emits media-retry-ready after first audio load failure", async ({
+		page,
+	}) => {
 		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
 	});
 
-	test("on runtime support check does not fail when metadata is missing", async ({
+	test("on runtime support check does not probe metadata for iife", async ({
 		page,
 	}) => {
+		let runtimeSupportRequests = 0;
 		await page.route("**/runtime-support*", async (route) => {
+			runtimeSupportRequests += 1;
 			await route.fulfill({
 				status: 404,
 				contentType: "application/javascript",
@@ -654,7 +698,9 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 		// relied on `allowPreloadedFallbackLoad` to coerce preloaded into
 		// fetching a bundle; that escape hatch no longer exists.)
 		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.evaluate(() => {
 			const fixture = document.createElement("div");
@@ -692,10 +738,16 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 		await expect(page.getByText("Strict runtime support prompt")).toBeVisible({
 			timeout: 20_000,
 		});
-		await expect(page.getByText("Missing runtime-support metadata")).not.toBeVisible();
+		await page.waitForTimeout(400);
+		expect(runtimeSupportRequests).toBe(0);
+		await expect(
+			page.getByText("Missing runtime-support metadata"),
+		).not.toBeVisible();
 	});
 
-	test("off runtime support check does not request metadata", async ({ page }) => {
+	test("off runtime support check does not request metadata", async ({
+		page,
+	}) => {
 		let runtimeSupportRequests = 0;
 		await page.route("**/runtime-support*", async (route) => {
 			runtimeSupportRequests += 1;
@@ -705,7 +757,9 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 		// Use the IIFE strategy so the loader actually touches runtime-support
 		// when the option is active. (See the "strict" test above for why.)
 		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.evaluate(() => {
 			const fixture = document.createElement("div");
@@ -747,9 +801,13 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 		expect(runtimeSupportRequests).toBe(0);
 	});
 
-	test("metadata unsupported does not alter unrelated load errors", async ({ page }) => {
+	test("metadata unsupported does not alter unrelated load errors", async ({
+		page,
+	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await page.route("**/runtime-support*", async (route) => {
 			await route.fulfill({
@@ -798,14 +856,17 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 						],
 					},
 				],
-				markup: '<pie-hint-mode id="hint-runtime-support-model"></pie-hint-mode>',
+				markup:
+					'<pie-hint-mode id="hint-runtime-support-model"></pie-hint-mode>',
 			};
 			fixture.appendChild(player);
 		});
 
-		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
-			{ timeout: 20_000 },
-		);
-		await expect(page.getByText("Missing runtime-support metadata")).not.toBeVisible();
+		await expect(
+			page.getByText("Error loading elements (preloaded-readiness):"),
+		).toBeVisible({ timeout: 20_000 });
+		await expect(
+			page.getByText("Missing runtime-support metadata"),
+		).not.toBeVisible();
 	});
 });

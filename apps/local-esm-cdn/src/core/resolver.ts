@@ -53,30 +53,24 @@ export async function resolveEntryFile(
 ): Promise<string | null> {
 	const [scope, name] = pkg.split("/") as [string, string];
 
-	let base: string;
+	let bases: string[];
 	if (scope === "@pie-element") {
 		// From pie-elements-ng repo
-		base = path.join(
-			pieElementsNgRoot,
-			"packages",
-			"elements-react",
-			name,
-			"dist",
+		bases = ["elements-react", "elements-svelte"].map((elementWorkspace) =>
+			path.join(pieElementsNgRoot, "packages", elementWorkspace, name, "dist"),
 		);
 	} else if (scope === "@pie-lib") {
 		// From pie-elements-ng repo
-		base = path.join(pieElementsNgRoot, "packages", "lib-react", name, "dist");
+		bases = ["lib-react", "lib-svelte"].map((libWorkspace) =>
+			path.join(pieElementsNgRoot, "packages", libWorkspace, name, "dist"),
+		);
 	} else if (scope === "@pie-elements-ng") {
 		// @pie-elements-ng/shared-* packages are in packages/shared/
 		// e.g. @pie-elements-ng/shared-math-rendering -> packages/shared/math-rendering
 		const packageName = name.replace(/^shared-/, "");
-		base = path.join(
-			pieElementsNgRoot,
-			"packages",
-			"shared",
-			packageName,
-			"dist",
-		);
+		bases = [
+			path.join(pieElementsNgRoot, "packages", "shared", packageName, "dist"),
+		];
 	} else {
 		return null;
 	}
@@ -111,71 +105,73 @@ export async function resolveEntryFile(
 		return list;
 	};
 
-	if (!normalizedSubpath) {
-		// Try to read package.json to get the correct entry point
-		const packageJsonPath = path.join(path.dirname(base), "package.json");
-		try {
-			const packageJsonContent = await readFile(packageJsonPath, "utf-8");
-			const packageJson = JSON.parse(packageJsonContent);
+	for (const base of bases) {
+		if (!normalizedSubpath) {
+			// Try to read package.json to get the correct entry point
+			const packageJsonPath = path.join(path.dirname(base), "package.json");
+			try {
+				const packageJsonContent = await readFile(packageJsonPath, "utf-8");
+				const packageJson = JSON.parse(packageJsonContent);
 
-			// Check exports field first (modern approach)
-			if (packageJson.exports?.["."]) {
-				const defaultExport =
-					typeof packageJson.exports["."] === "string"
-						? packageJson.exports["."]
-						: packageJson.exports["."].default;
+				// Check exports field first (modern approach)
+				if (packageJson.exports?.["."]) {
+					const defaultExport =
+						typeof packageJson.exports["."] === "string"
+							? packageJson.exports["."]
+							: packageJson.exports["."].default;
 
-				if (defaultExport) {
-					// Convert relative path to absolute
-					const entryPath = path.join(path.dirname(base), defaultExport);
-					if (await fileExists(entryPath)) {
-						return entryPath;
+					if (defaultExport) {
+						// Convert relative path to absolute
+						const entryPath = path.join(path.dirname(base), defaultExport);
+						if (await fileExists(entryPath)) {
+							return entryPath;
+						}
 					}
 				}
+
+				// Fallback to main field
+				if (packageJson.main) {
+					const mainPath = path.join(path.dirname(base), packageJson.main);
+					if (await fileExists(mainPath)) {
+						return mainPath;
+					}
+				}
+			} catch (err) {
+				// If package.json doesn't exist or can't be read, continue with fallback candidates
 			}
 
-			// Fallback to main field
-			if (packageJson.main) {
-				const mainPath = path.join(path.dirname(base), packageJson.main);
-				if (await fileExists(mainPath)) {
-					return mainPath;
+			// Fallback candidates
+			const rootCandidates = [
+				path.join(base, "index.js"),
+				path.join(base, "index.mjs"),
+			];
+			for (const c of rootCandidates) {
+				if (await fileExists(c)) return c;
+			}
+		} else {
+			const candidates = buildCandidates(base, normalizedSubpath);
+			for (const c of candidates) {
+				if (await fileExists(c)) return c;
+			}
+
+			// Controller/configure fallback for controller-local imports (e.g. defaults.js, utils.js)
+			if (!normalizedSubpath.startsWith("controller/")) {
+				const controllerCandidates = buildCandidates(
+					base,
+					path.join("controller", normalizedSubpath),
+				);
+				for (const c of controllerCandidates) {
+					if (await fileExists(c)) return c;
 				}
 			}
-		} catch (err) {
-			// If package.json doesn't exist or can't be read, continue with fallback candidates
-		}
-
-		// Fallback candidates
-		const rootCandidates = [
-			path.join(base, "index.js"),
-			path.join(base, "index.mjs"),
-		];
-		for (const c of rootCandidates) {
-			if (await fileExists(c)) return c;
-		}
-	} else {
-		const candidates = buildCandidates(base, normalizedSubpath);
-		for (const c of candidates) {
-			if (await fileExists(c)) return c;
-		}
-
-		// Controller/configure fallback for controller-local imports (e.g. defaults.js, utils.js)
-		if (!normalizedSubpath.startsWith("controller/")) {
-			const controllerCandidates = buildCandidates(
-				base,
-				path.join("controller", normalizedSubpath),
-			);
-			for (const c of controllerCandidates) {
-				if (await fileExists(c)) return c;
-			}
-		}
-		if (!normalizedSubpath.startsWith("configure/")) {
-			const configureCandidates = buildCandidates(
-				base,
-				path.join("configure", normalizedSubpath),
-			);
-			for (const c of configureCandidates) {
-				if (await fileExists(c)) return c;
+			if (!normalizedSubpath.startsWith("configure/")) {
+				const configureCandidates = buildCandidates(
+					base,
+					path.join("configure", normalizedSubpath),
+				);
+				for (const c of configureCandidates) {
+					if (await fileExists(c)) return c;
+				}
 			}
 		}
 	}

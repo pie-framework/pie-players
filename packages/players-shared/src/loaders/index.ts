@@ -53,8 +53,19 @@ export {
 	assertRegistered,
 	ensureRegistered,
 } from "./element-loader.js";
-export type { EsmBackend, ViewConfig } from "./esm-adapter.js";
-export { BUILT_IN_VIEWS, createEsmBackend } from "./esm-adapter.js";
+export type {
+	BuiltInEsmCdnProviderName,
+	EsmBackend,
+	EsmCdnProvider,
+	EsmCdnProviderName,
+	EsmCdnProviderOption,
+	ViewConfig,
+} from "./esm-adapter.js";
+export {
+	BUILT_IN_VIEWS,
+	createEsmBackend,
+	mapEsmViewElements,
+} from "./esm-adapter.js";
 export type {
 	IifeBackend,
 	IifeBundleRetryStatus,

@@ -59,7 +59,9 @@ export interface FrameworkErrorReporter {
  * class itself. Keeping the class package-internal lets us iterate on
  * its shape without a public-API change.
  */
-export class FrameworkErrorBus implements FrameworkErrorPort, FrameworkErrorReporter {
+export class FrameworkErrorBus
+	implements FrameworkErrorPort, FrameworkErrorReporter
+{
 	private readonly listeners = new Set<FrameworkErrorListener>();
 
 	subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void {
@@ -78,10 +80,7 @@ export class FrameworkErrorBus implements FrameworkErrorPort, FrameworkErrorRepo
 			try {
 				listener(model);
 			} catch (error) {
-				console.warn(
-					"[FrameworkErrorBus] listener failed:",
-					error,
-				);
+				console.warn("[FrameworkErrorBus] listener failed:", error);
 			}
 		}
 	}

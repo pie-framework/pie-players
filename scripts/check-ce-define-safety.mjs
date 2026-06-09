@@ -23,9 +23,7 @@ const DIRECT_DEFINE_PATTERN = /customElements\.define\s*\(/g;
 const LITERAL_DEFINE_PATTERN =
 	/(?:defineCustomElementSafely|customElements\.define)\(\s*["']([^"']+)["']/g;
 const stripComments = (value) =>
-	value
-		.replace(/\/\*[\s\S]*?\*\//g, "")
-		.replace(/(^|[^:])\/\/.*$/gm, "$1");
+	value.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const shouldSkipDir = (name) =>
 	name === "node_modules" ||

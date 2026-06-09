@@ -1,16 +1,24 @@
-import { GoogleCloudTTSProvider } from "@pie-players/tts-server-google";
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
 
 type PollyEngine = "neural" | "standard";
 type PollyOutputFormat = "mp3" | "ogg" | "pcm";
 type PollySpeechMarkType = "word" | "sentence" | "ssml";
 
-const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
-let googleProvider: GoogleCloudTTSProvider | null = null;
+// Load the Google provider lazily via a variable specifier + `@vite-ignore`
+// so its native `google-gax` dependency (which uses top-level `__dirname`)
+// stays external instead of being bundled into the ESM server build, where
+// `__dirname` is undefined. Mirrors apps/section-demos.
+const GOOGLE_TTS_PROVIDER_PACKAGE = "@pie-players/tts-server-google";
 
-async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvider> {
+const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
+let googleProvider: GoogleCloudTTSProviderType | null = null;
+
+async function getPollyProvider(
+	engine: PollyEngine,
+): Promise<PollyServerProvider> {
 	const existing = pollyProviders.get(engine);
 	if (existing) return existing;
 	if (
@@ -40,7 +48,7 @@ async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvide
 	return provider;
 }
 
-async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
+async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	if (googleProvider) return googleProvider;
 	const hasApiKey = Boolean(process.env.GOOGLE_API_KEY);
 	const hasServiceAccount = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
@@ -49,17 +57,21 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 			"Google Cloud credentials not configured. Set GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS.",
 		);
 	}
-	googleProvider = new GoogleCloudTTSProvider();
+	const { GoogleCloudTTSProvider } = await import(
+		/* @vite-ignore */ GOOGLE_TTS_PROVIDER_PACKAGE
+	);
+	const provider: GoogleCloudTTSProviderType = new GoogleCloudTTSProvider();
 	const credentials = hasApiKey
 		? { apiKey: process.env.GOOGLE_API_KEY! }
 		: process.env.GOOGLE_APPLICATION_CREDENTIALS;
-	await googleProvider.initialize({
+	await provider.initialize({
 		projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
 		credentials,
 		defaultVoice: "en-US-Wavenet-A",
 		voiceType: "wavenet",
 	});
-	return googleProvider;
+	googleProvider = provider;
+	return provider;
 }
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -108,8 +120,9 @@ export const POST: RequestHandler = async ({ request }) => {
 					? (format as PollyOutputFormat)
 					: undefined;
 			const requestedSpeechMarkTypes = Array.isArray(speechMarkTypes)
-				? speechMarkTypes.filter((entry): entry is PollySpeechMarkType =>
-						entry === "word" || entry === "sentence" || entry === "ssml",
+				? speechMarkTypes.filter(
+						(entry): entry is PollySpeechMarkType =>
+							entry === "word" || entry === "sentence" || entry === "ssml",
 					)
 				: undefined;
 			const polly = await getPollyProvider(requestedEngine);
@@ -133,7 +146,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json({
 			audio:
-				result.audio instanceof Buffer ? result.audio.toString("base64") : result.audio,
+				result.audio instanceof Buffer
+					? result.audio.toString("base64")
+					: result.audio,
 			contentType: result.contentType,
 			speechMarks: result.speechMarks,
 			metadata: result.metadata,

@@ -422,7 +422,9 @@ export class SectionRuntimeEngine {
 
 	getCanonicalItemId(itemId: string): string {
 		const map = this.registry.getCanonicalIdMap();
-		return map[itemId] || this.controller?.getCanonicalItemId?.(itemId) || itemId;
+		return (
+			map[itemId] || this.controller?.getCanonicalItemId?.(itemId) || itemId
+		);
 	}
 
 	handleContentRegistered(detail: RuntimeRegistrationDetail): void {

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/item-demos",
-	"version": "0.1.54",
+	"version": "0.1.57",
 	"description": "Progressive demos for PIE Item Player",
 	"type": "module",
 	"private": true,
@@ -9,12 +9,14 @@
 		"build": "svelte-kit sync && vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"test": "bun test src",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-instrumentation-debugger": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
 		"@tiptap/core": "^3.19.0",
 		"@tiptap/extension-code-block-lowlight": "^3.19.0",
 		"@tiptap/extension-document": "^3.19.0",

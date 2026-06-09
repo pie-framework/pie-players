@@ -36,6 +36,8 @@
 		languageCode?: string;
 		gender?: string;
 		quality?: string;
+		localService?: boolean;
+		default?: boolean;
 	};
 
 	type AvailabilityState = {
@@ -245,6 +247,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		voices: []
 	});
 	let currentPreviewAudio: HTMLAudioElement | null = null;
+	let currentBrowserPreviewUtterance: SpeechSynthesisUtterance | null = null;
+	let cleanupBrowserPreviewPlayback: (() => void) | null = null;
 	let previewPollingTimer: number | null = null;
 	let previewRunId = 0;
 	let activeCustomProviderElement = $state<Element | null>(null);
@@ -323,6 +327,103 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`);
 }
 
+function logBrowserPreview(event: string, payload?: Record<string, unknown>): void {
+	if (typeof console === "undefined") return;
+	if (payload) {
+		console.info(`${PREVIEW_DEBUG_PREFIX} browser:${event}`, payload);
+		return;
+	}
+	console.info(`${PREVIEW_DEBUG_PREFIX} browser:${event}`);
+}
+
+function normalizeLanguageCode(value: unknown): string {
+	return String(value || "").trim().toLowerCase();
+}
+
+function browserLanguage(): string {
+	if (typeof navigator === "undefined") return "en-us";
+	return normalizeLanguageCode(navigator.language || navigator.languages?.[0] || "en-US");
+}
+
+function findBrowserVoice(
+	voices: SpeechSynthesisVoice[],
+	preferredName: string | undefined,
+): SpeechSynthesisVoice | null {
+	if (preferredName) {
+		const explicit = voices.find((voice) => voice.name === preferredName);
+		if (explicit) return explicit;
+	}
+	const language = browserLanguage();
+	const languagePrefix = language.split("-")[0] || "en";
+	const matchesLanguage = (voice: SpeechSynthesisVoice) => {
+		const voiceLanguage = normalizeLanguageCode(voice.lang);
+		return voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`);
+	};
+	const ranked = [
+		(voice: SpeechSynthesisVoice) => voice.localService && matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) => voice.default && matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) => matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) => voice.localService,
+		(voice: SpeechSynthesisVoice) => voice.default,
+	];
+	for (const predicate of ranked) {
+		const voice = voices.find(predicate);
+		if (voice) return voice;
+	}
+	return voices[0] || null;
+}
+
+function shouldAssignBrowserVoice(voice: Pick<SpeechSynthesisVoice, "default">): boolean {
+	return !voice.default;
+}
+
+function browserVoiceMatchesLanguage(voice: Pick<DemoVoice, "languageCode">): boolean {
+	const language = browserLanguage();
+	const languagePrefix = language.split("-")[0] || "en";
+	const voiceLanguage = normalizeLanguageCode(voice.languageCode);
+	return voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`);
+}
+
+function isRecommendedBrowserVoice(voice: DemoVoice): boolean {
+	return Boolean(voice.localService && browserVoiceMatchesLanguage(voice));
+}
+
+function browserVoiceLabel(voice: DemoVoice): string {
+	const name = voice.name || voice.id || "Unnamed voice";
+	const metadata = [
+		voice.languageCode || "n/a",
+		voice.localService ? "local" : "remote",
+		voice.default ? "browser default" : ""
+	].filter(Boolean);
+	return `${name} (${metadata.join(", ")})`;
+}
+
+function browserVoiceIdentity(voice: DemoVoice): string {
+	return voice.name || voice.id || "";
+}
+
+function findBrowserDemoVoice(
+	voices: DemoVoice[],
+	preferredName: string | undefined,
+): DemoVoice | null {
+	if (preferredName) {
+		const explicit = voices.find((voice) => voice.name === preferredName);
+		if (explicit) return explicit;
+	}
+	const ranked = [
+		(voice: DemoVoice) => voice.localService && browserVoiceMatchesLanguage(voice),
+		(voice: DemoVoice) => voice.default && browserVoiceMatchesLanguage(voice),
+		(voice: DemoVoice) => browserVoiceMatchesLanguage(voice),
+		(voice: DemoVoice) => voice.localService,
+		(voice: DemoVoice) => voice.default,
+	];
+	for (const predicate of ranked) {
+		const voice = voices.find(predicate);
+		if (voice) return voice;
+	}
+	return voices[0] || null;
+}
+
 	function normalizeLayoutMode(value: unknown): TTSLayoutMode {
 		return TTS_LAYOUT_MODES.includes(value as TTSLayoutMode)
 			? (value as TTSLayoutMode)
@@ -361,6 +462,23 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 		() => normalizedCustomProviders.find((provider) => provider.id === activeTab) || null
 	);
 
+	const resolvedBrowserAutoVoice = $derived.by(() =>
+		findBrowserDemoVoice(browserState.voices, browserVoice || undefined)
+	);
+	const recommendedBrowserVoices = $derived.by(() =>
+		browserState.voices.filter((voice) => {
+			const identity = browserVoiceIdentity(voice);
+			return identity.length > 0 && isRecommendedBrowserVoice(voice);
+		})
+	);
+	const allBrowserVoices = $derived.by(() => {
+		const recommended = new Set(recommendedBrowserVoices.map(browserVoiceIdentity));
+		return browserState.voices.filter((voice) => {
+			const identity = browserVoiceIdentity(voice);
+			return identity.length > 0 && !recommended.has(identity);
+		});
+	});
+
 	function requestClose(): void {
 		dispatch("close");
 	}
@@ -392,6 +510,45 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 			detail: result?.detail || null,
 			voices: []
 		};
+	}
+
+	function waitForBrowserVoices(synth: SpeechSynthesis, timeoutMs = 1200): Promise<void> {
+		return new Promise<void>((resolve) => {
+			let settled = false;
+			const canUseEventTarget =
+				typeof synth.addEventListener === "function" &&
+				typeof synth.removeEventListener === "function";
+			const canUseHandler = !canUseEventTarget && "onvoiceschanged" in synth;
+			const previousHandler = canUseHandler ? synth.onvoiceschanged : null;
+			let assignedHandler = false;
+			let timeout: number;
+
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				window.clearTimeout(timeout);
+				if (canUseEventTarget) {
+					synth.removeEventListener("voiceschanged", onVoicesChanged);
+				} else if (assignedHandler && synth.onvoiceschanged === onVoicesChanged) {
+					synth.onvoiceschanged = previousHandler;
+				}
+				resolve();
+			};
+			const onVoicesChanged = (event?: Event) => {
+				if (!canUseEventTarget && typeof previousHandler === "function" && event) {
+					previousHandler.call(synth, event);
+				}
+				finish();
+			};
+
+			timeout = window.setTimeout(finish, timeoutMs);
+			if (canUseEventTarget) {
+				synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+			} else if (canUseHandler) {
+				synth.onvoiceschanged = onVoicesChanged;
+				assignedHandler = true;
+			}
+		});
 	}
 
 	function getCustomProviderOrThrow(providerId: string): CustomProviderDescriptor {
@@ -696,38 +853,17 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 			const synth = window.speechSynthesis;
 			let voices = synth.getVoices();
 			if (!voices.length) {
-				await new Promise<void>((resolve) => {
-					let settled = false;
-					const finish = () => {
-						if (settled) return;
-						settled = true;
-						resolve();
-					};
-					const timeout = window.setTimeout(finish, 1200);
-					synth.addEventListener(
-						"voiceschanged",
-						() => {
-							window.clearTimeout(timeout);
-							finish();
-						},
-						{ once: true }
-					);
-				});
+				await waitForBrowserVoices(synth);
 				voices = synth.getVoices();
 			}
 
 			const mappedVoices = voices.map((voice) => ({
 				id: voice.voiceURI || voice.name,
 				name: voice.name,
-				languageCode: voice.lang
+				languageCode: voice.lang,
+				localService: voice.localService,
+				default: voice.default
 			}));
-			if (browserVoice) {
-				const hasVoice = mappedVoices.some((voice) => (voice.name || "") === browserVoice);
-				if (!hasVoice) {
-					browserVoice = "";
-				}
-			}
-
 			browserState = {
 				checked: true,
 				loading: false,
@@ -1108,9 +1244,17 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 		clearPreviewTracking();
 		previewError = null;
 		previewNote = null;
-		if (typeof window !== "undefined" && "speechSynthesis" in window) {
+		cleanupBrowserPreviewPlayback?.();
+		cleanupBrowserPreviewPlayback = null;
+		if (
+			currentBrowserPreviewUtterance &&
+			typeof window !== "undefined" &&
+			"speechSynthesis" in window
+		) {
+			logBrowserPreview("cancel");
 			window.speechSynthesis.cancel();
 		}
+		currentBrowserPreviewUtterance = null;
 		if (currentPreviewAudio) {
 			currentPreviewAudio.pause();
 			currentPreviewAudio.src = "";
@@ -1352,28 +1496,75 @@ function normalizePreviewSpeechMarkOffsets(
 		if (previewMode === "ssml") {
 			throw new Error("SSML preview is not supported in the Browser backend.");
 		}
+		// Keep the speak path minimal. Calling speechSynthesis.cancel()/resume()
+		// around speak() wedges Chrome's engine (speaking=true, no events, no
+		// audio) until the browser is restarted; see the Chromium speech-synthesis
+		// bug reports. The reliable pattern is a plain speak() driven purely by the
+		// utterance lifecycle events, with a persistent reference to the utterance
+		// so it is not garbage-collected before onend fires.
 		const synth = window.speechSynthesis;
 		const utterance = new SpeechSynthesisUtterance(previewText.trim() || getSampleText("browser"));
+		currentBrowserPreviewUtterance = utterance;
+		cleanupBrowserPreviewPlayback = null;
 		utterance.rate = normalizeRate(browserRate);
 		utterance.pitch = normalizePitch(browserPitch);
-		if (browserVoice) {
-			const voice = synth.getVoices().find((entry) => entry.name === browserVoice);
-			if (voice) utterance.voice = voice;
+		const voices = synth.getVoices();
+		const resolvedVoice = findBrowserVoice(voices, browserVoice || undefined);
+		if (resolvedVoice && shouldAssignBrowserVoice(resolvedVoice)) {
+			utterance.voice = resolvedVoice;
 		}
-		utterance.onboundary = (event) => {
-			if ((event as any).name !== "word") return;
-			const charIndex = Number((event as any).charIndex || 0);
-			const token = tokenizePreviewText(previewText).find(
-				(entry) => charIndex >= entry.start && charIndex < entry.end
-			);
-			if (token) {
-				previewTrackIndex = token.start;
-				previewTrackLength = Math.max(1, token.end - token.start);
-			}
-		};
+		const tokens = tokenizePreviewText(previewText);
+		logBrowserPreview("prepare", {
+			textLength: utterance.text.length,
+			rate: utterance.rate,
+			pitch: utterance.pitch,
+			voice: browserVoice || "(default)",
+			selectedVoice: resolvedVoice?.name || "(none)",
+			selectedVoiceAssigned: utterance.voice !== null,
+			availableVoices: voices.length
+		});
 		await new Promise<void>((resolve, reject) => {
-			utterance.onend = () => resolve();
-			utterance.onerror = () => reject(new Error("Failed to play browser voice preview."));
+			let settled = false;
+			const finish = (callback: () => void) => {
+				if (settled) return;
+				settled = true;
+				if (currentBrowserPreviewUtterance === utterance) {
+					currentBrowserPreviewUtterance = null;
+				}
+				callback();
+			};
+			utterance.onstart = () => {
+				logBrowserPreview("start");
+				const firstToken = tokens[0];
+				if (!firstToken) return;
+				previewTrackIndex = firstToken.start;
+				previewTrackLength = Math.max(1, firstToken.end - firstToken.start);
+			};
+			utterance.onboundary = (event) => {
+				if ((event as any).name !== "word") return;
+				const charIndex = Number((event as any).charIndex || 0);
+				const token = tokens.find(
+					(entry) => charIndex >= entry.start && charIndex < entry.end
+				);
+				if (token) {
+					previewTrackIndex = token.start;
+					previewTrackLength = Math.max(1, token.end - token.start);
+				}
+			};
+			utterance.onend = () => {
+				logBrowserPreview("end");
+				finish(resolve);
+			};
+			utterance.onerror = (event) => {
+				const errorName = String((event as any)?.error || "");
+				logBrowserPreview("error", { error: errorName || "unknown" });
+				if (errorName === "interrupted" || errorName === "canceled") {
+					finish(resolve);
+					return;
+				}
+				finish(() => reject(new Error("Failed to play browser voice preview.")));
+			};
+			logBrowserPreview("speak");
 			synth.speak(utterance);
 		});
 	}
@@ -1402,7 +1593,12 @@ function normalizePreviewSpeechMarkOffsets(
 			previewError = "SSML preview is not supported in the Browser backend.";
 			return;
 		}
-		stopPreview();
+		if (isPreviewing || previewBackend || currentPreviewAudio || currentBrowserPreviewUtterance) {
+			stopPreview();
+		} else {
+			clearPreviewTracking();
+			previewNote = null;
+		}
 		const runId = ++previewRunId;
 		isPreviewing = true;
 		previewBackend = activeTab;
@@ -1663,7 +1859,16 @@ function normalizePreviewSpeechMarkOffsets(
 				onclick={requestClose}
 				aria-label="Close TTS settings"
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="pie-tts-dialog-close-icon"
+					width="12"
+					height="12"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</button>
@@ -1732,6 +1937,7 @@ function normalizePreviewSpeechMarkOffsets(
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={activeTab === provider.id}
+					aria-pressed={activeTab === provider.id}
 					onclick={() => setActiveTab(provider.id)}
 				>
 					{provider.label}
@@ -1763,12 +1969,41 @@ function normalizePreviewSpeechMarkOffsets(
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!browserState.available}>
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-browser-voice">Voice</label>
-					<select id="tts-browser-voice" class="select select-sm select-bordered w-full" bind:value={browserVoice}>
-						<option value="">Default browser voice</option>
-						{#each browserState.voices as voice}
-							<option value={voice.name || ""}>{voice.name} ({voice.languageCode || "n/a"})</option>
-						{/each}
+					<select
+						id="tts-browser-voice"
+						class="select select-sm select-bordered w-full"
+						bind:value={browserVoice}
+						aria-describedby="tts-browser-auto-voice"
+					>
+						<option value="">Best available voice (auto)</option>
+						{#if recommendedBrowserVoices.length > 0}
+							<optgroup label="Recommended voices">
+								{#each recommendedBrowserVoices as voice}
+									<option value={browserVoiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
+								{/each}
+							</optgroup>
+						{/if}
+						{#if allBrowserVoices.length > 0}
+							<optgroup label="All available voices">
+								{#each allBrowserVoices as voice}
+									<option value={browserVoiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
+								{/each}
+							</optgroup>
+						{/if}
 					</select>
+					<div
+						id="tts-browser-auto-voice"
+						class="pie-tts-browser-auto-voice text-xs opacity-75"
+						aria-live="polite"
+					>
+						{#if browserVoice}
+							Using selected voice: {browserVoice}
+						{:else if resolvedBrowserAutoVoice}
+							Best available voice (auto): {browserVoiceLabel(resolvedBrowserAutoVoice)}
+						{:else}
+							Best available voice (auto): waiting for browser voices.
+						{/if}
+					</div>
 				</div>
 			</fieldset>
 		{:else if activeTab === "polly"}
@@ -1945,6 +2180,7 @@ function normalizePreviewSpeechMarkOffsets(
 						type="button"
 						class="btn btn-xs join-item"
 						class:btn-active={previewMode === "plain"}
+						aria-pressed={previewMode === "plain"}
 						onclick={() => onPreviewModeChange("plain")}
 					>
 						Plain text
@@ -1953,6 +2189,7 @@ function normalizePreviewSpeechMarkOffsets(
 						type="button"
 						class="btn btn-xs join-item"
 						class:btn-active={previewMode === "ssml"}
+						aria-pressed={previewMode === "ssml"}
 						onclick={() => onPreviewModeChange("ssml")}
 					>
 						SSML
@@ -1981,7 +2218,7 @@ function normalizePreviewSpeechMarkOffsets(
 					{/if}
 				</span>
 			</div>
-			<div class="pie-tts-preview-track" aria-live="polite">
+			<div class="pie-tts-preview-track" aria-hidden="true">
 				{#each getTrackingSegments(previewText) as segment}
 					<span class:pie-tts-preview-active={segment.active}>{segment.text}</span>
 				{/each}
@@ -1989,16 +2226,16 @@ function normalizePreviewSpeechMarkOffsets(
 		</div>
 
 		{#if applyMessage}
-			<div class="alert alert-success text-xs"><span>{applyMessage}</span></div>
+			<div class="alert alert-success text-xs" role="status"><span>{applyMessage}</span></div>
 		{/if}
 		{#if applyError}
-			<div class="alert alert-error text-xs"><span>{applyError}</span></div>
+			<div class="alert alert-error text-xs" role="alert"><span>{applyError}</span></div>
 		{/if}
 		{#if previewError}
-			<div class="alert alert-error text-xs"><span>{previewError}</span></div>
+			<div class="alert alert-error text-xs" role="alert"><span>{previewError}</span></div>
 		{/if}
 		{#if previewNote}
-			<div class="alert alert-info text-xs"><span>{previewNote}</span></div>
+			<div class="alert alert-info text-xs" role="status"><span>{previewNote}</span></div>
 		{/if}
 
 		<div class="pie-tts-actions">
@@ -2052,6 +2289,10 @@ function normalizePreviewSpeechMarkOffsets(
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 700;
+	}
+
+	.pie-tts-dialog-close-icon {
+		display: block;
 	}
 
 	.pie-tts-tabs {

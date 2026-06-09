@@ -49,7 +49,9 @@ function makeProvenance(
 			}),
 		);
 		decisionLog.push(...allDecisions);
-		const winning = allDecisions.find((_, idx) => feature.decisions[idx].isWinning);
+		const winning = allDecisions.find(
+			(_, idx) => feature.decisions[idx].isWinning,
+		);
 		featuresMap.set(feature.featureId, {
 			featureId: feature.featureId,
 			finalState: feature.finalState,
@@ -275,8 +277,7 @@ describe("resolveSectionToolIds", () => {
 	test("uses an empty policy decision instead of falling back to config", () => {
 		const result = resolveSectionToolIds(
 			{
-				decideToolPolicy: () =>
-					makeDecision([], makeProvenance([])),
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
 				config: { tools: { placement: { section: ["calculator"] } } },
 			},
 			[],
@@ -352,7 +353,9 @@ describe("editable tool helpers", () => {
 			placement: { section: true, item: false, passage: false },
 			visible: { section: true, item: false, passage: false },
 		});
-		const answerEliminator = rows.find((row) => row.toolId === "answerEliminator");
+		const answerEliminator = rows.find(
+			(row) => row.toolId === "answerEliminator",
+		);
 		expect(answerEliminator).toMatchObject({
 			providerEnabled: false,
 			pnpSupported: false,
@@ -381,12 +384,7 @@ describe("editable tool helpers", () => {
 		expect(added.supports).toEqual(["a", "b"]);
 		expect(source.supports).toEqual(["a"]);
 
-		const removed = createPatchedPnpProfile(
-			added,
-			"supports",
-			["a"],
-			false,
-		);
+		const removed = createPatchedPnpProfile(added, "supports", ["a"], false);
 		expect(removed.supports).toEqual(["b"]);
 	});
 });
@@ -501,7 +499,9 @@ describe("derivePnpPanelData", () => {
 			roleType: "candidate",
 			floatingTools: [],
 			defaultPnpProfile: DEFAULT_PNP,
-			coordinator: { decideToolPolicy: () => makeDecision([], makeProvenance([])) },
+			coordinator: {
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+			},
 		});
 		expect(data.determination.runtimeContext.hasCatalogResolver).toBe(false);
 		expect(data.determination.runtimeContext.catalogCount).toBe(0);

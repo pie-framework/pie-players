@@ -154,12 +154,16 @@ describe("SectionController external contract", () => {
 		});
 		const sectionOne = {
 			identifier: "section-1",
-			assessmentItemRefs: [{ identifier: "canonical-item-1", item: makeItem("runtime-item-1") }],
+			assessmentItemRefs: [
+				{ identifier: "canonical-item-1", item: makeItem("runtime-item-1") },
+			],
 			rubricBlocks: [],
 		} as unknown as AssessmentSection;
 		const sectionTwo = {
 			identifier: "section-2",
-			assessmentItemRefs: [{ identifier: "canonical-item-2", item: makeItem("runtime-item-2") }],
+			assessmentItemRefs: [
+				{ identifier: "canonical-item-2", item: makeItem("runtime-item-2") },
+			],
 			rubricBlocks: [],
 		} as unknown as AssessmentSection;
 
@@ -198,7 +202,9 @@ describe("SectionController external contract", () => {
 		const controller = new SectionController();
 		const section = {
 			identifier: "section-3",
-			assessmentItemRefs: [{ identifier: "canonical-item-3", item: makeItem("runtime-item-3") }],
+			assessmentItemRefs: [
+				{ identifier: "canonical-item-3", item: makeItem("runtime-item-3") },
+			],
 			rubricBlocks: [],
 		} as unknown as AssessmentSection;
 		await controller.initialize({
@@ -241,7 +247,12 @@ describe("SectionController external contract", () => {
 		const controller = new SectionController();
 		const section = {
 			identifier: "section-clear",
-			assessmentItemRefs: [{ identifier: "canonical-item-clear", item: makeItem("runtime-item-clear") }],
+			assessmentItemRefs: [
+				{
+					identifier: "canonical-item-clear",
+					item: makeItem("runtime-item-clear"),
+				},
+			],
 			rubricBlocks: [],
 		} as unknown as AssessmentSection;
 		await controller.initialize({
@@ -296,12 +307,20 @@ describe("SectionController external contract", () => {
 					"canonical-1": {
 						itemIdentifier: "canonical-1",
 						isCompleted: true,
-						session: { id: "s-a", data: [{ id: "q1", value: "a" }], complete: true },
+						session: {
+							id: "s-a",
+							data: [{ id: "q1", value: "a" }],
+							complete: true,
+						},
 					},
 					"canonical-2": {
 						itemIdentifier: "canonical-2",
 						isCompleted: true,
-						session: { id: "s-b", data: [{ id: "q2", value: "b" }], complete: true },
+						session: {
+							id: "s-b",
+							data: [{ id: "q2", value: "b" }],
+							complete: true,
+						},
 					},
 					"canonical-3": {
 						itemIdentifier: "canonical-3",
@@ -363,7 +382,10 @@ describe("SectionController external contract", () => {
 			{ mode: "replace" },
 		);
 		const session = controller.getSession();
-		expect(Object.keys(session?.itemSessions || {})).toEqual(["canonical-1", "canonical-2"]);
+		expect(Object.keys(session?.itemSessions || {})).toEqual([
+			"canonical-1",
+			"canonical-2",
+		]);
 		expect(session?.itemSessions["canonical-2"]).toEqual(
 			expect.objectContaining({
 				itemIdentifier: "canonical-2",
@@ -416,7 +438,8 @@ describe("SectionController external contract", () => {
 			assessmentId: "assessment-replay",
 			view: ["candidate"],
 		});
-		const appliedEvents: Array<{ replay: boolean; itemSessionCount: number }> = [];
+		const appliedEvents: Array<{ replay: boolean; itemSessionCount: number }> =
+			[];
 		controller.subscribe((event) => {
 			if (event.type !== "section-session-applied") return;
 			appliedEvents.push({

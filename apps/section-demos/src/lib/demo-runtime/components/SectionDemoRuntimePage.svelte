@@ -38,6 +38,7 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import {
 		buildBundleKey,
 		collectElementPackages,
@@ -52,11 +53,13 @@
 	const itemDataCalculatorIntegration = itemDataCalculatorEnabled
 		? createItemDataCalculatorIntegration(untrack(() => data.section))
 		: null;
+	const toolRegistry = createSectionDemoToolRegistry();
 
 	// Level 3: explicit host-managed coordinator initialization.
 	const toolsConfigResult = createToolsConfig({
 		source: `section-demos.${demoRuntimeId}`,
 		strictness: 'error',
+		toolRegistry,
 		tools: {
 			providers: {
 				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
@@ -100,6 +103,7 @@
 	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolRegistry,
 		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig,
 		toolContextResolvers: itemDataCalculatorIntegration?.toolContextResolvers
@@ -422,6 +426,7 @@
 					coordinator: coordinator
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 			></pie-section-player-vertical>
@@ -440,6 +445,7 @@
 					coordinator: coordinator
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 			></pie-section-player-splitpane>

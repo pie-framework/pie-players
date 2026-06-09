@@ -37,5 +37,21 @@
 				</div>
 			</a>
 		{/each}
+		<a
+			href="/overwide-slow-passage"
+			class="card bg-base-100 shadow-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl"
+		>
+			<div class="card-body gap-3">
+				<h2 class="card-title text-2xl">Overwide slow-painting passage</h2>
+				<p class="text-base-content/70">
+					Reproduces the prod failure mode where a PIE element paints wide
+					images / tables into its own light DOM after the authored markup
+					was sanitized. Verifies the post-render wrap fix.
+				</p>
+				<div class="card-actions justify-end pt-1">
+					<span class="text-sm font-semibold text-primary">Open demo &#8594;</span>
+				</div>
+			</div>
+		</a>
 	</section>
 </div>

@@ -14,6 +14,8 @@
   import {
     buildAuthoringAllowList,
     createDefaultItemMarkupSanitizer,
+    wrapOverwideImagesInElement,
+    wrapOverwideTablesInElement,
     type ItemMarkupSanitizer,
   } from "../security/index.js";
   import {
@@ -941,6 +943,30 @@
         "pie-controller-error",
         handleControllerError as EventListener
       );
+    };
+  });
+
+  // Run a post-render pass over the player's live subtree using the same
+  // per-element wrappers as the string pipeline (so the produced
+  // pie-image-scroll / pie-table-scroll markup is byte-identical) and
+  // re-run on every mutation tick so element-painted content is wrapped as
+  // soon as it lands. The wrap is idempotent.
+  $effect(() => {
+    if (!rootElement) return;
+    const root = rootElement;
+    const tickWrap = () => {
+      console.log("[PieItemPlayer] Running post-render wrap pass");
+      wrapOverwideImagesInElement(root);
+      wrapOverwideTablesInElement(root);
+    };
+    tickWrap();
+    if (typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(() => {
+      tickWrap();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
     };
   });
 

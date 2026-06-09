@@ -18,6 +18,12 @@ export {
 	resetSvgSanitizerForTesting,
 	sanitizeSvgIcon,
 } from "./sanitize-svg-icon.js";
-export { wrapOverwideImages } from "./wrap-overwide-images.js";
+export {
+	wrapOverwideImages,
+	wrapOverwideImagesInElement,
+} from "./wrap-overwide-images.js";
 export { wrapModelRichContent } from "./wrap-model-rich-content.js";
-export { wrapOverwideTables } from "./wrap-overwide-tables.js";
+export {
+	wrapOverwideTables,
+	wrapOverwideTablesInElement,
+} from "./wrap-overwide-tables.js";

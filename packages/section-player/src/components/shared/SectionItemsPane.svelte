@@ -376,10 +376,9 @@
 	class="pie-section-player-scroll-hint"
 	style:visibility={isScrollable ? "visible" : "hidden"}
 >
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
+	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<nds-icon-button
-		role="button"
-		tabindex="0"
 		variant="tertiary"
 		size="small"
 		icon-name="chevron-down"

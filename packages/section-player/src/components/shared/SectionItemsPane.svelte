@@ -297,39 +297,44 @@
 
 	let scrollHintSentinel = $state<HTMLDivElement | null>(null);
 	let isScrollable = $state(false);
+	let scrollContainer = $state<HTMLElement | null>(null);
+
+	const scrollDown = () => scrollContainer?.scrollBy({ top: 150, behavior: "smooth" });
 
 	onMount(() => {
 		// In light-DOM custom elements the sentinel's parentElement is the CE
 		// itself, and its parentElement is the scroll container wrapping it.
-		const scrollContainer = scrollHintSentinel?.parentElement?.parentElement;
-		if (!scrollContainer) return;
+		const container = scrollHintSentinel?.parentElement?.parentElement;
+		if (!container) return;
+
+		scrollContainer = container as HTMLElement;
 
 		const updateScrollable = () => {
 			const atBottom =
-				scrollContainer.scrollHeight - scrollContainer.scrollTop <=
-				scrollContainer.clientHeight + 1;
+				container.scrollHeight - container.scrollTop <=
+				container.clientHeight + 1;
 			isScrollable =
-				scrollContainer.scrollHeight > scrollContainer.clientHeight && !atBottom;
+				container.scrollHeight > container.clientHeight && !atBottom;
 		};
 
 		updateScrollable();
 
 		const resizeObserver = new ResizeObserver(updateScrollable);
-		resizeObserver.observe(scrollContainer);
+		resizeObserver.observe(container);
 
 		const mutationObserver = new MutationObserver(updateScrollable);
-		mutationObserver.observe(scrollContainer, {
+		mutationObserver.observe(container, {
 			childList: true,
 			subtree: true,
 			characterData: true,
 		});
 
-		scrollContainer.addEventListener("scroll", updateScrollable, { passive: true });
+		container.addEventListener("scroll", updateScrollable, { passive: true });
 
 		return () => {
 			resizeObserver.disconnect();
 			mutationObserver.disconnect();
-			scrollContainer.removeEventListener("scroll", updateScrollable);
+			container.removeEventListener("scroll", updateScrollable);
 		};
 	});
 </script>
@@ -369,12 +374,18 @@
 
 <div
 	class="pie-section-player-scroll-hint"
-	aria-hidden="true"
 	style:visibility={isScrollable ? "visible" : "hidden"}
 >
-	<svg class="pie-section-player-scroll-caret" viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
-		<path d="M7 10l5 5 5-5" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-	</svg>
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<nds-icon-button
+		role="button"
+		tabindex="0"
+		variant="tertiary"
+		size="small"
+		icon-name="chevron-down"
+		button-aria-label="Scroll down"
+		onclick={scrollDown}
+	></nds-icon-button>
 </div>
 
 <style>
@@ -391,17 +402,12 @@
 		bottom: 0;
 		height: 56px;
 		margin-top: calc(-56px - 1rem);
-		pointer-events: none;
 		background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, var(--pie-background, #fff) 100%);
 		display: flex;
 		align-items: flex-start;
 		justify-content: center;
-		padding-top: 8px;
+		padding-top: 4px;
 		z-index: 10;
-	}
-
-	.pie-section-player-scroll-caret {
-		display: block;
 	}
 
 	.pie-section-player-content-card {

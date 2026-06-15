@@ -401,7 +401,7 @@
 		bottom: 0;
 		height: 56px;
 		margin-top: calc(-56px - 1rem);
-		background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, var(--pie-background, #fff) 100%);
+		background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, var(--pie-white, #fff) 100%);
 		display: flex;
 		align-items: flex-start;
 		justify-content: center;

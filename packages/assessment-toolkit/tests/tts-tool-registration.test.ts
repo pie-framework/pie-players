@@ -65,9 +65,53 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const element = renderResult?.elements?.[0]?.element as {
-			speedOptions?: number[];
+			speedOptions?: unknown[];
 		};
-		expect(element?.speedOptions).toEqual([2, 1.25, 1.5]);
+		expect(element?.speedOptions).toEqual([
+			{ rate: 2, label: "2x", ariaLabel: "Speed 2x" },
+			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
+			{ rate: 1.5, label: "1.5x", ariaLabel: "Speed 1.5x" },
+		]);
+	});
+
+	test("applies labeled speedOptions to the inline element", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-labeled",
+				itemId: "item-labeled",
+			},
+			itemId: "item-labeled",
+			catalogId: "item-labeled",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({
+					settings: {
+						speedOptions: [
+							{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+							{ rate: 1.5, label: "Fast" },
+						],
+					},
+				}),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const element = renderResult?.elements?.[0]?.element as {
+			speedOptions?: unknown[];
+		};
+		expect(element?.speedOptions).toEqual([
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+		]);
 	});
 
 	test("falls back to default speed options when config is invalid-only", () => {
@@ -97,9 +141,12 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const element = renderResult?.elements?.[0]?.element as {
-			speedOptions?: number[];
+			speedOptions?: unknown[];
 		};
-		expect(element?.speedOptions).toEqual([0.8, 1.25]);
+		expect(element?.speedOptions).toEqual([
+			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x" },
+			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
+		]);
 	});
 
 	test("uses explicit empty speedOptions to hide speed buttons", () => {
@@ -127,7 +174,7 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const element = renderResult?.elements?.[0]?.element as {
-			speedOptions?: number[];
+			speedOptions?: unknown[];
 		};
 		expect(element?.speedOptions).toEqual([]);
 	});
@@ -434,5 +481,25 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual(
 			[],
 		);
+	});
+
+	test("preserves labeled speedOptions in sanitizeConfig", () => {
+		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
+			cfg: Record<string, unknown>,
+		) => Record<string, unknown>;
+		const out = sanitize({
+			settings: {
+				speedOptions: [
+					{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+					{ rate: 1.5, label: "Fast" },
+					{ rate: 1, label: "Normal" },
+					{ rate: 1.5, label: "Duplicate" },
+				],
+			},
+		});
+		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+			{ rate: 1.5, label: "Fast" },
+		]);
 	});
 });

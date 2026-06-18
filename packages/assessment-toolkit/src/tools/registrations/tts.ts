@@ -19,7 +19,9 @@ import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	buildRuntimeTTSConfig,
 	normalizeTTSLayoutMode,
-	normalizeTTSSpeedOptions,
+	normalizeTTSSpeedControlOptions,
+	normalizeTTSSpeedOptionConfigs,
+	type NormalizedTTSSpeedOption,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
 	resolveTTSBackend,
@@ -79,7 +81,9 @@ export const ttsToolRegistration: ToolRegistration = {
 				settings.layoutMode = normalizeTTSLayoutMode(settings.layoutMode);
 			}
 			if (settings && "speedOptions" in settings) {
-				settings.speedOptions = normalizeTTSSpeedOptions(settings.speedOptions);
+				settings.speedOptions = normalizeTTSSpeedOptionConfigs(
+					settings.speedOptions,
+				);
 			}
 			const normalizedConfig: Record<string, unknown> = {
 				...(config as Record<string, unknown>),
@@ -90,7 +94,7 @@ export const ttsToolRegistration: ToolRegistration = {
 				);
 			}
 			if ("speedOptions" in normalizedConfig) {
-				normalizedConfig.speedOptions = normalizeTTSSpeedOptions(
+				normalizedConfig.speedOptions = normalizeTTSSpeedOptionConfigs(
 					normalizedConfig.speedOptions,
 				);
 			}
@@ -133,9 +137,9 @@ export const ttsToolRegistration: ToolRegistration = {
 				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
 					undefined,
 			);
-		const resolveElementSpeedOptions = (): number[] => {
+		const resolveElementSpeedOptions = (): NormalizedTTSSpeedOption[] => {
 			const runtimeSettings = resolveRuntimeSettings();
-			return normalizeTTSSpeedOptions(runtimeSettings.speedOptions);
+			return normalizeTTSSpeedControlOptions(runtimeSettings.speedOptions);
 		};
 		const resolveLayoutMode = () =>
 			resolveTTSLayoutMode(resolveRuntimeSettings());
@@ -182,8 +186,9 @@ export const ttsToolRegistration: ToolRegistration = {
 			element.setAttribute("language", toolbarContext.language || "en-US");
 			element.setAttribute("size", resolveControlSize());
 			element.setAttribute("layout-mode", resolveLayoutMode());
-			(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
-				resolveElementSpeedOptions();
+			(
+				element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
+			).speedOptions = resolveElementSpeedOptions();
 			return element;
 		};
 		const hostLayout = resolveHostLayout();
@@ -224,8 +229,9 @@ export const ttsToolRegistration: ToolRegistration = {
 				element.setAttribute("language", toolbarContext.language || "en-US");
 				element.setAttribute("size", resolveControlSize());
 				element.setAttribute("layout-mode", resolveLayoutMode());
-				(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
-					resolveElementSpeedOptions();
+				(
+					element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
+				).speedOptions = resolveElementSpeedOptions();
 			},
 		};
 	},

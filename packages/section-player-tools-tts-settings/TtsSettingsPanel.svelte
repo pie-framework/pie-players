@@ -17,9 +17,10 @@
 	import {
 		DEFAULT_TTS_SPEED_OPTIONS,
 		formatTTSSpeedOptionsAsText,
-		normalizeTTSSpeedOptions,
+		normalizeTTSSpeedOptionConfigs,
 		parseTTSSpeedOptionsFromText,
 		resolveTTSRuntimeSettings,
+		type TTSSpeedOption,
 		type TTSLayoutMode,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
@@ -176,7 +177,7 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		providerOptions?: Record<string, unknown>;
 		layoutMode?: TTSLayoutMode;
 		/** Inline toolbar speed multipliers; `[]` hides speed buttons. */
-		speedOptions?: number[];
+		speedOptions?: TTSSpeedOption[];
 		/** Per-token math highlighting; `false` highlights formulas as one block. */
 		mathTokenHighlighting?: boolean;
 		[key: string]: unknown;
@@ -203,6 +204,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let browserPitch = $state(1);
 	let layoutMode = $state<TTSLayoutMode>("left-aligned");
 	let speedOptionsText = $state("");
+	let preservedObjectSpeedOptions = $state<TTSSpeedOption[] | undefined>(undefined);
+	let preservedObjectSpeedOptionsText = $state("");
 	let mathTokenHighlighting = $state(true);
 
 	let pollyApiEndpoint = $state("");
@@ -432,6 +435,51 @@ function findBrowserDemoVoice(
 
 	function resetInlineSpeedOptionsToDefaults(): void {
 		speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
+		preservedObjectSpeedOptions = undefined;
+		preservedObjectSpeedOptionsText = "";
+	}
+
+	const getSpeedOptionRate = (option: TTSSpeedOption): number =>
+		typeof option === "number" ? option : option.rate;
+
+	const hasObjectSpeedOptions = (value: unknown): boolean =>
+		Array.isArray(value) &&
+		value.some((option) => !!option && typeof option === "object" && !Array.isArray(option));
+
+	function haveSameSpeedOptionRates(left: unknown, right: unknown): boolean {
+		if (!Array.isArray(left) || !Array.isArray(right)) return false;
+		const leftRates = normalizeTTSSpeedOptionConfigs(left).map(getSpeedOptionRate);
+		const rightRates = normalizeTTSSpeedOptionConfigs(right).map(getSpeedOptionRate);
+		return (
+			leftRates.length === rightRates.length &&
+			leftRates.every((rate, index) => rate === rightRates[index])
+		);
+	}
+
+	function mergeStoredSettings(
+		existing: Record<string, unknown>,
+		stored: PersistedTTSSettings | null,
+	): Record<string, unknown> {
+		if (!stored) return existing;
+		const source: Record<string, unknown> = { ...existing, ...stored };
+		if (
+			hasObjectSpeedOptions(existing.speedOptions) &&
+			"speedOptions" in stored &&
+			haveSameSpeedOptionRates(existing.speedOptions, stored.speedOptions)
+		) {
+			source.speedOptions = existing.speedOptions;
+		}
+		return source;
+	}
+
+	function resolveAppliedSpeedOptions(): TTSSpeedOption[] {
+		if (
+			preservedObjectSpeedOptions &&
+			speedOptionsText === preservedObjectSpeedOptionsText
+		) {
+			return preservedObjectSpeedOptions;
+		}
+		return parseTTSSpeedOptionsFromText(speedOptionsText);
 	}
 
 	const normalizedCustomProviders = $derived.by(() => {
@@ -670,7 +718,7 @@ function findBrowserDemoVoice(
 	function initializeFromCoordinator() {
 		const existing = toolkitCoordinator?.getToolConfig?.("textToSpeech") || {};
 		const stored = readStoredSettings();
-		const source = stored ? { ...existing, ...stored } : existing;
+		const source = mergeStoredSettings(existing, stored);
 		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
 		const backend = source?.backend;
 		if (typeof backend === "string" && backend.trim().length > 0) {
@@ -706,6 +754,8 @@ function findBrowserDemoVoice(
 		const runtimeForSpeed = resolveTTSRuntimeSettings(
 			source && typeof source === "object" ? (source as Record<string, unknown>) : undefined,
 		);
+		preservedObjectSpeedOptions = undefined;
+		preservedObjectSpeedOptionsText = "";
 		if (runtimeForSpeed.speedOptions === undefined) {
 			speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
 		} else if (
@@ -714,9 +764,15 @@ function findBrowserDemoVoice(
 		) {
 			speedOptionsText = "";
 		} else {
-			speedOptionsText = formatTTSSpeedOptionsAsText(
-				normalizeTTSSpeedOptions(runtimeForSpeed.speedOptions),
+			const normalizedSpeedOptions = normalizeTTSSpeedOptionConfigs(
+				runtimeForSpeed.speedOptions,
 			);
+			const speedOptionRates = normalizedSpeedOptions.map(getSpeedOptionRate);
+			speedOptionsText = formatTTSSpeedOptionsAsText(speedOptionRates);
+			if (normalizedSpeedOptions.some((option) => typeof option !== "number")) {
+				preservedObjectSpeedOptions = normalizedSpeedOptions;
+				preservedObjectSpeedOptionsText = speedOptionsText;
+			}
 		}
 		const defaultSampleRate = normalizePollySampleRate(
 			Number(source?.sampleRate ?? sourceProviderOptions.sampleRate ?? 24000)
@@ -1669,7 +1725,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 		isApplying = true;
 		try {
-			const appliedSpeedOptions = parseTTSSpeedOptionsFromText(speedOptionsText);
+			const appliedSpeedOptions = resolveAppliedSpeedOptions();
 			if (!isBuiltInTab(activeTab)) {
 				const provider = getCustomProviderOrThrow(activeTab);
 				let next: ProviderApplyResult | undefined;

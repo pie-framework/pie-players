@@ -343,6 +343,13 @@ const resolveValidationMode = (
 	return mode === "custom" ? "none" : "voices";
 };
 
+const speedRateFromRate = (rate: number): "slow" | "medium" | "fast" => {
+	if (!Number.isFinite(rate)) return "medium";
+	if (rate < 1) return "slow";
+	if (rate > 1) return "fast";
+	return "medium";
+};
+
 const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
 	const providerOptions = (config.providerOptions || {}) as Record<
 		string,
@@ -352,9 +359,7 @@ const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
 		return providerOptions.speedRate;
 	}
 	const rate = Number(config.rate ?? 1);
-	if (!Number.isFinite(rate) || rate <= 0.95) return "slow";
-	if (rate >= 1.5) return "fast";
-	return "medium";
+	return speedRateFromRate(rate);
 };
 
 const parseJSONLSpeechMarks = (
@@ -1063,6 +1068,10 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		// Update config
 		if (settings.rate !== undefined) {
 			this.config.rate = settings.rate;
+			this.config.providerOptions = {
+				...(this.config.providerOptions || {}),
+				speedRate: speedRateFromRate(Number(settings.rate)),
+			};
 		}
 		if (settings.pitch !== undefined) {
 			// Server-side pitch is baked into audio, so this only affects next speak()

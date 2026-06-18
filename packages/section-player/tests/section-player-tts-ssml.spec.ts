@@ -30,6 +30,10 @@ function isKnownA11yBaselineDebt(violation: {
 				(html.includes("MuiSvgIcon") ||
 					html === '<button class="button">' ||
 					html === '<button disabled="" class="button">')
+			) || (
+				// PIE-708 tracks the upstream editor toolbar buttons with no accessible name.
+				html.startsWith('<button class="toolbarButton"') ||
+				html.startsWith('<button disabled="" class="toolbarButton"')
 			);
 		});
 	}
@@ -759,6 +763,43 @@ test.describe("section player demo tts-ssml", () => {
 			expect(
 				Math.abs(promptTopAfterStop - promptTopBefore),
 			).toBeLessThanOrEqual(2);
+
+			await sessionPanel.evaluate(async (element) => {
+				const coordinator = (element as any).toolkitCoordinator;
+				coordinator?.updateToolConfig?.("textToSpeech", {
+					enabled: true,
+					backend: "browser",
+					transportMode: "pie",
+					speedOptions: [
+						{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+						{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+					],
+				});
+				await coordinator?.ensureTTSReady?.(
+					coordinator?.getToolConfig?.("textToSpeech"),
+				);
+			});
+			await passageTrigger.click();
+			await expect(passagePanel).toBeVisible();
+			const labeledSlow = passagePanel.getByRole("button", {
+				name: "Slow speed",
+			});
+			const labeledFast = passagePanel.getByRole("button", {
+				name: "Fast speed",
+			});
+			await expect(labeledSlow).toHaveText("Slow");
+			await expect(labeledFast).toHaveText("Fast");
+			const beforeLabeledSpeedSpeaks = await readBrowserTtsSpeaks(page);
+			await labeledFast.click();
+			await expect
+				.poll(async () => (await readBrowserTtsSpeaks(page)).length)
+				.toBeGreaterThan(beforeLabeledSpeedSpeaks.length);
+			const afterLabeledSpeedSpeaks = await readBrowserTtsSpeaks(page);
+			expect(afterLabeledSpeedSpeaks.at(-1)?.rate).toBe(1.5);
+			await expect(labeledSlow).toHaveAttribute("aria-pressed", "false");
+			await expect(labeledFast).toHaveAttribute("aria-pressed", "true");
+			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+			await expect(passagePanel).toHaveCount(0);
 
 			// Host-triggered handoff: collapse/deactivate active controls without toggling stop semantics.
 			await passageTrigger.click();

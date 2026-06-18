@@ -286,14 +286,19 @@ export {
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {
+	NormalizedTTSSpeedOption,
 	TTSHostToolbarLayout,
 	TTSLayoutMode,
 	TTSRuntimeSettings,
+	TTSSpeedOption,
+	TTSSpeedOptionConfig,
 } from "./services/tts-runtime-config.js";
 export {
 	DEFAULT_TTS_SPEED_OPTIONS,
 	formatTTSSpeedOptionsAsText,
 	normalizeTTSLayoutMode,
+	normalizeTTSSpeedControlOptions,
+	normalizeTTSSpeedOptionConfigs,
 	normalizeTTSSpeedOptions,
 	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,

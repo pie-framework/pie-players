@@ -19,11 +19,12 @@
 		connectToolShellContext,
 		DEFAULT_TTS_SPEED_OPTIONS,
 		PIE_TTS_CONTROL_HANDOFF_EVENT,
-		normalizeTTSSpeedOptions,
+		normalizeTTSSpeedControlOptions,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
 		type HighlightCoordinatorApi,
+		type TTSSpeedOption,
 		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit';
 
@@ -31,7 +32,7 @@
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
 		size = 'md' as 'sm' | 'md' | 'lg',
-		speedOptions = [...DEFAULT_TTS_SPEED_OPTIONS] as number[],
+		speedOptions = [...DEFAULT_TTS_SPEED_OPTIONS] as TTSSpeedOption[],
 		layoutMode = 'expanding-row' as
 			| 'reserved-row'
 			| 'expanding-row'
@@ -41,7 +42,7 @@
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
-		speedOptions?: number[];
+		speedOptions?: TTSSpeedOption[];
 		layoutMode?: 'reserved-row' | 'expanding-row' | 'floating-overlay' | 'left-aligned';
 	} = $props();
 
@@ -69,7 +70,7 @@
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
 	let handoffInProgress = $state(false);
-	const speedChoices = $derived.by(() => normalizeTTSSpeedOptions(speedOptions));
+	const speedChoices = $derived.by(() => normalizeTTSSpeedControlOptions(speedOptions));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
@@ -430,15 +431,15 @@
 		}
 	}
 
-	async function handlePlaybackRate(rate: number) {
+	async function handlePlaybackRate(option: { rate: number; label: string }) {
 		if (!ttsService) return;
 		const previousRate = playbackRate;
-		const nextRate = playbackRate === rate ? 1 : rate;
+		const nextRate = playbackRate === option.rate ? 1 : option.rate;
 		playbackRate = nextRate;
 		statusMessage =
 			nextRate === 1
 				? 'Playback speed reset to 1x'
-				: `Playback speed ${nextRate}x`;
+				: `Playback speed ${option.label}`;
 		try {
 			if (typeof ttsService.setPlaybackRate === 'function') {
 				await ttsService.setPlaybackRate(nextRate);
@@ -552,20 +553,20 @@
 					onkeydown={handleToolbarKeydown}
 				>
 					{#if speedChoices.length > 0}
-						{#each speedChoices as speed, speedIdx (speed)}
+						{#each speedChoices as option, speedIdx (option.rate)}
 							<button
 								type="button"
 								data-pie-tts-control
 								class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-								class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
-								onclick={() => handlePlaybackRate(speed)}
+								class:pie-tool-tts-inline__control--speed-active={playbackRate === option.rate}
+								onclick={() => handlePlaybackRate(option)}
 								onfocus={() => (focusedControlIndex = speedIdx)}
 								tabindex={focusedControlIndex === speedIdx ? 0 : -1}
-								aria-label={`Speed ${speed}x`}
-								aria-pressed={playbackRate === speed}
+								aria-label={option.ariaLabel}
+								aria-pressed={playbackRate === option.rate}
 								disabled={!ttsService}
 							>
-								<span aria-hidden="true">{speed}x</span>
+								<span aria-hidden="true">{option.label}</span>
 							</button>
 						{/each}
 					{/if}

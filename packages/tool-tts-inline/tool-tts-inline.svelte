@@ -432,13 +432,24 @@
 
 	async function handlePlaybackRate(rate: number) {
 		if (!ttsService) return;
+		const previousRate = playbackRate;
 		const nextRate = playbackRate === rate ? 1 : rate;
 		playbackRate = nextRate;
-		await ttsService.updateSettings({ rate: nextRate });
 		statusMessage =
 			nextRate === 1
 				? 'Playback speed reset to 1x'
 				: `Playback speed ${nextRate}x`;
+		try {
+			if (typeof ttsService.setPlaybackRate === 'function') {
+				await ttsService.setPlaybackRate(nextRate);
+			} else {
+				await ttsService.updateSettings({ rate: nextRate });
+			}
+		} catch (error) {
+			console.error('[TTS Inline] Playback speed change failed:', error);
+			playbackRate = previousRate;
+			statusMessage = 'Unable to change playback speed';
+		}
 	}
 
 	const sizeClass = $derived(

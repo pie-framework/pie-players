@@ -114,7 +114,7 @@ describe("ServerTTSProvider", () => {
 		]);
 	});
 
-	test("does not rescale server-generated audio playback rate", async () => {
+	test("does not media-rescale initially synthesized server audio", async () => {
 		const fetchMock = vi.fn(async () =>
 			createJSONResponse({
 				audio: btoa("audio-bytes"),

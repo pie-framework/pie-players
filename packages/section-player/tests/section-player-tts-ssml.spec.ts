@@ -113,6 +113,11 @@ async function requestTtsControlHandoff(page: Page): Promise<boolean> {
 async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 	await page.addInitScript(() => {
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+		(
+			window as unknown as {
+				__pieTtsSpeaks: Array<{ text: string; rate: number }>;
+			}
+		).__pieTtsSpeaks = [];
 		const originalSynth = window.speechSynthesis;
 		let activeUtterance: SpeechSynthesisUtterance | null = null;
 		let playbackTimer: number | null = null;
@@ -139,6 +144,14 @@ async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 			speak: (utterance: SpeechSynthesisUtterance) => {
 				clearPlayback();
 				activeUtterance = utterance;
+				(
+					window as unknown as {
+						__pieTtsSpeaks: Array<{ text: string; rate: number }>;
+					}
+				).__pieTtsSpeaks.push({
+					text: String(utterance.text || ""),
+					rate: Number(utterance.rate || 1),
+				});
 				speaking = true;
 				paused = false;
 				dispatchSafe(utterance.onstart);
@@ -178,6 +191,19 @@ async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 			value: fakeSynth,
 		});
 	});
+}
+
+async function readBrowserTtsSpeaks(
+	page: Page,
+): Promise<Array<{ text: string; rate: number }>> {
+	return await page.evaluate(
+		() =>
+			(
+				window as unknown as {
+					__pieTtsSpeaks?: Array<{ text: string; rate: number }>;
+				}
+			).__pieTtsSpeaks || [],
+	);
 }
 
 async function mockPollyVoicesAvailability(page: Page): Promise<void> {
@@ -463,6 +489,15 @@ test.describe("section player demo tts-ssml", () => {
 				expect(whilePlaying.containerDirection).toBe(
 					layout.expectContainerDirectionOnPlay,
 				);
+			}
+			if (layout.mode === "expanding-row") {
+				const beforeSpeedSpeaks = await readBrowserTtsSpeaks(page);
+				await panel.getByRole("button", { name: "Speed 1.25x" }).click();
+				await expect
+					.poll(async () => (await readBrowserTtsSpeaks(page)).length)
+					.toBeGreaterThan(beforeSpeedSpeaks.length);
+				const afterSpeedSpeaks = await readBrowserTtsSpeaks(page);
+				expect(afterSpeedSpeaks.at(-1)?.rate).toBe(1.25);
 			}
 			const triggerA11y = await firstInlineTts.evaluate((host) => {
 				const root = host.shadowRoot;

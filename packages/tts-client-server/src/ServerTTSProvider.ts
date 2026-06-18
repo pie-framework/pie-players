@@ -1055,8 +1055,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 
 	/**
 	 * Update settings dynamically (rate, pitch, voice)
-	 * Note: Voice changes require resynthesis, so voice updates are stored but
-	 * take effect on the next speak() call. Rate can be applied to current playback.
+	 * Note: Server-side synthesis bakes rate, pitch, and voice into the audio and
+	 * speech marks. Settings updates are stored for the next synthesis; active
+	 * speed changes are handled by TTSService replaying from the current segment.
 	 */
 	updateSettings(settings: Partial<ServerTTSProviderConfig>): void {
 		// Update config

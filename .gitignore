@@ -70,6 +70,10 @@ temp/
 # claude plans (local planning artifacts)
 .claude/plans/
 
+# local agent skills
+.claude/skills/
+.cursor/skills/
+
 # MCP servers
 .mcp/memory.db
 .mcp/memory.db-*

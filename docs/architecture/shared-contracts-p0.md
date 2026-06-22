@@ -45,6 +45,13 @@ P0 shared contracts should be additive by default.
 | `assessment-player` | Use it as one possible host/runtime layer, not the required foundation for every consumer of PIE building blocks. |
 | Naming | Use durable domain names in code. Put versioning in wire/schema fields or package semver, not in exported interface names. |
 
+Custom-element tag names are the exception to the naming rule above: versioned
+`pie-*--version-*` tag names are authored/runtime identity, not interface-name
+versioning. Any projection, adapter, sanitizer, or source reference that carries
+PIE element identity must preserve the full rendered tag name and pass through
+contract attributes such as `id`, `model-id`, `session-id`, `slot`, `data-*`,
+`aria-*`, `pie-*`, `config-*`, and `context-*` unchanged.
+
 ## Layer Ownership
 
 ```mermaid
@@ -133,6 +140,11 @@ Event projections need stable source references:
 - evidence;
 - rubric.
 
+Element source references must preserve PIE element identity verbatim. They
+must not collapse a rendered `pie-*--version-*` tag to its base tag, synthesize a
+replacement identifier, or normalize contract attributes that the item/player
+runtime uses for model and session binding.
+
 Event projections should separate state-bearing events from analytics-only events. Hosts can then decide what belongs in durable attempt state, what belongs in telemetry, and what should be dropped for privacy or policy reasons.
 
 Branching, simulations, and replay/debug need a small process vocabulary:
@@ -157,11 +169,12 @@ interface InteractionEventProjection {
   source: InteractionSourceRef;
   category: "state" | "analytics" | "debug";
   payload?: TypedEventPayload;
-  scoreComponents?: ScoreComponent[];
 }
 ```
 
-This sketch is not an implementation naming recommendation.
+This sketch is not an implementation naming recommendation. Score and outcome
+projections are a distinct contract family; generic interaction events should
+not imply that a score exists until an explicit scoring surface has run.
 
 ### Session And Completion
 
@@ -186,8 +199,22 @@ There should not be a universal `profileState` bag. Each slice needs:
 - a named owner PRD;
 - explicit merge and replace semantics;
 - clear persistence expectations;
+- explicit hydrate, persist, and assessment-rollup behavior;
 - compatibility behavior for hosts that do not know that profile;
 - a statement of whether the slice is scoring state, delivery state, or telemetry.
+
+Unknown hosts must not preserve future section behavior by inventing a generic
+bag, alias map, fallback normalizer, or duplicate dispatch path. A slice PRD
+must choose the exact unknown-host behavior for that named slice: reject it,
+ignore/drop it, or round-trip it under its ratified key with typed owner-defined
+merge semantics. The PRD should include replace, merge, hydrate, persist, and
+round-trip tests for the chosen behavior.
+
+Completion projections need their own provenance and authority rules. Later
+PRDs must state whether completion is sourced from item session metadata,
+`OutcomeResponse.completed`, media watch state, cue completion, branch/process
+state, section aggregation, assessment submission, or host policy, and whether
+that completion state is provisional, derived, or terminal.
 
 Documentation sketch only:
 
@@ -239,7 +266,18 @@ Rules for later PRDs:
 
 - `OutcomeResponse` is the leaf source.
 - `points` and `max` are aggregate/projection fields mapped from existing scoring vocabulary.
-- A section rollup must state its aggregation policy, such as sum, average, weighted, all-required-complete, or host-defined.
+- Score components must distinguish absent score, zero score, not scorable,
+  manual score pending, preview score, external score, and final/authoritative
+  score.
+- Score projections need explicit provenance and authority fields, such as
+  auto, manual, external, preview, or server-authoritative, before section or
+  assessment aggregation can treat them as comparable.
+- Denominator and serialization policy must state how `undefined`, `null`, `0`,
+  omitted `outcome`, and omitted `max` are interpreted.
+- A score rollup must state its aggregation policy, such as sum, average,
+  weighted, or host-defined.
+- Completion rollup policies are separate from score aggregation policies and
+  must define their own source, authority, and terminal/provisional semantics.
 - Watch completion, cue completion, branch completion, and child correctness must remain distinguishable.
 - Persisted score storage remains host-owned unless a specific player PRD introduces an additive score snapshot field.
 
@@ -351,7 +389,7 @@ P0 should make these host patterns possible:
 1. A host can use only `pie-item-player` and still receive the current item-level events and per-element score preview behavior.
 2. A host can use `section-player` and receive existing section session/completion state without adopting assessment-player.
 3. A host can use `assessment-player` and receive routing, submission, and per-section session rollup.
-4. A host can add an adapter that observes existing runtime events and emits product analytics, standards statements, or score projections.
+4. A host can add an adapter that observes existing runtime events and explicit scoring surfaces, emits product analytics and standards statements, and emits score projections only from controller, server, or `provideScore()` results with declared provenance and authority.
 5. A host can implement custom section-player variants, such as timed media or branching, using typed additive section slices.
 
 This keeps PIE useful as a toolkit without making the built-in assessment-player the only supported architecture.
@@ -381,7 +419,7 @@ Recommended PRD split:
 - Should toolkit `AssessmentSession` become the canonical assessment session type for assessment-player too?
 - Should section score projections be controller methods, helper functions, host adapters, or a separate package?
 - Which score aggregation defaults, if any, should PIE provide?
-- How should profile slices be preserved by unknown hosts without creating an untyped persistence bag?
+- Which future profile slices should unknown hosts reject, drop, or round-trip under an explicit typed owner contract?
 - Which media metadata belongs in shared contracts versus individual element models?
 - What is the minimum useful evidence metadata contract that does not imply storage ownership?
 - Which accessibility patterns belong in toolkit services versus section-player variants?

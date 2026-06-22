@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from "svelte";
 	import type {
 		ToolRegistry,
 		ToolbarItem,
@@ -91,6 +92,14 @@
 		updateZoomCompensation();
 		window.addEventListener("resize", updateZoomCompensation);
 		return () => window.removeEventListener("resize", updateZoomCompensation);
+	});
+
+	// Reset to the Passage tab whenever we navigate to a different section.
+	$effect(() => {
+		void idBase;
+		untrack(() => {
+			activeTab = "passage";
+		});
 	});
 
 	const hasPassages = $derived(layoutModel.passages.length > 0);

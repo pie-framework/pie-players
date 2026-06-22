@@ -11,6 +11,7 @@ import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
+import { demoTwoPassagesSection } from "./demo-two-passages";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -422,6 +423,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts.",
 		],
 		section: demo2Section,
+	},
+	"two-passages": {
+		id: "two-passages",
+		name: "Two Passages with One Question",
+		description:
+			"Section with two stimulus passages stacked together, followed by a single comparison question",
+		integrationLevel: 2,
+		integrationTheme: "Multi-passage sections",
+		focus:
+			"Verifies that multiple stimulus passages render correctly in one section and that a question can ask the reader to reason across both.",
+		whatMakesItTick: [
+			"Two `rubricBlocks` entries, each carrying its own stimulus passage.",
+			"One multiple-choice item asking the reader to synthesize across both passages.",
+			"Useful for exercising layout and toolbar behavior when more than one passage is present.",
+		],
+		section: demoTwoPassagesSection,
 	},
 	"preloaded-fixed-elements": {
 		id: "preloaded-fixed-elements",

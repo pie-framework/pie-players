@@ -89,5 +89,5 @@ Keep those roles separate to avoid duplicating standards text or letting test sp
 
 ## Scope Baseline Notes
 
-- Root CI currently validates build/lint/package rules but does not run Playwright accessibility checks by default.
-- Root pre-push hooks execute a critical subset of end-to-end checks, including two axe-backed tests.
+- Root CI validates build/lint/package rules and runs the critical Playwright e2e matrix, including axe-backed smoke checks.
+- Root pre-push hooks intentionally stay lightweight; run `bun run verify:local-pr` for the full local gate before higher-risk PRs.

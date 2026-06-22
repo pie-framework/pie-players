@@ -69,6 +69,38 @@ jobs:
             packages/*/dist
           retention-days: 7
 
+  critical-e2e:
+    name: Critical E2E (${{ matrix.name }})
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: assessment-player
+            command: test:e2e:assessment-player
+          - name: item-player-critical
+            command: test:e2e:item-player:critical
+          - name: section-player-critical
+            command: test:e2e:section-player:critical
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Critical E2E
+        run: bun run ${{ matrix.command }}
+
   docs:
     name: Docs
     if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}

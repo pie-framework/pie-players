@@ -167,14 +167,16 @@ shared browser cache.
 
 This applies to:
 
-- `git push`, because the pre-push hook runs Playwright e2e suites.
 - Any `bun run test:e2e:*` script.
 - `bunx playwright ...` / `bun playwright ...`.
 - Playwright helper scripts, screenshot capture, or ad-hoc DOM verification.
 - `bun run test` / `bun test` in packages whose tests include Playwright specs.
+- `bun run verify:local-pr`, because it runs the full local lint/typecheck gate
+  plus the critical Playwright e2e suites.
 
-Prefer `["all"]` for `git push` because the hook chain can also write to caches
-outside the workspace.
+The default `git push` pre-push hook is intentionally lightweight and runs
+`bun run verify:pre-push`. Use `bun run verify:local-pr` before opening or
+merging higher-risk PRs when you want the full local gate.
 
 ## Skills And Commands
 

@@ -56,6 +56,44 @@
 	let passageTabButton = $state<HTMLButtonElement | null>(null);
 	let itemsTabButton = $state<HTMLButtonElement | null>(null);
 
+	/**
+	 * Zoom compensation for the passage/questions toggle.
+	 *
+	 * The toggle scales naturally with browser zoom up to 200%. Beyond 200%,
+	 * we shrink its CSS size proportionally so its physical on-screen size
+	 * freezes at the 200% appearance, leaving more room for passage/question
+	 * content in high-zoom / small-window situations.
+	 *
+	 * Browser zoom is approximated as outerWidth / innerWidth: outerWidth is
+	 * the OS window size (zoom-independent) while innerWidth is in CSS pixels
+	 * (shrinks as zoom increases). Zoom changes always fire a resize event,
+	 * so listening to resize keeps the value current.
+	 *
+	 * The factor is min(1, 2 / zoom): exactly 1 at zoom <= 200% (component
+	 * behavior unchanged), shrinking proportionally above that. A lower clamp
+	 * of 0.4 guards against inflated ratios (docked devtools, browser side
+	 * panels, window chrome) ever making the toggle unusably small.
+	 */
+	const MAX_TOGGLE_ZOOM = 2;
+	const MIN_ZOOM_COMPENSATION = 0.4;
+
+	let zoomCompensation = $state(1);
+
+	function updateZoomCompensation() {
+		const ratio = window.outerWidth / window.innerWidth;
+		const zoom = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+		zoomCompensation = Math.max(
+			MIN_ZOOM_COMPENSATION,
+			Math.min(1, MAX_TOGGLE_ZOOM / zoom),
+		);
+	}
+
+	$effect(() => {
+		updateZoomCompensation();
+		window.addEventListener("resize", updateZoomCompensation);
+		return () => window.removeEventListener("resize", updateZoomCompensation);
+	});
+
 	// Reset to the Passage tab whenever we navigate to a different section.
 	$effect(() => {
 		void idBase;
@@ -118,7 +156,7 @@
 	class="pie-section-player-tabbed-frame"
 	style={`--pie-section-player-layout-max-width: ${
 		layoutMaxWidthPx !== undefined ? `${layoutMaxWidthPx}px` : "none"
-	};`}
+	}; --pie-section-player-tab-zoom-comp: ${zoomCompensation};`}
 >
 	<div class="pie-section-player-tabbed-content">
 		{#if hasPassages}
@@ -248,6 +286,14 @@
 		padding: var(--pie-section-player-tab-track-padding, 0.25rem);
 		width: fit-content;
 		align-self: center;
+		/*
+		 * Freeze the toggle's physical size at its 200%-zoom appearance when
+		 * browser zoom exceeds 200%. The factor is 1 at zoom <= 200%, so
+		 * behavior below that threshold is unchanged. Using `zoom` (rather
+		 * than transform: scale) shrinks the layout box itself, so the
+		 * reclaimed space flows to the tab panels below.
+		 */
+		zoom: var(--pie-section-player-tab-zoom-comp, 1);
 	}
 
 	.pie-section-player-tab {

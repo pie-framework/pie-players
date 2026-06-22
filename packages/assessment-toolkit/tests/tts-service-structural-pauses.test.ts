@@ -12,6 +12,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
 	public segmentCalls: TTSSpeechSegment[][] = [];
 	public stopCalls = 0;
+	public settingsUpdates: Partial<TTSConfig>[] = [];
 	public onWordBoundary?: (
 		word: string,
 		position: number,
@@ -46,6 +47,9 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	}
 	isPaused(): boolean {
 		return false;
+	}
+	updateSettings(settings: Partial<TTSConfig>): void {
+		this.settingsUpdates.push(settings);
 	}
 }
 
@@ -421,6 +425,150 @@ describe("TTSService structural pauses", () => {
 		expect(restartedSegments).toEqual([
 			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
 		]);
+	});
+
+	test("seekForward replay keeps word highlighting active", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Next sentence.";
+		(service as any).currentContentElement = {} as Element;
+		(service as any).activeHighlightMode = "word";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 0;
+		(service as any).findHighlightRange = (charIndex: number, length: number) =>
+			charIndex === 16 && length === 4
+				? {
+						node: { textContent: "Next sentence." } as Text,
+						start: 0,
+						end: 4,
+					}
+				: null;
+		const highlightedWords: string[] = [];
+		service.setHighlightCoordinator({
+			highlightRange: () => {},
+			highlightTTSWord: (node: Text, start: number, end: number) => {
+				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			},
+			highlightTTSSentence: () => {},
+			clearTTS: () => {},
+			clearHighlights: () => {},
+			clearAll: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		await service.seekForward();
+
+		expect(impl.stopCalls).toBe(1);
+		expect(impl.speakCalls).toEqual(["Next sentence."]);
+		expect(highlightedWords).toEqual(["Next"]);
+	});
+
+	test("seekForward replay does not double-count speakSegments word offsets", async () => {
+		const impl = new MockTTSImpl(true);
+		impl.speakSegments = async (segments: TTSSpeechSegment[]) => {
+			impl.segmentCalls.push(segments);
+			impl.onWordBoundary?.("Next", 16, 4);
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Next sentence.";
+		(service as any).currentContentElement = {} as Element;
+		(service as any).activeHighlightMode = "word";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 0;
+		(service as any).findHighlightRange = (charIndex: number, length: number) =>
+			charIndex === 16 && length === 4
+				? {
+						node: { textContent: "Next sentence." } as Text,
+						start: 0,
+						end: 4,
+					}
+				: null;
+		const highlightedWords: string[] = [];
+		service.setHighlightCoordinator({
+			highlightRange: () => {},
+			highlightTTSWord: (node: Text, start: number, end: number) => {
+				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			},
+			highlightTTSSentence: () => {},
+			clearTTS: () => {},
+			clearHighlights: () => {},
+			clearAll: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+		(service as any).configureWordBoundaryHighlighting({
+			highlightMode: "word",
+			wordBoundaryOffset: 0,
+		});
+
+		await service.seekForward();
+
+		expect(impl.segmentCalls).toEqual([
+			[{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 }],
+		]);
+		expect(highlightedWords).toEqual(["Next"]);
+	});
+
+	test("setPlaybackRate updates settings and restarts active planned playback", async () => {
+		const impl = new MockTTSImpl(true);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText =
+			"First sentence. Second sentence. Third sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 16;
+		let restartedSegments: TTSSpeechSegment[] = [];
+		(service as any).speakWithPlan = async (segments: TTSSpeechSegment[]) => {
+			restartedSegments = segments;
+		};
+
+		await (service as any).setPlaybackRate(1.25);
+
+		expect(impl.settingsUpdates).toContainEqual({ rate: 1.25 });
+		expect(impl.stopCalls).toBe(1);
+		expect(restartedSegments).toEqual([
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
+		]);
+	});
+
+	test("setPlaybackRate restarts active non-segmented playback with updated settings", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).currentContentElement = {} as Element;
+		(service as any).activeHighlightMode = "word";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 16;
+
+		await service.setPlaybackRate(1.25);
+
+		expect(impl.settingsUpdates).toContainEqual({ rate: 1.25 });
+		expect(impl.stopCalls).toBe(1);
+		expect(impl.speakCalls).toEqual(["Second sentence."]);
 	});
 
 	test("seekBackward is a no-op at first sentence boundary", async () => {

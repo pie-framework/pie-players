@@ -616,12 +616,37 @@ tools: {
 }
 ```
 
+Hosts that need semantic UI copy can use object-form options. The `rate` still
+drives playback and provider mapping; `label` / `ariaLabel` only change visible
+and accessible button text.
+
+```typescript
+tools: {
+  providers: {
+    textToSpeech: {
+      enabled: true,
+      backend: "server",
+      serverProvider: "custom",
+      settings: {
+        speedOptions: [
+          { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+          { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
+        ]
+      }
+    }
+  }
+}
+```
+
 `speedOptions` semantics:
 
 - Omitted or non-array: default speed buttons are shown (`0.8x`, `1.25x`).
 - Explicit empty array (`[]`): hide all speed buttons.
 - Invalid-only arrays (for example `["fast", -1, 1]`): fall back to defaults.
 - Valid numeric values are deduplicated and keep first-seen order.
+- Object-form entries use the same numeric validation/deduping by `rate`.
+- Missing labels fall back to numeric text like `1.5x`; missing `ariaLabel`
+  falls back to a matching accessible name like `Fast speed`.
 - `1` is excluded (normal speed is already available by toggling active speed off).
 
 ### Runtime Fallback: Server TTS -> Browser TTS

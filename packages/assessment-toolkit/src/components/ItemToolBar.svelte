@@ -1082,13 +1082,64 @@
 			};
 		};
 
+		// horizontal scroll on the *whole* shell (so header + content are
+		// part of the same scroll surface) and pin a `min-width` on every
+		// child of the column flex (header, content, mounted tool) so they
+		// all participate in the same scrollable width — without this,
+		// `contentEl` stays at the shell's visible width and clips the tool
+		// while the header alone scrolls. At normal sizes the knobs are
+		// cleared so shellEl's default `overflow: visible` is restored —
+		// that visibility is what lets the absolutely-positioned resize
+		// handles receive pointer events outside the rounded border, see
+		// the shellEl block.
+		const applyContentMinWidth = () => {
+			const configuredMinWidth = currentArgs.mounted.entry.shell?.minWidth;
+			const shouldScroll =
+				typeof configuredMinWidth === 'number' &&
+				configuredMinWidth > 0 &&
+				width < configuredMinWidth;
+			const minWidthValue = shouldScroll ? `${configuredMinWidth}px` : '';
+
+			if (mountedContentElement) {
+				mountedContentElement.style.minWidth = minWidthValue;
+			}
+			if (headerEl) {
+				headerEl.style.minWidth = minWidthValue;
+			}
+			if (contentEl) {
+				contentEl.style.minWidth = minWidthValue;
+			}
+			if (shellEl) {
+				shellEl.style.overflowX = shouldScroll ? 'auto' : 'visible';
+				shellEl.style.overflowY = 'visible';
+			}
+		};
+
 		const applyPositionAndSize = () => {
 			const { minWidth, minHeight, maxWidth, maxHeight } = getShellBounds();
-			width = clamp(width, minWidth, Math.max(minWidth, Math.min(maxWidth, window.innerWidth)));
-			height = clamp(height, minHeight, Math.max(minHeight, Math.min(maxHeight, window.innerHeight)));
+			// WCAG 1.4.10 Reflow at 320px / 400% zoom: when the viewport is
+			// narrower than the shell's configured minWidth, allow the shell to
+			// shrink to the viewport so its right edge (close button, controls)
+			// stays reachable. Internal content keeps its natural width via the
+			// dynamic `min-width` applied by applyContentMinWidth — the user
+			// pans the calculator keypad horizontally inside the shell instead
+			// of the page itself horizontally scrolling.
+			const effectiveMinWidth = Math.min(minWidth, window.innerWidth);
+			const effectiveMinHeight = Math.min(minHeight, window.innerHeight);
+			width = clamp(
+				width,
+				effectiveMinWidth,
+				Math.max(effectiveMinWidth, Math.min(maxWidth, window.innerWidth)),
+			);
+			height = clamp(
+				height,
+				effectiveMinHeight,
+				Math.max(effectiveMinHeight, Math.min(maxHeight, window.innerHeight)),
+			);
 			x = clamp(x, 0, Math.max(0, window.innerWidth - width));
 			y = clamp(y, 0, Math.max(0, window.innerHeight - height));
 			applyShellStyle();
+			applyContentMinWidth();
 			notifyHostedResize();
 		};
 
@@ -1219,6 +1270,13 @@
 			element.style.height = '100%';
 			element.style.flex = '1 1 auto';
 			element.style.minHeight = '0';
+			// `min-width` is applied dynamically by applyContentMinWidth() so
+			// that the calculator surface keeps its natural width only when
+			// the shell has been shrunk below its configured minimum (narrow
+			// viewport, WCAG 1.4.10 reflow). At full shell width we leave
+			// min-width clear so contentEl never gains a phantom scrollbar
+			// from sub-pixel rounding against the 100% width child.
+			applyContentMinWidth();
 			if (mountedContentElement && mountedContentElement !== element) {
 				if (mountedContentElement.parentNode === contentEl) {
 					invokeElementUnmount(mountedContentElement);
@@ -1507,8 +1565,14 @@
 			if (resizePointerId === event.pointerId) {
 				event.preventDefault();
 				const shellConfig = currentArgs.mounted.entry.shell;
-				const minWidth = shellConfig?.minWidth ?? 320;
-				const minHeight = shellConfig?.minHeight ?? 240;
+				const configuredMinWidth = shellConfig?.minWidth ?? 320;
+				const configuredMinHeight = shellConfig?.minHeight ?? 240;
+				// Allow the shell to shrink below its configured minimum on
+				// viewports that can't accommodate it (mirrors the floor used
+				// by applyPositionAndSize for WCAG 1.4.10 reflow). Internal
+				// scrolling on contentEl keeps tool content reachable.
+				const minWidth = Math.min(configuredMinWidth, window.innerWidth);
+				const minHeight = Math.min(configuredMinHeight, window.innerHeight);
 				const maxWidth = shellConfig?.maxWidth ?? window.innerWidth;
 				const maxHeight = shellConfig?.maxHeight ?? window.innerHeight;
 				const dx = event.clientX - resizeStartX;
@@ -1561,6 +1625,7 @@
 				}
 
 				applyShellStyle();
+				applyContentMinWidth();
 				notifyHostedResize();
 			}
 		};

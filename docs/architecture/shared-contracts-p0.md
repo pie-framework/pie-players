@@ -1,6 +1,6 @@
 # P0 Shared Contracts Architecture
 
-Status: Architecture proposal / pre-PRD direction. This note captures the intended shape of shared PIE contracts that unblock timed media, branching, simulations, learner evidence, score aggregation, and standards adapters. It is not an accepted implementation contract; later PRDs own exact TypeScript names, exports, wire fields, and migration details.
+Status: Architecture proposal / pre-PRD direction. This note captures the intended shape of shared PIE contracts that unblock timed media, branching, simulations, learner evidence, score aggregation, and standards adapters. It is not an accepted implementation contract; later PRDs in [`../prds/shared-contracts/`](../prds/shared-contracts/) own exact TypeScript names, exports, wire fields, and migration details.
 
 ## Context
 
@@ -11,7 +11,7 @@ The PIE gap analysis identifies shared contracts as P0 work because several high
 - branching scenarios and role-play;
 - simulations and process-capture workflows;
 - learner evidence capture;
-- adapter-friendly outputs for QTI/PCI, LTI, SCORM, xAPI, and Caliper.
+- adapter-friendly outputs suitable for QTI/PCI, LTI, xAPI, and Caliper adapters.
 
 The goal is not to turn PIE into a complete assessment platform. PIE should provide stable interactions, player/container behavior, sessions, outcomes, accessibility behavior, and event projections that host systems can consume. Host systems still own item banks, content workflow, storage, identity, privacy, scheduling, reporting, gradebooks, standards certification, and product policy.
 
@@ -79,7 +79,7 @@ flowchart TD
 | Layer | Owns | Does not own |
 | --- | --- | --- |
 | Host application | durable persistence, identity, policy, storage, standards mapping, reporting, privacy, product workflow | element internals or section runtime mechanics |
-| Standards adapters | mapping PIE projections into QTI/PCI, LTI, SCORM, xAPI, Caliper, or product analytics | PIE runtime state ownership or certification claims without testing |
+| Standards adapters | mapping PIE projections into QTI/PCI, LTI, xAPI, Caliper, or product analytics | PIE runtime state ownership or certification claims without testing |
 | `assessment-player` | assessment routing, section session rollup, submission state for consumers that choose it | item scoring, section-specific orchestration, backend reporting |
 | `section-player` variants | section layout, child item orchestration, section completion, profile-specific section behavior | leaf element contracts, backend persistence, product policy |
 | `assessment-toolkit` | section controller contracts, attempt/session helpers, tools and accommodation coordination | complete assessment product behavior |
@@ -343,11 +343,16 @@ PIE should expose stable source data that adapters can map to standards. PIE sho
 | --- | --- | --- |
 | QTI / PCI | stable section, item, element, outcome, media, and profile references | exact XML/profile mapping and validation |
 | LTI | outcome and completion projections | launch, identity, grade passback, AGS mapping |
-| SCORM | summary completion and score projection | package/runtime mapping and LMS integration |
 | xAPI | event projection with source refs and process vocabulary | actor, verb/object mapping, statement authority, LRS policy |
 | Caliper | event projection with assessment context | sensor mapping, entity normalization, event certification |
 
 Adapter-facing contracts should be precise enough to avoid lossy mappings, but not so standards-specific that PIE runtime code becomes coupled to one reporting system.
+
+Adapter package direction:
+
+- QTI/PCI mapping belongs in `../pie-qti`, consuming PIE projection contracts rather than living in this repo.
+- LTI, xAPI, and Caliper may become separate `@pie-players/*` adapter packages after the shared projection contracts exist.
+- SCORM is out of scope for this planning track.
 
 ### Accessibility Runtime Patterns
 
@@ -396,7 +401,7 @@ This keeps PIE useful as a toolkit without making the built-in assessment-player
 
 ## Future PRDs
 
-Recommended PRD split:
+Detailed PRDs should live in [`../prds/shared-contracts/`](../prds/shared-contracts/). Recommended PRD split:
 
 1. `interaction-event-contract`
    - Event projection vocabulary, source refs, typed event families, privacy/telemetry rules, process/path fields.

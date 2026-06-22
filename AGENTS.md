@@ -1,160 +1,211 @@
 # Agent Instructions
 
-This file is consumed by Claude Code, Codex, Cursor (as a supplement to
-`.cursor/rules/*.mdc`), and other agent tooling. The authoritative source for
-project rules is `.cursor/rules/`; this file surfaces the invariants most
-likely to be violated and points at the rule files for detail.
+Use this file as the single project guidance entry point for agent tools.
+This file contains the repo's project brief, canonical rules, and the inventory
+of project skills and commands. Do not duplicate this guidance into Cursor
+rules, Cursor skills, or Cursor commands.
 
-## Critical architectural invariants
+## Project Context
 
-### PIE element versioning and the tag / id contract
+PIE Players is a Bun + Svelte 5 monorepo that ships the player framework for
+PIE (Portable Interactions and Elements): section, item, assessment, and print
+players; the assessment toolkit; tools and toolbars; theming; and the TTS
+server stack. The publishable packages are consumed as a cohesive
+`@pie-players/*` custom-element suite.
 
-The Custom Elements spec does not allow redefining an already-registered tag.
-PIE works around this by encoding the package version into the tag name
-(`--version-<encoded>` suffix, e.g. `pie-multiple-choice--version-latest`).
-This lets multiple versions of the same element coexist in one document.
+Critical requirements:
 
-Because the versioned tag name is the only thing that lets two versions
-coexist, it is **part of the authored content contract**, not opaque author
-markup.
-
-Do not:
-
-- Strip, normalize, trim, or "clean up" the `--version-*` suffix on any
-  `pie-*` tag.
-- Compare a rendered element against its non-versioned base tag.
-- Mutate the `id` attribute on `pie-*` elements. The runtime binds elements
-  to models via strict `pieElement.id === config.models[].id` equality
-  (`packages/players-shared/src/pie/updates.ts`).
-- Prefix / slug / normalize `id`, `model-id`, `session-id`, `pie-*`,
-  `model-*`, `session-*`, `config-*`, `context-*`, `data-*`, or `aria-*`
-  attributes.
-- Enable DOMPurify's `SANITIZE_NAMED_PROPS: true` — it prefixes `id` with
-  `user-content-` and silently breaks model lookup. Keep `SANITIZE_DOM: true`
-  (that is the real clobbering defense); leave `SANITIZE_NAMED_PROPS` at its
-  default `false`.
-- Re-`define` an existing PIE custom element tag. If a new version is needed,
-  produce a new versioned tag and update the content / config together.
-
-Authoring-mode variants (`pie-*-config`) are versioned the same way and carry
-the same guarantees.
-
-Canonical implementation: `packages/players-shared/src/pie/config.ts`
-(`makeUniqueTags`).
-
-Rule file: [`.cursor/rules/pie-element-versioning.mdc`](.cursor/rules/pie-element-versioning.mdc).
-
-### Custom Element import boundaries
-
-Consumers import built `dist` entrypoints, never package `src` or
-`*.svelte?customElement`. CE build outputs must not contain dangling
-`.svelte` imports.
-
-Rule file: [`.cursor/rules/custom-elements-boundaries.mdc`](.cursor/rules/custom-elements-boundaries.mdc).
-
-Guard: `bun run check:custom-elements` (also enforces no `.svelte` imports in
-published `dist` JS).
-
-### Legacy compatibility boundaries
-
-The only permitted compatibility surface is the `pie-item` client contract.
-Every exception needs an inline `pie-item contract compatibility: <reason>`
-comment and a covering test.
-
-Rule file: [`.cursor/rules/legacy-compatibility-boundaries.mdc`](.cursor/rules/legacy-compatibility-boundaries.mdc).
-
-### Svelte subscription safety
-
-`$effect` is wiring-only. Reactive mutations during setup must go through
-`untrack(...)`. Subscription setup must be idempotent and compare stable keys
-(`sectionId`, `attemptId`), not object identity.
-
-Rule file: [`.cursor/rules/svelte-subscription-safety.mdc`](.cursor/rules/svelte-subscription-safety.mdc).
-
-### Build-before-tests
-
-Custom-element packages are consumed via `dist`. After changing package
-source, rebuild that package before validating in a consumer app or running
-tests that exercise its CE entrypoint.
-
-Rule file: [`.cursor/rules/build-before-tests.mdc`](.cursor/rules/build-before-tests.mdc).
-
-### Playwright / `git push` must run outside the sandbox
-
-The pre-push lefthook runs Playwright e2e suites; running those (or any
-`test:e2e:*` script, `bunx playwright …`, or `git push`) inside the default
-tool sandbox fails with missing Chromium binaries, dev-server timeouts, or
-blocked downloads.
-
-Agents MUST invoke these commands with `required_permissions: ["all"]` so
-they execute outside the sandbox and reuse the shared
-`~/Library/Caches/ms-playwright/` browser cache.
-
-Rule file: [`.cursor/rules/playwright-sandbox.mdc`](.cursor/rules/playwright-sandbox.mdc).
-
-### Branch workflow
-
-`develop` is the integration branch for this project. Do not merge or push
-project changes directly to `main` / `master`. Feature branches are fine, but
-they should target `develop` for PRs and merges.
-
-Rule file: [`.cursor/rules/branch-workflow.mdc`](.cursor/rules/branch-workflow.mdc).
-
-### Release version alignment (fixed / lockstep versioning)
-
-All publishable `@pie-players/*` packages are released with a **fixed
-(lockstep) version**. At any published version, every package in the suite
-carries the same version number. This is enforced by Changesets' `fixed`
-block in `.changeset/config.json`.
-
-Implications for agent-driven work:
-
-- Always include **all** publishable packages in release/versioning steps.
-  Never scope a release bump to "only the packages I changed."
-- Every release bumps every publishable package, including ones whose source
-  did not change. That is expected, not a bug. Do not try to skip unchanged
+- WCAG 2.2 Level AA for UI work.
+- Bun for repo scripts; do not substitute Node/npm commands.
+- Svelte 5 runes and native custom elements.
+- Mixed `shadow: "open"` and `shadow: "none"` strategy by design.
+- Fixed lockstep release versioning for all publishable `@pie-players/*`
   packages.
-- **Patch only.** While we are pre-1.0 (`0.x.y` line), every release is a
-  `patch` bump — even for breaking changes. Do not author `minor` / `major`
-  changesets unless the maintainer explicitly lifts this constraint and
-  rewrites the rule. Document breaking changes in the changeset body, but
-  ship them under `patch`. A pending `minor` / `major` changeset is a
-  release blocker because the highest declared bump wins for the lockstep
-  set.
-- Local publishing uses **`bun run release:with-version`** (NPM token comes
-  from `.env` via `dotenvx`). When the user asks to publish locally, publish
-  from the branch and working tree currently checked out; do not redirect to
-  `master`, `main`, `develop`, or the GitHub workflow unless explicitly asked.
-  Do not invoke `bun run release` or `npm publish` directly.
-- When adding a new publishable package under `packages/*`, add it to the
-  `fixed` block in `.changeset/config.json` in the same change set.
-- The invariant is checked by `scripts/check-fixed-versioning.mjs` (run via
-  `bun run verify:publish`).
 
-Consumer-facing docs: [`docs/setup/publishing.md`](docs/setup/publishing.md)
-and the "Versioning Policy" section in [`README.md`](README.md).
+## Canonical Rules
 
-Rule file: [`.cursor/rules/release-version-alignment.mdc`](.cursor/rules/release-version-alignment.mdc).
+### PIE Element Versioning And Tag/ID Contract
 
-### Ticket comment discipline
+Versioned `pie-*--version-*` tag names are authored content contracts. They are
+the only way multiple versions of the same custom element can coexist at
+runtime.
 
-When posting to Jira / Confluence / GitHub on the user's behalf, keep
-comments brief and scoped to the current work. No sub-ticket asks,
-process recommendations, or unsolicited next-steps unless the user
-directed it — ask first if you think something is worth raising.
+- Do not strip, trim, normalize, or compare away the `--version-<encoded>`
+  suffix on any `pie-*` tag in markup, config, registries, or logs.
+- Do not compare rendered PIE elements against a non-versioned base tag. Compare
+  the full tag after `makeUniqueTags` in
+  `packages/players-shared/src/pie/config.ts`.
+- Authoring-mode variants (`pie-*-config`) are versioned the same way.
+- Treat `id` on `pie-*` elements as a contract key. `updateSinglePieElement` in
+  `packages/players-shared/src/pie/updates.ts` uses strict
+  `config.models[].id === pieElement.id` matching.
+- Do not prefix, slug, case-change, or otherwise mutate `id`, `model-id`,
+  `session-id`, `slot`, `data-*`, `aria-*`, `pie-*`, `config-*`, or
+  `context-*`.
+- Keep `SANITIZE_DOM: true` for DOM-clobbering defense and keep
+  `SANITIZE_NAMED_PROPS: false`; enabling named-prop sanitization prefixes IDs
+  and breaks model lookup.
+- Use DOMPurify custom-element handling for versioned PIE tags and contract
+  attributes. Do not fall back to generic allow-lists that drop unknown tags.
+- Reject alias maps that collapse versioned tags back to base tags, regex
+  cleanups that strip version suffixes, any sanitizer/transformer that mutates
+  contract IDs, and attempts to re-define an already registered PIE tag.
 
-Rule file: [`.cursor/rules/ticket-comment-discipline.mdc`](.cursor/rules/ticket-comment-discipline.mdc).
+### Custom Element Import And Packaging Boundaries
 
-### Code review workflow
+- In consuming apps/packages, import custom-element registration entrypoints
+  such as `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`.
+- Do not import workspace package source paths from consumers
+  (`@pie-players/<pkg>/src/...`).
+- Do not use `?customElement` in cross-package imports.
+- Use `pie-*` class names or `data-pie-*` hooks for component DOM hooks and
+  selectors. Avoid generic class names like `header`, `content`, `container`,
+  `card`, `pane`, `toolbar`, `body`, and `active` in custom-element
+  markup/styles.
+- For light-DOM custom elements (`shadow: "none"`), treat classes as public API
+  and avoid dependencies on host/global utility class names.
+- Keep package `exports` runtime targets on built `dist` artifacts unless there
+  is an explicit documented exception.
+- If a CE registration entry imports `*.svelte?customElement`, ensure the
+  referenced `.svelte` files are available from publish/build output paths.
+- Consumer imports of package CE entrypoints resolve to built `dist` output.
+  After changing package `src`, rebuild the changed package and direct `dist`
+  consumers before validating in a consumer app or tests.
+- If a failure may be stale-artifact related, rebuild and rerun once before
+  deeper debugging.
+- For split-panel scrolling behavior, mirror
+  `packages/section-player/src/components/layouts/SplitPanelLayout.svelte`
+  unless intentionally redesigning: constrained parent layout, constrained split
+  grid, scrollable panes with `min-height: 0`, `min-width: 0`, and contained
+  vertical overflow.
+- Before finalizing CE-related changes, run:
+  `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
+  `bun run check:custom-elements`.
 
-For any substantial change set (multi-file feature, cross-package work,
-non-trivial refactor, anything PR-sized), the review step is three
-independent code-review subagents merged into one response. Disagreements
-that cannot be reconciled with a clear rule stop and ask the maintainer.
+### Legacy Compatibility Boundaries
 
-Rule file: [`.cursor/rules/code-review-workflow.mdc`](.cursor/rules/code-review-workflow.mdc).
+- Do not add legacy/backward-compatibility shims outside the `pie-item` client
+  contract surface.
+- Disallow alias maps for old IDs, dual event names, deprecated config bridges,
+  fallback payload normalizers, and duplicate dispatch paths kept only for older
+  consumers by default.
+- The only allowed exception is preserving externally consumed `pie-item` client
+  contract behavior.
+- Every allowed exception needs an inline
+  `pie-item contract compatibility: <reason>` comment and covering tests.
+- Do not add compatibility layers for internal toolkit, telemetry, config, or
+  demo-only APIs without an explicit maintainer-approved exception documented in
+  the same change.
+- Prefer canonical single-path implementations when compatibility can be removed
+  without breaking the `pie-item` client contract.
+- If uncertain, default to removing legacy behavior and request maintainer
+  clarification only for potential `pie-item` contract impact.
 
-## Required pre-flight commands for CE-touching changes
+### Svelte Subscription Safety
+
+- Treat `$effect` as wiring-only: setup/teardown subscriptions and observers,
+  but avoid directly mutating reactive UI state inside tracked effect bodies.
+- If setup must call logic that reads/writes reactive state, wrap it in
+  `untrack(() => { ... })`.
+- Make subscription setup idempotent: if `sectionId`/`attemptId` target did not
+  change and a subscription exists, return early.
+- Prefer stable key comparison (`sectionId`, `attemptId`) over object identity
+  when checking whether to resubscribe.
+- For lifecycle-triggered resubscribe, queue with `queueMicrotask` to prevent
+  synchronous re-entrant update chains.
+- On `"disposed"` lifecycle events, explicitly detach current subscriptions
+  before queueing a rebind.
+
+Quick pattern:
+
+```ts
+$effect(() => {
+  void sectionId;
+  void attemptId;
+  untrack(() => {
+    ensureSubscription();
+    setupLifecycleListener();
+  });
+  return () => teardownAll();
+});
+```
+
+### Release Version Alignment
+
+All publishable `@pie-players/*` packages are released with a fixed lockstep
+version. At any published version, every package in the suite carries the same
+version. The source of truth is the `fixed` block in `.changeset/config.json`.
+
+- Every release is a `patch` bump until the maintainer explicitly changes this
+  policy, even for breaking changes on the pre-1.0 line.
+- Author every changeset entry as `patch`; pending `minor` or `major`
+  changesets are release blockers.
+- Release/versioning steps cover all publishable packages. Never scope a release
+  bump to "only the packages I changed."
+- When adding a publishable package under `packages/*`, add it to the
+  Changesets `fixed` block in the same change.
+- Do not remove packages from the `fixed` block to unblock a release.
+- Use `bun run release:with-version` for local publishing. Do not run
+  `npm publish` or `bun run release` directly.
+- Local publishing uses the current checkout and branch unless the user
+  explicitly asks to switch or use a workflow.
+- NPM auth is loaded from `.env` via `dotenvx`; no separate `npm login` is
+  needed when `.env` contains a valid token.
+- If a release fails after `bun run version` mutates package files, do not rerun
+  `release:with-version`; follow `docs/setup/publishing.md`.
+- Because release verification can trigger Playwright, invoke local publish with
+  `required_permissions: ["all"]`.
+
+### Playwright And Sandboxed Execution
+
+Playwright cannot reliably install browsers, spawn dev servers, or launch
+Chromium inside the default Cursor tool sandbox.
+
+When running any command that may invoke Playwright, request
+`required_permissions: ["all"]` so it runs outside the sandbox and can reuse the
+shared browser cache.
+
+This applies to:
+
+- `git push`, because the pre-push hook runs Playwright e2e suites.
+- Any `bun run test:e2e:*` script.
+- `bunx playwright ...` / `bun playwright ...`.
+- Playwright helper scripts, screenshot capture, or ad-hoc DOM verification.
+- `bun run test` / `bun test` in packages whose tests include Playwright specs.
+
+Prefer `["all"]` for `git push` because the hook chain can also write to caches
+outside the workspace.
+
+## Skills And Commands
+
+Canonical project skills and commands live in `.claude/skills/` and
+`.claude/commands/`. Do not duplicate them into Cursor files or replace them
+with symlinks.
+
+Skills:
+
+- `accessibility-reviewer-assessments` — WCAG 2.2 AA and assessment-specific
+  accessibility review for player UI.
+- `api-design-reviewer` — public API, package export, custom-element, event,
+  slot, and cross-package contract review.
+- `ce-package-packaging` — custom-element package entrypoints, exports, build
+  artifacts, and preflight workflow.
+- `grill-with-docs` — opt-in design grilling with terminology/ADR capture.
+- `loop-review-agents` — opt-in repeated three-agent review loop with consensus
+  thresholds and churn control.
+- `prd-author` — draft or update PIE Players PRDs under `docs/prds/`.
+- `releases-and-changesets` — lockstep release and changeset workflow.
+
+Commands:
+
+- `grill-with-docs` — invoke the `grill-with-docs` skill with optional plan
+  context.
+- `loop-review-agents` — invoke the `loop-review-agents` skill with optional
+  review target context.
+
+## High-Value Checks
+
+For custom-element packaging or consumer-boundary changes, run:
 
 ```sh
 bun run check:source-exports
@@ -162,12 +213,41 @@ bun run check:consumer-boundaries
 bun run check:custom-elements
 ```
 
-## Verification pipeline for larger changes
+For release work, follow `docs/setup/publishing.md` and the release alignment
+rule in this file.
 
-```sh
-bun install
-bun run build
-bun run typecheck
-bun run test
-bun audit
-```
+## Technology Stack
+
+- Runtime: Bun
+- UI: Svelte 5 with runes, compiled to custom elements
+- Build: Vite + Turbo
+- Tests: `bun test`, Playwright, `@axe-core/playwright`
+- Lint/format: Biome
+- Type checking: TypeScript strict + `svelte-check`
+- Versioning: Changesets fixed block
+
+## Monorepo Map
+
+- `packages/section-player` - multi-item section delivery.
+- `packages/item-player` - single-item delivery.
+- `packages/assessment-player` - multi-section assessment delivery.
+- `packages/print-player` - item-level print rendering.
+- `packages/assessment-toolkit` - shared assessment services and components.
+- `packages/players-shared` - shared utilities, sanitizer, and PIE config.
+- `packages/pie-context` - shared runtime context.
+- `packages/theme*` - theme token contract and bridges.
+- `packages/tool-*` and `packages/section-player-tools-*` - runtime tools.
+- `packages/tts*` - TTS client and server packages.
+- `apps/*-demos`, `apps/docs`, `apps/local-esm-cdn` - local hosts and docs.
+- `tools/cli` - oclif-based CLI.
+
+## Local PIE Elements
+
+For local development, this repo can use a sibling `../pie-elements-ng`
+checkout. When present, demo apps can load its local ESM CDN adapter; otherwise
+they fall back to the remote ESM CDN.
+
+## Current Focus
+
+The framework is production-grade. Preserve accessibility, the custom-element
+contract, and lockstep release behavior when shipping changes.

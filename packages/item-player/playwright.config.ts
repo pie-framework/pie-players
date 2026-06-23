@@ -28,6 +28,9 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: false,
 		timeout: 120_000,
+		// Suppress vite's dev-only crash overlay so it can't intercept clicks
+		// when something throws unhandled (e.g. lazy-loaded module errors).
+		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1" },
 	},
 	projects: [
 		{

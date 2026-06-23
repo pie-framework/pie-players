@@ -7,11 +7,17 @@ import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 
+// Playwright sets PLAYWRIGHT_DISABLE_VITE_OVERLAY=1 so the dev-only crash
+// overlay can't intercept clicks during E2E. Unhandled errors still surface
+// in console.error output and the webServer log.
+const disableErrorOverlay = process.env.PLAYWRIGHT_DISABLE_VITE_OVERLAY === "1";
+
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
 	server: {
 		port: 5500,
 		open: true,
+		hmr: disableErrorOverlay ? { overlay: false } : undefined,
 	},
 	resolve: {
 		alias: {

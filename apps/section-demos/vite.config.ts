@@ -58,11 +58,18 @@ async function createLocalEsmCdnPlugin() {
 export default (async () => {
 	const localEsmCdn = await createLocalEsmCdnPlugin();
 
+	// Playwright sets PLAYWRIGHT_DISABLE_VITE_OVERLAY=1 so the dev-only crash
+	// overlay can't intercept clicks during E2E. Unhandled errors still surface
+	// in console.error output and the webServer log.
+	const disableErrorOverlay =
+		process.env.PLAYWRIGHT_DISABLE_VITE_OVERLAY === "1";
+
 	return defineConfig({
 		plugins: [sveltekit(), tailwindcss(), localEsmCdn].filter(Boolean),
 		server: {
 			port: 5300,
 			open: true,
+			hmr: disableErrorOverlay ? { overlay: false } : undefined,
 			proxy: {
 				// Same-origin proxy for FontAwesome 6 Pro served by Renaissance.
 				// Renaissance's CDN ships the CSS but doesn't send CORS headers

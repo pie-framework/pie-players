@@ -28,8 +28,13 @@ type ChoiceState = {
 };
 
 async function gotoRoute(page: Page, path: string) {
-	await page.goto(path, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Delivery" })).toBeVisible();
+	// `networkidle` is unreliable against vite dev (HMR websocket + lazy module
+	// loads) — wait on the rendered nav link as the mount signal instead, with
+	// the same generous timeout the rest of this file uses for client-only routes.
+	await page.goto(path, { waitUntil: "domcontentloaded" });
+	await expect(page.getByRole("link", { name: "Delivery" })).toBeVisible({
+		timeout: 15_000,
+	});
 }
 
 async function openSessionPanel(page: Page) {

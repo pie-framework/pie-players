@@ -1367,6 +1367,8 @@ test.describe("section player demo tts-ssml", () => {
 		// Baseline automated a11y scan (fail on serious / critical issues).
 		const axeResults = await new AxeBuilder({ page })
 			.disableRules(["region"])
+			// vite-error-overlay is the dev-server crash overlay — not product surface.
+			.exclude("vite-error-overlay")
 			.analyze();
 		const seriousOrCritical = axeResults.violations.filter((violation) =>
 			["serious", "critical"].includes(violation.impact || ""),

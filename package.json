@@ -14,7 +14,7 @@
 		"build:watch:section-tools": "turbo watch build --filter=@pie-players/pie-section-player --filter=@pie-players/pie-assessment-toolkit --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-*",
 		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player... --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-*",
 		"build:e2e:item-player": "turbo build --filter=@pie-players/pie-item-player...",
-		"build:e2e:assessment-player": "turbo build --filter=@pie-players/pie-assessment-player... --filter=@pie-players/pie-section-player-tools-*",
+		"build:e2e:assessment-player": "turbo build --filter=@pie-players/pie-assessment-player... --filter=@pie-players/pie-section-player-tools-* --filter=@pie-players/pie-tool-text-to-speech --filter=@pie-players/tts-server-google --filter=@pie-players/tts-server-polly",
 		"dev": "turbo dev --filter=section-demos",
 		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*'",
 		"test:all": "bun run test",

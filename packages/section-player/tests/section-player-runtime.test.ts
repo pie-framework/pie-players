@@ -180,10 +180,20 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
 			toolConfigStrictness: "error",
-			runtime: { playerType: "iife", env: { mode: "gather" } },
+			runtime: {
+				playerType: "iife",
+				env: {
+					mode: "gather",
+					"@pie-element": { lockChoiceOrder: true },
+				},
+			},
 		});
 		expect(state.playerRuntime.effectivePlayerType).toBe("iife");
 		expect(state.playerRuntime.resolvedPlayerTag).toBeDefined();
+		expect(state.playerRuntime.resolvedPlayerEnv).toEqual({
+			mode: "gather",
+			"@pie-element": { lockChoiceOrder: true },
+		});
 		expect(state.effectiveRuntime).toBeDefined();
 		expect(state.effectiveToolsConfig).toBeDefined();
 	});

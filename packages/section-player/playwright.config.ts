@@ -29,6 +29,9 @@ export default defineConfig({
 		url: baseURL,
 		reuseExistingServer: false,
 		timeout: 120_000,
+		// Suppress vite's dev-only crash overlay so it can't intercept clicks
+		// when a backing service (e.g. Polly auth) throws unhandled in CI.
+		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1" },
 	},
 	projects: [
 		{

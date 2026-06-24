@@ -26,6 +26,20 @@ export interface TTSHostToolbarLayout {
 	};
 }
 
+export interface TTSSpeedOptionConfig {
+	rate: number;
+	label?: string;
+	ariaLabel?: string;
+}
+
+export type TTSSpeedOption = number | TTSSpeedOptionConfig;
+
+export interface NormalizedTTSSpeedOption {
+	rate: number;
+	label: string;
+	ariaLabel: string;
+}
+
 export interface TTSRuntimeSettings {
 	backend?: "browser" | "polly" | "google" | "server";
 	serverProvider?: "polly" | "google" | "custom";
@@ -52,8 +66,9 @@ export interface TTSRuntimeSettings {
 	 * - Omitted/non-array: default speed buttons are shown.
 	 * - Empty array: hide speed buttons.
 	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
+	 * - Object entries can customize button text while preserving numeric rates.
 	 */
-	speedOptions?: number[];
+	speedOptions?: TTSSpeedOption[];
 	layoutMode?: TTSLayoutMode;
 	/**
 	 * Per-token highlighting of math expressions.
@@ -95,6 +110,70 @@ export const normalizeTTSLayoutMode = (
 /** Default inline TTS speed button multipliers (excluding 1.0×). */
 export const DEFAULT_TTS_SPEED_OPTIONS = Object.freeze([0.8, 1.25]);
 
+const normalizeSpeedRate = (entry: unknown): number | undefined => {
+	if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) {
+		return undefined;
+	}
+	const rounded = Math.round(entry * 100) / 100;
+	return rounded === 1 ? undefined : rounded;
+};
+
+const trimOptionalText = (value: unknown): string | undefined => {
+	if (typeof value !== "string") return undefined;
+	const trimmed = value.trim();
+	return trimmed.length ? trimmed : undefined;
+};
+
+const formatSpeedLabel = (rate: number): string => `${rate}x`;
+
+const formatSpeedAriaLabel = (label: string, usedDefaultLabel: boolean): string =>
+	usedDefaultLabel ? `Speed ${label}` : `${label} speed`;
+
+const normalizeSpeedAriaLabel = (
+	label: string,
+	ariaLabel: string | undefined,
+	usedDefaultLabel: boolean,
+): string => {
+	if (!ariaLabel) return formatSpeedAriaLabel(label, usedDefaultLabel);
+	if (ariaLabel.toLowerCase().includes(label.toLowerCase())) return ariaLabel;
+	return `${label} ${ariaLabel}`;
+};
+
+const normalizeTTSSpeedOptionConfig = (
+	entry: unknown,
+): TTSSpeedOption | undefined => {
+	if (typeof entry === "number") return normalizeSpeedRate(entry);
+	if (!entry || typeof entry !== "object" || Array.isArray(entry)) return undefined;
+	const record = entry as Record<string, unknown>;
+	const rate = normalizeSpeedRate(record.rate);
+	if (rate === undefined) return undefined;
+	const label = trimOptionalText(record.label);
+	const ariaLabel = trimOptionalText(record.ariaLabel);
+	return {
+		rate,
+		...(label ? { label } : {}),
+		...(ariaLabel ? { ariaLabel } : {}),
+	};
+};
+
+export const normalizeTTSSpeedOptionConfigs = (
+	value: unknown,
+): TTSSpeedOption[] => {
+	if (!Array.isArray(value)) return [...DEFAULT_TTS_SPEED_OPTIONS];
+	if (value.length === 0) return [];
+	const dedupedRates = new Set<number>();
+	const normalized: TTSSpeedOption[] = [];
+	for (const entry of value) {
+		const option = normalizeTTSSpeedOptionConfig(entry);
+		if (option === undefined) continue;
+		const rate = typeof option === "number" ? option : option.rate;
+		if (dedupedRates.has(rate)) continue;
+		dedupedRates.add(rate);
+		normalized.push(option);
+	}
+	return normalized.length ? normalized : [...DEFAULT_TTS_SPEED_OPTIONS];
+};
+
 /**
  * Resolves inline toolbar speed options from host config.
  * - Omitted/non-array: default speed buttons.
@@ -105,16 +184,35 @@ export const DEFAULT_TTS_SPEED_OPTIONS = Object.freeze([0.8, 1.25]);
 export const normalizeTTSSpeedOptions = (value: unknown): number[] => {
 	if (!Array.isArray(value)) return [...DEFAULT_TTS_SPEED_OPTIONS];
 	if (value.length === 0) return [];
-	const deduped = new Set<number>();
-	for (const entry of value) {
-		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0)
-			continue;
-		const rounded = Math.round(entry * 100) / 100;
-		if (rounded === 1) continue;
-		deduped.add(rounded);
-	}
-	return deduped.size ? Array.from(deduped) : [...DEFAULT_TTS_SPEED_OPTIONS];
+	return normalizeTTSSpeedOptionConfigs(value).map((option) =>
+		typeof option === "number" ? option : option.rate,
+	);
 };
+
+export const normalizeTTSSpeedControlOptions = (
+	value: unknown,
+): NormalizedTTSSpeedOption[] =>
+	normalizeTTSSpeedOptionConfigs(value).map((option) => {
+		if (typeof option === "number") {
+			const label = formatSpeedLabel(option);
+			return {
+				rate: option,
+				label,
+				ariaLabel: formatSpeedAriaLabel(label, true),
+			};
+		}
+		const defaultLabel = formatSpeedLabel(option.rate);
+		const label = option.label || defaultLabel;
+		return {
+			rate: option.rate,
+			label,
+			ariaLabel: normalizeSpeedAriaLabel(
+				label,
+				option.ariaLabel,
+				label === defaultLabel,
+			),
+		};
+	});
 
 export const formatTTSSpeedOptionsAsText = (values: number[]): string =>
 	values.join(", ");

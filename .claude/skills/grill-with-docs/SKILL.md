@@ -1,81 +1,44 @@
 ---
 name: grill-with-docs
-description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.
+description: Use when the user asks to grill or stress-test a plan/design, especially when terminology, domain language, CONTEXT.md, or ADR updates may matter.
 disable-model-invocation: true
 ---
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+# Grill With Docs
 
-Ask the questions one at a time, waiting for feedback on each question before continuing.
+Interview the user until the plan is clear enough to implement, and capture durable terminology or decisions only when they genuinely crystallize.
 
-If a question can be answered by exploring the codebase, explore the codebase instead.
+## Operating Mode
 
-## Domain awareness
+1. Restate the plan briefly.
+2. Build a decision tree across goals, constraints, contracts, data/state, UX, tests, rollout, and operations.
+3. Resolve upstream decisions before downstream ones.
+4. Ask exactly one primary question per turn.
+5. Include a concise recommended answer and rationale with each question.
+6. Explore the codebase first when the answer can be found there.
+7. Track each branch as `decided`, `open`, `blocked`, or `accepted-risk`.
 
-During codebase exploration, also look for existing documentation:
+## Domain Awareness
 
-### File structure
+- During exploration, check for existing `CONTEXT.md`, `CONTEXT-MAP.md`, and `docs/adr/`.
+- Challenge overloaded or conflicting terms immediately.
+- Propose a canonical term when the user uses vague language.
+- Use concrete scenarios to expose edge cases and concept boundaries.
+- Cross-check claims against code when the code can answer them.
 
-Most repos have a single context:
+## Documentation Capture
 
-```
-/
-├── CONTEXT.md
-├── docs/
-│   └── adr/
-│       ├── 0001-event-sourced-orders.md
-│       └── 0002-postgres-for-write-model.md
-└── src/
-```
+- Create or update `CONTEXT.md` lazily when a domain term is resolved and worth preserving.
+- Keep `CONTEXT.md` as domain language only; do not include implementation notes or scratch-pad details.
+- Offer an ADR only when the decision is hard to reverse, surprising without context, and the result of a real trade-off.
+- Do not create glossary or ADR files just to satisfy the workflow; no durable decision means no doc update.
 
-If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The map points to where each one lives:
+## Session Output
 
-```
-/
-├── CONTEXT-MAP.md
-├── docs/
-│   └── adr/                          ← system-wide decisions
-├── src/
-│   ├── ordering/
-│   │   ├── CONTEXT.md
-│   │   └── docs/adr/                 ← context-specific decisions
-│   └── billing/
-│       ├── CONTEXT.md
-│       └── docs/adr/
-```
+Maintain this structure as the conversation progresses:
 
-Create files lazily — only when you have something to write. If no `CONTEXT.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
-
-## During the session
-
-### Challenge against the glossary
-
-When the user uses a term that conflicts with the existing language in `CONTEXT.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
-
-### Sharpen fuzzy language
-
-When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
-
-### Discuss concrete scenarios
-
-When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
-
-### Cross-reference with code
-
-When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
-
-### Update CONTEXT.md inline
-
-When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
-
-Don't couple `CONTEXT.md` to implementation details. Only include terms that are meaningful to domain experts.
-
-### Offer ADRs sparingly
-
-Only offer to create an ADR when all three are true:
-
-1. **Hard to reverse** — the cost of changing your mind later is meaningful
-2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
-3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
-
-If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+- **Resolved Decisions**: choice and rationale.
+- **Open Decisions**: unresolved blockers.
+- **Dependency Map**: `decision -> depends on`.
+- **Risks and Mitigations**: top risks with fallback.
+- **Ready Check**: explicit yes/no on whether implementation can begin.

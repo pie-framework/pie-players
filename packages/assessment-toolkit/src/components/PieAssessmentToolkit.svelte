@@ -234,7 +234,7 @@ const DEFAULT_ENV = {
 	// make Svelte treat the same-effect read+write as a reactivity loop
 	// (effect_update_depth_exceeded). It does not feed any other reactive
 	// consumer, so a plain `let` is safer and matches the canonical Svelte
-	// 5 latch pattern from `.cursor/rules/svelte-subscription-safety.mdc`.
+	// 5 latch pattern documented in `AGENTS.md`.
 	let lastOwnership: "owned" | "inherited" | null = null;
 	let lastAppliedToolContextResolvers: Record<string, unknown> | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
@@ -796,7 +796,7 @@ const DEFAULT_ENV = {
 	// observed source of the `effect_update_depth_exceeded` warnings in
 	// the assessment-player smoke flow. We therefore explicitly track
 	// only the ownership inputs and run the bootstrap body inside
-	// `untrack`, matching `.cursor/rules/svelte-subscription-safety.mdc`.
+	// `untrack`, matching the Svelte subscription guidance in `AGENTS.md`.
 	$effect(() => {
 		void host;
 		void coordinator;
@@ -1197,7 +1197,7 @@ const DEFAULT_ENV = {
 	// on real changes — so re-running this effect on coordinator swap
 	// is safe and self-idempotent. We touch the reactive props
 	// explicitly and then run the side effect inside `untrack(...)`
-	// per `.cursor/rules/svelte-subscription-safety.mdc`.
+	// per the Svelte subscription guidance in `AGENTS.md`.
 	//
 	// `pnpEnforcement` resolves through {@link resolvePnpEnforcementInput}
 	// so the embedded path (`<pie-section-player-*>` setting

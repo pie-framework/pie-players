@@ -209,6 +209,7 @@ export class TTSService {
 	private lastError: string | null = null;
 	private speakRunId = 0;
 	private currentBoundaryOffset = 0;
+	private activeWordBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
 	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
@@ -852,11 +853,11 @@ export class TTSService {
 				position: number,
 				length?: number,
 			) => {
+				originalOnWordBoundary?.(word, position, length);
 				if (Number.isFinite(position)) {
 					this.currentBoundaryOffset = position;
 					this.currentSeekSegmentIndex = this.getCurrentSeekSegmentIndex();
 				}
-				originalOnWordBoundary?.(word, position, length);
 			};
 			try {
 				await providerWithPlan.speakSegments(segments);
@@ -867,6 +868,10 @@ export class TTSService {
 			}
 			return;
 		}
+		this.configureWordBoundaryHighlighting({
+			highlightMode: options?.highlightMode || "word",
+			wordBoundaryOffset: this.activeWordBoundaryOffset,
+		});
 		for (const segment of segments) {
 			if (runId !== this.speakRunId) return;
 			const seekIndex = this.seekSegments.findIndex(
@@ -1028,6 +1033,7 @@ export class TTSService {
 				options?.highlightModeOverride ||
 				(speechMatchesVisibleText ? this.resolveHighlightMode() : "sentence");
 			this.activeHighlightMode = highlightMode;
+			this.activeWordBoundaryOffset = options?.wordBoundaryOffset || 0;
 			const hasExplicitBreaks = this.hasExplicitBreakSemantics(contentToSpeak);
 			const shouldUsePlan =
 				!!this.currentContentElement &&
@@ -1927,6 +1933,7 @@ export class TTSService {
 		this.currentContentElement = null;
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
+		this.activeWordBoundaryOffset = 0;
 		this.seekSegments = [];
 		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
@@ -2014,6 +2021,60 @@ export class TTSService {
 		}
 	}
 
+	private normalizePlaybackRate(rate: number): number {
+		if (!Number.isFinite(rate)) return 1;
+		return Math.max(0.25, Math.min(4, rate));
+	}
+
+	private async restartFromSeekIndex(targetIndex: number): Promise<void> {
+		if (!this.provider || this.seekSegments.length === 0) return;
+		const safeTargetIndex = Math.max(
+			0,
+			Math.min(this.seekSegments.length - 1, targetIndex),
+		);
+
+		this.speakRunId += 1;
+		this.provider.onWordBoundary = undefined;
+		this.provider.stop();
+		this.currentSeekSegmentIndex = safeTargetIndex;
+		const runId = ++this.speakRunId;
+		const restartSegments = this.seekSegments.slice(safeTargetIndex);
+
+		this.setState(PlaybackState.PLAYING);
+		try {
+			this.configureWordBoundaryHighlighting({
+				highlightMode: this.activeHighlightMode,
+				wordBoundaryOffset: this.activeWordBoundaryOffset,
+			});
+			await this.speakWithPlan(restartSegments, runId, {
+				highlightMode: this.activeHighlightMode,
+			});
+			if (runId !== this.speakRunId) return;
+			this.setState(PlaybackState.IDLE);
+			this.clearHighlightsAndTracking();
+		} catch (error) {
+			if (runId !== this.speakRunId) return;
+			this.lastError = error instanceof Error ? error.message : String(error);
+			this.setState(PlaybackState.ERROR);
+			this.clearHighlightsAndTracking();
+			throw error;
+		}
+	}
+
+	async setPlaybackRate(rate: number): Promise<void> {
+		const nextRate = this.normalizePlaybackRate(rate);
+		await this.updateSettings({ rate: nextRate });
+		if (
+			this.state !== PlaybackState.PLAYING ||
+			!this.currentText ||
+			this.seekSegments.length === 0 ||
+			this.hasExplicitBreakSemantics(this.currentText)
+		) {
+			return;
+		}
+		await this.restartFromSeekIndex(this.getCurrentSeekSegmentIndex());
+	}
+
 	private async seekBy(units: number): Promise<void> {
 		if (!this.provider || !this.currentText) return;
 		if (
@@ -2035,28 +2096,7 @@ export class TTSService {
 		);
 		if (targetIndex === currentIndex) return;
 
-		this.speakRunId += 1;
-		this.provider.onWordBoundary = undefined;
-		this.provider.stop();
-		this.currentSeekSegmentIndex = targetIndex;
-		const runId = ++this.speakRunId;
-		const restartSegments = this.seekSegments.slice(targetIndex);
-
-		this.setState(PlaybackState.PLAYING);
-		try {
-			await this.speakWithPlan(restartSegments, runId, {
-				highlightMode: this.activeHighlightMode,
-			});
-			if (runId !== this.speakRunId) return;
-			this.setState(PlaybackState.IDLE);
-			this.clearHighlightsAndTracking();
-		} catch (error) {
-			if (runId !== this.speakRunId) return;
-			this.lastError = error instanceof Error ? error.message : String(error);
-			this.setState(PlaybackState.ERROR);
-			this.clearHighlightsAndTracking();
-			throw error;
-		}
+		await this.restartFromSeekIndex(targetIndex);
 	}
 
 	async seekForward(units = 1): Promise<void> {
@@ -2090,6 +2130,7 @@ export class TTSService {
 		this.currentContentElement = null;
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
+		this.activeWordBoundaryOffset = 0;
 		this.seekSegments = [];
 		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;

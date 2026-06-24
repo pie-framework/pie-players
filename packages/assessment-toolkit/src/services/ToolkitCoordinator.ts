@@ -51,6 +51,7 @@ import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
+	type TTSSpeedOption,
 	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
 import type { SREMathSpeechOptions } from "./tts/math-speech.js";
@@ -147,8 +148,9 @@ export interface TTSToolConfig extends ToolConfig {
 	 * - Omitted/non-array: default speed buttons are shown.
 	 * - Empty array: hide speed buttons.
 	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
+	 * - Object entries can customize button text while preserving numeric rates.
 	 */
-	speedOptions?: number[];
+	speedOptions?: TTSSpeedOption[];
 	layoutMode?: TTSLayoutMode;
 	/** Speech Rule Engine options for generated MathML speech. */
 	mathSpeech?: SREMathSpeechOptions;

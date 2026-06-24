@@ -28,6 +28,8 @@ test.describe("section demos chrome accessibility", () => {
 
 		const axeResults = await new AxeBuilder({ page })
 			.disableRules(["region"])
+			// vite-error-overlay is the dev-server crash overlay — not product surface.
+			.exclude("vite-error-overlay")
 			.analyze();
 		const matched = axeResults.violations.filter((violation) =>
 			DISALLOWED_DEMO_CHROME_VIOLATIONS.has(violation.id),

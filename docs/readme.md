@@ -21,6 +21,8 @@ history and completed implementation plans are intentionally excluded.
 
 - [`architecture/architecture.md`](./architecture/architecture.md) - System-level architecture across item player, section player, and toolkit
 - [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
+- [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
+- [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
 - [`architecture/types-and-utilities-contract.md`](./architecture/types-and-utilities-contract.md) - Shared contracts and utility expectations
 
 ## Item Player

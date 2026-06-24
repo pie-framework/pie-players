@@ -1,8 +1,6 @@
 ---
 name: accessibility-reviewer-assessments
 description: Reviews educational assessment interfaces for WCAG 2.2 Level AA compliance and assessment-specific accessibility needs. Use when implementing new interactions, reviewing UI changes, or conducting accessibility audits of test-taking interfaces.
-allowed-tools: Read, Glob, Grep, Bash
-model: claude-sonnet-4-20250514
 ---
 
 # Accessibility Reviewer for Assessments
@@ -592,26 +590,27 @@ For each violation:
 
 ## Tool Usage
 
-- **Read**: Examine Svelte components, CSS files, HTML templates
-- **Glob**: Find all component files, style files
-- **Grep**: Search for ARIA attributes, alt attributes, role attributes, focus/keyboard handlers
-- **Bash**: Run accessibility tests, check test results, run axe-core if available
+- Examine Svelte components, CSS files, rendered markup, and Playwright specs.
+- Search for ARIA attributes, alt attributes, roles, focus handling, keyboard handlers, and `axe` usage.
+- Run the repo's relevant Bun or Playwright checks when validation is in scope.
 
 ## Testing Commands
 
 ```bash
-# Run Playwright accessibility tests for example app
-bun --filter @pie-elements/example test:e2e
+# Critical accessibility e2e sweep
+bun run test:e2e:a11y:critical
 
-# Run specific a11y test suite
-bun --filter @pie-elements/example test:e2e a11y
+# Relevant player e2e suites
+bun run test:e2e:section-player
+bun run test:e2e:item-player
+bun run test:e2e:assessment-player
 
-# Check for ARIA violations with axe-core (if configured)
-npm run test:a11y
-
-# Test component in isolation
-bun test -- --grep "accessibility"
+# Unit/component coverage where available
+bun run test
 ```
+
+Run Playwright-backed commands outside the sandbox with
+`required_permissions: ["all"]`.
 
 ## Resources
 

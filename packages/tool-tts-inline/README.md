@@ -99,7 +99,7 @@ toolCoordinator.showTool('tts-passage-1');
 
 - `ttsService` - ITTSService instance (required)
 - `coordinator` - IToolCoordinator instance (optional, for visibility management)
-- `speedOptions` - Optional number array controlling inline speed button rendering
+- `speedOptions` - Optional speed options controlling inline speed button rendering
 
 ### `speedOptions` Configuration
 
@@ -112,12 +112,28 @@ const ttsButton = document.createElement("pie-tool-tts-inline");
 ttsButton.speedOptions = [2, 1.25, 1.5]; // rendered in this order
 ```
 
+For hosts that need semantic button copy, pass object-form options. `rate`
+still controls playback; `label` and `ariaLabel` only control visible and
+accessible text.
+
+```javascript
+ttsButton.speedOptions = [
+  { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+  { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
+];
+```
+
 Semantics:
 
 - Omitted or non-array: defaults to `[0.8, 1.25]`.
 - Explicit `[]`: no speed buttons rendered.
 - Invalid-only values: fall back to `[0.8, 1.25]`.
-- Values are deduplicated while preserving first-seen order.
+- Numeric values and object `rate` values are deduplicated while preserving
+  first-seen order.
+- Numeric options render as `{rate}x` with accessible names like
+  `Speed {rate}x`.
+- Object options can customize labels; missing labels fall back to `{rate}x`,
+  and missing `ariaLabel` values fall back to matching names like `Fast speed`.
 - `1` is excluded from rendered options.
 
 ## Behavior
@@ -135,7 +151,8 @@ Semantics:
    - Play/Pause toggles based on playback state
    - Stop halts playback and closes the panel
    - Fast-forward/Rewind invoke sentence-jump seek on `ITTSService`
-   - Speed buttons call `ttsService.updateSettings({ rate })`
+   - Speed buttons call `ttsService.setPlaybackRate(rate)` when available,
+     otherwise `ttsService.updateSettings({ rate })`
    - Selecting another speed switches active state to that option
    - Clicking the currently active speed resets back to `1x`
    - If `speedOptions` is `[]`, speed controls are omitted while rewind/forward/stop still render

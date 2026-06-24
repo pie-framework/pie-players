@@ -36,6 +36,7 @@ yarn-error.log*
 # editor
 .vscode/
 .idea/
+.cursor/
 
 # playwright
 test-results/
@@ -81,6 +82,4 @@ temp/
 !.mcp/README.md
 !.mcp/servers/*.json
 
-# Verdaccio local registry
-.verdaccio/
 .claude/settings.local.json

@@ -14,15 +14,5 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
-    check-changeset-patch-only:
-      run: bun run check:changeset-patch-only
-    check-local-pr-gate:
-      run: bun run check:local-pr-gate
-    ci-lint-and-typecheck:
-      run: bun run verify:ci-lint-typecheck
-    section-player-critical-e2e:
-      run: bun run test:e2e:section-player:critical
-    item-player-critical-e2e:
-      run: bun run test:e2e:item-player:critical
-    assessment-player-smoke-e2e:
-      run: bun run test:e2e:assessment-player
+    fast-local-gate:
+      run: bun run verify:pre-push

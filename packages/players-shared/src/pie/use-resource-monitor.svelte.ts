@@ -67,7 +67,7 @@ export function useResourceMonitor(
 	// consumers, but the same-effect read+write would otherwise trip
 	// `effect_update_depth_exceeded` on every host/config/provider change
 	// (observed in the assessment-player smoke flow during instrumentation
-	// provider rebinding). Per `.cursor/rules/svelte-subscription-safety.mdc`,
+	// provider rebinding). Per the Svelte subscription guidance in `AGENTS.md`,
 	// we explicitly track only the input getters and run the body inside
 	// `untrack(...)` so the self-mutations don't re-trigger the effect.
 	$effect(() => {

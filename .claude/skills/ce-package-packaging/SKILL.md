@@ -5,13 +5,12 @@ description: Workflow for adding or modifying a custom-element package — regis
 
 # Custom-Element Package Packaging
 
-This is a **workflow skill** that pairs with the canonical contract /
-boundary skills:
+This is a **workflow skill** that pairs with canonical project rules and
+specialist skills:
 
-- `pie-element-versioning` — tag-name and `id` contract.
-- `custom-elements-boundaries` — import / `exports` / class-name rules.
-- `releases-and-changesets` — fixed-versioning policy when adding a new
-  publishable package.
+- [`.cursor/rules/pie-element-versioning.mdc`](../../../.cursor/rules/pie-element-versioning.mdc) — tag-name and `id` contract.
+- [`.cursor/rules/custom-elements-boundaries.mdc`](../../../.cursor/rules/custom-elements-boundaries.mdc) — import / `exports` / class-name / rebuilt `dist` rules.
+- `releases-and-changesets` — fixed-versioning workflow when adding a new publishable package.
 
 ## Layout (canonical)
 
@@ -113,7 +112,8 @@ or e2e tests:
 turbo build --filter=@pie-players/<pkg>...
 ```
 
-See the `build-before-tests` skill for why this matters.
+See the rebuild-before-consumer-tests guidance in
+[`.cursor/rules/custom-elements-boundaries.mdc`](../../../.cursor/rules/custom-elements-boundaries.mdc).
 
 ## Related rules
 

@@ -79,8 +79,8 @@ compatibility bugs at the cost of more churn on unchanged packages per release.
 - `scripts/check-fixed-versioning.mjs` runs as part of `bun run verify:publish`
   and blocks publish if any publishable package has drifted.
 - Release prep always covers every publishable package — see
-  [`.cursor/rules/release-version-alignment.mdc`](./.cursor/rules/release-version-alignment.mdc)
-  and [`docs/setup/publishing.md`](./docs/setup/publishing.md).
+  [`AGENTS.md`](./AGENTS.md) and
+  [`docs/setup/publishing.md`](./docs/setup/publishing.md).
 
 ## Releasing From Workspace
 

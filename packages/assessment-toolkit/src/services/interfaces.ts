@@ -347,6 +347,11 @@ export interface TtsServiceApi {
 	updateSettings(settings: Partial<TTSConfig>): Promise<void>;
 
 	/**
+	 * Update playback speed and apply it to active planned playback.
+	 */
+	setPlaybackRate(rate: number): Promise<void>;
+
+	/**
 	 * Set highlight coordinator for word highlighting
 	 */
 	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void;

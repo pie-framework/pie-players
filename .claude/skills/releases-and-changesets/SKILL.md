@@ -157,8 +157,8 @@ This runs build + `check:fixed-versioning`, `check:package-metadata`,
 `check:node-consumer-imports`, `check:bundle-safety`,
 `check:math-rendering-version`, `check:engine-core-purity`.
 
-## Related skills
+## Related rule
 
-- `code-review-workflow` — release prep usually warrants a review pass.
-- `playwright-sandbox` — `bun run release:with-version` runs `bun run test`
-  which can trigger Playwright; invoke with `required_permissions: ["all"]`.
+- [`.cursor/rules/playwright-sandbox.mdc`](../../../.cursor/rules/playwright-sandbox.mdc)
+  — `bun run release:with-version` runs `bun run test`, which can trigger
+  Playwright; invoke with `required_permissions: ["all"]`.

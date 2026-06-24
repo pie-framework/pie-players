@@ -38,10 +38,10 @@ If a decision is easy to reverse, skip it — you'll just reverse it. If it's no
 
 ### What qualifies
 
-- **Architectural shape.** "We're using a monorepo." "The write model is event-sourced, the read model is projected into Postgres."
-- **Integration patterns between contexts.** "Ordering and Billing communicate via domain events, not synchronous HTTP."
-- **Technology choices that carry lock-in.** Database, message bus, auth provider, deployment target. Not every library — just the ones that would take a quarter to swap out.
-- **Boundary and scope decisions.** "Customer data is owned by the Customer context; other contexts reference it by ID only." The explicit no-s are as valuable as the yes-s.
-- **Deliberate deviations from the obvious path.** "We're using manual SQL instead of an ORM because X." Anything where a reasonable reader would assume the opposite. These stop the next engineer from "fixing" something that was deliberate.
-- **Constraints not visible in the code.** "We can't use AWS because of compliance requirements." "Response times must be under 200ms because of the partner API contract."
-- **Rejected alternatives when the rejection is non-obvious.** If you considered GraphQL and picked REST for subtle reasons, record it — otherwise someone will suggest GraphQL again in six months.
+- **Architectural shape.** "Assessment delivery is composed from assessment-player plus section-player runtimes, not a separate copied runtime stack."
+- **Integration patterns between contracts.** "Tool policy decisions flow through the assessment toolkit contract rather than direct tool-package imports."
+- **Technology choices that carry lock-in.** Custom-element packaging strategy, Svelte runes patterns, persisted session shape, or release tooling. Not every library — just choices that are expensive to unwind.
+- **Boundary and scope decisions.** "PIE owns runtime projections; hosts own durable persistence, identity, policy, reporting, and standards certification unless an adapter PRD says otherwise." The explicit no-s are as valuable as the yes-s.
+- **Deliberate deviations from the obvious path.** "We keep versioned `pie-*--version-*` tags in authored markup because custom elements cannot be redefined." Anything where a reasonable reader might otherwise simplify it away.
+- **Constraints not visible in the code.** "Playwright must run outside the Cursor sandbox." "All publishable packages release in lockstep as patch bumps."
+- **Rejected alternatives when the rejection is non-obvious.** If you considered normalizing model IDs, importing package source from a consumer, or splitting package versions independently and rejected it, record why.

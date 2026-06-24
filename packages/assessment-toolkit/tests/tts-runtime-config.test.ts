@@ -4,6 +4,7 @@ import {
 	DEFAULT_TTS_SPEED_OPTIONS,
 	formatTTSSpeedOptionsAsText,
 	normalizeTTSLayoutMode,
+	normalizeTTSSpeedControlOptions,
 	normalizeTTSSpeedOptions,
 	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
@@ -329,6 +330,59 @@ describe("normalizeTTSSpeedOptions", () => {
 	test("falls back to defaults when only invalid or 1.0 remain", () => {
 		expect(normalizeTTSSpeedOptions([1, "x", -1])).toEqual([
 			...DEFAULT_TTS_SPEED_OPTIONS,
+		]);
+	});
+
+	test("extracts rates from object-form options for public numeric compatibility", () => {
+		expect(
+			normalizeTTSSpeedOptions([
+				{ rate: 0.8, label: "Slow" },
+				{ rate: 1.5, label: "Fast" },
+				{ rate: 1.5, label: "Duplicate fast" },
+			]),
+		).toEqual([0.8, 1.5]);
+	});
+});
+
+describe("normalizeTTSSpeedControlOptions", () => {
+	test("keeps numeric options render-compatible with existing labels", () => {
+		expect(normalizeTTSSpeedControlOptions([0.8, 1.25])).toEqual([
+			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x" },
+			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
+		]);
+	});
+
+	test("normalizes labeled speed options without changing numeric fallback", () => {
+		expect(
+			normalizeTTSSpeedControlOptions([
+				{ rate: 0.8, label: " Slow ", ariaLabel: " Slow speed " },
+				{ rate: 1.5, label: "Fast" },
+				{ rate: 1, label: "Normal" },
+				{ rate: 1.5, label: "Duplicate fast" },
+				{ rate: Number.NaN, label: "Bad" },
+			]),
+		).toEqual([
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+		]);
+	});
+
+	test("keeps visible labels in custom accessible names", () => {
+		expect(
+			normalizeTTSSpeedControlOptions([
+				{ rate: 0.8, label: "Slow", ariaLabel: "Reduced pace" },
+				{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+			]),
+		).toEqual([
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow Reduced pace" },
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+		]);
+	});
+
+	test("falls back to default render options when only invalid options remain", () => {
+		expect(normalizeTTSSpeedControlOptions([{ rate: 1, label: "Normal" }])).toEqual([
+			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x" },
+			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
 		]);
 	});
 });

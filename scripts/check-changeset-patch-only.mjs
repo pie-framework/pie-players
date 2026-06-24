@@ -5,8 +5,7 @@
  * frontmatter declares a `minor` or `major` bump for a publishable package.
  *
  * The repo's release policy is **patch-only / lockstep** (see
- * `.cursor/rules/release-version-alignment.mdc`,
- * `AGENTS.md` "Release version alignment", and
+ * `AGENTS.md` "Release Version Alignment" and
  * `.claude/skills/releases-and-changesets/SKILL.md`):
  *
  *   - Every release publishes every publishable @pie-players/* package.
@@ -31,7 +30,7 @@ import path from "node:path";
 const ROOT = process.cwd();
 const CHANGESET_DIR = path.join(ROOT, ".changeset");
 const ALLOWED_BUMP = "patch";
-const RULE_PATH = ".cursor/rules/release-version-alignment.mdc";
+const RULE_PATH = "AGENTS.md";
 
 const fail = (message) => {
 	console.error(`[check-changeset-patch-only] ${message}`);

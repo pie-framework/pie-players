@@ -13,27 +13,28 @@
 {A concise description of the term}
 _Avoid_: Purchase, transaction
 
-**Invoice**:
-A request for payment sent to a customer after delivery.
-_Avoid_: Bill, payment request
+**Authored Content**:
+The assessment or item markup and config supplied by an authoring system.
+_Avoid_: HTML blob, item body
 
-**Customer**:
-A person or organization that places orders.
-_Avoid_: Client, buyer, account
+**Runtime Host**:
+The consuming app that embeds PIE players and owns persistence, identity, policy, and reporting.
+_Avoid_: Client, wrapper
 
 ## Relationships
 
-- An **Order** produces one or more **Invoices**
-- An **Invoice** belongs to exactly one **Customer**
+- A **Runtime Host** loads **Authored Content** into a player custom element.
+- An **Attempt** records learner progress for a section, item, or assessment.
+- **Tool Policy** decides which tools are available for a given assessment context.
 
 ## Example dialogue
 
-> **Dev:** "When a **Customer** places an **Order**, do we create the **Invoice** immediately?"
-> **Domain expert:** "No — an **Invoice** is only generated once a **Fulfillment** is confirmed."
+> **Dev:** "Does PIE persist the **Attempt**?"
+> **Domain expert:** "No — PIE produces runtime state and projections; the **Runtime Host** owns durable persistence."
 
 ## Flagged ambiguities
 
-- "account" was used to mean both **Customer** and **User** — resolved: these are distinct concepts.
+- "session" was used for both runtime subscription state and persisted attempt data — resolved: use **Runtime Session** for in-memory runtime state and **Attempt** for learner progress.
 ```
 
 ## Rules
@@ -57,15 +58,15 @@ _Avoid_: Client, buyer, account
 
 ## Contexts
 
-- [Ordering](./src/ordering/CONTEXT.md) — receives and tracks customer orders
-- [Billing](./src/billing/CONTEXT.md) — generates invoices and processes payments
-- [Fulfillment](./src/fulfillment/CONTEXT.md) — manages warehouse picking and shipping
+- [Assessment Delivery](./packages/assessment-player/CONTEXT.md) — coordinates sections, navigation, submission, and rollup state
+- [Section Runtime](./packages/section-player/CONTEXT.md) — delivers multi-item sections and section-level tools
+- [Assessment Toolkit](./packages/assessment-toolkit/CONTEXT.md) — owns shared runtime services, tool policy, and host-facing contracts
 
 ## Relationships
 
-- **Ordering → Fulfillment**: Ordering emits `OrderPlaced` events; Fulfillment consumes them to start picking
-- **Fulfillment → Billing**: Fulfillment emits `ShipmentDispatched` events; Billing consumes them to generate invoices
-- **Ordering ↔ Billing**: Shared types for `CustomerId` and `Money`
+- **Assessment Delivery → Section Runtime**: Assessment delivery delegates each section to the section runtime.
+- **Section Runtime → Assessment Toolkit**: Section runtime consumes shared services and policy decisions.
+- **Assessment Toolkit → Runtime Host**: Toolkit contracts expose projections and events; the host owns persistence and reporting.
 ```
 
 The skill infers which structure applies:

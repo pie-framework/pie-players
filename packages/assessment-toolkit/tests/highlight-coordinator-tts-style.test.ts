@@ -87,6 +87,25 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		);
 	});
 
+	test("keeps annotation palette colors independent from feedback theme tokens", () => {
+		const { styleStore } = setupHighlightDom();
+		new HighlightCoordinator();
+
+		const styleEl = styleStore.get("pie-highlight-styles");
+		expect(styleEl).toBeTruthy();
+		const annotationCss =
+			styleEl.textContent.split("/* Annotation highlights - persistent */")[1] ??
+			"";
+		expect(annotationCss).toContain("rgba(253, 233, 149, 0.5)");
+		expect(annotationCss).toContain("rgba(255, 159, 174, 0.5)");
+		expect(annotationCss).toContain("rgba(167, 224, 246, 0.5)");
+		expect(annotationCss).toContain("rgba(166, 225, 197, 0.5)");
+		expect(annotationCss).not.toContain("--pie-missing");
+		expect(annotationCss).not.toContain("--pie-correct");
+		expect(annotationCss).not.toContain("--pie-tertiary");
+		expect(annotationCss).not.toContain("--pie-secondary-light");
+	});
+
 	test("updates all tts contrast variables from custom color", () => {
 		const { rootVars } = setupHighlightDom();
 		const coordinator = new HighlightCoordinator();

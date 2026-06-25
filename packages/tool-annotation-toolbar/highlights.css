@@ -50,26 +50,34 @@
    ============================================================================ */
 
 ::highlight(annotation-yellow) {
-	background-color: color-mix(
-		in srgb,
-		var(--pie-missing, #fde995) 50%,
-		transparent
+	background-color: var(
+		--pie-annotation-yellow-highlight,
+		rgba(253, 233, 149, 0.5)
 	);
 	color: inherit;
 }
 
 ::highlight(annotation-pink) {
-	background-color: rgba(255, 159, 174, 0.5);
+	background-color: var(
+		--pie-annotation-pink-highlight,
+		rgba(255, 159, 174, 0.5)
+	);
 	color: inherit;
 }
 
 ::highlight(annotation-blue) {
-	background-color: rgba(167, 224, 246, 0.5);
+	background-color: var(
+		--pie-annotation-blue-highlight,
+		rgba(167, 224, 246, 0.5)
+	);
 	color: inherit;
 }
 
 ::highlight(annotation-green) {
-	background-color: rgba(166, 225, 197, 0.5);
+	background-color: var(
+		--pie-annotation-green-highlight,
+		rgba(166, 225, 197, 0.5)
+	);
 	color: inherit;
 }
 

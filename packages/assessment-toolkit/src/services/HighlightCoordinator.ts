@@ -404,27 +404,27 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
       /* Annotation highlights - persistent */
       ::highlight(annotation-yellow) {
-        background-color: color-mix(in srgb, var(--pie-missing, #ffff00) 35%, transparent);
+        background-color: var(--pie-annotation-yellow-highlight, rgba(253, 233, 149, 0.5));
         color: inherit;
       }
 
       ::highlight(annotation-green) {
-        background-color: color-mix(in srgb, var(--pie-correct, #90ee90) 35%, transparent);
+        background-color: var(--pie-annotation-green-highlight, rgba(166, 225, 197, 0.5));
         color: inherit;
       }
 
       ::highlight(annotation-blue) {
-        background-color: color-mix(in srgb, var(--pie-tertiary, #add8e6) 35%, transparent);
+        background-color: var(--pie-annotation-blue-highlight, rgba(167, 224, 246, 0.5));
         color: inherit;
       }
 
       ::highlight(annotation-pink) {
-        background-color: color-mix(in srgb, var(--pie-secondary-light, #ffb6c1) 35%, transparent);
+        background-color: var(--pie-annotation-pink-highlight, rgba(255, 159, 174, 0.5));
         color: inherit;
       }
 
       ::highlight(annotation-orange) {
-        background-color: color-mix(in srgb, var(--pie-incorrect, #ffa500) 35%, transparent);
+        background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.5));
         color: inherit;
       }
 

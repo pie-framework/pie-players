@@ -8,6 +8,7 @@
 			contentKind: { attribute: "content-kind", type: "String" },
 			regionPolicy: { attribute: "region-policy", type: "String" },
 			scopeElement: { type: "Object", reflect: false },
+			ttsHighlightTargetResolver: { type: "Object", reflect: false },
 			item: { type: "Object", reflect: false },
 		},
 	}}
@@ -34,6 +35,7 @@
 		type InternalItemSessionChangedDetail,
 		type ItemSessionChangedDetail,
 		type RuntimeRegistrationDetail,
+		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { normalizeItemSessionChange } from "@pie-players/pie-players-shared";
 	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
@@ -59,6 +61,7 @@
 		contentKind = "assessment-item",
 		regionPolicy = "default",
 		scopeElement = null as HTMLElement | null,
+		ttsHighlightTargetResolver = null as TTSHighlightTargetResolver | null,
 		item = null as unknown,
 	} = $props();
 
@@ -88,6 +91,7 @@
 			if (!effectiveScopeElement) return null;
 			return {
 				scopeElement: effectiveScopeElement,
+				ttsHighlightTargetResolver,
 			};
 		},
 	);

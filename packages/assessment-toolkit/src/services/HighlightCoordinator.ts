@@ -518,6 +518,23 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		this.highlightTTSElementFallbacks(ranges);
 	}
 
+	/**
+	 * Highlight sentence/block elements for TTS (background layer).
+	 *
+	 * @param elements Visible elements to paint with `--pie-tts-line-highlight`
+	 */
+	highlightTTSSentenceElements(elements: Element[]): void {
+		if (!this.ttsSentenceHighlight) return;
+		this.applyAdaptiveTTSStyle(elements[0] || null);
+
+		this.clearTTSSentence();
+
+		for (const element of elements) {
+			element.setAttribute("data-pie-tts-sentence-element", "true");
+			this.ttsSentenceElementHighlights.add(element);
+		}
+	}
+
 	// The read-along (sentence) band legitimately covers whole equations and
 	// replaced elements, so it escalates to them.
 	private static readonly SENTENCE_FALLBACK_SELECTOR =

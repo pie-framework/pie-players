@@ -25,6 +25,8 @@ Use one of these statuses at the top of each PRD:
 - [`TEMPLATE.md`](./TEMPLATE.md) - required PRD sections and review checklist.
 - [`shared-contracts/`](./shared-contracts/) - PRDs for shared event, session,
   scoring, media, evidence, accessibility, and adapter-facing contracts.
+- [`tts-highlight-target-resolver.md`](./tts-highlight-target-resolver.md) -
+  focused implementation PRD for runtime TTS highlight target remapping.
 
 ## Ground Rules
 

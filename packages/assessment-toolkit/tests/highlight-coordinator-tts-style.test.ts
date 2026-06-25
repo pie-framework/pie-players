@@ -190,6 +190,48 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		}
 	});
 
+	test("marks explicit TTS sentence element targets and clears them", () => {
+		if (!GlobalRegistrator.isRegistered) {
+			GlobalRegistrator.register();
+		}
+		try {
+			Object.defineProperty(globalThis, "CSS", {
+				value: { highlights: new Map() },
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "Highlight", {
+				value: MockHighlight,
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "MutationObserver", {
+				value: undefined,
+				configurable: true,
+			});
+			const coordinator = new HighlightCoordinator();
+			const root = document.createElement("div");
+			root.innerHTML = `
+				<section id="first">First visible block</section>
+				<section id="second">Second visible block</section>
+			`;
+			document.body.appendChild(root);
+			const first = root.querySelector("#first")!;
+			const second = root.querySelector("#second")!;
+
+			coordinator.highlightTTSSentenceElements([first, second]);
+
+			expect(first.getAttribute("data-pie-tts-sentence-element")).toBe("true");
+			expect(second.getAttribute("data-pie-tts-sentence-element")).toBe("true");
+			coordinator.clearTTSSentence();
+			expect(first.hasAttribute("data-pie-tts-sentence-element")).toBe(false);
+			expect(second.hasAttribute("data-pie-tts-sentence-element")).toBe(false);
+			root.remove();
+		} finally {
+			if (GlobalRegistrator.isRegistered) {
+				GlobalRegistrator.unregister();
+			}
+		}
+	});
+
 	test("does NOT escalate a TTS word range to the enclosing MathJax container", () => {
 		if (!GlobalRegistrator.isRegistered) {
 			GlobalRegistrator.register();

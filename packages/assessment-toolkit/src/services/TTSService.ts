@@ -30,6 +30,12 @@ import type {
 import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
+import type {
+	TTSHighlightContext,
+	TTSHighlightTargetResolver,
+	TTSHighlightTargetResolverProvider,
+	TTSHighlightTargetResolverRuntime,
+} from "./tts/highlight-target-resolver.js";
 import {
 	type BoundarySpacingMode,
 	collectVisibleTextAndMap,
@@ -198,6 +204,8 @@ export class TTSService {
 	private currentProvider: ITTSProvider | null = null;
 	private provider: ITTSProviderImplementation | null = null;
 	private highlightCoordinator: HighlightCoordinatorApi | null = null;
+	private highlightTargetResolverProvider: TTSHighlightTargetResolverProvider | null =
+		null;
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
 	private ttsConfig: Partial<TTSConfig> = {};
@@ -368,6 +376,20 @@ export class TTSService {
 	}
 
 	/**
+	 * Set a late-bound provider for optional host TTS highlight target remapping.
+	 */
+	setHighlightTargetResolverProvider(
+		provider: TTSHighlightTargetResolverProvider | null,
+	): () => void {
+		this.highlightTargetResolverProvider = provider;
+		return () => {
+			if (this.highlightTargetResolverProvider === provider) {
+				this.highlightTargetResolverProvider = null;
+			}
+		};
+	}
+
+	/**
 	 * Set accessibility catalog resolver for spoken content
 	 *
 	 * When set, the speak() method will check for pre-authored spoken
@@ -377,6 +399,175 @@ export class TTSService {
 	 */
 	setCatalogResolver(resolver: AccessibilityCatalogResolver): void {
 		this.catalogResolver = resolver;
+	}
+
+	private getHighlightResolverRuntime(): {
+		context: TTSHighlightContext;
+		resolver: TTSHighlightTargetResolver | null;
+	} {
+		let provided: TTSHighlightTargetResolverRuntime | null | undefined = null;
+		try {
+			provided = this.highlightTargetResolverProvider?.() ?? null;
+		} catch {
+			provided = null;
+		}
+		const providedContext = provided?.context ?? {};
+		const fallbackScope =
+			typeof HTMLElement !== "undefined" &&
+			this.currentContentElement instanceof HTMLElement
+				? this.currentContentElement
+				: null;
+		return {
+			context: {
+				...providedContext,
+				scopeElement: providedContext.scopeElement ?? fallbackScope,
+			},
+			resolver: provided?.resolver ?? null,
+		};
+	}
+
+	private getNodeElement(node: Node | null): Element | null {
+		if (!node) return null;
+		return node.nodeType === Node.ELEMENT_NODE
+			? (node as Element)
+			: node.parentElement;
+	}
+
+	private isElementWithinScope(
+		element: Element,
+		scope: Element | null | undefined,
+	): boolean {
+		if (!scope) return true;
+		return element === scope || scope.contains(element);
+	}
+
+	private isRangeWithinScope(
+		range: Range,
+		scope: Element | null | undefined,
+	): boolean {
+		const startElement = this.getNodeElement(range.startContainer);
+		const endElement = this.getNodeElement(range.endContainer);
+		if (!startElement || !endElement) return false;
+		return (
+			this.isElementWithinScope(startElement, scope) &&
+			this.isElementWithinScope(endElement, scope)
+		);
+	}
+
+	private resolveWordHighlightRange(nativeRange: Range): {
+		range: Range;
+		remapped: boolean;
+	} {
+		const { context, resolver } = this.getHighlightResolverRuntime();
+		const scope = context.scopeElement ?? this.currentContentElement;
+		try {
+			const resolved = resolver?.resolveWordRange?.(nativeRange, context);
+			if (resolved && this.isRangeWithinScope(resolved, scope)) {
+				return { range: resolved, remapped: !sameRange(nativeRange, resolved) };
+			}
+		} catch {
+			// Fail open: custom resolver failures must not interrupt TTS playback.
+		}
+		return { range: nativeRange, remapped: false };
+	}
+
+	private resolveSentenceHighlightTargets(nativeRanges: Range[]): {
+		ranges: Range[];
+		elements: Element[];
+	} {
+		const { context, resolver } = this.getHighlightResolverRuntime();
+		const scope = context.scopeElement ?? this.currentContentElement;
+		try {
+			const resolved = resolver?.resolveSentenceRanges?.(nativeRanges, context);
+			if (!resolved) return { ranges: nativeRanges, elements: [] };
+			const ranges: Range[] = [];
+			const elements: Element[] = [];
+			for (const target of resolved) {
+				if (typeof Range !== "undefined" && target instanceof Range) {
+					if (!this.isRangeWithinScope(target, scope)) {
+						return { ranges: nativeRanges, elements: [] };
+					}
+					ranges.push(target);
+					continue;
+				}
+				if (typeof Element !== "undefined" && target instanceof Element) {
+					if (!this.isElementWithinScope(target, scope)) {
+						return { ranges: nativeRanges, elements: [] };
+					}
+					elements.push(target);
+					continue;
+				}
+				return { ranges: nativeRanges, elements: [] };
+			}
+			return { ranges, elements };
+		} catch {
+			// Fail open: custom resolver failures must not interrupt TTS playback.
+			return { ranges: nativeRanges, elements: [] };
+		}
+	}
+
+	private createTextRange(
+		node: Text,
+		startOffset: number,
+		endOffset: number,
+	): Range | null {
+		if (typeof document === "undefined") return null;
+		if (typeof document.createRange !== "function") return null;
+		try {
+			const range = document.createRange();
+			range.setStart(node, startOffset);
+			range.setEnd(node, endOffset);
+			if (range.startContainer !== node || range.endContainer !== node) {
+				return null;
+			}
+			return range;
+		} catch {
+			return null;
+		}
+	}
+
+	private paintTTSWordRange(range: Range): void {
+		if (!this.highlightCoordinator) return;
+		try {
+			if (
+				range.startContainer === range.endContainer &&
+				range.startContainer.nodeType === Node.TEXT_NODE
+			) {
+				this.highlightCoordinator.highlightTTSWord(
+					range.startContainer as Text,
+					range.startOffset,
+					range.endOffset,
+				);
+				return;
+			}
+		} catch {
+			// Fall through to generic range painting for lightweight test doubles.
+		}
+		this.highlightCoordinator.highlightRange(
+			range,
+			HighlightType.TTS_WORD,
+			HighlightColor.YELLOW,
+		);
+	}
+
+	private paintTTSSentenceRanges(nativeRanges: Range[]): void {
+		if (!this.highlightCoordinator) return;
+		const { ranges, elements } = this.resolveSentenceHighlightTargets(nativeRanges);
+		if (
+			elements.length > 0 &&
+			ranges.length === 0 &&
+			this.highlightCoordinator.highlightTTSSentenceElements
+		) {
+			this.highlightCoordinator.highlightTTSSentenceElements(elements);
+			return;
+		}
+		const paintedRanges = [...ranges];
+		for (const element of elements) {
+			const elementRange = document.createRange();
+			elementRange.selectNodeContents(element);
+			paintedRanges.push(elementRange);
+		}
+		this.highlightCoordinator.highlightTTSSentence(paintedRanges);
 	}
 
 	/**
@@ -902,7 +1093,7 @@ export class TTSService {
 		const range = document.createRange();
 		range.setStart(start.node, start.offset);
 		range.setEnd(end.node, end.offset + 1);
-		this.highlightCoordinator.highlightTTSSentence([range]);
+		this.paintTTSSentenceRanges([range]);
 		this.activeSentenceStartOffset = startOffset;
 	}
 
@@ -1587,7 +1778,7 @@ export class TTSService {
 			try {
 				const range = document.createRange();
 				range.selectNodeContents(this.currentContentElement);
-				this.highlightCoordinator.highlightTTSSentence([range]);
+				this.paintTTSSentenceRanges([range]);
 			} catch {
 				// No-op fallback when DOM range creation fails.
 			}
@@ -1627,11 +1818,22 @@ export class TTSService {
 				this.debugLog(
 					`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${globalIndex}`,
 				);
-				this.highlightCoordinator.highlightTTSWord(
+				const nativeRange = this.createTextRange(
 					highlightRange.node,
 					highlightRange.start,
 					highlightRange.end,
 				);
+				if (nativeRange) {
+					this.paintTTSWordRange(
+						this.resolveWordHighlightRange(nativeRange).range,
+					);
+				} else {
+					this.highlightCoordinator.highlightTTSWord(
+						highlightRange.node,
+						highlightRange.start,
+						highlightRange.end,
+					);
+				}
 			} else {
 				console.warn(
 					`[TTSService] Could not find highlight range for position ${globalIndex}, length ${wordLength}`,
@@ -1653,14 +1855,14 @@ export class TTSService {
 			this.lastRenderedRegionTarget = null;
 			if (chunk.regionRange) {
 				this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
-				this.highlightCoordinator.highlightTTSSentence([chunk.regionRange]);
+				this.paintTTSSentenceRanges([chunk.regionRange]);
 				return;
 			}
 			if (!element) return;
 			const range = document.createRange();
 			range.selectNodeContents(element);
 			this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
-			this.highlightCoordinator.highlightTTSSentence([range]);
+			this.paintTTSSentenceRanges([range]);
 		} catch {
 			// Continue playback even when a detached node cannot be highlighted.
 		}
@@ -1668,22 +1870,7 @@ export class TTSService {
 
 	private highlightCatalogActiveRange(range: Range): void {
 		if (!this.highlightCoordinator) return;
-		if (
-			range.startContainer === range.endContainer &&
-			range.startContainer.nodeType === Node.TEXT_NODE
-		) {
-			this.highlightCoordinator.highlightTTSWord(
-				range.startContainer as Text,
-				range.startOffset,
-				range.endOffset,
-			);
-			return;
-		}
-		this.highlightCoordinator.highlightRange(
-			range,
-			HighlightType.TTS_WORD,
-			HighlightColor.YELLOW,
-		);
+		this.paintTTSWordRange(this.resolveWordHighlightRange(range).range);
 	}
 
 	private highlightRenderableRegionTarget(
@@ -1696,7 +1883,10 @@ export class TTSService {
 		) {
 			return;
 		}
-		if (sameRenderableHighlightTarget(this.lastRenderedRegionTarget, target)) {
+		if (
+			!this.highlightTargetResolverProvider &&
+			sameRenderableHighlightTarget(this.lastRenderedRegionTarget, target)
+		) {
 			return;
 		}
 		try {
@@ -1704,14 +1894,14 @@ export class TTSService {
 			if (target.type === "element") {
 				range.selectNodeContents(target.element);
 			} else if (target.type === "range") {
-				this.highlightCoordinator.highlightTTSSentence([target.range]);
+				this.paintTTSSentenceRanges([target.range]);
 				this.lastRenderedRegionTarget = target;
 				return;
 			} else {
 				range.setStart(target.node, target.startOffset);
 				range.setEnd(target.node, target.endOffset);
 			}
-			this.highlightCoordinator.highlightTTSSentence([range]);
+			this.paintTTSSentenceRanges([range]);
 			this.lastRenderedRegionTarget = target;
 		} catch {
 			// Continue playback even when a detached node cannot be highlighted.
@@ -1734,15 +1924,34 @@ export class TTSService {
 			return;
 		}
 		if (target.type === "text-range") {
-			this.highlightCoordinator.highlightTTSWord(
+			const nativeRange = this.createTextRange(
 				target.node,
 				target.startOffset,
 				target.endOffset,
 			);
+			if (nativeRange) {
+				this.paintTTSWordRange(
+					this.resolveWordHighlightRange(nativeRange).range,
+				);
+			} else {
+				this.highlightCoordinator.highlightTTSWord(
+					target.node,
+					target.startOffset,
+					target.endOffset,
+				);
+			}
 			return;
 		}
 		if (target.type === "range") {
 			this.highlightCatalogActiveRange(target.range);
+			return;
+		}
+		const elementNativeRange = document.createRange();
+		elementNativeRange.selectNodeContents(target.element);
+		const resolvedElementRange =
+			this.resolveWordHighlightRange(elementNativeRange);
+		if (resolvedElementRange.remapped) {
+			this.paintTTSWordRange(resolvedElementRange.range);
 			return;
 		}
 		// Element targets are atomic: a resolved math token, a whole-expression
@@ -2052,11 +2261,13 @@ export class TTSService {
 			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
+			this.highlightTargetResolverProvider = null;
 		} catch (error) {
 			if (runId !== this.speakRunId) return;
 			this.lastError = error instanceof Error ? error.message : String(error);
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
+			this.highlightTargetResolverProvider = null;
 			throw error;
 		}
 	}
@@ -2117,6 +2328,7 @@ export class TTSService {
 		this.speakRunId += 1;
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
+		this.highlightTargetResolverProvider = null;
 		this.setState(PlaybackState.IDLE);
 		this.currentText = null;
 

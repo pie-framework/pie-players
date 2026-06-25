@@ -86,12 +86,11 @@ export function applyDaisyTheme(
 			'pie-theme[scope="document"]',
 		) as HTMLElement | null) ||
 		(document.querySelector("pie-theme") as HTMLElement | null);
+	document.documentElement.setAttribute("data-theme", nextTheme);
 	if (pieThemeHost) {
 		if (pieThemeHost.getAttribute("theme") !== nextTheme) {
 			pieThemeHost.setAttribute("theme", nextTheme);
 		}
-	} else {
-		document.documentElement.setAttribute("data-theme", nextTheme);
 	}
 	onAppliedTheme(nextTheme);
 	window.localStorage.setItem(DAISY_THEME_STORAGE_KEY, nextTheme);

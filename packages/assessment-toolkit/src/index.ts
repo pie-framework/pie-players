@@ -20,6 +20,12 @@ export type {
 	ItemPlayerType,
 	ShellContextKind,
 } from "./context/assessment-toolkit-context.js";
+export type {
+	TTSHighlightContext,
+	TTSHighlightTargetResolver,
+	TTSHighlightTargetResolverProvider,
+	TTSHighlightTargetResolverRuntime,
+} from "./services/tts/highlight-target-resolver.js";
 export {
 	assessmentToolkitHostRuntimeContext,
 	assessmentToolkitRegionScopeContext,

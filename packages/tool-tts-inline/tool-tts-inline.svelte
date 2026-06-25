@@ -70,6 +70,7 @@
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
 	let handoffInProgress = $state(false);
+let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 	const speedChoices = $derived.by(() => normalizeTTSSpeedControlOptions(speedOptions));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
@@ -148,6 +149,7 @@
 				releaseActiveOwner();
 			}
 			resetLocalPlaybackUi(status);
+			clearHighlightTargetResolverProvider();
 			if (restoreFocus) {
 				queueMicrotask(() => {
 					focusTriggerIfPanelHadFocus(hadPanelFocus);
@@ -240,6 +242,7 @@
 	$effect(() => {
 		return () => {
 			releaseActiveOwner();
+			clearHighlightTargetResolverProvider();
 		};
 	});
 
@@ -324,6 +327,40 @@
 		};
 	}
 
+	function syncHighlightTargetResolverProvider(readingTarget: Element): (() => void) | null {
+		clearHighlightTargetResolverProvider();
+		const provider = () => ({
+			context: {
+				scopeElement:
+					regionScopeContext?.scopeElement || (readingTarget as HTMLElement) || null,
+				kind: shellContext?.kind,
+				itemId: shellContext?.itemId,
+				canonicalItemId: shellContext?.canonicalItemId,
+				contentKind: shellContext?.contentKind,
+				regionPolicy: shellContext?.regionPolicy,
+			},
+			resolver: regionScopeContext?.ttsHighlightTargetResolver || null,
+		});
+		highlightTargetResolverProviderDisposer =
+			ttsService?.setHighlightTargetResolverProvider?.(provider) || null;
+		return highlightTargetResolverProviderDisposer;
+	}
+
+	function clearHighlightTargetResolverProvider(
+		disposer = highlightTargetResolverProviderDisposer,
+	): void {
+		disposer?.();
+		if (disposer === highlightTargetResolverProviderDisposer) {
+			highlightTargetResolverProviderDisposer = null;
+		}
+	}
+
+	function shouldRetainHighlightTargetResolverProvider(): boolean {
+		if (!isActiveOwner()) return false;
+		const state = String(ttsService?.getState?.() || '');
+		return state === 'playing' || state === 'paused' || state === 'loading';
+	}
+
 	function startSpeaking(): void {
 		if (!ttsService) return;
 		const readingTarget = resolveReadingTarget();
@@ -341,6 +378,7 @@
 			if (highlightCoordinator && ttsService.setHighlightCoordinator) {
 				ttsService.setHighlightCoordinator(highlightCoordinator);
 			}
+			const resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			statusMessage = 'Reading started';
 			void ttsService.speak(text, {
@@ -354,6 +392,11 @@
 				if (highlightCoordinator) {
 					highlightCoordinator.clearTTS();
 				}
+				clearHighlightTargetResolverProvider(resolverDisposer);
+			}).finally(() => {
+				if (!shouldRetainHighlightTargetResolverProvider()) {
+					clearHighlightTargetResolverProvider(resolverDisposer);
+				}
 			});
 		} catch (error) {
 			console.error('[TTS Inline] Error:', error);
@@ -361,6 +404,7 @@
 			if (highlightCoordinator) {
 				highlightCoordinator.clearTTS();
 			}
+			clearHighlightTargetResolverProvider();
 		}
 	}
 
@@ -407,6 +451,7 @@
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
 		}
+		clearHighlightTargetResolverProvider();
 	}
 
 	async function handleSeekForward() {

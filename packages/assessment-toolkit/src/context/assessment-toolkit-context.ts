@@ -8,6 +8,7 @@ import type {
 	ToolkitCoordinatorApi,
 	TtsServiceApi,
 } from "../services/interfaces.js";
+import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
 
 export type ItemPlayerType = "iife" | "esm" | "preloaded" | "custom";
 
@@ -69,6 +70,7 @@ export const assessmentToolkitShellContext =
 
 export interface AssessmentToolkitRegionScopeContext {
 	scopeElement: HTMLElement | null;
+	ttsHighlightTargetResolver?: TTSHighlightTargetResolver | null;
 }
 
 export const assessmentToolkitRegionScopeContext =

@@ -295,6 +295,62 @@ async function selectPassageText(page: Page): Promise<void> {
 }
 
 test.describe("section player demo tts-ssml", () => {
+	test("uses a region-scope TTS highlight resolver from inline TTS", async ({
+		page,
+	}) => {
+		await suppressAudibleBrowserTts(page);
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+
+		const firstItemShell = page
+			.locator('pie-item-shell[data-pie-shell-root="item"]')
+			.first();
+		await expect(firstItemShell).toBeVisible();
+		await firstItemShell.evaluate((shell) => {
+			const host = shell as HTMLElement & {
+				ttsHighlightTargetResolver?: {
+					resolveSentenceRanges?: () => HTMLElement[];
+				};
+			};
+			const target = document.createElement("section");
+			target.setAttribute("data-pie-test-tts-resolver-target", "true");
+			target.textContent = "Resolver-visible sentence target";
+			host.appendChild(target);
+			host.ttsHighlightTargetResolver = {
+				resolveSentenceRanges: () => [target],
+			};
+		});
+
+		const firstInlineTts = firstItemShell.locator("pie-tool-tts-inline:visible");
+		await expect(firstInlineTts).toBeVisible();
+		await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
+
+		await expect
+			.poll(
+				async () =>
+					firstItemShell.evaluate((shell) => {
+						const target = shell.querySelector(
+							"[data-pie-test-tts-resolver-target]",
+						);
+						return target?.getAttribute("data-pie-tts-sentence-element");
+					}),
+				{
+					timeout: 10_000,
+					message:
+						"expected inline TTS to paint the host resolver's visible element target",
+				},
+			)
+			.toBe("true");
+
+		const stopButton = firstInlineTts.getByRole("button", {
+			name: "Stop reading",
+		});
+		if (await stopButton.isEnabled().catch(() => false)) {
+			await stopButton.click();
+		}
+	});
+
 	test("covers all four TTS layout modes end-to-end", async ({ page }) => {
 		await suppressAudibleBrowserTts(page);
 		await gotoDemo(page);

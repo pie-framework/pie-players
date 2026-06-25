@@ -17,6 +17,17 @@ export type NormalizedItemSessionChange = {
 };
 
 const DEFAULT_SESSION_ID = "";
+const METADATA_ONLY_SESSION_KEYS = new Set([
+	"complete",
+	"component",
+	"timestamp",
+	"sourceRuntimeId",
+]);
+const ELEMENT_IDENTITY_SESSION_KEYS = new Set([
+	"id",
+	"element",
+	...METADATA_ONLY_SESSION_KEYS,
+]);
 
 function areSessionContainersEqual(
 	left: ItemSessionContainer | null,
@@ -97,6 +108,36 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function getMetadataComponent(
+	sessionDetail: Record<string, unknown>,
+	candidate?: Record<string, unknown>,
+): string | undefined {
+	if (typeof sessionDetail.component === "string") return sessionDetail.component;
+	if (typeof candidate?.component === "string") return candidate.component;
+	return undefined;
+}
+
+function getMetadataComplete(
+	sessionDetail: Record<string, unknown>,
+	candidate?: Record<string, unknown>,
+): boolean | undefined {
+	if (typeof sessionDetail.complete === "boolean") return sessionDetail.complete;
+	if (typeof candidate?.complete === "boolean") return candidate.complete;
+	return undefined;
+}
+
+function isElementIdentityOnlyPayload(
+	candidate: Record<string, unknown>,
+): boolean {
+	const candidateKeys = Object.keys(candidate);
+	const hasIdentityKey = "id" in candidate || "element" in candidate;
+	return (
+		hasIdentityKey &&
+		!hasResponseField(candidate) &&
+		candidateKeys.every((key) => ELEMENT_IDENTITY_SESSION_KEYS.has(key))
+	);
+}
+
 function mergeSessionEntry(
 	existing: Record<string, unknown>,
 	incoming: Record<string, unknown>,
@@ -165,14 +206,8 @@ export function normalizeItemSessionChange(args: {
 			itemId: safeItemId,
 			session: null,
 			intent: "metadata-only",
-			component:
-				typeof sessionDetail.component === "string"
-					? sessionDetail.component
-					: undefined,
-			complete:
-				typeof sessionDetail.complete === "boolean"
-					? sessionDetail.complete
-					: undefined,
+			component: getMetadataComponent(sessionDetail),
+			complete: getMetadataComplete(sessionDetail),
 		};
 	}
 
@@ -206,28 +241,16 @@ export function normalizeItemSessionChange(args: {
 				itemId: safeItemId,
 				session: null,
 				intent: "metadata-only",
-				component:
-					typeof sessionDetail.component === "string"
-						? sessionDetail.component
-						: undefined,
-				complete:
-					typeof sessionDetail.complete === "boolean"
-						? sessionDetail.complete
-						: undefined,
+				component: getMetadataComponent(sessionDetail),
+				complete: getMetadataComplete(sessionDetail),
 			};
 		}
 		return {
 			itemId: safeItemId,
 			session: normalizedCandidate,
 			intent: "replace-item-session",
-			component:
-				typeof sessionDetail.component === "string"
-					? sessionDetail.component
-					: undefined,
-			complete:
-				typeof sessionDetail.complete === "boolean"
-					? sessionDetail.complete
-					: undefined,
+			component: getMetadataComponent(sessionDetail),
+			complete: getMetadataComplete(sessionDetail),
 		};
 	}
 
@@ -246,23 +269,21 @@ export function normalizeItemSessionChange(args: {
 			itemId: safeItemId,
 			session: null,
 			intent: "metadata-only",
-			component:
-				typeof sessionDetail.component === "string"
-					? sessionDetail.component
-					: undefined,
-			complete:
-				typeof sessionDetail.complete === "boolean"
-					? sessionDetail.complete
-					: undefined,
+			component: getMetadataComponent(sessionDetail, candidate),
+			complete: getMetadataComplete(sessionDetail, candidate),
+		};
+	}
+	if (isElementIdentityOnlyPayload(candidate)) {
+		return {
+			itemId: safeItemId,
+			session: null,
+			intent: "metadata-only",
+			component: getMetadataComponent(sessionDetail, candidate),
+			complete: getMetadataComplete(sessionDetail, candidate),
 		};
 	}
 
-	const component =
-		typeof sessionDetail.component === "string"
-			? sessionDetail.component
-			: typeof candidate.component === "string"
-				? candidate.component
-				: "response";
+	const component = getMetadataComponent(sessionDetail, candidate) ?? "response";
 	const elementEntryId =
 		typeof candidate.id === "string" && candidate.id ? candidate.id : component;
 	const merged = mergeElementIntoSession(
@@ -276,9 +297,6 @@ export function normalizeItemSessionChange(args: {
 		session: merged,
 		intent: "merge-element-session",
 		component,
-		complete:
-			typeof sessionDetail.complete === "boolean"
-				? sessionDetail.complete
-				: undefined,
+		complete: getMetadataComplete(sessionDetail, candidate),
 	};
 }

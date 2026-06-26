@@ -219,6 +219,7 @@ export class TTSService {
 	private currentBoundaryOffset = 0;
 	private activeWordBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
+	private playbackChunks: SpeechCompositionChunk[] = [];
 	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
 	private activeSentenceStartOffset: number | null = null;
@@ -552,7 +553,8 @@ export class TTSService {
 
 	private paintTTSSentenceRanges(nativeRanges: Range[]): void {
 		if (!this.highlightCoordinator) return;
-		const { ranges, elements } = this.resolveSentenceHighlightTargets(nativeRanges);
+		const { ranges, elements } =
+			this.resolveSentenceHighlightTargets(nativeRanges);
 		if (
 			elements.length > 0 &&
 			ranges.length === 0 &&
@@ -1010,6 +1012,29 @@ export class TTSService {
 		);
 	}
 
+	private createSeekSegmentsFromSpeechChunks(
+		chunks: SpeechCompositionChunk[],
+	): TTSSpeechSegment[] {
+		let offset = 0;
+		return chunks.map((chunk) => {
+			const speechText =
+				chunk.plainFallback?.speechText ||
+				(this.hasExplicitBreakSemantics(chunk.speechText)
+					? chunk.visibleText
+					: chunk.speechText) ||
+				chunk.visibleText;
+			const text =
+				normalizeTextForSpeech(speechText) || chunk.visibleText || "";
+			const segment = {
+				text,
+				startOffset: offset,
+				pauseMsAfter: 0,
+			};
+			offset += Math.max(1, text.length + 1);
+			return segment;
+		});
+	}
+
 	private getCurrentSeekSegmentIndex(): number {
 		if (this.seekSegments.length === 0) return 0;
 		let index = 0;
@@ -1231,8 +1256,10 @@ export class TTSService {
 				!usedCatalogSpoken &&
 				!hasExplicitBreaks &&
 				speechMatchesVisibleText;
-			this.seekSegments =
-				hasExplicitBreaks || !speechMatchesVisibleText
+			this.playbackChunks = speechChunks?.length ? speechChunks : [];
+			this.seekSegments = this.playbackChunks.length
+				? this.createSeekSegmentsFromSpeechChunks(this.playbackChunks)
+				: hasExplicitBreaks || !speechMatchesVisibleText
 					? []
 					: shouldUsePlan && this.currentContentElement
 						? this.createSpeechPlan(this.currentContentElement, normalizedText)
@@ -1747,6 +1774,7 @@ export class TTSService {
 		this.currentContentElement = options?.contentElement || null;
 		this.lastError = null;
 		this.currentBoundaryOffset = 0;
+		this.playbackChunks = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
 	}
@@ -2112,8 +2140,14 @@ export class TTSService {
 		speechChunks?: SpeechCompositionChunk[];
 	}): Promise<void> {
 		if (args.speechChunks?.length && this.provider) {
-			for (const chunk of args.speechChunks) {
+			for (let index = 0; index < args.speechChunks.length; index++) {
 				if (args.runId !== this.speakRunId) return;
+				this.currentSeekSegmentIndex = index;
+				const segment = this.seekSegments[index];
+				if (segment) {
+					this.currentBoundaryOffset = segment.startOffset;
+				}
+				const chunk = args.speechChunks[index];
 				await this.speakCatalogChunk(chunk, args.runId);
 			}
 			return;
@@ -2144,6 +2178,7 @@ export class TTSService {
 		this.currentBoundaryOffset = 0;
 		this.activeWordBoundaryOffset = 0;
 		this.seekSegments = [];
+		this.playbackChunks = [];
 		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
@@ -2241,6 +2276,9 @@ export class TTSService {
 			0,
 			Math.min(this.seekSegments.length - 1, targetIndex),
 		);
+		const restartChunks = this.playbackChunks.length
+			? this.playbackChunks.slice(safeTargetIndex)
+			: null;
 
 		this.speakRunId += 1;
 		this.provider.onWordBoundary = undefined;
@@ -2255,9 +2293,22 @@ export class TTSService {
 				highlightMode: this.activeHighlightMode,
 				wordBoundaryOffset: this.activeWordBoundaryOffset,
 			});
-			await this.speakWithPlan(restartSegments, runId, {
-				highlightMode: this.activeHighlightMode,
-			});
+			if (restartChunks) {
+				for (let index = 0; index < restartChunks.length; index++) {
+					if (runId !== this.speakRunId) return;
+					const absoluteIndex = safeTargetIndex + index;
+					this.currentSeekSegmentIndex = absoluteIndex;
+					const segment = this.seekSegments[absoluteIndex];
+					if (segment) {
+						this.currentBoundaryOffset = segment.startOffset;
+					}
+					await this.speakCatalogChunk(restartChunks[index], runId);
+				}
+			} else {
+				await this.speakWithPlan(restartSegments, runId, {
+					highlightMode: this.activeHighlightMode,
+				});
+			}
 			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
@@ -2344,6 +2395,7 @@ export class TTSService {
 		this.currentBoundaryOffset = 0;
 		this.activeWordBoundaryOffset = 0;
 		this.seekSegments = [];
+		this.playbackChunks = [];
 		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;

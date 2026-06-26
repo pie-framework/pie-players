@@ -696,8 +696,8 @@ let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 		justify-content: center;
 		width: 2rem;
 		height: 2rem;
-		border: 1px solid var(--pie-button-border-color, var(--pie-border, #c6c6c6));
-		background-color: var(--pie-button-background-color, var(--pie-background, #fff));
+		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
+		background-color: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
 		color: var(--pie-button-color, var(--pie-text, #333));
 		border-radius: 0.25rem;
 		cursor: pointer;
@@ -706,7 +706,7 @@ let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 
 	.pie-tool-tts-inline__trigger:hover:not(:disabled),
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
-		background-color: var(--pie-button-hover-background-color, var(--pie-secondary-background, #f2f4f8));
+		background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
 		transform: translateY(-1px);
 		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-shadow, #000) 14%, transparent);
 	}
@@ -725,8 +725,21 @@ let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 	}
 
 	.pie-tool-tts-inline__trigger--active {
-		border-color: var(--pie-primary, #1565c0);
-		background-color: color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff));
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1565c0));
+		background-color: var(
+			--pie-tool-trigger-active-background,
+			color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff))
+		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #333)));
+	}
+
+	.pie-tool-tts-inline__trigger--active:hover:not(:disabled) {
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1565c0));
+		background-color: var(
+			--pie-tool-trigger-active-background,
+			color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff))
+		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #333)));
 	}
 
 	.pie-tool-tts-inline__panel {
@@ -770,9 +783,9 @@ let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 		justify-content: center;
 		width: 2rem;
 		height: 2rem;
-		border: 1px solid var(--pie-button-border-color, var(--pie-border, #c6c6c6));
+		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
 		border-radius: 0.25rem;
-		background: var(--pie-button-background-color, var(--pie-background, #fff));
+		background: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
 		color: var(--pie-button-color, var(--pie-text, #222));
 		cursor: pointer;
 		transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;

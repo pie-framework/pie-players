@@ -1109,6 +1109,18 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(calculatorShell).not.toBeVisible();
 		}
 
+		// Preferred placement keeps section-level measurement tools and the
+		// legacy toolbar-toggle highlighter off item card toolbars.
+		await expect(
+			q1.getByRole("button", { name: "Open ruler tool" }),
+		).toHaveCount(0);
+		await expect(
+			q1.getByRole("button", { name: "Open protractor tool" }),
+		).toHaveCount(0);
+		await expect(
+			q1.getByRole("button", { name: "Highlighter - Highlight text" }),
+		).toHaveCount(0);
+
 		// Answer eliminator is item-level and should render elimination controls when toggled on.
 		const answerEliminatorButton = q1.getByRole("button", {
 			name: /answer eliminator|strike through choices/i,

@@ -225,6 +225,33 @@ describe("TTSService highlight target resolver", () => {
 		expect(recording.sentenceHighlights).not.toContain("native sentence.");
 	});
 
+	test("keeps sentence resolver tracking active while word boundary highlighting is enabled", async () => {
+		const impl = new MockTTSImpl();
+		impl.boundariesByText.set("native sentence.", [
+			{ word: "native", position: 0, length: "native".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, true));
+		const root = document.createElement("div");
+		root.innerHTML = `<p>native sentence.</p><section data-test-id="visible-block">Visible block</section>`;
+		const visibleBlock = root.querySelector("section") as HTMLElement;
+		const recording = createRecordingCoordinator();
+		service.setHighlightCoordinator(recording.coordinator as any);
+		service.setHighlightTargetResolverProvider(() => ({
+			context: { scopeElement: root },
+			resolver: {
+				resolveSentenceRanges: () => [visibleBlock],
+			},
+		}));
+
+		await service.speak("native sentence.", {
+			contentElement: root.querySelector("p")!,
+		} as any);
+
+		expect(recording.wordHighlights).toContain("native");
+		expect(recording.sentenceElementHighlights).toContain("visible-block");
+	});
+
 	test("falls open to identity when a host word resolver throws", async () => {
 		const impl = new MockTTSImpl();
 		impl.boundariesByText.set("spoken visible", [

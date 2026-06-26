@@ -36,6 +36,7 @@ import {
 import {
 	DEFAULT_TOOL_PLACEMENT,
 	PACKAGED_TOOL_PLACEMENT,
+	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 } from "./tool-config-defaults.js";
 
 const PACKAGED_TOOL_REGISTRATIONS = [
@@ -183,6 +184,7 @@ export function createPackagedToolRegistry(
  */
 export { DEFAULT_TOOL_PLACEMENT };
 export { PACKAGED_TOOL_PLACEMENT };
+export { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT };
 
 /**
  * Tool priority order for rendering

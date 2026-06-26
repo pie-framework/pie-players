@@ -156,6 +156,7 @@ export {
 	createPackagedToolRegistry,
 	PACKAGED_TOOL_PLACEMENT,
 	registerPackagedTools,
+	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 } from "./services/createDefaultToolRegistry.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";

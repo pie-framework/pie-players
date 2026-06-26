@@ -1,3 +1,5 @@
+import type { ToolPlacementConfig } from "./tools-config-normalizer.js";
+
 export const DEFAULT_TOOL_PLACEMENT = {
 	assessment: [],
 	section: [],
@@ -35,3 +37,22 @@ export const PACKAGED_TOOL_PLACEMENT = {
 		"periodicTable",
 	],
 } as const;
+
+/**
+ * Opt-in section-player placement preset for hosts that want to expose every
+ * packaged tool once at its normal assessment surface. This is not exhaustive:
+ * `supportedLevels` still defines where tools can run, and hosts can still
+ * choose different placement for custom UX.
+ */
+export const SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT = {
+	section: [
+		"theme",
+		"graph",
+		"periodicTable",
+		"lineReader",
+		"ruler",
+		"protractor",
+	],
+	item: ["calculator", "textToSpeech", "answerEliminator", "annotationToolbar"],
+	passage: ["textToSpeech", "annotationToolbar"],
+} satisfies ToolPlacementConfig;

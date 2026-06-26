@@ -178,9 +178,14 @@ For theme compatibility with existing passage-label patterns, tabs also expose:
 - `data-pie-purpose="passage-label"` and alias class `passage-label`
 - `data-pie-purpose="item-label"` and alias class `item-label`
 
-Tab colors/spacing can be themed via CSS variables such as:
-`--pie-section-player-tab-color`, `--pie-section-player-tab-active-color`,
-`--pie-section-player-tab-indicator-color`, and `--pie-section-player-tab-spacing`.
+Tab colors, spacing, and track geometry can be themed via CSS variables:
+`--pie-section-player-tab-color`, `--pie-section-player-tab-background`,
+`--pie-section-player-tab-active-color`,
+`--pie-section-player-tab-active-background`,
+`--pie-section-player-tab-gap`,
+`--pie-section-player-tab-track-radius`,
+`--pie-section-player-tab-track-padding`, and
+`--pie-section-player-tab-padding-block`.
 
 ### Card header styling hooks
 

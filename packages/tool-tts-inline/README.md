@@ -165,6 +165,7 @@ When used with the section player, this tool benefits from extracted catalogs
 when a host/import pipeline runs `SSMLExtractor` before render:
 
 **Author embeds SSML in content:**
+
 ```html
 <div>
   <speak>Solve <prosody rate="slow">x squared plus two</prosody>.</speak>
@@ -173,11 +174,13 @@ when a host/import pipeline runs `SSMLExtractor` before render:
 ```
 
 **Preprocessing extracts SSML:**
+
 - Generates catalog with ID like `auto-prompt-q1-0`
 - Adds `data-catalog-idref="auto-prompt-q1-0"` to visual content
 - Provides `config.extractedCatalogs` for runtime catalog registration
 
 **Tool uses extracted catalog:**
+
 - User clicks TTS button in header
 - Tool calls `ttsService.speak(text, { catalogId: 'auto-prompt-q1-0' })`
 - TTSService finds SSML in extracted catalogs
@@ -208,6 +211,13 @@ If unset, the trigger keeps the existing defaults: active background and border
 derive from `--pie-primary`, while foreground continues through
 `--pie-button-color` / `--pie-text`. Hosts remain responsible for maintaining
 WCAG AA foreground/background contrast when overriding active trigger colors.
+
+Ordinary trigger and control button styling also preserves these legacy aliases:
+`--pie-button-background-color`, `--pie-button-border-color`, and
+`--pie-button-hover-background-color`. They remain supported for host
+compatibility, but fall back through the canonical `--pie-button-bg`,
+`--pie-button-border`, and `--pie-button-hover-bg` tokens before broad surface
+tokens.
 
 ## Architecture
 

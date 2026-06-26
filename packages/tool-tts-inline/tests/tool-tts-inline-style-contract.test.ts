@@ -3,18 +3,19 @@ import { describe, expect, test } from "bun:test";
 const source = await Bun.file(
 	new URL("../tool-tts-inline.svelte", import.meta.url),
 ).text();
+const styleSource = source.slice(source.indexOf("<style>"));
 
 const cssRuleBody = (selector: string): string => {
-	const selectorIndex = source.indexOf(selector);
+	const selectorIndex = styleSource.indexOf(`${selector} {`);
 	if (selectorIndex === -1) {
 		throw new Error(`Could not find CSS rule for ${selector}`);
 	}
-	const openBrace = source.indexOf("{", selectorIndex);
-	const closeBrace = source.indexOf("\n\t}", openBrace);
+	const openBrace = styleSource.indexOf("{", selectorIndex);
+	const closeBrace = styleSource.indexOf("\n\t}", openBrace);
 	if (openBrace === -1 || closeBrace === -1) {
 		throw new Error(`Could not parse CSS rule for ${selector}`);
 	}
-	return source.slice(openBrace + 1, closeBrace);
+	return styleSource.slice(openBrace + 1, closeBrace);
 };
 
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -43,6 +44,30 @@ const contrastRatio = (foreground: string, background: string): number => {
 };
 
 describe("tool-tts-inline active trigger styling contract", () => {
+	test("legacy button alias variables fall back through canonical button tokens", () => {
+		const triggerBody = cssRuleBody(".pie-tool-tts-inline__trigger");
+		const triggerHoverBody = cssRuleBody(
+			".pie-tool-tts-inline__trigger:hover:not(:disabled),\n\t.pie-tool-tts-inline__control:hover:not(:disabled)",
+		);
+		const controlBody = cssRuleBody(".pie-tool-tts-inline__control");
+
+		expect(triggerBody.replace(/\s+/g, "")).toContain(
+			"--pie-button-border-color,var(--pie-button-border,",
+		);
+		expect(triggerBody.replace(/\s+/g, "")).toContain(
+			"--pie-button-background-color,var(--pie-button-bg,",
+		);
+		expect(controlBody.replace(/\s+/g, "")).toContain(
+			"--pie-button-border-color,var(--pie-button-border,",
+		);
+		expect(controlBody.replace(/\s+/g, "")).toContain(
+			"--pie-button-background-color,var(--pie-button-bg,",
+		);
+		expect(triggerHoverBody.replace(/\s+/g, "")).toContain(
+			"--pie-button-hover-background-color,var(--pie-button-hover-bg,",
+		);
+	});
+
 	test("active trigger exposes component-scoped host override variables", () => {
 		const body = cssRuleBody(".pie-tool-tts-inline__trigger--active");
 

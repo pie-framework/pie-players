@@ -78,6 +78,101 @@ async function mockPollyVoices(page: Page): Promise<void> {
 	});
 }
 
+type BrowserSpeechCall =
+	| { type: "speak"; text: string; rate: number }
+	| { type: "cancel" };
+
+async function installHoldingBrowserSpeech(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		const calls: BrowserSpeechCall[] = [];
+		const voices = [
+			{
+				name: "Test Voice",
+				lang: "en-US",
+				default: true,
+				localService: true,
+				voiceURI: "test-voice",
+			},
+		] as SpeechSynthesisVoice[];
+
+		class MockSpeechSynthesisUtterance {
+			text: string;
+			rate = 1;
+			pitch = 1;
+			voice: SpeechSynthesisVoice | null = null;
+			onstart: ((event: SpeechSynthesisEvent) => void) | null = null;
+			onboundary: ((event: SpeechSynthesisEvent) => void) | null = null;
+			onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+			onerror: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
+			constructor(text = "") {
+				this.text = text;
+			}
+		}
+
+		let activeUtterance: MockSpeechSynthesisUtterance | null = null;
+		Object.defineProperty(window, "SpeechSynthesisUtterance", {
+			configurable: true,
+			value: MockSpeechSynthesisUtterance,
+		});
+		Object.defineProperty(window, "speechSynthesis", {
+			configurable: true,
+			value: {
+				getVoices: () => voices,
+				speak: (utterance: MockSpeechSynthesisUtterance) => {
+					activeUtterance = utterance;
+					calls.push({
+						type: "speak",
+						text: utterance.text,
+						rate: Number(utterance.rate || 1),
+					});
+					window.setTimeout(() => {
+						utterance.onstart?.({} as SpeechSynthesisEvent);
+					}, 0);
+				},
+				cancel: () => {
+					calls.push({ type: "cancel" });
+					const utterance = activeUtterance;
+					activeUtterance = null;
+					utterance?.onerror?.({
+						error: "canceled",
+					} as SpeechSynthesisErrorEvent);
+				},
+				pause: () => {},
+				resume: () => {},
+				get speaking() {
+					return activeUtterance !== null;
+				},
+				get paused() {
+					return false;
+				},
+				get pending() {
+					return false;
+				},
+			} satisfies Partial<SpeechSynthesis>,
+		});
+		Object.defineProperty(window, "__pieBrowserSpeechCalls", {
+			configurable: true,
+			value: calls,
+		});
+	});
+}
+
+const browserSpeechCalls = (page: Page): Promise<BrowserSpeechCall[]> =>
+	page.evaluate(
+		() =>
+			(window as unknown as { __pieBrowserSpeechCalls?: BrowserSpeechCall[] })
+				.__pieBrowserSpeechCalls || [],
+	);
+
+const browserSpeakCalls = async (page: Page) =>
+	(await browserSpeechCalls(page)).filter(
+		(call): call is Extract<BrowserSpeechCall, { type: "speak" }> =>
+			call.type === "speak",
+	);
+
+const hasBrowserCancel = async (page: Page) =>
+	(await browserSpeechCalls(page)).some((call) => call.type === "cancel");
+
 /**
  * Replace the audio element so each synthesized chunk "plays" silently and
  * ends immediately. This lets the per-chunk playback loop advance past the
@@ -556,6 +651,63 @@ test.describe("section player TTS highlighting parity (authored vs generated SSM
 });
 
 test.describe("section player demo tts-generated-ssml", () => {
+	test("restarts generated math playback controls through browser speech synthesis", async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		await installHoldingBrowserSpeech(page);
+
+		await gotoDemo(page);
+		await forceBrowserTtsRuntime(page);
+
+		const passageRegion = page.getByRole("complementary", { name: "Passages" });
+		const passageInlineTts = passageRegion
+			.locator("pie-tool-tts-inline:visible")
+			.first();
+		await expect(passageInlineTts).toBeVisible();
+
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
+		const passagePanel = passageInlineTts.locator(
+			'[role="toolbar"][aria-label="Reading controls"]',
+		);
+		await expect(passagePanel).toBeVisible();
+		await expect
+			.poll(() => browserSpeakCalls(page).then((calls) => calls.length), {
+				timeout: 45_000,
+				message: "expected initial browser speech utterance",
+			})
+			.toBeGreaterThan(0);
+
+		const initialSpeak = (await browserSpeakCalls(page))[0];
+		expect(initialSpeak.rate).toBe(1);
+
+		await passagePanel.getByRole("button", { name: "Fast-forward" }).click();
+		await expect
+			.poll(() => browserSpeakCalls(page).then((calls) => calls.length), {
+				timeout: 10_000,
+				message: "expected seek to trigger a fresh browser utterance",
+			})
+			.toBeGreaterThan(1);
+		expect(await hasBrowserCancel(page)).toBe(true);
+		expect((await browserSpeakCalls(page))[1].text).not.toBe(initialSpeak.text);
+
+		await passagePanel.getByRole("button", { name: "1.25x" }).click();
+		await expect
+			.poll(
+				() =>
+					browserSpeakCalls(page).then((calls) =>
+						calls.some((call) => call.rate === 1.25),
+					),
+				{
+					timeout: 10_000,
+					message: "expected speed change to restart browser speech",
+				},
+			)
+			.toBe(true);
+	});
+
 	test("generates SSML on the fly for math and sends it to an SSML-capable provider", async ({
 		page,
 	}) => {

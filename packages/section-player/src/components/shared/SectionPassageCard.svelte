@@ -200,7 +200,9 @@
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: var(--pie-header-text, #111827);
+		/* Default to the themed body text color so titles stay legible across
+		   DaisyUI themes; --pie-header-text remains a host opt-in override. */
+		color: var(--pie-header-text, var(--pie-text, #111827));
 	}
 
 	.pie-section-player-content-card-header pie-item-toolbar {

@@ -157,9 +157,17 @@ The component uses CSS custom properties for theming:
 --pie-background: Background color (default: white)
 --pie-text: Text color (default: #333)
 --pie-secondary-background: Hover background (default: #f5f5f5)
---pie-primary: Active state background (default: #1976d2)
---pie-primary-dark: Active hover background (default: #1565c0)
+--pie-tool-trigger-active-background: Active/open button background
+--pie-tool-trigger-active-color: Active/open button foreground
+--pie-tool-trigger-active-border-color: Active/open button border
 ```
+
+Hosts should prefer the `--pie-tool-trigger-active-*` variables when styling the
+calculator button's active/open state instead of overriding broad semantic tokens
+such as `--pie-primary`. If these variables are unset, the button preserves the
+existing filled active look using `--pie-primary` and `--pie-primary-dark`
+fallbacks. Hosts remain responsible for maintaining WCAG AA
+foreground/background contrast when overriding active trigger colors.
 
 ## Development
 

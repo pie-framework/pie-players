@@ -725,8 +725,21 @@ let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 	}
 
 	.pie-tool-tts-inline__trigger--active {
-		border-color: var(--pie-primary, #1565c0);
-		background-color: color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff));
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1565c0));
+		background-color: var(
+			--pie-tool-trigger-active-background,
+			color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff))
+		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #333)));
+	}
+
+	.pie-tool-tts-inline__trigger--active:hover:not(:disabled) {
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1565c0));
+		background-color: var(
+			--pie-tool-trigger-active-background,
+			color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff))
+		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #333)));
 	}
 
 	.pie-tool-tts-inline__panel {

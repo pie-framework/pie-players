@@ -194,6 +194,21 @@ The component uses scoped styles and doesn't require external CSS. Styling uses 
 - **Speed state**: Active speed button receives distinct token-driven styling
 - **Disabled**: Reduced opacity, no pointer
 
+Hosts that need to theme the trigger's active/open state should prefer these
+component-scoped variables instead of overriding broad semantic tokens such as
+`--pie-primary`:
+
+```css
+--pie-tool-trigger-active-background: Active/open trigger background
+--pie-tool-trigger-active-color: Active/open trigger foreground
+--pie-tool-trigger-active-border-color: Active/open trigger border
+```
+
+If unset, the trigger keeps the existing defaults: active background and border
+derive from `--pie-primary`, while foreground continues through
+`--pie-button-color` / `--pie-text`. Hosts remain responsible for maintaining
+WCAG AA foreground/background contrast when overriding active trigger colors.
+
 ## Architecture
 
 This tool follows the PIE Assessment Toolkit tool pattern:

@@ -1,5 +1,13 @@
 @import "tailwindcss";
-@plugin "daisyui";
+/*
+ * Tailwind v4 + daisyUI v5: theme configuration lives here, not in
+ * tailwind.config.ts (which is unused without an `@config` directive).
+ * `themes: all` compiles every built-in daisyUI theme so the demo theme
+ * selector (DAISY_DEFAULT_THEMES) actually applies each option.
+ */
+@plugin "daisyui" {
+	themes: all;
+}
 
 /* PIE theme overrides — matches apps/docs and the pie-website-ng site. */
 [data-theme="light"] {

@@ -8,33 +8,36 @@ The architecture note is directional. These PRDs will decide exact package
 ownership, TypeScript names, exports, wire fields, migration behavior, and
 verification requirements.
 
-## Planned Sequence
+## Draft Sequence
 
-Recommended order:
+Recommended review and implementation order:
 
-1. `interaction-event-contract`
+1. [`interaction-event-contract`](./interaction-event-contract.md)
    - Event projection vocabulary, source refs, typed event families,
      privacy/telemetry rules, and process/path fields.
-2. `score-components-and-section-outcomes`
+2. [`score-components-and-section-outcomes`](./score-components-and-section-outcomes.md)
    - Alignment to `OutcomeResponse`, `SessionScore`, item completion,
      `TestAttemptSession`, `SectionControllerSessionState`, and
      `AssessmentSession`.
    - Missing section/assessment score and completion rollup projections.
-3. `media-asset-contract`
+3. [`media-asset-contract`](./media-asset-contract.md)
    - Stimulus media sources, captions, transcripts, poster, accessibility
      metadata, and host storage boundaries.
-4. `branching-and-process-events`
+4. [`branching-and-process-events`](./branching-and-process-events.md)
    - Branching, simulations, replay/debug, resumability, externally graded
      outcomes, and path state.
-5. `evidence-capture-metadata`
+5. [`evidence-capture-metadata`](./evidence-capture-metadata.md)
    - Learner evidence metadata and host-owned storage, review, audit, and
      privacy responsibilities.
-6. `accessibility-runtime-patterns`
+6. [`accessibility-runtime-patterns`](./accessibility-runtime-patterns.md)
    - Focus handoff, media/tool/TTS coordination, overlays, keyboard behavior,
      accommodation overrides, and assistive technology expectations.
-7. Timed-media implementation PRDs
-   - Consume the above contracts for `video-stimulus`, timed-media section
-     data, timed-media section-player behavior, and composition authoring.
+
+Timed-media implementation PRDs consume the shared contracts above and live
+outside this folder. The first planned timed-media PRD is
+[`../timed-media-section-contract.md`](../timed-media-section-contract.md).
+Composition authoring is a later PRD and should not be folded into the shared
+contracts, `video-stimulus`, QTI mappings, or host-specific prose.
 
 ## Adapter Track
 

@@ -31,6 +31,7 @@ import type {
 import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
+import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
 import type {
 	ToolPlacementConfig,
 	ToolPlacementLevel,
@@ -132,6 +133,13 @@ export interface HighlightCoordinatorApi {
 	 * Highlight sentence(s) for TTS (background layer)
 	 */
 	highlightTTSSentence(ranges: Range[]): void;
+
+	/**
+	 * Highlight sentence/block element targets for TTS (background layer).
+	 *
+	 * Optional so lightweight coordinator mocks can omit it.
+	 */
+	highlightTTSSentenceElements?(elements: Element[]): void;
 
 	/**
 	 * Clear all TTS highlights (word and sentence)
@@ -355,6 +363,13 @@ export interface TtsServiceApi {
 	 * Set highlight coordinator for word highlighting
 	 */
 	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void;
+
+	/**
+	 * Set a late-bound provider for optional host TTS highlight target remapping.
+	 */
+	setHighlightTargetResolverProvider?(
+		provider: TTSHighlightTargetResolverProvider | null,
+	): () => void;
 
 	/**
 	 * Set accessibility catalog resolver for spoken content

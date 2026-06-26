@@ -286,6 +286,76 @@ describe("SectionController external contract", () => {
 		expect((events[1]?.session as any)?.data?.[0]?.value).toEqual([]);
 	});
 
+	test("routes identity-only element session echoes to metadata events", async () => {
+		const controller = new SectionController();
+		const section = {
+			identifier: "section-identity-echo",
+			assessmentItemRefs: [
+				{
+					identifier: "canonical-item-identity-echo",
+					item: makeItem("runtime-item-identity-echo"),
+				},
+			],
+			rubricBlocks: [],
+		} as unknown as AssessmentSection;
+		await controller.initialize({
+			section,
+			sectionId: "section-identity-echo",
+			assessmentId: "assessment-identity-echo",
+			view: ["candidate"],
+		});
+
+		const events: Array<{
+			type: string;
+			session?: unknown;
+			complete?: boolean;
+			component?: string;
+		}> = [];
+		const unsubscribe = controller.subscribe((event) => {
+			if (
+				event.type === "item-session-data-changed" ||
+				event.type === "item-session-meta-changed"
+			) {
+				events.push({
+					type: event.type,
+					session: (event as any).session,
+					complete: (event as any).complete,
+					component: (event as any).component,
+				});
+			}
+		});
+
+		controller.updateItemSession("canonical-item-identity-echo", {
+			session: { id: "sess-identity", data: [{ id: "choice", value: ["A"] }] },
+			complete: true,
+			component: "choice",
+		});
+		const beforeEcho = controller.getSession()?.itemSessions[
+			"canonical-item-identity-echo"
+		];
+		controller.updateItemSession("canonical-item-identity-echo", {
+			session: {
+				id: "choice",
+				element: "multiple-choice--version-1-0-0",
+				complete: true,
+				component: "choice",
+			},
+		});
+		unsubscribe();
+
+		expect(events).toHaveLength(2);
+		expect(events[0]?.type).toBe("item-session-data-changed");
+		expect(events[1]).toEqual({
+			type: "item-session-meta-changed",
+			session: undefined,
+			complete: true,
+			component: "choice",
+		});
+		expect(
+			controller.getSession()?.itemSessions["canonical-item-identity-echo"],
+		).toEqual(beforeEcho);
+	});
+
 	test("applySession restores all item sessions for multi-item section", async () => {
 		const controller = new SectionController();
 		const section = makeSectionWithItems("section-multi-restore", [

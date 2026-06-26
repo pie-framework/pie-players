@@ -9,6 +9,7 @@
 	import {
 		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
+		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
@@ -100,16 +101,7 @@
 						enabled: true
 					}
 				},
-				placement: {
-					section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
-					item: [
-						'calculator',
-						'textToSpeech',
-						'answerEliminator',
-						'annotationToolbar'
-					],
-					passage: ['textToSpeech', 'annotationToolbar']
-				}
+				placement: SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
 			}
 		});
 		if (toolsConfigResult.diagnostics.length > 0) {

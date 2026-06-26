@@ -13,6 +13,7 @@
 	import {
 		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
+		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
@@ -96,16 +97,7 @@
 						enabled: true
 					}
 				},
-				placement: {
-					section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
-					item: [
-						'calculator',
-						'textToSpeech',
-						'answerEliminator',
-						'annotationToolbar'
-					],
-					passage: ['textToSpeech', 'annotationToolbar']
-				}
+				placement: SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
 			}
 		});
 		if (toolsConfigResult.diagnostics.length > 0) {

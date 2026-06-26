@@ -68,4 +68,95 @@ describe("SectionSessionService.applyItemSessionChanged", () => {
 		expect(result.eventDetail.intent).toBe("metadata-only");
 		expect(result.eventDetail.session).toBeNull();
 	});
+
+	test("identity-only element echoes do not mutate persisted item session data", () => {
+		const service = new SectionSessionService();
+		const { testAttemptSession, itemSessions } = service.resolve({
+			assessmentId: "a-1",
+			sectionId: "s-1",
+			view: ["candidate"],
+			section: null,
+			adapterItemRefs: [{ identifier: "item-1", item: { id: "item-1" } }],
+		});
+		const seeded = service.applyItemSessionChanged({
+			itemId: "item-1",
+			sessionDetail: {
+				session: { id: "choice", value: ["A"] },
+				component: "choice",
+				complete: true,
+			},
+			testAttemptSession,
+			itemSessions,
+		});
+		const seededItemSessions = JSON.parse(JSON.stringify(seeded.itemSessions));
+		const seededSessionStateItemSessions = JSON.parse(
+			JSON.stringify(seeded.sessionState.itemSessions),
+		);
+
+		const result = service.applyItemSessionChanged({
+			itemId: "item-1",
+			sessionDetail: {
+				session: {
+					id: "choice",
+					element: "multiple-choice--version-1-0-0",
+					component: "choice",
+					complete: true,
+				},
+			},
+			testAttemptSession: seeded.testAttemptSession,
+			itemSessions: seeded.itemSessions,
+		});
+
+		expect(result.eventDetail.intent).toBe("metadata-only");
+		expect(result.eventDetail.session).toBeNull();
+		expect(result.eventDetail.complete).toBe(true);
+		expect(result.eventDetail.component).toBe("choice");
+		expect(result.itemSessions).toEqual(seededItemSessions);
+		expect(result.sessionState.itemSessions).toEqual(
+			seededSessionStateItemSessions,
+		);
+	});
+
+	test("raw explicit clears still update persisted item session data", () => {
+		const service = new SectionSessionService();
+		const { testAttemptSession, itemSessions } = service.resolve({
+			assessmentId: "a-1",
+			sectionId: "s-1",
+			view: ["candidate"],
+			section: null,
+			adapterItemRefs: [{ identifier: "item-1", item: { id: "item-1" } }],
+		});
+		const seeded = service.applyItemSessionChanged({
+			itemId: "item-1",
+			sessionDetail: {
+				session: { id: "choice", value: ["A"] },
+				component: "choice",
+				complete: true,
+			},
+			testAttemptSession,
+			itemSessions,
+		});
+
+		const result = service.applyItemSessionChanged({
+			itemId: "item-1",
+			sessionDetail: {
+				session: {
+					id: "choice",
+					element: "multiple-choice--version-1-0-0",
+					value: [],
+				},
+			},
+			testAttemptSession: seeded.testAttemptSession,
+			itemSessions: seeded.itemSessions,
+		});
+
+		expect(result.eventDetail.intent).toBe("merge-element-session");
+		expect((result.eventDetail.session as any)?.data).toEqual([
+			{
+				id: "choice",
+				value: [],
+				element: "multiple-choice--version-1-0-0",
+			},
+		]);
+	});
 });

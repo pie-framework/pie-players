@@ -179,18 +179,21 @@ if (saved) {
 
 ### 1. Choice Detection
 
-The tool automatically detects answer choices within the scoped element:
+The tool detects choices through an **adapter registry** (`AdapterRegistry`), not a fixed selector list. Each adapter knows how to find and operate on choices for a specific PIE element type, and the registry runs them in priority order (`canHandle()`, then `findChoices()`), so a single question can mix element types:
+
+| Adapter | Element type | How it finds choices |
+| --- | --- | --- |
+| `MultipleChoiceAdapter` | `multiple-choice` (single- or multi-select) | `.corespring-checkbox` / `.corespring-radio-button` choices |
+| `EBSRAdapter` | `ebsr` | delegates to the multiple-choice adapter for each `ebsr-multiple-choice` part (Part A/B), prefixing choice IDs with the part |
+| `InlineDropdownAdapter` | `inline-dropdown` | dropdown items with `role="option"` |
+
+Support more element types at runtime by registering your own adapter (any object implementing the `ChoiceAdapter` interface: `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange`, `getButtonContainer`):
 
 ```typescript
-// Searches for choice elements with these patterns
-const choiceSelectors = [
-  '[data-choice-id]',           // PIE standard
-  '.choice',                     // Common class
-  '[role="radio"]',              // Accessibility
-  '[role="checkbox"]',           // Accessibility
-  'input[type="radio"]',         // Native inputs
-  'input[type="checkbox"]'       // Native inputs
-];
+import { AdapterRegistry } from '@pie-players/pie-tool-answer-eliminator';
+
+const registry = new AdapterRegistry();
+registry.registerAdapter(myCustomChoiceAdapter);
 ```
 
 ### 2. State Storage
@@ -205,26 +208,16 @@ Eliminated choices are stored by choice ID:
 
 ### 3. Visual Feedback
 
-Eliminated choices receive the `eliminated` CSS class:
+Elimination styling is applied by a pluggable `EliminationStrategy` built on the **CSS Custom Highlight API** (zero DOM mutation, so the choice text and structure stay intact for screen readers). Two strategies ship today:
 
-```css
-.choice.eliminated {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-```
+- `strikethrough` (default): a `::highlight(pie-answer-eliminated-<id>)` rule renders a line-through over the choice label.
+- `mask`: a `::highlight(pie-answer-masked-<id>)` rule dims and blurs the choice.
+
+For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, plus `aria-disabled`/`aria-hidden` and an offscreen "(eliminated)" announcement) for assistive technology.
 
 ### 4. Toggle Behavior
 
-Clicking a choice toggles its elimination state:
-
-```typescript
-// First click: eliminate
-choiceElement.classList.add('eliminated');
-
-// Second click: restore
-choiceElement.classList.remove('eliminated');
-```
+Each detected choice gets its own elimination toggle button (class `pie-answer-eliminator-toggle`, rendered as `⊗`) placed via the adapter's `getButtonContainer()`. Clicking the button toggles that choice through the active strategy. Eliminating is blocked when the adapter's `canEliminate()` returns false — for example when the choice is already selected, disabled, or the item is in evaluate/view mode. An active button is marked with `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`; clicking again restores the choice.
 
 ## Cleanup
 

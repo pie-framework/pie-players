@@ -20,6 +20,12 @@ export type {
 	ItemPlayerType,
 	ShellContextKind,
 } from "./context/assessment-toolkit-context.js";
+export type {
+	TTSHighlightContext,
+	TTSHighlightTargetResolver,
+	TTSHighlightTargetResolverProvider,
+	TTSHighlightTargetResolverRuntime,
+} from "./services/tts/highlight-target-resolver.js";
 export {
 	assessmentToolkitHostRuntimeContext,
 	assessmentToolkitRegionScopeContext,
@@ -150,6 +156,7 @@ export {
 	createPackagedToolRegistry,
 	PACKAGED_TOOL_PLACEMENT,
 	registerPackagedTools,
+	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 } from "./services/createDefaultToolRegistry.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";

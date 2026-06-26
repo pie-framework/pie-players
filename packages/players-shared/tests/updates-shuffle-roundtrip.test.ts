@@ -53,14 +53,19 @@ beforeEach(() => {
 function registerShufflingController(counters: {
 	shuffles: number;
 	reuses: number;
+	locked?: number;
 }) {
 	const controller: Partial<PieController> = {
 		model: (async (
 			_question: any,
 			session: any,
-			_env: any,
+			env: any,
 			updateSession: any,
 		) => {
+			if (env?.["@pie-element"]?.lockChoiceOrder) {
+				counters.locked = (counters.locked ?? 0) + 1;
+				return { mode: "gather", partA: {}, partB: {} };
+			}
 			const existing = session?.shuffledValues;
 			if (!existing) {
 				counters.shuffles += 1;
@@ -139,5 +144,53 @@ describe("updatePieElement shuffle round-trip (PIE-631)", () => {
 		expect(counters.shuffles).toBe(1);
 		expect(counters.reuses).toBe(1);
 		expect(updates).toHaveLength(1);
+	});
+
+	test("global @pie-element lockChoiceOrder env prevents controller shuffle writes", async () => {
+		const counters = { shuffles: 0, reuses: 0, locked: 0 };
+		registerShufflingController(counters);
+
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: { id: "", data: [{ id: "q1", element: TAG }] },
+		});
+
+		const player = document.createElement("section");
+		player.innerHTML = `<${TAG} id="q1"></${TAG}>`;
+		document.body.append(player);
+
+		const updates: Array<{ id: string; element: string; properties: any }> = [];
+		const onElementSessionUpdate = (
+			id: string,
+			element: string,
+			properties: any,
+		) => {
+			updates.push({ id, element, properties });
+			controller.mergeElementSession(id, properties);
+		};
+
+		await updatePieElement(TAG, {
+			config,
+			session: controller.getSession().data,
+			env: {
+				mode: "gather",
+				role: "student",
+				partialScoring: false,
+				"@pie-element": { lockChoiceOrder: true },
+			},
+			container: player,
+			onElementSessionUpdate,
+		});
+
+		expect(counters.locked).toBe(1);
+		expect(counters.shuffles).toBe(0);
+		expect(counters.reuses).toBe(0);
+		expect(updates).toHaveLength(0);
+		expect(controller.getSession().data).toEqual([
+			{
+				id: "q1",
+				element: TAG,
+			},
+		]);
 	});
 });

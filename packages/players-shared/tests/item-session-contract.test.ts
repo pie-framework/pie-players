@@ -63,6 +63,119 @@ describe("normalizeItemSessionChange", () => {
 		expect(out.intent).toBe("metadata-only");
 		expect(out.session).toBeNull();
 	});
+
+	test("treats identity-only element session echoes as metadata-only", () => {
+		const previousSession = {
+			id: "item-1",
+			data: [{ id: "choice", value: ["A"] }],
+		};
+		const out = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session: {
+					id: "choice",
+					element: "multiple-choice--version-1-0-0",
+					complete: true,
+					component: "choice",
+					timestamp: 123,
+				},
+			},
+			previousItemSession: previousSession,
+		});
+
+		expect(out.intent).toBe("metadata-only");
+		expect(out.session).toBeNull();
+		expect(out.complete).toBe(true);
+		expect(out.component).toBe("choice");
+	});
+
+	test("keeps raw explicit clears as element-session data changes", () => {
+		const out = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session: {
+					id: "choice",
+					element: "multiple-choice--version-1-0-0",
+					value: [],
+				},
+			},
+			previousItemSession: {
+				id: "item-1",
+				data: [{ id: "choice", value: ["A"] }],
+			},
+		});
+
+		expect(out.intent).toBe("merge-element-session");
+		expect(out.session).toEqual({
+			id: "item-1",
+			data: [
+				{
+					id: "choice",
+					element: "multiple-choice--version-1-0-0",
+					value: [],
+				},
+			],
+		});
+	});
+
+	test("keeps raw empty-string clears as element-session data changes", () => {
+		const out = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session: {
+					id: "text-entry",
+					element: "text-entry--version-1-0-0",
+					value: "",
+				},
+			},
+			previousItemSession: {
+				id: "item-1",
+				data: [{ id: "text-entry", value: "typed answer" }],
+			},
+		});
+
+		expect(out.intent).toBe("merge-element-session");
+		expect(out.session).toEqual({
+			id: "item-1",
+			data: [
+				{
+					id: "text-entry",
+					element: "text-entry--version-1-0-0",
+					value: "",
+				},
+			],
+		});
+	});
+
+	test("keeps derived element state as element-session data changes", () => {
+		const out = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session: {
+					id: "choice",
+					element: "ebsr--version-1-0-0",
+					shuffledValues: { partA: ["b", "a"] },
+				},
+			},
+			previousItemSession: {
+				id: "item-1",
+				data: [{ id: "choice", value: ["A"] }],
+			},
+		});
+
+		expect(out.intent).toBe("merge-element-session");
+		expect(out.session).toEqual({
+			id: "item-1",
+			data: [
+				{
+					id: "choice",
+					value: ["A"],
+					element: "ebsr--version-1-0-0",
+					shuffledValues: { partA: ["b", "a"] },
+				},
+			],
+		});
+	});
 });
 
 describe("hasResponseValue", () => {

@@ -1,5 +1,7 @@
 # @pie-players/pie-tts
 
+## 0.3.52
+
 ## 0.3.51
 
 ### Patch Changes

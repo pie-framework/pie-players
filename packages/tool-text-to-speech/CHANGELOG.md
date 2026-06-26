@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-text-to-speech
 
+## 0.3.52
+
+### Patch Changes
+
+- Updated dependencies [905080d]
+- Updated dependencies [017f5a9]
+  - @pie-players/pie-assessment-toolkit@0.3.52
+  - @pie-players/pie-players-shared@0.3.52
+
 ## 0.3.51
 
 ### Patch Changes

@@ -1,5 +1,20 @@
 # @pie-players/pie-section-player
 
+## 0.3.52
+
+### Patch Changes
+
+- 905080d: Add a runtime TTS highlight target resolver so hosts can remap spoken ranges to visible highlight targets while PIE Players keeps default identity highlighting, painting, and cleanup.
+- 017f5a9: Treat identity-only PIE element session echoes as metadata-only updates so restored sessions do not emit learner response data changes, while preserving explicit response clears and derived session state updates.
+- c2ac471: Default section-player passage and question card title color to the themed `--pie-text` variable (with `--pie-header-text` still an opt-in host override) so card titles stay legible across DaisyUI dark and high-contrast themes instead of being stuck at a hardcoded near-black.
+- Updated dependencies [905080d]
+- Updated dependencies [017f5a9]
+  - @pie-players/pie-assessment-toolkit@0.3.52
+  - @pie-players/pie-players-shared@0.3.52
+  - @pie-players/pie-default-tool-loaders@0.3.52
+  - @pie-players/pie-item-player@0.3.52
+  - @pie-players/pie-context@0.3.52
+
 ## 0.3.51
 
 ### Patch Changes

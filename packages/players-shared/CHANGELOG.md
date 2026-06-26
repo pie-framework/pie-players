@@ -1,5 +1,11 @@
 # @pie-players/pie-players-shared
 
+## 0.3.52
+
+### Patch Changes
+
+- 017f5a9: Treat identity-only PIE element session echoes as metadata-only updates so restored sessions do not emit learner response data changes, while preserving explicit response clears and derived session state updates.
+
 ## 0.3.51
 
 ### Patch Changes

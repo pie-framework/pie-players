@@ -1,5 +1,18 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.52
+
+### Patch Changes
+
+- 905080d: Add a runtime TTS highlight target resolver so hosts can remap spoken ranges to visible highlight targets while PIE Players keeps default identity highlighting, painting, and cleanup.
+- Updated dependencies [017f5a9]
+  - @pie-players/pie-players-shared@0.3.52
+  - @pie-players/pie-calculator@0.3.52
+  - @pie-players/pie-calculator-desmos@0.3.52
+  - @pie-players/pie-context@0.3.52
+  - @pie-players/pie-tts@0.3.52
+  - @pie-players/tts-client-server@0.3.52
+
 ## 0.3.51
 
 ### Patch Changes

@@ -441,7 +441,10 @@ describe("TTSService structural pauses", () => {
 			{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 },
 		] as TTSSpeechSegment[];
 		(service as any).currentBoundaryOffset = 0;
-		(service as any).findHighlightRange = (charIndex: number, length: number) =>
+		(service as any).findHighlightRange = (
+			charIndex: number,
+			length: number,
+		) =>
 			charIndex === 16 && length === 4
 				? {
 						node: { textContent: "Next sentence." } as Text,
@@ -487,7 +490,10 @@ describe("TTSService structural pauses", () => {
 			{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 },
 		] as TTSSpeechSegment[];
 		(service as any).currentBoundaryOffset = 0;
-		(service as any).findHighlightRange = (charIndex: number, length: number) =>
+		(service as any).findHighlightRange = (
+			charIndex: number,
+			length: number,
+		) =>
 			charIndex === 16 && length === 4
 				? {
 						node: { textContent: "Next sentence." } as Text,
@@ -782,10 +788,28 @@ describe("TTSService structural pauses", () => {
 		expect(impl.segmentCalls).toHaveLength(0);
 	});
 
-	test("does not seek-replay visible math fallback after divergent speech", async () => {
+	test("seekForward replays generated math speech from the next chunk", async () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		let releaseFirstSpeak: (() => void) | null = null;
+		let firstSpeakStarted: (() => void) | null = null;
+		const firstSpeakStartedPromise = new Promise<void>((resolve) => {
+			firstSpeakStarted = resolve;
+		});
+		impl.speak = async (text: string) => {
+			impl.speakCalls.push(text);
+			if (impl.speakCalls.length === 1) {
+				firstSpeakStarted?.();
+				await new Promise<void>((resolve) => {
+					releaseFirstSpeak = resolve;
+				});
+			}
+		};
+		impl.stop = () => {
+			impl.stopCalls += 1;
+			releaseFirstSpeak?.();
+		};
 		(service as any).resolveSpeechContent = async () => ({
 			contentToSpeak: "Solve one half now.",
 			speechText: "Solve one half now.",
@@ -796,20 +820,109 @@ describe("TTSService structural pauses", () => {
 			speechSource: "dom-or-input",
 			containsMathMarkup: true,
 			speechMatchesVisibleText: false,
+			speechChunks: [
+				{
+					speechText: "Solve",
+					visibleText: "Solve",
+					sourceElement: null,
+					speechMatchesVisibleText: true,
+				},
+				{
+					speechText: "one half",
+					visibleText: "1 2",
+					sourceElement: null,
+					speechMatchesVisibleText: false,
+				},
+				{
+					speechText: "now.",
+					visibleText: "now.",
+					sourceElement: null,
+					speechMatchesVisibleText: true,
+				},
+			],
 		});
-		let restarted = false;
-		(service as any).speakWithPlan = async () => {
-			restarted = true;
-		};
 		(service as any).buildPositionMap = () => {};
 
-		await service.speak("Solve 1 2 now.", {
+		const speakPromise = service.speak("Solve 1 2 now.", {
 			contentElement: {} as Element,
 		});
-		(service as any).state = PlaybackState.PLAYING;
-		await service.seekForward();
+		await firstSpeakStartedPromise;
 
-		expect(restarted).toBe(false);
+		await service.seekForward();
+		releaseFirstSpeak?.();
+		await speakPromise;
+
+		expect(impl.stopCalls).toBe(1);
+		expect(impl.speakCalls).toEqual(["Solve", "one half", "now."]);
+	});
+
+	test("setPlaybackRate restarts generated math speech at the current chunk", async () => {
+		const impl = new MockTTSImpl(true);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		let releaseFirstSpeak: (() => void) | null = null;
+		let firstSpeakStarted: (() => void) | null = null;
+		const firstSpeakStartedPromise = new Promise<void>((resolve) => {
+			firstSpeakStarted = resolve;
+		});
+		impl.speak = async (text: string) => {
+			impl.speakCalls.push(text);
+			if (impl.speakCalls.length === 1) {
+				firstSpeakStarted?.();
+				await new Promise<void>((resolve) => {
+					releaseFirstSpeak = resolve;
+				});
+			}
+		};
+		impl.stop = () => {
+			impl.stopCalls += 1;
+			releaseFirstSpeak?.();
+		};
+		(service as any).resolveSpeechContent = async () => ({
+			contentToSpeak: "Solve one half now.",
+			speechText: "Solve one half now.",
+			visibleText: "Solve 1 2 now.",
+			highlightText: "Solve 1 2 now.",
+			normalizedText: "Solve 1 2 now.",
+			usedCatalogSpoken: false,
+			speechSource: "dom-or-input",
+			containsMathMarkup: true,
+			speechMatchesVisibleText: false,
+			speechChunks: [
+				{
+					speechText: "Solve",
+					visibleText: "Solve",
+					sourceElement: null,
+					speechMatchesVisibleText: true,
+				},
+				{
+					speechText: "one half",
+					visibleText: "1 2",
+					sourceElement: null,
+					speechMatchesVisibleText: false,
+				},
+				{
+					speechText: "now.",
+					visibleText: "now.",
+					sourceElement: null,
+					speechMatchesVisibleText: true,
+				},
+			],
+		});
+		(service as any).buildPositionMap = () => {};
+
+		const speakPromise = service.speak("Solve 1 2 now.", {
+			contentElement: {} as Element,
+		});
+		await firstSpeakStartedPromise;
+
+		await service.setPlaybackRate(1.5);
+		releaseFirstSpeak?.();
+		await speakPromise;
+
+		expect(impl.settingsUpdates).toContainEqual({ rate: 1.5 });
+		expect(impl.stopCalls).toBe(1);
+		expect(impl.speakCalls).toEqual(["Solve", "Solve", "one half", "now."]);
 	});
 
 	test("ignores slow superseded speech resolution before playback starts", async () => {

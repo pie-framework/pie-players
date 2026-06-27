@@ -87,6 +87,7 @@
 		"check:node-consumer-imports": "bun ./scripts/check-node-consumer-imports.mjs",
 		"check:bundle-safety": "bun ./scripts/check-bundle-safety.mjs && bun run check:player-tool-boundaries",
 		"check:player-tool-boundaries": "bun ./scripts/check-player-tool-boundaries.mjs",
+		"check:theme-tokens": "bun ./scripts/check-theme-tokens.mjs",
 		"check:math-rendering-version": "bun ./scripts/check-math-rendering-version.mjs",
 		"check:fixed-versioning": "bun ./scripts/check-fixed-versioning.mjs",
 		"check:changeset-patch-only": "bun ./scripts/check-changeset-patch-only.mjs",

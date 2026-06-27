@@ -202,13 +202,15 @@
 	}
 
 	.pie-tool-calculator-inline__button--active {
-		background-color: var(--pie-primary, #1976d2);
-		color: white;
-		border-color: var(--pie-primary, #1976d2);
+		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
+		color: var(--pie-tool-trigger-active-color, white);
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 
 	.pie-tool-calculator-inline__button--active:hover:not(:disabled) {
-		background-color: var(--pie-primary-dark, #1565c0);
+		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary-dark, #1565c0));
+		color: var(--pie-tool-trigger-active-color, white);
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 
 	.pie-tool-calculator-inline__button:disabled {
@@ -254,12 +256,12 @@
 		color: #555;
 	}
 
-	.pie-tool-calculator-inline__button:hover:not(:disabled) .pie-tool-calculator-inline__icon {
+	.pie-tool-calculator-inline__button:not(.pie-tool-calculator-inline__button--active):hover:not(:disabled) .pie-tool-calculator-inline__icon {
 		color: #667eea;
 	}
 
 	.pie-tool-calculator-inline__button--active .pie-tool-calculator-inline__icon {
-		color: white;
+		color: var(--pie-tool-trigger-active-color, inherit);
 	}
 
 	/* Screen reader only content */

@@ -117,6 +117,7 @@ export async function loadFromDeliveryBackend(
 		sessionId: delivery.sessionId,
 		assignmentId: delivery.assignmentId,
 		env,
+		requestOptions: delivery.options,
 	};
 	const result =
 		typeof delivery.client?.load === "function"
@@ -138,9 +139,15 @@ export async function modelFromDeliveryBackend(
 		throw new Error("Delivery backend is not configured.");
 	}
 	if (typeof delivery.client?.model === "function") {
-		return delivery.client.model(context);
+		return delivery.client.model({
+			...context,
+			requestOptions: delivery.options,
+		});
 	}
-	return callPieApiDeliveryModel(delivery, backend.auth, context);
+	return callPieApiDeliveryModel(delivery, backend.auth, {
+		...context,
+		requestOptions: delivery.options,
+	});
 }
 
 export async function saveToDeliveryBackend(
@@ -152,9 +159,15 @@ export async function saveToDeliveryBackend(
 		throw new Error("Delivery backend is not configured.");
 	}
 	if (typeof delivery.client?.saveSession === "function") {
-		return delivery.client.saveSession(context);
+		return delivery.client.saveSession({
+			...context,
+			requestOptions: delivery.options,
+		});
 	}
-	return callPieApiDeliverySave(delivery, backend.auth, context);
+	return callPieApiDeliverySave(delivery, backend.auth, {
+		...context,
+		requestOptions: delivery.options,
+	});
 }
 
 export async function scoreWithDeliveryBackend(
@@ -168,6 +181,7 @@ export async function scoreWithDeliveryBackend(
 	}
 	const scoreContext = {
 		...context,
+		requestOptions: delivery.options,
 		options,
 	};
 	if (typeof delivery.client?.score === "function") {

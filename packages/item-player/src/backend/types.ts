@@ -21,6 +21,10 @@ export type BackendRequestConfig = {
 	timeoutMs?: number;
 };
 
+export type BackendRequestOptions = {
+	overrides?: Record<string, string>;
+};
+
 export type BackendAutosaveConfig =
 	| boolean
 	| {
@@ -43,11 +47,13 @@ export type BackendDeliveryEndpoints = {
 
 export type BackendDeliveryLoadContext = BackendDeliveryIdentity & {
 	env: unknown;
+	requestOptions?: BackendRequestOptions;
 };
 
 export type BackendDeliverySessionContext = BackendDeliveryIdentity & {
 	session: { id: string; data: unknown[] };
 	env: unknown;
+	requestOptions?: BackendRequestOptions;
 };
 
 export type BackendScoreOptions = {
@@ -85,6 +91,7 @@ export type BackendDeliveryConfig = BackendDeliveryIdentity & {
 	provider?: BackendProvider;
 	baseUrl?: string;
 	endpoints?: BackendDeliveryEndpoints;
+	options?: BackendRequestOptions;
 	request?: BackendRequestConfig;
 	auth?: BackendAuthConfig;
 	autosave?: BackendAutosaveConfig;

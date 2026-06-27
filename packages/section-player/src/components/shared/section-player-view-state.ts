@@ -2,12 +2,17 @@ import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 import type { SectionCompositionModel } from "../../controllers/types.js";
 import {
 	getCanonicalItemIdForItem,
+	getSessionForItem,
 	getSessionForItemOrEmpty,
 	EMPTY_COMPOSITION,
 } from "./composition.js";
 import type { PlayerElementParams } from "./player-action.js";
 import { getRenderablesSignature } from "./player-preload.js";
 import { mapRenderablesToItems } from "./section-player-host-runtime.js";
+import {
+	resolveItemPlayerPropsWithBackend,
+	stripItemDeliveryBackendProps,
+} from "./section-player-backend-delivery.js";
 
 export type LayoutCompositionSnapshot = {
 	compositionModel: SectionCompositionModel;
@@ -66,7 +71,7 @@ export function getPassagePlayerParams(args: {
 			...(args.resolvedPlayerAttributes || {}),
 			strategy: args.playerStrategy,
 		},
-		props: args.resolvedPlayerProps || {},
+		props: stripItemDeliveryBackendProps(args.resolvedPlayerProps || {}),
 	};
 }
 
@@ -77,16 +82,34 @@ export function getItemPlayerParams(args: {
 	resolvedPlayerAttributes: Record<string, string>;
 	resolvedPlayerProps: Record<string, unknown>;
 	playerStrategy: string;
+	itemIndex?: number;
 }): PlayerElementParams {
+	const rawItemSession = getSessionForItem(args.compositionModel, args.item);
+	const itemSession = getSessionForItemOrEmpty(args.compositionModel, args.item);
+	const canonicalItemId = getCanonicalItemIdForItem(
+		args.compositionModel,
+		args.item,
+	);
 	return {
 		config: args.item.config || {},
 		env: args.resolvedPlayerEnv,
-		session: getSessionForItemOrEmpty(args.compositionModel, args.item),
+		session: itemSession,
 		attributes: {
 			...(args.resolvedPlayerAttributes || {}),
 			strategy: args.playerStrategy,
 		},
-		props: args.resolvedPlayerProps || {},
+		props: resolveItemPlayerPropsWithBackend({
+			resolvedPlayerProps: args.resolvedPlayerProps || {},
+			item: args.item,
+			canonicalItemId,
+			itemSession:
+				rawItemSession && typeof rawItemSession === "object"
+					? (rawItemSession as Record<string, unknown>)
+					: undefined,
+			itemIndex: args.itemIndex,
+			sectionId: args.compositionModel.section?.identifier,
+			env: args.resolvedPlayerEnv,
+		}),
 	};
 }
 

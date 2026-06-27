@@ -1,5 +1,7 @@
 # @pie-players/pie-players-shared
 
+## 0.3.53
+
 ## 0.3.52
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @pie-players/pie-assessment-player
 
+## 0.3.53
+
+### Patch Changes
+
+- ee6c081: Add the initial PIE theme token registry contract, source-usage gate, theme parity checks, compatibility fallback chains, and broad theming accessibility planning artifacts for safer host theme overrides.
+- Updated dependencies [ee6c081]
+  - @pie-players/pie-section-player@0.3.53
+  - @pie-players/pie-assessment-toolkit@0.3.53
+  - @pie-players/pie-players-shared@0.3.53
+
 ## 0.3.52
 
 ### Patch Changes

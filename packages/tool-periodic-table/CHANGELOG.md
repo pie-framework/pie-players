@@ -1,5 +1,13 @@
 # @pie-players/pie-tool-periodic-table
 
+## 0.3.53
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.53
+- @pie-players/pie-context@0.3.53
+- @pie-players/pie-players-shared@0.3.53
+
 ## 0.3.52
 
 ### Patch Changes

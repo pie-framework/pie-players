@@ -1,5 +1,13 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 0.3.53
+
+### Patch Changes
+
+- 20fc985: Add component-scoped active/open inline tool trigger theme hooks so hosts can style TTS and calculator trigger states without overriding broad semantic tokens.
+  - @pie-players/pie-assessment-toolkit@0.3.53
+  - @pie-players/pie-context@0.3.53
+
 ## 0.3.52
 
 ### Patch Changes

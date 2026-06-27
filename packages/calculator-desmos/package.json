@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-calculator-desmos",
-	"version": "0.3.52",
+	"version": "0.3.53",
 	"description": "Desmos calculator provider for PIE Assessment Toolkit - High-quality graphing calculators",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-tts-inline
 
+## 0.3.53
+
+### Patch Changes
+
+- ee6c081: Add the initial PIE theme token registry contract, source-usage gate, theme parity checks, compatibility fallback chains, and broad theming accessibility planning artifacts for safer host theme overrides.
+- 20fc985: Add component-scoped active/open inline tool trigger theme hooks so hosts can style TTS and calculator trigger states without overriding broad semantic tokens.
+  - @pie-players/pie-assessment-toolkit@0.3.53
+  - @pie-players/pie-context@0.3.53
+
 ## 0.3.52
 
 ### Patch Changes

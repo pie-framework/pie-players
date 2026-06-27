@@ -1,5 +1,11 @@
 # @pie-players/pie-theme
 
+## 0.3.53
+
+### Patch Changes
+
+- ee6c081: Add the initial PIE theme token registry contract, source-usage gate, theme parity checks, compatibility fallback chains, and broad theming accessibility planning artifacts for safer host theme overrides.
+
 ## 0.3.52
 
 ## 0.3.51

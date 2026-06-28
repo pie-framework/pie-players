@@ -61,9 +61,55 @@ export type BackendScoreOptions = {
 	[key: string]: unknown;
 };
 
-export type BackendSaveContentOptions = {
+export type BackendAuthoringIdentity = {
+	contentId?: string;
+	collectionId?: string;
+};
+
+export type BackendAuthoringSaveOptions = {
 	preReleaseType?: string | null;
 	[key: string]: unknown;
+};
+
+export type BackendSaveContentOptions = BackendAuthoringSaveOptions;
+
+export type BackendAuthoringReleaseOptions = {
+	[key: string]: unknown;
+};
+
+export type BackendAuthoringEndpoints = {
+	load?: BackendEndpoint;
+	saveContent?: BackendEndpoint;
+	releaseContent?: BackendEndpoint;
+};
+
+export type BackendAuthoringLoadResult = {
+	contentId?: string;
+	config: unknown;
+	metadata?: Record<string, unknown>;
+};
+
+export type BackendAuthoringSaveContext = BackendAuthoringIdentity & {
+	config: unknown;
+	env: unknown;
+	options?: BackendAuthoringSaveOptions;
+};
+
+export type BackendAuthoringReleaseContext = BackendAuthoringIdentity & {
+	env: unknown;
+	options?: BackendAuthoringReleaseOptions;
+};
+
+export type BackendAuthoringClient = {
+	load?: (
+		context: BackendAuthoringIdentity & { env: unknown },
+	) => Promise<BackendAuthoringLoadResult>;
+	saveContent?: (
+		context: BackendAuthoringSaveContext,
+	) => Promise<{ contentId: string }>;
+	releaseContent?: (
+		context: BackendAuthoringReleaseContext,
+	) => Promise<{ contentId: string }>;
 };
 
 export type BackendDeliveryScoreContext = BackendDeliverySessionContext & {
@@ -108,16 +154,15 @@ export type BackendDeliveryConfig = BackendDeliveryIdentity & {
 	client?: BackendDeliveryClient;
 };
 
-export type BackendAuthoringConfig = {
+export type BackendAuthoringConfig = BackendAuthoringIdentity & {
 	enabled?: boolean;
 	provider?: BackendProvider;
 	baseUrl?: string;
-	contentId?: string;
-	collectionId?: string;
+	endpoints?: BackendAuthoringEndpoints;
 	request?: BackendRequestConfig;
 	auth?: BackendAuthConfig;
 	media?: Record<string, unknown>;
-	client?: Record<string, unknown>;
+	client?: BackendAuthoringClient;
 };
 
 export type BackendConfig = {

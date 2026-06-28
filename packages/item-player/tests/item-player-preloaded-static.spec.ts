@@ -825,6 +825,256 @@ test.describe("item-player strategy regressions", () => {
 		await expect(fixture.getByText("Stale evaluate prompt")).toHaveCount(0);
 	});
 
+	test("backend authoring loads, saves, and releases current content", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(async () => {
+			(window as any).__pieAuthoringBackendCalls = [];
+			(window as any).__pieAuthoringBackendEvents = [];
+			function createAuthoringBackendFixture() {
+				return class extends HTMLElement {
+					private _model: any;
+
+					set model(value: any) {
+						this._model = value;
+						this.textContent = String(value?.prompt ?? "").replace(
+							/<[^>]+>/g,
+							"",
+						);
+					}
+
+					get model() {
+						return this._model;
+					}
+				};
+			}
+			if (!customElements.get("pie-authoring-backend--version-1-0-0")) {
+				customElements.define(
+					"pie-authoring-backend--version-1-0-0",
+					createAuthoringBackendFixture(),
+				);
+			}
+			if (!customElements.get("pie-authoring-backend--version-1-0-0-config")) {
+				customElements.define(
+					"pie-authoring-backend--version-1-0-0-config",
+					createAuthoringBackendFixture(),
+				);
+			}
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[
+				"pie-authoring-backend--version-1-0-0"
+			] = {
+				package: "@pie-element/authoring-backend@1.0.0",
+				status: "loaded",
+				tagName: "pie-authoring-backend--version-1-0-0",
+				bundleType: "player.js",
+			};
+			(window as any).PIE_REGISTRY[
+				"pie-authoring-backend--version-1-0-0-config"
+			] = {
+				package: "@pie-element/authoring-backend@1.0.0",
+				status: "loaded",
+				tagName: "pie-authoring-backend--version-1-0-0-config",
+				bundleType: "configure.js",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-backend-authoring-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			for (const eventType of [
+				"backend-load-complete",
+				"backend-content-saved",
+				"backend-content-released",
+			]) {
+				player.addEventListener(eventType, (event: CustomEvent) => {
+					(window as any).__pieAuthoringBackendEvents.push({
+						type: event.type,
+						detail: event.detail,
+					});
+				});
+			}
+			fixture.appendChild(player);
+			await customElements.whenDefined("pie-item-player");
+			player.strategy = "preloaded";
+			player.mode = "author";
+			player.env = { mode: "author", role: "instructor" };
+			player.backend = {
+				authoring: {
+					enabled: true,
+					contentId: "content-1",
+					collectionId: "collection-1",
+					client: {
+						async load(context: any) {
+							(window as any).__pieAuthoringBackendCalls.push({
+								type: "load",
+								context,
+							});
+							return {
+								contentId: "content-2",
+								config: {
+									id: "authoring-backend-config",
+									markup:
+										'<pie-authoring-backend id="authoring-backend-model"></pie-authoring-backend>',
+									elements: {
+										"pie-authoring-backend":
+											"@pie-element/authoring-backend@1.0.0",
+									},
+									models: [
+										{
+											id: "authoring-backend-model",
+											element: "pie-authoring-backend",
+											prompt: "<p>Loaded authoring prompt</p>",
+										},
+									],
+								},
+								metadata: { source: "authoring-load" },
+							};
+						},
+						async saveContent(context: any) {
+							(window as any).__pieAuthoringBackendCalls.push({
+								type: "save",
+								context,
+								savedPrompt: context.config.models[0].prompt,
+							});
+							context.config.models[0].prompt = "<p>Mutated by backend</p>";
+							return { contentId: "content-3" };
+						},
+						async releaseContent(context: any) {
+							const releaseCount = (window as any).__pieAuthoringBackendCalls.filter(
+								(call: any) => call.type === "release",
+							).length;
+							(window as any).__pieAuthoringBackendCalls.push({
+								type: "release",
+								context,
+							});
+							return {
+								contentId: releaseCount === 0 ? "content-4" : "content-5",
+							};
+						},
+					},
+				},
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await player.loadFromBackend("authoring");
+			(window as any).__pieAuthoringImmediateText = player.textContent;
+		});
+
+		const fixture = page.locator("#pie-backend-authoring-fixture");
+		await expect(fixture.getByText("Loaded authoring prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+
+		const backendState = await page.evaluate(async () => {
+			const player = document.querySelector(
+				"#pie-backend-authoring-fixture pie-item-player",
+			) as any;
+			const renderedElement = player.querySelector(
+				'[id="authoring-backend-model"]',
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("model.updated", {
+					bubbles: true,
+					detail: {
+						update: {
+							id: "authoring-backend-model",
+							prompt: "<p>Saved authoring prompt</p>",
+						},
+						reset: false,
+					},
+				}),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const saveResult = await player.saveContent({
+				preReleaseType: "prerelease",
+			});
+			const releaseResult = await player.releaseContent({
+				releaseType: "final",
+			});
+			const secondReleaseResult = await player.releaseContent({
+				releaseType: "archive",
+			});
+			return {
+				saveResult,
+				releaseResult,
+				secondReleaseResult,
+				calls: (window as any).__pieAuthoringBackendCalls,
+				events: (window as any).__pieAuthoringBackendEvents,
+				immediateText: (window as any).__pieAuthoringImmediateText,
+				renderedText: player.textContent,
+			};
+		});
+
+		expect(backendState.immediateText).toContain("Loaded authoring prompt");
+		expect(backendState.renderedText).not.toContain("Mutated by backend");
+		expect(backendState.saveResult).toBe("content-3");
+		expect(backendState.releaseResult).toBe("content-4");
+		expect(backendState.secondReleaseResult).toBe("content-5");
+		expect(backendState.calls[1].savedPrompt).toBe(
+			"<p>Saved authoring prompt</p>",
+		);
+		expect(backendState.calls).toMatchObject([
+			{
+				type: "load",
+				context: {
+					contentId: "content-1",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+				},
+			},
+			{
+				type: "save",
+				context: {
+					contentId: "content-2",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+					options: { preReleaseType: "prerelease" },
+				},
+			},
+			{
+				type: "release",
+				context: {
+					contentId: "content-3",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+					options: { releaseType: "final" },
+				},
+			},
+			{
+				type: "release",
+				context: {
+					contentId: "content-4",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+					options: { releaseType: "archive" },
+				},
+			},
+		]);
+		expect(backendState.events.map((event: any) => event.type)).toEqual([
+			"backend-load-complete",
+			"backend-content-saved",
+			"backend-content-released",
+			"backend-content-released",
+		]);
+		expect(backendState.events.map((event: any) => event.detail.scope)).toEqual([
+			"authoring",
+			"authoring",
+			"authoring",
+			"authoring",
+		]);
+		expect(backendState.events.map((event: any) => event.detail.contentId)).toEqual([
+			"content-2",
+			"content-3",
+			"content-4",
+			"content-5",
+		]);
+	});
+
 	test("preloaded does not autonomously fallback to runtime loading when tags are missing", async ({
 		page,
 	}) => {

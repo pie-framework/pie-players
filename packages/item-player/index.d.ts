@@ -67,6 +67,7 @@ export type BackendAuthoringSaveOptions = {
 };
 export type BackendSaveContentOptions = BackendAuthoringSaveOptions;
 export type BackendAuthoringReleaseOptions = {
+	releaseType?: string | null;
 	[key: string]: unknown;
 };
 export type BackendAuthoringEndpoints = {
@@ -190,7 +191,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	saveSession(): Promise<void>;
 	score(options?: BackendScoreOptions): Promise<unknown>;
 	saveContent(options?: BackendSaveContentOptions): Promise<string>;
-	releaseContent(): Promise<string>;
+	releaseContent(options?: BackendAuthoringReleaseOptions): Promise<string>;
 }
 
 export declare function definePieItemPlayer(tagName?: string): void;

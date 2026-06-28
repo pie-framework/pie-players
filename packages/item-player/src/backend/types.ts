@@ -74,6 +74,7 @@ export type BackendAuthoringSaveOptions = {
 export type BackendSaveContentOptions = BackendAuthoringSaveOptions;
 
 export type BackendAuthoringReleaseOptions = {
+	releaseType?: string | null;
 	[key: string]: unknown;
 };
 

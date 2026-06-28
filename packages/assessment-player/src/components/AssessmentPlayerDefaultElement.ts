@@ -20,6 +20,7 @@ import type {
 	AssessmentPlayerRuntimeHostContract,
 	AssessmentPlayerSnapshot,
 } from "../contracts/runtime-host-contract.js";
+import { resolveAssessmentSectionPlayerRuntime } from "./assessment-section-player-runtime.js";
 import type {
 	AssessmentDefinition,
 	AssessmentPlayerHooks,
@@ -152,6 +153,7 @@ export class AssessmentPlayerDefaultElement
 		this._sectionPlayerRuntime = value;
 		if (this.isConnected) {
 			this.attachInstrumentationBridge();
+			this.updateCurrentSectionRuntime();
 		}
 	}
 
@@ -297,6 +299,24 @@ export class AssessmentPlayerDefaultElement
 		return this.sectionPlayerLayout === "vertical"
 			? VERTICAL_SECTION_TAG
 			: DEFAULT_SECTION_TAG;
+	}
+
+	private buildSectionRuntime(): Record<string, unknown> {
+		return resolveAssessmentSectionPlayerRuntime({
+			sectionPlayerRuntime: this.sectionPlayerRuntime,
+			playerType: this.playerType,
+			attemptId: this.attemptId || undefined,
+			env: this.env as Record<string, unknown> | null,
+			coordinator: this.coordinator,
+		}) as Record<string, unknown>;
+	}
+
+	private updateCurrentSectionRuntime(): void {
+		const sectionEl = this.sectionHost?.firstElementChild as
+			| (HTMLElement & { runtime?: Record<string, unknown> })
+			| null;
+		if (!sectionEl) return;
+		sectionEl.runtime = this.buildSectionRuntime();
 	}
 
 	private cleanupTtsForSectionNavigation(
@@ -476,12 +496,7 @@ export class AssessmentPlayerDefaultElement
 				sectionEl.setAttribute("debug", debugValue);
 			}
 			(sectionEl as any).section = currentSection.section;
-			(sectionEl as any).runtime = {
-				playerType: this.playerType,
-				...(this.env ? { env: this.env } : {}),
-				...(this.coordinator ? { coordinator: this.coordinator } : {}),
-				...(this.sectionPlayerRuntime || {}),
-			};
+			(sectionEl as any).runtime = this.buildSectionRuntime();
 			(sectionEl as any).hooks = {
 				cardTitleFormatter: this.hooks?.cardTitleFormatter,
 			};

@@ -195,9 +195,77 @@ describe("section player view state", () => {
 		);
 	});
 
+	test("deep clones delivery request options for each embedded item", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const sharedBackend = {
+			delivery: {
+				enabled: true,
+				baseUrl: "/qe",
+				assignmentId: "attempt-1",
+				options: {
+					overrides: {
+						"student-grade": "5",
+					},
+				},
+			},
+		};
+		const baseArgs = {
+			compositionModel: {
+				itemSessions: {},
+				itemViewModels: [
+					{
+						itemId: "source-a",
+						canonicalItemId: "canonical-a",
+						session: { id: "session-a", data: [] },
+					},
+					{
+						itemId: "source-b",
+						canonicalItemId: "canonical-b",
+						session: { id: "session-b", data: [] },
+					},
+				],
+			} as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {
+				backend: sharedBackend,
+			},
+			playerStrategy: "iife",
+		};
+
+		const first = getItemPlayerParams({
+			...baseArgs,
+			item: { id: "source-a", config: {} } as any,
+		});
+		const second = getItemPlayerParams({
+			...baseArgs,
+			item: { id: "source-b", config: {} } as any,
+		});
+
+		(first.props?.backend as any).delivery.options.overrides["student-grade"] =
+			"mutated";
+		(first.props?.backend as any).delivery.options.overrides["item-specific"] =
+			"first";
+
+		expect(sharedBackend.delivery.options.overrides).toEqual({
+			"student-grade": "5",
+		});
+		expect((second.props?.backend as any).delivery.options.overrides).toEqual({
+			"student-grade": "5",
+		});
+		expect((first.props?.backend as any).delivery.options).not.toBe(
+			sharedBackend.delivery.options,
+		);
+		expect((first.props?.backend as any).delivery.options).not.toBe(
+			(second.props?.backend as any).delivery.options,
+		);
+	});
+
 	test("passes absent item session as undefined to resolveBackend", async () => {
 		const { getItemPlayerParams } = await loadViewStateModule();
-		const resolveBackend = mock((context: any, baseBackend: any) => baseBackend);
+		const resolveBackend = mock(
+			(context: any, baseBackend: any) => baseBackend,
+		);
 
 		const params = getItemPlayerParams({
 			item: { id: "item-without-session", config: {} } as any,

@@ -6,6 +6,8 @@ import type {
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 
 type DeliveryConfig = NonNullable<BackendConfig["delivery"]>;
+type AuthoringConfig = NonNullable<BackendConfig["authoring"]>;
+type EndpointMap = NonNullable<DeliveryConfig["endpoints"]>;
 
 export type SectionPlayerBackendResolverContext = {
 	itemId: string;
@@ -53,17 +55,44 @@ function cloneAuth<T extends Record<string, unknown> | undefined>(auth: T): T {
 	return auth ? ({ ...auth } as T) : auth;
 }
 
-function cloneDelivery(delivery: DeliveryConfig | undefined): DeliveryConfig | undefined {
+function cloneEndpointValue<T>(endpoint: T): T {
+	if (endpoint && typeof endpoint === "object" && !Array.isArray(endpoint)) {
+		return { ...endpoint } as T;
+	}
+	return endpoint;
+}
+
+function cloneEndpoints<T extends EndpointMap | undefined>(endpoints: T): T {
+	if (!endpoints) return endpoints;
+	return Object.fromEntries(
+		Object.entries(endpoints).map(([key, value]) => [
+			key,
+			cloneEndpointValue(value),
+		]),
+	) as T;
+}
+
+function cloneDelivery(
+	delivery: DeliveryConfig | undefined,
+): DeliveryConfig | undefined {
 	if (!delivery) return undefined;
 	return {
 		...delivery,
 		auth: cloneAuth(delivery.auth),
-		endpoints: delivery.endpoints ? { ...delivery.endpoints } : undefined,
+		endpoints: cloneEndpoints(delivery.endpoints),
 		request: delivery.request
 			? {
 					...delivery.request,
 					headers: delivery.request.headers
 						? { ...delivery.request.headers }
+						: undefined,
+				}
+			: undefined,
+		options: delivery.options
+			? {
+					...delivery.options,
+					overrides: delivery.options.overrides
+						? { ...delivery.options.overrides }
 						: undefined,
 				}
 			: undefined,
@@ -75,29 +104,33 @@ function cloneDelivery(delivery: DeliveryConfig | undefined): DeliveryConfig | u
 	};
 }
 
+function cloneAuthoring(
+	authoring: AuthoringConfig | undefined,
+): AuthoringConfig | undefined {
+	if (!authoring) return undefined;
+	return {
+		...authoring,
+		auth: cloneAuth(authoring.auth),
+		endpoints: cloneEndpoints(authoring.endpoints),
+		request: authoring.request
+			? {
+					...authoring.request,
+					headers: authoring.request.headers
+						? { ...authoring.request.headers }
+						: undefined,
+				}
+			: undefined,
+		media: authoring.media ? { ...authoring.media } : undefined,
+		client: authoring.client ? { ...authoring.client } : undefined,
+	};
+}
+
 function cloneBackendConfig(backend: BackendConfig): BackendConfig {
 	return {
 		...backend,
 		auth: cloneAuth(backend.auth),
 		delivery: cloneDelivery(backend.delivery),
-		authoring: backend.authoring
-			? {
-					...backend.authoring,
-					auth: cloneAuth(backend.authoring.auth),
-					request: backend.authoring.request
-						? {
-								...backend.authoring.request,
-								headers: backend.authoring.request.headers
-									? { ...backend.authoring.request.headers }
-									: undefined,
-							}
-						: undefined,
-					media: backend.authoring.media ? { ...backend.authoring.media } : undefined,
-					client: backend.authoring.client
-						? { ...backend.authoring.client }
-						: undefined,
-				}
-			: undefined,
+		authoring: cloneAuthoring(backend.authoring),
 	};
 }
 
@@ -121,8 +154,8 @@ function mergeDeliveryConfig(
 		...cloneDelivery(override),
 		auth: override.auth ? cloneAuth(override.auth) : cloneAuth(base.auth),
 		endpoints: {
-			...(base.endpoints || {}),
-			...(override.endpoints || {}),
+			...(cloneEndpoints(base.endpoints) || {}),
+			...(cloneEndpoints(override.endpoints) || {}),
 		},
 		request:
 			base.request || override.request
@@ -135,30 +168,79 @@ function mergeDeliveryConfig(
 						},
 					}
 				: undefined,
+		options:
+			base.options || override.options
+				? {
+						...(base.options || {}),
+						...(override.options || {}),
+						overrides: {
+							...(base.options?.overrides || {}),
+							...(override.options?.overrides || {}),
+						},
+					}
+				: undefined,
 		autosave:
 			override.autosave !== undefined
-				? cloneDelivery({ autosave: override.autosave } as DeliveryConfig)?.autosave
-				: cloneDelivery({ autosave: base.autosave } as DeliveryConfig)?.autosave,
+				? cloneDelivery({ autosave: override.autosave } as DeliveryConfig)
+						?.autosave
+				: cloneDelivery({ autosave: base.autosave } as DeliveryConfig)
+						?.autosave,
 		client,
 	};
 }
 
-function mergeBackendConfig(base: BackendConfig, override: BackendConfig): BackendConfig {
+function mergeAuthoringConfig(
+	base: AuthoringConfig | undefined,
+	override: AuthoringConfig | undefined,
+): AuthoringConfig | undefined {
+	if (!base) return cloneAuthoring(override);
+	if (!override) return cloneAuthoring(base);
+	return {
+		...cloneAuthoring(base),
+		...cloneAuthoring(override),
+		auth: override.auth ? cloneAuth(override.auth) : cloneAuth(base.auth),
+		endpoints: {
+			...(cloneEndpoints(base.endpoints) || {}),
+			...(cloneEndpoints(override.endpoints) || {}),
+		},
+		request:
+			base.request || override.request
+				? {
+						...(base.request || {}),
+						...(override.request || {}),
+						headers: {
+							...(base.request?.headers || {}),
+							...(override.request?.headers || {}),
+						},
+					}
+				: undefined,
+		media:
+			base.media || override.media
+				? {
+						...(base.media || {}),
+						...(override.media || {}),
+					}
+				: undefined,
+		client:
+			base.client || override.client
+				? {
+						...(base.client || {}),
+						...(override.client || {}),
+					}
+				: undefined,
+	};
+}
+
+function mergeBackendConfig(
+	base: BackendConfig,
+	override: BackendConfig,
+): BackendConfig {
 	return {
 		...cloneBackendConfig(base),
 		...cloneBackendConfig(override),
 		auth: override.auth ? cloneAuth(override.auth) : cloneAuth(base.auth),
 		delivery: mergeDeliveryConfig(base.delivery, override.delivery),
-		authoring:
-			base.authoring || override.authoring
-				? {
-						...(base.authoring || {}),
-						...(override.authoring || {}),
-						auth: override.authoring?.auth
-							? cloneAuth(override.authoring.auth)
-							: cloneAuth(base.authoring?.auth),
-					}
-				: undefined,
+		authoring: mergeAuthoringConfig(base.authoring, override.authoring),
 	};
 }
 
@@ -233,8 +315,11 @@ export function resolveItemPlayerPropsWithBackend(
 export function stripItemDeliveryBackendProps(
 	resolvedPlayerProps: Record<string, unknown>,
 ): Record<string, unknown> {
-	const { backend: rawBackend, resolveBackend: _resolveBackend, ...forwardedProps } =
-		resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
+	const {
+		backend: rawBackend,
+		resolveBackend: _resolveBackend,
+		...forwardedProps
+	} = resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
 	if (!rawBackend || !isRecord(rawBackend)) {
 		return forwardedProps;
 	}

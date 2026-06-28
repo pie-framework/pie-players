@@ -12,16 +12,29 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	page,
 }) => {
 	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
-	await page.goto("/", { waitUntil: "networkidle" });
+	await page.goto(
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=session&info=1`,
+		{ waitUntil: "networkidle" },
+	);
+	await expect(page).toHaveURL(/\/delivery\/backend-delivery-planets/);
 	await expect(
 		page.getByRole("heading", { name: "Delivery backend integration" }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("heading", { name: "What this backend demo proves" }),
+	).toBeVisible();
+	await page
+		.getByRole("dialog", { name: "What this backend demo proves" })
+		.getByRole("button", { name: "Close demo info dialog" })
+		.click();
 	await expect(
 		page.getByText(
 			"Backend demo: which is the largest planet in our solar system?",
 			{ exact: true },
 		),
 	).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByLabel("Session ID")).toHaveValue(testSessionId);
+	await expect(page.getByRole("dialog", { name: "Backend state" })).toBeVisible();
 
 	const rawState = await (await page.request.get("/api/player/state")).json();
 	expect(JSON.stringify(rawState.items)).toContain('"correct":true');
@@ -46,7 +59,6 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	).json();
 	expect(hasCorrectKey(processedModels)).toBe(false);
 
-	await page.getByLabel("Session ID").fill(testSessionId);
 	await page.getByRole("button", { name: "Load current session" }).click();
 	await expect(page.getByLabel("Session ID")).toHaveValue(testSessionId);
 
@@ -65,7 +77,6 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		},
 	});
 	await page.getByRole("button", { name: "Load current session" }).click();
-	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
 	await expect(page.getByTestId("client-session")).toContainText("mars", {
 		timeout: 10_000,
 	});
@@ -75,6 +86,7 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	await expect(page.getByText("backend-session-saved").first()).toBeVisible({
 		timeout: 10_000,
 	});
+	await page.getByRole("button", { name: "Close Event stream" }).click();
 	const saveResponsePromise = page.waitForResponse(
 		(response) =>
 			response.url().includes("/api/player/save") &&
@@ -105,7 +117,8 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	);
 	await expect(page.getByTestId("backend-outcome")).toContainText('"score": 0');
 
-	await page.getByRole("button", { name: "New backend session" }).click();
+	await page.getByRole("button", { name: "New session" }).click();
+	await expect(page).toHaveURL(/sessionId=backend-delivery-planets-session-/);
 	await expect(page.getByRole("radio", { name: /Mars/ })).not.toBeChecked({
 		timeout: 10_000,
 	});
@@ -142,6 +155,8 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	await page
 		.getByLabel("Demo item from SQLite")
 		.selectOption("backend-delivery-arithmetic");
+	await expect(page).toHaveURL(/\/delivery\/backend-delivery-arithmetic/);
+	await expect(page).toHaveURL(/sessionId=backend-delivery-arithmetic-session-1/);
 	await expect(page.getByText("Backend demo: what is 3 + 5?")).toBeVisible({
 		timeout: 30_000,
 	});

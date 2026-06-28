@@ -12,7 +12,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@pie-players/pie-item-player": "workspace:*"
+		"@pie-players/pie-item-player": "workspace:*",
+		"@pie-players/pie-section-player": "workspace:*"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.5.4",

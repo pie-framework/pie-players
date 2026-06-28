@@ -22,7 +22,7 @@
 		icon,
 	}: Props = $props();
 
-	const top = $derived(5 + offset * 1.25);
+	const top = $derived(10 + offset * 1.25);
 	const right = $derived(1 + offset * 1.25);
 	const titleId = $derived(
 		`backend-tool-window-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${offset}`,
@@ -85,9 +85,9 @@
 
 <style>
 	.backend-tool-window {
-		top: min(var(--backend-tool-window-top), 8rem);
+		top: min(var(--backend-tool-window-top), 12rem);
 		right: 1rem;
-		max-height: calc(100vh - min(var(--backend-tool-window-top), 8rem) - 1rem);
+		max-height: calc(100vh - min(var(--backend-tool-window-top), 12rem) - 1rem);
 	}
 
 	@media (max-width: 639px) {

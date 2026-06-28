@@ -836,6 +836,7 @@ test.describe("item-player strategy regressions", () => {
 		await page.evaluate(async () => {
 			(window as any).__pieAuthoringBackendCalls = [];
 			(window as any).__pieAuthoringBackendEvents = [];
+			(window as any).__pieAuthoringMediaCalls = [];
 			function createAuthoringBackendFixture() {
 				return class extends HTMLElement {
 					private _model: any;
@@ -903,12 +904,43 @@ test.describe("item-player strategy regressions", () => {
 			await customElements.whenDefined("pie-item-player");
 			player.strategy = "preloaded";
 			player.mode = "author";
+			player.authoringBackend = "required";
 			player.env = { mode: "author", role: "instructor" };
 			player.backend = {
 				authoring: {
 					enabled: true,
 					contentId: "content-1",
 					collectionId: "collection-1",
+					media: {
+						onInsertImage(handler: any) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "insert-image",
+								isPasted: handler?.isPasted ?? false,
+							});
+							handler?.done?.(undefined, "/backend/image.png");
+						},
+						onDeleteImage(src: string, done: (err?: Error) => void) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "delete-image",
+								src,
+							});
+							done();
+						},
+						onInsertSound(handler: any) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "insert-sound",
+								hasFileChosen: !!handler?.fileChosen,
+							});
+							handler?.done?.(undefined, "/backend/sound.wav");
+						},
+						onDeleteSound(src: string, done: (err?: Error) => void) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "delete-sound",
+								src,
+							});
+							done();
+						},
+					},
 					client: {
 						async load(context: any) {
 							(window as any).__pieAuthoringBackendCalls.push({
@@ -974,9 +1006,23 @@ test.describe("item-player strategy regressions", () => {
 			const player = document.querySelector(
 				"#pie-backend-authoring-fixture pie-item-player",
 			) as any;
-			const renderedElement = player.querySelector(
+			let renderedElement = player.querySelector(
 				'[id="authoring-backend-model"]',
 			);
+			const mediaCompletions: Array<{
+				type: string;
+				error: string | null;
+				src: string | null;
+			}> = [];
+			const doneFor =
+				(type: string) =>
+				(error?: Error, src?: string): void => {
+					mediaCompletions.push({
+						type,
+						error: error?.message ?? null,
+						src: src ?? null,
+					});
+				};
 			renderedElement?.dispatchEvent(
 				new CustomEvent("model.updated", {
 					bubbles: true,
@@ -986,6 +1032,68 @@ test.describe("item-player strategy regressions", () => {
 							prompt: "<p>Saved authoring prompt</p>",
 						},
 						reset: false,
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("insert.image", {
+					bubbles: true,
+					detail: {
+						isPasted: true,
+						cancel() {},
+						done: doneFor("insert-image"),
+						fileChosen() {},
+						progress() {},
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("delete.image", {
+					bubbles: true,
+					detail: {
+						src: "/backend/image.png",
+						done: doneFor("delete-image"),
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("insert.sound", {
+					bubbles: true,
+					detail: {
+						cancel() {},
+						done: doneFor("insert-sound"),
+						fileChosen() {},
+						progress() {},
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("delete.sound", {
+					bubbles: true,
+					detail: {
+						src: "/backend/sound.wav",
+						done: doneFor("delete-sound"),
+					},
+				}),
+			);
+			player.onInsertImage = (handler: any) => {
+				(window as any).__pieAuthoringMediaCalls.push({
+					type: "top-insert-image",
+					isPasted: handler?.isPasted ?? false,
+				});
+				handler?.done?.(undefined, "/top/image.png");
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			renderedElement = player.querySelector('[id="authoring-backend-model"]');
+			renderedElement?.dispatchEvent(
+				new CustomEvent("insert.image", {
+					bubbles: true,
+					detail: {
+						isPasted: false,
+						cancel() {},
+						done: doneFor("top-insert-image"),
+						fileChosen() {},
+						progress() {},
 					},
 				}),
 			);
@@ -1005,6 +1113,8 @@ test.describe("item-player strategy regressions", () => {
 				secondReleaseResult,
 				calls: (window as any).__pieAuthoringBackendCalls,
 				events: (window as any).__pieAuthoringBackendEvents,
+				mediaCalls: (window as any).__pieAuthoringMediaCalls,
+				mediaCompletions,
 				immediateText: (window as any).__pieAuthoringImmediateText,
 				renderedText: player.textContent,
 			};
@@ -1072,6 +1182,20 @@ test.describe("item-player strategy regressions", () => {
 			"content-3",
 			"content-4",
 			"content-5",
+		]);
+		expect(backendState.mediaCalls).toEqual([
+			{ type: "insert-image", isPasted: true },
+			{ type: "delete-image", src: "/backend/image.png" },
+			{ type: "insert-sound", hasFileChosen: true },
+			{ type: "delete-sound", src: "/backend/sound.wav" },
+			{ type: "top-insert-image", isPasted: false },
+		]);
+		expect(backendState.mediaCompletions).toEqual([
+			{ type: "insert-image", error: null, src: "/backend/image.png" },
+			{ type: "delete-image", error: null, src: null },
+			{ type: "insert-sound", error: null, src: "/backend/sound.wav" },
+			{ type: "delete-sound", error: null, src: null },
+			{ type: "top-insert-image", error: null, src: "/top/image.png" },
 		]);
 	});
 

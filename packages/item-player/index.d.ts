@@ -70,6 +70,14 @@ export type BackendAuthoringReleaseOptions = {
 	releaseType?: string | null;
 	[key: string]: unknown;
 };
+export type BackendAuthoringImageHandler = ImageHandler;
+export type BackendAuthoringSoundHandler = SoundHandler;
+export type BackendAuthoringMediaConfig = {
+	onInsertImage?: (handler: BackendAuthoringImageHandler) => void;
+	onDeleteImage?: (src: string, done: DeleteDone) => void;
+	onInsertSound?: (handler: BackendAuthoringSoundHandler) => void;
+	onDeleteSound?: (src: string, done: DeleteDone) => void;
+};
 export type BackendAuthoringEndpoints = {
 	load?: BackendEndpoint;
 	saveContent?: BackendEndpoint;
@@ -144,7 +152,7 @@ export type BackendAuthoringConfig = BackendAuthoringIdentity & {
 	endpoints?: BackendAuthoringEndpoints;
 	request?: BackendRequestConfig;
 	auth?: BackendAuthConfig;
-	media?: Record<string, unknown>;
+	media?: BackendAuthoringMediaConfig;
 	client?: BackendAuthoringClient;
 };
 export type BackendConfig = {

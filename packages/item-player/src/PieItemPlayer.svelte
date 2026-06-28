@@ -57,6 +57,7 @@
 	import type {
 		AuthoringBackendMode,
 		BackendAuthoringIdentity,
+		BackendAuthoringMediaConfig,
 		BackendAuthoringReleaseOptions,
 		BackendConfig,
 		BackendDeliveryModelResult,
@@ -569,15 +570,33 @@
 		}
 		return `fn:${id}`;
 	}
+
+	function getBackendAuthoringMedia(): BackendAuthoringMediaConfig | null {
+		return getAuthoringBackend(backend)?.media ?? null;
+	}
+
+	const effectiveOnInsertImage = $derived(
+		onInsertImage ?? getBackendAuthoringMedia()?.onInsertImage ?? null,
+	);
+	const effectiveOnDeleteImage = $derived(
+		onDeleteImage ?? getBackendAuthoringMedia()?.onDeleteImage ?? null,
+	);
+	const effectiveOnInsertSound = $derived(
+		onInsertSound ?? getBackendAuthoringMedia()?.onInsertSound ?? null,
+	);
+	const effectiveOnDeleteSound = $derived(
+		onDeleteSound ?? getBackendAuthoringMedia()?.onDeleteSound ?? null,
+	);
+
 	const authoringRendererKey = $derived.by(() => {
 		if (resolvedMode !== "author") return "";
 		return [
 			stableStringifyForKey(configuration),
 			authoringBackend,
-			callbackIdentityForKey(onInsertImage),
-			callbackIdentityForKey(onDeleteImage),
-			callbackIdentityForKey(onInsertSound),
-			callbackIdentityForKey(onDeleteSound),
+			callbackIdentityForKey(effectiveOnInsertImage),
+			callbackIdentityForKey(effectiveOnDeleteImage),
+			callbackIdentityForKey(effectiveOnInsertSound),
+			callbackIdentityForKey(effectiveOnDeleteSound),
 		].join("|");
 	});
 	const rendererKey = $derived(
@@ -1846,10 +1865,10 @@
 					configuration={typeof configuration === "string"
 						? JSON.parse(configuration)
 						: configuration}
-					onInsertImage={onInsertImage ?? undefined}
-					onDeleteImage={onDeleteImage ?? undefined}
-					onInsertSound={onInsertSound ?? undefined}
-					onDeleteSound={onDeleteSound ?? undefined}
+					onInsertImage={effectiveOnInsertImage ?? undefined}
+					onDeleteImage={effectiveOnDeleteImage ?? undefined}
+					onInsertSound={effectiveOnInsertSound ?? undefined}
+					onDeleteSound={effectiveOnDeleteSound ?? undefined}
 					onLoadComplete={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
 					onPlayerError={(detail: unknown) =>

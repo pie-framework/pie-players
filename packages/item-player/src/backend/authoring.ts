@@ -9,6 +9,11 @@ import type {
 	BackendAuthoringSaveOptions,
 	BackendConfig,
 } from "./types.js";
+import {
+	callPieApiAuthoringLoad,
+	callPieApiAuthoringReleaseContent,
+	callPieApiAuthoringSaveContent,
+} from "./pie-api-client.js";
 
 export type SaveContentToAuthoringBackendContext = BackendAuthoringIdentity & {
 	config: unknown;
@@ -60,6 +65,13 @@ function resolveIdentity(
 	};
 }
 
+function usesCustomAuthoringClient(authoring: BackendAuthoringConfig): boolean {
+	return (
+		authoring.provider === "custom" ||
+		(!!authoring.client && authoring.provider !== "pie-api")
+	);
+}
+
 export async function loadFromAuthoringBackend(
 	backend: BackendConfig,
 	env: unknown,
@@ -68,10 +80,16 @@ export async function loadFromAuthoringBackend(
 	if (!authoring) {
 		throw new Error("Authoring backend is not configured.");
 	}
-	if (typeof authoring.client?.load !== "function") {
+	if (typeof authoring.client?.load === "function") {
+		return authoring.client.load({
+			...resolveIdentity(authoring),
+			env,
+		});
+	}
+	if (usesCustomAuthoringClient(authoring)) {
 		throw new Error("backend.authoring.client.load is not configured.");
 	}
-	return authoring.client.load({
+	return callPieApiAuthoringLoad(authoring, backend.auth, {
 		...resolveIdentity(authoring),
 		env,
 	});
@@ -85,16 +103,19 @@ export async function saveContentToAuthoringBackend(
 	if (!authoring) {
 		throw new Error("Authoring backend is not configured.");
 	}
-	if (typeof authoring.client?.saveContent !== "function") {
-		throw new Error("backend.authoring.client.saveContent is not configured.");
-	}
 	const saveContext: BackendAuthoringSaveContext = {
 		...resolveIdentity(authoring, context),
 		config: context.config,
 		env: context.env,
 		options: context.options,
 	};
-	return authoring.client.saveContent(saveContext);
+	if (typeof authoring.client?.saveContent === "function") {
+		return authoring.client.saveContent(saveContext);
+	}
+	if (usesCustomAuthoringClient(authoring)) {
+		throw new Error("backend.authoring.client.saveContent is not configured.");
+	}
+	return callPieApiAuthoringSaveContent(authoring, backend.auth, saveContext);
 }
 
 export async function releaseContentFromAuthoringBackend(
@@ -105,15 +126,22 @@ export async function releaseContentFromAuthoringBackend(
 	if (!authoring) {
 		throw new Error("Authoring backend is not configured.");
 	}
-	if (typeof authoring.client?.releaseContent !== "function") {
-		throw new Error(
-			"backend.authoring.client.releaseContent is not configured.",
-		);
-	}
 	const releaseContext: BackendAuthoringReleaseContext = {
 		...resolveIdentity(authoring, context),
 		env: context.env,
 		options: context.options,
 	};
-	return authoring.client.releaseContent(releaseContext);
+	if (typeof authoring.client?.releaseContent === "function") {
+		return authoring.client.releaseContent(releaseContext);
+	}
+	if (usesCustomAuthoringClient(authoring)) {
+		throw new Error(
+			"backend.authoring.client.releaseContent is not configured.",
+		);
+	}
+	return callPieApiAuthoringReleaseContent(
+		authoring,
+		backend.auth,
+		releaseContext,
+	);
 }

@@ -232,6 +232,12 @@ describe("authoring backend helpers", () => {
 			loadFromAuthoringBackend({}, { mode: "author" }),
 		).rejects.toThrow("Authoring backend is not configured.");
 		await expect(
+			loadFromAuthoringBackend(
+				{ authoring: { enabled: true, client: {} } },
+				{ mode: "author" },
+			),
+		).rejects.toThrow("backend.authoring.client.load is not configured.");
+		await expect(
 			saveContentToAuthoringBackend(
 				{ authoring: { enabled: true, client: {} } },
 				{ config, env: { mode: "author" } },
@@ -245,5 +251,169 @@ describe("authoring backend helpers", () => {
 		).rejects.toThrow(
 			"backend.authoring.client.releaseContent is not configured.",
 		);
+	});
+
+	test("uses built-in JSON authoring endpoints with scoped auth", async () => {
+		const originalFetch = globalThis.fetch;
+		const requests: Array<{
+			url: string;
+			method?: string;
+			headers: Headers;
+			body: Record<string, unknown>;
+		}> = [];
+		globalThis.fetch = (async (url, init) => {
+			const urlString = String(url);
+			requests.push({
+				url: urlString,
+				method: init?.method,
+				headers: new Headers(init?.headers),
+				body: JSON.parse(String(init?.body ?? "{}")),
+			});
+			const payload = urlString.endsWith("/load")
+				? {
+						contentId: "content-from-server",
+						config,
+						metadata: { source: "authoring-json" },
+					}
+				: { contentId: "content-from-server" };
+			return new Response(
+				JSON.stringify(payload),
+				{
+					status: 200,
+					headers: { "content-type": "application/json" },
+				},
+			);
+		}) as typeof fetch;
+		const backend: BackendConfig = {
+			auth: { token: "shared-token" },
+			authoring: {
+				enabled: true,
+				baseUrl: "https://bff.example",
+				contentId: "content-1",
+				collectionId: "collection-1",
+				auth: { token: "authoring-token" },
+			},
+		};
+		const env = { mode: "author", role: "instructor" };
+
+		try {
+			const loadResult = await loadFromAuthoringBackend(backend, env);
+			const saveResult = await saveContentToAuthoringBackend(backend, {
+				config,
+				env,
+				options: { preReleaseType: "prerelease" },
+			});
+			const releaseResult = await releaseContentFromAuthoringBackend(backend, {
+				env,
+				options: { releaseType: "final" },
+			});
+
+			expect(loadResult).toEqual({
+				contentId: "content-from-server",
+				config,
+				metadata: { source: "authoring-json" },
+			});
+			expect(saveResult).toEqual({ contentId: "content-from-server" });
+			expect(releaseResult).toEqual({ contentId: "content-from-server" });
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+
+		expect(requests.map(({ url }) => url)).toEqual([
+			"https://bff.example/api/authoring/load",
+			"https://bff.example/api/authoring/save",
+			"https://bff.example/api/authoring/release",
+		]);
+		expect(requests.map(({ method }) => method)).toEqual([
+			"POST",
+			"POST",
+			"POST",
+		]);
+		expect(
+			requests.map(({ headers }) => headers.get("authorization")),
+		).toEqual(["Bearer authoring-token", "Bearer authoring-token", "Bearer authoring-token"]);
+		expect(requests.map(({ body }) => body)).toEqual([
+			{
+				contentId: "content-1",
+				collectionId: "collection-1",
+				env,
+			},
+			{
+				contentId: "content-1",
+				collectionId: "collection-1",
+				config,
+				env,
+				options: { preReleaseType: "prerelease" },
+			},
+			{
+				contentId: "content-1",
+				collectionId: "collection-1",
+				env,
+				options: { releaseType: "final" },
+			},
+		]);
+	});
+
+	test("uses shared auth and endpoint overrides for built-in authoring calls", async () => {
+		const originalFetch = globalThis.fetch;
+		const requests: Array<{ url: string; method?: string; headers: Headers }> =
+			[];
+		globalThis.fetch = (async (url, init) => {
+			requests.push({
+				url: String(url),
+				method: init?.method,
+				headers: new Headers(init?.headers),
+			});
+			return new Response(JSON.stringify({ contentId: "content-2", config }), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			});
+		}) as typeof fetch;
+		const backend: BackendConfig = {
+			auth: {
+				async getToken() {
+					return "shared-token";
+				},
+			},
+			authoring: {
+				enabled: true,
+				baseUrl: "https://bff.example/root/",
+				contentId: "content-1",
+				endpoints: {
+					load: "/custom/load",
+					saveContent: { method: "PUT", path: "custom/save" },
+					releaseContent: "https://release.example/custom/release",
+				},
+				request: { headers: { "x-request-id": "authoring-test" } },
+			},
+		};
+		const env = { mode: "author" };
+
+		try {
+			await loadFromAuthoringBackend(backend, env);
+			await saveContentToAuthoringBackend(backend, { config, env });
+			await releaseContentFromAuthoringBackend(backend, { env });
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+
+		expect(requests.map(({ url }) => url)).toEqual([
+			"https://bff.example/root/custom/load",
+			"https://bff.example/root/custom/save",
+			"https://release.example/custom/release",
+		]);
+		expect(requests.map(({ method }) => method)).toEqual([
+			"POST",
+			"PUT",
+			"POST",
+		]);
+		expect(
+			requests.map(({ headers }) => headers.get("authorization")),
+		).toEqual(["Bearer shared-token", "Bearer shared-token", "Bearer shared-token"]);
+		expect(requests.map(({ headers }) => headers.get("x-request-id"))).toEqual([
+			"authoring-test",
+			"authoring-test",
+			"authoring-test",
+		]);
 	});
 });

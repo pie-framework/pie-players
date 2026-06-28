@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	getDeliveryAutosaveOptions,
 	getDeliveryBackendLoadSignature,
+	getDeliveryBackendModelSignature,
 	loadFromDeliveryBackend,
 	modelFromDeliveryBackend,
 	saveToDeliveryBackend,
@@ -216,6 +217,57 @@ describe("delivery backend helpers", () => {
 				endpoint: null,
 			}),
 		);
+	});
+
+	test("enables model refresh signatures only for configured model backends", () => {
+		const env = { mode: "gather", role: "student" };
+		expect(
+			getDeliveryBackendModelSignature(
+				{
+					delivery: {
+						enabled: true,
+						itemId: "item-1",
+						baseUrl: "/api",
+					},
+				},
+				env,
+			),
+		).not.toBe("");
+		expect(
+			getDeliveryBackendModelSignature(
+				{
+					delivery: {
+						enabled: true,
+						itemId: "item-1",
+						client: {
+							async model() {
+								return [];
+							},
+						},
+					},
+				},
+				env,
+			),
+		).not.toBe("");
+		expect(
+			getDeliveryBackendModelSignature(
+				{
+					delivery: {
+						enabled: true,
+						itemId: "item-1",
+						client: {
+							async load() {
+								return {
+									item: config,
+									session: { id: "session-1", data: [] },
+								};
+							},
+						},
+					},
+				},
+				env,
+			),
+		).toBe("");
 	});
 
 	test("saves and scores through custom delivery handlers", async () => {

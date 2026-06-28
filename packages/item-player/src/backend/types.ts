@@ -77,12 +77,22 @@ export type BackendDeliveryLoadResult = {
 	metadata?: Record<string, unknown>;
 };
 
+export type BackendDeliveryModelResult =
+	| Array<Record<string, unknown>>
+	| {
+			models?: Array<Record<string, unknown>>;
+			passageModels?: Array<Record<string, unknown>>;
+			metadata?: Record<string, unknown>;
+	  };
+
 export type BackendDeliveryClient = {
 	load?: (
 		context: BackendDeliveryLoadContext,
 	) => Promise<BackendDeliveryLoadResult>;
 	saveSession?: (context: BackendDeliverySessionContext) => Promise<unknown>;
-	model?: (context: BackendDeliverySessionContext) => Promise<unknown>;
+	model?: (
+		context: BackendDeliverySessionContext,
+	) => Promise<BackendDeliveryModelResult>;
 	score?: (context: BackendDeliveryScoreContext) => Promise<unknown>;
 };
 

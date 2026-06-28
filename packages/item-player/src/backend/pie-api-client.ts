@@ -3,6 +3,7 @@ import type {
 	BackendDeliveryConfig,
 	BackendDeliveryLoadContext,
 	BackendDeliveryLoadResult,
+	BackendDeliveryModelResult,
 	BackendDeliveryScoreContext,
 	BackendDeliverySessionContext,
 	BackendEndpoint,
@@ -156,14 +157,14 @@ export async function callPieApiDeliveryModel(
 	config: BackendDeliveryConfig,
 	sharedAuth: BackendAuthConfig | undefined,
 	context: BackendDeliverySessionContext,
-): Promise<unknown> {
+): Promise<BackendDeliveryModelResult> {
 	const endpoint = normalizeEndpoint(
 		config.endpoints?.model,
 		DEFAULT_ENDPOINTS.model,
 	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	const sessionId = context.session.id || context.sessionId;
-	return callJson(
+	return callJson<BackendDeliveryModelResult>(
 		resolveUrl(config.baseUrl, endpoint.path),
 		endpoint.method,
 		{

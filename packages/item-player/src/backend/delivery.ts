@@ -9,6 +9,7 @@ import type {
 	BackendConfig,
 	BackendDeliveryConfig,
 	BackendDeliveryLoadResult,
+	BackendDeliveryModelResult,
 	BackendDeliverySessionContext,
 	BackendLoadResult,
 	BackendScoreOptions,
@@ -99,6 +100,32 @@ export function getDeliveryBackendLoadSignature(
 	});
 }
 
+export function getDeliveryBackendModelSignature(
+	backend: BackendConfig | null | undefined,
+	env: unknown,
+): string {
+	const delivery = getDeliveryBackend(backend);
+	if (!delivery) return "";
+	const hasCustomModel = typeof delivery.client?.model === "function";
+	const hasExplicitBuiltInModel =
+		!delivery.client ||
+		delivery.provider === "pie-api" ||
+		!!delivery.baseUrl ||
+		!!delivery.endpoints?.model;
+	if (!hasCustomModel && !hasExplicitBuiltInModel) return "";
+	return JSON.stringify({
+		provider: delivery.provider ?? (delivery.client ? "custom" : "pie-api"),
+		baseUrl: delivery.baseUrl ?? "",
+		itemId: delivery.itemId ?? "",
+		sessionId: delivery.sessionId ?? "",
+		assignmentId: delivery.assignmentId ?? "",
+		hasClientModel: typeof delivery.client?.model === "function",
+		endpoint: delivery.endpoints?.model ?? null,
+		options: delivery.options ?? null,
+		env: env ?? null,
+	});
+}
+
 export async function loadFromDeliveryBackend(
 	backend: BackendConfig,
 	env: unknown,
@@ -133,7 +160,7 @@ export async function loadFromDeliveryBackend(
 export async function modelFromDeliveryBackend(
 	backend: BackendConfig,
 	context: BackendDeliverySessionContext,
-): Promise<unknown> {
+): Promise<BackendDeliveryModelResult> {
 	const delivery = getDeliveryBackend(backend);
 	if (!delivery) {
 		throw new Error("Delivery backend is not configured.");

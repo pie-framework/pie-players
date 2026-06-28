@@ -57,6 +57,7 @@
 	import type {
 		AuthoringBackendMode,
 		BackendConfig,
+		BackendDeliveryModelResult,
 		BackendScoreOptions,
 		DeleteDone,
 		ImageHandler,
@@ -67,11 +68,14 @@
 		getDeliveryAutosaveOptions,
 		getDeliveryBackend,
 		getDeliveryBackendLoadSignature,
+		getDeliveryBackendModelSignature,
 		isDeliveryBackendEnabled,
 		loadFromDeliveryBackend,
+		modelFromDeliveryBackend,
 		saveToDeliveryBackend,
 		scoreWithDeliveryBackend,
 	} from "./backend/delivery.js";
+	import { applyDeliveryModelResultToConfigs } from "./backend/model-refresh.js";
 	import {
 		BundleType,
 		assertPieConfigContract,
@@ -361,6 +365,9 @@
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
 	let latestLoadRequestToken = 0;
+	let latestModelRefreshRequestToken = 0;
+	let backendConfigGeneration = 0;
+	let backendModelRefreshSignature = "";
 	const effectiveConfig = $derived(backendConfigOverride ?? config);
 	const effectiveSession = $derived(backendSessionOverride ?? session);
 	function configResourcesFor(configEntity: ConfigEntity | null): ConfigResource | null {
@@ -389,6 +396,15 @@
 
 	function isCurrentLoadRequest(requestToken: number): boolean {
 		return requestToken === latestLoadRequestToken;
+	}
+
+	function beginModelRefreshRequest(): number {
+		latestModelRefreshRequestToken += 1;
+		return latestModelRefreshRequestToken;
+	}
+
+	function isCurrentModelRefreshRequest(requestToken: number): boolean {
+		return requestToken === latestModelRefreshRequestToken;
 	}
 
 	const bundleBuildWarning = $derived.by(() => {
@@ -812,6 +828,7 @@
 			commitIfCurrent(() => {
 				itemConfig = null;
 				passageConfig = null;
+				backendConfigGeneration += 1;
 				loading = true;
 				error = null;
 				bundleRetryStatus = null;
@@ -939,6 +956,7 @@
 			commitIfCurrent(() => {
 				itemConfig = transformedConfig;
 				passageConfig = transformedPassageConfig;
+				backendConfigGeneration += 1;
 				loading = false;
 				error = null;
 				bundleRetryStatus = null;
@@ -1156,7 +1174,12 @@
 		if (!backend || !isDeliveryBackendEnabled(backend)) {
 			throw new Error("backend.delivery is not configured.");
 		}
-		const result = await loadFromDeliveryBackend(backend, parseEnvValue(env));
+		const envAtLoadStart = parseEnvValue(env);
+		const modelSignatureAtLoadStart = getDeliveryBackendModelSignature(
+			backend,
+			envAtLoadStart,
+		);
+		const result = await loadFromDeliveryBackend(backend, envAtLoadStart);
 		if (
 			expectedSignature &&
 			getDeliveryBackendLoadSignature(backend) !== expectedSignature
@@ -1166,6 +1189,7 @@
 		backendConfigOverride = result.config;
 		backendSessionOverride = result.session;
 		backendSessionReplacementRevision += 1;
+		backendModelRefreshSignature = modelSignatureAtLoadStart;
 		dispatchBackendEvent("backend-load-complete", {
 			scope: "delivery",
 			operation: "load",
@@ -1176,6 +1200,81 @@
 
 	export async function loadFromBackend(scope: "delivery" | "authoring" = "delivery"): Promise<void> {
 		return performBackendLoad(scope, getDeliveryBackendLoadSignature(backend));
+	}
+
+	async function refreshModelsFromDeliveryBackend(
+		expectedSignature: string,
+		expectedConfigGeneration: number,
+		requestToken: number,
+	): Promise<void> {
+		if (!backend || !getDeliveryBackend(backend) || !itemConfig) return;
+		const delivery = getDeliveryBackend(backend)!;
+		const envAtStart = parseEnvValue(env);
+		const sessionContainer = backendSessionContainer(delivery.sessionId);
+		const sessionSignatureAtStart = stableStringifyForKey(sessionContainer);
+		let result: BackendDeliveryModelResult;
+		try {
+			result = await modelFromDeliveryBackend(backend, {
+				itemId: delivery.itemId,
+				sessionId: delivery.sessionId,
+				assignmentId: delivery.assignmentId,
+				session: sessionContainer,
+				env: envAtStart,
+			});
+		} catch (errorValue) {
+			if (!isCurrentModelRefreshRequest(requestToken)) return;
+			throw errorValue;
+		}
+		if (!isCurrentModelRefreshRequest(requestToken)) return;
+		if (
+			expectedSignature &&
+			getDeliveryBackendModelSignature(backend, parseEnvValue(env)) !==
+				expectedSignature
+		) {
+			return;
+		}
+		if (expectedConfigGeneration !== backendConfigGeneration) return;
+		if (
+			stableStringifyForKey(backendSessionContainer(delivery.sessionId)) !==
+			sessionSignatureAtStart
+		) {
+			return;
+		}
+		const applied = applyDeliveryModelResultToConfigs({
+			itemConfig,
+			passageConfig,
+			result,
+		});
+		backendModelRefreshSignature = expectedSignature;
+		if (applied.changed) {
+			itemConfig = applied.itemConfig;
+			passageConfig = applied.passageConfig;
+			backendConfigGeneration += 1;
+			await tick();
+			if (applied.itemChanged && itemConfig) {
+				void updatePieElements(
+					itemConfig,
+					rendererSession,
+					parseEnvValue(env),
+					hostElement ?? undefined,
+					handleElementSessionUpdate,
+				);
+			}
+			if (applied.passageChanged && passageConfig) {
+				void updatePieElements(
+					passageConfig,
+					rendererSession,
+					parseEnvValue(env),
+					hostElement ?? undefined,
+					handleElementSessionUpdate,
+				);
+			}
+		}
+		dispatchBackendEvent("backend-model-complete", {
+			scope: "delivery",
+			operation: "model",
+			metadata: applied.metadata ?? {},
+		});
 	}
 
 	async function persistCurrentSession(): Promise<void> {
@@ -1288,6 +1387,35 @@
 			untrack(() => {
 				void performBackendLoad("delivery", signature).catch((errorValue) => {
 					reportBackendError("load", errorValue);
+				});
+			});
+		});
+	});
+
+	$effect(() => {
+		void env;
+		void backend;
+		const currentItemConfig = itemConfig;
+		const signature = getDeliveryBackendModelSignature(backend, parseEnvValue(env));
+		if (!signature || !currentItemConfig) {
+			backendModelRefreshSignature = "";
+			beginModelRefreshRequest();
+			return;
+		}
+		if (signature === backendModelRefreshSignature) {
+			beginModelRefreshRequest();
+			return;
+		}
+		const expectedConfigGeneration = backendConfigGeneration;
+		const requestToken = beginModelRefreshRequest();
+		queueMicrotask(() => {
+			untrack(() => {
+				void refreshModelsFromDeliveryBackend(
+					signature,
+					expectedConfigGeneration,
+					requestToken,
+				).catch((errorValue) => {
+					reportBackendError("model", errorValue);
 				});
 			});
 		});

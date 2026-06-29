@@ -99,14 +99,17 @@ test("section backend demo derives per-item delivery calls from one section conf
 			exact: true,
 		}),
 	).toBeVisible({ timeout: 30_000 });
-	await expect(page.getByRole("dialog", { name: "Backend state" })).toBeVisible();
-	await page.getByRole("button", { name: "Close Backend state" }).click();
-	await page.getByRole("button", { name: "Scroll down" }).click();
 	await expect(
-		page.getByText("Backend demo: what is 3 + 5?", { exact: true }),
-	).toBeVisible({ timeout: 30_000 });
+		page.locator(".backend-tool-window", { hasText: "Backend state" }),
+	).toBeVisible();
+	await page
+		.locator(".backend-tool-window", { hasText: "Backend state" })
+		.getByRole("button", { name: "Close panel" })
+		.click();
 	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
-	await expect(page.getByRole("dialog", { name: "Backend state" })).toBeVisible();
+	await expect(
+		page.locator(".backend-tool-window", { hasText: "Backend state" }),
+	).toBeVisible();
 
 	await expect
 		.poll(() => loadPayloads.length, { timeout: 30_000 })

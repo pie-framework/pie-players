@@ -177,10 +177,32 @@
 	function findRenderedPieElement(root: Element, tagName: string, id: string) {
 		return Array.from(root.querySelectorAll(tagName)).find(
 			(element) => element.id === id,
-		) as (HTMLElement & { _root?: unknown }) | undefined;
+		) as (HTMLElement & { _root?: unknown; model?: unknown; session?: unknown }) | undefined;
 	}
 
-	function repairEmptyPieElements(force = false) {
+	function responseValuesForSession(elementSession: unknown) {
+		const value =
+			elementSession && typeof elementSession === "object"
+				? (elementSession as Record<string, unknown>).value
+				: undefined;
+		if (Array.isArray(value)) return new Set(value.map(String));
+		if (typeof value === "string" || typeof value === "number") return new Set([String(value)]);
+		return new Set<string>();
+	}
+
+	function syncRenderedChoiceInputs(root: HTMLElement, elementSession: unknown) {
+		const selectedValues = responseValuesForSession(elementSession);
+		for (const input of Array.from(
+			root.querySelectorAll<HTMLInputElement>(
+				'input[type="radio"], input[type="checkbox"]',
+			),
+		)) {
+			input.checked = selectedValues.has(input.value);
+			input.toggleAttribute("checked", input.checked);
+		}
+	}
+
+	function repairEmptyPieElements(resetRendered = false) {
 		if (!playerEl || typeof window === "undefined") return;
 		const context = (window as any)._pieCurrentContext;
 		const models = context?.config?.models;
@@ -210,7 +232,16 @@
 					element: model.element,
 				};
 			if (!current) continue;
-			if (!force && (current.textContent?.trim() || current._root)) continue;
+			const hasRenderedContent = Boolean(current.textContent?.trim() || current._root);
+			if (hasRenderedContent) {
+				if (resetRendered) {
+					current.model = model;
+					current.session = elementSession;
+					syncRenderedChoiceInputs(current, elementSession);
+				}
+				continue;
+			}
+			if (resetRendered) continue;
 
 			const replacement = document.createElement(model.element) as HTMLElement & {
 				model?: unknown;
@@ -226,10 +257,70 @@
 		}
 	}
 
-	function schedulePieElementRepair() {
-		setTimeout(() => repairEmptyPieElements(true), 0);
-		setTimeout(() => repairEmptyPieElements(true), 250);
+	function schedulePieElementRepair(resetRendered = false) {
+		if (resetRendered) {
+			repairEmptyPieElements(true);
+			setTimeout(repairEmptyPieElements, 1000);
+			return;
+		}
 		setTimeout(repairEmptyPieElements, 1000);
+	}
+
+	function waitForAnimationFrame() {
+		return new Promise<void>((resolve) => {
+			requestAnimationFrame(() => resolve());
+		});
+	}
+
+	async function waitForAnimationFrames(count: number) {
+		for (let index = 0; index < count; index += 1) {
+			await waitForAnimationFrame();
+		}
+	}
+
+	function waitForPlayerLoadComplete(timeoutMs = 2_000) {
+		if (!playerEl) return Promise.resolve();
+		return new Promise<void>((resolve) => {
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timeoutId);
+				playerEl?.removeEventListener("load-complete", finish);
+				resolve();
+			};
+			const timeoutId = setTimeout(finish, timeoutMs);
+			playerEl.addEventListener("load-complete", finish, { once: true });
+		});
+	}
+
+	async function waitForPieElementsReady(timeoutMs = 2_000) {
+		if (!playerEl || typeof window === "undefined") return;
+		const startedAt = performance.now();
+		while (performance.now() - startedAt < timeoutMs) {
+			await tick();
+			await waitForAnimationFrame();
+			const context = (window as any)._pieCurrentContext;
+			const models = context?.config?.models;
+			if (!Array.isArray(models)) return;
+			const ready = models.every((model) => {
+				if (
+					!model ||
+					typeof model !== "object" ||
+					typeof model.id !== "string" ||
+					typeof model.element !== "string"
+				) {
+					return true;
+				}
+				const current = findRenderedPieElement(playerEl, model.element, model.id);
+				return Boolean(current?._root && current.querySelector("input, button, select, textarea"));
+			});
+			if (ready) {
+				await waitForAnimationFrame();
+				return;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 25));
+		}
 	}
 
 	function backendConfig() {
@@ -312,7 +403,7 @@
 					clientSessionSnapshot = loadedSession ?? null;
 					void refreshServerSnapshot();
 					void refreshBackendModelSnapshot();
-					schedulePieElementRepair();
+					schedulePieElementRepair(true);
 				}
 				if (type === "backend-model-complete") {
 					schedulePieElementRepair();
@@ -360,7 +451,12 @@
 
 	async function reloadCurrentSession() {
 		await runAction("Loading session from backend", async () => {
+			const loadComplete = waitForPlayerLoadComplete();
 			await playerEl?.loadFromBackend("delivery");
+			await loadComplete;
+			await waitForPieElementsReady();
+			repairEmptyPieElements(true);
+			await waitForAnimationFrames(3);
 			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
 		});
 	}
@@ -374,7 +470,12 @@
 			backendModel = null;
 			serverScore = null;
 			await tick();
+			const loadComplete = waitForPlayerLoadComplete();
 			await playerEl?.loadFromBackend("delivery");
+			await loadComplete;
+			await waitForPieElementsReady();
+			repairEmptyPieElements(true);
+			await waitForAnimationFrames(3);
 			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
 		});
 	}

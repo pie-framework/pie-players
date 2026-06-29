@@ -7,12 +7,25 @@
 	import BackendStatePanel from "$lib/components/BackendStatePanel.svelte";
 	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
 	import BackendToolWindow from "$lib/components/BackendToolWindow.svelte";
-	import EventLogPanel from "$lib/components/EventLogPanel.svelte";
+	import BackendTrafficPanel from "$lib/components/BackendTrafficPanel.svelte";
 
 	type EventLogEntry = {
 		at: string;
 		type: string;
 		detail: unknown;
+	};
+
+	type BackendTrafficEntry = {
+		id: number;
+		at: string;
+		operation: string;
+		method: string;
+		url: string;
+		status?: number;
+		durationMs?: number;
+		request: unknown;
+		response?: unknown;
+		error?: string;
 	};
 
 	type DemoState = {
@@ -37,6 +50,7 @@
 	let sessionId = $state(`${defaultItemId}-session-1`);
 	let demoState = $state<DemoState>({});
 	let eventLog = $state<EventLogEntry[]>([]);
+	let backendTrafficLog = $state<BackendTrafficEntry[]>([]);
 	let clientSessionSnapshot = $state<unknown>(null);
 	let serverSessionSnapshot = $state<unknown>(null);
 	let backendModel = $state<unknown>(null);
@@ -139,6 +153,70 @@
 		].slice(0, 18);
 	}
 
+	let backendTrafficId = 0;
+
+	async function recordBackendTraffic(
+		operation: string,
+		url: string,
+		requestBody: Record<string, unknown>,
+	): Promise<unknown> {
+		const startedAt = performance.now();
+		let response: Response;
+		let responsePayload: unknown = null;
+		try {
+			response = await fetch(url, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+				},
+				body: JSON.stringify(requestBody),
+			});
+			responsePayload = await response
+				.clone()
+				.json()
+				.catch(async () => response.clone().text().catch(() => null));
+		} catch (error) {
+			backendTrafficLog = [
+				{
+					id: ++backendTrafficId,
+					at: new Date().toLocaleTimeString(),
+					operation,
+					method: "POST",
+					url,
+					durationMs: Math.round(performance.now() - startedAt),
+					request: requestBody,
+					response: responsePayload,
+					error: error instanceof Error ? error.message : String(error),
+				},
+				...backendTrafficLog,
+			].slice(0, 30);
+			throw error;
+		}
+
+		const errorMessage = response.ok
+			? ""
+			: `Backend ${operation} request failed with HTTP ${response.status}`;
+		backendTrafficLog = [
+			{
+				id: ++backendTrafficId,
+				at: new Date().toLocaleTimeString(),
+				operation,
+				method: "POST",
+				url,
+				status: response.status,
+				durationMs: Math.round(performance.now() - startedAt),
+				request: requestBody,
+				response: responsePayload,
+				error: errorMessage || undefined,
+			},
+			...backendTrafficLog,
+		].slice(0, 30);
+		if (errorMessage) {
+			throw new Error(errorMessage);
+		}
+		return responsePayload;
+	}
+
 	function hasResponseValue(value: unknown): boolean {
 		if (Array.isArray(value)) return value.some((entry) => hasResponseValue(entry));
 		if (!value || typeof value !== "object") return false;
@@ -235,8 +313,6 @@
 			const hasRenderedContent = Boolean(current.textContent?.trim() || current._root);
 			if (hasRenderedContent) {
 				if (resetRendered) {
-					current.model = model;
-					current.session = elementSession;
 					syncRenderedChoiceInputs(current, elementSession);
 				}
 				continue;
@@ -264,6 +340,12 @@
 			return;
 		}
 		setTimeout(repairEmptyPieElements, 1000);
+	}
+
+	function scheduleRenderedInputSync() {
+		queueMicrotask(() => {
+			requestAnimationFrame(() => repairEmptyPieElements(true));
+		});
 	}
 
 	function waitForAnimationFrame() {
@@ -323,6 +405,13 @@
 		}
 	}
 
+	async function finalizeBackendPlayerLoad() {
+		await waitForPieElementsReady();
+		repairEmptyPieElements(true);
+		await waitForAnimationFrames(3);
+		setTimeout(repairEmptyPieElements, 1000);
+	}
+
 	function backendConfig() {
 		return {
 			delivery: {
@@ -340,6 +429,48 @@
 					saveSession: "/api/player/save",
 					model: "/api/player/model",
 					score: "/api/player/score",
+				},
+				client: {
+					load: (context: Record<string, unknown>) =>
+						recordBackendTraffic("load", "/api/player/load", {
+							itemId: context.itemId,
+							sessionId: context.sessionId,
+							assignmentId: context.assignmentId,
+							env: context.env,
+						}),
+					model: (context: Record<string, unknown>) =>
+						recordBackendTraffic("model", "/api/player/model", {
+							itemId: context.itemId,
+							sessionId: context.sessionId,
+							assignmentId: context.assignmentId,
+							session: context.session,
+							env: context.env,
+						}),
+					saveSession: (context: Record<string, unknown>) => {
+						const session = context.session as
+							| { id?: string; data?: unknown[] }
+							| undefined;
+						return recordBackendTraffic("saveSession", "/api/player/save", {
+							itemId: context.itemId,
+							sessionId: session?.id || context.sessionId,
+							data: Array.isArray(session?.data) ? session.data : [],
+							env: context.env,
+						});
+					},
+					score: (context: Record<string, unknown>) => {
+						const session = context.session as
+							| { id?: string; data?: unknown[] }
+							| undefined;
+						const options = context.options as
+							| { disablePartialScoring?: boolean }
+							| undefined;
+						return recordBackendTraffic("score", "/api/player/score", {
+							sessionId: session?.id || context.sessionId,
+							data: Array.isArray(session?.data) ? session.data : [],
+							env: context.env,
+							disablePartialScoring: options?.disablePartialScoring,
+						});
+					},
 				},
 			},
 		};
@@ -403,7 +534,7 @@
 					clientSessionSnapshot = loadedSession ?? null;
 					void refreshServerSnapshot();
 					void refreshBackendModelSnapshot();
-					schedulePieElementRepair(true);
+					void finalizeBackendPlayerLoad();
 				}
 				if (type === "backend-model-complete") {
 					schedulePieElementRepair();
@@ -412,8 +543,10 @@
 					const session = (detail as any)?.session;
 					if (session && hasResponseValue(session)) {
 						clientSessionSnapshot = session;
+						scheduleRenderedInputSync();
 					} else if (!session && hasResponseValue(detail)) {
 						clientSessionSnapshot = detail;
+						scheduleRenderedInputSync();
 					}
 				}
 				if (type === "backend-session-saved") {
@@ -454,9 +587,7 @@
 			const loadComplete = waitForPlayerLoadComplete();
 			await playerEl?.loadFromBackend("delivery");
 			await loadComplete;
-			await waitForPieElementsReady();
-			repairEmptyPieElements(true);
-			await waitForAnimationFrames(3);
+			await finalizeBackendPlayerLoad();
 			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
 		});
 	}
@@ -473,9 +604,7 @@
 			const loadComplete = waitForPlayerLoadComplete();
 			await playerEl?.loadFromBackend("delivery");
 			await loadComplete;
-			await waitForPieElementsReady();
-			repairEmptyPieElements(true);
-			await waitForAnimationFrames(3);
+			await finalizeBackendPlayerLoad();
 			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
 		});
 	}
@@ -510,17 +639,11 @@
 	}
 
 	async function refreshBackendModelSnapshot() {
-		const response = await fetch("/api/player/model", {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-			},
-			body: JSON.stringify({
-				itemId: selectedItemId,
-				env,
-			}),
+		backendModel = await recordBackendTraffic("model", "/api/player/model", {
+			itemId: selectedItemId,
+			sessionId,
+			env,
 		});
-		backendModel = await response.json();
 	}
 </script>
 
@@ -736,8 +859,8 @@
 
 		{#if showEventsPanel}
 			<BackendToolWindow
-				title="Event stream"
-				ariaLabel="Backend event stream tool"
+				title="Backend traffic"
+				ariaLabel="Backend traffic tool"
 				offset={2}
 				widthClass="w-[min(48rem,calc(100vw-2rem))]"
 				onClose={() => setToolOpen("events", false)}
@@ -747,7 +870,7 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0l-3-3m3 3l-3 3M3 17h8m0 0l-3-3m3 3l-3 3M3 7h5m8 10h5" />
 					</svg>
 				{/snippet}
-				<EventLogPanel entries={eventLog} />
+				<BackendTrafficPanel entries={backendTrafficLog} />
 			</BackendToolWindow>
 		{/if}
 	</div>

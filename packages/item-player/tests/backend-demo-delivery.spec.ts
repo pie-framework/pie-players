@@ -13,7 +13,7 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 }) => {
 	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
 	await page.goto(
-		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=session&info=1`,
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=session,events&info=1`,
 		{ waitUntil: "networkidle" },
 	);
 	await expect(page).toHaveURL(/\/delivery\/backend-delivery-planets/);
@@ -98,15 +98,10 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		timeout: 10_000,
 	});
 	await expect(page.getByRole("radio", { name: /Mars/ })).toBeChecked();
-
-	await page.getByRole("button", { name: "Toggle events tool" }).click();
-	await expect(page.getByText("backend-session-saved").first()).toBeVisible({
-		timeout: 10_000,
+	const trafficWindow = page.locator(".backend-tool-window", {
+		hasText: "Backend traffic",
 	});
-	await page
-		.locator(".backend-tool-window", { hasText: "Event stream" })
-		.getByRole("button", { name: "Close panel" })
-		.click();
+	await expect(trafficWindow).toBeVisible();
 	const saveResponsePromise = page.waitForResponse(
 		(response) =>
 			response.url().includes("/api/player/save") &&
@@ -117,10 +112,11 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	await expect(page.getByTestId("stored-session")).toContainText("mars", {
 		timeout: 10_000,
 	});
-	await page.getByRole("button", { name: "Toggle events tool" }).click();
-	await expect(page.getByText("backend-session-saved").first()).toBeVisible({
+	await expect(trafficWindow).toContainText("POST /api/player/save", {
 		timeout: 10_000,
 	});
+	await expect(trafficWindow).toContainText('"value": [');
+	await expect(trafficWindow).toContainText('"mars"');
 	const savedBeforeScore = await (
 		await page.request.get(
 			`/api/player/state?sessionId=${encodeURIComponent(testSessionId)}`,
@@ -140,13 +136,91 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		expect.arrayContaining([expect.objectContaining({ score: 0 })]),
 	);
 	await expect(page.getByTestId("backend-outcome")).toContainText('"score": 0');
-	await expect(page.getByText("backend-score-complete").first()).toBeVisible({
+	await expect(trafficWindow).toContainText("POST /api/player/score", {
 		timeout: 10_000,
 	});
-	await page
-		.locator(".backend-tool-window", { hasText: "Event stream" })
-		.getByRole("button", { name: "Close panel" })
-		.click();
 
+});
+
+test("backend demo accepts answer input after directly refreshing an existing session", async ({
+	page,
+}) => {
+	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
+	await page.request.post("/api/player/save", {
+		data: {
+			itemId: "backend-delivery-planets",
+			sessionId: testSessionId,
+			data: [
+				{
+					id: "planet-choice",
+					element: "multiple-choice--version-latest",
+					value: ["mars"],
+					selector: "Test",
+				},
+			],
+		},
+	});
+	await page.goto(
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=events`,
+		{ waitUntil: "networkidle" },
+	);
+	await expect(
+		page.getByText(
+			"Backend demo: which is the largest planet in our solar system?",
+			{ exact: true },
+		),
+	).toBeVisible({ timeout: 30_000 });
+
+	const answerGroup = page.getByRole("radiogroup", {
+		name: /largest planet in our solar system/,
+	});
+	await expect(answerGroup.getByRole("radio", { name: /Mars/ })).toBeChecked({
+		timeout: 10_000,
+	});
+	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
+	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked({
+		timeout: 2_000,
+	});
+	const trafficWindow = page.locator(".backend-tool-window", {
+		hasText: "Backend traffic",
+	});
+	await expect(trafficWindow).toContainText("POST /api/player/save", {
+		timeout: 10_000,
+	});
+	await expect(trafficWindow).toContainText('"jupiter"');
+});
+
+test("backend demo keeps the first selected answer in a fresh backend session", async ({
+	page,
+}) => {
+	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
+	await page.goto(
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=events`,
+		{ waitUntil: "networkidle" },
+	);
+	await expect(
+		page.getByText(
+			"Backend demo: which is the largest planet in our solar system?",
+			{ exact: true },
+		),
+	).toBeVisible({ timeout: 30_000 });
+
+	const answerGroup = page.getByRole("radiogroup", {
+		name: /largest planet in our solar system/,
+	});
+	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
+	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked({
+		timeout: 2_000,
+	});
+	await page.waitForTimeout(1_000);
+	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked();
+
+	const trafficWindow = page.locator(".backend-tool-window", {
+		hasText: "Backend traffic",
+	});
+	await expect(trafficWindow).toContainText("POST /api/player/save", {
+		timeout: 10_000,
+	});
+	await expect(trafficWindow).toContainText('"jupiter"');
 });
 

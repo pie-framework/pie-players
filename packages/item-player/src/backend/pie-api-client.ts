@@ -1,8 +1,14 @@
 import type {
 	BackendAuthConfig,
+	BackendAuthoringConfig,
+	BackendAuthoringIdentity,
+	BackendAuthoringLoadResult,
+	BackendAuthoringReleaseContext,
+	BackendAuthoringSaveContext,
 	BackendDeliveryConfig,
 	BackendDeliveryLoadContext,
 	BackendDeliveryLoadResult,
+	BackendDeliveryModelResult,
 	BackendDeliveryScoreContext,
 	BackendDeliverySessionContext,
 	BackendEndpoint,
@@ -15,6 +21,9 @@ const DEFAULT_ENDPOINTS = {
 	saveSession: { method: "POST", path: "/api/player/save" },
 	model: { method: "POST", path: "/api/player/model" },
 	score: { method: "POST", path: "/api/player/score" },
+	authoringLoad: { method: "POST", path: "/api/authoring/load" },
+	authoringSaveContent: { method: "POST", path: "/api/authoring/save" },
+	authoringReleaseContent: { method: "POST", path: "/api/authoring/release" },
 } as const satisfies Record<string, { method: BackendMethod; path: string }>;
 
 function normalizeBaseUrl(baseUrl?: string): string {
@@ -83,7 +92,7 @@ async function callJson<T>(
 		const response = await fetch(url, {
 			method,
 			headers,
-			body: method === "GET" ? undefined : JSON.stringify(body ?? {}),
+			body: JSON.stringify(body ?? {}),
 			signal: controller?.signal,
 		});
 		const payload = await response.json().catch(() => null);
@@ -118,6 +127,7 @@ export async function callPieApiDeliveryLoad(
 			sessionId: context.sessionId,
 			assignmentId: context.assignmentId,
 			env: context.env,
+			overrides: context.requestOptions?.overrides,
 		},
 		config.request,
 		token,
@@ -144,6 +154,9 @@ export async function callPieApiDeliverySave(
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
+			models: context.models,
+			passageModels: context.passageModels,
+			overrides: context.requestOptions?.overrides,
 		},
 		config.request,
 		token,
@@ -154,14 +167,14 @@ export async function callPieApiDeliveryModel(
 	config: BackendDeliveryConfig,
 	sharedAuth: BackendAuthConfig | undefined,
 	context: BackendDeliverySessionContext,
-): Promise<unknown> {
+): Promise<BackendDeliveryModelResult> {
 	const endpoint = normalizeEndpoint(
 		config.endpoints?.model,
 		DEFAULT_ENDPOINTS.model,
 	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	const sessionId = context.session.id || context.sessionId;
-	return callJson(
+	return callJson<BackendDeliveryModelResult>(
 		resolveUrl(config.baseUrl, endpoint.path),
 		endpoint.method,
 		{
@@ -170,6 +183,9 @@ export async function callPieApiDeliveryModel(
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
+			models: context.models,
+			passageModels: context.passageModels,
+			overrides: context.requestOptions?.overrides,
 		},
 		config.request,
 		token,
@@ -191,12 +207,85 @@ export async function callPieApiDeliveryScore(
 		resolveUrl(config.baseUrl, endpoint.path),
 		endpoint.method,
 		{
+			...context.options,
 			sessionId,
 			data: context.session.data,
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
-			...context.options,
+			overrides: context.requestOptions?.overrides,
+		},
+		config.request,
+		token,
+	);
+}
+
+export async function callPieApiAuthoringLoad(
+	config: BackendAuthoringConfig,
+	sharedAuth: BackendAuthConfig | undefined,
+	context: BackendAuthoringIdentity & { env: unknown },
+): Promise<BackendAuthoringLoadResult> {
+	const endpoint = normalizeEndpoint(
+		config.endpoints?.load,
+		DEFAULT_ENDPOINTS.authoringLoad,
+	);
+	const token = await resolveToken(config.auth, sharedAuth);
+	return callJson<BackendAuthoringLoadResult>(
+		resolveUrl(config.baseUrl, endpoint.path),
+		endpoint.method,
+		{
+			contentId: context.contentId,
+			collectionId: context.collectionId,
+			env: context.env,
+		},
+		config.request,
+		token,
+	);
+}
+
+export async function callPieApiAuthoringSaveContent(
+	config: BackendAuthoringConfig,
+	sharedAuth: BackendAuthConfig | undefined,
+	context: BackendAuthoringSaveContext,
+): Promise<{ contentId: string }> {
+	const endpoint = normalizeEndpoint(
+		config.endpoints?.saveContent,
+		DEFAULT_ENDPOINTS.authoringSaveContent,
+	);
+	const token = await resolveToken(config.auth, sharedAuth);
+	return callJson<{ contentId: string }>(
+		resolveUrl(config.baseUrl, endpoint.path),
+		endpoint.method,
+		{
+			contentId: context.contentId,
+			collectionId: context.collectionId,
+			config: context.config,
+			env: context.env,
+			options: context.options,
+		},
+		config.request,
+		token,
+	);
+}
+
+export async function callPieApiAuthoringReleaseContent(
+	config: BackendAuthoringConfig,
+	sharedAuth: BackendAuthConfig | undefined,
+	context: BackendAuthoringReleaseContext,
+): Promise<{ contentId: string }> {
+	const endpoint = normalizeEndpoint(
+		config.endpoints?.releaseContent,
+		DEFAULT_ENDPOINTS.authoringReleaseContent,
+	);
+	const token = await resolveToken(config.auth, sharedAuth);
+	return callJson<{ contentId: string }>(
+		resolveUrl(config.baseUrl, endpoint.path),
+		endpoint.method,
+		{
+			contentId: context.contentId,
+			collectionId: context.collectionId,
+			env: context.env,
+			options: context.options,
 		},
 		config.request,
 		token,

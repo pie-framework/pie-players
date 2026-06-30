@@ -1,6 +1,6 @@
 import { json } from "@sveltejs/kit";
-import { mergeSessionUpdates, runModelControllers } from "../controllers";
-import { getDemoItem, getItemForSession, getSession, saveSession } from "../db";
+import { runModelControllers } from "../controllers";
+import { getDemoItem, getItemForSession, getSession } from "../db";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -9,6 +9,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		sessionId?: string;
 		data?: unknown[];
 		env?: Record<string, unknown>;
+		models?: Array<{ id?: unknown; element?: unknown }>;
 	};
 	const item = body.itemId
 		? getDemoItem(body.itemId)
@@ -35,22 +36,25 @@ export const POST: RequestHandler = async ({ request }) => {
 		sessionData,
 		env,
 	});
-	const sessionUpdates = modelResults.flatMap(
-		(result) => result.sessionUpdates,
+	const currentModelElements = new Map(
+		(body.models || []).flatMap((model) =>
+			typeof model.id === "string" && typeof model.element === "string"
+				? [[model.id, model.element] as const]
+				: [],
+		),
 	);
-	if (session && sessionUpdates.length > 0) {
-		saveSession(
-			session.id,
-			mergeSessionUpdates(sessionData, sessionUpdates),
-			item.id,
-		);
-	}
-	return json(
-		modelResults.map((result) => result.model),
-		{
-			headers: {
-				"cache-control": "no-store",
-			},
+	const models = modelResults.map((result) => {
+		const currentElement =
+			typeof result.model.id === "string"
+				? currentModelElements.get(result.model.id)
+				: undefined;
+		return currentElement
+			? { ...result.model, element: currentElement }
+			: result.model;
+	});
+	return json(models, {
+		headers: {
+			"cache-control": "no-store",
 		},
-	);
+	});
 };

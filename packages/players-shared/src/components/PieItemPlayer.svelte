@@ -955,7 +955,7 @@
     if (!rootElement) return;
     const root = rootElement;
     const tickWrap = () => {
-      console.log("[PieItemPlayer] Running post-render wrap pass");
+      logger.debug("[PieItemPlayer] Running post-render wrap pass");
       wrapOverwideImagesInElement(root);
       wrapOverwideTablesInElement(root);
     };

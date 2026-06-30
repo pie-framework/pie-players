@@ -43,6 +43,18 @@ import {
 } from "@pie-players/pie-players-shared";
 import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
 
+function hasExplicitHostedOverride(playerOverrides: PlayerOverrides): boolean {
+	return (playerOverrides as { hosted?: unknown }).hosted !== undefined;
+}
+
+function hasEnabledDeliveryBackend(playerOverrides: PlayerOverrides): boolean {
+	const backend = playerOverrides.backend as
+		| { delivery?: { enabled?: boolean } | null }
+		| null
+		| undefined;
+	return !!backend?.delivery && backend.delivery.enabled !== false;
+}
+
 /**
  * Resolve the player-runtime view (player tag, attributes, props,
  * env, strategy) for the section-player host. Stays in section-player
@@ -77,8 +89,14 @@ export function resolvePlayerRuntime(args: {
 		{}) as Record<string, unknown>;
 	const runtimeLoaderOptions = (runtimePlayerOverrides.loaderOptions ||
 		{}) as Record<string, unknown>;
+	const hostedDefault =
+		!hasExplicitHostedOverride(runtimePlayerOverrides) &&
+		hasEnabledDeliveryBackend(runtimePlayerOverrides)
+			? { hosted: true }
+			: {};
 	const resolvedPlayerProps = {
 		...definitionProps,
+		...hostedDefault,
 		...runtimePlayerOverrides,
 		loaderOptions: {
 			...definitionLoaderOptions,

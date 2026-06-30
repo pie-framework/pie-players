@@ -293,4 +293,76 @@ test.describe("section player preloaded strategy", () => {
 			expect(strategy).toBe("iife");
 		}
 	});
+
+	test("derives runtime.player backend delivery per embedded item and auto-loads mounted items", async ({
+		page,
+	}) => {
+		const loadCalls: Array<{
+			itemId?: string;
+			sessionId?: string;
+			assignmentId?: string;
+		}> = [];
+		await page.route("**/qe-player/load", async (route) => {
+			const body = JSON.parse(route.request().postData() || "{}");
+			loadCalls.push(body);
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					item: {
+						markup: "",
+						elements: {},
+						models: [],
+					},
+					session: {
+						id: body.sessionId || "",
+						data: [],
+					},
+					metadata: {
+						itemId: body.itemId,
+					},
+				}),
+			});
+		});
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
+		const itemPlayerCount = await page.locator("main pie-item-player").count();
+		expect(itemPlayerCount).toBeGreaterThan(0);
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					backend: {
+						delivery: {
+							enabled: true,
+							assignmentId: "qe-attempt-1",
+							endpoints: {
+								load: "/qe-player/load",
+							},
+						},
+					},
+				},
+			};
+		});
+
+		await expect
+			.poll(() => loadCalls.length, { timeout: 30_000 })
+			.toBe(itemPlayerCount);
+		await page.waitForTimeout(500);
+		expect(loadCalls).toHaveLength(itemPlayerCount);
+		expect(new Set(loadCalls.map((call) => call.itemId)).size).toBe(
+			itemPlayerCount,
+		);
+		expect(loadCalls.every((call) => call.assignmentId === "qe-attempt-1")).toBe(
+			true,
+		);
+	});
 });

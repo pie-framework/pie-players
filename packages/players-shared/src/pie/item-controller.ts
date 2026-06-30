@@ -8,6 +8,7 @@ import {
 	hasResponseValue,
 	mergeElementIntoSession,
 	normalizeItemSessionContainer as normalizeSessionContainer,
+	normalizeItemSessionChange,
 } from "./item-session-contract.js";
 
 export type ItemControllerOptions = {
@@ -41,9 +42,11 @@ export class ItemController {
 	private session: ItemSessionContainer;
 	private storageKey: string;
 	private sessionId: string;
+	private itemId: string;
 
 	constructor(options: ItemControllerOptions) {
 		this.storage = options.storage ?? new MemoryItemSessionStorage();
+		this.itemId = options.itemId;
 		this.storageKey =
 			options.storageKey ?? `pie:item-controller:v1:${options.itemId}`;
 		this.sessionId = options.sessionId ?? DEFAULT_SESSION_ID;
@@ -127,8 +130,15 @@ export class ItemController {
 		detail: unknown,
 		options: SetSessionOptions = {},
 	): ItemSessionContainer {
-		const payload = (detail as any)?.session ?? detail;
-		return this.setSession(payload, options);
+		const normalized = normalizeItemSessionChange({
+			itemId: this.session.id || this.itemId,
+			sessionDetail: detail,
+			previousItemSession: this.session,
+		});
+		if (normalized.intent === "metadata-only" || !normalized.session) {
+			return this.getSession();
+		}
+		return this.setSession(normalized.session, options);
 	}
 }
 

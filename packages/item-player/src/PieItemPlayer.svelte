@@ -509,12 +509,36 @@
 		return true;
 	}
 
+	function hasIncompleteStructuredShuffledValues(entry: unknown): boolean {
+		if (!isRecord(entry)) return false;
+		const shuffledValues = entry.shuffledValues;
+		if (!isRecord(shuffledValues)) return false;
+		const hasPartA = "partA" in shuffledValues;
+		const hasPartB = "partB" in shuffledValues;
+		return (hasPartA || hasPartB) && !(hasPartA && hasPartB);
+	}
+
+	function sessionDataForRenderer(data: unknown[]): unknown[] {
+		let changed = false;
+		const nextData = data.map((entry) => {
+			if (!hasIncompleteStructuredShuffledValues(entry) || !isRecord(entry)) {
+				return entry;
+			}
+			const { shuffledValues: _shuffledValues, ...rest } = entry;
+			changed = true;
+			return rest;
+		});
+		return changed ? nextData : data;
+	}
+
 	const rendererSession = $derived.by(() => {
 		const _rev = sessionRevision;
-		if (!sessionController) {
-			return normalizeItemSessionContainer(parseSessionProp(effectiveSession)).data;
-		}
-		return sessionController.getSession().data;
+		const data = !sessionController
+			? normalizeItemSessionContainer(parseSessionProp(effectiveSession)).data
+			: sessionController.getSession().data;
+		// Incomplete EBSR shuffle metadata from older persisted sessions can block
+		// the element from rendering the missing part. Let the element regenerate it.
+		return sessionDataForRenderer(data);
 	});
 	function configMarkupForKey(cfg: ConfigEntity | null): string {
 		return cfg?.markup ?? "";

@@ -194,6 +194,9 @@
 		   opt-in to a solid color via --pie-section-player-card-header-background
 		   (e.g. a brand Bluegreen tint) without this framework encoding a palette. */
 		background: var(--pie-section-player-card-header-background, transparent);
+		 /* Slightly smaller than the card radius to avoid a double-radius effect with the border. */
+		border-top-left-radius: 7px;
+		border-top-right-radius: 7px;
 	}
 
 	.pie-section-player-content-card-header h2 {

@@ -7,7 +7,8 @@ type LoadPayload = {
 };
 
 function hasKey(value: unknown, keyName: string): boolean {
-	if (Array.isArray(value)) return value.some((entry) => hasKey(entry, keyName));
+	if (Array.isArray(value))
+		return value.some((entry) => hasKey(entry, keyName));
 	if (!value || typeof value !== "object") return false;
 	return Object.entries(value as Record<string, unknown>).some(
 		([key, nested]) => key === keyName || hasKey(nested, keyName),
@@ -37,14 +38,17 @@ test("section backend demo derives per-item delivery calls from one section conf
 			lineno: number;
 			colno: number;
 		};
-		(window as unknown as { __backendDemoScriptErrors?: CapturedScriptError[] }).__backendDemoScriptErrors =
-			[];
+		(
+			window as unknown as { __backendDemoScriptErrors?: CapturedScriptError[] }
+		).__backendDemoScriptErrors = [];
 		window.addEventListener(
 			"error",
 			(event) => {
 				if (event.message === "Script error.") {
 					(
-						window as unknown as { __backendDemoScriptErrors?: CapturedScriptError[] }
+						window as unknown as {
+							__backendDemoScriptErrors?: CapturedScriptError[];
+						}
 					).__backendDemoScriptErrors?.push({
 						message: event.message,
 						filename: event.filename,
@@ -91,6 +95,14 @@ test("section backend demo derives per-item delivery calls from one section conf
 			),
 		)
 		.toBe(true);
+	await page.keyboard.press("Tab");
+	await expect(
+		dialog.getByRole("button", { name: "Close section demo info dialog" }),
+	).toBeFocused();
+	await page.keyboard.press("Shift+Tab");
+	await expect(
+		dialog.getByRole("button", { name: "Close section demo info dialog" }),
+	).toBeFocused();
 	await page.keyboard.press("Escape");
 	await expect(dialog).toHaveCount(0);
 	await expect(
@@ -98,9 +110,12 @@ test("section backend demo derives per-item delivery calls from one section conf
 	).toBeFocused();
 
 	await expect(
-		page.getByText("Backend demo: which is the largest planet in our solar system?", {
-			exact: true,
-		}),
+		page.getByText(
+			"Backend demo: which is the largest planet in our solar system?",
+			{
+				exact: true,
+			},
+		),
 	).toBeVisible({ timeout: 30_000 });
 	await expect(
 		page.locator(".backend-tool-window", { hasText: "Backend state" }),
@@ -125,7 +140,9 @@ test("section backend demo derives per-item delivery calls from one section conf
 		.poll(() => loadPayloads.length, { timeout: 30_000 })
 		.toBeGreaterThanOrEqual(2);
 
-	const byItemId = new Map(loadPayloads.map((payload) => [payload.itemId, payload]));
+	const byItemId = new Map(
+		loadPayloads.map((payload) => [payload.itemId, payload]),
+	);
 	const planets = byItemId.get("backend-delivery-planets");
 	const arithmetic = byItemId.get("backend-delivery-arithmetic");
 	expect(planets).toEqual(

@@ -327,9 +327,19 @@ Model refresh:
   "data": [],
   "env": { "mode": "gather", "role": "student" },
   "itemId": "item-1",
-  "assignmentId": "attempt-1"
+  "assignmentId": "attempt-1",
+  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
+  "passageModels": [
+    { "id": "passage-1", "element": "pie-passage--version-4-5-6" }
+  ]
 }
 ```
+
+`models` and `passageModels` carry the exact current model identities after the
+player has applied `makeUniqueTags`. Model refresh responses must use the same
+`id` and full versioned `element` tag to update an existing model. Responses
+that return a base tag such as `"multiple-choice"` for a rendered
+`"multiple-choice--version-1-2-3"` model are ignored.
 
 Score:
 

@@ -91,6 +91,8 @@ describe("delivery backend helpers", () => {
 			sessionId: "session-1",
 			session: { id: "session-1", data: [] },
 			env: { mode: "gather", role: "student" },
+			models: [{ id: "2", element: "multiple-choice--version-latest" }],
+			passageModels: [{ id: "passage", element: "pie-passage--version-1-0-0" }],
 		};
 
 		await loadFromDeliveryBackend(backend, sessionContext.env);
@@ -144,8 +146,11 @@ describe("delivery backend helpers", () => {
 		const sessionContext = {
 			itemId: "item-1",
 			sessionId: "session-1",
+			assignmentId: "assignment-1",
 			session: { id: "session-1", data: [] },
 			env: { mode: "gather", role: "student" },
+			models: [{ id: "2", element: "multiple-choice--version-latest" }],
+			passageModels: [{ id: "passage", element: "pie-passage--version-1-0-0" }],
 		};
 
 		try {
@@ -154,7 +159,14 @@ describe("delivery backend helpers", () => {
 			await saveToDeliveryBackend(backend, sessionContext);
 			await scoreWithDeliveryBackend(backend, sessionContext, {
 				disablePartialScoring: true,
-				overrides: { ignored: "score-options-cannot-replace-delivery-overrides" },
+				sessionId: "wrong-session",
+				data: [{ id: "wrong-data" }],
+				env: { mode: "wrong" },
+				itemId: "wrong-item",
+				assignmentId: "wrong-assignment",
+				overrides: {
+					ignored: "score-options-cannot-replace-delivery-overrides",
+				},
 			});
 		} finally {
 			globalThis.fetch = originalFetch;
@@ -172,6 +184,15 @@ describe("delivery backend helpers", () => {
 			{ "student-grade": "5" },
 			{ "student-grade": "5" },
 		]);
+		expect(payloads[1]?.body.models).toEqual(sessionContext.models);
+		expect(payloads[1]?.body.passageModels).toEqual(
+			sessionContext.passageModels,
+		);
+		expect(payloads[3]?.body.sessionId).toBe("session-1");
+		expect(payloads[3]?.body.data).toEqual([]);
+		expect(payloads[3]?.body.env).toEqual(sessionContext.env);
+		expect(payloads[3]?.body.itemId).toBe("item-1");
+		expect(payloads[3]?.body.assignmentId).toBe("assignment-1");
 		expect(payloads[3]?.body.disablePartialScoring).toBe(true);
 	});
 

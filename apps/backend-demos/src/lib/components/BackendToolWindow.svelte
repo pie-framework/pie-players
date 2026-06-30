@@ -179,6 +179,32 @@
 		panelHeight = Math.max(minHeight, Math.min(resizeStartHeight + event.clientY - resizeStartY, maxHeight));
 	}
 
+	function keyboardStep(event: KeyboardEvent): number {
+		return event.shiftKey ? 48 : 16;
+	}
+
+	function movePanelBy(deltaX: number, deltaY: number): void {
+		const clamped = clampPanelState({
+			x: panelX + deltaX,
+			y: panelY + deltaY,
+			width: panelWidth,
+			height: panelHeight,
+		});
+		panelX = clamped.x;
+		panelY = clamped.y;
+	}
+
+	function resizePanelBy(deltaWidth: number, deltaHeight: number): void {
+		const clamped = clampPanelState({
+			x: panelX,
+			y: panelY,
+			width: panelWidth + deltaWidth,
+			height: panelHeight + deltaHeight,
+		});
+		panelWidth = clamped.width;
+		panelHeight = clamped.height;
+	}
+
 	function startDrag(event: MouseEvent): void {
 		bringToFront();
 		isDragging = true;
@@ -201,6 +227,50 @@
 		document.addEventListener("mouseup", stopResize);
 		event.preventDefault();
 		event.stopPropagation();
+	}
+
+	function handleDragKeydown(event: KeyboardEvent): void {
+		if (event.target !== event.currentTarget) return;
+		const step = keyboardStep(event);
+		const movementByKey: Record<string, [number, number]> = {
+			ArrowLeft: [-step, 0],
+			ArrowRight: [step, 0],
+			ArrowUp: [0, -step],
+			ArrowDown: [0, step],
+		};
+		const movement = movementByKey[event.key];
+		if (!movement) {
+			if (event.key === "Enter" || event.key === " ") {
+				bringToFront();
+				event.preventDefault();
+			}
+			return;
+		}
+		bringToFront();
+		movePanelBy(...movement);
+		event.preventDefault();
+	}
+
+	function handleResizeKeydown(event: KeyboardEvent): void {
+		if (event.target !== event.currentTarget) return;
+		const step = keyboardStep(event);
+		const sizeChangeByKey: Record<string, [number, number]> = {
+			ArrowLeft: [-step, 0],
+			ArrowRight: [step, 0],
+			ArrowUp: [0, -step],
+			ArrowDown: [0, step],
+		};
+		const sizeChange = sizeChangeByKey[event.key];
+		if (!sizeChange) {
+			if (event.key === "Enter" || event.key === " ") {
+				bringToFront();
+				event.preventDefault();
+			}
+			return;
+		}
+		bringToFront();
+		resizePanelBy(...sizeChange);
+		event.preventDefault();
 	}
 
 	onMount(() => {
@@ -257,13 +327,22 @@
 	role="dialog"
 	aria-label={ariaLabel}
 >
-	<header
-		class="backend-tool-window__header"
-		onmousedown={startDrag}
-		role="button"
-		tabindex="0"
-		aria-label={`Drag ${ariaLabel} panel`}
-	>
+	<header class="backend-tool-window__header">
+		<button
+			type="button"
+			class="backend-tool-window__drag-handle"
+			onmousedown={(event) => {
+				event.stopPropagation();
+				startDrag(event);
+			}}
+			onkeydown={handleDragKeydown}
+			aria-label={`Drag ${ariaLabel} panel`}
+			title="Move panel with arrow keys"
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" class="backend-tool-window__drag-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8M8 12h8m-8 5h8" />
+			</svg>
+		</button>
 		<div class="backend-tool-window__header-main">
 			<span class="backend-tool-window__icon">
 				{@render icon?.()}
@@ -311,6 +390,7 @@
 		<div
 			class="backend-tool-window__resize-handle"
 			onmousedown={startResize}
+			onkeydown={handleResizeKeydown}
 			role="button"
 			tabindex="0"
 			title="Resize window"
@@ -349,11 +429,6 @@
 		user-select: none;
 	}
 
-	.backend-tool-window__header:focus-visible {
-		outline: 2px solid var(--color-primary, #3b82f6);
-		outline-offset: -2px;
-	}
-
 	.backend-tool-window__header-main {
 		display: flex;
 		min-width: 0;
@@ -386,10 +461,35 @@
 		gap: 0.25rem;
 	}
 
+	.backend-tool-window__drag-handle {
+		display: inline-flex;
+		width: 1.75rem;
+		height: 1.75rem;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border: 1px solid transparent;
+		border-radius: 0.375rem;
+		background: transparent;
+		color: #475569;
+		cursor: move;
+	}
+
+	.backend-tool-window__drag-handle:hover {
+		background: rgba(241, 245, 249, 0.95);
+		border-color: rgba(148, 163, 184, 0.7);
+	}
+
+	.backend-tool-window__drag-handle:focus-visible {
+		outline: 2px solid var(--color-primary, #3b82f6);
+		outline-offset: 1px;
+	}
+
 	.backend-tool-window__control {
 		display: inline-flex;
-		width: 1.35rem;
-		height: 1.35rem;
+		width: 1.75rem;
+		height: 1.75rem;
 		align-items: center;
 		justify-content: center;
 		padding: 0;
@@ -410,9 +510,10 @@
 	}
 
 	.backend-tool-window__control-icon,
+	.backend-tool-window__drag-icon,
 	.backend-tool-window__resize-icon {
-		width: 0.75rem;
-		height: 0.75rem;
+		width: 0.85rem;
+		height: 0.85rem;
 	}
 
 	.backend-tool-window__body {
@@ -426,8 +527,8 @@
 		right: 0;
 		bottom: 0;
 		display: inline-flex;
-		width: 0.85rem;
-		height: 0.85rem;
+		width: 1.5rem;
+		height: 1.5rem;
 		align-items: center;
 		justify-content: center;
 		color: color-mix(in srgb, var(--color-base-content, #334155) 30%, transparent);
@@ -438,7 +539,8 @@
 	.backend-tool-window__resize-handle:hover,
 	.backend-tool-window__resize-handle:focus-visible {
 		opacity: 1;
-		outline: none;
+		outline: 2px solid var(--color-primary, #3b82f6);
+		outline-offset: 1px;
 	}
 
 	@media (max-width: 639px) {

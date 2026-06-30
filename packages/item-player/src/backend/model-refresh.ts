@@ -16,17 +16,6 @@ export type DeliveryModelRefreshConfigResult = {
 	changed: boolean;
 };
 
-const VERSION_DELIMITER = "--version-";
-
-function baseElementName(element: string): string {
-	const versionIndex = element.lastIndexOf(VERSION_DELIMITER);
-	return versionIndex >= 0 ? element.slice(0, versionIndex) : element;
-}
-
-function hasVersionSuffix(element: string): boolean {
-	return element.includes(VERSION_DELIMITER);
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -48,9 +37,7 @@ function sameModelIdentity(
 ): boolean {
 	return (
 		currentModel.id === incomingModel.id &&
-		(hasVersionSuffix(incomingModel.element)
-			? currentModel.element === incomingModel.element
-			: baseElementName(currentModel.element) === incomingModel.element)
+		currentModel.element === incomingModel.element
 	);
 }
 
@@ -64,7 +51,9 @@ function mergeModelsForConfig(
 	let changed = false;
 	const nextModels = config.models.map((currentModel) => {
 		const incomingModel = incomingModels.find(
-			(model): model is Record<string, unknown> & { id: string; element: string } =>
+			(
+				model,
+			): model is Record<string, unknown> & { id: string; element: string } =>
 				isBackendModel(model) && sameModelIdentity(currentModel, model),
 		);
 		if (!incomingModel) return currentModel;

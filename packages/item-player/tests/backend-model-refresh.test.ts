@@ -44,20 +44,22 @@ describe("delivery backend model refresh helpers", () => {
 		]);
 
 		expect(result).toEqual({
-			models: [{ id: "item-model", element: "multiple-choice", prompt: "Updated" }],
+			models: [
+				{ id: "item-model", element: "multiple-choice", prompt: "Updated" },
+			],
 			passageModels: undefined,
 			metadata: undefined,
 		});
 	});
 
-	test("updates matching item models while preserving versioned element tags", () => {
+	test("updates matching item models with exact versioned element tags", () => {
 		const refreshed = applyDeliveryModelResultToConfigs({
 			itemConfig: versionedConfig,
 			passageConfig: null,
 			result: [
 				{
 					id: "item-model",
-					element: "multiple-choice",
+					element: "multiple-choice--version-11-4-0",
 					prompt: "After refresh",
 					choices: [{ value: "a", label: "A" }],
 				},
@@ -84,14 +86,14 @@ describe("delivery backend model refresh helpers", () => {
 				models: [
 					{
 						id: "item-model",
-						element: "multiple-choice",
+						element: "multiple-choice--version-11-4-0",
 						prompt: "After item refresh",
 					},
 				],
 				passageModels: [
 					{
 						id: "passage-model",
-						element: "pie-passage",
+						element: "pie-passage--version-1-2-3",
 						text: "After passage refresh",
 					},
 				],
@@ -124,7 +126,7 @@ describe("delivery backend model refresh helpers", () => {
 				},
 				{
 					id: "unknown-model",
-					element: "multiple-choice",
+					element: "multiple-choice--version-11-4-0",
 					prompt: "Should not add",
 				},
 			],
@@ -165,6 +167,33 @@ describe("delivery backend model refresh helpers", () => {
 		});
 	});
 
+	test("rejects unversioned incoming element tags for versioned current models", () => {
+		const refreshed = applyDeliveryModelResultToConfigs({
+			itemConfig: versionedConfig,
+			passageConfig,
+			result: {
+				models: [
+					{
+						id: "item-model",
+						element: "multiple-choice",
+						prompt: "Should not apply",
+					},
+				],
+				passageModels: [
+					{
+						id: "passage-model",
+						element: "pie-passage",
+						text: "Should not apply",
+					},
+				],
+			},
+		});
+
+		expect(refreshed.itemConfig).toEqual(versionedConfig);
+		expect(refreshed.passageConfig).toEqual(passageConfig);
+		expect(refreshed.changed).toBe(false);
+	});
+
 	test("removes fields omitted by refreshed backend models", () => {
 		const refreshed = applyDeliveryModelResultToConfigs({
 			itemConfig: versionedConfig,
@@ -172,7 +201,7 @@ describe("delivery backend model refresh helpers", () => {
 			result: [
 				{
 					id: "item-model",
-					element: "multiple-choice",
+					element: "multiple-choice--version-11-4-0",
 					prompt: "Student-safe refresh",
 				},
 			],

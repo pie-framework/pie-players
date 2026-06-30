@@ -51,6 +51,10 @@
 	let showTrafficPanel = $state(false);
 	let showSessionPanel = $state(false);
 	let showInfoDialog = $state(false);
+	let infoButtonEl = $state<HTMLButtonElement | null>(null);
+	let infoDialogEl = $state<HTMLDivElement | null>(null);
+	let infoCloseButtonEl = $state<HTMLButtonElement | null>(null);
+	let lastInfoFocusTarget = $state<HTMLElement | null>(null);
 	const availableItems = $derived(demoState.items || []);
 	const selectedItem = $derived(
 		availableItems.find((item) => item.id === selectedItemId) || null,
@@ -87,6 +91,12 @@
 	}
 
 	function setInfoDialog(open: boolean) {
+		if (open) {
+			lastInfoFocusTarget =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+		}
 		showInfoDialog = open;
 		void updateSearchParams((params) => {
 			if (open) {
@@ -95,6 +105,72 @@
 				params.delete("info");
 			}
 		});
+		if (!open) {
+			void tick().then(() => {
+				(lastInfoFocusTarget || infoButtonEl)?.focus();
+				lastInfoFocusTarget = null;
+			});
+		}
+	}
+
+	function handleInfoKeydown(event: KeyboardEvent) {
+		if (!showInfoDialog) return;
+		if (event.key === "Escape") {
+			event.preventDefault();
+			setInfoDialog(false);
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			return;
+		}
+		if (event.key !== "Tab") return;
+		const focusableElements = getInfoDialogFocusableElements();
+		const firstElement = focusableElements[0] || infoDialogEl;
+		const lastElement =
+			focusableElements[focusableElements.length - 1] || infoDialogEl;
+		const activeElement = document.activeElement;
+		if (!firstElement || !lastElement) return;
+		if (
+			event.shiftKey &&
+			(activeElement === firstElement ||
+				(activeElement instanceof HTMLElement &&
+					!infoDialogEl?.contains(activeElement)))
+		) {
+			lastElement.focus();
+			event.preventDefault();
+			return;
+		}
+		if (
+			!event.shiftKey &&
+			(activeElement === lastElement ||
+				(activeElement instanceof HTMLElement &&
+					!infoDialogEl?.contains(activeElement)))
+		) {
+			firstElement.focus();
+			event.preventDefault();
+		}
+	}
+
+	function focusInfoDialog() {
+		void tick().then(() => {
+			requestAnimationFrame(() => {
+				(infoCloseButtonEl || infoDialogEl)?.focus();
+				setTimeout(() => {
+					(infoCloseButtonEl || infoDialogEl)?.focus();
+				}, 0);
+			});
+		});
+	}
+
+	function getInfoDialogFocusableElements(): HTMLElement[] {
+		const selector = [
+			"a[href]",
+			"button:not([disabled])",
+			"input:not([disabled])",
+			"select:not([disabled])",
+			"textarea:not([disabled])",
+			'[tabindex]:not([tabindex="-1"])',
+		].join(",");
+		return Array.from(infoDialogEl?.querySelectorAll<HTMLElement>(selector) || []);
 	}
 
 	function setToolOpen(toolId: ToolId, open: boolean) {
@@ -412,14 +488,20 @@
 							assignmentId: context.assignmentId,
 							env: context.env,
 						}),
-					model: (context: Record<string, unknown>) =>
-						recordBackendTraffic("model", "/api/player/model", {
+					model: (context: Record<string, unknown>) => {
+						const session = context.session as
+							| { id?: string; data?: unknown[] }
+							| undefined;
+						return recordBackendTraffic("model", "/api/player/model", {
 							itemId: context.itemId,
-							sessionId: context.sessionId,
+							sessionId: session?.id || context.sessionId,
 							assignmentId: context.assignmentId,
-							session: context.session,
+							data: Array.isArray(session?.data) ? session.data : [],
 							env: context.env,
-						}),
+							models: context.models,
+							passageModels: context.passageModels,
+						});
+					},
 					saveSession: (context: Record<string, unknown>) => {
 						const session = context.session as
 							| { id?: string; data?: unknown[] }
@@ -470,6 +552,11 @@
 		showTrafficPanel = tools.has("traffic");
 		showSessionPanel = tools.has("session");
 		showInfoDialog = $page.url.searchParams.get("info") === "1";
+	});
+
+	$effect(() => {
+		if (!showInfoDialog) return;
+		focusInfoDialog();
 	});
 
 	$effect(() => {
@@ -614,6 +701,8 @@
 	<title>PIE Backend Integration Demo</title>
 </svelte:head>
 
+<svelte:window onkeydown={handleInfoKeydown} />
+
 <main class="bg-base-200">
 	<div class="container mx-auto max-w-7xl px-4 py-10">
 		<header class="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -634,6 +723,7 @@
 					Section demo
 				</a>
 				<button
+					bind:this={infoButtonEl}
 					class="btn btn-sm btn-outline btn-square"
 					class:btn-active={showInfoDialog}
 					type="button"
@@ -736,8 +826,10 @@
 					onclick={() => setInfoDialog(false)}
 				></button>
 				<div
+					bind:this={infoDialogEl}
 					class="card relative max-h-[calc(100vh-2rem)] w-[min(44rem,calc(100vw-2rem))] overflow-auto border border-base-300 bg-base-100 shadow-2xl"
 					role="dialog"
+					tabindex="-1"
 					aria-modal="true"
 					aria-labelledby="backend-demo-info-title"
 				>
@@ -752,6 +844,7 @@
 								</h2>
 							</div>
 							<button
+								bind:this={infoCloseButtonEl}
 								class="btn btn-sm btn-outline"
 								type="button"
 								aria-label="Close demo info dialog"

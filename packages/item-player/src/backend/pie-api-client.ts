@@ -92,7 +92,7 @@ async function callJson<T>(
 		const response = await fetch(url, {
 			method,
 			headers,
-			body: method === "GET" ? undefined : JSON.stringify(body ?? {}),
+			body: JSON.stringify(body ?? {}),
 			signal: controller?.signal,
 		});
 		const payload = await response.json().catch(() => null);
@@ -154,6 +154,8 @@ export async function callPieApiDeliverySave(
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
+			models: context.models,
+			passageModels: context.passageModels,
 			overrides: context.requestOptions?.overrides,
 		},
 		config.request,
@@ -181,6 +183,8 @@ export async function callPieApiDeliveryModel(
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
+			models: context.models,
+			passageModels: context.passageModels,
 			overrides: context.requestOptions?.overrides,
 		},
 		config.request,
@@ -203,12 +207,12 @@ export async function callPieApiDeliveryScore(
 		resolveUrl(config.baseUrl, endpoint.path),
 		endpoint.method,
 		{
+			...context.options,
 			sessionId,
 			data: context.session.data,
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
-			...context.options,
 			overrides: context.requestOptions?.overrides,
 		},
 		config.request,

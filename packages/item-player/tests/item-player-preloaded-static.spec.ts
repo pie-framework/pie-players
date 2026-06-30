@@ -409,8 +409,7 @@ test.describe("item-player strategy regressions", () => {
 									markup:
 										'<pie-model-refresh id="model-refresh-model"></pie-model-refresh>',
 									elements: {
-										"pie-model-refresh":
-											"@pie-element/model-refresh@1.0.0",
+										"pie-model-refresh": "@pie-element/model-refresh@1.0.0",
 									},
 									models: [
 										{
@@ -429,7 +428,7 @@ test.describe("item-player strategy regressions", () => {
 							return [
 								{
 									id: "model-refresh-model",
-									element: "pie-model-refresh",
+									element: "pie-model-refresh--version-1-0-0",
 									prompt: `<p>Refreshed backend prompt for ${context.env.mode}</p>`,
 									promptEnabled: true,
 								},
@@ -461,7 +460,9 @@ test.describe("item-player strategy regressions", () => {
 			const player = document.querySelector(
 				"#pie-backend-model-refresh-fixture pie-item-player",
 			);
-			const renderedElement = player?.querySelector('[id="model-refresh-model"]') as any;
+			const renderedElement = player?.querySelector(
+				'[id="model-refresh-model"]',
+			) as any;
 			return {
 				callCount: (window as any).__pieModelRefreshCalls.length,
 				tagName: renderedElement?.tagName?.toLowerCase() ?? null,
@@ -559,7 +560,7 @@ test.describe("item-player strategy regressions", () => {
 								passageModels: [
 									{
 										id: "passage-refresh-model",
-										element: "pie-passage-refresh",
+										element: "pie-passage-refresh--version-1-0-0",
 										text: `<p>Refreshed passage prompt for ${context.env.mode}</p>`,
 									},
 								],
@@ -649,8 +650,7 @@ test.describe("item-player strategy regressions", () => {
 									markup:
 										'<pie-model-refresh id="delayed-load-refresh-model"></pie-model-refresh>',
 									elements: {
-										"pie-model-refresh":
-											"@pie-element/model-refresh@1.0.0",
+										"pie-model-refresh": "@pie-element/model-refresh@1.0.0",
 									},
 									models: [
 										{
@@ -668,7 +668,7 @@ test.describe("item-player strategy regressions", () => {
 							return [
 								{
 									id: "delayed-load-refresh-model",
-									element: "pie-model-refresh",
+									element: "pie-model-refresh--version-1-0-0",
 									prompt: `<p>Refreshed delayed prompt for ${context.env.mode}</p>`,
 								},
 							];
@@ -751,8 +751,7 @@ test.describe("item-player strategy regressions", () => {
 									markup:
 										'<pie-model-refresh id="model-stale-model"></pie-model-refresh>',
 									elements: {
-										"pie-model-refresh":
-											"@pie-element/model-refresh@1.0.0",
+										"pie-model-refresh": "@pie-element/model-refresh@1.0.0",
 									},
 									models: [
 										{
@@ -768,9 +767,8 @@ test.describe("item-player strategy regressions", () => {
 						},
 						model(context: any) {
 							return new Promise((resolve) => {
-								(window as any).__pieModelRefreshResolvers[
-									context.env.mode
-								] = resolve;
+								(window as any).__pieModelRefreshResolvers[context.env.mode] =
+									resolve;
 							});
 						},
 					},
@@ -803,7 +801,7 @@ test.describe("item-player strategy regressions", () => {
 			(window as any).__pieModelRefreshResolvers.review([
 				{
 					id: "model-stale-model",
-					element: "pie-model-refresh",
+					element: "pie-model-refresh--version-1-0-0",
 					prompt: "<p>Fresh review prompt</p>",
 					promptEnabled: true,
 				},
@@ -811,7 +809,7 @@ test.describe("item-player strategy regressions", () => {
 			(window as any).__pieModelRefreshResolvers.evaluate([
 				{
 					id: "model-stale-model",
-					element: "pie-model-refresh",
+					element: "pie-model-refresh--version-1-0-0",
 					prompt: "<p>Stale evaluate prompt</p>",
 					promptEnabled: true,
 				},
@@ -867,9 +865,7 @@ test.describe("item-player strategy regressions", () => {
 				);
 			}
 			(window as any).PIE_REGISTRY ??= {};
-			(window as any).PIE_REGISTRY[
-				"pie-authoring-backend--version-1-0-0"
-			] = {
+			(window as any).PIE_REGISTRY["pie-authoring-backend--version-1-0-0"] = {
 				package: "@pie-element/authoring-backend@1.0.0",
 				status: "loaded",
 				tagName: "pie-authoring-backend--version-1-0-0",
@@ -978,7 +974,9 @@ test.describe("item-player strategy regressions", () => {
 							return { contentId: "content-3" };
 						},
 						async releaseContent(context: any) {
-							const releaseCount = (window as any).__pieAuthoringBackendCalls.filter(
+							const releaseCount = (
+								window as any
+							).__pieAuthoringBackendCalls.filter(
 								(call: any) => call.type === "release",
 							).length;
 							(window as any).__pieAuthoringBackendCalls.push({
@@ -1171,18 +1169,12 @@ test.describe("item-player strategy regressions", () => {
 			"backend-content-released",
 			"backend-content-released",
 		]);
-		expect(backendState.events.map((event: any) => event.detail.scope)).toEqual([
-			"authoring",
-			"authoring",
-			"authoring",
-			"authoring",
-		]);
-		expect(backendState.events.map((event: any) => event.detail.contentId)).toEqual([
-			"content-2",
-			"content-3",
-			"content-4",
-			"content-5",
-		]);
+		expect(backendState.events.map((event: any) => event.detail.scope)).toEqual(
+			["authoring", "authoring", "authoring", "authoring"],
+		);
+		expect(
+			backendState.events.map((event: any) => event.detail.contentId),
+		).toEqual(["content-2", "content-3", "content-4", "content-5"]);
 		expect(backendState.mediaCalls).toEqual([
 			{ type: "insert-image", isPasted: true },
 			{ type: "delete-image", src: "/backend/image.png" },

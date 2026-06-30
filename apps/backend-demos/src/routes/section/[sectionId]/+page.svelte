@@ -225,14 +225,20 @@
 							assignmentId: context.assignmentId,
 							env: context.env,
 						}),
-					model: (context: Record<string, unknown>) =>
-						recordBackendTraffic("model", "/api/player/model", {
+					model: (context: Record<string, unknown>) => {
+						const session = context.session as
+							| { id?: string; data?: unknown[] }
+							| undefined;
+						return recordBackendTraffic("model", "/api/player/model", {
 							itemId: context.itemId,
-							sessionId: context.sessionId,
+							sessionId: session?.id || context.sessionId,
 							assignmentId: context.assignmentId,
-							session: context.session,
+							data: Array.isArray(session?.data) ? session.data : [],
 							env: context.env,
-						}),
+							models: context.models,
+							passageModels: context.passageModels,
+						});
+					},
 					saveSession: (context: Record<string, unknown>) => {
 						const session = context.session as
 							| { id?: string; data?: unknown[] }
@@ -335,11 +341,40 @@
 	}
 
 	function handleInfoKeydown(event: KeyboardEvent) {
-		if (!showInfoDialog || event.key !== "Escape") return;
-		event.preventDefault();
-		closeInfoDialog();
-		event.stopPropagation();
-		event.stopImmediatePropagation();
+		if (!showInfoDialog) return;
+		if (event.key === "Escape") {
+			event.preventDefault();
+			closeInfoDialog();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			return;
+		}
+		if (event.key !== "Tab") return;
+		const focusableElements = getInfoDialogFocusableElements();
+		const firstElement = focusableElements[0] || infoDialogEl;
+		const lastElement =
+			focusableElements[focusableElements.length - 1] || infoDialogEl;
+		const activeElement = document.activeElement;
+		if (!firstElement || !lastElement) return;
+		if (
+			event.shiftKey &&
+			(activeElement === firstElement ||
+				(activeElement instanceof HTMLElement &&
+					!infoDialogEl?.contains(activeElement)))
+		) {
+			lastElement.focus();
+			event.preventDefault();
+			return;
+		}
+		if (
+			!event.shiftKey &&
+			(activeElement === lastElement ||
+				(activeElement instanceof HTMLElement &&
+					!infoDialogEl?.contains(activeElement)))
+		) {
+			firstElement.focus();
+			event.preventDefault();
+		}
 	}
 
 	function focusInfoDialog() {
@@ -351,6 +386,18 @@
 				}, 0);
 			});
 		});
+	}
+
+	function getInfoDialogFocusableElements(): HTMLElement[] {
+		const selector = [
+			"a[href]",
+			"button:not([disabled])",
+			"input:not([disabled])",
+			"select:not([disabled])",
+			"textarea:not([disabled])",
+			'[tabindex]:not([tabindex="-1"])',
+		].join(",");
+		return Array.from(infoDialogEl?.querySelectorAll<HTMLElement>(selector) || []);
 	}
 
 	let backendTrafficId = 0;

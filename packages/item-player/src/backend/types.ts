@@ -8,7 +8,7 @@ export type BackendScope = "delivery" | "authoring";
 
 export type BackendProvider = "custom" | "pie-api";
 
-export type BackendMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type BackendMethod = "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type BackendEndpoint =
 	| string
@@ -56,9 +56,16 @@ export type BackendDeliveryLoadContext = BackendDeliveryIdentity & {
 	requestOptions?: BackendRequestOptions;
 };
 
+export type BackendDeliveryModelIdentity = {
+	id: string;
+	element: string;
+};
+
 export type BackendDeliverySessionContext = BackendDeliveryIdentity & {
 	session: { id: string; data: unknown[] };
 	env: unknown;
+	models?: BackendDeliveryModelIdentity[];
+	passageModels?: BackendDeliveryModelIdentity[];
 	requestOptions?: BackendRequestOptions;
 };
 

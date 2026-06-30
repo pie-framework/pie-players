@@ -60,6 +60,7 @@
 		BackendAuthoringMediaConfig,
 		BackendAuthoringReleaseOptions,
 		BackendConfig,
+		BackendDeliveryModelIdentity,
 		BackendDeliveryModelResult,
 		BackendSaveContentOptions,
 		BackendScoreOptions,
@@ -1237,6 +1238,18 @@
 		};
 	}
 
+	function modelIdentitiesFor(
+		configEntity: ConfigEntity | null,
+	): BackendDeliveryModelIdentity[] | undefined {
+		const models = configEntity?.models
+			?.filter(
+				(model): model is typeof model & { id: string; element: string } =>
+					typeof model.id === "string" && typeof model.element === "string",
+			)
+			.map((model) => ({ id: model.id, element: model.element }));
+		return models && models.length > 0 ? models : undefined;
+	}
+
 	function dispatchBackendEvent(type: string, detail: Record<string, unknown>) {
 		handlePlayerEvent(
 			new CustomEvent(type, {
@@ -1358,6 +1371,8 @@
 				assignmentId: delivery.assignmentId,
 				session: sessionContainer,
 				env: envAtStart,
+				models: modelIdentitiesFor(itemConfig),
+				passageModels: modelIdentitiesFor(passageConfig),
 			});
 		} catch (errorValue) {
 			if (!isCurrentModelRefreshRequest(requestToken)) return;

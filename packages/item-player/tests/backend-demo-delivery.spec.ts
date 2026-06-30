@@ -20,17 +20,32 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	await expect(
 		page.getByRole("heading", { name: "Delivery backend integration" }),
 	).toBeVisible();
-	await expect(page.getByRole("link", { name: "Section demo" })).toHaveAttribute(
-		"data-sveltekit-reload",
-		"",
-	);
+	await expect(
+		page.getByRole("link", { name: "Section demo" }),
+	).toHaveAttribute("data-sveltekit-reload", "");
 	await expect(
 		page.getByRole("heading", { name: "What this backend demo proves" }),
 	).toBeVisible();
-	await page
-		.getByRole("dialog", { name: "What this backend demo proves" })
-		.getByRole("button", { name: "Close demo info dialog" })
-		.click();
+	const infoToggle = page.getByRole("button", {
+		name: "Toggle demo info dialog",
+	});
+	const infoDialog = page.getByRole("dialog", {
+		name: "What this backend demo proves",
+	});
+	await expect(
+		infoDialog.getByRole("button", { name: "Close demo info dialog" }),
+	).toBeFocused();
+	await page.keyboard.press("Tab");
+	await expect(
+		infoDialog.getByRole("button", { name: "Close demo info dialog" }),
+	).toBeFocused();
+	await page.keyboard.press("Shift+Tab");
+	await expect(
+		infoDialog.getByRole("button", { name: "Close demo info dialog" }),
+	).toBeFocused();
+	await page.keyboard.press("Escape");
+	await expect(infoDialog).toBeHidden();
+	await expect(infoToggle).toBeFocused();
 	await expect(
 		page.getByText(
 			"Backend demo: which is the largest planet in our solar system?",
@@ -51,8 +66,10 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	});
 	const backendStateBoxBeforeDrag = await backendStateWindow.boundingBox();
 	expect(backendStateBoxBeforeDrag).not.toBeNull();
-	const backendStateHeader = backendStateWindow.locator(":scope > header");
-	await backendStateHeader.hover();
+	const backendStateDragHandle = backendStateWindow.getByRole("button", {
+		name: "Drag Backend state tool panel",
+	});
+	await backendStateDragHandle.hover();
 	await page.mouse.down();
 	await page.mouse.move(
 		(backendStateBoxBeforeDrag?.x ?? 0) - 120,
@@ -62,7 +79,29 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	await page.mouse.up();
 	const backendStateBoxAfterDrag = await backendStateWindow.boundingBox();
 	expect(backendStateBoxAfterDrag).not.toBeNull();
-	expect(Math.abs((backendStateBoxAfterDrag?.x ?? 0) - (backendStateBoxBeforeDrag?.x ?? 0))).toBeGreaterThan(40);
+	expect(
+		Math.abs(
+			(backendStateBoxAfterDrag?.x ?? 0) - (backendStateBoxBeforeDrag?.x ?? 0),
+		),
+	).toBeGreaterThan(40);
+	await backendStateWindow
+		.getByRole("button", { name: "Drag Backend state tool panel" })
+		.focus();
+	await page.keyboard.press("ArrowRight");
+	const backendStateBoxAfterKeyboardMove =
+		await backendStateWindow.boundingBox();
+	expect(backendStateBoxAfterKeyboardMove?.x).toBeGreaterThan(
+		backendStateBoxAfterDrag?.x ?? 0,
+	);
+	await backendStateWindow
+		.getByRole("button", { name: "Resize Backend state tool panel" })
+		.focus();
+	await page.keyboard.press("ArrowRight");
+	const backendStateBoxAfterKeyboardResize =
+		await backendStateWindow.boundingBox();
+	expect(backendStateBoxAfterKeyboardResize?.width).toBeGreaterThan(
+		backendStateBoxAfterKeyboardMove?.width ?? 0,
+	);
 	await backendStateWindow.getByRole("button", { name: "Close panel" }).click();
 	await trafficWindow.getByRole("button", { name: "Close panel" }).click();
 
@@ -136,7 +175,9 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		timeout: 10_000,
 	});
 	await backendStateWindow.getByRole("button", { name: "Close panel" }).click();
-	await page.getByRole("button", { name: "Toggle backend traffic tool" }).click();
+	await page
+		.getByRole("button", { name: "Toggle backend traffic tool" })
+		.click();
 	await expect(trafficWindow).toBeVisible();
 	await expect(trafficWindow).toContainText("POST /api/player/save", {
 		timeout: 10_000,
@@ -165,12 +206,13 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
 	await expect(backendStateWindow).toBeVisible();
 	await expect(page.getByTestId("backend-outcome")).toContainText('"score": 0');
-	await page.getByRole("button", { name: "Toggle backend traffic tool" }).click();
+	await page
+		.getByRole("button", { name: "Toggle backend traffic tool" })
+		.click();
 	await expect(trafficWindow).toBeVisible();
 	await expect(trafficWindow).toContainText("POST /api/player/score", {
 		timeout: 10_000,
 	});
-
 });
 
 test("backend demo accepts answer input after directly refreshing an existing session", async ({
@@ -209,9 +251,11 @@ test("backend demo accepts answer input after directly refreshing an existing se
 		timeout: 10_000,
 	});
 	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
-	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked({
-		timeout: 2_000,
-	});
+	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked(
+		{
+			timeout: 2_000,
+		},
+	);
 	const trafficWindow = page.locator(".backend-tool-window", {
 		hasText: "Backend traffic",
 	});
@@ -240,11 +284,15 @@ test("backend demo keeps the first selected answer in a fresh backend session", 
 		name: /largest planet in our solar system/,
 	});
 	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
-	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked({
-		timeout: 2_000,
-	});
+	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked(
+		{
+			timeout: 2_000,
+		},
+	);
 	await page.waitForTimeout(1_000);
-	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked();
+	await expect(
+		answerGroup.getByRole("radio", { name: /Jupiter/ }),
+	).toBeChecked();
 
 	const trafficWindow = page.locator(".backend-tool-window", {
 		hasText: "Backend traffic",
@@ -300,8 +348,12 @@ test("backend demo updates an existing answer from the default tool state", asyn
 	await saveResponsePromise;
 	await page.waitForTimeout(500);
 
-	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked();
-	await expect(answerGroup.getByRole("radio", { name: /Earth/ })).not.toBeChecked();
+	await expect(
+		answerGroup.getByRole("radio", { name: /Jupiter/ }),
+	).toBeChecked();
+	await expect(
+		answerGroup.getByRole("radio", { name: /Earth/ }),
+	).not.toBeChecked();
 	const saved = await (
 		await page.request.get(
 			`/api/player/state?sessionId=${encodeURIComponent(testSessionId)}`,
@@ -316,4 +368,3 @@ test("backend demo updates an existing answer from the default tool state", asyn
 		]),
 	);
 });
-

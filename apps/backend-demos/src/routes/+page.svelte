@@ -3,17 +3,10 @@
 	import { page } from "$app/stores";
 	import { onMount, tick } from "svelte";
 	import "@pie-players/pie-item-player";
-	import BackendModelFlowPanel from "$lib/components/BackendModelFlowPanel.svelte";
 	import BackendStatePanel from "$lib/components/BackendStatePanel.svelte";
 	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
 	import BackendToolWindow from "$lib/components/BackendToolWindow.svelte";
 	import BackendTrafficPanel from "$lib/components/BackendTrafficPanel.svelte";
-
-	type EventLogEntry = {
-		at: string;
-		type: string;
-		detail: unknown;
-	};
 
 	type BackendTrafficEntry = {
 		id: number;
@@ -42,33 +35,26 @@
 	const defaultItemId = "backend-delivery-planets";
 	const assignmentId = "backend-demo-assignment";
 	const env = { mode: "gather", role: "student" };
-	const toolIds = ["model", "session", "events"] as const;
+	const toolIds = ["traffic", "session"] as const;
 	type ToolId = (typeof toolIds)[number];
 
 	let playerEl: any = $state(null);
 	let selectedItemId = $state(defaultItemId);
 	let sessionId = $state(`${defaultItemId}-session-1`);
 	let demoState = $state<DemoState>({});
-	let eventLog = $state<EventLogEntry[]>([]);
 	let backendTrafficLog = $state<BackendTrafficEntry[]>([]);
 	let clientSessionSnapshot = $state<unknown>(null);
 	let serverSessionSnapshot = $state<unknown>(null);
-	let backendModel = $state<unknown>(null);
 	let serverScore = $state<unknown>(null);
 	let busyMessage = $state("");
 	let errorMessage = $state("");
-	let showModelPanel = $state(false);
+	let showTrafficPanel = $state(false);
 	let showSessionPanel = $state(false);
-	let showEventsPanel = $state(false);
 	let showInfoDialog = $state(false);
 	const availableItems = $derived(demoState.items || []);
 	const selectedItem = $derived(
 		availableItems.find((item) => item.id === selectedItemId) || null,
 	);
-	const databaseMetadata = $derived({
-		dbPath: demoState.dbPath,
-		sessions: demoState.sessions,
-	});
 
 	function defaultSessionIdForItem(itemId: string): string {
 		return `${itemId}-session-1`;
@@ -138,19 +124,7 @@
 	function clearDemoSnapshots() {
 		clientSessionSnapshot = null;
 		serverSessionSnapshot = null;
-		backendModel = null;
 		serverScore = null;
-	}
-
-	function logEvent(type: string, detail: unknown) {
-		eventLog = [
-			{
-				at: new Date().toLocaleTimeString(),
-				type,
-				detail,
-			},
-			...eventLog,
-		].slice(0, 18);
 	}
 
 	let backendTrafficId = 0;
@@ -493,9 +467,8 @@
 		if (sessionId !== routedSessionId) {
 			sessionId = routedSessionId;
 		}
-		showModelPanel = tools.has("model");
+		showTrafficPanel = tools.has("traffic");
 		showSessionPanel = tools.has("session");
-		showEventsPanel = tools.has("events");
 		showInfoDialog = $page.url.searchParams.get("info") === "1";
 	});
 
@@ -525,7 +498,6 @@
 		const handlers = eventTypes.map((type) => {
 			const handler = (event: Event) => {
 				const detail = (event as CustomEvent).detail;
-				logEvent(type, detail);
 				if (type === "backend-load-complete") {
 					const loadedSession = (detail as any)?.session;
 					if (loadedSession?.id) {
@@ -533,7 +505,6 @@
 					}
 					clientSessionSnapshot = loadedSession ?? null;
 					void refreshServerSnapshot();
-					void refreshBackendModelSnapshot();
 					void finalizeBackendPlayerLoad();
 				}
 				if (type === "backend-model-complete") {
@@ -588,7 +559,7 @@
 			await playerEl?.loadFromBackend("delivery");
 			await loadComplete;
 			await finalizeBackendPlayerLoad();
-			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
+			await refreshServerSnapshot();
 		});
 	}
 
@@ -598,14 +569,13 @@
 			await setSessionIdParam(sessionId);
 			clientSessionSnapshot = null;
 			serverSessionSnapshot = null;
-			backendModel = null;
 			serverScore = null;
 			await tick();
 			const loadComplete = waitForPlayerLoadComplete();
 			await playerEl?.loadFromBackend("delivery");
 			await loadComplete;
 			await finalizeBackendPlayerLoad();
-			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
+			await refreshServerSnapshot();
 		});
 	}
 
@@ -638,13 +608,6 @@
 		});
 	}
 
-	async function refreshBackendModelSnapshot() {
-		backendModel = await recordBackendTraffic("model", "/api/player/model", {
-			itemId: selectedItemId,
-			sessionId,
-			env,
-		});
-	}
 </script>
 
 <svelte:head>
@@ -663,7 +626,11 @@
 				</h1>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
-				<a class="btn btn-sm btn-outline" href="/section/backend-section-basic">
+				<a
+					class="btn btn-sm btn-outline"
+					href="/section/backend-section-basic"
+					data-sveltekit-reload
+				>
 					Section demo
 				</a>
 				<button
@@ -730,12 +697,10 @@
 
 				<div class="flex flex-wrap items-center justify-between gap-3 border-t border-base-300 pt-3">
 					<BackendToolBar
-						{showModelPanel}
+						{showTrafficPanel}
 						{showSessionPanel}
-						{showEventsPanel}
-						onToggleModelPanel={() => setToolOpen("model", !showModelPanel)}
+						onToggleTrafficPanel={() => setToolOpen("traffic", !showTrafficPanel)}
 						onToggleSessionPanel={() => setToolOpen("session", !showSessionPanel)}
-						onToggleEventsPanel={() => setToolOpen("events", !showEventsPanel)}
 					/>
 					<div class="badge badge-primary badge-outline">backend delivery</div>
 				</div>
@@ -815,24 +780,20 @@
 			</div>
 		{/if}
 
-		{#if showModelPanel}
+		{#if showTrafficPanel}
 			<BackendToolWindow
-				title="Backend model flow"
-				ariaLabel="Backend model flow tool"
+				title="Backend traffic"
+				ariaLabel="Backend traffic tool"
 				offset={0}
 				widthClass="w-[min(48rem,calc(100vw-2rem))]"
-				onClose={() => setToolOpen("model", false)}
+				onClose={() => setToolOpen("traffic", false)}
 			>
 				{#snippet icon()}
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 6h6m-6 4h6m-7 4h8m-9 6h10a2 2 0 002-2V6.5L14.5 2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0l-3-3m3 3l-3 3M3 17h8m0 0l-3-3m3 3l-3 3M3 7h5m8 10h5" />
 					</svg>
 				{/snippet}
-				<BackendModelFlowPanel
-					rawConfig={selectedItem?.config ?? null}
-					processedModel={backendModel}
-					{databaseMetadata}
-				/>
+				<BackendTrafficPanel entries={backendTrafficLog} />
 			</BackendToolWindow>
 		{/if}
 
@@ -857,21 +818,5 @@
 			</BackendToolWindow>
 		{/if}
 
-		{#if showEventsPanel}
-			<BackendToolWindow
-				title="Backend traffic"
-				ariaLabel="Backend traffic tool"
-				offset={2}
-				widthClass="w-[min(48rem,calc(100vw-2rem))]"
-				onClose={() => setToolOpen("events", false)}
-			>
-				{#snippet icon()}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0l-3-3m3 3l-3 3M3 17h8m0 0l-3-3m3 3l-3 3M3 7h5m8 10h5" />
-					</svg>
-				{/snippet}
-				<BackendTrafficPanel entries={backendTrafficLog} />
-			</BackendToolWindow>
-		{/if}
 	</div>
 </main>

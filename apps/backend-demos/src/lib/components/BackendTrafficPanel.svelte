@@ -19,6 +19,7 @@
 	}
 
 	let { entries }: Props = $props();
+	const newestEntryId = $derived(entries[0]?.id ?? null);
 
 	const operationLabel: Record<string, string> = {
 		load: "Load item + session",
@@ -45,8 +46,12 @@
 		</p>
 	{:else}
 		<ol class="grid gap-4" aria-label="Recorded backend traffic">
-			{#each entries as entry}
-				<li class="rounded-box border border-base-300 bg-base-100">
+			{#each entries as entry (entry.id)}
+				<li
+					class={`backend-traffic-entry rounded-box border border-base-300 bg-base-100 ${
+						entry.id === newestEntryId ? "backend-traffic-entry--latest" : ""
+					}`}
+				>
 					<article>
 						<header class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 px-4 py-3">
 							<div class="min-w-0">
@@ -113,3 +118,52 @@
 		</ol>
 	{/if}
 </div>
+
+<style>
+	.backend-traffic-entry {
+		position: relative;
+		overflow: hidden;
+		transform-origin: top center;
+	}
+
+	.backend-traffic-entry--latest {
+		animation:
+			backend-traffic-entry-in 180ms ease-out,
+			backend-traffic-entry-pulse 1200ms ease-out;
+	}
+
+	@keyframes backend-traffic-entry-in {
+		from {
+			opacity: 0;
+			transform: translateY(-0.35rem);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes backend-traffic-entry-pulse {
+		0% {
+			background-color: color-mix(
+				in oklab,
+				var(--color-primary, currentColor) 18%,
+				transparent
+			);
+			box-shadow: 0 0 0 2px
+				color-mix(in oklab, var(--color-primary, currentColor) 42%, transparent);
+		}
+
+		100% {
+			background-color: transparent;
+			box-shadow: 0 0 0 0 transparent;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.backend-traffic-entry--latest {
+			animation: none;
+		}
+	}
+</style>

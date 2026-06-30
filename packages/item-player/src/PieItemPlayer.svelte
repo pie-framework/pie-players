@@ -1074,14 +1074,16 @@
 		const shouldForceBackendReplacement =
 			backendSessionReplacementRevision !== lastAppliedBackendSessionReplacementRevision;
 		const controllerItemId = itemConfig?.id || "pie-item-player";
-		const controller = ensureSessionController(controllerItemId, parsed);
-		// Do not let metadata-only prop churn wipe user responses already in the controller.
-		syncControllerSession(controller, parsed, {
-			allowMetadataOverwrite: shouldForceBackendReplacement,
+		untrack(() => {
+			const controller = ensureSessionController(controllerItemId, parsed);
+			// Do not let metadata-only prop churn wipe user responses already in the controller.
+			syncControllerSession(controller, parsed, {
+				allowMetadataOverwrite: shouldForceBackendReplacement,
+			});
+			if (shouldForceBackendReplacement) {
+				lastAppliedBackendSessionReplacementRevision = backendSessionReplacementRevision;
+			}
 		});
-		if (shouldForceBackendReplacement) {
-			lastAppliedBackendSessionReplacementRevision = backendSessionReplacementRevision;
-		}
 	});
 
 	const allowedStyleOriginList = $derived(

@@ -6,7 +6,7 @@
 	import "@pie-players/pie-section-player/components/section-player-vertical-element";
 	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
 	import BackendToolWindow from "$lib/components/BackendToolWindow.svelte";
-	import EventLogPanel from "$lib/components/EventLogPanel.svelte";
+	import BackendTrafficPanel from "$lib/components/BackendTrafficPanel.svelte";
 	import JsonInspectPanel from "$lib/components/JsonInspectPanel.svelte";
 
 	type DemoItemId =
@@ -14,11 +14,6 @@
 		| "backend-delivery-arithmetic";
 	type LayoutId = "vertical" | "splitpane";
 	type ToolId = (typeof toolIds)[number];
-	type EventLogEntry = {
-		at: string;
-		type: string;
-		detail: unknown;
-	};
 	type BackendCallEntry = {
 		at: string;
 		itemId: string | null;
@@ -26,6 +21,18 @@
 		assignmentId: string | null;
 		metadata: unknown;
 		session: unknown;
+	};
+	type BackendTrafficEntry = {
+		id: number;
+		at: string;
+		operation: string;
+		method: string;
+		url: string;
+		status?: number;
+		durationMs?: number;
+		request: unknown;
+		response?: unknown;
+		error?: string;
 	};
 	type SectionPlayerElement = HTMLElement & {
 		waitForSectionController?: (
@@ -45,7 +52,7 @@
 		"backend-delivery-planets",
 		"backend-delivery-arithmetic",
 	];
-	const toolIds = ["model", "session", "events"] as const;
+	const toolIds = ["traffic", "session"] as const;
 	const env = { mode: "gather", role: "student" };
 
 	let sectionPlayerEl: SectionPlayerElement | null = $state(null);
@@ -53,15 +60,14 @@
 	let sectionId = $state(defaultSectionId);
 	let attemptId = $state(defaultAttemptId);
 	let layout = $state<LayoutId>("vertical");
-	let showModelPanel = $state(false);
+	let showTrafficPanel = $state(false);
 	let showSessionPanel = $state(false);
-	let showEventsPanel = $state(false);
 	let showInfoDialog = $state(false);
 	let backendDeliveryEnabled = $state(false);
 	let hydrationStatus = $state("Preparing deterministic section sessions");
 	let errorMessage = $state("");
-	let eventLog = $state<EventLogEntry[]>([]);
 	let backendCalls = $state<BackendCallEntry[]>([]);
+	let backendTrafficLog = $state<BackendTrafficEntry[]>([]);
 	let lastInfoFocusTarget: HTMLElement | null = null;
 	let infoButtonEl: HTMLButtonElement | null = $state(null);
 	let infoDialogEl: HTMLDivElement | null = $state(null);
@@ -211,6 +217,48 @@
 					model: "/api/player/model",
 					score: "/api/player/score",
 				},
+				client: {
+					load: (context: Record<string, unknown>) =>
+						recordBackendTraffic("load", "/api/player/load", {
+							itemId: context.itemId,
+							sessionId: context.sessionId,
+							assignmentId: context.assignmentId,
+							env: context.env,
+						}),
+					model: (context: Record<string, unknown>) =>
+						recordBackendTraffic("model", "/api/player/model", {
+							itemId: context.itemId,
+							sessionId: context.sessionId,
+							assignmentId: context.assignmentId,
+							session: context.session,
+							env: context.env,
+						}),
+					saveSession: (context: Record<string, unknown>) => {
+						const session = context.session as
+							| { id?: string; data?: unknown[] }
+							| undefined;
+						return recordBackendTraffic("saveSession", "/api/player/save", {
+							itemId: context.itemId,
+							sessionId: session?.id || context.sessionId,
+							data: Array.isArray(session?.data) ? session.data : [],
+							env: context.env,
+						});
+					},
+					score: (context: Record<string, unknown>) => {
+						const session = context.session as
+							| { id?: string; data?: unknown[] }
+							| undefined;
+						const options = context.options as
+							| { disablePartialScoring?: boolean }
+							| undefined;
+						return recordBackendTraffic("score", "/api/player/score", {
+							sessionId: session?.id || context.sessionId,
+							data: Array.isArray(session?.data) ? session.data : [],
+							env: context.env,
+							disablePartialScoring: options?.disablePartialScoring,
+						});
+					},
+				},
 			},
 		};
 	}
@@ -305,15 +353,68 @@
 		});
 	}
 
-	function logEvent(type: string, detail: unknown) {
-		eventLog = [
+	let backendTrafficId = 0;
+
+	async function recordBackendTraffic(
+		operation: string,
+		url: string,
+		requestBody: Record<string, unknown>,
+	): Promise<unknown> {
+		const startedAt = performance.now();
+		let response: Response;
+		let responsePayload: unknown = null;
+		try {
+			response = await fetch(url, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+				},
+				body: JSON.stringify(requestBody),
+			});
+			responsePayload = await response
+				.clone()
+				.json()
+				.catch(async () => response.clone().text().catch(() => null));
+		} catch (error) {
+			backendTrafficLog = [
+				{
+					id: ++backendTrafficId,
+					at: new Date().toLocaleTimeString(),
+					operation,
+					method: "POST",
+					url,
+					durationMs: Math.round(performance.now() - startedAt),
+					request: requestBody,
+					response: responsePayload,
+					error: error instanceof Error ? error.message : String(error),
+				},
+				...backendTrafficLog,
+			].slice(0, 30);
+			throw error;
+		}
+
+		const requestErrorMessage = response.ok
+			? ""
+			: `Backend ${operation} request failed with HTTP ${response.status}`;
+		backendTrafficLog = [
 			{
+				id: ++backendTrafficId,
 				at: new Date().toLocaleTimeString(),
-				type,
-				detail,
+				operation,
+				method: "POST",
+				url,
+				status: response.status,
+				durationMs: Math.round(performance.now() - startedAt),
+				request: requestBody,
+				response: responsePayload,
+				error: requestErrorMessage || undefined,
 			},
-			...eventLog,
-		].slice(0, 24);
+			...backendTrafficLog,
+		].slice(0, 30);
+		if (requestErrorMessage) {
+			throw new Error(requestErrorMessage);
+		}
+		return responsePayload;
 	}
 
 	function handleBackendLoadComplete(event: Event) {
@@ -332,12 +433,11 @@
 			session,
 		};
 		backendCalls = [entry, ...backendCalls].slice(0, 12);
-		logEvent("backend-load-complete", detail);
 		scheduleSectionPieElementRepair();
 	}
 
-	function handleSectionEvent(event: Event) {
-		logEvent(event.type, (event as CustomEvent).detail ?? {});
+	function handleSectionError(event: Event) {
+		errorMessage = JSON.stringify((event as CustomEvent).detail ?? {}, null, 2);
 	}
 
 	async function hydrateSectionSessionForBackend(key: string) {
@@ -347,6 +447,7 @@
 		errorMessage = "";
 		backendDeliveryEnabled = false;
 		backendCalls = [];
+		backendTrafficLog = [];
 		await tick();
 		try {
 			const controller = await player.waitForSectionController?.(5000);
@@ -415,12 +516,12 @@
 			if (attemptId !== routedAttemptId || layout !== routedLayout) {
 				backendDeliveryEnabled = false;
 				backendCalls = [];
+				backendTrafficLog = [];
 			}
 			attemptId = routedAttemptId;
 			layout = routedLayout;
-			showModelPanel = tools.has("model");
+			showTrafficPanel = tools.has("traffic");
 			showSessionPanel = tools.has("session");
-			showEventsPanel = tools.has("events");
 			showInfoDialog = infoOpen;
 		});
 	});
@@ -447,14 +548,12 @@
 		const host = sectionEventHost;
 		if (!host) return;
 		host.addEventListener("backend-load-complete", handleBackendLoadComplete);
-		host.addEventListener("backend-error", handleSectionEvent);
-		host.addEventListener("session-changed", handleSectionEvent);
-		host.addEventListener("player-error", handleSectionEvent);
+		host.addEventListener("backend-error", handleSectionError);
+		host.addEventListener("player-error", handleSectionError);
 		return () => {
 			host.removeEventListener("backend-load-complete", handleBackendLoadComplete);
-			host.removeEventListener("backend-error", handleSectionEvent);
-			host.removeEventListener("session-changed", handleSectionEvent);
-			host.removeEventListener("player-error", handleSectionEvent);
+			host.removeEventListener("backend-error", handleSectionError);
+			host.removeEventListener("player-error", handleSectionError);
 		};
 	});
 </script>
@@ -477,7 +576,11 @@
 				</h1>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
-				<a class="btn btn-sm btn-outline" href="/delivery/backend-delivery-planets">
+				<a
+					class="btn btn-sm btn-outline"
+					href="/delivery/backend-delivery-planets"
+					data-sveltekit-reload
+				>
 					Item demo
 				</a>
 				<button
@@ -533,7 +636,11 @@
 					</label>
 
 					<div class="flex flex-wrap gap-2 lg:justify-end">
-						<a class="btn btn-outline btn-sm" href="/delivery/backend-delivery-planets">
+						<a
+							class="btn btn-outline btn-sm"
+							href="/delivery/backend-delivery-planets"
+							data-sveltekit-reload
+						>
 							Direct item demo
 						</a>
 						<span class="badge badge-primary badge-outline">section backend</span>
@@ -542,12 +649,10 @@
 
 				<div class="flex flex-wrap items-center justify-between gap-3 border-t border-base-300 pt-3">
 					<BackendToolBar
-						{showModelPanel}
+						{showTrafficPanel}
 						{showSessionPanel}
-						{showEventsPanel}
-						onToggleModelPanel={() => setToolOpen("model", !showModelPanel)}
+						onToggleTrafficPanel={() => setToolOpen("traffic", !showTrafficPanel)}
 						onToggleSessionPanel={() => setToolOpen("session", !showSessionPanel)}
-						onToggleEventsPanel={() => setToolOpen("events", !showEventsPanel)}
 					/>
 					<p class="text-sm text-base-content/70">
 						One shared <code class="kbd kbd-sm">runtime.player.backend.delivery</code>
@@ -658,26 +763,6 @@
 			</div>
 		{/if}
 
-		{#if showModelPanel}
-			<BackendToolWindow
-				title="Section backend seed"
-				ariaLabel="Section backend seed tool"
-				offset={0}
-				widthClass="w-[min(48rem,calc(100vw-2rem))]"
-				onClose={() => setToolOpen("model", false)}
-			>
-				{#snippet icon()}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 6h6m-6 4h6m-7 4h8m-9 6h10a2 2 0 002-2V6.5L14.5 2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-					</svg>
-				{/snippet}
-				<JsonInspectPanel
-					value={demoSection}
-					description="Client-side section seed. It deliberately omits controller-only answer and feedback data."
-				/>
-			</BackendToolWindow>
-		{/if}
-
 		{#if showSessionPanel}
 			<BackendToolWindow
 				title="Backend state"
@@ -702,20 +787,20 @@
 			</BackendToolWindow>
 		{/if}
 
-		{#if showEventsPanel}
+		{#if showTrafficPanel}
 			<BackendToolWindow
-				title="Event stream"
-				ariaLabel="Section backend event stream tool"
-				offset={2}
+				title="Backend traffic"
+				ariaLabel="Section backend traffic tool"
+				offset={0}
 				widthClass="w-[min(48rem,calc(100vw-2rem))]"
-				onClose={() => setToolOpen("events", false)}
+				onClose={() => setToolOpen("traffic", false)}
 			>
 				{#snippet icon()}
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0l-3-3m3 3l-3 3M3 17h8m0 0l-3-3m3 3l-3 3M3 7h5m8 10h5" />
 					</svg>
 				{/snippet}
-				<EventLogPanel entries={eventLog} />
+				<BackendTrafficPanel entries={backendTrafficLog} />
 			</BackendToolWindow>
 		{/if}
 	</div>

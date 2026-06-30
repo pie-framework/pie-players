@@ -13,13 +13,17 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 }) => {
 	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
 	await page.goto(
-		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=session,events&info=1`,
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=traffic,session&info=1`,
 		{ waitUntil: "networkidle" },
 	);
 	await expect(page).toHaveURL(/\/delivery\/backend-delivery-planets/);
 	await expect(
 		page.getByRole("heading", { name: "Delivery backend integration" }),
 	).toBeVisible();
+	await expect(page.getByRole("link", { name: "Section demo" })).toHaveAttribute(
+		"data-sveltekit-reload",
+		"",
+	);
 	await expect(
 		page.getByRole("heading", { name: "What this backend demo proves" }),
 	).toBeVisible();
@@ -37,7 +41,14 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	const backendStateWindow = page.locator(".backend-tool-window", {
 		hasText: "Backend state",
 	});
+	const trafficWindow = page.locator(".backend-tool-window", {
+		hasText: "Backend traffic",
+	});
 	await expect(backendStateWindow).toBeVisible();
+	await expect(trafficWindow).toBeVisible();
+	await expect(trafficWindow).toContainText("POST /api/player/load", {
+		timeout: 10_000,
+	});
 	const backendStateBoxBeforeDrag = await backendStateWindow.boundingBox();
 	expect(backendStateBoxBeforeDrag).not.toBeNull();
 	const backendStateHeader = backendStateWindow.locator(":scope > header");
@@ -52,6 +63,8 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	const backendStateBoxAfterDrag = await backendStateWindow.boundingBox();
 	expect(backendStateBoxAfterDrag).not.toBeNull();
 	expect(Math.abs((backendStateBoxAfterDrag?.x ?? 0) - (backendStateBoxBeforeDrag?.x ?? 0))).toBeGreaterThan(40);
+	await backendStateWindow.getByRole("button", { name: "Close panel" }).click();
+	await trafficWindow.getByRole("button", { name: "Close panel" }).click();
 
 	const rawState = await (await page.request.get("/api/player/state")).json();
 	expect(JSON.stringify(rawState.items)).toContain('"correct":true');
@@ -93,15 +106,23 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 			],
 		},
 	});
+	const reloadSavedSessionPromise = page.waitForResponse((response) => {
+		const request = response.request();
+		return (
+			response.url().includes("/api/player/load") &&
+			request.method() === "POST" &&
+			(request.postData() || "").includes(testSessionId)
+		);
+	});
 	await page.getByRole("button", { name: "Load current session" }).click();
+	await reloadSavedSessionPromise;
+	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
+	await expect(backendStateWindow).toBeVisible();
 	await expect(page.getByTestId("client-session")).toContainText("mars", {
 		timeout: 10_000,
 	});
 	await expect(page.getByRole("radio", { name: /Mars/ })).toBeChecked();
-	const trafficWindow = page.locator(".backend-tool-window", {
-		hasText: "Backend traffic",
-	});
-	await expect(trafficWindow).toBeVisible();
+	await backendStateWindow.getByRole("button", { name: "Close panel" }).click();
 	const saveResponsePromise = page.waitForResponse(
 		(response) =>
 			response.url().includes("/api/player/save") &&
@@ -109,9 +130,14 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	);
 	await page.getByRole("button", { name: "saveSession()" }).click();
 	await saveResponsePromise;
+	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
+	await expect(backendStateWindow).toBeVisible();
 	await expect(page.getByTestId("stored-session")).toContainText("mars", {
 		timeout: 10_000,
 	});
+	await backendStateWindow.getByRole("button", { name: "Close panel" }).click();
+	await page.getByRole("button", { name: "Toggle backend traffic tool" }).click();
+	await expect(trafficWindow).toBeVisible();
 	await expect(trafficWindow).toContainText("POST /api/player/save", {
 		timeout: 10_000,
 	});
@@ -123,6 +149,7 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		)
 	).json();
 	expect(JSON.stringify(savedBeforeScore.session?.data)).toContain("mars");
+	await trafficWindow.getByRole("button", { name: "Close panel" }).click();
 
 	const scoreResponsePromise = page.waitForResponse(
 		(response) =>
@@ -135,7 +162,11 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	expect(scorePayload).toEqual(
 		expect.arrayContaining([expect.objectContaining({ score: 0 })]),
 	);
+	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
+	await expect(backendStateWindow).toBeVisible();
 	await expect(page.getByTestId("backend-outcome")).toContainText('"score": 0');
+	await page.getByRole("button", { name: "Toggle backend traffic tool" }).click();
+	await expect(trafficWindow).toBeVisible();
 	await expect(trafficWindow).toContainText("POST /api/player/score", {
 		timeout: 10_000,
 	});
@@ -161,7 +192,7 @@ test("backend demo accepts answer input after directly refreshing an existing se
 		},
 	});
 	await page.goto(
-		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=events`,
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=traffic`,
 		{ waitUntil: "networkidle" },
 	);
 	await expect(
@@ -195,7 +226,7 @@ test("backend demo keeps the first selected answer in a fresh backend session", 
 }) => {
 	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
 	await page.goto(
-		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=events`,
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}&tools=traffic`,
 		{ waitUntil: "networkidle" },
 	);
 	await expect(
@@ -222,5 +253,67 @@ test("backend demo keeps the first selected answer in a fresh backend session", 
 		timeout: 10_000,
 	});
 	await expect(trafficWindow).toContainText('"jupiter"');
+});
+
+test("backend demo updates an existing answer from the default tool state", async ({
+	page,
+}) => {
+	const testSessionId = `backend-delivery-planets-session-${Date.now()}`;
+	await page.request.post("/api/player/save", {
+		data: {
+			itemId: "backend-delivery-planets",
+			sessionId: testSessionId,
+			data: [
+				{
+					id: "planet-choice",
+					element: "multiple-choice--version-latest",
+					value: ["earth"],
+					selector: "Test",
+				},
+			],
+		},
+	});
+	await page.goto(
+		`/delivery/backend-delivery-planets?sessionId=${encodeURIComponent(testSessionId)}`,
+		{ waitUntil: "networkidle" },
+	);
+	await expect(
+		page.getByText(
+			"Backend demo: which is the largest planet in our solar system?",
+			{ exact: true },
+		),
+	).toBeVisible({ timeout: 30_000 });
+
+	const answerGroup = page.getByRole("radiogroup", {
+		name: /largest planet in our solar system/,
+	});
+	await expect(answerGroup.getByRole("radio", { name: /Earth/ })).toBeChecked({
+		timeout: 10_000,
+	});
+
+	const saveResponsePromise = page.waitForResponse(
+		(response) =>
+			response.url().includes("/api/player/save") &&
+			response.request().method() === "POST",
+	);
+	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
+	await saveResponsePromise;
+	await page.waitForTimeout(500);
+
+	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked();
+	await expect(answerGroup.getByRole("radio", { name: /Earth/ })).not.toBeChecked();
+	const saved = await (
+		await page.request.get(
+			`/api/player/state?sessionId=${encodeURIComponent(testSessionId)}`,
+		)
+	).json();
+	expect(saved.session?.data).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				id: "planet-choice",
+				value: ["jupiter"],
+			}),
+		]),
+	);
 });
 

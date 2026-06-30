@@ -64,7 +64,7 @@ test("section backend demo derives per-item delivery calls from one section conf
 	});
 
 	await page.goto(
-		`/section/backend-section-basic?attemptId=${encodeURIComponent(attemptId)}&tools=session&info=1`,
+		`/section/backend-section-basic?attemptId=${encodeURIComponent(attemptId)}&tools=traffic,session&info=1`,
 		{ waitUntil: "networkidle" },
 	);
 
@@ -72,6 +72,9 @@ test("section backend demo derives per-item delivery calls from one section conf
 	await expect(
 		page.getByRole("heading", { name: "Section backend integration" }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: "Item demo", exact: true }),
+	).toHaveAttribute("data-sveltekit-reload", "");
 
 	const dialog = page.getByRole("dialog", {
 		name: "What this section backend demo proves",
@@ -102,6 +105,13 @@ test("section backend demo derives per-item delivery calls from one section conf
 	await expect(
 		page.locator(".backend-tool-window", { hasText: "Backend state" }),
 	).toBeVisible();
+	const trafficWindow = page.locator(".backend-tool-window", {
+		hasText: "Backend traffic",
+	});
+	await expect(trafficWindow).toBeVisible();
+	await expect(trafficWindow).toContainText("POST /api/player/load", {
+		timeout: 30_000,
+	});
 	await page
 		.locator(".backend-tool-window", { hasText: "Backend state" })
 		.getByRole("button", { name: "Close panel" })
@@ -152,6 +162,12 @@ test("section backend demo derives per-item delivery calls from one section conf
 		`${attemptId}-backend-delivery-planets`,
 	);
 	await expect(page.getByTestId("section-backend-calls")).toContainText(
+		`${attemptId}-backend-delivery-arithmetic`,
+	);
+	await expect(trafficWindow).toContainText(
+		`${attemptId}-backend-delivery-planets`,
+	);
+	await expect(trafficWindow).toContainText(
 		`${attemptId}-backend-delivery-arithmetic`,
 	);
 	const rawScriptErrors = await page.evaluate(

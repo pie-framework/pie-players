@@ -552,7 +552,9 @@ test.describe("section player demo tts-ssml", () => {
 			}
 			if (layout.mode === "expanding-row") {
 				const beforeSpeedSpeaks = await readBrowserTtsSpeaks(page);
-				await panel.getByRole("button", { name: "Speed 1.25x" }).click();
+				await panel
+					.getByRole("radio", { name: /^(Fast speed|Speed 1\.25x)$/ })
+					.click();
 				await expect
 					.poll(async () => (await readBrowserTtsSpeaks(page)).length)
 					.toBeGreaterThan(beforeSpeedSpeaks.length);
@@ -770,19 +772,35 @@ test.describe("section player demo tts-ssml", () => {
 				'[role="toolbar"][aria-label="Reading controls"]',
 			);
 			await expect(passagePanel).toBeVisible();
-			const passageSpeedSlow = passagePanel.getByRole("button", {
-				name: "Speed 0.8x",
+			const passageSpeedGroup = passagePanel.getByRole("radiogroup", {
+				name: "Playback speed",
 			});
-			const passageSpeedFast = passagePanel.getByRole("button", {
-				name: "Speed 1.25x",
+			await expect(passageSpeedGroup).toBeVisible();
+			const passageSpeedSlow = passageSpeedGroup.getByRole("radio", {
+				name: "Slow speed",
 			});
-			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
-			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
+			const passageSpeedNormal = passageSpeedGroup.getByRole("radio", {
+				name: "Normal speed",
+			});
+			const passageSpeedFast = passageSpeedGroup.getByRole("radio", {
+				name: "Fast speed",
+			});
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "true");
+			await expect(passageSpeedFast).toHaveAttribute("aria-checked", "false");
 			await passageSpeedSlow.evaluate((element) =>
 				(element as HTMLButtonElement).click(),
 			);
-			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "true");
-			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "true");
+			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedFast).toHaveAttribute("aria-checked", "false");
+			await passageSpeedSlow.focus();
+			await page.keyboard.press("ArrowRight");
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "true");
+			await expect(passageSpeedNormal).toBeFocused();
+			await page.keyboard.press("Space");
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "true");
 			const calcTopWhileVisible = await itemCalculatorButton.evaluate(
 				(element) => element.getBoundingClientRect().top,
 			);
@@ -798,13 +816,15 @@ test.describe("section player demo tts-ssml", () => {
 			await passageSpeedFast.evaluate((element) =>
 				(element as HTMLButtonElement).click(),
 			);
-			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
-			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "true");
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedFast).toHaveAttribute("aria-checked", "true");
 			await passageSpeedFast.evaluate((element) =>
 				(element as HTMLButtonElement).click(),
 			);
-			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
-			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedFast).toHaveAttribute("aria-checked", "true");
 			await page.waitForTimeout(TTS_PREVIEW_MS);
 			await expect(passagePanel).toBeVisible();
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
@@ -837,14 +857,22 @@ test.describe("section player demo tts-ssml", () => {
 			});
 			await passageTrigger.click();
 			await expect(passagePanel).toBeVisible();
-			const labeledSlow = passagePanel.getByRole("button", {
+			const labeledSpeedGroup = passagePanel.getByRole("radiogroup", {
+				name: "Playback speed",
+			});
+			const labeledSlow = labeledSpeedGroup.getByRole("radio", {
 				name: "Slow speed",
 			});
-			const labeledFast = passagePanel.getByRole("button", {
+			const labeledNormal = labeledSpeedGroup.getByRole("radio", {
+				name: "Normal speed",
+			});
+			const labeledFast = labeledSpeedGroup.getByRole("radio", {
 				name: "Fast speed",
 			});
 			await expect(labeledSlow).toHaveText("Slow");
+			await expect(labeledNormal).toHaveText("Normal");
 			await expect(labeledFast).toHaveText("Fast");
+			await expect(labeledNormal).toHaveAttribute("aria-checked", "true");
 			const beforeLabeledSpeedSpeaks = await readBrowserTtsSpeaks(page);
 			await labeledFast.click();
 			await expect
@@ -852,8 +880,9 @@ test.describe("section player demo tts-ssml", () => {
 				.toBeGreaterThan(beforeLabeledSpeedSpeaks.length);
 			const afterLabeledSpeedSpeaks = await readBrowserTtsSpeaks(page);
 			expect(afterLabeledSpeedSpeaks.at(-1)?.rate).toBe(1.5);
-			await expect(labeledSlow).toHaveAttribute("aria-pressed", "false");
-			await expect(labeledFast).toHaveAttribute("aria-pressed", "true");
+			await expect(labeledSlow).toHaveAttribute("aria-checked", "false");
+			await expect(labeledNormal).toHaveAttribute("aria-checked", "false");
+			await expect(labeledFast).toHaveAttribute("aria-checked", "true");
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(passagePanel).toHaveCount(0);
 
@@ -1328,10 +1357,12 @@ test.describe("section player demo tts-ssml", () => {
 		const speedButtons = passagePanel.locator(
 			".pie-tool-tts-inline__control--speed",
 		);
-		await expect(speedButtons).toHaveCount(3);
+		await expect(speedButtons).toHaveCount(4);
 		await expect(speedButtons.nth(0)).toContainText("2x");
 		await expect(speedButtons.nth(1)).toContainText("1.25x");
 		await expect(speedButtons.nth(2)).toContainText("1.5x");
+		await expect(speedButtons.nth(3)).toContainText("Normal");
+		await expect(speedButtons.nth(3)).toHaveAttribute("aria-checked", "true");
 		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(passagePanel).toHaveCount(0);
 
@@ -1353,6 +1384,9 @@ test.describe("section player demo tts-ssml", () => {
 			.getByRole("button", { name: "Play reading" })
 			.click();
 		await expect(passagePanel).toBeVisible();
+		await expect
+			.poll(async () => (await readBrowserTtsSpeaks(page)).at(-1)?.rate)
+			.toBe(1);
 		await expect(
 			passagePanel.locator(".pie-tool-tts-inline__control--speed"),
 		).toHaveCount(0);

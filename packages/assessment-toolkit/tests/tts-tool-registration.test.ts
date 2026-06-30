@@ -68,9 +68,15 @@ describe("ttsToolRegistration speed options", () => {
 			speedOptions?: unknown[];
 		};
 		expect(element?.speedOptions).toEqual([
-			{ rate: 2, label: "2x", ariaLabel: "Speed 2x" },
-			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
-			{ rate: 1.5, label: "1.5x", ariaLabel: "Speed 1.5x" },
+			{ rate: 2, label: "2x", ariaLabel: "Speed 2x", isDefault: false },
+			{
+				rate: 1.25,
+				label: "1.25x",
+				ariaLabel: "Speed 1.25x",
+				isDefault: false,
+			},
+			{ rate: 1.5, label: "1.5x", ariaLabel: "Speed 1.5x", isDefault: false },
+			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 		]);
 	});
 
@@ -109,8 +115,14 @@ describe("ttsToolRegistration speed options", () => {
 			speedOptions?: unknown[];
 		};
 		expect(element?.speedOptions).toEqual([
-			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
+			{
+				rate: 1,
+				label: "Normal",
+				ariaLabel: "Normal speed",
+				isDefault: true,
+			},
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
 	});
 
@@ -127,7 +139,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: ["fast", null, -2, 1] },
+					settings: { speedOptions: ["fast", null, -2] },
 				}),
 			} as any,
 			ttsService: null,
@@ -144,8 +156,14 @@ describe("ttsToolRegistration speed options", () => {
 			speedOptions?: unknown[];
 		};
 		expect(element?.speedOptions).toEqual([
-			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x" },
-			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
+			{
+				rate: 1,
+				label: "Normal",
+				ariaLabel: "Normal speed",
+				isDefault: true,
+			},
+			{ rate: 1.25, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
 	});
 
@@ -283,6 +301,41 @@ describe("ttsToolRegistration speed options", () => {
 		expect(renderResult).not.toBeNull();
 		renderResult?.sync?.();
 		expect(ensureCalls).toBe(0);
+	});
+
+	test("passes one-option visibility opt-in to inline element", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-one-option",
+				itemId: "item-one-option",
+			},
+			itemId: "item-one-option",
+			catalogId: "item-one-option",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({
+					settings: {
+						speedOptions: [{ rate: 1, label: "Normal" }],
+						showSingleSpeedOption: true,
+					},
+				}),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const element = renderResult?.elements?.[0]?.element as {
+			showSingleSpeedOption?: boolean;
+		};
+		expect(element?.showSingleSpeedOption).toBe(true);
 	});
 
 	test("uses left-aligned layout by default", () => {
@@ -465,10 +518,33 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 			speedOptions: [2, 1, "x", 1.5],
 			settings: { speedOptions: [0.8, 1, 1.25] },
 		});
-		expect(out.speedOptions).toEqual([2, 1.5]);
-		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual([
-			0.8, 1.25,
+		expect(out.speedOptions).toEqual([
+			{ rate: 2, label: "2x", ariaLabel: "Speed 2x", isDefault: false },
+			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
+			{ rate: 1.5, label: "1.5x", ariaLabel: "Speed 1.5x", isDefault: false },
 		]);
+		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
+			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x", isDefault: false },
+			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
+			{
+				rate: 1.25,
+				label: "1.25x",
+				ariaLabel: "Speed 1.25x",
+				isDefault: false,
+			},
+		]);
+	});
+
+	test("preserves one-option visibility setting in sanitizeConfig", () => {
+		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
+			cfg: Record<string, unknown>,
+		) => Record<string, unknown>;
+		const out = sanitize({
+			settings: { showSingleSpeedOption: true },
+		});
+		expect(
+			(out.settings as { showSingleSpeedOption?: boolean }).showSingleSpeedOption,
+		).toBe(true);
 	});
 
 	test("preserves explicit empty speedOptions in settings", () => {
@@ -491,15 +567,16 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 			settings: {
 				speedOptions: [
 					{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+					{ rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
 					{ rate: 1.5, label: "Fast" },
-					{ rate: 1, label: "Normal" },
 					{ rate: 1.5, label: "Duplicate" },
 				],
 			},
 		});
 		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
-			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-			{ rate: 1.5, label: "Fast" },
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
+			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
 	});
 });

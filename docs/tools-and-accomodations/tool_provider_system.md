@@ -223,7 +223,7 @@ providers: {
 
 The `@pie-players/pie-section-player-tools-tts-settings` package is optional and only provides a runtime settings dialog UI. Hosts do not need that package to use TTS layout modes.
 
-`speedOptions` (inline toolbar speed multipliers, excluding 1.0×) can be set on `tools.providers.textToSpeech` at the top level or under `settings`, same as `layoutMode`. Defaults are `0.8` and `1.25`; an explicit empty array hides speed buttons. The optional TTS settings dialog edits both `layoutMode` and `speedOptions` in one global toolbar section.
+`speedOptions` (inline toolbar playback-speed choices) can be set on `tools.providers.textToSpeech` at the top level or under `settings`, same as `layoutMode`. Defaults render as `Slow`, `Normal`, and `Fast`, with `Normal` mapped to `1.0×` and selected by default. A non-empty config that omits `1` gets a synthesized visible `Normal` choice while preserving host-provided option order; an explicit empty array hides speed controls and resets playback speed to `1.0`. The optional TTS settings dialog edits both `layoutMode` and `speedOptions` in one global toolbar section.
 
 ### Calculator With Host Auth
 

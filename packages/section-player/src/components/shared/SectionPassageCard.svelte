@@ -169,12 +169,12 @@
 
 	:global(pie-section-player-passage-card) {
 		display: block;
-		border-radius: 8px;
+		border-radius: var(--pie-section-player-card-radius, 8px);
 	}
 
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
-		border-radius: 8px;
+		border-radius: var(--pie-section-player-card-radius, 8px);
 		background: var(--pie-background, #fff);
 		color: var(--pie-text, #111827);
 	}
@@ -194,6 +194,15 @@
 		   opt-in to a solid color via --pie-section-player-card-header-background
 		   (e.g. a brand Bluegreen tint) without this framework encoding a palette. */
 		background: var(--pie-section-player-card-header-background, transparent);
+		/* Default just inside the card radius to avoid a double-radius effect with the border. */
+		border-top-left-radius: var(
+			--pie-section-player-card-header-radius,
+			calc(var(--pie-section-player-card-radius, 8px) - 1px)
+		);
+		border-top-right-radius: var(
+			--pie-section-player-card-header-radius,
+			calc(var(--pie-section-player-card-radius, 8px) - 1px)
+		);
 	}
 
 	.pie-section-player-content-card-header h2 {

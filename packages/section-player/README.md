@@ -196,16 +196,23 @@ Passage and item cards share a common header row
 - Title and toolbar are centered vertically by default. There is no prop or
   attribute for this — hosts needing a non-standard alignment should override
   the selector in their own stylesheet.
+- Card corners default to `8px`. Hosts/themes can override the card radius via
+  `--pie-section-player-card-radius`.
 - The header fill is transparent by default. Hosts/themes opt into a color
   via the `--pie-section-player-card-header-background` CSS variable; the
   framework does not ship a brand palette.
+- When a header fill is provided, header top corners default just inside the
+  card radius. Hosts/themes can override them independently via
+  `--pie-section-player-card-header-radius`.
 
 Example (host CSS):
 
 ```css
 pie-section-player-passage-card,
 pie-section-player-item-card {
+  --pie-section-player-card-radius: 8px;
   --pie-section-player-card-header-background: #c9e5e6;
+  --pie-section-player-card-header-radius: 7px;
 }
 ```
 

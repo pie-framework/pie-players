@@ -64,10 +64,52 @@ describe("normalizeItemSessionChange", () => {
 		expect(out.session).toBeNull();
 	});
 
+	test("treats blank-id renderer session snapshots with unchanged data as metadata-only", () => {
+		const previousSession = {
+			id: "metadata-session-item",
+			data: [
+				{
+					id: "metadata-choice",
+					element: "metadata-session-fixture--version-1-0-0",
+					value: ["A"],
+				},
+			],
+		};
+		const out = normalizeItemSessionChange({
+			itemId: "metadata-session-item",
+			sessionDetail: {
+				session: {
+					id: "",
+					data: [
+						{
+							id: "metadata-choice",
+							element: "metadata-session-fixture--version-1-0-0",
+							value: ["A"],
+						},
+					],
+				},
+				complete: true,
+				component: "metadata-session-fixture--version-1-0-0",
+			},
+			previousItemSession: previousSession,
+		});
+
+		expect(out.intent).toBe("metadata-only");
+		expect(out.session).toBeNull();
+		expect(out.complete).toBe(true);
+		expect(out.component).toBe("metadata-session-fixture--version-1-0-0");
+	});
+
 	test("treats wrapped identity-only element session echoes as metadata-only", () => {
 		const previousSession = {
 			id: "item-1",
-			data: [{ id: "choice", element: "multiple-choice--version-1-0-0", value: ["A"] }],
+			data: [
+				{
+					id: "choice",
+					element: "multiple-choice--version-1-0-0",
+					value: ["A"],
+				},
+			],
 		};
 		const out = normalizeItemSessionChange({
 			itemId: "item-1",

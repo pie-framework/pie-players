@@ -43,6 +43,17 @@ function areSessionContainersEqual(
 	}
 }
 
+function alignPreviousSessionIdForRendererSnapshot(
+	candidate: ItemSessionContainer,
+	previous: ItemSessionContainer | null,
+): ItemSessionContainer | null {
+	if (!previous || candidate.id !== "") return previous;
+	return {
+		...previous,
+		id: "",
+	};
+}
+
 export function normalizeItemSessionContainer(
 	input: unknown,
 	fallbackSessionId: string = DEFAULT_SESSION_ID,
@@ -112,7 +123,8 @@ function getMetadataComponent(
 	sessionDetail: Record<string, unknown>,
 	candidate?: Record<string, unknown>,
 ): string | undefined {
-	if (typeof sessionDetail.component === "string") return sessionDetail.component;
+	if (typeof sessionDetail.component === "string")
+		return sessionDetail.component;
 	if (typeof candidate?.component === "string") return candidate.component;
 	return undefined;
 }
@@ -121,7 +133,8 @@ function getMetadataComplete(
 	sessionDetail: Record<string, unknown>,
 	candidate?: Record<string, unknown>,
 ): boolean | undefined {
-	if (typeof sessionDetail.complete === "boolean") return sessionDetail.complete;
+	if (typeof sessionDetail.complete === "boolean")
+		return sessionDetail.complete;
 	if (typeof candidate?.complete === "boolean") return candidate.complete;
 	return undefined;
 }
@@ -138,7 +151,9 @@ function isElementIdentityOnlyPayload(
 	);
 }
 
-function isWrappedIdentityOnlyElementEcho(candidate: ItemSessionContainer): boolean {
+function isWrappedIdentityOnlyElementEcho(
+	candidate: ItemSessionContainer,
+): boolean {
 	return (
 		candidate.data.length > 0 &&
 		candidate.data.every(
@@ -234,6 +249,11 @@ export function normalizeItemSessionChange(args: {
 			args.previousItemSession !== undefined
 				? normalizeItemSessionContainer(args.previousItemSession, safeItemId)
 				: null;
+		const previousForMetadataComparison =
+			alignPreviousSessionIdForRendererSnapshot(
+				normalizedCandidate,
+				previousNormalized,
+			);
 		const sessionDetailKeys = Object.keys(sessionDetail);
 		const metadataWithSessionOnly =
 			sessionDetailKeys.length > 0 &&
@@ -245,10 +265,17 @@ export function normalizeItemSessionChange(args: {
 					key === "timestamp" ||
 					key === "sourceRuntimeId",
 			);
+		const hasMetadataBeyondSession = sessionDetailKeys.some(
+			(key) => key !== "session",
+		);
 		if (
 			metadataWithSessionOnly &&
-			previousNormalized &&
-			areSessionContainersEqual(normalizedCandidate, previousNormalized)
+			hasMetadataBeyondSession &&
+			previousForMetadataComparison &&
+			areSessionContainersEqual(
+				normalizedCandidate,
+				previousForMetadataComparison,
+			)
 		) {
 			return {
 				itemId: safeItemId,
@@ -258,7 +285,10 @@ export function normalizeItemSessionChange(args: {
 				complete: getMetadataComplete(sessionDetail),
 			};
 		}
-		if (metadataWithSessionOnly && isWrappedIdentityOnlyElementEcho(normalizedCandidate)) {
+		if (
+			metadataWithSessionOnly &&
+			isWrappedIdentityOnlyElementEcho(normalizedCandidate)
+		) {
 			return {
 				itemId: safeItemId,
 				session: null,
@@ -305,7 +335,8 @@ export function normalizeItemSessionChange(args: {
 		};
 	}
 
-	const component = getMetadataComponent(sessionDetail, candidate) ?? "response";
+	const component =
+		getMetadataComponent(sessionDetail, candidate) ?? "response";
 	const elementEntryId =
 		typeof candidate.id === "string" && candidate.id ? candidate.id : component;
 	const merged = mergeElementIntoSession(

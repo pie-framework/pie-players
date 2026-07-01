@@ -1,5 +1,12 @@
 # @pie-players/pie-section-player-tools-event-debugger
 
+## 0.3.55
+
+### Patch Changes
+
+- @pie-players/pie-section-player-tools-shared@0.3.55
+- @pie-players/pie-theme@0.3.55
+
 ## 0.3.54
 
 ### Patch Changes

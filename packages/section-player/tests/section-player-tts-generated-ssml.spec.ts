@@ -691,9 +691,20 @@ test.describe("section player demo tts-generated-ssml", () => {
 			})
 			.toBeGreaterThan(1);
 		expect(await hasBrowserCancel(page)).toBe(true);
-		expect((await browserSpeakCalls(page))[1].text).not.toBe(initialSpeak.text);
+		await expect
+			.poll(
+				() =>
+					browserSpeakCalls(page).then((calls) =>
+						calls.slice(1).some((call) => call.text !== initialSpeak.text),
+					),
+				{
+					timeout: 10_000,
+					message: "expected seek to restart from a later browser utterance",
+				},
+			)
+			.toBe(true);
 
-		await passagePanel.getByRole("button", { name: "1.25x" }).click();
+		await passagePanel.getByRole("radio", { name: "Fast speed" }).click();
 		await expect
 			.poll(
 				() =>

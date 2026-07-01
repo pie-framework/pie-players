@@ -14,7 +14,6 @@
 />
 
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import {
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
@@ -70,16 +69,32 @@
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
-	let playbackRate = $state(1);
+	let requestedPlaybackRate = $state<number | null>(null);
+	let requestedPlaybackChoicesKey = $state<string | null>(null);
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
 	let handoffInProgress = $state(false);
 	let highlightTargetResolverProviderDisposer: (() => void) | null = null;
 	const speedChoices = $derived.by(() => normalizeTTSSpeedControlOptions(speedOptions));
+	const speedChoicesKey = $derived.by(() => getSpeedChoicesKey(speedChoices));
 	const visibleSpeedChoices = $derived.by(() =>
 		speedChoices.length > 1 || showSingleSpeedOption ? speedChoices : [],
 	);
 	const speedControlCount = $derived(visibleSpeedChoices.length);
+	const toolbarControlCount = $derived(speedControlCount + 3);
+	const focusedToolbarIndex = $derived(
+		focusedControlIndex >= toolbarControlCount ? 0 : focusedControlIndex,
+	);
+	const playbackRate = $derived.by(() => {
+		if (
+			requestedPlaybackRate !== null &&
+			requestedPlaybackChoicesKey === speedChoicesKey &&
+			speedChoices.some((option) => option.rate === requestedPlaybackRate)
+		) {
+			return requestedPlaybackRate;
+		}
+		return resolveDefaultPlaybackRate(speedChoices);
+	});
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
@@ -128,7 +143,16 @@
 		statusMessage = status;
 	}
 
-	function resolveDefaultPlaybackRate(choices = speedChoices): number {
+	function getSpeedChoicesKey(choices: NormalizedTTSSpeedOption[]): string {
+		return choices
+			.map(
+				(option) =>
+					`${option.rate}:${option.label}:${option.ariaLabel}:${option.isDefault ? '1' : '0'}`,
+			)
+			.join('|');
+	}
+
+	function resolveDefaultPlaybackRate(choices: NormalizedTTSSpeedOption[]): number {
 		return (
 			choices.find((option) => option.isDefault)?.rate ??
 			choices.find((option) => option.rate === 1)?.rate ??
@@ -137,36 +161,12 @@
 		);
 	}
 
-	async function syncTTSPlaybackRate(rate: number): Promise<void> {
-		if (!ttsService) return;
-		if (typeof ttsService.setPlaybackRate === 'function') {
-			await ttsService.setPlaybackRate(rate);
+	async function syncTTSPlaybackRate(service: TtsServiceApi, rate: number): Promise<void> {
+		if (typeof service.setPlaybackRate === 'function') {
+			await service.setPlaybackRate(rate);
 			return;
 		}
-		await ttsService.updateSettings({ rate });
-	}
-
-	function shouldSyncPlaybackRate(): boolean {
-		return isActiveOwner() && (speaking || paused);
-	}
-
-	function reconcileSpeedChoices(choices: NormalizedTTSSpeedOption[]): void {
-		const nextRate =
-			choices.length === 0
-				? 1
-				: choices.some((option) => option.rate === playbackRate)
-					? playbackRate
-					: resolveDefaultPlaybackRate(choices);
-
-		if (playbackRate !== nextRate) {
-			playbackRate = nextRate;
-		}
-		if (focusedControlIndex >= speedControlCount + 3) {
-			focusedControlIndex = 0;
-		}
-		if (choices.length === 0 || shouldSyncPlaybackRate()) {
-			void syncTTSPlaybackRate(nextRate);
-		}
+		await service.updateSettings({ rate });
 	}
 
 	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
@@ -293,18 +293,6 @@
 			releaseActiveOwner();
 			clearHighlightTargetResolverProvider();
 		};
-	});
-
-	$effect(() => {
-		const choices = speedChoices;
-		const visibleCount = speedControlCount;
-		void visibleCount;
-		void ttsService;
-		void speaking;
-		void paused;
-		untrack(() => {
-			reconcileSpeedChoices(choices);
-		});
 	});
 
 	async function ensureTTSReady(): Promise<boolean> {
@@ -439,7 +427,7 @@
 			if (highlightCoordinator && ttsService.setHighlightCoordinator) {
 				ttsService.setHighlightCoordinator(highlightCoordinator);
 			}
-			await syncTTSPlaybackRate(playbackRate);
+			await syncTTSPlaybackRate(ttsService, playbackRate);
 			const resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			statusMessage = 'Reading started';
@@ -539,19 +527,23 @@
 	}
 
 	async function handlePlaybackRate(option: NormalizedTTSSpeedOption) {
-		if (!ttsService) return;
+		const service = ttsService;
+		if (!service) return;
 		if (playbackRate === option.rate) {
 			statusMessage = `Playback speed ${option.label}`;
 			return;
 		}
-		const previousRate = playbackRate;
-		playbackRate = option.rate;
+		const previousRequestedRate = requestedPlaybackRate;
+		const previousRequestedChoicesKey = requestedPlaybackChoicesKey;
+		requestedPlaybackRate = option.rate;
+		requestedPlaybackChoicesKey = speedChoicesKey;
 		statusMessage = `Playback speed ${option.label}`;
 		try {
-			await syncTTSPlaybackRate(option.rate);
+			await syncTTSPlaybackRate(service, option.rate);
 		} catch (error) {
 			console.error('[TTS Inline] Playback speed change failed:', error);
-			playbackRate = previousRate;
+			requestedPlaybackRate = previousRequestedRate;
+			requestedPlaybackChoicesKey = previousRequestedChoicesKey;
 			statusMessage = 'Unable to change playback speed';
 		}
 	}
@@ -570,6 +562,21 @@
 		layoutMode === 'floating-overlay'
 	);
 	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+
+	$effect(() => {
+		const service = ttsService;
+		const rate = playbackRate;
+		const active = speaking || paused;
+		if (!service || !active || !isActiveOwner()) return;
+		let cancelled = false;
+		queueMicrotask(() => {
+			if (cancelled) return;
+			void syncTTSPlaybackRate(service, rate);
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	function resolveHostElement(): HTMLElement | null {
 		if (!containerEl) return null;
@@ -665,7 +672,7 @@
 									class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
 									onclick={() => handlePlaybackRate(option)}
 									onfocus={() => (focusedControlIndex = speedIdx)}
-									tabindex={focusedControlIndex === speedIdx ? 0 : -1}
+									tabindex={focusedToolbarIndex === speedIdx ? 0 : -1}
 									aria-label={option.ariaLabel}
 									aria-checked={playbackRate === option.rate}
 									disabled={!ttsService}
@@ -682,7 +689,7 @@
 						class="pie-tool-tts-inline__control"
 						onclick={handleSeekBackward}
 						onfocus={() => (focusedControlIndex = speedControlCount)}
-						tabindex={focusedControlIndex === speedControlCount ? 0 : -1}
+						tabindex={focusedToolbarIndex === speedControlCount ? 0 : -1}
 						aria-label="Rewind"
 						disabled={!ttsService || !speaking}
 					>
@@ -697,7 +704,7 @@
 						class="pie-tool-tts-inline__control"
 						onclick={handleSeekForward}
 						onfocus={() => (focusedControlIndex = speedControlCount + 1)}
-						tabindex={focusedControlIndex === speedControlCount + 1 ? 0 : -1}
+						tabindex={focusedToolbarIndex === speedControlCount + 1 ? 0 : -1}
 						aria-label="Fast-forward"
 						disabled={!ttsService || !speaking}
 					>
@@ -712,7 +719,7 @@
 						class="pie-tool-tts-inline__control"
 						onclick={handleStop}
 						onfocus={() => (focusedControlIndex = speedControlCount + 2)}
-						tabindex={focusedControlIndex === speedControlCount + 2 ? 0 : -1}
+						tabindex={focusedToolbarIndex === speedControlCount + 2 ? 0 : -1}
 						aria-label="Stop reading"
 						disabled={!ttsService || (!speaking && !paused)}
 					>

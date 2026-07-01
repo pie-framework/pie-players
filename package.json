@@ -37,6 +37,7 @@
 		"lint:biome": "biome lint .",
 		"lint:svelte": "turbo check",
 		"lint:all": "bun run lint && bun run typecheck",
+		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:pre-push": "bun run check:changeset-patch-only && bun run check:local-pr-gate",
 		"verify:local-pr": "bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player",

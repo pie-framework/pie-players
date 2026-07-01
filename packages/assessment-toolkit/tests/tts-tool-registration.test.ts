@@ -369,6 +369,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(entry?.layoutHints?.headerOverlay?.showWhenToolActive).toBe(true);
 		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
 
@@ -403,6 +404,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(entry?.layoutHints?.headerOverlay?.showWhenToolActive).toBe(false);
 		expect(element?.getAttribute("layout-mode")).toBe("floating-overlay");
 	});
 
@@ -437,6 +439,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
+		expect(entry?.layoutHints?.headerOverlay?.showWhenToolActive).toBe(false);
 		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
 	});
 
@@ -471,6 +474,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(entry?.layoutHints?.headerOverlay?.showWhenToolActive).toBe(true);
 		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
 
@@ -504,6 +508,7 @@ describe("ttsToolRegistration speed options", () => {
 		};
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(entry?.layoutHints?.headerOverlay?.showWhenToolActive).toBe(true);
 		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
 });

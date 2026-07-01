@@ -206,10 +206,12 @@
 	}
 
 	.pie-section-player-content-card-header {
+		position: relative;
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
+		overflow: visible;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
 
 		/* Header fill is intentionally transparent by default. Hosts/themes
@@ -228,6 +230,8 @@
 	}
 
 	.pie-section-player-content-card-header h2 {
+		position: relative;
+		z-index: 0;
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
@@ -237,6 +241,8 @@
 	}
 
 	.pie-section-player-content-card-header pie-item-toolbar {
+		position: relative;
+		z-index: 1;
 		margin-left: auto;
 	}
 

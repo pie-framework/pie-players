@@ -66,6 +66,7 @@
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
 	let controlsVisible = $state(false);
+	let moreMenuOpen = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
@@ -99,6 +100,7 @@
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
+	const moreMenuId = `${instanceId}-more-menu`;
 
 	function getActiveOwnerId(): string | null {
 		if (!isBrowser) return null;
@@ -140,6 +142,7 @@
 		paused = false;
 		focusedControlIndex = 0;
 		controlsVisible = keepControlsVisible;
+		moreMenuOpen = false;
 		statusMessage = status;
 	}
 
@@ -310,7 +313,7 @@
 		if (!toolbarEl) return [];
 		return Array.from(
 			toolbarEl.querySelectorAll<HTMLButtonElement>('[data-pie-tts-control]'),
-		);
+		).filter((control) => window.getComputedStyle(control).display !== 'none');
 	}
 
 	function focusToolbarControl(index: number): void {
@@ -504,6 +507,77 @@
 		clearHighlightTargetResolverProvider();
 	}
 
+	function getMoreMenuItems(): HTMLButtonElement[] {
+		if (!containerEl) return [];
+		const root = containerEl.getRootNode();
+		if (!(root instanceof ShadowRoot)) return [];
+		return Array.from(
+			root.querySelectorAll<HTMLButtonElement>('[data-pie-tts-more-control]'),
+		);
+	}
+
+	function focusMoreMenuItem(index: number): void {
+		const enabledItems = getMoreMenuItems().filter((item) => !item.disabled);
+		if (!enabledItems.length) return;
+		const wrapped = (index + enabledItems.length) % enabledItems.length;
+		enabledItems[wrapped].focus();
+	}
+
+	function openMoreMenu(): void {
+		moreMenuOpen = true;
+		queueMicrotask(() => {
+			focusMoreMenuItem(0);
+		});
+	}
+
+	function toggleMoreMenu(): void {
+		if (moreMenuOpen) {
+			closeMoreMenu();
+			return;
+		}
+		openMoreMenu();
+	}
+
+	function closeMoreMenu(): void {
+		moreMenuOpen = false;
+	}
+
+	function handleMoreMenuKeydown(event: KeyboardEvent): void {
+		const items = getMoreMenuItems().filter((item) => !item.disabled);
+		const currentIndex = items.findIndex((item) => item === event.target);
+		switch (event.key) {
+			case 'ArrowDown':
+			case 'ArrowRight':
+				event.preventDefault();
+				focusMoreMenuItem(currentIndex + 1);
+				break;
+			case 'ArrowUp':
+			case 'ArrowLeft':
+				event.preventDefault();
+				focusMoreMenuItem(currentIndex - 1);
+				break;
+			case 'Home':
+				event.preventDefault();
+				focusMoreMenuItem(0);
+				break;
+			case 'End':
+				event.preventDefault();
+				focusMoreMenuItem(items.length - 1);
+				break;
+			case 'Escape': {
+				event.preventDefault();
+				closeMoreMenu();
+				const root = containerEl?.getRootNode();
+				if (!(root instanceof ShadowRoot)) return;
+				const moreButton = root.querySelector(
+					'.pie-tool-tts-inline__more-button',
+				) as HTMLButtonElement | null;
+				moreButton?.focus();
+				break;
+			}
+		}
+	}
+
 	async function handleSeekForward() {
 		if (!ttsService || !speaking) return;
 		try {
@@ -616,6 +690,11 @@
 			cancelled = true;
 		};
 	});
+
+	$effect(() => {
+		if (controlsVisible) return;
+		moreMenuOpen = false;
+	});
 </script>
 
 {#if isBrowser}
@@ -686,7 +765,7 @@
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control"
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekBackward}
 						onfocus={() => (focusedControlIndex = speedControlCount)}
 						tabindex={focusedToolbarIndex === speedControlCount ? 0 : -1}
@@ -701,7 +780,7 @@
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control"
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekForward}
 						onfocus={() => (focusedControlIndex = speedControlCount + 1)}
 						tabindex={focusedToolbarIndex === speedControlCount + 1 ? 0 : -1}
@@ -716,7 +795,7 @@
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control"
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleStop}
 						onfocus={() => (focusedControlIndex = speedControlCount + 2)}
 						tabindex={focusedToolbarIndex === speedControlCount + 2 ? 0 : -1}
@@ -731,13 +810,48 @@
 			{/if}
 		{/snippet}
 
-		{#if isLeftAlignedFloatingLayout}
-			{@render controlsPanel()}
-			{@render triggerButton()}
-		{:else}
-			{@render triggerButton()}
-			{@render controlsPanel()}
-		{/if}
+		{#snippet moreMenuButton()}
+			{#if isLeftAlignedFloatingLayout && controlsVisible}
+				<div class="pie-tool-tts-inline__more">
+					<button
+						type="button"
+						class="pie-tool-tts-inline__trigger pie-tool-tts-inline__trigger--md pie-tool-tts-inline__more-button"
+						onclick={toggleMoreMenu}
+						aria-label="More reading controls"
+						aria-haspopup="menu"
+						aria-expanded={moreMenuOpen}
+						aria-controls={moreMenuOpen ? moreMenuId : undefined}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+						</svg>
+					</button>
+					{#if moreMenuOpen}
+						<div
+							id={moreMenuId}
+							class="pie-tool-tts-inline__more-menu"
+							role="menu"
+							aria-label="More reading controls"
+							onkeydown={handleMoreMenuKeydown}
+						>
+							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); void handleSeekBackward(); }} disabled={!ttsService || !speaking}>
+								Rewind
+							</button>
+							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); void handleSeekForward(); }} disabled={!ttsService || !speaking}>
+								Fast-forward
+							</button>
+							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); handleStop(); }} disabled={!ttsService || (!speaking && !paused)}>
+								Stop reading
+							</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		{/snippet}
+
+		{@render triggerButton()}
+		{@render controlsPanel()}
+		{@render moreMenuButton()}
 
 		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 			{statusMessage}
@@ -750,6 +864,7 @@
 		position: relative;
 		display: inline-flex;
 		align-items: center;
+		gap: 0.5rem;
 	}
 
 	.pie-tool-tts-inline--controls-row {
@@ -833,8 +948,13 @@
 	}
 
 	.pie-tool-tts-inline__panel--left-aligned-inline {
-		position: static;
-		margin-right: 0.5rem;
+		position: absolute;
+		z-index: 2;
+		top: 50%;
+		right: calc(100% + 0.5rem);
+		width: var(--pie-tts-left-aligned-panel-width, 28rem);
+		max-width: min(calc(100vw - 6rem), var(--pie-tts-left-aligned-panel-width, 28rem));
+		transform: translateY(-50%);
 	}
 
 	.pie-tool-tts-inline__panel--row {
@@ -888,6 +1008,53 @@
 		line-height: 1.2;
 	}
 
+	.pie-tool-tts-inline__more {
+		position: relative;
+		display: none;
+	}
+
+	.pie-tool-tts-inline__more-menu {
+		position: absolute;
+		z-index: 3;
+		top: calc(100% + 0.25rem);
+		right: 0;
+		display: flex;
+		flex-direction: column;
+		min-width: 10rem;
+		padding: 0.25rem;
+		border: 1px solid var(--pie-border, #d0d0d0);
+		border-radius: 0.375rem;
+		background: var(--pie-surface, var(--pie-background, #fff));
+		box-shadow: 0 0.25rem 0.75rem color-mix(in srgb, var(--pie-shadow, #000) 18%, transparent);
+	}
+
+	.pie-tool-tts-inline__more-menu button {
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		width: 100%;
+		padding: 0.5rem 0.625rem;
+		border: 0;
+		border-radius: 0.25rem;
+		background: transparent;
+		color: var(--pie-button-color, var(--pie-text, #222));
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.pie-tool-tts-inline__more-menu button:hover:not(:disabled),
+	.pie-tool-tts-inline__more-menu button:focus-visible {
+		background: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
+		outline: 2px solid var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-primary, #0066cc)));
+		outline-offset: 2px;
+	}
+
+	.pie-tool-tts-inline__more-menu button:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
 	.pie-tool-tts-inline__trigger:disabled,
 	.pie-tool-tts-inline__control:disabled {
 		cursor: not-allowed;
@@ -935,6 +1102,47 @@
 		height: 1.25rem;
 		fill: currentColor;
 		color: currentColor;
+	}
+
+	@media (max-width: 839px) {
+		.pie-tool-tts-inline {
+			gap: 0.375rem;
+		}
+
+		.pie-tool-tts-inline__more {
+			display: inline-flex;
+		}
+
+		.pie-tool-tts-inline__panel--left-aligned-inline {
+			right: calc(100% + 2.75rem);
+			width: auto;
+			max-width: min(calc(100vw - 8rem), 24rem);
+			padding: 0.1875rem 0.375rem;
+		}
+
+		.pie-tool-tts-inline__trigger,
+		.pie-tool-tts-inline__trigger--md,
+		.pie-tool-tts-inline__control {
+			width: 1.75rem;
+			height: 1.75rem;
+		}
+
+		.pie-tool-tts-inline__trigger .pie-tool-tts-inline__icon,
+		.pie-tool-tts-inline__control .pie-tool-tts-inline__icon {
+			width: 1rem;
+			height: 1rem;
+		}
+
+		.pie-tool-tts-inline__control--speed {
+			width: auto;
+			min-width: 2.5rem;
+			height: 1.75rem;
+			padding: 0 0.5rem;
+		}
+
+		.pie-tool-tts-inline__control--secondary {
+			display: none;
+		}
 	}
 
 	.pie-sr-only {

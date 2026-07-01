@@ -10,6 +10,7 @@ import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
+import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 import { demoTwoPassagesSection } from "./demo-two-passages";
@@ -458,6 +459,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		allowElementVersionOverrides: false,
 		section: demo9Section,
+	},
+	"metadata-session-forwarding": {
+		id: "metadata-session-forwarding",
+		name: "Metadata Session Forwarding (Regression Fixture)",
+		description:
+			"Local fixture for responseful session state followed by a metadata-only unchanged-session echo",
+		integrationLevel: 5,
+		integrationTheme: "Regression fixture",
+		focus:
+			"Reproduces metadata-only `session-changed` forwarding after the canonical item session data is already responseful and unchanged.",
+		whatMakesItTick: [
+			"Uses a route-local preloaded custom element so no external PIE bundle is fetched.",
+			"Seeds a responseful item session, then emits a wrapped identity-only metadata echo from the child fixture.",
+			"Verifies the section/toolkit public `session-changed` surface receives the metadata-only event without treating it as response data.",
+		],
+		allowElementVersionOverrides: false,
+		section: metadataSessionForwardingSection,
 	},
 	"three-questions": {
 		id: "three-questions",

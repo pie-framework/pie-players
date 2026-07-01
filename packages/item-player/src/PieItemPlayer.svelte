@@ -96,7 +96,6 @@
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
 		ensureRegistered,
-		hasResponseValue,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -118,6 +117,7 @@
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import { tick, untrack } from "svelte";
 	import "@pie-players/pie-theme/components.css";
+	import { resolveSessionChangedForwarding } from "./session-forwarding.js";
 
 	type ItemSession = {
 		id: string;
@@ -465,19 +465,6 @@
 			}
 		}
 		return input;
-	}
-
-	function hasExplicitResponseField(value: unknown): boolean {
-		if (value == null) return false;
-		if (Array.isArray(value)) {
-			return value.some((entry) => hasExplicitResponseField(entry));
-		}
-		if (typeof value !== "object") return false;
-		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-			if (key === "value") return true;
-			if (hasExplicitResponseField(nested)) return true;
-		}
-		return false;
 	}
 
 	function ensureSessionController(itemId: string, initialSession: unknown): ItemController {
@@ -1800,55 +1787,36 @@
 	};
 
 	const handleSessionChanged = (detail: unknown) => {
-		const detailObj =
-			detail && typeof detail === "object"
-				? (detail as Record<string, unknown>)
-				: null;
-		// Ignore structural/heartbeat session events that do not carry actual session data.
-		// Some PIE elements emit "session-changed" during model/session assignment with
-		// metadata-only payloads, which can otherwise cause update loops.
-		if (!detailObj) {
-			return;
-		}
-		if (
-			!("session" in detailObj) &&
-			!hasResponseValue(detailObj) &&
-			!hasExplicitResponseField(detailObj)
-		) {
-			return;
-		}
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		const controller = ensureSessionController(
 			controllerItemId,
 			parseSessionProp(effectiveSession),
 		);
-		const beforeSignature = sessionSignature;
-		const previousSessionId = controller.getSession().id || "";
-		let normalized = controller.updateFromEventDetail(detail, {
-			persist: false,
-			allowMetadataOverwrite: false,
+		const forwarding = resolveSessionChangedForwarding({
+			detail,
+			itemId: controllerItemId,
+			currentSession: controller.getSession(),
+			currentSignature: sessionSignature,
 		});
-		if (!normalized.id && previousSessionId) {
-			normalized = controller.setSession(
-				{
-					...normalized,
-					id: previousSessionId,
-				},
-				{
-					persist: false,
-					allowMetadataOverwrite: true,
-				},
-			);
-		}
-		const nextSignature = JSON.stringify(normalized);
-		if (nextSignature === beforeSignature) {
+		if (forwarding.action === "ignore") {
 			return;
 		}
-		sessionSignature = nextSignature;
-		sessionRevision += 1;
-		const forwardedDetail = { ...detailObj, session: normalized };
-		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwardedDetail }));
-		scheduleBackendAutosave();
+		if (forwarding.changed) {
+			const nextSession = controller.setSession(forwarding.session, {
+				persist: false,
+				allowMetadataOverwrite: false,
+			});
+			sessionSignature = JSON.stringify(nextSession);
+			sessionRevision += 1;
+			handlePlayerEvent(
+				new CustomEvent("session-changed", {
+					detail: { ...forwarding.detail, session: nextSession },
+				}),
+			);
+			scheduleBackendAutosave();
+			return;
+		}
+		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwarding.detail }));
 	};
 </script>
 

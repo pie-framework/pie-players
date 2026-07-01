@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The new PIE Item Player &mdash; overview</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-elev: #171f2a;
+    --bg-elev-2: #1f2937;
+    --fg: #e6edf3;
+    --fg-dim: #9fb0c0;
+    --accent: #4aa3ff;
+    --accent-2: #7c5cff;
+    --good: #38d39f;
+    --bad: #ff7b72;
+    --border: #2a3543;
+    --code-bg: #0b0f14;
+    --radius: 14px;
+    --maxw: 1080px;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f7fa;
+      --bg-elev: #ffffff;
+      --bg-elev-2: #eef2f7;
+      --fg: #16202b;
+      --fg-dim: #5a6b7b;
+      --accent: #1769d6;
+      --accent-2: #6b3df0;
+      --good: #0f9d6c;
+      --bad: #c8442f;
+      --border: #d7dee7;
+      --code-bg: #0f1722;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(1200px 700px at 80% -10%, rgba(124,92,255,0.18), transparent 60%),
+                radial-gradient(1000px 600px at -10% 110%, rgba(74,163,255,0.16), transparent 55%),
+                var(--bg);
+    color: var(--fg);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .deck {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 1fr auto;
+  }
+  .stage {
+    overflow: auto;
+    display: grid;
+    place-items: center;
+    padding: 40px 24px 16px;
+  }
+  .slide {
+    display: none;
+    width: 100%;
+    max-width: var(--maxw);
+    animation: fade .35s ease;
+  }
+  .slide.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    line-height: 1.05;
+    margin: 0 0 18px;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: clamp(22px, 3.4vw, 34px);
+    line-height: 1.1;
+    margin: 0 0 18px;
+    letter-spacing: -0.01em;
+  }
+  h3 { font-size: 18px; margin: 0 0 8px; }
+  p { margin: 0 0 12px; color: var(--fg-dim); }
+  .lead { font-size: clamp(16px, 2.2vw, 20px); color: var(--fg); max-width: 760px; }
+  strong { color: var(--fg); }
+  ul { margin: 0; padding-left: 1.15em; }
+  li { margin: 7px 0; color: var(--fg-dim); }
+  li strong { color: var(--fg); }
+  .muted { color: var(--fg-dim); }
+  .small { font-size: 13px; }
+
+  .tagflow {
+    display: inline-flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: clamp(14px, 2.4vw, 22px);
+    margin-top: 8px;
+  }
+  .pill {
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .pill.old { color: var(--bad); border-color: rgba(255,123,114,.4); }
+  .pill.new { color: var(--good); border-color: rgba(56,211,159,.45); }
+  .arrow { color: var(--accent); font-size: 1.3em; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .card.legacy { border-top: 3px solid var(--bad); }
+  .card.modern { border-top: 3px solid var(--good); }
+  .card h3 { display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: .04em; }
+  .badge.legacy { background: rgba(255,123,114,.16); color: var(--bad); }
+  .badge.modern { background: rgba(56,211,159,.16); color: var(--good); }
+
+  .benefit {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--accent);
+    background: linear-gradient(90deg, rgba(74,163,255,.12), transparent);
+    border-radius: 0 10px 10px 0;
+  }
+  .benefit b { color: var(--accent); }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } }
+
+  pre {
+    background: var(--code-bg);
+    color: #d6e2f0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    overflow: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .tok-tag { color: #7ee787; }
+  .tok-attr { color: #79c0ff; }
+  .tok-str { color: #ffa657; }
+  .tok-com { color: #6b7d8f; font-style: italic; }
+
+  /* Layered architecture diagram */
+  .arch { display: grid; gap: 10px; max-width: 820px; }
+  .layer {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: var(--bg-elev);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .layer .lname { font-weight: 700; }
+  .layer .ldesc { color: var(--fg-dim); font-size: 13px; text-align: right; }
+  .layer.host { border-style: dashed; }
+  .layer.assess { border-left: 4px solid var(--accent-2); }
+  .layer.section { border-left: 4px solid var(--accent); }
+  .layer.item { border-left: 4px solid var(--good); }
+  .layer.shared { border-left: 4px solid var(--fg-dim); }
+  .archwrap { display: grid; grid-template-columns: 1fr 220px; gap: 16px; align-items: stretch; }
+  @media (max-width: 760px) { .archwrap { grid-template-columns: 1fr; } }
+  .crosscut {
+    border: 1px dashed var(--border); border-radius: 12px; padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(124,92,255,.12), transparent);
+  }
+  .crosscut h3 { color: var(--accent-2); }
+  .crosscut ul { padding-left: 1em; }
+  .down { text-align: center; color: var(--accent); font-size: 18px; line-height: 1; margin: -4px 0; }
+
+  .kicker-grid { display:grid; grid-template-columns: 1.1fr .9fr; gap: 20px; align-items:center; }
+  @media (max-width: 760px) { .kicker-grid { grid-template-columns: 1fr; } }
+
+  /* Controls */
+  .controls {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-elev) 70%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  .btn {
+    appearance: none; border: 1px solid var(--border); background: var(--bg-elev-2);
+    color: var(--fg); border-radius: 10px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .progress { flex: 1; height: 6px; background: var(--bg-elev-2); border-radius: 999px; overflow: hidden; }
+  .progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s ease; }
+  .counter { font-variant-numeric: tabular-nums; color: var(--fg-dim); font-size: 13px; min-width: 70px; text-align: right; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg-elev-2); border: 1px solid var(--border); cursor: pointer; padding: 0; }
+  .dot.active { background: var(--accent); border-color: var(--accent); }
+  .hint { color: var(--fg-dim); font-size: 12px; }
+  @media (max-width: 760px) { .dots, .hint { display: none; } }
+  .part-tag { display:inline-block; font-size:12px; font-weight:700; letter-spacing:.08em; color: var(--accent-2); margin-bottom: 6px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="deck">
+  <main class="stage" id="stage">
+
+    <!-- 1. Title -->
+    <section class="slide active">
+      <p class="eyebrow">PIE Players &middot; Item player overview</p>
+      <h1>The new PIE Item Player</h1>
+      <p class="lead">A quick orientation to <strong>@pie-players/pie-item-player</strong> and how it relates to the legacy <strong>pie-player-components</strong> item player &mdash; what it is, what changes, and why moving to it should be a smooth, low-risk update.</p>
+      <div class="tagflow">
+        <span class="pill old">&lt;pie-player&gt;</span>
+        <span class="arrow">&rarr;</span>
+        <span class="pill new">&lt;pie-item-player&gt;</span>
+      </div>
+      <p class="small muted" style="margin-top:26px;">Use &larr; / &rarr; (or the buttons below) to navigate. Press <strong>F</strong> for fullscreen.</p>
+    </section>
+
+    <!-- 2. Big picture -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Item player</span>
+      <h2>The big picture</h2>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span> pie-player-components</h3>
+          <ul>
+            <li><strong>Stencil 3</strong> custom-element library</li>
+            <li>Two separate elements: <code>&lt;pie-player&gt;</code> (delivery) and <code>&lt;pie-author&gt;</code> (authoring)</li>
+            <li>Item rendering solved; section, tools, and accommodations left to each product</li>
+            <li>Bundles loaded via IIFE script injection and <code>window.pie</code> globals</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span> @pie-players/pie-item-player</h3>
+          <ul>
+            <li><strong>Svelte 5</strong> + Vite, ESM-first custom element</li>
+            <li>One <code>&lt;pie-item-player&gt;</code> built on shared loaders / controllers / renderer</li>
+            <li>Drop-in for delivery; same job, modernized internals</li>
+            <li>Typed contracts, explicit controllers, provider-agnostic observability</li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>What this means for your app:</b> same role &mdash; render a PIE item &mdash; with safer markup, more loading options, versioned elements, resilient resource loading, and pluggable observability, behind a cleaner API.</div>
+      <p class="small muted" style="margin-top:12px;">Tidbit: delivery and authoring now live in the <em>same</em> element via a <code>mode</code> attribute, so there's no separate <code>&lt;pie-author&gt;</code> to wire up.</p>
+    </section>
+
+    <!-- 3. At a glance -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Item player</span>
+      <h2>At a glance: legacy vs. new item player</h2>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span> &lt;pie-player&gt;</h3>
+          <ul>
+            <li>Framework: <strong>Stencil 3</strong></li>
+            <li>Authoring: <strong>separate</strong> <code>&lt;pie-author&gt;</code></li>
+            <li>Element tags: <code>pp-*</code>, version stripped</li>
+            <li>Loading: <strong>IIFE only</strong></li>
+            <li>Markup: raw <code>innerHTML</code> (no sanitizer)</li>
+            <li>Session: inline in player</li>
+            <li>Resource loading: no in-item retry/tracking</li>
+            <li>Observability: New Relic, hard-wired</li>
+            <li>Theming: ad-hoc CSS</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span> &lt;pie-item-player&gt;</h3>
+          <ul>
+            <li>Framework: <strong>Svelte 5 + Vite</strong></li>
+            <li>Authoring: <strong>same element</strong>, <code>mode="author"</code></li>
+            <li>Element tags: versioned <code>*--version-x-y-z</code></li>
+            <li>Loading: <strong>iife / esm / preloaded</strong></li>
+            <li>Markup: <strong>DOMPurify</strong> by default</li>
+            <li>Session: dedicated <code>ItemController</code></li>
+            <li>Resource loading: <strong>tracked + auto-retried</strong></li>
+            <li>Observability: <strong>pluggable providers</strong></li>
+            <li>Theming: <code>@pie-players/pie-theme</code> tokens</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Loading strategies -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 1</span>
+      <h2>Flexible loading strategies</h2>
+      <p class="lead">One <code>strategy</code> attribute, three deployment models &mdash; vs. legacy IIFE-only script injection. This is the key to a low-risk migration.</p>
+      <div class="grid3">
+        <div class="card">
+          <h3>iife</h3>
+          <p class="small">Compatibility path for your existing PIE bundle infrastructure and deployed content &mdash; the drop-in starting point.</p>
+        </div>
+        <div class="card">
+          <h3>esm</h3>
+          <p class="small">Modern dynamic <code>import()</code> from CDN / import maps. Smaller payloads, browser caching, view variants.</p>
+        </div>
+        <div class="card">
+          <h3>preloaded</h3>
+          <p class="small">Elements registered before render. Zero runtime fetch &mdash; offline-like, CI-built sets, test harnesses.</p>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> start on <code>iife</code> to match your current bundles today, then opt into ESM / preloaded performance later &mdash; without changing the consumer API.</div>
+    </section>
+
+    <!-- 5. Version coexistence -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 2</span>
+      <h2>Version coexistence by design</h2>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span> global, version-stripped</h3>
+          <ul>
+            <li>Tags rewritten to <code>pp-&lt;package&gt;</code></li>
+            <li>Version stripped at controller lookup</li>
+            <li>Registered globally on <code>window.PIE_REGISTRY</code></li>
+            <li>One version of an element per page</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span> versioned tags</h3>
+          <ul>
+            <li><code>makeUniqueTags()</code> &rarr; <code>multiple-choice--version-9-9-1</code></li>
+            <li>Version encoded into the tag &amp; model IDs</li>
+            <li>Safe, guarded custom-element registration</li>
+            <li>Multiple element versions coexist at runtime</li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> authored content pins exact element versions; no global collisions when a page mixes versions (essential once a section composes many items).</div>
+    </section>
+
+    <!-- 6. Security -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 3</span>
+      <h2>Security by default</h2>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span></h3>
+          <ul>
+            <li>Item markup injected via raw <code>innerHTML</code></li>
+            <li>No built-in sanitizer</li>
+            <li>XSS posture left to the host</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span></h3>
+          <ul>
+            <li><strong>DOMPurify on by default</strong></li>
+            <li>Preserves the PIE contract: <code>pie-*</code> tags, <code>id</code>, <code>model-*</code>, <code>data-*</code>, <code>aria-*</code></li>
+            <li>Opt out with <code>trust-markup</code>; customize via <code>sanitizeMarkup</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> XSS defense out of the box without breaking the versioned-element contract.</div>
+    </section>
+
+    <!-- 7. Sessions + scoring -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 4</span>
+      <h2>Robust sessions + backend scoring</h2>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span></h3>
+          <ul>
+            <li>Session logic inline in the player</li>
+            <li>Temporary event-blocking while setting models</li>
+            <li>Scoring: local <code>provideScore()</code> only</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span></h3>
+          <ul>
+            <li><code>ItemController</code> normalizes &amp; de-dupes session updates</li>
+            <li>Metadata-only updates don't wipe responses</li>
+            <li>Local <code>provideScore()</code> <em>and</em> backend <code>score()</code>, autosave, save</li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> cleaner, explicit session ownership and an optional server-backed scoring / persistence path.</div>
+    </section>
+
+    <!-- 8. Resource tracking & retries -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 5</span>
+      <h2>Resilient resource loading</h2>
+      <p class="lead">Items pull in images, audio, video, and stylesheets. The new player <strong>watches those loads and retries failures automatically</strong> &mdash; something the legacy player doesn't do for in-item resources.</p>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span></h3>
+          <ul>
+            <li>No tracking of item-embedded assets</li>
+            <li>No retry when an image / audio / video fails</li>
+            <li>Optional <em>bundle</em> fetch retry only, and only if <code>re-fetch-bundle</code> is set</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span> ResourceMonitor</h3>
+          <ul>
+            <li>Watches the item container for media &amp; stylesheet loads</li>
+            <li><strong>Automatic retry with exponential backoff</strong> (defaults: 3 tries, capped delay)</li>
+            <li>IIFE element bundles also retry while a bundle is still building</li>
+            <li>Tunable via <code>loader-config</code>: <code>maxResourceRetries</code>, <code>resourceRetryDelay</code>, <code>iifeBundleRetry</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> transient CDN / network hiccups self-heal instead of leaving a broken image or silent failure in front of a student &mdash; retries run even when telemetry is turned off.</div>
+    </section>
+
+    <!-- 9. Observability -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 6</span>
+      <h2>Observability you can plug in</h2>
+      <p class="lead">Telemetry is <strong>provider-agnostic</strong>: the player emits structured signals; you decide where they go.</p>
+      <div class="cards">
+        <div class="card legacy">
+          <h3><span class="badge legacy">Legacy</span></h3>
+          <ul>
+            <li>New Relic hard-wired into the loader</li>
+            <li>Generic loader actions (e.g. <code>api_loadScript_*</code>)</li>
+            <li>No clean way to disable, redirect, or fan out</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3><span class="badge modern">New</span> InstrumentationProvider</h3>
+          <ul>
+            <li>Swap providers: New Relic, console, debug panel, or a composite fan-out</li>
+            <li>Explicitly disable with <code>instrumentationProvider: null</code></li>
+            <li>Structured, named signals: <code>pie-resource-load</code>, <code>pie-resource-retry</code>, <code>pie-iife-bundle-retry*</code>, typed <code>player-error</code></li>
+            <li>DOM lifecycle events (<code>load-complete</code>, <code>session-changed</code>, <code>bundle-retry-status</code>) for host wiring</li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> production telemetry through your existing backend, a local debug panel while developing, or both at once &mdash; with clearer, resource-level visibility than the legacy loader exposed.</div>
+    </section>
+
+    <!-- 10. Theming, a11y, packaging -->
+    <section class="slide">
+      <span class="part-tag">Part A &middot; Change 7</span>
+      <h2>Theming, accessibility &amp; packaging</h2>
+      <div class="grid3">
+        <div class="card">
+          <h3>Theming</h3>
+          <p class="small">Shared <code>@pie-players/pie-theme</code> token contract instead of ad-hoc per-product CSS.</p>
+        </div>
+        <div class="card">
+          <h3>Accessibility</h3>
+          <p class="small">Working <code>base-heading-level</code> &amp; SR headings, WCAG 2.2 AA target, axe-tested demos.</p>
+        </div>
+        <div class="card">
+          <h3>Packaging</h3>
+          <p class="small">Clean <code>dist</code> ESM exports, auto-registration on import, typed public surface.</p>
+        </div>
+      </div>
+      <div class="benefit"><b>Benefit:</b> consistent look, real accessibility posture, and a simpler, contract-checked consumption model.</div>
+    </section>
+
+    <!-- 11. Context: the bigger picture -->
+    <section class="slide">
+      <span class="part-tag">Part B &middot; Context (optional)</span>
+      <h2>The bigger picture &mdash; if you ever need more than one item</h2>
+      <p class="lead">You don't need this to adopt the item player. But the same project also covers full <strong>student-facing quiz / Knowledge Check (KC)</strong> screens, so you have a growth path.</p>
+      <div class="cards">
+        <div class="card modern">
+          <h3>Section player</h3>
+          <p class="small">Composes passages + multiple items into a complete KC screen (split-pane / vertical / tabbed layouts). A <code>SectionController</code> handles in-section navigation and aggregates item sessions. It <strong>embeds <code>&lt;pie-item-player&gt;</code></strong> and passes your loading strategy through.</p>
+        </div>
+        <div class="card modern">
+          <h3>Assessment toolkit</h3>
+          <p class="small">Composable services for tools &amp; accommodations a quiz needs: text-to-speech, highlighting, calculators, and QTI-style IEP/504 policy. Opt-in only &mdash; the item player works fine without it.</p>
+        </div>
+      </div>
+      <div class="benefit"><b>Takeaway:</b> adopting the item player today doesn't commit you to anything else &mdash; but if your roadmap grows toward full quizzes, the section player and toolkit are already there.</div>
+    </section>
+
+    <!-- 12. Coherent architecture -->
+    <section class="slide">
+      <span class="part-tag">Part B &middot; Where the item player fits</span>
+      <h2>One coherent, layered architecture</h2>
+      <div class="archwrap">
+        <div class="arch">
+          <div class="layer host"><span class="lname">Host application</span><span class="ldesc">auth, timing, save cadence, navigation rules, submission, routing</span></div>
+          <div class="down">&darr;</div>
+          <div class="layer assess"><span class="lname">Assessment player</span><span class="ldesc">section routing, attempt snapshots, progress, submission</span></div>
+          <div class="down">&darr;</div>
+          <div class="layer section"><span class="lname">Section player</span><span class="ldesc">KC screen: passages, items, layouts, section session</span></div>
+          <div class="down">&darr;</div>
+          <div class="layer item"><span class="lname">Item player</span><span class="ldesc">renders one item, loads elements, item session</span></div>
+          <div class="down">&darr;</div>
+          <div class="layer shared"><span class="lname">players-shared</span><span class="ldesc">loaders, controllers, renderer, sanitizer</span></div>
+        </div>
+        <div class="crosscut">
+          <h3>Cross-cutting</h3>
+          <ul>
+            <li>Assessment toolkit (tools, TTS, accommodations)</li>
+            <li>Theme token contract</li>
+            <li>Provider-agnostic observability per layer</li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>What this means for you:</b> you can adopt <strong>just the item player</strong> &mdash; the higher layers are optional. The whole <code>@pie-players/*</code> suite ships at one fixed (lockstep) version, so there's no compatibility matrix to manage.</div>
+    </section>
+
+    <!-- 13. What adoption looks like -->
+    <section class="slide">
+      <span class="part-tag">Part C &middot; What adoption looks like</span>
+      <h2>Why this should be a smooth update</h2>
+      <div class="cards">
+        <div class="card legacy">
+          <h3>What stays the same</h3>
+          <ul>
+            <li>Same job: render a PIE item from <code>config</code> + <code>session</code></li>
+            <li>Familiar attributes/props &mdash; most names carry over</li>
+            <li><code>strategy="iife"</code> keeps your current bundle infrastructure</li>
+            <li>Legacy <code>pie-item</code> client behaviors preserved where externally consumed</li>
+          </ul>
+        </div>
+        <div class="card modern">
+          <h3>What you gain</h3>
+          <ul>
+            <li>Secure-by-default markup; versioned, collision-free elements</li>
+            <li><strong>Self-healing resource loads</strong> (auto-retry)</li>
+            <li><strong>Pluggable observability</strong> for production and debugging</li>
+            <li>A typed, contract-checked API under active maintenance</li>
+          </ul>
+        </div>
+      </div>
+      <div class="benefit"><b>In short:</b> the switch is essentially swapping the tag and keeping <code>iife</code> loading &mdash; small, incremental, and low-risk &mdash; while quietly improving resilience and visibility. Details: <code>docs/item-player/migration-from-pie-player-components.md</code>.</div>
+    </section>
+
+    <!-- 14. Takeaway -->
+    <section class="slide">
+      <span class="part-tag">Part C &middot; Wrap up</span>
+      <h2>Quick start &amp; takeaway</h2>
+      <div class="kicker-grid">
+        <div>
+<pre><code><span class="tok-com">&lt;!-- drop-in delivery: keep your IIFE bundles --&gt;</span>
+<span class="tok-tag">&lt;pie-item-player</span>
+  <span class="tok-attr">strategy</span>=<span class="tok-str">"iife"</span>
+  <span class="tok-attr">config</span>=<span class="tok-str">'{ ... }'</span>
+  <span class="tok-attr">session</span>=<span class="tok-str">'{"id":"s1","data":[]}'</span><span class="tok-tag">&gt;</span>
+<span class="tok-tag">&lt;/pie-item-player&gt;</span>
+
+<span class="tok-com">// later, opt into modern loading</span>
+<span class="tok-com">// strategy="esm" or "preloaded"</span></code></pre>
+        </div>
+        <div>
+          <h3>Takeaway</h3>
+          <ul>
+            <li>Same job as today, with flexible loading, versioned elements, and secure-by-default markup.</li>
+            <li>Quiet wins for your app: <strong>self-healing resource loads</strong> and <strong>pluggable observability</strong>.</li>
+            <li>The <code>iife</code> path keeps the switch <strong>small and low-risk</strong>; modernize internals on your own schedule.</li>
+            <li>Section player + toolkit are there <strong>if</strong> you grow toward full quizzes &mdash; but optional.</li>
+          </ul>
+          <p class="small muted">More: <code>docs/item-player/migration-from-pie-player-components.md</code>, <code>docs/item-player/overview.md</code>, <code>docs/why-a-new-project.md</code>.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="controls">
+    <button class="btn" id="prev" aria-label="Previous slide">&larr; Prev</button>
+    <button class="btn" id="next" aria-label="Next slide">Next &rarr;</button>
+    <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+    <div class="dots" id="dots" role="tablist" aria-label="Slides"></div>
+    <span class="counter" id="counter">1 / 14</span>
+  </nav>
+</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var total = slides.length;
+    var idx = 0;
+    var bar = document.getElementById('bar');
+    var counter = document.getElementById('counter');
+    var prev = document.getElementById('prev');
+    var next = document.getElementById('next');
+    var dotsWrap = document.getElementById('dots');
+    var stage = document.getElementById('stage');
+
+    slides.forEach(function (_, i) {
+      var d = document.createElement('button');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.setAttribute('role', 'tab');
+      d.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+      d.addEventListener('click', function () { go(i); });
+      dotsWrap.appendChild(d);
+    });
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+
+    function render() {
+      slides.forEach(function (s, i) { s.classList.toggle('active', i === idx); });
+      dots.forEach(function (d, i) { d.classList.toggle('active', i === idx); });
+      bar.style.width = ((idx + 1) / total * 100) + '%';
+      counter.textContent = (idx + 1) + ' / ' + total;
+      prev.disabled = idx === 0;
+      next.disabled = idx === total - 1;
+      stage.scrollTop = 0;
+    }
+    function go(i) { idx = Math.max(0, Math.min(total - 1, i)); render(); }
+
+    prev.addEventListener('click', function () { go(idx - 1); });
+    next.addEventListener('click', function () { go(idx + 1); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(idx + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(idx - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); go(0); }
+      else if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+      else if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+        else { document.exitFullscreen && document.exitFullscreen(); }
+      }
+    });
+
+    render();
+  })();
+</script>
+</body>
+</html>

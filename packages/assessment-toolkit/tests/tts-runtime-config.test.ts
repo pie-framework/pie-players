@@ -345,25 +345,51 @@ describe("normalizeTTSSpeedOptions", () => {
 });
 
 describe("normalizeTTSSpeedControlOptions", () => {
-	test("keeps numeric options render-compatible with existing labels", () => {
-		expect(normalizeTTSSpeedControlOptions([0.8, 1.25])).toEqual([
-			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x" },
-			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
+	test("uses visible Normal in the built-in rendered defaults", () => {
+		expect(normalizeTTSSpeedControlOptions(undefined)).toEqual([
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
+			{
+				rate: 1,
+				label: "Normal",
+				ariaLabel: "Normal speed",
+				isDefault: true,
+			},
+			{ rate: 1.25, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
 	});
 
-	test("normalizes labeled speed options without changing numeric fallback", () => {
+	test("keeps numeric compatibility helpers separate from rendered radio options", () => {
+		expect(normalizeTTSSpeedOptions([0.8, 1, 1.25])).toEqual([0.8, 1.25]);
+		expect(normalizeTTSSpeedControlOptions([0.8, 1.25])).toEqual([
+			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x", isDefault: false },
+			{
+				rate: 1,
+				label: "Normal",
+				ariaLabel: "Normal speed",
+				isDefault: true,
+			},
+			{
+				rate: 1.25,
+				label: "1.25x",
+				ariaLabel: "Speed 1.25x",
+				isDefault: false,
+			},
+		]);
+	});
+
+	test("preserves host display order and explicit default metadata", () => {
 		expect(
 			normalizeTTSSpeedControlOptions([
 				{ rate: 0.8, label: " Slow ", ariaLabel: " Slow speed " },
+				{ rate: 1, label: " Normal ", ariaLabel: " Normal speed ", default: true },
 				{ rate: 1.5, label: "Fast" },
-				{ rate: 1, label: "Normal" },
 				{ rate: 1.5, label: "Duplicate fast" },
 				{ rate: Number.NaN, label: "Bad" },
 			]),
 		).toEqual([
-			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
+			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
 	});
 
@@ -374,22 +400,29 @@ describe("normalizeTTSSpeedControlOptions", () => {
 				{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
 			]),
 		).toEqual([
-			{ rate: 0.8, label: "Slow", ariaLabel: "Slow Reduced pace" },
-			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
+			{ rate: 0.8, label: "Slow", ariaLabel: "Slow Reduced pace", isDefault: false },
+			{
+				rate: 1,
+				label: "Normal",
+				ariaLabel: "Normal speed",
+				isDefault: true,
+			},
+			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
 	});
 
-	test("falls back to default render options when only invalid options remain", () => {
+	test("honors a single visible option while marking it as selected", () => {
 		expect(normalizeTTSSpeedControlOptions([{ rate: 1, label: "Normal" }])).toEqual([
-			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x" },
-			{ rate: 1.25, label: "1.25x", ariaLabel: "Speed 1.25x" },
+			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 		]);
 	});
 });
 
 describe("parseTTSSpeedOptionsFromText / formatTTSSpeedOptionsAsText", () => {
 	test("parses comma and semicolon separated values", () => {
-		expect(parseTTSSpeedOptionsFromText("0.8, 1.25")).toEqual([0.8, 1.25]);
+		expect(parseTTSSpeedOptionsFromText("0.8, 1, 1.25")).toEqual([
+			0.8, 1, 1.25,
+		]);
 		expect(parseTTSSpeedOptionsFromText("1.5; 2")).toEqual([1.5, 2]);
 	});
 
@@ -399,15 +432,15 @@ describe("parseTTSSpeedOptionsFromText / formatTTSSpeedOptionsAsText", () => {
 
 	test("non-empty text with no parseable numbers falls back to defaults", () => {
 		expect(parseTTSSpeedOptionsFromText("foo, bar")).toEqual([
-			...DEFAULT_TTS_SPEED_OPTIONS,
+			0.8, 1, 1.25,
 		]);
 		expect(parseTTSSpeedOptionsFromText(",")).toEqual([
-			...DEFAULT_TTS_SPEED_OPTIONS,
+			0.8, 1, 1.25,
 		]);
 	});
 
 	test("formats round-trip", () => {
-		expect(formatTTSSpeedOptionsAsText([0.8, 1.25])).toBe("0.8, 1.25");
+		expect(formatTTSSpeedOptionsAsText([0.8, 1, 1.25])).toBe("0.8, 1, 1.25");
 	});
 });
 

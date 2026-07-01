@@ -609,7 +609,7 @@ tools: {
       enabled: true,
       backend: "browser",
       settings: {
-        speedOptions: [2, 1.25, 1.5] // rendered in this order
+        speedOptions: [2, 1.25, 1.5] // host options keep this order; Normal is added if omitted
       }
     }
   }
@@ -630,6 +630,7 @@ tools: {
       settings: {
         speedOptions: [
           { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+          { rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
           { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
         ]
       }
@@ -640,14 +641,20 @@ tools: {
 
 `speedOptions` semantics:
 
-- Omitted or non-array: default speed buttons are shown (`0.8x`, `1.25x`).
-- Explicit empty array (`[]`): hide all speed buttons.
-- Invalid-only arrays (for example `["fast", -1, 1]`): fall back to defaults.
+- Omitted or non-array: default speed choices are shown (`Slow`, `Normal`, `Fast`), with `Normal` selected.
+- Explicit empty array (`[]`): hide all speed choices and reset playback speed to `1.0`.
+- Invalid-only arrays (for example `["fast", -1]`): fall back to defaults.
 - Valid numeric values are deduplicated and keep first-seen order.
 - Object-form entries use the same numeric validation/deduping by `rate`.
 - Missing labels fall back to numeric text like `1.5x`; missing `ariaLabel`
   falls back to a matching accessible name like `Fast speed`.
-- `1` is excluded (normal speed is already available by toggling active speed off).
+- `1` is a visible `Normal` choice. If a non-empty config omits `1`, PIE adds
+  `Normal` at the natural point in the speed scale while preserving the
+  relative order of host-provided options.
+- Speed choices are exposed as a `Playback speed` radio group: one option is
+  always selected, and choosing the already-selected speed is a no-op.
+- If only one speed option remains, the speed group is hidden by default. Set
+  `showSingleSpeedOption: true` in TTS settings to surface that one-option state.
 
 ### Runtime Fallback: Server TTS -> Browser TTS
 

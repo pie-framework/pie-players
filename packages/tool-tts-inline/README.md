@@ -100,6 +100,7 @@ toolCoordinator.showTool('tts-passage-1');
 - `ttsService` - ITTSService instance (required)
 - `coordinator` - IToolCoordinator instance (optional, for visibility management)
 - `speedOptions` - Optional speed options controlling inline speed button rendering
+- `showSingleSpeedOption` - Optional boolean to show a one-option speed group (hidden by default)
 
 ### `speedOptions` Configuration
 
@@ -109,7 +110,7 @@ provider settings.
 
 ```javascript
 const ttsButton = document.createElement("pie-tool-tts-inline");
-ttsButton.speedOptions = [2, 1.25, 1.5]; // rendered in this order
+ttsButton.speedOptions = [2, 1.25, 1.5]; // host options keep this order; Normal is added if omitted
 ```
 
 For hosts that need semantic button copy, pass object-form options. `rate`
@@ -119,22 +120,28 @@ accessible text.
 ```javascript
 ttsButton.speedOptions = [
   { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+  { rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
   { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
 ];
 ```
 
 Semantics:
 
-- Omitted or non-array: defaults to `[0.8, 1.25]`.
-- Explicit `[]`: no speed buttons rendered.
-- Invalid-only values: fall back to `[0.8, 1.25]`.
+- Omitted or non-array: defaults to visible `Slow`, `Normal`, and `Fast` choices, with `Normal` selected.
+- Explicit `[]`: no speed choices rendered; playback speed is reset to `1.0`.
+- Invalid-only values: fall back to the visible `Slow`, `Normal`, and `Fast` choices.
 - Numeric values and object `rate` values are deduplicated while preserving
   first-seen order.
 - Numeric options render as `{rate}x` with accessible names like
   `Speed {rate}x`.
 - Object options can customize labels; missing labels fall back to `{rate}x`,
   and missing `ariaLabel` values fall back to matching names like `Fast speed`.
-- `1` is excluded from rendered options.
+- `1` renders as the visible `Normal` choice. If a non-empty config omits `1`,
+  the component adds `Normal` at the natural point in the speed scale while
+  preserving host-provided option order.
+- One speed is always selected. Clicking the selected speed is a no-op.
+- One-option speed groups are hidden by default; set `showSingleSpeedOption` to
+  `true` to surface a single current speed.
 
 ## Behavior
 
@@ -153,9 +160,12 @@ Semantics:
    - Fast-forward/Rewind invoke sentence-jump seek on `ITTSService`
    - Speed buttons call `ttsService.setPlaybackRate(rate)` when available,
      otherwise `ttsService.updateSettings({ rate })`
-   - Selecting another speed switches active state to that option
-   - Clicking the currently active speed resets back to `1x`
-   - If `speedOptions` is `[]`, speed controls are omitted while rewind/forward/stop still render
+   - Speed choices render as a named `Playback speed` radio group with
+     `aria-checked` state
+   - Selecting another speed switches the active radio to that option
+   - Clicking the currently active speed leaves the selection unchanged
+   - If `speedOptions` is `[]`, speed controls are omitted and playback rate is
+     reset to `1x` while rewind/forward/stop still render
 6. **Keyboard Interaction**: Arrow keys move between controls; Tab enters/leaves the toolbar
 7. **Cleanup**: Unregisters from coordinator on unmount
 

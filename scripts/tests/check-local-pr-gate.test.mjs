@@ -10,12 +10,12 @@ const basePackageJson = {
 			"bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
 			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player",
-		"verify:pre-push": "bun run check:changeset-patch-only && bun run check:local-pr-gate",
+		"verify:pre-push": "bun run verify:local-pr",
 	},
 };
 
 describe("check-local-pr-gate policy", () => {
-	test("allows pre-push to use a fast local gate while CI keeps the full gate", () => {
+	test("requires pre-push to run the full local PR gate", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,
 			lefthook:
@@ -25,6 +25,28 @@ describe("check-local-pr-gate policy", () => {
 		});
 
 		expect(failures).toEqual([]);
+	});
+
+	test("rejects a pre-push gate that omits critical e2e coverage", () => {
+		const packageJson = {
+			scripts: {
+				...basePackageJson.scripts,
+				"verify:pre-push":
+					"bun run check:changeset-patch-only && bun run check:local-pr-gate",
+			},
+		};
+
+		const failures = collectGateFailures({
+			packageJson,
+			lefthook:
+				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
+			ciWorkflow:
+				"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  command:\n    - test:e2e:section-player:critical\n    - test:e2e:item-player:critical\n    - test:e2e:assessment-player\n",
+		});
+
+		expect(failures).toContain(
+			'verify:pre-push is missing "bun run verify:local-pr".',
+		);
 	});
 
 	test("rejects a local full gate that omits critical e2e coverage", () => {

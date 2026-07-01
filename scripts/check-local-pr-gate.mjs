@@ -40,8 +40,7 @@ const requiredCiLintTypecheckCommands = [
 ];
 
 const requiredPrePushCommands = [
-	"check:changeset-patch-only",
-	"check:local-pr-gate",
+	"verify:local-pr",
 ];
 
 const requiredLocalPrCommands = [
@@ -163,7 +162,7 @@ function main() {
 	}
 
 	console.log(
-		"[check-local-pr-gate] OK: early pre-commit, fast pre-push, full local PR, and CI gates are configured",
+		"[check-local-pr-gate] OK: early pre-commit, full pre-push, local PR, and CI gates are configured",
 	);
 }
 

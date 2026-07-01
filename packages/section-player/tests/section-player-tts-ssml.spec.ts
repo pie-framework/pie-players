@@ -86,6 +86,23 @@ async function readSessionSnapshot(
 }
 
 async function forceBrowserTtsRuntime(page: Page): Promise<void> {
+	const updatedViaDemoHandle = await page.evaluate(async () => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
+		if (!coordinator?.updateToolConfig) return false;
+		coordinator.updateToolConfig("textToSpeech", {
+			enabled: true,
+			backend: "browser",
+			transportMode: "pie",
+		});
+		await coordinator?.ensureTTSReady?.(
+			coordinator?.getToolConfig?.("textToSpeech"),
+		);
+		return true;
+	});
+	if (updatedViaDemoHandle) return;
+
 	await page
 		.locator("pie-section-player-tools-session-debugger")
 		.evaluate(async (element) => {
@@ -1490,5 +1507,65 @@ test.describe("section player demo tts-ssml", () => {
 				2,
 			)}`,
 		).toEqual([]);
+	});
+
+	test("keeps old toggle speed behavior scoped to the customization demo", async ({
+		page,
+	}) => {
+		await suppressAudibleBrowserTts(page);
+		await page.goto("/tts-toggle-speed?mode=candidate&layout=splitpane", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+		await forceBrowserTtsRuntime(page);
+
+		const passageInlineTts = page
+			.getByRole("complementary", { name: "Passages" })
+			.locator('[data-demo-tts-toggle-speed="true"]:visible')
+			.first();
+		await expect(passageInlineTts).toBeVisible();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
+		await expect(
+			passageInlineTts.getByRole("button", { name: "Pause reading" }),
+		).toHaveClass(/pie-tool-tts-inline__trigger--active/);
+
+		const panel = passageInlineTts.locator(
+			'[role="toolbar"][aria-label="Reading controls"]',
+		);
+		await expect(panel).toBeVisible();
+		await expect(panel).toHaveClass(/pie-tool-tts-inline__panel/);
+		const panelBox = await panel.boundingBox();
+		const triggerBox = await passageInlineTts
+			.getByRole("button", { name: "Pause reading" })
+			.boundingBox();
+		expect(panelBox?.x).toBeLessThan(triggerBox?.x ?? 0);
+		await expect(panel.getByRole("button", { name: "Rewind" })).toBeVisible();
+		await expect(
+			panel.getByRole("button", { name: "Fast-forward" }),
+		).toBeVisible();
+		const slow = panel.getByRole("button", { name: "Slow speed" });
+		const fast = panel.getByRole("button", { name: "Fast speed" });
+		await expect(slow).toHaveAttribute("aria-pressed", "false");
+		await expect(fast).toHaveAttribute("aria-pressed", "false");
+
+		const beforeSlow = await readBrowserTtsSpeaks(page);
+		await slow.click();
+		await expect
+			.poll(async () => (await readBrowserTtsSpeaks(page)).length)
+			.toBeGreaterThan(beforeSlow.length);
+		expect((await readBrowserTtsSpeaks(page)).at(-1)?.rate).toBeCloseTo(0.8, 2);
+		await expect(slow).toHaveAttribute("aria-pressed", "true");
+		await expect(fast).toHaveAttribute("aria-pressed", "false");
+
+		const beforeReset = await readBrowserTtsSpeaks(page);
+		await slow.click();
+		await expect
+			.poll(async () => (await readBrowserTtsSpeaks(page)).length)
+			.toBeGreaterThan(beforeReset.length);
+		expect((await readBrowserTtsSpeaks(page)).at(-1)?.rate).toBeCloseTo(1, 2);
+		await expect(slow).toHaveAttribute("aria-pressed", "false");
+		await expect(fast).toHaveAttribute("aria-pressed", "false");
 	});
 });

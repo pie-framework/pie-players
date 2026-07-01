@@ -26,7 +26,7 @@ describe("resolveSessionChangedForwarding", () => {
 		expect(result).toEqual({ action: "ignore" });
 	});
 
-	test("forwards post-renderer metadata snapshots without replacing detail", () => {
+	test("forwards post-renderer metadata snapshots as metadata-only details", () => {
 		const detail = {
 			session: {
 				id: "",
@@ -49,7 +49,11 @@ describe("resolveSessionChangedForwarding", () => {
 			session: responsefulSession,
 			signature: JSON.stringify(responsefulSession),
 		});
-		expect(result.action === "forward" ? result.detail : null).toBe(detail);
+		expect(result.action === "forward" ? result.detail : null).toEqual({
+			...detail,
+			intent: "metadata-only",
+			session: null,
+		});
 	});
 
 	test("keeps explicit empty-array clears as data changes", () => {

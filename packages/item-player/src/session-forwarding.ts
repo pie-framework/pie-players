@@ -76,7 +76,10 @@ export function resolveSessionChangedForwarding(args: {
 	return {
 		action: "forward",
 		changed,
-		detail: metadataOnly && !changed ? detailObj : { ...detailObj, session },
+		detail:
+			metadataOnly && !changed
+				? { ...detailObj, intent: "metadata-only", session: null }
+				: { ...detailObj, session },
 		metadataOnly,
 		session,
 		signature,

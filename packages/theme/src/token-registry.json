@@ -634,6 +634,32 @@
 		"fallbackPolicy": "Public tab track radius hook; geometry-only override with no color contrast impact."
 	},
 	{
+		"name": "--pie-section-player-card-header-radius",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": ["packages/section-player/README.md"],
+		"fallbackPolicy": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+	},
+	{
+		"name": "--pie-section-player-card-radius",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": ["packages/section-player/README.md"],
+		"fallbackPolicy": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+	},
+	{
 		"name": "--pie-section-player-card-header-background",
 		"owner": "@pie-players/pie-section-player",
 		"scope": "component-public",

@@ -1,5 +1,11 @@
 # @pie-players/pie-players-shared
 
+## 0.3.55
+
+### Patch Changes
+
+- 7f45877: Forward metadata-only item session changes when renderer snapshots leave response data unchanged, without reclassifying those echoes as response data.
+
 ## 0.3.54
 
 ## 0.3.53

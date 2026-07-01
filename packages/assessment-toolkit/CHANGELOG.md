@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.55
+
+### Patch Changes
+
+- Updated dependencies [7f45877]
+  - @pie-players/pie-players-shared@0.3.55
+  - @pie-players/pie-calculator@0.3.55
+  - @pie-players/pie-calculator-desmos@0.3.55
+  - @pie-players/pie-context@0.3.55
+  - @pie-players/pie-tts@0.3.55
+  - @pie-players/tts-client-server@0.3.55
+
 ## 0.3.54
 
 ### Patch Changes

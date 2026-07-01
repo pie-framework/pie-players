@@ -121,6 +121,17 @@ export type ToolWindowShellAlign =
 	| "bottom-left"
 	| "bottom-right";
 
+export interface ToolWindowShellContentConfig {
+	/** Vertical overflow behavior for the hosted content pane. Defaults to "hidden". */
+	overflowY?: "hidden" | "auto";
+	/**
+	 * Preserve the content area's configured minimum height when the shell shrinks
+	 * below `minHeight`, letting the content pane scroll instead of compressing
+	 * the hosted element.
+	 */
+	preserveMinHeight?: boolean;
+}
+
 export interface ToolWindowShellConfig {
 	title?: string;
 	draggable?: boolean;
@@ -136,6 +147,7 @@ export interface ToolWindowShellConfig {
 	initialAlign?: ToolWindowShellAlign;
 	/** Distance (px) from the viewport edge when using a corner align. Defaults to 16. */
 	initialMargin?: number;
+	content?: ToolWindowShellContentConfig;
 	actions?: ToolWindowShellAction[];
 }
 

@@ -9,6 +9,7 @@ import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
+import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 import { demoTwoPassagesSection } from "./demo-two-passages";
@@ -585,6 +586,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Toolkit tool config enables `textToSpeech` in item and passage placements.",
 		],
 		section: demo10TtsGeneratedSsmlSection,
+	},
+	"tts-toggle-speed": {
+		id: "tts-toggle-speed",
+		name: "TTS Toggle Speed Customization",
+		description:
+			"Host-owned custom TTS controls that preserve the old speed-toggle interaction",
+		integrationLevel: 4,
+		integrationTheme: "Host custom TTS controls",
+		focus:
+			"Shows how a host can keep the old speed-toggle UX as a customization while the packaged inline TTS tool uses radio-style speed selection.",
+		whatMakesItTick: [
+			"Overrides only the `textToSpeech` tool registration in the demo-local `ToolRegistry`.",
+			"Preserves the packaged TTS provider setup and section-player integration.",
+			"Renders demo-owned speed buttons with `aria-pressed`; clicking an active speed resets playback to normal `1.0x`.",
+			"Does not add a toggle mode back to `@pie-players/pie-tool-tts-inline`.",
+		],
+		section: demo11TtsToggleSpeedSection,
 	},
 	"tabbed-layout": {
 		id: "tabbed-layout",

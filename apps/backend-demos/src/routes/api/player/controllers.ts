@@ -59,6 +59,7 @@ type ControllerContext = Context & {
 const BUILDER_CONTROLLER_BASE_URL =
 	"https://builder.pie-api.com/api/v1/controllers";
 const CONTROLLER_TIMEOUT_MS = 5_000;
+const PRESERVED_DISPLAY_FIELDS = ["promptEnabled"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === "object" && !Array.isArray(value);
@@ -66,6 +67,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function clone<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function preserveDisplayFields(
+	rawModel: PieModel,
+	controllerResult: Record<string, unknown>,
+): Record<string, unknown> {
+	const preserved: Record<string, unknown> = {};
+	for (const field of PRESERVED_DISPLAY_FIELDS) {
+		if (!(field in controllerResult) && field in rawModel) {
+			preserved[field] = rawModel[field];
+		}
+	}
+	return preserved;
 }
 
 function toPieDependency(packageSpec: string): PieDependency {
@@ -186,6 +200,7 @@ export async function executeControllerModel(args: {
 		model: {
 			id: args.model.id,
 			element: args.model.element,
+			...preserveDisplayFields(args.model, isRecord(result) ? result : {}),
 			...(isRecord(result) ? result : {}),
 		},
 		sessionUpdates: context.module.sessionUpdates || [],

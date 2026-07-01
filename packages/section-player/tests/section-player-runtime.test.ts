@@ -110,6 +110,73 @@ describe("resolvePlayerRuntime", () => {
 
 		expect((runtime.resolvedPlayerProps as any).backend).toBe(backend);
 	});
+
+	test("defaults hosted mode on when delivery backend is enabled", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: {
+				playerType: "iife",
+				player: {
+					backend: {
+						delivery: {
+							enabled: true,
+							itemId: "item-1",
+							sessionId: "session-1",
+						},
+					},
+				},
+			},
+			playerType: "iife",
+			env: null,
+		});
+
+		expect((runtime.resolvedPlayerProps as any).hosted).toBe(true);
+	});
+
+	test("does not default hosted mode on when delivery backend is disabled", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: {
+				playerType: "iife",
+				player: {
+					backend: {
+						delivery: {
+							enabled: false,
+							itemId: "item-1",
+							sessionId: "session-1",
+						},
+					},
+				},
+			},
+			playerType: "iife",
+			env: null,
+		});
+
+		expect((runtime.resolvedPlayerProps as any).hosted).toBeUndefined();
+	});
+
+	test("preserves explicit hosted override when delivery backend is enabled", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: {
+				playerType: "iife",
+				player: {
+					hosted: false,
+					backend: {
+						delivery: {
+							enabled: true,
+							itemId: "item-1",
+							sessionId: "session-1",
+						},
+					},
+				},
+			},
+			playerType: "iife",
+			env: null,
+		});
+
+		expect((runtime.resolvedPlayerProps as any).hosted).toBe(false);
+	});
 });
 
 describe("resolveSectionPlayerRuntimeState", () => {

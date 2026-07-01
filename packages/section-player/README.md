@@ -245,6 +245,70 @@ host.hooks = {
 
 Advanced runtime configuration is supplied through the `runtime` object. Set player config, tools, accessibility, coordinator, env, and `createSectionController` on `runtime.<key>`.
 
+### Backend delivery for embedded items
+
+Hosts can configure item-player backend delivery once at the section-player
+runtime level. Section-player derives a concrete `backend` prop for each
+embedded item player before it renders the item. This is intended for hosts such
+as Quiz Engine that need server-processed PIE models and server scoring without
+querying every nested `<pie-item-player>`.
+
+```ts
+import type {
+  SectionPlayerRuntimeConfig,
+} from "@pie-players/pie-section-player";
+
+const runtime: SectionPlayerRuntimeConfig = {
+  playerType: "iife",
+  env: {
+    mode: "gather",
+    role: "student",
+  },
+  player: {
+    backend: {
+      delivery: {
+        enabled: true,
+        baseUrl: bffUrl,
+        assignmentId: playerSessionId,
+        endpoints: {
+          load: "/api/player/load",
+          saveSession: "/api/player/save",
+          model: "/api/player/model",
+          score: "/api/player/score",
+        },
+        autosave: { enabled: true, debounceMs: 250 },
+      },
+    },
+  },
+};
+
+sectionPlayer.runtime = runtime;
+```
+
+When `runtime.player.backend.delivery` is enabled, section-player treats
+`itemId` and `sessionId` as per-item delivery identity. It derives them from
+`canonicalItemId || item.id` and the item session before forwarding `backend` to
+each embedded item player. Static delivery fields such as `baseUrl`, `auth`,
+`endpoints`, `assignmentId`, and `autosave` are preserved. Use `assignmentId`
+for shared attempt/player identity.
+
+`runtime.player.resolveBackend` is a section-player-reserved key. It is called
+with `{ itemId, canonicalItemId, item, itemIndex, itemSession, sectionId, env,
+baseBackend }` and is stripped before props reach `<pie-item-player>`. Use it
+only when the backend needs custom per-item identity mapping. The resolver
+receives cloned backend objects, so per-item identity changes do not mutate the
+shared runtime configuration or leak across items.
+
+Section-player only derives the concrete `backend` prop. It does not call
+`loadFromBackend()` on nested item players. Embedded `<pie-item-player>` loads
+automatically when its derived `backend.delivery` config has a load signature,
+so every mounted item player issues one backend load for its own item. Passage
+players do not receive item delivery backend config, but shared non-delivery
+backend config is preserved.
+
+This backend delivery config is separate from the element-loader backend used
+for IIFE/ESM bundle preloading.
+
 ### Host-owned focus
 
 Section-player does not move focus on behalf of host-level affordances such

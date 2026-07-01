@@ -1,15 +1,8 @@
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
-    svelte-check:
-      glob: "**/*.{js,ts,svelte}"
-      run: bun run check
-    check-deps:
-      run: bun run check:deps
-    check-package-metadata:
-      run: bun run check:package-metadata
-    check-svelte-runtime-deps:
-      run: bun run check:svelte-runtime-deps
+    early-local-gate:
+      run: bun run verify:pre-commit
 
 pre-push:
   parallel: false

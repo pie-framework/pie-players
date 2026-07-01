@@ -364,6 +364,7 @@
 				resolvedPlayerAttributes,
 				resolvedPlayerProps,
 				playerStrategy,
+				itemIndex,
 			})}
 			itemToolbarTools={itemToolbarTools}
 			{toolRegistry}

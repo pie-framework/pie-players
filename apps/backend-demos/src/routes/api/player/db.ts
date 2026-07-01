@@ -364,6 +364,31 @@ export function listDemoItems(): DemoItem[] {
 	return (readItems.all() as DemoItemRow[]).map(toItem);
 }
 
+export function saveDemoItemConfig(args: {
+	id: string;
+	name?: string;
+	description?: string;
+	config: DemoItemConfig;
+}): DemoItem {
+	const existing = getDemoItem(args.id);
+	const now = nowIso();
+	upsertItem.run(
+		args.id,
+		args.name || existing?.name || args.id,
+		args.description ||
+			existing?.description ||
+			"Saved from backend authoring demo",
+		JSON.stringify(clone(args.config)),
+		existing?.createdAt || now,
+		now,
+	);
+	const saved = getDemoItem(args.id);
+	if (!saved) {
+		throw new Error(`Failed to save demo item: ${args.id}`);
+	}
+	return saved;
+}
+
 export function getItemForSession(sessionId: string): DemoItem | null {
 	const session = getSession(sessionId);
 	if (!session) return null;

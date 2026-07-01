@@ -15,9 +15,8 @@
 <script lang="ts">
 	import "@pie-players/pie-theme/components.css";
 	import {
-		DEFAULT_TTS_SPEED_OPTIONS,
 		formatTTSSpeedOptionsAsText,
-		normalizeTTSSpeedOptionConfigs,
+		normalizeTTSSpeedControlOptions,
 		parseTTSSpeedOptionsFromText,
 		resolveTTSRuntimeSettings,
 		type TTSSpeedOption,
@@ -30,6 +29,7 @@
 	type PreviewMode = "plain" | "ssml";
 	type PollyFormat = "mp3" | "ogg" | "pcm";
 	type PollySpeechMarksMode = "word" | "word+sentence";
+	const INLINE_SPEED_DEFAULT_RATES = [0.8, 1, 1.25];
 
 	type DemoVoice = {
 		id?: string;
@@ -434,12 +434,12 @@ function findBrowserDemoVoice(
 	}
 
 	function resetInlineSpeedOptionsToDefaults(): void {
-		speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
+		speedOptionsText = formatTTSSpeedOptionsAsText(INLINE_SPEED_DEFAULT_RATES);
 		preservedObjectSpeedOptions = undefined;
 		preservedObjectSpeedOptionsText = "";
 	}
 
-	const getSpeedOptionRate = (option: TTSSpeedOption): number =>
+	const getSpeedOptionRate = (option: TTSSpeedOption | { rate: number }): number =>
 		typeof option === "number" ? option : option.rate;
 
 	const hasObjectSpeedOptions = (value: unknown): boolean =>
@@ -448,8 +448,8 @@ function findBrowserDemoVoice(
 
 	function haveSameSpeedOptionRates(left: unknown, right: unknown): boolean {
 		if (!Array.isArray(left) || !Array.isArray(right)) return false;
-		const leftRates = normalizeTTSSpeedOptionConfigs(left).map(getSpeedOptionRate);
-		const rightRates = normalizeTTSSpeedOptionConfigs(right).map(getSpeedOptionRate);
+		const leftRates = normalizeTTSSpeedControlOptions(left).map(getSpeedOptionRate);
+		const rightRates = normalizeTTSSpeedControlOptions(right).map(getSpeedOptionRate);
 		return (
 			leftRates.length === rightRates.length &&
 			leftRates.every((rate, index) => rate === rightRates[index])
@@ -757,14 +757,14 @@ function findBrowserDemoVoice(
 		preservedObjectSpeedOptions = undefined;
 		preservedObjectSpeedOptionsText = "";
 		if (runtimeForSpeed.speedOptions === undefined) {
-			speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
+			speedOptionsText = formatTTSSpeedOptionsAsText(INLINE_SPEED_DEFAULT_RATES);
 		} else if (
 			Array.isArray(runtimeForSpeed.speedOptions) &&
 			runtimeForSpeed.speedOptions.length === 0
 		) {
 			speedOptionsText = "";
 		} else {
-			const normalizedSpeedOptions = normalizeTTSSpeedOptionConfigs(
+			const normalizedSpeedOptions = normalizeTTSSpeedControlOptions(
 				runtimeForSpeed.speedOptions,
 			);
 			const speedOptionRates = normalizedSpeedOptions.map(getSpeedOptionRate);
@@ -1953,13 +1953,13 @@ function normalizePreviewSpeechMarkOffsets(
 					id="tts-inline-speed-options"
 					class="input input-sm input-bordered w-full"
 					bind:value={speedOptionsText}
-					placeholder="0.8, 1.25"
+					placeholder="0.8, 1, 1.25"
 					autocomplete="off"
 				/>
 				<div class="mt-1 flex flex-wrap items-center gap-2">
 					<span class="text-xs opacity-75">
-						Comma or semicolon-separated multipliers (1× is not shown as a button). Leave empty to
-						hide speed buttons.
+						Comma or semicolon-separated multipliers. Include 1 for Normal; leave empty to hide
+						speed controls.
 					</span>
 					<button
 						type="button"

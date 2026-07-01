@@ -100,3 +100,43 @@ describe("tool-tts-inline active trigger styling contract", () => {
 		expect(contrastRatio("#ffffff", "#1268aa")).toBeGreaterThanOrEqual(4.5);
 	});
 });
+
+describe("tool-tts-inline speed control accessibility contract", () => {
+	test("renders playback speed as a named radio group", () => {
+		expect(source).toContain('role="radiogroup"');
+		expect(source).toContain('aria-label="Playback speed"');
+		expect(source).toContain('role="radio"');
+		expect(source).toContain("aria-checked={playbackRate === option.rate}");
+	});
+
+	test("does not keep the old built-in speed toggle contract", () => {
+		expect(source).not.toContain("Playback speed reset to 1x");
+		expect(source).not.toContain("aria-pressed={playbackRate === option.rate}");
+		expect(source).not.toContain("playbackRate === option.rate ? 1 : option.rate");
+	});
+
+	test("hides one-option speed groups unless the host opts in", () => {
+		expect(source).toContain("showSingleSpeedOption");
+		expect(source).toContain("speedChoices.length > 1 || showSingleSpeedOption");
+	});
+
+	test("lets omitted speedOptions use semantic Slow Normal Fast defaults", () => {
+		expect(source).not.toContain(
+			"speedOptions = [...DEFAULT_TTS_SPEED_OPTIONS] as TTSSpeedOption[]",
+		);
+		expect(source).toContain("speedOptions = undefined");
+	});
+
+	test("keeps radio behavior semantic instead of rendering visual radio inputs", () => {
+		expect(source).not.toContain("pie-tool-tts-inline__control--speed-active");
+		expect(source).not.toContain("pie-tool-tts-inline__speed-radio");
+		expect(source).toContain(".pie-tool-tts-inline__control--speed[aria-checked='true']");
+	});
+
+	test("keeps speed radio buttons the same height as other toolbar controls", () => {
+		const body = cssRuleBody(".pie-tool-tts-inline__control--speed");
+
+		expect(body).toContain("height: 2rem");
+		expect(body).not.toContain("min-height: 2.75rem");
+	});
+});

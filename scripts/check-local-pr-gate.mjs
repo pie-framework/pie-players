@@ -4,6 +4,22 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
+const requiredPreCommitCommands = [
+	"check:changeset-patch-only",
+	"check:local-pr-gate",
+	"check:deps",
+	"check:package-metadata",
+	"check:svelte-runtime-deps",
+	"check:custom-elements",
+	"check:ce-define-safety",
+	"check:speech-composition-purity",
+	"check:source-exports",
+	"check:consumer-boundaries",
+	"check:scripts",
+	"lint:biome",
+	"check",
+];
+
 const requiredCiLintTypecheckCommands = [
 	"check:local-pr-gate",
 	"check:deps",
@@ -79,6 +95,13 @@ export function collectGateFailures({ packageJson, lefthook, ciWorkflow }) {
 
 	collectMissingOrderedCommands({
 		scripts,
+		scriptName: "verify:pre-commit",
+		required: requiredPreCommitCommands,
+		failures,
+	});
+
+	collectMissingOrderedCommands({
+		scripts,
 		scriptName: "verify:ci-lint-typecheck",
 		required: requiredCiLintTypecheckCommands,
 		failures,
@@ -100,6 +123,10 @@ export function collectGateFailures({ packageJson, lefthook, ciWorkflow }) {
 
 	if (!lefthook.includes("run: bun run verify:pre-push")) {
 		failures.push("lefthook pre-push must run bun run verify:pre-push.");
+	}
+
+	if (!lefthook.includes("run: bun run verify:pre-commit")) {
+		failures.push("lefthook pre-commit must run bun run verify:pre-commit.");
 	}
 
 	if (!ciWorkflow.includes("run: bun run verify:ci-lint-typecheck")) {
@@ -136,7 +163,7 @@ function main() {
 	}
 
 	console.log(
-		"[check-local-pr-gate] OK: fast pre-push, full local PR, and CI gates are configured",
+		"[check-local-pr-gate] OK: early pre-commit, fast pre-push, full local PR, and CI gates are configured",
 	);
 }
 

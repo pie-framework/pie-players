@@ -138,6 +138,19 @@ function isElementIdentityOnlyPayload(
 	);
 }
 
+function isWrappedIdentityOnlyElementEcho(candidate: ItemSessionContainer): boolean {
+	return (
+		candidate.data.length > 0 &&
+		candidate.data.every(
+			(entry) =>
+				entry &&
+				typeof entry === "object" &&
+				!Array.isArray(entry) &&
+				isElementIdentityOnlyPayload(entry as Record<string, unknown>),
+		)
+	);
+}
+
 function mergeSessionEntry(
 	existing: Record<string, unknown>,
 	incoming: Record<string, unknown>,
@@ -237,6 +250,15 @@ export function normalizeItemSessionChange(args: {
 			previousNormalized &&
 			areSessionContainersEqual(normalizedCandidate, previousNormalized)
 		) {
+			return {
+				itemId: safeItemId,
+				session: null,
+				intent: "metadata-only",
+				component: getMetadataComponent(sessionDetail),
+				complete: getMetadataComplete(sessionDetail),
+			};
+		}
+		if (metadataWithSessionOnly && isWrappedIdentityOnlyElementEcho(normalizedCandidate)) {
 			return {
 				itemId: safeItemId,
 				session: null,

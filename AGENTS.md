@@ -174,9 +174,8 @@ This applies to:
 - `bun run verify:local-pr`, because it runs the full local lint/typecheck gate
   plus the critical Playwright e2e suites.
 
-The default `git push` pre-push hook is intentionally lightweight and runs
-`bun run verify:pre-push`. Use `bun run verify:local-pr` before opening or
-merging higher-risk PRs when you want the full local gate.
+The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
+expected to run the full local PR gate and critical Playwright e2e suites.
 
 ## Skills And Commands
 

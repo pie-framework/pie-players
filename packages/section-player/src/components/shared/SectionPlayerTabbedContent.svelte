@@ -73,6 +73,14 @@
 	 * behavior unchanged), shrinking proportionally above that. A lower clamp
 	 * of 0.4 guards against inflated ratios (docked devtools, browser side
 	 * panels, window chrome) ever making the toggle unusably small.
+	 *
+	 * NOTE: this same factor is also applied to the vertical spacing
+	 * (gap + block padding) surrounding the toggle in
+	 * .pie-section-player-tabbed-content, via the same CSS variable. The
+	 * `zoom` property only shrinks the toggle element itself; the flex gap
+	 * and padding live outside that element and would otherwise keep
+	 * growing with real browser zoom, silently eating back the vertical
+	 * space this work is meant to reclaim.
 	 */
 	const MAX_TOGGLE_ZOOM = 2;
 	const MIN_ZOOM_COMPENSATION = 0.4;
@@ -270,8 +278,27 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: var(--pie-section-player-tab-gap, 0.5rem);
-		padding: 0.5rem;
+		/*
+		 * The gap between the tab row and the panel below it sits OUTSIDE the
+		 * zoomed .pie-section-player-tabs element, so it isn't shrunk by the
+		 * `zoom` CSS property applied there. It must be compensated
+		 * separately using the same factor, or it keeps growing with real
+		 * browser zoom past 200% and eats back the space we're trying to
+		 * reclaim.
+		 */
+		gap: calc(
+			var(--pie-section-player-tab-gap, 0.5rem) *
+				var(--pie-section-player-tab-zoom-comp, 1)
+		);
+		/*
+		 * Likewise, vertical (block) padding around the whole content area
+		 * contributes to the white space above/below the toggle and must be
+		 * compensated. Horizontal (inline) padding is left alone since the
+		 * goal is reclaiming vertical space for passage/question content,
+		 * not narrowing the content column.
+		 */
+		padding-block: calc(0.5rem * var(--pie-section-player-tab-zoom-comp, 1));
+		padding-inline: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
 		overflow: hidden;

@@ -1115,22 +1115,38 @@
 			}
 		};
 
-		const applyCalculatorContentHeight = () => {
-			if (currentArgs.mounted.toolId !== 'calculator') return;
-			if (!mountedContentElement || !headerEl) return;
-			const shellMinHeight = currentArgs.mounted.entry.shell?.minHeight ?? 420;
-			const headerHeight = headerEl.offsetHeight || 48;
-			// Content area at minimum shell size — the smallest height Desmos
-			// can render at based on the shell configuration.
-			const contentMinHeight = shellMinHeight - headerHeight;
-			const availableHeight = height - headerHeight;
-			// Always give Desmos at least contentMinHeight so it renders fully.
-			// When the shell is taller, fill the extra space. When it's shorter,
-			// the element overflows contentEl and the auto scroll kicks in.
-			const elementHeight = Math.max(availableHeight, contentMinHeight);
-			mountedContentElement.style.height = `${elementHeight}px`;
+		const getContentOverflowY = (): 'hidden' | 'auto' =>
+			currentArgs.mounted.entry.shell?.content?.overflowY === 'auto' ? 'auto' : 'hidden';
+
+		const getHeaderHeight = (): number => {
+			if (!headerEl) return 0;
+			const rectHeight = headerEl.getBoundingClientRect().height;
+			if (rectHeight > 0) return rectHeight;
+			return headerEl.offsetHeight || 0;
+		};
+
+		const applyContentLayout = () => {
+			if (!contentEl) return;
+			const shellConfig = currentArgs.mounted.entry.shell;
+			contentEl.style.overflowX = 'hidden';
+			contentEl.style.overflowY = getContentOverflowY();
+			if (!mountedContentElement) return;
+
+			if (shellConfig?.content?.preserveMinHeight === true) {
+				const headerHeight = getHeaderHeight();
+				const shellMinHeight = shellConfig.minHeight ?? 240;
+				const contentMinHeight = Math.max(0, shellMinHeight - headerHeight);
+				const availableHeight = Math.max(0, height - headerHeight);
+				const elementHeight = Math.max(availableHeight, contentMinHeight);
+				mountedContentElement.style.height = `${elementHeight}px`;
+				mountedContentElement.style.minHeight = '0';
+				mountedContentElement.style.flex = `0 0 ${elementHeight}px`;
+				return;
+			}
+
+			mountedContentElement.style.height = '100%';
 			mountedContentElement.style.minHeight = '0';
-			mountedContentElement.style.flex = `0 0 ${elementHeight}px`;
+			mountedContentElement.style.flex = '1 1 auto';
 		};
 
 		const applyPositionAndSize = () => {
@@ -1158,7 +1174,7 @@
 			y = clamp(y, 0, Math.max(0, window.innerHeight - height));
 			applyShellStyle();
 			applyContentMinWidth();
-			applyCalculatorContentHeight();
+			applyContentLayout();
 			notifyHostedResize();
 		};
 
@@ -1287,15 +1303,8 @@
 			element.style.display = 'block';
 			element.style.width = '100%';
 			element.style.height = '100%';
-			element.style.minHeight = '0';
 			element.style.flex = '1 1 auto';
-			// `min-width` is applied dynamically by applyContentMinWidth() so
-			// that the calculator surface keeps its natural width only when
-			// the shell has been shrunk below its configured minimum (narrow
-			// viewport, WCAG 1.4.10 reflow). At full shell width we leave
-			// min-width clear so contentEl never gains a phantom scrollbar
-			// from sub-pixel rounding against the 100% width child.
-			applyContentMinWidth();
+			element.style.minHeight = '0';
 			if (mountedContentElement && mountedContentElement !== element) {
 				if (mountedContentElement.parentNode === contentEl) {
 					invokeElementUnmount(mountedContentElement);
@@ -1310,6 +1319,10 @@
 				contentEl.appendChild(element);
 			}
 			mountedContentElement = element;
+			// Dynamic width/height keeps hosted tools reachable when a small
+			// viewport forces the shell below its configured content minimum.
+			applyContentMinWidth();
+			applyContentLayout();
 			notifyHostedMount(element);
 		};
 
@@ -1645,6 +1658,7 @@
 
 				applyShellStyle();
 				applyContentMinWidth();
+				applyContentLayout();
 				notifyHostedResize();
 			}
 		};
@@ -1912,11 +1926,9 @@
 			contentEl.style.width = '100%';
 			contentEl.style.flex = '1 1 auto';
 			contentEl.style.minHeight = '0';
-			// Calculator shells scroll vertically when the viewport is too small to
-			// show the full keypad. Other shells keep overflow:hidden so content is
-			// cleanly clipped at the rounded corners.
+			// Clip tool content and round the bottom corners to match the shell.
 			contentEl.style.overflowX = 'hidden';
-			contentEl.style.overflowY = isCalculatorShell ? 'auto' : 'hidden';
+			contentEl.style.overflowY = getContentOverflowY();
 			contentEl.style.borderRadius = '0 0 12px 12px';
 
 			// Focus guards (calculator shell only). Desmos calculators handle Tab
@@ -2066,8 +2078,8 @@
 					currentArgs.mounted.toolId === 'calculator' ? 'inline-block' : 'inline-flex';
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : closeButtonOpenDisplay;
-				mountContent();
 				applyShellStyle();
+				mountContent();
 				notifyHostedResize();
 				if (!previousActive && currentArgs.active) {
 					installFocusTrap();

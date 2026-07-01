@@ -260,6 +260,10 @@ export const calculatorToolRegistration: ToolRegistration = {
 						minHeight: 420,
 						initialAlign: "bottom-right",
 						initialMargin: 16,
+						content: {
+							overflowY: "auto",
+							preserveMinHeight: true,
+						},
 					},
 				},
 			],

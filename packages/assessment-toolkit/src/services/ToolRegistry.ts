@@ -98,6 +98,9 @@ export interface ToolRenderElement {
 			reserveSpace?: boolean;
 			showWhenToolActive?: boolean;
 		};
+		headerOverlay?: {
+			showWhenToolActive?: boolean;
+		};
 	};
 	shell?: ToolWindowShellConfig;
 }

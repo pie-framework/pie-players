@@ -258,6 +258,9 @@ describe("tts-runtime-config defaults", () => {
 				reserveSpace: false,
 				expandWhenToolActive: false,
 			},
+			headerOverlay: {
+				expandWhenToolActive: true,
+			},
 		});
 	});
 
@@ -278,12 +281,18 @@ describe("tts-runtime-config defaults", () => {
 				reserveSpace: false,
 				expandWhenToolActive: false,
 			},
+			headerOverlay: {
+				expandWhenToolActive: false,
+			},
 		});
 		expect(resolveTTSHostToolbarLayout(left)).toEqual({
 			mount: "before-buttons",
 			controlsRow: {
 				reserveSpace: false,
 				expandWhenToolActive: false,
+			},
+			headerOverlay: {
+				expandWhenToolActive: true,
 			},
 		});
 	});

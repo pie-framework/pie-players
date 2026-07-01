@@ -208,6 +208,9 @@ export const ttsToolRegistration: ToolRegistration = {
 							reserveSpace: hostLayout.controlsRow.reserveSpace,
 							showWhenToolActive: hostLayout.controlsRow.expandWhenToolActive,
 						},
+						headerOverlay: {
+							showWhenToolActive: hostLayout.headerOverlay.expandWhenToolActive,
+						},
 					},
 				},
 			],

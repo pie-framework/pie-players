@@ -1,5 +1,7 @@
 # @pie-players/pie-theme
 
+## 0.3.54
+
 ## 0.3.53
 
 ### Patch Changes

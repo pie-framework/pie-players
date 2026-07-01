@@ -1,5 +1,14 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 0.3.54
+
+### Patch Changes
+
+- Updated dependencies [bead424]
+  - @pie-players/pie-assessment-toolkit@0.3.54
+  - @pie-players/pie-section-player-tools-shared@0.3.54
+  - @pie-players/pie-theme@0.3.54
+
 ## 0.3.53
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @pie-players/pie-item-player
 
+## 0.3.54
+
+### Patch Changes
+
+- 1748ed5: Add namespaced backend delivery and authoring support, including server-backed model refresh, authoring load/save/release and media hooks, and indirect section/assessment runtime configuration for item backends.
+  - @pie-players/pie-players-shared@0.3.54
+  - @pie-players/pie-theme@0.3.54
+
 ## 0.3.53
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @pie-players/pie-print-player
 
+## 0.3.54
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@0.3.54
+
 ## 0.3.53
 
 ### Patch Changes

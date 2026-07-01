@@ -1,5 +1,19 @@
 # @pie-players/pie-section-player
 
+## 0.3.54
+
+### Patch Changes
+
+- f44aa3b: Add a section-player runtime backend resolver so hosts can configure item-player delivery backends once and have embedded items receive concrete per-item backend identities.
+- 1748ed5: Add namespaced backend delivery and authoring support, including server-backed model refresh, authoring load/save/release and media hooks, and indirect section/assessment runtime configuration for item backends.
+- Updated dependencies [1748ed5]
+- Updated dependencies [bead424]
+  - @pie-players/pie-item-player@0.3.54
+  - @pie-players/pie-assessment-toolkit@0.3.54
+  - @pie-players/pie-default-tool-loaders@0.3.54
+  - @pie-players/pie-context@0.3.54
+  - @pie-players/pie-players-shared@0.3.54
+
 ## 0.3.53
 
 ### Patch Changes

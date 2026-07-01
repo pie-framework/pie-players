@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.54
+
+### Patch Changes
+
+- bead424: Make inline TTS speed controls a single-select radio-style group with visible Normal selected by default, while preserving host ordering and numeric helper compatibility.
+  - @pie-players/pie-calculator@0.3.54
+  - @pie-players/pie-calculator-desmos@0.3.54
+  - @pie-players/pie-context@0.3.54
+  - @pie-players/pie-players-shared@0.3.54
+  - @pie-players/pie-tts@0.3.54
+  - @pie-players/tts-client-server@0.3.54
+
 ## 0.3.53
 
 ### Patch Changes

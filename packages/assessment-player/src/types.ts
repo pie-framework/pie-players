@@ -4,6 +4,7 @@ import type {
 	TestPart,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
+import type { SectionPlayerRuntimeConfig } from "@pie-players/pie-section-player";
 
 export interface SectionSessionSnapshot {
 	currentItemIndex?: number;
@@ -143,10 +144,12 @@ export interface SectionPlayerLoaderOverrides {
 	[key: string]: unknown;
 }
 
-export interface SectionPlayerRuntimeOverrides {
-	player?: SectionPlayerLoaderOverrides | null;
+export type SectionPlayerRuntimeOverrides = SectionPlayerRuntimeConfig & {
+	player?:
+		| (SectionPlayerRuntimeConfig["player"] & SectionPlayerLoaderOverrides)
+		| null;
 	[key: string]: unknown;
-}
+};
 
 export interface AssessmentPlayerRuntimeConfig {
 	assessmentId?: string;

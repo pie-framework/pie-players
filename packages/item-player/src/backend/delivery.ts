@@ -9,6 +9,7 @@ import type {
 	BackendConfig,
 	BackendDeliveryConfig,
 	BackendDeliveryLoadResult,
+	BackendDeliveryModelResult,
 	BackendDeliverySessionContext,
 	BackendLoadResult,
 	BackendScoreOptions,
@@ -99,6 +100,32 @@ export function getDeliveryBackendLoadSignature(
 	});
 }
 
+export function getDeliveryBackendModelSignature(
+	backend: BackendConfig | null | undefined,
+	env: unknown,
+): string {
+	const delivery = getDeliveryBackend(backend);
+	if (!delivery) return "";
+	const hasCustomModel = typeof delivery.client?.model === "function";
+	const hasExplicitBuiltInModel =
+		!delivery.client ||
+		delivery.provider === "pie-api" ||
+		!!delivery.baseUrl ||
+		!!delivery.endpoints?.model;
+	if (!hasCustomModel && !hasExplicitBuiltInModel) return "";
+	return JSON.stringify({
+		provider: delivery.provider ?? (delivery.client ? "custom" : "pie-api"),
+		baseUrl: delivery.baseUrl ?? "",
+		itemId: delivery.itemId ?? "",
+		sessionId: delivery.sessionId ?? "",
+		assignmentId: delivery.assignmentId ?? "",
+		hasClientModel: typeof delivery.client?.model === "function",
+		endpoint: delivery.endpoints?.model ?? null,
+		options: delivery.options ?? null,
+		env: env ?? null,
+	});
+}
+
 export async function loadFromDeliveryBackend(
 	backend: BackendConfig,
 	env: unknown,
@@ -117,6 +144,7 @@ export async function loadFromDeliveryBackend(
 		sessionId: delivery.sessionId,
 		assignmentId: delivery.assignmentId,
 		env,
+		requestOptions: delivery.options,
 	};
 	const result =
 		typeof delivery.client?.load === "function"
@@ -132,15 +160,21 @@ export async function loadFromDeliveryBackend(
 export async function modelFromDeliveryBackend(
 	backend: BackendConfig,
 	context: BackendDeliverySessionContext,
-): Promise<unknown> {
+): Promise<BackendDeliveryModelResult> {
 	const delivery = getDeliveryBackend(backend);
 	if (!delivery) {
 		throw new Error("Delivery backend is not configured.");
 	}
 	if (typeof delivery.client?.model === "function") {
-		return delivery.client.model(context);
+		return delivery.client.model({
+			...context,
+			requestOptions: delivery.options,
+		});
 	}
-	return callPieApiDeliveryModel(delivery, backend.auth, context);
+	return callPieApiDeliveryModel(delivery, backend.auth, {
+		...context,
+		requestOptions: delivery.options,
+	});
 }
 
 export async function saveToDeliveryBackend(
@@ -152,9 +186,15 @@ export async function saveToDeliveryBackend(
 		throw new Error("Delivery backend is not configured.");
 	}
 	if (typeof delivery.client?.saveSession === "function") {
-		return delivery.client.saveSession(context);
+		return delivery.client.saveSession({
+			...context,
+			requestOptions: delivery.options,
+		});
 	}
-	return callPieApiDeliverySave(delivery, backend.auth, context);
+	return callPieApiDeliverySave(delivery, backend.auth, {
+		...context,
+		requestOptions: delivery.options,
+	});
 }
 
 export async function scoreWithDeliveryBackend(
@@ -168,6 +208,7 @@ export async function scoreWithDeliveryBackend(
 	}
 	const scoreContext = {
 		...context,
+		requestOptions: delivery.options,
 		options,
 	};
 	if (typeof delivery.client?.score === "function") {

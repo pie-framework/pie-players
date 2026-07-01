@@ -33,6 +33,7 @@ const model = {
 	id: "q1",
 	element: "multiple-choice",
 	prompt: "Pick one",
+	promptEnabled: true,
 	correctValue: "b",
 	choices: [
 		{ value: "a", label: "A", correct: false },
@@ -51,6 +52,7 @@ describe("backend demo controller executor", () => {
 
 		expect(result.model.id).toBe("q1");
 		expect(result.model.element).toBe("multiple-choice");
+		expect(result.model.promptEnabled).toBe(true);
 		expect(JSON.stringify(result.model)).not.toContain("correct");
 		expect(result.sessionUpdates).toEqual([
 			{ id: "q1", element: "multiple-choice", serverTouched: true },

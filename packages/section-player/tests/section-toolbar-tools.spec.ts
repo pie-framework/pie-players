@@ -431,6 +431,24 @@ test.describe("section toolbar tools", () => {
 		expect(movedByKeyboard.x).toBeLessThan(resized.x);
 	});
 
+	test("keeps default hosted shell content clipped vertically", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 320, height: 360 });
+		await gotoDemo(page);
+		const toolbar = page.locator("pie-section-toolbar").first();
+		const graphButton = toolbar.getByRole("button", {
+			name: "Graph - Graphing calculator",
+		});
+		await graphButton.click();
+
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+		await expect(
+			graphShell.locator(".pie-tool-shell__content").first(),
+		).toHaveCSS("overflow-y", "hidden");
+	});
+
 	// PIE-215: keyboard-only users must be able to Tab to shell title-bar buttons,
 	// activate them with Space/Enter, and get focus returned to the toolbar opener
 	// after the shell is closed via the keyboard.
@@ -607,6 +625,91 @@ test.describe("section toolbar tools", () => {
 		await page.keyboard.press("Escape");
 		await expect(calculatorShell).toBeHidden();
 		await expect(calculatorButton).toBeFocused();
+	});
+
+	test("keeps calculator content scrollable in a constrained viewport", async ({
+		page,
+	}) => {
+		test.setTimeout(60_000);
+		await page.setViewportSize({ width: 320, height: 360 });
+		await mockDesmosCalculatorScript(page);
+		await gotoDemo(page);
+		await page.getByRole("tab", { name: "Questions" }).click();
+
+		const q1 = page.locator("pie-section-player-item-card").first();
+		const calculatorButton = q1.getByRole("button", {
+			name: /open .* calculator/i,
+		});
+		await expect(calculatorButton).toBeVisible();
+
+		const desmosAuthResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/tools/desmos/auth") &&
+				response.request().method() === "GET",
+		);
+		await calculatorButton.click();
+		await desmosAuthResponse;
+
+		const calculatorShell = page
+			.locator('[data-pie-tool-shell="calculator"]')
+			.first();
+		await expect(calculatorShell).toBeVisible();
+		await expect(
+			page.locator("pie-tool-calculator .pie-tool-calculator").last(),
+		).toBeVisible({ timeout: 20_000 });
+
+		const shellLayout = await calculatorShell.evaluate((shell) => {
+			const shellEl = shell as HTMLElement;
+			const headerEl = shellEl.querySelector<HTMLElement>(
+				".pie-tool-shell__header",
+			);
+			const contentEl = shellEl.querySelector<HTMLElement>(
+				".pie-tool-shell__content",
+			);
+			const mountedEl = contentEl?.querySelector<HTMLElement>(
+				"pie-tool-calculator",
+			);
+			if (!headerEl || !contentEl || !mountedEl) {
+				throw new Error("Expected calculator shell layout elements");
+			}
+			const shellRect = shellEl.getBoundingClientRect();
+			const headerRect = headerEl.getBoundingClientRect();
+			const contentRect = contentEl.getBoundingClientRect();
+			const mountedRect = mountedEl.getBoundingClientRect();
+			const contentStyle = getComputedStyle(contentEl);
+
+			return {
+				contentClientHeight: Math.round(contentRect.height),
+				contentOverflowY: contentStyle.overflowY,
+				contentScrollHeight: contentEl.scrollHeight,
+				documentClientWidth: document.documentElement.clientWidth,
+				documentScrollWidth: document.documentElement.scrollWidth,
+				headerHeight: Math.round(headerRect.height),
+				mountedHeight: Math.round(mountedRect.height),
+				shellBottom: Math.round(shellRect.bottom),
+				shellHeight: Math.round(shellRect.height),
+				shellRight: Math.round(shellRect.right),
+				viewportHeight: window.innerHeight,
+				viewportWidth: window.innerWidth,
+			};
+		});
+
+		expect(shellLayout.shellRight).toBeLessThanOrEqual(
+			shellLayout.viewportWidth,
+		);
+		expect(shellLayout.shellBottom).toBeLessThanOrEqual(
+			shellLayout.viewportHeight,
+		);
+		expect(shellLayout.documentScrollWidth).toBeLessThanOrEqual(
+			shellLayout.documentClientWidth,
+		);
+		expect(shellLayout.contentOverflowY).toBe("auto");
+		expect(shellLayout.mountedHeight).toBeGreaterThanOrEqual(
+			420 - shellLayout.headerHeight,
+		);
+		expect(shellLayout.contentScrollHeight).toBeGreaterThan(
+			shellLayout.contentClientHeight,
+		);
 	});
 
 	test("exposes default split divider semantics and keyboard resizing in splitpane layout", async ({

@@ -124,6 +124,10 @@ export type {
 	ToolModuleLoader,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
+	ToolWindowShellAction,
+	ToolWindowShellAlign,
+	ToolWindowShellConfig,
+	ToolWindowShellContentConfig,
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
 export { ToolRegistry } from "./services/ToolRegistry.js";

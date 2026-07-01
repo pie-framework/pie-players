@@ -196,16 +196,23 @@ Passage and item cards share a common header row
 - Title and toolbar are centered vertically by default. There is no prop or
   attribute for this — hosts needing a non-standard alignment should override
   the selector in their own stylesheet.
+- Card corners default to `8px`. Hosts/themes can override the card radius via
+  `--pie-section-player-card-radius`.
 - The header fill is transparent by default. Hosts/themes opt into a color
   via the `--pie-section-player-card-header-background` CSS variable; the
   framework does not ship a brand palette.
+- When a header fill is provided, header top corners default just inside the
+  card radius. Hosts/themes can override them independently via
+  `--pie-section-player-card-header-radius`.
 
 Example (host CSS):
 
 ```css
 pie-section-player-passage-card,
 pie-section-player-item-card {
+  --pie-section-player-card-radius: 8px;
   --pie-section-player-card-header-background: #c9e5e6;
+  --pie-section-player-card-header-radius: 7px;
 }
 ```
 
@@ -244,6 +251,70 @@ host.hooks = {
 ```
 
 Advanced runtime configuration is supplied through the `runtime` object. Set player config, tools, accessibility, coordinator, env, and `createSectionController` on `runtime.<key>`.
+
+### Backend delivery for embedded items
+
+Hosts can configure item-player backend delivery once at the section-player
+runtime level. Section-player derives a concrete `backend` prop for each
+embedded item player before it renders the item. This is intended for hosts such
+as Quiz Engine that need server-processed PIE models and server scoring without
+querying every nested `<pie-item-player>`.
+
+```ts
+import type {
+  SectionPlayerRuntimeConfig,
+} from "@pie-players/pie-section-player";
+
+const runtime: SectionPlayerRuntimeConfig = {
+  playerType: "iife",
+  env: {
+    mode: "gather",
+    role: "student",
+  },
+  player: {
+    backend: {
+      delivery: {
+        enabled: true,
+        baseUrl: bffUrl,
+        assignmentId: playerSessionId,
+        endpoints: {
+          load: "/api/player/load",
+          saveSession: "/api/player/save",
+          model: "/api/player/model",
+          score: "/api/player/score",
+        },
+        autosave: { enabled: true, debounceMs: 250 },
+      },
+    },
+  },
+};
+
+sectionPlayer.runtime = runtime;
+```
+
+When `runtime.player.backend.delivery` is enabled, section-player treats
+`itemId` and `sessionId` as per-item delivery identity. It derives them from
+`canonicalItemId || item.id` and the item session before forwarding `backend` to
+each embedded item player. Static delivery fields such as `baseUrl`, `auth`,
+`endpoints`, `assignmentId`, and `autosave` are preserved. Use `assignmentId`
+for shared attempt/player identity.
+
+`runtime.player.resolveBackend` is a section-player-reserved key. It is called
+with `{ itemId, canonicalItemId, item, itemIndex, itemSession, sectionId, env,
+baseBackend }` and is stripped before props reach `<pie-item-player>`. Use it
+only when the backend needs custom per-item identity mapping. The resolver
+receives cloned backend objects, so per-item identity changes do not mutate the
+shared runtime configuration or leak across items.
+
+Section-player only derives the concrete `backend` prop. It does not call
+`loadFromBackend()` on nested item players. Embedded `<pie-item-player>` loads
+automatically when its derived `backend.delivery` config has a load signature,
+so every mounted item player issues one backend load for its own item. Passage
+players do not receive item delivery backend config, but shared non-delivery
+backend config is preserved.
+
+This backend delivery config is separate from the element-loader backend used
+for IIFE/ESM bundle preloading.
 
 ### Host-owned focus
 

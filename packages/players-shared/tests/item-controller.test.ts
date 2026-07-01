@@ -114,6 +114,68 @@ describe("ItemController", () => {
 		);
 		expect(out).toEqual({ id: "evt", data: [{ id: "q1", value: "D" }] });
 	});
+
+	test("ignores wrapped identity-only element session echoes from event detail", () => {
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: {
+				id: "item-1",
+				data: [
+					{
+						id: "q1",
+						element: "multiple-choice--version-latest",
+						value: ["A"],
+					},
+				],
+			},
+			storage: new FakeStorage(),
+		});
+
+		const out = controller.updateFromEventDetail(
+			{
+				complete: false,
+				component: "multiple-choice--version-latest",
+				session: {
+					id: "item-1",
+					data: [{ id: "q1", element: "multiple-choice--version-latest" }],
+				},
+			},
+			{ persist: false },
+		);
+
+		expect(out).toEqual({
+			id: "item-1",
+			data: [
+				{
+					id: "q1",
+					element: "multiple-choice--version-latest",
+					value: ["A"],
+				},
+			],
+		});
+	});
+
+	test("does not promote wrapped identity-only element session echoes to empty session data", () => {
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: { id: "item-1", data: [] },
+			storage: new FakeStorage(),
+		});
+
+		const out = controller.updateFromEventDetail(
+			{
+				complete: false,
+				component: "multiple-choice--version-latest",
+				session: {
+					id: "item-1",
+					data: [{ id: "q1", element: "multiple-choice--version-latest" }],
+				},
+			},
+			{ persist: false },
+		);
+
+		expect(out).toEqual({ id: "item-1", data: [] });
+	});
 });
 
 describe("ItemController.mergeElementSession", () => {

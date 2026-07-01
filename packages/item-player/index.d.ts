@@ -9,10 +9,11 @@ import type {
 export type DeleteDone = (err?: Error) => void;
 export type BackendScope = "delivery" | "authoring";
 export type BackendProvider = "custom" | "pie-api";
+export type BackendMethod = "POST" | "PUT" | "PATCH" | "DELETE";
 export type BackendEndpoint =
 	| string
 	| {
-			method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+			method?: BackendMethod;
 			path: string;
 	  };
 export type BackendAuthConfig = {
@@ -23,54 +24,142 @@ export type BackendRequestConfig = {
 	headers?: Record<string, string>;
 	timeoutMs?: number;
 };
+export type BackendRequestOptions = {
+	overrides?: Record<string, string>;
+};
+export type BackendAutosaveConfig =
+	| boolean
+	| {
+			enabled?: boolean;
+			debounceMs?: number;
+	  };
+export type BackendDeliveryIdentity = {
+	itemId?: string;
+	sessionId?: string;
+	assignmentId?: string;
+};
+export type BackendDeliveryEndpoints = {
+	load?: BackendEndpoint;
+	saveSession?: BackendEndpoint;
+	model?: BackendEndpoint;
+	score?: BackendEndpoint;
+};
+export type BackendDeliveryLoadContext = BackendDeliveryIdentity & {
+	env: unknown;
+	requestOptions?: BackendRequestOptions;
+};
+export type BackendDeliveryModelIdentity = {
+	id: string;
+	element: string;
+};
+export type BackendDeliverySessionContext = BackendDeliveryIdentity & {
+	session: { id: string; data: unknown[] };
+	env: unknown;
+	models?: BackendDeliveryModelIdentity[];
+	passageModels?: BackendDeliveryModelIdentity[];
+	requestOptions?: BackendRequestOptions;
+};
 export type BackendScoreOptions = {
 	disablePartialScoring?: boolean;
 	[key: string]: unknown;
 };
-export type BackendSaveContentOptions = {
+export type BackendAuthoringIdentity = {
+	contentId?: string;
+	collectionId?: string;
+};
+export type BackendAuthoringSaveOptions = {
 	preReleaseType?: string | null;
 	[key: string]: unknown;
 };
-export type BackendDeliveryConfig = {
-	enabled?: boolean;
-	provider?: BackendProvider;
-	itemId?: string;
-	sessionId?: string;
-	assignmentId?: string;
-	baseUrl?: string;
-	endpoints?: {
-		load?: BackendEndpoint;
-		saveSession?: BackendEndpoint;
-		model?: BackendEndpoint;
-		score?: BackendEndpoint;
-	};
-	request?: BackendRequestConfig;
-	auth?: BackendAuthConfig;
-	autosave?:
-		| boolean
-		| {
-				enabled?: boolean;
-				debounceMs?: number;
-		  };
-	client?: {
-		load?: (
-			context: Record<string, unknown>,
-		) => Promise<Record<string, unknown>>;
-		saveSession?: (context: Record<string, unknown>) => Promise<unknown>;
-		model?: (context: Record<string, unknown>) => Promise<unknown>;
-		score?: (context: Record<string, unknown>) => Promise<unknown>;
-	};
+export type BackendSaveContentOptions = BackendAuthoringSaveOptions;
+export type BackendAuthoringReleaseOptions = {
+	releaseType?: string | null;
+	[key: string]: unknown;
 };
-export type BackendAuthoringConfig = {
+export type BackendAuthoringImageHandler = ImageHandler;
+export type BackendAuthoringSoundHandler = SoundHandler;
+export type BackendAuthoringMediaConfig = {
+	onInsertImage?: (handler: BackendAuthoringImageHandler) => void;
+	onDeleteImage?: (src: string, done: DeleteDone) => void;
+	onInsertSound?: (handler: BackendAuthoringSoundHandler) => void;
+	onDeleteSound?: (src: string, done: DeleteDone) => void;
+};
+export type BackendAuthoringEndpoints = {
+	load?: BackendEndpoint;
+	saveContent?: BackendEndpoint;
+	releaseContent?: BackendEndpoint;
+};
+export type BackendAuthoringLoadResult = {
+	contentId?: string;
+	config: unknown;
+	metadata?: Record<string, unknown>;
+};
+export type BackendAuthoringSaveContext = BackendAuthoringIdentity & {
+	config: unknown;
+	env: unknown;
+	options?: BackendAuthoringSaveOptions;
+};
+export type BackendAuthoringReleaseContext = BackendAuthoringIdentity & {
+	env: unknown;
+	options?: BackendAuthoringReleaseOptions;
+};
+export type BackendAuthoringClient = {
+	load?: (
+		context: BackendAuthoringIdentity & { env: unknown },
+	) => Promise<BackendAuthoringLoadResult>;
+	saveContent?: (
+		context: BackendAuthoringSaveContext,
+	) => Promise<{ contentId: string }>;
+	releaseContent?: (
+		context: BackendAuthoringReleaseContext,
+	) => Promise<{ contentId: string }>;
+};
+export type BackendDeliveryScoreContext = BackendDeliverySessionContext & {
+	options?: BackendScoreOptions;
+};
+export type BackendDeliveryLoadResult = {
+	config?: unknown;
+	item?: unknown;
+	session?: unknown;
+	metadata?: Record<string, unknown>;
+};
+export type BackendDeliveryModelResult =
+	| Array<Record<string, unknown>>
+	| {
+			models?: Array<Record<string, unknown>>;
+			passageModels?: Array<Record<string, unknown>>;
+			metadata?: Record<string, unknown>;
+	  };
+export type BackendDeliveryClient = {
+	load?: (
+		context: BackendDeliveryLoadContext,
+	) => Promise<BackendDeliveryLoadResult>;
+	saveSession?: (context: BackendDeliverySessionContext) => Promise<unknown>;
+	model?: (
+		context: BackendDeliverySessionContext,
+	) => Promise<BackendDeliveryModelResult>;
+	score?: (context: BackendDeliveryScoreContext) => Promise<unknown>;
+};
+export type BackendDeliveryConfig = BackendDeliveryIdentity & {
 	enabled?: boolean;
 	provider?: BackendProvider;
 	baseUrl?: string;
-	contentId?: string;
-	collectionId?: string;
+	endpoints?: BackendDeliveryEndpoints;
+	options?: BackendRequestOptions;
 	request?: BackendRequestConfig;
 	auth?: BackendAuthConfig;
-	media?: Record<string, unknown>;
-	client?: Record<string, unknown>;
+	autosave?: BackendAutosaveConfig;
+	client?: BackendDeliveryClient;
+};
+export type BackendAuthoringConfig = BackendAuthoringIdentity & {
+	enabled?: boolean;
+	provider?: BackendProvider;
+	baseUrl?: string;
+	endpoints?: BackendAuthoringEndpoints;
+	request?: BackendRequestConfig;
+	auth?: BackendAuthConfig;
+	media?: BackendAuthoringMediaConfig;
+	client?: BackendAuthoringClient;
 };
 export type BackendConfig = {
 	auth?: BackendAuthConfig;
@@ -116,7 +205,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	saveSession(): Promise<void>;
 	score(options?: BackendScoreOptions): Promise<unknown>;
 	saveContent(options?: BackendSaveContentOptions): Promise<string>;
-	releaseContent(): Promise<string>;
+	releaseContent(options?: BackendAuthoringReleaseOptions): Promise<string>;
 }
 
 export declare function definePieItemPlayer(tagName?: string): void;

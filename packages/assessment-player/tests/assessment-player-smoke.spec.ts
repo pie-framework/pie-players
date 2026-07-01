@@ -194,6 +194,89 @@ test.describe("assessment player smoke", () => {
 		});
 	});
 
+	test("defaults nested item backend assignmentId from assessment attempt id", async ({
+		page,
+	}) => {
+		await page.goto(`${DEMO_PATH}?attemptId=backend-attempt-1`, {
+			waitUntil: "networkidle",
+		});
+
+		const host = page.locator("pie-assessment-player-default");
+		await expect(host).toBeVisible();
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+
+		await page.evaluate(() => {
+			(window as any).__assessmentItemBackendLoads = [];
+			const assessmentHost = document.querySelector(
+				"pie-assessment-player-default",
+			) as HTMLElement & { sectionPlayerRuntime?: Record<string, unknown> };
+			if (!assessmentHost) {
+				throw new Error("assessment player host not found");
+			}
+			assessmentHost.sectionPlayerRuntime = {
+				player: {
+					backend: {
+						delivery: {
+							enabled: true,
+							baseUrl: "/qe",
+							client: {
+								async load(context: Record<string, unknown>) {
+									(window as any).__assessmentItemBackendLoads.push(context);
+									return {
+										item: {
+											markup: "<p>Assessment backend item</p>",
+											elements: {},
+											models: [],
+										},
+										session: {
+											id: String(context.sessionId || ""),
+											data: [],
+										},
+									};
+								},
+								async model() {
+									return [];
+								},
+							},
+						},
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const loads = (window as any).__assessmentItemBackendLoads || [];
+			return loads.length > 0;
+		});
+		const backendState = await page.evaluate(() => {
+			const assessmentHost = document.querySelector(
+				"pie-assessment-player-default",
+			);
+			return {
+				attemptId: assessmentHost?.getAttribute("attempt-id") || "",
+				loadContexts: (window as any).__assessmentItemBackendLoads,
+			};
+		});
+		expect(backendState.attemptId).not.toBe("");
+		expect(backendState.loadContexts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					assignmentId: backendState.attemptId,
+				}),
+			]),
+		);
+		expect(
+			backendState.loadContexts.every(
+				(context: { assignmentId?: string; itemId?: string }) =>
+					context.assignmentId === backendState.attemptId &&
+					typeof context.itemId === "string" &&
+					context.itemId.length > 0,
+			),
+		).toBe(true);
+	});
+
 	test("emits navigation/session/progress events and supports cancelable navigation", async ({
 		page,
 	}) => {

@@ -20,7 +20,6 @@ import {
 	buildRuntimeTTSConfig,
 	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
-	normalizeTTSSpeedOptionConfigs,
 	type NormalizedTTSSpeedOption,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
@@ -81,7 +80,7 @@ export const ttsToolRegistration: ToolRegistration = {
 				settings.layoutMode = normalizeTTSLayoutMode(settings.layoutMode);
 			}
 			if (settings && "speedOptions" in settings) {
-				settings.speedOptions = normalizeTTSSpeedOptionConfigs(
+				settings.speedOptions = normalizeTTSSpeedControlOptions(
 					settings.speedOptions,
 				);
 			}
@@ -94,7 +93,7 @@ export const ttsToolRegistration: ToolRegistration = {
 				);
 			}
 			if ("speedOptions" in normalizedConfig) {
-				normalizedConfig.speedOptions = normalizeTTSSpeedOptionConfigs(
+				normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
 					normalizedConfig.speedOptions,
 				);
 			}
@@ -189,6 +188,10 @@ export const ttsToolRegistration: ToolRegistration = {
 			(
 				element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
 			).speedOptions = resolveElementSpeedOptions();
+			(
+				element as HTMLElement & { showSingleSpeedOption?: boolean }
+			).showSingleSpeedOption =
+				resolveRuntimeSettings().showSingleSpeedOption === true;
 			return element;
 		};
 		const hostLayout = resolveHostLayout();
@@ -232,6 +235,10 @@ export const ttsToolRegistration: ToolRegistration = {
 				(
 					element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
 				).speedOptions = resolveElementSpeedOptions();
+			(
+				element as HTMLElement & { showSingleSpeedOption?: boolean }
+			).showSingleSpeedOption =
+				resolveRuntimeSettings().showSingleSpeedOption === true;
 			},
 		};
 	},

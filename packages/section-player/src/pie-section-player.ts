@@ -52,3 +52,9 @@ export type {
 	SectionPlayerPassageTitleContext,
 } from "./contracts/card-title-formatters.js";
 export type { SectionPlayerHostHooks } from "./contracts/host-hooks.js";
+export type {
+	SectionPlayerBackendResolver,
+	SectionPlayerBackendResolverContext,
+	SectionPlayerRuntimeConfig,
+	SectionPlayerRuntimePlayerConfig,
+} from "./components/shared/section-player-backend-delivery.js";

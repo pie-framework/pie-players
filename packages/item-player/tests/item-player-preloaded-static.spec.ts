@@ -350,6 +350,847 @@ test.describe("item-player strategy regressions", () => {
 		expect(versionRewriteState.hasStaleVersionTag).toBe(false);
 	});
 
+	test("backend delivery refreshes rendered models when env changes", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(async () => {
+			(window as any).__pieModelRefreshCalls = [];
+			if (!customElements.get("pie-model-refresh--version-1-0-0")) {
+				customElements.define(
+					"pie-model-refresh--version-1-0-0",
+					class extends HTMLElement {
+						private _model: any;
+
+						set model(value: any) {
+							this._model = value;
+							this.textContent = String(value?.prompt ?? "").replace(
+								/<[^>]+>/g,
+								"",
+							);
+						}
+
+						get model() {
+							return this._model;
+						}
+					},
+				);
+			}
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY["pie-model-refresh--version-1-0-0"] = {
+				package: "@pie-element/model-refresh@1.0.0",
+				status: "loaded",
+				tagName: "pie-model-refresh--version-1-0-0",
+				bundleType: "player.js",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-backend-model-refresh-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			fixture.appendChild(player);
+			await customElements.whenDefined("pie-item-player");
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.backend = {
+				delivery: {
+					enabled: true,
+					itemId: "model-refresh-item",
+					sessionId: "model-refresh-session",
+					client: {
+						async load() {
+							return {
+								item: {
+									id: "model-refresh-config",
+									markup:
+										'<pie-model-refresh id="model-refresh-model"></pie-model-refresh>',
+									elements: {
+										"pie-model-refresh": "@pie-element/model-refresh@1.0.0",
+									},
+									models: [
+										{
+											id: "model-refresh-model",
+											element: "pie-model-refresh",
+											prompt: "<p>Initial backend prompt</p>",
+											promptEnabled: true,
+										},
+									],
+								},
+								session: { id: "model-refresh-session", data: [] },
+							};
+						},
+						async model(context: any) {
+							(window as any).__pieModelRefreshCalls.push(context.env);
+							return [
+								{
+									id: "model-refresh-model",
+									element: "pie-model-refresh--version-1-0-0",
+									prompt: `<p>Refreshed backend prompt for ${context.env.mode}</p>`,
+									promptEnabled: true,
+								},
+							];
+						},
+					},
+				},
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await player.loadFromBackend("delivery");
+		});
+
+		const fixture = page.locator("#pie-backend-model-refresh-fixture");
+		await expect(fixture.getByText("Initial backend prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(() => {
+			const player = document.querySelector(
+				"#pie-backend-model-refresh-fixture pie-item-player",
+			) as any;
+			player.env = { mode: "evaluate", role: "instructor" };
+		});
+
+		await expect(
+			fixture.getByText("Refreshed backend prompt for evaluate"),
+		).toBeVisible({ timeout: 20_000 });
+		const refreshState = await page.evaluate(() => {
+			const player = document.querySelector(
+				"#pie-backend-model-refresh-fixture pie-item-player",
+			);
+			const renderedElement = player?.querySelector(
+				'[id="model-refresh-model"]',
+			) as any;
+			return {
+				callCount: (window as any).__pieModelRefreshCalls.length,
+				tagName: renderedElement?.tagName?.toLowerCase() ?? null,
+				modelElement: renderedElement?.model?.element ?? null,
+			};
+		});
+
+		expect(refreshState.callCount).toBe(1);
+		expect(refreshState.tagName).toBe("pie-model-refresh--version-1-0-0");
+		expect(refreshState.modelElement).toBe(refreshState.tagName);
+	});
+
+	test("backend delivery refreshes rendered passage models when env changes", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(async () => {
+			if (!customElements.get("pie-passage-refresh--version-1-0-0")) {
+				customElements.define(
+					"pie-passage-refresh--version-1-0-0",
+					class extends HTMLElement {
+						private _model: any;
+
+						set model(value: any) {
+							this._model = value;
+							this.textContent = String(value?.text ?? "").replace(
+								/<[^>]+>/g,
+								"",
+							);
+						}
+
+						get model() {
+							return this._model;
+						}
+					},
+				);
+			}
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY["pie-passage-refresh--version-1-0-0"] = {
+				package: "@pie-element/passage-refresh@1.0.0",
+				status: "loaded",
+				tagName: "pie-passage-refresh--version-1-0-0",
+				bundleType: "player.js",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-backend-passage-refresh-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			fixture.appendChild(player);
+			await customElements.whenDefined("pie-item-player");
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.backend = {
+				delivery: {
+					enabled: true,
+					itemId: "passage-refresh-item",
+					sessionId: "passage-refresh-session",
+					client: {
+						async load() {
+							return {
+								item: {
+									pie: {
+										id: "passage-refresh-item-config",
+										markup: "<p>Item shell</p>",
+										elements: {},
+										models: [],
+									},
+									passage: {
+										id: "passage-refresh-passage-config",
+										markup:
+											'<pie-passage-refresh id="passage-refresh-model"></pie-passage-refresh>',
+										elements: {
+											"pie-passage-refresh":
+												"@pie-element/passage-refresh@1.0.0",
+										},
+										models: [
+											{
+												id: "passage-refresh-model",
+												element: "pie-passage-refresh",
+												text: "<p>Initial passage prompt</p>",
+											},
+										],
+									},
+								},
+								session: { id: "passage-refresh-session", data: [] },
+							};
+						},
+						async model(context: any) {
+							return {
+								passageModels: [
+									{
+										id: "passage-refresh-model",
+										element: "pie-passage-refresh--version-1-0-0",
+										text: `<p>Refreshed passage prompt for ${context.env.mode}</p>`,
+									},
+								],
+							};
+						},
+					},
+				},
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await player.loadFromBackend("delivery");
+		});
+
+		const fixture = page.locator("#pie-backend-passage-refresh-fixture");
+		await expect(fixture.getByText("Initial passage prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(() => {
+			const player = document.querySelector(
+				"#pie-backend-passage-refresh-fixture pie-item-player",
+			) as any;
+			player.env = { mode: "evaluate", role: "instructor" };
+		});
+
+		await expect(
+			fixture.getByText("Refreshed passage prompt for evaluate"),
+		).toBeVisible({ timeout: 20_000 });
+	});
+
+	test("backend delivery refreshes current env after delayed backend load", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(async () => {
+			(window as any).__pieDelayedLoadModelCalls = [];
+			if (!customElements.get("pie-model-refresh--version-1-0-0")) {
+				customElements.define(
+					"pie-model-refresh--version-1-0-0",
+					class extends HTMLElement {
+						private _model: any;
+
+						set model(value: any) {
+							this._model = value;
+							this.textContent = String(value?.prompt ?? "").replace(
+								/<[^>]+>/g,
+								"",
+							);
+						}
+
+						get model() {
+							return this._model;
+						}
+					},
+				);
+			}
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY["pie-model-refresh--version-1-0-0"] = {
+				package: "@pie-element/model-refresh@1.0.0",
+				status: "loaded",
+				tagName: "pie-model-refresh--version-1-0-0",
+				bundleType: "player.js",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-backend-delayed-load-refresh-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			fixture.appendChild(player);
+			await customElements.whenDefined("pie-item-player");
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.backend = {
+				delivery: {
+					enabled: true,
+					itemId: "delayed-load-refresh-item",
+					sessionId: "delayed-load-refresh-session",
+					client: {
+						async load() {
+							await new Promise((resolve) => setTimeout(resolve, 300));
+							return {
+								item: {
+									id: "delayed-load-refresh-config",
+									markup:
+										'<pie-model-refresh id="delayed-load-refresh-model"></pie-model-refresh>',
+									elements: {
+										"pie-model-refresh": "@pie-element/model-refresh@1.0.0",
+									},
+									models: [
+										{
+											id: "delayed-load-refresh-model",
+											element: "pie-model-refresh",
+											prompt: "<p>Loaded gather prompt</p>",
+										},
+									],
+								},
+								session: { id: "delayed-load-refresh-session", data: [] },
+							};
+						},
+						async model(context: any) {
+							(window as any).__pieDelayedLoadModelCalls.push(context.env);
+							return [
+								{
+									id: "delayed-load-refresh-model",
+									element: "pie-model-refresh--version-1-0-0",
+									prompt: `<p>Refreshed delayed prompt for ${context.env.mode}</p>`,
+								},
+							];
+						},
+					},
+				},
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const loadPromise = player.loadFromBackend("delivery");
+			player.env = { mode: "evaluate", role: "instructor" };
+			await loadPromise;
+		});
+
+		const fixture = page.locator("#pie-backend-delayed-load-refresh-fixture");
+		await expect(
+			fixture.getByText("Refreshed delayed prompt for evaluate"),
+		).toBeVisible({ timeout: 20_000 });
+		const callModes = await page.evaluate(() =>
+			(window as any).__pieDelayedLoadModelCalls.map((env: any) => env.mode),
+		);
+		expect(callModes).toEqual(["evaluate"]);
+	});
+
+	test("backend delivery ignores stale model refresh responses", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(async () => {
+			(window as any).__pieModelRefreshResolvers = {};
+			if (!customElements.get("pie-model-refresh--version-1-0-0")) {
+				customElements.define(
+					"pie-model-refresh--version-1-0-0",
+					class extends HTMLElement {
+						private _model: any;
+
+						set model(value: any) {
+							this._model = value;
+							this.textContent = String(value?.prompt ?? "").replace(
+								/<[^>]+>/g,
+								"",
+							);
+						}
+
+						get model() {
+							return this._model;
+						}
+					},
+				);
+			}
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY["pie-model-refresh--version-1-0-0"] = {
+				package: "@pie-element/model-refresh@1.0.0",
+				status: "loaded",
+				tagName: "pie-model-refresh--version-1-0-0",
+				bundleType: "player.js",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-backend-model-stale-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			fixture.appendChild(player);
+			await customElements.whenDefined("pie-item-player");
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.backend = {
+				delivery: {
+					enabled: true,
+					itemId: "model-stale-item",
+					sessionId: "model-stale-session",
+					client: {
+						async load() {
+							return {
+								item: {
+									id: "model-stale-config",
+									markup:
+										'<pie-model-refresh id="model-stale-model"></pie-model-refresh>',
+									elements: {
+										"pie-model-refresh": "@pie-element/model-refresh@1.0.0",
+									},
+									models: [
+										{
+											id: "model-stale-model",
+											element: "pie-model-refresh",
+											prompt: "<p>Initial stale prompt</p>",
+											promptEnabled: true,
+										},
+									],
+								},
+								session: { id: "model-stale-session", data: [] },
+							};
+						},
+						model(context: any) {
+							return new Promise((resolve) => {
+								(window as any).__pieModelRefreshResolvers[context.env.mode] =
+									resolve;
+							});
+						},
+					},
+				},
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await player.loadFromBackend("delivery");
+		});
+
+		const fixture = page.locator("#pie-backend-model-stale-fixture");
+		await expect(fixture.getByText("Initial stale prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(() => {
+			const player = document.querySelector(
+				"#pie-backend-model-stale-fixture pie-item-player",
+			) as any;
+			player.env = { mode: "evaluate", role: "instructor" };
+			queueMicrotask(() => {
+				player.env = { mode: "review", role: "instructor" };
+			});
+		});
+		await page.waitForFunction(() => {
+			const resolvers = (window as any).__pieModelRefreshResolvers;
+			return !!resolvers.evaluate && !!resolvers.review;
+		});
+
+		await page.evaluate(() => {
+			(window as any).__pieModelRefreshResolvers.review([
+				{
+					id: "model-stale-model",
+					element: "pie-model-refresh--version-1-0-0",
+					prompt: "<p>Fresh review prompt</p>",
+					promptEnabled: true,
+				},
+			]);
+			(window as any).__pieModelRefreshResolvers.evaluate([
+				{
+					id: "model-stale-model",
+					element: "pie-model-refresh--version-1-0-0",
+					prompt: "<p>Stale evaluate prompt</p>",
+					promptEnabled: true,
+				},
+			]);
+		});
+
+		await expect(fixture.getByText("Fresh review prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.waitForTimeout(500);
+		await expect(fixture.getByText("Stale evaluate prompt")).toHaveCount(0);
+	});
+
+	test("backend authoring loads, saves, and releases current content", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		await page.evaluate(async () => {
+			(window as any).__pieAuthoringBackendCalls = [];
+			(window as any).__pieAuthoringBackendEvents = [];
+			(window as any).__pieAuthoringMediaCalls = [];
+			function createAuthoringBackendFixture() {
+				return class extends HTMLElement {
+					private _model: any;
+
+					set model(value: any) {
+						this._model = value;
+						this.textContent = String(value?.prompt ?? "").replace(
+							/<[^>]+>/g,
+							"",
+						);
+					}
+
+					get model() {
+						return this._model;
+					}
+				};
+			}
+			if (!customElements.get("pie-authoring-backend--version-1-0-0")) {
+				customElements.define(
+					"pie-authoring-backend--version-1-0-0",
+					createAuthoringBackendFixture(),
+				);
+			}
+			if (!customElements.get("pie-authoring-backend--version-1-0-0-config")) {
+				customElements.define(
+					"pie-authoring-backend--version-1-0-0-config",
+					createAuthoringBackendFixture(),
+				);
+			}
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY["pie-authoring-backend--version-1-0-0"] = {
+				package: "@pie-element/authoring-backend@1.0.0",
+				status: "loaded",
+				tagName: "pie-authoring-backend--version-1-0-0",
+				bundleType: "player.js",
+			};
+			(window as any).PIE_REGISTRY[
+				"pie-authoring-backend--version-1-0-0-config"
+			] = {
+				package: "@pie-element/authoring-backend@1.0.0",
+				status: "loaded",
+				tagName: "pie-authoring-backend--version-1-0-0-config",
+				bundleType: "configure.js",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-backend-authoring-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			for (const eventType of [
+				"backend-load-complete",
+				"backend-content-saved",
+				"backend-content-released",
+			]) {
+				player.addEventListener(eventType, (event: CustomEvent) => {
+					(window as any).__pieAuthoringBackendEvents.push({
+						type: event.type,
+						detail: event.detail,
+					});
+				});
+			}
+			fixture.appendChild(player);
+			await customElements.whenDefined("pie-item-player");
+			player.strategy = "preloaded";
+			player.mode = "author";
+			player.authoringBackend = "required";
+			player.env = { mode: "author", role: "instructor" };
+			player.backend = {
+				authoring: {
+					enabled: true,
+					contentId: "content-1",
+					collectionId: "collection-1",
+					media: {
+						onInsertImage(handler: any) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "insert-image",
+								isPasted: handler?.isPasted ?? false,
+							});
+							handler?.done?.(undefined, "/backend/image.png");
+						},
+						onDeleteImage(src: string, done: (err?: Error) => void) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "delete-image",
+								src,
+							});
+							done();
+						},
+						onInsertSound(handler: any) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "insert-sound",
+								hasFileChosen: !!handler?.fileChosen,
+							});
+							handler?.done?.(undefined, "/backend/sound.wav");
+						},
+						onDeleteSound(src: string, done: (err?: Error) => void) {
+							(window as any).__pieAuthoringMediaCalls.push({
+								type: "delete-sound",
+								src,
+							});
+							done();
+						},
+					},
+					client: {
+						async load(context: any) {
+							(window as any).__pieAuthoringBackendCalls.push({
+								type: "load",
+								context,
+							});
+							return {
+								contentId: "content-2",
+								config: {
+									id: "authoring-backend-config",
+									markup:
+										'<pie-authoring-backend id="authoring-backend-model"></pie-authoring-backend>',
+									elements: {
+										"pie-authoring-backend":
+											"@pie-element/authoring-backend@1.0.0",
+									},
+									models: [
+										{
+											id: "authoring-backend-model",
+											element: "pie-authoring-backend",
+											prompt: "<p>Loaded authoring prompt</p>",
+										},
+									],
+								},
+								metadata: { source: "authoring-load" },
+							};
+						},
+						async saveContent(context: any) {
+							(window as any).__pieAuthoringBackendCalls.push({
+								type: "save",
+								context,
+								savedPrompt: context.config.models[0].prompt,
+							});
+							context.config.models[0].prompt = "<p>Mutated by backend</p>";
+							return { contentId: "content-3" };
+						},
+						async releaseContent(context: any) {
+							const releaseCount = (
+								window as any
+							).__pieAuthoringBackendCalls.filter(
+								(call: any) => call.type === "release",
+							).length;
+							(window as any).__pieAuthoringBackendCalls.push({
+								type: "release",
+								context,
+							});
+							return {
+								contentId: releaseCount === 0 ? "content-4" : "content-5",
+							};
+						},
+					},
+				},
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			await player.loadFromBackend("authoring");
+			(window as any).__pieAuthoringImmediateText = player.textContent;
+		});
+
+		const fixture = page.locator("#pie-backend-authoring-fixture");
+		await expect(fixture.getByText("Loaded authoring prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+
+		const backendState = await page.evaluate(async () => {
+			const player = document.querySelector(
+				"#pie-backend-authoring-fixture pie-item-player",
+			) as any;
+			let renderedElement = player.querySelector(
+				'[id="authoring-backend-model"]',
+			);
+			const mediaCompletions: Array<{
+				type: string;
+				error: string | null;
+				src: string | null;
+			}> = [];
+			const doneFor =
+				(type: string) =>
+				(error?: Error, src?: string): void => {
+					mediaCompletions.push({
+						type,
+						error: error?.message ?? null,
+						src: src ?? null,
+					});
+				};
+			renderedElement?.dispatchEvent(
+				new CustomEvent("model.updated", {
+					bubbles: true,
+					detail: {
+						update: {
+							id: "authoring-backend-model",
+							prompt: "<p>Saved authoring prompt</p>",
+						},
+						reset: false,
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("insert.image", {
+					bubbles: true,
+					detail: {
+						isPasted: true,
+						cancel() {},
+						done: doneFor("insert-image"),
+						fileChosen() {},
+						progress() {},
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("delete.image", {
+					bubbles: true,
+					detail: {
+						src: "/backend/image.png",
+						done: doneFor("delete-image"),
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("insert.sound", {
+					bubbles: true,
+					detail: {
+						cancel() {},
+						done: doneFor("insert-sound"),
+						fileChosen() {},
+						progress() {},
+					},
+				}),
+			);
+			renderedElement?.dispatchEvent(
+				new CustomEvent("delete.sound", {
+					bubbles: true,
+					detail: {
+						src: "/backend/sound.wav",
+						done: doneFor("delete-sound"),
+					},
+				}),
+			);
+			player.onInsertImage = (handler: any) => {
+				(window as any).__pieAuthoringMediaCalls.push({
+					type: "top-insert-image",
+					isPasted: handler?.isPasted ?? false,
+				});
+				handler?.done?.(undefined, "/top/image.png");
+			};
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			renderedElement = player.querySelector('[id="authoring-backend-model"]');
+			renderedElement?.dispatchEvent(
+				new CustomEvent("insert.image", {
+					bubbles: true,
+					detail: {
+						isPasted: false,
+						cancel() {},
+						done: doneFor("top-insert-image"),
+						fileChosen() {},
+						progress() {},
+					},
+				}),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			const saveResult = await player.saveContent({
+				preReleaseType: "prerelease",
+			});
+			const releaseResult = await player.releaseContent({
+				releaseType: "final",
+			});
+			const secondReleaseResult = await player.releaseContent({
+				releaseType: "archive",
+			});
+			return {
+				saveResult,
+				releaseResult,
+				secondReleaseResult,
+				calls: (window as any).__pieAuthoringBackendCalls,
+				events: (window as any).__pieAuthoringBackendEvents,
+				mediaCalls: (window as any).__pieAuthoringMediaCalls,
+				mediaCompletions,
+				immediateText: (window as any).__pieAuthoringImmediateText,
+				renderedText: player.textContent,
+			};
+		});
+
+		expect(backendState.immediateText).toContain("Loaded authoring prompt");
+		expect(backendState.renderedText).not.toContain("Mutated by backend");
+		expect(backendState.saveResult).toBe("content-3");
+		expect(backendState.releaseResult).toBe("content-4");
+		expect(backendState.secondReleaseResult).toBe("content-5");
+		expect(backendState.calls[1].savedPrompt).toBe(
+			"<p>Saved authoring prompt</p>",
+		);
+		expect(backendState.calls).toMatchObject([
+			{
+				type: "load",
+				context: {
+					contentId: "content-1",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+				},
+			},
+			{
+				type: "save",
+				context: {
+					contentId: "content-2",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+					options: { preReleaseType: "prerelease" },
+				},
+			},
+			{
+				type: "release",
+				context: {
+					contentId: "content-3",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+					options: { releaseType: "final" },
+				},
+			},
+			{
+				type: "release",
+				context: {
+					contentId: "content-4",
+					collectionId: "collection-1",
+					env: { mode: "author", role: "instructor" },
+					options: { releaseType: "archive" },
+				},
+			},
+		]);
+		expect(backendState.events.map((event: any) => event.type)).toEqual([
+			"backend-load-complete",
+			"backend-content-saved",
+			"backend-content-released",
+			"backend-content-released",
+		]);
+		expect(backendState.events.map((event: any) => event.detail.scope)).toEqual(
+			["authoring", "authoring", "authoring", "authoring"],
+		);
+		expect(
+			backendState.events.map((event: any) => event.detail.contentId),
+		).toEqual(["content-2", "content-3", "content-4", "content-5"]);
+		expect(backendState.mediaCalls).toEqual([
+			{ type: "insert-image", isPasted: true },
+			{ type: "delete-image", src: "/backend/image.png" },
+			{ type: "insert-sound", hasFileChosen: true },
+			{ type: "delete-sound", src: "/backend/sound.wav" },
+			{ type: "top-insert-image", isPasted: false },
+		]);
+		expect(backendState.mediaCompletions).toEqual([
+			{ type: "insert-image", error: null, src: "/backend/image.png" },
+			{ type: "delete-image", error: null, src: null },
+			{ type: "insert-sound", error: null, src: "/backend/sound.wav" },
+			{ type: "delete-sound", error: null, src: null },
+			{ type: "top-insert-image", error: null, src: "/top/image.png" },
+		]);
+	});
+
 	test("preloaded does not autonomously fallback to runtime loading when tags are missing", async ({
 		page,
 	}) => {

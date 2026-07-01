@@ -12,6 +12,7 @@ import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config
 import type { PieModel } from "@pie-players/pie-players-shared/types";
 import type {
 	BackendConfig,
+	BackendAuthoringReleaseOptions,
 	BackendSaveContentOptions,
 	BackendScoreOptions,
 } from "./backend/types.js";
@@ -64,7 +65,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	/** Persist authoring content through `backend.authoring` when configured. */
 	saveContent(options?: BackendSaveContentOptions): Promise<string>;
 	/** Release authoring content through `backend.authoring` when configured. */
-	releaseContent(): Promise<string>;
+	releaseContent(options?: BackendAuthoringReleaseOptions): Promise<string>;
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {

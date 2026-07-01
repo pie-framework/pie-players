@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
 	getDeliveryAutosaveOptions,
 	getDeliveryBackendLoadSignature,
+	getDeliveryBackendModelSignature,
 	loadFromDeliveryBackend,
+	modelFromDeliveryBackend,
 	saveToDeliveryBackend,
 	scoreWithDeliveryBackend,
 } from "../src/backend/delivery";
@@ -47,6 +49,153 @@ describe("delivery backend helpers", () => {
 		expect(result.metadata).toEqual({ source: "test" });
 	});
 
+	test("passes delivery request options to every custom delivery handler", async () => {
+		const seenRequestOptions: unknown[] = [];
+		let seenScoreOptions: unknown;
+		const backend: BackendConfig = {
+			delivery: {
+				enabled: true,
+				itemId: "item-1",
+				sessionId: "session-1",
+				options: {
+					overrides: {
+						"student-grade": "5",
+					},
+				},
+				client: {
+					async load(context) {
+						seenRequestOptions.push(context.requestOptions);
+						return {
+							item: config,
+							session: { id: "session-1", data: [] },
+						};
+					},
+					async model(context) {
+						seenRequestOptions.push(context.requestOptions);
+						return { models: [] };
+					},
+					async saveSession(context) {
+						seenRequestOptions.push(context.requestOptions);
+						return { ok: true };
+					},
+					async score(context) {
+						seenRequestOptions.push(context.requestOptions);
+						seenScoreOptions = context.options;
+						return { points: 1, max: 1 };
+					},
+				},
+			},
+		};
+		const sessionContext = {
+			itemId: "item-1",
+			sessionId: "session-1",
+			session: { id: "session-1", data: [] },
+			env: { mode: "gather", role: "student" },
+			models: [{ id: "2", element: "multiple-choice--version-latest" }],
+			passageModels: [{ id: "passage", element: "pie-passage--version-1-0-0" }],
+		};
+
+		await loadFromDeliveryBackend(backend, sessionContext.env);
+		await modelFromDeliveryBackend(backend, sessionContext);
+		await saveToDeliveryBackend(backend, sessionContext);
+		await scoreWithDeliveryBackend(backend, sessionContext, {
+			disablePartialScoring: true,
+		});
+
+		expect(seenRequestOptions).toEqual([
+			{ overrides: { "student-grade": "5" } },
+			{ overrides: { "student-grade": "5" } },
+			{ overrides: { "student-grade": "5" } },
+			{ overrides: { "student-grade": "5" } },
+		]);
+		expect(seenScoreOptions).toEqual({ disablePartialScoring: true });
+	});
+
+	test("sends delivery request overrides to every built-in delivery endpoint", async () => {
+		const originalFetch = globalThis.fetch;
+		const payloads: Array<{ url: string; body: Record<string, unknown> }> = [];
+		globalThis.fetch = (async (url, init) => {
+			payloads.push({
+				url: String(url),
+				body: JSON.parse(String(init?.body ?? "{}")),
+			});
+			return new Response(
+				JSON.stringify({
+					item: config,
+					session: { id: "session-1", data: [] },
+				}),
+				{
+					status: 200,
+					headers: { "content-type": "application/json" },
+				},
+			);
+		}) as typeof fetch;
+		const backend: BackendConfig = {
+			delivery: {
+				enabled: true,
+				itemId: "item-1",
+				sessionId: "session-1",
+				baseUrl: "https://bff.example",
+				options: {
+					overrides: {
+						"student-grade": "5",
+					},
+				},
+			},
+		};
+		const sessionContext = {
+			itemId: "item-1",
+			sessionId: "session-1",
+			assignmentId: "assignment-1",
+			session: { id: "session-1", data: [] },
+			env: { mode: "gather", role: "student" },
+			models: [{ id: "2", element: "multiple-choice--version-latest" }],
+			passageModels: [{ id: "passage", element: "pie-passage--version-1-0-0" }],
+		};
+
+		try {
+			await loadFromDeliveryBackend(backend, sessionContext.env);
+			await modelFromDeliveryBackend(backend, sessionContext);
+			await saveToDeliveryBackend(backend, sessionContext);
+			await scoreWithDeliveryBackend(backend, sessionContext, {
+				disablePartialScoring: true,
+				sessionId: "wrong-session",
+				data: [{ id: "wrong-data" }],
+				env: { mode: "wrong" },
+				itemId: "wrong-item",
+				assignmentId: "wrong-assignment",
+				overrides: {
+					ignored: "score-options-cannot-replace-delivery-overrides",
+				},
+			});
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+
+		expect(payloads.map(({ url }) => url)).toEqual([
+			"https://bff.example/api/player/load",
+			"https://bff.example/api/player/model",
+			"https://bff.example/api/player/save",
+			"https://bff.example/api/player/score",
+		]);
+		expect(payloads.map(({ body }) => body.overrides)).toEqual([
+			{ "student-grade": "5" },
+			{ "student-grade": "5" },
+			{ "student-grade": "5" },
+			{ "student-grade": "5" },
+		]);
+		expect(payloads[1]?.body.models).toEqual(sessionContext.models);
+		expect(payloads[1]?.body.passageModels).toEqual(
+			sessionContext.passageModels,
+		);
+		expect(payloads[3]?.body.sessionId).toBe("session-1");
+		expect(payloads[3]?.body.data).toEqual([]);
+		expect(payloads[3]?.body.env).toEqual(sessionContext.env);
+		expect(payloads[3]?.body.itemId).toBe("item-1");
+		expect(payloads[3]?.body.assignmentId).toBe("assignment-1");
+		expect(payloads[3]?.body.disablePartialScoring).toBe(true);
+	});
+
 	test("normalizes autosave settings", () => {
 		expect(getDeliveryAutosaveOptions(undefined)).toEqual({
 			enabled: false,
@@ -70,6 +219,11 @@ describe("delivery backend helpers", () => {
 				sessionId: "session-1",
 				baseUrl: "/api",
 				autosave: true,
+				options: {
+					overrides: {
+						"student-grade": "5",
+					},
+				},
 			},
 		};
 
@@ -84,6 +238,57 @@ describe("delivery backend helpers", () => {
 				endpoint: null,
 			}),
 		);
+	});
+
+	test("enables model refresh signatures only for configured model backends", () => {
+		const env = { mode: "gather", role: "student" };
+		expect(
+			getDeliveryBackendModelSignature(
+				{
+					delivery: {
+						enabled: true,
+						itemId: "item-1",
+						baseUrl: "/api",
+					},
+				},
+				env,
+			),
+		).not.toBe("");
+		expect(
+			getDeliveryBackendModelSignature(
+				{
+					delivery: {
+						enabled: true,
+						itemId: "item-1",
+						client: {
+							async model() {
+								return [];
+							},
+						},
+					},
+				},
+				env,
+			),
+		).not.toBe("");
+		expect(
+			getDeliveryBackendModelSignature(
+				{
+					delivery: {
+						enabled: true,
+						itemId: "item-1",
+						client: {
+							async load() {
+								return {
+									item: config,
+									session: { id: "session-1", data: [] },
+								};
+							},
+						},
+					},
+				},
+				env,
+			),
+		).toBe("");
 	});
 
 	test("saves and scores through custom delivery handlers", async () => {

@@ -13,7 +13,7 @@ const webServerCommand = `bun run --cwd "${backendDemosCwd}" dev -- --host ${par
 
 export default defineConfig({
 	testDir: "./tests",
-	testMatch: /backend-demo-delivery\.spec\.ts/,
+	testMatch: /backend-demo-(delivery|section)\.spec\.ts/,
 	fullyParallel: false,
 	forbidOnly: false,
 	retries: 0,

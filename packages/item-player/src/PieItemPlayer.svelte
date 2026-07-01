@@ -56,7 +56,13 @@
 	} from "@pie-players/pie-players-shared";
 	import type {
 		AuthoringBackendMode,
+		BackendAuthoringIdentity,
+		BackendAuthoringMediaConfig,
+		BackendAuthoringReleaseOptions,
 		BackendConfig,
+		BackendDeliveryModelIdentity,
+		BackendDeliveryModelResult,
+		BackendSaveContentOptions,
 		BackendScoreOptions,
 		DeleteDone,
 		ImageHandler,
@@ -67,11 +73,21 @@
 		getDeliveryAutosaveOptions,
 		getDeliveryBackend,
 		getDeliveryBackendLoadSignature,
+		getDeliveryBackendModelSignature,
 		isDeliveryBackendEnabled,
 		loadFromDeliveryBackend,
+		modelFromDeliveryBackend,
 		saveToDeliveryBackend,
 		scoreWithDeliveryBackend,
 	} from "./backend/delivery.js";
+	import {
+		getAuthoringBackend,
+		getAuthoringBackendLoadSignature,
+		loadFromAuthoringBackend,
+		releaseContentFromAuthoringBackend,
+		saveContentToAuthoringBackend,
+	} from "./backend/authoring.js";
+	import { applyDeliveryModelResultToConfigs } from "./backend/model-refresh.js";
 	import {
 		BundleType,
 		assertPieConfigContract,
@@ -361,6 +377,14 @@
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
 	let latestLoadRequestToken = 0;
+	let latestModelRefreshRequestToken = 0;
+	let latestAuthoringLoadRequestToken = 0;
+	let latestAuthoringMutationRequestToken = 0;
+	let backendConfigGeneration = 0;
+	let backendModelRefreshSignature = "";
+	let backendConfigOverrideScope: "delivery" | "authoring" | null = null;
+	let activeAuthoringIdentitySignature = "";
+	let activeAuthoringContentId: string | null = null;
 	const effectiveConfig = $derived(backendConfigOverride ?? config);
 	const effectiveSession = $derived(backendSessionOverride ?? session);
 	function configResourcesFor(configEntity: ConfigEntity | null): ConfigResource | null {
@@ -389,6 +413,33 @@
 
 	function isCurrentLoadRequest(requestToken: number): boolean {
 		return requestToken === latestLoadRequestToken;
+	}
+
+	function beginModelRefreshRequest(): number {
+		latestModelRefreshRequestToken += 1;
+		return latestModelRefreshRequestToken;
+	}
+
+	function isCurrentModelRefreshRequest(requestToken: number): boolean {
+		return requestToken === latestModelRefreshRequestToken;
+	}
+
+	function beginAuthoringLoadRequest(): number {
+		latestAuthoringLoadRequestToken += 1;
+		return latestAuthoringLoadRequestToken;
+	}
+
+	function isCurrentAuthoringLoadRequest(requestToken: number): boolean {
+		return requestToken === latestAuthoringLoadRequestToken;
+	}
+
+	function beginAuthoringMutationRequest(): number {
+		latestAuthoringMutationRequestToken += 1;
+		return latestAuthoringMutationRequestToken;
+	}
+
+	function isCurrentAuthoringMutationRequest(requestToken: number): boolean {
+		return requestToken === latestAuthoringMutationRequestToken;
 	}
 
 	const bundleBuildWarning = $derived.by(() => {
@@ -459,12 +510,36 @@
 		return true;
 	}
 
+	function hasIncompleteStructuredShuffledValues(entry: unknown): boolean {
+		if (!isRecord(entry)) return false;
+		const shuffledValues = entry.shuffledValues;
+		if (!isRecord(shuffledValues)) return false;
+		const hasPartA = "partA" in shuffledValues;
+		const hasPartB = "partB" in shuffledValues;
+		return (hasPartA || hasPartB) && !(hasPartA && hasPartB);
+	}
+
+	function sessionDataForRenderer(data: unknown[]): unknown[] {
+		let changed = false;
+		const nextData = data.map((entry) => {
+			if (!hasIncompleteStructuredShuffledValues(entry) || !isRecord(entry)) {
+				return entry;
+			}
+			const { shuffledValues: _shuffledValues, ...rest } = entry;
+			changed = true;
+			return rest;
+		});
+		return changed ? nextData : data;
+	}
+
 	const rendererSession = $derived.by(() => {
 		const _rev = sessionRevision;
-		if (!sessionController) {
-			return normalizeItemSessionContainer(parseSessionProp(effectiveSession)).data;
-		}
-		return sessionController.getSession().data;
+		const data = !sessionController
+			? normalizeItemSessionContainer(parseSessionProp(effectiveSession)).data
+			: sessionController.getSession().data;
+		// Incomplete EBSR shuffle metadata from older persisted sessions can block
+		// the element from rendering the missing part. Let the element regenerate it.
+		return sessionDataForRenderer(data);
 	});
 	function configMarkupForKey(cfg: ConfigEntity | null): string {
 		return cfg?.markup ?? "";
@@ -498,6 +573,17 @@
 			return String(value);
 		}
 	}
+
+	function cloneForBackend<T>(value: T): T {
+		if (typeof structuredClone === "function") {
+			try {
+				return structuredClone(value);
+			} catch {
+				// Svelte proxy-backed config objects may not be structured-cloneable.
+			}
+		}
+		return JSON.parse(JSON.stringify(value)) as T;
+	}
 	const callbackKeyIds = new WeakMap<Function, number>();
 	let nextCallbackKeyId = 0;
 	function callbackIdentityForKey(value: unknown): string {
@@ -509,15 +595,33 @@
 		}
 		return `fn:${id}`;
 	}
+
+	function getBackendAuthoringMedia(): BackendAuthoringMediaConfig | null {
+		return getAuthoringBackend(backend)?.media ?? null;
+	}
+
+	const effectiveOnInsertImage = $derived(
+		onInsertImage ?? getBackendAuthoringMedia()?.onInsertImage ?? null,
+	);
+	const effectiveOnDeleteImage = $derived(
+		onDeleteImage ?? getBackendAuthoringMedia()?.onDeleteImage ?? null,
+	);
+	const effectiveOnInsertSound = $derived(
+		onInsertSound ?? getBackendAuthoringMedia()?.onInsertSound ?? null,
+	);
+	const effectiveOnDeleteSound = $derived(
+		onDeleteSound ?? getBackendAuthoringMedia()?.onDeleteSound ?? null,
+	);
+
 	const authoringRendererKey = $derived.by(() => {
 		if (resolvedMode !== "author") return "";
 		return [
 			stableStringifyForKey(configuration),
 			authoringBackend,
-			callbackIdentityForKey(onInsertImage),
-			callbackIdentityForKey(onDeleteImage),
-			callbackIdentityForKey(onInsertSound),
-			callbackIdentityForKey(onDeleteSound),
+			callbackIdentityForKey(effectiveOnInsertImage),
+			callbackIdentityForKey(effectiveOnDeleteImage),
+			callbackIdentityForKey(effectiveOnInsertSound),
+			callbackIdentityForKey(effectiveOnDeleteSound),
 		].join("|");
 	});
 	const rendererKey = $derived(
@@ -773,7 +877,7 @@
 		);
 	}
 
-	async function loadConfig(currentConfig: any) {
+	async function loadConfig(currentConfig: any): Promise<boolean> {
 		const configSignature = stableStringifyForKey(currentConfig);
 		const loaderOptionsSignature = JSON.stringify({
 			bundleHost: resolvedIifeBundleHost,
@@ -793,7 +897,7 @@
 			loaderRetrySignature === lastProcessedLoaderRetrySignature &&
 			loaderOptionsSignature === lastProcessedLoaderOptionsSignature
 		) {
-			return;
+			return true;
 		}
 
 		const requestToken = beginLoadRequest();
@@ -812,11 +916,12 @@
 			commitIfCurrent(() => {
 				itemConfig = null;
 				passageConfig = null;
+				backendConfigGeneration += 1;
 				loading = true;
 				error = null;
 				bundleRetryStatus = null;
 			});
-			return;
+			return true;
 		}
 
 		lastProcessedConfigSignature = configSignature;
@@ -886,7 +991,7 @@
 				runtimeSupportView as "delivery" | "author" | "print",
 				effectiveRuntimeSupportCheck,
 			);
-			if (!isCurrentLoadRequest(requestToken)) return;
+			if (!isCurrentLoadRequest(requestToken)) return false;
 			const strategyForChecks: "esm" | "iife" =
 				normalizedStrategy === "esm" ? "esm" : "iife";
 			runtimeSupportErrorHint =
@@ -896,7 +1001,7 @@
 
 			stage = "math-rendering-init";
 			await initializeMathRendering();
-			if (!isCurrentLoadRequest(requestToken)) return;
+			if (!isCurrentLoadRequest(requestToken)) return false;
 
 			const elementMap = mergeElementMaps(transformedConfig, transformedPassageConfig);
 
@@ -933,18 +1038,20 @@
 					backend: buildEsmBackendConfig(view),
 				});
 			}
-			if (!isCurrentLoadRequest(requestToken)) return;
+			if (!isCurrentLoadRequest(requestToken)) return false;
 
 			stage = "set-item-config";
 			commitIfCurrent(() => {
 				itemConfig = transformedConfig;
 				passageConfig = transformedPassageConfig;
+				backendConfigGeneration += 1;
 				loading = false;
 				error = null;
 				bundleRetryStatus = null;
 			});
+			return true;
 		} catch (err: any) {
-			if (!isCurrentLoadRequest(requestToken)) return;
+			if (!isCurrentLoadRequest(requestToken)) return false;
 			const baseMessage = err?.message || String(err);
 			const message = `${baseMessage}${runtimeSupportErrorHint || ""}`;
 			commitIfCurrent(() => {
@@ -964,6 +1071,7 @@
 					},
 				}),
 			);
+			return false;
 		}
 	}
 
@@ -991,14 +1099,16 @@
 		const shouldForceBackendReplacement =
 			backendSessionReplacementRevision !== lastAppliedBackendSessionReplacementRevision;
 		const controllerItemId = itemConfig?.id || "pie-item-player";
-		const controller = ensureSessionController(controllerItemId, parsed);
-		// Do not let metadata-only prop churn wipe user responses already in the controller.
-		syncControllerSession(controller, parsed, {
-			allowMetadataOverwrite: shouldForceBackendReplacement,
+		untrack(() => {
+			const controller = ensureSessionController(controllerItemId, parsed);
+			// Do not let metadata-only prop churn wipe user responses already in the controller.
+			syncControllerSession(controller, parsed, {
+				allowMetadataOverwrite: shouldForceBackendReplacement,
+			});
+			if (shouldForceBackendReplacement) {
+				lastAppliedBackendSessionReplacementRevision = backendSessionReplacementRevision;
+			}
 		});
-		if (shouldForceBackendReplacement) {
-			lastAppliedBackendSessionReplacementRevision = backendSessionReplacementRevision;
-		}
 	});
 
 	const allowedStyleOriginList = $derived(
@@ -1128,6 +1238,18 @@
 		};
 	}
 
+	function modelIdentitiesFor(
+		configEntity: ConfigEntity | null,
+	): BackendDeliveryModelIdentity[] | undefined {
+		const models = configEntity?.models
+			?.filter(
+				(model): model is typeof model & { id: string; element: string } =>
+					typeof model.id === "string" && typeof model.element === "string",
+			)
+			.map((model) => ({ id: model.id, element: model.element }));
+		return models && models.length > 0 ? models : undefined;
+	}
+
 	function dispatchBackendEvent(type: string, detail: Record<string, unknown>) {
 		handlePlayerEvent(
 			new CustomEvent(type, {
@@ -1150,22 +1272,69 @@
 		scope: "delivery" | "authoring",
 		expectedSignature: string,
 	): Promise<void> {
-		if (scope !== "delivery") {
-			throw new Error("backend.authoring is reserved but not implemented in this delivery pass.");
+		if (scope === "authoring") {
+			if (!backend || !getAuthoringBackend(backend)) {
+				throw new Error("backend.authoring is not configured.");
+			}
+			const requestToken = beginAuthoringLoadRequest();
+			const result = await loadFromAuthoringBackend(backend, parseEnvValue(env));
+			if (!isCurrentAuthoringLoadRequest(requestToken)) return;
+			if (
+				expectedSignature &&
+				getAuthoringBackendLoadSignature(backend) !== expectedSignature
+			) {
+				return;
+			}
+			const identitySignature = getAuthoringBackendLoadSignature(backend);
+			backendConfigOverride = result.config;
+			backendConfigOverrideScope = "authoring";
+			backendSessionOverride = { id: "", data: [] };
+			backendSessionReplacementRevision += 1;
+			const loaded = await loadConfig(result.config);
+			await tick();
+			if (!isCurrentAuthoringLoadRequest(requestToken)) return;
+			if (
+				expectedSignature &&
+				getAuthoringBackendLoadSignature(backend) !== expectedSignature
+			) {
+				return;
+			}
+			if (!loaded) {
+				throw new Error("Authoring backend config failed to load.");
+			}
+			activeAuthoringIdentitySignature = identitySignature;
+			activeAuthoringContentId =
+				typeof result.contentId === "string" ? result.contentId : null;
+			dispatchBackendEvent("backend-load-complete", {
+				scope: "authoring",
+				operation: "load",
+				contentId: result.contentId,
+				metadata: result.metadata ?? {},
+				config: result.config,
+			});
+			return;
 		}
 		if (!backend || !isDeliveryBackendEnabled(backend)) {
 			throw new Error("backend.delivery is not configured.");
 		}
-		const result = await loadFromDeliveryBackend(backend, parseEnvValue(env));
+		const envAtLoadStart = parseEnvValue(env);
+		const modelSignatureAtLoadStart = getDeliveryBackendModelSignature(
+			backend,
+			envAtLoadStart,
+		);
+		const result = await loadFromDeliveryBackend(backend, envAtLoadStart);
 		if (
 			expectedSignature &&
 			getDeliveryBackendLoadSignature(backend) !== expectedSignature
 		) {
 			return;
 		}
+		if (backendConfigOverrideScope === "authoring") return;
 		backendConfigOverride = result.config;
+		backendConfigOverrideScope = "delivery";
 		backendSessionOverride = result.session;
 		backendSessionReplacementRevision += 1;
+		backendModelRefreshSignature = modelSignatureAtLoadStart;
 		dispatchBackendEvent("backend-load-complete", {
 			scope: "delivery",
 			operation: "load",
@@ -1175,7 +1344,90 @@
 	}
 
 	export async function loadFromBackend(scope: "delivery" | "authoring" = "delivery"): Promise<void> {
-		return performBackendLoad(scope, getDeliveryBackendLoadSignature(backend));
+		return performBackendLoad(
+			scope,
+			scope === "authoring"
+				? getAuthoringBackendLoadSignature(backend)
+				: getDeliveryBackendLoadSignature(backend),
+		);
+	}
+
+	async function refreshModelsFromDeliveryBackend(
+		expectedSignature: string,
+		expectedConfigGeneration: number,
+		requestToken: number,
+	): Promise<void> {
+		if (!backend || !getDeliveryBackend(backend) || !itemConfig) return;
+		if (backendConfigOverrideScope === "authoring") return;
+		const delivery = getDeliveryBackend(backend)!;
+		const envAtStart = parseEnvValue(env);
+		const sessionContainer = backendSessionContainer(delivery.sessionId);
+		const sessionSignatureAtStart = stableStringifyForKey(sessionContainer);
+		let result: BackendDeliveryModelResult;
+		try {
+			result = await modelFromDeliveryBackend(backend, {
+				itemId: delivery.itemId,
+				sessionId: delivery.sessionId,
+				assignmentId: delivery.assignmentId,
+				session: sessionContainer,
+				env: envAtStart,
+				models: modelIdentitiesFor(itemConfig),
+				passageModels: modelIdentitiesFor(passageConfig),
+			});
+		} catch (errorValue) {
+			if (!isCurrentModelRefreshRequest(requestToken)) return;
+			throw errorValue;
+		}
+		if (!isCurrentModelRefreshRequest(requestToken)) return;
+		if (
+			expectedSignature &&
+			getDeliveryBackendModelSignature(backend, parseEnvValue(env)) !==
+				expectedSignature
+		) {
+			return;
+		}
+		if (expectedConfigGeneration !== backendConfigGeneration) return;
+		if (
+			stableStringifyForKey(backendSessionContainer(delivery.sessionId)) !==
+			sessionSignatureAtStart
+		) {
+			return;
+		}
+		const applied = applyDeliveryModelResultToConfigs({
+			itemConfig,
+			passageConfig,
+			result,
+		});
+		backendModelRefreshSignature = expectedSignature;
+		if (applied.changed) {
+			itemConfig = applied.itemConfig;
+			passageConfig = applied.passageConfig;
+			backendConfigGeneration += 1;
+			await tick();
+			if (applied.itemChanged && itemConfig) {
+				void updatePieElements(
+					itemConfig,
+					rendererSession,
+					parseEnvValue(env),
+					hostElement ?? undefined,
+					handleElementSessionUpdate,
+				);
+			}
+			if (applied.passageChanged && passageConfig) {
+				void updatePieElements(
+					passageConfig,
+					rendererSession,
+					parseEnvValue(env),
+					hostElement ?? undefined,
+					handleElementSessionUpdate,
+				);
+			}
+		}
+		dispatchBackendEvent("backend-model-complete", {
+			scope: "delivery",
+			operation: "model",
+			metadata: applied.metadata ?? {},
+		});
 	}
 
 	async function persistCurrentSession(): Promise<void> {
@@ -1233,12 +1485,76 @@
 		return result;
 	}
 
-	export async function saveContent(): Promise<string> {
-		throw new Error("backend.authoring saveContent is reserved but not implemented in this delivery pass.");
+	export async function saveContent(
+		options?: BackendSaveContentOptions,
+	): Promise<string> {
+		if (!itemConfig) {
+			throw new Error("Cannot save content before the item config has loaded.");
+		}
+		const backendAtStart = backend ?? {};
+		const signatureAtStart = getAuthoringBackendLoadSignature(backendAtStart);
+		const requestToken = beginAuthoringMutationRequest();
+		const authoringIdentity = currentAuthoringIdentityOverride(signatureAtStart);
+		const result = await saveContentToAuthoringBackend(backendAtStart, {
+			...authoringIdentity,
+			config: cloneForBackend(itemConfig),
+			env: parseEnvValue(env),
+			options,
+		});
+		if (
+			typeof result.contentId === "string" &&
+			isCurrentAuthoringMutationRequest(requestToken) &&
+			signatureAtStart === getAuthoringBackendLoadSignature(backend)
+		) {
+			activeAuthoringContentId = result.contentId;
+			activeAuthoringIdentitySignature = signatureAtStart;
+		}
+		dispatchBackendEvent("backend-content-saved", {
+			scope: "authoring",
+			operation: "saveContent",
+			contentId: result.contentId,
+		});
+		return result.contentId;
 	}
 
-	export async function releaseContent(): Promise<string> {
-		throw new Error("backend.authoring releaseContent is reserved but not implemented in this delivery pass.");
+	export async function releaseContent(
+		options?: BackendAuthoringReleaseOptions,
+	): Promise<string> {
+		const backendAtStart = backend ?? {};
+		const signatureAtStart = getAuthoringBackendLoadSignature(backendAtStart);
+		const requestToken = beginAuthoringMutationRequest();
+		const authoringIdentity = currentAuthoringIdentityOverride(signatureAtStart);
+		const result = await releaseContentFromAuthoringBackend(backendAtStart, {
+			...authoringIdentity,
+			env: parseEnvValue(env),
+			options,
+		});
+		if (
+			typeof result.contentId === "string" &&
+			isCurrentAuthoringMutationRequest(requestToken) &&
+			signatureAtStart === getAuthoringBackendLoadSignature(backend)
+		) {
+			activeAuthoringContentId = result.contentId;
+			activeAuthoringIdentitySignature = signatureAtStart;
+		}
+		dispatchBackendEvent("backend-content-released", {
+			scope: "authoring",
+			operation: "releaseContent",
+			contentId: result.contentId,
+		});
+		return result.contentId;
+	}
+
+	function currentAuthoringIdentityOverride(
+		signature = getAuthoringBackendLoadSignature(backend),
+	): BackendAuthoringIdentity {
+		if (
+			activeAuthoringContentId &&
+			activeAuthoringIdentitySignature === signature
+		) {
+			return { contentId: activeAuthoringContentId };
+		}
+		return {};
 	}
 
 	function scheduleBackendAutosave() {
@@ -1272,8 +1588,11 @@
 						backendSaveTimer = null;
 					}
 					backendLoadSignature = "";
-					backendConfigOverride = null;
-					backendSessionOverride = null;
+					if (backendConfigOverrideScope !== "authoring") {
+						backendConfigOverride = null;
+						backendConfigOverrideScope = null;
+						backendSessionOverride = null;
+					}
 				});
 			});
 			return;
@@ -1288,6 +1607,56 @@
 			untrack(() => {
 				void performBackendLoad("delivery", signature).catch((errorValue) => {
 					reportBackendError("load", errorValue);
+				});
+			});
+		});
+	});
+
+	$effect(() => {
+		const signature = getAuthoringBackendLoadSignature(backend);
+		if (
+			!signature ||
+			(activeAuthoringIdentitySignature &&
+				activeAuthoringIdentitySignature !== signature)
+		) {
+			queueMicrotask(() => {
+				untrack(() => {
+					activeAuthoringIdentitySignature = "";
+					activeAuthoringContentId = null;
+					if (backendConfigOverrideScope === "authoring" && !signature) {
+						backendConfigOverride = null;
+						backendConfigOverrideScope = null;
+						backendSessionOverride = null;
+					}
+				});
+			});
+		}
+	});
+
+	$effect(() => {
+		void env;
+		void backend;
+		const currentItemConfig = itemConfig;
+		const signature = getDeliveryBackendModelSignature(backend, parseEnvValue(env));
+		if (!signature || !currentItemConfig) {
+			backendModelRefreshSignature = "";
+			beginModelRefreshRequest();
+			return;
+		}
+		if (signature === backendModelRefreshSignature) {
+			beginModelRefreshRequest();
+			return;
+		}
+		const expectedConfigGeneration = backendConfigGeneration;
+		const requestToken = beginModelRefreshRequest();
+		queueMicrotask(() => {
+			untrack(() => {
+				void refreshModelsFromDeliveryBackend(
+					signature,
+					expectedConfigGeneration,
+					requestToken,
+				).catch((errorValue) => {
+					reportBackendError("model", errorValue);
 				});
 			});
 		});
@@ -1324,9 +1693,10 @@
 		return results;
 	}
 
-	// pie-item contract compatibility: legacy <pie-player> preview hosts update a
-	// rendered element model imperatively; keep the existing strict id/tag binding.
-	export async function updateElementModel(update: Record<string, any>): Promise<void> {
+	function applyItemConfigModelUpdate(
+		update: Record<string, any>,
+		reset = false,
+	): ConfigEntity {
 		if (!itemConfig) {
 			throw new Error("Cannot update element model before the item config has loaded.");
 		}
@@ -1341,24 +1711,56 @@
 
 		const currentModel = itemConfig.models[modelIndex];
 		const nextModels = [...itemConfig.models];
-		nextModels[modelIndex] = {
-			...currentModel,
-			...update,
-			id: currentModel.id,
-			element: currentModel.element,
-		};
-		itemConfig = {
+		nextModels[modelIndex] = reset
+			? {
+					...update,
+					id: currentModel.id,
+					element: currentModel.element,
+				}
+			: {
+					...currentModel,
+					...update,
+					id: currentModel.id,
+					element: currentModel.element,
+				};
+		const nextConfig = {
 			...itemConfig,
 			models: nextModels,
 		};
+		itemConfig = nextConfig;
+		return nextConfig;
+	}
+
+	// pie-item contract compatibility: legacy <pie-player> preview hosts update a
+	// rendered element model imperatively; keep the existing strict id/tag binding.
+	export async function updateElementModel(update: Record<string, any>): Promise<void> {
+		const nextConfig = applyItemConfigModelUpdate(update);
 		await tick();
 		void updatePieElements(
-			itemConfig,
+			nextConfig,
 			rendererSession,
 			parseEnvValue(env),
 			hostElement ?? undefined,
 			handleElementSessionUpdate,
 		);
+	}
+
+	function handleModelUpdated(detail: unknown) {
+		const detailObj =
+			detail && typeof detail === "object"
+				? (detail as { update?: unknown; reset?: unknown })
+				: null;
+		if (detailObj?.update && typeof detailObj.update === "object") {
+			try {
+				applyItemConfigModelUpdate(
+					detailObj.update as Record<string, any>,
+					detailObj.reset === true,
+				);
+			} catch (errorValue) {
+				logger.warn("[pie-item-player] ignored model-updated state sync:", errorValue);
+			}
+		}
+		handlePlayerEvent(new CustomEvent("model-updated", { detail }));
 	}
 
 	export async function validateModels(): Promise<{ hasErrors: boolean; validatedModels: any[] }> {
@@ -1504,18 +1906,17 @@
 					configuration={typeof configuration === "string"
 						? JSON.parse(configuration)
 						: configuration}
-					onInsertImage={onInsertImage ?? undefined}
-					onDeleteImage={onDeleteImage ?? undefined}
-					onInsertSound={onInsertSound ?? undefined}
-					onDeleteSound={onDeleteSound ?? undefined}
+					onInsertImage={effectiveOnInsertImage ?? undefined}
+					onDeleteImage={effectiveOnDeleteImage ?? undefined}
+					onInsertSound={effectiveOnInsertSound ?? undefined}
+					onDeleteSound={effectiveOnDeleteSound ?? undefined}
 					onLoadComplete={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
 					onPlayerError={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("player-error", { detail }))}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 					onElementSessionUpdate={handleElementSessionUpdate}
-					onModelUpdated={(detail: unknown) =>
-						handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
+					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}
 					onModelLoaded={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("model-loaded", { detail }))}
 				/>

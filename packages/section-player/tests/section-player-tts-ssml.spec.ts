@@ -382,7 +382,7 @@ test.describe("section player demo tts-ssml", () => {
 				| "left-aligned";
 			expectReserveBeforePlay: boolean;
 			expectActiveExpandOnPlay: boolean;
-			expectPanelPositionOnPlay: "absolute" | "static";
+			expectPanelPositionOnPlay: "absolute" | "static" | "fixed";
 			expectContainerDirectionOnPlay?: "row";
 			expectPanelBeforeTriggerOnPlay?: boolean;
 			expectPanelLeftOfTriggerOnPlay?: boolean;
@@ -409,7 +409,9 @@ test.describe("section player demo tts-ssml", () => {
 				mode: "left-aligned",
 				expectReserveBeforePlay: false,
 				expectActiveExpandOnPlay: false,
-				expectPanelPositionOnPlay: "absolute",
+				// Fixed so the panel escapes overflow-clipping ancestors and
+				// stacks above the page header (top-layer z-index).
+				expectPanelPositionOnPlay: "fixed",
 				expectPanelBeforeTriggerOnPlay: false,
 				expectPanelLeftOfTriggerOnPlay: true,
 			},

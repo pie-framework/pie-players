@@ -157,13 +157,14 @@
 		class="pie-section-player-content-card"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
+		data-pie-tool-overlay-boundary
 		aria-current={isCurrent ? "true" : undefined}
 	>
 		<div
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
 			data-region="header"
 		>
-			<h2 id={headingId}>{headerTitle}</h2>
+			<h2 id={headingId} data-pie-tool-overlay-protect>{headerTitle}</h2>
 			<pie-item-toolbar
 				item-id={item.id}
 				catalog-id={item.id}

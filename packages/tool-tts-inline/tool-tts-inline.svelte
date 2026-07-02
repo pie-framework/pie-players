@@ -636,6 +636,16 @@
 		layoutMode === 'floating-overlay'
 	);
 	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+	const OVERLAY_GUTTER_PX = 8;
+	// Host-declared boundary (panel's horizontal container) and protected
+	// sibling (e.g. a heading) the panel must not crowd.
+	const OVERLAY_BOUNDARY_SELECTOR = '[data-pie-tool-overlay-boundary]';
+	const OVERLAY_PROTECTED_SELECTOR = '[data-pie-tool-overlay-protect]';
+	let leftAlignedCompact = $state(false);
+	let leftAlignedOverlayStyle = $state('');
+	// Only refreshed while non-compact; measuring while compact excludes
+	// hidden secondary controls and would prevent re-expansion.
+	let leftAlignedNaturalWidthPx = $state(0);
 
 	$effect(() => {
 		const service = ttsService;
@@ -649,6 +659,124 @@
 		});
 		return () => {
 			cancelled = true;
+		};
+	});
+
+	function findComposedAncestor(
+		start: Element | null,
+		selector: string,
+	): HTMLElement | null {
+		let cursor: Element | null = start;
+		while (cursor) {
+			if ((cursor as HTMLElement).matches?.(selector)) return cursor as HTMLElement;
+			cursor = cursor.parentElement ??
+				(cursor.getRootNode() instanceof ShadowRoot
+					? ((cursor.getRootNode() as ShadowRoot).host as Element)
+					: null);
+		}
+		return null;
+	}
+
+	function getTriggerElement(): HTMLElement | null {
+		const root = containerEl?.getRootNode();
+		if (!(root instanceof ShadowRoot)) return null;
+		return root.querySelector('.pie-tool-tts-inline__trigger');
+	}
+
+	// Independent of wrap state, unlike scrollWidth on flex-wrap:wrap.
+	function measureNaturalWidth(panel: HTMLElement): number {
+		const style = window.getComputedStyle(panel);
+		const gap = parseFloat(style.columnGap || style.gap) || 0;
+		const chrome =
+			(parseFloat(style.paddingLeft) || 0) +
+			(parseFloat(style.paddingRight) || 0) +
+			(parseFloat(style.borderLeftWidth) || 0) +
+			(parseFloat(style.borderRightWidth) || 0);
+		const visible = Array.from(panel.children).filter(
+			(c) => window.getComputedStyle(c as HTMLElement).display !== 'none',
+		) as HTMLElement[];
+		if (!visible.length) return 0;
+		return (
+			visible.reduce((sum, c) => sum + c.offsetWidth, 0) +
+			(visible.length - 1) * gap +
+			chrome
+		);
+	}
+
+	function measureLeftAlignedOverlay(): void {
+		const trigger = getTriggerElement();
+		if (!trigger || !toolbarEl) return;
+		const triggerRect = trigger.getBoundingClientRect();
+		const boundary = findComposedAncestor(trigger, OVERLAY_BOUNDARY_SELECTOR);
+		const boundaryLeft = boundary?.getBoundingClientRect().left ?? 0;
+		// Compact-mode triggers when the panel reaches this left limit —
+		// the protected sibling's right edge (plus clearance) if declared,
+		// otherwise the boundary itself.
+		const protectedEl = boundary?.querySelector(OVERLAY_PROTECTED_SELECTOR);
+		const leftLimit = protectedEl
+			? protectedEl.getBoundingClientRect().right + OVERLAY_GUTTER_PX
+			: boundaryLeft;
+		const availableWidth = Math.max(
+			0,
+			triggerRect.left - leftLimit - OVERLAY_GUTTER_PX * 2,
+		);
+		if (!leftAlignedCompact) {
+			const natural = measureNaturalWidth(toolbarEl);
+			if (natural > 0) leftAlignedNaturalWidthPx = natural;
+		}
+		leftAlignedCompact =
+			leftAlignedNaturalWidthPx > 0 &&
+			availableWidth < leftAlignedNaturalWidthPx;
+		const panelHeight = toolbarEl.offsetHeight || triggerRect.height;
+		const top = Math.max(
+			OVERLAY_GUTTER_PX,
+			Math.min(
+				window.innerHeight - OVERLAY_GUTTER_PX - panelHeight,
+				triggerRect.top + triggerRect.height / 2 - panelHeight / 2,
+			),
+		);
+		const right =
+			window.innerWidth - triggerRect.left + OVERLAY_GUTTER_PX;
+		// CSS min() lets the browser resolve the host's optional
+		// --pie-tts-left-aligned-panel-width (rem/px/calc) at paint time.
+		leftAlignedOverlayStyle =
+			`top: ${top}px; right: ${right}px; left: auto; max-width: min(${availableWidth}px, var(--pie-tts-left-aligned-panel-width, ${availableWidth}px));`;
+	}
+
+	$effect(() => {
+		if (!isLeftAlignedFloatingLayout || !controlsVisible) {
+			leftAlignedOverlayStyle = '';
+			leftAlignedCompact = false;
+			leftAlignedNaturalWidthPx = 0;
+			return;
+		}
+		if (typeof window === 'undefined') return;
+		let frame = 0;
+		const schedule = () => {
+			if (frame) return;
+			frame = window.requestAnimationFrame(() => {
+				frame = 0;
+				measureLeftAlignedOverlay();
+			});
+		};
+		measureLeftAlignedOverlay();
+		window.addEventListener('resize', schedule);
+		window.addEventListener('scroll', schedule, true);
+		const trigger = getTriggerElement();
+		const observer = new ResizeObserver(schedule);
+		if (trigger) observer.observe(trigger);
+		if (toolbarEl) observer.observe(toolbarEl);
+		const boundary = trigger
+			? findComposedAncestor(trigger, OVERLAY_BOUNDARY_SELECTOR)
+			: null;
+		if (boundary) observer.observe(boundary);
+		const protectedEl = boundary?.querySelector(OVERLAY_PROTECTED_SELECTOR);
+		if (protectedEl) observer.observe(protectedEl);
+		return () => {
+			if (frame) window.cancelAnimationFrame(frame);
+			window.removeEventListener('resize', schedule);
+			window.removeEventListener('scroll', schedule, true);
+			observer.disconnect();
 		};
 	});
 
@@ -736,6 +864,8 @@
 					class:pie-tool-tts-inline__panel--floating={isFloatingLayout}
 					class:pie-tool-tts-inline__panel--row={isControlsRowLayout}
 					class:pie-tool-tts-inline__panel--left-aligned-inline={isLeftAlignedFloatingLayout}
+					class:pie-tool-tts-inline__panel--compact={isLeftAlignedFloatingLayout && leftAlignedCompact}
+					style={isLeftAlignedFloatingLayout ? leftAlignedOverlayStyle : ''}
 					role="toolbar"
 					aria-label="Reading controls"
 					tabindex="-1"
@@ -811,7 +941,7 @@
 		{/snippet}
 
 		{#snippet moreMenuButton()}
-			{#if isLeftAlignedFloatingLayout && controlsVisible}
+			{#if isLeftAlignedFloatingLayout && controlsVisible && leftAlignedCompact}
 				<div class="pie-tool-tts-inline__more">
 					<button
 						type="button"
@@ -948,13 +1078,13 @@
 	}
 
 	.pie-tool-tts-inline__panel--left-aligned-inline {
-		position: absolute;
-		z-index: 2;
-		top: 50%;
-		right: calc(100% + 0.5rem);
-		width: var(--pie-tts-left-aligned-panel-width, 28rem);
-		max-width: min(calc(100vw - 6rem), var(--pie-tts-left-aligned-panel-width, 28rem));
-		transform: translateY(-50%);
+		/* Fixed so it escapes overflow-clipping ancestors; top / right /
+		   max-width are set inline by measureLeftAlignedOverlay(). */
+		position: fixed;
+	}
+
+	.pie-tool-tts-inline__panel--compact .pie-tool-tts-inline__control--secondary {
+		display: none;
 	}
 
 	.pie-tool-tts-inline__panel--row {
@@ -1010,7 +1140,7 @@
 
 	.pie-tool-tts-inline__more {
 		position: relative;
-		display: none;
+		display: inline-flex;
 	}
 
 	.pie-tool-tts-inline__more-menu {
@@ -1109,14 +1239,7 @@
 			gap: 0.375rem;
 		}
 
-		.pie-tool-tts-inline__more {
-			display: inline-flex;
-		}
-
-		.pie-tool-tts-inline__panel--left-aligned-inline {
-			right: calc(100% + 2.75rem);
-			width: auto;
-			max-width: min(calc(100vw - 8rem), 24rem);
+		.pie-tool-tts-inline__panel--compact {
 			padding: 0.1875rem 0.375rem;
 		}
 
@@ -1138,10 +1261,6 @@
 			min-width: 2.5rem;
 			height: 1.75rem;
 			padding: 0 0.5rem;
-		}
-
-		.pie-tool-tts-inline__control--secondary {
-			display: none;
 		}
 	}
 

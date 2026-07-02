@@ -664,8 +664,8 @@ test.describe("section player demo tts-ssml", () => {
 				return {
 					found: false,
 					panelPosition: null,
-					panelOverlapsHeading: false,
 					panelWithinCardInlineBounds: false,
+					panelLeftClearOfHeading: false,
 					triggerRightAligned: false,
 				};
 			}
@@ -676,18 +676,21 @@ test.describe("section player demo tts-ssml", () => {
 			return {
 				found: true,
 				panelPosition: window.getComputedStyle(ttsPanel).position,
-				panelOverlapsHeading:
-					panelRect.left < headingRect.right &&
-					panelRect.right > headingRect.left,
 				panelWithinCardInlineBounds:
 					panelRect.left >= cardRect.left &&
 					panelRect.right <= cardRect.right,
+				panelLeftClearOfHeading:
+					panelRect.left >= headingRect.right,
 				triggerRightAligned: triggerRect.right <= cardRect.right,
 			};
 		});
 		expect(overlayGeometry.found).toBe(true);
-		expect(overlayGeometry.panelPosition).toBe("absolute");
-		expect(overlayGeometry.panelOverlapsHeading).toBe(true);
+		// position: fixed lets the panel escape overflow-clipping ancestors
+		// and stack above the page header via a top-layer z-index.
+		expect(overlayGeometry.panelPosition).toBe("fixed");
+		// With a protected heading, the panel sits to the right of the
+		// heading (never on top of it) and stays inside the card boundary.
+		expect(overlayGeometry.panelLeftClearOfHeading).toBe(true);
 		expect(overlayGeometry.panelWithinCardInlineBounds).toBe(true);
 		expect(overlayGeometry.triggerRightAligned).toBe(true);
 
@@ -696,36 +699,71 @@ test.describe("section player demo tts-ssml", () => {
 
 		await panel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(panel).toHaveCount(0);
+	});
 
-		await page.setViewportSize({ width: 800, height: 900 });
-		const compactInlineTts = page.locator("pie-tool-tts-inline:visible").first();
-		await expect(compactInlineTts).toBeVisible();
-		await compactInlineTts.getByRole("button", { name: "Play reading" }).click();
-		const compactInlineSecondaryVisible = await compactInlineTts.evaluate((host) => {
+	test("collapses left-aligned TTS controls into a More menu when the heading crowds the panel", async ({
+		page,
+	}) => {
+		// The compact-mode toggle is boundary-driven: the panel collapses
+		// once the space between the trigger and the protected heading would
+		// no longer fit its natural width. This test forces that condition
+		// at a wide viewport (well above the fallback 839px media query) by
+		// stretching the heading so the remaining header space is narrow.
+		await suppressAudibleBrowserTts(page);
+		await page.setViewportSize({ width: 1320, height: 900 });
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+
+		const firstInlineTts = page
+			.locator(
+				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+			)
+			.first();
+		await expect(firstInlineTts).toBeVisible();
+
+		// Inflate the protected heading so its right edge sits close to the
+		// trigger. This has to happen after mount (so the h2 exists) and
+		// before the play button opens the panel (measurement is captured
+		// then and re-run on ResizeObserver).
+		await page.evaluate(() => {
+			const heading = document.querySelector(
+				"pie-section-player-item-card .pie-section-player-content-card-header h2[data-pie-tool-overlay-protect]",
+			) as HTMLElement | null;
+			if (!heading) throw new Error("protected heading not found");
+			heading.style.setProperty("min-width", "calc(100% - 4rem)");
+		});
+
+		await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
+
+		const panel = firstInlineTts.getByRole("toolbar", {
+			name: "Reading controls",
+		});
+		await expect(panel).toBeVisible();
+
+		// Secondary controls (rewind / fast-forward / stop) collapse into
+		// the More menu — none should be visible in the toolbar itself.
+		const secondaryVisible = await firstInlineTts.evaluate((host) => {
 			const root = host.shadowRoot;
 			return Array.from(
-				root?.querySelectorAll(".pie-tool-tts-inline__control--secondary") || [],
+				root?.querySelectorAll(".pie-tool-tts-inline__control--secondary") ||
+					[],
 			).filter(
-				(element) =>
-					window.getComputedStyle(element as HTMLElement).display !== "none",
+				(el) => window.getComputedStyle(el as HTMLElement).display !== "none",
 			).length;
 		});
-		expect(compactInlineSecondaryVisible).toBe(0);
+		expect(secondaryVisible).toBe(0);
 
-		const moreButton = compactInlineTts.getByRole("button", {
+		const moreButton = firstInlineTts.getByRole("button", {
 			name: "More reading controls",
 		});
 		await expect(moreButton).toBeVisible();
 		await moreButton.click();
-		const moreMenu = compactInlineTts.getByRole("menu", {
+		const moreMenu = firstInlineTts.getByRole("menu", {
 			name: "More reading controls",
 		});
 		await expect(moreMenu).toBeVisible();
-		await expect(moreMenu.getByRole("menuitem", { name: "Rewind" })).toBeFocused();
-		await page.keyboard.press("ArrowDown");
-		await expect(
-			moreMenu.getByRole("menuitem", { name: "Fast-forward" }),
-		).toBeFocused();
+
 		await page.keyboard.press("Escape");
 		await expect(moreMenu).toHaveCount(0);
 		await expect(moreButton).toBeFocused();

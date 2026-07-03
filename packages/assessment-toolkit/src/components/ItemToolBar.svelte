@@ -792,6 +792,16 @@
 				.filter((entry) => Boolean(entry.hint))
 		)
 	);
+	const headerOverlayHints = $derived.by(() =>
+		renderedTools.flatMap((renderedTool) =>
+			(renderedTool.elements || [])
+				.map((entry) => ({
+					toolId: renderedTool.toolId,
+					hint: entry.layoutHints?.headerOverlay
+				}))
+				.filter((entry) => Boolean(entry.hint))
+		)
+	);
 	const controlsRowShouldReserveSpace = $derived.by(
 		() => controlsRowHints.some((entry) => entry.hint?.reserveSpace === true)
 	);
@@ -806,12 +816,42 @@
 	const controlsRowAlignStart = $derived.by(() =>
 		position === 'left' || position === 'right'
 	);
+	const headerOverlayShouldExpandForActiveTool = $derived.by(
+		() =>
+			headerOverlayHints.some(
+				(entry) =>
+					entry.hint?.showWhenToolActive === true &&
+					(renderedToolActiveById[entry.toolId] ?? false)
+			)
+	);
 	const shouldRenderControlsRow = $derived.by(
 		() =>
 			mountedElementsControlsRow.length > 0 ||
 			controlsRowShouldReserveSpace ||
 			controlsRowShouldExpandForActiveTool
 	);
+
+	function resolveToolbarHostElement(): HTMLElement | null {
+		if (!toolbarRootElement) return null;
+		const root = toolbarRootElement.getRootNode();
+		if (root instanceof ShadowRoot) {
+			return root.host as HTMLElement;
+		}
+		return null;
+	}
+
+	$effect(() => {
+		const host = resolveToolbarHostElement();
+		if (!host) return;
+		const hasHeaderOverlay = headerOverlayHints.length > 0;
+		const active = headerOverlayShouldExpandForActiveTool;
+		host.setAttribute('data-pie-header-overlay', hasHeaderOverlay ? 'true' : 'false');
+		host.setAttribute('data-pie-header-overlay-active', active ? 'true' : 'false');
+		return () => {
+			host.removeAttribute('data-pie-header-overlay');
+			host.removeAttribute('data-pie-header-overlay-active');
+		};
+	});
 
 	// Prefetch FA + Roboto into document head as soon as we know a calculator
 	// icon will render. The shadow-root injection in `ndsIconButtonAction`
@@ -2136,6 +2176,7 @@
 		class:item-toolbar--right={position === 'right'}
 		class:item-toolbar--bottom={position === 'bottom'}
 		class:item-toolbar--left={position === 'left'}
+		class:item-toolbar--header-overlay-active={headerOverlayShouldExpandForActiveTool}
 		data-content-kind={effectiveContentKind}
 		data-level={effectiveLevel}
 		bind:this={toolbarRootElement}

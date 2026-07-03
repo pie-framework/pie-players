@@ -133,12 +133,12 @@
 	content-kind="rubric-block-stimulus"
 	item={passage}
 >
-	<div class="pie-section-player-content-card">
+	<div class="pie-section-player-content-card" data-pie-tool-overlay-boundary>
 		<div
 			class="pie-section-player-content-card-header pie-section-player-passage-header pie-section-player__passage-header"
 			data-region="header"
 		>
-			<h2 id={headingId}>{headerTitle}</h2>
+			<h2 id={headingId} data-pie-tool-overlay-protect>{headerTitle}</h2>
 			<pie-item-toolbar
 				item-id={passage.id}
 				catalog-id={passage.id}
@@ -185,10 +185,12 @@
 	}
 
 	.pie-section-player-content-card-header {
+		position: relative;
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
+		overflow: visible;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
 		/* Header fill is intentionally transparent by default. Hosts/themes
 		   opt-in to a solid color via --pie-section-player-card-header-background
@@ -206,6 +208,8 @@
 	}
 
 	.pie-section-player-content-card-header h2 {
+		position: relative;
+		z-index: 0;
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
@@ -215,6 +219,8 @@
 	}
 
 	.pie-section-player-content-card-header pie-item-toolbar {
+		position: relative;
+		z-index: 1;
 		margin-left: auto;
 	}
 

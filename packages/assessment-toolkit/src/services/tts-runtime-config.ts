@@ -24,6 +24,9 @@ export interface TTSHostToolbarLayout {
 		reserveSpace: boolean;
 		expandWhenToolActive: boolean;
 	};
+	headerOverlay: {
+		expandWhenToolActive: boolean;
+	};
 }
 
 export interface TTSSpeedOptionConfig {
@@ -486,6 +489,9 @@ export const resolveTTSHostToolbarLayout = (
 					reserveSpace: true,
 					expandWhenToolActive: false,
 				},
+				headerOverlay: {
+					expandWhenToolActive: false,
+				},
 			};
 		case "expanding-row":
 			return {
@@ -494,8 +500,21 @@ export const resolveTTSHostToolbarLayout = (
 					reserveSpace: false,
 					expandWhenToolActive: true,
 				},
+				headerOverlay: {
+					expandWhenToolActive: false,
+				},
 			};
 		case "floating-overlay":
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: false,
+					expandWhenToolActive: false,
+				},
+				headerOverlay: {
+					expandWhenToolActive: false,
+				},
+			};
 		case "left-aligned":
 		default:
 			return {
@@ -503,6 +522,9 @@ export const resolveTTSHostToolbarLayout = (
 				controlsRow: {
 					reserveSpace: false,
 					expandWhenToolActive: false,
+				},
+				headerOverlay: {
+					expandWhenToolActive: true,
 				},
 			};
 	}

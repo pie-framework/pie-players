@@ -66,6 +66,7 @@
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
 	let controlsVisible = $state(false);
+	let moreMenuOpen = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
@@ -99,6 +100,7 @@
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
+	const moreMenuId = `${instanceId}-more-menu`;
 
 	function getActiveOwnerId(): string | null {
 		if (!isBrowser) return null;
@@ -140,6 +142,7 @@
 		paused = false;
 		focusedControlIndex = 0;
 		controlsVisible = keepControlsVisible;
+		moreMenuOpen = false;
 		statusMessage = status;
 	}
 
@@ -310,7 +313,7 @@
 		if (!toolbarEl) return [];
 		return Array.from(
 			toolbarEl.querySelectorAll<HTMLButtonElement>('[data-pie-tts-control]'),
-		);
+		).filter((control) => window.getComputedStyle(control).display !== 'none');
 	}
 
 	function focusToolbarControl(index: number): void {
@@ -504,6 +507,77 @@
 		clearHighlightTargetResolverProvider();
 	}
 
+	function getMoreMenuItems(): HTMLButtonElement[] {
+		if (!containerEl) return [];
+		const root = containerEl.getRootNode();
+		if (!(root instanceof ShadowRoot)) return [];
+		return Array.from(
+			root.querySelectorAll<HTMLButtonElement>('[data-pie-tts-more-control]'),
+		);
+	}
+
+	function focusMoreMenuItem(index: number): void {
+		const enabledItems = getMoreMenuItems().filter((item) => !item.disabled);
+		if (!enabledItems.length) return;
+		const wrapped = (index + enabledItems.length) % enabledItems.length;
+		enabledItems[wrapped].focus();
+	}
+
+	function openMoreMenu(): void {
+		moreMenuOpen = true;
+		queueMicrotask(() => {
+			focusMoreMenuItem(0);
+		});
+	}
+
+	function toggleMoreMenu(): void {
+		if (moreMenuOpen) {
+			closeMoreMenu();
+			return;
+		}
+		openMoreMenu();
+	}
+
+	function closeMoreMenu(): void {
+		moreMenuOpen = false;
+	}
+
+	function handleMoreMenuKeydown(event: KeyboardEvent): void {
+		const items = getMoreMenuItems().filter((item) => !item.disabled);
+		const currentIndex = items.findIndex((item) => item === event.target);
+		switch (event.key) {
+			case 'ArrowDown':
+			case 'ArrowRight':
+				event.preventDefault();
+				focusMoreMenuItem(currentIndex + 1);
+				break;
+			case 'ArrowUp':
+			case 'ArrowLeft':
+				event.preventDefault();
+				focusMoreMenuItem(currentIndex - 1);
+				break;
+			case 'Home':
+				event.preventDefault();
+				focusMoreMenuItem(0);
+				break;
+			case 'End':
+				event.preventDefault();
+				focusMoreMenuItem(items.length - 1);
+				break;
+			case 'Escape': {
+				event.preventDefault();
+				closeMoreMenu();
+				const root = containerEl?.getRootNode();
+				if (!(root instanceof ShadowRoot)) return;
+				const moreButton = root.querySelector(
+					'.pie-tool-tts-inline__more-button',
+				) as HTMLButtonElement | null;
+				moreButton?.focus();
+				break;
+			}
+		}
+	}
+
 	async function handleSeekForward() {
 		if (!ttsService || !speaking) return;
 		try {
@@ -562,6 +636,16 @@
 		layoutMode === 'floating-overlay'
 	);
 	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+	const OVERLAY_GUTTER_PX = 8;
+	// Host-declared boundary (panel's horizontal container) and protected
+	// sibling (e.g. a heading) the panel must not crowd.
+	const OVERLAY_BOUNDARY_SELECTOR = '[data-pie-tool-overlay-boundary]';
+	const OVERLAY_PROTECTED_SELECTOR = '[data-pie-tool-overlay-protect]';
+	let leftAlignedCompact = $state(false);
+	let leftAlignedOverlayStyle = $state('');
+	// Only refreshed while non-compact; measuring while compact excludes
+	// hidden secondary controls and would prevent re-expansion.
+	let leftAlignedNaturalWidthPx = $state(0);
 
 	$effect(() => {
 		const service = ttsService;
@@ -575,6 +659,124 @@
 		});
 		return () => {
 			cancelled = true;
+		};
+	});
+
+	function findComposedAncestor(
+		start: Element | null,
+		selector: string,
+	): HTMLElement | null {
+		let cursor: Element | null = start;
+		while (cursor) {
+			if ((cursor as HTMLElement).matches?.(selector)) return cursor as HTMLElement;
+			cursor = cursor.parentElement ??
+				(cursor.getRootNode() instanceof ShadowRoot
+					? ((cursor.getRootNode() as ShadowRoot).host as Element)
+					: null);
+		}
+		return null;
+	}
+
+	function getTriggerElement(): HTMLElement | null {
+		const root = containerEl?.getRootNode();
+		if (!(root instanceof ShadowRoot)) return null;
+		return root.querySelector('.pie-tool-tts-inline__trigger');
+	}
+
+	// Independent of wrap state, unlike scrollWidth on flex-wrap:wrap.
+	function measureNaturalWidth(panel: HTMLElement): number {
+		const style = window.getComputedStyle(panel);
+		const gap = parseFloat(style.columnGap || style.gap) || 0;
+		const chrome =
+			(parseFloat(style.paddingLeft) || 0) +
+			(parseFloat(style.paddingRight) || 0) +
+			(parseFloat(style.borderLeftWidth) || 0) +
+			(parseFloat(style.borderRightWidth) || 0);
+		const visible = Array.from(panel.children).filter(
+			(c) => window.getComputedStyle(c as HTMLElement).display !== 'none',
+		) as HTMLElement[];
+		if (!visible.length) return 0;
+		return (
+			visible.reduce((sum, c) => sum + c.offsetWidth, 0) +
+			(visible.length - 1) * gap +
+			chrome
+		);
+	}
+
+	function measureLeftAlignedOverlay(): void {
+		const trigger = getTriggerElement();
+		if (!trigger || !toolbarEl) return;
+		const triggerRect = trigger.getBoundingClientRect();
+		const boundary = findComposedAncestor(trigger, OVERLAY_BOUNDARY_SELECTOR);
+		const boundaryLeft = boundary?.getBoundingClientRect().left ?? 0;
+		// Compact-mode triggers when the panel reaches this left limit —
+		// the protected sibling's right edge (plus clearance) if declared,
+		// otherwise the boundary itself.
+		const protectedEl = boundary?.querySelector(OVERLAY_PROTECTED_SELECTOR);
+		const leftLimit = protectedEl
+			? protectedEl.getBoundingClientRect().right + OVERLAY_GUTTER_PX
+			: boundaryLeft;
+		const availableWidth = Math.max(
+			0,
+			triggerRect.left - leftLimit - OVERLAY_GUTTER_PX * 2,
+		);
+		if (!leftAlignedCompact) {
+			const natural = measureNaturalWidth(toolbarEl);
+			if (natural > 0) leftAlignedNaturalWidthPx = natural;
+		}
+		leftAlignedCompact =
+			leftAlignedNaturalWidthPx > 0 &&
+			availableWidth < leftAlignedNaturalWidthPx;
+		const panelHeight = toolbarEl.offsetHeight || triggerRect.height;
+		const top = Math.max(
+			OVERLAY_GUTTER_PX,
+			Math.min(
+				window.innerHeight - OVERLAY_GUTTER_PX - panelHeight,
+				triggerRect.top + triggerRect.height / 2 - panelHeight / 2,
+			),
+		);
+		const right =
+			window.innerWidth - triggerRect.left + OVERLAY_GUTTER_PX;
+		// CSS min() lets the browser resolve the host's optional
+		// --pie-tts-left-aligned-panel-width (rem/px/calc) at paint time.
+		leftAlignedOverlayStyle =
+			`top: ${top}px; right: ${right}px; left: auto; max-width: min(${availableWidth}px, var(--pie-tts-left-aligned-panel-width, ${availableWidth}px));`;
+	}
+
+	$effect(() => {
+		if (!isLeftAlignedFloatingLayout || !controlsVisible) {
+			leftAlignedOverlayStyle = '';
+			leftAlignedCompact = false;
+			leftAlignedNaturalWidthPx = 0;
+			return;
+		}
+		if (typeof window === 'undefined') return;
+		let frame = 0;
+		const schedule = () => {
+			if (frame) return;
+			frame = window.requestAnimationFrame(() => {
+				frame = 0;
+				measureLeftAlignedOverlay();
+			});
+		};
+		measureLeftAlignedOverlay();
+		window.addEventListener('resize', schedule);
+		window.addEventListener('scroll', schedule, true);
+		const trigger = getTriggerElement();
+		const observer = new ResizeObserver(schedule);
+		if (trigger) observer.observe(trigger);
+		if (toolbarEl) observer.observe(toolbarEl);
+		const boundary = trigger
+			? findComposedAncestor(trigger, OVERLAY_BOUNDARY_SELECTOR)
+			: null;
+		if (boundary) observer.observe(boundary);
+		const protectedEl = boundary?.querySelector(OVERLAY_PROTECTED_SELECTOR);
+		if (protectedEl) observer.observe(protectedEl);
+		return () => {
+			if (frame) window.cancelAnimationFrame(frame);
+			window.removeEventListener('resize', schedule);
+			window.removeEventListener('scroll', schedule, true);
+			observer.disconnect();
 		};
 	});
 
@@ -615,6 +817,11 @@
 		return () => {
 			cancelled = true;
 		};
+	});
+
+	$effect(() => {
+		if (controlsVisible) return;
+		moreMenuOpen = false;
 	});
 </script>
 
@@ -657,6 +864,8 @@
 					class:pie-tool-tts-inline__panel--floating={isFloatingLayout}
 					class:pie-tool-tts-inline__panel--row={isControlsRowLayout}
 					class:pie-tool-tts-inline__panel--left-aligned-inline={isLeftAlignedFloatingLayout}
+					class:pie-tool-tts-inline__panel--compact={isLeftAlignedFloatingLayout && leftAlignedCompact}
+					style={isLeftAlignedFloatingLayout ? leftAlignedOverlayStyle : ''}
 					role="toolbar"
 					aria-label="Reading controls"
 					tabindex="-1"
@@ -686,7 +895,7 @@
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control"
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekBackward}
 						onfocus={() => (focusedControlIndex = speedControlCount)}
 						tabindex={focusedToolbarIndex === speedControlCount ? 0 : -1}
@@ -701,7 +910,7 @@
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control"
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekForward}
 						onfocus={() => (focusedControlIndex = speedControlCount + 1)}
 						tabindex={focusedToolbarIndex === speedControlCount + 1 ? 0 : -1}
@@ -716,7 +925,7 @@
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control"
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleStop}
 						onfocus={() => (focusedControlIndex = speedControlCount + 2)}
 						tabindex={focusedToolbarIndex === speedControlCount + 2 ? 0 : -1}
@@ -731,13 +940,48 @@
 			{/if}
 		{/snippet}
 
-		{#if isLeftAlignedFloatingLayout}
-			{@render controlsPanel()}
-			{@render triggerButton()}
-		{:else}
-			{@render triggerButton()}
-			{@render controlsPanel()}
-		{/if}
+		{#snippet moreMenuButton()}
+			{#if isLeftAlignedFloatingLayout && controlsVisible && leftAlignedCompact}
+				<div class="pie-tool-tts-inline__more">
+					<button
+						type="button"
+						class="pie-tool-tts-inline__trigger pie-tool-tts-inline__trigger--md pie-tool-tts-inline__more-button"
+						onclick={toggleMoreMenu}
+						aria-label="More reading controls"
+						aria-haspopup="menu"
+						aria-expanded={moreMenuOpen}
+						aria-controls={moreMenuOpen ? moreMenuId : undefined}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+						</svg>
+					</button>
+					{#if moreMenuOpen}
+						<div
+							id={moreMenuId}
+							class="pie-tool-tts-inline__more-menu"
+							role="menu"
+							aria-label="More reading controls"
+							onkeydown={handleMoreMenuKeydown}
+						>
+							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); void handleSeekBackward(); }} disabled={!ttsService || !speaking}>
+								Rewind
+							</button>
+							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); void handleSeekForward(); }} disabled={!ttsService || !speaking}>
+								Fast-forward
+							</button>
+							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); handleStop(); }} disabled={!ttsService || (!speaking && !paused)}>
+								Stop reading
+							</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		{/snippet}
+
+		{@render triggerButton()}
+		{@render controlsPanel()}
+		{@render moreMenuButton()}
 
 		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 			{statusMessage}
@@ -750,6 +994,7 @@
 		position: relative;
 		display: inline-flex;
 		align-items: center;
+		gap: 0.5rem;
 	}
 
 	.pie-tool-tts-inline--controls-row {
@@ -833,8 +1078,13 @@
 	}
 
 	.pie-tool-tts-inline__panel--left-aligned-inline {
-		position: static;
-		margin-right: 0.5rem;
+		/* Fixed so it escapes overflow-clipping ancestors; top / right /
+		   max-width are set inline by measureLeftAlignedOverlay(). */
+		position: fixed;
+	}
+
+	.pie-tool-tts-inline__panel--compact .pie-tool-tts-inline__control--secondary {
+		display: none;
 	}
 
 	.pie-tool-tts-inline__panel--row {
@@ -888,6 +1138,53 @@
 		line-height: 1.2;
 	}
 
+	.pie-tool-tts-inline__more {
+		position: relative;
+		display: inline-flex;
+	}
+
+	.pie-tool-tts-inline__more-menu {
+		position: absolute;
+		z-index: 3;
+		top: calc(100% + 0.25rem);
+		right: 0;
+		display: flex;
+		flex-direction: column;
+		min-width: 10rem;
+		padding: 0.25rem;
+		border: 1px solid var(--pie-border, #d0d0d0);
+		border-radius: 0.375rem;
+		background: var(--pie-surface, var(--pie-background, #fff));
+		box-shadow: 0 0.25rem 0.75rem color-mix(in srgb, var(--pie-shadow, #000) 18%, transparent);
+	}
+
+	.pie-tool-tts-inline__more-menu button {
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		width: 100%;
+		padding: 0.5rem 0.625rem;
+		border: 0;
+		border-radius: 0.25rem;
+		background: transparent;
+		color: var(--pie-button-color, var(--pie-text, #222));
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.pie-tool-tts-inline__more-menu button:hover:not(:disabled),
+	.pie-tool-tts-inline__more-menu button:focus-visible {
+		background: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
+		outline: 2px solid var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-primary, #0066cc)));
+		outline-offset: 2px;
+	}
+
+	.pie-tool-tts-inline__more-menu button:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
 	.pie-tool-tts-inline__trigger:disabled,
 	.pie-tool-tts-inline__control:disabled {
 		cursor: not-allowed;
@@ -935,6 +1232,36 @@
 		height: 1.25rem;
 		fill: currentColor;
 		color: currentColor;
+	}
+
+	@media (max-width: 839px) {
+		.pie-tool-tts-inline {
+			gap: 0.375rem;
+		}
+
+		.pie-tool-tts-inline__panel--compact {
+			padding: 0.1875rem 0.375rem;
+		}
+
+		.pie-tool-tts-inline__trigger,
+		.pie-tool-tts-inline__trigger--md,
+		.pie-tool-tts-inline__control {
+			width: 1.75rem;
+			height: 1.75rem;
+		}
+
+		.pie-tool-tts-inline__trigger .pie-tool-tts-inline__icon,
+		.pie-tool-tts-inline__control .pie-tool-tts-inline__icon {
+			width: 1rem;
+			height: 1rem;
+		}
+
+		.pie-tool-tts-inline__control--speed {
+			width: auto;
+			min-width: 2.5rem;
+			height: 1.75rem;
+			padding: 0 0.5rem;
+		}
 	}
 
 	.pie-sr-only {

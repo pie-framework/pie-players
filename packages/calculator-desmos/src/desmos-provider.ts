@@ -3,7 +3,7 @@
  * Implementation of CalculatorProvider for Desmos calculators
  *
  * Supports: Basic, Scientific, and Graphing calculators
- * Based on Desmos API v1.10+
+ * Based on Desmos API v1.12+
  * Requires: Desmos API key (obtain from https://www.desmos.com/api)
  *
  * SECURITY BEST PRACTICE:
@@ -45,7 +45,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		"scientific",
 		"graphing",
 	];
-	readonly version = "1.10";
+	readonly version = "1.12";
 
 	private initialized = false;
 	private apiKey?: string;
@@ -86,8 +86,8 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			const script = document.createElement("script");
 			// Include API key in script URL if available
 			const scriptUrl = this.apiKey
-				? `https://www.desmos.com/api/v1.10/calculator.js?apiKey=${this.apiKey}`
-				: "https://www.desmos.com/api/v1.10/calculator.js";
+				? `https://www.desmos.com/api/v1.12/calculator.js?apiKey=${this.apiKey}`
+				: "https://www.desmos.com/api/v1.12/calculator.js";
 			script.src = scriptUrl;
 			script.async = true;
 			script.onload = () => {

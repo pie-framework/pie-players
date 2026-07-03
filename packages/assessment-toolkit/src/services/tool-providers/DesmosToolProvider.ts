@@ -79,7 +79,7 @@ export class DesmosToolProvider
 	readonly providerId = "desmos-calculator";
 	readonly providerName = "Desmos Calculator";
 	readonly category = "calculator" as const;
-	readonly version = "1.10";
+	readonly version = "1.12";
 	readonly requiresAuth = true;
 
 	private desmosProvider:

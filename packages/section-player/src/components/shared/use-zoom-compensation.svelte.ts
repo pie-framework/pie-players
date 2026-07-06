@@ -29,6 +29,32 @@ export type ZoomCompensationHandle = {
 	readonly zoom: number;
 };
 
+/**
+ * Approximate the browser zoom level from an outer/inner width pair. Falls
+ * back to 1 (100%) if the ratio isn't finite or is non-positive (which happens
+ * during SSR, in headless envs, and briefly during resize on some browsers).
+ */
+export function approximateZoomFromWidths(
+	outerWidth: number,
+	innerWidth: number,
+): number {
+	const ratio = outerWidth / innerWidth;
+	return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+}
+
+/**
+ * Pure zoom-compensation math: exactly 1 at zoom <= maxZoom, then shrinks as
+ * `maxZoom / zoom`, floored at `minCompensation` to guard against inflated
+ * ratios from window chrome / side panels making the element unusably small.
+ */
+export function computeZoomCompensation(
+	zoom: number,
+	maxZoom: number,
+	minCompensation: number,
+): number {
+	return Math.max(minCompensation, Math.min(1, maxZoom / zoom));
+}
+
 export function useZoomCompensation(
 	options: ZoomCompensationOptions,
 ): ZoomCompensationHandle {
@@ -37,10 +63,9 @@ export function useZoomCompensation(
 	let zoom = $state(1);
 
 	function update() {
-		const ratio = window.outerWidth / window.innerWidth;
-		const nextZoom = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+		const nextZoom = approximateZoomFromWidths(window.outerWidth, window.innerWidth);
 		zoom = nextZoom;
-		compensation = Math.max(minCompensation, Math.min(1, maxZoom / nextZoom));
+		compensation = computeZoomCompensation(nextZoom, maxZoom, minCompensation);
 	}
 
 	$effect(() => {

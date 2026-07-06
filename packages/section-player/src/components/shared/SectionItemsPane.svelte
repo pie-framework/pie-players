@@ -56,6 +56,7 @@
 		getCanonicalItemId,
 		getItemPlayerParams,
 	} from "./section-player-view-state.js";
+	import { useZoomCompensation } from "./use-zoom-compensation.svelte.js";
 
 	let {
 		items = [] as ItemEntity[],
@@ -301,6 +302,21 @@
 
 	const scrollDown = () => scrollContainer?.scrollBy({ top: 150, behavior: "smooth" });
 
+	// Freeze the scroll hint's physical size at its 200%-zoom appearance when
+	// browser zoom exceeds 200%; past that threshold the sticky hint grows
+	// large enough to obscure the question below it. Same approach as the
+	// passage/questions toggle in SectionPlayerTabbedContent.
+	const scrollHintZoom = useZoomCompensation({
+		maxZoom: 2,
+		minCompensation: 0.4,
+	});
+
+	// At 300%+ zoom, drop the gradient fade behind the chevron. Users at that
+	// zoom level typically have severely compromised vision and vertical space
+	// is already scarce, so we'd rather keep every pixel of the question text
+	// fully readable; the chevron alone still signals "more below the fold".
+	const suppressScrollHintGradient = $derived(scrollHintZoom.zoom >= 3);
+
 	onMount(() => {
 		// In light-DOM custom elements the sentinel's parentElement is the CE
 		// itself, and its parentElement is the scroll container wrapping it.
@@ -374,8 +390,9 @@
 {/if}
 
 <div
-	class="pie-section-player-scroll-hint"
+	class={`pie-section-player-scroll-hint ${suppressScrollHintGradient ? "pie-section-player-scroll-hint--no-gradient" : ""}`}
 	style:visibility={isScrollable ? "visible" : "hidden"}
+	style:zoom={scrollHintZoom.current}
 >
 	<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -408,6 +425,10 @@
 		justify-content: center;
 		padding-top: 4px;
 		z-index: 10;
+	}
+
+	.pie-section-player-scroll-hint--no-gradient {
+		background: none;
 	}
 
 	.pie-section-player-content-card {

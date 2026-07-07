@@ -601,7 +601,12 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		overscroll-behavior: contain;
-		padding: 0.5rem;
+		/* Margin (not padding) so the gutter sits outside the scrollable
+		   region. Padding lives inside the scroll box, letting any child
+		   that uses position:sticky bleed into it as content scrolls past.
+		   Kept as margin so this pane composes cleanly with arbitrary
+		   descendant content (sticky headers, floating toolbars, etc.). */
+		margin: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
 		scrollbar-width: thin;

@@ -408,6 +408,13 @@
 		justify-content: center;
 		padding-top: 4px;
 		z-index: 10;
+		/* so the buttons behind are still clickable, but the hint itself is not */
+		pointer-events: none;
+	}
+
+	/* so the "scroll down" button still works */
+	.pie-section-player-scroll-hint nds-icon-button {
+		pointer-events: auto;
 	}
 
 	.pie-section-player-content-card {

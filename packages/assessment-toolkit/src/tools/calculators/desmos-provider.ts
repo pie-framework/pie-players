@@ -3,7 +3,7 @@
  * Implementation of CalculatorProvider for Desmos calculators
  *
  * Supports: Basic, Scientific, and Graphing calculators
- * Based on Desmos API v1.10+
+ * Based on Desmos API v1.12+
  */
 
 import type {
@@ -29,7 +29,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		"scientific",
 		"graphing",
 	];
-	readonly version = "1.10";
+	readonly version = "1.12";
 
 	private initialized = false;
 	private apiKey?: string;

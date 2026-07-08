@@ -204,6 +204,11 @@ Passage and item cards share a common header row
 - When a header fill is provided, header top corners default just inside the
   card radius. Hosts/themes can override them independently via
   `--pie-section-player-card-header-radius`.
+- `pie-section-player-passage-card` also bridges
+  `--pie-passage-header-background` to `--pie-section-player-card-header-background`,
+  so a hosted passage-player custom element (defined outside this package)
+  picks up the same header fill without either side hardcoding the other's
+  token name.
 
 Example (host CSS):
 

@@ -53,4 +53,11 @@ describe("section-player card theme token docs", () => {
 			expect(readme).toContain(token);
 		}
 	});
+
+	test("passage card bridges --pie-passage-header-background to the shared card header token", () => {
+		expect(passageCardSource).toContain(
+			"--pie-passage-header-background: var(--pie-section-player-card-header-background)",
+		);
+		expect(readme).toContain("--pie-passage-header-background");
+	});
 });

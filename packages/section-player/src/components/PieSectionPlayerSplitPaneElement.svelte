@@ -608,7 +608,7 @@
 		   descendant content (sticky headers, floating toolbars, etc.). */
 		margin: 0.5rem;
 		box-sizing: border-box;
-		background: var(--pie-background-dark, #ecedf1);
+		background: var(--pie-passage-header-background, #ecedf1);
 		scrollbar-width: thin;
 		scrollbar-color:
 			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);

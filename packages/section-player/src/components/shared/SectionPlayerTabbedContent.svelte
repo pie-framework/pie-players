@@ -4,6 +4,7 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { useZoomCompensation } from "./use-zoom-compensation.svelte.js";
 
 	type LayoutModel = {
 		passages: unknown[];
@@ -64,16 +65,6 @@
 	 * freezes at the 200% appearance, leaving more room for passage/question
 	 * content in high-zoom / small-window situations.
 	 *
-	 * Browser zoom is approximated as outerWidth / innerWidth: outerWidth is
-	 * the OS window size (zoom-independent) while innerWidth is in CSS pixels
-	 * (shrinks as zoom increases). Zoom changes always fire a resize event,
-	 * so listening to resize keeps the value current.
-	 *
-	 * The factor is min(1, 2 / zoom): exactly 1 at zoom <= 200% (component
-	 * behavior unchanged), shrinking proportionally above that. A lower clamp
-	 * of 0.4 guards against inflated ratios (docked devtools, browser side
-	 * panels, window chrome) ever making the toggle unusably small.
-	 *
 	 * NOTE: this same factor is also applied to the vertical spacing
 	 * (gap + block padding) surrounding the toggle in
 	 * .pie-section-player-tabbed-content, via the same CSS variable. The
@@ -82,24 +73,9 @@
 	 * growing with real browser zoom, silently eating back the vertical
 	 * space this work is meant to reclaim.
 	 */
-	const MAX_TOGGLE_ZOOM = 2;
-	const MIN_ZOOM_COMPENSATION = 0.4;
-
-	let zoomCompensation = $state(1);
-
-	function updateZoomCompensation() {
-		const ratio = window.outerWidth / window.innerWidth;
-		const zoom = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
-		zoomCompensation = Math.max(
-			MIN_ZOOM_COMPENSATION,
-			Math.min(1, MAX_TOGGLE_ZOOM / zoom),
-		);
-	}
-
-	$effect(() => {
-		updateZoomCompensation();
-		window.addEventListener("resize", updateZoomCompensation);
-		return () => window.removeEventListener("resize", updateZoomCompensation);
+	const toggleZoom = useZoomCompensation({
+		maxZoom: 2,
+		minCompensation: 0.4,
 	});
 
 	// Reset to the Passage tab whenever we navigate to a different section.
@@ -164,7 +140,7 @@
 	class="pie-section-player-tabbed-frame"
 	style={`--pie-section-player-layout-max-width: ${
 		layoutMaxWidthPx !== undefined ? `${layoutMaxWidthPx}px` : "none"
-	}; --pie-section-player-tab-zoom-comp: ${zoomCompensation};`}
+	}; --pie-section-player-tab-zoom-comp: ${toggleZoom.current};`}
 >
 	<div class="pie-section-player-tabbed-content">
 		{#if hasPassages}

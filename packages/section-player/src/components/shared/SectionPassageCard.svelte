@@ -170,6 +170,12 @@
 	:global(pie-section-player-passage-card) {
 		display: block;
 		border-radius: var(--pie-section-player-card-radius, 8px);
+		/* Bridge for the hosted passage-player custom element, which reads its
+		   own --pie-passage-header-background token and lives outside this
+		   package's control. Resolving it here keeps the passage header in
+		   sync with the section-player card header without either side
+		   hardcoding the other's token name. */
+		--pie-passage-header-background: var(--pie-section-player-card-header-background);
 	}
 
 	.pie-section-player-content-card {
@@ -182,6 +188,18 @@
 	:global(pie-section-player-passage-card .pie-section-player-content-card:has(.pie-section-player-passage-content :focus-visible)) {
 		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
 		outline-offset: 2px;
+	}
+
+	/* Multi-passage sets render their own tab strip (role="tablist") as the
+	   first thing inside the body, which already reads as a header. Drop the
+	   gap and duplicate rule above it so the two headers blend into one band;
+	   a single passage has no tablist and keeps the default spacing. */
+	:global(pie-section-player-passage-card .pie-section-player-content-card:has(.pie-section-player-content-card-body [role="tablist"]) .pie-section-player-content-card-header) {
+		border-bottom: none;
+	}
+
+	:global(pie-section-player-passage-card .pie-section-player-content-card:has(.pie-section-player-content-card-body [role="tablist"]) .pie-section-player-content-card-body) {
+		padding: 0 0 1rem;
 	}
 
 	.pie-section-player-content-card-header {

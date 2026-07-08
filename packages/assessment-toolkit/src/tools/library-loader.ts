@@ -275,7 +275,7 @@ export const libraryLoader = new LibraryLoaderImpl();
  * Desmos library version (matches the version in calculator.js)
  * Update this when upgrading to a new version
  */
-const DESMOS_VERSION = "v1.10.1";
+const DESMOS_VERSION = "v1.12";
 
 /**
  * Common library configurations
@@ -286,8 +286,8 @@ export const COMMON_LIBRARIES: Record<string, LibraryConfig> = {
 		id: "desmos",
 		url: `/lib/desmos/${DESMOS_VERSION}/calculator.js`, // Self-hosted (prioritized) - versioned for better cache control
 		fallbackUrls: [
-			"https://www.desmos.com/api/v1.10/calculator.js",
-			"https://cdn.jsdelivr.net/npm/desmos@1.10/dist/calculator.js",
+			"https://www.desmos.com/api/v1.12/calculator.js",
+			"https://cdn.jsdelivr.net/npm/desmos@1.12/dist/calculator.js",
 		],
 		globalVar: "Desmos",
 		timeout: 10000,

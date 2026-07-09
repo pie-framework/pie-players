@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NG Print Bundle Validation</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" />
+
+    <script type="module" src="../src/index.ts"></script>
+
+    <style>
+      * { font-family: 'Roboto', sans-serif; box-sizing: border-box; }
+      html, body { margin: 0; padding: 20px; background: #f5f5f5; }
+      h1 { color: #333; margin-bottom: 6px; }
+      .description { color: #666; margin-bottom: 20px; }
+      .controls { background: #fff; padding: 16px; margin-bottom: 16px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+      .controls label { font-weight: 500; margin-right: 16px; }
+      .controls select { padding: 4px 8px; margin-left: 8px; }
+      #summary { background: #fff; padding: 16px; margin-bottom: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+      #summary table { border-collapse: collapse; width: 100%; }
+      #summary th, #summary td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+      .pass { color: #157347; font-weight: 600; }
+      .fail { color: #b02a37; font-weight: 600; }
+      .pending { color: #997404; }
+      .element-title { font-size: 1.1em; font-weight: bold; color: #333; margin: 26px 0 8px; }
+      .element-ver { font-weight: 400; color: #888; font-size: .85em; }
+      pie-print { display: block; background: #fff; margin: 8px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    </style>
+  </head>
+  <body>
+    <h1>NG Print Bundle Validation</h1>
+    <p class="description">
+      Renders every print-capable <code>@pie-element</code> ng bundle
+      (<code>dist/browser/print/index.js</code>) through
+      <code>@pie-players/pie-print-player</code>.
+    </p>
+
+    <div class="controls">
+      <label>Role:
+        <select id="role-selector">
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+        </select>
+      </label>
+      <span id="progress"></span>
+    </div>
+
+    <div id="summary">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Element</th><th>Version</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody id="summary-rows"></tbody>
+      </table>
+    </div>
+
+    <div id="items"></div>
+
+    <script type="module">
+      const ITEMS = [
+        {
+          label: 'multiple-choice', tag: 'multiple-choice', id: '2',
+          pkg: '@pie-element/multiple-choice@13.2.2-next.5',
+          model: {
+            id: '2', element: 'multiple-choice', choiceMode: 'radio', choicePrefix: 'letters',
+            prompt: '<p>Which is the largest planet in our solar system?</p>', promptEnabled: true,
+            choices: [
+              { correct: false, value: 'mercury', label: 'Mercury' },
+              { correct: true, value: 'jupiter', label: 'Jupiter' },
+              { correct: false, value: 'earth', label: 'Earth' },
+              { correct: false, value: 'mars', label: 'Mars' },
+            ],
+          },
+        },
+        {
+          label: 'ebsr', tag: 'ebsr-element', id: '1',
+          pkg: '@pie-element/ebsr@14.2.2-next.5',
+          model: {
+            id: '1', element: 'ebsr-element',
+            partA: { choiceMode: 'checkbox', choicePrefix: 'numbers', promptEnabled: true, prompt: 'What color is the sky?',
+              choices: [ { value: 'yellow', label: 'Yellow' }, { value: 'green', label: 'Green' }, { correct: true, value: 'blue', label: 'Blue' } ] },
+            partB: { choiceMode: 'checkbox', choicePrefix: 'numbers', promptEnabled: true, prompt: 'What color do you get when you mix Red with your answer in Part 1?',
+              choices: [ { value: 'orange', label: 'Orange' }, { correct: true, value: 'purple', label: 'Purple' }, { value: 'pink', label: 'Pink' }, { value: 'green', label: 'Green' } ] },
+          },
+        },
+        {
+          label: 'passage', tag: 'passage-element', id: '1',
+          pkg: '@pie-element/passage@7.1.2-next.5',
+          model: {
+            id: '1', element: 'passage-element',
+            passages: [
+              { title: 'Hope Is the Thing with Feathers', author: 'by Emily Dickinson',
+                text: '<p>Hope is the thing with feathers<br/>That perches in the soul,<br/>And sings the tune without the words,<br/>And never stops at all,</p>' },
+            ],
+          },
+        },
+        {
+          label: 'math-inline', tag: 'math-inline', id: '1',
+          pkg: '@pie-element/math-inline@12.1.1-next.15',
+          model: {
+            id: '1', element: 'math-inline', equationEditor: 3, responseType: 'Advanced Multi', rubricEnabled: false,
+            prompt: '<p><strong>B.</strong> Find the value of the expression.</p>',
+            expression: '${{response}}', responses: [ { allowSpaces: true, answer: '$410', id: '1' } ],
+          },
+        },
+        {
+          label: 'math-templated', tag: 'math-templated', id: '1',
+          pkg: '@pie-element/math-templated@7.1.1-next.15',
+          model: {
+            id: '1', element: 'math-templated', partialScoring: true, scoringType: 'auto', promptEnabled: true,
+            prompt: 'There are 24 students in the class. Each bought 2 binders and 5 notebooks.',
+            markup: '<p>Unit price of a binder? ${{0}}</p><p>Unit price of a notebook? ${{1}}</p>',
+            equationEditor: 'geometry', customKeys: [],
+            responses: {
+              '0': { answer: '5', id: '1', validation: 'symbolic', ignoreOrder: false, alternates: {}, allowTrailingZeros: false },
+              '1': { answer: '2.38', id: '1', validation: 'literal', ignoreOrder: false, alternates: {}, allowTrailingZeros: false },
+            },
+          },
+        },
+        {
+          label: 'rubric', tag: 'rubric-element', id: '1',
+          pkg: '@pie-element/rubric@8.1.2-next.5',
+          model: {
+            id: '1', element: 'rubric-element', maxPoints: 3, excludeZero: false,
+            points: ['nothing right', 'a teeny bit right', 'mostly right', 'bingo'],
+            sampleAnswers: [null, 'just right', 'not left', null],
+          },
+        },
+        {
+          label: 'extended-text-entry', tag: 'extended-text-entry', id: '1',
+          pkg: '@pie-element/extended-text-entry@15.1.2-next.5',
+          model: {
+            id: '1', element: 'extended-text-entry', prompt: 'This is the question prompt', promptEnabled: true,
+            mathInput: true, spellCheckEnabled: true, rubricEnabled: false, annotationsEnabled: false, customKeys: ['\\square'],
+          },
+        },
+        {
+          label: 'explicit-constructed-response', tag: 'explicit-constructed-response', id: '1',
+          pkg: '@pie-element/explicit-constructed-response@11.1.2-next.5',
+          model: {
+            id: '1', element: 'explicit-constructed-response', disabled: false,
+            markup: '<p>The {{0}} jumped {{1}} the {{2}}</p>',
+            prompt: '<div>Complete the sentence</div>', promptEnabled: true, displayType: 'block',
+            choices: {
+              '0': [ { label: 'cow', value: '0' }, { label: 'cattle', value: '1' }, { label: 'calf', value: '2' } ],
+              '1': [ { label: 'over', value: '0' }, { label: 'past', value: '1' }, { label: 'beyond', value: '2' } ],
+              '2': [ { label: 'moon', value: '0' } ],
+            },
+            slateMarkup: '<p>The <span data-type="explicit_constructed_response" data-index="0" data-value="cow"></span> jumped <span data-type="explicit_constructed_response" data-index="1" data-value="over"></span> the <span data-type="explicit_constructed_response" data-index="2" data-value="moon"></span></p>',
+          },
+        },
+        {
+          label: 'select-text', tag: 'select-text', id: '1',
+          pkg: '@pie-element/select-text@13.1.2-next.5',
+          model: {
+            id: '1', element: 'select-text', mode: 'sentence', maxSelections: 2, partialScoring: true, promptEnabled: true, rubricEnabled: false,
+            prompt: 'Select the two sentences that best support the claim that the narrator is unreliable.',
+            text: 'Maya reread the chapter before class discussion. She highlighted two details that showed the narrator was unreliable. During discussion, she explained how the narrator changed key facts between scenes. Her group agreed that the contradictions built suspense.',
+            tokens: [
+              { text: 'Maya reread the chapter before class discussion.', start: 0, end: 48, correct: false },
+              { text: 'She highlighted two details that showed the narrator was unreliable.', start: 49, end: 117, correct: true },
+              { text: 'During discussion, she explained how the narrator changed key facts between scenes.', start: 118, end: 201, correct: true },
+              { text: 'Her group agreed that the contradictions built suspense.', start: 202, end: 258, correct: false },
+            ],
+          },
+        },
+        {
+          label: 'complex-rubric', tag: 'complex-rubric', id: '1',
+          pkg: '@pie-element/complex-rubric@7.1.2-next.5',
+          model: {
+            id: '1', element: 'complex-rubric', rubricType: 'simpleRubric',
+            rubrics: {
+              simpleRubric: { maxPoints: 3, excludeZero: false,
+                points: ['nothing right', 'a teeny bit right', 'mostly right', 'bingo'],
+                sampleAnswers: [null, 'just right', 'not left', null] },
+              rubricless: { maxPoints: 100, excludeZero: false, rubriclessInstructionEnabled: true },
+            },
+          },
+        },
+      ];
+
+      customElements.whenDefined('pie-print').then(() => {
+        const itemsRoot = document.querySelector('#items');
+        const rows = document.querySelector('#summary-rows');
+        const roleSelector = document.querySelector('#role-selector');
+        const players = [];
+
+        ITEMS.forEach((item, i) => {
+          const title = document.createElement('div');
+          title.className = 'element-title';
+          title.innerHTML = `${i + 1}. ${item.label} <span class="element-ver">${item.pkg}</span>`;
+          itemsRoot.appendChild(title);
+
+          const pp = document.createElement('pie-print');
+          pp.id = `pp-${item.label}`;
+          itemsRoot.appendChild(pp);
+
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${i + 1}</td><td>${item.label}</td><td>${item.pkg.split('@').pop()}</td>` +
+            `<td class="pending" id="st-${item.label}">pending…</td><td id="nt-${item.label}"></td>`;
+          rows.appendChild(row);
+
+          players.push({ item, pp });
+        });
+
+        function buildConfig(item, role) {
+          return {
+            item: {
+              markup: `<${item.tag} id="${item.id}"></${item.tag}>`,
+              elements: { [item.tag]: item.pkg },
+              models: [item.model],
+            },
+            options: { role },
+          };
+        }
+
+        function applyRole(role) {
+          for (const { item, pp } of players) pp.config = buildConfig(item, role);
+        }
+
+        applyRole('student');
+        roleSelector.addEventListener('change', (e) => applyRole(e.target.value));
+
+        // Poll for results and fill the summary.
+        let ticks = 0;
+        const timer = setInterval(() => {
+          ticks++;
+          let done = 0;
+          for (const { item, pp } of players) {
+            const st = document.querySelector(`#st-${item.label}`);
+            const nt = document.querySelector(`#nt-${item.label}`);
+            const html = pp.innerHTML || '';
+            const failed = /Cannot load/i.test(html);
+            const printTag = Array.from(pp.querySelectorAll('*'))
+              .map((el) => el.tagName.toLowerCase())
+              .find((t) => t.includes('-print-') || t.includes('--version-'));
+            const rendered = !!printTag && (pp.textContent || '').trim().length > 0;
+            if (failed) {
+              st.textContent = 'FAIL (missing bundle)'; st.className = 'fail'; done++;
+              nt.textContent = (html.match(/font-size:0\.8em[^>]*>([^<]*)</) || [])[1] || 'load error';
+            } else if (rendered) {
+              st.textContent = 'PASS'; st.className = 'pass'; done++;
+              nt.textContent = printTag;
+            }
+          }
+          document.querySelector('#progress').textContent = `Loaded ${done}/${players.length}`;
+          window.__NG_PRINT_DONE__ = done;
+          window.__NG_PRINT_TOTAL__ = players.length;
+          if (done === players.length || ticks > 40) clearInterval(timer);
+        }, 500);
+      });
+    </script>
+  </body>
+</html>

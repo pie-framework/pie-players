@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIE Print Player - EBSR Demo</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" />
+
+    <script type="module" src="../src/index.ts"></script>
+
+    <style>
+      * {
+        font-family: 'Roboto', sans-serif;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .description {
+        color: #666;
+        margin-bottom: 30px;
+      }
+
+      .controls {
+        background: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .controls label {
+        display: inline-block;
+        margin-right: 20px;
+        font-weight: 500;
+      }
+
+      .controls select {
+        padding: 5px 10px;
+        margin-left: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      pie-print {
+        display: block;
+        background: white;
+        margin: 20px 0;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .example-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #333;
+        margin: 30px 0 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PIE Print Player - EBSR</h1>
+    <p class="description">
+      Verifies print loading for <code>@pie-element/ebsr@14.2.2-next.5</code>.
+    </p>
+
+    <div class="controls">
+      <label>
+        Role:
+        <select id="role-selector">
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="example-title">EBSR: What color is the sky?</div>
+    <pie-print id="ebsr-example"></pie-print>
+
+    <script>
+      const init = () => {
+        customElements.whenDefined('pie-print').then(() => {
+          const example = document.querySelector('#ebsr-example');
+          const roleSelector = document.querySelector('#role-selector');
+
+          const config = {
+            item: {
+              markup: '<ebsr-element id="1"></ebsr-element>',
+              elements: {
+                'ebsr-element': '@pie-element/ebsr@14.2.2-next.5',
+              },
+              models: [
+                {
+                  id: '1',
+                  element: 'ebsr-element',
+                  partA: {
+                    choiceMode: 'checkbox',
+                    choices: [
+                      { value: 'yellow', label: 'Yellow' },
+                      { value: 'green', label: 'Green' },
+                      { correct: true, value: 'blue', label: 'Blue' },
+                    ],
+                    choicePrefix: 'numbers',
+                    partialScoring: false,
+                    prompt: 'What color is the sky?',
+                    promptEnabled: true,
+                  },
+                  partB: {
+                    choiceMode: 'checkbox',
+                    choices: [
+                      { value: 'orange', label: 'Orange' },
+                      { correct: true, value: 'purple', label: 'Purple' },
+                      { value: 'pink', label: 'Pink' },
+                      { value: 'green', label: 'Green' },
+                    ],
+                    choicePrefix: 'numbers',
+                    partialScoring: false,
+                    prompt:
+                      'What color do you get when you mix Red with your answer in Part 1?',
+                    promptEnabled: true,
+                  },
+                },
+              ],
+            },
+            options: {
+              role: 'student',
+            },
+          };
+
+          example.config = config;
+
+          roleSelector.addEventListener('change', (e) => {
+            config.options.role = e.target.value;
+            example.config = { ...config };
+          });
+        });
+      };
+
+      if (document.readyState === 'complete') {
+        init();
+      } else {
+        document.addEventListener('DOMContentLoaded', init);
+      }
+    </script>
+  </body>
+</html>

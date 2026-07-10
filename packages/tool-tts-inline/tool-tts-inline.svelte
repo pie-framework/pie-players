@@ -28,6 +28,11 @@
 		type TTSSpeedOption,
 		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit';
+	// Side-effect import: registers <nds-icon-button>. Single vendored source of
+	// truth lives in players-shared (Lit inlined, self-contained); see
+	// players-shared/src/components/vendor/nds/README.md. players-shared is not
+	// externalized by this package's Vite build, so the bundle is inlined here.
+	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	let {
 		catalogId = '', // Explicit catalog ID
@@ -53,6 +58,130 @@
 	const ACTIVE_OWNER_KEY = '__pie_tts_inline_active_owner__';
 	const OWNER_EVENT = 'pie-tts-inline-owner-change';
 
+	// ── FontAwesome + Roboto wiring for <nds-icon-button> ─────────────────────
+	// The vendored NDS button renders `<i class="fa-light fa-…">` and expects
+	// Roboto. Mirror @pie-players/pie-assessment-toolkit's ItemToolBar: prefetch
+	// the stylesheets into document <head>, then clone whatever FA <link>s the
+	// host has into this element's shadow root (document-head styles don't cross
+	// the shadow boundary). See the toolkit's ItemToolBar for the full rationale.
+	const FA_PRO_HREFS = ['/_fa-pro/fontawesome.min.css', '/_fa-pro/light.min.css'];
+	const FA_FREE_HREF =
+		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
+	const ROBOTO_HREF =
+		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
+	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
+	let ndsAssetsInstalled = false;
+	const ensureNdsAssets = () => {
+		if (!isBrowser || ndsAssetsInstalled) return;
+		ndsAssetsInstalled = true;
+		if (!document.querySelector('link[href*="Roboto"]')) {
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = ROBOTO_HREF;
+			document.head.appendChild(link);
+		}
+		const hostHasFa = Array.from(
+			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
+		).some((link) => FA_HREF_PATTERN.test(link.href));
+		if (hostHasFa) return;
+		if (!document.querySelector(`link[href="${FA_FREE_HREF}"]`)) {
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = FA_FREE_HREF;
+			document.head.appendChild(link);
+		}
+		for (const href of FA_PRO_HREFS) {
+			if (document.querySelector(`link[href="${href}"]`)) continue;
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = href;
+			document.head.appendChild(link);
+		}
+	};
+	const FA_SHADOW_INSTALLED = '__pieFaTtsShadowInstalled';
+	const installFaInShadow = (node: HTMLElement) => {
+		const shadow = node.getRootNode();
+		if (!(shadow instanceof ShadowRoot)) return;
+		const marker = shadow as ShadowRoot & { [FA_SHADOW_INSTALLED]?: boolean };
+		if (marker[FA_SHADOW_INSTALLED]) return;
+		marker[FA_SHADOW_INSTALLED] = true;
+		const seenHrefs = new Set<string>();
+		const appendLink = (href: string) => {
+			if (!href || seenHrefs.has(href)) return;
+			seenHrefs.add(href);
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = href;
+			shadow.appendChild(link);
+		};
+		const documentFaLinks = Array.from(
+			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
+		).filter((link) => FA_HREF_PATTERN.test(link.href));
+		for (const link of documentFaLinks) appendLink(link.href);
+	};
+	// Svelte action applied to every <nds-icon-button>: install the FA assets its
+	// glyphs need (into <head> and this component's shadow root), and force the
+	// glyphs to the Solid weight. The NDS bundle hardcodes `fa-light fa-${name}`
+	// (thin outline); play/pause read as proper media-control icons in Solid, and
+	// Solid is the weight FA Free ships, so it renders even without FA Pro. The
+	// swap re-applies whenever Lit rewrites the icon class (e.g. play↔pause).
+	const ndsIconButtonAction = (node: HTMLElement) => {
+		ensureNdsAssets();
+		installFaInShadow(node);
+		const applySolid = () => {
+			for (const icon of node.querySelectorAll<HTMLElement>('i.fa-light')) {
+				icon.classList.remove('fa-light');
+				icon.classList.add('fa-solid');
+			}
+		};
+		applySolid();
+		// Watch both the initial <i> insertion (childList) and Lit's in-place class
+		// rewrites on icon-name change (attributes). Our own class edit removes
+		// `fa-light`, so the follow-up callback is a no-op — no infinite loop.
+		const observer = new MutationObserver(applySolid);
+		observer.observe(node, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['class'],
+		});
+		return {
+			destroy() {
+				observer.disconnect();
+			},
+		};
+	};
+
+	// <nds-icon-button> only exposes `button-aria-label` on its inner light-DOM
+	// <button>. Reflect any additional ARIA relationships (expanded / controls /
+	// pressed / haspopup) onto that inner button so the trigger keeps its
+	// disclosure + toggle semantics. The button is created by Lit after the
+	// element's first update, so we watch for it and re-apply on re-render.
+	const reflectAria = (node: HTMLElement, attrs: Record<string, string | null>) => {
+		let current = attrs;
+		const apply = () => {
+			const inner = node.querySelector('button');
+			if (!inner) return;
+			for (const [name, value] of Object.entries(current)) {
+				if (value == null) inner.removeAttribute(name);
+				else inner.setAttribute(name, value);
+			}
+		};
+		apply();
+		// childList/subtree only — attribute writes above don't retrigger this.
+		const observer = new MutationObserver(apply);
+		observer.observe(node, { childList: true, subtree: true });
+		return {
+			update(next: Record<string, string | null>) {
+				current = next;
+				apply();
+			},
+			destroy() {
+				observer.disconnect();
+			},
+		};
+	};
+
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let toolbarEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
@@ -67,6 +196,10 @@
 	);
 	let controlsVisible = $state(false);
 	let moreMenuOpen = $state(false);
+	// Left-aligned overlay collapsed its inline speed radios into a dropdown.
+	// Declared here (ahead of the overlay-measurement block below) so the
+	// roving-tabindex derivations can read it.
+	let leftAlignedCompact = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
@@ -82,7 +215,13 @@
 		speedChoices.length > 1 || showSingleSpeedOption ? speedChoices : [],
 	);
 	const speedControlCount = $derived(visibleSpeedChoices.length);
-	const toolbarControlCount = $derived(speedControlCount + 3);
+	// When the left-aligned overlay is compact, the inline speed radios collapse
+	// into a single current-speed button, so the roving-tabindex control count
+	// (speed slot + rewind/forward/stop) shrinks accordingly.
+	const inlineSpeedControlCount = $derived(
+		leftAlignedCompact ? Math.min(speedControlCount, 1) : speedControlCount,
+	);
+	const toolbarControlCount = $derived(inlineSpeedControlCount + 3);
 	const focusedToolbarIndex = $derived(
 		focusedControlIndex >= toolbarControlCount ? 0 : focusedControlIndex,
 	);
@@ -96,6 +235,14 @@
 		}
 		return resolveDefaultPlaybackRate(speedChoices);
 	});
+	// The currently-selected speed option, used as the label/aria for the compact
+	// current-speed button that opens the speed dropdown.
+	const currentSpeedOption = $derived.by(
+		() =>
+			visibleSpeedChoices.find((option) => option.rate === playbackRate) ??
+			visibleSpeedChoices[0] ??
+			null,
+	);
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
@@ -176,10 +323,13 @@
 		if (!containerEl || !hadPanelFocus) return;
 		const root = containerEl.getRootNode();
 		if (!(root instanceof ShadowRoot)) return;
-		const triggerButton = root.querySelector(
-			'.pie-tool-tts-inline__trigger',
-		) as HTMLButtonElement | null;
-		triggerButton?.focus();
+		// The trigger is now an <nds-icon-button> host whose real focusable
+		// control is its inner light-DOM <button>; fall back to the host for any
+		// non-nds rendering.
+		const trigger = root.querySelector('.pie-tool-tts-inline__trigger');
+		const focusTarget = (trigger?.querySelector('button') ??
+			trigger) as HTMLElement | null;
+		focusTarget?.focus();
 	}
 
 	function handleProgrammaticControlHandoff(
@@ -548,24 +698,31 @@
 		switch (event.key) {
 			case 'ArrowDown':
 			case 'ArrowRight':
+				// The dropdown lives inside the toolbar panel, so stop the event
+				// reaching the toolbar's own roving-tabindex keydown handler.
 				event.preventDefault();
+				event.stopPropagation();
 				focusMoreMenuItem(currentIndex + 1);
 				break;
 			case 'ArrowUp':
 			case 'ArrowLeft':
 				event.preventDefault();
+				event.stopPropagation();
 				focusMoreMenuItem(currentIndex - 1);
 				break;
 			case 'Home':
 				event.preventDefault();
+				event.stopPropagation();
 				focusMoreMenuItem(0);
 				break;
 			case 'End':
 				event.preventDefault();
+				event.stopPropagation();
 				focusMoreMenuItem(items.length - 1);
 				break;
 			case 'Escape': {
 				event.preventDefault();
+				event.stopPropagation();
 				closeMoreMenu();
 				const root = containerEl?.getRootNode();
 				if (!(root instanceof ShadowRoot)) return;
@@ -641,7 +798,6 @@
 	// sibling (e.g. a heading) the panel must not crowd.
 	const OVERLAY_BOUNDARY_SELECTOR = '[data-pie-tool-overlay-boundary]';
 	const OVERLAY_PROTECTED_SELECTOR = '[data-pie-tool-overlay-protect]';
-	let leftAlignedCompact = $state(false);
 	let leftAlignedOverlayStyle = $state('');
 	// Only refreshed while non-compact; measuring while compact excludes
 	// hidden secondary controls and would prevent re-expansion.
@@ -831,28 +987,31 @@
 		class="pie-tool-tts-inline"
 		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
 		class:pie-tool-tts-inline--floating={isFloatingLayout}
+		class:pie-tool-tts-inline--left-aligned={isLeftAlignedFloatingLayout}
 	>
 		{#snippet triggerButton()}
-			<button
-				type="button"
+			<!-- NDS circular icon button. `variant="primary"` (filled) marks the
+			     active/open state; `ghost` is the resting state. The native click
+			     bubbles out of the component's inner <button>, so `onclick` still
+			     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
+			     relationships onto that inner button (nds exposes only aria-label). -->
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<nds-icon-button
+				use:ndsIconButtonAction
+				use:reflectAria={{
+					'aria-expanded': controlsVisible ? 'true' : 'false',
+					'aria-controls': controlsVisible ? panelId : null,
+					'aria-pressed': controlsVisible ? 'true' : 'false',
+				}}
 				class="pie-tool-tts-inline__trigger {sizeClass}"
-				class:pie-tool-tts-inline__trigger--active={controlsVisible}
-				onclick={handlePlayPause}
-				aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-				aria-expanded={controlsVisible}
-				aria-controls={controlsVisible ? panelId : undefined}
+				type="circle"
+				size="small"
+				variant={controlsVisible ? 'primary' : 'ghost'}
+				icon-name={speaking && !paused ? 'pause' : 'play'}
+				button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
 				disabled={!ttsService || playActionInFlight}
-			>
-				{#if speaking && !paused}
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-					</svg>
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M8 5v14l11-7z" />
-					</svg>
-				{/if}
-			</button>
+				onclick={handlePlayPause}
+			></nds-icon-button>
 		{/snippet}
 
 		{#snippet controlsPanel()}
@@ -872,24 +1031,73 @@
 					onkeydown={handleToolbarKeydown}
 				>
 					{#if visibleSpeedChoices.length > 0}
-						<div class="pie-tool-tts-inline__speed-group" role="radiogroup" aria-label="Playback speed">
-							{#each visibleSpeedChoices as option, speedIdx (option.rate)}
+						{#if leftAlignedCompact}
+							<!-- Compact overlay: the inline speed radios collapse into a
+							     current-speed button that opens a dropdown of the choices.
+							     Reuses the shared menu plumbing (openMoreMenu / handleMoreMenuKeydown
+							     / getMoreMenuItems keyed off data-pie-tts-more-control) and the
+							     .pie-tool-tts-inline__more-button class so Escape refocuses here. -->
+							<div class="pie-tool-tts-inline__more pie-tool-tts-inline__speed-dropdown">
 								<button
 									type="button"
-									role="radio"
 									data-pie-tts-control
-									class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-									onclick={() => handlePlaybackRate(option)}
-									onfocus={() => (focusedControlIndex = speedIdx)}
-									tabindex={focusedToolbarIndex === speedIdx ? 0 : -1}
-									aria-label={option.ariaLabel}
-									aria-checked={playbackRate === option.rate}
+									class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed pie-tool-tts-inline__control--speed-current pie-tool-tts-inline__more-button"
+									aria-haspopup="menu"
+									aria-expanded={moreMenuOpen ? 'true' : 'false'}
+									aria-controls={moreMenuOpen ? moreMenuId : null}
+									aria-label={`Playback speed: ${currentSpeedOption?.label ?? ''}`}
+									onclick={toggleMoreMenu}
+									onfocus={() => (focusedControlIndex = 0)}
+									tabindex={focusedToolbarIndex === 0 ? 0 : -1}
 									disabled={!ttsService}
 								>
-									<span class="pie-tool-tts-inline__speed-label">{option.label}</span>
+									<span class="pie-tool-tts-inline__speed-label">{currentSpeedOption?.label ?? ''}</span>
 								</button>
-							{/each}
-						</div>
+								{#if moreMenuOpen}
+									<div
+										id={moreMenuId}
+										class="pie-tool-tts-inline__more-menu pie-tool-tts-inline__speed-menu"
+										role="menu"
+										aria-label="Playback speed"
+										tabindex="-1"
+										onkeydown={handleMoreMenuKeydown}
+									>
+										{#each visibleSpeedChoices as option (option.rate)}
+											<button
+												type="button"
+												role="menuitemradio"
+												data-pie-tts-more-control
+												class="pie-tool-tts-inline__speed-menu-item"
+												aria-checked={playbackRate === option.rate}
+												onclick={() => { handlePlaybackRate(option); closeMoreMenu(); }}
+												disabled={!ttsService}
+											>
+												<span class="pie-tool-tts-inline__speed-label">{option.label}</span>
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<div class="pie-tool-tts-inline__speed-group" role="radiogroup" aria-label="Playback speed">
+								{#each visibleSpeedChoices as option, speedIdx (option.rate)}
+									<button
+										type="button"
+										role="radio"
+										data-pie-tts-control
+										class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
+										onclick={() => handlePlaybackRate(option)}
+										onfocus={() => (focusedControlIndex = speedIdx)}
+										tabindex={focusedToolbarIndex === speedIdx ? 0 : -1}
+										aria-label={option.ariaLabel}
+										aria-checked={playbackRate === option.rate}
+										disabled={!ttsService}
+									>
+										<span class="pie-tool-tts-inline__speed-label">{option.label}</span>
+									</button>
+								{/each}
+							</div>
+						{/if}
 					{/if}
 
 					<button
@@ -897,8 +1105,8 @@
 						data-pie-tts-control
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekBackward}
-						onfocus={() => (focusedControlIndex = speedControlCount)}
-						tabindex={focusedToolbarIndex === speedControlCount ? 0 : -1}
+						onfocus={() => (focusedControlIndex = inlineSpeedControlCount)}
+						tabindex={focusedToolbarIndex === inlineSpeedControlCount ? 0 : -1}
 						aria-label="Rewind"
 						disabled={!ttsService || !speaking}
 					>
@@ -912,8 +1120,8 @@
 						data-pie-tts-control
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekForward}
-						onfocus={() => (focusedControlIndex = speedControlCount + 1)}
-						tabindex={focusedToolbarIndex === speedControlCount + 1 ? 0 : -1}
+						onfocus={() => (focusedControlIndex = inlineSpeedControlCount + 1)}
+						tabindex={focusedToolbarIndex === inlineSpeedControlCount + 1 ? 0 : -1}
 						aria-label="Fast-forward"
 						disabled={!ttsService || !speaking}
 					>
@@ -927,8 +1135,8 @@
 						data-pie-tts-control
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleStop}
-						onfocus={() => (focusedControlIndex = speedControlCount + 2)}
-						tabindex={focusedToolbarIndex === speedControlCount + 2 ? 0 : -1}
+						onfocus={() => (focusedControlIndex = inlineSpeedControlCount + 2)}
+						tabindex={focusedToolbarIndex === inlineSpeedControlCount + 2 ? 0 : -1}
 						aria-label="Stop reading"
 						disabled={!ttsService || (!speaking && !paused)}
 					>
@@ -940,48 +1148,8 @@
 			{/if}
 		{/snippet}
 
-		{#snippet moreMenuButton()}
-			{#if isLeftAlignedFloatingLayout && controlsVisible && leftAlignedCompact}
-				<div class="pie-tool-tts-inline__more">
-					<button
-						type="button"
-						class="pie-tool-tts-inline__trigger pie-tool-tts-inline__trigger--md pie-tool-tts-inline__more-button"
-						onclick={toggleMoreMenu}
-						aria-label="More reading controls"
-						aria-haspopup="menu"
-						aria-expanded={moreMenuOpen}
-						aria-controls={moreMenuOpen ? moreMenuId : undefined}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-						</svg>
-					</button>
-					{#if moreMenuOpen}
-						<div
-							id={moreMenuId}
-							class="pie-tool-tts-inline__more-menu"
-							role="menu"
-							aria-label="More reading controls"
-							onkeydown={handleMoreMenuKeydown}
-						>
-							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); void handleSeekBackward(); }} disabled={!ttsService || !speaking}>
-								Rewind
-							</button>
-							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); void handleSeekForward(); }} disabled={!ttsService || !speaking}>
-								Fast-forward
-							</button>
-							<button type="button" role="menuitem" data-pie-tts-more-control onclick={() => { closeMoreMenu(); handleStop(); }} disabled={!ttsService || (!speaking && !paused)}>
-								Stop reading
-							</button>
-						</div>
-					{/if}
-				</div>
-			{/if}
-		{/snippet}
-
 		{@render triggerButton()}
 		{@render controlsPanel()}
-		{@render moreMenuButton()}
 
 		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 			{statusMessage}
@@ -1002,56 +1170,41 @@
 		justify-content: flex-end;
 	}
 
+	/* The play/pause trigger and the "more" overflow control are now
+	   <nds-icon-button> hosts; the NDS component owns their shape, colours,
+	   hover/active/focus states, and the filled active (`variant="primary"`)
+	   appearance. This class only drives the host's size via NDS's own size
+	   custom properties (see the size variants below), so the light-DOM inner
+	   button matches the toolbar's md/sm/lg dimensions. */
 	.pie-tool-tts-inline__trigger {
 		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2rem;
-		height: 2rem;
-		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
-		background-color: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
-		color: var(--pie-button-color, var(--pie-text, #333));
-		border-radius: 0.25rem;
-		cursor: pointer;
-		transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+		/* Outer button size follows the toolbar size variants (below); the glyph
+		   keeps the NDS-native icon size (size="small") so it isn't oversized. */
+		--height-32: 2rem;
+		/* Host-settable accent for the trigger: the resting (ghost) play/pause
+		   glyph colour and the active (primary) filled background both derive
+		   from NDS's --color-interactive-blue, remapped here to a themeable var. */
+		--color-interactive-blue: var(
+			--pie-tts-button-color,
+			var(--pie-primary, #146eb3)
+		);
 	}
 
-	.pie-tool-tts-inline__trigger:hover:not(:disabled),
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
 		background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
 		transform: translateY(-1px);
 		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-shadow, #000) 14%, transparent);
 	}
 
-	.pie-tool-tts-inline__trigger:active:not(:disabled),
 	.pie-tool-tts-inline__control:active:not(:disabled) {
 		transform: translateY(0);
 		box-shadow: none;
 	}
 
-	.pie-tool-tts-inline__trigger:focus-visible,
 	.pie-tool-tts-inline__control:focus-visible {
 		outline: 2px solid var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-primary, #0066cc)));
 		outline-offset: 2px;
 		box-shadow: 0 0 0 4px color-mix(in srgb, var(--pie-primary, #0066cc) 22%, transparent);
-	}
-
-	.pie-tool-tts-inline__trigger--active {
-		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1565c0));
-		background-color: var(
-			--pie-tool-trigger-active-background,
-			color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff))
-		);
-		color: var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #333)));
-	}
-
-	.pie-tool-tts-inline__trigger--active:hover:not(:disabled) {
-		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1565c0));
-		background-color: var(
-			--pie-tool-trigger-active-background,
-			color-mix(in srgb, var(--pie-primary, #1565c0) 10%, var(--pie-background, #fff))
-		);
-		color: var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #333)));
 	}
 
 	.pie-tool-tts-inline__panel {
@@ -1083,10 +1236,6 @@
 		position: fixed;
 	}
 
-	.pie-tool-tts-inline__panel--compact .pie-tool-tts-inline__control--secondary {
-		display: none;
-	}
-
 	.pie-tool-tts-inline__panel--row {
 		position: absolute;
 		z-index: 2;
@@ -1107,6 +1256,12 @@
 		color: var(--pie-button-color, var(--pie-text, #222));
 		cursor: pointer;
 		transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+	}
+
+	/* Icon-only panel controls (rewind / fast-forward / stop) are round to match
+	   the circular NDS trigger; the pill-shaped speed radios keep square corners. */
+	.pie-tool-tts-inline__control--secondary {
+		border-radius: 50%;
 	}
 
 	.pie-tool-tts-inline__speed-group {
@@ -1136,6 +1291,11 @@
 
 	.pie-tool-tts-inline__speed-label {
 		line-height: 1.2;
+		/* Render speed labels lowercase regardless of the configured casing.
+		   Applied to the visible text only; the radio's accessible name comes
+		   from aria-label (option.ariaLabel), so screen readers still hear the
+		   canonical "Slow speed" / "Normal speed" / "Fast speed". */
+		text-transform: lowercase;
 	}
 
 	.pie-tool-tts-inline__more {
@@ -1185,49 +1345,124 @@
 		opacity: 0.6;
 	}
 
-	.pie-tool-tts-inline__trigger:disabled,
 	.pie-tool-tts-inline__control:disabled {
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
 
-	.pie-tool-tts-inline__trigger--sm {
-		width: 1.75rem;
-		height: 1.75rem;
+	/* ── Overlay layouts (floating-overlay + left-aligned) ──────────────────────
+	   Per the Knowledge-Check design the controls sit transparently on the
+	   surrounding Question/Passage header: no panel chrome, media controls are
+	   accent-blue icon-only glyphs, and the speed radios are plain muted text with
+	   the selected one lifted into a white chip. The accent stays the same
+	   host-settable variable as the play/pause + calculator buttons
+	   (--pie-tts-button-color). Themeable knobs: --pie-tts-inline-muted-color,
+	   --pie-tts-selected-bg/-border/-shadow, --pie-tts-menu-shadow,
+	   --pie-tts-trigger-shadow. */
+	.pie-tool-tts-inline__panel--floating,
+	.pie-tool-tts-inline__panel--left-aligned-inline {
+		min-height: 0;
+		padding: 0.25rem;
+		gap: 0.375rem;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
 	}
 
-	.pie-tool-tts-inline__trigger--sm .pie-tool-tts-inline__icon {
-		width: 1rem;
-		height: 1rem;
+	/* Media controls (rewind / fast-forward / stop): accent-blue, no chrome. */
+	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--secondary,
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--secondary {
+		border: 0;
+		background: transparent;
+		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
+	}
+
+	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--secondary:hover:not(:disabled),
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--secondary:hover:not(:disabled) {
+		transform: none;
+		box-shadow: none;
+		background: color-mix(in srgb, var(--pie-tts-button-color, #146eb3) 12%, transparent);
+	}
+
+	/* Speed radios: plain muted text (unselected). */
+	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed,
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed {
+		min-width: 0;
+		border: 1px solid transparent;
+		background: transparent;
+		box-shadow: none;
+		color: var(--pie-tts-inline-muted-color, #5b6b73);
+	}
+
+	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed:hover:not(:disabled),
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed:hover:not(:disabled) {
+		transform: none;
+		box-shadow: none;
+		background: color-mix(in srgb, var(--pie-tts-button-color, #146eb3) 8%, transparent);
+	}
+
+	/* Selected inline radio + the compact current-speed button share the white
+	   "chip" treatment. Placed after the muted rule so it wins at equal
+	   specificity for the current-speed button. */
+	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed[aria-checked='true'],
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed[aria-checked='true'],
+	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed-current,
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed-current {
+		border: 1px solid var(--pie-tts-selected-border, var(--pie-border, #d7dde2));
+		background: var(--pie-tts-selected-bg, #fff);
+		box-shadow: var(--pie-tts-selected-shadow, 0 1px 2px rgba(0, 0, 0, 0.12));
+		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
+		font-weight: 600;
+	}
+
+	/* Speed dropdown card (compact): white popover carrying the spec shadow. */
+	.pie-tool-tts-inline__speed-menu {
+		min-width: 6rem;
+		box-shadow: var(--pie-tts-menu-shadow, 0 1px 5px 0 rgba(0, 0, 0, 0.3));
+	}
+
+	.pie-tool-tts-inline__speed-menu .pie-tool-tts-inline__speed-menu-item {
+		justify-content: center;
+		border: 1px solid transparent;
+		color: var(--pie-tts-inline-muted-color, #5b6b73);
+		font-size: 0.8125rem;
+		font-weight: 500;
+	}
+
+	.pie-tool-tts-inline__speed-menu .pie-tool-tts-inline__speed-menu-item[aria-checked='true'] {
+		border-color: var(--pie-tts-selected-border, var(--pie-border, #d7dde2));
+		background: var(--pie-tts-selected-bg, #fff);
+		box-shadow: var(--pie-tts-selected-shadow, 0 1px 2px rgba(0, 0, 0, 0.12));
+		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
+		font-weight: 600;
+	}
+
+	/* Elevated circular trigger in overlay layouts. */
+	.pie-tool-tts-inline--floating .pie-tool-tts-inline__trigger,
+	.pie-tool-tts-inline--left-aligned .pie-tool-tts-inline__trigger {
+		border-radius: 50%;
+		box-shadow: var(--pie-tts-trigger-shadow, 0 1px 4px rgba(0, 0, 0, 0.2));
+	}
+
+	/* Trigger size variants set the NDS outer size (--height-32); the glyph keeps
+	   the NDS-native icon size (host renders size="small"). */
+	.pie-tool-tts-inline__trigger--sm {
+		--height-32: 1.75rem;
 	}
 
 	.pie-tool-tts-inline__trigger--md {
-		width: 2rem;
-		height: 2rem;
-	}
-
-	.pie-tool-tts-inline__trigger--md .pie-tool-tts-inline__icon {
-		width: 1.25rem;
-		height: 1.25rem;
+		--height-32: 2rem;
 	}
 
 	.pie-tool-tts-inline__trigger--lg {
-		width: 2.5rem;
-		height: 2.5rem;
-	}
-
-	.pie-tool-tts-inline__trigger--lg .pie-tool-tts-inline__icon {
-		width: 1.5rem;
-		height: 1.5rem;
+		--height-32: 2.5rem;
 	}
 
 	.pie-tool-tts-inline__icon {
 		/* Default explicit size so control-button icons (rewind/fast-forward/stop)
 		   render in WebKit, which sizes an inline SVG that has only a viewBox (no
-		   width/height attributes) to 0. The play/pause trigger icon already works
-		   because the __trigger--sm/md/lg rules below set these dimensions; this
-		   gives the control-panel icons the same treatment. Keep the SVG's default
-		   inline display — forcing display:block makes WebKit collapse it to 0. */
+		   width/height attributes) to 0. Keep the SVG's default inline display —
+		   forcing display:block makes WebKit collapse it to 0. */
 		width: 1.25rem;
 		height: 1.25rem;
 		fill: currentColor;
@@ -1244,13 +1479,15 @@
 		}
 
 		.pie-tool-tts-inline__trigger,
-		.pie-tool-tts-inline__trigger--md,
+		.pie-tool-tts-inline__trigger--md {
+			--height-32: 1.75rem;
+		}
+
 		.pie-tool-tts-inline__control {
 			width: 1.75rem;
 			height: 1.75rem;
 		}
 
-		.pie-tool-tts-inline__trigger .pie-tool-tts-inline__icon,
 		.pie-tool-tts-inline__control .pie-tool-tts-inline__icon {
 			width: 1rem;
 			height: 1rem;
@@ -1277,7 +1514,6 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.pie-tool-tts-inline__trigger,
 		.pie-tool-tts-inline__control {
 			transition: none !important;
 		}

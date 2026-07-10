@@ -519,8 +519,8 @@ kt?.({ LitElement: C });
  */
 const Pt = (o) => (t, e) => {
   e !== void 0 ? e.addInitializer((() => {
-    customElements.define(o, t);
-  })) : customElements.define(o, t);
+    customElements.get(o) || customElements.define(o, t);
+  })) : (customElements.get(o) || customElements.define(o, t));
 };
 /**
  * @license

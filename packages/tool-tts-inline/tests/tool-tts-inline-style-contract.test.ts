@@ -43,61 +43,152 @@ const contrastRatio = (foreground: string, background: string): number => {
 	return (lighter + 0.05) / (darker + 0.05);
 };
 
-describe("tool-tts-inline active trigger styling contract", () => {
-	test("legacy button alias variables fall back through canonical button tokens", () => {
-		const triggerBody = cssRuleBody(".pie-tool-tts-inline__trigger");
-		const triggerHoverBody = cssRuleBody(
-			".pie-tool-tts-inline__trigger:hover:not(:disabled),\n\t.pie-tool-tts-inline__control:hover:not(:disabled)",
-		);
-		const controlBody = cssRuleBody(".pie-tool-tts-inline__control");
+const triggerSnippet = source.slice(
+	source.indexOf("{#snippet triggerButton()}"),
+	source.indexOf("{/snippet}", source.indexOf("{#snippet triggerButton()}")),
+);
 
-		expect(triggerBody.replace(/\s+/g, "")).toContain(
+describe("tool-tts-inline trigger styling contract", () => {
+	test("play/pause trigger renders as a circular NDS icon button", () => {
+		expect(triggerSnippet).toContain("<nds-icon-button");
+		expect(triggerSnippet).toContain('type="circle"');
+		expect(triggerSnippet).toContain(
+			"icon-name={speaking && !paused ? 'pause' : 'play'}",
+		);
+	});
+
+	test("open trigger uses the filled primary NDS variant, resting uses ghost", () => {
+		expect(triggerSnippet).toContain(
+			"variant={controlsVisible ? 'primary' : 'ghost'}",
+		);
+	});
+
+	test("trigger reflects disclosure + toggle semantics onto its inner button", () => {
+		expect(triggerSnippet).toContain("use:reflectAria");
+		expect(triggerSnippet).toContain("'aria-expanded'");
+		expect(triggerSnippet).toContain("'aria-controls'");
+		expect(triggerSnippet).toContain("'aria-pressed'");
+	});
+
+	test("trigger glyphs are forced to the Solid FA weight (not thin outline)", () => {
+		// NDS hardcodes `fa-light`; the mount action swaps it to `fa-solid` so
+		// play/pause render as filled media-control icons and work under FA Free.
+		expect(source).toContain("icon.classList.remove('fa-light')");
+		expect(source).toContain("icon.classList.add('fa-solid')");
+	});
+
+	test("trigger fill colour is a host-settable variable", () => {
+		const body = cssRuleBody(".pie-tool-tts-inline__trigger").replace(
+			/\s+/g,
+			"",
+		);
+		expect(body).toContain(
+			"--color-interactive-blue:var(--pie-tts-button-color,",
+		);
+	});
+
+	test("trigger size variants set the NDS outer button size", () => {
+		const md = cssRuleBody(".pie-tool-tts-inline__trigger--md").replace(
+			/\s+/g,
+			"",
+		);
+		expect(md).toContain("--height-32:2rem");
+	});
+
+	test("trigger keeps the NDS-native glyph size (no icon-size override)", () => {
+		// The glyph must not be enlarged past the NDS icon-button spec, so the
+		// component must not set --nds-icon-small anywhere.
+		expect(styleSource).not.toContain("--nds-icon-small");
+	});
+
+	test("panel controls keep the canonical button token fallbacks", () => {
+		const controlBody = cssRuleBody(".pie-tool-tts-inline__control").replace(
+			/\s+/g,
+			"",
+		);
+		const hoverBody = cssRuleBody(
+			".pie-tool-tts-inline__control:hover:not(:disabled)",
+		).replace(/\s+/g, "");
+
+		expect(controlBody).toContain(
 			"--pie-button-border-color,var(--pie-button-border,",
 		);
-		expect(triggerBody.replace(/\s+/g, "")).toContain(
+		expect(controlBody).toContain(
 			"--pie-button-background-color,var(--pie-button-bg,",
 		);
-		expect(controlBody.replace(/\s+/g, "")).toContain(
-			"--pie-button-border-color,var(--pie-button-border,",
-		);
-		expect(controlBody.replace(/\s+/g, "")).toContain(
-			"--pie-button-background-color,var(--pie-button-bg,",
-		);
-		expect(triggerHoverBody.replace(/\s+/g, "")).toContain(
+		expect(hoverBody).toContain(
 			"--pie-button-hover-background-color,var(--pie-button-hover-bg,",
 		);
 	});
 
-	test("active trigger exposes component-scoped host override variables", () => {
-		const body = cssRuleBody(".pie-tool-tts-inline__trigger--active");
-
-		expect(body).toContain("--pie-tool-trigger-active-background");
-		expect(body).toContain("--pie-tool-trigger-active-color");
-		expect(body).toContain("--pie-tool-trigger-active-border-color");
-	});
-
-	test("active trigger foreground fallback preserves the normal button color path", () => {
-		const body = cssRuleBody(".pie-tool-tts-inline__trigger--active");
-
-		expect(body).toContain("--pie-button-color");
-		expect(body).toContain("--pie-text");
-		expect(body.replace(/\s+/g, "")).not.toContain(
-			"--pie-tool-trigger-active-color,var(--pie-primary",
+	test("icon-only secondary controls are circular", () => {
+		expect(styleSource.replace(/\s+/g, "")).toContain(
+			".pie-tool-tts-inline__control--secondary{border-radius:50%;}",
 		);
 	});
 
-	test("active trigger hover cannot mask the active trigger variables", () => {
-		const body = cssRuleBody(
-			".pie-tool-tts-inline__trigger--active:hover:not(:disabled)",
-		);
+	test("filled active trigger meets WCAG AA contrast (white on NDS interactive blue)", () => {
+		// The open trigger uses NDS `variant="primary"`: white glyph on
+		// --color-interactive-blue (#146eb3). Guard that pairing stays AA.
+		expect(contrastRatio("#ffffff", "#146eb3")).toBeGreaterThanOrEqual(4.5);
+	});
+});
 
-		expect(body).toContain("--pie-tool-trigger-active-background");
-		expect(body).toContain("--pie-tool-trigger-active-color");
-		expect(body).toContain("--pie-tool-trigger-active-border-color");
+describe("tool-tts-inline overlay redesign contract", () => {
+	const stripped = styleSource.replace(/\s+/g, "");
+
+	test("overlay panels render transparent (controls sit on the external header)", () => {
+		// Grouped rule for floating-overlay + left-aligned panels.
+		expect(stripped).toContain(
+			".pie-tool-tts-inline__panel--floating,.pie-tool-tts-inline__panel--left-aligned-inline{",
+		);
+		expect(stripped).toContain("background:transparent;border:0;");
 	});
 
-	test("documented custom active trigger colors meet WCAG AA contrast", () => {
-		expect(contrastRatio("#ffffff", "#1268aa")).toBeGreaterThanOrEqual(4.5);
+	test("media + selected-speed accent flows through the settable --pie-tts-button-color", () => {
+		expect(stripped).toContain(
+			"color:var(--pie-tts-button-color,var(--pie-primary,#146eb3))",
+		);
+	});
+
+	test("selected speed uses a white chip; muted text otherwise", () => {
+		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
+		expect(stripped).toContain(
+			"color:var(--pie-tts-inline-muted-color,#5b6b73)",
+		);
+		// The compact current-speed button shares the chip class.
+		expect(source).toContain("pie-tool-tts-inline__control--speed-current");
+	});
+
+	test("speed dropdown card carries the Figma elevation shadow", () => {
+		expect(stripped).toContain(
+			"box-shadow:var(--pie-tts-menu-shadow,01px5px0rgba(0,0,0,0.3))",
+		);
+	});
+
+	test("overlay trigger is elevated with a themeable shadow", () => {
+		expect(stripped).toContain("box-shadow:var(--pie-tts-trigger-shadow,");
+	});
+});
+
+describe("tool-tts-inline compact speed dropdown contract", () => {
+	test("compact collapses speed into a current-speed button that opens a menu", () => {
+		// Opener button (labelled with the current speed) toggles the dropdown.
+		expect(source).toContain('aria-haspopup="menu"');
+		expect(source).toContain("Playback speed: ${currentSpeedOption?.label");
+		expect(source).toContain("onclick={toggleMoreMenu}");
+		// Dropdown items are radio menu items, reusing the shared menu plumbing.
+		expect(source).toContain('role="menuitemradio"');
+		expect(source).toContain("data-pie-tts-more-control");
+	});
+
+	test("media controls are no longer hidden when the overlay is compact", () => {
+		// The old design hid --secondary in compact and moved media into the menu.
+		expect(styleSource).not.toContain(
+			"__panel--compact .pie-tool-tts-inline__control--secondary",
+		);
+		// The removed ellipsis 'More reading controls' menu should be gone.
+		expect(source).not.toContain('button-aria-label="More reading controls"');
 	});
 });
 
@@ -112,12 +203,16 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 	test("does not keep the old built-in speed toggle contract", () => {
 		expect(source).not.toContain("Playback speed reset to 1x");
 		expect(source).not.toContain("aria-pressed={playbackRate === option.rate}");
-		expect(source).not.toContain("playbackRate === option.rate ? 1 : option.rate");
+		expect(source).not.toContain(
+			"playbackRate === option.rate ? 1 : option.rate",
+		);
 	});
 
 	test("hides one-option speed groups unless the host opts in", () => {
 		expect(source).toContain("showSingleSpeedOption");
-		expect(source).toContain("speedChoices.length > 1 || showSingleSpeedOption");
+		expect(source).toContain(
+			"speedChoices.length > 1 || showSingleSpeedOption",
+		);
 	});
 
 	test("lets omitted speedOptions use semantic Slow Normal Fast defaults", () => {
@@ -130,7 +225,22 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 	test("keeps radio behavior semantic instead of rendering visual radio inputs", () => {
 		expect(source).not.toContain("pie-tool-tts-inline__control--speed-active");
 		expect(source).not.toContain("pie-tool-tts-inline__speed-radio");
-		expect(source).toContain(".pie-tool-tts-inline__control--speed[aria-checked='true']");
+		expect(source).toContain(
+			".pie-tool-tts-inline__control--speed[aria-checked='true']",
+		);
+	});
+
+	test("renders speed labels lowercase without touching the accessible name", () => {
+		// Visible label text is lowercased via CSS so hosts can pass canonical
+		// casing (Slow/Normal/Fast) while the control shows slow/normal/fast.
+		const body = cssRuleBody(".pie-tool-tts-inline__speed-label").replace(
+			/\s+/g,
+			"",
+		);
+		expect(body).toContain("text-transform:lowercase");
+		// The accessible name comes from aria-label, not the visible span, so the
+		// lowercasing must not reach it.
+		expect(source).toContain("aria-label={option.ariaLabel}");
 	});
 
 	test("keeps speed radio buttons the same height as other toolbar controls", () => {

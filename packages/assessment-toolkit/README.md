@@ -648,6 +648,10 @@ tools: {
 - Object-form entries use the same numeric validation/deduping by `rate`.
 - Missing labels fall back to numeric text like `1.5x`; missing `ariaLabel`
   falls back to a matching accessible name like `Fast speed`.
+- Visible labels render lowercase regardless of the configured casing (so
+  `Slow`/`Normal`/`Fast` display as `slow`/`normal`/`fast`). This is a
+  presentation transform only — the accessible name still uses `ariaLabel`
+  (e.g. `Slow speed`), so screen readers announce the canonical text.
 - `1` is a visible `Normal` choice. If a non-empty config omits `1`, PIE adds
   `Normal` at the natural point in the speed scale while preserving the
   relative order of host-provided options.

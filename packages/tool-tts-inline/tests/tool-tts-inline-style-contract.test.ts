@@ -162,7 +162,6 @@ describe("tool-tts-inline overlay redesign contract", () => {
 			"box-shadow:var(--pie-tts-menu-shadow,01px5px0rgba(0,0,0,0.3))",
 		);
 	});
-
 });
 
 describe("tool-tts-inline compact stacked speed contract", () => {

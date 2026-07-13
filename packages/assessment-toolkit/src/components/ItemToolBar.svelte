@@ -2451,7 +2451,9 @@
 	   keeps the NDS-native icon size (we render size="small"), so it isn't
 	   oversized. */
 	.item-toolbar nds-icon-button {
-		--height-32: 2rem;
+		/* Host-settable button size per toolbar size (drives the NDS outer button
+		   via its own --height-32). */
+		--height-32: var(--pie-calculator-button-size, 2rem);
 		/* Host-settable accent for the calculator button: the NDS tertiary glyph
 		   colour derives from --color-interactive-blue, remapped here to a
 		   themeable variable. */
@@ -2459,11 +2461,11 @@
 	}
 
 	.item-toolbar--sm nds-icon-button {
-		--height-32: 2.75rem;
+		--height-32: var(--pie-calculator-button-size-sm, 2.75rem);
 	}
 
 	.item-toolbar--lg nds-icon-button {
-		--height-32: 2.5rem;
+		--height-32: var(--pie-calculator-button-size-lg, 2.5rem);
 	}
 
 	.item-toolbar__element-host {

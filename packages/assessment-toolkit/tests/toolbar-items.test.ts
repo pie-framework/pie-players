@@ -84,3 +84,30 @@ describe("toolbar-items validation", () => {
 		expect(source).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
 	});
 });
+
+describe("calculator nds-icon-button styling contract", () => {
+	const source = readFileSync(ITEM_TOOLBAR_PATH, "utf8");
+	const stripped = source.slice(source.indexOf("<style")).replace(/\s+/g, "");
+
+	test("calculator button renders as the NDS tertiary variant", () => {
+		expect(source).toContain('variant="tertiary"');
+	});
+
+	test("calculator glyph colour is the settable --pie-calculator-button-color", () => {
+		expect(stripped).toContain(
+			"--color-interactive-blue:var(--pie-calculator-button-color,#146eb3)",
+		);
+	});
+
+	test("calculator button size is settable per toolbar size", () => {
+		expect(stripped).toContain(
+			"--height-32:var(--pie-calculator-button-size,2rem)",
+		);
+		expect(stripped).toContain(
+			"--height-32:var(--pie-calculator-button-size-sm,2.75rem)",
+		);
+		expect(stripped).toContain(
+			"--height-32:var(--pie-calculator-button-size-lg,2.5rem)",
+		);
+	});
+});

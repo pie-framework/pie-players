@@ -236,6 +236,49 @@ describe("player-preload: error helpers", () => {
 });
 
 describe("warmupSectionElements", () => {
+	test("preloaded strategy enforces an opt-in package policy", async () => {
+		const { warmupSectionElements, PreloadStageError } =
+			await loadPlayerPreloadModule();
+		const tagName = "pie-policy-preloaded-pa--version-1-0-0";
+		definePreloadedTag(tagName);
+
+		let caught: unknown;
+		try {
+			await warmupSectionElements({
+				strategy: "preloaded",
+				renderables: [
+					{
+						id: "item-policy",
+						config: {
+							markup:
+								'<pie-policy-preloaded-pa id="m1"></pie-policy-preloaded-pa>',
+							elements: {
+								"pie-policy-preloaded-pa": "attacker-controlled-package@1.0.0",
+							},
+							models: [{ id: "m1", element: "pie-policy-preloaded-pa" }],
+						},
+					} as any,
+				],
+				resolvedPlayerProps: {
+					loaderOptions: {
+						elementPackagePolicy: {
+							allowedPackages: ["@pie-element/multiple-choice"],
+						},
+					},
+				},
+				resolvedPlayerEnv: {},
+			});
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(PreloadStageError);
+		expect((caught as PreloadStageError).stage).toBe("preloaded-assert");
+		expect(((caught as PreloadStageError).cause as Error).name).toBe(
+			"ElementPackagePolicyError",
+		);
+	});
+
 	test("preloaded strategy with all aggregate tags registered resolves without touching the loader", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
 		definePreloadedTag("pie-mc-pa--version-1-0-0");

@@ -11,6 +11,10 @@ import type {
 	PieModel,
 } from "../types/index.js";
 import { parsePackageName } from "./utils.js";
+import {
+	parseVersionedTagName,
+	toPackageVersionedTag,
+} from "./versioned-tag.js";
 
 export type PieConfigContractValidationResult = {
 	valid: boolean;
@@ -20,7 +24,7 @@ export type PieConfigContractValidationResult = {
 
 function collectMarkupElementTags(markup: string): Set<string> {
 	const tags = new Set<string>();
-	const tagRegex = /<\/?([a-zA-Z][\w-]*)\b/g;
+	const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9._-]*)(?=[\t\n\f\r />])/g;
 	let match: RegExpExecArray | null = null;
 	while ((match = tagRegex.exec(markup)) !== null) {
 		const tagName = String(match[1] || "").trim();
@@ -78,7 +82,7 @@ export const validatePieConfigContract = (
 			continue;
 		}
 		try {
-			parsePackageName(packageSpec);
+			toPackageVersionedTag(tagName, packageSpec);
 		} catch {
 			errors.push(
 				`Element "${tagName}" has invalid package spec "${packageSpec}".`,
@@ -230,58 +234,19 @@ export const addRubricIfNeeded = (content: ConfigEntity): ConfigEntity => {
 };
 
 /**
- * We make the web component name unique by using the version number. This is needed
- * because the spec doesn't allow for removing/ updating a custom element definition
- * once it's been defined. This is a workaround to ensure that the custom element
- * is redefined when the version changes. This requires the same thing to be done
- * in the markup when the item is loaded on the backend, similarly, and in addition
- * to applying sanctioned versions appropriate for the current organization.
+ * We make the web component name unique by using the version number because a
+ * CustomElementRegistry definition cannot be removed, updated, or replaced. A
+ * distinct versioned tag gives each loaded constructor its own effective runtime
+ * namespace, allowing several versions of one PIE element to coexist. The same
+ * transformation must be applied to the runtime markup and model references.
  */
 export const makeUniqueTags = <T extends ConfigContainerEntity>(
 	container: T,
 ): T => {
-	const VERSION_DELIMITER = "--version-";
-	const TAG_VERSION_PATTERN = "[0-9A-Za-z-]+";
-	const encodeVersionForTag = (version: string): string =>
-		version
-			.trim()
-			.replace(/[.+]/g, "-")
-			.replace(/[^0-9A-Za-z-]/g, "-")
-			.replace(/-{2,}/g, "-");
-
-	const parseElementName = (
-		elName: string,
-	): { baseName: string; existingEncodedVersion?: string } => {
-		const versionMatch = elName.match(
-			new RegExp(`${VERSION_DELIMITER}(${TAG_VERSION_PATTERN})$`),
-		);
-		return versionMatch
-			? {
-					baseName: elName.replace(
-						`${VERSION_DELIMITER}${versionMatch[1]}`,
-						"",
-					),
-					existingEncodedVersion: versionMatch[1],
-				}
-			: { baseName: elName };
-	};
-
-	const createVersionedName = (elName: string, pkg: string): string => {
-		const { baseName, existingEncodedVersion } = parseElementName(elName);
-		const { version } = parsePackageName(pkg);
-		const targetEncodedVersion = encodeVersionForTag(version);
-
-		if (existingEncodedVersion !== targetEncodedVersion) {
-			return `${baseName}${VERSION_DELIMITER}${targetEncodedVersion}`;
-		}
-
-		return elName;
-	};
-
 	// Create mapping of original to versioned names
 	const elementMappings = Object.entries(container.config.elements).reduce(
 		(acc, [elName, pkg]) => {
-			const versionedName = createVersionedName(elName, pkg as string);
+			const versionedName = toPackageVersionedTag(elName, pkg as string);
 			return {
 				...acc,
 				[elName]: {
@@ -292,14 +257,30 @@ export const makeUniqueTags = <T extends ConfigContainerEntity>(
 		},
 		{} as Record<string, { versionedName: string; package: string }>,
 	);
+	// Transform exact opening/closing tags only. Element names may contain
+	// regexp-significant characters, and prefix tags (pie-foo/pie-foo-bar)
+	// are separate authored-content contracts.
+	const escapeRegExp = (value: string): string =>
+		value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const replaceMarkupTag = (
+		markup: string,
+		originalName: string,
+		versionedName: string,
+	): string => {
+		const exactTag = new RegExp(
+			`(<\\/?)${escapeRegExp(originalName)}(?=[\\t\\n\\f\\r />])`,
+			"g",
+		);
+		return markup.replace(
+			exactTag,
+			(_match, opening: string) => `${opening}${versionedName}`,
+		);
+	};
 
-	// Transform markup using the mappings
 	const markup = Object.entries(elementMappings).reduce(
 		(currentMarkup, [originalName, { versionedName }]) =>
 			originalName !== versionedName
-				? currentMarkup
-						.replace(new RegExp(`<${originalName}`, "g"), `<${versionedName}`)
-						.replace(new RegExp(`</${originalName}`, "g"), `</${versionedName}`)
+				? replaceMarkupTag(currentMarkup, originalName, versionedName)
 				: currentMarkup,
 		container.config.markup,
 	);
@@ -333,15 +314,16 @@ export const makeUniqueTags = <T extends ConfigContainerEntity>(
 			return model;
 		}
 
-		// For cases where the model's element isn't in the original elements mapping
-		// Try to find by base name (without version)
+		// pie-item contract compatibility: makeUniqueTags historically repaired an
+		// unversioned model reference when the element map contained a versioned tag.
+		// Preserve only the unambiguous case; never guess between multiple versions.
 		const baseNameMatches = Object.entries(elementMappings).filter(([key]) => {
-			const { baseName } = parseElementName(key);
-			return baseName === originalElement;
+			const { baseName, existingEncodedVersion } = parseVersionedTagName(key);
+			return (
+				existingEncodedVersion !== undefined && baseName === originalElement
+			);
 		});
-
-		if (baseNameMatches.length > 0) {
-			// Use the first match if there are multiple (shouldn't happen in normal usage)
+		if (baseNameMatches.length === 1) {
 			const [, { versionedName }] = baseNameMatches[0];
 			return {
 				...model,
@@ -349,7 +331,8 @@ export const makeUniqueTags = <T extends ConfigContainerEntity>(
 			};
 		}
 
-		// If we can't find a mapping, keep the original
+		// Invalid or ambiguous undeclared model references stay untouched here;
+		// validation owns the error.
 		return model;
 	});
 

@@ -291,8 +291,27 @@ test.describe("item-player strategy regressions", () => {
 			}
 			return `multiple-choice--version-${match[1].replaceAll(".", "-")}`;
 		});
+		const staleTag = "multiple-choice--version-0-0-1";
+		const authoredConfig = {
+			elements: {
+				[staleTag]: "@pie-element/multiple-choice@0.0.1",
+			},
+			models: [
+				{
+					id: "normalize-mc",
+					element: staleTag,
+					prompt: "Normalization prompt",
+					choiceMode: "radio",
+					choices: [
+						{ value: "a", label: "A", correct: false },
+						{ value: "b", label: "B", correct: true },
+					],
+				},
+			],
+			markup: `<${staleTag} id="normalize-mc"></${staleTag}>`,
+		};
 
-		await page.evaluate(() => {
+		await page.evaluate((config) => {
 			const fixture = document.createElement("div");
 			fixture.id = "pie-preloaded-version-normalization-fixture";
 			document.body.appendChild(fixture);
@@ -301,53 +320,41 @@ test.describe("item-player strategy regressions", () => {
 			player.strategy = "preloaded";
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "normalize-test", data: [] };
-			player.config = {
-				elements: {
-					"multiple-choice": "@pie-element/multiple-choice@0.0.1",
-				},
-				models: [
-					{
-						id: "normalize-mc",
-						element: "multiple-choice",
-						prompt: "Normalization prompt",
-						choiceMode: "radio",
-						choices: [
-							{ value: "a", label: "A", correct: false },
-							{ value: "b", label: "B", correct: true },
-						],
-					},
-				],
-				markup: '<multiple-choice id="normalize-mc"></multiple-choice>',
-			};
+			(window as any).__pieAuthoredNormalizationConfig = config;
+			player.config = config;
 			fixture.appendChild(player);
-		});
+		}, authoredConfig);
 
-		const versionRewriteState = await page.evaluate((expectedBundledTag) => {
-			const fixture = document.getElementById(
-				"pie-preloaded-version-normalization-fixture",
-			);
-			if (!fixture) {
+		const versionRewriteState = await page.evaluate(
+			({ expectedBundledTag, staleTag }) => {
+				const fixture = document.getElementById(
+					"pie-preloaded-version-normalization-fixture",
+				);
+				if (!fixture) {
+					return {
+						hasBundledVersionTag: false,
+						hasStaleVersionTag: false,
+						authoredConfig: null,
+						errorText: "missing-fixture",
+					};
+				}
+				const host = fixture.querySelector("pie-item-player");
+				const errorText =
+					host?.querySelector(".pie-player-error p")?.textContent || null;
 				return {
-					hasBundledVersionTag: false,
-					hasStaleVersionTag: false,
-					errorText: "missing-fixture",
+					hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
+					hasStaleVersionTag: !!fixture.querySelector(staleTag),
+					authoredConfig: (window as any).__pieAuthoredNormalizationConfig,
+					errorText,
 				};
-			}
-			const host = fixture.querySelector("pie-item-player");
-			const errorText =
-				host?.querySelector(".pie-player-error p")?.textContent || null;
-			return {
-				hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
-				hasStaleVersionTag: !!fixture.querySelector(
-					"multiple-choice--version-0-0-1",
-				),
-				errorText,
-			};
-		}, bundledVersionTag);
+			},
+			{ expectedBundledTag: bundledVersionTag, staleTag },
+		);
 
 		expect(versionRewriteState.errorText).toBeNull();
 		expect(versionRewriteState.hasBundledVersionTag).toBe(true);
 		expect(versionRewriteState.hasStaleVersionTag).toBe(false);
+		expect(versionRewriteState.authoredConfig).toEqual(authoredConfig);
 	});
 
 	test("backend delivery refreshes rendered models when env changes", async ({

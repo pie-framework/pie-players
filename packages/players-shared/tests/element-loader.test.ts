@@ -73,16 +73,49 @@ describe("aggregateElements", () => {
 		});
 	});
 
-	test("preserves existing conflict behavior for repeated original tags", () => {
+	test("normalizes a stale full tag to the runtime package version", () => {
+		const elements = aggregateElements([
+			{
+				config: {
+					elements: {
+						"pie-passage--version-3-2-3": "@pie-element/passage@3.2.4",
+					},
+				},
+			} as any,
+		]);
+
+		expect(elements).toEqual({
+			"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
+		});
+	});
+
+	test("keeps multiple versions of one original tag as distinct full tags", () => {
+		const elements = aggregateElements([
+			{
+				config: {
+					elements: {
+						"pie-passage": "@pie-element/passage@3.2.3",
+					},
+				},
+			} as any,
+			{
+				config: {
+					elements: {
+						"pie-passage": "@pie-element/passage@3.2.4",
+					},
+				},
+			} as any,
+		]);
+
+		expect(elements).toEqual({
+			"pie-passage--version-3-2-3": "@pie-element/passage@3.2.3",
+			"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
+		});
+	});
+
+	test("still rejects different packages that collapse onto one full tag", () => {
 		expect(() =>
 			aggregateElements([
-				{
-					config: {
-						elements: {
-							"pie-passage": "@pie-element/passage@3.2.3",
-						},
-					},
-				} as any,
 				{
 					config: {
 						elements: {
@@ -90,7 +123,32 @@ describe("aggregateElements", () => {
 						},
 					},
 				} as any,
+				{
+					config: {
+						elements: {
+							"pie-passage--version-3-2-4": "@pie-element/passage-fork@3.2.4",
+						},
+					},
+				} as any,
 			]),
-		).toThrow("Element version conflict: pie-passage requires both");
+		).toThrow(
+			"Element version conflict: pie-passage--version-3-2-4 requires both",
+		);
+	});
+
+	test("keeps legacy unversioned package specs on their authored tag", () => {
+		const elements = aggregateElements([
+			{
+				config: {
+					elements: {
+						"pie-passage": "@pie-element/passage",
+					},
+				},
+			} as any,
+		]);
+
+		expect(elements).toEqual({
+			"pie-passage": "@pie-element/passage",
+		});
 	});
 });

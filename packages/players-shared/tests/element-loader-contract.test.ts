@@ -836,6 +836,48 @@ describe("IIFE adapter — contract", () => {
 		expect(fetchCount).toBe(1);
 		expect(g.customElements?.get("pie-mc--version-11-0-1")).toBeDefined();
 	});
+
+	test("rejects multiple specs for one IIFE package instead of aliasing both tags", async () => {
+		const backend = createIifeBackend({
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleType: BundleType.clientPlayer,
+		});
+		let bundleLoads = 0;
+		const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+			.__seams;
+		seams.replaceLoadBundleScript(async () => {
+			bundleLoads++;
+		});
+
+		const promise = ensureRegistered(
+			{
+				"pie-mc--version-11-0-1":
+					"@pie-element/multiple-choice@11.0.1",
+				"pie-mc--version-12-0-0":
+					"@pie-element/multiple-choice@12.0.0",
+			},
+			{
+				backend,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 25,
+			},
+		);
+
+		await expect(promise).rejects.toBeInstanceOf(ElementLoaderError);
+		await promise.catch((error: ElementLoaderError) => {
+			expect(error.unregisteredTags).toEqual(
+				new Set([
+					"pie-mc--version-11-0-1",
+					"pie-mc--version-12-0-0",
+				]),
+			);
+			for (const reason of error.reasons.values()) {
+				expect(reason.kind).toBe("backend-rejected");
+			}
+		});
+		expect(bundleLoads).toBe(0);
+	});
 });
 
 // ─── ESM adapter — per-failure-mode contract ─────────────────────────────────

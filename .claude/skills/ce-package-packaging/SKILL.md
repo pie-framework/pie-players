@@ -8,8 +8,8 @@ description: Workflow for adding or modifying a custom-element package — regis
 This is a **workflow skill** that pairs with canonical project rules and
 specialist skills:
 
-- [`.cursor/rules/pie-element-versioning.mdc`](../../../.cursor/rules/pie-element-versioning.mdc) — tag-name and `id` contract.
-- [`.cursor/rules/custom-elements-boundaries.mdc`](../../../.cursor/rules/custom-elements-boundaries.mdc) — import / `exports` / class-name / rebuilt `dist` rules.
+- [`AGENTS.md`](../../../AGENTS.md) — canonical tag/ID, custom-element
+  boundary, build-artifact, and release rules.
 - `releases-and-changesets` — fixed-versioning workflow when adding a new publishable package.
 
 ## Layout (canonical)
@@ -27,11 +27,17 @@ packages/<pkg>/
 └── tsconfig.json
 ```
 
-The `<component>-element.ts` files are the **only** import surface for
-consumers. They wrap the `.svelte` file with `customElements.define`,
-applying the versioning rules from
+Use a dedicated registration entry for each targeted component import. Some
+packages also intentionally expose a root registration entry; both forms must
+be documented and tested from the packed package. Registration entries apply
+the versioning rules from
 [`packages/players-shared/src/pie/config.ts`](../../../packages/players-shared/src/pie/config.ts)
-when the element participates in the PIE registry.
+when the element participates in the PIE registry. Versioned tags are effective
+runtime namespaces: load concurrent versions under their distinct tags rather
+than attempting to replace an existing custom-element definition.
+
+Do not assume a source-level registration guard is sufficient. Inspect or test
+the packed artifact as well, because compilation can change registration behavior.
 
 ## `exports` shape
 
@@ -50,6 +56,10 @@ Rules:
 
 - Always emit `types` + `import` for each entry.
 - Runtime path must be `./dist/...`, not `./src/...`.
+- Custom-element declarations must be framework-neutral and typecheck in an
+  isolated consumer without Svelte or other workspace dependencies installed.
+- Runtime and declaration named exports must match exactly.
+- Contract and policy-only subpaths must stay inert when imported.
 - Do **not** add a top-level `*.svelte` export. Cross-package
   `?customElement` imports are rejected by
   `bun run check:custom-elements`.
@@ -74,6 +84,10 @@ lockstep invariant.
 - Custom-element tag names use `pie-` prefix and the versioning encoder
   from `packages/players-shared/src/pie/config.ts` when participating in
   the PIE registry.
+- A host that deliberately substitutes its packaged version may update tags only
+  in a cloned runtime config; it must leave the caller's authored input unchanged.
+- Keep the existing encoder stable. Do not add a parallel encoding or content
+  migration for theoretical prerelease collisions.
 - DOM hooks and CSS selectors use `pie-*` or `data-pie-*`. Avoid generic
   class names like `header`, `content`, `container`, `card`, `pane`,
   `toolbar`, `body`, `active` — they collide in light-DOM CEs.
@@ -84,6 +98,11 @@ lockstep invariant.
 bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements
+bun run check:svelte-runtime-deps
+bun run check:ce-define-safety
+bun run check:ce-consumer-contract
+bun run check:runtime-compat
+bun run check:bundle-safety
 ```
 
 For new packages, also:
@@ -95,6 +114,7 @@ bun run check:publint
 bun run check:types-publish
 bun run check:pack-exports
 bun run check:pack-smoke
+bun run check:pack-integrity:real
 ```
 
 Or run the full pre-publish gate:
@@ -112,11 +132,11 @@ or e2e tests:
 turbo build --filter=@pie-players/<pkg>...
 ```
 
-See the rebuild-before-consumer-tests guidance in
-[`.cursor/rules/custom-elements-boundaries.mdc`](../../../.cursor/rules/custom-elements-boundaries.mdc).
+Then validate from built or packed artifacts so workspace source resolution does
+not conceal undeclared framework types or registration differences.
 
 ## Related rules
 
-- [`.cursor/rules/custom-elements-boundaries.mdc`](../../../.cursor/rules/custom-elements-boundaries.mdc).
-- [`.cursor/rules/pie-element-versioning.mdc`](../../../.cursor/rules/pie-element-versioning.mdc).
-- [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor/rules/release-version-alignment.mdc).
+- [`AGENTS.md`](../../../AGENTS.md), especially Custom Element Import And Packaging
+  Boundaries, PIE Element Versioning And Tag/ID Contract, and Release Version
+  Alignment.

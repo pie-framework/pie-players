@@ -1417,15 +1417,23 @@
 
 	/* Speed dropdown card (compact): white popover carrying the spec shadow. */
 	.pie-tool-tts-inline__speed-menu {
-		min-width: 6rem;
+		gap: 0.25rem;
+		min-width: 7.5rem;
+		padding: 0.75rem;
+		border: 0;
+		border-radius: 0.75rem;
 		box-shadow: var(--pie-tts-menu-shadow, 0 1px 5px 0 rgba(0, 0, 0, 0.3));
 	}
 
+	/* Every option reads in the accent colour; the selected one is lifted into a
+	   white chip (matches the smaller-screen popover design). */
 	.pie-tool-tts-inline__speed-menu .pie-tool-tts-inline__speed-menu-item {
 		justify-content: center;
+		padding: 0.4375rem 1rem;
 		border: 1px solid transparent;
-		color: var(--pie-tts-inline-muted-color, #5b6b73);
-		font-size: 0.8125rem;
+		border-radius: 0.5rem;
+		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
+		font-size: 1rem;
 		font-weight: 500;
 	}
 
@@ -1434,7 +1442,7 @@
 		background: var(--pie-tts-selected-bg, #fff);
 		box-shadow: var(--pie-tts-selected-shadow, 0 1px 2px rgba(0, 0, 0, 0.12));
 		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	/* Elevated circular trigger in overlay layouts. */

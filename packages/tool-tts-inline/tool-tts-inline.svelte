@@ -195,10 +195,6 @@
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
 	let controlsVisible = $state(false);
-	let moreMenuOpen = $state(false);
-	// Left-aligned overlay collapsed its inline speed radios into a dropdown.
-	// Declared here (ahead of the overlay-measurement block below) so the
-	// roving-tabindex derivations can read it.
 	let leftAlignedCompact = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
@@ -215,13 +211,7 @@
 		speedChoices.length > 1 || showSingleSpeedOption ? speedChoices : [],
 	);
 	const speedControlCount = $derived(visibleSpeedChoices.length);
-	// When the left-aligned overlay is compact, the inline speed radios collapse
-	// into a single current-speed button, so the roving-tabindex control count
-	// (speed slot + rewind/forward/stop) shrinks accordingly.
-	const inlineSpeedControlCount = $derived(
-		leftAlignedCompact ? Math.min(speedControlCount, 1) : speedControlCount,
-	);
-	const toolbarControlCount = $derived(inlineSpeedControlCount + 3);
+	const toolbarControlCount = $derived(speedControlCount + 3);
 	const focusedToolbarIndex = $derived(
 		focusedControlIndex >= toolbarControlCount ? 0 : focusedControlIndex,
 	);
@@ -235,19 +225,10 @@
 		}
 		return resolveDefaultPlaybackRate(speedChoices);
 	});
-	// The currently-selected speed option, used as the label/aria for the compact
-	// current-speed button that opens the speed dropdown.
-	const currentSpeedOption = $derived.by(
-		() =>
-			visibleSpeedChoices.find((option) => option.rate === playbackRate) ??
-			visibleSpeedChoices[0] ??
-			null,
-	);
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
-	const moreMenuId = `${instanceId}-more-menu`;
 
 	function getActiveOwnerId(): string | null {
 		if (!isBrowser) return null;
@@ -289,7 +270,6 @@
 		paused = false;
 		focusedControlIndex = 0;
 		controlsVisible = keepControlsVisible;
-		moreMenuOpen = false;
 		statusMessage = status;
 	}
 
@@ -657,84 +637,6 @@
 		clearHighlightTargetResolverProvider();
 	}
 
-	function getMoreMenuItems(): HTMLButtonElement[] {
-		if (!containerEl) return [];
-		const root = containerEl.getRootNode();
-		if (!(root instanceof ShadowRoot)) return [];
-		return Array.from(
-			root.querySelectorAll<HTMLButtonElement>('[data-pie-tts-more-control]'),
-		);
-	}
-
-	function focusMoreMenuItem(index: number): void {
-		const enabledItems = getMoreMenuItems().filter((item) => !item.disabled);
-		if (!enabledItems.length) return;
-		const wrapped = (index + enabledItems.length) % enabledItems.length;
-		enabledItems[wrapped].focus();
-	}
-
-	function openMoreMenu(): void {
-		moreMenuOpen = true;
-		queueMicrotask(() => {
-			focusMoreMenuItem(0);
-		});
-	}
-
-	function toggleMoreMenu(): void {
-		if (moreMenuOpen) {
-			closeMoreMenu();
-			return;
-		}
-		openMoreMenu();
-	}
-
-	function closeMoreMenu(): void {
-		moreMenuOpen = false;
-	}
-
-	function handleMoreMenuKeydown(event: KeyboardEvent): void {
-		const items = getMoreMenuItems().filter((item) => !item.disabled);
-		const currentIndex = items.findIndex((item) => item === event.target);
-		switch (event.key) {
-			case 'ArrowDown':
-			case 'ArrowRight':
-				// The dropdown lives inside the toolbar panel, so stop the event
-				// reaching the toolbar's own roving-tabindex keydown handler.
-				event.preventDefault();
-				event.stopPropagation();
-				focusMoreMenuItem(currentIndex + 1);
-				break;
-			case 'ArrowUp':
-			case 'ArrowLeft':
-				event.preventDefault();
-				event.stopPropagation();
-				focusMoreMenuItem(currentIndex - 1);
-				break;
-			case 'Home':
-				event.preventDefault();
-				event.stopPropagation();
-				focusMoreMenuItem(0);
-				break;
-			case 'End':
-				event.preventDefault();
-				event.stopPropagation();
-				focusMoreMenuItem(items.length - 1);
-				break;
-			case 'Escape': {
-				event.preventDefault();
-				event.stopPropagation();
-				closeMoreMenu();
-				const root = containerEl?.getRootNode();
-				if (!(root instanceof ShadowRoot)) return;
-				const moreButton = root.querySelector(
-					'.pie-tool-tts-inline__more-button',
-				) as HTMLButtonElement | null;
-				moreButton?.focus();
-				break;
-			}
-		}
-	}
-
 	async function handleSeekForward() {
 		if (!ttsService || !speaking) return;
 		try {
@@ -865,16 +767,13 @@
 		const triggerRect = trigger.getBoundingClientRect();
 		const boundary = findComposedAncestor(trigger, OVERLAY_BOUNDARY_SELECTOR);
 		const boundaryLeft = boundary?.getBoundingClientRect().left ?? 0;
-		// Compact-mode triggers when the panel reaches this left limit —
-		// the protected sibling's right edge (plus clearance) if declared,
-		// otherwise the boundary itself.
-		const protectedEl = boundary?.querySelector(OVERLAY_PROTECTED_SELECTOR);
-		const leftLimit = protectedEl
-			? protectedEl.getBoundingClientRect().right + OVERLAY_GUTTER_PX
-			: boundaryLeft;
+		// The panel is allowed to sit on top of the header title, so it can extend
+		// all the way to the card/boundary left edge. Compact only kicks in once
+		// even that full width isn't enough — not merely when it reaches the
+		// heading. (The heading is still observed for re-measure on resize.)
 		const availableWidth = Math.max(
 			0,
-			triggerRect.left - leftLimit - OVERLAY_GUTTER_PX * 2,
+			triggerRect.left - boundaryLeft - OVERLAY_GUTTER_PX * 2,
 		);
 		if (!leftAlignedCompact) {
 			const natural = measureNaturalWidth(toolbarEl);
@@ -884,15 +783,16 @@
 			leftAlignedNaturalWidthPx > 0 &&
 			availableWidth < leftAlignedNaturalWidthPx;
 		const panelHeight = toolbarEl.offsetHeight || triggerRect.height;
-		const top = Math.max(
-			OVERLAY_GUTTER_PX,
-			Math.min(
-				window.innerHeight - OVERLAY_GUTTER_PX - panelHeight,
-				triggerRect.top + triggerRect.height / 2 - panelHeight / 2,
-			),
-		);
-		const right =
-			window.innerWidth - triggerRect.left + OVERLAY_GUTTER_PX;
+		// Position is anchored to the trigger (the TTS button) and re-tracked on
+		// scroll, with NO viewport clamp — so the panel stays glued to the button
+		// and scrolls off with it (disappears) instead of sticking to the viewport
+		// edge. Roomy: centre the 48px card on the trigger. Compact: anchor the
+		// tall popper's top to the trigger's top so its media row lines up with the
+		// play/pause circle and the speeds hang below.
+		const top = leftAlignedCompact
+			? triggerRect.top
+			: triggerRect.top + triggerRect.height / 2 - panelHeight / 2;
+		const right = window.innerWidth - triggerRect.left + OVERLAY_GUTTER_PX;
 		// CSS min() lets the browser resolve the host's optional
 		// --pie-tts-left-aligned-panel-width (rem/px/calc) at paint time.
 		leftAlignedOverlayStyle =
@@ -974,11 +874,6 @@
 			cancelled = true;
 		};
 	});
-
-	$effect(() => {
-		if (controlsVisible) return;
-		moreMenuOpen = false;
-	});
 </script>
 
 {#if isBrowser}
@@ -1006,7 +901,7 @@
 				class="pie-tool-tts-inline__trigger {sizeClass}"
 				type="circle"
 				size="small"
-				variant={controlsVisible ? 'primary' : 'ghost'}
+				variant="tertiary"
 				icon-name={speaking && !paused ? 'pause' : 'play'}
 				button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
 				disabled={!ttsService || playActionInFlight}
@@ -1031,73 +926,34 @@
 					onkeydown={handleToolbarKeydown}
 				>
 					{#if visibleSpeedChoices.length > 0}
-						{#if leftAlignedCompact}
-							<!-- Compact overlay: the inline speed radios collapse into a
-							     current-speed button that opens a dropdown of the choices.
-							     Reuses the shared menu plumbing (openMoreMenu / handleMoreMenuKeydown
-							     / getMoreMenuItems keyed off data-pie-tts-more-control) and the
-							     .pie-tool-tts-inline__more-button class so Escape refocuses here. -->
-							<div class="pie-tool-tts-inline__more pie-tool-tts-inline__speed-dropdown">
+						<!-- Speed radios. Roomy: inline row before the media controls.
+						     Compact left-aligned overlay: stacked vertically in a card
+						     that sits below the media row (the media controls stay on the
+						     top line). Same radiogroup + roving tabindex in both layouts;
+						     only the arrangement changes (see the --stacked CSS). -->
+						<div
+							class="pie-tool-tts-inline__speed-group"
+							class:pie-tool-tts-inline__speed-group--stacked={leftAlignedCompact}
+							role="radiogroup"
+							aria-label="Playback speed"
+						>
+							{#each visibleSpeedChoices as option, speedIdx (option.rate)}
 								<button
 									type="button"
+									role="radio"
 									data-pie-tts-control
-									class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed pie-tool-tts-inline__control--speed-current pie-tool-tts-inline__more-button"
-									aria-haspopup="menu"
-									aria-expanded={moreMenuOpen ? 'true' : 'false'}
-									aria-controls={moreMenuOpen ? moreMenuId : null}
-									aria-label={`Playback speed: ${currentSpeedOption?.label ?? ''}`}
-									onclick={toggleMoreMenu}
-									onfocus={() => (focusedControlIndex = 0)}
-									tabindex={focusedToolbarIndex === 0 ? 0 : -1}
+									class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
+									onclick={() => handlePlaybackRate(option)}
+									onfocus={() => (focusedControlIndex = speedIdx)}
+									tabindex={focusedToolbarIndex === speedIdx ? 0 : -1}
+									aria-label={option.ariaLabel}
+									aria-checked={playbackRate === option.rate}
 									disabled={!ttsService}
 								>
-									<span class="pie-tool-tts-inline__speed-label">{currentSpeedOption?.label ?? ''}</span>
+									<span class="pie-tool-tts-inline__speed-label" data-label={option.label}>{option.label}</span>
 								</button>
-								{#if moreMenuOpen}
-									<div
-										id={moreMenuId}
-										class="pie-tool-tts-inline__more-menu pie-tool-tts-inline__speed-menu"
-										role="menu"
-										aria-label="Playback speed"
-										tabindex="-1"
-										onkeydown={handleMoreMenuKeydown}
-									>
-										{#each visibleSpeedChoices as option (option.rate)}
-											<button
-												type="button"
-												role="menuitemradio"
-												data-pie-tts-more-control
-												class="pie-tool-tts-inline__speed-menu-item"
-												aria-checked={playbackRate === option.rate}
-												onclick={() => { handlePlaybackRate(option); closeMoreMenu(); }}
-												disabled={!ttsService}
-											>
-												<span class="pie-tool-tts-inline__speed-label">{option.label}</span>
-											</button>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<div class="pie-tool-tts-inline__speed-group" role="radiogroup" aria-label="Playback speed">
-								{#each visibleSpeedChoices as option, speedIdx (option.rate)}
-									<button
-										type="button"
-										role="radio"
-										data-pie-tts-control
-										class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-										onclick={() => handlePlaybackRate(option)}
-										onfocus={() => (focusedControlIndex = speedIdx)}
-										tabindex={focusedToolbarIndex === speedIdx ? 0 : -1}
-										aria-label={option.ariaLabel}
-										aria-checked={playbackRate === option.rate}
-										disabled={!ttsService}
-									>
-										<span class="pie-tool-tts-inline__speed-label">{option.label}</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
+							{/each}
+						</div>
 					{/if}
 
 					<button
@@ -1105,14 +961,12 @@
 						data-pie-tts-control
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekBackward}
-						onfocus={() => (focusedControlIndex = inlineSpeedControlCount)}
-						tabindex={focusedToolbarIndex === inlineSpeedControlCount ? 0 : -1}
+						onfocus={() => (focusedControlIndex = speedControlCount)}
+						tabindex={focusedToolbarIndex === speedControlCount ? 0 : -1}
 						aria-label="Rewind"
 						disabled={!ttsService || !speaking}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
-						</svg>
+						<i class="fa-solid fa-backward pie-tool-tts-inline__icon" aria-hidden="true"></i>
 					</button>
 
 					<button
@@ -1120,14 +974,12 @@
 						data-pie-tts-control
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekForward}
-						onfocus={() => (focusedControlIndex = inlineSpeedControlCount + 1)}
-						tabindex={focusedToolbarIndex === inlineSpeedControlCount + 1 ? 0 : -1}
+						onfocus={() => (focusedControlIndex = speedControlCount + 1)}
+						tabindex={focusedToolbarIndex === speedControlCount + 1 ? 0 : -1}
 						aria-label="Fast-forward"
 						disabled={!ttsService || !speaking}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M4 18l8.5-6L4 6v12zm9.5 0L22 12l-8.5-6v12z" />
-						</svg>
+						<i class="fa-solid fa-forward pie-tool-tts-inline__icon" aria-hidden="true"></i>
 					</button>
 
 					<button
@@ -1135,14 +987,12 @@
 						data-pie-tts-control
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleStop}
-						onfocus={() => (focusedControlIndex = inlineSpeedControlCount + 2)}
-						tabindex={focusedToolbarIndex === inlineSpeedControlCount + 2 ? 0 : -1}
+						onfocus={() => (focusedControlIndex = speedControlCount + 2)}
+						tabindex={focusedToolbarIndex === speedControlCount + 2 ? 0 : -1}
 						aria-label="Stop reading"
 						disabled={!ttsService || (!speaking && !paused)}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M6 6h12v12H6z" />
-						</svg>
+						<i class="fa-solid fa-stop pie-tool-tts-inline__icon" aria-hidden="true"></i>
 					</button>
 				</div>
 			{/if}
@@ -1181,13 +1031,9 @@
 		/* Outer button size follows the toolbar size variants (below); the glyph
 		   keeps the NDS-native icon size (size="small") so it isn't oversized. */
 		--height-32: 2rem;
-		/* Host-settable accent for the trigger: the resting (ghost) play/pause
-		   glyph colour and the active (primary) filled background both derive
-		   from NDS's --color-interactive-blue, remapped here to a themeable var. */
-		--color-interactive-blue: var(
-			--pie-tts-button-color,
-			var(--pie-primary, #146eb3)
-		);
+		/* Host-settable accent: the NDS tertiary glyph colour derives from
+		   --color-interactive-blue, remapped here to a themeable variable. */
+		--color-interactive-blue: var(--pie-tts-button-color, #146eb3);
 	}
 
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
@@ -1215,7 +1061,6 @@
 		gap: 0.25rem;
 		box-sizing: border-box;
 		min-height: var(--pie-tts-controls-row-height, 2.875rem);
-		max-width: min(100vw - 1rem, 32rem);
 		padding: 0.25rem 0.5rem;
 		background: var(--pie-surface, var(--pie-background, #fff));
 		border: 1px solid var(--pie-border, #d0d0d0);
@@ -1225,7 +1070,7 @@
 	.pie-tool-tts-inline__panel--floating {
 		position: absolute;
 		z-index: 2;
-		top: 100%;
+		top: 50%;
 		right: 0;
 		left: auto;
 	}
@@ -1273,10 +1118,9 @@
 
 	.pie-tool-tts-inline__control--speed {
 		width: auto;
-		min-width: 2.75rem;
 		height: 2rem;
-		padding: 0 0.625rem;
-		font-size: 0.75rem;
+		padding: 0;
+		font-size: 1rem;
 		font-weight: 500;
 		letter-spacing: 0;
 		white-space: nowrap;
@@ -1298,51 +1142,21 @@
 		text-transform: lowercase;
 	}
 
-	.pie-tool-tts-inline__more {
-		position: relative;
-		display: inline-flex;
+	/* Reserve the bold (selected) width — stacked popper only. Switching the
+	   selected speed there would otherwise change the label width and resize the
+	   fit-content card. The ghost is a zero-height, hidden grid row whose bold text
+	   sets the column width. The inline (roomy) row keeps its natural sizing. */
+	.pie-tool-tts-inline__speed-group--stacked .pie-tool-tts-inline__speed-label {
+		display: inline-grid;
+		justify-items: center;
 	}
 
-	.pie-tool-tts-inline__more-menu {
-		position: absolute;
-		z-index: 3;
-		top: calc(100% + 0.25rem);
-		right: 0;
-		display: flex;
-		flex-direction: column;
-		min-width: 10rem;
-		padding: 0.25rem;
-		border: 1px solid var(--pie-border, #d0d0d0);
-		border-radius: 0.375rem;
-		background: var(--pie-surface, var(--pie-background, #fff));
-		box-shadow: 0 0.25rem 0.75rem color-mix(in srgb, var(--pie-shadow, #000) 18%, transparent);
-	}
-
-	.pie-tool-tts-inline__more-menu button {
-		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-		width: 100%;
-		padding: 0.5rem 0.625rem;
-		border: 0;
-		border-radius: 0.25rem;
-		background: transparent;
-		color: var(--pie-button-color, var(--pie-text, #222));
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.pie-tool-tts-inline__more-menu button:hover:not(:disabled),
-	.pie-tool-tts-inline__more-menu button:focus-visible {
-		background: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
-		outline: 2px solid var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-primary, #0066cc)));
-		outline-offset: 2px;
-	}
-
-	.pie-tool-tts-inline__more-menu button:disabled {
-		cursor: not-allowed;
-		opacity: 0.6;
+	.pie-tool-tts-inline__speed-group--stacked .pie-tool-tts-inline__speed-label::before {
+		content: attr(data-label);
+		height: 0;
+		overflow: hidden;
+		font-weight: 700;
+		visibility: hidden;
 	}
 
 	.pie-tool-tts-inline__control:disabled {
@@ -1362,11 +1176,24 @@
 	.pie-tool-tts-inline__panel--floating,
 	.pie-tool-tts-inline__panel--left-aligned-inline {
 		min-height: 0;
-		padding: 0.25rem;
+		height: 3rem; /* Figma: 48px */
+		justify-content: center;
 		gap: 0.375rem;
-		background: transparent;
+		background: var(--pie-tts-selected-bg, #fff);
 		border: 0;
-		border-radius: 0;
+		border-radius: 0.5rem; /* Figma: --radius-8 (8px) */
+		box-shadow: var(--pie-tts-menu-shadow, 0 1px 5px 0 rgba(0, 0, 0, 0.3));
+	}
+
+	/* Compact: the popper card holds the media row (rewind / fast-forward / stop)
+	   on top and the speed radios stacked below. The white card bg + shadow come
+	   from the shared overlay rule above; this only tunes the compact layout. */
+	.pie-tool-tts-inline__panel--compact {
+		gap: 0;
+		width: fit-content;
+		min-width: 7.5rem; /* ~120px floor; grows with content beyond that */
+		height: auto; /* stacked popper grows past the 48px roomy toolbar height */
+		padding: 0;
 	}
 
 	/* Media controls (rewind / fast-forward / stop): accent-blue, no chrome. */
@@ -1374,7 +1201,7 @@
 	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--secondary {
 		border: 0;
 		background: transparent;
-		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
+		color: var(--pie-tts-button-color, #146eb3);
 	}
 
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--secondary:hover:not(:disabled),
@@ -1384,14 +1211,17 @@
 		background: color-mix(in srgb, var(--pie-tts-button-color, #146eb3) 12%, transparent);
 	}
 
-	/* Speed radios: plain muted text (unselected). */
+	/* Speed radios (inline / roomy): plain muted text with breathing room between
+	   options — min-width + side padding, matching the original inline spacing. */
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed,
 	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed {
-		min-width: 0;
+		min-width: 2.75rem;
+		padding: 0 0.625rem;
 		border: 1px solid transparent;
 		background: transparent;
 		box-shadow: none;
 		color: var(--pie-tts-inline-muted-color, #5b6b73);
+		font-size: 1rem;
 	}
 
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed:hover:not(:disabled),
@@ -1401,47 +1231,54 @@
 		background: color-mix(in srgb, var(--pie-tts-button-color, #146eb3) 8%, transparent);
 	}
 
-	/* Selected inline radio + the compact current-speed button share the white
-	   "chip" treatment. Placed after the muted rule so it wins at equal
-	   specificity for the current-speed button. */
+	/* Selected inline radio: white "chip" treatment. Placed after the muted rule
+	   so it wins at equal specificity. */
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed[aria-checked='true'],
-	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed[aria-checked='true'],
-	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed-current,
-	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed-current {
-		border: 1px solid var(--pie-tts-selected-border, var(--pie-border, #d7dde2));
-		background: var(--pie-tts-selected-bg, #fff);
-		box-shadow: var(--pie-tts-selected-shadow, 0 1px 2px rgba(0, 0, 0, 0.12));
-		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
+	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed[aria-checked='true'] {
+		border: 1px solid var(--pie-selected-button-border, #d9dada);
+		border-radius: 6px;
+		background: var(--pie-selected-button-background, #f3f5f7);
+		color: var(--pie-tts-button-color, #146eb3);
 		font-weight: 600;
 	}
 
-	/* Speed dropdown card (compact): white popover carrying the spec shadow. */
-	.pie-tool-tts-inline__speed-menu {
-		min-width: 6rem;
-		box-shadow: var(--pie-tts-menu-shadow, 0 1px 5px 0 rgba(0, 0, 0, 0.3));
+	/* ── Compact left-aligned overlay ───────────────────────────────────────────
+	   Inside the popper card the media controls occupy the top row and the speed
+	   radios drop onto their own full-width line below, stacked vertically.
+	   `order` puts the speeds after the media buttons even though they are first in
+	   the DOM; flex-basis:100% forces the wrap so media occupy the top line. */
+	.pie-tool-tts-inline__speed-group--stacked {
+		order: 1;
+		flex-basis: 100%;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.125rem;
 	}
 
-	.pie-tool-tts-inline__speed-menu .pie-tool-tts-inline__speed-menu-item {
+	/* In the card every option reads in the accent colour; the selected one is
+	   lifted into a bordered white chip. Options size to their content and centre
+	   (no full-width stretch), keeping the popper compact. */
+	.pie-tool-tts-inline__speed-group--stacked .pie-tool-tts-inline__control--speed {
 		justify-content: center;
+		width: auto;
+		min-width: 0;
+		height: auto;
+		padding: 0.25rem 0.75rem;
 		border: 1px solid transparent;
-		color: var(--pie-tts-inline-muted-color, #5b6b73);
-		font-size: 0.8125rem;
+		border-radius: 0.5rem;
+		background: transparent;
+		box-shadow: none;
+		color: var(--pie-tts-button-color, #146eb3);
+		font-size: 0.75rem;
 		font-weight: 500;
 	}
 
-	.pie-tool-tts-inline__speed-menu .pie-tool-tts-inline__speed-menu-item[aria-checked='true'] {
-		border-color: var(--pie-tts-selected-border, var(--pie-border, #d7dde2));
-		background: var(--pie-tts-selected-bg, #fff);
-		box-shadow: var(--pie-tts-selected-shadow, 0 1px 2px rgba(0, 0, 0, 0.12));
-		color: var(--pie-tts-button-color, var(--pie-primary, #146eb3));
-		font-weight: 600;
-	}
-
-	/* Elevated circular trigger in overlay layouts. */
-	.pie-tool-tts-inline--floating .pie-tool-tts-inline__trigger,
-	.pie-tool-tts-inline--left-aligned .pie-tool-tts-inline__trigger {
-		border-radius: 50%;
-		box-shadow: var(--pie-tts-trigger-shadow, 0 1px 4px rgba(0, 0, 0, 0.2));
+	.pie-tool-tts-inline__speed-group--stacked .pie-tool-tts-inline__control--speed[aria-checked='true'] {
+		border: 1px solid var(--pie-selected-button-border, #d9dada);
+		border-radius: 6px;
+		background: var(--pie-selected-button-background, #f3f5f7);
+		color: var(--pie-tts-button-color, #146eb3);
+		font-weight: 700;
 	}
 
 	/* Trigger size variants set the NDS outer size (--height-32); the glyph keeps
@@ -1459,13 +1296,8 @@
 	}
 
 	.pie-tool-tts-inline__icon {
-		/* Default explicit size so control-button icons (rewind/fast-forward/stop)
-		   render in WebKit, which sizes an inline SVG that has only a viewBox (no
-		   width/height attributes) to 0. Keep the SVG's default inline display —
-		   forcing display:block makes WebKit collapse it to 0. */
-		width: 1.25rem;
-		height: 1.25rem;
-		fill: currentColor;
+		font-size: 1rem;
+		line-height: 1;
 		color: currentColor;
 	}
 
@@ -1475,7 +1307,7 @@
 		}
 
 		.pie-tool-tts-inline__panel--compact {
-			padding: 0.1875rem 0.375rem;
+			padding: 0;
 		}
 
 		.pie-tool-tts-inline__trigger,
@@ -1489,8 +1321,7 @@
 		}
 
 		.pie-tool-tts-inline__control .pie-tool-tts-inline__icon {
-			width: 1rem;
-			height: 1rem;
+			font-size: 1rem;
 		}
 
 		.pie-tool-tts-inline__control--speed {
@@ -1498,6 +1329,12 @@
 			min-width: 2.5rem;
 			height: 1.75rem;
 			padding: 0 0.5rem;
+		}
+
+		/* drop font-size on smaller screens */
+		.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed,
+		.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed {
+			font-size: 0.75rem;
 		}
 	}
 

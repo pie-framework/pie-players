@@ -2248,7 +2248,7 @@
 						class="item-toolbar__nds-button"
 						type="circle"
 						size="small"
-						variant={isToolbarItemActive(item) ? 'primary' : 'ghost'}
+						variant="tertiary"
 						icon-name={faIconName}
 						button-aria-label={item.ariaLabel || item.label}
 						title={item.tooltip || item.label}
@@ -2452,13 +2452,10 @@
 	   oversized. */
 	.item-toolbar nds-icon-button {
 		--height-32: 2rem;
-		/* Host-settable accent for the calculator button: the resting (ghost)
-		   glyph colour and the active (primary) filled background both derive
-		   from NDS's --color-interactive-blue, remapped here to a themeable var. */
-		--color-interactive-blue: var(
-			--pie-calculator-button-color,
-			var(--pie-primary, #146eb3)
-		);
+		/* Host-settable accent for the calculator button: the NDS tertiary glyph
+		   colour derives from --color-interactive-blue, remapped here to a
+		   themeable variable. */
+		--color-interactive-blue: var(--pie-calculator-button-color, #146eb3);
 	}
 
 	.item-toolbar--sm nds-icon-button {

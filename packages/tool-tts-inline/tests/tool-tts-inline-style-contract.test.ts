@@ -57,9 +57,17 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("open trigger uses the filled primary NDS variant, resting uses ghost", () => {
-		expect(triggerSnippet).toContain(
-			"variant={controlsVisible ? 'primary' : 'ghost'}",
+	test("trigger uses the NDS tertiary variant", () => {
+		expect(triggerSnippet).toContain('variant="tertiary"');
+	});
+
+	test("trigger glyph colour is the settable --pie-tts-button-color", () => {
+		const body = cssRuleBody(".pie-tool-tts-inline__trigger").replace(
+			/\s+/g,
+			"",
+		);
+		expect(body).toContain(
+			"--color-interactive-blue:var(--pie-tts-button-color,#146eb3)",
 		);
 	});
 
@@ -75,16 +83,6 @@ describe("tool-tts-inline trigger styling contract", () => {
 		// play/pause render as filled media-control icons and work under FA Free.
 		expect(source).toContain("icon.classList.remove('fa-light')");
 		expect(source).toContain("icon.classList.add('fa-solid')");
-	});
-
-	test("trigger fill colour is a host-settable variable", () => {
-		const body = cssRuleBody(".pie-tool-tts-inline__trigger").replace(
-			/\s+/g,
-			"",
-		);
-		expect(body).toContain(
-			"--color-interactive-blue:var(--pie-tts-button-color,",
-		);
 	});
 
 	test("trigger size variants set the NDS outer button size", () => {
@@ -127,68 +125,69 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("filled active trigger meets WCAG AA contrast (white on NDS interactive blue)", () => {
-		// The open trigger uses NDS `variant="primary"`: white glyph on
-		// --color-interactive-blue (#146eb3). Guard that pairing stays AA.
-		expect(contrastRatio("#ffffff", "#146eb3")).toBeGreaterThanOrEqual(4.5);
+	test("tertiary trigger glyph meets WCAG AA contrast (interactive blue on NDS new-gray)", () => {
+		// NDS `variant="tertiary"`: --color-interactive-blue (#146eb3) glyph on
+		// --color-new-gray (#f3f5f7). Guard that pairing stays AA.
+		expect(contrastRatio("#146eb3", "#f3f5f7")).toBeGreaterThanOrEqual(4.5);
 	});
 });
 
 describe("tool-tts-inline overlay redesign contract", () => {
 	const stripped = styleSource.replace(/\s+/g, "");
 
-	test("overlay panels render transparent (controls sit on the external header)", () => {
+	test("overlay panels render as a white card with the Figma dropdown shadow", () => {
 		// Grouped rule for floating-overlay + left-aligned panels.
 		expect(stripped).toContain(
 			".pie-tool-tts-inline__panel--floating,.pie-tool-tts-inline__panel--left-aligned-inline{",
 		);
-		expect(stripped).toContain("background:transparent;border:0;");
-	});
-
-	test("media + selected-speed accent flows through the settable --pie-tts-button-color", () => {
-		expect(stripped).toContain(
-			"color:var(--pie-tts-button-color,var(--pie-primary,#146eb3))",
-		);
-	});
-
-	test("selected speed uses a white chip; muted text otherwise", () => {
 		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
-		expect(stripped).toContain(
-			"color:var(--pie-tts-inline-muted-color,#5b6b73)",
-		);
-		// The compact current-speed button shares the chip class.
-		expect(source).toContain("pie-tool-tts-inline__control--speed-current");
-	});
-
-	test("speed dropdown card carries the Figma elevation shadow", () => {
 		expect(stripped).toContain(
 			"box-shadow:var(--pie-tts-menu-shadow,01px5px0rgba(0,0,0,0.3))",
 		);
 	});
 
-	test("overlay trigger is elevated with a themeable shadow", () => {
-		expect(stripped).toContain("box-shadow:var(--pie-tts-trigger-shadow,");
+	test("media + selected-speed accent flows through the settable --pie-tts-button-color", () => {
+		expect(stripped).toContain("color:var(--pie-tts-button-color,#146eb3)");
 	});
+
+	test("selected speed uses a white chip; muted text otherwise (roomy)", () => {
+		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
+		expect(stripped).toContain(
+			"color:var(--pie-tts-inline-muted-color,#5b6b73)",
+		);
+	});
+
+	test("compact stacked card carries the Figma elevation shadow", () => {
+		expect(stripped).toContain(
+			"box-shadow:var(--pie-tts-menu-shadow,01px5px0rgba(0,0,0,0.3))",
+		);
+	});
+
 });
 
-describe("tool-tts-inline compact speed dropdown contract", () => {
-	test("compact collapses speed into a current-speed button that opens a menu", () => {
-		// Opener button (labelled with the current speed) toggles the dropdown.
-		expect(source).toContain('aria-haspopup="menu"');
-		expect(source).toContain("Playback speed: ${currentSpeedOption?.label");
-		expect(source).toContain("onclick={toggleMoreMenu}");
-		// Dropdown items are radio menu items, reusing the shared menu plumbing.
-		expect(source).toContain('role="menuitemradio"');
-		expect(source).toContain("data-pie-tts-more-control");
+describe("tool-tts-inline compact stacked speed contract", () => {
+	const stripped = styleSource.replace(/\s+/g, "");
+
+	test("compact keeps a single always-visible speed radiogroup (no toggle/menu)", () => {
+		// Same radiogroup in both layouts; only a modifier class switches it to the
+		// stacked card. There is no current-speed toggle button or popover menu.
+		expect(source).toContain('role="radiogroup"');
+		expect(source).toContain(
+			"class:pie-tool-tts-inline__speed-group--stacked={leftAlignedCompact}",
+		);
+		expect(source).not.toContain('aria-haspopup="menu"');
+		expect(source).not.toContain('role="menuitemradio"');
+		expect(source).not.toContain("toggleMoreMenu");
 	});
 
-	test("media controls are no longer hidden when the overlay is compact", () => {
-		// The old design hid --secondary in compact and moved media into the menu.
+	test("compact stacks speeds vertically below the media row", () => {
+		// order + full-width basis drop the card onto its own line under the media
+		// controls, which stay inline (no --compact display:none for --secondary).
+		expect(stripped).toContain("__speed-group--stacked{");
+		expect(stripped).toContain("flex-basis:100%;flex-direction:column");
 		expect(styleSource).not.toContain(
 			"__panel--compact .pie-tool-tts-inline__control--secondary",
 		);
-		// The removed ellipsis 'More reading controls' menu should be gone.
-		expect(source).not.toContain('button-aria-label="More reading controls"');
 	});
 });
 

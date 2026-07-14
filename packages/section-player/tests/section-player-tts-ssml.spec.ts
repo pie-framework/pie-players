@@ -1085,8 +1085,10 @@ test.describe("section player demo tts-ssml", () => {
 				.toMatch(/playing|paused|loading/);
 			const expandedAfterProgrammaticHandoff = await passageInlineTts.evaluate(
 				(host) => {
+					// The disclosure semantics live on the NDS icon button's inner
+					// <button> (reflectAria targets it), not the custom-element host.
 					const trigger = host.shadowRoot?.querySelector(
-						".pie-tool-tts-inline__trigger",
+						".pie-tool-tts-inline__trigger button",
 					) as HTMLButtonElement | null;
 					return trigger?.getAttribute("aria-expanded") || null;
 				},

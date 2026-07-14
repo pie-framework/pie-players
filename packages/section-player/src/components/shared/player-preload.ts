@@ -27,10 +27,12 @@
 
 import {
 	aggregateElements,
+	assertElementPackagesAllowed,
 	assertPieConfigContract,
 	assertRegistered,
 	BundleType,
 	type ElementMap,
+	type ElementPackagePolicy,
 	ensureRegistered,
 	type EsmBackendConfig,
 	type EsmCdnProvider,
@@ -349,9 +351,15 @@ export async function warmupSectionElements(args: {
 	if (args.renderables.length === 0) return;
 
 	const elements: ElementMap = aggregateElements(args.renderables);
+	const elementPackagePolicy = (
+		args.resolvedPlayerProps?.loaderOptions as
+			| { elementPackagePolicy?: ElementPackagePolicy }
+			| undefined
+	)?.elementPackagePolicy;
 
 	if (args.strategy === "preloaded") {
 		try {
+			assertElementPackagesAllowed(elements, elementPackagePolicy);
 			assertRegistered(Object.keys(elements));
 		} catch (error) {
 			throw new PreloadStageError("preloaded-assert", error);
@@ -372,7 +380,7 @@ export async function warmupSectionElements(args: {
 
 	try {
 		await ensureItemPlayerMathRenderingReady();
-		await ensureRegistered(elements, { backend });
+		await ensureRegistered(elements, { backend, elementPackagePolicy });
 	} catch (error) {
 		throw new PreloadStageError(loadStage, error);
 	}

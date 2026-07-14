@@ -41,6 +41,7 @@ import {
 	type EsmBackendTestSeams,
 } from "../src/loaders/esm-adapter.js";
 import { BundleType } from "../src/pie/types.js";
+import { ElementPackagePolicyError } from "../src/loaders/element-package-policy.js";
 
 // ─── Test harness ────────────────────────────────────────────────────────────
 
@@ -281,6 +282,33 @@ describe("ensureRegistered — primitive-level contract", () => {
 			},
 		);
 
+		expect(backendCalls).toBe(0);
+	});
+
+	test("package policy rejects before the already-registered fast path", async () => {
+		const registry = installScriptedCustomElements();
+		const tagName = "pie-already-there--version-policy-1-0-0";
+		registry.define(tagName, createConstructorFor(tagName));
+
+		let backendCalls = 0;
+		const fake: ElementLoaderBackend = {
+			async load() {
+				backendCalls++;
+			},
+		};
+
+		await expect(
+			ensureRegistered(
+				{ [tagName]: "attacker-controlled-package@1.0.0" },
+				{
+					backend: fake,
+					doc: createMockDocument(),
+					elementPackagePolicy: {
+						allowedPackages: ["@pie-element/multiple-choice"],
+					},
+				},
+			),
+		).rejects.toBeInstanceOf(ElementPackagePolicyError);
 		expect(backendCalls).toBe(0);
 	});
 
@@ -836,6 +864,43 @@ describe("IIFE adapter — contract", () => {
 		expect(fetchCount).toBe(1);
 		expect(g.customElements?.get("pie-mc--version-11-0-1")).toBeDefined();
 	});
+
+	test("rejects multiple specs for one IIFE package instead of aliasing both tags", async () => {
+		const backend = createIifeBackend({
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleType: BundleType.clientPlayer,
+		});
+		let bundleLoads = 0;
+		const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+			.__seams;
+		seams.replaceLoadBundleScript(async () => {
+			bundleLoads++;
+		});
+
+		const promise = ensureRegistered(
+			{
+				"pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1",
+				"pie-mc--version-12-0-0": "@pie-element/multiple-choice@12.0.0",
+			},
+			{
+				backend,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 25,
+			},
+		);
+
+		await expect(promise).rejects.toBeInstanceOf(ElementLoaderError);
+		await promise.catch((error: ElementLoaderError) => {
+			expect(error.unregisteredTags).toEqual(
+				new Set(["pie-mc--version-11-0-1", "pie-mc--version-12-0-0"]),
+			);
+			for (const reason of error.reasons.values()) {
+				expect(reason.kind).toBe("backend-rejected");
+			}
+		});
+		expect(bundleLoads).toBe(0);
+	});
 });
 
 // ─── ESM adapter — per-failure-mode contract ─────────────────────────────────
@@ -898,8 +963,7 @@ describe("ESM adapter — contract", () => {
 
 		await ensureRegistered(
 			{
-				"pie-mc--version-13-2-0-config":
-					"@pie-element/multiple-choice@13.2.0",
+				"pie-mc--version-13-2-0-config": "@pie-element/multiple-choice@13.2.0",
 			},
 			{
 				backend,
@@ -912,7 +976,9 @@ describe("ESM adapter — contract", () => {
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/author/index.js",
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
-		expect(g.customElements?.get("pie-mc--version-13-2-0-config")).toBeDefined();
+		expect(
+			g.customElements?.get("pie-mc--version-13-2-0-config"),
+		).toBeDefined();
 		expect(
 			g.customElements?.get("pie-mc--version-13-2-0-config-config"),
 		).toBeUndefined();
@@ -925,8 +991,7 @@ describe("ESM adapter — contract", () => {
 
 		expect(mapEsmViewElements(elements, "delivery")).toEqual(elements);
 		expect(mapEsmViewElements(elements, "author")).toEqual({
-			"pie-mc--version-13-2-0-config":
-				"@pie-element/multiple-choice@13.2.0",
+			"pie-mc--version-13-2-0-config": "@pie-element/multiple-choice@13.2.0",
 		});
 		expect(
 			mapEsmViewElements(
@@ -946,8 +1011,7 @@ describe("ESM adapter — contract", () => {
 				tagSuffix: "-rubric",
 			}),
 		).toEqual({
-			"pie-mc--version-13-2-0-rubric":
-				"@pie-element/multiple-choice@13.2.0",
+			"pie-mc--version-13-2-0-rubric": "@pie-element/multiple-choice@13.2.0",
 		});
 	});
 

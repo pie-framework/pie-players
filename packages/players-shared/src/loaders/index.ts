@@ -33,6 +33,11 @@
 
 export type { ElementMap } from "./ElementLoader.js";
 export { aggregateElements } from "./ElementLoader.js";
+export type { ElementPackagePolicy } from "./element-package-policy.js";
+export {
+	assertElementPackagesAllowed,
+	ElementPackagePolicyError,
+} from "./element-package-policy.js";
 
 // ElementLoader primitive — truthful-promise loader. The public entry point
 // for ensureRegistered / assertRegistered.

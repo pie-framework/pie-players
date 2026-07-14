@@ -90,6 +90,7 @@
 	import { applyDeliveryModelResultToConfigs } from "./backend/model-refresh.js";
 	import {
 		BundleType,
+		assertElementPackagesAllowed,
 		assertPieConfigContract,
 		assertRegistered,
 		createPieLogger,
@@ -110,6 +111,7 @@
 		updatePieElements,
 	} from "@pie-players/pie-players-shared";
 	import type {
+		ElementPackagePolicy,
 		EsmBackendConfig,
 		EsmCdnProviderOption,
 		IifeBackendConfig,
@@ -136,6 +138,8 @@
 		loadControllers?: boolean;
 		moduleResolution?: "url" | "import-map";
 		runtimeSupportCheck?: "off" | "on";
+		/** Apply when config.elements is not fully trusted host input. */
+		elementPackagePolicy?: ElementPackagePolicy;
 	};
 
 	let {
@@ -873,6 +877,7 @@
 			moduleResolution: loaderOptions?.moduleResolution ?? "url",
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,
+			elementPackagePolicy: loaderOptions?.elementPackagePolicy ?? null,
 			disableBundler,
 			bundleEndpoints,
 			reFetchBundle,
@@ -972,8 +977,16 @@
 				? runtimeSupportCheck
 				: "off";
 			const runtimeSupportView = resolveEffectiveEsmView();
+			const elementMap = mergeElementMaps(
+				transformedConfig,
+				transformedPassageConfig,
+			);
+			assertElementPackagesAllowed(
+				elementMap,
+				loaderOptions?.elementPackagePolicy,
+			);
 			const runtimeSupportHints = await collectRuntimeSupportHints(
-				mergeElementMaps(transformedConfig, transformedPassageConfig),
+				elementMap,
 				normalizedStrategy,
 				runtimeSupportView as "delivery" | "author" | "print",
 				effectiveRuntimeSupportCheck,
@@ -989,8 +1002,6 @@
 			stage = "math-rendering-init";
 			await initializeMathRendering();
 			if (!isCurrentLoadRequest(requestToken)) return false;
-
-			const elementMap = mergeElementMaps(transformedConfig, transformedPassageConfig);
 
 			if (normalizedStrategy === "preloaded") {
 				stage = "preloaded-readiness";
@@ -1013,6 +1024,7 @@
 				);
 				await ensureRegistered(expectedElements, {
 					backend: buildIifeBackendConfig(bundleType, requestToken),
+					elementPackagePolicy: loaderOptions?.elementPackagePolicy,
 				});
 			} else {
 				stage = "esm-load";
@@ -1023,6 +1035,7 @@
 				);
 				await ensureRegistered(expectedElements, {
 					backend: buildEsmBackendConfig(view),
+					elementPackagePolicy: loaderOptions?.elementPackagePolicy,
 				});
 			}
 			if (!isCurrentLoadRequest(requestToken)) return false;

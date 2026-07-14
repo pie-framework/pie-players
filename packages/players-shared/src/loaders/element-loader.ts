@@ -30,6 +30,10 @@ import {
 } from "./element-loader-types.js";
 import { createEsmBackend, type EsmBackendConfig } from "./esm-adapter.js";
 import { createIifeBackend, type IifeBackendConfig } from "./iife-adapter.js";
+import {
+	assertElementPackagesAllowed,
+	type ElementPackagePolicy,
+} from "./element-package-policy.js";
 
 export type {
 	BackendContext,
@@ -108,6 +112,11 @@ export type BackendOption =
 
 export type EnsureRegisteredOptions = {
 	backend: BackendOption;
+	/**
+	 * Optional host-controlled allow-list for executable `config.elements`
+	 * packages. Omit to preserve the trusted-application behavior.
+	 */
+	elementPackagePolicy?: ElementPackagePolicy;
 	doc?: Document;
 	whenDefinedTimeoutMs?: number;
 	/**
@@ -152,6 +161,9 @@ export async function ensureRegistered(
 	options: EnsureRegisteredOptions,
 ): Promise<void> {
 	if (!elements || Object.keys(elements).length === 0) return;
+	// Enforce policy before the already-registered fast path: a matching tag in
+	// the registry must not turn a disallowed authored package into valid input.
+	assertElementPackagesAllowed(elements, options.elementPackagePolicy);
 
 	const tags = Object.keys(elements);
 	const timeoutMs =

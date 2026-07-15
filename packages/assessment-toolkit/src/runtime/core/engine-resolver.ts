@@ -71,6 +71,14 @@ export type RuntimeConfig = {
 	createSectionController?: unknown;
 	isolation?: string;
 	env?: Record<string, unknown>;
+	/**
+	 * Presentation flag: opt-in to the vendored `<nds-icon-button>` for the
+	 * toolbar tool buttons, the calculator shell controls, inline-TTS
+	 * play/pause, and the section scroll-hint. NDS icons render only when
+	 * this is explicitly `true`; unset/`false` keeps the plain `<button>`
+	 * markup (the default). Purely visual — no engine effect.
+	 */
+	ndsIcons?: boolean;
 	toolConfigStrictness?: ToolConfigStrictness;
 
 	// Canonical framework-error callback.

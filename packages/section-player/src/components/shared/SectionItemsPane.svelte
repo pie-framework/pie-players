@@ -32,9 +32,11 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, untrack } from "svelte";
 	import type {
+		AssessmentToolkitRuntimeContext,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { connectAssessmentToolkitRuntimeContext } from "@pie-players/pie-assessment-toolkit";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
@@ -300,6 +302,24 @@
 	let isScrollable = $state(false);
 	let scrollContainer = $state<HTMLElement | null>(null);
 
+	// Presentation gate from the toolkit runtime context (provided by the
+	// wrapping `<pie-assessment-toolkit>`). The scroll-hint renders as an
+	// <nds-icon-button> only when the host explicitly opts in
+	// (`ndsIcons === true`); otherwise (unset / no provider / false) it is a
+	// plain <button> — the default.
+	let ndsIconsFromContext = $state<boolean | undefined>(undefined);
+	const useNdsIcons = $derived(ndsIconsFromContext === true);
+
+	$effect(() => {
+		if (!scrollHintSentinel) return;
+		return connectAssessmentToolkitRuntimeContext(
+			scrollHintSentinel,
+			(value: AssessmentToolkitRuntimeContext) => {
+				ndsIconsFromContext = value?.ndsIcons;
+			},
+		);
+	});
+
 	const scrollDown = () => scrollContainer?.scrollBy({ top: 150, behavior: "smooth" });
 
 	// Freeze the scroll hint's physical size at its 200%-zoom appearance when
@@ -394,15 +414,37 @@
 	style:visibility={isScrollable ? "visible" : "hidden"}
 	style:zoom={scrollHintZoom.current}
 >
-	<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
-	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-	<nds-icon-button
-		variant="tertiary"
-		size="small"
-		icon-name="chevron-down"
-		button-aria-label="Scroll down"
-		onclick={scrollDown}
-	></nds-icon-button>
+	{#if useNdsIcons}
+		<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
+		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+		<nds-icon-button
+			variant="tertiary"
+			size="small"
+			icon-name="chevron-down"
+			button-aria-label="Scroll down"
+			onclick={scrollDown}
+		></nds-icon-button>
+	{:else}
+		<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG
+		     chevron (no FontAwesome dependency in this package). -->
+		<button
+			type="button"
+			class="pie-section-player-scroll-hint__button"
+			aria-label="Scroll down"
+			onclick={scrollDown}
+		>
+			<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+				<path
+					d="M4 6l4 4 4-4"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
+		</button>
+	{/if}
 </div>
 
 <style>
@@ -430,8 +472,30 @@
 	}
 
 	/* so the "scroll down" button still works */
-	.pie-section-player-scroll-hint nds-icon-button {
+	.pie-section-player-scroll-hint nds-icon-button,
+	.pie-section-player-scroll-hint__button {
 		pointer-events: auto;
+	}
+
+	/* Non-NDS fallback button: a compact circular control mirroring the NDS
+	   tertiary icon button's footprint. */
+	.pie-section-player-scroll-hint__button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		border: 1px solid var(--pie-border, #c6c6c6);
+		border-radius: 50%;
+		background: var(--pie-white, #fff);
+		color: var(--pie-text, #222);
+		cursor: pointer;
+	}
+
+	.pie-section-player-scroll-hint__button:focus-visible {
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
+		outline-offset: 2px;
 	}
 
 	.pie-section-player-scroll-hint--no-gradient {

@@ -74,12 +74,12 @@
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
-	// Side-effect import: registers <nds-icon-button>. Vendored prebuilt bundle —
-	// see src/components/vendor/nds/README in nextComponentLibrary for source.
-	// Self-contained (Lit + foundations CSS inlined); the build script copies
-	// this folder from src/components/vendor → dist/components/vendor so the CE
-	// bundler can inline it into the published custom element.
-	import './vendor/nds/nds-icon-button.js';
+	// Side-effect import: registers <nds-icon-button>. Single vendored source of
+	// truth lives in players-shared (Lit inlined, self-contained); see
+	// players-shared/src/components/vendor/nds/README.md. The CE build externalizes
+	// @pie-players/*, so this resolves as a bare import in the published artifact
+	// like every other players-shared specifier ItemToolBar already emits.
+	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
 	// FontAwesome icon source, in load order:
@@ -191,6 +191,44 @@
 		return {};
 	};
 
+	// <nds-icon-button> exposes only `button-aria-label` on its inner light-DOM
+	// <button> — no `aria-pressed`. Toolbar tool buttons are toggles (calculator
+	// open/closed, line reader on/off, …), so mirror the pressed state onto that
+	// inner button to keep the toggle semantics exposed to assistive tech. The
+	// button is created by Lit after the element's first update, so we watch for
+	// it and re-apply whenever nds re-renders its subtree.
+	const reflectToggleState = (node: HTMLElement, pressed: boolean) => {
+		let current = pressed;
+		const apply = () => {
+			const inner = node.querySelector('button');
+			if (inner) inner.setAttribute('aria-pressed', current ? 'true' : 'false');
+		};
+		apply();
+		const observer = new MutationObserver(apply);
+		observer.observe(node, { childList: true, subtree: true });
+		return {
+			update(next: boolean) {
+				current = next;
+				apply();
+			},
+			destroy() {
+				observer.disconnect();
+			},
+		};
+	};
+
+	// <nds-icon-button> renders FontAwesome glyphs via `icon-name` only (no slot).
+	// For now we only route the calculator button through the NDS button; every
+	// other tool keeps its existing custom-button rendering. Map its toolId to
+	// the FA icon name here so widening the set later is a one-line change.
+	const TOOL_FA_ICON_BY_ID: Record<string, string> = {
+		calculator: 'calculator',
+	};
+	// Resolve the FA icon-name for an <nds-icon-button>, or null when the item
+	// should keep its legacy custom-button rendering.
+	const resolveFaIconName = (item: ToolbarItem): string | null =>
+		TOOL_FA_ICON_BY_ID[item.id] ?? null;
+
 	// Metadata-only fallback: assessment-toolkit must not import the stock
 	// module-loader package because those loaders depend on concrete tool
 	// custom-element packages that themselves depend on the toolkit. Hosts that
@@ -236,6 +274,10 @@
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Presentation gate from the host runtime. Controls render
+	// <nds-icon-button> only when the host explicitly opts in
+	// (`ndsIcons === true`); otherwise they use plain <button> markup.
+	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
 	// Bumped from `coordinator.onPolicyChange(...)` so the engine-driven
@@ -1721,8 +1763,14 @@
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
 			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
+			// The calculator shell is the only shell that renders its header
+			// controls as <nds-icon-button>s. Gate that on the host flag so
+			// opted-out envs get the plain-<button> controls every other
+			// shell already uses. Layout decisions still key off
+			// `isCalculatorShell`; only the button *type* follows this flag.
+			const useNdsShellIcons = isCalculatorShell && useNdsIcons;
 
-			if (isCalculatorShell) ensureNdsAssets();
+			if (useNdsShellIcons) ensureNdsAssets();
 
 			shellEl = document.createElement('div');
 			shellEl.className = 'pie-tool-shell';
@@ -1817,7 +1865,7 @@
 			) => {
 				if (!controlsEl) return;
 				controlsEl.appendChild(
-					isCalculatorShell
+					useNdsShellIcons
 						? createShellIconButton(label, iconName, onActivate, faVariant)
 						: createShellControlButton(label, glyph, onActivate)
 				);
@@ -1853,7 +1901,7 @@
 				headerEl.appendChild(controlsEl);
 			}
 
-			if (isCalculatorShell) {
+			if (useNdsShellIcons) {
 				closeButtonEl = createShellIconButton('Close tool', 'xmark', closeShell, 'fa-regular');
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
@@ -1891,7 +1939,7 @@
 				closeButton.style.cursor = 'pointer';
 				closeButton.style.display = 'inline-flex';
 				closeButton.style.alignItems = 'center';
-				closeButton.style.justifyContent = 'center';
+				closeButton.style.justifyItems = 'center';
 				closeButton.style.width = '28px';
 				closeButton.style.height = '28px';
 				closeButton.style.padding = '0';
@@ -2184,20 +2232,46 @@
 		<div class="item-toolbar__tools-row">
 			{#each mountedElementsBeforeButtons as mounted (mounted.key)}
 				{#if mounted.entry.shell}
-					<span
-						class="item-toolbar__element-host"
-						use:mountElementWithShell={{
-							mounted,
-							active: renderedToolActiveById[mounted.toolId] ?? false
-						}}
-					></span>
+					<!-- Re-key on `useNdsIcons` so the imperatively-built shell (which
+					     reads the flag at build time) is rebuilt if the runtime flag
+					     resolves after the first mount. -->
+					{#key useNdsIcons}
+						<span
+							class="item-toolbar__element-host"
+							use:mountElementWithShell={{
+								mounted,
+								active: renderedToolActiveById[mounted.toolId] ?? false
+							}}
+						></span>
+					{/key}
 				{:else}
 					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
 				{/if}
 			{/each}
 
 			{#each toolbarItems as item (item.id)}
-				{#if isToolbarLinkItem(item)}
+				{@const faIconName =
+					useNdsIcons && !isToolbarLinkItem(item) ? resolveFaIconName(item) : null}
+				{#if faIconName}
+					<!-- NDS circular icon button. Active tools use the filled `primary`
+					     variant; inactive use `ghost`. The click bubbles out of the
+					     component's inner <button>, so `onclick` still invokes onClick.
+					     `reflectToggleState` mirrors the pressed state onto that inner
+					     button since nds has no native aria-pressed. -->
+					<nds-icon-button
+						use:ndsIconButtonAction
+						use:reflectToggleState={isToolbarItemActive(item)}
+						class="item-toolbar__nds-button"
+						type="circle"
+						size="small"
+						variant="tertiary"
+						icon-name={faIconName}
+						button-aria-label={item.ariaLabel || item.label}
+						title={item.tooltip || item.label}
+						disabled={item.disabled}
+						onclick={item.onClick}
+					></nds-icon-button>
+				{:else if isToolbarLinkItem(item)}
 					<a
 						class="item-toolbar__button"
 						class:item-toolbar__button--active={isToolbarItemActive(item)}
@@ -2214,15 +2288,7 @@
 						}}
 					>
 						{#if item.icon}
-							{#if item.icon === 'calculator'}
-								<span
-									use:ndsIconButtonAction
-									class="item-toolbar__calculator-icon"
-									aria-hidden="true"
-								>
-									<i class="fa-regular fa-calculator"></i>
-								</span>
-							{:else if isInlineSvgIcon(item.icon)}
+							{#if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
 								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
@@ -2248,15 +2314,7 @@
 						disabled={item.disabled}
 					>
 						{#if item.icon}
-							{#if item.icon === 'calculator'}
-								<span
-									use:ndsIconButtonAction
-									class="item-toolbar__calculator-icon"
-									aria-hidden="true"
-								>
-									<i class="fa-regular fa-calculator"></i>
-								</span>
-							{:else if isInlineSvgIcon(item.icon)}
+							{#if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
 								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
@@ -2275,13 +2333,17 @@
 
 			{#each mountedElementsAfterButtons as mounted (mounted.key)}
 				{#if mounted.entry.shell}
-					<span
-						class="item-toolbar__element-host"
-						use:mountElementWithShell={{
-							mounted,
-							active: renderedToolActiveById[mounted.toolId] ?? false
-						}}
-					></span>
+					<!-- See note above: re-key on `useNdsIcons` so a late flag change
+					     rebuilds the shell with the right control style. -->
+					{#key useNdsIcons}
+						<span
+							class="item-toolbar__element-host"
+							use:mountElementWithShell={{
+								mounted,
+								active: renderedToolActiveById[mounted.toolId] ?? false
+							}}
+						></span>
+					{/key}
 				{:else}
 					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
 				{/if}
@@ -2296,13 +2358,17 @@
 			>
 				{#each mountedElementsControlsRow as mounted (mounted.key)}
 					{#if mounted.entry.shell}
-						<span
-							class="item-toolbar__controls-host"
-							use:mountElementWithShell={{
-								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false
-							}}
-						></span>
+						<!-- See note above: re-key on `useNdsIcons` so a late flag
+						     change rebuilds the shell with the right control style. -->
+						{#key useNdsIcons}
+							<span
+								class="item-toolbar__controls-host"
+								use:mountElementWithShell={{
+									mounted,
+									active: renderedToolActiveById[mounted.toolId] ?? false
+								}}
+							></span>
+						{/key}
 					{:else}
 						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry.element}></span>
 					{/if}
@@ -2403,6 +2469,29 @@
 		text-decoration: none;
 	}
 
+	/* Drive the vendored NDS icon button's outer size via its own `--height-32`
+	   custom property so its light-DOM inner button matches the toolbar's
+	   md/sm/lg dimensions (32 / 44 / 40 px) without a layout shift. The glyph
+	   keeps the NDS-native icon size (we render size="small"), so it isn't
+	   oversized. */
+	.item-toolbar nds-icon-button {
+		/* Host-settable button size per toolbar size (drives the NDS outer button
+		   via its own --height-32). */
+		--height-32: var(--pie-calculator-button-size, 2rem);
+		/* Host-settable accent for the calculator button: the NDS tertiary glyph
+		   colour derives from --color-interactive-blue, remapped here to a
+		   themeable variable. */
+		--color-interactive-blue: var(--pie-calculator-button-color, #146eb3);
+	}
+
+	.item-toolbar--sm nds-icon-button {
+		--height-32: var(--pie-calculator-button-size-sm, 2.75rem);
+	}
+
+	.item-toolbar--lg nds-icon-button {
+		--height-32: var(--pie-calculator-button-size-lg, 2.5rem);
+	}
+
 	.item-toolbar__element-host {
 		display: contents;
 	}
@@ -2469,21 +2558,5 @@
 		width: 100%;
 		height: 100%;
 		object-fit: contain;
-	}
-
-	/* Decorative only — the outer link/button owns focus and aria semantics. */
-	.item-toolbar__calculator-icon {
-		pointer-events: none;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
-		height: 100%;
-	}
-
-	/* Defensive: if FA fails to load (shadow injection misses, CSP blocks the
-	   stylesheet, etc.), the <i> would otherwise render as italic text. */
-	.item-toolbar__calculator-icon > i {
-		font-style: normal;
 	}
 </style>

@@ -411,6 +411,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo1Section,
 	},
+	"quiz-engine-nds-icon": {
+		id: "quiz-engine-nds-icon",
+		name: "Quiz Engine NDS Icon",
+		description:
+			"Section player with the NDS icon buttons opted in via the `nds-icons` attribute",
+		integrationLevel: 1,
+		integrationTheme: "NDS icon opt-in",
+		focus:
+			"Shows the vendored `<nds-icon-button>` rendering for the toolbar tools (calculator), the calculator shell controls, the inline text-to-speech trigger, and the section scroll-hint. Identical to Single Question except the player element carries `nds-icons={true}`; every other demo omits it and renders plain `<button>`s.",
+		whatMakesItTick: [
+			"`nds-icons={true}` on the `<pie-section-player-*>` element is folded into the runtime and surfaced on the toolkit runtime context, so consumers render `<nds-icon-button>` instead of plain buttons.",
+			"Opt-in with presence semantics: omit the attribute (the default) for plain buttons; `runtime.ndsIcons` still works and wins when both are set.",
+			"`calculator` is placed on the item toolbar so both the NDS toolbar button and its NDS-styled floating shell controls are visible.",
+			"Inline text-to-speech renders its NDS circular play/pause trigger.",
+		],
+		section: demo1Section,
+	},
 	"question-passage": {
 		id: "question-passage",
 		name: "Question with Passage",

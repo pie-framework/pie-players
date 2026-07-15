@@ -1,5 +1,12 @@
 # @pie-players/pie-players-shared
 
+## 0.3.58
+
+### Patch Changes
+
+- 8df52bf: Add an opt-in allow-list for executable element packages. The default policy mode requires exact versions without build metadata so legacy IIFE bundle separators cannot be injected. Existing hosts that omit the policy retain their current loading behavior.
+- d5cc905: Preserve distinct full custom-element tags when multiple PIE element versions coexist, while keeping the established tag encoder and existing single-version behavior unchanged. Legacy IIFE bundles now reject unrepresentable maps containing multiple specs for one package instead of aliasing distinct tags to one constructor.
+
 ## 0.3.57
 
 ### Patch Changes

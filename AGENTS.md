@@ -27,11 +27,17 @@ Critical requirements:
 ### PIE Element Versioning And Tag/ID Contract
 
 Versioned `pie-*--version-*` tag names are authored content contracts. They are
-the only way multiple versions of the same custom element can coexist at
-runtime.
+an effective per-version namespace in the browser: a `CustomElementRegistry`
+definition cannot be replaced, so each simultaneously loaded version must be
+registered under its own distinct tag.
 
-- Do not strip, trim, normalize, or compare away the `--version-<encoded>`
-  suffix on any `pie-*` tag in markup, config, registries, or logs.
+- Preserve the `--version-<encoded>` suffix in authored input, registries, and
+  logs. When a host deliberately substitutes a package version (for example,
+  the preloaded strategy selecting its bundled version), update the tag only on
+  the cloned runtime config; never mutate the caller's authored config.
+- Keep the existing version encoder stable. Do not add alternate encodings or
+  content migrations for theoretical lossy prerelease-encoding collisions;
+  those collisions are intentionally outside the supported practical scope.
 - Do not compare rendered PIE elements against a non-versioned base tag. Compare
   the full tag after `makeUniqueTags` in
   `packages/players-shared/src/pie/config.ts`.
@@ -49,7 +55,8 @@ runtime.
   attributes. Do not fall back to generic allow-lists that drop unknown tags.
 - Reject alias maps that collapse versioned tags back to base tags, regex
   cleanups that strip version suffixes, any sanitizer/transformer that mutates
-  contract IDs, and attempts to re-define an already registered PIE tag.
+  contract IDs, and attempts to replace an already registered PIE tag. Load a
+  different version by defining its distinct versioned tag instead.
 
 ### Custom Element Import And Packaging Boundaries
 

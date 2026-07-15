@@ -33,7 +33,7 @@ import {
 	isCustomElementConstructor,
 	Status,
 } from "../pie/types.js";
-import { getPackageWithoutVersion } from "../pie/utils.js";
+import { getPackageWithoutVersion, parsePackageName } from "../pie/utils.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -131,6 +131,32 @@ export type IifeBackend = ElementLoaderBackend & {
 	/** @internal Test-only seam — see {@link IifeBackendTestSeams}. */
 	readonly __seams: IifeBackendTestSeams;
 };
+
+/**
+ * The legacy IIFE bundle global is keyed by unversioned package name. Two
+ * distinct specs for one package therefore cannot coexist in a single bundle:
+ * one constructor would silently be reused for both requested versioned tags.
+ */
+function findIifeElementMapConflict(elements: ElementMap): string | undefined {
+	const specsByPackageName = new Map<string, Set<string>>();
+
+	for (const packageSpecValue of Object.values(elements)) {
+		const packageSpec = String(packageSpecValue);
+		const packageName = parsePackageName(packageSpec).name;
+		const specs = specsByPackageName.get(packageName) ?? new Set<string>();
+		specs.add(packageSpec);
+		specsByPackageName.set(packageName, specs);
+	}
+
+	const conflictingPackages = [...specsByPackageName.entries()]
+		.filter(([, specs]) => specs.size > 1)
+		.map(([packageName]) => packageName)
+		.sort();
+
+	return conflictingPackages.length > 0
+		? `IIFE bundles cannot load multiple package specs for: ${conflictingPackages.join(", ")}`
+		: undefined;
+}
 
 export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 	const bundleType = config.bundleType ?? BundleType.clientPlayer;
@@ -297,6 +323,19 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 		context: BackendContext,
 	): Promise<void> {
 		if (!elements || Object.keys(elements).length === 0) return;
+
+		const conflict = findIifeElementMapConflict(elements);
+		if (conflict) {
+			const reasons = new Map<ElementTag, RegistrationFailureReason>();
+			for (const tag of Object.keys(elements)) {
+				reasons.set(tag, {
+					kind: "backend-rejected",
+					tag,
+					cause: conflict,
+				});
+			}
+			throw new AdapterFailure(reasons);
+		}
 
 		const bundleUrl = buildBundleUrl(elements, bundleType, config);
 		try {

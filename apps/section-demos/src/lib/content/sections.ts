@@ -14,6 +14,7 @@ import { metadataSessionForwardingSection } from "./demo-metadata-session-forwar
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 import { demoTwoPassagesSection } from "./demo-two-passages";
+import { demoPrintShowcaseSection } from "./demo-print-showcase";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -507,6 +508,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Pinned element versions (`multiple-choice@13.2.0-next.19`, `ebsr@14.2.0-next.19`) make this a reliable regression fixture for those pre-release builds.",
 		],
 		section: demoKeyboardNavMcEbsrSection,
+	},
+	"print-showcase": {
+		id: "print-showcase",
+		name: "Print Showcase (pie-print-player)",
+		description:
+			"Renders a section's stimulus + items through @pie-players/pie-print-player (non-interactive print view), loading the ng browser print bundles. Toggle Student/Instructor to reveal the answer key.",
+		integrationLevel: 3,
+		integrationTheme: "Print rendering",
+		focus:
+			"Validates that the new ng browser print bundles (dist/browser/print/index.js) render correctly through the standalone print player, since the section player itself has no print view.",
+		whatMakesItTick: [
+			"Composes each `rubricBlock` passage and `assessmentItemRef` item into a `<pie-print>` config ({ item, options: { role } }).",
+			"Uses the print player's default resolver, which loads `dist/browser/print/index.js` via the browser-esm loader (React import map injected).",
+			"Pins verified ng bundles: `passage@7.1.2-next.5`, `multiple-choice@13.2.2-next.5`, `ebsr@14.2.2-next.5`.",
+		],
+		allowElementVersionOverrides: false,
+		section: demoPrintShowcaseSection,
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",

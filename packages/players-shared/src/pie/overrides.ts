@@ -10,6 +10,7 @@
 import { cloneDeep } from "../object/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { parsePackageName } from "./utils.js";
+import { toPackageVersionedTag } from "./versioned-tag.js";
 
 export type ElementOverrides = Record<string, string>;
 const logger = createPieLogger("pie-overrides", () => isGlobalDebugEnabled());
@@ -32,7 +33,8 @@ export function applyElementOverrides(
 		return config;
 	}
 
-	// Create a deep copy of the config to avoid mutating the original
+	// pie-item contract compatibility: runtime version overrides have historically
+	// returned a cloned config with tags renamed for the selected package version.
 	const updatedConfig = cloneDeep(config);
 
 	// Check if there are elements to override
@@ -40,54 +42,74 @@ export function applyElementOverrides(
 		return updatedConfig;
 	}
 
-	// Process each override
-	for (const [packageName, version] of Object.entries(elementOverrides)) {
-		let matched = false;
+	const matchedPackages = new Set<string>();
+	const tagMappings = new Map<string, string>();
+	const elements: Record<string, unknown> = {};
 
-		// Find the element key that uses this package
-		for (const [elementKey, elementPackageValue] of Object.entries(
-			updatedConfig.elements,
-		)) {
-			const elementPackageStr = String(elementPackageValue);
-
-			let basePackageName = "";
-			try {
-				basePackageName = parsePackageName(elementPackageStr).name;
-			} catch {
-				logger.debug(
-					`Couldn't parse element package value: ${elementPackageStr}`,
-				);
+	for (const [elementKey, elementPackageValue] of Object.entries(
+		updatedConfig.elements,
+	)) {
+		const elementPackageStr = String(elementPackageValue);
+		try {
+			const parsed = parsePackageName(elementPackageStr);
+			const overrideVersion = elementOverrides[parsed.name];
+			if (overrideVersion === undefined) {
+				elements[elementKey] = elementPackageValue;
 				continue;
 			}
 
-			if (basePackageName === packageName) {
-				matched = true;
-
-				// Create a new element key with the specified version
-				const versionNumber = String(version).replace(/[^0-9.-]/g, "");
-				const parts = String(elementKey).split("--version-");
-				const baseElementName = parts[0];
-				const newElementKey = `${baseElementName}--version-${versionNumber.replace(/\./g, "-")}`;
-
-				// Update the elements map
-				updatedConfig.elements[newElementKey] = `${packageName}@${version}`;
-
-				// If the key changed, update markup to reference the new key
-				if (newElementKey !== elementKey) {
-					if (updatedConfig.markup) {
-						updatedConfig.markup = String(updatedConfig.markup).replace(
-							new RegExp(elementKey, "g"),
-							newElementKey,
-						);
-					}
-
-					// Remove the old element if we created a new one with a different key
-					delete updatedConfig.elements[elementKey];
-				}
+			matchedPackages.add(parsed.name);
+			const packageBase = parsed.path
+				? `${parsed.name}/${parsed.path}`
+				: parsed.name;
+			const overriddenPackage = `${packageBase}@${String(overrideVersion).trim()}`;
+			const overriddenTag = toPackageVersionedTag(
+				elementKey,
+				overriddenPackage,
+			);
+			elements[overriddenTag] = overriddenPackage;
+			if (overriddenTag !== elementKey) {
+				tagMappings.set(elementKey, overriddenTag);
 			}
+		} catch {
+			logger.debug(
+				`Couldn't parse element package value: ${elementPackageStr}`,
+			);
+			elements[elementKey] = elementPackageValue;
+		}
+	}
+
+	updatedConfig.elements = elements;
+
+	if (tagMappings.size > 0) {
+		if (updatedConfig.markup) {
+			const escapeRegExp = (value: string): string =>
+				value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+			const sourceTags = [...tagMappings.keys()]
+				.sort((left, right) => right.length - left.length)
+				.map(escapeRegExp)
+				.join("|");
+			const exactTag = new RegExp(
+				`(<\\/?)(${sourceTags})(?=[\\t\\n\\f\\r />])`,
+				"g",
+			);
+			updatedConfig.markup = String(updatedConfig.markup).replace(
+				exactTag,
+				(_match: string, opening: string, tagName: string) =>
+					`${opening}${tagMappings.get(tagName) ?? tagName}`,
+			);
 		}
 
-		if (!matched) {
+		if (Array.isArray(updatedConfig.models)) {
+			updatedConfig.models = updatedConfig.models.map((model: any) => {
+				const overriddenTag = tagMappings.get(model?.element);
+				return overriddenTag ? { ...model, element: overriddenTag } : model;
+			});
+		}
+	}
+
+	for (const packageName of Object.keys(elementOverrides)) {
+		if (!matchedPackages.has(packageName)) {
 			logger.debug(`No matching element found for package ${packageName}`);
 		}
 	}
@@ -101,7 +123,8 @@ export function applyElementOverrides(
  * Unlike `applyElementOverrides`, this helper keeps `config.markup` and
  * `config.elements` keys intact and only updates each matching element package
  * value to the requested version. This is intended for unified `pie-item-player`
- * flows where stable tag names are required.
+ * flows that preserve authored tags at the override boundary; `makeUniqueTags`
+ * later derives the effective per-version runtime namespace on a cloned config.
  */
 export function applyElementVersionOverridesPreserveTags(
 	config: any,

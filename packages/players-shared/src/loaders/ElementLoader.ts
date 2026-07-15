@@ -8,7 +8,7 @@
  * pre-warm in one shot).
  */
 
-import { parsePackageName } from "../pie/utils.js";
+import { toPackageVersionedTag } from "../pie/versioned-tag.js";
 import type { ItemEntity } from "../types/index.js";
 
 /**
@@ -20,12 +20,13 @@ export type ElementMap = { [tagName: string]: string };
 /**
  * Aggregate unique elements from multiple items
  *
- * Extracts elements from all item configs and deduplicates them.
- * Throws an error if items require different versions of the same element.
+ * Extracts elements from all item configs, versions their full tag names, and
+ * deduplicates identical tag/package pairs. Multiple package versions of the
+ * same original tag remain distinct through their versioned tag names.
  *
  * @param items - Array of items to aggregate elements from
  * @returns Map of unique element tag names to package versions
- * @throws Error if element version conflicts are detected
+ * @throws Error if two package specs resolve to the same versioned tag
  *
  * @example
  * ```typescript
@@ -37,78 +38,28 @@ export type ElementMap = { [tagName: string]: string };
  *
  * const elements = aggregateElements(items);
  * // Result: {
- * //   "pie-mc": "@pie-element/mc@11.0.1",
- * //   "pie-hotspot": "@pie-element/hotspot@9.0.0"
+ * //   "pie-mc--version-11-0-1": "@pie-element/mc@11.0.1",
+ * //   "pie-hotspot--version-9-0-0": "@pie-element/hotspot@9.0.0"
  * // }
  * ```
  */
 export function aggregateElements(items: ItemEntity[]): ElementMap {
 	const elementMap: Record<string, string> = {};
-	const seenOriginalTags: Record<string, string> = {};
-
-	const VERSION_DELIMITER = "--version-";
-	const TAG_VERSION_PATTERN = "[0-9A-Za-z-]+";
-	const encodeVersionForTag = (version: string): string =>
-		version
-			.trim()
-			.replace(/[.+]/g, "-")
-			.replace(/[^0-9A-Za-z-]/g, "-")
-			.replace(/-{2,}/g, "-");
-	const parseTagName = (
-		tagName: string,
-	): { baseName: string; existingEncodedVersion?: string } => {
-		const versionMatch = tagName.match(
-			new RegExp(`${VERSION_DELIMITER}(${TAG_VERSION_PATTERN})$`),
-		);
-		return versionMatch
-			? {
-					baseName: tagName.replace(
-						`${VERSION_DELIMITER}${versionMatch[1]}`,
-						"",
-					),
-					existingEncodedVersion: versionMatch[1],
-				}
-			: { baseName: tagName };
-	};
-	const normalizeElementTag = (
-		tagName: string,
-		packageSpec: string,
-	): string => {
-		const { baseName, existingEncodedVersion } = parseTagName(tagName);
-		const { version } = parsePackageName(packageSpec);
-		if (!version) return tagName;
-		const targetEncodedVersion = encodeVersionForTag(version);
-		if (
-			!targetEncodedVersion ||
-			existingEncodedVersion === targetEncodedVersion
-		) {
-			return tagName;
-		}
-		return `${baseName}${VERSION_DELIMITER}${targetEncodedVersion}`;
-	};
 
 	items.forEach((item) => {
 		const itemElements = item.config?.elements || {};
 
 		Object.entries(itemElements).forEach(([tag, pkg]) => {
 			const packageSpec = String(pkg);
-			if (!seenOriginalTags[tag]) {
-				seenOriginalTags[tag] = packageSpec;
-			} else if (seenOriginalTags[tag] !== packageSpec) {
-				// Preserve existing conflict behavior for repeated original tags.
-				throw new Error(
-					`Element version conflict: ${tag} requires both ${seenOriginalTags[tag]} and ${packageSpec}. ` +
-						`All items in a section must use the same version of each element.`,
-				);
-			}
-
-			const normalizedTag = normalizeElementTag(tag, packageSpec);
+			const normalizedTag = toPackageVersionedTag(tag, packageSpec, {
+				preserveUnversionedTag: true,
+			});
 			if (!elementMap[normalizedTag]) {
 				elementMap[normalizedTag] = packageSpec;
 			} else if (elementMap[normalizedTag] !== packageSpec) {
 				throw new Error(
 					`Element version conflict: ${normalizedTag} requires both ${elementMap[normalizedTag]} and ${packageSpec}. ` +
-						`All items in a section must use the same version of each element.`,
+						`Each full versioned tag must map to exactly one package spec.`,
 				);
 			}
 		});

@@ -581,8 +581,10 @@ test.describe("section player demo tts-ssml", () => {
 			}
 			const triggerA11y = await firstInlineTts.evaluate((host) => {
 				const root = host.shadowRoot;
+				// The trigger is an <nds-icon-button> host; its disclosure ARIA lives
+				// on the inner focusable <button> the component renders.
 				const trigger = root?.querySelector(
-					".pie-tool-tts-inline__trigger",
+					".pie-tool-tts-inline__trigger button",
 				) as HTMLButtonElement | null;
 				const panelEl = root?.querySelector(
 					".pie-tool-tts-inline__panel",
@@ -608,7 +610,7 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(panel).toHaveCount(0);
 			const postStopExpanded = await firstInlineTts.evaluate((host) => {
 				const trigger = host.shadowRoot?.querySelector(
-					".pie-tool-tts-inline__trigger",
+					".pie-tool-tts-inline__trigger button",
 				) as HTMLButtonElement | null;
 				return trigger?.getAttribute("aria-expanded") || null;
 			});
@@ -616,7 +618,7 @@ test.describe("section player demo tts-ssml", () => {
 		}
 	});
 
-	test("overlays left-aligned TTS controls over the header label and exposes compact More Menu", async ({
+	test("overlays left-aligned TTS controls over the header label with inline speed radios", async ({
 		page,
 	}) => {
 		await suppressAudibleBrowserTts(page);
@@ -703,14 +705,14 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(panel).toHaveCount(0);
 	});
 
-	test("collapses left-aligned TTS controls into a More menu when the heading crowds the panel", async ({
+	test("stacks left-aligned speed controls below the inline media row when the heading crowds the panel", async ({
 		page,
 	}) => {
-		// The compact-mode toggle is boundary-driven: the panel collapses
-		// once the space between the trigger and the protected heading would
-		// no longer fit its natural width. This test forces that condition
-		// at a wide viewport (well above the fallback 839px media query) by
-		// stretching the heading so the remaining header space is narrow.
+		// The compact-mode toggle is boundary-driven: the panel may overlap the
+		// header title, so it only collapses once the space between the trigger
+		// and the card/boundary LEFT edge can no longer fit its natural width.
+		// This test forces that at a wide viewport (well above the fallback 839px
+		// media query) by narrowing the overlay boundary so that space is small.
 		await suppressAudibleBrowserTts(page);
 		await page.setViewportSize({ width: 1320, height: 900 });
 		await gotoDemo(page);
@@ -724,16 +726,16 @@ test.describe("section player demo tts-ssml", () => {
 			.first();
 		await expect(firstInlineTts).toBeVisible();
 
-		// Inflate the protected heading so its right edge sits close to the
-		// trigger. This has to happen after mount (so the h2 exists) and
-		// before the play button opens the panel (measurement is captured
-		// then and re-run on ResizeObserver).
+		// Shrink the overlay boundary (the card) so its left edge sits close to
+		// the trigger, leaving less room than the panel's natural width. Must run
+		// after mount (boundary exists) and before play opens the panel.
 		await page.evaluate(() => {
-			const heading = document.querySelector(
-				"pie-section-player-item-card .pie-section-player-content-card-header h2[data-pie-tool-overlay-protect]",
+			const boundary = document.querySelector(
+				"[data-pie-tool-overlay-boundary]",
 			) as HTMLElement | null;
-			if (!heading) throw new Error("protected heading not found");
-			heading.style.setProperty("min-width", "calc(100% - 4rem)");
+			if (!boundary) throw new Error("overlay boundary not found");
+			boundary.style.setProperty("max-width", "16rem");
+			boundary.style.setProperty("margin-left", "auto");
 		});
 
 		await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
@@ -743,8 +745,8 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		await expect(panel).toBeVisible();
 
-		// Secondary controls (rewind / fast-forward / stop) collapse into
-		// the More menu — none should be visible in the toolbar itself.
+		// Media controls (rewind / fast-forward / stop) now STAY inline when the
+		// overlay is compact — none should be hidden.
 		const secondaryVisible = await firstInlineTts.evaluate((host) => {
 			const root = host.shadowRoot;
 			return Array.from(
@@ -754,21 +756,27 @@ test.describe("section player demo tts-ssml", () => {
 				(el) => window.getComputedStyle(el as HTMLElement).display !== "none",
 			).length;
 		});
-		expect(secondaryVisible).toBe(0);
+		expect(secondaryVisible).toBe(3);
+		await expect(panel.getByRole("button", { name: "Rewind" })).toBeVisible();
+		await expect(
+			panel.getByRole("button", { name: "Fast-forward" }),
+		).toBeVisible();
+		await expect(
+			panel.getByRole("button", { name: "Stop reading" }),
+		).toBeVisible();
 
-		const moreButton = firstInlineTts.getByRole("button", {
-			name: "More reading controls",
-		});
-		await expect(moreButton).toBeVisible();
-		await moreButton.click();
-		const moreMenu = firstInlineTts.getByRole("menu", {
-			name: "More reading controls",
-		});
-		await expect(moreMenu).toBeVisible();
-
-		await page.keyboard.press("Escape");
-		await expect(moreMenu).toHaveCount(0);
-		await expect(moreButton).toBeFocused();
+		// The speed radios stay a single always-visible radiogroup — no toggle
+		// button, no popover menu — stacked vertically in a card below the media
+		// row. All options remain reachable.
+		const speedGroup = panel.getByRole("radiogroup", { name: "Playback speed" });
+		await expect(speedGroup).toBeVisible();
+		await expect(speedGroup.getByRole("radio", { name: "Slow speed" })).toBeVisible();
+		await expect(speedGroup.getByRole("radio", { name: "Normal speed" })).toBeVisible();
+		await expect(speedGroup.getByRole("radio", { name: "Fast speed" })).toBeVisible();
+		// No current-speed toggle button / popover menu in the compact layout.
+		await expect(
+			firstInlineTts.getByRole("menu", { name: "Playback speed" }),
+		).toHaveCount(0);
 	});
 
 	test("removes header controls-row reservation when layout mode is expanding-row", async ({
@@ -1077,8 +1085,10 @@ test.describe("section player demo tts-ssml", () => {
 				.toMatch(/playing|paused|loading/);
 			const expandedAfterProgrammaticHandoff = await passageInlineTts.evaluate(
 				(host) => {
+					// The disclosure semantics live on the NDS icon button's inner
+					// <button> (reflectAria targets it), not the custom-element host.
 					const trigger = host.shadowRoot?.querySelector(
-						".pie-tool-tts-inline__trigger",
+						".pie-tool-tts-inline__trigger button",
 					) as HTMLButtonElement | null;
 					return trigger?.getAttribute("aria-expanded") || null;
 				},

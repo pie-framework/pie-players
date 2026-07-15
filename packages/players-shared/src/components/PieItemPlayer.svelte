@@ -29,6 +29,7 @@
     validateAuthoringModels,
     type AuthoringValidationResult,
   } from "../pie/authoring.js";
+  import { transformMarkupForAuthoring } from "../pie/authoring-tag.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
   import {
     canPopulateCorrectResponses,
@@ -170,23 +171,6 @@
   let authoringBlockedError: string | null = $state(null);
   let lastReportedAuthoringError: string | null = $state(null);
   let runtimePlayerError: string | null = $state(null);
-
-  // Transform markup for authoring mode (append -config suffix)
-  function transformMarkupForAuthoring(
-    markup: string,
-    elements: Record<string, string>
-  ): string {
-    let result = markup;
-    for (const elementTag of Object.keys(elements)) {
-      // Replace opening tags
-      const openRegex = new RegExp(`<${elementTag}(\\s|>)`, "g");
-      result = result.replace(openRegex, `<${elementTag}-config$1`);
-      // Replace closing tags
-      const closeRegex = new RegExp(`</${elementTag}>`, "g");
-      result = result.replace(closeRegex, `</${elementTag}-config>`);
-    }
-    return result;
-  }
 
   // Custom-element allow-list derived from the item/passage `elements` maps.
   // Includes both the raw tag names and their authoring-mode `-config`

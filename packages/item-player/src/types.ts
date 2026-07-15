@@ -16,6 +16,7 @@ import type {
 	BackendSaveContentOptions,
 	BackendScoreOptions,
 } from "./backend/types.js";
+import type { ElementPackagePolicy } from "@pie-players/pie-players-shared";
 
 export type { DeleteDone, ImageHandler, SoundHandler };
 export type * from "./backend/types.js";
@@ -24,6 +25,12 @@ export type AuthoringValidationResult = {
 	hasErrors: boolean;
 	validatedModels: any[];
 };
+
+/** Optional loader settings; unknown host extensions remain supported. */
+export interface PieItemPlayerLoaderOptions extends Record<string, unknown> {
+	/** Apply when `config.elements` is not fully trusted host input. */
+	elementPackagePolicy?: ElementPackagePolicy;
+}
 
 export interface PieItemPlayerElement extends HTMLElement {
 	config: ItemConfig;
@@ -48,7 +55,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onDeleteImage?: (src: string, done: DeleteDone) => void;
 	onInsertSound?: (handler: SoundHandler) => void;
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
-	loaderOptions?: Record<string, unknown>;
+	loaderOptions?: PieItemPlayerLoaderOptions;
 	loaderConfig?: LoaderConfig;
 	/** Legacy-compatible local browser scoring; returns one result slot per scored model. */
 	provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>;

@@ -1,5 +1,15 @@
 # @pie-players/pie-item-player
 
+## 0.3.58
+
+### Patch Changes
+
+- 8df52bf: Add an opt-in allow-list for executable element packages. The default policy mode requires exact versions without build metadata so legacy IIFE bundle separators cannot be injected. Existing hosts that omit the policy retain their current loading behavior.
+- Updated dependencies [8df52bf]
+- Updated dependencies [d5cc905]
+  - @pie-players/pie-players-shared@0.3.58
+  - @pie-players/pie-theme@0.3.58
+
 ## 0.3.57
 
 ### Patch Changes

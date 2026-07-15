@@ -1,5 +1,13 @@
 # @pie-players/pie-print-player
 
+## 0.3.58
+
+### Patch Changes
+
+- Updated dependencies [8df52bf]
+- Updated dependencies [d5cc905]
+  - @pie-players/pie-players-shared@0.3.58
+
 ## 0.3.57
 
 ### Patch Changes

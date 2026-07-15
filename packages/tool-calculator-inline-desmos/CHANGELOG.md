@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 0.3.58
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.58
+- @pie-players/pie-context@0.3.58
+
 ## 0.3.57
 
 ### Patch Changes

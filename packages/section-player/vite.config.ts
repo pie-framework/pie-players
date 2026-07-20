@@ -58,6 +58,10 @@ export default defineConfig({
 				__dirname,
 				"../players-shared/src/ui/use-promise.svelte.ts",
 			),
+			"@pie-players/pie-players-shared/ui/use-zoom-compensation": resolve(
+				__dirname,
+				"../players-shared/src/ui/use-zoom-compensation.svelte.ts",
+			),
 		},
 	},
 	plugins: [

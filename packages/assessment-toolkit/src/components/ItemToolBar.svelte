@@ -63,6 +63,9 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
+	// Pure zoom-compensation math (framework-agnostic, shipped in dist so it
+	// resolves through this package's CE bundle which externalizes @pie-players/*).
+	import { approximateZoomFromWidths, computeZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/zoom-compensation';
 	import {
 		createFocusTrap,
 		FOCUSABLE_SELECTOR,
@@ -273,6 +276,37 @@
 	} = $props();
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
+
+	// Freeze the calculator's furnished buttons at their 200%-zoom size. The cap
+	// is applied via CSS `zoom` on WRAPPER elements (the header-button wrapper and
+	// the shell's control cluster), never on the nds-icon-button hosts directly —
+	// `zoom` on an nds-icon-button (light-DOM render + injected global <style>)
+	// mis-sizes it. Also never on the shell root, whose fixed position + drag /
+	// resize math is computed from real viewport pixels. 0.25 floor keeps the cap
+	// holding past 500% browser zoom (see SectionPlayerTabbedContent).
+	function currentCalculatorZoomCompensation(): number {
+		if (typeof window === 'undefined') return 1;
+		// Shares ICON_BUTTON_ZOOM_OPTIONS with the TTS play button so both icon
+		// buttons compensate identically.
+		return computeZoomCompensation(
+			approximateZoomFromWidths(window.outerWidth, window.innerWidth),
+			ICON_BUTTON_ZOOM_OPTIONS.maxZoom,
+			ICON_BUTTON_ZOOM_OPTIONS.minCompensation
+		);
+	}
+	// Reactive factor for the header button (the shell recomputes its own via
+	// applyShellStyle since its DOM lives at document.body, outside this subtree).
+	let calculatorButtonZoomComp = $state(1);
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		const update = () => {
+			calculatorButtonZoomComp = currentCalculatorZoomCompensation();
+		};
+		update();
+		window.addEventListener('resize', update);
+		return () => window.removeEventListener('resize', update);
+	});
+
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Presentation gate from the host runtime. Controls render
 	// <nds-icon-button> only when the host explicitly opts in
@@ -1377,6 +1411,14 @@
 			shellEl.style.width = `${width}px`;
 			shellEl.style.height = `${height}px`;
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
+			// Header control buttons read this via `zoom: var(--pie-tool-shell-zoom-comp)`
+			// on their cluster wrapper so they cap at 200% while the shell box itself
+			// stays at real pixels (its position/size math needs unscaled coordinates).
+			// Runs on init, window resize, and drag/resize — cheap + idempotent.
+			shellEl.style.setProperty(
+				'--pie-tool-shell-zoom-comp',
+				String(currentCalculatorZoomCompensation())
+			);
 		};
 
 		const mountContent = () => {
@@ -1895,6 +1937,11 @@
 				rightClusterEl.style.display = 'inline-flex';
 				rightClusterEl.style.alignItems = 'center';
 				rightClusterEl.style.gap = '6px';
+				// Cap the move / resize / close controls at their 200%-zoom size.
+				// zoom goes on this cluster wrapper (a plain div), NOT the
+				// nds-icon-button hosts inside it. --pie-tool-shell-zoom-comp is set
+				// on the shell root by applyShellStyle and inherits down here.
+				rightClusterEl.style.setProperty('zoom', 'var(--pie-tool-shell-zoom-comp, 1)');
 				rightClusterEl.appendChild(controlsEl);
 				headerEl.appendChild(rightClusterEl);
 			} else {
@@ -2227,6 +2274,7 @@
 		class:item-toolbar--header-overlay-active={headerOverlayShouldExpandForActiveTool}
 		data-content-kind={effectiveContentKind}
 		data-level={effectiveLevel}
+		style={`--pie-toolbar-zoom-comp: ${calculatorButtonZoomComp};`}
 		bind:this={toolbarRootElement}
 	>
 		<div class="item-toolbar__tools-row">
@@ -2258,19 +2306,24 @@
 					     component's inner <button>, so `onclick` still invokes onClick.
 					     `reflectToggleState` mirrors the pressed state onto that inner
 					     button since nds has no native aria-pressed. -->
-					<nds-icon-button
-						use:ndsIconButtonAction
-						use:reflectToggleState={isToolbarItemActive(item)}
-						class="item-toolbar__nds-button"
-						type="circle"
-						size="small"
-						variant="tertiary"
-						icon-name={faIconName}
-						button-aria-label={item.ariaLabel || item.label}
-						title={item.tooltip || item.label}
-						disabled={item.disabled}
-						onclick={item.onClick}
-					></nds-icon-button>
+					<!-- 200% cap on a WRAPPER, not the nds-icon-button host directly:
+					     `zoom` on an nds-icon-button (light-DOM render + injected
+					     global <style>) mis-sizes it. Matches the scroll-hint pattern. -->
+					<span class="item-toolbar__nds-button-zoom">
+						<nds-icon-button
+							use:ndsIconButtonAction
+							use:reflectToggleState={isToolbarItemActive(item)}
+							class="item-toolbar__nds-button"
+							type="circle"
+							size="small"
+							variant="tertiary"
+							icon-name={faIconName}
+							button-aria-label={item.ariaLabel || item.label}
+							title={item.tooltip || item.label}
+							disabled={item.disabled}
+							onclick={item.onClick}
+						></nds-icon-button>
+					</span>
 				{:else if isToolbarLinkItem(item)}
 					<a
 						class="item-toolbar__button"
@@ -2393,7 +2446,10 @@
 		align-items: center;
 		justify-content: flex-end;
 		flex-wrap: nowrap;
-		gap: 0.5rem;
+		/* Cap the gap between toolbar items (e.g. TTS play ↔ calculator) at its
+		   200%-zoom size with the same factor the buttons use, so the spacing
+		   doesn't keep growing past 200% while the buttons themselves freeze. */
+		gap: calc(0.5rem * var(--pie-toolbar-zoom-comp, 1));
 		min-height: var(--pie-toolbar-tools-row-height);
 	}
 
@@ -2474,6 +2530,13 @@
 	   md/sm/lg dimensions (32 / 44 / 40 px) without a layout shift. The glyph
 	   keeps the NDS-native icon size (we render size="small"), so it isn't
 	   oversized. */
+	/* Freeze the calculator's header open/close button at its 200%-zoom size
+	   (factor is 1 at zoom <= 200%). Zoom on this wrapper, not the host. */
+	.item-toolbar__nds-button-zoom {
+		display: inline-flex;
+		zoom: var(--pie-toolbar-zoom-comp, 1);
+	}
+
 	.item-toolbar nds-icon-button {
 		/* Host-settable button size per toolbar size (drives the NDS outer button
 		   via its own --height-32). */

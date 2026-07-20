@@ -16,6 +16,9 @@
 			],
 			"@pie-players/pie-players-shared/ui/use-promise": [
 				"../players-shared/src/ui/use-promise.svelte.ts"
+			],
+			"@pie-players/pie-players-shared/ui/use-zoom-compensation": [
+				"../players-shared/src/ui/use-zoom-compensation.svelte.ts"
 			]
 		}
 	},

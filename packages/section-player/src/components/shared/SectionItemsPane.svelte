@@ -58,7 +58,7 @@
 		getCanonicalItemId,
 		getItemPlayerParams,
 	} from "./section-player-view-state.js";
-	import { useZoomCompensation } from "./use-zoom-compensation.svelte.js";
+	import { useZoomCompensation } from "@pie-players/pie-players-shared/ui/use-zoom-compensation";
 
 	let {
 		items = [] as ItemEntity[],

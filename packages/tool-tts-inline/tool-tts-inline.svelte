@@ -33,6 +33,7 @@
 	// players-shared/src/components/vendor/nds/README.md. players-shared is not
 	// externalized by this package's Vite build, so the bundle is inlined here.
 	import '@pie-players/pie-players-shared/nds-icon-button';
+	import { useZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/use-zoom-compensation';
 
 	let {
 		catalogId = '', // Explicit catalog ID
@@ -710,6 +711,19 @@
 		layoutMode === 'floating-overlay'
 	);
 	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+
+	// Freeze the TTS buttons' physical size at their 200%-zoom appearance once
+	// browser zoom exceeds 200%, matching the passage/questions toggle. The
+	// factor is 1 at zoom <= 200% (behaviour unchanged below that) and applied
+	// as CSS `zoom` to the trigger + control buttons, with the surrounding
+	// panel/gap spacing compensated via calc(). It is NOT applied to the panel
+	// or root container: the left-aligned popper is position:fixed and its
+	// top/right are JS-computed from real viewport coordinates, so zooming the
+	// container would double-scale and misplace it. See minCompensation note on
+	// SectionPlayerTabbedContent — 0.25 keeps the 200% cap holding past 500%.
+	// Shared with the calculator button (assessment-toolkit) so both icon
+	// buttons cap identically — see ICON_BUTTON_ZOOM_OPTIONS.
+	const buttonZoom = useZoomCompensation(ICON_BUTTON_ZOOM_OPTIONS);
 	const OVERLAY_GUTTER_PX = 8;
 	// Host-declared boundary (panel's horizontal container) and protected
 	// sibling (e.g. a heading) the panel must not crowd.
@@ -898,31 +912,37 @@
 		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
 		class:pie-tool-tts-inline--floating={isFloatingLayout}
 		class:pie-tool-tts-inline--left-aligned={isLeftAlignedFloatingLayout}
+		style={`--pie-tts-zoom-comp: ${buttonZoom.current};`}
 	>
 		{#snippet triggerButton()}
 			{#if useNdsIcons}
+				<!-- 200% zoom cap lives on this WRAPPER, never on the nds-icon-button
+			     host directly: CSS `zoom` on an nds-icon-button (light-DOM render +
+			     injected global <style>) mis-sizes it. Wrapping matches the proven
+			     section-player scroll-hint pattern. -->
+			<span class="pie-tool-tts-inline__trigger-zoom">
 				<!-- NDS circular icon button. `variant="primary"` (filled) marks the
-				     active/open state; `ghost` is the resting state. The native click
-				     bubbles out of the component's inner <button>, so `onclick` still
-				     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
-				     relationships onto that inner button (nds exposes only aria-label). -->
-				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-				<nds-icon-button
-					use:ndsIconButtonAction
-					use:reflectAria={{
-						'aria-expanded': controlsVisible ? 'true' : 'false',
-						'aria-controls': controlsVisible ? panelId : null,
-						'aria-pressed': controlsVisible ? 'true' : 'false',
-					}}
-					class="pie-tool-tts-inline__trigger {sizeClass}"
-					type="circle"
-					size="small"
-					variant="tertiary"
-					icon-name={speaking && !paused ? 'pause' : 'play'}
-					button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-					disabled={!ttsService || playActionInFlight}
-					onclick={handlePlayPause}
-				></nds-icon-button>
+					     active/open state; `ghost` is the resting state. The native click
+					     bubbles out of the component's inner <button>, so `onclick` still
+					     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
+					     relationships onto that inner button (nds exposes only aria-label). -->
+					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+					<nds-icon-button
+						use:ndsIconButtonAction
+						use:reflectAria={{
+							'aria-expanded': controlsVisible ? 'true' : 'false',
+							'aria-controls': controlsVisible ? panelId : null,
+							'aria-pressed': controlsVisible ? 'true' : 'false',
+						}}
+						class="pie-tool-tts-inline__trigger {sizeClass}"
+						type="circle"
+						size="small"
+						variant="tertiary"
+						icon-name={speaking && !paused ? 'pause' : 'play'}
+						button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+						disabled={!ttsService || playActionInFlight}
+						onclick={handlePlayPause}
+					></nds-icon-button>
 			{:else}
 				<!-- Non-NDS fallback: plain <button> with the same play/pause FA
 				     glyph the panel controls use. Keeps the `__trigger` class so
@@ -945,6 +965,7 @@
 					></i>
 				</button>
 			{/if}
+			</span>
 		{/snippet}
 
 		{#snippet controlsPanel()}
@@ -1046,11 +1067,24 @@
 {/if}
 
 <style>
+	/* Lay the component out as a flex box, not the default inline custom element.
+	   As `display: inline` the host is blockified into a block flex item that
+	   wraps its content in a line box, so the inline-flex root sits on the text
+	   baseline — a zoom-shrunk play button then rides that baseline and drifts
+	   LOW versus the calculator button (whose flex-item wrapper has no line box).
+	   inline-flex + center removes the line box and keeps the trigger centered. */
+	:host {
+		display: inline-flex;
+		align-items: center;
+	}
+
 	.pie-tool-tts-inline {
 		position: relative;
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
+		/* Gap between trigger and panel lives outside the zoomed buttons, so it
+		   is compensated separately or it keeps growing with browser zoom. */
+		gap: calc(0.5rem * var(--pie-tts-zoom-comp, 1));
 	}
 
 	.pie-tool-tts-inline--controls-row {
@@ -1064,6 +1098,14 @@
 	   appearance. This class only drives the host's size via NDS's own size
 	   custom properties (see the size variants below), so the light-DOM inner
 	   button matches the toolbar's md/sm/lg dimensions. */
+	/* Freeze the play/pause button at its 200%-zoom appearance (factor is 1 at
+	   zoom <= 200%, so behaviour below that is unchanged). The zoom goes on this
+	   wrapper, not the nds-icon-button host — see the snippet. */
+	.pie-tool-tts-inline__trigger-zoom {
+		display: inline-flex;
+		zoom: var(--pie-tts-zoom-comp, 1);
+	}
+
 	.pie-tool-tts-inline__trigger {
 		display: inline-flex;
 		/* Outer button size follows the toolbar size variants (below); the glyph
@@ -1104,10 +1146,13 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: flex-end;
-		gap: 0.25rem;
+		/* Buttons inside are zoom-capped (see __control); compensate the panel's
+		   own spacing/height with the same factor so its chrome doesn't keep
+		   growing around the frozen buttons past 200%. */
+		gap: calc(0.25rem * var(--pie-tts-zoom-comp, 1));
 		box-sizing: border-box;
-		min-height: var(--pie-tts-controls-row-height, 2.875rem);
-		padding: 0.25rem 0.5rem;
+		min-height: calc(var(--pie-tts-controls-row-height, 2.875rem) * var(--pie-tts-zoom-comp, 1));
+		padding: calc(0.25rem * var(--pie-tts-zoom-comp, 1)) calc(0.5rem * var(--pie-tts-zoom-comp, 1));
 		background: var(--pie-surface, var(--pie-background, #fff));
 		border: 1px solid var(--pie-border, #d0d0d0);
 		border-radius: 0.5rem;
@@ -1139,6 +1184,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/* Cap each control (rewind / fast-forward / stop / speed) at its
+		   200%-zoom size; matches the trigger and the passage/questions toggle. */
+		zoom: var(--pie-tts-zoom-comp, 1);
 		width: 2rem;
 		height: 2rem;
 		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
@@ -1159,7 +1207,7 @@
 		display: inline-flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.25rem;
+		gap: calc(0.25rem * var(--pie-tts-zoom-comp, 1));
 	}
 
 	.pie-tool-tts-inline__control--speed {
@@ -1222,9 +1270,9 @@
 	.pie-tool-tts-inline__panel--floating,
 	.pie-tool-tts-inline__panel--left-aligned-inline {
 		min-height: 0;
-		height: 3rem; /* Figma: 48px */
+		height: calc(3rem * var(--pie-tts-zoom-comp, 1)); /* Figma: 48px */
 		justify-content: center;
-		gap: 0.375rem;
+		gap: calc(0.375rem * var(--pie-tts-zoom-comp, 1));
 		background: var(--pie-tts-selected-bg, #fff);
 		border: 0;
 		border-radius: 0.5rem; /* Figma: --radius-8 (8px) */
@@ -1237,7 +1285,7 @@
 	.pie-tool-tts-inline__panel--compact {
 		gap: 0;
 		width: fit-content;
-		min-width: 7.5rem; /* ~120px floor; grows with content beyond that */
+		min-width: calc(7.5rem * var(--pie-tts-zoom-comp, 1)); /* ~120px floor; grows with content beyond that */
 		height: auto; /* stacked popper grows past the 48px roomy toolbar height */
 		padding: 0;
 	}
@@ -1356,10 +1404,11 @@
 			padding: 0;
 		}
 
-		.pie-tool-tts-inline__trigger,
-		.pie-tool-tts-inline__trigger--md {
-			--height-32: 1.75rem;
-		}
+		/* NOTE: the trigger's --height-32 is intentionally NOT shrunk here. Browser
+		   zoom narrows the CSS viewport enough to trip this breakpoint, which would
+		   drop the play button to 1.75rem while the calculator button (furnished by
+		   the toolbar) stays 2rem, mismatching them under zoom. Size is governed by
+		   the zoom-compensation cap instead. */
 
 		.pie-tool-tts-inline__control {
 			width: 1.75rem;

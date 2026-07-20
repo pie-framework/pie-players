@@ -915,12 +915,13 @@
 		style={`--pie-tts-zoom-comp: ${buttonZoom.current};`}
 	>
 		{#snippet triggerButton()}
-			{#if useNdsIcons}
-				<!-- 200% zoom cap lives on this WRAPPER, never on the nds-icon-button
+			<!-- 200% zoom cap lives on this WRAPPER, never on the nds-icon-button
 			     host directly: CSS `zoom` on an nds-icon-button (light-DOM render +
 			     injected global <style>) mis-sizes it. Wrapping matches the proven
-			     section-player scroll-hint pattern. -->
+			     section-player scroll-hint pattern. Wraps both trigger variants so
+			     the plain fallback gets the same zoom compensation. -->
 			<span class="pie-tool-tts-inline__trigger-zoom">
+				{#if useNdsIcons}
 				<!-- NDS circular icon button. `variant="primary"` (filled) marks the
 					     active/open state; `ghost` is the resting state. The native click
 					     bubbles out of the component's inner <button>, so `onclick` still

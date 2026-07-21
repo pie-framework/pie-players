@@ -900,7 +900,7 @@ table {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--pie-border-gray, #666);
+	color: var(--pie-answer-eliminator-toggle-color, #8c8c8c);
 	transition: all 0.2s ease;
 	z-index: 10;
 }

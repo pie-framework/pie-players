@@ -217,7 +217,6 @@
 	let statusMessage = $state('');
 	let requestedPlaybackRate = $state<number | null>(null);
 	let requestedPlaybackChoicesKey = $state<string | null>(null);
-	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
 	let handoffInProgress = $state(false);
 	let highlightTargetResolverProviderDisposer: (() => void) | null = null;
@@ -225,11 +224,6 @@
 	const speedChoicesKey = $derived.by(() => getSpeedChoicesKey(speedChoices));
 	const visibleSpeedChoices = $derived.by(() =>
 		speedChoices.length > 1 || showSingleSpeedOption ? speedChoices : [],
-	);
-	const speedControlCount = $derived(visibleSpeedChoices.length);
-	const toolbarControlCount = $derived(speedControlCount + 3);
-	const focusedToolbarIndex = $derived(
-		focusedControlIndex >= toolbarControlCount ? 0 : focusedControlIndex,
 	);
 	const playbackRate = $derived.by(() => {
 		if (
@@ -241,6 +235,13 @@
 		}
 		return resolveDefaultPlaybackRate(speedChoices);
 	});
+	// Every panel control is a real Tab stop, so Shift+Tab off the play/pause
+	// trigger walks backwards through stop → fast-forward → rewind → speeds. The
+	// speed radios are the one exception: as a radiogroup they share a single Tab
+	// stop, which — per the ARIA radiogroup pattern — sits on the CHECKED option.
+	// Arrow keys inside the group both move focus and select (see
+	// focusClusterControlAt), so the focused radio is always the checked one and
+	// no separate roving index is needed.
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
@@ -284,7 +285,6 @@
 	function resetLocalPlaybackUi(status = '', keepControlsVisible = false): void {
 		speaking = false;
 		paused = false;
-		focusedControlIndex = 0;
 		controlsVisible = keepControlsVisible;
 		statusMessage = status;
 	}
@@ -315,6 +315,14 @@
 		await service.updateSettings({ rate });
 	}
 
+	function panelHasFocus(): boolean {
+		if (!containerEl || !toolbarEl) return false;
+		const root = containerEl.getRootNode();
+		if (!(root instanceof ShadowRoot)) return false;
+		const activeElement = root.activeElement as HTMLElement | null;
+		return Boolean(activeElement && toolbarEl.contains(activeElement));
+	}
+
 	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
 		if (!containerEl || !hadPanelFocus) return;
 		const root = containerEl.getRootNode();
@@ -336,13 +344,7 @@
 		if (!controlsVisible && !isActiveOwner()) return;
 		handoffInProgress = true;
 		try {
-			const hadPanelFocus = (() => {
-				if (!containerEl || !toolbarEl) return false;
-				const root = containerEl.getRootNode();
-				if (!(root instanceof ShadowRoot)) return false;
-				const activeElement = root.activeElement as HTMLElement | null;
-				return Boolean(activeElement && toolbarEl.contains(activeElement));
-			})();
+			const hadPanelFocus = panelHasFocus();
 			if (isActiveOwner()) {
 				releaseActiveOwner();
 			}
@@ -455,42 +457,70 @@
 		}
 	}
 
-	function getToolbarControls(): HTMLButtonElement[] {
+	// Arrow keys stay inside the cluster they started in — the speed radiogroup,
+	// or the media buttons (rewind / fast-forward / stop). Tab is what crosses
+	// between clusters, so an arrow key never traverses the radiogroup boundary.
+	const SPEED_RADIO_SELECTOR = '[data-pie-tts-speed-rate]';
+	const MEDIA_BUTTON_SELECTOR = '[data-pie-tts-media]';
+
+	// Disabled controls are skipped: `.focus()` is a no-op on them, so leaving
+	// them in would strand focus on the current control (the media buttons are
+	// disabled while nothing is being read).
+	function getClusterControls(selector: string): HTMLButtonElement[] {
 		if (!toolbarEl) return [];
 		return Array.from(
-			toolbarEl.querySelectorAll<HTMLButtonElement>('[data-pie-tts-control]'),
-		).filter((control) => window.getComputedStyle(control).display !== 'none');
+			toolbarEl.querySelectorAll<HTMLButtonElement>(selector),
+		).filter(
+			(control) =>
+				!control.disabled &&
+				window.getComputedStyle(control).display !== 'none',
+		);
 	}
 
-	function focusToolbarControl(index: number): void {
-		const controls = getToolbarControls();
+	function focusClusterControlAt(selector: string, position: number): void {
+		const controls = getClusterControls(selector);
 		if (!controls.length) return;
-		const wrapped = (index + controls.length) % controls.length;
-		focusedControlIndex = wrapped;
-		controls[wrapped].focus();
+		const target = controls[(position + controls.length) % controls.length];
+		target.focus();
+		if (selector !== SPEED_RADIO_SELECTOR) return;
+		// Radiogroup semantics: arrowing onto a speed option also SELECTS it, the
+		// same way a native radio group (and an answer-choice group) behaves, so no
+		// Spacebar/Enter is needed to apply it.
+		const rate = Number(target.dataset.pieTtsSpeedRate);
+		const option = visibleSpeedChoices.find((choice) => choice.rate === rate);
+		if (option) void handlePlaybackRate(option);
 	}
 
-	function handleToolbarKeydown(event: KeyboardEvent): void {
-		const controls = getToolbarControls();
+	// Resolve the caret from the element that actually holds focus: the cluster
+	// list omits disabled/hidden controls, so no external index can track it.
+	function moveClusterFocus(selector: string, delta: number): void {
+		const controls = getClusterControls(selector);
 		if (!controls.length) return;
+		const root = toolbarEl?.getRootNode();
+		const active = root instanceof ShadowRoot ? root.activeElement : null;
+		const current = active ? controls.indexOf(active as HTMLButtonElement) : -1;
+		focusClusterControlAt(selector, current === -1 ? 0 : current + delta);
+	}
+
+	function handleClusterKeydown(selector: string, event: KeyboardEvent): void {
 		switch (event.key) {
 			case 'ArrowDown':
 			case 'ArrowRight':
 				event.preventDefault();
-				focusToolbarControl(focusedControlIndex + 1);
+				moveClusterFocus(selector, 1);
 				break;
 			case 'ArrowUp':
 			case 'ArrowLeft':
 				event.preventDefault();
-				focusToolbarControl(focusedControlIndex - 1);
+				moveClusterFocus(selector, -1);
 				break;
 			case 'Home':
 				event.preventDefault();
-				focusToolbarControl(0);
+				focusClusterControlAt(selector, 0);
 				break;
 			case 'End':
 				event.preventDefault();
-				focusToolbarControl(controls.length - 1);
+				focusClusterControlAt(selector, -1);
 				break;
 		}
 	}
@@ -619,6 +649,11 @@
 			statusMessage = 'Reading paused';
 			return;
 		}
+		// This guard — NOT a `disabled` attribute on the trigger — is what prevents
+		// a second activation while the first is still starting. Disabling the
+		// trigger here would blur it (a disabled element cannot hold focus), so a
+		// keyboard user would lose their place on every Play press; the pending
+		// state is surfaced with aria-busy instead.
 		if (playActionInFlight) return;
 		playActionInFlight = true;
 		try {
@@ -644,6 +679,10 @@
 
 	function handleStop() {
 		if (!ttsService) return;
+		// Stopping unmounts the whole panel, including the Stop button that was just
+		// activated. Hand focus back to the play/pause trigger so a keyboard user
+		// keeps their place instead of being dropped to the top of the document.
+		const hadPanelFocus = panelHasFocus();
 		ttsService.stop();
 		releaseActiveOwner();
 		resetLocalPlaybackUi('Reading stopped');
@@ -651,6 +690,11 @@
 			highlightCoordinator.clearTTS();
 		}
 		clearHighlightTargetResolverProvider();
+		if (hadPanelFocus) {
+			queueMicrotask(() => {
+				focusTriggerIfPanelHadFocus(true);
+			});
+		}
 	}
 
 	async function handleSeekForward() {
@@ -711,6 +755,14 @@
 		layoutMode === 'floating-overlay'
 	);
 	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+	// Keyboard order must follow visual order. In the overlay layouts the panel
+	// opens to the LEFT of the play/pause trigger, so it has to precede the
+	// trigger in the DOM — Shift+Tab (backwards) then moves from Play/Pause into
+	// the additional controls, and Tab leaves the tool. The row layouts drop the
+	// panel BELOW the trigger, where trigger-then-panel is already the reading
+	// order. Safe to reorder either way: the panel is out of flow in every layout
+	// (absolute / fixed), so DOM position has no effect on where it paints.
+	const isPanelBeforeTrigger = $derived(isFloatingLayout || isLeftAlignedFloatingLayout);
 
 	// Freeze the TTS buttons' physical size at their 200%-zoom appearance once
 	// browser zoom exceeds 200%, matching the passage/questions toggle. The
@@ -934,6 +986,7 @@
 							'aria-expanded': controlsVisible ? 'true' : 'false',
 							'aria-controls': controlsVisible ? panelId : null,
 							'aria-pressed': controlsVisible ? 'true' : 'false',
+							'aria-busy': playActionInFlight ? 'true' : null,
 						}}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
 						type="circle"
@@ -941,7 +994,7 @@
 						variant="tertiary"
 						icon-name={speaking && !paused ? 'pause' : 'play'}
 						button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-						disabled={!ttsService || playActionInFlight}
+						disabled={!ttsService}
 						onclick={handlePlayPause}
 					></nds-icon-button>
 			{:else}
@@ -957,7 +1010,8 @@
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
 					aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-					disabled={!ttsService || playActionInFlight}
+					aria-busy={playActionInFlight ? 'true' : undefined}
+					disabled={!ttsService}
 					onclick={handlePlayPause}
 				>
 					<i
@@ -983,29 +1037,32 @@
 					role="toolbar"
 					aria-label="Reading controls"
 					tabindex="-1"
-					onkeydown={handleToolbarKeydown}
 				>
 					{#if visibleSpeedChoices.length > 0}
 						<!-- Speed radios. Roomy: inline row before the media controls.
 						     Compact left-aligned overlay: stacked vertically in a card
 						     that sits below the media row (the media controls stay on the
-						     top line). Same radiogroup + roving tabindex in both layouts;
-						     only the arrangement changes (see the --stacked CSS). -->
+						     top line). Same radiogroup in both layouts; only the
+						     arrangement changes (see the --stacked CSS).
+						     The group is a single Tab stop on the checked radio; Left/Right
+						     (and Up/Down) move between options and select as they go, so it
+						     behaves like an answer-choice radio group. -->
 						<div
 							class="pie-tool-tts-inline__speed-group"
 							class:pie-tool-tts-inline__speed-group--stacked={leftAlignedCompact}
 							role="radiogroup"
 							aria-label="Playback speed"
 						>
-							{#each visibleSpeedChoices as option, speedIdx (option.rate)}
+							{#each visibleSpeedChoices as option (option.rate)}
 								<button
 									type="button"
 									role="radio"
 									data-pie-tts-control
+									data-pie-tts-speed-rate={option.rate}
 									class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
 									onclick={() => handlePlaybackRate(option)}
-									onfocus={() => (focusedControlIndex = speedIdx)}
-									tabindex={focusedToolbarIndex === speedIdx ? 0 : -1}
+									onkeydown={(event) => handleClusterKeydown(SPEED_RADIO_SELECTOR, event)}
+									tabindex={playbackRate === option.rate ? 0 : -1}
 									aria-label={option.ariaLabel}
 									aria-checked={playbackRate === option.rate}
 									disabled={!ttsService}
@@ -1019,10 +1076,10 @@
 					<button
 						type="button"
 						data-pie-tts-control
+						data-pie-tts-media
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekBackward}
-						onfocus={() => (focusedControlIndex = speedControlCount)}
-						tabindex={focusedToolbarIndex === speedControlCount ? 0 : -1}
+						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label="Rewind"
 						disabled={!ttsService || !speaking}
 					>
@@ -1032,10 +1089,10 @@
 					<button
 						type="button"
 						data-pie-tts-control
+						data-pie-tts-media
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekForward}
-						onfocus={() => (focusedControlIndex = speedControlCount + 1)}
-						tabindex={focusedToolbarIndex === speedControlCount + 1 ? 0 : -1}
+						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label="Fast-forward"
 						disabled={!ttsService || !speaking}
 					>
@@ -1045,10 +1102,10 @@
 					<button
 						type="button"
 						data-pie-tts-control
+						data-pie-tts-media
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleStop}
-						onfocus={() => (focusedControlIndex = speedControlCount + 2)}
-						tabindex={focusedToolbarIndex === speedControlCount + 2 ? 0 : -1}
+						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label="Stop reading"
 						disabled={!ttsService || (!speaking && !paused)}
 					>
@@ -1058,8 +1115,13 @@
 			{/if}
 		{/snippet}
 
-		{@render triggerButton()}
-		{@render controlsPanel()}
+		{#if isPanelBeforeTrigger}
+			{@render controlsPanel()}
+			{@render triggerButton()}
+		{:else}
+			{@render triggerButton()}
+			{@render controlsPanel()}
+		{/if}
 
 		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 			{statusMessage}
@@ -1140,6 +1202,23 @@
 		outline: 2px solid var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-primary, #0066cc)));
 		outline-offset: 2px;
 		box-shadow: 0 0 0 4px color-mix(in srgb, var(--pie-primary, #0066cc) 22%, transparent);
+	}
+
+	/* Activating play/pause deliberately KEEPS focus on the trigger while the
+	   controls panel opens beside it, so where focus sits has to stay visible —
+	   including after a pointer activation, where the browser suppresses
+	   :focus-visible and would paint no ring at all. Scoped to
+	   `:focus:not(:focus-visible)` so it only fills that gap: genuine keyboard
+	   focus keeps whatever the shared `__control` rule (plain trigger) or the NDS
+	   component (nds-icon-button) already paints, untouched.
+	   Two selectors because the two trigger variants focus different nodes: the
+	   plain fallback IS the button, while <nds-icon-button> holds focus on an
+	   inner light-DOM <button> that Lit creates — so it carries no Svelte scoping
+	   class and must be reached with :global(). */
+	.pie-tool-tts-inline__trigger:focus:not(:focus-visible),
+	.pie-tool-tts-inline__trigger :global(button:focus:not(:focus-visible)) {
+		outline: 2px solid var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-primary, #0066cc)));
+		outline-offset: 2px;
 	}
 
 	.pie-tool-tts-inline__panel {

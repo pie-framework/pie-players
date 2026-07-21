@@ -6,6 +6,10 @@
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
+			// Presentation flag: opt in to NDS icon buttons. Convenience
+			// attribute mirrored onto `runtime.ndsIcons` (runtime wins if both
+			// are set). Defaults to unset (plain <button>s).
+			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -68,6 +72,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import { mergeNdsIconsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
@@ -110,6 +115,7 @@
 	let {
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
+		ndsIcons = undefined as boolean | undefined,
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
@@ -144,6 +150,9 @@
 			| "tabbed"
 			| string,
 	} = $props();
+	// Fold the `nds-icons` convenience attribute into the runtime handed to
+	// the kernel (host `runtime.ndsIcons` still wins if both are set).
+	const kernelRuntime = $derived(mergeNdsIconsIntoRuntime(runtime, ndsIcons));
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
@@ -286,7 +295,7 @@
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
 	{assessmentId}
-	{runtime}
+	runtime={kernelRuntime}
 	{section}
 	{sectionId}
 	{attemptId}

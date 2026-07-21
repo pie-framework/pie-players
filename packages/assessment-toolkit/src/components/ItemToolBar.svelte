@@ -308,6 +308,10 @@
 	});
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Presentation gate from the host runtime. Controls render
+	// <nds-icon-button> only when the host explicitly opts in
+	// (`ndsIcons === true`); otherwise they use plain <button> markup.
+	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
 	// Bumped from `coordinator.onPolicyChange(...)` so the engine-driven
@@ -1801,8 +1805,14 @@
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
 			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
+			// The calculator shell is the only shell that renders its header
+			// controls as <nds-icon-button>s. Gate that on the host flag so
+			// opted-out envs get the plain-<button> controls every other
+			// shell already uses. Layout decisions still key off
+			// `isCalculatorShell`; only the button *type* follows this flag.
+			const useNdsShellIcons = isCalculatorShell && useNdsIcons;
 
-			if (isCalculatorShell) ensureNdsAssets();
+			if (useNdsShellIcons) ensureNdsAssets();
 
 			shellEl = document.createElement('div');
 			shellEl.className = 'pie-tool-shell';
@@ -1897,7 +1907,7 @@
 			) => {
 				if (!controlsEl) return;
 				controlsEl.appendChild(
-					isCalculatorShell
+					useNdsShellIcons
 						? createShellIconButton(label, iconName, onActivate, faVariant)
 						: createShellControlButton(label, glyph, onActivate)
 				);
@@ -1938,7 +1948,7 @@
 				headerEl.appendChild(controlsEl);
 			}
 
-			if (isCalculatorShell) {
+			if (useNdsShellIcons) {
 				closeButtonEl = createShellIconButton('Close tool', 'xmark', closeShell, 'fa-regular');
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
@@ -1976,7 +1986,7 @@
 				closeButton.style.cursor = 'pointer';
 				closeButton.style.display = 'inline-flex';
 				closeButton.style.alignItems = 'center';
-				closeButton.style.justifyContent = 'center';
+				closeButton.style.justifyItems = 'center';
 				closeButton.style.width = '28px';
 				closeButton.style.height = '28px';
 				closeButton.style.padding = '0';
@@ -2270,20 +2280,26 @@
 		<div class="item-toolbar__tools-row">
 			{#each mountedElementsBeforeButtons as mounted (mounted.key)}
 				{#if mounted.entry.shell}
-					<span
-						class="item-toolbar__element-host"
-						use:mountElementWithShell={{
-							mounted,
-							active: renderedToolActiveById[mounted.toolId] ?? false
-						}}
-					></span>
+					<!-- Re-key on `useNdsIcons` so the imperatively-built shell (which
+					     reads the flag at build time) is rebuilt if the runtime flag
+					     resolves after the first mount. -->
+					{#key useNdsIcons}
+						<span
+							class="item-toolbar__element-host"
+							use:mountElementWithShell={{
+								mounted,
+								active: renderedToolActiveById[mounted.toolId] ?? false
+							}}
+						></span>
+					{/key}
 				{:else}
 					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
 				{/if}
 			{/each}
 
 			{#each toolbarItems as item (item.id)}
-				{@const faIconName = isToolbarLinkItem(item) ? null : resolveFaIconName(item)}
+				{@const faIconName =
+					useNdsIcons && !isToolbarLinkItem(item) ? resolveFaIconName(item) : null}
 				{#if faIconName}
 					<!-- NDS circular icon button. Active tools use the filled `primary`
 					     variant; inactive use `ghost`. The click bubbles out of the
@@ -2370,13 +2386,17 @@
 
 			{#each mountedElementsAfterButtons as mounted (mounted.key)}
 				{#if mounted.entry.shell}
-					<span
-						class="item-toolbar__element-host"
-						use:mountElementWithShell={{
-							mounted,
-							active: renderedToolActiveById[mounted.toolId] ?? false
-						}}
-					></span>
+					<!-- See note above: re-key on `useNdsIcons` so a late flag change
+					     rebuilds the shell with the right control style. -->
+					{#key useNdsIcons}
+						<span
+							class="item-toolbar__element-host"
+							use:mountElementWithShell={{
+								mounted,
+								active: renderedToolActiveById[mounted.toolId] ?? false
+							}}
+						></span>
+					{/key}
 				{:else}
 					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
 				{/if}
@@ -2391,13 +2411,17 @@
 			>
 				{#each mountedElementsControlsRow as mounted (mounted.key)}
 					{#if mounted.entry.shell}
-						<span
-							class="item-toolbar__controls-host"
-							use:mountElementWithShell={{
-								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false
-							}}
-						></span>
+						<!-- See note above: re-key on `useNdsIcons` so a late flag
+						     change rebuilds the shell with the right control style. -->
+						{#key useNdsIcons}
+							<span
+								class="item-toolbar__controls-host"
+								use:mountElementWithShell={{
+									mounted,
+									active: renderedToolActiveById[mounted.toolId] ?? false
+								}}
+							></span>
+						{/key}
 					{:else}
 						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry.element}></span>
 					{/if}

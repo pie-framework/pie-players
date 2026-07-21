@@ -8,6 +8,11 @@
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			env: { attribute: "env", type: "Object" },
+			// Presentation flag surfaced onto the runtime context. Consumers
+			// render the vendored <nds-icon-button> only when this is
+			// explicitly `true`; otherwise they use plain <button>s. Defaults
+			// to `false` (opt-in).
+			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
@@ -193,6 +198,7 @@ const DEFAULT_ENV = {
 		sectionId = "",
 		attemptId = "",
 		env = {},
+		ndsIcons = false,
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
@@ -894,6 +900,9 @@ const DEFAULT_ENV = {
 			assessmentId: effectiveAssessmentId,
 			sectionId: effectiveSectionId,
 			itemPlayer: effectiveItemPlayer,
+			// Opt-in: NDS icons only when explicitly enabled. Normalize to a
+			// strict boolean so `undefined`/`false` both read as off.
+			ndsIcons: ndsIcons === true,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
 				const result = sectionEngine.updateItemSession(itemId, detail);
 				emitNormalizedSessionChanged({

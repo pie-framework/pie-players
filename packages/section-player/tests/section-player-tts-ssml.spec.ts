@@ -581,10 +581,11 @@ test.describe("section player demo tts-ssml", () => {
 			}
 			const triggerA11y = await firstInlineTts.evaluate((host) => {
 				const root = host.shadowRoot;
-				// The trigger is an <nds-icon-button> host; its disclosure ARIA lives
-				// on the inner focusable <button> the component renders.
+				// Disclosure ARIA lives on the focusable <button>: the inner button
+				// when the trigger is an <nds-icon-button> host (ndsIcons on), or the
+				// trigger button itself in the default plain rendering.
 				const trigger = root?.querySelector(
-					".pie-tool-tts-inline__trigger button",
+					".pie-tool-tts-inline__trigger button, button.pie-tool-tts-inline__trigger",
 				) as HTMLButtonElement | null;
 				const panelEl = root?.querySelector(
 					".pie-tool-tts-inline__panel",
@@ -610,7 +611,7 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(panel).toHaveCount(0);
 			const postStopExpanded = await firstInlineTts.evaluate((host) => {
 				const trigger = host.shadowRoot?.querySelector(
-					".pie-tool-tts-inline__trigger button",
+					".pie-tool-tts-inline__trigger button, button.pie-tool-tts-inline__trigger",
 				) as HTMLButtonElement | null;
 				return trigger?.getAttribute("aria-expanded") || null;
 			});
@@ -1085,10 +1086,11 @@ test.describe("section player demo tts-ssml", () => {
 				.toMatch(/playing|paused|loading/);
 			const expandedAfterProgrammaticHandoff = await passageInlineTts.evaluate(
 				(host) => {
-					// The disclosure semantics live on the NDS icon button's inner
-					// <button> (reflectAria targets it), not the custom-element host.
+					// Disclosure semantics live on the focusable <button>: the NDS
+					// inner button (reflectAria targets it) when ndsIcons is on, or
+					// the plain trigger button itself by default.
 					const trigger = host.shadowRoot?.querySelector(
-						".pie-tool-tts-inline__trigger button",
+						".pie-tool-tts-inline__trigger button, button.pie-tool-tts-inline__trigger",
 					) as HTMLButtonElement | null;
 					return trigger?.getAttribute("aria-expanded") || null;
 				},

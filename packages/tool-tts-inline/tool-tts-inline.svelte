@@ -183,9 +183,24 @@
 		};
 	};
 
+	// Lightweight sibling of `ndsIconButtonAction` for the non-NDS fallback
+	// trigger: still install the FA assets the panel's `<i class="fa-…">`
+	// glyphs depend on (normally installed as a side effect of rendering the
+	// NDS trigger), but skip the fa-light→fa-solid swap since the fallback
+	// authors its glyphs as `fa-solid` directly.
+	const faAssetsAction = (node: HTMLElement) => {
+		ensureNdsAssets();
+		installFaInShadow(node);
+		return {};
+	};
+
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let toolbarEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Presentation gate from the host runtime. The trigger renders as an
+	// <nds-icon-button> only when the host explicitly opts in
+	// (`ndsIcons === true`); otherwise it is a plain <button>.
+	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
 	const ttsService = $derived(runtimeContext?.ttsService as TtsServiceApi | undefined);
@@ -903,30 +918,54 @@
 			<!-- 200% zoom cap lives on this WRAPPER, never on the nds-icon-button
 			     host directly: CSS `zoom` on an nds-icon-button (light-DOM render +
 			     injected global <style>) mis-sizes it. Wrapping matches the proven
-			     section-player scroll-hint pattern. -->
+			     section-player scroll-hint pattern. Wraps both trigger variants so
+			     the plain fallback gets the same zoom compensation. -->
 			<span class="pie-tool-tts-inline__trigger-zoom">
+				{#if useNdsIcons}
 				<!-- NDS circular icon button. `variant="primary"` (filled) marks the
-				     active/open state; `ghost` is the resting state. The native click
-				     bubbles out of the component's inner <button>, so `onclick` still
-				     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
-				     relationships onto that inner button (nds exposes only aria-label). -->
-				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-				<nds-icon-button
-					use:ndsIconButtonAction
-					use:reflectAria={{
-						'aria-expanded': controlsVisible ? 'true' : 'false',
-						'aria-controls': controlsVisible ? panelId : null,
-						'aria-pressed': controlsVisible ? 'true' : 'false',
-					}}
-					class="pie-tool-tts-inline__trigger {sizeClass}"
-					type="circle"
-					size="small"
-					variant="tertiary"
-					icon-name={speaking && !paused ? 'pause' : 'play'}
-					button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+					     active/open state; `ghost` is the resting state. The native click
+					     bubbles out of the component's inner <button>, so `onclick` still
+					     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
+					     relationships onto that inner button (nds exposes only aria-label). -->
+					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+					<nds-icon-button
+						use:ndsIconButtonAction
+						use:reflectAria={{
+							'aria-expanded': controlsVisible ? 'true' : 'false',
+							'aria-controls': controlsVisible ? panelId : null,
+							'aria-pressed': controlsVisible ? 'true' : 'false',
+						}}
+						class="pie-tool-tts-inline__trigger {sizeClass}"
+						type="circle"
+						size="small"
+						variant="tertiary"
+						icon-name={speaking && !paused ? 'pause' : 'play'}
+						button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+						disabled={!ttsService || playActionInFlight}
+						onclick={handlePlayPause}
+					></nds-icon-button>
+			{:else}
+				<!-- Non-NDS fallback: plain <button> with the same play/pause FA
+				     glyph the panel controls use. Keeps the `__trigger` class so
+				     the focus-restore helpers still find it, and the `__control`
+				     styling so it matches the other plain controls. -->
+				<button
+					use:faAssetsAction
+					type="button"
+					class="pie-tool-tts-inline__control pie-tool-tts-inline__trigger pie-tool-tts-inline__trigger--plain {sizeClass}"
+					aria-expanded={controlsVisible ? 'true' : 'false'}
+					aria-controls={controlsVisible ? panelId : undefined}
+					aria-pressed={controlsVisible ? 'true' : 'false'}
+					aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
 					disabled={!ttsService || playActionInFlight}
 					onclick={handlePlayPause}
-				></nds-icon-button>
+				>
+					<i
+						class={`fa-solid ${speaking && !paused ? 'fa-pause' : 'fa-play'} pie-tool-tts-inline__icon`}
+						aria-hidden="true"
+					></i>
+				</button>
+			{/if}
 			</span>
 		{/snippet}
 
@@ -1076,6 +1115,14 @@
 		/* Host-settable accent: the NDS tertiary glyph colour derives from
 		   --color-interactive-blue, remapped here to a themeable variable. */
 		--color-interactive-blue: var(--pie-tts-button-color, #146eb3);
+	}
+
+	/* Non-NDS fallback trigger (host opted out of nds-icon-button). Inherits
+	   the plain `__control` box; only override to keep the round trigger
+	   shape and the themeable accent colour on its glyph. */
+	.pie-tool-tts-inline__trigger--plain {
+		border-radius: 50%;
+		color: var(--pie-tts-button-color, #146eb3);
 	}
 
 	.pie-tool-tts-inline__control:hover:not(:disabled) {

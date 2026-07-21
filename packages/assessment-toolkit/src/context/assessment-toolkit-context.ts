@@ -32,6 +32,13 @@ export interface AssessmentToolkitRuntimeContext {
 	assessmentId: string;
 	sectionId: string;
 	itemPlayer: ItemPlayerConfig;
+	/**
+	 * Opt-in flag: context consumers render the vendored `<nds-icon-button>`
+	 * only when this is `true`; otherwise (unset/`false`, the default) they
+	 * render plain `<button>` controls. Sourced from the host's
+	 * `runtime.ndsIcons` (or the `nds-icons` attribute on the toolkit).
+	 */
+	ndsIcons?: boolean;
 	reportSessionChanged?: (itemId: string, detail: unknown) => void;
 }
 

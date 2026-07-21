@@ -5,6 +5,12 @@
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
+			// Presentation flag mirrored onto the toolkit runtime context.
+			// Controls render <nds-icon-button> only when this is explicitly
+			// true; otherwise they use plain <button>s. Two-tier:
+			// `runtime.ndsIcons` wins over this top-level prop; defaults to
+			// false (opt-in).
+			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -51,6 +57,7 @@
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
+		ndsIcons = false,
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
@@ -100,6 +107,18 @@
 		() => runtime?.isolation ?? DEFAULT_ISOLATION,
 	);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? DEFAULT_ENV);
+	// Two-tier resolution: `runtime.ndsIcons` wins over the top-level prop.
+	// Opt-in — NDS icon buttons render only when explicitly enabled.
+	//
+	// Resolve to `true` or `undefined` (never `false`): a Svelte custom
+	// element serializes `nds-icons={false}` to the attribute string
+	// `"false"`, and the toolkit's Boolean prop coerces *any present*
+	// attribute — including `"false"` — to `true`. Passing `undefined`
+	// removes the attribute so the toolkit falls back to its own `false`
+	// default. See PieAssessmentToolkit `ndsIcons`.
+	const effectiveNdsIcons = $derived.by(() =>
+		(runtime?.ndsIcons ?? ndsIcons) === true ? true : undefined,
+	);
 	const defaultToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 	});
@@ -402,6 +421,7 @@
 	player-type={effectivePlayerType}
 	player={effectivePlayer}
 	env={effectiveEnv}
+	nds-icons={effectiveNdsIcons}
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}

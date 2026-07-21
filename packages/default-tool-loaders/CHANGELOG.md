@@ -1,5 +1,21 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.59
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-tool-tts-inline@0.3.59
+  - @pie-players/pie-tool-annotation-toolbar@0.3.59
+  - @pie-players/pie-tool-answer-eliminator@0.3.59
+  - @pie-players/pie-tool-calculator-desmos@0.3.59
+  - @pie-players/pie-tool-theme@0.3.59
+  - @pie-players/pie-tool-graph@0.3.59
+  - @pie-players/pie-tool-line-reader@0.3.59
+  - @pie-players/pie-tool-periodic-table@0.3.59
+  - @pie-players/pie-tool-protractor@0.3.59
+  - @pie-players/pie-tool-ruler@0.3.59
+
 ## 0.3.58
 
 ### Patch Changes

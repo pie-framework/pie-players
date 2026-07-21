@@ -1,5 +1,12 @@
 # @pie-players/pie-item-player
 
+## 0.3.59
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@0.3.59
+- @pie-players/pie-theme@0.3.59
+
 ## 0.3.58
 
 ### Patch Changes

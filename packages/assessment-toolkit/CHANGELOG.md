@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.59
+
+### Patch Changes
+
+- Add an opt-in `nds-icons` flag so hosts can render the vendored `<nds-icon-button>` per environment. Enable it with the `nds-icons` attribute on a section-player element (`<pie-section-player-splitpane nds-icons={true}>`, and likewise on `-vertical`, `-tabbed`, and `-base`) or via `runtime.ndsIcons: true`. When on, the toolbar tool buttons, the calculator shell controls, the inline-TTS play/pause trigger, and the section scroll-hint render as NDS icon buttons; the flag flows through the toolkit runtime context. It defaults to off, so unless a host explicitly opts in these controls render as plain `<button>`s.
+  - @pie-players/pie-calculator@0.3.59
+  - @pie-players/pie-calculator-desmos@0.3.59
+  - @pie-players/pie-context@0.3.59
+  - @pie-players/pie-players-shared@0.3.59
+  - @pie-players/pie-tts@0.3.59
+  - @pie-players/tts-client-server@0.3.59
+
 ## 0.3.58
 
 ### Patch Changes

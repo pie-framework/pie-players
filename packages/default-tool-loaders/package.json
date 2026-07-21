@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-default-tool-loaders",
-	"version": "0.3.58",
+	"version": "0.3.59",
 	"type": "module",
 	"description": "Default lazy module loaders for PIE assessment tools",
 	"repository": {

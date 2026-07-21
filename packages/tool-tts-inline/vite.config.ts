@@ -1,8 +1,17 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			"@pie-players/pie-players-shared/ui/use-zoom-compensation": resolve(
+				__dirname,
+				"../players-shared/src/ui/use-zoom-compensation.svelte.ts",
+			),
+		},
+	},
 	plugins: [
 		svelte({
 			compilerOptions: {

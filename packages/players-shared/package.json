@@ -60,6 +60,10 @@
 		"./nds-icon-button": {
 			"types": "./dist/components/vendor/nds/nds-icon-button.d.ts",
 			"import": "./dist/components/vendor/nds/nds-icon-button.js"
+		},
+		"./ui/zoom-compensation": {
+			"types": "./dist/ui/zoom-compensation.d.ts",
+			"import": "./dist/ui/zoom-compensation.js"
 		}
 	},
 	"files": [

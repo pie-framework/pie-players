@@ -6,6 +6,10 @@
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
+			// Presentation flag: opt in to NDS icon buttons. Convenience
+			// attribute mirrored onto `runtime.ndsIcons` (runtime wins if both
+			// are set). Defaults to unset (plain <button>s).
+			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -68,6 +72,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import { mergeNdsIconsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	// TS language service false-positive in this workspace: Svelte component has a default export.
@@ -170,6 +175,7 @@
 	let {
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
+		ndsIcons = undefined as boolean | undefined,
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
@@ -196,6 +202,10 @@
 		splitPaneInitialPassageWidth = undefined as number | string | undefined,
 		splitPaneCollapseStrategy = "tabbed" as "vertical" | "tabbed" | string,
 	} = $props();
+
+	// Fold the `nds-icons` convenience attribute into the runtime handed to
+	// the kernel (host `runtime.ndsIcons` still wins if both are set).
+	const kernelRuntime = $derived(mergeNdsIconsIntoRuntime(runtime, ndsIcons));
 
 	// Snapshot of the resolved prop at mount. Renders the divider in the
 	// right place on the first frame (so consumers don't see a 50% flash
@@ -421,7 +431,7 @@
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
 	{assessmentId}
-	{runtime}
+	runtime={kernelRuntime}
 	{section}
 	{sectionId}
 	{attemptId}

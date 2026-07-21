@@ -35,6 +35,7 @@ import {
 	DEFAULT_PLAYER_TYPE,
 	resolveSectionEngineRuntimeState,
 	type PlayerOverrides,
+	type RuntimeConfig,
 	type RuntimeInputs,
 } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 import {
@@ -150,4 +151,20 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 	return resolveSectionEngineRuntimeState(args, {
 		resolvePlayerRuntime,
 	});
+}
+
+/**
+ * Fold a layout element's `nds-icons` convenience attribute into the
+ * `runtime` config handed to the kernel. Only injects when the attribute
+ * is explicitly set, so an unset attribute never clobbers a
+ * `runtime.ndsIcons` the host provided; when both are present,
+ * `runtime.ndsIcons` wins (spread last). Returns the input unchanged when
+ * the attribute is unset.
+ */
+export function mergeNdsIconsIntoRuntime(
+	runtime: RuntimeConfig | null,
+	ndsIcons: boolean | undefined,
+): RuntimeConfig | null {
+	if (ndsIcons === undefined) return runtime;
+	return { ndsIcons, ...(runtime ?? {}) };
 }

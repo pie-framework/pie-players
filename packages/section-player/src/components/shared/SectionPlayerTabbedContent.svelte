@@ -4,7 +4,7 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { useZoomCompensation } from "./use-zoom-compensation.svelte.js";
+	import { useZoomCompensation } from "@pie-players/pie-players-shared/ui/use-zoom-compensation";
 
 	type LayoutModel = {
 		passages: unknown[];
@@ -65,6 +65,15 @@
 	 * freezes at the 200% appearance, leaving more room for passage/question
 	 * content in high-zoom / small-window situations.
 	 *
+	 * `minCompensation` is the floor on that shrink factor, and once it bites
+	 * the toggle grows past 200% again (apparent size = zoom * floor). We keep
+	 * it below `maxZoom / maxBrowserZoom` (2 / 5 = 0.4) so the cap holds across
+	 * the full browser zoom range: the `outerWidth / innerWidth` estimate
+	 * overshoots real zoom (browser chrome shrinks innerWidth), so at a real
+	 * 500% the ratio already reads above 5 and a 0.4 floor would let the toggle
+	 * grow again. 0.25 pushes the floor's bite point to a ratio of 8, past any
+	 * real browser zoom, while still guarding against an unusably small toggle.
+	 *
 	 * NOTE: this same factor is also applied to the vertical spacing
 	 * (gap + block padding) surrounding the toggle in
 	 * .pie-section-player-tabbed-content, via the same CSS variable. The
@@ -75,7 +84,7 @@
 	 */
 	const toggleZoom = useZoomCompensation({
 		maxZoom: 2,
-		minCompensation: 0.4,
+		minCompensation: 0.25,
 	});
 
 	// Reset to the Passage tab whenever we navigate to a different section.

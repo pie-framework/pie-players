@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	approximateZoomFromWidths,
 	computeZoomCompensation,
-} from "../src/components/shared/use-zoom-compensation.svelte.js";
+} from "../src/ui/zoom-compensation.js";
 
 describe("approximateZoomFromWidths", () => {
 	test("returns outer / inner ratio for typical zoom levels", () => {

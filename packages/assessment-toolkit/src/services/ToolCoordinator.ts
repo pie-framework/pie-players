@@ -53,6 +53,15 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	private tools = new Map<string, ToolRegistration>();
 	private layerCounters = new Map<ZIndexLayer, number>();
 	private listeners = new Set<() => void>();
+	/**
+	 * Activation (on/off) state keyed by tool id, kept independent of the
+	 * element registration lifecycle. A tool's DOM element can be unregistered
+	 * and re-registered as the item re-renders (e.g. a model change re-mounts
+	 * the toolbar overlay); when that happens the on/off state must survive so
+	 * that only an explicit toggle — the toolbar button — turns a tool off.
+	 * Cleared on genuine teardown via {@link releaseTool}.
+	 */
+	private visibilityState = new Map<string, boolean>();
 
 	constructor(config: ToolCoordinatorConfig = {}) {
 		this.config = config;
@@ -103,6 +112,11 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			return;
 		}
 
+		// Restore prior on/off state. A re-registration (e.g. after an item
+		// re-render unmounts and re-mounts the tool element) must preserve the
+		// tool's activation state so only an explicit toggle can turn it off.
+		const isVisible = this.visibilityState.get(id) ?? false;
+
 		// If no element provided, create a placeholder registration
 		if (!element) {
 			this.tools.set(id, {
@@ -110,7 +124,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 				name,
 				element: null,
 				layer,
-				isVisible: false,
+				isVisible,
 				baseZIndex: layer,
 			});
 			log("Tool registered without element:", id);
@@ -123,6 +137,9 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		// Apply z-index
 		element.style.zIndex = String(baseZIndex);
 
+		// Reflect restored visibility onto the freshly registered element.
+		element.style.display = isVisible ? "" : "none";
+
 		// Create and store event handler to enable proper cleanup
 		const mouseDownHandler = () => this.bringToFront(element);
 		element.addEventListener("mousedown", mouseDownHandler);
@@ -133,16 +150,26 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			name,
 			element,
 			layer,
-			isVisible: false,
+			isVisible,
 			baseZIndex,
 			mouseDownHandler,
 		});
+
+		if (isVisible) {
+			this.bringToFront(element);
+		}
 
 		log("Tool registered with element:", id);
 	}
 
 	/**
 	 * Unregister a tool
+	 *
+	 * Detaches the element binding (listeners, registration) but intentionally
+	 * preserves the tool's activation state in {@link visibilityState}, so a
+	 * subsequent re-registration of the same id (e.g. after an item re-render)
+	 * restores whether the tool was on or off. Use {@link releaseTool} to also
+	 * discard the activation state on genuine teardown.
 	 *
 	 * @param id Tool identifier
 	 */
@@ -156,6 +183,19 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		}
 
 		this.tools.delete(id);
+	}
+
+	/**
+	 * Fully release a tool: unregister its element binding AND discard its
+	 * preserved activation state. Call this on genuine teardown (e.g. leaving
+	 * the item/section that owns the tool) rather than {@link unregisterTool},
+	 * which keeps the on/off state alive across element re-registration.
+	 *
+	 * @param id Tool identifier
+	 */
+	releaseTool(id: string): void {
+		this.unregisterTool(id);
+		this.visibilityState.delete(id);
 	}
 
 	/**
@@ -175,6 +215,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			this.bringToFront(tool.element);
 		}
 		tool.isVisible = true;
+		this.visibilityState.set(id, true);
 		this.notifyListeners();
 	}
 
@@ -194,6 +235,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			tool.element.style.display = "none";
 		}
 		tool.isVisible = false;
+		this.visibilityState.set(id, false);
 		this.notifyListeners();
 	}
 
@@ -229,7 +271,11 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 */
 	isToolVisible(id: string): boolean {
 		const tool = this.tools.get(id);
-		return tool?.isVisible ?? false;
+		if (tool) return tool.isVisible;
+		// No live element registration (e.g. mid re-render, between unmount and
+		// re-mount): fall back to the preserved activation state so the tool
+		// doesn't read as "off" during the gap.
+		return this.visibilityState.get(id) ?? false;
 	}
 
 	/**

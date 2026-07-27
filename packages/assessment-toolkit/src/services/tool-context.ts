@@ -411,9 +411,11 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 		"pie-multiple-choice",
 		"pie-inline-choice",
 		"pie-select-text",
+		"pie-ebsr",
 		"multiple-choice",
 		"inline-choice",
 		"select-text",
+		"ebsr",
 	];
 
 	if (isElementContext(context)) {

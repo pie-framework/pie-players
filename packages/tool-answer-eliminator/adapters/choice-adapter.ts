@@ -38,10 +38,25 @@ export interface ChoiceAdapter {
 	getChoiceLabel(choice: HTMLElement): string;
 
 	/**
+	 * Check if the choice is currently selected by the student
+	 * (radio/checkbox checked). Optional: adapters that support hiding the
+	 * eliminate control on a selected choice implement this.
+	 */
+	isSelected?(choice: HTMLElement): boolean;
+
+	/**
 	 * Check if choice can be eliminated
 	 * (not already selected, not in evaluate mode, etc.)
 	 */
 	canEliminate(choice: HTMLElement): boolean;
+
+	/**
+	 * Enable or disable the student's ability to select this choice.
+	 * A struck-through choice is made non-selectable (grayed out) so a
+	 * student cannot pick an answer they have eliminated. Optional: only
+	 * adapters backed by a real input (radio/checkbox) implement this.
+	 */
+	setSelectable?(choice: HTMLElement, selectable: boolean): void;
 
 	/**
 	 * Get the container element to attach elimination button

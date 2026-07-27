@@ -66,4 +66,25 @@ describe("tool-context helpers", () => {
 
 		expect(hasChoiceInteraction(context)).toBe(true);
 	});
+
+	test("detects EBSR as a choice interaction (choices live under partA/partB)", () => {
+		const context: ToolContext = {
+			level: "item",
+			assessment: {} as any,
+			itemRef: {} as any,
+			item: {
+				config: {
+					models: [
+						{
+							element: "ebsr",
+							partA: { choiceMode: "radio", choices: [{ value: "a" }] },
+							partB: { choiceMode: "checkbox", choices: [{ value: "a" }] },
+						},
+					],
+				},
+			} as any,
+		};
+
+		expect(hasChoiceInteraction(context)).toBe(true);
+	});
 });

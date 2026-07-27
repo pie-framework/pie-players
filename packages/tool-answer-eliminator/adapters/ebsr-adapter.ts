@@ -86,8 +86,16 @@ export class EBSRAdapter implements ChoiceAdapter {
 		return this.mcAdapter.getChoiceLabel(choice);
 	}
 
+	isSelected(choice: HTMLElement): boolean {
+		return this.mcAdapter.isSelected(choice);
+	}
+
 	canEliminate(choice: HTMLElement): boolean {
 		return this.mcAdapter.canEliminate(choice);
+	}
+
+	setSelectable(choice: HTMLElement, selectable: boolean): void {
+		this.mcAdapter.setSelectable(choice, selectable);
 	}
 
 	getButtonContainer(choice: HTMLElement): HTMLElement | null {

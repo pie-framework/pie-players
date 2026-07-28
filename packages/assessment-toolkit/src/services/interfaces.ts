@@ -195,9 +195,16 @@ export interface ToolCoordinatorApi {
 	): void;
 
 	/**
-	 * Unregister a tool
+	 * Unregister a tool's element binding while preserving its activation
+	 * (on/off) state, so a re-registration of the same id restores it.
 	 */
 	unregisterTool(id: string): void;
+
+	/**
+	 * Fully release a tool: unregister and discard its preserved activation
+	 * state. Use on genuine teardown rather than `unregisterTool`.
+	 */
+	releaseTool(id: string): void;
 
 	/**
 	 * Show a tool

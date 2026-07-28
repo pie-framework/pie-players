@@ -1,5 +1,16 @@
 # @pie-players/pie-section-player
 
+## 0.3.60
+
+### Patch Changes
+
+- 6a18740: Fall back to the theme-aware `--pie-background-dark` token for split-pane passage and item pane backgrounds so the panes follow dark themes and color schemes when the host passage-player does not set `--pie-passage-header-background`.
+  - @pie-players/pie-assessment-toolkit@0.3.60
+  - @pie-players/pie-context@0.3.60
+  - @pie-players/pie-default-tool-loaders@0.3.60
+  - @pie-players/pie-item-player@0.3.60
+  - @pie-players/pie-players-shared@0.3.60
+
 ## 0.3.59
 
 ### Patch Changes

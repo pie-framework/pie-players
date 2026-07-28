@@ -1,5 +1,11 @@
 # @pie-players/tts-server-google
 
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.60
+
 ## 0.3.59
 
 ### Patch Changes

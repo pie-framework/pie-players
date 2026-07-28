@@ -618,7 +618,15 @@
 		   descendant content (sticky headers, floating toolbars, etc.). */
 		margin: 0.5rem;
 		box-sizing: border-box;
-		background: var(--pie-passage-header-background, #ecedf1);
+		/* --pie-passage-header-background is owned by the hosted passage-player
+		   custom element and is often unset, so the fallback has to be a theme
+		   token rather than a literal — otherwise the panes stay light gray
+		   under dark themes and color schemes. --pie-background-dark resolves
+		   to #ecedf1 in the default light theme, matching the previous fill. */
+		background: var(
+			--pie-passage-header-background,
+			var(--pie-background-dark, #ecedf1)
+		);
 		scrollbar-width: thin;
 		scrollbar-color:
 			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);

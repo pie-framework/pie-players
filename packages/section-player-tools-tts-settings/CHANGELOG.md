@@ -1,5 +1,12 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.60
+- @pie-players/pie-theme@0.3.60
+
 ## 0.3.59
 
 ### Patch Changes

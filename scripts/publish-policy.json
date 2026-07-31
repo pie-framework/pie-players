@@ -2,6 +2,7 @@
 	"requiredPublishConfigAccess": "public",
 	"requiredFields": ["license", "homepage", "bugs", "files", "sideEffects"],
 	"requireRepositoryDirectory": true,
+	"requiredRepositoryUrl": "git+https://github.com/pie-framework/pie-players.git",
 	"requireExportsOrMainTypes": true,
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",

@@ -1,0 +1,73 @@
+version: 2
+updates:
+  # Enable version updates for JavaScript dependencies.
+  #
+  # `bun`, not `npm`. This repo installs with Bun and its only lockfile is the root
+  # bun.lock, which the npm ecosystem cannot write. Any PR Dependabot raised under `npm`
+  # would change a package.json without touching bun.lock, and CI would fail at the first
+  # step of every job with "lockfile had changes, but lockfile is frozen" (jobs run
+  # `bun install --frozen-lockfile`) — i.e. unmergeable by construction. Dependabot
+  # supports Bun >= 1.1.39 as its own ecosystem, which does maintain bun.lock.
+  #
+  # Kept at directory "/" deliberately. Bun workspaces resolve every member through the
+  # single root lockfile, so the root entry covers all of packages/*, apps/* and tools/*.
+  # Fanning `directories` out across the workspace globs instead produces one PR per
+  # package per dependency — dozens at once, including the same TypeScript bump filed
+  # separately for every package — without improving coverage.
+  #
+  # Note this does not affect Dependabot *alerts*: those come from the repository
+  # dependency graph, which is built independently of this file.
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      # Group dev dependencies together
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "@biomejs/*"
+          - "@changesets/*"
+          - "typescript"
+          - "turbo"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group testing dependencies
+      test-dependencies:
+        patterns:
+          - "@playwright/*"
+          - "playwright"
+          - "vitest"
+          - "@testing-library/*"
+          - "@axe-core/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"

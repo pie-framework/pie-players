@@ -1,3 +1,11 @@
+# Publishes @pie-players/pie-preloaded-player, the build-time-generated bundle described in
+# docs/preloaded-player/readme.md.
+#
+# This workflow is the SOLE publisher of that package. npm permits exactly one trusted
+# publisher per package, so the trusted-publisher record for
+# @pie-players/pie-preloaded-player names this file (see
+# scripts/configure-trusted-publishers.mjs). Do not add a second publish path for it —
+# `bun run release` deliberately no longer does.
 name: Publish preloaded packages
 
 on:
@@ -19,12 +27,29 @@ on:
         required: false
         type: boolean
         default: false
+      publish_auth:
+        description: "Publish auth mode"
+        required: false
+        type: choice
+        options:
+          - auto
+          - token
+          - oidc
+        default: auto
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      PUBLISH_NPM_TOKEN: ""
+      PUBLISH_NODE_AUTH_TOKEN: ""
     permissions:
       contents: read
+      # Required for OIDC trusted publishing: lets the job request the short-lived
+      # id-token that npm exchanges for publish rights.
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,8 +64,27 @@ jobs:
       - name: Setup Node (for npm publish auth)
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version-file: .nvmrc
           registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing needs npm >= 11.5.1, and the Node in .nvmrc still bundles
+      # npm 10.9.2. Harmless on token-auth runs, required on OIDC runs.
+      - name: Ensure npm supports trusted publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "bundled npm: $(npm --version)"
+          npm install -g npm@^11.5.1
+          NPM_VERSION="$(npm --version)"
+          echo "npm now: ${NPM_VERSION}"
+          NPM_VERSION="$NPM_VERSION" node -e '
+            const [maj, min, pat] = process.env.NPM_VERSION.split(".").map(Number);
+            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && pat >= 1)));
+            if (!ok) {
+              console.error(`npm ${process.env.NPM_VERSION} is below the 11.5.1 required for trusted publishing`);
+              process.exit(1);
+            }
+          '
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -48,9 +92,90 @@ jobs:
       - name: Build CLI
         run: bun run --cwd tools/cli build
 
+      # `auto` resolves to token while the NPM_TOKEN secret exists, and to oidc once it is
+      # deleted. That makes the cutover a secret deletion rather than a workflow edit, and
+      # keeps a manual escape hatch in both directions.
+      - name: Resolve npm publish auth mode
+        id: npm_auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTRY="$(npm config get registry)"
+          echo "npm registry: ${REGISTRY}"
+          if [ "${REGISTRY}" != "https://registry.npmjs.org/" ]; then
+            echo "Unexpected npm registry configured: ${REGISTRY}" >&2
+            exit 1
+          fi
+
+          publish_auth_input="auto"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            publish_auth_input="${{ inputs.publish_auth }}"
+          fi
+
+          if [ "${publish_auth_input}" = "token" ]; then
+            if [ -z "${NPM_TOKEN:-}" ]; then
+              echo "publish_auth=token requires NPM_TOKEN secret." >&2
+              exit 1
+            fi
+            echo "mode=token" >> "$GITHUB_OUTPUT"
+          elif [ "${publish_auth_input}" = "oidc" ]; then
+            echo "mode=oidc" >> "$GITHUB_OUTPUT"
+          else
+            if [ -n "${NPM_TOKEN:-}" ]; then
+              echo "mode=token" >> "$GITHUB_OUTPUT"
+            else
+              echo "mode=oidc" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Configure token auth for npm publish
+        if: steps.npm_auth.outputs.mode == 'token'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Using token auth for npm publish."
+          echo "PUBLISH_NPM_TOKEN=${NPM_TOKEN}" >> "$GITHUB_ENV"
+          echo "PUBLISH_NODE_AUTH_TOKEN=${NPM_TOKEN}" >> "$GITHUB_ENV"
+
+      - name: Configure OIDC auth for npm publish
+        if: steps.npm_auth.outputs.mode == 'oidc'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Using OIDC trusted publishing for npm publish."
+          echo "PUBLISH_NPM_TOKEN=" >> "$GITHUB_ENV"
+          echo "PUBLISH_NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
+
+          # actions/setup-node ran with registry-url, so it wrote an .npmrc containing
+          # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`. Under OIDC there is no
+          # token, so that line expands to an empty credential and npm attempts (and fails)
+          # token auth instead of falling through to trusted publishing. Strip the auth
+          # line, keep the registry line.
+          for candidate in "${NPM_CONFIG_USERCONFIG:-}" "${RUNNER_TEMP:-}/.npmrc" "$HOME/.npmrc"; do
+            [ -n "$candidate" ] || continue
+            [ -f "$candidate" ] || continue
+            if grep -q "_authToken" "$candidate"; then
+              sed -i.bak '/_authToken/d' "$candidate" && rm -f "$candidate.bak"
+              echo "Removed _authToken line from ${candidate}"
+            fi
+            echo "--- ${candidate} after scrub:"
+            sed 's/^/    /' "$candidate"
+          done
+
+      - name: Verify npm publish credentials (token mode only)
+        if: steps.npm_auth.outputs.mode == 'token'
+        env:
+          NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
+        run: node scripts/check-npm-auth.mjs
+
       - name: Publish preloaded packages
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publishAll }}" = "true" ]; then
             bun scripts/preloaded-player/publish-changed.mjs --all

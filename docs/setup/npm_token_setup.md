@@ -1,10 +1,22 @@
 # NPM Token Setup for CI/CD
 
-This guide explains how to safely configure the NPM authentication token for automated publishing.
+> **Superseded for CI publishing.** CI publishes via OIDC trusted publishing and no longer
+> needs a long-lived npm token — see [publishing.md](publishing.md#how-ci-authenticates-to-npm).
+> Once the `NPM_TOKEN` repository secret is deleted, both publishing workflows resolve their
+> `auto` auth mode to OIDC.
+>
+> Per npm's 2026-07-08 changelog, tokens that bypass 2FA lose the ability to change trusted
+> publishing configuration from early August 2026 and lose direct publishing capability
+> around January 2027, so the automation token described below is on a deprecation path.
+>
+> This guide is retained for two cases that still use a token: **local** publishing via the
+> repo's `.env` file, and the `token` auth mode kept as a CI fallback.
+
+This guide explains how to safely configure the NPM authentication token for publishing.
 
 ## Overview
 
-GitHub Actions workflows in this repo need an NPM token to publish packages to the npm registry (including the preloaded-player publisher in `.github/workflows/publish-preloaded-player.yml`). This token must be:
+An NPM token is needed for local publishing, and for CI runs that explicitly select the `token` auth mode. This token must be:
 - An **Automation token** (not granular or classic)
 - Have **publish permissions** to the `@pie-players` organization
 - Stored securely as a GitHub **repository secret**

@@ -64,9 +64,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org
           always-auth: true
+
+      # Trusted publishing needs npm >= 11.5.1, and the Node in .nvmrc still bundles
+      # npm 10.9.2. Harmless on token-auth runs, required on OIDC runs.
+      - name: Ensure npm supports trusted publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "bundled npm: $(npm --version)"
+          npm install -g npm@^11.5.1
+          NPM_VERSION="$(npm --version)"
+          echo "npm now: ${NPM_VERSION}"
+          NPM_VERSION="$NPM_VERSION" node -e '
+            const [maj, min, pat] = process.env.NPM_VERSION.split(".").map(Number);
+            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && pat >= 1)));
+            if (!ok) {
+              console.error(`npm ${process.env.NPM_VERSION} is below the 11.5.1 required for trusted publishing`);
+              process.exit(1);
+            }
+          '
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -227,11 +246,39 @@ jobs:
 
       - name: Configure OIDC auth for npm publish
         if: steps.npm_auth.outputs.mode == 'oidc'
+        shell: bash
         run: |
           set -euo pipefail
           echo "Using OIDC trusted publishing for npm publish."
           echo "PUBLISH_NPM_TOKEN=" >> "$GITHUB_ENV"
           echo "PUBLISH_NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
+
+          # actions/setup-node ran with registry-url + always-auth, so it wrote an .npmrc
+          # containing `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`. Under OIDC
+          # there is no token, so that line expands to an empty credential and npm attempts
+          # (and fails) token auth instead of falling through to trusted publishing. Strip
+          # the auth line, keep the registry line.
+          for candidate in "${NPM_CONFIG_USERCONFIG:-}" "${RUNNER_TEMP:-}/.npmrc" "$HOME/.npmrc"; do
+            [ -n "$candidate" ] || continue
+            [ -f "$candidate" ] || continue
+            if grep -q "_authToken" "$candidate"; then
+              sed -i.bak '/_authToken/d' "$candidate" && rm -f "$candidate.bak"
+              echo "Removed _authToken line from ${candidate}"
+            fi
+            echo "--- ${candidate} after scrub:"
+            sed 's/^/    /' "$candidate"
+          done
+
+      # Fail before the version bump, not after. An expired or revoked token surfaces from
+      # npm as E404 on publish, which reads like a missing package; by then changesets has
+      # already committed the bumped versions to master, leaving a version in git that was
+      # never published. OIDC has no credential to check, hence the token-mode gate.
+      - name: Verify npm publish credentials (token mode, publish runs only)
+        if: steps.npm_auth.outputs.mode == 'token' && ((github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true'))
+        env:
+          NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
+        run: node scripts/check-npm-auth.mjs
 
       - name: Create Release Pull Request or Publish to NPM
         if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_changesets == 'true' || steps.detect.outputs.has_version_bumps == 'true' || steps.temp_changeset.outputs.created == 'true'
@@ -244,8 +291,13 @@ jobs:
           commit: 'chore(release): version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # These must come from the resolved auth mode, NOT straight from secrets.NPM_TOKEN.
+          # Reading the secret directly here would hand changesets a token even on an OIDC
+          # run, defeating the whole auth-mode resolution above: npm would attempt token
+          # auth instead of falling through to trusted publishing. In oidc mode both are
+          # deliberately empty.
+          NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
           LEFTHOOK: 0
 
@@ -279,6 +331,15 @@ jobs:
         env:
           PUBLISHED_PACKAGES_JSON: ${{ steps.changesets.outputs.publishedPackages }}
         run: bun ./scripts/check-published-closure.mjs
+
+      # Attestations are the only external signal that a release actually went out via the
+      # trusted publisher: the registry does not expose trusted-publisher configuration, so
+      # a package silently falling back to token auth is otherwise invisible. Advisory on
+      # token runs, where no provenance is expected.
+      - name: Verify provenance attestations
+        if: steps.changesets.outputs.published == 'true'
+        continue-on-error: ${{ steps.npm_auth.outputs.mode != 'oidc' }}
+        run: bun ./scripts/check-provenance.mjs "${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}"
 
       - name: Notify Slack on Successful Publish
         if: steps.changesets.outputs.published == 'true'

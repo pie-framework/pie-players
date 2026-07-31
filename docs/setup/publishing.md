@@ -141,6 +141,96 @@ After publish, CI also validates internal dependency closure in the registry:
 - confirms published `@pie-players/*` packages only reference resolvable internal versions
 - fails if any `workspace:*` leak or unresolved internal dependency is detected
 
+## How CI authenticates to npm
+
+CI publishes via **OIDC trusted publishing**: GitHub mints a short-lived id-token for the
+workflow run, and npm exchanges it for publish rights. No long-lived npm credential lives
+in the repository, and npm generates a provenance attestation for every package it
+publishes this way.
+
+Driver: per npm's 2026-07-08 changelog, tokens that bypass 2FA lose the ability to change
+trusted publishing configuration from early August 2026, and lose direct publishing
+capability around January 2027. A personal token also expires unnoticed and silently
+breaks releases.
+
+### Auth mode resolution
+
+Both publishing workflows (`release.yml` and `publish-preloaded-player.yml`) resolve an
+auth mode before publishing:
+
+| `publish_auth` input | Result |
+| --- | --- |
+| `auto` (default) | token if the `NPM_TOKEN` secret exists, otherwise oidc |
+| `token` | token; fails fast if `NPM_TOKEN` is absent |
+| `oidc` | oidc |
+
+Because `auto` prefers a token when one is present, **the cutover is a secret deletion,
+not a workflow edit**. While `NPM_TOKEN` exists the repo keeps publishing via token.
+
+### Requirements the workflows satisfy
+
+- `permissions: id-token: write` on the publishing job.
+- npm >= 11.5.1. The Node pinned in `.nvmrc` (22.16.0) bundles npm 10.9.2, which predates
+  OIDC support, so both workflows upgrade npm in-job and assert the resolved version.
+- `repository.url` in the canonical `git+https://github.com/pie-framework/pie-players.git`
+  form in every publishable manifest. npm compares this against the repository it publishes
+  from when generating provenance. `check:package-metadata` enforces it.
+- No `_authToken` line in the runner's `.npmrc` on an OIDC run. `actions/setup-node` runs
+  with `registry-url`, so it writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`.
+  Under OIDC there is no token, so that line expands to an *empty* credential and npm
+  attempts token auth instead of falling through to trusted publishing. The OIDC step
+  strips it. This is the failure mode to suspect when the workflow looks correct but
+  publish still reports an auth error.
+
+### Trusted publisher configuration
+
+One-time, per package, from a local terminal:
+
+```bash
+npm login
+bun run trusted-publishers                                  # dry run
+bun run trusted-publishers -- --apply  --only @pie-players/pie-theme   # rehearse on one
+bun run trusted-publishers -- --verify --only @pie-players/pie-theme
+bun run trusted-publishers -- --apply                       # all packages
+bun run trusted-publishers -- --verify
+```
+
+Notes:
+
+- Requires npm >= 12 for `npm trust`. The script bootstraps npm 12 into a temp prefix
+  rather than upgrading your global npm, because npm 12 changes install-time defaults.
+- Every `npm trust` operation is 2FA-protected and npm does not reuse the authentication
+  between invocations, so expect **an OTP prompt per package**, for reads as well as
+  writes. This is why the script refuses to run in CI.
+- `npm trust github --dry-run` exits 0 even for a package that does not exist, so a clean
+  dry run proves the arguments are well-formed and nothing more. Use `--apply --only <pkg>`
+  as the real rehearsal.
+- npm permits only **one** trusted publisher per package, so re-applying to an
+  already-configured package fails. That is expected; confirm with `--verify`.
+- The record names a specific workflow file. `@pie-players/pie-preloaded-player` is
+  registered against `publish-preloaded-player.yml`; everything else against `release.yml`.
+
+### Verifying a release actually used OIDC
+
+The registry does not expose trusted-publisher configuration, so provenance attestations
+are the only external signal:
+
+```bash
+bun run check:provenance 0.4.0
+```
+
+It distinguishes published-without-provenance (missing or misconfigured trusted publisher,
+or a token fallback) from not-published-at-all (partial release — versioning is fixed, so
+all packages should move together). `release.yml` runs this after every publish.
+
+### Pre-flight credential check (token mode)
+
+`scripts/check-npm-auth.mjs` runs in the release workflow **before** the version bump,
+gated to token mode and publish runs. npm surfaces an expired or revoked token as `E404` on
+publish, which reads like a missing package — and by then changesets has already committed
+the bumped versions, leaving a version in git that was never published. OIDC has no
+credential to check, hence the gate.
+
 ## Common remediation
 
 - Metadata failures: update package `package.json` fields listed in the error.
@@ -200,8 +290,8 @@ bun run release:with-version
 5. `bun run verify:publish` — full publish gate (build + every `check:*`).
 6. `bun run test` — workspace test suites.
 7. `bun run release` — `dotenvx run -f .env` wrapper around build +
-   `changeset publish` (with workspace ranges resolved) + preloaded-player
-   bundle publish.
+   `changeset publish` (with workspace ranges resolved). This does **not**
+   publish the preloaded-player bundle; see `docs/preloaded-player/readme.md`.
 8. `bun run restore:workspace-ranges` — restore `workspace:*` ranges in
    source manifests.
 

@@ -1,5 +1,12 @@
 # @pie-players/pie-print-player
 
+## 0.3.61
+
+### Patch Changes
+
+- f3da607: Normalize `repository.url` to the `git+https://` form. npm compares this against the repository it publishes from when generating a provenance attestation, and rewrites any other form with a warning, so the canonical form is now required by `check:package-metadata`.
+  - @pie-players/pie-players-shared@0.3.61
+
 ## 0.3.60
 
 ### Patch Changes

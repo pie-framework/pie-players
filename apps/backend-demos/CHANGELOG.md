@@ -1,5 +1,12 @@
 # @pie-players/backend-demos
 
+## 0.1.19
+
+### Patch Changes
+
+- @pie-players/pie-item-player@0.3.61
+- @pie-players/pie-section-player@0.3.61
+
 ## 0.1.18
 
 ### Patch Changes

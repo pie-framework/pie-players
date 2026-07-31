@@ -1,5 +1,15 @@
 # @pie-players/pie-section-player
 
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.61
+- @pie-players/pie-context@0.3.61
+- @pie-players/pie-default-tool-loaders@0.3.61
+- @pie-players/pie-item-player@0.3.61
+- @pie-players/pie-players-shared@0.3.61
+
 ## 0.3.60
 
 ### Patch Changes

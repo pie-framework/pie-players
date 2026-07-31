@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-annotation-toolbar
 
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.61
+- @pie-players/pie-players-shared@0.3.61
+
 ## 0.3.60
 
 ### Patch Changes

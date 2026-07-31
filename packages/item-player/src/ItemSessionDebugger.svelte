@@ -14,7 +14,8 @@
 />
 
 <script lang="ts">
-	import "@pie-players/pie-theme/components.css";
+	// Content styles are installed by this component's entry point, not imported
+	// here — see the note in PieItemPlayer.svelte and pie-item-player.ts.
 	import {
 		findOrAddSession,
 		findPieController,

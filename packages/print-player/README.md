@@ -31,6 +31,60 @@ bun add @pie-players/pie-print-player
 <script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-print-player/dist/print-player.js"></script>
 ```
 
+## Content styles
+
+Authored content relies on shared classes that belong to no single component:
+passage markup (`.numbered-paragraph`, `.p-number`, `div.passage-title` /
+`-subtitle` / `-author`), the legacy `kds-*` content classes, and — load-bearing
+for this player specifically — the `@media print` rules that hide `.noprint` and
+`.kds-noprint`. They live in `@pie-players/pie-theme/components.css`.
+
+**The player installs that stylesheet itself.** Importing the element is all a
+host needs:
+
+```ts
+import "@pie-players/pie-print-player";
+```
+
+The stylesheet is bundled into the player as text and installed once per
+document, at import time, before any instance renders. It is prepended to
+`<head>` so host CSS that comes later still wins at equal specificity.
+Installation is idempotent, so a page that loads both this player and
+`@pie-players/pie-item-player` ends up with a single copy.
+
+This applies to CDN hosts too: no extra `<link>` is needed.
+
+Without it, printed output regresses in two ways: authored passage titles and
+`kds-*` markup render unstyled, and content the author marked `.noprint` is
+printed rather than hidden.
+
+### Taking ownership of the stylesheet
+
+To load it yourself instead — to control its position in your cascade, or to ship
+a patched copy — declare that on the root element **before** the player script
+runs:
+
+```html
+<html data-pie-content-styles="host"></html>
+```
+
+```ts
+import "@pie-players/pie-theme/components.css"; // now your responsibility
+```
+
+The player then installs nothing. If no content stylesheet turns out to be
+present, it logs a one-time `console.warn` naming the missing import, rather than
+silently printing unstyled content. Declare `@pie-players/pie-theme` in your own
+`package.json` if you go this route: it is a dependency of this package, so the
+file is already on disk, but importing a subpath from a transitive dependency
+breaks on a dedupe change or a move to pnpm / Yarn PnP.
+
+This stylesheet is only the shared content styles. See
+[`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the
+`<pie-theme>` host element, and color-scheme / font-size theming — all optional
+for correct rendering, since every `var(--pie-*)` in `components.css` has a
+fallback.
+
 ## Usage
 
 ```html

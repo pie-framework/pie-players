@@ -342,6 +342,7 @@
       "version": "0.3.57",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
         "lit": "^3.2.1",
       },
       "devDependencies": {

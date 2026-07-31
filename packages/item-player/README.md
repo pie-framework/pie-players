@@ -20,6 +20,66 @@ Or load from a CDN:
 
 The script self-registers the `<pie-item-player>` custom element.
 
+## Content styles
+
+Authored content relies on shared classes that belong to no single component:
+passage markup (`.numbered-paragraph`, `.p-number`, `div.passage-title` /
+`-subtitle` / `-author`), the legacy `kds-*` content classes, and the
+`pie-answer-eliminator-*` / `pie-answer-masked-*` families. They live in
+`@pie-players/pie-theme/components.css`.
+
+**The player installs that stylesheet itself.** Importing the element is all a
+host needs:
+
+```ts
+import "@pie-players/pie-item-player";
+```
+
+The stylesheet is bundled into the player as text and installed once per
+document, at import time, before any instance renders. It is prepended to
+`<head>` so host CSS that comes later still wins at equal specificity — the
+placement hosts used to be told to set up by hand. Installation is idempotent, so
+loading several player packages, or several copies of one, yields a single copy.
+
+This applies to CDN hosts too: no extra `<link>` is needed.
+
+### Upgrading from a manual import
+
+If your app already imports `@pie-players/pie-theme/components.css`, you do not
+have to remove it for this to work — installation is idempotent and two matching
+copies render identically. Removing it is still worth doing: your copy loads after
+the installed one and so wins ties at equal specificity, which means a copy pinned
+to an older `@pie-players/pie-theme` will quietly override newer player rules. The
+player logs a one-time warning naming the redundant import when it sees a second
+copy, so this does not have to be remembered.
+
+### Taking ownership of the stylesheet
+
+To load it yourself instead — to control its position in your cascade, or to ship
+a patched copy — declare that on the root element **before** the player script
+runs:
+
+```html
+<html data-pie-content-styles="host"></html>
+```
+
+```ts
+import "@pie-players/pie-theme/components.css"; // now your responsibility
+```
+
+The player then installs nothing. If no content stylesheet turns out to be
+present, it logs a one-time `console.warn` naming the missing import, rather than
+silently rendering unstyled content. Declare `@pie-players/pie-theme` in your own
+`package.json` if you go this route: it is a dependency of this package, so the
+file is already on disk, but importing a subpath from a transitive dependency
+breaks on a dedupe change or a move to pnpm / Yarn PnP.
+
+This stylesheet is only the shared content styles. See
+[`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the
+`<pie-theme>` host element, and color-scheme / font-size theming — all optional
+for correct rendering, since every `var(--pie-*)` in `components.css` has a
+fallback.
+
 ## Runtime boundary and migration
 
 - Browser-only package: `@pie-players/pie-item-player` is a DOM custom-element

@@ -116,7 +116,7 @@
 		"prepare": "lefthook install"
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.3",
+		"@arethetypeswrong/cli": "^0.18.5",
 		"@axe-core/playwright": "^4.11.3",
 		"@biomejs/biome": "^2.4.16",
 		"@changesets/cli": "^2.31.0",

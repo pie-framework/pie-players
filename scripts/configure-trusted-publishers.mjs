@@ -18,8 +18,17 @@
  * Usage (from the repo root):
  *   node scripts/configure-trusted-publishers.mjs             # dry run, changes nothing
  *   node scripts/configure-trusted-publishers.mjs --apply     # configure
- *   node scripts/configure-trusted-publishers.mjs --verify    # read current config back
+ *   node scripts/configure-trusted-publishers.mjs --verify    # assert config, per package
  *   node scripts/configure-trusted-publishers.mjs --apply --only @pie-players/pie-theme
+ *   node scripts/configure-trusted-publishers.mjs --apply --only pkg-a,pkg-b
+ *
+ * --verify parses `npm trust list --json` and asserts each package is bound to this
+ * repository and its release workflow. It does not treat a successful read as a pass:
+ * npm exits 0 and prints an empty list for a package with no trusted publisher at all,
+ * so exit status alone reports an entirely unconfigured repo as healthy. That mistake
+ * shipped once — a "37/37 verified" run was followed by a release in which 35 of 36
+ * packages failed with ENEEDAUTH, because only the one hand-configured package had a
+ * publisher.
  *
  * Requirements:
  * - npm >= 12, which itself requires Node ^22.22.2 || ^24.15.0 || >=26.0.0. npm only
@@ -105,7 +114,7 @@ const mode = process.argv.includes("--apply")
 		: "dry-run";
 
 /**
- * --only <pkg> limits the run to a single package.
+ * --only <pkg>[,<pkg>...] limits the run to the named packages.
  *
  * This exists because `--dry-run` is not the rehearsal it appears to be: `npm trust
  * github --dry-run` exits 0 even for a package that does not exist, so a clean dry run
@@ -118,12 +127,22 @@ const mode = process.argv.includes("--apply")
  *
  *   node scripts/configure-trusted-publishers.mjs --apply  --only @pie-players/pie-theme
  *   node scripts/configure-trusted-publishers.mjs --verify --only @pie-players/pie-theme
+ *
+ * A list is accepted because every `npm trust` call needs its own 2FA round trip, so a
+ * partially-configured repo has to be finishable without paying for the packages that are
+ * already done.
  */
 const onlyIndex = process.argv.indexOf("--only");
-const only = onlyIndex !== -1 ? process.argv[onlyIndex + 1] : null;
-if (onlyIndex !== -1 && !only) {
+const onlyArg = onlyIndex !== -1 ? process.argv[onlyIndex + 1] : null;
+if (onlyIndex !== -1 && (!onlyArg || onlyArg.startsWith("--"))) {
 	fail("--only requires a package name, e.g. --only @pie-players/pie-theme");
 }
+const only = onlyArg
+	? onlyArg
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean)
+	: null;
 
 const rootManifestPath = path.join(ROOT, "package.json");
 if (!existsSync(rootManifestPath))
@@ -234,16 +253,87 @@ if (Number(npmVersion.split(".")[0]) < 12) {
 /**
  * Run the resolved npm 12.
  *
- * `interactive: true` inherits all three streams. This is required for anything
- * 2FA-protected: npm prints the OTP prompt (and, for web auth, a URL to open) on stdout
- * and waits for input. Capturing stdout swallows the prompt, so the user sees nothing to
- * respond to and the command fails having appeared to just print its banner.
+ * Three stdio shapes, because 2FA constrains what may be captured:
+ *
+ * - `interactive: true` inherits all three streams. Required for writes: npm asks for
+ *   confirmation and an OTP and waits for input.
+ * - `captureStdout: true` inherits stdin and stderr but pipes stdout. npm 12 splits these
+ *   cleanly — the `--json` payload goes to stdout, while the 2FA prompt ("Press ENTER to
+ *   open in the browser...") and the auth URL go to stderr. So the prompt still reaches
+ *   the terminal and ENTER still works, and the payload is still parseable. Verified
+ *   against npm 12.0.2.
+ * - default pipes both, for non-interactive reads like `whoami`.
  */
-function npm(args, { interactive = false } = {}) {
+function npm(args, { interactive = false, captureStdout = false } = {}) {
+	const stdio = interactive
+		? "inherit"
+		: captureStdout
+			? ["inherit", "pipe", "inherit"]
+			: ["inherit", "pipe", "pipe"];
 	return spawnSync(NPM[0], [...NPM.slice(1), ...args], {
 		encoding: "utf8",
-		stdio: interactive ? "inherit" : ["inherit", "pipe", "pipe"],
+		stdio,
 	});
+}
+
+/**
+ * The trusted-publisher record `npm trust list --json` reports for a package, or null.
+ *
+ * npm exits 0 and prints an empty list for a package with no trusted publisher, so the
+ * exit status says only "the read worked" — it is not evidence that publishing will
+ * authenticate. An earlier version of this script equated the two and reported a
+ * fully-unconfigured repo as verified; the resulting release published exactly the one
+ * package that had been configured by hand and failed the other 35 with ENEEDAUTH.
+ */
+function readTrustRecord(pkg) {
+	const res = npm(["trust", "list", pkg, "--json"], { captureStdout: true });
+	const raw = (res.stdout ?? "").trim();
+	if (res.status !== 0) {
+		let detail = raw;
+		try {
+			detail = JSON.parse(raw)?.error?.summary ?? raw;
+		} catch {}
+		return { error: detail || `npm exited ${res.status}` };
+	}
+	let doc;
+	try {
+		doc = raw ? JSON.parse(raw) : null;
+	} catch {
+		return { error: `could not parse npm output: ${raw.slice(0, 200)}` };
+	}
+	// npm has shipped both a bare array and an object wrapper here; accept either, and
+	// tolerate a single object, rather than depending on one undocumented shape.
+	const list = Array.isArray(doc)
+		? doc
+		: Array.isArray(doc?.publishers)
+			? doc.publishers
+			: doc && typeof doc === "object" && doc.type
+				? [doc]
+				: [];
+	return { records: list.filter((r) => r?.type === "github") };
+}
+
+/**
+ * Is `record` bound to this repo's release workflow?
+ *
+ * Deliberately checks repository and workflow file only. `permissions` is reported
+ * verbatim instead of being asserted: npm's permission vocabulary here is undocumented
+ * and observably inconsistent (records this account already holds from other repos read
+ * back as `["createPackage"]`, which is not a string `--allow-publish` obviously produces),
+ * so asserting on it would risk failing a record that publishes fine. A publish is the
+ * only authoritative test of publish rights; this function's job is to catch the two
+ * failure modes a publish cannot recover from — no record at all, and a record pointing at
+ * a different repository or workflow.
+ */
+function recordMatches(record, workflow) {
+	return record.repository === slug && record.file === workflow;
+}
+
+function describeRecord(record) {
+	const perms = Array.isArray(record.permissions)
+		? record.permissions.join(",")
+		: "?";
+	return `${record.repository} :: ${record.file} [${perms}]`;
 }
 
 const whoami = npm(["whoami"]);
@@ -261,14 +351,14 @@ if (allPackages.length === 0) fail("no publishable packages found.");
 
 let packages = allPackages;
 if (only) {
-	const match = allPackages.find((p) => p.name === only);
-	if (!match) {
+	const unknown = only.filter((n) => !allPackages.some((p) => p.name === n));
+	if (unknown.length > 0) {
 		fail(
-			`--only ${only} is not a package this repo publishes.`,
+			`--only named ${unknown.length === 1 ? "a package" : "packages"} this repo does not publish: ${unknown.join(", ")}`,
 			`Known packages:\n${allPackages.map((p) => `  ${p.name}`).join("\n")}`,
 		);
 	}
-	packages = [match];
+	packages = allPackages.filter((p) => only.includes(p.name));
 }
 
 const workflows = [...new Set(packages.map((p) => p.workflow))].sort();
@@ -299,47 +389,72 @@ console.log("");
 
 let ok = 0;
 const problems = [];
+/** Packages --verify found to have no publisher at all, i.e. the ones --apply can fix. */
+const unconfigured = [];
 
 for (const { name: pkg, workflow } of packages) {
-	const args =
-		mode === "verify"
-			? ["trust", "list", pkg, "--json"]
-			: [
-					"trust",
-					"github",
-					pkg,
-					"--file",
-					workflow,
-					"--repository",
-					slug,
-					"--allow-publish",
-					"--allow-stage-publish",
-					"--yes",
-					...(mode === "dry-run" ? ["--dry-run"] : []),
-				];
+	// Every `npm trust` call is 2FA-protected and npm does not carry the authentication
+	// across invocations — an apply and a list seven minutes apart each demanded their own
+	// OTP — so expect one auth round trip per package in both apply and verify.
+	if (mode === "verify") {
+		console.log(`\n  --- ${pkg}  (expecting ${slug} :: ${workflow})`);
+		const { records, error } = readTrustRecord(pkg);
+		if (error) {
+			console.log(`  ${pkg.padEnd(52)} READ FAILED`);
+			problems.push([pkg, error]);
+			continue;
+		}
+		const match = records.find((r) => recordMatches(r, workflow));
+		if (match) {
+			console.log(`  ${pkg.padEnd(52)} CONFIGURED  ${describeRecord(match)}`);
+			ok++;
+		} else if (records.length > 0) {
+			// npm permits only ONE trusted publisher per package, so a record bound to some
+			// other repo/workflow is not merely wrong, it occupies the slot this repo needs.
+			console.log(`  ${pkg.padEnd(52)} WRONG TARGET`);
+			problems.push([
+				pkg,
+				`trusted publisher points elsewhere: ${records.map(describeRecord).join("; ")} — ` +
+					"npm allows one publisher per package, so the existing record must be revoked " +
+					`(\`${NPM.join(" ")} trust revoke ${pkg} <id>\`) before this repo can claim it`,
+			]);
+		} else {
+			console.log(`  ${pkg.padEnd(52)} NOT CONFIGURED`);
+			problems.push([
+				pkg,
+				"no trusted publisher — publishing from CI will fail with ENEEDAUTH; run --apply",
+			]);
+			unconfigured.push(pkg);
+		}
+		continue;
+	}
 
-	// Both `trust github` and `trust list` are 2FA-protected, and npm does not carry the
-	// authentication across invocations — an apply and a list seven minutes apart each
-	// demanded their own OTP. So both modes must run interactively: npm's prompt (and web
-	// auth URL) has to reach the terminal, which means its output cannot be captured and
-	// success comes from the exit status. npm prints the stored configuration itself, so
-	// --verify shows you the authoritative record rather than a parsed summary.
-	if (mode === "apply" || mode === "verify") {
+	const args = [
+		"trust",
+		"github",
+		pkg,
+		"--file",
+		workflow,
+		"--repository",
+		slug,
+		"--allow-publish",
+		"--allow-stage-publish",
+		"--yes",
+		...(mode === "dry-run" ? ["--dry-run"] : []),
+	];
+
+	if (mode === "apply") {
 		console.log(`\n  --- ${pkg}  (${workflow})`);
 		const res = npm(args, { interactive: true });
 		if (res.status === 0) {
-			console.log(
-				`  ${pkg.padEnd(52)} ${mode === "apply" ? "configured" : "read ok (see above)"}`,
-			);
+			console.log(`  ${pkg.padEnd(52)} configured`);
 			ok++;
 		} else {
 			console.log(`  ${pkg.padEnd(52)} FAILED (exit ${res.status})`);
 			problems.push([
 				pkg,
-				mode === "apply"
-					? "see npm output above — note npm permits only ONE trusted publisher per package, " +
-						`so this is expected if it was already configured; confirm with: ${NPM.join(" ")} trust list ${pkg}`
-					: "see npm output above",
+				"see npm output above — note npm permits only ONE trusted publisher per package, " +
+					`so this is expected if it was already configured; confirm with: ${NPM.join(" ")} trust list ${pkg}`,
 			]);
 		}
 		continue;
@@ -358,6 +473,13 @@ for (const { name: pkg, workflow } of packages) {
 
 console.log(`\n  ok: ${ok}/${packages.length}   problems: ${problems.length}`);
 for (const [pkg, why] of problems) console.log(`    ${pkg}: ${why}`);
+
+if (unconfigured.length > 0) {
+	console.log(
+		`\n  to configure the ${unconfigured.length} package(s) with no publisher:\n` +
+			`    bun run trusted-publishers -- --apply --only ${unconfigured.join(",")}`,
+	);
+}
 
 if (mode === "apply" && problems.length === 0) {
 	console.log(

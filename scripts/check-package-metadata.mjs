@@ -90,6 +90,19 @@ const run = () => {
 			}
 		}
 
+		// npm compares repository.url against the repository it is publishing from when it
+		// generates a provenance attestation, and normalizes anything else to the git+https
+		// form with a warning. Pinning the canonical form here keeps the manifests matching
+		// what the trusted publisher is registered against, so provenance cannot start
+		// failing because one package drifted back to a bare https:// URL.
+		if (policy.requiredRepositoryUrl) {
+			if (pkg?.repository?.url !== policy.requiredRepositoryUrl) {
+				missing.push(
+					`repository.url must be "${policy.requiredRepositoryUrl}" (npm requires the git+https form for provenance)`,
+				);
+			}
+		}
+
 		if (
 			policy.requiredPublishConfigAccess &&
 			pkg?.publishConfig?.access !== policy.requiredPublishConfigAccess

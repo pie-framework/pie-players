@@ -4,6 +4,10 @@
 	"private": true,
 	"description": "PIE players monorepo (assessment + item players + tooling)",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
 	"workspaces": [
 		"packages/*",
 		"apps/*",
@@ -99,10 +103,12 @@
 		"restore:workspace-ranges": "node ./scripts/restore-workspace-ranges.mjs",
 		"verify:publish": "bun run build && bun run check:changeset-patch-only && bun run check:fixed-versioning && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity:real && bun run check:deps && bun run check:consumer-boundaries && bun run check:ce-consumer-contract && bun run check:node-consumer-imports && bun run check:bundle-safety && bun run check:math-rendering-version && bun run check:engine-core-purity && bun run check:speech-composition-purity && bun run check:scripts",
 		"check:npm-auth": "dotenvx run -f .env -- node ./scripts/check-npm-auth.mjs",
+		"check:provenance": "bun ./scripts/check-provenance.mjs",
+		"trusted-publishers": "node ./scripts/configure-trusted-publishers.mjs",
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release:with-version": "bun run check:changeset-patch-only && bun ./scripts/create-temporary-release-changeset.mjs && bun run version && bun run restore:workspace-ranges && bun run check:npm-auth && bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges",
-		"release": "dotenvx run -f .env -- sh -c \"bun run build && bun run --cwd tools/cli build && bun ./scripts/changeset-publish-resolved-workspaces.mjs && bun scripts/preloaded-player/publish-changed.mjs --all\"",
+		"release": "dotenvx run -f .env -- sh -c \"bun run build && bun run --cwd tools/cli build && bun ./scripts/changeset-publish-resolved-workspaces.mjs\"",
 		"release:label": "bun ./scripts/create-release-label.mjs",
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",
 		"pack:local": "bun run build && bun run --cwd tools/cli build && bun ./scripts/pack-local.mjs",

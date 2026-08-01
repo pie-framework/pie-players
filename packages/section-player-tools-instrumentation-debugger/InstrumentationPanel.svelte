@@ -15,7 +15,6 @@
 />
 
 <script lang="ts">
-	import "@pie-players/pie-theme/components.css";
 	import {
 		clearBufferedInstrumentationDebugRecords,
 		subscribeInstrumentationDebugRecords,

@@ -344,8 +344,10 @@ jobs:
       - name: Notify Slack on Successful Publish
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL || secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "📦 PIE Players Package Published to NPM",
@@ -397,15 +399,14 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Slack on Release PR Created/Updated
         if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.published != 'true'
         continue-on-error: true
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL || secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "📝 PIE Players Release PR updated",
@@ -440,15 +441,14 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Slack on Release Failure
         if: failure()
         continue-on-error: true
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL || secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "❌ PIE Players Release Failed",
@@ -487,6 +487,3 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

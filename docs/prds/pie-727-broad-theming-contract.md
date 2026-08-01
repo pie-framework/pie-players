@@ -273,7 +273,7 @@ Required test coverage:
 Commands:
 
 ```sh
-bun test packages/theme/src/theme-element.test.ts
+bun test packages/theme/tests/theme-element.test.ts
 bun test packages/theme-daisyui/tests/mapping-parity.test.mjs
 bun test packages/theme/tests/token-registry-contract.test.ts
 bun test packages/assessment-toolkit/tests/highlight-coordinator-tts-style.test.ts

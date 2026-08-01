@@ -12,7 +12,6 @@
 />
 
 <script lang="ts">
-	import '@pie-players/pie-theme/components.css';
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, untrack } from 'svelte';
 	import { createDefaultPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
@@ -313,6 +312,67 @@
 </SharedFloatingPanel>
 
 <style>
+	/* Panel chrome and cards, moved here from
+	 * @pie-players/pie-theme/components.css. That stylesheet is for authored-content
+	 * classes no component owns; these are private to this panel, and 10 of its 13
+	 * classes were already defined here, so the split was drift rather than design.
+	 *
+	 * :global() on the first two is required, not decorative. They are applied by
+	 * SharedFloatingPanel rather than by this template -- `className` lands on its
+	 * root element and `bodyClass` on its body element -- so Svelte would scope the
+	 * selectors to this component and they would match nothing. The rest sit on
+	 * elements in this file's markup and scope normally.
+	 */
+	:global(.pie-section-player-tools-pnp-debugger) {
+		position: fixed;
+		z-index: 100;
+		overflow: hidden;
+		background: var(--pie-white, #fff);
+		border-radius: 0.5rem;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		border: 2px solid var(--pie-border-light, #d1d5db);
+		color: var(--pie-text, #111827);
+		display: flex;
+		flex-direction: column;
+	}
+
+	:global(.pie-section-player-tools-pnp-debugger__content-shell) {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.pie-section-player-tools-pnp-debugger__content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-pnp-debugger__card {
+		background: var(--pie-secondary-background, #f3f4f6);
+		border-radius: 0.375rem;
+		padding: 0.75rem;
+	}
+
+	.pie-section-player-tools-pnp-debugger__card-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+	}
+
+	.pie-section-player-tools-pnp-debugger__card-pre {
+		background: var(--pie-background-dark, #e5e7eb);
+		padding: 0.5rem;
+		border-radius: 0.375rem;
+		font-size: 0.75rem;
+		margin: 0;
+		overflow-x: auto;
+	}
+
 	.pie-section-player-tools-pnp-debugger__icon-sm {
 		width: 1rem;
 		height: 1rem;

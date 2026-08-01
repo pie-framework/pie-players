@@ -4,7 +4,7 @@ import {
 	registerPieColorSchemes,
 	resolvePieColorSchemeVariables,
 	unregisterPieColorScheme,
-} from "./index.js";
+} from "../src/index.js";
 
 describe("pie-theme color scheme registry", () => {
 	test("registers and resolves custom color schemes", () => {

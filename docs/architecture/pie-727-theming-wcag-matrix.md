@@ -65,7 +65,7 @@ specific palette or bridge behavior.
 Run these unit and contract checks as the base gate:
 
 ```sh
-bun test packages/theme/src/theme-element.test.ts
+bun test packages/theme/tests/theme-element.test.ts
 bun test packages/theme-daisyui/tests/mapping-parity.test.mjs
 bun run check:theme-tokens
 bun test packages/theme/tests/token-registry-contract.test.ts

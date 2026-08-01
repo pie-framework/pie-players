@@ -40,7 +40,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
 		"check": "tsc -p tsconfig.json --noEmit",
-		"test": "bun test --dom src"
+		"test": "bun test --dom tests"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.12",

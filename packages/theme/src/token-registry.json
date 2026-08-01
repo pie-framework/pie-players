@@ -190,6 +190,19 @@
 		"fallbackPolicy": "Canonical ordinary button hover foreground token."
 	},
 	{
+		"name": "--pie-content-styles",
+		"owner": "@pie-players/pie-theme",
+		"scope": "package-private",
+		"category": "diagnostics",
+		"status": "active",
+		"definedIn": ["packages/theme/src/components.css"],
+		"documentedIn": [
+			"packages/theme/README.md",
+			"packages/item-player/README.md"
+		],
+		"fallbackPolicy": "Presence sentinel, not a themeable value. Declared by components.css so players can detect whether a host that opted out of automatic installation loaded the stylesheet itself; hosts and components must not consume it for styling or depend on any specific value beyond it being non-empty."
+	},
+	{
 		"name": "--pie-correct",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

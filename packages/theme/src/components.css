@@ -232,6 +232,15 @@ span.passage-title:after {
 	font-style: italic;
 }
 
+/*
+ * Presence sentinel. Players install this stylesheet themselves and read this
+ * property to detect whether a host that opted out of installation shipped a
+ * copy of its own. Not a themeable value — do not consume it for styling.
+ */
+:root {
+	--pie-content-styles: 1;
+}
+
 /* PASSAGES */
 
 div.passage-title,

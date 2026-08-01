@@ -14,6 +14,13 @@ Use the layout custom elements listed above for section rendering.
 npm install @pie-players/pie-section-player
 ```
 
+No stylesheet import is needed. Authored content depends on shared classes
+(passage markup, the legacy `kds-*` families, answer-eliminator styles) from
+`@pie-players/pie-theme/components.css`, and this player renders items through
+`@pie-players/pie-item-player`, which installs that stylesheet itself. See
+[content styles](../item-player/README.md#content-styles) for the host-ownership
+opt-out.
+
 ## Runtime boundary and migration
 
 - Browser-only package: `@pie-players/pie-section-player` registers custom elements and

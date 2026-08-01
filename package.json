@@ -128,7 +128,7 @@
 		"glob": "^13.0.6",
 		"lefthook": "^2.1.9",
 		"playwright": "^1.60.0",
-		"publint": "^0.3.21",
+		"publint": "^0.3.22",
 		"turbo": "^2.9.16",
 		"typescript": "^5.9.3"
 	},

@@ -280,6 +280,19 @@ jobs:
           NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
         run: node scripts/check-npm-auth.mjs
 
+      # The OIDC counterpart to the credential check above. OIDC has no credential to verify,
+      # but it does have a precondition: every package a release publishes needs a trusted
+      # publisher of its own. A package without one fails with ENEEDAUTH while its siblings
+      # publish, which splits the registry across two versions and leaves git holding a
+      # version that was never fully published — exactly what 0.3.61 did.
+      #
+      # Asking npm which packages have a record costs a 2FA round trip each, so there is
+      # nothing a runner can query. This asserts the committed ledger instead, which catches
+      # the case that actually happens: a package added without anyone claiming a record.
+      - name: Verify trusted publisher claims (oidc mode, publish runs only)
+        if: steps.npm_auth.outputs.mode == 'oidc' && ((github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true'))
+        run: bun run check:trusted-publishers
+
       - name: Create Release Pull Request or Publish to NPM
         if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_changesets == 'true' || steps.detect.outputs.has_version_bumps == 'true' || steps.temp_changeset.outputs.created == 'true'
         id: changesets

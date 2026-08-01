@@ -1,0 +1,15 @@
+{
+	"$comment": [
+		"Ledger of npm trusted-publisher claims that npm has confirmed, one entry per",
+		"publishable package. Written by scripts/configure-trusted-publishers.mjs (--apply and",
+		"--verify) and asserted by scripts/check-trusted-publishers.mjs, which fails a release",
+		"when a publishable package has no entry. Do not hand-edit: an invented entry passes the",
+		"check and still fails the publish with ENEEDAUTH. See docs/setup/publishing.md."
+	],
+	"packages": {
+		"@pie-players/pie-theme": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		}
+	}
+}

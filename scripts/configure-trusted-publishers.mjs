@@ -30,6 +30,12 @@
  * packages failed with ENEEDAUTH, because only the one hand-configured package had a
  * publisher.
  *
+ * Every confirmed claim is recorded in scripts/trusted-publishers.json and that file is
+ * committed. Reading npm's actual state costs a 2FA round trip per package, so CI cannot ask
+ * npm whether a newly added package was ever claimed — check-trusted-publishers.mjs asserts
+ * against the ledger instead, and fails the release rather than discovering it at publish
+ * time. So the ledger is part of the deliverable: commit it after applying.
+ *
  * Requirements:
  * - npm >= 12, which itself requires Node ^22.22.2 || ^24.15.0 || >=26.0.0. npm only
  *   warns on older Node, but this writes security configuration to a production account,
@@ -47,28 +53,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import {
+	LEDGER_RELATIVE_PATH,
+	publishablePackages,
+	repositorySlug,
+	updateLedger,
+} from "./lib/trusted-publishers.mjs";
+
 const ROOT = process.cwd();
-
-/** The workflow that publishes the fixed-versioned workspace packages. */
-const RELEASE_WORKFLOW = "release.yml";
-
-/**
- * Packages that a release publishes but that are not workspace members, mapped to the
- * workflow that owns them.
- *
- * `@pie-players/pie-preloaded-player` is generated at build time by the CLI from the
- * manifests in configs/preloaded-player/ (see tools/cli/src/utils/pie-packages/
- * fixed-static.ts), so there is no package.json in the workspace to discover it from. It
- * also carries its own version scheme — `{loaderVersion}-{configHash}.{iteration}` —
- * independent of the fixed workspace version.
- *
- * npm permits exactly ONE trusted publisher per package, so the workflow named here must
- * be the only one that publishes it. publish-preloaded-player.yml is that workflow (see
- * docs/preloaded-player/readme.md); the release path deliberately no longer publishes it.
- */
-const NON_WORKSPACE_PACKAGES = {
-	"@pie-players/pie-preloaded-player": "publish-preloaded-player.yml",
-};
 
 /**
  * This is a local, one-time operator tool — never a CI step.
@@ -149,43 +141,28 @@ if (!existsSync(rootManifestPath))
 	fail("run from the repository root (package.json not found).");
 const rootManifest = JSON.parse(readFileSync(rootManifestPath, "utf8"));
 
-/** owner/repo, taken from repository.url so it cannot drift from what npm validates. */
-function repositorySlug() {
-	const url = rootManifest.repository?.url ?? "";
-	const m = url.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
-	if (!m)
-		fail(
-			`could not parse owner/repo from repository.url: ${JSON.stringify(url)}`,
-		);
-	return `${m[1]}/${m[2]}`;
-}
-
 /**
- * Every package a release publishes, as { name, workflow } pairs.
+ * Record a confirmed claim in the committed ledger, so check-trusted-publishers.mjs can
+ * assert offline that every publishable package has been through this script.
  *
- * Workspace members are discovered from the workspace globs so the list cannot go stale;
- * NON_WORKSPACE_PACKAGES covers the build-time-generated ones that have no manifest to
- * discover.
+ * Written per package rather than once at the end, deliberately: a full run is one 2FA round
+ * trip per package, so it is routinely interrupted — a failed call partway down the list, or
+ * an operator who stops to deal with something. Batching the write would discard every claim
+ * already paid for.
+ *
+ * `null` retracts an entry, which is how --verify corrects a ledger that claims a record npm
+ * no longer reports.
  */
-function publishablePackages() {
-	const found = [];
-	for (const entry of rootManifest.workspaces ?? []) {
-		if (!entry.endsWith("/*")) continue;
-		const base = path.join(ROOT, entry.slice(0, -2));
-		if (!existsSync(base)) continue;
-		for (const dir of readdirSync(base, { withFileTypes: true })) {
-			if (!dir.isDirectory()) continue;
-			const manifestPath = path.join(base, dir.name, "package.json");
-			if (!existsSync(manifestPath)) continue;
-			const pkg = JSON.parse(readFileSync(manifestPath, "utf8"));
-			if (pkg.private || !pkg.name) continue;
-			found.push({ name: pkg.name, workflow: RELEASE_WORKFLOW });
-		}
+function recordClaim(pkg, entry) {
+	try {
+		updateLedger(ROOT, { [pkg]: entry });
+	} catch (err) {
+		// Never fail a run over bookkeeping: the claim itself already succeeded on npm, and
+		// losing the ledger line is recoverable with --verify. Losing the OTP is not.
+		console.log(
+			`  (could not update ${LEDGER_RELATIVE_PATH}: ${err.message} — re-run --verify to reconcile)`,
+		);
 	}
-	for (const [name, workflow] of Object.entries(NON_WORKSPACE_PACKAGES)) {
-		found.push({ name, workflow });
-	}
-	return found.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function nodeSupportsNpm12(version) {
@@ -345,8 +322,12 @@ if (whoami.status !== 0) {
 }
 const user = (whoami.stdout ?? "").trim();
 
-const slug = repositorySlug();
-const allPackages = publishablePackages();
+const slug = repositorySlug(rootManifest);
+if (!slug)
+	fail(
+		`could not parse owner/repo from repository.url: ${JSON.stringify(rootManifest.repository?.url ?? "")}`,
+	);
+const allPackages = publishablePackages(ROOT, rootManifest, readdirSync);
 if (allPackages.length === 0) fail("no publishable packages found.");
 
 let packages = allPackages;
@@ -407,11 +388,14 @@ for (const { name: pkg, workflow } of packages) {
 		const match = records.find((r) => recordMatches(r, workflow));
 		if (match) {
 			console.log(`  ${pkg.padEnd(52)} CONFIGURED  ${describeRecord(match)}`);
+			recordClaim(pkg, { repository: slug, workflow });
 			ok++;
 		} else if (records.length > 0) {
 			// npm permits only ONE trusted publisher per package, so a record bound to some
 			// other repo/workflow is not merely wrong, it occupies the slot this repo needs.
 			console.log(`  ${pkg.padEnd(52)} WRONG TARGET`);
+			// This repo does not hold the slot, so any ledger line claiming it is wrong.
+			recordClaim(pkg, null);
 			problems.push([
 				pkg,
 				`trusted publisher points elsewhere: ${records.map(describeRecord).join("; ")} — ` +
@@ -420,6 +404,7 @@ for (const { name: pkg, workflow } of packages) {
 			]);
 		} else {
 			console.log(`  ${pkg.padEnd(52)} NOT CONFIGURED`);
+			recordClaim(pkg, null);
 			problems.push([
 				pkg,
 				"no trusted publisher — publishing from CI will fail with ENEEDAUTH; run --apply",
@@ -448,6 +433,7 @@ for (const { name: pkg, workflow } of packages) {
 		const res = npm(args, { interactive: true });
 		if (res.status === 0) {
 			console.log(`  ${pkg.padEnd(52)} configured`);
+			recordClaim(pkg, { repository: slug, workflow });
 			ok++;
 		} else {
 			console.log(`  ${pkg.padEnd(52)} FAILED (exit ${res.status})`);
@@ -483,11 +469,16 @@ if (unconfigured.length > 0) {
 
 if (mode === "apply" && problems.length === 0) {
 	console.log(
-		"\n  next: re-run with --verify, then delete the NPM_TOKEN repo secret so the",
+		`\n  next: commit ${LEDGER_RELATIVE_PATH} — check-trusted-publishers.mjs reads it to`,
 	);
 	console.log(
-		"  release workflow's `auto` auth mode resolves to oidc instead of token.",
+		"  refuse a release that would leave a package unpublished, and an uncommitted ledger",
 	);
+	console.log("  fails that check for packages you have in fact just claimed.");
+	console.log(
+		"\n  then: ensure the NPM_TOKEN repo secret is deleted so the release workflow's `auto`",
+	);
+	console.log("  auth mode resolves to oidc instead of token.");
 }
 
 process.exit(problems.length === 0 ? 0 : 1);

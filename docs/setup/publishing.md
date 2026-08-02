@@ -233,6 +233,14 @@ recorded claim, and names the missing ones with a ready-made `--apply` command. 
 only) — so a forgotten claim fails the release *before* changesets commits bumped versions,
 instead of halfway through publishing.
 
+The check is fatal only for the packages `release.yml` publishes. Not every publishable
+package ships on the release path — `@pie-players/pie-preloaded-player` is published by
+`publish-preloaded-player.yml` on its own version scheme — and a release must not be blocked
+by a package it never touches. Gaps outside that scope are printed as
+`note (other workflow)` so they stay visible to whoever owns that workflow. Use
+`bun ./scripts/check-trusted-publishers.mjs --all` to make every package fatal, which is the
+right check to run before publishing the preloaded player.
+
 Renaming a publishable package counts as adding one: the new name needs its own record.
 
 Why a committed ledger rather than asking npm directly: every `npm trust` read is

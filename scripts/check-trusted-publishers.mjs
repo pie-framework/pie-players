@@ -26,6 +26,13 @@
  *   claim time, not a live read; a revoked record, or an entry someone hand-wrote, passes
  *   here and still fails the release. `--verify` on the configure script is the live check,
  *   and check-provenance.mjs is the after-the-fact one.
+ *
+ * Scoping: the check is fatal only for packages published by the workflow being verified,
+ * which defaults to release.yml. Not every publishable package ships on the release path —
+ * @pie-players/pie-preloaded-player is published by publish-preloaded-player.yml on its own
+ * version scheme — and failing a release for an unclaimed package that release does not
+ * publish blocks it on work that cannot affect it. Out-of-scope gaps are still reported, so
+ * they stay visible to whoever owns that workflow; `--all` makes every package fatal.
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -37,6 +44,7 @@ import {
 	readLedger,
 	repositorySlug,
 	LEDGER_RELATIVE_PATH,
+	RELEASE_WORKFLOW,
 } from "./lib/trusted-publishers.mjs";
 
 const ROOT = process.cwd();
@@ -44,16 +52,28 @@ const ROOT = process.cwd();
 /**
  * Compare the packages a release would publish against the recorded claims.
  *
+ * `scope` is the workflow whose publish run is being guarded; problems with packages owned
+ * by another workflow are returned as `advisories` rather than `failures`. Pass `null` to
+ * treat every package as in scope.
+ *
  * Pure, so the failure vocabulary can be tested without a workspace on disk.
  */
-export function collectTrustedPublisherFailures({ packages, ledger, slug }) {
+export function collectTrustedPublisherFailures({
+	packages,
+	ledger,
+	slug,
+	scope = null,
+}) {
 	const failures = [];
+	const advisories = [];
 	const unclaimed = [];
 	for (const { name, workflow } of packages) {
+		const inScope = scope === null || workflow === scope;
+		const report = inScope ? failures : advisories;
 		const entry = ledger.packages?.[name];
 		if (!entry) {
-			unclaimed.push(name);
-			failures.push(
+			if (inScope) unclaimed.push(name);
+			report.push(
 				`${name}: no trusted publisher claim recorded in ${LEDGER_RELATIVE_PATH} — publishing will fail with ENEEDAUTH`,
 			);
 			continue;
@@ -61,17 +81,17 @@ export function collectTrustedPublisherFailures({ packages, ledger, slug }) {
 		// npm permits exactly one trusted publisher per package, so naming the wrong workflow
 		// does not merely fail, it occupies the slot the right workflow needs.
 		if (entry.workflow !== workflow) {
-			failures.push(
+			report.push(
 				`${name}: claim names workflow ${JSON.stringify(entry.workflow)}, but this package is published by ${JSON.stringify(workflow)}`,
 			);
 		}
 		if (slug && entry.repository !== slug) {
-			failures.push(
+			report.push(
 				`${name}: claim names repository ${JSON.stringify(entry.repository)}, expected ${JSON.stringify(slug)}`,
 			);
 		}
 	}
-	return { failures, unclaimed };
+	return { failures, advisories, unclaimed };
 }
 
 /** Ledger entries for packages this repo no longer publishes. Reported, never fatal. */
@@ -96,10 +116,18 @@ if (isEntrypoint) {
 	const packages = publishablePackages(ROOT, rootManifest, readdirSync);
 	const ledger = readLedger(ROOT);
 
-	const { failures, unclaimed } = collectTrustedPublisherFailures({
+	// Default to the release path rather than every package: this runs from release.yml and
+	// from verify:publish, and a package another workflow owns must not fail either.
+	const scope = process.argv.includes("--all") ? null : RELEASE_WORKFLOW;
+	const scoped = packages.filter(
+		(p) => scope === null || p.workflow === scope,
+	).length;
+
+	const { failures, advisories, unclaimed } = collectTrustedPublisherFailures({
 		packages,
 		ledger,
 		slug,
+		scope,
 	});
 	const stale = collectStaleClaims({ packages, ledger });
 
@@ -109,9 +137,17 @@ if (isEntrypoint) {
 		);
 	}
 
+	// Reported, not fatal: another workflow publishes these, so they cannot break this run,
+	// but they will break that one. Surfacing them here is the only place anyone looks.
+	for (const advisory of advisories) {
+		console.log(
+			`[check-trusted-publishers] note (other workflow): ${advisory}`,
+		);
+	}
+
 	if (failures.length > 0) {
 		console.error(
-			`[check-trusted-publishers] Found ${failures.length} trusted-publisher problem(s) across ${packages.length} publishable package(s)`,
+			`[check-trusted-publishers] Found ${failures.length} trusted-publisher problem(s) across ${scoped} package(s) published by ${scope ?? "any workflow"}`,
 		);
 		for (const failure of failures) console.error(`  - ${failure}`);
 		if (unclaimed.length > 0) {
@@ -126,6 +162,6 @@ if (isEntrypoint) {
 	}
 
 	console.log(
-		`[check-trusted-publishers] OK: ${packages.length} publishable package(s) have a recorded trusted-publisher claim`,
+		`[check-trusted-publishers] OK: ${scoped} package(s) published by ${scope ?? "any workflow"} have a recorded trusted-publisher claim`,
 	);
 }

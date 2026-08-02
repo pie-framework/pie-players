@@ -4,6 +4,11 @@ import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+	classifyPublishedSequence,
+	parseSemver,
+} from "./lib/fixed-versioning.mjs";
+
 const ROOT = process.cwd();
 const CHANGESET_CONFIG_PATH = path.join(ROOT, ".changeset", "config.json");
 const WORKSPACE_ROOTS = ["packages"];
@@ -50,19 +55,6 @@ const discoverPublishablePackages = () => {
 const fail = (message) => {
 	console.error(`[check-fixed-versioning] ${message}`);
 	process.exit(1);
-};
-
-const parseSemver = (value) => {
-	if (typeof value !== "string") return null;
-	const normalized = value.trim().replace(/^v/, "");
-	const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].+)?$/);
-	if (!match) return null;
-	return {
-		major: Number.parseInt(match[1], 10),
-		minor: Number.parseInt(match[2], 10),
-		patch: Number.parseInt(match[3], 10),
-		raw: normalized,
-	};
 };
 
 const fetchPublishedVersion = (pkgName) => {
@@ -158,41 +150,15 @@ if (process.env.SKIP_NPM_VERSION_SEQUENCE_CHECK !== "1") {
 		publishedVersionMap.set(pkg.name, published);
 	}
 
-	const publishedVersions = new Set(publishedVersionMap.values());
-	if (publishedVersions.size !== 1) {
-		const details = [...publishedVersionMap.entries()]
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([name, version]) => `- ${name}: ${version}`)
-			.join("\n");
-		fail(
-			`Expected one lockstep published npm version across fixed packages, found ${publishedVersions.size}:\n${details}`,
-		);
+	const sequence = classifyPublishedSequence({
+		localVersion,
+		publishedVersionMap,
+	});
+	if (sequence.verdict === "stop") {
+		fail(sequence.message);
 	}
-
-	const publishedVersion = [...publishedVersions][0];
-	const publishedSemver = parseSemver(publishedVersion);
-	if (!publishedSemver) {
-		fail(`Published version "${publishedVersion}" is not a valid semver.`);
-	}
-	if (
-		localSemver.major !== publishedSemver.major ||
-		localSemver.minor !== publishedSemver.minor
-	) {
-		fail(
-			`Local version ${localVersion} must keep major/minor aligned with published ${publishedVersion} for patch lockstep releases.`,
-		);
-	}
-
-	const delta = localSemver.patch - publishedSemver.patch;
-	if (delta !== 1) {
-		if (delta <= 0) {
-			fail(
-				`Local version ${localVersion} must be exactly one patch ahead of published ${publishedVersion}. Did you run changeset version?`,
-			);
-		}
-		fail(
-			`Local version ${localVersion} skips patch versions from published ${publishedVersion}. Reset version/changelog files and rerun release once.`,
-		);
+	if (sequence.verdict === "completing-partial-publish") {
+		console.log(`[check-fixed-versioning] ${sequence.message}`);
 	}
 }
 

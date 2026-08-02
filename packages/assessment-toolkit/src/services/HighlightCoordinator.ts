@@ -437,11 +437,18 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
       /* The blocks below cover annotation swatches, print, and reduced motion.
          They deliberately do NOT retune the TTS layers: applyAdaptiveTTSStyle()
-         writes --pie-tts-* inline on documentElement on every paint and on theme
-         change, so a media query that only varies a var() fallback for those can
-         never take effect. Annotation colours have no such adaptive path -- they
-         are fixed swatches a student chose -- so a media query is the only way to
-         adjust them, and each keeps its var() so a host override still wins. */
+         writes the pie-tts custom properties inline on documentElement on every
+         paint and on theme change, so a media query that only varies a var()
+         fallback for those can never take effect. Annotation colours have no such
+         adaptive path -- they are fixed swatches a student chose -- so a media
+         query is the only way to adjust them, and each keeps its var() so a host
+         override still wins.
+
+         The names above are spelled without their leading dashes on purpose.
+         check-theme-tokens scans comments, and its token pattern stops at the
+         first non-alphanumeric character, so writing the wildcard form reads as
+         consumption of a shorter token that is not in the registry and fails the
+         check. Spell property names in full, or omit the dashes. */
 
       @media (prefers-color-scheme: dark) {
         ::highlight(annotation-yellow) {

@@ -76,6 +76,52 @@ describe("check-trusted-publishers", () => {
 		expect(failures[0]).toContain("ENEEDAUTH");
 	});
 
+	// A release must not be blocked by a package it does not publish. The preloaded player
+	// ships from publish-preloaded-player.yml on its own version scheme, so an unclaimed
+	// record there cannot affect a release.yml run — reporting it is right, failing is not.
+	test("scoping to a workflow demotes another workflow's gap to an advisory", () => {
+		const { failures, advisories, unclaimed } = collectTrustedPublisherFailures(
+			{
+				packages,
+				slug: SLUG,
+				scope: "release.yml",
+				ledger: ledgerFor({
+					"@pie-players/pie-theme": {
+						repository: SLUG,
+						workflow: "release.yml",
+					},
+				}),
+			},
+		);
+
+		expect(failures).toEqual([]);
+		expect(unclaimed).toEqual([]);
+		expect(advisories).toHaveLength(1);
+		expect(advisories[0]).toContain("@pie-players/pie-preloaded-player");
+	});
+
+	// The converse: scoping must not become a way to miss a gap on the path being guarded.
+	test("scoping still fails an unclaimed package on the scoped workflow", () => {
+		const { failures, advisories, unclaimed } = collectTrustedPublisherFailures(
+			{
+				packages,
+				slug: SLUG,
+				scope: "release.yml",
+				ledger: ledgerFor({
+					"@pie-players/pie-preloaded-player": {
+						repository: SLUG,
+						workflow: "publish-preloaded-player.yml",
+					},
+				}),
+			},
+		);
+
+		expect(unclaimed).toEqual(["@pie-players/pie-theme"]);
+		expect(failures).toHaveLength(1);
+		expect(failures[0]).toContain("@pie-players/pie-theme");
+		expect(advisories).toEqual([]);
+	});
+
 	// npm permits one trusted publisher per package, so a claim naming release.yml for the
 	// preloaded player does not just fail — it occupies the slot publish-preloaded-player.yml
 	// needs.

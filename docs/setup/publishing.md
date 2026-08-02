@@ -229,9 +229,23 @@ git add scripts/trusted-publishers.json   # the claim ledger is part of the chan
 
 `bun run check:trusted-publishers` asserts that every package a release would publish has a
 recorded claim, and names the missing ones with a ready-made `--apply` command. It runs in
-`verify:publish`, and in `release.yml` ahead of the version bump (oidc mode, publish runs
-only) — so a forgotten claim fails the release *before* changesets commits bumped versions,
-instead of halfway through publishing.
+`release.yml` ahead of the version bump (oidc mode, publish runs only) — so a forgotten claim
+fails the release *before* changesets commits bumped versions, instead of halfway through
+publishing.
+
+It is deliberately **not** part of `verify:publish`. Trusted-publisher records only matter
+when the run authenticates by OIDC, and `verify:publish` cannot know whether it will:
+`release.yml` runs it *before* the auth mode is resolved, and `release:with-version` is a
+token-based local publish path where the records are irrelevant. Including it there failed
+token-mode publishes over records they never needed. Run it directly when preparing a claim.
+
+The check is fatal only for the packages `release.yml` publishes. Not every publishable
+package ships on the release path — `@pie-players/pie-preloaded-player` is published by
+`publish-preloaded-player.yml` on its own version scheme — and a release must not be blocked
+by a package it never touches. Gaps outside that scope are printed as
+`note (other workflow)` so they stay visible to whoever owns that workflow. Use
+`bun ./scripts/check-trusted-publishers.mjs --all` to make every package fatal, which is the
+right check to run before publishing the preloaded player.
 
 Renaming a publishable package counts as adding one: the new name needs its own record.
 

@@ -247,4 +247,74 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 		expect(body).toContain("height: 2rem");
 		expect(body).not.toContain("min-height: 2.75rem");
 	});
+
+	test("honours the documented active/open trigger hooks (PIE-727)", () => {
+		// The README documents these three as the supported way to style the
+		// trigger while its panel is open. The component had stopped referencing
+		// any of them, so a host following the docs got no effect. These
+		// assertions are the regression guard.
+		const body = cssRuleBody(
+			'.pie-tool-tts-inline__trigger--plain[aria-expanded="true"]',
+		).replace(/\s+/g, "");
+
+		expect(body).toContain("var(--pie-tool-trigger-active-background,");
+		expect(body).toContain("var(--pie-tool-trigger-active-color,");
+		expect(body).toContain("var(--pie-tool-trigger-active-border-color,");
+	});
+
+	test("leaves the trigger visually unchanged when the hooks are unset", () => {
+		// Each hook falls back to the value the element already resolves to, so
+		// adding the rule cannot restyle the control for hosts that set nothing.
+		// Unlike the calculator, this trigger has never had a filled active look.
+		const active = cssRuleBody(
+			'.pie-tool-tts-inline__trigger--plain[aria-expanded="true"]',
+		).replace(/\s+/g, "");
+		const control = cssRuleBody(".pie-tool-tts-inline__control").replace(
+			/\s+/g,
+			"",
+		);
+		const plain = cssRuleBody(".pie-tool-tts-inline__trigger--plain").replace(
+			/\s+/g,
+			"",
+		);
+
+		// Background and border fallbacks match the __control box exactly.
+		expect(control).toContain(
+			"background:var(--pie-button-background-color,var(--pie-button-bg,var(--pie-background,#fff)))",
+		);
+		expect(active).toContain(
+			"var(--pie-button-background-color,var(--pie-button-bg,var(--pie-background,#fff)))",
+		);
+		expect(control).toContain(
+			"var(--pie-button-border-color,var(--pie-button-border,var(--pie-border,#c6c6c6)))",
+		);
+		expect(active).toContain(
+			"var(--pie-button-border-color,var(--pie-button-border,var(--pie-border,#c6c6c6)))",
+		);
+
+		// Foreground fallback matches __control, NOT --plain. Both declare `color`
+		// at equal specificity and __control comes later in the sheet, so it wins
+		// and --plain's accent colour is dead. Falling back to the accent would
+		// turn the glyph blue on open. Verified in Chromium: the plain trigger
+		// computes the dark --pie-button-color, not #146eb3.
+		expect(control).toContain("color:var(--pie-button-color,var(--pie-text,#222))");
+		expect(active).toContain("var(--pie-button-color,var(--pie-text,#222))");
+		// Guard the trap directly: the accent must not be the active fallback.
+		expect(active).not.toContain("var(--pie-tts-button-color,#146eb3)");
+		expect(plain).toContain("color:var(--pie-tts-button-color,#146eb3)");
+	});
+
+	test("remaps the NDS trigger accent rather than painting a box it lacks", () => {
+		// The NDS button owns its own surface; setting background/border on the
+		// host element would paint a box the tertiary button does not have. Only
+		// the foreground hook applies, via the same --color-interactive-blue
+		// remap the base rule uses.
+		const body = cssRuleBody(
+			'.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"]',
+		).replace(/\s+/g, "");
+
+		expect(body).toContain("--color-interactive-blue:var(--pie-tool-trigger-active-color,");
+		expect(body).not.toContain("background:");
+		expect(body).not.toContain("border-color:");
+	});
 });

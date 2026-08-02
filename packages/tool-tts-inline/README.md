@@ -217,10 +217,19 @@ component-scoped variables instead of overriding broad semantic tokens such as
 --pie-tool-trigger-active-border-color: Active/open trigger border
 ```
 
-If unset, the trigger keeps the existing defaults: active background and border
-derive from `--pie-primary`, while foreground continues through
-`--pie-button-color` / `--pie-text`. Hosts remain responsible for maintaining
-WCAG AA foreground/background contrast when overriding active trigger colors.
+If unset, the trigger looks the same open as closed: each hook falls back to the
+value the control already resolves to — background through
+`--pie-button-background-color` / `--pie-button-bg` / `--pie-background`, border
+through `--pie-button-border-color` / `--pie-button-border` / `--pie-border`, and
+foreground through `--pie-button-color` / `--pie-text`. Setting a hook is how a
+host opts into a distinct active/open appearance.
+
+This differs deliberately from `@pie-players/pie-tool-calculator-inline-desmos`,
+whose equivalent hooks fall back to a filled `--pie-primary` look. This trigger
+has never had a filled active state — the panel opening is itself the state
+indication — so these defaults do not introduce one. Hosts remain responsible for
+maintaining WCAG AA foreground/background contrast when overriding active trigger
+colors.
 
 Ordinary trigger and control button styling also preserves these legacy aliases:
 `--pie-button-background-color`, `--pie-button-border-color`, and

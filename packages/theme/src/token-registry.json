@@ -1073,12 +1073,13 @@
 	},
 	{
 		"name": "--pie-tool-trigger-active-background",
-		"owner": "@pie-players/pie-tool-calculator-inline-desmos",
+		"owner": "@pie-players/pie-tool-tts-inline",
 		"scope": "component-public",
 		"category": "tool-trigger",
 		"status": "active",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
+			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
@@ -1088,12 +1089,13 @@
 	},
 	{
 		"name": "--pie-tool-trigger-active-border-color",
-		"owner": "@pie-players/pie-tool-calculator-inline-desmos",
+		"owner": "@pie-players/pie-tool-tts-inline",
 		"scope": "component-public",
 		"category": "tool-trigger",
 		"status": "active",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
+			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
@@ -1103,12 +1105,13 @@
 	},
 	{
 		"name": "--pie-tool-trigger-active-color",
-		"owner": "@pie-players/pie-tool-calculator-inline-desmos",
+		"owner": "@pie-players/pie-tool-tts-inline",
 		"scope": "component-public",
 		"category": "tool-trigger",
 		"status": "active",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
+			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",

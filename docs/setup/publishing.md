@@ -132,6 +132,30 @@ your fixes are already in `master`, rerun the release workflow manually:
 This bypasses version-bump detection checks for that manual run while keeping normal
 push-driven safety checks in place.
 
+#### When the previous publish only partly succeeded
+
+Fixed versioning means npm authenticates the run as a whole, so a run that loses auth
+partway leaves the registry split: the packages that made it sit at the version being
+released, the rest stay a patch behind. Rerunning the manual publish above is the repair —
+`changeset publish` skips the versions that already landed.
+
+`check:fixed-versioning` recognises that one split and reports it rather than failing:
+
+```
+[check-fixed-versioning] Completing a partial publish of 0.3.61. 1 package(s) already
+published it (@pie-players/pie-theme) and 35 are still one patch behind ...
+```
+
+It stays fatal for any other multi-version state, because republishing will not reconcile
+drift — only an unfinished publish of the *local* version is recoverable this way. Do not
+reach for `SKIP_NPM_VERSION_SEQUENCE_CHECK=1` to get past a split: that also disables the
+patch-sequence and version-skip checks, which are what stop a release from silently
+skipping a version.
+
+Do not try to fix a split by unpublishing the package that succeeded. npm refuses to
+republish a version number once it has been unpublished, so removing it makes that version
+permanently unreachable for that package and forces the whole group forward anyway.
+
 Publish-path runs execute the full `bun run verify:publish` gate before
 `changesets/action` can publish.
 

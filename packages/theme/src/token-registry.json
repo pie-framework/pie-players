@@ -1,12 +1,30 @@
 [
 	{
+		"name": "--pie-answer-eliminator-toggle-color",
+		"owner": "@pie-players/pie-theme",
+		"scope": "package-private",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/components.css"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal fallback colour for the answer-eliminator toggle in the shared content stylesheet. Not a host hook."
+	},
+	{
 		"name": "--pie-background",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",
 		"category": "surface",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical page or component surface background token; component hooks may fall back through this token."
 	},
 	{
@@ -15,9 +33,27 @@
 		"scope": "canonical-semantic",
 		"category": "surface",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical darker surface token for layered or recessed UI."
+	},
+	{
+		"name": "--pie-background-light",
+		"owner": "@pie-players/pie-theme",
+		"scope": "unsupported",
+		"category": "surface",
+		"status": "intentional-gap",
+		"definedIn": [
+			"docs/prds/pie-727-broad-theming-contract.md"
+		],
+		"documentedIn": [
+			"docs/prds/pie-727-broad-theming-contract.md"
+		],
+		"fallbackPolicy": "Known undefined token discovered during PIE-727 audit; implementation slices must replace usage or promote it through a decision record before treating it as public."
 	},
 	{
 		"name": "--pie-black",
@@ -25,8 +61,12 @@
 		"scope": "canonical-semantic",
 		"category": "neutral",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical neutral token that may invert in high-contrast schemes."
 	},
 	{
@@ -35,8 +75,12 @@
 		"scope": "canonical-semantic",
 		"category": "neutral",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical blue-grey scale token for legacy neutral UI surfaces."
 	},
 	{
@@ -45,8 +89,12 @@
 		"scope": "canonical-semantic",
 		"category": "neutral",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical blue-grey scale token for legacy neutral UI surfaces."
 	},
 	{
@@ -55,8 +103,12 @@
 		"scope": "canonical-semantic",
 		"category": "neutral",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical blue-grey scale token for legacy neutral UI surfaces."
 	},
 	{
@@ -65,8 +117,12 @@
 		"scope": "canonical-semantic",
 		"category": "neutral",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical blue-grey scale token for legacy neutral UI surfaces."
 	},
 	{
@@ -75,8 +131,12 @@
 		"scope": "canonical-semantic",
 		"category": "border",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical border token for ordinary UI component outlines."
 	},
 	{
@@ -85,8 +145,12 @@
 		"scope": "canonical-semantic",
 		"category": "border",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical stronger border token for emphasized boundaries."
 	},
 	{
@@ -95,8 +159,12 @@
 		"scope": "canonical-semantic",
 		"category": "border",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical gray border token retained for existing neutral UI fallbacks."
 	},
 	{
@@ -105,8 +173,12 @@
 		"scope": "canonical-semantic",
 		"category": "border",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical lighter border token for subtle boundaries."
 	},
 	{
@@ -115,9 +187,27 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical active background for ordinary button controls; local trigger states should use component-scoped hooks when needed."
+	},
+	{
+		"name": "--pie-button-background-color",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "component-public",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/README.md"
+		],
+		"fallbackPolicy": "Compatibility alias retained for TTS inline button backgrounds; implementations must fall back through canonical --pie-button-bg before broad surface tokens."
 	},
 	{
 		"name": "--pie-button-bg",
@@ -125,8 +215,12 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical ordinary button background token."
 	},
 	{
@@ -135,9 +229,27 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical ordinary button border token."
+	},
+	{
+		"name": "--pie-button-border-color",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "component-public",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/README.md"
+		],
+		"fallbackPolicy": "Compatibility alias retained for TTS inline button borders; implementations must fall back through canonical --pie-button-border before broad border tokens."
 	},
 	{
 		"name": "--pie-button-color",
@@ -145,8 +257,12 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical ordinary button foreground token."
 	},
 	{
@@ -155,9 +271,27 @@
 		"scope": "canonical-semantic",
 		"category": "focus",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical focus outline token for ordinary button controls."
+	},
+	{
+		"name": "--pie-button-hover-background-color",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "component-public",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/README.md"
+		],
+		"fallbackPolicy": "Compatibility alias retained for TTS inline button hover backgrounds; implementations must fall back through canonical --pie-button-hover-bg before broad surface tokens."
 	},
 	{
 		"name": "--pie-button-hover-bg",
@@ -165,8 +299,12 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical ordinary button hover background token."
 	},
 	{
@@ -175,8 +313,12 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical ordinary button hover border token."
 	},
 	{
@@ -185,9 +327,84 @@
 		"scope": "canonical-semantic",
 		"category": "button",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical ordinary button hover foreground token."
+	},
+	{
+		"name": "--pie-calculator-button-color",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "package-private",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal calculator trigger foreground. Not a host hook; falls back through the canonical button tokens."
+	},
+	{
+		"name": "--pie-calculator-button-size",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "package-private",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal calculator trigger sizing. Not a host hook; use the documented button tokens instead."
+	},
+	{
+		"name": "--pie-calculator-button-size-lg",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "package-private",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal calculator trigger sizing (large). Not a host hook."
+	},
+	{
+		"name": "--pie-calculator-button-size-sm",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "package-private",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal calculator trigger sizing (small). Not a host hook."
+	},
+	{
+		"name": "--pie-content-styles",
+		"owner": "@pie-players/pie-theme",
+		"scope": "package-private",
+		"category": "diagnostics",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/components.css"
+		],
+		"documentedIn": [
+			"packages/theme/README.md",
+			"packages/item-player/README.md"
+		],
+		"fallbackPolicy": "Presence sentinel, not a themeable value. Declared by components.css so players can detect whether a host that opted out of automatic installation loaded the stylesheet itself; hosts and components must not consume it for styling or depend on any specific value beyond it being non-empty."
 	},
 	{
 		"name": "--pie-correct",
@@ -195,8 +412,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical correct feedback token; do not reuse for unrelated decorative chrome."
 	},
 	{
@@ -205,8 +426,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical correct feedback icon token."
 	},
 	{
@@ -215,8 +440,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical secondary correct feedback surface token."
 	},
 	{
@@ -225,8 +454,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical tertiary correct feedback token."
 	},
 	{
@@ -235,8 +468,12 @@
 		"scope": "canonical-semantic",
 		"category": "state",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical disabled-state foreground token."
 	},
 	{
@@ -245,8 +482,12 @@
 		"scope": "canonical-semantic",
 		"category": "state",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical secondary disabled-state token."
 	},
 	{
@@ -255,8 +496,12 @@
 		"scope": "canonical-semantic",
 		"category": "surface",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical dropdown or menu surface token."
 	},
 	{
@@ -265,8 +510,12 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical low-emphasis primary-action token."
 	},
 	{
@@ -275,8 +524,12 @@
 		"scope": "canonical-semantic",
 		"category": "focus",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical focus background token for checked controls."
 	},
 	{
@@ -285,9 +538,41 @@
 		"scope": "canonical-semantic",
 		"category": "focus",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical focus border token for checked controls."
+	},
+	{
+		"name": "--pie-focus-outline",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "focus",
+		"status": "planned",
+		"definedIn": [
+			"docs/prds/pie-727-broad-theming-contract.md"
+		],
+		"documentedIn": [
+			"docs/prds/pie-727-broad-theming-contract.md"
+		],
+		"fallbackPolicy": "Planned focus token decision gate; implementation must either define it canonically, alias an existing token, or keep focus hooks component-scoped."
+	},
+	{
+		"name": "--pie-focus-ring-color",
+		"owner": "@pie-players/pie-theme",
+		"scope": "legacy",
+		"category": "focus",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/components.css"
+		],
+		"documentedIn": [
+			"docs/prds/pie-727-broad-theming-contract.md"
+		],
+		"fallbackPolicy": "Legacy authored-content focus alias retained for image/table scroll wrappers; implementations must fall back through --pie-focus-outline and --pie-button-focus-outline."
 	},
 	{
 		"name": "--pie-focus-unchecked",
@@ -295,8 +580,12 @@
 		"scope": "canonical-semantic",
 		"category": "focus",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical focus background token for unchecked controls."
 	},
 	{
@@ -305,8 +594,12 @@
 		"scope": "canonical-semantic",
 		"category": "focus",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical focus border token for unchecked controls."
 	},
 	{
@@ -315,8 +608,12 @@
 		"scope": "canonical-semantic",
 		"category": "typography",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical font scaling token used by PIE theme font-size utilities."
 	},
 	{
@@ -325,8 +622,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical incorrect feedback token; do not reuse for unrelated decorative chrome."
 	},
 	{
@@ -335,8 +636,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical incorrect feedback icon token."
 	},
 	{
@@ -345,8 +650,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical secondary incorrect feedback surface token."
 	},
 	{
@@ -355,8 +664,12 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical missing-response feedback token."
 	},
 	{
@@ -365,9 +678,28 @@
 		"scope": "canonical-semantic",
 		"category": "feedback",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical missing-response icon token."
+	},
+	{
+		"name": "--pie-passage-header-background",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "surface",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte",
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
 	},
 	{
 		"name": "--pie-primary",
@@ -375,8 +707,12 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical primary action/selected color; component-local active states should use scoped hooks when host ergonomics require it."
 	},
 	{
@@ -385,8 +721,12 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical darker primary action token used for hover/emphasis fallbacks."
 	},
 	{
@@ -395,8 +735,12 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical lighter primary action token used for low-emphasis action surfaces."
 	},
 	{
@@ -405,8 +749,12 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical secondary action token."
 	},
 	{
@@ -415,8 +763,12 @@
 		"scope": "canonical-semantic",
 		"category": "surface",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical secondary surface background token."
 	},
 	{
@@ -425,8 +777,12 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical darker secondary action token."
 	},
 	{
@@ -435,229 +791,13 @@
 		"scope": "canonical-semantic",
 		"category": "action",
 		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
 		"fallbackPolicy": "Canonical lighter secondary action token."
-	},
-	{
-		"name": "--pie-tertiary",
-		"owner": "@pie-players/pie-theme",
-		"scope": "canonical-semantic",
-		"category": "action",
-		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
-		"fallbackPolicy": "Canonical tertiary action token."
-	},
-	{
-		"name": "--pie-tertiary-light",
-		"owner": "@pie-players/pie-theme",
-		"scope": "canonical-semantic",
-		"category": "action",
-		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
-		"fallbackPolicy": "Canonical lighter tertiary action token."
-	},
-	{
-		"name": "--pie-text",
-		"owner": "@pie-players/pie-theme",
-		"scope": "canonical-semantic",
-		"category": "text",
-		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
-		"fallbackPolicy": "Canonical foreground text token."
-	},
-	{
-		"name": "--pie-white",
-		"owner": "@pie-players/pie-theme",
-		"scope": "canonical-semantic",
-		"category": "neutral",
-		"status": "active",
-		"definedIn": ["packages/theme/src/theme-defaults.ts"],
-		"documentedIn": ["packages/theme/README.md"],
-		"fallbackPolicy": "Canonical neutral token that may invert in high-contrast schemes."
-	},
-	{
-		"name": "--pie-tool-trigger-active-background",
-		"owner": "@pie-players/pie-theme",
-		"scope": "component-public",
-		"category": "tool-trigger",
-		"status": "active",
-		"definedIn": [
-			"packages/tool-tts-inline/tool-tts-inline.svelte",
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
-		],
-		"documentedIn": [
-			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
-		],
-		"fallbackPolicy": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
-	},
-	{
-		"name": "--pie-tool-trigger-active-border-color",
-		"owner": "@pie-players/pie-theme",
-		"scope": "component-public",
-		"category": "tool-trigger",
-		"status": "active",
-		"definedIn": [
-			"packages/tool-tts-inline/tool-tts-inline.svelte",
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
-		],
-		"documentedIn": [
-			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
-		],
-		"fallbackPolicy": "Component trigger active/open border hook; falls back through existing semantic tokens."
-	},
-	{
-		"name": "--pie-tool-trigger-active-color",
-		"owner": "@pie-players/pie-theme",
-		"scope": "component-public",
-		"category": "tool-trigger",
-		"status": "active",
-		"definedIn": [
-			"packages/tool-tts-inline/tool-tts-inline.svelte",
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
-		],
-		"documentedIn": [
-			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
-		],
-		"fallbackPolicy": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
-	},
-	{
-		"name": "--pie-button-background-color",
-		"owner": "@pie-players/pie-tool-tts-inline",
-		"scope": "component-public",
-		"category": "button",
-		"status": "active",
-		"definedIn": ["packages/tool-tts-inline/tool-tts-inline.svelte"],
-		"documentedIn": ["packages/tool-tts-inline/README.md"],
-		"fallbackPolicy": "Compatibility alias retained for TTS inline button backgrounds; implementations must fall back through canonical --pie-button-bg before broad surface tokens."
-	},
-	{
-		"name": "--pie-section-player-tab-active-background",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public tab active-state background hook; hosts must preserve contrast with --pie-section-player-tab-active-color."
-	},
-	{
-		"name": "--pie-section-player-tab-active-color",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public tab active-state foreground hook; hosts must preserve contrast with --pie-section-player-tab-active-background."
-	},
-	{
-		"name": "--pie-section-player-tab-background",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public ordinary tab background hook; default remains transparent and should inherit accessible surrounding surfaces."
-	},
-	{
-		"name": "--pie-section-player-tab-color",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public ordinary tab foreground hook; hosts must preserve text contrast against ordinary tab backgrounds."
-	},
-	{
-		"name": "--pie-section-player-tab-gap",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public tabbed-frame spacing hook; values must not reduce perceivable target separation below WCAG expectations."
-	},
-	{
-		"name": "--pie-section-player-tab-padding-block",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public tab block padding hook; hosts should preserve keyboard target size when overriding."
-	},
-	{
-		"name": "--pie-section-player-tab-track-padding",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public tab track padding hook; hosts should preserve target size and visible grouping when overriding."
-	},
-	{
-		"name": "--pie-section-player-tab-track-radius",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-tabs",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public tab track radius hook; geometry-only override with no color contrast impact."
-	},
-	{
-		"name": "--pie-section-player-card-header-radius",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-card",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionItemCard.svelte",
-			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
-	},
-	{
-		"name": "--pie-section-player-card-radius",
-		"owner": "@pie-players/pie-section-player",
-		"scope": "component-public",
-		"category": "section-card",
-		"status": "active",
-		"definedIn": [
-			"packages/section-player/src/components/shared/SectionItemCard.svelte",
-			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
-		],
-		"documentedIn": ["packages/section-player/README.md"],
-		"fallbackPolicy": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
 	},
 	{
 		"name": "--pie-section-player-card-header-background",
@@ -670,8 +810,40 @@
 			"packages/section-player/src/components/shared/SectionPassageCard.svelte",
 			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
 		],
-		"documentedIn": ["packages/section-player/README.md"],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
 		"fallbackPolicy": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+	},
+	{
+		"name": "--pie-section-player-card-header-radius",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+	},
+	{
+		"name": "--pie-section-player-card-radius",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
 	},
 	{
 		"name": "--pie-section-player-layout-max-width",
@@ -684,8 +856,122 @@
 			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
 			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
 		],
-		"documentedIn": ["docs/architecture/pie-727-theme-token-inventory.md"],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
 		"fallbackPolicy": "Package-private layout handoff token set from component props; hosts should use documented max-width attributes instead of overriding this token directly."
+	},
+	{
+		"name": "--pie-section-player-tab-active-background",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public tab active-state background hook; hosts must preserve contrast with --pie-section-player-tab-active-color."
+	},
+	{
+		"name": "--pie-section-player-tab-active-color",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public tab active-state foreground hook; hosts must preserve contrast with --pie-section-player-tab-active-background."
+	},
+	{
+		"name": "--pie-section-player-tab-background",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public ordinary tab background hook; default remains transparent and should inherit accessible surrounding surfaces."
+	},
+	{
+		"name": "--pie-section-player-tab-color",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public ordinary tab foreground hook; hosts must preserve text contrast against ordinary tab backgrounds."
+	},
+	{
+		"name": "--pie-section-player-tab-gap",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public tabbed-frame spacing hook; values must not reduce perceivable target separation below WCAG expectations."
+	},
+	{
+		"name": "--pie-section-player-tab-padding-block",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public tab block padding hook; hosts should preserve keyboard target size when overriding."
+	},
+	{
+		"name": "--pie-section-player-tab-track-padding",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public tab track padding hook; hosts should preserve target size and visible grouping when overriding."
+	},
+	{
+		"name": "--pie-section-player-tab-track-radius",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-tabs",
+		"status": "active",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public tab track radius hook; geometry-only override with no color contrast impact."
 	},
 	{
 		"name": "--pie-section-player-tab-zoom-comp",
@@ -696,8 +982,139 @@
 		"definedIn": [
 			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
 		],
-		"documentedIn": ["docs/architecture/pie-727-theme-token-inventory.md"],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
 		"fallbackPolicy": "Package-private zoom compensation handoff for tab sizing; not a host theming hook."
+	},
+	{
+		"name": "--pie-selected-button-background",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
+		"category": "state",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal selected-control background used by inline TTS. Not a host hook; hosts should theme the canonical button tokens."
+	},
+	{
+		"name": "--pie-selected-button-border",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
+		"category": "border",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal selected-control border used by inline TTS. Not a host hook; hosts should theme the canonical border tokens."
+	},
+	{
+		"name": "--pie-tertiary",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "action",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical tertiary action token."
+	},
+	{
+		"name": "--pie-tertiary-light",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "action",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical lighter tertiary action token."
+	},
+	{
+		"name": "--pie-text",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "text",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical foreground text token."
+	},
+	{
+		"name": "--pie-tool-shell-zoom-comp",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "package-private",
+		"category": "toolbar-layout",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal zoom-compensation factor for tool shell sizing. Not a host hook; may change with layout internals."
+	},
+	{
+		"name": "--pie-tool-trigger-active-background",
+		"owner": "@pie-players/pie-tool-calculator-inline-desmos",
+		"scope": "component-public",
+		"category": "tool-trigger",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md"
+		],
+		"fallbackPolicy": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
+	},
+	{
+		"name": "--pie-tool-trigger-active-border-color",
+		"owner": "@pie-players/pie-tool-calculator-inline-desmos",
+		"scope": "component-public",
+		"category": "tool-trigger",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md"
+		],
+		"fallbackPolicy": "Component trigger active/open border hook; falls back through existing semantic tokens."
+	},
+	{
+		"name": "--pie-tool-trigger-active-color",
+		"owner": "@pie-players/pie-tool-calculator-inline-desmos",
+		"scope": "component-public",
+		"category": "tool-trigger",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md"
+		],
+		"fallbackPolicy": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
 	},
 	{
 		"name": "--pie-toolbar-tools-row-height",
@@ -708,8 +1125,38 @@
 		"definedIn": [
 			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
 		],
-		"documentedIn": ["docs/architecture/pie-727-theme-token-inventory.md"],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
 		"fallbackPolicy": "Package-private toolbar row sizing token; hosts should use documented toolbar size inputs rather than overriding this internal handoff."
+	},
+	{
+		"name": "--pie-toolbar-zoom-comp",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "package-private",
+		"category": "toolbar-layout",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal zoom-compensation factor for toolbar sizing. Not a host hook; may change with layout internals."
+	},
+	{
+		"name": "--pie-tts-button-color",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/tests/tool-tts-inline-style-contract.test.ts"
+		],
+		"fallbackPolicy": "Internal inline TTS control foreground. Asserted by the package style-contract test but not a host hook."
 	},
 	{
 		"name": "--pie-tts-controls-row-height",
@@ -721,57 +1168,107 @@
 			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
-		"documentedIn": ["docs/architecture/pie-727-theme-token-inventory.md"],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
 		"fallbackPolicy": "Package-private toolbar-to-inline-TTS row height handoff used to reserve reading controls space."
 	},
 	{
-		"name": "--pie-button-border-color",
+		"name": "--pie-tts-inline-muted-color",
 		"owner": "@pie-players/pie-tool-tts-inline",
-		"scope": "component-public",
-		"category": "button",
+		"scope": "package-private",
+		"category": "text",
 		"status": "active",
-		"definedIn": ["packages/tool-tts-inline/tool-tts-inline.svelte"],
-		"documentedIn": ["packages/tool-tts-inline/README.md"],
-		"fallbackPolicy": "Compatibility alias retained for TTS inline button borders; implementations must fall back through canonical --pie-button-border before broad border tokens."
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/tests/tool-tts-inline-style-contract.test.ts"
+		],
+		"fallbackPolicy": "Internal muted text colour for inline TTS. Asserted by the package style-contract test but not a host hook."
 	},
 	{
-		"name": "--pie-button-hover-background-color",
+		"name": "--pie-tts-left-aligned-panel-width",
 		"owner": "@pie-players/pie-tool-tts-inline",
-		"scope": "component-public",
-		"category": "button",
+		"scope": "package-private",
+		"category": "layout",
 		"status": "active",
-		"definedIn": ["packages/tool-tts-inline/tool-tts-inline.svelte"],
-		"documentedIn": ["packages/tool-tts-inline/README.md"],
-		"fallbackPolicy": "Compatibility alias retained for TTS inline button hover backgrounds; implementations must fall back through canonical --pie-button-hover-bg before broad surface tokens."
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal width for the left-aligned inline TTS panel. Not a host hook."
 	},
 	{
-		"name": "--pie-background-light",
-		"owner": "@pie-players/pie-theme",
-		"scope": "unsupported",
+		"name": "--pie-tts-menu-shadow",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
 		"category": "surface",
-		"status": "intentional-gap",
-		"definedIn": ["docs/prds/pie-727-broad-theming-contract.md"],
-		"documentedIn": ["docs/prds/pie-727-broad-theming-contract.md"],
-		"fallbackPolicy": "Known undefined token discovered during PIE-727 audit; implementation slices must replace usage or promote it through a decision record before treating it as public."
-	},
-	{
-		"name": "--pie-focus-ring-color",
-		"owner": "@pie-players/pie-theme",
-		"scope": "legacy",
-		"category": "focus",
 		"status": "active",
-		"definedIn": ["packages/theme/src/components.css"],
-		"documentedIn": ["docs/prds/pie-727-broad-theming-contract.md"],
-		"fallbackPolicy": "Legacy authored-content focus alias retained for image/table scroll wrappers; implementations must fall back through --pie-focus-outline and --pie-button-focus-outline."
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/tests/tool-tts-inline-style-contract.test.ts"
+		],
+		"fallbackPolicy": "Internal inline TTS menu shadow. Asserted by the package style-contract test but not a host hook."
 	},
 	{
-		"name": "--pie-focus-outline",
+		"name": "--pie-tts-selected-bg",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
+		"category": "state",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-tts-inline/tests/tool-tts-inline-style-contract.test.ts"
+		],
+		"fallbackPolicy": "Internal selected-state background for inline TTS controls. Asserted by the package style-contract test but not a host hook."
+	},
+	{
+		"name": "--pie-tts-trigger-shadow",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
+		"category": "surface",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal inline TTS trigger shadow. Not a host hook."
+	},
+	{
+		"name": "--pie-tts-zoom-comp",
+		"owner": "@pie-players/pie-tool-tts-inline",
+		"scope": "package-private",
+		"category": "layout",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-tts-inline/tool-tts-inline.svelte"
+		],
+		"documentedIn": [
+			"packages/theme/src/token-registry.json"
+		],
+		"fallbackPolicy": "Internal zoom-compensation factor for inline TTS sizing. Not a host hook."
+	},
+	{
+		"name": "--pie-white",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",
-		"category": "focus",
-		"status": "planned",
-		"definedIn": ["docs/prds/pie-727-broad-theming-contract.md"],
-		"documentedIn": ["docs/prds/pie-727-broad-theming-contract.md"],
-		"fallbackPolicy": "Planned focus token decision gate; implementation must either define it canonically, alias an existing token, or keep focus hooks component-scoped."
+		"category": "neutral",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/theme-defaults.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical neutral token that may invert in high-contrast schemes."
 	}
 ]

@@ -11,7 +11,6 @@
 />
 
 <script lang="ts">
-	import "./highlights.css";
 	import type {
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitShellContext,

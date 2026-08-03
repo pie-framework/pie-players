@@ -1,3 +1,14 @@
+# Sourced by the generated hooks before they locate the lefthook binary, so the
+# gate still resolves when git runs a hook from a linked worktree. See .lefthookrc.
+#
+# The "./" is required, not cosmetic. Lefthook emits `. <rc>` verbatim, and `.`
+# resolves a bare name against $PATH; whether the current directory is used as a
+# fallback is shell-dependent (bash does, dash and zsh do not). So `rc: .lefthookrc`
+# happens to work under macOS /bin/sh and silently sources nothing under the dash
+# that is /bin/sh on Debian-family systems. A path containing a slash skips the
+# $PATH lookup entirely. Git runs hooks from the worktree root, so "./" is that root.
+rc: ./.lefthookrc
+
 pre-commit:
   parallel: false
   commands:

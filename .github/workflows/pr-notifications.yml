@@ -19,8 +19,10 @@ jobs:
     steps:
       - name: Notify Slack on PR Opened
         if: github.event.action == 'opened'
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "🔔 New PR in pie-players",
@@ -59,14 +61,13 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Slack on PR Merged
         if: github.event.action == 'closed' && github.event.pull_request.merged == true
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "✅ PR Merged in pie-players",
@@ -105,14 +106,13 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Slack on PR Closed (not merged)
         if: github.event.action == 'closed' && github.event.pull_request.merged == false
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "❌ PR Closed in pie-players",
@@ -143,14 +143,13 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Slack on PR Review
         if: github.event_name == 'pull_request_review'
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "👀 PR Review in pie-players",
@@ -185,6 +184,3 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_PR_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

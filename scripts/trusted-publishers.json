@@ -1,0 +1,159 @@
+{
+	"$comment": [
+		"Ledger of npm trusted-publisher claims that npm has confirmed, one entry per",
+		"publishable package. Written by scripts/configure-trusted-publishers.mjs (--apply and",
+		"--verify) and asserted by scripts/check-trusted-publishers.mjs, which fails a release",
+		"when a publishable package has no entry. Do not hand-edit: an invented entry passes the",
+		"check and still fails the publish with ENEEDAUTH. See docs/setup/publishing.md."
+	],
+	"packages": {
+		"@pie-players/pie-assessment-player": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-assessment-toolkit": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-calculator": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-calculator-desmos": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-context": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-default-tool-loaders": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-item-player": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-players-shared": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-preloaded-player": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "publish-preloaded-player.yml"
+		},
+		"@pie-players/pie-print-player": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player-tools-event-debugger": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player-tools-instrumentation-debugger": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player-tools-pnp-debugger": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player-tools-session-debugger": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player-tools-shared": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-section-player-tools-tts-settings": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-theme": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-theme-daisyui": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-annotation-toolbar": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-answer-eliminator": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-calculator-desmos": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-calculator-inline-desmos": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-graph": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-line-reader": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-periodic-table": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-protractor": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-ruler": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-text-to-speech": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-theme": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-tts-inline": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tts": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/tts-client-server": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/tts-server-core": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/tts-server-google": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/tts-server-polly": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/tts-server-sc": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		}
+	}
+}

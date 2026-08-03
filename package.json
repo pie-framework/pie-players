@@ -41,7 +41,7 @@
 		"lint:biome": "biome lint .",
 		"lint:svelte": "turbo check",
 		"lint:all": "bun run lint && bun run typecheck",
-		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
+		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:pre-push": "bun run verify:local-pr",
 		"verify:local-pr": "bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player",
@@ -87,6 +87,7 @@
 		"check:publish-surface": "bun ./scripts/check-publish-surface.mjs",
 		"check:source-exports": "bun ./scripts/check-source-exports.mjs",
 		"check:consumer-boundaries": "bun ./scripts/check-consumer-boundaries.mjs",
+		"check:css-import-delivery": "bun ./scripts/check-css-import-delivery.mjs",
 		"check:ce-consumer-contract": "bun ./scripts/check-ce-consumer-contract.mjs",
 		"check:runtime-compat": "bun ./scripts/check-runtime-compat.mjs",
 		"check:node-consumer-imports": "bun ./scripts/check-node-consumer-imports.mjs",
@@ -104,6 +105,7 @@
 		"verify:publish": "bun run build && bun run check:changeset-patch-only && bun run check:fixed-versioning && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity:real && bun run check:deps && bun run check:consumer-boundaries && bun run check:ce-consumer-contract && bun run check:node-consumer-imports && bun run check:bundle-safety && bun run check:math-rendering-version && bun run check:engine-core-purity && bun run check:speech-composition-purity && bun run check:scripts",
 		"check:npm-auth": "dotenvx run -f .env -- node ./scripts/check-npm-auth.mjs",
 		"check:provenance": "bun ./scripts/check-provenance.mjs",
+		"check:trusted-publishers": "bun ./scripts/check-trusted-publishers.mjs",
 		"trusted-publishers": "node ./scripts/configure-trusted-publishers.mjs",
 		"changeset": "changeset",
 		"version": "changeset version",
@@ -116,7 +118,7 @@
 		"prepare": "lefthook install"
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.3",
+		"@arethetypeswrong/cli": "^0.18.5",
 		"@axe-core/playwright": "^4.11.3",
 		"@biomejs/biome": "^2.4.16",
 		"@changesets/cli": "^2.31.0",
@@ -127,7 +129,7 @@
 		"glob": "^13.0.6",
 		"lefthook": "^2.1.9",
 		"playwright": "^1.60.0",
-		"publint": "^0.3.21",
+		"publint": "^0.3.22",
 		"turbo": "^2.9.16",
 		"typescript": "^5.9.3"
 	},
@@ -172,7 +174,7 @@
 		"lodash": "^4.18.1"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "^2.61.1",
+		"@sveltejs/kit": "^2.70.1",
 		"svelte": "^5.56.0",
 		"svelte-check": "^4.4.8",
 		"vite": "8.0.16"

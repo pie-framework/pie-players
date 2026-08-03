@@ -1,0 +1,33 @@
+# Sourced by the generated .git/hooks/* scripts before they try to locate the
+# lefthook binary. Wired up via `rc:` in lefthook.yml; after editing this file
+# run `lefthook install -f` from the main checkout to regenerate the hooks.
+#
+# This exists because .git/hooks is shared by every linked worktree, which turns
+# two lefthook behaviours into a silently-skipped pre-push gate:
+#
+#   1. `lefthook install` bakes an absolute path to whichever node_modules it was
+#      run from into the hook script. Run it from a throwaway worktree and every
+#      checkout in the repo gets a hook pointing into a directory that is about to
+#      be deleted.
+#   2. The hook's remaining fallbacks all probe `$(git rev-parse --show-toplevel)`,
+#      which in a linked worktree is the worktree root -- and worktrees have no
+#      node_modules of their own. So every fallback misses.
+#
+# When both miss, the hook prints "Can't find lefthook in PATH" and returns 0, so
+# the push proceeds with no gate having run and nothing failing.
+#
+# --git-common-dir always resolves to the main worktree, which is the one checkout
+# guaranteed to have node_modules. It is relative (".git") in the main checkout and
+# absolute in a linked worktree, so it gets normalised before use.
+
+if [ -z "$LEFTHOOK_BIN" ]; then
+	_lh_common_dir="$(git rev-parse --git-common-dir 2>/dev/null)" || _lh_common_dir=""
+	if [ -n "$_lh_common_dir" ]; then
+		_lh_root="$(CDPATH= cd -- "$(dirname -- "$_lh_common_dir")" 2>/dev/null && pwd)"
+		if [ -n "$_lh_root" ] && [ -x "$_lh_root/node_modules/lefthook/bin/index.js" ]; then
+			LEFTHOOK_BIN="$_lh_root/node_modules/lefthook/bin/index.js"
+			export LEFTHOOK_BIN
+		fi
+	fi
+	unset _lh_common_dir _lh_root
+fi

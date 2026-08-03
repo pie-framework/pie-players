@@ -11,7 +11,6 @@
 />
 
 <script lang="ts">
-	import '@pie-players/pie-theme/components.css';
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
 		getSectionControllerFromCoordinator,
@@ -356,6 +355,113 @@
 </SharedFloatingPanel>
 
 <style>
+	/* Panel chrome, cards, and alerts, moved here from
+	 * @pie-players/pie-theme/components.css. That stylesheet is for authored-content
+	 * classes no component owns; these are private to this panel.
+	 *
+	 * :global() on the first two is required, not decorative. They are applied by
+	 * SharedFloatingPanel rather than by this template -- `className` lands on its
+	 * root element and `bodyClass` on its body element -- so Svelte would scope the
+	 * selectors to this component and they would match nothing. The rest sit on
+	 * elements in this file's markup and scope normally.
+	 *
+	 * `__card` and `__card-pre` fold in what were separate session-specific override
+	 * rules in components.css, since there is no longer a shared base to override.
+	 */
+	:global(.pie-section-player-tools-session-debugger) {
+		position: fixed;
+		z-index: 100;
+		overflow: hidden;
+		background: var(--pie-white, #fff);
+		border-radius: 0.5rem;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		border: 2px solid var(--pie-border-light, #d1d5db);
+		color: var(--pie-text, #111827);
+	}
+
+	:global(.pie-section-player-tools-session-debugger__content-shell) {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.pie-section-player-tools-session-debugger__content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__card {
+		background: var(--pie-secondary-background, #f3f4f6);
+		border-radius: 0.375rem;
+		padding: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__card-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+	}
+
+	.pie-section-player-tools-session-debugger__card-pre {
+		background: var(--pie-background-dark, #e5e7eb);
+		padding: 0.5rem;
+		border-radius: 0.375rem;
+		font-size: 0.75rem;
+		margin: 0;
+		overflow: auto;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__section-intro {
+		margin-bottom: 0.25rem;
+	}
+
+	.pie-section-player-tools-session-debugger__heading {
+		font-size: 0.875rem;
+		font-weight: 700;
+	}
+
+	.pie-section-player-tools-session-debugger__text-xs {
+		font-size: 0.75rem;
+	}
+
+	.pie-section-player-tools-session-debugger__alert {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		border: 1px solid transparent;
+	}
+
+	.pie-section-player-tools-session-debugger__alert--warning {
+		background: #fef3c7;
+		border-color: #f59e0b;
+		color: #92400e;
+	}
+
+	.pie-section-player-tools-session-debugger__alert--info {
+		background: #e0f2fe;
+		border-color: #38bdf8;
+		color: #0c4a6e;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-md {
+		width: 1.25rem;
+		height: 1.25rem;
+		flex-shrink: 0;
+	}
+
 	.pie-section-player-tools-session-debugger__icon-sm {
 		width: 1rem;
 		height: 1rem;

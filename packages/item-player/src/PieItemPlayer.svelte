@@ -118,7 +118,11 @@
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import { tick, untrack } from "svelte";
-	import "@pie-players/pie-theme/components.css";
+	// The shared content stylesheet is NOT imported here. In this package's
+	// library build, a plain CSS import is extracted to dist/assets/*.css, which
+	// nothing loads at runtime and which the exports map does not expose — a
+	// silent no-op that left authored passage markup unstyled. The entry points
+	// install it explicitly instead; see pie-item-player.ts.
 	import { resolveSessionChangedForwarding } from "./session-forwarding.js";
 
 	type ItemSession = {

@@ -95,6 +95,24 @@ Then activate with `scheme="district-high-contrast"` on `pie-theme`.
 
 Use `@pie-players/pie-theme/components.css` for shared visual styles that are intentionally reused across multiple PIE custom elements.
 
+**Players install this stylesheet themselves; hosts do not import it.** Mounting
+`<pie-theme>` does not load it either — that element only writes `--pie-*` custom
+properties. `@pie-players/pie-item-player` bundles the stylesheet as text and
+installs it once per document at import time; see
+[content styles](../item-player/README.md#content-styles) for the host-ownership
+opt-out.
+
+Note for players adding this: a plain `import "…/components.css"` does **not**
+work in these packages' library builds. Vite extracts it to an unreferenced
+`dist/assets/*.css` that nothing loads and no exports entry exposes — a silent
+no-op that left authored passage markup unstyled in production. Import the text
+with `?raw` and hand it to `installContentStyles` from
+`@pie-players/pie-players-shared`.
+
+`components.css` declares `--pie-content-styles` on `:root` as a presence
+sentinel so players can tell whether an opted-out host actually loaded it. It is
+not a themeable value; do not consume it for styling.
+
 - Theme-owned shared `pie-*` class families include:
   - `pie-section-player-tools-pnp-debugger*`
   - `pie-section-player-tools-session-debugger*`

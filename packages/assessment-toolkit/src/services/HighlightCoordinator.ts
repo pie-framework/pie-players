@@ -434,6 +434,116 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
         text-underline-offset: 2px;
         color: inherit;
       }
+
+      /* The blocks below cover annotation swatches, print, and reduced motion.
+         They deliberately do NOT retune the TTS layers: applyAdaptiveTTSStyle()
+         writes the pie-tts custom properties inline on documentElement on every
+         paint and on theme change, so a media query that only varies a var()
+         fallback for those can never take effect. Annotation colours have no such
+         adaptive path -- they are fixed swatches a student chose -- so a media
+         query is the only way to adjust them, and each keeps its var() so a host
+         override still wins.
+
+         The names above are spelled without their leading dashes on purpose.
+         check-theme-tokens scans comments, and its token pattern stops at the
+         first non-alphanumeric character, so writing the wildcard form reads as
+         consumption of a shorter token that is not in the registry and fails the
+         check. Spell property names in full, or omit the dashes. */
+
+      @media (prefers-color-scheme: dark) {
+        ::highlight(annotation-yellow) {
+          background-color: var(--pie-annotation-yellow-highlight, rgba(139, 117, 0, 0.6));
+        }
+        ::highlight(annotation-green) {
+          background-color: var(--pie-annotation-green-highlight, rgba(45, 92, 63, 0.6));
+        }
+        ::highlight(annotation-blue) {
+          background-color: var(--pie-annotation-blue-highlight, rgba(0, 102, 170, 0.6));
+        }
+        ::highlight(annotation-pink) {
+          background-color: var(--pie-annotation-pink-highlight, rgba(139, 51, 74, 0.6));
+        }
+        ::highlight(annotation-orange) {
+          background-color: var(--pie-annotation-orange-highlight, rgba(154, 99, 0, 0.6));
+        }
+        ::highlight(annotation-underline) {
+          text-decoration-color: var(--pie-primary, #4da6ff);
+        }
+      }
+
+      /* WCAG 2.2 SC 1.4.11 non-text contrast: a highlight is the only indication
+         that text is annotated, so the swatches saturate and the underline
+         thickens when the user asks for more contrast.
+
+         The value is "more", not "high". The stylesheet this was recovered from
+         used prefers-contrast: high, which is not a valid value for the feature
+         -- the keywords are no-preference, more, less, custom. An invalid query
+         evaluates to "not all", so that block could never have matched in any
+         browser even had the file been loaded. Verified with matchMedia under
+         emulation: "high" stays false where "more" flips true. */
+      @media (prefers-contrast: more) {
+        ::highlight(annotation-yellow) {
+          background-color: var(--pie-annotation-yellow-highlight, rgba(255, 255, 0, 0.7));
+        }
+        ::highlight(annotation-green) {
+          background-color: var(--pie-annotation-green-highlight, rgba(0, 255, 127, 0.7));
+        }
+        ::highlight(annotation-blue) {
+          background-color: var(--pie-annotation-blue-highlight, rgba(0, 191, 255, 0.7));
+        }
+        ::highlight(annotation-pink) {
+          background-color: var(--pie-annotation-pink-highlight, rgba(255, 105, 180, 0.7));
+        }
+        ::highlight(annotation-orange) {
+          background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.85));
+        }
+        ::highlight(annotation-underline) {
+          text-decoration-thickness: 3px;
+        }
+      }
+
+      @media print {
+        /* TTS highlighting is a transient read-along cue, not content. */
+        ::highlight(tts-word),
+        ::highlight(tts-sentence),
+        [data-pie-tts-word-element="true"],
+        [data-pie-tts-sentence-element="true"] {
+          background-color: transparent;
+          text-decoration: none;
+          text-shadow: none;
+          border-bottom: none;
+        }
+
+        /* Annotations are student work and must survive printing, but a fill
+           that reads fine on screen can print as an illegible wash, so each
+           becomes an underline that keeps its colour coding. */
+        ::highlight(annotation-yellow),
+        ::highlight(annotation-green),
+        ::highlight(annotation-blue),
+        ::highlight(annotation-pink),
+        ::highlight(annotation-orange) {
+          background-color: transparent;
+          border-bottom: 2px solid currentColor;
+        }
+        ::highlight(annotation-yellow) { border-bottom-color: #ffeb3b; }
+        ::highlight(annotation-green) { border-bottom-color: #a6e1c5; }
+        ::highlight(annotation-blue) { border-bottom-color: #a7e0f6; }
+        ::highlight(annotation-pink) { border-bottom-color: #ff9fae; }
+        ::highlight(annotation-orange) { border-bottom-color: #ffa500; }
+        ::highlight(annotation-underline) {
+          text-decoration-color: #000;
+          border-bottom: none;
+        }
+      }
+
+      /* text-shadow is a direct property rather than a var(), so unlike the
+         other TTS rules this one is not overridden by the adaptive path. */
+      @media (prefers-reduced-motion: reduce) {
+        ::highlight(tts-word),
+        [data-pie-tts-word-element="true"] {
+          text-shadow: none;
+        }
+      }
     `;
 		document.head.appendChild(style);
 	}

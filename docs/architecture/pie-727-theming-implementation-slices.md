@@ -76,7 +76,7 @@ Related:
 
 | Slice | Required Checks |
 | --- | --- |
-| Theme contract tests | `bun run check:theme-tokens`; `bun test packages/theme/tests/token-registry-contract.test.ts`; `bun test packages/theme/src/theme-element.test.ts`; `bun test packages/theme-daisyui/tests/mapping-parity.test.mjs` |
+| Theme contract tests | `bun run check:theme-tokens`; `bun test packages/theme/tests/token-registry-contract.test.ts`; `bun test packages/theme/tests/theme-element.test.ts`; `bun test packages/theme-daisyui/tests/mapping-parity.test.mjs` |
 | Player chrome source changes | Package-local structural tests; WCAG matrix row update; Playwright computed-style checks outside the sandbox; relevant package build before consumer validation |
 | Tool source changes | Package-local style-contract tests; README and registry updates for new public hooks; targeted package build |
 | Custom-element or export changes | `bun run check:source-exports`; `bun run check:consumer-boundaries`; `bun run check:custom-elements` |

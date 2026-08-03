@@ -25,6 +25,11 @@ rmSync(path.join(distComponents, ".generated"), {
 	recursive: true,
 	force: true,
 });
+// Shared chunks carry content hashes, so a rebuild that changes a chunk emits a
+// new filename rather than overwriting the old one. The package `build` script
+// wipes `dist` wholesale, but `dev` (watch) does not, and orphaned chunks would
+// otherwise accumulate into the published `files: ["dist"]` payload.
+rmSync(path.join(distComponents, "chunks"), { recursive: true, force: true });
 
 // Mirror non-TS asset directories (e.g. vendored 3rd-party CE bundles) from
 // src/components into dist/components so relative imports emitted by
@@ -67,32 +72,59 @@ if (existsSync(vendorSrc)) {
 	walkAndPatch(vendorDist);
 }
 
+// All three CEs go through one bundler invocation so they share chunks instead
+// of each inlining its own copy of the Svelte runtime, the services layer, and
+// the policy engine. Bundling them separately triplicated that code.
+//
+// `generated` deliberately sits directly in `dist/components`, not a
+// subdirectory: the Svelte compiler emits relative specifiers such as
+// `../services/ToolkitCoordinator.js`, which only resolve against the tsc
+// output when the bundler entry sits at the same depth as the artifact it
+// stands in for. The temp basename is the CE's base name so that
+// `--entry-naming=[name].custom-element.js` reproduces the exact filenames the
+// package `exports` map and the `components/*-element` entrypoints import.
+// `registrationEntry` is the tsc-emitted `components/*-element.js` shim whose
+// only job is `import "./<Name>.custom-element.js"`. One CE imports another
+// through that shim (`SectionToolBar.svelte` pulls in `item-toolbar-element.js`
+// so mounting a section toolbar guarantees `pie-item-toolbar` is registered).
+// Those shims point at build *outputs*, so they cannot be followed while those
+// outputs are still being produced — see REGISTRATION_ENTRY_REWRITES below.
 const entries = [
+	{ name: "ItemToolBar", registrationEntry: "item-toolbar-element" },
 	{
-		source: path.join(srcComponents, "ItemToolBar.svelte"),
-		output: path.join(distComponents, "ItemToolBar.custom-element.js"),
-		generated: path.join(
-			distComponents,
-			".ItemToolBar.custom-element.unbundled.js",
-		),
+		name: "PieAssessmentToolkit",
+		registrationEntry: "pie-assessment-toolkit-element",
 	},
-	{
-		source: path.join(srcComponents, "PieAssessmentToolkit.svelte"),
-		output: path.join(distComponents, "PieAssessmentToolkit.custom-element.js"),
-		generated: path.join(
-			distComponents,
-			".PieAssessmentToolkit.custom-element.unbundled.js",
-		),
-	},
-	{
-		source: path.join(srcComponents, "SectionToolBar.svelte"),
-		output: path.join(distComponents, "SectionToolBar.custom-element.js"),
-		generated: path.join(
-			distComponents,
-			".SectionToolBar.custom-element.unbundled.js",
-		),
-	},
-];
+	{ name: "SectionToolBar", registrationEntry: "section-toolbar-element" },
+].map((entry) => ({
+	...entry,
+	source: path.join(srcComponents, `${entry.name}.svelte`),
+	generated: path.join(distComponents, `${entry.name}.js`),
+}));
+
+// Redirect cross-CE registration imports onto the sibling entry in this same
+// build. The old script sidestepped this by bundling one entry at a time, in an
+// order where the referenced `*.custom-element.js` happened to already exist on
+// disk — an unstated ordering dependency that also made `SectionToolBar` inline
+// a complete second copy of the already-bundled `ItemToolBar`. Pointing at the
+// entry instead lets the bundler share one copy through `chunks/` while keeping
+// the registration side effect intact: importing `section-toolbar-element` still
+// registers `pie-item-toolbar`.
+const REGISTRATION_ENTRY_REWRITES = new Map(
+	entries.map((entry) => [
+		`./${entry.registrationEntry}.js`,
+		`./${entry.name}.js`,
+	]),
+);
+
+const rewriteRegistrationImports = (source) => {
+	let rewritten = source;
+	for (const [from, to] of REGISTRATION_ENTRY_REWRITES) {
+		rewritten = rewritten.split(`"${from}"`).join(`"${to}"`);
+		rewritten = rewritten.split(`'${from}'`).join(`'${to}'`);
+	}
+	return rewritten;
+};
 
 const SAFE_DEFINE_HELPER = `
 const __pieDefineSafely = (tagName, ctor) => {
@@ -130,24 +162,42 @@ for (const entry of entries) {
 		/customElements\.define\s*\(/g,
 		"__pieDefineSafely(",
 	);
+	sanitizedCode = rewriteRegistrationImports(sanitizedCode);
 	sanitizedCode = `${SAFE_DEFINE_HELPER}\n${sanitizedCode}`;
 
 	writeFileSync(entry.generated, `// @ts-nocheck\n${sanitizedCode}`, "utf8");
-	execFileSync(
-		process.execPath,
-		[
-			"build",
-			entry.generated,
-			"--target=browser",
-			"--format=esm",
-			"--external=@pie-players/*",
-			`--outfile=${entry.output}`,
-		],
-		{
-			cwd: packageRoot,
-			stdio: "pipe",
-		},
-	);
+}
+
+// One invocation for every entry. `--splitting` is what lets the bundler hoist
+// shared code into `chunks/`, and it is also what makes dynamic imports stay
+// dynamic: with the previous single-file `--outfile` build there was nowhere to
+// put a chunk, so the `import("speech-rule-engine")` in
+// `src/services/tts/math-speech.ts` was flattened into the eager bundle —
+// roughly half of the toolkit artifact, loaded by every host whether or not it
+// ever spoke a formula. Splitting restores the lazy boundary the source asks
+// for. `--minify` matches what every Vite-built package in this repo already
+// does; this script predates that convention and never adopted it.
+execFileSync(
+	process.execPath,
+	[
+		"build",
+		...entries.map((entry) => entry.generated),
+		"--target=browser",
+		"--format=esm",
+		"--splitting",
+		"--minify",
+		"--external=@pie-players/*",
+		`--outdir=${distComponents}`,
+		"--entry-naming=[name].custom-element.js",
+		"--chunk-naming=chunks/[name]-[hash].js",
+	],
+	{
+		cwd: packageRoot,
+		stdio: "pipe",
+	},
+);
+
+for (const entry of entries) {
 	rmSync(entry.generated, { force: true });
 }
 

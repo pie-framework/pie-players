@@ -29,6 +29,7 @@
 		"lit": "^3.2.1"
 	},
 	"devDependencies": {
+		"@happy-dom/global-registrator": "^20.9.0",
 		"@types/node": "^22.10.2",
 		"svelte": "^5.54.0",
 		"typescript": "^5.9.3",

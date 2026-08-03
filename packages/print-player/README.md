@@ -111,6 +111,31 @@ fallback.
 | `config` | `Config` | Item configuration with markup, elements map, models array, and rendering options |
 | `resolve` | `ResolverFn` | Custom resolver function for determining element URLs (overrides default CDN resolution) |
 | `missingElement` | `MissingElFn` | Custom factory for placeholder elements shown when a print module fails to load |
+| `trustMarkup` (attr `trust-markup`) | `boolean` | Render authored markup without sanitizing it. Defaults to `false` |
+| `sanitizeMarkup` | `ItemMarkupSanitizer \| null` | Custom sanitizer used instead of the default. Ignored when `trustMarkup` is set |
+
+### Markup Sanitization
+
+Authored `item.markup` is treated as untrusted and passed through the shared
+sanitizer from `@pie-players/pie-players-shared/security` before rendering,
+matching `<pie-item-player>`. Scripts, event-handler attributes, unknown
+protocols, and dangerous tags (`iframe`, `object`, `embed`, `form`, ...) are
+stripped; the interactive element tags from `item.elements` and their print
+variants are allow-listed so they survive.
+
+Unlike the screen players, the print pipeline does **not** apply the overwide
+image/table scroll wrappers: those are `overflow-x: auto` reflow affordances,
+and `overflow` clips rather than scrolls in print media, which would cut off
+wide content.
+
+Set `trust-markup` only when the host has already validated the markup:
+
+```html
+<pie-print trust-markup></pie-print>
+```
+
+Both `trustMarkup` and `sanitizeMarkup` may be set before or after `config` --
+the markup is reprocessed when they change.
 
 ### Config
 

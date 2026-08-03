@@ -30,12 +30,36 @@ const SKIP_DIR_NAMES = new Set([
 
 const SOURCE_USAGE_ROOTS = ["packages"];
 
+/**
+ * Internal `--pie-*` names that source may use without a token-registry entry.
+ *
+ * The registry is the *host contract*: what a host may theme and rely on. These
+ * are implementation details — sizing handoffs, zoom compensation, per-tool
+ * accents — so recording them here keeps them out of it.
+ *
+ * Prefer this list over a registry entry for anything internal. A full entry
+ * costs ~15 lines including a hand-written fallbackPolicy, and writing one for a
+ * token no host should touch inflates the contract without protecting anything:
+ * `package-private` records intent, it does not stop a host setting the value.
+ * Most of these are only ever read as `var(--x, fallback)` and never declared,
+ * so they are settable whether or not we bless them.
+ *
+ * Use a `package-private` registry entry instead when the token genuinely needs
+ * explaining — `--pie-content-styles` is a presence sentinel, and the
+ * section-player layout handoffs are set from component props. Those earn the
+ * prose. A bare accent colour does not.
+ */
 const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-annotation-blue-highlight",
 	"--pie-annotation-green-highlight",
 	"--pie-annotation-orange-highlight",
 	"--pie-annotation-pink-highlight",
 	"--pie-annotation-yellow-highlight",
+	"--pie-answer-eliminator-toggle-color",
+	"--pie-calculator-button-color",
+	"--pie-calculator-button-size",
+	"--pie-calculator-button-size-lg",
+	"--pie-calculator-button-size-sm",
 	"--pie-elements-ng-root",
 	"--pie-font-family",
 	"--pie-header-text",
@@ -43,14 +67,25 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-scrollbar-thumb-hover",
 	"--pie-scrollbar-track",
 	"--pie-section-player-focus-outline",
+	"--pie-selected-button-background",
+	"--pie-selected-button-border",
 	"--pie-shadow",
 	"--pie-surface",
 	"--pie-text-light",
+	"--pie-tool-shell-zoom-comp",
+	"--pie-toolbar-zoom-comp",
+	"--pie-tts-button-color",
+	"--pie-tts-inline-muted-color",
+	"--pie-tts-left-aligned-panel-width",
 	"--pie-tts-line-highlight",
+	"--pie-tts-menu-shadow",
+	"--pie-tts-selected-bg",
 	"--pie-tts-sentence-highlight",
+	"--pie-tts-trigger-shadow",
 	"--pie-tts-word-highlight",
 	"--pie-tts-word-shadow",
 	"--pie-tts-word-underline",
+	"--pie-tts-zoom-comp",
 ]);
 
 function rel(root, absPath) {

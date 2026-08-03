@@ -20,6 +20,34 @@ const packageRoot = path.resolve(__dirname, "..");
 const srcComponents = path.join(packageRoot, "src", "components");
 const distComponents = path.join(packageRoot, "dist", "components");
 
+// Every runtime dependency stays external, so a dependency reaches a consumer's
+// graph exactly once.
+//
+// Inlining a dependency here creates a copy the consumer's bundler cannot
+// deduplicate: its module id is this package's chunk file, not the dependency's
+// path in `node_modules`, so a consumer that also reaches that dependency
+// through our tsc module output ends up bundling it twice. That is not
+// hypothetical — `speech-rule-engine` was landing in the section player twice
+// (~1.3 MB) for exactly this reason, once via `services/tts/math-speech.js` and
+// once inside the pre-bundled CE chunk.
+//
+// This imposes nothing new on consumers: these artifacts already emit bare
+// `@pie-players/*` specifiers, so they have always required a bundler or an
+// import map rather than being loadable directly from a bare browser.
+const packageManifest = JSON.parse(
+	readFileSync(path.join(packageRoot, "package.json"), "utf8"),
+);
+const externalPackages = [
+	...Object.keys(packageManifest.dependencies ?? {}),
+	...Object.keys(packageManifest.peerDependencies ?? {}),
+];
+// Both forms: the bare name plus a subpath glob, since these components import
+// deep entrypoints such as `@pie-players/pie-players-shared/pie`.
+const externalArgs = externalPackages.flatMap((name) => [
+	`--external=${name}`,
+	`--external=${name}/*`,
+]);
+
 mkdirSync(distComponents, { recursive: true });
 rmSync(path.join(distComponents, ".generated"), {
 	recursive: true,
@@ -186,7 +214,7 @@ execFileSync(
 		"--format=esm",
 		"--splitting",
 		"--minify",
-		"--external=@pie-players/*",
+		...externalArgs,
 		`--outdir=${distComponents}`,
 		"--entry-naming=[name].custom-element.js",
 		"--chunk-naming=chunks/[name]-[hash].js",

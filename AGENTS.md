@@ -184,6 +184,19 @@ This applies to:
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
 
+It reaches that gate through `scripts/pre-push-gate.mjs`, which skips it when the
+push carries no new commits — creating a branch at a commit already on the remote,
+or deleting a ref, transfers nothing for the gate to validate. Every uncertain
+case still runs the gate, so this only ever removes provably wasted work. Do not
+reach for `--no-verify` when a push feels like it should have been skipped: report
+the case instead, because a skip the wrapper misses is a bug in
+`scripts/lib/push-scope.mjs`.
+
+Note that lefthook's own `push_files` filtering is not a substitute: it is derived
+from the current branch against its upstream, not from the refs actually being
+pushed, so it runs the gate for a `git push origin <sha>:refs/heads/other` that
+introduces nothing.
+
 ## Skills And Commands
 
 Canonical project skills and commands live in `.claude/skills/` and

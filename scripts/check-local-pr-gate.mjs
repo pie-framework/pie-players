@@ -39,9 +39,7 @@ const requiredCiLintTypecheckCommands = [
 	"lint:all",
 ];
 
-const requiredPrePushCommands = [
-	"verify:local-pr",
-];
+const requiredPrePushCommands = ["verify:local-pr"];
 
 const requiredLocalPrCommands = [
 	"check:changeset-patch-only",
@@ -88,7 +86,12 @@ function collectMissingOrderedCommands({
 	}
 }
 
-export function collectGateFailures({ packageJson, lefthook, ciWorkflow }) {
+export function collectGateFailures({
+	packageJson,
+	lefthook,
+	ciWorkflow,
+	prePushGate = "",
+}) {
 	const failures = [];
 	const scripts = packageJson.scripts;
 
@@ -120,8 +123,27 @@ export function collectGateFailures({ packageJson, lefthook, ciWorkflow }) {
 		failures,
 	});
 
-	if (!lefthook.includes("run: bun run verify:pre-push")) {
-		failures.push("lefthook pre-push must run bun run verify:pre-push.");
+	// The pre-push hook reaches verify:pre-push through scripts/pre-push-gate.mjs, which
+	// skips the gate for pushes that carry no new commits. That indirection is only safe
+	// while all three links hold, so assert each one: the hook runs the wrapper, the
+	// wrapper is fed the pushed refs, and the wrapper still delegates to the real gate.
+	// Break any one of them and the hook either stops gating or gates nothing.
+	if (!lefthook.includes("run: bun ./scripts/pre-push-gate.mjs")) {
+		failures.push(
+			"lefthook pre-push must run bun ./scripts/pre-push-gate.mjs.",
+		);
+	}
+
+	if (!lefthook.includes("use_stdin: true")) {
+		failures.push(
+			"lefthook pre-push must set use_stdin: true so the gate can see the pushed refs.",
+		);
+	}
+
+	if (!prePushGate.includes("verify:pre-push")) {
+		failures.push(
+			"scripts/pre-push-gate.mjs must delegate to bun run verify:pre-push.",
+		);
 	}
 
 	if (!lefthook.includes("run: bun run verify:pre-commit")) {
@@ -148,10 +170,18 @@ function main() {
 	const lefthookPath = path.join(ROOT, "lefthook.yml");
 	const ciWorkflowPath = path.join(ROOT, ".github", "workflows", "ci.yml");
 
+	const prePushGatePath = path.join(ROOT, "scripts", "pre-push-gate.mjs");
+
 	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 	const lefthook = readFileSync(lefthookPath, "utf8");
 	const ciWorkflow = readFileSync(ciWorkflowPath, "utf8");
-	const failures = collectGateFailures({ packageJson, lefthook, ciWorkflow });
+	const prePushGate = readFileSync(prePushGatePath, "utf8");
+	const failures = collectGateFailures({
+		packageJson,
+		lefthook,
+		ciWorkflow,
+		prePushGate,
+	});
 
 	if (failures.length > 0) {
 		console.error("[check-local-pr-gate] Local PR gate is incomplete:");

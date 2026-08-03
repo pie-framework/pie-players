@@ -1125,6 +1125,58 @@
 		color: var(--pie-tts-button-color, #146eb3);
 	}
 
+	/* Active/open trigger hooks (PIE-727).
+	   ---------------------------------------------------------------------------
+	   README documents --pie-tool-trigger-active-background / -color /
+	   -border-color as the supported way to style this trigger while its panel is
+	   open, instead of overriding broad tokens like --pie-primary. The component
+	   had stopped honouring all three, so a host following the docs got nothing.
+	   These rules restore them, matching how tool-calculator-inline-desmos wires
+	   the same three hooks.
+	   ---------------------------------------------------------------------------
+	   Every fallback is the value this element already resolves to when the hook
+	   is unset, so adding these rules changes nothing by default. That is
+	   deliberate: unlike the calculator, this trigger has never had a filled
+	   active look, and introducing one here would restyle the control for every
+	   host. Hosts opt in by setting a hook; nobody is opted in by us.
+
+	   Keyed off [aria-expanded='true'], which the markup already maintains, so
+	   there is no new state to keep in sync. */
+	.pie-tool-tts-inline__trigger--plain[aria-expanded="true"] {
+		/* All three fallbacks are `__control`'s chains, including the glyph colour.
+		   Not `--plain`'s: that rule also declares `color`, but `__control` repeats
+		   it further down the sheet at equal specificity, so `__control` wins and
+		   `--plain`'s accent colour never applies. Falling back to the accent here
+		   would therefore have turned the glyph blue on open -- a visible change
+		   for every host, which is exactly what these fallbacks exist to avoid.
+		   Measured in Chromium: the plain trigger's glyph is the dark
+		   --pie-button-color, not the #146eb3 accent. */
+		background: var(
+			--pie-tool-trigger-active-background,
+			var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)))
+		);
+		color: var(
+			--pie-tool-trigger-active-color,
+			var(--pie-button-color, var(--pie-text, #222))
+		);
+		border-color: var(
+			--pie-tool-trigger-active-border-color,
+			var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)))
+		);
+	}
+
+	/* NDS variant: its glyph colour derives from --color-interactive-blue, so the
+	   accent is remapped rather than painted, exactly as the base rule does. Only
+	   the foreground hook applies -- background and border are owned by the NDS
+	   button's own internals, and setting them on this host element would paint a
+	   box the tertiary button does not currently have. */
+	.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"] {
+		--color-interactive-blue: var(
+			--pie-tool-trigger-active-color,
+			var(--pie-tts-button-color, #146eb3)
+		);
+	}
+
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
 		background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
 		transform: translateY(-1px);

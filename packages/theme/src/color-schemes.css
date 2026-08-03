@@ -331,3 +331,37 @@
 	--pie-blue-grey-600: #999999;
 	--pie-blue-grey-900: #e0e0e0;
 }
+
+/* The annotation toolbar's outline defaults to a contrast-checked grey pair of
+ * its own rather than --pie-border, because under the DaisyUI bridge that token
+ * carries a surface tint that leaves the outline at ~1.1:1. These two rules give
+ * the palettes that DO choose a boundary colour deliberately the last word.
+ *
+ * The dark theme is pinned because the component's light-dark() default follows
+ * the declared color-scheme, which pie-theme does not set; without this, a
+ * pie-theme dark page would take the light value.
+ */
+[data-theme="dark"],
+pie-theme[theme="dark"] {
+	--pie-tool-annotation-toolbar-border: #5c5c5c;
+}
+
+/* Every accessibility scheme above picks --pie-border for maximum contrast
+ * against its own background, so the outline follows it. This must stay after
+ * the dark rule: the two selectors have equal specificity, and a scheme can be
+ * active on a dark page. Dropping it would put the default grey on the light
+ * scheme backgrounds, where it fails SC 1.4.11 (#949494 is 2.71:1 on
+ * rose-on-green's #ccffcc and 2.16:1 on black-on-rose's #ffccdd).
+ *
+ * The schemes are named rather than matched with [data-color-scheme], so an id
+ * with no block above cannot pull in the :root --pie-border, which is #9a9a9a
+ * and misses 3:1 on white. Add a scheme here when adding one above.
+ */
+[data-color-scheme="black-on-white"],
+[data-color-scheme="white-on-black"],
+[data-color-scheme="rose-on-green"],
+[data-color-scheme="yellow-on-blue"],
+[data-color-scheme="black-on-rose"],
+[data-color-scheme="light-gray-on-dark-gray"] {
+	--pie-tool-annotation-toolbar-border: var(--pie-border);
+}

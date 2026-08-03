@@ -1,5 +1,13 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [507b56f]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-context@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

@@ -22,6 +22,17 @@ export interface SanitizeItemMarkupOptions {
 	 * tags that rewrite to `pie-*-config` or host-registered extensions.
 	 */
 	allowedCustomElements?: string[];
+	/**
+	 * Whether to apply the overwide image / table scroll wrappers after
+	 * sanitizing. Defaults to `true` for screen rendering.
+	 *
+	 * Print rendering must pass `false`: the wrappers are `overflow-x: auto`
+	 * reflow affordances (WCAG 1.4.10 at 400% zoom), and `@pie-players/pie-theme`
+	 * carries no `@media print` override for them. In print media `overflow`
+	 * clips instead of scrolling, so a wide image or table would be silently
+	 * cut off at the column edge with no way to reach the rest.
+	 */
+	wrapOverwideContent?: boolean;
 }
 
 // Attributes every PIE element / wrapper is allowed to carry.
@@ -177,6 +188,8 @@ export function sanitizeItemMarkup(
 	});
 
 	const sanitized = typeof result === "string" ? result : String(result ?? "");
+	// Print rendering opts out: `overflow` clips rather than scrolls on paper.
+	if (options.wrapOverwideContent === false) return sanitized;
 	// PIE-94: wrap overwide authored images in a horizontal-scroll container
 	// so they don't get clipped by ancestor `overflow-x: hidden` regions in
 	// the section player (and match WCAG 1.4.10 Reflow at 400% zoom).
@@ -193,9 +206,9 @@ export function sanitizeItemMarkup(
 export function createDefaultItemMarkupSanitizer(
 	options: SanitizeItemMarkupOptions = {},
 ): ItemMarkupSanitizer {
-	const { allowedCustomElements } = options;
+	const { allowedCustomElements, wrapOverwideContent } = options;
 	return (markup: string) =>
-		sanitizeItemMarkup(markup, { allowedCustomElements });
+		sanitizeItemMarkup(markup, { allowedCustomElements, wrapOverwideContent });
 }
 
 /**

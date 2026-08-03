@@ -116,6 +116,34 @@ describe("sanitizeItemMarkup", () => {
 		expect(out).toContain("<my-widget");
 		expect(out).not.toContain("<script");
 	});
+
+	describe("wrapOverwideContent", () => {
+		const markup = `<img src="wide.png" alt="chart"><table><tr><td>x</td></tr></table>`;
+
+		test("wraps overwide images and tables by default", () => {
+			const out = sanitizeItemMarkup(markup);
+			expect(out).toContain("pie-image-scroll");
+			expect(out).toContain("pie-table-scroll");
+		});
+
+		test("skips the wrappers when disabled, keeping the content", () => {
+			// Print rendering needs this: the wrappers are `overflow-x: auto`, and
+			// `overflow` clips rather than scrolls in print media, so a wide image
+			// or table would be cut off at the column edge.
+			const out = sanitizeItemMarkup(markup, { wrapOverwideContent: false });
+			expect(out).not.toContain("pie-image-scroll");
+			expect(out).not.toContain("pie-table-scroll");
+			expect(out).toContain("wide.png");
+			expect(out).toContain("<table");
+		});
+
+		test("createDefaultItemMarkupSanitizer forwards the flag", () => {
+			const sanitize = createDefaultItemMarkupSanitizer({
+				wrapOverwideContent: false,
+			});
+			expect(sanitize(markup)).not.toContain("pie-image-scroll");
+		});
+	});
 });
 
 describe("buildAuthoringAllowList", () => {

@@ -132,6 +132,30 @@ your fixes are already in `master`, rerun the release workflow manually:
 This bypasses version-bump detection checks for that manual run while keeping normal
 push-driven safety checks in place.
 
+#### When the previous publish only partly succeeded
+
+Fixed versioning means npm authenticates the run as a whole, so a run that loses auth
+partway leaves the registry split: the packages that made it sit at the version being
+released, the rest stay a patch behind. Rerunning the manual publish above is the repair —
+`changeset publish` skips the versions that already landed.
+
+`check:fixed-versioning` recognises that one split and reports it rather than failing:
+
+```
+[check-fixed-versioning] Completing a partial publish of 0.3.61. 1 package(s) already
+published it (@pie-players/pie-theme) and 35 are still one patch behind ...
+```
+
+It stays fatal for any other multi-version state, because republishing will not reconcile
+drift — only an unfinished publish of the *local* version is recoverable this way. Do not
+reach for `SKIP_NPM_VERSION_SEQUENCE_CHECK=1` to get past a split: that also disables the
+patch-sequence and version-skip checks, which are what stop a release from silently
+skipping a version.
+
+Do not try to fix a split by unpublishing the package that succeeded. npm refuses to
+republish a version number once it has been unpublished, so removing it makes that version
+permanently unreachable for that package and forces the whole group forward anyway.
+
 Publish-path runs execute the full `bun run verify:publish` gate before
 `changesets/action` can publish.
 
@@ -229,9 +253,23 @@ git add scripts/trusted-publishers.json   # the claim ledger is part of the chan
 
 `bun run check:trusted-publishers` asserts that every package a release would publish has a
 recorded claim, and names the missing ones with a ready-made `--apply` command. It runs in
-`verify:publish`, and in `release.yml` ahead of the version bump (oidc mode, publish runs
-only) — so a forgotten claim fails the release *before* changesets commits bumped versions,
-instead of halfway through publishing.
+`release.yml` ahead of the version bump (oidc mode, publish runs only) — so a forgotten claim
+fails the release *before* changesets commits bumped versions, instead of halfway through
+publishing.
+
+It is deliberately **not** part of `verify:publish`. Trusted-publisher records only matter
+when the run authenticates by OIDC, and `verify:publish` cannot know whether it will:
+`release.yml` runs it *before* the auth mode is resolved, and `release:with-version` is a
+token-based local publish path where the records are irrelevant. Including it there failed
+token-mode publishes over records they never needed. Run it directly when preparing a claim.
+
+The check is fatal only for the packages `release.yml` publishes. Not every publishable
+package ships on the release path — `@pie-players/pie-preloaded-player` is published by
+`publish-preloaded-player.yml` on its own version scheme — and a release must not be blocked
+by a package it never touches. Gaps outside that scope are printed as
+`note (other workflow)` so they stay visible to whoever owns that workflow. Use
+`bun ./scripts/check-trusted-publishers.mjs --all` to make every package fatal, which is the
+right check to run before publishing the preloaded player.
 
 Renaming a publishable package counts as adding one: the new name needs its own record.
 

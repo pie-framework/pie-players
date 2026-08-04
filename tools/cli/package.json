@@ -34,7 +34,7 @@
 		"prepack": "bun run build"
 	},
 	"dependencies": {
-		"@oclif/core": "^4.0.0",
+		"@oclif/core": "^4.13.2",
 		"@oclif/plugin-help": "^6.2.0"
 	},
 	"devDependencies": {

@@ -52,6 +52,7 @@
 	} from "@pie-players/pie-players-shared";
 	import {
 		parseAllowedStyleOrigins,
+		scopeStylesheetCss,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
 	import type {
@@ -1159,9 +1160,9 @@
 			}
 			const response = await fetch(resolvedUrl.toString());
 			const cssText = await response.text();
-			const scopedCss = cssText.replace(
-				/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/g,
-				`.pie-item-player.${scopeClass} $1$2`,
+			const scopedCss = scopeStylesheetCss(
+				cssText,
+				`.pie-item-player.${scopeClass}`,
 			);
 			const style = document.createElement("style");
 			style.setAttribute("data-pie-style", url);

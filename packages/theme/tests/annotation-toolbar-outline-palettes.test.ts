@@ -26,6 +26,10 @@ const ACCESSIBILITY_SCHEME_IDS = [
 	"yellow-on-blue",
 	"black-on-rose",
 	"light-gray-on-dark-gray",
+	"grey-on-light-grey",
+	"purple-on-light-green",
+	"black-on-violet",
+	"yellow-on-navy",
 ];
 
 function channelLuminance(channel: number): number {
@@ -109,13 +113,20 @@ describe("annotation toolbar outline overrides", () => {
 
 	test("the default grey would fail on the tinted light schemes", () => {
 		// This is why the override above exists rather than letting every palette
-		// take the component default: on these two backgrounds the default grey is
+		// take the component default: on these backgrounds the default grey is
 		// below the SC 1.4.11 threshold.
 		const failing = BUILTIN_PIE_COLOR_SCHEMES.filter((scheme) => {
 			const background = scheme.variables["--pie-background"];
 			return background && contrastRatio(DEFAULT_LIGHT_OUTLINE, background) < 3;
 		}).map((scheme) => scheme.id);
 
-		expect(failing).toEqual(["rose-on-green", "black-on-rose"]);
+		expect(failing).toEqual([
+			"rose-on-green",
+			"black-on-rose",
+			"grey-on-light-grey",
+			"purple-on-light-green",
+			"black-on-violet",
+			"yellow-on-navy",
+		]);
 	});
 });

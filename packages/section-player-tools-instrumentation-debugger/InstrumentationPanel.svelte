@@ -21,7 +21,16 @@
 		type InstrumentationDebugRecord,
 	} from "@pie-players/pie-players-shared";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, onDestroy } from "svelte";
+	import { createEventDispatcher, onDestroy, untrack } from "svelte";
+	import {
+		createPanelRecordIngest,
+		DEFAULT_MAX_RECORDS,
+		haveSamePanelKeys,
+		pruneAndSortRecords,
+		type PanelRecord,
+		type RecordLimitOverrides,
+		type RecordLimits,
+	} from "./panel-records.js";
 
 	const dispatch = createEventDispatcher<{ close: undefined }>();
 	const allowedKinds = new Set([
@@ -31,11 +40,9 @@
 		"user-context",
 		"global-attributes",
 	]);
-	type RecordKind = InstrumentationDebugRecord["kind"];
-	type RecordLimitOverrides = Partial<Record<RecordKind, number>>;
 
 	let {
-		maxRecords = 250,
+		maxRecords = DEFAULT_MAX_RECORDS,
 		maxRecordsByKind = {},
 		persistenceScope = "",
 		persistencePanelId = "instrumentation-events",
@@ -47,73 +54,27 @@
 	} = $props();
 	let isPaused = $state(false);
 	let selectedKind = $state<InstrumentationDebugRecord["kind"] | "all">("all");
-	let selectedRecordId = $state<number | null>(null);
-	let records = $state<InstrumentationDebugRecord[]>([]);
+	let selectedRecordKey = $state<number | null>(null);
+	let records = $state<PanelRecord[]>([]);
+	const ingestRecord = createPanelRecordIngest();
 
-	function resolveCap(rawCap: unknown, fallback: number): number {
-		const parsed = Number(rawCap);
-		if (!Number.isFinite(parsed)) return Math.max(20, Math.min(2000, fallback));
-		return Math.max(20, Math.min(2000, parsed));
-	}
-
-	function getCapForKind(kind: RecordKind): number {
-		const globalCap = resolveCap(maxRecords || 250, 250);
-		const override = maxRecordsByKind?.[kind];
-		return resolveCap(override, globalCap);
-	}
-
-	function toTimestampValue(timestamp: string): number {
-		const parsed = Date.parse(timestamp);
-		return Number.isNaN(parsed) ? 0 : parsed;
-	}
-
-	function pruneAndSortRecords(
-		nextRecords: InstrumentationDebugRecord[],
-	): InstrumentationDebugRecord[] {
-		const sorted = [...nextRecords].sort((left, right) => {
-			const leftTs = toTimestampValue(left.timestamp);
-			const rightTs = toTimestampValue(right.timestamp);
-			if (leftTs === rightTs) {
-				return right.id - left.id;
-			}
-			return rightTs - leftTs;
-		});
-		const nextByKind: Record<RecordKind, number> = {
-			event: 0,
-			error: 0,
-			metric: 0,
-			"user-context": 0,
-			"global-attributes": 0,
-		};
-		const pruned: InstrumentationDebugRecord[] = [];
-		for (const record of sorted) {
-			const kindCap = getCapForKind(record.kind);
-			if (nextByKind[record.kind] >= kindCap) continue;
-			pruned.push(record);
-			nextByKind[record.kind] += 1;
-		}
-		return pruned;
+	function currentLimits(): RecordLimits {
+		return { maxRecords, maxRecordsByKind };
 	}
 
 	function reconcileRecordsWithLimits(): void {
-		const nextRecords = pruneAndSortRecords(records);
-		if (nextRecords.length !== records.length) {
+		const nextRecords = pruneAndSortRecords(records, currentLimits());
+		if (!haveSamePanelKeys(nextRecords, records)) {
 			records = nextRecords;
-			return;
-		}
-		for (let index = 0; index < nextRecords.length; index += 1) {
-			if (nextRecords[index]?.id !== records[index]?.id) {
-				records = nextRecords;
-				return;
-			}
 		}
 	}
 
 	const unsubscribe = subscribeInstrumentationDebugRecords({
 		listener: (record) => {
 			if (isPaused) return;
-			records = pruneAndSortRecords([record, ...records]);
-			if (selectedRecordId == null) selectedRecordId = record.id;
+			const panelRecord = ingestRecord(record);
+			records = pruneAndSortRecords([panelRecord, ...records], currentLimits());
+			if (selectedRecordKey == null) selectedRecordKey = panelRecord.panelKey;
 		},
 		replayBuffered: true,
 	});
@@ -140,14 +101,14 @@
 
 	function clearRecords(): void {
 		records = [];
-		selectedRecordId = null;
+		selectedRecordKey = null;
 		clearBufferedInstrumentationDebugRecords();
 	}
 
 	$effect(() => {
 		void maxRecords;
 		void maxRecordsByKind;
-		reconcileRecordsWithLimits();
+		untrack(() => reconcileRecordsWithLimits());
 	});
 
 	const visibleRecords = $derived.by(() =>
@@ -157,7 +118,7 @@
 	);
 	const selectedRecord = $derived.by(
 		() =>
-			visibleRecords.find((record) => record.id === selectedRecordId) ||
+			visibleRecords.find((record) => record.panelKey === selectedRecordKey) ||
 			visibleRecords[0] ||
 			null,
 	);
@@ -239,12 +200,12 @@
 					No instrumentation records yet.
 				</div>
 			{:else}
-				{#each visibleRecords as record (record.id)}
+				{#each visibleRecords as record (record.panelKey)}
 					<button
 						class="pie-section-player-tools-instrumentation-debugger__row"
-						class:pie-section-player-tools-instrumentation-debugger__row--active={selectedRecord?.id ===
-							record.id}
-						onclick={() => (selectedRecordId = record.id)}
+						class:pie-section-player-tools-instrumentation-debugger__row--active={selectedRecord?.panelKey ===
+							record.panelKey}
+						onclick={() => (selectedRecordKey = record.panelKey)}
 					>
 						<div class="pie-section-player-tools-instrumentation-debugger__row-top">
 							<span class="pie-section-player-tools-instrumentation-debugger__record-name">

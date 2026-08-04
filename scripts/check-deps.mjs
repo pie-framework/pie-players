@@ -201,6 +201,25 @@ function collectSpecifiersWithRegex(content) {
 	return [...out];
 }
 
+/**
+ * Whether `manifest` declares `packageName` in a section that puts an edge in the
+ * build graph.
+ *
+ * Only `dependencies` and `devDependencies` do, so only those order one workspace
+ * package's build after another's. turbo 2.9 also derived edges from
+ * `peerDependencies`; 2.10 stopped, which silently turned `assessment-toolkit`'s
+ * type-import of its two optional peers into a build race that failed with TS2307
+ * whenever its own `tsc` won. A peer declaration still states the consumer
+ * contract — it just cannot be the only declaration for a package we import
+ * ourselves.
+ */
+export function declaresBuildEdge(manifest, packageName) {
+	return (
+		Object.hasOwn(manifest?.dependencies ?? {}, packageName) ||
+		Object.hasOwn(manifest?.devDependencies ?? {}, packageName)
+	);
+}
+
 export function collectSpecifiers(content, filePath = "source.ts") {
 	if (path.extname(filePath) === ".svelte") {
 		return collectSpecifiersWithRegex(content);
@@ -349,7 +368,21 @@ function main() {
 					(packageName === manifest.name ||
 						specifier.startsWith(`${manifest.name}/`));
 
-				if (isSelfImport || workspacePackageNames.has(packageName)) continue;
+				if (isSelfImport) continue;
+
+				if (workspacePackageNames.has(packageName)) {
+					if (!declaresBuildEdge(manifest, packageName)) {
+						violations.push({
+							type: "workspace-build-edge",
+							workspace: workspace.name,
+							file: path.relative(ROOT, filePath),
+							specifier,
+							packageName,
+						});
+					}
+					continue;
+				}
+
 				if (declared.has(packageName)) continue;
 
 				violations.push({
@@ -413,6 +446,10 @@ function main() {
 		if (violation.type === "missing-dependency") {
 			console.error(
 				`  [missing-dependency] ${violation.workspace}: ${violation.file} imports "${violation.specifier}" but "${violation.packageName}" is not declared.`,
+			);
+		} else if (violation.type === "workspace-build-edge") {
+			console.error(
+				`  [workspace-build-edge] ${violation.workspace}: ${violation.file} imports "${violation.specifier}" but "${violation.packageName}" is only declared as a peer/optional dependency. Add it to "dependencies" or "devDependencies" so the build graph orders it first.`,
 			);
 		} else if (violation.type === "hoist-reliant-script") {
 			console.error(

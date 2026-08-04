@@ -79,7 +79,7 @@
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
-		"speech-rule-engine": "^5.0.0-rc.1"
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"peerDependencies": {
 		"@pie-players/pie-calculator-desmos": "workspace:*",
@@ -94,9 +94,11 @@
 		}
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.12",
-		"@happy-dom/global-registrator": "^20.9.0",
-		"svelte": "^5.54.0",
+		"@biomejs/biome": "^2.5.6",
+		"@happy-dom/global-registrator": "^20.11.1",
+		"@pie-players/pie-calculator-desmos": "workspace:*",
+		"@pie-players/tts-client-server": "workspace:*",
+		"svelte": "^5.56.8",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",

@@ -189,35 +189,34 @@ describe("ServerTTSProvider", () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(3);
 		const synthCall = fetchMock.mock.calls[0];
-		expect(String(synthCall?.[0])).toBe("https://tts.custom.example/v1");
-		const synthBody = JSON.parse(String((synthCall?.[1] as RequestInit).body));
+		if (!synthCall) throw new Error("expected a synthesize fetch call");
+		expect(String(synthCall[0])).toBe("https://tts.custom.example/v1");
+		const synthBody = JSON.parse(String((synthCall[1] as RequestInit).body));
 		expect(synthBody.speedRate).toBe("fast");
 		expect(synthBody.lang_id).toBe("en-US");
 		expect(synthBody.cache).toBe(true);
 	});
 
 	test("updates custom transport speedRate for active inline speed changes", async () => {
-		const fetchMock = vi.fn(
-			async (input: RequestInfo | URL) => {
-				const url = String(input);
-				if (url === "https://tts.custom.example/v1") {
-					return createJSONResponse({
-						audioContent: "https://cdn.custom.example/audio.mp3",
-						word: "https://cdn.custom.example/marks.jsonl",
-					});
-				}
-				if (url === "https://cdn.custom.example/marks.jsonl") {
-					return new Response(
-						'{"time":0,"type":"word","start":0,"end":4,"value":"Read"}\n',
-						{ status: 200, headers: { "Content-Type": "text/plain" } },
-					);
-				}
-				if (url === "https://cdn.custom.example/audio.mp3") {
-					return new Response(new Blob(["mp3-bytes"]), { status: 200 });
-				}
-				return new Response("not-found", { status: 404 });
-			},
-		);
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === "https://tts.custom.example/v1") {
+				return createJSONResponse({
+					audioContent: "https://cdn.custom.example/audio.mp3",
+					word: "https://cdn.custom.example/marks.jsonl",
+				});
+			}
+			if (url === "https://cdn.custom.example/marks.jsonl") {
+				return new Response(
+					'{"time":0,"type":"word","start":0,"end":4,"value":"Read"}\n',
+					{ status: 200, headers: { "Content-Type": "text/plain" } },
+				);
+			}
+			if (url === "https://cdn.custom.example/audio.mp3") {
+				return new Response(new Blob(["mp3-bytes"]), { status: 200 });
+			}
+			return new Response("not-found", { status: 404 });
+		});
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const provider = new ServerTTSProvider();

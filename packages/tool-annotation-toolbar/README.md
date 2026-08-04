@@ -43,6 +43,20 @@ This component doesn't take props - it automatically shows when text is selected
 
 Text-to-Speech (Read Aloud) button does not emit an event - it directly uses the TTS service to read the selected text.
 
+## Theming
+
+The toolbar takes its surface and text from the canonical `--pie-background` and `--pie-text` tokens. Its outline is the one exception:
+
+| Token                                  | Default                        | Purpose                                     |
+| -------------------------------------- | ------------------------------ | ------------------------------------------- |
+| `--pie-tool-annotation-toolbar-border` | `light-dark(#949494, #5c5c5c)` | Outline separating the toolbar from content |
+
+The outline does **not** read `--pie-border`. Under the DaisyUI bridge that token resolves to `--color-base-300`, a surface tint rather than a boundary colour, which renders the outline at 1.16:1 on the light base and 1.12:1 on the dark one — well short of the 3:1 that WCAG 2.2 SC 1.4.11 requires of a component boundary. The defaults above are measured instead: `#949494` is the lightest grey clearing 3:1 on white (3.03:1) and `#5c5c5c` the darkest clearing it on black (3.14:1). `light-dark()` follows the declared `color-scheme`, so every dark DaisyUI theme picks the dark value rather than only the theme literally named `dark`.
+
+Palettes that choose a boundary colour deliberately set the token themselves in `@pie-players/pie-theme`: the six `data-color-scheme` accessibility schemes point it at their own `--pie-border`, and the PIE dark theme pins `#5c5c5c`.
+
+Hosts may override the token, but must keep 3:1 against both the toolbar surface and the content behind it.
+
 ## Architecture
 
 The annotation toolbar integrates with PIE's shared highlight infrastructure:

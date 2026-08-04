@@ -554,7 +554,20 @@
 		border-radius: 0.5rem;
 		background: var(--pie-background, #fff);
 		color: var(--pie-text, #111827);
-		border: 1px solid var(--pie-border, #d1d5db);
+		/* WCAG 2.2 SC 1.4.11: this stroke is the only boundary between a floating
+		   toolbar and the content behind it, so it has to clear 3:1 against both.
+		   It cannot come from --pie-border, because the DaisyUI bridge maps that
+		   token to --color-base-300 -- a surface tint rather than a boundary
+		   colour: #eeeeee at 1.16:1 on the light base, #15191e at 1.12:1 on the
+		   dark one. The pair below is measured instead: #949494 is the lightest
+		   grey clearing 3:1 on white (3.03:1), #5c5c5c the darkest clearing it on
+		   black (3.14:1). light-dark() keys off the declared color-scheme, so
+		   every dark DaisyUI theme takes the dark value, not only the one named
+		   "dark". Palettes that pick their own boundary colour -- the
+		   data-color-scheme accessibility schemes -- set the token themselves in
+		   @pie-players/pie-theme, which is why this is a token and not a literal. */
+		border: 1px solid
+			var(--pie-tool-annotation-toolbar-border, light-dark(#949494, #5c5c5c));
 		box-shadow: 0 10px 25px -8px rgb(0 0 0 / 0.3);
 		user-select: none;
 	}

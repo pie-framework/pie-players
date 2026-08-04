@@ -95,7 +95,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.12",
-		"@happy-dom/global-registrator": "^20.9.0",
+		"@happy-dom/global-registrator": "^20.11.1",
 		"svelte": "^5.56.8",
 		"typescript": "^5.9.3"
 	},

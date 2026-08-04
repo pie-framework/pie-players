@@ -219,13 +219,14 @@ describe("ttsToolRegistration speed options", () => {
 		const firstRender = withFakeDocument(() =>
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
-		const firstElement = firstRender?.elements?.[0]?.element as {
-			[key: string]: unknown;
-		};
+		const firstElement = firstRender?.elements?.[0]?.element as
+			| { [key: string]: unknown }
+			| undefined;
 		expect(typeof firstElement?.[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP]).toBe(
 			"function",
 		);
-		(firstElement?.[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP] as () => void)();
+		if (!firstElement) throw new Error("expected a rendered toolbar element");
+		(firstElement[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP] as () => void)();
 
 		const secondRender = withFakeDocument(() =>
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
@@ -548,7 +549,8 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 			settings: { showSingleSpeedOption: true },
 		});
 		expect(
-			(out.settings as { showSingleSpeedOption?: boolean }).showSingleSpeedOption,
+			(out.settings as { showSingleSpeedOption?: boolean })
+				.showSingleSpeedOption,
 		).toBe(true);
 	});
 
@@ -572,7 +574,12 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 			settings: {
 				speedOptions: [
 					{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-					{ rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
+					{
+						rate: 1,
+						label: "Normal",
+						ariaLabel: "Normal speed",
+						default: true,
+					},
 					{ rate: 1.5, label: "Fast" },
 					{ rate: 1.5, label: "Duplicate" },
 				],

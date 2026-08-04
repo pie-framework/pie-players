@@ -116,8 +116,11 @@ describe("dom-event-bridge", () => {
 			status: "entered",
 			cohort: { sectionId: "section-A", attemptId: "" },
 		});
+		const [firstEvent] = events;
+		if (!firstEvent)
+			throw new Error("expected the bridge to dispatch an event");
 		expect(
-			(events[0]?.detail as { attemptId?: string }).attemptId,
+			(firstEvent.detail as { attemptId?: string }).attemptId,
 		).toBeUndefined();
 	});
 

@@ -285,10 +285,11 @@ describe("tool-config-validation", () => {
 			},
 		);
 
-		expect(
-			(result.config.providers.customTool?.settings as Record<string, unknown>)
-				.sanitized,
-		).toBe(true);
+		const customTool = result.config.providers.customTool;
+		if (!customTool) throw new Error("expected a customTool provider entry");
+		expect((customTool.settings as Record<string, unknown>).sanitized).toBe(
+			true,
+		);
 		expect(result.diagnostics).toEqual([]);
 	});
 

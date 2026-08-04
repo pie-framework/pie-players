@@ -42,9 +42,9 @@
 		"@pie-players/pie-theme": "workspace:*"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.11.1",
+		"@axe-core/playwright": "^4.12.1",
 		"@biomejs/biome": "^2.4.12",
-		"@playwright/test": "^1.59.1",
+		"@playwright/test": "^1.62.1",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@types/node": "^25.1.0",
 		"svelte": "^5.56.8",

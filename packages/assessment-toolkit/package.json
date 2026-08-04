@@ -79,7 +79,7 @@
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
-		"speech-rule-engine": "^5.0.0-rc.1"
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"peerDependencies": {
 		"@pie-players/pie-calculator-desmos": "workspace:*",

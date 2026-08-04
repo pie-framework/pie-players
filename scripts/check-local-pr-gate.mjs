@@ -31,6 +31,12 @@ const requiredCiLintTypecheckCommands = [
 	"check:scripts",
 	"build",
 	"check:player-tool-boundaries",
+	// Asserts the built bundle shape: toolkit custom elements stay minified and
+	// code-split, speech-rule-engine stays external and dynamically imported, and
+	// no sourcemaps reach published output. It runs `check:player-tool-boundaries`
+	// itself, so that step above is redundant at runtime but kept explicit because
+	// this list is the readable contract for what the gate covers.
+	"check:bundle-safety",
 	"check:publint",
 	"check:types-publish",
 	"check:pack-integrity",

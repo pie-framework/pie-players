@@ -1,5 +1,63 @@
 # @pie-players/pie-tool-tts-inline
 
+## 0.3.62
+
+### Patch Changes
+
+- c810459: Make the documented active/open trigger hooks work again in the inline TTS tool.
+
+  `README.md` documents `--pie-tool-trigger-active-background`, `-color` and
+  `-border-color` as the supported way to style the trigger while its panel is
+  open, instead of overriding broad tokens such as `--pie-primary`. The component
+  referenced none of them, so a host following the documentation got no effect.
+  PIE-727 added these hooks for exactly this control; they were lost in a later
+  refactor, and the stale registry metadata pointing at this package is what
+  surfaced it.
+
+  All three now apply while `aria-expanded="true"`, which the markup already
+  maintains.
+
+  Each hook falls back to the value the control already resolves to, so setting
+  none of them leaves the trigger looking identical open and closed. That is
+  deliberate: unlike the calculator's equivalent hooks, this trigger has never had
+  a filled active look — the panel opening is itself the state indication — and
+  introducing one would restyle a shipped control for every host. The README
+  previously claimed the unset default derived from `--pie-primary`, which had
+  never shipped here; it now describes the actual fallbacks.
+
+  Verified in Chromium by comparing the three properties as sRGB bytes rather than
+  as computed-style strings, since routing an identical value through one more
+  `var()` layer changes the colour space Chromium serialises to. With the hooks
+  unset, open matches closed exactly. With them set, all three take effect, and
+  they stop applying once `aria-expanded` goes false.
+
+  The token registry regains this package in `definedIn` for the three hooks.
+
+- Fix inline TTS keyboard navigation so the reading controls sit in the page tab order in visual order.
+
+  - The controls panel now precedes the play/pause trigger in the DOM for the overlay layouts (`floating-overlay` and the default `left-aligned`), where it opens to the left of the trigger. Shift+Tab from Play/Pause now walks backwards through stop → fast-forward → rewind → speed controls. The row layouts, which drop the panel below the trigger, keep trigger-then-panel order.
+  - Rewind, fast-forward and stop are each their own Tab stop instead of sharing one roving toolbar stop, so every control is reachable with Tab alone.
+  - The speed radios remain a single Tab stop, now placed on the _checked_ option per the ARIA radiogroup pattern (previously it was always the first option, e.g. "slow", even when "normal" was selected).
+  - Arrowing onto a speed option now selects it immediately, like a native radio group or an answer-choice group — no Spacebar/Enter needed. Arrow keys stay within their cluster, so they never cross the radiogroup boundary, and they skip disabled controls instead of stranding focus.
+  - The play/pause trigger keeps keyboard focus when activated. It no longer sets `disabled` while the play action is in flight — a disabled element cannot hold focus, so pressing Play dropped focus to the document body. Re-entrancy is still guarded in the handler and the pending state is exposed via `aria-busy`.
+  - Stopping playback hands focus back to the play/pause trigger. Stop unmounts the panel containing the button that was just activated, which previously left focus on `<body>`.
+  - The play/pause trigger now paints a focus ring whenever it holds focus, not only when the browser decides `:focus-visible` applies. Because activating it deliberately keeps focus on the trigger while the panel opens beside it, a pointer activation (or the programmatic hand-back from Stop) previously left focus on the trigger with nothing drawn. The rule is scoped to `:focus:not(:focus-visible)`, so genuine keyboard focus keeps the shared control ring — and the `nds-icon-button` variant keeps the NDS ring — unchanged.
+  - Stop stays active after reading finishes on its own. Previously it was disabled together with rewind and fast-forward once playback ended, which also meant it lost any keyboard focus it held; it now stays enabled for as long as the panel is open, since it can still halt playback and dismiss the controls.
+  - If rewind or fast-forward holds keyboard focus when reading finishes, focus moves to Stop instead of being dropped to the document body when those controls go inactive.
+
+- Updated dependencies [c73c995]
+- Updated dependencies [507b56f]
+- Updated dependencies [14666b3]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [a1edde5]
+- Updated dependencies [7864f66]
+- Updated dependencies [3b4e461]
+- Updated dependencies [7605500]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+  - @pie-players/pie-context@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

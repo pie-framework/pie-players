@@ -1,5 +1,22 @@
 # @pie-players/pie-tool-graph
 
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [c73c995]
+- Updated dependencies [507b56f]
+- Updated dependencies [14666b3]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [a1edde5]
+- Updated dependencies [7864f66]
+- Updated dependencies [3b4e461]
+- Updated dependencies [7605500]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+  - @pie-players/pie-context@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

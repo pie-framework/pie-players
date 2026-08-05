@@ -1,5 +1,31 @@
 # @pie-players/pie-section-player
 
+## 0.3.62
+
+### Patch Changes
+
+- a1edde5: Minify and code-split the assessment toolkit custom-element bundles. The three CE artifacts are now produced by a single bundler invocation that shares code through `dist/components/chunks/`, so the Svelte runtime, services layer, and policy engine are no longer duplicated per artifact, and `SectionToolBar` no longer inlines a second copy of `ItemToolBar`. Splitting also restores the lazy `speech-rule-engine` boundary that `math-speech.ts` already asked for: it moves to a chunk fetched only when math speech runs, instead of being flattened into the eager bundle. Eager CE bytes drop from 1,993 KB to 346 KB, and the section player's main bundle drops from roughly 2.6 MB to 1.4 MB. Entry filenames, the `exports` map, and per-entrypoint custom-element registration side effects are unchanged.
+- 3b4e461: Keep every runtime dependency external in the assessment toolkit's custom-element build, and stop publishing sourcemaps.
+
+  Inlining a dependency into a prebuilt custom-element chunk creates a copy a consumer's bundler cannot deduplicate, because its module id is the chunk file rather than the dependency's path in `node_modules`. `speech-rule-engine` was reaching the section player twice for exactly that reason — once through `services/tts/math-speech.js` and once inside the prebuilt chunk — about 1.3 MB of duplicate payload. Externalizing the manifest's dependencies collapses that to one copy. It asks nothing new of consumers: these artifacts already emitted bare `@pie-players/*` specifiers, so they always required a bundler or an import map.
+
+  Publishable packages ship only `dist`, so a usable sourcemap also required `inlineSources`, which embedded every TypeScript source into the tarball. That cost roughly 2.5 MB across the tsc-built packages while every Vite-built package in the repo already shipped none. Sourcemaps are now off everywhere.
+
+- Updated dependencies [c73c995]
+- Updated dependencies [507b56f]
+- Updated dependencies [14666b3]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [a1edde5]
+- Updated dependencies [7864f66]
+- Updated dependencies [3b4e461]
+- Updated dependencies [7605500]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+  - @pie-players/pie-item-player@0.3.62
+  - @pie-players/pie-default-tool-loaders@0.3.62
+  - @pie-players/pie-context@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

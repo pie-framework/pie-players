@@ -1,5 +1,75 @@
 # @pie-players/pie-section-player-tools-instrumentation-debugger
 
+## 0.3.62
+
+### Patch Changes
+
+- 27ec7e8: Key the instrumentation debugger list on a panel-assigned record key so colliding record ids can no longer freeze the panel.
+
+  The panel keyed its `{#each}` on `record.id`. Ids are assigned by whoever emitted
+  the record, and the panel reads an open `pie-instrumentation-debug-record` window
+  event that hosts, demo pages and tests dispatch into directly with hand-written
+  ids — those repeat the ids `emitInstrumentationDebugRecord` hands out from its own
+  counter, and a synthetic record can arrive with no id at all.
+
+  A repeat threw Svelte's `each_key_duplicate`. Because the throw happens during
+  reconciliation, the failure was worse than a logged error: the list stopped
+  updating for the rest of the session, so the colliding record and every record
+  after it were silently dropped while the panel kept displaying its stale rows. The
+  existing e2e coverage passed straight through it — it asserted that a row was
+  visible, which was already true before the record was dispatched.
+
+  Each record now gets a monotonic per-panel key on ingest, unique for the panel's
+  lifetime including across `clear`, and the list keys and row selection use it
+  instead of `id`. Two records that share an id render as two rows, and selecting one
+  highlights only that row. Timestamp ties now break on ingest order rather than
+  `id`, so an injected record's arbitrary id cannot reorder the list, and a record
+  with an unrecognised `kind` is bounded by the global cap instead of escaping the
+  per-kind caps.
+
+  The list logic moves to `panel-records.ts` (internal to the package; no export
+  surface change) and is covered by unit tests plus an e2e regression test that
+  drives the panel with two records sharing an id.
+
+- 99929d8: Move debugger panel styling out of the shared content stylesheet and into the panels that own it.
+
+  `components.css` carried a `SECTION PLAYER DEBUGGER OVERLAYS` block styling the PNP
+  and session debugger panels. That file is for authored-content classes no component
+  owns, so panel-private rules did not belong in it, and the split was already
+  inconsistent: each panel defined most of its own classes locally and left a handful
+  behind.
+
+  Those rules now live in each panel's own `<style>` block. The two classes applied by
+  `SharedFloatingPanel` rather than by the panel template — the panel root and
+  `__content-shell` — are wrapped in `:global()`, since Svelte would otherwise scope
+  them to the panel component and they would match nothing.
+
+  Of the 37 classes in the removed block, 14 were referenced nowhere at all
+  (`__header*`, `__title`, `__icon-button`, `__icon-xs`, `__resize-*`) — leftovers from
+  before `SharedFloatingPanel` renamed those parts to `pie-shared-floating-panel__*`.
+  They were deleted rather than relocated.
+
+  Five panels also dropped a `@pie-players/pie-theme/components.css` import that never
+  did anything: these packages build with Vite in library mode, so the import was
+  extracted to a `dist` CSS file that the built JS never referenced and that no
+  `exports` entry exposed — the same defect fixed for `PieItemPlayer.svelte`. Each
+  package now ships one fewer dead file.
+
+  If you import `@pie-players/pie-theme/components.css` directly and relied on the
+  `pie-section-player-tools-{pnp,session}-debugger*` classes it used to define, they are
+  no longer there; they ship with their panel packages instead.
+
+- Updated dependencies [c73c995]
+- Updated dependencies [c73c995]
+- Updated dependencies [14666b3]
+- Updated dependencies [99929d8]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [c810459]
+  - @pie-players/pie-theme@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+  - @pie-players/pie-section-player-tools-shared@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

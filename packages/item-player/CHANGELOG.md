@@ -1,5 +1,83 @@
 # @pie-players/pie-item-player
 
+## 0.3.62
+
+### Patch Changes
+
+- 14666b3: Install the shared PIE content stylesheet from the player instead of requiring hosts to import it.
+
+  `@pie-players/pie-theme/components.css` holds classes that authored content depends on but no component owns: passage markup (`.numbered-paragraph`, `.p-number`, `div.passage-title`), the legacy `kds-*` families, and the `pie-answer-eliminator-*` styles. `PieItemPlayer.svelte` already imported that stylesheet, but in this package's Vite library build a plain CSS import is extracted to `dist/assets/pie-item-player.css` — a file nothing loads at runtime and no `exports` entry exposes. The import was a silent no-op, so hosts rendered authored passages unstyled unless they happened to import the stylesheet themselves, which was documented nowhere.
+
+  `@pie-players/pie-item-player` now inlines the stylesheet as text (`?raw`) and installs it once per document at import time, alongside custom-element registration, so it is in place before any instance renders. The separately importable session-debugger entry installs it too. The orphaned `dist/assets/pie-item-player.css` is no longer emitted. `@pie-players/pie-section-player` and `@pie-players/pie-assessment-player` are covered transitively, since they render items through the item player.
+
+  The stylesheet is prepended to `<head>` and deliberately left unlayered, so host CSS that loads later still wins at equal specificity — the placement hosts were previously told to arrange by hand. A cascade layer would have been wrong here: unlayered author declarations beat all layered ones regardless of specificity, so a host reset as broad as `p { margin: 0 }` would have silently outranked `.numbered-paragraph { margin-left: 36px }`.
+
+  Hosts that want to own the stylesheet can set `<html data-pie-content-styles="host">` before the player script runs; the player then installs nothing and warns once if no content stylesheet turns out to be present. `components.css` declares `--pie-content-styles` on `:root` as the presence sentinel behind that check.
+
+  Upgrading hosts do not have to remove an existing `import "@pie-players/pie-theme/components.css"` for this release to be correct: installation is idempotent, and two matching copies render identically. But a host copy loads later than the installed one and therefore wins ties at equal specificity, so a host copy pinned to an older `@pie-players/pie-theme` would silently override newer player rules. Rather than leave that to be discovered, the players now log a one-time warning naming the redundant import when they detect a second copy in the document.
+
+  `@pie-players/pie-print-player` installs it the same way, from its `src/index.ts` entry. This player never told hosts to import the stylesheet at all, so it had no working route to these styles. The gap is worse than a cosmetic one here: `components.css` owns `@media print { .noprint, .kds-noprint { display: none } }`, so a missing copy did not just render authored passage markup unstyled — it printed content the author had marked as non-printing. Nothing in the package strips authored classes on the way through; `processMarkup` swaps only the interactive element tags and returns the surrounding markup verbatim, and `pie-print` renders into light DOM (`createRenderRoot()` returns `this`), so a document-level stylesheet is the only thing that can reach that content.
+
+  New in `@pie-players/pie-players-shared`: `installContentStyles`, `contentStylesPresent`, `contentStylesOptedOut`, `auditContentStyles`, plus a narrow `@pie-players/pie-players-shared/ui/content-styles` export. Print player imports through that subpath rather than the package root, because players-shared declares `sideEffects: true` and print player externalizes nothing — the root barrel would have bundled all of players-shared into `print-player.js`.
+
+  Hosts that already import `@pie-players/pie-theme/components.css` need no change — installation is idempotent and a duplicate host copy simply wins on document order.
+
+- 6a18f3c: Scope external stylesheets with an at-rule-aware walker, so `@media`, `@supports` and `:root` survive.
+
+  `pie-item-player` scoped external stylesheets by prefixing every selector-like fragment with
+  one regex. That is correct for flat selector rules and wrong for everything else:
+  `@media screen { ... }` became `.pie-item-player.x @media screen { ... }`, an invalid
+  selector, so the browser dropped the whole block and every rule inside it. `@font-face` and
+  `@keyframes` were corrupted the same way — the font never loaded, the animation name was
+  gone. And `:root { --var: ... }` became `.pie-item-player.x :root`, which can never match,
+  because `:root` is `<html>` and is not a descendant of the player.
+
+  At-rules and `:root` custom properties therefore never applied at all. Both entry paths were
+  affected: the `external-style-urls` attribute and `itemConfig.resources.stylesheets[*].url`.
+
+  Scoping now walks the stylesheet brace-by-brace, in a new `scopeStylesheetCss` export from
+  `@pie-players/pie-players-shared`:
+
+  - `@media`, `@supports`, `@container`, `@layer` and `@scope` keep their prelude and have
+    their inner rules scoped, recursively.
+  - `@font-face`, `@keyframes` (including vendor-prefixed), `@page`, `@property` and
+    `@counter-style` pass through untouched, as do at-rules the walker does not recognise —
+    their blocks hold declarations or keyframe selectors, not selectors to scope.
+  - `:root`, `html` and `body` are replaced by the scope selector instead of being prefixed by
+    it, so external custom properties apply. Anything that followed is preserved:
+    `html.dark .a` becomes `.pie-item-player.x.dark .a`.
+  - A leading pseudo becomes a descendant: `:is(.a, .b) .c` scopes to
+    `.pie-item-player.x :is(.a, .b) .c`, not `.pie-item-player.x:is(.a, .b) .c`, which would
+    demand that the player root carry the partner's class.
+  - Parsing is string- and paren-aware, so a `{` inside `content: "{"` does not end a block and
+    a `,` inside `:is(a, b)` does not split a selector list. Comments are stripped before the
+    walk so one sitting between two rules is not absorbed into the next selector.
+  - Style-rule blocks are emitted verbatim, which is also what native CSS nesting needs:
+    nested selectors are relative to a parent that has already been scoped.
+
+  Flat selector rules scope exactly as before. No new dependency, and no public API change —
+  no new attribute, prop or event.
+
+  **Where stylesheets are passed, expect visible changes.** At-rules and `:root` variables have
+  never applied in this player, so fixing the scoper turns currently-dead CSS live. That is the
+  point of the fix, but it is a real rendering difference for any host that was passing a
+  stylesheet with media queries or custom properties in it.
+
+  `@import` still passes through untouched, exactly as the regex left it. It pulls in an
+  unscoped stylesheet and so defeats scoping; blocking it is a policy decision, not a scoping
+  one. Cross-origin stylesheets are also still unscoped — they take the `<link>` branch because
+  `fetch()` cannot read the text to rewrite. Both are pre-existing and tracked separately.
+
+- Updated dependencies [c73c995]
+- Updated dependencies [c73c995]
+- Updated dependencies [14666b3]
+- Updated dependencies [99929d8]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [c810459]
+  - @pie-players/pie-theme@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @pie-players/tts-server-polly
 
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [3b4e461]
+  - @pie-players/tts-server-core@0.3.62
+
 ## 0.3.61
 
 ### Patch Changes

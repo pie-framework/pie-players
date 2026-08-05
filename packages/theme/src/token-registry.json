@@ -960,6 +960,54 @@
 		"fallbackPolicy": "Canonical foreground text token."
 	},
 	{
+		"name": "--pie-annotation-underline",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/color-schemes.css",
+			"packages/theme/src/color-schemes.ts"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Colour of the student annotation underline on a light page, default #4221d5. Deliberately does not fall through --pie-primary: a theme accent is chosen against one background and is illegible on the other, and a var() fallback could never override a host-set --pie-primary anyway. Paired with --pie-annotation-underline-dark, which HighlightCoordinator selects via [data-theme] rather than prefers-color-scheme. The data-color-scheme accessibility palettes set both to their own --pie-primary, because [data-theme] reports what the page declares rather than which scheme is active. Hosts overriding it must keep 3:1 against the content background (WCAG 2.2 SC 1.4.11)."
+	},
+	{
+		"name": "--pie-annotation-underline-dark",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/color-schemes.css",
+			"packages/theme/src/color-schemes.ts"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Colour of the student annotation underline on a dark page, default #9c89ec. The dark half of the pair described under --pie-annotation-underline; kept a separate token so overriding one state never silently moves the other. Hosts overriding it must keep 3:1 against the content background (WCAG 2.2 SC 1.4.11)."
+	},
+	{
+		"name": "--pie-tool-annotation-toolbar-border",
+		"owner": "@pie-players/pie-tool-annotation-toolbar",
+		"scope": "component-public",
+		"category": "border",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-annotation-toolbar/tool-annotation-toolbar.svelte",
+			"packages/theme/src/color-schemes.css",
+			"packages/theme/src/color-schemes.ts"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Outline of the floating annotation toolbar. Deliberately does not fall through --pie-border, which the DaisyUI bridge maps to the base-300 surface tint and which leaves the outline near 1.1:1; the component default is a measured light-dark(#5c5c5c, #949494) pair instead -- dark grey on light surfaces, light grey on dark ones, each measured against DaisyUI's real theme bases rather than pure white and black. The data-color-scheme accessibility palettes and the PIE dark theme set it explicitly so their own boundary colour wins. Hosts overriding it must keep 3:1 against both the toolbar surface and the content behind it (WCAG 2.2 SC 1.4.11)."
+	},
+	{
 		"name": "--pie-tool-trigger-active-background",
 		"owner": "@pie-players/pie-tool-tts-inline",
 		"scope": "component-public",

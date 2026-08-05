@@ -532,5 +532,104 @@ test.describe("item-player demo multiple-choice", () => {
 				.locator(".pie-section-player-tools-instrumentation-debugger__row")
 				.first(),
 		).toBeVisible({ timeout: 30_000 });
+		// Assert the dispatched record itself lands in the list. The demo already
+		// emits bootstrap records, so a row being visible is not evidence on its
+		// own that the panel ingested this one.
+		await expect(
+			panel.getByText("pie-item-test-event", { exact: true }),
+		).toBeVisible({ timeout: 30_000 });
+	});
+
+	test("keeps ingesting instrumentation records when ids collide", async ({
+		page,
+	}) => {
+		// The debug-record stream is an open window event: hosts, demo pages and
+		// tests dispatch synthetic records with hand-written ids that repeat the
+		// ids the provider stream hands out. The panel used to key its `{#each}`
+		// on `record.id`, so a repeat threw each_key_duplicate and froze the list
+		// — every later record was silently dropped while the test still passed.
+		const svelteErrors: string[] = [];
+		page.on("pageerror", (error) => {
+			if (String(error).includes("svelte.dev/e/")) {
+				svelteErrors.push(String(error));
+			}
+		});
+		await gotoRoute(page, DELIVERY_PATH);
+		const panel = await openInstrumentationPanel(page);
+		const rows = panel.locator(
+			".pie-section-player-tools-instrumentation-debugger__row",
+		);
+		const baselineRowCount = await rows.count();
+
+		await page.evaluate(() => {
+			const dispatchRecord = (id: number, name: string) => {
+				window.dispatchEvent(
+					new CustomEvent("pie-instrumentation-debug-record", {
+						detail: {
+							id,
+							kind: "event",
+							providerId: "test",
+							providerName: "Test Provider",
+							timestamp: new Date().toISOString(),
+							name,
+							attributes: { component: "pie-item-player" },
+						},
+					}),
+				);
+			};
+			// `id: 1` also collides with the demo's first bootstrap record.
+			dispatchRecord(1, "pie-item-duplicate-id-first");
+			dispatchRecord(1, "pie-item-duplicate-id-second");
+		});
+
+		await expect(rows).toHaveCount(baselineRowCount + 2, { timeout: 30_000 });
+		await expect(
+			panel.getByText("pie-item-duplicate-id-first", { exact: true }),
+		).toBeVisible();
+		await expect(
+			panel.getByText("pie-item-duplicate-id-second", { exact: true }),
+		).toBeVisible();
+
+		// Selecting one of the colliding rows must highlight exactly that row and
+		// show its details, not the other record that shares its id.
+		await panel
+			.getByText("pie-item-duplicate-id-first", { exact: true })
+			.click();
+		await expect(
+			panel.locator(
+				".pie-section-player-tools-instrumentation-debugger__row--active",
+			),
+		).toHaveCount(1);
+		await expect(
+			panel.locator(
+				".pie-section-player-tools-instrumentation-debugger__detail-meta",
+			),
+		).toContainText("pie-item-duplicate-id-first");
+
+		// The list stays live for records that arrive after the collision.
+		await page.evaluate(() => {
+			window.dispatchEvent(
+				new CustomEvent("pie-instrumentation-debug-record", {
+					detail: {
+						id: 2,
+						kind: "event",
+						providerId: "test",
+						providerName: "Test Provider",
+						timestamp: new Date().toISOString(),
+						name: "pie-item-after-duplicate-id",
+						attributes: { component: "pie-item-player" },
+					},
+				}),
+			);
+		});
+		await expect(rows).toHaveCount(baselineRowCount + 3, { timeout: 30_000 });
+		await expect(
+			panel.getByText("pie-item-after-duplicate-id", { exact: true }),
+		).toBeVisible();
+
+		expect(
+			svelteErrors,
+			`Unexpected Svelte runtime errors: ${JSON.stringify(svelteErrors, null, 2)}`,
+		).toEqual([]);
 	});
 });

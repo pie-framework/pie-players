@@ -131,8 +131,14 @@ async function requestTtsControlHandoff(page: Page): Promise<boolean> {
 		});
 }
 
-async function suppressAudibleBrowserTts(page: Page): Promise<void> {
-	await page.addInitScript(() => {
+// `utteranceMs` is how long each utterance "plays" before its onend fires. The
+// 4s default keeps playback running long enough for control assertions; pass a
+// small value when a test needs the whole (chunked) read to run to completion.
+async function suppressAudibleBrowserTts(
+	page: Page,
+	utteranceMs = 4000,
+): Promise<void> {
+	await page.addInitScript((playbackMs: number) => {
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 		(
 			window as unknown as {
@@ -181,7 +187,7 @@ async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 					if (!activeUtterance) return;
 					dispatchSafe(activeUtterance.onend);
 					clearPlayback();
-				}, 4000);
+				}, playbackMs);
 			},
 			cancel: () => {
 				if (activeUtterance) {
@@ -211,7 +217,7 @@ async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 			configurable: true,
 			value: fakeSynth,
 		});
-	});
+	}, utteranceMs);
 }
 
 async function readBrowserTtsSpeaks(
@@ -387,23 +393,31 @@ test.describe("section player demo tts-ssml", () => {
 			expectPanelBeforeTriggerOnPlay?: boolean;
 			expectPanelLeftOfTriggerOnPlay?: boolean;
 		}> = [
+			// panelBeforeTrigger tracks DOM order, which must follow VISUAL order so
+			// keyboard order does too. The row layouts drop the panel below the
+			// trigger (trigger first); the overlay layouts open it to the left of the
+			// trigger, so the panel comes first and Shift+Tab moves backwards from
+			// Play/Pause into the reading controls.
 			{
 				mode: "reserved-row",
 				expectReserveBeforePlay: true,
 				expectActiveExpandOnPlay: false,
 				expectPanelPositionOnPlay: "absolute",
+				expectPanelBeforeTriggerOnPlay: false,
 			},
 			{
 				mode: "expanding-row",
 				expectReserveBeforePlay: false,
 				expectActiveExpandOnPlay: true,
 				expectPanelPositionOnPlay: "absolute",
+				expectPanelBeforeTriggerOnPlay: false,
 			},
 			{
 				mode: "floating-overlay",
 				expectReserveBeforePlay: false,
 				expectActiveExpandOnPlay: false,
 				expectPanelPositionOnPlay: "absolute",
+				expectPanelBeforeTriggerOnPlay: true,
 			},
 			{
 				mode: "left-aligned",
@@ -412,7 +426,7 @@ test.describe("section player demo tts-ssml", () => {
 				// Fixed so the panel escapes overflow-clipping ancestors and
 				// stacks above the page header (top-layer z-index).
 				expectPanelPositionOnPlay: "fixed",
-				expectPanelBeforeTriggerOnPlay: false,
+				expectPanelBeforeTriggerOnPlay: true,
 				expectPanelLeftOfTriggerOnPlay: true,
 			},
 		];
@@ -699,11 +713,137 @@ test.describe("section player demo tts-ssml", () => {
 		expect(overlayGeometry.panelWithinCardInlineBounds).toBe(true);
 		expect(overlayGeometry.triggerRightAligned).toBe(true);
 
-		await page.keyboard.press("Tab");
-		await expect(panel.getByRole("radio", { name: "Slow speed" })).toBeFocused();
+		// Keyboard order follows visual order. The panel opens to the LEFT of the
+		// play/pause trigger, so Shift+Tab walks backwards out of the trigger
+		// through stop → fast-forward → rewind and into the speed radios. Every
+		// control is a real Tab stop; the radios share one, on the CHECKED option.
+		// Focus the trigger explicitly: clicking it does not leave focus on it, so
+		// without this the keystrokes below would start from <body>.
+		await firstInlineTts
+			.getByRole("button", { name: /Play reading|Pause reading/ })
+			.focus();
+		await page.keyboard.press("Shift+Tab");
+		await expect(
+			panel.getByRole("button", { name: "Stop reading" }),
+		).toBeFocused();
+		await page.keyboard.press("Shift+Tab");
+		await expect(
+			panel.getByRole("button", { name: "Fast-forward" }),
+		).toBeFocused();
+		await page.keyboard.press("Shift+Tab");
+		await expect(panel.getByRole("button", { name: "Rewind" })).toBeFocused();
+		await page.keyboard.press("Shift+Tab");
+		await expect(
+			panel.getByRole("radio", { name: "Normal speed" }),
+		).toBeFocused();
 
-		await panel.getByRole("button", { name: "Stop reading" }).click();
+		// Inside the radiogroup, arrowing onto an option SELECTS it — no
+		// Spacebar/Enter — exactly like an answer-choice radio group.
+		await page.keyboard.press("ArrowRight");
+		const fastSpeedRadio = panel.getByRole("radio", { name: "Fast speed" });
+		await expect(fastSpeedRadio).toBeFocused();
+		await expect(fastSpeedRadio).toHaveAttribute("aria-checked", "true");
+		await expect(fastSpeedRadio).toHaveAttribute("tabindex", "0");
+		await expect(
+			panel.getByRole("radio", { name: "Normal speed" }),
+		).toHaveAttribute("tabindex", "-1");
+
+		// Activating play/pause must not cost the user their place: the trigger is
+		// never disabled while the play action is in flight (a disabled element
+		// cannot hold focus), so it stays focused across play → pause → resume.
+		const playPauseTrigger = firstInlineTts.getByRole("button", {
+			name: /Play reading|Pause reading|Resume reading/,
+		});
+		await playPauseTrigger.focus();
+		await page.keyboard.press("Enter");
+		await expect(playPauseTrigger).toBeFocused();
+		await page.keyboard.press("Enter");
+		await expect(playPauseTrigger).toBeFocused();
+
+		// ...and retained focus must be VISIBLE. A pointer activation suppresses
+		// :focus-visible, so without the trigger's own :focus:not(:focus-visible)
+		// ring the browser would paint nothing while focus sat on the trigger.
+		// Asserts the painted outline, NOT whether :focus-visible matched — that is
+		// a browser heuristic (and stays sticky after the keypresses above), while
+		// the ring is the actual contract.
+		const triggerOutline = async () =>
+			await playPauseTrigger.evaluate((el) => {
+				const cs = getComputedStyle(el);
+				return { outlineStyle: cs.outlineStyle, outlineWidth: cs.outlineWidth };
+			});
+		await playPauseTrigger.click();
+		await expect(playPauseTrigger).toBeFocused();
+		const afterPointer = await triggerOutline();
+		expect(afterPointer.outlineStyle).toBe("solid");
+		expect(afterPointer.outlineWidth).toBe("2px");
+
+		// Stop unmounts the panel, including the button that was just activated, so
+		// focus is handed back to the trigger rather than dropped to <body> — and
+		// that programmatically restored focus is visible for the same reason.
+		const stopButton = panel.getByRole("button", { name: "Stop reading" });
+		await stopButton.focus();
+		await page.keyboard.press("Enter");
 		await expect(panel).toHaveCount(0);
+		await expect(playPauseTrigger).toBeFocused();
+		expect((await triggerOutline()).outlineStyle).toBe("solid");
+	});
+
+	test("keeps stop active and rescues focus when reading finishes on its own", async ({
+		page,
+	}) => {
+		// A short per-utterance duration lets the whole chunked read run out inside
+		// the test, driving the TTS service to IDLE exactly as a completed read does.
+		await suppressAudibleBrowserTts(page, 15);
+		await page.setViewportSize({ width: 1320, height: 900 });
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+
+		const inlineTts = page
+			.locator(
+				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+			)
+			.first();
+		await expect(inlineTts).toBeVisible();
+		const trigger = inlineTts.getByRole("button", {
+			name: /Play reading|Pause reading|Resume reading/,
+		});
+		const panel = inlineTts.getByRole("toolbar", { name: "Reading controls" });
+
+		await inlineTts.getByRole("button", { name: "Play reading" }).click();
+		await expect(panel).toBeVisible();
+		const rewind = panel.getByRole("button", { name: "Rewind" });
+		const fastForward = panel.getByRole("button", { name: "Fast-forward" });
+		const stop = panel.getByRole("button", { name: "Stop reading" });
+		await expect(rewind).toBeEnabled();
+		await expect(fastForward).toBeEnabled();
+		await expect(stop).toBeEnabled();
+
+		// Park focus on a seek control and let the read run out.
+		await rewind.focus();
+		await expect(rewind).toBeFocused();
+
+		// Reading finished: the seek controls go inactive (nothing left to seek),
+		// stop REMAINS active, and focus is moved off the now-disabled Rewind onto
+		// Stop rather than being dropped to <body> by the browser.
+		await expect(rewind).toBeDisabled({ timeout: 15_000 });
+		await expect(fastForward).toBeDisabled();
+		await expect(stop).toBeEnabled();
+		await expect(stop).toBeFocused();
+
+		// Stop still works after completion, and still hands focus back.
+		await stop.click();
+		await expect(panel).toHaveCount(0);
+		await expect(trigger).toBeFocused();
+
+		// Focus already on Stop when the read ends must simply stay there.
+		await inlineTts.getByRole("button", { name: "Play reading" }).click();
+		await expect(panel).toBeVisible();
+		await expect(rewind).toBeEnabled();
+		await stop.focus();
+		await expect(rewind).toBeDisabled({ timeout: 15_000 });
+		await expect(stop).toBeEnabled();
+		await expect(stop).toBeFocused();
 	});
 
 	test("stacks left-aligned speed controls below the inline media row when the heading crowds the panel", async ({
@@ -977,9 +1117,13 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "false");
 			await expect(passageSpeedFast).toHaveAttribute("aria-checked", "false");
 			await passageSpeedSlow.focus();
+			// Radiogroup semantics, like an answer-choice group: arrowing onto an
+			// option moves focus AND selects it — no Spacebar/Enter needed.
 			await page.keyboard.press("ArrowRight");
-			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "true");
 			await expect(passageSpeedNormal).toBeFocused();
+			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "false");
+			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "true");
+			// Spacebar on the already-selected option leaves it selected.
 			await page.keyboard.press("Space");
 			await expect(passageSpeedSlow).toHaveAttribute("aria-checked", "false");
 			await expect(passageSpeedNormal).toHaveAttribute("aria-checked", "true");

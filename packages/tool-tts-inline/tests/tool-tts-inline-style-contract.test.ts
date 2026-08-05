@@ -318,3 +318,172 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 		expect(body).not.toContain("border-color:");
 	});
 });
+
+describe("tool-tts-inline keyboard order contract", () => {
+	test("overlay layouts render the controls panel before the trigger", () => {
+		// The overlay panels (floating-overlay + left-aligned, the default) open to
+		// the LEFT of the play/pause trigger, so they must precede it in the DOM:
+		// Shift+Tab then moves backwards from Play/Pause into the additional
+		// controls, matching visual order.
+		expect(source).toContain(
+			"const isPanelBeforeTrigger = $derived(isFloatingLayout || isLeftAlignedFloatingLayout)",
+		);
+		const overlayBranch = source.slice(
+			source.indexOf("{#if isPanelBeforeTrigger}"),
+			source.indexOf("{:else}", source.indexOf("{#if isPanelBeforeTrigger}")),
+		);
+		expect(overlayBranch.indexOf("{@render controlsPanel()}")).toBeGreaterThan(
+			-1,
+		);
+		expect(overlayBranch.indexOf("{@render controlsPanel()}")).toBeLessThan(
+			overlayBranch.indexOf("{@render triggerButton()}"),
+		);
+	});
+
+	test("the trigger never disables itself while the play action is in flight", () => {
+		// A disabled element cannot hold focus, so disabling the trigger mid-action
+		// blurs it and a keyboard user loses their place on every Play press.
+		// Re-entrancy is guarded in handlePlayPause; the pending state is aria-busy.
+		expect(source).not.toContain(
+			"disabled={!ttsService || playActionInFlight}",
+		);
+		expect(source).toContain("'aria-busy': playActionInFlight ? 'true' : null");
+		expect(source).toContain(
+			"aria-busy={playActionInFlight ? 'true' : undefined}",
+		);
+		expect(source).toContain("if (playActionInFlight) return;");
+	});
+
+	test("the trigger stays visibly focused after a pointer activation", () => {
+		// Focus deliberately stays on the trigger while the panel opens beside it,
+		// so it must paint a ring even when the browser suppresses :focus-visible.
+		// Scoped to :focus:not(:focus-visible) so keyboard focus keeps the shared
+		// __control / NDS ring exactly as-is.
+		const stripped = styleSource.replace(/\s+/g, "");
+		expect(stripped).toContain(
+			".pie-tool-tts-inline__trigger:focus:not(:focus-visible),",
+		);
+		// The NDS variant holds focus on a Lit-created inner <button>, which has no
+		// Svelte scoping class and so must be reached with :global().
+		expect(stripped).toContain(
+			".pie-tool-tts-inline__trigger:global(button:focus:not(:focus-visible)){",
+		);
+	});
+
+	test("stopping hands focus back to the trigger it unmounts the panel with", () => {
+		const stopFn = source.slice(
+			source.indexOf("function handleStop()"),
+			source.indexOf("async function handleSeekForward"),
+		);
+		// Captured BEFORE resetLocalPlaybackUi tears the panel down.
+		expect(stopFn.indexOf("panelHasFocus()")).toBeLessThan(
+			stopFn.indexOf("resetLocalPlaybackUi"),
+		);
+		expect(stopFn).toContain("focusTriggerIfPanelHadFocus(true)");
+	});
+
+	test("stop stays active after reading finishes; seek controls do not", () => {
+		// Reading finishing on its own clears `speaking`, which must NOT take Stop
+		// with it — Stop can still halt playback / dismiss the panel, and staying
+		// enabled is what lets it keep focus it already had.
+		expect(source).toContain(
+			'aria-label="Stop reading"\n\t\t\t\t\t\tdisabled={!ttsService}',
+		);
+		// Rewind / fast-forward correctly go inactive with `speaking`.
+		expect(source).toContain("disabled={!ttsService || !speaking}");
+		expect(source).not.toContain(
+			"disabled={!ttsService || (!speaking && !paused)}",
+		);
+	});
+
+	test("focus is moved off a seek control that reading-end disables", () => {
+		// The focused element has to be read BEFORE the state flags flip: once
+		// `speaking` is false, Svelte disables the seek buttons and the browser
+		// blurs whichever held focus, losing the only evidence of which it was.
+		const listener = source.slice(
+			source.indexOf("const stateListener = (state: unknown)"),
+			source.indexOf("ttsService.onStateChange"),
+		);
+		expect(listener.indexOf("isSeekControlFocused()")).toBeLessThan(
+			listener.indexOf("syncFromState(state as string)"),
+		);
+		expect(listener).toContain("moveFocusOffDisabledSeekControl");
+		// Focus lands on Stop, falling back to the trigger if the panel has closed.
+		const repair = source.slice(
+			source.indexOf("function moveFocusOffDisabledSeekControl"),
+			source.indexOf("function focusTriggerIfPanelHadFocus"),
+		);
+		expect(repair).toContain("STOP_BUTTON_SELECTOR");
+		expect(repair).toContain("stop.focus()");
+		expect(repair).toContain("focusTriggerIfPanelHadFocus(true)");
+	});
+
+	test("media buttons are real Tab stops, not a roving toolbar", () => {
+		// rewind / fast-forward / stop must carry NO tabindex override, so each is
+		// its own Tab stop and Shift+Tab off the trigger walks stop → fast-forward
+		// → rewind before reaching the speeds.
+		// Template only — the script also mentions the attribute as a selector.
+		const mediaButtons = source
+			.slice(source.indexOf("</script>"))
+			.split("data-pie-tts-media")
+			.slice(1)
+			.map((chunk) => chunk.slice(0, chunk.indexOf("</button>")));
+		expect(mediaButtons).toHaveLength(3);
+		for (const button of mediaButtons) {
+			expect(button).not.toContain("tabindex");
+		}
+	});
+
+	test("the speed radiogroup's single Tab stop is the checked option", () => {
+		// ARIA radiogroup pattern: the checked radio is the one in the Tab sequence.
+		expect(source).toContain(
+			"tabindex={playbackRate === option.rate ? 0 : -1}",
+		);
+	});
+
+	test("arrowing onto a speed option selects it without Spacebar/Enter", () => {
+		const selectFn = source.slice(
+			source.indexOf("function focusClusterControlAt"),
+			source.indexOf("function moveClusterFocus"),
+		);
+		// Focus moves, then the option is applied — the answer-choice behaviour.
+		expect(selectFn).toContain("target.focus()");
+		expect(selectFn).toContain("handlePlaybackRate(option)");
+		// Selection is scoped to the radiogroup; media buttons must not self-activate.
+		expect(selectFn).toContain(
+			"if (selector !== SPEED_RADIO_SELECTOR) return;",
+		);
+	});
+
+	test("arrow keys never cross the radiogroup boundary", () => {
+		// Each cluster navigates within itself, so an arrow key cannot leave the
+		// speed radios for the media buttons (Tab is what crosses clusters).
+		expect(source).toContain(
+			"handleClusterKeydown(SPEED_RADIO_SELECTOR, event)",
+		);
+		expect(source).toContain(
+			"handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)",
+		);
+	});
+
+	test("arrow navigation skips disabled controls", () => {
+		// `.focus()` is a no-op on a disabled button, so including one would strand
+		// focus on the current control.
+		const clusterFn = source.slice(
+			source.indexOf("function getClusterControls"),
+			source.indexOf("function focusClusterControlAt"),
+		);
+		expect(clusterFn).toContain("!control.disabled");
+	});
+
+	test("row layouts keep the trigger before the panel it drops below", () => {
+		const rowBranch = source.slice(
+			source.indexOf("{:else}", source.indexOf("{#if isPanelBeforeTrigger}")),
+			source.indexOf("{/if}", source.indexOf("{#if isPanelBeforeTrigger}")),
+		);
+		expect(rowBranch.indexOf("{@render triggerButton()}")).toBeGreaterThan(-1);
+		expect(rowBranch.indexOf("{@render triggerButton()}")).toBeLessThan(
+			rowBranch.indexOf("{@render controlsPanel()}"),
+		);
+	});
+});

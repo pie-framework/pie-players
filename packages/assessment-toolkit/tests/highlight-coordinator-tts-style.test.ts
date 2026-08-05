@@ -106,6 +106,73 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		expect(annotationCss).not.toContain("--pie-secondary-light");
 	});
 
+	test("lightens the annotation underline for dark themes", () => {
+		const { styleStore } = setupHighlightDom();
+		new HighlightCoordinator();
+
+		const css = styleStore.get("pie-highlight-styles").textContent as string;
+
+		// Light is #4221d5 and ignores the theme accent: an accent is picked
+		// against the app's own background, so inheriting it left the mark
+		// illegible on whichever background it was not picked for.
+		const lightValue = "var(--pie-annotation-underline, #4221d5)";
+		expect(css).toContain(
+			`text-decoration: underline 2px solid ${lightValue}`,
+		);
+
+		// Dark defaults to #9c89ec, which clears WCAG AA/AAA on black (7.20:1)
+		// where #4221d5 does not (2.41:1). It uses its OWN token so overriding one
+		// state never silently moves the other. Neither state consults pie-primary,
+		// so a host-set accent cannot drag either one off its intended value.
+		const darkValue = "var(--pie-annotation-underline-dark, #9c89ec)";
+		const osDarkBlock =
+			css.split("@media (prefers-color-scheme: dark) {")[1]?.split("}\n\n")[0] ??
+			"";
+		expect(osDarkBlock).toContain(darkValue);
+		// An app that forces dark itself is signalled by data-theme, not by the OS
+		// media query, so that path has to be covered too.
+		expect(css).toContain(
+			`[data-theme="dark"] ::highlight(annotation-underline) {`,
+		);
+		expect(
+			css.split('[data-theme="dark"] ::highlight(annotation-underline) {')[1],
+		).toContain(darkValue);
+
+		// The old fallback must be gone; it was unreachable whenever a host set
+		// pie-primary, which is exactly when the dark treatment is needed.
+		expect(css).not.toContain("#4da6ff");
+
+		// The two states must not share a token, or overriding the light underline
+		// would move the dark one with it.
+		expect(css).not.toContain("var(--pie-annotation-underline, #9c89ec)");
+
+		// The dark state must never fall through to the accent.
+		expect(css).not.toContain(
+			"--pie-annotation-underline-dark, var(--pie-primary",
+		);
+
+		// A declared theme has to beat the OS preference: the media query reports
+		// what the machine prefers, not what the page is showing, so without this an
+		// app set to light on a dark-preferring machine renders the dark underline.
+		// Attribute selectors outrank the bare ::highlight() rules, since a media
+		// query adds no specificity.
+		expect(css).toContain(
+			'[data-theme="light"] ::highlight(annotation-underline) {',
+		);
+		expect(
+			css.split('[data-theme="light"] ::highlight(annotation-underline) {')[1],
+		).toContain(lightValue);
+
+		// Any OTHER declared theme is a host/DaisyUI palette with its own
+		// coordinated colours, so there the underline does follow the accent.
+		const otherThemeSelector =
+			'[data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(annotation-underline) {';
+		expect(css).toContain(otherThemeSelector);
+		expect(css.split(otherThemeSelector)[1]).toContain(
+			"var(--pie-annotation-underline, var(--pie-primary, #4221d5))",
+		);
+	});
+
 	test("updates all tts contrast variables from custom color", () => {
 		const { rootVars } = setupHighlightDom();
 		const coordinator = new HighlightCoordinator();

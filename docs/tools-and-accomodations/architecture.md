@@ -843,8 +843,8 @@ Final Configuration:
 - Snap to increments
 
 ✅ **Line Reader Tool**
-- Highlight and masking modes
-- Color and opacity control
+- Transparent reading window with obscuring frame
+- Frame opacity control
 - Resize handle
 
 ✅ **Annotation Toolbar**

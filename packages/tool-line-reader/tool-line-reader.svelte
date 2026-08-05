@@ -33,35 +33,55 @@ import { onMount } from 'svelte';
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	/** Which dimension an in-flight pointer resize is changing. */
+	type ResizeTarget = 'pane' | 'frame';
+
 	let isDragging = $state(false);
-	let isResizing = $state(false);
+	let resizeTarget = $state<ResizeTarget | null>(null);
 	let position = $state({
 		x: isBrowser ? window.innerWidth / 2 : 400,
 		y: isBrowser ? window.innerHeight / 2 : 300
 	});
-	let size = $state({ width: 600, height: 60 });
+	let width = $state(600);
+	/** Height of the fully transparent reading window. */
+	let paneHeight = $state(24);
+	/** Height of the obscuring frame band above and below the reading window. */
+	let frameBandHeight = $state(48);
 	let dragStart = $state({ x: 0, y: 0 });
-	let resizeStart = $state({ width: 0, height: 0, mouseY: 0 });
+	let resizeStart = $state({
+		paneHeight: 0,
+		frameBandHeight: 0,
+		width: 0,
+		mouseX: 0,
+		mouseY: 0
+	});
 	let announceText = $state('');
-	let currentColor = $state('#ffff00'); // Yellow
-	let currentOpacity = $state(0.3);
-	let maskingMode = $state<'highlight' | 'obscure'>('highlight');
+	/** Opacity of the surrounding frame that obscures neighbouring content. */
+	let frameOpacity = $state(0.8);
 
 	// Track registration state
 	let registered = $state(false);
 
-	// Available colors
-	const colors = [
-		{ name: 'Yellow', value: '#ffff00' },
-		{ name: 'Blue', value: '#00bfff' },
-		{ name: 'Pink', value: '#ff69b4' },
-		{ name: 'Green', value: '#00ff7f' },
-		{ name: 'Orange', value: '#ffa500' }
-	];
+	// Geometry constants
+	const FRAME_SIDE_WIDTH = 12; // pixels of obscuring frame left and right of the pane
+	const MIN_PANE_HEIGHT = 12; // pixels
+	const MAX_PANE_HEIGHT = 200; // pixels
+	// The frame bands host the close and resize controls, so they cannot shrink
+	// below a comfortable target size for those buttons.
+	const MIN_FRAME_BAND_HEIGHT = 32; // pixels
+	const MAX_FRAME_BAND_HEIGHT = 240; // pixels
+	const MIN_WIDTH = 200; // pixels
+	const MAX_WIDTH = 2000; // pixels
+	const MIN_FRAME_OPACITY = 0.2;
+	const MAX_FRAME_OPACITY = 1;
 
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
 	const RESIZE_STEP = 10; // pixels
+	const WIDTH_STEP = 20; // pixels
+	const OPACITY_STEP = 0.1;
+
+	const totalHeight = $derived(paneHeight + frameBandHeight * 2);
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -75,33 +95,70 @@ import { onMount } from 'svelte';
 		setTimeout(() => announceText = '', 1000);
 	}
 
-	function cycleColor() {
-		const currentIndex = colors.findIndex(c => c.value === currentColor);
-		const nextIndex = (currentIndex + 1) % colors.length;
-		currentColor = colors[nextIndex].value;
-		announce(`Color changed to ${colors[nextIndex].name}`);
+	function clampPaneHeight(value: number) {
+		return Math.max(MIN_PANE_HEIGHT, Math.min(MAX_PANE_HEIGHT, value));
 	}
 
-	function adjustOpacity(delta: number) {
-		currentOpacity = Math.max(0.1, Math.min(0.9, currentOpacity + delta));
-		announce(`Opacity ${Math.round(currentOpacity * 100)}%`);
+	function clampFrameBandHeight(value: number) {
+		return Math.max(MIN_FRAME_BAND_HEIGHT, Math.min(MAX_FRAME_BAND_HEIGHT, value));
 	}
 
-	function toggleMaskingMode() {
-		maskingMode = maskingMode === 'highlight' ? 'obscure' : 'highlight';
-		announce(`Mode changed to ${maskingMode === 'highlight' ? 'highlight' : 'masking'}`);
+	function clampWidth(value: number) {
+		return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, value));
+	}
+
+	function resizePane(delta: number) {
+		paneHeight = clampPaneHeight(paneHeight + delta);
+		announce(`Reading window height ${paneHeight} pixels`);
+	}
+
+	function resizeFrameBand(delta: number) {
+		frameBandHeight = clampFrameBandHeight(frameBandHeight + delta);
+		announce(`Frame height ${frameBandHeight} pixels`);
+	}
+
+	function resizeWidth(delta: number) {
+		width = clampWidth(width + delta);
+		announce(`Width ${width} pixels`);
+	}
+
+	function closeTool() {
+		if (coordinator && toolId) {
+			coordinator.hideTool(toolId);
+		}
+	}
+
+	function adjustFrameOpacity(delta: number) {
+		frameOpacity = Math.max(
+			MIN_FRAME_OPACITY,
+			Math.min(MAX_FRAME_OPACITY, frameOpacity + delta),
+		);
+		announce(`Frame opacity ${Math.round(frameOpacity * 100)}%`);
 	}
 
 	// Pointer event handlers (better for web components)
 	function handlePointerDown(e: PointerEvent) {
 		const target = e.target as HTMLElement;
 
-		// Check if clicking the resize handle
-		if (target.closest('.resize-handle')) {
-			startResizing(e);
-		} else {
-			startDragging(e);
+		const resizeHandle = target.closest<HTMLElement>(
+			'.pie-tool-line-reader__resize-handle',
+		);
+		if (resizeHandle) {
+			startResizing(
+				e,
+				resizeHandle.classList.contains('pie-tool-line-reader__resize-handle--frame')
+					? 'frame'
+					: 'pane',
+				resizeHandle,
+			);
+			return;
 		}
+
+		// Let other controls (close) handle their own activation instead of
+		// swallowing the press into a drag.
+		if (target.closest('button')) return;
+
+		startDragging(e);
 	}
 
 	function startDragging(e: PointerEvent) {
@@ -109,6 +166,12 @@ import { onMount } from 'svelte';
 
 		// Capture pointer for isolated event handling
 		containerEl.setPointerCapture(e.pointerId);
+
+		// `preventDefault` below suppresses the press's default focus, so claim it
+		// explicitly: without this, clicking the frame leaves focus wherever it was
+		// and the arrow-key move shortcuts never reach the tool.
+		containerEl.focus({ preventScroll: true });
+
 		isDragging = true;
 		dragStart = {
 			x: e.clientX - position.x,
@@ -124,16 +187,23 @@ import { onMount } from 'svelte';
 		e.preventDefault();
 	}
 
-	function startResizing(e: PointerEvent) {
+	function startResizing(e: PointerEvent, target: ResizeTarget, handle: HTMLElement) {
 		if (!containerEl) return;
 
 		// Capture pointer for isolated event handling
 		containerEl.setPointerCapture(e.pointerId);
 
-		isResizing = true;
+		// `preventDefault` below suppresses the press's default focus, so move focus
+		// explicitly: the arrow-key resize alternative acts on the focused handle,
+		// and it should be the one just dragged.
+		handle.focus({ preventScroll: true });
+
+		resizeTarget = target;
 		resizeStart = {
-			width: size.width,
-			height: size.height,
+			paneHeight,
+			frameBandHeight,
+			width,
+			mouseX: e.clientX,
 			mouseY: e.clientY
 		};
 
@@ -153,11 +223,26 @@ import { onMount } from 'svelte';
 				x: e.clientX - dragStart.x,
 				y: e.clientY - dragStart.y
 			};
-		} else if (isResizing) {
-			// Vertical resize only
-			const deltaY = e.clientY - resizeStart.mouseY;
-			size.height = Math.max(20, Math.min(400, resizeStart.height + deltaY));
+			return;
 		}
+
+		if (!resizeTarget) return;
+
+		// The window grows symmetrically around its centre, so the edge under the
+		// pointer only moves half as far as the dimension it drives: the pane and
+		// the width both take double the pointer delta to track it, while the frame
+		// band already moves the bottom edge 1:1 because it grows at both ends.
+		const deltaY = e.clientY - resizeStart.mouseY;
+		if (resizeTarget === 'pane') {
+			// Vertical resize of the reading window only
+			paneHeight = clampPaneHeight(resizeStart.paneHeight + deltaY * 2);
+			return;
+		}
+
+		// The frame handle sits in the bottom-right corner: down grows the frame
+		// bands, right widens the whole window.
+		frameBandHeight = clampFrameBandHeight(resizeStart.frameBandHeight + deltaY);
+		width = clampWidth(resizeStart.width + (e.clientX - resizeStart.mouseX) * 2);
 	}
 
 	function handlePointerUp(e: PointerEvent) {
@@ -171,7 +256,7 @@ import { onMount } from 'svelte';
 		containerEl.removeEventListener('pointerup', handlePointerUp);
 
 		isDragging = false;
-		isResizing = false;
+		resizeTarget = null;
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -200,38 +285,87 @@ import { onMount } from 'svelte';
 				break;
 			case '+':
 			case '=':
-				size.height = Math.min(400, size.height + RESIZE_STEP);
-				announce(`Height ${size.height} pixels`);
+				resizePane(RESIZE_STEP);
 				handled = true;
 				break;
 			case '-':
 			case '_':
-				size.height = Math.max(20, size.height - RESIZE_STEP);
-				announce(`Height ${size.height} pixels`);
-				handled = true;
-				break;
-			case 'c':
-			case 'C':
-				cycleColor();
+				resizePane(-RESIZE_STEP);
 				handled = true;
 				break;
 			case ']':
-				adjustOpacity(0.1);
+				adjustFrameOpacity(OPACITY_STEP);
 				handled = true;
 				break;
 			case '[':
-				adjustOpacity(-0.1);
+				adjustFrameOpacity(-OPACITY_STEP);
 				handled = true;
 				break;
-			case 'm':
-			case 'M':
-				toggleMaskingMode();
+			case 'Escape':
+				closeTool();
 				handled = true;
 				break;
 		}
 
 		if (handled) {
 			e.preventDefault();
+		}
+	}
+
+	/**
+	 * Keyboard alternative to dragging the reading-window handle (WCAG 2.5.7):
+	 * arrow keys resize while the handle itself has focus. Handled keys are
+	 * stopped so they do not also reach the container's move shortcuts.
+	 */
+	function handlePaneResizeKeyDown(e: KeyboardEvent) {
+		let handled = false;
+
+		switch (e.key) {
+			case 'ArrowUp':
+				resizePane(-RESIZE_STEP);
+				handled = true;
+				break;
+			case 'ArrowDown':
+				resizePane(RESIZE_STEP);
+				handled = true;
+				break;
+		}
+
+		if (handled) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+	}
+
+	/**
+	 * Keyboard alternative to dragging the frame handle: vertical arrows resize
+	 * the obscuring bands, horizontal arrows resize the window width.
+	 */
+	function handleFrameResizeKeyDown(e: KeyboardEvent) {
+		let handled = false;
+
+		switch (e.key) {
+			case 'ArrowUp':
+				resizeFrameBand(-RESIZE_STEP);
+				handled = true;
+				break;
+			case 'ArrowDown':
+				resizeFrameBand(RESIZE_STEP);
+				handled = true;
+				break;
+			case 'ArrowLeft':
+				resizeWidth(-WIDTH_STEP);
+				handled = true;
+				break;
+			case 'ArrowRight':
+				resizeWidth(WIDTH_STEP);
+				handled = true;
+				break;
+		}
+
+		if (handled) {
+			e.preventDefault();
+			e.stopPropagation();
 		}
 	}
 
@@ -264,9 +398,6 @@ import { onMount } from 'svelte';
 			setTimeout(() => containerEl?.focus(), 100);
 		}
 	});
-
-	// Computed background color with opacity
-	let backgroundColor = $derived(currentColor + Math.round(currentOpacity * 255).toString(16).padStart(2, '0'));
 </script>
 
 {#if visible}
@@ -275,63 +406,82 @@ import { onMount } from 'svelte';
 		{announceText}
 	</div>
 
-	<!-- Masking overlays (only in obscure mode) - 4 rectangles around the line reader window -->
-	{#if maskingMode === 'obscure'}
-		<!-- Top mask - from top of viewport to top of line reader -->
-		<div
-			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--top"
-			style="height: {Math.max(0, position.y - size.height / 2)}px;"
-			aria-hidden="true"
-		></div>
-		<!-- Bottom mask - from bottom of line reader to bottom of viewport -->
-		<div
-			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--bottom"
-			style="top: {position.y + size.height / 2}px;"
-			aria-hidden="true"
-		></div>
-		<!-- Left mask - left side of line reader window -->
-		<div
-			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--left"
-			style="top: {position.y - size.height / 2}px; height: {size.height}px; width: {Math.max(0, position.x - size.width / 2)}px;"
-			aria-hidden="true"
-		></div>
-		<!-- Right mask - right side of line reader window -->
-		<div
-			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--right"
-			style="top: {position.y - size.height / 2}px; height: {size.height}px; left: {position.x + size.width / 2}px;"
-			aria-hidden="true"
-		></div>
-	{/if}
-
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerEl}
 		class="pie-tool-line-reader"
-		class:pie-tool-line-reader--masking-mode={maskingMode === 'obscure'}
-		style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
+		style="left: {position.x}px; top: {position.y}px; width: {width}px; height: {totalHeight}px; --pie-tool-line-reader-band-height: {frameBandHeight}px; --pie-tool-line-reader-side-width: {FRAME_SIDE_WIDTH}px; --pie-tool-line-reader-frame-opacity: {frameOpacity};"
 		onpointerdown={handlePointerDown}
 		onkeydown={handleKeyDown}
 		role="group"
 		tabindex="0"
-		aria-label="Line Reader tool. Mode: {maskingMode === 'highlight' ? 'Highlight' : 'Masking'}. Use arrow keys to move, +/- to resize height, C to change color, [ and ] to adjust opacity, M to toggle mode. Current color: {colors.find(c => c.value === currentColor)?.name}, Opacity: {Math.round(currentOpacity * 100)}%"
+		aria-label="Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, [ and ] to adjust frame opacity, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameBandHeight} pixels, Frame opacity: {Math.round(frameOpacity * 100)}%"
 		aria-roledescription="Draggable and resizable reading guide overlay"
 	>
-		<div class="pie-tool-line-reader__container" style="background-color: {backgroundColor};">
-		</div>
+		<!--
+			The obscuring frame, drawn as one element's border box so the bands and
+			edges cannot seam against each other. Its content box is the fully
+			transparent reading window, through which page content stays visible.
+		-->
+		<div class="pie-tool-line-reader__frame" aria-hidden="true"></div>
 
-		<!-- Resize handle -->
-		<div
-			class="pie-tool-line-reader__resize-handle pie-tool-line-reader__resize-handle--bottom"
-			title="Drag to resize height"
-			role="button"
-			tabindex="-1"
-			aria-label="Resize handle - drag to adjust height"
+		<!-- Boundary hairline over the whole frame -->
+		<div class="pie-tool-line-reader__outline" aria-hidden="true"></div>
+
+		<!-- Close -->
+		<button
+			type="button"
+			class="pie-tool-line-reader__button pie-tool-line-reader__close"
+			onclick={closeTool}
+			title="Close line reader"
+			aria-label="Close line reader"
 		>
-			<svg width="20" height="8" viewBox="0 0 20 8" aria-hidden="true">
-				<rect x="8" y="3" width="4" height="2" fill="var(--pie-primary, #4CAF50)" rx="1"/>
+			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+				<path
+					d="M1 1 L11 11 M11 1 L1 11"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+				/>
 			</svg>
-		</div>
+		</button>
+
+		<!-- Reading-window resize handle -->
+		<button
+			type="button"
+			class="pie-tool-line-reader__resize-handle pie-tool-line-reader__resize-handle--pane"
+			onkeydown={handlePaneResizeKeyDown}
+			title="Drag to resize the reading window"
+			aria-label="Resize the reading window. Drag, or use the up and down arrow keys to change its height. Current height {paneHeight} pixels"
+		>
+			<svg width="14" height="8" viewBox="0 0 14 8" aria-hidden="true" focusable="false">
+				<path
+					d="M1 2.5 H13 M1 5.5 H13"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+				/>
+			</svg>
+		</button>
+
+		<!-- Frame resize handle -->
+		<button
+			type="button"
+			class="pie-tool-line-reader__resize-handle pie-tool-line-reader__resize-handle--frame"
+			onkeydown={handleFrameResizeKeyDown}
+			title="Drag to resize the frame and window width"
+			aria-label="Resize the frame. Drag, or use the up and down arrow keys to change the frame height and the left and right arrow keys to change the width. Current frame height {frameBandHeight} pixels, width {width} pixels"
+		>
+			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+				<path
+					d="M11 4 L4 11 M11 8 L8 11"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+				/>
+			</svg>
+		</button>
 	</div>
 
 {/if}
@@ -351,6 +501,12 @@ import { onMount } from 'svelte';
 
 	.pie-tool-line-reader {
 		border: none;
+		border-radius: 4px;
+		/*
+		 * Ink-derived rather than fixed black: on a dark scheme this reads as a soft
+		 * halo separating the window from the page instead of vanishing into it.
+		 */
+		box-shadow: 0px 2px 4px 0px color-mix(in srgb, var(--pie-text, #000) 8%, transparent);
 		cursor: move;
 		overflow: visible;
 		position: absolute;
@@ -365,86 +521,114 @@ import { onMount } from 'svelte';
 		outline-offset: 2px;
 	}
 
-	.pie-tool-line-reader__container {
-		width: 100%;
-		height: 100%;
-		position: relative;
-		transition: background-color 0.2s ease;
+	/*
+	 * Window frame: largely obscures the page content it covers. The fill stays a
+	 * dark scrim in every colour scheme rather than following the scheme's ink,
+	 * because ink-coloured masking fails on its own scheme: a yellow scrim over
+	 * yellow-on-blue text hides nothing, and a white one glares in a dark scheme
+	 * that the reader chose to avoid glare. Dimming works in both directions -- it
+	 * drops the covered text to a fraction of its contrast whatever the palette --
+	 * and `--pie-tool-line-reader-outline-color` supplies the boundary that a dark
+	 * scrim on a dark page cannot show on its own.
+	 *
+	 * Drawn as a single element's border box -- bands top and bottom, edges left
+	 * and right, transparent content box for the reading window -- rather than four
+	 * abutting boxes. Four translucent boxes each antialias their shared edge, so
+	 * whenever layout lands off whole pixels (page zoom, fractional font scale) the
+	 * junctions render at partial coverage and show as light seams between the
+	 * edges and the bands. One border box has no internal boundaries to seam.
+	 */
+	.pie-tool-line-reader__frame {
+		position: absolute;
+		inset: 0;
+		box-sizing: border-box;
+		border-style: solid;
+		border-width: var(--pie-tool-line-reader-band-height, 48px)
+			var(--pie-tool-line-reader-side-width, 12px);
+		border-color: var(--pie-tool-line-reader-frame-color, #000);
+		border-radius: 4px;
+		background-color: transparent;
+		opacity: var(--pie-tool-line-reader-frame-opacity, 0.8);
+		transition: opacity 0.2s ease;
 	}
 
+	/*
+	 * Ink-coloured hairline over the frame: on a light page the dark scrim already
+	 * shows its own edges, but on a dark page it blends into the background, and
+	 * this is what keeps the window's extent legible. Separate element rather than
+	 * a border on the container so it never competes with the focus outline.
+	 */
+	.pie-tool-line-reader__outline {
+		position: absolute;
+		inset: 0;
+		box-sizing: border-box;
+		border: 1px solid
+			var(--pie-tool-line-reader-outline-color, color-mix(in srgb, var(--pie-text, #000) 70%, transparent));
+		border-radius: 4px;
+		pointer-events: none;
+	}
 
+	/*
+	 * Controls sit on the frame bands rather than inside them, so they keep full
+	 * opacity while the frame behind them stays translucent. 24x24 is the WCAG
+	 * 2.5.8 minimum target size, and the 4px inset is what MIN_FRAME_BAND_HEIGHT
+	 * is sized to accommodate.
+	 */
+	.pie-tool-line-reader__button,
 	.pie-tool-line-reader__resize-handle {
 		position: absolute;
-		cursor: ns-resize;
 		z-index: 10;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-	}
-
-	.pie-tool-line-reader__resize-handle--bottom {
-		bottom: -12px;
-		left: 50%;
-		transform: translateX(-50%);
-		width: 44px;
+		width: 24px;
 		height: 24px;
-		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent);
-		border-radius: 12px;
-		border: 2px solid var(--pie-primary, #4caf50);
+		padding: 0;
+		border: none;
+		border-radius: 4px;
+		background-color: transparent;
+		/*
+		 * Paired with the frame fill rather than the page: the glyphs sit on the
+		 * scrim, so they stay white in every scheme and only need revisiting if a
+		 * host overrides the frame colour to something light.
+		 */
+		color: var(--pie-tool-line-reader-control-color, #fff);
+		cursor: pointer;
 	}
 
+	.pie-tool-line-reader__button:hover,
 	.pie-tool-line-reader__resize-handle:hover {
-		background-color: color-mix(in srgb, var(--pie-primary, #4caf50) 20%, transparent);
+		background-color: color-mix(in srgb, currentColor 20%, transparent);
 	}
 
-	.pie-tool-line-reader__resize-handle:active {
+	.pie-tool-line-reader__button:focus-visible,
+	.pie-tool-line-reader__resize-handle:focus-visible {
+		/* currentColor keeps the indicator readable on the frame in every scheme. */
+		outline: 2px solid var(--pie-button-focus-outline, currentColor);
+		outline-offset: 1px;
+	}
+
+	.pie-tool-line-reader__close {
+		top: 4px;
+		right: 4px;
+	}
+
+	/* Resizes the reading window: vertical only, centred on the bottom band. */
+	.pie-tool-line-reader__resize-handle--pane {
+		bottom: 4px;
+		left: 50%;
+		margin-left: -12px;
 		cursor: ns-resize;
+	}
+
+	/* Resizes the frame bands and the overall width, so it reads as a corner grip. */
+	.pie-tool-line-reader__resize-handle--frame {
+		bottom: 4px;
+		right: 4px;
+		cursor: nwse-resize;
 	}
 
 	.pie-tool-line-reader:active {
 		cursor: grabbing;
 	}
-
-	/* Masking overlays for obscure mode - 4 rectangles covering all areas except line reader window */
-	.pie-tool-line-reader__mask {
-		position: fixed;
-		background: color-mix(in srgb, var(--pie-text, #000) 85%, transparent);
-		z-index: 999;
-		pointer-events: none;
-	}
-
-	.pie-tool-line-reader__mask--top {
-		top: 0;
-		left: 0;
-		right: 0;
-		/* Height set via inline style */
-	}
-
-	.pie-tool-line-reader__mask--bottom {
-		/* Top set via inline style */
-		left: 0;
-		right: 0;
-		bottom: 0;
-	}
-
-	.pie-tool-line-reader__mask--left {
-		/* Top, height, and width set via inline style */
-		left: 0;
-	}
-
-	.pie-tool-line-reader__mask--right {
-		/* Top, height, and left set via inline style */
-		right: 0;
-	}
-
-	/* In masking mode, change the window appearance */
-	.pie-tool-line-reader.pie-tool-line-reader--masking-mode {
-		box-shadow: none;
-	}
-
-	/* In masking mode, the window should be transparent to show content underneath */
-	.pie-tool-line-reader.pie-tool-line-reader--masking-mode .pie-tool-line-reader__container {
-		background-color: transparent !important;
-	}
-
 </style>

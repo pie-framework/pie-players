@@ -1,5 +1,11 @@
 # @pie-players/tts-server-polly
 
+## 0.3.63
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.63
+
 ## 0.3.62
 
 ### Patch Changes

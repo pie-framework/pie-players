@@ -7,21 +7,29 @@ const basePackageJson = {
 		"verify:pre-commit":
 			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck":
-			"bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
+			"bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
 			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player",
 		"verify:pre-push": "bun run verify:local-pr",
 	},
 };
 
+const baseLefthook =
+	"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      use_stdin: true\n      run: bun ./scripts/pre-push-gate.mjs\n";
+
+const baseCiWorkflow =
+	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  command:\n    - test:e2e:section-player:critical\n    - test:e2e:item-player:critical\n    - test:e2e:assessment-player\n";
+
+const basePrePushGate =
+	'const gate = spawnSync("bun", ["run", "verify:pre-push"], { stdio: "inherit" });\n';
+
 describe("check-local-pr-gate policy", () => {
 	test("requires pre-push to run the full local PR gate", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,
-			lefthook:
-				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
-			ciWorkflow:
-				"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  command:\n    - test:e2e:section-player:critical\n    - test:e2e:item-player:critical\n    - test:e2e:assessment-player\n",
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
 		});
 
 		expect(failures).toEqual([]);
@@ -38,10 +46,9 @@ describe("check-local-pr-gate policy", () => {
 
 		const failures = collectGateFailures({
 			packageJson,
-			lefthook:
-				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
-			ciWorkflow:
-				"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  command:\n    - test:e2e:section-player:critical\n    - test:e2e:item-player:critical\n    - test:e2e:assessment-player\n",
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
 		});
 
 		expect(failures).toContain(
@@ -60,10 +67,9 @@ describe("check-local-pr-gate policy", () => {
 
 		const failures = collectGateFailures({
 			packageJson,
-			lefthook:
-				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
-			ciWorkflow:
-				"run: bun run verify:ci-lint-typecheck\n- test:e2e:section-player:critical\n- test:e2e:item-player:critical\n- test:e2e:assessment-player\n",
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
 		});
 
 		expect(failures).toContain(
@@ -80,9 +86,10 @@ describe("check-local-pr-gate policy", () => {
 	test("rejects a pre-commit hook that does not run the canonical early gate", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,
-			lefthook: "pre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
-			ciWorkflow:
-				"run: bun run verify:ci-lint-typecheck\n- test:e2e:section-player:critical\n- test:e2e:item-player:critical\n- test:e2e:assessment-player\n",
+			lefthook:
+				"pre-push:\n  commands:\n    fast-gate:\n      use_stdin: true\n      run: bun ./scripts/pre-push-gate.mjs\n",
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
 		});
 
 		expect(failures).toContain(
@@ -101,10 +108,9 @@ describe("check-local-pr-gate policy", () => {
 
 		const failures = collectGateFailures({
 			packageJson,
-			lefthook:
-				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
-			ciWorkflow:
-				"run: bun run verify:ci-lint-typecheck\n- test:e2e:section-player:critical\n- test:e2e:item-player:critical\n- test:e2e:assessment-player\n",
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
 		});
 
 		expect(failures).toContain(
@@ -119,8 +125,49 @@ describe("check-local-pr-gate policy", () => {
 		expect(failures).toContain(
 			'verify:pre-commit is missing "bun run check:consumer-boundaries".',
 		);
+		expect(failures).toContain('verify:pre-commit is missing "bun run check".');
+	});
+});
+
+describe("check-local-pr-gate pre-push wrapper wiring", () => {
+	test("rejects a pre-push hook that calls the gate without the wrapper", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook:
+				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+		});
+
 		expect(failures).toContain(
-			'verify:pre-commit is missing "bun run check".',
+			"lefthook pre-push must run bun ./scripts/pre-push-gate.mjs.",
+		);
+	});
+
+	test("rejects a pre-push hook that does not forward the pushed refs", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook:
+				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun ./scripts/pre-push-gate.mjs\n",
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+		});
+
+		expect(failures).toContain(
+			"lefthook pre-push must set use_stdin: true so the gate can see the pushed refs.",
+		);
+	});
+
+	test("rejects a wrapper that never reaches the real gate", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: 'console.log("nothing to do here");\n',
+		});
+
+		expect(failures).toContain(
+			"scripts/pre-push-gate.mjs must delegate to bun run verify:pre-push.",
 		);
 	});
 });

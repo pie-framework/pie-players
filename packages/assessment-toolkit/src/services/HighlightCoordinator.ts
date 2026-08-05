@@ -428,9 +428,17 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
         color: inherit;
       }
 
+      /* The base light/dark pair is fixed: #4221d5 on light, #9c89ec on dark.
+         One value cannot serve both -- #4221d5 is 2.41:1 on black and #9c89ec is
+         2.85:1 on white -- so neither of those two consults the theme accent,
+         which is chosen against one background and illegible on the other.
+
+         Each state has its own token so overriding one never silently moves the
+         other, and so either can beat a host-set pie-primary: a var() fallback
+         can never override a value the host actually set. */
       ::highlight(annotation-underline) {
         background-color: transparent;
-        text-decoration: underline 2px solid var(--pie-primary, #0066cc);
+        text-decoration: underline 2px solid var(--pie-annotation-underline, #4221d5);
         text-underline-offset: 2px;
         color: inherit;
       }
@@ -467,8 +475,33 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
           background-color: var(--pie-annotation-orange-highlight, rgba(154, 99, 0, 0.6));
         }
         ::highlight(annotation-underline) {
-          text-decoration-color: var(--pie-primary, #4da6ff);
+          text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
         }
+      }
+
+      /* The media query above reports the OS preference, which is only a guess
+         at what the page is actually showing. An app that declares a theme has
+         the final say, so the rules below override it. pie-theme always stamps
+         data-theme on documentElement (scope="document") or on its own host, and
+         resolves to a dark palette only for the literal value "dark" -- every
+         other value, including DaisyUI theme ids, maps to a light base.
+
+         The three cases are mutually exclusive, so they never fight each other.
+         All carry attribute selectors, which outrank the bare ::highlight() rules
+         above -- including the one inside the media query, since a media query
+         adds no specificity -- whatever the source order. */
+      [data-theme="light"] ::highlight(annotation-underline) {
+        text-decoration-color: var(--pie-annotation-underline, #4221d5);
+      }
+
+      [data-theme="dark"] ::highlight(annotation-underline) {
+        text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
+      }
+
+      /* A host or DaisyUI palette: follow its accent so the mark belongs to that
+         theme, falling back to the light default when it declares none. */
+      [data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(annotation-underline) {
+        text-decoration-color: var(--pie-annotation-underline, var(--pie-primary, #4221d5));
       }
 
       /* WCAG 2.2 SC 1.4.11 non-text contrast: a highlight is the only indication

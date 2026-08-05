@@ -10,9 +10,11 @@
  * - Support for pie-elements-ng packages
  */
 
-import { css, html, LitElement, type PropertyValues } from "lit";
+import { html, LitElement, type PropertyValues } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+
+import type { ItemMarkupSanitizer } from "@pie-players/pie-players-shared/security";
 
 import { define, whenDefined } from "./ce-registry.js";
 import {
@@ -72,14 +74,9 @@ const defaultMissingElement: MissingElFn = (
  */
 @customElement("pie-print")
 export class PiePrint extends LitElement {
-	static styles = css`
-    :host {
-      display: block;
-      border: solid 1px gray;
-      padding: 16px;
-      max-width: 800px;
-    }
-  `;
+	// No `static styles` here: `createRenderRoot()` below returns `this` for
+	// light-DOM rendering, which skips Lit's `adoptStyles` call, so static
+	// styles would never be applied.
 
 	constructor() {
 		super();
@@ -101,12 +98,48 @@ export class PiePrint extends LitElement {
 	private _resolutions: PkgResolution[] = [];
 	private _printItem: Item = { markup: "", elements: {}, models: [] };
 	private _floatItem: Item = { markup: "", elements: {}, models: [] };
+	private _trustMarkup = false;
+	private _sanitizeMarkup: ItemMarkupSanitizer | null = null;
 
 	/**
 	 * Custom resolver function for determining element URLs
 	 */
 	public set resolve(fn: ResolverFn) {
 		this._resolve = fn;
+	}
+
+	/**
+	 * Render authored markup without sanitizing it.
+	 *
+	 * Off by default: authored item markup is treated as untrusted and passed
+	 * through the shared sanitizer. Only set this when the host has already
+	 * validated the markup.
+	 */
+	@property({ type: Boolean, attribute: "trust-markup" })
+	get trustMarkup(): boolean {
+		return this._trustMarkup;
+	}
+
+	set trustMarkup(value: boolean) {
+		const oldValue = this._trustMarkup;
+		if (oldValue === value) return;
+		this._trustMarkup = value;
+		this._rebuildPrintItems();
+		this.requestUpdate("trustMarkup", oldValue);
+	}
+
+	/**
+	 * Custom sanitizer, used instead of the default one. Ignored when
+	 * `trustMarkup` is set.
+	 */
+	public set sanitizeMarkup(fn: ItemMarkupSanitizer | null) {
+		this._sanitizeMarkup = fn;
+		this._rebuildPrintItems();
+		this.requestUpdate();
+	}
+
+	public get sanitizeMarkup(): ItemMarkupSanitizer | null {
+		return this._sanitizeMarkup;
 	}
 
 	/**
@@ -149,18 +182,33 @@ export class PiePrint extends LitElement {
 			}),
 		).then((resolutions) => {
 			this._resolutions = resolutions;
-
-			// Transform markup and separate embedded/floater elements
-			const pif = printItemAndFloaters(this._config.item, this._resolutions);
-			this._printItem = pif.item;
-			this._floatItem = mkItem(
-				pif.floaters,
-				this._resolutions,
-				pif.item.elements,
-			);
-
+			this._rebuildPrintItems();
 			this.requestUpdate("config", oldValue);
 		});
+	}
+
+	/**
+	 * Transform markup and separate embedded/floater elements.
+	 *
+	 * Re-runnable so the markup-handling properties (`trustMarkup`,
+	 * `sanitizeMarkup`) still take effect when a host sets them *after* `config`
+	 * — otherwise an explicit opt-out would be silently ignored depending on
+	 * assignment order. No-ops until the resolutions have landed; the `config`
+	 * setter calls it once they have.
+	 */
+	private _rebuildPrintItems() {
+		if (this._resolutions.length === 0) return;
+
+		const pif = printItemAndFloaters(this._config.item, this._resolutions, {
+			trustMarkup: this._trustMarkup,
+			sanitize: this._sanitizeMarkup ?? undefined,
+		});
+		this._printItem = pif.item;
+		this._floatItem = mkItem(
+			pif.floaters,
+			this._resolutions,
+			pif.item.elements,
+		);
 	}
 
 	/**

@@ -7,6 +7,11 @@
  * Ported from pie-print-support/src/pie-print.ts
  */
 
+import {
+	createDefaultItemMarkupSanitizer,
+	type ItemMarkupSanitizer,
+} from "@pie-players/pie-players-shared/security";
+
 import type {
 	Elements,
 	Item,
@@ -14,6 +19,57 @@ import type {
 	NodeResult,
 	PkgResolution,
 } from "./types.js";
+
+/**
+ * Markup-handling options threaded down from `<pie-print>`.
+ */
+export interface MarkupOptions {
+	/**
+	 * Skip sanitization and render authored markup as-is. Opt-in only — the
+	 * host is asserting the markup is trusted.
+	 */
+	trustMarkup?: boolean;
+	/** Host-supplied sanitizer, used instead of the default. */
+	sanitize?: ItemMarkupSanitizer;
+}
+
+/**
+ * The print pipeline's custom-element allow-list.
+ *
+ * The shared sanitizer only keeps `pie-*` custom elements by default, but print
+ * markup is built from `@pie-element/*` tags (`multiple-choice`, ...) and their
+ * hashed print variants. Both have to be allow-listed or sanitizing would strip
+ * every interactive element out of the print output.
+ */
+const allowedPrintElements = (resolutions: PkgResolution[]): string[] => {
+	const out = new Set<string>();
+	resolutions.forEach((r) => {
+		if (r.tagName) out.add(r.tagName.toLowerCase());
+		if (r.printTagName) out.add(r.printTagName.toLowerCase());
+	});
+	return [...out];
+};
+
+/**
+ * Sanitize authored markup before it is parsed and injected.
+ *
+ * `wrapOverwideContent: false` because the shared wrappers are `overflow-x:
+ * auto` screen affordances; `overflow` clips rather than scrolls in print media,
+ * which would cut off wide images and tables.
+ */
+const sanitizeMarkup = (
+	markup: string,
+	resolutions: PkgResolution[],
+	options: MarkupOptions,
+): string => {
+	if (!markup) return "";
+	if (options.trustMarkup) return markup;
+	if (options.sanitize) return options.sanitize(markup);
+	return createDefaultItemMarkupSanitizer({
+		allowedCustomElements: allowedPrintElements(resolutions),
+		wrapOverwideContent: false,
+	})(markup);
+};
 
 /**
  * Create an item with print-specific tags for floater elements (not in markup)
@@ -50,18 +106,28 @@ export const mkItem = (
 /**
  * Parse the markup and replace default element tags with print element tags
  *
+ * Markup is sanitized first unless the host opts out via `trustMarkup`.
+ *
+ * Authored attributes and children are preserved on the swapped element; only
+ * `id`, `pie-id`, and `data-original-tag` are set by this function.
+ *
  * @param markup - Original HTML markup
  * @param resolutions - Package resolutions with print tag names
+ * @param options - Sanitization options
  * @returns Transformed HTML and list of found nodes
  */
 export const processMarkup = (
 	markup: string,
 	resolutions: PkgResolution[],
+	options: MarkupOptions = {},
 ): { html: string; nodes: NodeResult[] } => {
 	const p = new DOMParser();
 
 	try {
-		const doc = p.parseFromString(markup, "text/html");
+		const doc = p.parseFromString(
+			sanitizeMarkup(markup, resolutions, options),
+			"text/html",
+		);
 		const results: NodeResult[] = [];
 
 		resolutions.forEach((r) => {
@@ -76,9 +142,27 @@ export const processMarkup = (
 
 				if (id) {
 					const newEl = document.createElement(r.printTagName);
-					newEl.setAttribute("id", id || "");
+
+					// Carry over every authored attribute. `class` in particular holds
+					// print-only styling hooks (`.noprint` / `.kds-noprint`), and
+					// `lang`, `dir`, `aria-*`, and `data-*` are authoring contract
+					// surface that must not be dropped by the tag swap.
+					Array.from(n.attributes).forEach((attr) => {
+						newEl.setAttribute(attr.name, attr.value);
+					});
+
+					// Set last so the attributes this function owns win over any
+					// authored value of the same name.
+					newEl.setAttribute("id", id);
 					newEl.setAttribute("pie-id", pieId || "");
 					newEl.setAttribute("data-original-tag", originalTag);
+
+					// Move authored children across rather than dropping them. Snapshot
+					// the list first, since appending detaches from the live NodeList.
+					// Moving (not cloning) keeps nested interactive elements reachable
+					// for the remaining resolutions' queries.
+					newEl.append(...Array.from(n.childNodes));
+
 					n.parentNode?.replaceChild(newEl, n);
 					results.push({ id, pieId, originalTag });
 				}
@@ -99,13 +183,15 @@ export const processMarkup = (
  *
  * @param item - Original item configuration
  * @param resolutions - Package resolutions
+ * @param options - Sanitization options
  * @returns Transformed print item and floater item
  */
 export const printItemAndFloaters = (
 	item: Item,
 	resolutions: PkgResolution[],
+	options: MarkupOptions = {},
 ): { item: Item; floaters: Model[] } => {
-	const r = processMarkup(item.markup, resolutions);
+	const r = processMarkup(item.markup, resolutions, options);
 
 	const { embedded, floaters } = item.models.reduce(
 		(acc, m) => {

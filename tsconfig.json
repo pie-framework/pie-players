@@ -12,8 +12,14 @@
 		"isolatedModules": true,
 		"declaration": true,
 		"declarationMap": false,
-		"sourceMap": true,
-		"inlineSources": true,
+		// Publishable packages ship only `dist`, so a sourcemap is only usable
+		// with `inlineSources`, which embeds every `.ts` file into the published
+		// tarball. That was costing ~2.5 MB across the tsc-built packages for
+		// debuggability we do not need, while every Vite-built package in the
+		// repo already sets `sourcemap: false`. Enabling `sourceMap` again
+		// requires re-adding `inlineSources`, or the maps resolve to sources that
+		// are not packed.
+		"sourceMap": false,
 		"composite": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,

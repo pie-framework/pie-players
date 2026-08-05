@@ -8,6 +8,23 @@ async function loadViewStateModule() {
 	return import("../src/components/shared/section-player-view-state");
 }
 
+/**
+ * `props` is optional on `PlayerElementParams`, so reading `props?.backend` and
+ * then dotting into the result turns a missing backend into a TypeError from the
+ * assertion line rather than a failure that says what went wrong. Every test
+ * below expects the backend to be there, so demand it once and say so when it is
+ * not.
+ */
+function requireBackend(params: { props?: Record<string, unknown> }): any {
+	const backend = params.props?.backend;
+	if (!backend || typeof backend !== "object") {
+		throw new Error(
+			`expected item-player params to carry props.backend, got ${JSON.stringify(backend)}`,
+		);
+	}
+	return backend;
+}
+
 describe("section player view state", () => {
 	// The section-player used to substitute `iife` -> `preloaded` for
 	// embedded item-players. That parent-to-child strategy coupling was the
@@ -99,7 +116,7 @@ describe("section player view state", () => {
 			playerStrategy: "iife",
 		});
 
-		expect((params.props?.backend as any).delivery).toEqual(
+		expect(requireBackend(params).delivery).toEqual(
 			expect.objectContaining({
 				enabled: true,
 				baseUrl: "/qe",
@@ -131,9 +148,7 @@ describe("section player view state", () => {
 			playerStrategy: "iife",
 		});
 
-		expect((params.props?.backend as any).delivery.itemId).toBe(
-			"fallback-item",
-		);
+		expect(requireBackend(params).delivery.itemId).toBe("fallback-item");
 	});
 
 	test("overwrites shared delivery identity with concrete embedded item identity", async () => {
@@ -179,14 +194,14 @@ describe("section player view state", () => {
 			item: { id: "source-b", config: {} } as any,
 		});
 
-		expect((first.props?.backend as any).delivery).toEqual(
+		expect(requireBackend(first).delivery).toEqual(
 			expect.objectContaining({
 				itemId: "canonical-a",
 				sessionId: "session-a",
 				assignmentId: "attempt-1",
 			}),
 		);
-		expect((second.props?.backend as any).delivery).toEqual(
+		expect(requireBackend(second).delivery).toEqual(
 			expect.objectContaining({
 				itemId: "canonical-b",
 				sessionId: "session-b",
@@ -242,22 +257,21 @@ describe("section player view state", () => {
 			item: { id: "source-b", config: {} } as any,
 		});
 
-		(first.props?.backend as any).delivery.options.overrides["student-grade"] =
+		requireBackend(first).delivery.options.overrides["student-grade"] =
 			"mutated";
-		(first.props?.backend as any).delivery.options.overrides["item-specific"] =
-			"first";
+		requireBackend(first).delivery.options.overrides["item-specific"] = "first";
 
 		expect(sharedBackend.delivery.options.overrides).toEqual({
 			"student-grade": "5",
 		});
-		expect((second.props?.backend as any).delivery.options.overrides).toEqual({
+		expect(requireBackend(second).delivery.options.overrides).toEqual({
 			"student-grade": "5",
 		});
-		expect((first.props?.backend as any).delivery.options).not.toBe(
+		expect(requireBackend(first).delivery.options).not.toBe(
 			sharedBackend.delivery.options,
 		);
-		expect((first.props?.backend as any).delivery.options).not.toBe(
-			(second.props?.backend as any).delivery.options,
+		expect(requireBackend(first).delivery.options).not.toBe(
+			requireBackend(second).delivery.options,
 		);
 	});
 
@@ -324,8 +338,8 @@ describe("section player view state", () => {
 			playerStrategy: "iife",
 		});
 
-		expect((params.props?.backend as any).delivery.client).toBeUndefined();
-		expect((params.props?.backend as any).delivery.endpoints).toEqual({
+		expect(requireBackend(params).delivery.client).toBeUndefined();
+		expect(requireBackend(params).delivery.endpoints).toEqual({
 			load: "/load",
 			saveSession: "/save",
 		});
@@ -373,12 +387,8 @@ describe("section player view state", () => {
 			item: { id: "item-b", config: {} } as any,
 		});
 
-		expect((first.props?.backend as any).delivery.itemId).toBe(
-			"resolved-0-item-a",
-		);
-		expect((second.props?.backend as any).delivery.itemId).toBe(
-			"resolved-0-item-b",
-		);
+		expect(requireBackend(first).delivery.itemId).toBe("resolved-0-item-a");
+		expect(requireBackend(second).delivery.itemId).toBe("resolved-0-item-b");
 		expect(sharedBackend).toEqual({
 			delivery: {
 				enabled: true,
@@ -414,11 +424,11 @@ describe("section player view state", () => {
 			playerStrategy: "iife",
 		});
 
-		expect((params.props?.backend as any).delivery).toBeUndefined();
-		expect((params.props?.backend as any).auth).toEqual({
+		expect(requireBackend(params).delivery).toBeUndefined();
+		expect(requireBackend(params).auth).toEqual({
 			token: "shared-token",
 		});
-		expect((params.props?.backend as any).authoring).toEqual({
+		expect(requireBackend(params).authoring).toEqual({
 			enabled: true,
 			baseUrl: "/authoring",
 		});
@@ -470,10 +480,8 @@ describe("section player view state", () => {
 			playerStrategy: "iife",
 		});
 
-		expect((params.props?.backend as any).delivery.itemId).toBe(
-			"Item_ID--Version-1",
-		);
-		expect((params.props?.backend as any).delivery.sessionId).toBe(
+		expect(requireBackend(params).delivery.itemId).toBe("Item_ID--Version-1");
+		expect(requireBackend(params).delivery.sessionId).toBe(
 			"Session_ID--Version-1",
 		);
 		expect(params.session?.data).toEqual([

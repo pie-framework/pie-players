@@ -331,3 +331,276 @@
 	--pie-blue-grey-600: #999999;
 	--pie-blue-grey-900: #e0e0e0;
 }
+
+/* Grey on Light Grey - Learnosity standard */
+[data-color-scheme="grey-on-light-grey"] {
+	--pie-text: #4a4a4a;
+	--pie-disabled: #757575;
+	--pie-disabled-secondary: #8f8f8f;
+	--pie-correct: #145c1e;
+	--pie-correct-secondary: #dde9de;
+	--pie-correct-tertiary: #1a7526;
+	--pie-correct-icon: #0e3f15;
+	--pie-incorrect: #8c1c1c;
+	--pie-incorrect-secondary: #eddcdc;
+	--pie-incorrect-icon: #6f1616;
+	--pie-missing: #8c1c1c;
+	--pie-missing-icon: #33406b;
+	--pie-primary: #3d3d3d;
+	--pie-primary-light: #6f6f6f;
+	--pie-primary-dark: #2b2b2b;
+	--pie-faded-primary: #dcdcdc;
+	--pie-secondary: #4a4a4a;
+	--pie-secondary-light: #8f8f8f;
+	--pie-secondary-dark: #2b2b2b;
+	--pie-tertiary: #3d3d3d;
+	--pie-tertiary-light: #c4c4c4;
+	--pie-background: #ebebeb;
+	--pie-background-dark: #dcdcdc;
+	--pie-secondary-background: #d0d0d0;
+	--pie-dropdown-background: #c4c4c4;
+	--pie-border: #4a4a4a;
+	--pie-border-light: #7a7a7a;
+	--pie-border-dark: #2b2b2b;
+	--pie-border-gray: #6f6f6f;
+	--pie-black: #4a4a4a;
+	--pie-white: #ebebeb;
+	--pie-focus-checked: #6f6f6f;
+	--pie-focus-checked-border: #3d3d3d;
+	--pie-focus-unchecked: #e0e0e0;
+	--pie-focus-unchecked-border: #4a4a4a;
+	--pie-blue-grey-100: #f0f0f0;
+	--pie-blue-grey-300: #d0d0d0;
+	--pie-blue-grey-600: #6f6f6f;
+	--pie-blue-grey-900: #2b2b2b;
+}
+
+/* Purple on Light Green - Learnosity standard */
+[data-color-scheme="purple-on-light-green"] {
+	--pie-text: #8e2464;
+	--pie-disabled: #5f7266;
+	--pie-disabled-secondary: #7c8f83;
+	--pie-correct: #14591f;
+	--pie-correct-secondary: #d8ecdc;
+	--pie-correct-tertiary: #1a7328;
+	--pie-correct-icon: #0e3d16;
+	--pie-incorrect: #8c1c1c;
+	--pie-incorrect-secondary: #f0dcdc;
+	--pie-incorrect-icon: #6f1616;
+	--pie-missing: #8c1c1c;
+	--pie-missing-icon: #33406b;
+	--pie-primary: #6d1a4c;
+	--pie-primary-light: #b3608e;
+	--pie-primary-dark: #4f1237;
+	--pie-faded-primary: #b8dcc3;
+	--pie-secondary: #a02b72;
+	--pie-secondary-light: #c76d9d;
+	--pie-secondary-dark: #6d1a4c;
+	--pie-tertiary: #8e2464;
+	--pie-tertiary-light: #e2c6d5;
+	--pie-background: #cce8d4;
+	--pie-background-dark: #b8dcc3;
+	--pie-secondary-background: #a6d0b2;
+	--pie-dropdown-background: #94c4a1;
+	--pie-border: #8e2464;
+	--pie-border-light: #a85a86;
+	--pie-border-dark: #4f1237;
+	--pie-border-gray: #5f7266;
+	--pie-black: #8e2464;
+	--pie-white: #cce8d4;
+	--pie-focus-checked: #8e2464;
+	--pie-focus-checked-border: #6d1a4c;
+	--pie-focus-unchecked: #dcefe2;
+	--pie-focus-unchecked-border: #8e2464;
+	--pie-blue-grey-100: #e2f2e7;
+	--pie-blue-grey-300: #a6d0b2;
+	--pie-blue-grey-600: #5f7266;
+	--pie-blue-grey-900: #4f1237;
+}
+
+/* Black on Violet - Learnosity standard */
+[data-color-scheme="black-on-violet"] {
+	--pie-text: #000000;
+	--pie-disabled: #5c5c5c;
+	--pie-disabled-secondary: #7a7a7a;
+	--pie-correct: #0d4f16;
+	--pie-correct-secondary: #e0cfe6;
+	--pie-correct-tertiary: #0f4d17;
+	--pie-correct-icon: #093a0f;
+	--pie-incorrect: #7d1414;
+	--pie-incorrect-secondary: #eccfd0;
+	--pie-incorrect-icon: #5c0f0f;
+	--pie-missing: #7d1414;
+	--pie-missing-icon: #2b2b6b;
+	--pie-primary: #4a1259;
+	--pie-primary-light: #8e4fa1;
+	--pie-primary-dark: #330d3f;
+	--pie-faded-primary: #c795d3;
+	--pie-secondary: #6d1a7d;
+	--pie-secondary-light: #a95cb8;
+	--pie-secondary-dark: #4a1259;
+	--pie-tertiary: #4a1259;
+	--pie-tertiary-light: #e2cbe8;
+	--pie-background: #d4a9de;
+	--pie-background-dark: #c795d3;
+	--pie-secondary-background: #b982c8;
+	--pie-dropdown-background: #ac70bd;
+	--pie-border: #000000;
+	--pie-border-light: #4a4a4a;
+	--pie-border-dark: #000000;
+	--pie-border-gray: #4a4a4a;
+	--pie-black: #000000;
+	--pie-white: #d4a9de;
+	--pie-focus-checked: #4a1259;
+	--pie-focus-checked-border: #330d3f;
+	--pie-focus-unchecked: #e2cbe8;
+	--pie-focus-unchecked-border: #000000;
+	--pie-blue-grey-100: #ece0f0;
+	--pie-blue-grey-300: #c795d3;
+	--pie-blue-grey-600: #6d5c73;
+	--pie-blue-grey-900: #000000;
+}
+
+/* Yellow on Navy - Learnosity standard */
+[data-color-scheme="yellow-on-navy"] {
+	--pie-text: #ffff55;
+	--pie-disabled: #9aa4bd;
+	--pie-disabled-secondary: #7d88a3;
+	--pie-correct: #7fe08a;
+	--pie-correct-secondary: #1d3a24;
+	--pie-correct-tertiary: #a0dda9;
+	--pie-correct-icon: #a8f0b0;
+	--pie-incorrect: #ffbebe;
+	--pie-incorrect-secondary: #3d1d1d;
+	--pie-incorrect-icon: #ffb3b3;
+	--pie-missing: #ffbebe;
+	--pie-missing-icon: #b3c2ff;
+	--pie-primary: #ffff99;
+	--pie-primary-light: #ffffc2;
+	--pie-primary-dark: #e0e04a;
+	--pie-faded-primary: #2b4576;
+	--pie-secondary: #ffd95c;
+	--pie-secondary-light: #ffeaa0;
+	--pie-secondary-dark: #e0bb3d;
+	--pie-tertiary: #ffff99;
+	--pie-tertiary-light: #ffffcc;
+	--pie-background: #33508a;
+	--pie-background-dark: #2b4576;
+	--pie-secondary-background: #243a63;
+	--pie-dropdown-background: #1d2f50;
+	--pie-border: #ffff55;
+	--pie-border-light: #c2c266;
+	--pie-border-dark: #e0e04a;
+	--pie-border-gray: #9aa4bd;
+	--pie-black: #ffff55;
+	--pie-white: #33508a;
+	--pie-focus-checked: #ffff55;
+	--pie-focus-checked-border: #e0e04a;
+	--pie-focus-unchecked: #243a63;
+	--pie-focus-unchecked-border: #ffff55;
+	--pie-blue-grey-100: #2b4576;
+	--pie-blue-grey-300: #4a6aa8;
+	--pie-blue-grey-600: #9aa4bd;
+	--pie-blue-grey-900: #ffff55;
+}
+
+/* The annotation toolbar's outline defaults to a contrast-checked grey pair of
+ * its own rather than --pie-border, because under the DaisyUI bridge that token
+ * carries a surface tint that leaves the outline at ~1.1:1. These two rules give
+ * the palettes that DO choose a boundary colour deliberately the last word.
+ *
+ * The dark theme is pinned because the component's light-dark() default follows
+ * the declared color-scheme, which pie-theme does not set; without this, a
+ * pie-theme dark page would take the light value. The pinned value is therefore
+ * the component's dark arm, #949494 -- the light grey. A boundary on a dark
+ * surface has to be lighter than it, so this is 6.92:1 on the dark palette's
+ * #000000 background, where the dark arm #5c5c5c would sit at 3.14:1 with no
+ * margin and drop to 2.37:1 on DaisyUI's dark base.
+ */
+[data-theme="dark"],
+pie-theme[theme="dark"] {
+	--pie-tool-annotation-toolbar-border: #949494;
+}
+
+/* Both annotation marks follow the palette's own colours, because every scheme
+ * above picks --pie-border and --pie-primary for maximum contrast against its own
+ * background. This must stay after the dark rule: the two selectors have equal
+ * specificity, and a scheme can be active on a dark page.
+ *
+ * The outline cannot fall back to the component greys here. Neither arm covers
+ * these palettes: the light arm #5c5c5c fails on yellow-on-blue (2.63:1),
+ * light-gray-on-dark-gray (1.89:1) and yellow-on-navy (1.18:1), while the dark arm
+ * #949494 fails on rose-on-green (2.71:1), black-on-rose (2.16:1),
+ * grey-on-light-grey (2.54:1), purple-on-light-green (2.32:1), black-on-violet
+ * (1.52:1) and yellow-on-navy (2.61:1). Several of these backgrounds are mid-tone,
+ * so no single grey clears 3:1 on them -- only the palette's own --pie-border does.
+ *
+ * The underline needs the same hand-off for a different reason. Its component
+ * default is keyed on [data-theme], which reports what the *page* declares, not
+ * which scheme is active -- so a host that declares itself light while running a
+ * dark scheme pins the light default (#4221d5) over a dark background. Both
+ * underline states get --pie-primary because within a scheme the background is
+ * fixed by the scheme, so one value is correct either way. --pie-primary clears
+ * 3:1 on all ten backgrounds, from 5.44:1 on light-gray-on-dark-gray to 19.56:1 on
+ * white-on-black.
+ *
+ * These same three tokens are declared per scheme in color-schemes.ts, so a host
+ * using <pie-theme scheme="..."> gets them as inline styles without importing this
+ * file. Keep the two in sync.
+ *
+ * The schemes are named rather than matched with [data-color-scheme], so an id
+ * with no block above cannot pull in the :root values, where --pie-border is
+ * #9a9a9a and misses 3:1 on white. Add a scheme here when adding one above.
+ */
+[data-color-scheme="black-on-white"],
+[data-color-scheme="white-on-black"],
+[data-color-scheme="rose-on-green"],
+[data-color-scheme="yellow-on-blue"],
+[data-color-scheme="black-on-rose"],
+[data-color-scheme="light-gray-on-dark-gray"],
+[data-color-scheme="grey-on-light-grey"],
+[data-color-scheme="purple-on-light-green"],
+[data-color-scheme="black-on-violet"],
+[data-color-scheme="yellow-on-navy"] {
+	--pie-tool-annotation-toolbar-border: var(--pie-border);
+}
+
+/* The underline keeps the component's own violet pair rather than following the
+ * palette accent: #4221d5 and #9c89ec clear 3:1 on nine of the ten backgrounds
+ * between them, so only the *selection* was ever wrong. Each scheme is given the
+ * arm that suits its own background, and both states get that one value because
+ * within a scheme the background is fixed regardless of what data-theme reports.
+ *
+ * Ratios, light arm / dark arm: black-on-white 8.71 / 2.92, rose-on-green
+ * 7.78 / 2.60, black-on-rose 6.20 / 2.07, grey-on-light-grey 7.31 / 2.45,
+ * purple-on-light-green 6.66 / 2.23, black-on-violet 4.37 / 1.46,
+ * white-on-black 2.41 / 7.20, yellow-on-blue 2.02 / 6.04,
+ * light-gray-on-dark-gray 1.45 / 4.33.
+ */
+[data-color-scheme="black-on-white"],
+[data-color-scheme="rose-on-green"],
+[data-color-scheme="black-on-rose"],
+[data-color-scheme="grey-on-light-grey"],
+[data-color-scheme="purple-on-light-green"],
+[data-color-scheme="black-on-violet"] {
+	--pie-annotation-underline: #4221d5;
+	--pie-annotation-underline-dark: #4221d5;
+}
+
+[data-color-scheme="white-on-black"],
+[data-color-scheme="yellow-on-blue"],
+[data-color-scheme="light-gray-on-dark-gray"] {
+	--pie-annotation-underline: #9c89ec;
+	--pie-annotation-underline-dark: #9c89ec;
+}
+
+/* yellow-on-navy is the one exception: its #33508a background is mid-tone, and
+ * neither arm reaches 3:1 on it (1.10 light, 2.71 dark). Only here does the
+ * underline defer to the palette's own accent, #ffff99 at 7.54:1 -- the same
+ * deference the outline makes to --pie-border above. This scheme arrived with the
+ * later Learnosity palettes, after the violet pair was chosen.
+ */
+[data-color-scheme="yellow-on-navy"] {
+	--pie-annotation-underline: var(--pie-primary);
+	--pie-annotation-underline-dark: var(--pie-primary);
+}

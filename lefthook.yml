@@ -18,5 +18,11 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
+    # Delegates to `bun run verify:pre-push`, but only when the push actually carries new
+    # commits. `use_stdin: true` is what makes that check possible: git hands a pre-push
+    # hook one line per ref being pushed, and lefthook forwards stdin only to commands
+    # that ask for it. Without it the script sees nothing and conservatively runs the full
+    # gate, which is the old behaviour rather than a hole. See scripts/pre-push-gate.mjs.
     fast-local-gate:
-      run: bun run verify:pre-push
+      use_stdin: true
+      run: bun ./scripts/pre-push-gate.mjs

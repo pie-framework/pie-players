@@ -12,8 +12,11 @@
 		"isolatedModules": true,
 		"declaration": true,
 		"declarationMap": false,
-		"sourceMap": true,
-		"inlineSources": true,
+		// See the matching note in `tsconfig.json`: publishable packages ship
+		// only `dist`, so usable maps require `inlineSources`, which embeds every
+		// `.ts` source in the tarball. Keep both off and in sync across the two
+		// root configs.
+		"sourceMap": false,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noImplicitReturns": true,

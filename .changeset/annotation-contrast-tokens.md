@@ -33,13 +33,34 @@ a boundary colour deliberately:
 - `[data-theme="dark"]` and `pie-theme[theme="dark"]` pin the dark arm,
   `#949494`. `light-dark()` keys off the declared `color-scheme`, which pie-theme
   does not set, so without this a pie-theme dark page would take the light arm.
-- All ten `data-color-scheme` accessibility palettes map the token to their own
+- All ten `data-color-scheme` accessibility palettes map the outline to their own
   `--pie-border`, which each picks for maximum contrast against its own
   background. This rule sits after the dark rule deliberately — the two have
   equal specificity and a scheme can be active on a dark page. The schemes are
   named rather than matched with a bare `[data-color-scheme]`, so an unknown id
-  cannot pull in the `:root` `--pie-border` (`#9a9a9a`, which misses 3:1 on
-  white).
+  cannot pull in the `:root` values (`--pie-border` is `#9a9a9a`, which misses 3:1
+  on white).
+
+- Each palette also fixes which underline value applies. The underline default is
+  selected by `[data-theme]`, which reports what the *page* declares rather than
+  which scheme is active — so a host declaring itself light while running a dark
+  scheme pinned the light value over a dark background.
+
+  The colours themselves were never the problem, so they are unchanged: `#4221d5`
+  and `#9c89ec` clear 3:1 between them on nine of the ten backgrounds, and each
+  scheme is simply given the arm that suits its own. Both states get that one
+  value, because within a scheme the background is fixed regardless of what
+  `data-theme` reports. Worst case is 4.33:1 (`light-gray-on-dark-gray`).
+
+  `yellow-on-navy` is the sole exception: its `#33508a` background is mid-tone and
+  neither arm reaches 3:1 (1.10 light, 2.71 dark), so there alone the underline
+  defers to the palette's own `--pie-primary` (`#ffff99`, 7.54:1) — the same
+  deference the outline makes to `--pie-border`.
+
+  All three tokens are declared in both delivery routes: per scheme in
+  `color-schemes.ts`, so `<pie-theme scheme="…">` applies them as inline styles
+  with no CSS import, and in `color-schemes.css` for hosts that set
+  `data-color-scheme` themselves.
 
 `--pie-tool-annotation-toolbar-border` is registered as a `component-public`
 token. Hosts overriding it must keep 3:1 against both the toolbar surface and the

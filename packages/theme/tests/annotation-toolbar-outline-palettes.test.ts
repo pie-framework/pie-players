@@ -11,8 +11,29 @@ import { BUILTIN_PIE_COLOR_SCHEMES } from "../src/color-schemes";
  */
 
 const OUTLINE_TOKEN = "--pie-tool-annotation-toolbar-border";
-const DARK_OUTLINE = "#5c5c5c";
-const DEFAULT_LIGHT_OUTLINE = "#949494";
+/**
+ * The component default is light-dark(#5c5c5c, #949494) -- dark grey on light
+ * surfaces, light grey on dark ones. The dark theme pins the light grey, since a
+ * boundary on a dark background has to be lighter than it.
+ */
+const DARK_OUTLINE = "#949494";
+const DEFAULT_LIGHT_OUTLINE = "#5c5c5c";
+/**
+ * The underline's component default is keyed on [data-theme], which reports what
+ * the page declares rather than which scheme is active, so a light-declaring host
+ * running a dark scheme would pin the light default over a dark background. Each
+ * palette hands both states its own accent instead.
+ */
+const UNDERLINE_TOKENS = [
+	"--pie-annotation-underline",
+	"--pie-annotation-underline-dark",
+] as const;
+
+/**
+ * The component's own defaults, kept by the palettes wherever one of them clears
+ * 3:1 on that palette's background — which is nine of the ten.
+ */
+const COMPONENT_UNDERLINE_PAIR = ["#4221d5", "#9c89ec"];
 
 const colorSchemesCss = await Bun.file(
 	new URL("../src/color-schemes.css", import.meta.url),
@@ -67,7 +88,7 @@ describe("annotation toolbar outline overrides", () => {
 		);
 	});
 
-	test("every accessibility scheme keeps its own boundary colour", () => {
+	test("every accessibility scheme keeps its own annotation colours", () => {
 		const schemeRuleIndex = colorSchemesCss.indexOf(
 			`[data-color-scheme="black-on-white"],`,
 		);
@@ -76,9 +97,8 @@ describe("annotation toolbar outline overrides", () => {
 		for (const id of ACCESSIBILITY_SCHEME_IDS) {
 			expect(schemeRule).toContain(`[data-color-scheme="${id}"]`);
 		}
-		expect(schemeRule.slice(0, schemeRule.indexOf("}"))).toContain(
-			`${OUTLINE_TOKEN}: var(--pie-border)`,
-		);
+		const body = schemeRule.slice(0, schemeRule.indexOf("}"));
+		expect(body).toContain(`${OUTLINE_TOKEN}: var(--pie-border)`);
 
 		// Equal specificity, so the scheme rule only wins by coming later -- a
 		// scheme can be active on a dark page.
@@ -87,15 +107,79 @@ describe("annotation toolbar outline overrides", () => {
 		);
 	});
 
-	test("the runtime scheme definitions carry the override too", () => {
+	test("the runtime scheme definitions carry all three overrides too", () => {
 		// pie-theme applies scheme variables as inline styles, and inline styles beat
-		// the stylesheet; a consumer that never loads color-schemes.css still gets
-		// the scheme's outline this way.
+		// the stylesheet. This is the route the demo apps and every known client use,
+		// so a token missing here is a token no consumer receives unless it also
+		// imports color-schemes.css and sets data-color-scheme by hand.
 		for (const scheme of BUILTIN_PIE_COLOR_SCHEMES) {
 			if (scheme.id === "default") continue;
 			expect(scheme.variables[OUTLINE_TOKEN], `${scheme.id} outline`).toBe(
 				"var(--pie-border)",
 			);
+			for (const token of UNDERLINE_TOKENS) {
+				expect(scheme.variables[token], `${scheme.id} ${token}`).toBeDefined();
+			}
+		}
+	});
+
+	test("each scheme keeps the component's own violet pair where it can", () => {
+		// The component pair clears 3:1 on nine of the ten backgrounds between them,
+		// so the palettes keep it and only the arm differs. Deferring to the palette
+		// accent instead would have replaced a deliberate mark colour for no reason.
+		const usingComponentPair = BUILTIN_PIE_COLOR_SCHEMES.filter(
+			(scheme) =>
+				scheme.id !== "default" &&
+				COMPONENT_UNDERLINE_PAIR.includes(
+					scheme.variables["--pie-annotation-underline"] as string,
+				),
+		).map((scheme) => scheme.id);
+
+		expect(usingComponentPair).toHaveLength(9);
+		expect(usingComponentPair).not.toContain("yellow-on-navy");
+	});
+
+	test("both underline states get one value per scheme", () => {
+		// Within a scheme the background is fixed by the scheme, so the value is
+		// correct whether or not data-theme reports dark -- which is the bug this
+		// hand-off exists to fix.
+		for (const scheme of BUILTIN_PIE_COLOR_SCHEMES) {
+			if (scheme.id === "default") continue;
+			expect(
+				scheme.variables["--pie-annotation-underline-dark"],
+				`${scheme.id} states agree`,
+			).toBe(scheme.variables["--pie-annotation-underline"]);
+		}
+	});
+
+	test("every scheme's underline clears 3:1 against its own background", () => {
+		for (const scheme of BUILTIN_PIE_COLOR_SCHEMES) {
+			if (scheme.id === "default") continue;
+			const declared = scheme.variables[
+				"--pie-annotation-underline"
+			] as string;
+			// yellow-on-navy is the sole scheme where neither arm reaches 3:1, so it
+			// defers to its own accent; resolve that the way the cascade would.
+			const resolved =
+				declared === "var(--pie-primary)"
+					? (scheme.variables["--pie-primary"] as string)
+					: declared;
+			const background = scheme.variables["--pie-background"] as string;
+			expect(
+				contrastRatio(resolved, background),
+				`${scheme.id}: ${resolved} on ${background}`,
+			).toBeGreaterThanOrEqual(3);
+		}
+	});
+
+	test("the component pair genuinely could not cover yellow-on-navy", () => {
+		// Pins why that one scheme is an exception rather than an oversight.
+		const navy = BUILTIN_PIE_COLOR_SCHEMES.find(
+			(scheme) => scheme.id === "yellow-on-navy",
+		);
+		const background = navy?.variables["--pie-background"] as string;
+		for (const value of COMPONENT_UNDERLINE_PAIR) {
+			expect(contrastRatio(value, background)).toBeLessThan(3);
 		}
 	});
 
@@ -111,16 +195,23 @@ describe("annotation toolbar outline overrides", () => {
 		}
 	});
 
-	test("the default grey would fail on the tinted light schemes", () => {
+	test("neither component grey covers these palettes, which is why they override", () => {
 		// This is why the override above exists rather than letting every palette
-		// take the component default: on these backgrounds the default grey is
-		// below the SC 1.4.11 threshold.
-		const failing = BUILTIN_PIE_COLOR_SCHEMES.filter((scheme) => {
-			const background = scheme.variables["--pie-background"];
-			return background && contrastRatio(DEFAULT_LIGHT_OUTLINE, background) < 3;
-		}).map((scheme) => scheme.id);
+		// take the component default. Several of these backgrounds are mid-tone, so
+		// each arm fails on a different subset and no single grey clears all of them
+		// -- only the palette's own --pie-border does.
+		const failingFor = (grey: string) =>
+			BUILTIN_PIE_COLOR_SCHEMES.filter((scheme) => {
+				const background = scheme.variables["--pie-background"];
+				return background && contrastRatio(grey, background) < 3;
+			}).map((scheme) => scheme.id);
 
-		expect(failing).toEqual([
+		expect(failingFor(DEFAULT_LIGHT_OUTLINE)).toEqual([
+			"yellow-on-blue",
+			"light-gray-on-dark-gray",
+			"yellow-on-navy",
+		]);
+		expect(failingFor(DARK_OUTLINE)).toEqual([
 			"rose-on-green",
 			"black-on-rose",
 			"grey-on-light-grey",
@@ -128,5 +219,19 @@ describe("annotation toolbar outline overrides", () => {
 			"black-on-violet",
 			"yellow-on-navy",
 		]);
+
+		// yellow-on-navy defeats both, so no choice of a single grey would do.
+		const backgrounds = BUILTIN_PIE_COLOR_SCHEMES.map(
+			(scheme) => scheme.variables["--pie-background"],
+		).filter((background): background is string => Boolean(background));
+		let universal: string | undefined;
+		for (let v = 0; v < 256; v += 1) {
+			const grey = `#${v.toString(16).padStart(2, "0").repeat(3)}`;
+			if (backgrounds.every((bg) => contrastRatio(grey, bg) >= 3)) {
+				universal = grey;
+				break;
+			}
+		}
+		expect(universal).toBeUndefined();
 	});
 });

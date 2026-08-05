@@ -559,15 +559,29 @@
 		   It cannot come from --pie-border, because the DaisyUI bridge maps that
 		   token to --color-base-300 -- a surface tint rather than a boundary
 		   colour: #eeeeee at 1.16:1 on the light base, #15191e at 1.12:1 on the
-		   dark one. The pair below is measured instead: #949494 is the lightest
-		   grey clearing 3:1 on white (3.03:1), #5c5c5c the darkest clearing it on
-		   black (3.14:1). light-dark() keys off the declared color-scheme, so
-		   every dark DaisyUI theme takes the dark value, not only the one named
-		   "dark". Palettes that pick their own boundary colour -- the
-		   data-color-scheme accessibility schemes -- set the token themselves in
-		   @pie-players/pie-theme, which is why this is a token and not a literal. */
+		   dark one.
+
+		   A boundary on a light surface has to be dark and one on a dark surface
+		   has to be light, so the light-dark() arms below are the dark grey first
+		   and the light grey second. Both are measured against the surfaces the
+		   toolbar is actually drawn on rather than against pure white and pure
+		   black: real theme bases are off-white and off-black, and a grey chosen
+		   at the edge of passing against an extreme drops under threshold on
+		   everything else. Across DaisyUI's 21 light and 14 dark themes plus the
+		   PIE light and dark palettes, every light surface needs a grey no
+		   lighter than #828282 and every dark surface one no darker than
+		   #878787 -- disjoint ranges, which is why one value cannot serve both
+		   and light-dark() is the mechanism. #5c5c5c holds 5.22:1 as the worst
+		   case on the light surfaces, #949494 holds 3.56:1 on the dark ones.
+
+		   light-dark() keys off the declared color-scheme, so every dark DaisyUI
+		   theme takes the dark value, not only the one named "dark". Palettes
+		   that pick their own boundary colour -- the data-color-scheme
+		   accessibility schemes -- set the token themselves in
+		   @pie-players/pie-theme, which is why this is a token and not a literal;
+		   several of their backgrounds are mid-tone and defeat both greys. */
 		border: 1px solid
-			var(--pie-tool-annotation-toolbar-border, light-dark(#949494, #5c5c5c));
+			var(--pie-tool-annotation-toolbar-border, light-dark(#5c5c5c, #949494));
 		box-shadow: 0 10px 25px -8px rgb(0 0 0 / 0.3);
 		user-select: none;
 	}

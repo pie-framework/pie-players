@@ -511,24 +511,46 @@
  *
  * The dark theme is pinned because the component's light-dark() default follows
  * the declared color-scheme, which pie-theme does not set; without this, a
- * pie-theme dark page would take the light value.
+ * pie-theme dark page would take the light value. The pinned value is therefore
+ * the component's dark arm, #949494 -- the light grey. A boundary on a dark
+ * surface has to be lighter than it, so this is 6.92:1 on the dark palette's
+ * #000000 background, where the dark arm #5c5c5c would sit at 3.14:1 with no
+ * margin and drop to 2.37:1 on DaisyUI's dark base.
  */
 [data-theme="dark"],
 pie-theme[theme="dark"] {
-	--pie-tool-annotation-toolbar-border: #5c5c5c;
+	--pie-tool-annotation-toolbar-border: #949494;
 }
 
-/* Every accessibility scheme above picks --pie-border for maximum contrast
- * against its own background, so the outline follows it. This must stay after
- * the dark rule: the two selectors have equal specificity, and a scheme can be
- * active on a dark page. Dropping it would put the default grey on the light
- * scheme backgrounds, where it fails SC 1.4.11 (#949494 is 2.71:1 on
- * rose-on-green's #ccffcc and 2.16:1 on black-on-rose's #ffccdd, and it misses
- * 3:1 on every one of the Learnosity palettes' backgrounds too).
+/* Both annotation marks follow the palette's own colours, because every scheme
+ * above picks --pie-border and --pie-primary for maximum contrast against its own
+ * background. This must stay after the dark rule: the two selectors have equal
+ * specificity, and a scheme can be active on a dark page.
+ *
+ * The outline cannot fall back to the component greys here. Neither arm covers
+ * these palettes: the light arm #5c5c5c fails on yellow-on-blue (2.63:1),
+ * light-gray-on-dark-gray (1.89:1) and yellow-on-navy (1.18:1), while the dark arm
+ * #949494 fails on rose-on-green (2.71:1), black-on-rose (2.16:1),
+ * grey-on-light-grey (2.54:1), purple-on-light-green (2.32:1), black-on-violet
+ * (1.52:1) and yellow-on-navy (2.61:1). Several of these backgrounds are mid-tone,
+ * so no single grey clears 3:1 on them -- only the palette's own --pie-border does.
+ *
+ * The underline needs the same hand-off for a different reason. Its component
+ * default is keyed on [data-theme], which reports what the *page* declares, not
+ * which scheme is active -- so a host that declares itself light while running a
+ * dark scheme pins the light default (#4221d5) over a dark background. Both
+ * underline states get --pie-primary because within a scheme the background is
+ * fixed by the scheme, so one value is correct either way. --pie-primary clears
+ * 3:1 on all ten backgrounds, from 5.44:1 on light-gray-on-dark-gray to 19.56:1 on
+ * white-on-black.
+ *
+ * These same three tokens are declared per scheme in color-schemes.ts, so a host
+ * using <pie-theme scheme="..."> gets them as inline styles without importing this
+ * file. Keep the two in sync.
  *
  * The schemes are named rather than matched with [data-color-scheme], so an id
- * with no block above cannot pull in the :root --pie-border, which is #9a9a9a
- * and misses 3:1 on white. Add a scheme here when adding one above.
+ * with no block above cannot pull in the :root values, where --pie-border is
+ * #9a9a9a and misses 3:1 on white. Add a scheme here when adding one above.
  */
 [data-color-scheme="black-on-white"],
 [data-color-scheme="white-on-black"],
@@ -541,4 +563,44 @@ pie-theme[theme="dark"] {
 [data-color-scheme="black-on-violet"],
 [data-color-scheme="yellow-on-navy"] {
 	--pie-tool-annotation-toolbar-border: var(--pie-border);
+}
+
+/* The underline keeps the component's own violet pair rather than following the
+ * palette accent: #4221d5 and #9c89ec clear 3:1 on nine of the ten backgrounds
+ * between them, so only the *selection* was ever wrong. Each scheme is given the
+ * arm that suits its own background, and both states get that one value because
+ * within a scheme the background is fixed regardless of what data-theme reports.
+ *
+ * Ratios, light arm / dark arm: black-on-white 8.71 / 2.92, rose-on-green
+ * 7.78 / 2.60, black-on-rose 6.20 / 2.07, grey-on-light-grey 7.31 / 2.45,
+ * purple-on-light-green 6.66 / 2.23, black-on-violet 4.37 / 1.46,
+ * white-on-black 2.41 / 7.20, yellow-on-blue 2.02 / 6.04,
+ * light-gray-on-dark-gray 1.45 / 4.33.
+ */
+[data-color-scheme="black-on-white"],
+[data-color-scheme="rose-on-green"],
+[data-color-scheme="black-on-rose"],
+[data-color-scheme="grey-on-light-grey"],
+[data-color-scheme="purple-on-light-green"],
+[data-color-scheme="black-on-violet"] {
+	--pie-annotation-underline: #4221d5;
+	--pie-annotation-underline-dark: #4221d5;
+}
+
+[data-color-scheme="white-on-black"],
+[data-color-scheme="yellow-on-blue"],
+[data-color-scheme="light-gray-on-dark-gray"] {
+	--pie-annotation-underline: #9c89ec;
+	--pie-annotation-underline-dark: #9c89ec;
+}
+
+/* yellow-on-navy is the one exception: its #33508a background is mid-tone, and
+ * neither arm reaches 3:1 on it (1.10 light, 2.71 dark). Only here does the
+ * underline defer to the palette's own accent, #ffff99 at 7.54:1 -- the same
+ * deference the outline makes to --pie-border above. This scheme arrived with the
+ * later Learnosity palettes, after the violet pair was chosen.
+ */
+[data-color-scheme="yellow-on-navy"] {
+	--pie-annotation-underline: var(--pie-primary);
+	--pie-annotation-underline-dark: var(--pie-primary);
 }

@@ -511,20 +511,28 @@
  *
  * The dark theme is pinned because the component's light-dark() default follows
  * the declared color-scheme, which pie-theme does not set; without this, a
- * pie-theme dark page would take the light value.
+ * pie-theme dark page would take the light value. The pinned value is therefore
+ * the component's dark arm, #949494 -- the light grey. A boundary on a dark
+ * surface has to be lighter than it, so this is 6.92:1 on the dark palette's
+ * #000000 background, where the dark arm #5c5c5c would sit at 3.14:1 with no
+ * margin and drop to 2.37:1 on DaisyUI's dark base.
  */
 [data-theme="dark"],
 pie-theme[theme="dark"] {
-	--pie-tool-annotation-toolbar-border: #5c5c5c;
+	--pie-tool-annotation-toolbar-border: #949494;
 }
 
 /* Every accessibility scheme above picks --pie-border for maximum contrast
  * against its own background, so the outline follows it. This must stay after
  * the dark rule: the two selectors have equal specificity, and a scheme can be
- * active on a dark page. Dropping it would put the default grey on the light
- * scheme backgrounds, where it fails SC 1.4.11 (#949494 is 2.71:1 on
- * rose-on-green's #ccffcc and 2.16:1 on black-on-rose's #ffccdd, and it misses
- * 3:1 on every one of the Learnosity palettes' backgrounds too).
+ * active on a dark page. Dropping it would leave these palettes on the component
+ * greys, and neither arm covers them: the light arm #5c5c5c fails on
+ * yellow-on-blue (2.63:1), light-gray-on-dark-gray (1.89:1) and yellow-on-navy
+ * (1.18:1), while the dark arm #949494 fails on rose-on-green (2.71:1),
+ * black-on-rose (2.16:1), grey-on-light-grey (2.54:1), purple-on-light-green
+ * (2.32:1), black-on-violet (1.52:1) and yellow-on-navy (2.61:1). Several of
+ * these backgrounds are mid-tone, so no single grey clears 3:1 on them -- only
+ * the palette's own --pie-border does.
  *
  * The schemes are named rather than matched with [data-color-scheme], so an id
  * with no block above cannot pull in the :root --pie-border, which is #9a9a9a

@@ -49,11 +49,13 @@ The toolbar takes its surface and text from the canonical `--pie-background` and
 
 | Token                                  | Default                        | Purpose                                     |
 | -------------------------------------- | ------------------------------ | ------------------------------------------- |
-| `--pie-tool-annotation-toolbar-border` | `light-dark(#949494, #5c5c5c)` | Outline separating the toolbar from content |
+| `--pie-tool-annotation-toolbar-border` | `light-dark(#5c5c5c, #949494)` | Outline separating the toolbar from content |
 
-The outline does **not** read `--pie-border`. Under the DaisyUI bridge that token resolves to `--color-base-300`, a surface tint rather than a boundary colour, which renders the outline at 1.16:1 on the light base and 1.12:1 on the dark one — well short of the 3:1 that WCAG 2.2 SC 1.4.11 requires of a component boundary. The defaults above are measured instead: `#949494` is the lightest grey clearing 3:1 on white (3.03:1) and `#5c5c5c` the darkest clearing it on black (3.14:1). `light-dark()` follows the declared `color-scheme`, so every dark DaisyUI theme picks the dark value rather than only the theme literally named `dark`.
+The outline does **not** read `--pie-border`. Under the DaisyUI bridge that token resolves to `--color-base-300`, a surface tint rather than a boundary colour, which renders the outline at 1.16:1 on the light base and 1.12:1 on the dark one — well short of the 3:1 that WCAG 2.2 SC 1.4.11 requires of a component boundary.
 
-Palettes that choose a boundary colour deliberately set the token themselves in `@pie-players/pie-theme`: the six `data-color-scheme` accessibility schemes point it at their own `--pie-border`, and the PIE dark theme pins `#5c5c5c`.
+The defaults above are measured instead. A boundary on a light surface has to be dark and one on a dark surface has to be light, so the arms are the dark grey first and the light grey second. Both are measured against the surfaces the toolbar is actually drawn on rather than against pure white and pure black — real theme bases are off-white and off-black, and a grey chosen at the edge of passing against an extreme drops under threshold on everything else. Across DaisyUI's 21 light and 14 dark themes plus the PIE light and dark palettes, every light surface needs a grey no lighter than `#828282` and every dark surface one no darker than `#878787`; the ranges are disjoint, so one value cannot serve both. `#5c5c5c` holds 5.22:1 as its worst case on the light surfaces and `#949494` holds 3.56:1 on the dark ones. `light-dark()` follows the declared `color-scheme`, so every dark DaisyUI theme picks the dark value rather than only the theme literally named `dark`.
+
+Palettes that choose a boundary colour deliberately set the token themselves in `@pie-players/pie-theme`: the ten `data-color-scheme` accessibility schemes point it at their own `--pie-border`, and the PIE dark theme pins `#949494`. Several of those palettes use mid-tone backgrounds that no single grey clears 3:1 on, which is why they override rather than inherit.
 
 Hosts may override the token, but must keep 3:1 against both the toolbar surface and the content behind it.
 

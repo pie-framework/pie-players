@@ -11,8 +11,13 @@ import { BUILTIN_PIE_COLOR_SCHEMES } from "../src/color-schemes";
  */
 
 const OUTLINE_TOKEN = "--pie-tool-annotation-toolbar-border";
-const DARK_OUTLINE = "#5c5c5c";
-const DEFAULT_LIGHT_OUTLINE = "#949494";
+/**
+ * The component default is light-dark(#5c5c5c, #949494) -- dark grey on light
+ * surfaces, light grey on dark ones. The dark theme pins the light grey, since a
+ * boundary on a dark background has to be lighter than it.
+ */
+const DARK_OUTLINE = "#949494";
+const DEFAULT_LIGHT_OUTLINE = "#5c5c5c";
 
 const colorSchemesCss = await Bun.file(
 	new URL("../src/color-schemes.css", import.meta.url),
@@ -111,16 +116,23 @@ describe("annotation toolbar outline overrides", () => {
 		}
 	});
 
-	test("the default grey would fail on the tinted light schemes", () => {
+	test("neither component grey covers these palettes, which is why they override", () => {
 		// This is why the override above exists rather than letting every palette
-		// take the component default: on these backgrounds the default grey is
-		// below the SC 1.4.11 threshold.
-		const failing = BUILTIN_PIE_COLOR_SCHEMES.filter((scheme) => {
-			const background = scheme.variables["--pie-background"];
-			return background && contrastRatio(DEFAULT_LIGHT_OUTLINE, background) < 3;
-		}).map((scheme) => scheme.id);
+		// take the component default. Several of these backgrounds are mid-tone, so
+		// each arm fails on a different subset and no single grey clears all of them
+		// -- only the palette's own --pie-border does.
+		const failingFor = (grey: string) =>
+			BUILTIN_PIE_COLOR_SCHEMES.filter((scheme) => {
+				const background = scheme.variables["--pie-background"];
+				return background && contrastRatio(grey, background) < 3;
+			}).map((scheme) => scheme.id);
 
-		expect(failing).toEqual([
+		expect(failingFor(DEFAULT_LIGHT_OUTLINE)).toEqual([
+			"yellow-on-blue",
+			"light-gray-on-dark-gray",
+			"yellow-on-navy",
+		]);
+		expect(failingFor(DARK_OUTLINE)).toEqual([
 			"rose-on-green",
 			"black-on-rose",
 			"grey-on-light-grey",
@@ -128,5 +140,19 @@ describe("annotation toolbar outline overrides", () => {
 			"black-on-violet",
 			"yellow-on-navy",
 		]);
+
+		// yellow-on-navy defeats both, so no choice of a single grey would do.
+		const backgrounds = BUILTIN_PIE_COLOR_SCHEMES.map(
+			(scheme) => scheme.variables["--pie-background"],
+		).filter((background): background is string => Boolean(background));
+		let universal: string | undefined;
+		for (let v = 0; v < 256; v += 1) {
+			const grey = `#${v.toString(16).padStart(2, "0").repeat(3)}`;
+			if (backgrounds.every((bg) => contrastRatio(grey, bg) >= 3)) {
+				universal = grey;
+				break;
+			}
+		}
+		expect(universal).toBeUndefined();
 	});
 });

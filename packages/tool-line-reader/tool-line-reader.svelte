@@ -56,8 +56,6 @@ import { onMount } from 'svelte';
 		mouseY: 0
 	});
 	let announceText = $state('');
-	/** Opacity of the surrounding frame that obscures neighbouring content. */
-	let frameOpacity = $state(0.8);
 
 	// Track registration state
 	let registered = $state(false);
@@ -72,14 +70,11 @@ import { onMount } from 'svelte';
 	const MAX_FRAME_BAND_HEIGHT = 240; // pixels
 	const MIN_WIDTH = 200; // pixels
 	const MAX_WIDTH = 2000; // pixels
-	const MIN_FRAME_OPACITY = 0.2;
-	const MAX_FRAME_OPACITY = 1;
 
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
 	const RESIZE_STEP = 10; // pixels
 	const WIDTH_STEP = 20; // pixels
-	const OPACITY_STEP = 0.1;
 
 	const totalHeight = $derived(paneHeight + frameBandHeight * 2);
 
@@ -126,14 +121,6 @@ import { onMount } from 'svelte';
 		if (coordinator && toolId) {
 			coordinator.hideTool(toolId);
 		}
-	}
-
-	function adjustFrameOpacity(delta: number) {
-		frameOpacity = Math.max(
-			MIN_FRAME_OPACITY,
-			Math.min(MAX_FRAME_OPACITY, frameOpacity + delta),
-		);
-		announce(`Frame opacity ${Math.round(frameOpacity * 100)}%`);
 	}
 
 	// Pointer event handlers (better for web components)
@@ -293,14 +280,6 @@ import { onMount } from 'svelte';
 				resizePane(-RESIZE_STEP);
 				handled = true;
 				break;
-			case ']':
-				adjustFrameOpacity(OPACITY_STEP);
-				handled = true;
-				break;
-			case '[':
-				adjustFrameOpacity(-OPACITY_STEP);
-				handled = true;
-				break;
 			case 'Escape':
 				closeTool();
 				handled = true;
@@ -411,12 +390,12 @@ import { onMount } from 'svelte';
 	<div
 		bind:this={containerEl}
 		class="pie-tool-line-reader"
-		style="left: {position.x}px; top: {position.y}px; width: {width}px; height: {totalHeight}px; --pie-tool-line-reader-band-height: {frameBandHeight}px; --pie-tool-line-reader-side-width: {FRAME_SIDE_WIDTH}px; --pie-tool-line-reader-frame-opacity: {frameOpacity};"
+		style="left: {position.x}px; top: {position.y}px; width: {width}px; height: {totalHeight}px; --pie-tool-line-reader-band-height: {frameBandHeight}px; --pie-tool-line-reader-side-width: {FRAME_SIDE_WIDTH}px;"
 		onpointerdown={handlePointerDown}
 		onkeydown={handleKeyDown}
 		role="group"
 		tabindex="0"
-		aria-label="Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, [ and ] to adjust frame opacity, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameBandHeight} pixels, Frame opacity: {Math.round(frameOpacity * 100)}%"
+		aria-label="Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameBandHeight} pixels"
 		aria-roledescription="Draggable and resizable reading guide overlay"
 	>
 		<!--
@@ -537,6 +516,15 @@ import { onMount } from 'svelte';
 	 * whenever layout lands off whole pixels (page zoom, fractional font scale) the
 	 * junctions render at partial coverage and show as light seams between the
 	 * edges and the bands. One border box has no internal boundaries to seam.
+	 *
+	 * How the frame masks -- its fill and how strongly it obscures -- is a
+	 * deployment decision, not a per-student one: it trades reading focus against
+	 * how much surrounding context a test taker can still see, which is the kind
+	 * of call a programme makes for its whole population. So both come from
+	 * `--pie-tool-line-reader-frame-color` and
+	 * `--pie-tool-line-reader-frame-opacity`, read here and never written back by
+	 * the component -- a host sets them once in its own stylesheet, and no inline
+	 * declaration here forces them to outrank it with `!important`.
 	 */
 	.pie-tool-line-reader__frame {
 		position: absolute;
@@ -549,7 +537,6 @@ import { onMount } from 'svelte';
 		border-radius: 4px;
 		background-color: transparent;
 		opacity: var(--pie-tool-line-reader-frame-opacity, 0.8);
-		transition: opacity 0.2s ease;
 	}
 
 	/*

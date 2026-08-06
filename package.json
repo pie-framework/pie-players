@@ -73,6 +73,7 @@
 		"check-i18n": "bun run --cwd packages/players-shared check-i18n",
 		"scan-hardcoded": "bun run --cwd packages/players-shared scan-hardcoded",
 		"check:deps": "bun ./scripts/check-deps.mjs",
+		"check:audit": "bun ./scripts/check-audit.mjs",
 		"check:package-metadata": "bun ./scripts/check-package-metadata.mjs",
 		"check:svelte-runtime-deps": "bun ./scripts/check-svelte-runtime-deps.mjs",
 		"check:custom-elements": "bun ./scripts/check-custom-elements.mjs",

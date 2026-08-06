@@ -100,38 +100,15 @@ const WORKSPACE_DIRS = ["packages", "apps", "tools"];
  * This is not a severity escape hatch. Every entry needs a reason and an exit
  * condition, and a stale entry — one that no longer matches any current finding
  * — FAILS the gate, so the list cannot quietly outlive its purpose.
+ *
+ * Empty as of the dompurify 3.4.13 bump (2026-08-06), which cleared the nine
+ * sanitizer-bypass advisories this list previously carried. Verified correct
+ * against the real built module in Chromium — see
+ * `packages/players-shared/tests/e2e/sanitize-item-markup.spec.ts` — after
+ * discovering DOMPurify >=3.4.8 fails to sanitize under happy-dom, which is
+ * why those assertions live in a real-browser suite rather than bun:test.
  */
-const SHIPPED_ALLOWLIST = {
-	"GHSA-hpcv-96wg-7vj8":
-		"dompurify <=3.4.5 — cleared by the pending 3.4.13 bump",
-	"GHSA-r47g-fvhr-h676":
-		"dompurify <=3.4.5 — cleared by the pending 3.4.13 bump",
-	"GHSA-rp9w-3fw7-7cwq":
-		"dompurify <=3.4.6 — cleared by the pending 3.4.13 bump",
-	"GHSA-x4vx-rjvf-j5p4":
-		"dompurify <=3.4.6 — cleared by the pending 3.4.13 bump",
-	"GHSA-76mc-f452-cxcm":
-		"dompurify <3.4.7 — cleared by the pending 3.4.13 bump",
-	"GHSA-gvmj-g25r-r7wr":
-		"dompurify <=3.4.7 — cleared by the pending 3.4.13 bump",
-	"GHSA-vxr8-fq34-vvx9":
-		"dompurify <3.4.9 — cleared by the pending 3.4.13 bump",
-	"GHSA-cmwh-pvxp-8882":
-		"dompurify <=3.4.10 — cleared by the pending 3.4.13 bump",
-	"GHSA-c2j3-45gr-mqc4":
-		"dompurify <=3.4.11 — cleared by the pending 3.4.13 bump",
-};
-
-/**
- * Every entry above is a dompurify sanitizer-bypass advisory in
- * `@pie-players/pie-players-shared`, which is shipped. The 3.4.13 bump clears
- * all nine and is verified correct in Chromium, but dompurify >=3.4.8 fails open
- * under happy-dom, which breaks the sanitizer unit tests. Landing the bump is
- * blocked on choosing a test environment for those tests, not on the dependency.
- * Delete these entries with the bump; the stale-entry check will insist.
- */
-const ALLOWLIST_CONTEXT =
-	"9 dompurify advisories pending the 3.4.13 bump (blocked on sanitizer test env, not on the dependency).";
+const SHIPPED_ALLOWLIST = {};
 
 export function severityRank(severity) {
 	const index = SEVERITY_ORDER.indexOf(String(severity).toLowerCase());
@@ -470,6 +447,8 @@ if (import.meta.main) {
 	}
 
 	console.log(
-		`[check-audit] OK: no unaccepted shipped findings. Accepted: ${allowed.length} (${ALLOWLIST_CONTEXT})`,
+		allowed.length > 0
+			? `[check-audit] OK: no unaccepted shipped findings. Allowed: ${allowed.length}.`
+			: "[check-audit] OK: no unaccepted shipped findings.",
 	);
 }

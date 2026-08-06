@@ -8,6 +8,10 @@ The architecture note is directional. These PRDs will decide exact package
 ownership, TypeScript names, exports, wire fields, migration behavior, and
 verification requirements.
 
+Tracking: this workstream is deliberately not tracked in an issue tracker. The
+`Status:` line in each PRD plus the sequence below are the record. All of these
+are `Draft`.
+
 ## Draft Sequence
 
 Recommended review and implementation order:
@@ -15,6 +19,20 @@ Recommended review and implementation order:
 1. [`interaction-event-contract`](./interaction-event-contract.md)
    - Event projection vocabulary, source refs, typed event families,
      privacy/telemetry rules, and process/path fields.
+   - **Rescope before review (noted 2026-08-05).** This PRD now trails its own
+     implementation. `players-shared/src/instrumentation/` ships typed
+     instrumentation events with `DebugPanelInstrumentationProvider`,
+     `NewRelicInstrumentationProvider`, and
+     `CompositeInstrumentationProvider`, plus an event bridge and provider
+     resolution; `assessment-toolkit` carries an instrumentation bridge, and
+     `section-player-tools-instrumentation-debugger` consumes the stream. The
+     task is to document and align with what shipped — and to decide whether
+     the adapter-facing projection is the same contract as the instrumentation
+     stream or a separate one — not to design the vocabulary from scratch.
+   - Because it is now largely descriptive, it no longer has to gate the
+     others. Reviewing it first is still useful for vocabulary, but
+     `score-components-and-section-outcomes` and `media-asset-contract` can
+     proceed in parallel.
 2. [`score-components-and-section-outcomes`](./score-components-and-section-outcomes.md)
    - Alignment to `OutcomeResponse`, `SessionScore`, item completion,
      `TestAttemptSession`, `SectionControllerSessionState`, and

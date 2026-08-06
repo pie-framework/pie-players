@@ -4,6 +4,8 @@ Status: Draft
 
 Owner: PIE Players maintainers
 
+Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05; see [Current State](../architecture/timed-media-section.md#current-state) in the architecture note for what moved underneath this draft. Nothing here is blocked on a ticket.
+
 Related architecture:
 
 - [Timed media section architecture](../architecture/timed-media-section.md)
@@ -38,12 +40,13 @@ This PRD defines the section contract that timed-media section-player variants, 
 
 ## Package And Export Ownership
 
-- Owning package: proposed `@pie-players/pie-players-shared` for timed-media section data types, with `@pie-players/pie-assessment-toolkit` owning runtime slice helpers if needed.
-- Public export path: open question; candidate shape is shared section type exports plus toolkit controller helpers.
+- Owning package: `@pie-players/pie-players-shared` (source at `packages/players-shared`) for timed-media section data types, alongside the existing `AssessmentSection` and `RubricBlock` definitions. Runtime behavior is the open part, not the data home.
+- Runtime home: `@pie-players/pie-assessment-toolkit` is the leading candidate for cue and playback policy, not merely "slice helpers if needed." Since this PRD was drafted the toolkit has grown `SectionRuntimeEngine`, `SectionEngineCore`, engine state/transition machinery, and a `ToolPolicyEngine` with `PolicySource`, `compose-decision`, and provenance. Composed policy decisions are a closer match for cue/playback policy than layout-custom-element internals. `SectionController` still lives in `section-player`.
+- Public export path: open question; candidate shape is shared section type exports plus toolkit runtime/policy contributions.
 - Consuming packages or apps: `section-player`, `assessment-player`, `assessment-toolkit`, `apps/section-demos`, `apps/assessment-demos`, `pie-elements-ng` `video-stimulus`, and `pie-qti` adapters.
 - Runtime environment: browser and custom element; data types should be Node-safe for adapters.
 
-Implementation must choose one canonical type home for `sectionType`, `timedMedia`, cues, and the timed-media session slice.
+Implementation must choose one canonical type home for `sectionType`, `timedMedia`, cues, and the timed-media session slice, and must decide the data/runtime split above before the contract hardens.
 
 ## Contract Shape
 
@@ -101,6 +104,8 @@ This PRD extends `section-player` behavior additively. It must not change:
 - normal child item session propagation;
 - existing section-player layouts unless they opt into timed-media behavior;
 - assessment-player routing except for additive renderer selection.
+
+"Additive renderer selection" understates the work as of 2026-08-05: assessment-player has no data-driven renderer selection to extend. `AssessmentPlayerDefaultElement` takes a hardcoded `sectionPlayerLayout: "splitpane" | "vertical"` attribute and imports only those two layouts, and nothing dispatches on section data. Either this PRD scopes that dispatch as new machinery, or timed media targets the standalone `section-player` path where the host selects the tag directly.
 
 The timed-media slice must not become a generic profile bag. Unknown hosts must follow the slice behavior ratified by this PRD, not invent alias maps, fallback normalizers, or duplicate dispatch paths.
 
@@ -190,8 +195,9 @@ Playwright-backed tests must run outside the sandbox.
 
 ## Open Questions
 
-- Which package owns the canonical timed-media section data types?
-- Is media represented through rubric blocks, a new renderable flavor, or `timedMedia.media` only?
+- Which package owns the canonical timed-media section data types, and where does cue/playback policy run — the timed-media layout custom element or the `assessment-toolkit` policy engine?
+- Is media represented through rubric blocks, a new `RubricBlock.class` value plus a matching shell, or `timedMedia.media` only? `RubricBlock` is now explicitly passage-typed (`passageVId`, `passage: PassageEntity`, `content`), and there is no `item | passage | rubric` union to extend — the decision turns on whether media must be reusable shared content across sections. See [Video Stimulus Mapping](../architecture/timed-media-section.md#video-stimulus-mapping).
+- Does assessment-player gain `sectionType`-driven renderer dispatch, or does timed media target the standalone section-player path?
 - Should `timedMedia` extend the existing section persistence snapshot or be normalized as a sibling slice by assessment-player?
 - Which scoring policy defaults, if any, should PIE provide?
 - What is the minimum timed-media MVP for cue timeline authoring, and which package owns that future PRD?

@@ -787,6 +787,7 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
+- **SignLanguageExtractor**: The same, for inline `data-sign-language` video regions
 - **ThemeProvider**: Consistent accessibility theming
 
 ### ✅ QTI 3.0 Standard Access Features
@@ -1047,6 +1048,40 @@ const alternative = resolver.getAlternative('prompt-001', {
 resolver.clearItemCatalogs();
 ```
 
+A resolved card carries either a string `content` (SSML for `spoken`, text for
+`braille`) or a structured `payload`, decided by its `catalog` type — never both.
+Consumers select by type and then validate the form they expect; a card with no
+string form is not text content, and treating it as such would speak or render an
+empty string.
+
+Catalogs registered for a rendered item or passage are filed under a
+`CatalogOwnerContext`, which the resolver matches field by field. Build lookup
+contexts with `catalogOwnerContextFor` rather than as a literal — it is the same
+function the runtime registers with, so the two cannot drift:
+
+```typescript
+import {
+  catalogOwnerContextFor,
+  collectEntityCatalogRegistrations,
+} from '@pie-players/pie-assessment-toolkit';
+
+const context = catalogOwnerContextFor({
+  kind: 'item',
+  itemId: item.id,
+  canonicalItemId,
+  assessmentId,
+  sectionId,
+});
+
+// Every catalog an entity carries, paired with the scope it belongs in:
+// entity-level `accessibilityCatalogs`, `config.extractedCatalogs`, and each
+// model's own catalogs (filed under that `modelId`).
+const registrations = collectEntityCatalogRegistrations(item, {
+  kind: 'item',
+  itemId: item.id,
+});
+```
+
 ### SSMLExtractor
 
 ```typescript
@@ -1062,6 +1097,41 @@ item.config.extractedCatalogs = result.catalogs;
 // Register with catalog resolver
 catalogResolver.addItemCatalogs(result.catalogs);
 ```
+
+### SignLanguageExtractor
+
+The signing counterpart of `SSMLExtractor`, with the same shape: it lifts
+`data-sign-language` video regions out of item content into `sign-language`
+cards, removes the video from the visible markup, and docks each card on the
+content it translates via `data-catalog-idref` (never overwriting one already
+there). Section-player's item card runs this itself on mount, so inline signing
+markup works without an import step.
+
+```typescript
+const { catalogs, cleanedConfig } =
+  new SignLanguageExtractor().extractFromItemConfig(item.config);
+```
+
+Whether a card describes a playable signed alternate is decided in one place,
+`resolveSignLanguageMedia` — a payload with no usable source resolves to `null`
+rather than rendering an empty player, and source URLs are restricted to schemes
+a media element can actually fetch. `matchesRequestedSignLanguage` holds the
+deliberate strictness: there is no cross-sign-language substitution, since
+handing an ASL learner a BSL recording is worse than handing them nothing.
+
+### Feature policy without a placement
+
+`ToolPolicyEngine.decideFeature(featureId)` (and
+`ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolve one feature id
+through `PnpPolicySource`'s six-level precedence, independent of any toolbar
+placement. Use it for capabilities that are not toolbar surfaces — signing is the
+first — where a placement-scoped `decide(...)` would answer the wrong question:
+absent because it was never placed, rather than absent because policy said no.
+
+`computeDefaultSupports()` excludes `ACCOMMODATION_ONLY_SUPPORT_IDS`, which lists
+`signLanguage`. The computed default profile derives from every registered tool's
+`pnpSupportIds`, which is right for universal features and wrong for an
+accommodation requiring a documented need.
 
 ## Integration with Section Player
 

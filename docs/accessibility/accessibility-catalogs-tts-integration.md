@@ -184,15 +184,20 @@ The TTSService follows this resolution flow:
           ┌───────┴────────┐
           │                │
           ▼                ▼
-    ┌─────────┐      ┌─────────┐
-    │ Found   │      │ Not     │
-    │ catalog │      │ found   │
-    └────┬────┘      └────┬────┘
-         │                │
-         ▼                ▼
-    Use catalog      Use plain text
-    content (SSML)   (fallback)
+    ┌──────────────┐  ┌─────────┐
+    │ Spoken card  │  │ Not     │
+    │ with content │  │ found   │
+    └────┬─────────┘  └────┬────┘
+         │                 │
+         ▼                 ▼
+    Use catalog       Use plain text
+    content (SSML)    (fallback)
 ```
+
+"Found" means a `spoken` card that carries a string. A card with no string form —
+a `sign-language` card on the same `data-catalog-idref` node, for instance — is
+not TTS content, and speech falls through to the generated path rather than
+speaking an empty string.
 
 **Priority Order:**
 1. Catalogs scoped to the active item/model, including `config.extractedCatalogs`
@@ -504,6 +509,7 @@ const item = {
 - **Catalog Management**: Shell-scoped catalogs are registered and unregistered as section content changes
 - **HTML Content Detection**: Catalog IDs are discovered from rendered DOM content
 - **Server-Side TTS Support**: Server-backed providers such as AWS Polly can supply precise highlighting data
+- **Two readers, one attribute**: `data-catalog-idref` is also read by section-player's item media region for `sign-language` cards. It stays one canonical attribute name; each reader selects by catalog type, so a node can dock both a spoken and a signed alternate without either disturbing the other. Neither extractor overwrites an existing `data-catalog-idref` for this reason: the reference names a whole card array, so replacing it to win one type would take that node's other cards down with it. When an inline `<speak>` lands inside a node that is already docked, `SSMLExtractor` keeps the existing reference, still emits the extracted catalog, and warns — the extracted SSML is then unreachable by DOM walk, and the fix is to give the `<speak>` its own wrapper or author it as a `spoken` card on the existing catalog
 
 ## References
 

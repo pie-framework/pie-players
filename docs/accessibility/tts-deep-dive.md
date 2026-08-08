@@ -181,9 +181,15 @@ interface AccessibilityCatalog {
 interface CatalogCard {
   catalog: string; // "spoken" for TTS
   language?: string;
-  content: string; // often SSML
+  content?: string; // the string form — SSML for `spoken`
+  payload?: CatalogCardPayload; // the structured form, for types a string cannot express
 }
 ```
+
+A card carries either `content` or `payload`, decided by `catalog`. TTS only ever
+reads the string form: a resolved card with no `content` (a `sign-language` card,
+for instance) is treated as no catalog at all, and speech falls through to the
+generated path rather than speaking an empty string.
 
 Visible markup points to catalog entries with `data-catalog-idref`:
 

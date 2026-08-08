@@ -23,15 +23,42 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 
 ### Supported Catalog Types
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `spoken` | Pre-authored TTS scripts (SSML) | Screen readers, TTS |
-| `sign-language` | Video URLs for signed content | Deaf/hard-of-hearing |
-| `braille` | Braille-ready transcriptions | Blind users with refreshable displays |
-| `tactile` | Descriptions for tactile graphics | Tactile diagram readers |
-| `simplified-language` | Plain language alternatives | Cognitive accessibility, ELL |
-| `audio-description` | Extended audio descriptions | Visual content for blind users |
-| `extended-description` | Detailed text descriptions | Complex diagrams/images |
+| Type | Description | Use Case | Rendered by PIE |
+|------|-------------|----------|-----------------|
+| `spoken` | Pre-authored TTS scripts (SSML) | Screen readers, TTS | Yes — `TTSService` |
+| `sign-language` | Signed video, as a structured media payload | Deaf/hard-of-hearing | Yes — section-player item media region, gated on the `signLanguage` PNP support |
+| `braille` | Braille-ready transcriptions | Blind users with refreshable displays | No — resolvable, host-consumed |
+| `tactile` | Descriptions for tactile graphics | Tactile diagram readers | No — resolvable, host-consumed |
+| `simplified-language` | Plain language alternatives | Cognitive accessibility, ELL | No — resolvable, host-consumed |
+| `audio-description` | Extended audio descriptions | Visual content for blind users | No — resolvable, host-consumed |
+| `extended-description` | Detailed text descriptions | Complex diagrams/images | No — resolvable, host-consumed |
+
+### Card Content: String Or Payload
+
+A card carries **either** `content` **or** `payload`, never both, and `catalog`
+is the only thing that says which to read — it is QTI's `qti-card@support`, and
+QTI gives `qti-card` one content slot:
+
+```typescript
+interface CatalogCard {
+  catalog: string;    // 'spoken', 'sign-language', 'braille', …
+  language?: string;  // the card entry's xml:lang
+  content?: string;   // the string form: SSML for `spoken`, text for `braille`
+  payload?: CatalogCardPayload;  // the structured form, read according to `catalog`
+}
+```
+
+`content` is optional because some types have no string form at all. A signing
+card needs a second source, a MIME type, a poster and a time range, so it carries
+`payload` and no `content`; nothing is mirrored between the two, so there is
+never a second copy of the same URL to fall out of sync, and the payload carries
+no type tag of its own that could disagree with `catalog`.
+
+Consequences for consumers: select by `catalog` type, then validate the form you
+expect. `TTSService` treats a resolved card with no string form as "no catalog"
+and falls through to generated speech rather than speaking an empty string, and a
+`sign-language` card carrying a bare URL in `content` is reported and ignored
+rather than half-rendered.
 
 ---
 
@@ -72,8 +99,21 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
    passages, items, models, and `config.extractedCatalogs`.
 4. **Content Request**: `TTSService` resolves `data-catalog-idref` references
    for spoken catalogs before falling back to generated speech or visible text.
+   Section-player's item card resolves `sign-language` cards for the same item in
+   parallel, through the same resolver.
 5. **Navigation/Unmount**: Shell lifecycle unregisters scoped item and passage
    catalog registrations.
+
+Step 3 and step 4 have to agree on *where* a catalog is filed, because the
+resolver matches owner contexts field by field: a reader that assembled its own
+context by hand would silently resolve nothing the day either side gained a
+field. So one function decides it — `collectEntityCatalogRegistrations` walks the
+three places catalogs hang off an entity (entity-level `accessibilityCatalogs`,
+`config.extractedCatalogs`, and each model's own catalogs, the last filed under
+that `modelId` so two models can reuse one identifier), and
+`catalogOwnerContextFor` builds the context both sides use. Both are exported
+from `@pie-players/pie-assessment-toolkit`; readers should call the latter rather
+than construct a `CatalogOwnerContext` literal.
 
 ---
 
@@ -86,6 +126,13 @@ QTI 3.0 accessibility catalogs. Run it as a preprocessing/import step before
 rendering, then pass the cleaned config and `config.extractedCatalogs` to the
 player. The runtime registers `extractedCatalogs` when shells mount, but it does
 not invoke extraction during shell registration.
+
+`SignLanguageExtractor` is its counterpart for signed content: it lifts
+`data-sign-language` video regions into `sign-language` cards, removes the video
+from visible markup, and docks the card on the content it translates. Unlike SSML
+extraction, section-player runs this one itself when an item card mounts, so an
+item authored with inline signing markup works without an import step. Both write
+to `config.extractedCatalogs` and neither knows about the other.
 
 #### Why Extraction?
 

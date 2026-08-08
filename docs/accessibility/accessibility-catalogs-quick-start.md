@@ -13,10 +13,17 @@ See also:
 QTI 3.0 accessibility catalogs provide alternative representations of content for assistive technologies:
 
 - **Spoken** - Pre-authored TTS scripts (better than generated speech)
-- **Sign Language** - Video URLs for signed content
+- **Sign Language** - Video for signed content
 - **Braille** - Braille-ready transcriptions
 - **Simplified Language** - Plain language alternatives for cognitive accessibility
 - **Tactile/Extended Descriptions** - For complex diagrams/images
+
+**Spoken** and **sign language** have runtime consumers: `TTSService` for spoken,
+and section-player's per-item media region for signed alternates (gated on the
+`signLanguage` PNP support). The remaining types are declared and resolvable but
+nothing renders them yet. See
+[Sign Language (ASL) Support](../prds/sign-language-asl-support.md) for the
+signing contract.
 
 ---
 
@@ -463,11 +470,53 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ### Q: How do I handle video URLs for sign language?
 
-**A:** Store the URL in `content` field:
+**A:** In `payload`, not `content`. A flat string cannot carry multiple sources,
+MIME types, poster, or a time range, all of which QTI 3 expresses inside
+`qti-card-entry` — so a signing card has no string form at all:
 
 ```typescript
-{ catalog: 'sign-language', language: 'en-US', content: 'https://cdn.example.com/video.mp4' }
+{
+  catalog: 'sign-language',
+  language: 'ase',
+  payload: {
+    signLang: 'ase',
+    media: {
+      version: 1,
+      id: 'asl-prompt-1',
+      kind: 'video',
+      sources: [{ src: 'https://cdn.example.com/asl.mp4', type: 'video/mp4' }],
+      poster: 'https://cdn.example.com/asl.jpg',
+    },
+    // Optional: a time slice, so one recording can serve several nodes.
+    fragment: { startSeconds: 3, endSeconds: 11 },
+  },
+}
 ```
+
+A card carries **either** `content` **or** `payload`, never both: `content` is
+the string form for types a string can express (SSML for `spoken`), and `payload`
+is the structured form for types it cannot. Nothing is mirrored between them, so
+there is never a second copy to fall out of sync. Which one applies is decided by
+`catalog` — QTI's `qti-card@support`, and the only discriminator — so the payload
+carries no type tag of its own. A `sign-language` card with a bare URL in
+`content` is malformed; it is reported and ignored rather than rendered.
+
+Use `ase` (ISO 639-3 for American Sign Language) rather than a spoken-language
+tag like `en-US`, matching QTI 3's `xml:lang` on the card entry. The code is the
+language of the *adaptation*, so never derive it from the item's content
+language — a Spanish item's signed alternate is LSM, not ASL.
+
+Section-player renders these in a per-item `data-region="media"` region when the
+item carries a matching card **and** policy grants the `signLanguage` PNP
+support. There is no cross-sign-language fallback: if ASL is requested and only
+BSL exists, nothing renders rather than a language the learner may not follow.
+`signLanguage` is deliberately excluded from the computed default profile, so it
+has to be granted. See
+[Sign Language (ASL) Support](../prds/sign-language-asl-support.md).
+
+Authors can also skip catalogs entirely and mark the video inline with
+`data-sign-language="ase"`; the runtime extractor lifts it into a card and docks
+it via `data-catalog-idref`, the same way `<speak>` SSML becomes a spoken card.
 
 ### Q: Can I update catalogs at runtime?
 

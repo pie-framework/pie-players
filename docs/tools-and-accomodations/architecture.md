@@ -24,11 +24,12 @@ See also:
 2. [System Context](#system-context)
 3. [Component Architecture](#component-architecture)
 4. [Tool Hierarchy](#tool-hierarchy)
-5. [Core Services](#core-services)
-6. [Integration Patterns](#integration-patterns)
-7. [Technology Stack](#technology-stack)
-8. [Accessibility & Accommodations](#accessibility--accommodations)
-9. [Production Status](#production-status)
+5. [What Counts As A Tool](#what-counts-as-a-tool)
+6. [Core Services](#core-services)
+7. [Integration Patterns](#integration-patterns)
+8. [Technology Stack](#technology-stack)
+9. [Accessibility & Accommodations](#accessibility--accommodations)
+10. [Production Status](#production-status)
 
 ---
 
@@ -208,6 +209,44 @@ Tools are organized into three tiers based on their dependencies:
 **Maintainability:** Adding new Tier 3 tools is straightforward—implement the interface, receive text from orchestrator. No need to reimplement selection detection.
 
 **Testing:** Tier 1 tools test in isolation. Tier 2 tools test selection detection. Tier 3 tools test with mock text input.
+
+---
+
+## What Counts As A Tool
+
+Added 2026-08-07, prompted by fitting sign-language (ASL) support into this system. "Tool" in this codebase does not mean "gadget on a toolbar" — it means **policy-addressable capability**: something a `toolId` can name so district, test-administration, item, and student policy can decide whether it is available. `PnpPolicyDecisionEvent` calls this a `featureId`, which is the more honest name.
+
+Registry membership therefore does *not* imply anything about three independent properties that are easy to conflate with it.
+
+**1. Who may enable it (eligibility).** The assessment domain distinguishes *universal features* available to every student (highlighter, zoom, line reader), *designated supports* an educator indicates a need for (masking, color contrast, often TTS), and *accommodations* requiring a documented need such as an IEP or 504 (braille, ASL, scribe). This is the CCSSO / Smarter Balanced framing.
+
+**Eligibility does not belong in a tool registration.** It is a property of the program, not of the capability: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live. `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `item-requirement`, `district-requirement`, `pnp-support`, `pnp-prohibited`) are the right home.
+
+**2. Whether it needs authored content.** A calculator works on any item. A highlighter works on any item. ASL needs a signing video authored for *that specific content*; braille needs a transcription; authored-SSML speech needs `<speak>` in that item. For these, availability is a function of the content as well as the student, and an affordance offered where no content exists is a dead affordance.
+
+Unlike eligibility, this **is** intrinsic to the capability and belongs with it. AfA 3.0 formalizes it as the resource half of a matching pair — PNP describes learner needs, [DRD](https://www.imsglobal.org/accessibility/afav3p0pd/AfAv3p0_SpecPrimer_v1p0pd.html) describes what a resource offers. QTI 3 approximates DRD in-band: the presence of a catalog card *is* the resource-side declaration. PIE does the QTI version, so "is there a matching catalog card" is our DRD check.
+
+**3. Where it renders.** Toolbar-invoked overlay, in-content transform, or its own layout region. Covered by [Tool Scope Architecture](#tool-scope-architecture-placement--scoped-ids) below and independent of the other two. Note this is also separate from the dependency tiers in [Tool Hierarchy](#tool-hierarchy) above — a capability's dependencies, its placement, its eligibility, and its content dependency are four orthogonal things.
+
+### How The Standards Treat This
+
+Neither reference point draws the tool-versus-accommodation line, and how each declines to is informative.
+
+**AfA / PNP 3.0 refuses it deliberately.** On-screen calculators and dictionaries sit at the same structural level as captions and sign language; all are features a user may request. The [PNP information model](https://www.imsglobal.org/spec/afa/v3p0/info) contains no eligibility criteria and no authorization levels at all — who may grant a support is out of scope by design, left to policy frameworks above the spec.
+
+**Learnosity has no accommodation concept in its content model.** It splits content into Questions (capture a response, scored) and [Features](https://help.learnosity.com/hc/en-us/articles/16684575643549-feature-types) (no response, not scored). Feature types include Audio player, Calculator, Imagetool, Line Reader, Passage, and Video player — so a signing video is authored as ordinary item content and renders unconditionally. Calculator and Line Reader appear both as item-level Features and as activity-level tools, so their answer to "tool or content?" is "choose a configuration scope." Their only real axis is *where it is configured*: item, activity, or session.
+
+### Consequence For PIE
+
+The shape here is already right and is closer to the standards than it looks: an AfA-shaped, eligibility-free `supports` vocabulary (`pnpSupportIds`, `PersonalNeedsProfile.supports`), plus a policy engine supplying the tiering AfA omits.
+
+So **accommodations are not a separate kind of thing in this architecture.** They get a feature id like everything else, their eligibility comes from policy configuration, and their content dependency is checked by catalog resolution. Sign language is the worked example: it takes a feature id so it inherits the six-level precedence, declares a content dependency so it is absent when an item carries no card, and renders as its own section-player region rather than a toolbar surface — three independent answers, none of which follow from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
+
+Two mechanisms this needed, added 2026-08-08 when signing shipped:
+
+**Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same six levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. Note it deliberately does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
+
+**Eligibility tier versus the computed default.** `DEFAULT_PERSONAL_NEEDS_PROFILE` is derived by `computeDefaultSupports()` from every registered tool's `pnpSupportIds`. That is right for universal features and inverts the tier for an accommodation — registering a signing tool would switch signing on for every student of every host that does not supply its own profile. `ACCOMMODATION_ONLY_SUPPORT_IDS` is excluded from that computation by id rather than by declining to register, so the guarantee holds however such a capability later reaches the registry. It is the one place the eligibility tiering AfA omits shows up in code, and it is a filter, not a new concept.
 
 ---
 

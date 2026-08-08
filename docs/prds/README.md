@@ -27,6 +27,16 @@ Use one of these statuses at the top of each PRD:
   scoring, media, evidence, accessibility, and adapter-facing contracts.
 - [`tts-highlight-target-resolver.md`](./tts-highlight-target-resolver.md) -
   focused implementation PRD for runtime TTS highlight target remapping.
+- [`sign-language-asl-support.md`](./sign-language-asl-support.md) -
+  item-level signed alternate representations through accessibility catalogs and
+  PNP gating.
+- [`audio-accommodations.md`](./audio-accommodations.md) -
+  audio transcript as a policy-gated catalog card, replacing a pre-toolkit
+  CSS-class gate by transforming content rather than accommodating the class;
+  plus why autoplay is a content property and not a PIE feature.
+- [`timed-media-section-contract.md`](./timed-media-section-contract.md) -
+  section-level timed media with cue-driven item orchestration. Distinct from
+  sign language despite both being video; each PRD fences the other out.
 
 ## Ground Rules
 

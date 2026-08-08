@@ -41,6 +41,21 @@ Recommended review and implementation order:
 3. [`media-asset-contract`](./media-asset-contract.md)
    - Stimulus media sources, captions, transcripts, poster, accessibility
      metadata, and host storage boundaries.
+   - **Review first, not third (noted 2026-08-07).** Timed media and
+     sign-language support are both expected to start soon, possibly in
+     parallel, which makes this a blocker for two concurrent consumers rather
+     than a contract with one prospective one. It should be designed against
+     both from the start and land before either writes media-handling code,
+     otherwise two media vocabularies get merged later. The time-range-within-an-asset
+     primitive is shared by both — Media Fragments for signing, cue ranges for
+     timed media — and should be designed once here rather than deferred.
+   - **Partly overtaken by events (2026-08-08).** The signing consumer shipped
+     first, so `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef`
+     and `MediaFragmentRange` now exist in
+     `@pie-players/pie-players-shared/types`, designed against both consumers but
+     exercised by only one. This contract's remaining job is to ratify or revise
+     that vocabulary with the timed-media consumer at the table — not to invent
+     it from scratch, and not to let a second one grow beside it.
 4. [`branching-and-process-events`](./branching-and-process-events.md)
    - Branching, simulations, replay/debug, resumability, externally graded
      outcomes, and path state.
@@ -54,6 +69,14 @@ Recommended review and implementation order:
 Timed-media implementation PRDs consume the shared contracts above and live
 outside this folder. The first planned timed-media PRD is
 [`../timed-media-section-contract.md`](../timed-media-section-contract.md).
+
+[`../sign-language-asl-support.md`](../sign-language-asl-support.md) also
+consumes `media-asset-contract` and `accessibility-runtime-patterns`, and is the
+nearest-term consumer of both: unlike timed media it builds on shipped
+infrastructure (`AccessibilityCatalogResolver`, `data-catalog-idref`,
+`PnpPolicySource`) rather than on machinery that does not exist yet. It does not
+need `interaction-event-contract` or `score-components-and-section-outcomes`,
+because a signed alternate representation produces no responses and no outcomes.
 Composition authoring is a later PRD and should not be folded into the shared
 contracts, `video-stimulus`, QTI mappings, or host-specific prose.
 

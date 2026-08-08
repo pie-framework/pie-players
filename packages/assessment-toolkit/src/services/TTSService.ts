@@ -402,6 +402,27 @@ export class TTSService {
 		this.catalogResolver = resolver;
 	}
 
+	/**
+	 * Whether a catalog holds spoken content this service could actually speak.
+	 *
+	 * Exists because `data-catalog-idref` is one attribute with several readers:
+	 * a node can be docked to a catalog that carries only a signing card, and the
+	 * nearest docked ancestor of a selection is therefore not necessarily the one
+	 * holding its authored SSML. A caller resolving a selection climbs ancestors
+	 * and asks this before settling on an id — see the TTS tool's
+	 * `findSpokenCatalogId`. Without it, a signing card docked on an inner node
+	 * silently shadows authored speech on an outer one.
+	 */
+	hasSpokenAlternate(catalogId: string, language = "en-US"): boolean {
+		if (!catalogId || !this.catalogResolver) return false;
+		const resolved = this.catalogResolver.getAlternative(catalogId, {
+			type: "spoken",
+			language,
+			useFallback: true,
+		});
+		return resolved?.content !== undefined;
+	}
+
 	private getHighlightResolverRuntime(): {
 		context: TTSHighlightContext;
 		resolver: TTSHighlightTargetResolver | null;

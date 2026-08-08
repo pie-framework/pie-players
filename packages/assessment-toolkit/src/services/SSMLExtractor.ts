@@ -444,28 +444,41 @@ export class SSMLExtractor {
 						speakEl.getAttribute("lang") ||
 						"en-US";
 
-					// Get plain text for visual display
-					const plainText = speakEl.textContent || "";
+					// The docking node is the element the author already wrote around
+					// the visible content this SSML speaks. Nothing is synthesized to
+					// stand in for it: a `<speak>` with no element around it has no
+					// content node to be an alternate *for*, and inventing one would
+					// mean inventing visible content too.
+					const wrapper =
+						speakEl.parentElement && speakEl.parentElement.tagName !== "BODY"
+							? speakEl.parentElement
+							: null;
+					// Visible content never keeps the SSML, docked or not.
+					speakEl.remove();
 
-					// Find parent element or create wrapper
-					let wrapper = speakEl.parentElement;
-
-					if (!wrapper || wrapper.tagName === "BODY") {
-						// SPEAK is at root level - create span wrapper
-						const span = doc.createElement("span");
-						speakEl.parentNode?.insertBefore(span, speakEl);
-						span.appendChild(doc.createTextNode(plainText));
-						wrapper = span;
-						speakEl.remove();
-					} else {
-						// Just remove <speak> - visual content should be in sibling element
-						speakEl.remove();
-					}
-
-					// Tag the wrapper with the QTI-style catalog reference so the
+					// Tag the docking node with the QTI-style catalog reference so the
 					// runtime can resolve this region's spoken content. Same attribute
-					// authored content uses (`data-catalog-idref`) — one canonical name.
-					if (wrapper) {
+					// authored content uses (`data-catalog-idref`) — one canonical name,
+					// which is also why an existing value is never replaced: the
+					// reference names a whole card array, so overwriting it to win the
+					// spoken type would take that node's braille, simplified-language and
+					// sign-language cards down with it. `SignLanguageExtractor` follows
+					// the same rule.
+					//
+					// Either way the catalog is still emitted, so a consumer resolving
+					// through the item's catalog set finds it. What an undocked catalog
+					// loses is DOM lookup, which is how TTS resolves — a content problem
+					// only the author can fix, so say so rather than failing silently.
+					const existingIdRef = wrapper?.getAttribute("data-catalog-idref");
+					if (!wrapper) {
+						console.warn(
+							`[SSMLExtractor] "${idPrefix}" has a <speak> with no element around it, so catalog "${catalogId}" has no content node to dock to and TTS will not find it. Wrap the visible content this SSML speaks in an element.`,
+						);
+					} else if (existingIdRef) {
+						console.warn(
+							`[SSMLExtractor] "${idPrefix}" has an inline <speak> inside a node already docked to catalog "${existingIdRef}"; keeping the existing reference, so catalog "${catalogId}" is not reachable from this node. Give the <speak> its own wrapper element, or author the SSML as a "spoken" card on "${existingIdRef}".`,
+						);
+					} else {
 						wrapper.setAttribute("data-catalog-idref", catalogId);
 					}
 

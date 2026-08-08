@@ -108,6 +108,22 @@ describe("SignLanguageExtractor", () => {
 		expect(prompt).not.toContain("auto-sign-prompt-q1-0");
 	});
 
+	test("emits an undocked card when a marked video sits at the root", () => {
+		// No content node around the video means nothing for the signing to be an
+		// alternate *for*, so no docking node is synthesized to hold the reference.
+		// The card still resolves: the region finds cards through the item's catalog
+		// set rather than by walking the DOM.
+		const { catalogs, cleanedConfig } = extractor.extractFromItemConfig(
+			config({
+				markup: '<video data-sign-language="ase" src="asl.mp4"></video>',
+			}),
+		);
+		expect(catalogs).toHaveLength(1);
+		expect(cleanedConfig.markup).not.toContain("<span");
+		expect(cleanedConfig.markup).not.toContain("data-catalog-idref");
+		expect(cleanedConfig.markup).not.toContain("<video");
+	});
+
 	test("keeps a marked wrapper as the docking node and strips the marker", () => {
 		const { cleanedConfig } = extractor.extractFromItemConfig(
 			config({

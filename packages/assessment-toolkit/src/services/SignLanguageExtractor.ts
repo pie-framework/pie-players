@@ -188,7 +188,7 @@ export class SignLanguageExtractor {
 
 			for (const markedElement of marked) {
 				try {
-					const catalog = this.extractOne(doc, markedElement, idPrefix);
+					const catalog = this.extractOne(markedElement, idPrefix);
 					if (catalog) catalogs.push(catalog);
 				} catch (error) {
 					console.error(
@@ -207,7 +207,6 @@ export class SignLanguageExtractor {
 	}
 
 	private extractOne(
-		doc: Document,
 		markedElement: Element,
 		idPrefix: string,
 	): AccessibilityCatalog | null {
@@ -274,7 +273,7 @@ export class SignLanguageExtractor {
 			payload,
 		};
 
-		this.dockCatalog(doc, markedElement, video, catalogId);
+		this.dockCatalog(markedElement, video, catalogId);
 
 		return { identifier: catalogId, cards: [card] };
 	}
@@ -294,9 +293,10 @@ export class SignLanguageExtractor {
 	 * still resolves — the region finds signing cards through the item's catalog
 	 * set, not by walking the DOM — so only future per-node docking for that one
 	 * node is affected, and per-choice docking needs element-repo support anyway.
+	 * `SSMLExtractor` follows the same rule; both are named in
+	 * `docs/accessibility/accessibility-catalogs-tts-integration.md`.
 	 */
 	private dockCatalog(
-		doc: Document,
 		markedElement: Element,
 		video: Element,
 		catalogId: string,
@@ -307,13 +307,12 @@ export class SignLanguageExtractor {
 			: markedElement;
 
 		if (markedIsVideo) {
-			if (!dockingNode || dockingNode.tagName === "BODY") {
-				// Video at root level: leave a docking span in its place so the
-				// reference has somewhere to live.
-				const span = doc.createElement("span");
-				markedElement.parentNode?.insertBefore(span, markedElement);
-				dockingNode = span;
-			}
+			// A video at root level has no content node around it to be an
+			// alternate for, so nothing is synthesized to stand in for one. The card
+			// is still emitted and the region still resolves it through the item's
+			// catalog set; only per-node docking is unavailable, and there is no node
+			// to dock to.
+			if (dockingNode?.tagName === "BODY") dockingNode = null;
 			markedElement.remove();
 		} else {
 			markedElement.removeAttribute(SIGN_LANGUAGE_ATTRIBUTE);

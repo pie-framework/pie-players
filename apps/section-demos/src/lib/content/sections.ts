@@ -13,6 +13,10 @@ import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
+import {
+	demoSignLanguageGrantedSection,
+	demoSignLanguageNotGrantedSection,
+} from "./demo-sign-language";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 
@@ -494,6 +498,34 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		allowElementVersionOverrides: false,
 		section: metadataSessionForwardingSection,
+	},
+	"sign-language": {
+		id: "sign-language",
+		name: "Sign Language (ASL) Region",
+		description:
+			"Signed alternates rendered in the item card's media region, gated on the signLanguage PNP support — one page with the accommodation granted, one without",
+		integrationLevel: 4,
+		integrationTheme: "Accessibility catalogs",
+		focus:
+			"Validates that signing shows only when the item carries a matching sign-language catalog card AND policy grants eligibility — both halves required, neither a default.",
+		whatMakesItTick: [
+			"The first item authors its signing video inline with `data-sign-language`; the runtime extractor lifts it into a catalog card, the signing counterpart of `<speak>` SSML.",
+			"The third item carries an authored `accessibilityCatalogs` card with a typed media payload — the shape an importer writes — proving both paths land in the same region.",
+			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
+			"No signing clip is bundled (see `static/demo-assets/sign-language/README.md`) — the poster stands in, since ASL video production and hosting are host-owned.",
+		],
+		sections: [
+			{
+				id: "signing-granted",
+				name: "Signing granted",
+				section: demoSignLanguageGrantedSection,
+			},
+			{
+				id: "signing-not-granted",
+				name: "Signing not granted",
+				section: demoSignLanguageNotGrantedSection,
+			},
+		],
 	},
 	"three-questions": {
 		id: "three-questions",

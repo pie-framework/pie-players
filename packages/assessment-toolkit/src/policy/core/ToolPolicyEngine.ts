@@ -34,6 +34,8 @@ import type {
 	ToolPolicyDecisionRequest,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
+import type { FeaturePolicyDecision } from "./feature-decision.js";
+import { interpretFeatureResult } from "./feature-decision.js";
 import { composeDecision } from "./compose-decision.js";
 import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
 import { PnpPolicySource } from "../sources/PnpPolicySource.js";
@@ -157,6 +159,36 @@ export class ToolPolicyEngine {
 			customSources: this.customSources,
 			contextId: requestContextId,
 		});
+	}
+
+	/**
+	 * Resolve eligibility for one PNP/AfA feature id through the six-level
+	 * precedence, independent of toolbar placement.
+	 *
+	 * For capabilities that render as their own surface rather than a toolbar
+	 * button — a signed alternate's region, for example — `decide(...)` cannot
+	 * answer the question, because such a capability is deliberately absent from
+	 * `tools.placement` and would read as "removed by policy" when nothing of
+	 * the sort happened. See {@link FeaturePolicyDecision}.
+	 *
+	 * `pnpEnforcement` is deliberately **not** consulted here. That flag governs
+	 * whether PNP/profile policy *refines* an otherwise-visible tool set; a
+	 * feature with no placement has no unrefined baseline to fall back to, so
+	 * skipping the PNP read would make the capability permanently unavailable
+	 * rather than merely unrefined. Auto-mode already flips enforcement on
+	 * whenever profile material exists, so this only diverges for a host that
+	 * explicitly forces `"off"` while supplying a profile that grants the
+	 * feature — and there, honouring the profile is the safer failure.
+	 */
+	decideFeature(featureId: string): FeaturePolicyDecision {
+		this.assertNotDisposed();
+		return interpretFeatureResult(
+			featureId,
+			this.pnpPolicySource.resolveFeature(featureId, {
+				assessment: this.assessment ?? undefined,
+				currentItemRef: this.currentItemRef ?? undefined,
+			}),
+		);
 	}
 
 	/**

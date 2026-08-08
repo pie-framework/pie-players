@@ -39,6 +39,7 @@ import type {
 } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
+	FeaturePolicyDecision,
 	PolicySource,
 	PnpEnforcementMode,
 	ResolvedEngineInputs,
@@ -788,6 +789,17 @@ export interface ToolkitCoordinatorApi {
 	 * `decision.visibleTools` themselves.
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
+
+	/**
+	 * Resolve eligibility for one PNP/AfA feature id through the six-level
+	 * precedence, independent of toolbar placement — for capabilities that
+	 * render as their own surface rather than a toolbar button (a signed
+	 * alternate's region, for example).
+	 *
+	 * Optional so host-supplied coordinator stubs predating this method stay
+	 * assignable; call sites must feature-detect.
+	 */
+	decideFeaturePolicy?(featureId: string): FeaturePolicyDecision;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the

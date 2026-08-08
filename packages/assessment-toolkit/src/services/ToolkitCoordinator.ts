@@ -69,6 +69,7 @@ import type {
 } from "./ToolRegistry.js";
 import {
 	ToolPolicyEngine,
+	type FeaturePolicyDecision,
 	type PnpEnforcementMode,
 	type PolicySource,
 	type ResolvedEngineInputs,
@@ -102,6 +103,7 @@ export type {
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 export type {
+	FeaturePolicyDecision,
 	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyChangeListener,
@@ -2247,6 +2249,18 @@ export class ToolkitCoordinator {
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		return this.policyEngine.decide(request);
+	}
+
+	/**
+	 * Resolve eligibility for one PNP/AfA feature id, independent of toolbar
+	 * placement.
+	 *
+	 * Thin shim over the owned tool-policy engine; see
+	 * {@link ToolPolicyEngine.decideFeature} for the contract, including why
+	 * `pnpEnforcement` is not consulted.
+	 */
+	decideFeaturePolicy(featureId: string): FeaturePolicyDecision {
+		return this.policyEngine.decideFeature(featureId);
 	}
 
 	/**

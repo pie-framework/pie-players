@@ -165,6 +165,7 @@ export {
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
 export {
+	ACCOMMODATION_ONLY_SUPPORT_IDS,
 	DEFAULT_PERSONAL_NEEDS_PROFILE,
 	createDefaultPersonalNeedsProfile,
 } from "./services/defaultPersonalNeedsProfile.js";
@@ -189,6 +190,23 @@ export {
 	isStandardAccessFeature,
 	QTI_STANDARD_ACCESS_FEATURES,
 } from "./services/pnp-standard-features.js";
+// Sign-language catalog cards (payload validation + language matching)
+export type { SignLanguageMedia } from "./services/sign-language-cards.js";
+export {
+	AMERICAN_SIGN_LANGUAGE,
+	applyMediaFragment,
+	describeSignLanguage,
+	isSignLanguageCard,
+	matchesRequestedSignLanguage,
+	resolveSignLanguageMedia,
+	SIGN_LANGUAGE_CATALOG_TYPE,
+} from "./services/sign-language-cards.js";
+// Sign-language Extractor (Auto-generates catalogs from inline signing video)
+export type { SignLanguageExtractionResult } from "./services/SignLanguageExtractor.js";
+export {
+	SIGN_LANGUAGE_ATTRIBUTE,
+	SignLanguageExtractor,
+} from "./services/SignLanguageExtractor.js";
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";

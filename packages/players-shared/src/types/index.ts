@@ -318,6 +318,15 @@ export interface AssessmentSection
 	// Shared context (passages/instructions/rubrics) for this section
 	rubricBlocks?: RubricBlock[];
 
+	/**
+	 * QTI 3.0: Personal Needs Profile (PNP 3.0) for section-scoped delivery.
+	 *
+	 * Section players read this (falling back to `settings.personalNeedsProfile`,
+	 * then to the computed default profile) to drive PNP policy when a section is
+	 * delivered without an enclosing assessment.
+	 */
+	personalNeedsProfile?: PersonalNeedsProfile;
+
 	sort?: string;
 }
 
@@ -351,10 +360,113 @@ export interface ContextDeclaration {
 	defaultValue?: any;
 }
 
+// ----------------------------------------------------------------------------
+// Media asset references
+// ----------------------------------------------------------------------------
+
+export type MediaKind = "image" | "audio" | "video" | "other";
+
+export interface MediaSource {
+	src: string;
+	type?: string;
+	width?: number;
+	height?: number;
+	bitrate?: number;
+}
+
+export interface TextTrackRef {
+	src: string;
+	kind: "captions" | "subtitles" | "descriptions" | "chapters" | "metadata";
+	lang: string;
+	label: string;
+	default?: boolean;
+}
+
+export interface TranscriptRef {
+	src?: string;
+	html?: string;
+	plainText?: string;
+	lang?: string;
+}
+
+/**
+ * A referenced media asset and its accessible alternates.
+ *
+ * Deliberately one vocabulary for every media consumer (accessibility catalog
+ * cards today, stimulus media later) rather than per-consumer media fields.
+ * Which fields are *required* is resolved per consumer instead of by making
+ * everything optional at the type level — a type where nothing is required
+ * stops catching anything. For a sign-language card, `sources` carries the
+ * signing recording, `poster`/`durationSeconds` are not applicable, and
+ * `tracks`/`transcript` are meaningless (captions on a signing video would be
+ * the English text already on screen).
+ */
+export interface MediaAssetRef {
+	version: 1;
+	id: string;
+	kind: MediaKind;
+	sources: MediaSource[];
+	poster?: string;
+	thumbnail?: string;
+	durationSeconds?: number;
+	tracks?: TextTrackRef[];
+	transcript?: TranscriptRef;
+	label?: string;
+	description?: string;
+	lang?: string;
+}
+
+/**
+ * Time slice of a longer recording, so one file can serve several content
+ * nodes. Mirrors QTI 3's Media Fragments URI usage, which replaced APIP's
+ * separate start/end cue elements.
+ */
+export interface MediaFragmentRange {
+	startSeconds: number;
+	endSeconds?: number;
+}
+
+/**
+ * Payload for a `sign-language` catalog card.
+ *
+ * `content` on the card cannot express a signing video: it is a flat string,
+ * so it can only hold a bare URL. This payload carries what QTI 3 expresses
+ * inside `qti-card-entry` — multiple sources, MIME types, poster, and an
+ * optional time range.
+ */
+export interface SignLanguageCardPayload {
+	kind: "sign-language";
+	/**
+	 * ISO 639-3 sign language code. `"ase"` is American Sign Language,
+	 * matching QTI 3's `xml:lang` on the card entry.
+	 *
+	 * This is the language of the *adaptation*, not the item's base content
+	 * language (AfA/PNP's `languageOfAdaptation` distinction). A Spanish
+	 * item's signed alternate is LSM, not ASL, so this must never be inferred
+	 * from the item or assessment content language.
+	 */
+	signLang: string;
+	media: MediaAssetRef;
+	fragment?: MediaFragmentRange;
+}
+
+/**
+ * Typed payloads a catalog card may carry alongside its `content` string.
+ * Additive: cards without a payload keep resolving exactly as before.
+ */
+export type CatalogCardPayload = SignLanguageCardPayload;
+
 export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
 	language?: string;
 	content: string;
+	/**
+	 * Typed payload for catalog types that cannot be expressed as a string.
+	 * `content` stays authoritative for text-ish catalogs (and stays populated
+	 * for media cards as the primary source URL, which is also the legacy
+	 * single-source form).
+	 */
+	payload?: CatalogCardPayload;
 }
 
 export interface AccessibilityCatalog {

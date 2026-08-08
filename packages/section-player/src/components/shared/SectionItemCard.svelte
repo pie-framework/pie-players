@@ -24,9 +24,12 @@
 	import "../item-shell-element.js";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import type {
+		AssessmentToolkitRuntimeContext,
+		CatalogOwnerContext,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { connectAssessmentToolkitRuntimeContext } from "@pie-players/pie-assessment-toolkit";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
@@ -35,6 +38,19 @@
 		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import SectionCardSplitDivider from "./SectionCardSplitDivider.svelte";
+	import SectionItemMediaRegion from "./SectionItemMediaRegion.svelte";
+	import {
+		clampMediaRegionPercent,
+		MEDIA_REGION_DEFAULT_PERCENT,
+		MEDIA_REGION_MAX_PERCENT,
+		MEDIA_REGION_MIN_PERCENT,
+		MEDIA_REGION_STACK_BREAKPOINT_PX,
+		prepareSignLanguageItem,
+		resolveSignLanguageAlternate,
+		SIGN_LANGUAGE_FEATURE_ID,
+		type ResolvedSignLanguageAlternate,
+	} from "./section-item-media.js";
 
 	let {
 		item,
@@ -61,6 +77,10 @@
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
 	}>();
+
+	// Bounded retry budget for the first catalog lookup; see the effect below.
+	const CATALOG_LOOKUP_MAX_ATTEMPTS = 20;
+	const CATALOG_LOOKUP_RETRY_MS = 50;
 
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
@@ -111,6 +131,172 @@
 		}
 	});
 
+	// ------------------------------------------------------------------
+	// Catalog media region (signed alternates today, audio description next)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Inline signing video is lifted out of the item's content into catalog
+	 * cards, so an item renders signing whether or not `accessibilityCatalogs`
+	 * was populated upstream. Identity-preserving: an item with no signing
+	 * markup comes back by reference, so nothing downstream sees churn.
+	 */
+	const prepared = $derived(prepareSignLanguageItem(item));
+	const effectiveItem = $derived(prepared.item);
+	// Only substitute the config when extraction actually changed it — the
+	// item-player must not see a new object on every re-render.
+	const effectivePlayerParams = $derived(
+		prepared.item === item
+			? playerParams
+			: { ...playerParams, config: prepared.item.config },
+	);
+
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Bumped from the coordinator's policy-change stream so the eligibility
+	// derivation reruns when policy inputs change (assessment binding, PNP
+	// enforcement, custom sources). Same fanout pattern as `<pie-item-toolbar>`.
+	let policyChangeVersion = $state(0);
+	let catalogLookupAttempt = $state(0);
+	let mediaRegionPercent = $state(MEDIA_REGION_DEFAULT_PERCENT);
+	let mediaSplitContainer = $state<HTMLDivElement | null>(null);
+	let mediaSplitWidthPx = $state(0);
+
+	const mediaRegionId = $derived(`${headingId}-media`);
+
+	/**
+	 * Eligibility half of availability. A feature decision rather than a
+	 * placement-scoped tool decision: the region is not a toolbar surface, so
+	 * asking the placement question would answer "absent" for the wrong reason.
+	 */
+	const signLanguageDecision = $derived.by(() => {
+		void policyChangeVersion;
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator || typeof coordinator.decideFeaturePolicy !== "function") {
+			return null;
+		}
+		return coordinator.decideFeaturePolicy(SIGN_LANGUAGE_FEATURE_ID);
+	});
+	const signLanguageGranted = $derived(signLanguageDecision?.granted === true);
+	/**
+	 * Which sign language the learner is entitled to. Read from the feature's
+	 * policy parameters (`toolParameters` / `toolConfigs`), never inferred from
+	 * the item's content language — a Spanish item's signed alternate is LSM,
+	 * not ASL.
+	 */
+	const requestedSignLang = $derived.by(() => {
+		const parameters = signLanguageDecision?.parameters;
+		if (parameters && typeof parameters === "object") {
+			const candidate = (parameters as { signLang?: unknown }).signLang;
+			if (typeof candidate === "string" && candidate.trim()) {
+				return candidate.trim();
+			}
+		}
+		return undefined;
+	});
+
+	const catalogOwnerContext = $derived.by((): CatalogOwnerContext => ({
+		ownerKind: "itemModel",
+		assessmentId: runtimeContext?.assessmentId,
+		sectionId: runtimeContext?.sectionId,
+		itemId: effectiveItem?.id,
+		canonicalItemId: canonicalItemId || effectiveItem?.id,
+	}));
+
+	/**
+	 * Content half of availability: the resolver has a matching card. Both halves
+	 * are required and neither implies the other, so a learner with the
+	 * accommodation still sees nothing on the vast majority of items.
+	 */
+	const resolvedMedia = $derived.by((): ResolvedSignLanguageAlternate | null => {
+		void catalogLookupAttempt;
+		if (!signLanguageGranted) return null;
+		const resolver = runtimeContext?.catalogResolver;
+		if (!resolver || prepared.refs.length === 0) return null;
+		return resolveSignLanguageAlternate({
+			resolver,
+			refs: prepared.refs,
+			ownerContext: catalogOwnerContext,
+			requestedSignLang,
+		});
+	});
+
+	const mediaRegionVisible = $derived(resolvedMedia !== null);
+	// Below the breakpoint the region stacks under the content, where a resize
+	// handle has nothing to divide.
+	const mediaRegionStacked = $derived(
+		mediaSplitWidthPx > 0 && mediaSplitWidthPx < MEDIA_REGION_STACK_BREAKPOINT_PX,
+	);
+	const mediaDividerVisible = $derived(mediaRegionVisible && !mediaRegionStacked);
+	const mediaSplitColumns = $derived(
+		mediaDividerVisible
+			? `minmax(0, ${100 - mediaRegionPercent}fr) auto minmax(0, ${mediaRegionPercent}fr)`
+			: "minmax(0, 1fr)",
+	);
+
+	function onMediaRegionResize(next: number): void {
+		mediaRegionPercent = clampMediaRegionPercent(next);
+	}
+
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
+			runtimeContext = value;
+		});
+	});
+
+	$effect(() => {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator || typeof coordinator.onPolicyChange !== "function") return;
+		const unsubscribe = coordinator.onPolicyChange(() => {
+			policyChangeVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// Detach errors are non-fatal: the coordinator may already be gone.
+			}
+		};
+	});
+
+	// Reset the lookup budget when the card is pointed at a different item.
+	$effect(() => {
+		void effectiveItem?.id;
+		untrack(() => {
+			catalogLookupAttempt = 0;
+		});
+	});
+
+	/**
+	 * Item catalogs are registered by `<pie-assessment-toolkit>` in response to
+	 * the item shell's registration event, which lands after this card mounts —
+	 * so the first lookup can legitimately miss. Retry on a bounded budget until
+	 * one succeeds. Only items that actually declare signing cards, for learners
+	 * who are eligible, ever get here.
+	 */
+	$effect(() => {
+		if (typeof window === "undefined") return;
+		if (resolvedMedia || !signLanguageGranted) return;
+		if (prepared.refs.length === 0) return;
+		if (catalogLookupAttempt >= CATALOG_LOOKUP_MAX_ATTEMPTS) return;
+		const timer = window.setTimeout(() => {
+			catalogLookupAttempt += 1;
+		}, CATALOG_LOOKUP_RETRY_MS);
+		return () => window.clearTimeout(timer);
+	});
+
+	$effect(() => {
+		const container = mediaSplitContainer;
+		if (!container || typeof ResizeObserver === "undefined") return;
+		const update = () => {
+			mediaSplitWidthPx = container.getBoundingClientRect().width;
+		};
+		update();
+		const observer = new ResizeObserver(update);
+		observer.observe(container);
+		return () => observer.disconnect();
+	});
+
 	function resetContextOverrides(): void {
 		contextConnected = false;
 		contextResolvedPlayerTag = null;
@@ -148,10 +334,10 @@
 
 <div bind:this={contextAnchor} class="pie-section-player-item-card-anchor" aria-hidden="true"></div>
 <pie-item-shell
-	item-id={item.id}
+	item-id={effectiveItem.id}
 	canonical-item-id={canonicalItemId}
 	content-kind="assessment-item"
-	item={item}
+	item={effectiveItem}
 >
 	<div
 		class="pie-section-player-content-card"
@@ -176,14 +362,50 @@
 				{hostButtons}
 			></pie-item-toolbar>
 		</div>
+		<!-- The split wrapper is always present, and the content region always sits
+		     in the same slot within it, so a signed alternate resolving after mount
+		     adds siblings rather than re-creating the item player. -->
 		<div
-			class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
-			data-region="content"
+			class={`pie-section-player-item-card-split ${
+				mediaRegionVisible ? "pie-section-player-item-card-split--with-media" : ""
+			} ${mediaRegionStacked ? "pie-section-player-item-card-split--stacked" : ""}`}
+			bind:this={mediaSplitContainer}
+			style={`grid-template-columns: ${mediaSplitColumns};`}
 		>
-			<svelte:element
-				this={effectiveResolvedPlayerTag}
-				use:effectivePlayerAction={playerParams}
-			></svelte:element>
+			<div
+				class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+				data-region="content"
+			>
+				<svelte:element
+					this={effectiveResolvedPlayerTag}
+					use:effectivePlayerAction={effectivePlayerParams}
+				></svelte:element>
+			</div>
+			{#if mediaDividerVisible}
+				<SectionCardSplitDivider
+					value={mediaRegionPercent}
+					min={MEDIA_REGION_MIN_PERCENT}
+					max={MEDIA_REGION_MAX_PERCENT}
+					container={mediaSplitContainer}
+					ariaLabel="Resize question and media panels"
+					ariaControls={mediaRegionId}
+					ariaValueText={`${Math.round(mediaRegionPercent)}% media width`}
+					onresize={onMediaRegionResize}
+				/>
+			{/if}
+			{#if mediaRegionVisible && resolvedMedia}
+				<div
+					id={mediaRegionId}
+					class="pie-section-player-item-card-media"
+					data-region="media"
+				>
+					<SectionItemMediaRegion
+						media={resolvedMedia}
+						regionId={mediaRegionId}
+						ttsService={runtimeContext?.ttsService ?? null}
+					/>
+				</div>
+			{/if}
 		</div>
 		<div data-region="footer"></div>
 	</div>
@@ -250,5 +472,44 @@
 	.pie-section-player-content-card-body {
 		padding: 1rem;
 		color: var(--pie-text, #111827);
+	}
+
+	/* Question content and its docked catalog media, side by side. One column
+	   until a media card resolves, so the content region keeps its position in
+	   the layout either way. */
+	.pie-section-player-item-card-split {
+		display: grid;
+		align-items: start;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.pie-section-player-item-card-split > * {
+		min-width: 0;
+		min-height: 0;
+	}
+
+	/* Below the stacking breakpoint the grid is single-column, so the media
+	   region flows under the content instead of being squeezed beside it. */
+	.pie-section-player-item-card-split--stacked {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.pie-section-player-item-card-media {
+		padding: 1rem 1rem 1rem 0;
+	}
+
+	.pie-section-player-item-card-split--stacked .pie-section-player-item-card-media {
+		padding: 0 1rem 1rem;
+	}
+
+	/* Signing is re-checked while an answer is being formed, not read once
+	   beforehand, so the recording follows a long question down the scroll
+	   rather than disappearing above it. */
+	.pie-section-player-item-card-split--with-media:not(.pie-section-player-item-card-split--stacked)
+		.pie-section-player-item-card-media {
+		position: sticky;
+		top: 0;
+		align-self: start;
 	}
 </style>

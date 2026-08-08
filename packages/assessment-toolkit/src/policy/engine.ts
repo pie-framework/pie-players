@@ -35,6 +35,8 @@ export {
 	type ToolPolicyEngineContext,
 } from "./core/engine-context.js";
 
+export type { FeaturePolicyDecision } from "./core/feature-decision.js";
+
 export type {
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,

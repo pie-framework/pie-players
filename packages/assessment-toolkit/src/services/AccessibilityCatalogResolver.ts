@@ -1,6 +1,7 @@
 import type {
 	AccessibilityCatalog,
 	CatalogCard,
+	CatalogCardPayload,
 } from "@pie-players/pie-players-shared/types";
 import { sanitizeSsmlString } from "./SSMLExtractor.js";
 
@@ -57,6 +58,12 @@ export interface ResolvedCatalog {
 	language?: string;
 	/** The content (HTML, URL, or plain text) */
 	content: string;
+	/**
+	 * Typed payload for catalog types a string cannot express (a signing
+	 * video's sources, poster, and time range). Absent for text-ish catalogs
+	 * and for legacy cards that carry only `content`.
+	 */
+	payload?: CatalogCardPayload;
 	/** Source of the catalog (assessment or item) */
 	source: "assessment" | "item";
 }
@@ -295,6 +302,7 @@ export class AccessibilityCatalogResolver {
 				card.catalog === "spoken"
 					? this.ensureSpokenSanitized(card.content)
 					: card.content,
+			payload: card.payload,
 			source,
 		};
 	}
@@ -437,6 +445,7 @@ export class AccessibilityCatalogResolver {
 					type: card.catalog,
 					language: card.language,
 					content: card.content,
+					payload: card.payload,
 					source: "item",
 				});
 			}
@@ -456,6 +465,7 @@ export class AccessibilityCatalogResolver {
 						type: card.catalog,
 						language: card.language,
 						content: card.content,
+						payload: card.payload,
 						source: "assessment",
 					});
 				}
@@ -476,6 +486,7 @@ export class AccessibilityCatalogResolver {
 						type: card.catalog,
 						language: card.language,
 						content: card.content,
+						payload: card.payload,
 						source: "item",
 					});
 				}

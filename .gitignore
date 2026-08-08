@@ -83,3 +83,7 @@ temp/
 !.mcp/servers/*.json
 
 .claude/settings.local.json
+
+# Host-supplied signing clip for the sign-language demo; see
+# apps/section-demos/static/demo-assets/sign-language/README.md
+apps/section-demos/static/demo-assets/sign-language/sample-asl.mp4

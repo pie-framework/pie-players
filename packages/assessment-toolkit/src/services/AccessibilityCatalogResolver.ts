@@ -56,12 +56,14 @@ export interface ResolvedCatalog {
 	type: CatalogType;
 	/** The language code */
 	language?: string;
-	/** The content (HTML, URL, or plain text) */
-	content: string;
 	/**
-	 * Typed payload for catalog types a string cannot express (a signing
-	 * video's sources, poster, and time range). Absent for text-ish catalogs
-	 * and for legacy cards that carry only `content`.
+	 * The string form (SSML, HTML, or plain text). Absent on cards whose content
+	 * is structured; those carry `payload` instead.
+	 */
+	content?: string;
+	/**
+	 * The structured form, for catalog types a string cannot express — a signing
+	 * video's sources, poster, and time range. Interpreted according to `type`.
 	 */
 	payload?: CatalogCardPayload;
 	/** Source of the catalog (assessment or item) */
@@ -299,7 +301,7 @@ export class AccessibilityCatalogResolver {
 			type: card.catalog,
 			language: card.language,
 			content:
-				card.catalog === "spoken"
+				card.catalog === "spoken" && card.content !== undefined
 					? this.ensureSpokenSanitized(card.content)
 					: card.content,
 			payload: card.payload,
@@ -390,7 +392,7 @@ export class AccessibilityCatalogResolver {
 			cards: catalog.cards.map((card) => ({
 				...card,
 				content:
-					card.catalog === "spoken"
+					card.catalog === "spoken" && card.content !== undefined
 						? sanitizeSsmlString(card.content)
 						: card.content,
 			})),

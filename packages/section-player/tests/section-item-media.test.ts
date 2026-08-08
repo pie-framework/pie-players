@@ -55,7 +55,6 @@ const OWNER: CatalogOwnerContext = {
 
 function signPayload(signLang: string, src: string): SignLanguageCardPayload {
 	return {
-		kind: "sign-language",
 		signLang,
 		media: { version: 1, id: src, kind: "video", sources: [{ src }] },
 	};
@@ -72,7 +71,6 @@ function signCatalog(
 			{
 				catalog: "sign-language",
 				language: signLang,
-				content: src,
 				payload: signPayload(signLang, src),
 			},
 		],
@@ -176,19 +174,40 @@ describe("resolveSignLanguageAlternate", () => {
 		expect(resolved).toBeNull();
 	});
 
-	test("accepts an unlabelled legacy bare-URL card", () => {
+	test("accepts a card that asserts no sign language", () => {
 		const resolved = resolveSignLanguageAlternate({
 			resolver: resolverWith([
 				{
 					identifier: "c1",
-					cards: [{ catalog: "sign-language", content: "legacy.mp4" }],
+					cards: [
+						{
+							catalog: "sign-language",
+							payload: signPayload("", "unlabelled.mp4"),
+						},
+					],
 				},
 			]),
 			refs: [{ catalogId: "c1" }],
 			ownerContext: OWNER,
 			requestedSignLang: "ase",
 		});
-		expect(resolved?.sources).toEqual([{ src: "legacy.mp4" }]);
+		expect(resolved?.sources).toEqual([{ src: "unlabelled.mp4" }]);
+	});
+
+	test("ignores a sign-language card that carries only a string", () => {
+		expect(
+			resolveSignLanguageAlternate({
+				resolver: resolverWith([
+					{
+						identifier: "c1",
+						cards: [{ catalog: "sign-language", content: "bare.mp4" }],
+					},
+				]),
+				refs: [{ catalogId: "c1" }],
+				ownerContext: OWNER,
+				requestedSignLang: "ase",
+			}),
+		).toBeNull();
 	});
 
 	test("picks the matching card when several sign languages are authored", () => {
@@ -200,13 +219,11 @@ describe("resolveSignLanguageAlternate", () => {
 						{
 							catalog: "sign-language",
 							language: "bfi",
-							content: "bsl.mp4",
 							payload: signPayload("bfi", "bsl.mp4"),
 						},
 						{
 							catalog: "sign-language",
 							language: "ase",
-							content: "asl.mp4",
 							payload: signPayload("ase", "asl.mp4"),
 						},
 					],

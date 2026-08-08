@@ -1459,22 +1459,23 @@ export class TTSService {
 					context: options.catalogContext,
 				},
 			);
-			if (catalogContent) {
+			// A card with no string form has nothing to speak — a signing card, for
+			// instance. Fall through to generated TTS rather than speaking "".
+			const spokenText = catalogContent?.content;
+			if (catalogContent && spokenText !== undefined) {
 				const visibleText = options?.contentElement
 					? collectMathAwareTextAndMap(
 							options.contentElement,
 							this.getTextProcessingOptions(options.language),
 						).visibleText || normalizedInputText
 					: normalizedInputText;
-				const normalizedCatalogText = normalizeTextForSpeech(
-					catalogContent.content,
-				);
+				const normalizedCatalogText = normalizeTextForSpeech(spokenText);
 				this.debugLog(
 					`[TTSService] Using catalog content for "${options.catalogId}" (${catalogContent.language})`,
 				);
 				return {
-					contentToSpeak: catalogContent.content,
-					speechText: catalogContent.content,
+					contentToSpeak: spokenText,
+					speechText: spokenText,
 					visibleText,
 					highlightText: visibleText,
 					usedCatalogSpoken: true,
@@ -1569,15 +1570,21 @@ export class TTSService {
 				speechMatchesVisibleText: true,
 			});
 		};
-		const resolveCatalog = (element: Element): ResolvedCatalog | null => {
+		type SpokenCatalog = ResolvedCatalog & { content: string };
+		const resolveCatalog = (element: Element): SpokenCatalog | null => {
 			const catalogIdRef = element.getAttribute("data-catalog-idref");
 			if (!catalogIdRef) return null;
-			return this.catalogResolver!.getAlternative(catalogIdRef, {
+			const resolved = this.catalogResolver!.getAlternative(catalogIdRef, {
 				type: "spoken",
 				language: options.language || "en-US",
 				useFallback: true,
 				context: options.catalogContext,
 			});
+			// Only a card with a string form can contribute speech. The same
+			// docking node may also carry a signing card; that one is not ours.
+			return resolved?.content !== undefined
+				? (resolved as SpokenCatalog)
+				: null;
 		};
 		const getSingleMathElementForAlignment = (
 			element: Element,

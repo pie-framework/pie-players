@@ -429,13 +429,16 @@ export interface MediaFragmentRange {
 /**
  * Payload for a `sign-language` catalog card.
  *
- * `content` on the card cannot express a signing video: it is a flat string,
- * so it can only hold a bare URL. This payload carries what QTI 3 expresses
+ * A signing video cannot be expressed as a string, so it does not use the
+ * card's `content` field at all. This payload carries what QTI 3 expresses
  * inside `qti-card-entry` — multiple sources, MIME types, poster, and an
  * optional time range.
+ *
+ * Note there is no `kind` discriminant: the card's `catalog` field is QTI's
+ * `qti-card@support` and is the only discriminator. Restating it here would
+ * create a second source of truth that can disagree with the first.
  */
 export interface SignLanguageCardPayload {
-	kind: "sign-language";
 	/**
 	 * ISO 639-3 sign language code. `"ase"` is American Sign Language,
 	 * matching QTI 3's `xml:lang` on the card entry.
@@ -451,20 +454,38 @@ export interface SignLanguageCardPayload {
 }
 
 /**
- * Typed payloads a catalog card may carry alongside its `content` string.
- * Additive: cards without a payload keep resolving exactly as before.
+ * Structured payloads a catalog card may carry instead of a `content` string.
+ *
+ * Which member applies is decided by the card's `catalog`, not by a field
+ * inside the payload, so this union carries no discriminant. Consumers select a
+ * card by catalog type and then validate the payload structurally — which they
+ * must do regardless, since catalog data is authored, wire-facing, and
+ * untrusted.
  */
 export type CatalogCardPayload = SignLanguageCardPayload;
 
+/**
+ * One alternate representation of a content node, keyed to it by
+ * `data-catalog-idref`.
+ *
+ * Maps onto QTI 3's `qti-card`: `catalog` is `@support`, `language` is the card
+ * entry's `xml:lang`, and QTI's single content slot is represented by exactly
+ * one of `content` or `payload`.
+ */
 export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
 	language?: string;
-	content: string;
 	/**
-	 * Typed payload for catalog types that cannot be expressed as a string.
-	 * `content` stays authoritative for text-ish catalogs (and stays populated
-	 * for media cards as the primary source URL, which is also the legacy
-	 * single-source form).
+	 * The string form of the card's content, for catalog types a string can
+	 * express: SSML for `spoken`, plain text for `simplified-language`, and so
+	 * on. Absent on cards that carry a structured `payload` instead — nothing
+	 * is projected or mirrored into it, so there is never a second copy of the
+	 * payload's data to fall out of sync.
+	 */
+	content?: string;
+	/**
+	 * The structured form, for catalog types a string cannot express. Interpreted
+	 * according to `catalog`.
 	 */
 	payload?: CatalogCardPayload;
 }

@@ -112,9 +112,8 @@ const authoredCardItem = {
 					{
 						catalog: "sign-language",
 						language: "ase",
-						content: CLIP,
+						// No `content`: the payload is the content.
 						payload: {
-							kind: "sign-language" as const,
 							signLang: "ase",
 							media: {
 								version: 1 as const,

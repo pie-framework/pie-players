@@ -120,8 +120,8 @@ export interface SignLanguageLookupArgs {
  * requested type regardless of language, which for spoken content is helpful
  * and for signing is not — handing an ASL learner a BSL recording is worse than
  * handing them nothing. So a card the resolver returns by that rung is accepted
- * only if its language actually matches (or the card asserts no language, which
- * legacy bare-URL content does).
+ * only if its language actually matches, or if the card asserts no language at
+ * all.
  *
  * MVP takes the first resolvable card: sample content is one recording per item.
  * The refs stay per-node capable for when choice-level docking lands.

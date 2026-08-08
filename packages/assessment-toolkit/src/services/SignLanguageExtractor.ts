@@ -250,7 +250,6 @@ export class SignLanguageExtractor {
 
 		const catalogId = this.generateCatalogId(idPrefix);
 		const payload: SignLanguageCardPayload = {
-			kind: SIGN_LANGUAGE_CATALOG_TYPE,
 			signLang,
 			media: {
 				version: 1,
@@ -266,13 +265,12 @@ export class SignLanguageExtractor {
 				: {}),
 		};
 
-		// `content` keeps the primary source URL. That is also the legacy
-		// single-source form, so any consumer reading only `content` degrades to
-		// "the right video, fewer details" instead of to an empty string.
+		// No `content`: the payload is the content. Mirroring the primary source
+		// into a string would put the same URL in two places, with nothing to keep
+		// them in step.
 		const card: CatalogCard = {
 			catalog: SIGN_LANGUAGE_CATALOG_TYPE,
 			language: signLang,
-			content: sources[0].src,
 			payload,
 		};
 

@@ -7,10 +7,13 @@
  * and this module is the single place that decides whether a card describes a
  * playable signed alternate.
  *
- * Validation is deliberately "treat as absent, never as text": a malformed
- * payload must not degrade to an empty video or render a URL as visible
- * content. The legacy single-source form — a bare URL in `content` with no
- * payload — stays supported, because authored content predates the payload.
+ * The payload is the *only* accepted form. A bare URL in `content` is not a
+ * signing card: nothing writes that shape, so accepting it would buy a second
+ * code path and a second source of truth for no existing content. Such a card
+ * is reported and treated as absent rather than silently rendering.
+ *
+ * Validation is "treat as absent, never as text": a malformed payload must not
+ * degrade to an empty video or render a URL as visible content.
  *
  * Part of PIE Assessment Toolkit.
  */
@@ -58,9 +61,8 @@ export function describeSignLanguage(signLang?: string): string {
 /**
  * A validated signed alternate, flattened for rendering.
  *
- * `signLang` is optional because an unlabelled legacy card cannot assert a
- * language. Callers decide what to do with an unknown language; see
- * `matchesRequestedSignLanguage`.
+ * `signLang` is optional because a card need not assert a language. Callers
+ * decide what to do with an unknown one; see `matchesRequestedSignLanguage`.
  */
 export interface SignLanguageMedia {
 	signLang?: string;
@@ -133,22 +135,12 @@ function trimmedOrUndefined(value: unknown): string | undefined {
 	return trimmed || undefined;
 }
 
-function isSignLanguagePayload(
-	payload: CatalogCardPayload | undefined,
-): payload is SignLanguageCardPayload {
-	return Boolean(
-		payload &&
-			typeof payload === "object" &&
-			(payload as SignLanguageCardPayload).kind === SIGN_LANGUAGE_CATALOG_TYPE,
-	);
-}
-
 /**
  * Validate a `sign-language` card into something renderable, or `null`.
  *
- * Returns `null` — meaning "this card is absent" — when neither the typed
- * payload nor the legacy `content` URL yields a usable source. Never returns a
- * partially-valid result that would render an empty player.
+ * Returns `null` — meaning "this card is absent" — when the payload yields no
+ * usable source. Never returns a partially-valid result that would render an
+ * empty player.
  *
  * A payload that carries sources but no `signLang` falls back to the card's
  * `language`, and then to unlabelled. Language *matching* is a separate
@@ -160,31 +152,31 @@ export function resolveSignLanguageMedia(
 ): SignLanguageMedia | null {
 	if (!card) return null;
 	const cardLanguage = trimmedOrUndefined(card.language);
+	const payload = card.payload as SignLanguageCardPayload | undefined;
 
-	if (isSignLanguagePayload(card.payload)) {
-		const media = card.payload.media as Partial<MediaAssetRef> | undefined;
-		const sources = normalizeSources(media?.sources);
-		if (sources.length === 0) return null;
-		const poster = trimmedOrUndefined(media?.poster);
-		return {
-			signLang: trimmedOrUndefined(card.payload.signLang) ?? cardLanguage,
-			sources,
-			poster: poster && isSafeMediaSrc(poster) ? poster : undefined,
-			label: trimmedOrUndefined(media?.label),
-			fragment: normalizeFragment(card.payload.fragment),
-		};
+	if (!payload || typeof payload !== "object") {
+		// A card with a string where structured media belongs cannot be rendered.
+		// Say so: the alternative is a learner silently getting no signing and no
+		// way for anyone to find out why.
+		if (trimmedOrUndefined(card.content)) {
+			console.warn(
+				"[sign-language] card carries `content` but no `payload`; signing media must be a structured payload, so this card is ignored",
+			);
+		}
+		return null;
 	}
 
-	// Legacy single-source form: a bare URL in `content`. Authored content
-	// predates the payload, so this must keep resolving.
-	if (isSafeMediaSrc(card.content)) {
-		return {
-			signLang: cardLanguage,
-			sources: [{ src: card.content.trim() }],
-		};
-	}
-
-	return null;
+	const media = payload.media as Partial<MediaAssetRef> | undefined;
+	const sources = normalizeSources(media?.sources);
+	if (sources.length === 0) return null;
+	const poster = trimmedOrUndefined(media?.poster);
+	return {
+		signLang: trimmedOrUndefined(payload.signLang) ?? cardLanguage,
+		sources,
+		poster: poster && isSafeMediaSrc(poster) ? poster : undefined,
+		label: trimmedOrUndefined(media?.label),
+		fragment: normalizeFragment(payload.fragment),
+	};
 }
 
 /**
@@ -194,9 +186,9 @@ export function resolveSignLanguageMedia(
  * Deliberately strict: there is no cross-sign-language fallback. ASL, BSL and
  * LSF are not interchangeable, so showing a different sign language than the
  * one requested would hand a learner a language they may not follow — worse
- * than showing nothing. An *unlabelled* card (legacy content that asserts no
- * language) is accepted, because rejecting it would make existing content dead
- * rather than safe.
+ * than showing nothing. A card that asserts *no* language is accepted, because it
+ * cannot be shown to be a mismatch — only a positive claim of another language
+ * is refused.
  */
 export function matchesRequestedSignLanguage(
 	media: SignLanguageMedia,

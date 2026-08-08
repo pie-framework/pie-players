@@ -19,7 +19,6 @@ function payload(
 	overrides: Partial<SignLanguageCardPayload> = {},
 ): SignLanguageCardPayload {
 	return {
-		kind: "sign-language",
 		signLang: AMERICAN_SIGN_LANGUAGE,
 		media: {
 			version: 1,
@@ -31,11 +30,12 @@ function payload(
 	};
 }
 
+// A signing card carries no `content`: the payload is the content, and mirroring
+// the primary source into a string would be a second copy of the same fact.
 function card(overrides: Partial<CatalogCard> = {}): CatalogCard {
 	return {
 		catalog: SIGN_LANGUAGE_CATALOG_TYPE,
 		language: AMERICAN_SIGN_LANGUAGE,
-		content: "https://cdn.example.com/asl.mp4",
 		payload: payload(),
 		...overrides,
 	};
@@ -113,7 +113,6 @@ describe("sign-language card payload validation", () => {
 		expect(
 			resolveSignLanguageMedia(
 				card({
-					content: "",
 					payload: payload({
 						media: { version: 1, id: "m", kind: "video", sources: [] },
 					}),
@@ -123,12 +122,7 @@ describe("sign-language card payload validation", () => {
 		expect(
 			resolveSignLanguageMedia(
 				card({
-					content: "",
-					payload: {
-						kind: "sign-language",
-						signLang: "ase",
-						media: undefined as never,
-					},
+					payload: { signLang: "ase", media: undefined as never },
 				}),
 			),
 		).toBeNull();
@@ -137,7 +131,6 @@ describe("sign-language card payload validation", () => {
 	test("drops sources whose scheme a media element cannot fetch", () => {
 		const media = resolveSignLanguageMedia(
 			card({
-				content: "",
 				payload: payload({
 					media: {
 						version: 1,
@@ -154,15 +147,16 @@ describe("sign-language card payload validation", () => {
 		expect(media?.sources).toEqual([{ src: "/local/asl.mp4" }]);
 	});
 
-	test("supports the legacy bare-URL form with no payload", () => {
-		const media = resolveSignLanguageMedia({
-			language: "ase",
-			content: "https://cdn.example.com/legacy.mp4",
-		});
-		expect(media?.sources).toEqual([
-			{ src: "https://cdn.example.com/legacy.mp4" },
-		]);
-		expect(media?.signLang).toBe("ase");
+	test("ignores a card that carries a bare URL instead of a payload", () => {
+		// Signing media is structured, full stop. A string where the payload
+		// belongs is a malformed card, not a shorthand — accepting it would mean a
+		// second code path and a second source of truth for the same URL.
+		expect(
+			resolveSignLanguageMedia({
+				language: "ase",
+				content: "https://cdn.example.com/bare.mp4",
+			}),
+		).toBeNull();
 	});
 
 	test("falls back to the card language when the payload omits signLang", () => {
@@ -172,16 +166,13 @@ describe("sign-language card payload validation", () => {
 		expect(media?.signLang).toBe("bfi");
 	});
 
-	test("an importer-shaped card still resolves through its bare-URL content", () => {
+	test("does not accept a payload under any name but `payload`", () => {
 		// The `pie-api-aws` Learnosity transform currently emits the media block
-		// under a `signLanguage` key rather than `payload`, so this contract does
-		// not see it as a typed payload. It still renders, because the importer
-		// also fills `content` with the primary source URL — but the type, label
-		// and any second source are lost. Pinned as a fact, not blessed as a
-		// second vocabulary: the two names need reconciling in PIE-879 / PIE-881.
+		// under a `signLanguage` key. There is exactly one accepted name, so that
+		// card does not resolve — deliberately, so the mismatch surfaces during
+		// PIE-879 / PIE-881 integration instead of half-working.
 		const media = resolveSignLanguageMedia({
 			language: "ase",
-			content: "https://cdn.example.com/imported.mp4",
 			...({
 				signLanguage: {
 					signLang: "ase",
@@ -195,23 +186,19 @@ describe("sign-language card payload validation", () => {
 								type: "video/mp4",
 							},
 						],
-						label: "American Sign Language translation",
 					},
 				},
 			} as Record<string, unknown>),
 		});
-		expect(media?.sources).toEqual([
-			{ src: "https://cdn.example.com/imported.mp4" },
-		]);
-		expect(media?.signLang).toBe("ase");
-		expect(media?.label).toBeUndefined();
+		expect(media).toBeNull();
 	});
 
-	test("leaves an unlabelled legacy card unlabelled", () => {
+	test("leaves a card unlabelled when neither payload nor card names a language", () => {
 		const media = resolveSignLanguageMedia({
-			content: "https://cdn.example.com/legacy.mp4",
+			payload: payload({ signLang: "" }),
 		});
 		expect(media?.signLang).toBeUndefined();
+		expect(media?.sources).toHaveLength(1);
 	});
 });
 
@@ -225,9 +212,12 @@ describe("sign language matching", () => {
 		expect(matchesRequestedSignLanguage(bsl!, "bfi")).toBe(true);
 	});
 
-	test("accepts an unlabelled card rather than making legacy content dead", () => {
+	test("accepts an unlabelled card rather than guessing it is the wrong language", () => {
+		// A card that asserts no language cannot be shown to be a mismatch, and
+		// authored content is more often right than not — so it is accepted while a
+		// card that positively claims another language is refused.
 		const unlabelled = resolveSignLanguageMedia({
-			content: "https://cdn.example.com/legacy.mp4",
+			payload: payload({ signLang: "" }),
 		});
 		expect(matchesRequestedSignLanguage(unlabelled!, "ase")).toBe(true);
 	});
@@ -306,6 +296,9 @@ describe("resolver payload passthrough", () => {
 			language: "ase",
 		});
 		expect(signed?.source).toBe("assessment");
+		// The signing card has no string form at all, so the two readers cannot
+		// pick up each other's content even by accident.
+		expect(signed?.content).toBeUndefined();
 		expect(resolveSignLanguageMedia(signed)?.sources[0].src).toBe(
 			"https://cdn.example.com/asl.mp4",
 		);

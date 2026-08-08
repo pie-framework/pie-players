@@ -152,6 +152,34 @@ const authoredCardItem = {
 	},
 };
 
+// --- PIE-881 integration proof, present only locally -------------------------
+// The unmodified output of pie-api-aws' ly-pie transform for a real ASL item
+// (Learnosity reference 88b0df8a-…_v2.0, KAS dbid 46807582): a model-level
+// `accessibilityCatalogs` sign-language card, the signing video removed from the
+// prompt, and a `data-catalog-idref` docking node in its place. Imported verbatim
+// rather than retyped, so what renders is exactly what the importer writes.
+//
+// That item carries live secure content and its correct answer, so it is
+// gitignored and absent from a clean checkout. Hence a glob rather than a static
+// import: a missing file yields no refs instead of breaking the build for
+// everyone, which is what a static import of an uncommitted file would do to
+// `bun run check`, the section-demos build, and every section-player e2e spec.
+const importedAslModules = import.meta.glob<{ default: Record<string, unknown> }>(
+	"./pie881-imported-asl-item.json",
+	{ eager: true },
+);
+
+const importedItemRefs = Object.values(importedAslModules).map(({ default: item }) => ({
+	identifier: "pie881-imported",
+	required: true,
+	item: {
+		...item,
+		baseId: item.id,
+		version: { major: 1, minor: 0, patch: 0 },
+		name: "PIE-881: imported from Learnosity",
+	},
+})) as NonNullable<AssessmentSection["assessmentItemRefs"]>;
+
 export const demoSignLanguageGrantedSection: AssessmentSection = {
 	identifier: "demo-sign-language-granted",
 	title: "Sign Language: signing granted",
@@ -163,7 +191,7 @@ export const demoSignLanguageGrantedSection: AssessmentSection = {
 		prohibitedSupports: [],
 		activateAtInit: [],
 	},
-	assessmentItemRefs: [inlineSigningItem, noSigningItem, authoredCardItem],
+	assessmentItemRefs: [inlineSigningItem, noSigningItem, authoredCardItem, ...importedItemRefs],
 };
 
 export const demoSignLanguageNotGrantedSection: AssessmentSection = {
@@ -175,5 +203,5 @@ export const demoSignLanguageNotGrantedSection: AssessmentSection = {
 		prohibitedSupports: [],
 		activateAtInit: [],
 	},
-	assessmentItemRefs: [inlineSigningItem, noSigningItem, authoredCardItem],
+	assessmentItemRefs: [inlineSigningItem, noSigningItem, authoredCardItem, ...importedItemRefs],
 };

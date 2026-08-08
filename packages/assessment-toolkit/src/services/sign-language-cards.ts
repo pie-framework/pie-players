@@ -76,6 +76,8 @@ type SignLanguageCardLike = {
 	language?: string;
 	content?: string;
 	payload?: CatalogCardPayload;
+	/** Accepted alias for `payload` — see `CatalogCard.signLanguage`. */
+	signLanguage?: CatalogCardPayload;
 };
 
 /**
@@ -112,6 +114,13 @@ function normalizeSources(raw: unknown): MediaSource[] {
 		}
 		if (Number.isFinite(candidate.width)) source.width = candidate.width;
 		if (Number.isFinite(candidate.height)) source.height = candidate.height;
+		// Deduplicated by `src`, because the region renders `<source>` elements in a
+		// keyed `{#each}` keyed on exactly that: an authored card listing one URL
+		// twice — the same file under two MIME types is the plausible way — would
+		// otherwise throw Svelte's duplicate-key error and take the whole region
+		// down rather than degrade. The first entry wins, so authored order still
+		// decides which encoding the browser is offered first.
+		if (sources.some((existing) => existing.src === source.src)) continue;
 		sources.push(source);
 	}
 	return sources;
@@ -152,7 +161,9 @@ export function resolveSignLanguageMedia(
 ): SignLanguageMedia | null {
 	if (!card) return null;
 	const cardLanguage = trimmedOrUndefined(card.language);
-	const payload = card.payload as SignLanguageCardPayload | undefined;
+	// Accepts the `signLanguage` alias as well, so a card that reached this
+	// function without passing through the resolver still resolves.
+	const payload = (card.payload ?? card.signLanguage) as SignLanguageCardPayload | undefined;
 
 	if (!payload || typeof payload !== "object") {
 		// A card with a string where structured media belongs cannot be rendered.

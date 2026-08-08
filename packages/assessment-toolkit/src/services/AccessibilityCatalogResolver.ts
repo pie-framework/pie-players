@@ -19,6 +19,28 @@ export interface CatalogOwnerContext {
 
 export type CatalogLookupContext = CatalogOwnerContext;
 
+/** What changed in the resolver's catalog set. */
+export type CatalogChangeReason =
+	| "scoped-registered"
+	| "scoped-removed"
+	| "item-added"
+	| "item-cleared";
+
+/**
+ * Emitted after the resolver's catalog set changes.
+ *
+ * Carries no resolved cards on purpose — a listener re-queries with its own
+ * lookup context and options, the same way `ToolPolicyChangeEvent` leaves the
+ * new decision to `decideToolPolicy`. `context` is present for the scoped
+ * reasons, so a listener can cheaply ignore owners it does not render.
+ */
+export interface CatalogChangeEvent {
+	reason: CatalogChangeReason;
+	context?: CatalogOwnerContext;
+}
+
+export type CatalogChangeListener = (event: CatalogChangeEvent) => void;
+
 /**
  * Supported accessibility catalog types from QTI 3.0 / APIP
  */
@@ -132,6 +154,7 @@ export class AccessibilityCatalogResolver {
 	// provider regardless of where indexing happened; the cache keeps it to one
 	// pass per unique string (sanitizeSsmlString is idempotent).
 	private sanitizedSpokenCache = new Map<string, string>();
+	private catalogChangeListeners = new Set<CatalogChangeListener>();
 
 	constructor(
 		assessmentCatalogs?: AccessibilityCatalog[],
@@ -146,6 +169,47 @@ export class AccessibilityCatalogResolver {
 	 */
 	setDefaultLanguage(language: string): void {
 		this.defaultLanguage = language;
+	}
+
+	/**
+	 * Subscribe to catalog registrations and removals.
+	 *
+	 * Readers that render a catalog — as opposed to TTS, which resolves by DOM
+	 * lookup at the moment it speaks — have to compute "is there a card for this
+	 * item" before the catalogs exist: registration is driven by an item shell's
+	 * mount event, so a card that renders alongside the item legitimately looks
+	 * too early. Without a signal the only options are polling on a deadline (no
+	 * budget is right: too short strands the accommodation, too long is a visible
+	 * delay) or missing the content silently.
+	 *
+	 * Same contract as `ToolPolicyEngine.onPolicyChange`, deliberately: a listener
+	 * plus an unsubscribe, an event that names the `reason` and carries no
+	 * resolved state, and subscriber errors swallowed so one bad listener cannot
+	 * break registration. Listeners re-query rather than consuming a payload,
+	 * which is what keeps the resolver free of assumptions about who is reading.
+	 *
+	 * Fires after the mutation, so a listener that re-queries sees the new state.
+	 *
+	 * @returns Unsubscribe function
+	 */
+	onCatalogsChange(listener: CatalogChangeListener): () => void {
+		this.catalogChangeListeners.add(listener);
+		return () => {
+			this.catalogChangeListeners.delete(listener);
+		};
+	}
+
+	private emitCatalogsChange(event: CatalogChangeEvent): void {
+		// Iterated over a copy: a listener that unsubscribes itself (or another)
+		// while handling the event must not make the loop skip its neighbours.
+		for (const listener of Array.from(this.catalogChangeListeners)) {
+			try {
+				listener(event);
+			} catch {
+				// Subscriber errors must not break registration. Hosts that want
+				// error telemetry should wrap their listener.
+			}
+		}
 	}
 
 	/**
@@ -202,6 +266,12 @@ export class AccessibilityCatalogResolver {
 				catalogs: scoped,
 			});
 		}
+		// Only when something was actually inserted: an all-duplicates call changes
+		// nothing, and waking every reader to re-resolve for that would make the
+		// signal untrustworthy.
+		if (insertedIds.length > 0) {
+			this.emitCatalogsChange({ reason: "scoped-registered", context });
+		}
 		return () => {
 			const current = this.scopedCatalogs.get(key);
 			if (current?.catalogs !== scoped) return;
@@ -210,6 +280,9 @@ export class AccessibilityCatalogResolver {
 			}
 			if (current.catalogs.size === 0) {
 				this.scopedCatalogs.delete(key);
+			}
+			if (insertedIds.length > 0) {
+				this.emitCatalogsChange({ reason: "scoped-removed", context });
 			}
 		};
 	}
@@ -220,13 +293,16 @@ export class AccessibilityCatalogResolver {
 	addItemCatalogs(catalogs?: AccessibilityCatalog[]): void {
 		if (!catalogs || catalogs.length === 0) return;
 		this.indexCatalogs(catalogs, "item");
+		this.emitCatalogsChange({ reason: "item-added" });
 	}
 
 	/**
 	 * Clear item-level catalogs (called when leaving an item)
 	 */
 	clearItemCatalogs(): void {
+		if (this.itemCatalogs.size === 0) return;
 		this.itemCatalogs.clear();
+		this.emitCatalogsChange({ reason: "item-cleared" });
 	}
 
 	/**
@@ -304,7 +380,9 @@ export class AccessibilityCatalogResolver {
 				card.catalog === "spoken" && card.content !== undefined
 					? this.ensureSpokenSanitized(card.content)
 					: card.content,
-			payload: card.payload,
+			// `signLanguage` is the alias two landed producers use; folded in here so
+			// exactly one field reaches consumers. See `CatalogCard.signLanguage`.
+			payload: card.payload ?? card.signLanguage,
 			source,
 		};
 	}

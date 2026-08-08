@@ -11,6 +11,7 @@
 import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
 import type {
 	AccessibilityCatalogResolver,
+	CatalogChangeListener,
 	CatalogLookupContext,
 	CatalogLookupOptions,
 	CatalogOwnerContext,
@@ -810,6 +811,24 @@ export interface ToolkitCoordinatorApi {
 	 * call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
+
+	/**
+	 * Subscribe to accessibility-catalog registrations and removals.
+	 *
+	 * The companion to {@link onPolicyChange} for the other mutable input a
+	 * capability's visibility depends on. A region that renders a catalog card
+	 * needs both: policy decides whether the learner may have it, catalogs decide
+	 * whether the content exists, and catalogs arrive on an item shell's mount
+	 * event — after a card alongside that item has already computed its first
+	 * answer. Listeners re-query through
+	 * {@link accessibilityCatalogResolver}; the event names only what changed.
+	 *
+	 * Required, unlike {@link decideFeaturePolicy}: this ships with its only
+	 * consumer, so there are no pre-existing stubs to stay assignable to, and
+	 * `AGENTS.md` rules out adding an internal-API compatibility shim without a
+	 * documented exception.
+	 */
+	onCatalogsChange(listener: CatalogChangeListener): () => void;
 
 	/**
 	 * Bind (or clear) the active assessment for PNP/profile policy decisions.

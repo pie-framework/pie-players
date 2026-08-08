@@ -34,6 +34,7 @@ import {
 	type ToolConfigStrictness,
 } from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
+import type { CatalogChangeListener } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import {
 	frameworkErrorFromCoordinatorContext,
@@ -2283,6 +2284,20 @@ export class ToolkitCoordinator {
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
 		return this.policyEngine.onPolicyChange(listener);
+	}
+
+	/**
+	 * Subscribe to accessibility-catalog registrations and removals.
+	 *
+	 * Delegates to the owned resolver, the same way {@link onPolicyChange}
+	 * delegates to the owned policy engine, so a consumer holding only the
+	 * coordinator can react to both of the mutable inputs a catalog-backed
+	 * capability depends on without reaching for the services directly.
+	 *
+	 * @returns Unsubscribe function
+	 */
+	onCatalogsChange(listener: CatalogChangeListener): () => void {
+		return this.catalogResolver.onCatalogsChange(listener);
 	}
 
 	/**

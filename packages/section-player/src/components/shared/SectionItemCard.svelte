@@ -29,7 +29,10 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { connectAssessmentToolkitRuntimeContext } from "@pie-players/pie-assessment-toolkit";
+	import {
+		catalogOwnerContextFor,
+		connectAssessmentToolkitRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
@@ -77,10 +80,6 @@
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
 	}>();
-
-	// Bounded retry budget for the first catalog lookup; see the effect below.
-	const CATALOG_LOOKUP_MAX_ATTEMPTS = 20;
-	const CATALOG_LOOKUP_RETRY_MS = 50;
 
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
@@ -156,7 +155,10 @@
 	// derivation reruns when policy inputs change (assessment binding, PNP
 	// enforcement, custom sources). Same fanout pattern as `<pie-item-toolbar>`.
 	let policyChangeVersion = $state(0);
-	let catalogLookupAttempt = $state(0);
+	// Bumped from the coordinator's catalog-change stream, for the same reason
+	// `policyChangeVersion` exists: the resolver is not reactive, so a `$derived`
+	// reading it needs a signal when its contents change.
+	let catalogChangeVersion = $state(0);
 	let mediaRegionPercent = $state(MEDIA_REGION_DEFAULT_PERCENT);
 	let mediaSplitContainer = $state<HTMLDivElement | null>(null);
 	let mediaSplitWidthPx = $state(0);
@@ -194,13 +196,17 @@
 		return undefined;
 	});
 
-	const catalogOwnerContext = $derived.by((): CatalogOwnerContext => ({
-		ownerKind: "itemModel",
-		assessmentId: runtimeContext?.assessmentId,
-		sectionId: runtimeContext?.sectionId,
-		itemId: effectiveItem?.id,
-		canonicalItemId: canonicalItemId || effectiveItem?.id,
-	}));
+	// Built by the same function the runtime registers catalogs with, so the
+	// lookup scope cannot drift from the registered one.
+	const catalogOwnerContext = $derived.by((): CatalogOwnerContext =>
+		catalogOwnerContextFor({
+			kind: "item",
+			itemId: effectiveItem?.id ?? "",
+			canonicalItemId,
+			assessmentId: runtimeContext?.assessmentId,
+			sectionId: runtimeContext?.sectionId,
+		}),
+	);
 
 	/**
 	 * Content half of availability: the resolver has a matching card. Both halves
@@ -208,7 +214,7 @@
 	 * accommodation still sees nothing on the vast majority of items.
 	 */
 	const resolvedMedia = $derived.by((): ResolvedSignLanguageAlternate | null => {
-		void catalogLookupAttempt;
+		void catalogChangeVersion;
 		if (!signLanguageGranted) return null;
 		const resolver = runtimeContext?.catalogResolver;
 		if (!resolver || prepared.refs.length === 0) return null;
@@ -259,30 +265,34 @@
 		};
 	});
 
-	// Reset the lookup budget when the card is pointed at a different item.
-	$effect(() => {
-		void effectiveItem?.id;
-		untrack(() => {
-			catalogLookupAttempt = 0;
-		});
-	});
-
 	/**
 	 * Item catalogs are registered by `<pie-assessment-toolkit>` in response to
-	 * the item shell's registration event, which lands after this card mounts —
-	 * so the first lookup can legitimately miss. Retry on a bounded budget until
-	 * one succeeds. Only items that actually declare signing cards, for learners
-	 * who are eligible, ever get here.
+	 * the item shell's registration event, which lands after this card mounts, so
+	 * the first lookup legitimately misses. Re-resolve when the resolver says its
+	 * catalog set changed — not on a timer: any retry budget is simultaneously too
+	 * short for a slow element bundle and too long to be invisible, and running
+	 * out of it strands the accommodation with no error.
 	 */
 	$effect(() => {
-		if (typeof window === "undefined") return;
-		if (resolvedMedia || !signLanguageGranted) return;
-		if (prepared.refs.length === 0) return;
-		if (catalogLookupAttempt >= CATALOG_LOOKUP_MAX_ATTEMPTS) return;
-		const timer = window.setTimeout(() => {
-			catalogLookupAttempt += 1;
-		}, CATALOG_LOOKUP_RETRY_MS);
-		return () => window.clearTimeout(timer);
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator) return;
+		const unsubscribe = coordinator.onCatalogsChange(() => {
+			catalogChangeVersion += 1;
+		});
+		// Sync once on subscribe, because effects run after the DOM update that
+		// mounted this card — and the item shell inside that subtree can register
+		// its catalogs from `connectedCallback` during the very same update, before
+		// this listener exists. Subscribing without re-resolving would miss exactly
+		// the fast case. Safe against a loop: the effect writes this counter and
+		// never reads it.
+		catalogChangeVersion += 1;
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// Detach errors are non-fatal: the coordinator may already be gone.
+			}
+		};
 	});
 
 	$effect(() => {

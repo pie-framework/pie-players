@@ -488,6 +488,24 @@ export interface CatalogCard {
 	 * according to `catalog`.
 	 */
 	payload?: CatalogCardPayload;
+	/**
+	 * Accepted alias for `payload` on sign-language cards.
+	 *
+	 * `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
+	 * (PIE-881) both landed with the signing payload under this name, so a card
+	 * authored or imported against either of those contracts carries
+	 * `signLanguage` rather than `payload`. Reading only `payload` made such a
+	 * card resolve to nothing — it imports cleanly and then renders no signing
+	 * video, which is the silent accommodation failure the sign-language PRD
+	 * names as its release risk.
+	 *
+	 * Tolerated on input, never canonical: `AccessibilityCatalogResolver` folds
+	 * it into `payload` when it resolves a card, so exactly one field reaches a
+	 * consumer and nothing downstream has to know both names. Producers should
+	 * settle on one name and this alias should then go — see the sign-language
+	 * PRD's open decision.
+	 */
+	signLanguage?: CatalogCardPayload;
 }
 
 export interface AccessibilityCatalog {

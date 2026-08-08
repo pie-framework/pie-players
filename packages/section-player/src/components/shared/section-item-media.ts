@@ -22,17 +22,16 @@ import {
 	AMERICAN_SIGN_LANGUAGE,
 	SIGN_LANGUAGE_CATALOG_TYPE,
 	SignLanguageExtractor,
+	collectEntityCatalogRegistrations,
 	isSignLanguageCard,
 	matchesRequestedSignLanguage,
 	resolveSignLanguageMedia,
 	type AccessibilityCatalogResolverApi,
 	type CatalogOwnerContext,
+	type CatalogSourceEntity,
 	type SignLanguageMedia,
 } from "@pie-players/pie-assessment-toolkit";
-import type {
-	AccessibilityCatalog,
-	ItemEntity,
-} from "@pie-players/pie-players-shared/types";
+import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 
 /**
  * QTI 3.0 / AfA support id gating signed alternates. Excluded from the computed
@@ -52,23 +51,21 @@ export interface ResolvedSignLanguageAlternate extends SignLanguageMedia {
 	catalogId: string;
 }
 
-function catalogsWithSignLanguage(
-	catalogs: AccessibilityCatalog[] | undefined,
-): AccessibilityCatalog[] {
-	if (!Array.isArray(catalogs)) return [];
-	return catalogs.filter(
-		(catalog) =>
-			Array.isArray(catalog?.cards) && catalog.cards.some(isSignLanguageCard),
-	);
-}
-
 /**
  * Collect the catalog identifiers on an item that carry signing cards.
  *
- * The region resolves through the catalog resolver, but the resolver is keyed
- * by identifier — something has to say *which* identifiers this item put in
- * play. Mirrors the shape `collectCatalogRegistrations` registers with, so the
- * owner contexts built from these refs line up with the registered ones.
+ * The region resolves through the catalog resolver, but the resolver is keyed by
+ * identifier within an owner scope — something has to say *which* identifiers
+ * this item put in play, and whether each belongs to the item or to one model.
+ * That is the same walk the runtime does when it registers an item's catalogs,
+ * so it is borrowed rather than repeated: a ref can only name a scope
+ * registration actually files under. Only the "does this catalog carry signing"
+ * filter is ours.
+ *
+ * The owner identity here is a placeholder: the assessment and section ids are
+ * not known at extraction time and are supplied by the caller at lookup time
+ * (see `resolveSignLanguageAlternate`). Nothing but `modelId` is read from the
+ * walk's contexts.
  */
 export function collectSignLanguageCatalogRefs(
 	item: ItemEntity | null | undefined,
@@ -76,26 +73,23 @@ export function collectSignLanguageCatalogRefs(
 	if (!item) return [];
 	const refs: SignLanguageCatalogRef[] = [];
 	const seen = new Set<string>();
-	const push = (catalogId: string, modelId?: string) => {
-		const key = `${modelId ?? ""}|${catalogId}`;
-		if (seen.has(key)) return;
-		seen.add(key);
-		refs.push(modelId ? { catalogId, modelId } : { catalogId });
-	};
-
-	for (const catalog of catalogsWithSignLanguage(item.accessibilityCatalogs)) {
-		push(catalog.identifier);
-	}
-	for (const catalog of catalogsWithSignLanguage(
-		item.config?.extractedCatalogs,
-	)) {
-		push(catalog.identifier);
-	}
-	for (const model of item.config?.models ?? []) {
-		for (const catalog of catalogsWithSignLanguage(
-			model?.accessibilityCatalogs,
-		)) {
-			push(catalog.identifier, model?.id);
+	const registrations = collectEntityCatalogRegistrations(
+		item as CatalogSourceEntity,
+		{ kind: "item", itemId: item.id ?? "" },
+	);
+	for (const registration of registrations) {
+		const modelId = registration.context.modelId;
+		for (const catalog of registration.catalogs) {
+			if (!Array.isArray(catalog?.cards)) continue;
+			if (!catalog.cards.some(isSignLanguageCard)) continue;
+			const key = `${modelId ?? ""}|${catalog.identifier}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			refs.push(
+				modelId
+					? { catalogId: catalog.identifier, modelId }
+					: { catalogId: catalog.identifier },
+			);
 		}
 	}
 	return refs;

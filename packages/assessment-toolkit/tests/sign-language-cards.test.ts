@@ -166,31 +166,44 @@ describe("sign-language card payload validation", () => {
 		expect(media?.signLang).toBe("bfi");
 	});
 
-	test("does not accept a payload under any name but `payload`", () => {
-		// The `pie-api-aws` Learnosity transform currently emits the media block
-		// under a `signLanguage` key. There is exactly one accepted name, so that
-		// card does not resolve — deliberately, so the mismatch surfaces during
-		// PIE-879 / PIE-881 integration instead of half-working.
+	test("accepts the `signLanguage` alias two landed producers emit", () => {
+		// `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
+		// (PIE-881) both carry the media block under `signLanguage`. Refusing it
+		// meant an imported item resolved to nothing — it imports cleanly and then
+		// renders no signing video, which is the failure mode that is invisible to
+		// everyone except the learner who needed the accommodation.
 		const media = resolveSignLanguageMedia({
 			language: "ase",
-			...({
-				signLanguage: {
-					signLang: "ase",
-					media: {
-						version: 1,
-						id: "m",
-						kind: "video",
-						sources: [
-							{
-								src: "https://cdn.example.com/imported.mp4",
-								type: "video/mp4",
-							},
-						],
-					},
+			signLanguage: {
+				signLang: "ase",
+				media: {
+					version: 1,
+					id: "m",
+					kind: "video",
+					sources: [{ src: "https://cdn.example.com/imported.mp4", type: "video/mp4" }],
 				},
-			} as Record<string, unknown>),
+			},
 		});
-		expect(media).toBeNull();
+		expect(media?.signLang).toBe("ase");
+		expect(media?.sources).toEqual([
+			{ src: "https://cdn.example.com/imported.mp4", type: "video/mp4" },
+		]);
+	});
+
+	test("prefers `payload` when a card carries both names", () => {
+		// One canonical field wins, so a card that somehow carries both cannot
+		// render one thing here and another in a producer that reads only its own.
+		const media = resolveSignLanguageMedia({
+			language: "ase",
+			payload: payload({
+				media: { version: 1, id: "m", kind: "video", sources: [{ src: "/canonical.mp4" }] },
+			}),
+			signLanguage: {
+				signLang: "ase",
+				media: { version: 1, id: "m", kind: "video", sources: [{ src: "/alias.mp4" }] },
+			},
+		});
+		expect(media?.sources).toEqual([{ src: "/canonical.mp4" }]);
 	});
 
 	test("leaves a card unlabelled when neither payload nor card names a language", () => {

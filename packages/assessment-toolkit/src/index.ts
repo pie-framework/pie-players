@@ -39,6 +39,14 @@ export {
 	connectAssessmentToolkitShellContext,
 } from "./context/runtime-context-consumer.js";
 export {
+	catalogOwnerContextFor,
+	collectCatalogRegistrations,
+	collectEntityCatalogRegistrations,
+	type CatalogOwnerIdentity,
+	type CatalogRegistration,
+	type CatalogSourceEntity,
+} from "./runtime/catalog-registration.js";
+export {
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
@@ -83,6 +91,9 @@ export type {
 
 // Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
 export type {
+	CatalogChangeEvent,
+	CatalogChangeListener,
+	CatalogChangeReason,
 	CatalogLookupContext,
 	CatalogLookupOptions,
 	CatalogOwnerContext,

@@ -55,6 +55,19 @@ export type CatalogType =
 	| string; // Support custom types
 
 /**
+ * Which of a card's two content slots it fills.
+ *
+ * Not a new field on the card and not a second discriminant: the card already
+ * says which form it is by carrying `content` or `payload`, and the
+ * exactly-one-of invariant is what makes that unambiguous. This names the
+ * distinction so a lookup can ask for one.
+ */
+export type CatalogCardForm = "content" | "payload";
+
+export const catalogCardForm = (card: CatalogCard): CatalogCardForm =>
+	card.payload !== undefined ? "payload" : "content";
+
+/**
  * Lookup options for catalog resolution
  */
 export interface CatalogLookupOptions {
@@ -66,6 +79,23 @@ export interface CatalogLookupOptions {
 	useFallback?: boolean;
 	/** Scope used to resolve local catalog idrefs for rendered content */
 	context?: CatalogLookupContext;
+	/**
+	 * Preferred content form, when one catalog type legitimately has both on the
+	 * same node.
+	 *
+	 * The case this exists for is a `spoken` node carrying both a reading script
+	 * and a recording of it — which is APIP's authoring pattern and what QTI 3's
+	 * migration guidance tells you to keep, the script doubling as the source the
+	 * audio was generated from and as the fallback when it cannot play. Before
+	 * this, both resolution rungs took the first card matching type and language,
+	 * so whichever of the two was written second in the array was unreachable and
+	 * nothing said so.
+	 *
+	 * A preference, not a filter: if the requested form is not present, the other
+	 * one is still returned. Callers that cannot use a form must check what they
+	 * got, exactly as they already must for a card of a type they did not expect.
+	 */
+	form?: CatalogCardForm;
 }
 
 /**
@@ -482,27 +512,38 @@ export class AccessibilityCatalogResolver {
 		catalog: AccessibilityCatalog,
 		options: CatalogLookupOptions,
 	): CatalogCard | null {
-		const { type, language, useFallback = true } = options;
+		const { type, language, useFallback = true, form } = options;
 
-		// Try exact match (type + language)
+		// Language rungs, most specific first: requested language, then the default
+		// language, then any. Unchanged — only what happens *within* a rung is new.
+		const languageRungs: Array<(card: CatalogCard) => boolean> = [];
 		if (language) {
-			const exactMatch = catalog.cards.find(
-				(card) => card.catalog === type && card.language === language,
-			);
-			if (exactMatch) return exactMatch;
+			languageRungs.push((card) => card.language === language);
+		}
+		if (useFallback) {
+			languageRungs.push((card) => card.language === this.defaultLanguage);
+			languageRungs.push(() => true);
 		}
 
-		// Try type match with default language (if fallback enabled)
-		if (useFallback) {
-			const defaultMatch = catalog.cards.find(
-				(card) =>
-					card.catalog === type && card.language === this.defaultLanguage,
+		for (const matchesLanguage of languageRungs) {
+			const candidates = catalog.cards.filter(
+				(card) => card.catalog === type && matchesLanguage(card),
 			);
-			if (defaultMatch) return defaultMatch;
-
-			// Try type match without language constraint
-			const typeMatch = catalog.cards.find((card) => card.catalog === type);
-			if (typeMatch) return typeMatch;
+			if (candidates.length === 0) continue;
+			// Form is preferred inside a language rung and never across them: a
+			// recording in the requested language beats a script in that language,
+			// but a script in the requested language beats a recording in another
+			// one. Getting this backwards would answer a Spanish lookup with English
+			// audio, which is worse than answering it with Spanish text.
+			if (form) {
+				const preferred = candidates.find(
+					(card) => catalogCardForm(card) === form,
+				);
+				if (preferred) return preferred;
+			}
+			// No preference expressed, or the preferred form is absent: first match,
+			// which is what every caller got before form preference existed.
+			return candidates[0];
 		}
 
 		return null;
@@ -520,11 +561,14 @@ export class AccessibilityCatalogResolver {
 	 */
 	getAllAlternatives(catalogId: string): ResolvedCatalog[] {
 		const results: ResolvedCatalog[] = [];
-		// Type plus language, because one catalog identifier legitimately carries
-		// several cards of the same type in different languages.
+		// Type, language *and* form: one catalog identifier legitimately carries
+		// several cards of the same type in different languages, and also a script
+		// and a recording of the same type in the *same* language. Keying on type
+		// and language alone dropped the second of those on the floor, so anything
+		// asking what alternates exist under-reported them.
 		const claimed = new Set<string>();
 		const add = (card: CatalogCard, source: ResolvedCatalog["source"]) => {
-			const key = `${card.catalog}|${card.language ?? ""}`;
+			const key = `${card.catalog}|${card.language ?? ""}|${catalogCardForm(card)}`;
 			if (claimed.has(key)) return;
 			claimed.add(key);
 			results.push(this.resolveCard(catalogId, card, source));

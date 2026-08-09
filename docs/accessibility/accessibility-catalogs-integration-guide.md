@@ -410,6 +410,42 @@ const item = {
 </div>
 ```
 
+### Two Cards of One Type: Script and Recording
+
+A `spoken` node may legitimately carry both a reading script and a recording of
+it, in the same language. This is APIP's authoring pattern, and QTI 3's migration
+guidance keeps the script when legacy audio moves into catalogs — it is both the
+source the recording was generated from and the fallback when the recording
+cannot play.
+
+```typescript
+{
+  identifier: 'prompt-1',
+  cards: [
+    { catalog: 'spoken', language: 'en-US', content: '<speak>A plant absorbs…</speak>' },
+    { catalog: 'spoken', language: 'en-US', payload: { media: { /* audio */ } } },
+  ],
+}
+```
+
+Nothing distinguishes them but the slot each fills, which is enough: a card
+carries exactly one of `content` or `payload`, so the form *is* the
+discriminator and no extra field is needed. A lookup asks for one with `form`:
+
+```typescript
+resolver.getAlternative('prompt-1', { type: 'spoken', language: 'en-US', form: 'payload' });
+```
+
+`form` is a **preference, not a filter** — if the requested form is absent, the
+other is returned, so callers check what they got. It is preferred *within* a
+language rung and never across one: a recording in the requested language beats
+a script in that language, but a script in the requested language beats a
+recording in another. Omit `form` and resolution is first-match, as it was
+before the option existed.
+
+`getAllAlternatives` keys on type, language **and** form, so both cards are
+reported. Keying on type and language alone silently dropped the second.
+
 ### Suppressing Read-Aloud
 
 Some content must be shown and never spoken. `data-tts-suppress` on a content

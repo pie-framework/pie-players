@@ -91,6 +91,7 @@ export type {
 
 // Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
 export type {
+	CatalogCardForm,
 	CatalogChangeEvent,
 	CatalogChangeListener,
 	CatalogChangeReason,
@@ -102,7 +103,10 @@ export type {
 	CatalogType,
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
-export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
+export {
+	AccessibilityCatalogResolver,
+	catalogCardForm,
+} from "./services/AccessibilityCatalogResolver.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)

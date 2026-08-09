@@ -421,6 +421,10 @@ export class TTSService {
 			type: "spoken",
 			language,
 			useFallback: true,
+			// The string form specifically. A node may also carry a recording of the
+			// same script; that one is not what this reports on, and card order must
+			// not decide the answer.
+			form: "content",
 		});
 		return resolved?.content !== undefined;
 	}
@@ -1484,6 +1488,7 @@ export class TTSService {
 					language: options.language || "en-US",
 					useFallback: true,
 					context: options.catalogContext,
+					form: "content",
 				},
 			);
 			// A card with no string form has nothing to speak — a signing card, for
@@ -1606,6 +1611,7 @@ export class TTSService {
 				language: options.language || "en-US",
 				useFallback: true,
 				context: options.catalogContext,
+				form: "content",
 			});
 			// Only a card with a string form can contribute speech. The same
 			// docking node may also carry a signing card; that one is not ours.

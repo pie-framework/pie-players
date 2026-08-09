@@ -424,11 +424,10 @@ const item = {
 
 ### Two Cards of One Type: Script and Recording
 
-A `spoken` node may legitimately carry both a reading script and a recording of
-it, in the same language. This is APIP's authoring pattern, and QTI 3's migration
-guidance keeps the script when legacy audio moves into catalogs — it is both the
-source the recording was generated from and the fallback when the recording
-cannot play.
+A `spoken` node may carry both a reading script and a recording of it, in the same
+language. This is APIP's pattern, kept by QTI 3's migration guidance: the script
+is what the recording was generated from and its fallback when the clip cannot
+play.
 
 ```typescript
 {
@@ -440,29 +439,26 @@ cannot play.
 }
 ```
 
-Nothing distinguishes them but the slot each fills, which is enough: a card
-carries exactly one of `content` or `payload`, so the form *is* the
-discriminator and no extra field is needed. A lookup asks for one with `form`:
+A card carries exactly one of `content` or `payload`, so the slot is already the
+discriminator and no extra field is needed. A lookup picks one with `form`:
 
 ```typescript
 resolver.getAlternative('prompt-1', { type: 'spoken', language: 'en-US', form: 'payload' });
 ```
 
-`form` is a **preference, not a filter** — if the requested form is absent, the
-other is returned, so callers check what they got. It is preferred *within* a
-language rung and never across one: a recording in the requested language beats
-a script in that language, but a script in the requested language beats a
-recording in another. Omit `form` and resolution is first-match, as it was
-before the option existed.
+`form` is a **preference, not a filter**: an absent preferred form still returns
+the other card, so callers check what they got. It applies *within* a language
+rung and never across one — a recording in the requested language beats a script
+in that language, but a script in the requested language beats a recording in
+another. Omit `form` for first-match resolution.
 
 `getAllAlternatives` keys on type, language **and** form, so both cards are
-reported. Keying on type and language alone silently dropped the second.
+reported.
 
 ### Recorded Audio as a Spoken Alternate
 
-A `spoken` card may carry a recording instead of a script. QTI 3 treats the two
-as the *same* support — both are `spoken`, with recorded audio referenced by file
-and MIME type — so this is not a separate accommodation and needs no separate
+A `spoken` card may carry a recording instead of a script. QTI 3 treats the two as
+the *same* support, so this is not a separate accommodation and needs no separate
 PNP entitlement.
 
 ```typescript
@@ -481,54 +477,29 @@ PNP entitlement.
 }
 ```
 
-**Highlighting is the node as a block, not word by word.** A recording emits no
-word-boundary events, and deriving them from its duration would highlight the
-wrong words confidently rather than the right region vaguely. Word-level
-highlighting stays available on the synthesized path.
+- **Highlighting is the node as a block**, not word by word: a recording emits no
+  word-boundary events. Word-level highlighting stays on the synthesized path.
+- **`media.kind` must be `audio`.** A video filed under `spoken` is refused, so
+  signing and speech cards cannot swap roles.
+- **The first source is used.** An `<audio>` element with alternative `<source>`
+  children signals failure through a path that is awkward to observe, and a
+  dependable fallback matters more than encoding negotiation.
+- **`fragment` becomes a Media Fragments URI**, with the end bound enforced by the
+  player because browser support for it is inconsistent.
+- **The rate setting applies** via `playbackRate`; voice selection does not.
+- **Failure degrades to the script** — playback retries the node with its
+  `content` card. With no script authored, the failure is reported rather than
+  silently skipped.
+- **Suppression still wins**, below.
 
-**Playback details.** `media.kind` must be `audio`; a video filed under `spoken`
-is refused rather than guessed at, so signing and speech cards cannot quietly
-swap roles. The first source is used — an `<audio>` element with alternative
-`<source>` children reports failure through a path that is awkward to observe,
-and a dependable fallback matters more than encoding negotiation. `fragment`
-becomes a Media Fragments URI, with the end bound enforced by the player because
-browser support for it is inconsistent. The TTS rate setting applies via
-`playbackRate`; voice selection does not apply to a recording.
-
-**Failure degrades to the script.** If the clip will not play, playback retries
-that node with its `content` card. This is exactly why the script is worth
-authoring alongside the recording — see the section above — and if there is no
-script, read-aloud reports the failure rather than silently skipping the node.
-
-**Suppression still wins.** A node marked `data-tts-suppress` is not played from a
-file any more than it is spoken by a voice.
-
-Both behaviours are exercised by the `read-aloud-accommodations` section demo,
-which also covers a recording that fails to load and a node carrying both forms.
-
-**Suppression is speech-only, and there is no signing or braille equivalent.**
-The axis is not "may this node be accommodated" but "does this modality preserve
-the information the item measures". Speech destroys orthography, so a decoding or
-spelling item needs it withheld. Braille preserves orthography — braille of a
-spelling item is exactly how a blind candidate takes a spelling test — so
-suppressing it would remove access for no gain. Signing is not uniform either
-way: fingerspelling preserves the letter sequence, lexical signing does not.
-
-For signing that non-uniformity is decisive, because the deciding fact lives in
-the recording rather than the markup. Only the signer knows whether a clip
-fingerspells the target word, so an attribute authored beside the prompt would be
-a guess presented as a guarantee. And the granularities do not meet: suppression
-is per node, a signed alternate is one video per item, so the only mechanically
-available rule would let one suppressed word withhold a deaf candidate's entire
-signed translation. Read-aloud needs a machine-readable guard because a
-synthesizer speaks whatever text is present with nobody in the loop; a signed
-alternate does not exist until a person films it, and "do not give the answer
-away" is a decision that person is already making.
+The `read-aloud-accommodations` section demo exercises all of this, including a
+clip that fails to load.
 
 ### Suppressing Read-Aloud
 
-Some content must be shown and never spoken. `data-tts-suppress` on a content
-element marks it and its whole subtree as not-to-be-spoken:
+Some content must be shown and never spoken — items where reading *is* the
+construct, such as decoding and spelling. `data-tts-suppress` marks an element and
+its subtree not-to-be-spoken:
 
 ```html
 <p>
@@ -544,45 +515,46 @@ element marks it and its whole subtree as not-to-be-spoken:
 | `screen-reader`      | Aimed at assistive technology only — **still machine-read aloud**. |
 
 One value, not a list. An unrecognized or empty value suppresses anyway and logs
-why: a mistyped token that fell through would speak the word an item was
-measuring the candidate's ability to read, with no visible symptom.
+why: a token that fell through on a typo would speak the word the item was
+measuring, with no visible symptom.
 
-**Why this is not a catalog card.** A suppression card would carry neither
-`content` nor `payload`, breaking the card invariant, and it would only work on
-docked nodes. More importantly it has to be enforceable in the selection
-read-aloud path, which consults no catalog at all.
+**Not a catalog card, and not a PNP field.** A suppression card would carry
+neither `content` nor `payload` and would only work on docked nodes, and it has to
+be enforceable in the selection read-aloud path, which consults no catalog.
+`prohibitedSupports` is the learner declining a support; this is the item saying
+"not here, for anyone", so it overrides an entitlement and beats an authored
+`spoken` card on the same node.
 
-**Why this is not in the PNP.** `prohibitedSupports` is the learner saying "not
-for me". This is the item saying "not here, for anyone" — so it overrides an
-entitlement instead of yielding to it, and it beats an authored `spoken` card on
-the same node. A card says *how* to speak content; suppression says it is not
-spoken.
+**Enforced in every path that produces speech**, since a filter on one of them is
+a filter a candidate can walk around:
 
-**What enforces it.** Every path that produces speech, because a filter applied
-to only one of them is a filter a candidate can walk around:
-
-- the composed catalog path (`collectCatalogSpeechChunks`), checked before card
-  resolution;
+- the composed catalog path, checked before card resolution;
 - the generated-speech and visible-text collectors, via
   `isNodeExcludedFromSpeech`;
-- structural pause boundaries, so a suppressed node contributes no audible seam;
-- `speakRange`, the annotation-toolbar selection path. This one is a text-in
-  path — it passes `range.toString()` straight through, and `Range.toString()`
-  honours no DOM filter — so it filters the range itself. A selection wholly
-  inside suppressed content speaks nothing; a selection that spans it speaks the
-  rest, with highlight offsets computed from the same filtered text so
-  highlighting stays aligned.
+- structural pause boundaries, so a suppressed node leaves no audible seam;
+- `speakRange`, the annotation-toolbar selection path. It passes
+  `range.toString()` straight through and `Range.toString()` honours no DOM
+  filter, so it filters the range itself. A selection wholly inside suppressed
+  content speaks nothing; one that spans it speaks the rest, with highlight
+  offsets from the same filtered text.
 
-A host calling `ttsService.speak(rawString, { ignoreCatalogs: true })` with its
-own string bypasses this, because there is no DOM to filter. Pass a
-`contentElement`, or a `Range` via `speakRange`, for suppression to apply.
+A host passing its own string to `ttsService.speak(text, { ignoreCatalogs: true })`
+bypasses this — there is no DOM to filter. Pass a `contentElement`, or a `Range`
+via `speakRange`.
 
-**Importing QTI content.** QTI 3 spells this `data-qti-suppress-tts`, with the
-same vocabulary and the same placement on the content element. PIE reads only
-`data-tts-suppress`, following its own `data-tts-*` attribute family, so an
-importer maps the attribute on the way in. PIE deliberately does not accept both
-spellings — two names for one thing is how a card ends up rendering and
-reporting absent at the same time.
+**Speech-only, with no braille or signing equivalent.** The test is whether a
+modality preserves the information the item measures. Speech destroys spelling;
+braille preserves it, so braille of a spelling item is how a blind candidate takes
+that test; signing preserves it only when the signer fingerspells. For signing
+that decides it: the fact lives in the recording and is known to the signer, not
+to whoever authors an attribute, and suppression is per node while a signed
+alternate is one video per item — so the only available rule would withhold a deaf
+candidate's whole translation over one word.
+
+**Importing QTI content.** QTI 3 spells this `data-qti-suppress-tts`, same
+vocabulary and placement. PIE reads only `data-tts-suppress`, following its own
+`data-tts-*` family, so an importer maps it on the way in; accepting both
+spellings is how one fact under two names starts disagreeing with itself.
 
 ### Multi-Level Catalog Support
 

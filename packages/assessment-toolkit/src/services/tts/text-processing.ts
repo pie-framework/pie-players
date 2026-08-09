@@ -81,25 +81,19 @@ export const isNodeHiddenForTTS = (
 };
 
 /**
- * Marks content that must be shown but never spoken.
+ * Marks content that must be shown but never spoken — items where reading *is*
+ * the construct, such as decoding and spelling, where speaking the node hands
+ * over the answer.
  *
- * This exists because read-aloud is not universally safe. When reading *is* the
- * construct — a decoding item ("which word starts with the /k/ sound: cake,
- * cat, sun"), a spelling item where synthesized speech voices both options
- * identically — speaking the node hands over the answer. That cannot be
- * expressed in the learner's `PersonalNeedsProfile`: `prohibitedSupports` is the
- * learner saying "not for me", whereas this is the item saying "not here, for
- * anyone", and it must therefore override an entitlement rather than yield to
- * it.
+ * Not a PNP field: `prohibitedSupports` is the learner declining a support, while
+ * this is the item saying "not here, for anyone", so it overrides an entitlement
+ * rather than yielding to it.
  *
- * The shape follows QTI 3's `data-qti-suppress-tts`: an attribute on the content
- * element rather than a field on a catalog card, single-valued, with the
- * vocabulary below. Element placement is what makes it usable on undocked nodes
- * and enforceable in the selection read-aloud path, where no catalog is
- * consulted. The name follows PIE's own `data-tts-*` family instead of QTI's
- * spelling, and PIE reads only this one name — an importer converting QTI
- * content maps the attribute on the way in, rather than both spellings being
- * accepted here.
+ * Shape follows QTI 3's `data-qti-suppress-tts` — an attribute on the content
+ * element, single-valued, vocabulary below. Element placement is what makes it
+ * work on undocked nodes and enforceable in the selection read-aloud path, which
+ * consults no catalog. The name follows PIE's `data-tts-*` family, and PIE reads
+ * only this spelling; importers map QTI's.
  */
 export const TTS_SUPPRESS_ATTRIBUTE = "data-tts-suppress";
 
@@ -117,13 +111,10 @@ const warnedSuppressValues = new Set<string>();
 /**
  * Whether this element forbids machine read-aloud of itself and its subtree.
  *
- * Unrecognized and empty values suppress rather than pass through, and say so
- * once per distinct value. The two failure directions are not symmetric: a
- * mistyped token that falls through speaks a word the item was measuring the
- * candidate's ability to read, invalidating the score with no visible symptom,
- * while over-suppressing withholds speech from a node an author had already
- * marked as not-to-be-spoken. So an author's evident intent wins over their
- * spelling, and the warning is what makes the typo findable.
+ * Unrecognized and empty values suppress rather than pass through, and say so once
+ * per distinct value: a typo that fell through would speak a word the item was
+ * measuring, invalidating the score with no visible symptom, whereas
+ * over-suppressing only withholds speech an author had already marked as withheld.
  */
 export const isElementSuppressedForTTS = (element: Element): boolean => {
 	const raw = element.getAttribute?.(TTS_SUPPRESS_ATTRIBUTE);
@@ -136,7 +127,9 @@ export const isElementSuppressedForTTS = (element: Element): boolean => {
 		console.warn(
 			`[tts] ${TTS_SUPPRESS_ATTRIBUTE}="${raw}" is not one of ${Array.from(
 				SUPPRESS_VALUES,
-			).join(", ")}; suppressing read-aloud for this content anyway, because a suppression attribute that fails open would leak the answer to items where reading is the construct. Correct the value to silence this.`,
+			).join(
+				", ",
+			)}; suppressing read-aloud for this content anyway, because a suppression attribute that fails open would leak the answer to items where reading is the construct. Correct the value to silence this.`,
 		);
 	}
 	return true;
@@ -211,8 +204,7 @@ export const collectRangeTextForSpeech = (
 				filtered = true;
 			} else {
 				const raw = textNode.textContent || "";
-				const start =
-					textNode === range.startContainer ? range.startOffset : 0;
+				const start = textNode === range.startContainer ? range.startOffset : 0;
 				const end =
 					textNode === range.endContainer ? range.endOffset : raw.length;
 				parts.push(raw.slice(start, end));

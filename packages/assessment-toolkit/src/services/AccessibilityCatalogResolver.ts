@@ -380,9 +380,7 @@ export class AccessibilityCatalogResolver {
 				card.catalog === "spoken" && card.content !== undefined
 					? this.ensureSpokenSanitized(card.content)
 					: card.content,
-			// `signLanguage` is the alias two landed producers use; folded in here so
-			// exactly one field reaches consumers. See `CatalogCard.signLanguage`.
-			payload: card.payload ?? card.signLanguage,
+			payload: card.payload,
 			source,
 		};
 	}
@@ -512,65 +510,42 @@ export class AccessibilityCatalogResolver {
 
 	/**
 	 * Get all available alternatives for a catalog identifier
+	 *
+	 * Every card goes through `resolveCard`, the same projection `getAlternative`
+	 * uses, so enumeration cannot describe a card differently from the resolution
+	 * that renders it. It was hand-rolled here once and drifted immediately: the
+	 * `signLanguage` alias was folded in on the resolution path only, so a card
+	 * that arrived under the alias rendered correctly and was still reported as
+	 * carrying no payload by anything asking what alternates exist.
 	 */
 	getAllAlternatives(catalogId: string): ResolvedCatalog[] {
 		const results: ResolvedCatalog[] = [];
+		// Type plus language, because one catalog identifier legitimately carries
+		// several cards of the same type in different languages.
+		const claimed = new Set<string>();
+		const add = (card: CatalogCard, source: ResolvedCatalog["source"]) => {
+			const key = `${card.catalog}|${card.language ?? ""}`;
+			if (claimed.has(key)) return;
+			claimed.add(key);
+			results.push(this.resolveCard(catalogId, card, source));
+		};
 
-		// Add item-level alternatives
+		// Item-level first, which is also the precedence `getAlternative` applies.
 		const itemCatalog = this.itemCatalogs.get(catalogId);
 		if (itemCatalog) {
-			for (const card of itemCatalog.cards) {
-				results.push({
-					catalogId,
-					type: card.catalog,
-					language: card.language,
-					content: card.content,
-					payload: card.payload,
-					source: "item",
-				});
-			}
+			for (const card of itemCatalog.cards) add(card, "item");
 		}
 
-		// Add assessment-level alternatives (if not already provided by item)
 		const assessmentCatalog = this.assessmentCatalogs.get(catalogId);
 		if (assessmentCatalog) {
-			for (const card of assessmentCatalog.cards) {
-				// Only add if not already provided by item catalog
-				const exists = results.some(
-					(r) => r.type === card.catalog && r.language === card.language,
-				);
-				if (!exists) {
-					results.push({
-						catalogId,
-						type: card.catalog,
-						language: card.language,
-						content: card.content,
-						payload: card.payload,
-						source: "assessment",
-					});
-				}
-			}
+			for (const card of assessmentCatalog.cards) add(card, "assessment");
 		}
 
-		// Add scoped (context-registered) alternatives. These resolve as "item"
-		// in getAlternative, so report them the same way here.
+		// Scoped (context-registered) alternatives resolve as "item" in
+		// `getAlternative`, so report them the same way here.
 		for (const [id, catalog] of this.scopedCatalogEntries()) {
 			if (id !== catalogId) continue;
-			for (const card of catalog.cards) {
-				const exists = results.some(
-					(r) => r.type === card.catalog && r.language === card.language,
-				);
-				if (!exists) {
-					results.push({
-						catalogId,
-						type: card.catalog,
-						language: card.language,
-						content: card.content,
-						payload: card.payload,
-						source: "item",
-					});
-				}
-			}
+			for (const card of catalog.cards) add(card, "item");
 		}
 
 		return results;

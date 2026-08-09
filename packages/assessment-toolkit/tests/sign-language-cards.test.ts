@@ -166,44 +166,19 @@ describe("sign-language card payload validation", () => {
 		expect(media?.signLang).toBe("bfi");
 	});
 
-	test("accepts the `signLanguage` alias two landed producers emit", () => {
-		// `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
-		// (PIE-881) both carry the media block under `signLanguage`. Refusing it
-		// meant an imported item resolved to nothing — it imports cleanly and then
-		// renders no signing video, which is the failure mode that is invisible to
-		// everyone except the learner who needed the accommodation.
-		const media = resolveSignLanguageMedia({
+	test("does not honour the withdrawn `signLanguage` key", () => {
+		// `pie-elements-ng` (PIE-879) and the `pie-api-aws` importer (PIE-881) briefly
+		// wrote the payload under `signLanguage`, and this function accepted both
+		// names. Both producers now emit `payload` and the alias is gone: one fact
+		// under two names is what let a card render on the resolution path and read
+		// as absent on the enumeration path, which is a worse failure than a card
+		// that plainly does not resolve. A card left over from that spelling must
+		// therefore resolve to nothing rather than half-work.
+		const legacy = {
 			language: "ase",
-			signLanguage: {
-				signLang: "ase",
-				media: {
-					version: 1,
-					id: "m",
-					kind: "video",
-					sources: [{ src: "https://cdn.example.com/imported.mp4", type: "video/mp4" }],
-				},
-			},
-		});
-		expect(media?.signLang).toBe("ase");
-		expect(media?.sources).toEqual([
-			{ src: "https://cdn.example.com/imported.mp4", type: "video/mp4" },
-		]);
-	});
-
-	test("prefers `payload` when a card carries both names", () => {
-		// One canonical field wins, so a card that somehow carries both cannot
-		// render one thing here and another in a producer that reads only its own.
-		const media = resolveSignLanguageMedia({
-			language: "ase",
-			payload: payload({
-				media: { version: 1, id: "m", kind: "video", sources: [{ src: "/canonical.mp4" }] },
-			}),
-			signLanguage: {
-				signLang: "ase",
-				media: { version: 1, id: "m", kind: "video", sources: [{ src: "/alias.mp4" }] },
-			},
-		});
-		expect(media?.sources).toEqual([{ src: "/canonical.mp4" }]);
+			signLanguage: payload(),
+		} as unknown as CatalogCard;
+		expect(resolveSignLanguageMedia(legacy)).toBeNull();
 	});
 
 	test("leaves a card unlabelled when neither payload nor card names a language", () => {
@@ -323,5 +298,70 @@ describe("resolver payload passthrough", () => {
 		const alternatives = resolver.getAllAlternatives("prompt-1");
 		expect(alternatives).toHaveLength(1);
 		expect(alternatives[0].payload).toEqual(payload());
+	});
+
+	test("getAllAlternatives describes a card exactly as getAlternative does", () => {
+		// The two paths answer different questions about the same card — "what
+		// alternates exist" and "give me this one" — and a consumer will act on both.
+		// They are pinned to each other because they were once written separately and
+		// drifted: only resolution knew about the `signLanguage` alias, so an
+		// imported card rendered its video and was reported as carrying no payload by
+		// anything asking whether the item had a signed alternate.
+		const resolver = new AccessibilityCatalogResolver();
+		resolver.addItemCatalogs([{ identifier: "prompt-1", cards: [card()] }]);
+
+		const [enumerated] = resolver.getAllAlternatives("prompt-1");
+		expect(enumerated).toEqual(
+			resolver.getAlternative("prompt-1", {
+				type: SIGN_LANGUAGE_CATALOG_TYPE,
+				language: AMERICAN_SIGN_LANGUAGE,
+			}),
+		);
+		expect(resolver.hasAlternativeType("prompt-1", SIGN_LANGUAGE_CATALOG_TYPE)).toBe(
+			true,
+		);
+	});
+
+	test("getAllAlternatives reports a scoped registration, which is the runtime's path", () => {
+		// The section player registers catalogs scoped to an owner, so an enumeration
+		// that only walked the item and assessment maps would under-report every card
+		// the real runtime holds.
+		const resolver = new AccessibilityCatalogResolver();
+		resolver.registerCatalogs({ ownerKind: "itemModel", itemId: "item-1" }, [
+			{ identifier: "prompt-1", cards: [card()] },
+		]);
+
+		const [enumerated] = resolver.getAllAlternatives("prompt-1");
+		expect(enumerated.source).toBe("item");
+		expect(resolveSignLanguageMedia(enumerated)?.sources[0].src).toBe(
+			"https://cdn.example.com/asl.mp4",
+		);
+	});
+
+	test("getAllAlternatives reports one entry per type and language", () => {
+		// Only the card resolution would pick is enumerable: reporting a shadowed
+		// duplicate as an available alternate promises content no lookup returns.
+		const resolver = new AccessibilityCatalogResolver([
+			{
+				identifier: "prompt-1",
+				cards: [card({ payload: payload({ signLang: "bfi" }) })],
+			},
+		]);
+		resolver.addItemCatalogs([
+			{
+				identifier: "prompt-1",
+				// Two `ase` cards in one catalog: only the first is reachable by any
+				// lookup, so only the first is enumerable.
+				cards: [card(), card(), card({ language: "bfi" })],
+			},
+		]);
+
+		const alternatives = resolver.getAllAlternatives("prompt-1");
+		expect(
+			alternatives.map((alternative) => [alternative.language, alternative.source]),
+		).toEqual([
+			[AMERICAN_SIGN_LANGUAGE, "item"],
+			["bfi", "item"],
+		]);
 	});
 });

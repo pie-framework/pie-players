@@ -55,7 +55,7 @@
 							{
 								"catalog": "sign-language",
 								"language": "ase",
-								"signLanguage": {
+								"payload": {
 									"signLang": "ase",
 									"media": {
 										"version": 1,

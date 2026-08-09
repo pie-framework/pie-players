@@ -76,8 +76,6 @@ type SignLanguageCardLike = {
 	language?: string;
 	content?: string;
 	payload?: CatalogCardPayload;
-	/** Accepted alias for `payload` — see `CatalogCard.signLanguage`. */
-	signLanguage?: CatalogCardPayload;
 };
 
 /**
@@ -161,17 +159,25 @@ export function resolveSignLanguageMedia(
 ): SignLanguageMedia | null {
 	if (!card) return null;
 	const cardLanguage = trimmedOrUndefined(card.language);
-	// Accepts the `signLanguage` alias as well, so a card that reached this
-	// function without passing through the resolver still resolves.
-	const payload = (card.payload ?? card.signLanguage) as SignLanguageCardPayload | undefined;
+	const payload = card.payload as SignLanguageCardPayload | undefined;
 
 	if (!payload || typeof payload !== "object") {
-		// A card with a string where structured media belongs cannot be rendered.
-		// Say so: the alternative is a learner silently getting no signing and no
-		// way for anyone to find out why.
+		// Always say something. A signing card that yields nothing is invisible to
+		// everyone except the learner who needed the accommodation, so the only
+		// place it can surface is here.
+		//
+		// `payload` was briefly also spelled `signLanguage` by two producers, and
+		// this function accepted both. It no longer does — one fact under two names
+		// is what let a card render on one code path and read as absent on another —
+		// so a card left over from that spelling arrives here with no payload at
+		// all, which is what the second message is for.
 		if (trimmedOrUndefined(card.content)) {
 			console.warn(
 				"[sign-language] card carries `content` but no `payload`; signing media must be a structured payload, so this card is ignored",
+			);
+		} else {
+			console.warn(
+				"[sign-language] card carries no `payload`; signing media lives in `payload` (a card written against the older `signLanguage` key needs re-importing), so this card is ignored",
 			);
 		}
 		return null;

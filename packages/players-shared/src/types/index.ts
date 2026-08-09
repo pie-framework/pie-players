@@ -479,6 +479,17 @@ export type CatalogCardPayload = SignLanguageCardPayload;
  * Maps onto QTI 3's `qti-card`: `catalog` is `@support`, `language` is the card
  * entry's `xml:lang`, and QTI's single content slot is represented by exactly
  * one of `content` or `payload`.
+ *
+ * One generic `payload` slot, not a field per accommodation. This is the shape
+ * `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
+ * (PIE-881) restate structurally; all three read the same authored JSON and none
+ * of them takes a package dependency on the others, so keeping the declarations
+ * identical is the only thing holding interop together. It briefly was not:
+ * those two producers wrote the signing payload under `signLanguage`, this
+ * repo tolerated that as an input alias, and the alias was folded in on the
+ * resolution path but not the enumeration path — so an imported card rendered
+ * its signing video and simultaneously reported that the item had no signed
+ * alternate. Both producers now emit `payload` and the alias is gone.
  */
 export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
@@ -496,24 +507,6 @@ export interface CatalogCard {
 	 * according to `catalog`.
 	 */
 	payload?: CatalogCardPayload;
-	/**
-	 * Accepted alias for `payload` on sign-language cards.
-	 *
-	 * `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
-	 * (PIE-881) both landed with the signing payload under this name, so a card
-	 * authored or imported against either of those contracts carries
-	 * `signLanguage` rather than `payload`. Reading only `payload` made such a
-	 * card resolve to nothing — it imports cleanly and then renders no signing
-	 * video, which is the silent accommodation failure the sign-language PRD
-	 * names as its release risk.
-	 *
-	 * Tolerated on input, never canonical: `AccessibilityCatalogResolver` folds
-	 * it into `payload` when it resolves a card, so exactly one field reaches a
-	 * consumer and nothing downstream has to know both names. Producers should
-	 * settle on one name and this alias should then go — see the sign-language
-	 * PRD's open decision.
-	 */
-	signLanguage?: CatalogCardPayload;
 }
 
 export interface AccessibilityCatalog {

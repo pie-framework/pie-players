@@ -224,12 +224,6 @@ export {
 	resolveSpokenAudioMedia,
 	SPOKEN_CATALOG_TYPE,
 } from "./services/spoken-audio-cards.js";
-// Sign-language Extractor (Auto-generates catalogs from inline signing video)
-export type { SignLanguageExtractionResult } from "./services/SignLanguageExtractor.js";
-export {
-	SIGN_LANGUAGE_ATTRIBUTE,
-	SignLanguageExtractor,
-} from "./services/SignLanguageExtractor.js";
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";

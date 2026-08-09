@@ -186,7 +186,7 @@ test.describe("item shell registration", () => {
 			{ waitUntil: "networkidle" },
 		);
 		const card = page.locator(
-			'pie-section-player-item-card [data-canonical-item-id="asl-q1-inline"]',
+			'pie-section-player-item-card [data-canonical-item-id="asl-q1-authored"]',
 		);
 		const divider = card.getByRole("separator", {
 			name: "Resize question and media panels",

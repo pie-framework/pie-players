@@ -14,6 +14,17 @@
  * Deliberately not framed as "default on versus default off": neither half
  * implies the other, and neither is a default.
  *
+ * A signed alternate reaches an item one way only: as a catalog card, authored
+ * or written by an importer. There is deliberately no path that lifts a signing
+ * video out of item markup at render time. One was implemented and removed: it
+ * had no producer — the Learnosity transform writes `accessibilityCatalogs`
+ * directly — and it failed in the wrong direction, since a runtime that could
+ * not parse the markup left the video in the visible content, showing the
+ * accommodation to every learner regardless of eligibility. `SSMLExtractor` is
+ * not a precedent for re-adding it: inline `<speak>` is real authored content
+ * PIE does not control, and there is no equivalent body of items carrying
+ * signing video inline.
+ *
  * This module is data-only so it can be unit-tested without a DOM; the region
  * component owns rendering and lifecycle.
  */
@@ -21,7 +32,6 @@
 import {
 	AMERICAN_SIGN_LANGUAGE,
 	SIGN_LANGUAGE_CATALOG_TYPE,
-	SignLanguageExtractor,
 	collectEntityCatalogRegistrations,
 	isSignLanguageCard,
 	matchesRequestedSignLanguage,
@@ -158,70 +168,6 @@ export function resolveSignLanguageAlternate(
 		}
 	}
 	return null;
-}
-
-// ----------------------------------------------------------------------------
-// Inline signing markup → catalog cards
-// ----------------------------------------------------------------------------
-
-export interface PreparedSignLanguageItem {
-	/** The item to render and register. Identical to the input when unchanged. */
-	item: ItemEntity;
-	/** Catalogs on the prepared item that carry signing cards. */
-	refs: SignLanguageCatalogRef[];
-}
-
-const preparedItems = new WeakMap<ItemEntity, PreparedSignLanguageItem>();
-
-/**
- * Lift inline signing video out of an item's content into catalog cards.
- *
- * This is what lets an item work whether or not `accessibilityCatalogs` was
- * populated upstream — the same reason `SSMLExtractor` exists for spoken
- * content. Extraction is independent of policy, deliberately: the config handed
- * to `item-player` must not vary with a learner's profile.
- *
- * When there is nothing to extract, the original item is returned **by
- * reference**, so items without signing video (nearly all of them) see no
- * config churn at all downstream.
- *
- * Memoized per item object: extraction parses markup, and item props are
- * re-read on every re-render.
- */
-export function prepareSignLanguageItem(
-	item: ItemEntity,
-): PreparedSignLanguageItem {
-	const cached = preparedItems.get(item);
-	if (cached) return cached;
-
-	let prepared: PreparedSignLanguageItem = {
-		item,
-		refs: collectSignLanguageCatalogRefs(item),
-	};
-
-	if (item?.config) {
-		const { catalogs, cleanedConfig } =
-			new SignLanguageExtractor().extractFromItemConfig(item.config);
-		if (catalogs.length > 0) {
-			const nextItem: ItemEntity = {
-				...item,
-				config: {
-					...cleanedConfig,
-					extractedCatalogs: [
-						...(item.config.extractedCatalogs ?? []),
-						...catalogs,
-					],
-				},
-			};
-			prepared = {
-				item: nextItem,
-				refs: collectSignLanguageCatalogRefs(nextItem),
-			};
-		}
-	}
-
-	preparedItems.set(item, prepared);
-	return prepared;
 }
 
 // ----------------------------------------------------------------------------

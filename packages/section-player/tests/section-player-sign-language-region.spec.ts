@@ -4,11 +4,11 @@ import { expect, test, type Page } from "@playwright/test";
  * E2E tests for the item card's catalog media region, rendering signed (ASL)
  * alternates.
  *
- * The unit tests cover extraction, payload validation, strict sign-language
- * matching and policy precedence in isolation. What only a browser can prove is
- * the composition: that both halves of availability are enforced together, that
- * the region lands beside the item content without the item player noticing, and
- * that the divider is operable from the keyboard.
+ * The unit tests cover content discovery, payload validation, strict
+ * sign-language matching and policy precedence in isolation. What only a browser
+ * can prove is the composition: that both halves of availability are enforced
+ * together, that the region lands beside the item content without the item player
+ * noticing, and that the divider is operable from the keyboard.
  *
  * The demo bundles a public-domain ASL recording (see
  * `apps/section-demos/static/demo-assets/sign-language/README.md`), so playback
@@ -23,11 +23,9 @@ const GRANTED_PATH =
 const NOT_GRANTED_PATH =
 	"/sign-language?page=signing-not-granted&mode=candidate&layout=splitpane";
 
-const INLINE_PROMPT =
-	"A plant absorbs carbon dioxide and releases oxygen. What process is this?";
-const NO_SIGNING_PROMPT = "Which gas do plants take in during photosynthesis?";
 const AUTHORED_PROMPT =
 	"Where in a plant cell does photosynthesis mainly happen?";
+const NO_SIGNING_PROMPT = "Which gas do plants take in during photosynthesis?";
 
 async function gotoDemo(page: Page, path: string) {
 	await page.goto(path, { waitUntil: "networkidle" });
@@ -35,7 +33,7 @@ async function gotoDemo(page: Page, path: string) {
 		state: "attached",
 	});
 	// The PIE elements load asynchronously; poll for rendered prompt text.
-	await expect(page.getByText(INLINE_PROMPT)).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText(AUTHORED_PROMPT)).toBeVisible({ timeout: 30_000 });
 }
 
 function itemCard(page: Page, itemId: string) {
@@ -54,7 +52,7 @@ test.describe("sign-language region — availability", () => {
 	}) => {
 		await gotoDemo(page, GRANTED_PATH);
 
-		const region = mediaRegion(page, "asl-q1-inline");
+		const region = mediaRegion(page, "asl-q1-authored");
 		await expect(region).toBeVisible();
 		// The accessible name says which language, not "video".
 		await expect(
@@ -69,7 +67,7 @@ test.describe("sign-language region — availability", () => {
 
 	test("decodes and plays the bundled clip", async ({ page }) => {
 		await gotoDemo(page, GRANTED_PATH);
-		const video = mediaRegion(page, "asl-q1-inline").locator("video");
+		const video = mediaRegion(page, "asl-q1-authored").locator("video");
 		await expect(video).toBeVisible();
 
 		// The region sets preload="metadata", so readyState climbs to HAVE_METADATA
@@ -101,16 +99,6 @@ test.describe("sign-language region — availability", () => {
 			.toBeGreaterThan(0);
 	});
 
-	test("resolves an authored catalog card the same way as extracted markup", async ({
-		page,
-	}) => {
-		await gotoDemo(page, GRANTED_PATH);
-		await expect(page.getByText(AUTHORED_PROMPT)).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(mediaRegion(page, "asl-q3-authored")).toBeVisible();
-	});
-
 	test("leaves no dead affordance on an item with no signing content", async ({
 		page,
 	}) => {
@@ -126,23 +114,22 @@ test.describe("sign-language region — availability", () => {
 	}) => {
 		await gotoDemo(page, NOT_GRANTED_PATH);
 		await expect(page.locator('[data-region="media"]')).toHaveCount(0);
-		// And the signing video is not visible as ordinary item content either —
-		// extraction moved it into a catalog regardless of eligibility.
-		await expect(itemCard(page, "asl-q1-inline").locator("video")).toHaveCount(
-			0,
-		);
+		// And no signing video renders as ordinary item content either. The clip
+		// lives only on the catalog card, so an ungranted learner has nothing to
+		// see — the failure mode a render-time lift out of markup would reintroduce.
+		await expect(
+			itemCard(page, "asl-q1-authored").locator("video"),
+		).toHaveCount(0);
 	});
 
 	test("keeps the English content it translates visible alongside the signing", async ({
 		page,
 	}) => {
 		await gotoDemo(page, GRANTED_PATH);
-		const card = itemCard(page, "asl-q1-inline");
+		const card = itemCard(page, "asl-q1-authored");
 		await expect(card.locator('[data-region="content"]')).toBeVisible();
-		await expect(card.getByText(INLINE_PROMPT)).toBeVisible();
-		await expect(
-			card.getByText("Photosynthesis", { exact: true }),
-		).toBeVisible();
+		await expect(card.getByText(AUTHORED_PROMPT)).toBeVisible();
+		await expect(card.getByText("Chloroplast", { exact: true })).toBeVisible();
 	});
 });
 
@@ -182,7 +169,7 @@ test.describe("sign-language region — reactive stability", () => {
 		page.on("pageerror", (error) => pageErrors.push(error.message));
 
 		await gotoDemo(page, GRANTED_PATH);
-		await expect(mediaRegion(page, "asl-q1-inline")).toBeVisible();
+		await expect(mediaRegion(page, "asl-q1-authored")).toBeVisible();
 		// Let any loop run: the depth limit is reached in well under a second, so a
 		// settled page stays settled while an unsettled one has already blown up.
 		await page.waitForTimeout(3_000);
@@ -216,9 +203,9 @@ test.describe("sign-language region — layout and resize", () => {
 		page,
 	}) => {
 		await gotoDemo(page, GRANTED_PATH);
-		const card = itemCard(page, "asl-q1-inline");
+		const card = itemCard(page, "asl-q1-authored");
 		const content = await card.locator('[data-region="content"]').boundingBox();
-		const media = await mediaRegion(page, "asl-q1-inline").boundingBox();
+		const media = await mediaRegion(page, "asl-q1-authored").boundingBox();
 		expect(content).not.toBeNull();
 		expect(media).not.toBeNull();
 		// To the right of the content, and vertically overlapping it.
@@ -230,7 +217,7 @@ test.describe("sign-language region — layout and resize", () => {
 		page,
 	}) => {
 		await gotoDemo(page, GRANTED_PATH);
-		const card = itemCard(page, "asl-q1-inline");
+		const card = itemCard(page, "asl-q1-authored");
 		const divider = card.getByRole("separator", {
 			name: "Resize question and media panels",
 		});
@@ -240,7 +227,7 @@ test.describe("sign-language region — layout and resize", () => {
 		const before = Number(await divider.getAttribute("aria-valuenow"));
 		const widthBefore = (await mediaRegion(
 			page,
-			"asl-q1-inline",
+			"asl-q1-authored",
 		).boundingBox())!.width;
 
 		await divider.focus();
@@ -251,7 +238,7 @@ test.describe("sign-language region — layout and resize", () => {
 		await expect
 			.poll(
 				async () =>
-					(await mediaRegion(page, "asl-q1-inline").boundingBox())!.width,
+					(await mediaRegion(page, "asl-q1-authored").boundingBox())!.width,
 			)
 			.toBeGreaterThan(widthBefore);
 

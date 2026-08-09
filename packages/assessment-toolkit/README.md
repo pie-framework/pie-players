@@ -787,7 +787,6 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
-- **SignLanguageExtractor**: The same, for inline `data-sign-language` video regions
 - **ThemeProvider**: Consistent accessibility theming
 
 ### ✅ QTI 3.0 Standard Access Features
@@ -1098,19 +1097,13 @@ item.config.extractedCatalogs = result.catalogs;
 catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
-### SignLanguageExtractor
+### Sign-language cards
 
-The signing counterpart of `SSMLExtractor`, with the same shape: it lifts
-`data-sign-language` video regions out of item content into `sign-language`
-cards, removes the video from the visible markup, and docks each card on the
-content it translates via `data-catalog-idref` (never overwriting one already
-there). Section-player's item card runs this itself on mount, so inline signing
-markup works without an import step.
-
-```typescript
-const { catalogs, cleanedConfig } =
-  new SignLanguageExtractor().extractFromItemConfig(item.config);
-```
+Signed alternates have no extractor and deliberately so: a `sign-language` card is
+authored or written by an importer, never lifted out of item markup at render
+time. One such lift existed and was removed — nothing produced the inline form,
+and a runtime that could not parse the markup left the video in the visible
+content, showing the accommodation to every learner regardless of eligibility.
 
 Whether a card describes a playable signed alternate is decided in one place,
 `resolveSignLanguageMedia` — a payload with no usable source resolves to `null`

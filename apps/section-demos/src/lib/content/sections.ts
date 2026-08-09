@@ -510,10 +510,10 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Validates that signing shows only when the item carries a matching sign-language catalog card AND policy grants eligibility — both halves required, neither a default.",
 		whatMakesItTick: [
-			"The first item authors its signing video inline with `data-sign-language`; the runtime extractor lifts it into a catalog card, the signing counterpart of `<speak>` SSML.",
-			"The third item carries an authored `accessibilityCatalogs` card with a typed media payload — the shape an importer writes — proving both paths land in the same region.",
+			"A signed alternate arrives only as a catalog card. The first item authors one by hand on `accessibilityCatalogs` with a typed media payload; nothing lifts a signing video out of item markup at render time.",
+			"The second item carries no signing content and shows no region, because an affordance where no content exists is a dead affordance.",
 			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
-			"The fourth item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
+			"The third item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
 			"The bundled clip is a real public-domain ASL recording that does not sign these prompts — a stand-in, since ASL video production and hosting are host-owned. See `static/demo-assets/sign-language/README.md`.",
 		],
 		sections: [

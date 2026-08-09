@@ -139,12 +139,14 @@ rendering, then pass the cleaned config and `config.extractedCatalogs` to the
 player. The runtime registers `extractedCatalogs` when shells mount, but it does
 not invoke extraction during shell registration.
 
-`SignLanguageExtractor` is its counterpart for signed content: it lifts
-`data-sign-language` video regions into `sign-language` cards, removes the video
-from visible markup, and docks the card on the content it translates. Unlike SSML
-extraction, section-player runs this one itself when an item card mounts, so an
-item authored with inline signing markup works without an import step. Both write
-to `config.extractedCatalogs` and neither knows about the other.
+Signed content has no equivalent. A `sign-language` card is authored or written
+by an importer, never lifted out of markup at render time: a counterpart to
+`SSMLExtractor` was implemented and removed, because nothing produced the inline
+form — the Learnosity transform writes `accessibilityCatalogs` directly — and a
+runtime that failed to parse the markup left the video in the visible content,
+showing the accommodation to every learner. Inline `<speak>` earns its extractor
+because it is real authored content PIE does not control; inline signing video is
+not.
 
 #### Why Extraction?
 

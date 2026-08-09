@@ -462,8 +462,7 @@ export class SSMLExtractor {
 					// which is also why an existing value is never replaced: the
 					// reference names a whole card array, so overwriting it to win the
 					// spoken type would take that node's braille, simplified-language and
-					// sign-language cards down with it. `SignLanguageExtractor` follows
-					// the same rule.
+					// sign-language cards down with it.
 					//
 					// Either way the catalog is still emitted, so a consumer resolving
 					// through the item's catalog set finds it. What an undocked catalog

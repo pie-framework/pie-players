@@ -8,22 +8,20 @@ import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
  * `signLanguage` PNP support. The two pages here vary one half each so the
  * difference is visible side by side:
  *
- *   - "Signing granted"  — PNP grants `signLanguage`. The first item carries an
- *     inline signing video and shows the media region; the second carries none
- *     and shows nothing, because an affordance where no content exists is a dead
+ *   - "Signing granted"  — PNP grants `signLanguage`. The first item carries a
+ *     signing card and shows the media region; the second carries none and shows
+ *     nothing, because an affordance where no content exists is a dead
  *     affordance.
  *   - "Signing not granted" — same content, no grant. Neither item shows the
- *     region, and the signing video is not visible as item content either: in
- *     PIE the video is an accommodation the toolkit gates, not unconditional
- *     item content.
+ *     region, and no signing video appears as item content either: in PIE the
+ *     video is catalog data the toolkit gates, never unconditional item content.
  *
- * Three authoring paths reach the same region. The first item authors the video
- * inline via `data-sign-language`, which the runtime extractor lifts into a
- * catalog card (the signing counterpart of `<speak>` SSML). The third authors the
- * card directly on `accessibilityCatalogs`, the shape an importer writes. The
- * fourth is not authored at all — it is real importer output, committed verbatim,
- * so the demo shows what an import actually produces rather than what we believe
- * it produces.
+ * A signed alternate reaches the region one way: as a catalog card. One item here
+ * authors one by hand on `accessibilityCatalogs`; the rest are real importer
+ * output, committed verbatim, so the demo shows what an import actually produces
+ * rather than what we believe it produces. There is no third path — nothing lifts
+ * a signing video out of item markup at render time, so a `<video>` left in a
+ * prompt stays ordinary content and is shown to every learner.
  *
  * The bundled clip is a real ASL recording but it does not sign these prompts —
  * it stands in for a translation so playback is exercisable. See
@@ -39,39 +37,6 @@ const CLIP = "/demo-assets/sign-language/cdc-asl-handwashing.webm";
  * test that asserts playback.
  */
 const CLIP_TYPE = "video/webm";
-
-const inlineSigningItem = {
-	identifier: "asl-q1-inline",
-	required: true,
-	item: {
-		id: "asl-q1-inline",
-		name: "Inline signing markup",
-		baseId: "asl-q1-inline",
-		version: { major: 1, minor: 0, patch: 0 },
-		config: {
-			markup: '<multiple-choice id="asl-q1"></multiple-choice>',
-			elements: {
-				"multiple-choice": "@pie-element/multiple-choice@latest",
-			},
-			models: [
-				{
-					id: "asl-q1",
-					element: "multiple-choice",
-					prompt:
-						`<div><p>A plant absorbs carbon dioxide and releases oxygen. What process is this?</p>` +
-						`<video data-sign-language="ase" poster="${POSTER}">` +
-						`<source src="${CLIP}" type="${CLIP_TYPE}"></video></div>`,
-					choiceMode: "radio",
-					choices: [
-						{ value: "a", label: "Respiration", correct: false },
-						{ value: "b", label: "Photosynthesis", correct: true },
-						{ value: "c", label: "Transpiration", correct: false },
-					],
-				},
-			],
-		},
-	},
-};
 
 const noSigningItem = {
 	identifier: "asl-q2-none",
@@ -104,18 +69,19 @@ const noSigningItem = {
 };
 
 const authoredCardItem = {
-	identifier: "asl-q3-authored",
+	identifier: "asl-q1-authored",
 	required: true,
 	item: {
-		id: "asl-q3-authored",
+		id: "asl-q1-authored",
 		name: "Authored catalog card",
-		baseId: "asl-q3-authored",
+		baseId: "asl-q1-authored",
 		version: { major: 1, minor: 0, patch: 0 },
-		// The shape an importer writes: a typed payload on the item's own
-		// catalogs, docked to the prompt via `data-catalog-idref`.
+		// Authored by hand: a typed payload on the item's own catalogs, docked to
+		// the prompt via `data-catalog-idref`. The imported items below carry
+		// theirs at model level instead, which resolves the same way.
 		accessibilityCatalogs: [
 			{
-				identifier: "asl-q3-prompt",
+				identifier: "asl-q1-prompt",
 				cards: [
 					{
 						catalog: "sign-language",
@@ -126,11 +92,14 @@ const authoredCardItem = {
 						payload: {
 							media: {
 								version: 1 as const,
-								id: "asl-q3-prompt-media",
+								id: "asl-q1-prompt-media",
 								kind: "video" as const,
 								sources: [{ src: CLIP, type: CLIP_TYPE }],
 								poster: POSTER,
-								label: "Signed prompt",
+								// No `label`, deliberately: the region then names the
+								// language itself ("American Sign Language translation")
+								// rather than saying "video", and the e2e spec pins that
+								// fallback. An authored label overrides it.
 								lang: "ase",
 							},
 						},
@@ -139,16 +108,16 @@ const authoredCardItem = {
 			},
 		],
 		config: {
-			markup: '<multiple-choice id="asl-q3"></multiple-choice>',
+			markup: '<multiple-choice id="asl-q1"></multiple-choice>',
 			elements: {
 				"multiple-choice": "@pie-element/multiple-choice@latest",
 			},
 			models: [
 				{
-					id: "asl-q3",
+					id: "asl-q1",
 					element: "multiple-choice",
 					prompt:
-						'<p data-catalog-idref="asl-q3-prompt">Where in a plant cell does photosynthesis mainly happen?</p>',
+						'<p data-catalog-idref="asl-q1-prompt">Where in a plant cell does photosynthesis mainly happen?</p>',
 					choiceMode: "radio",
 					choices: [
 						{ value: "a", label: "Chloroplast", correct: true },
@@ -232,9 +201,8 @@ export const demoSignLanguageGrantedSection: AssessmentSection = {
 		activateAtInit: [],
 	},
 	assessmentItemRefs: [
-		inlineSigningItem,
-		noSigningItem,
 		authoredCardItem,
+		noSigningItem,
 		importedDemoItemRef,
 		...importedItemRefs,
 	],
@@ -250,9 +218,8 @@ export const demoSignLanguageNotGrantedSection: AssessmentSection = {
 		activateAtInit: [],
 	},
 	assessmentItemRefs: [
-		inlineSigningItem,
-		noSigningItem,
 		authoredCardItem,
+		noSigningItem,
 		importedDemoItemRef,
 		...importedItemRefs,
 	],

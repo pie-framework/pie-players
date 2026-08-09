@@ -40,15 +40,15 @@ const IMPORTED_ITEM_ID = "asl-imported-demo";
 const CATALOG_ID = "00000000-0000-4000-8000-000000000881";
 const VIDEO_URL = "/demo-assets/sign-language/cdc-asl-handwashing.webm";
 const IMPORTED_PROMPT = "How many seconds does she spend scrubbing in one day?";
-const INLINE_PROMPT =
-	"A plant absorbs carbon dioxide and releases oxygen. What process is this?";
+/** The demo's first item, waited on so the section has finished its first paint. */
+const FIRST_PROMPT = "Where in a plant cell does photosynthesis mainly happen?";
 
 async function gotoDemo(page: Page, path: string) {
 	await page.goto(path, { waitUntil: "networkidle" });
 	await page.waitForSelector("pie-section-player-splitpane", {
 		state: "attached",
 	});
-	await expect(page.getByText(INLINE_PROMPT)).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText(FIRST_PROMPT)).toBeVisible({ timeout: 30_000 });
 	// The imported item is late in the section and mounts after the earlier ones;
 	// scroll it in so its element bundle finishes rendering before assertions.
 	await itemCard(page).scrollIntoViewIfNeeded();

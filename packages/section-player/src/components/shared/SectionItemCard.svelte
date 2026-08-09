@@ -45,11 +45,11 @@
 	import SectionItemMediaRegion from "./SectionItemMediaRegion.svelte";
 	import {
 		clampMediaRegionPercent,
+		collectSignLanguageCatalogRefs,
 		MEDIA_REGION_DEFAULT_PERCENT,
 		MEDIA_REGION_MAX_PERCENT,
 		MEDIA_REGION_MIN_PERCENT,
 		MEDIA_REGION_STACK_BREAKPOINT_PX,
-		prepareSignLanguageItem,
 		resolveSignLanguageAlternate,
 		SIGN_LANGUAGE_FEATURE_ID,
 		type ResolvedSignLanguageAlternate,
@@ -135,20 +135,11 @@
 	// ------------------------------------------------------------------
 
 	/**
-	 * Inline signing video is lifted out of the item's content into catalog
-	 * cards, so an item renders signing whether or not `accessibilityCatalogs`
-	 * was populated upstream. Identity-preserving: an item with no signing
-	 * markup comes back by reference, so nothing downstream sees churn.
+	 * Which of the item's catalogs carry signing cards. The card is never rewritten
+	 * to produce them: a signed alternate arrives as an authored or imported
+	 * catalog, so the config handed to the item player is the one it was given.
 	 */
-	const prepared = $derived(prepareSignLanguageItem(item));
-	const effectiveItem = $derived(prepared.item);
-	// Only substitute the config when extraction actually changed it — the
-	// item-player must not see a new object on every re-render.
-	const effectivePlayerParams = $derived(
-		prepared.item === item
-			? playerParams
-			: { ...playerParams, config: prepared.item.config },
-	);
+	const signLanguageRefs = $derived(collectSignLanguageCatalogRefs(item));
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Bumped from the coordinator's policy-change stream so the eligibility
@@ -197,7 +188,7 @@
 	const catalogOwnerContext = $derived.by((): CatalogOwnerContext =>
 		catalogOwnerContextFor({
 			kind: "item",
-			itemId: effectiveItem?.id ?? "",
+			itemId: item?.id ?? "",
 			canonicalItemId,
 			assessmentId: runtimeContext?.assessmentId,
 			sectionId: runtimeContext?.sectionId,
@@ -228,10 +219,10 @@
 	function computeSignLanguageAlternate(): ResolvedSignLanguageAlternate | null {
 		if (!signLanguageGranted) return null;
 		const resolver = runtimeContext?.catalogResolver;
-		if (!resolver || prepared.refs.length === 0) return null;
+		if (!resolver || signLanguageRefs.length === 0) return null;
 		return resolveSignLanguageAlternate({
 			resolver,
-			refs: prepared.refs,
+			refs: signLanguageRefs,
 			ownerContext: catalogOwnerContext,
 			requestedSignLang,
 		});
@@ -374,10 +365,10 @@
 
 <div bind:this={contextAnchor} class="pie-section-player-item-card-anchor" aria-hidden="true"></div>
 <pie-item-shell
-	item-id={effectiveItem.id}
+	item-id={item.id}
 	canonical-item-id={canonicalItemId}
 	content-kind="assessment-item"
-	item={effectiveItem}
+	item={item}
 >
 	<div
 		class="pie-section-player-content-card"
@@ -418,7 +409,7 @@
 			>
 				<svelte:element
 					this={effectiveResolvedPlayerTag}
-					use:effectivePlayerAction={effectivePlayerParams}
+					use:effectivePlayerAction={playerParams}
 				></svelte:element>
 			</div>
 			{#if mediaDividerVisible}

@@ -6,8 +6,7 @@
  * without a DOM is here.
  */
 
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 
 import {
 	AccessibilityCatalogResolver,
@@ -26,24 +25,8 @@ import {
 	MEDIA_REGION_MAX_PERCENT,
 	MEDIA_REGION_MIN_PERCENT,
 	mediaRegionPercentFromDrag,
-	prepareSignLanguageItem,
 	resolveSignLanguageAlternate,
 } from "../src/components/shared/section-item-media.js";
-
-beforeAll(() => {
-	if (
-		typeof (globalThis as unknown as { window?: unknown }).window ===
-		"undefined"
-	) {
-		GlobalRegistrator.register();
-	}
-});
-
-afterAll(() => {
-	if (GlobalRegistrator.isRegistered) {
-		GlobalRegistrator.unregister();
-	}
-});
 
 const OWNER: CatalogOwnerContext = {
 	ownerKind: "itemModel",
@@ -258,80 +241,6 @@ describe("resolveSignLanguageAlternate", () => {
 				ownerContext: OWNER,
 			}),
 		).toBeNull();
-	});
-});
-
-describe("prepareSignLanguageItem", () => {
-	test("returns the item by reference when there is nothing to extract", () => {
-		const original = item({
-			config: {
-				markup: "<p>Plain</p>",
-				elements: {},
-				models: [
-					{ id: "q1", element: "pie-multiple-choice", prompt: "<p>Hi</p>" },
-				],
-			},
-		});
-		const prepared = prepareSignLanguageItem(original);
-		expect(prepared.item).toBe(original);
-		expect(prepared.refs).toEqual([]);
-	});
-
-	test("lifts inline signing markup into catalogs and exposes its refs", () => {
-		const original = item({
-			config: {
-				markup: "",
-				elements: {},
-				models: [
-					{
-						id: "q1",
-						element: "pie-multiple-choice",
-						prompt:
-							'<p>Prompt<video data-sign-language="ase" src="asl.mp4"></video></p>',
-					},
-				],
-			},
-		});
-		const prepared = prepareSignLanguageItem(original);
-		expect(prepared.item).not.toBe(original);
-		expect(prepared.refs).toEqual([{ catalogId: "auto-sign-prompt-q1-0" }]);
-		expect(prepared.item.config.models[0].prompt).not.toContain("<video");
-		// The caller's item is never mutated.
-		expect(original.config.models[0].prompt).toContain("<video");
-	});
-
-	test("keeps catalogs that were already authored on the item", () => {
-		const original = item({
-			config: {
-				markup: "",
-				elements: {},
-				extractedCatalogs: [signCatalog("authored", "ase", "authored.mp4")],
-				models: [
-					{
-						id: "q1",
-						element: "pie-multiple-choice",
-						prompt:
-							'<p><video data-sign-language="ase" src="asl.mp4"></video></p>',
-					},
-				],
-			},
-		});
-		expect(
-			prepareSignLanguageItem(original).refs.map((ref) => ref.catalogId),
-		).toEqual(["authored", "auto-sign-prompt-q1-0"]);
-	});
-
-	test("is memoized per item, so repeated renders do not re-parse", () => {
-		const original = item({
-			config: {
-				markup: '<p><video data-sign-language="ase" src="asl.mp4"></video></p>',
-				elements: {},
-				models: [],
-			},
-		});
-		expect(prepareSignLanguageItem(original)).toBe(
-			prepareSignLanguageItem(original),
-		);
 	});
 });
 

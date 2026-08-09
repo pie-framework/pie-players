@@ -542,9 +542,9 @@ BSL exists, nothing renders rather than a language the learner may not follow.
 has to be granted. See
 [Sign Language (ASL) Support](../prds/sign-language-asl-support.md).
 
-Authors can also skip catalogs entirely and mark the video inline with
-`data-sign-language="ase"`; the runtime extractor lifts it into a card and docks
-it via `data-catalog-idref`, the same way `<speak>` SSML becomes a spoken card.
+A signing video left in a prompt is *not* an alternative to a card. Nothing lifts
+it out at render time, so it renders as ordinary content to every learner,
+ungated. Signed alternates only ever arrive as catalog cards.
 
 ### Q: Can I update catalogs at runtime?
 

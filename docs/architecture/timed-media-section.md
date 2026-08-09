@@ -6,9 +6,9 @@ Tracking: this workstream is deliberately not tracked in an issue tracker. This 
 
 ## Current State
 
-Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name.
+Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary and in shipped media-rendering precedent — see [Revalidation, 2026-08-09](#revalidation-2026-08-09).
 
-Four things changed underneath this note. They are open decisions, not corrections to the direction.
+Four things changed underneath this note as of 2026-08-05. They are open decisions, not corrections to the direction.
 
 **1. Assessment-player has no data-driven renderer selection.** The worked example below assumes assessment-player reads the section and chooses `pie-section-player-timed-media`. That seam does not exist. `AssessmentPlayerDefaultElement` takes a hardcoded `sectionPlayerLayout: "splitpane" | "vertical"` attribute and imports only those two layouts; tabbed and kernel-host are not reachable through assessment-player at all, and nothing dispatches on section data. Either a `sectionType`-driven dispatch is a prerequisite for the worked example, or timed media targets the standalone section-player path where the host picks the tag directly — which works today. A PRD should choose deliberately rather than inherit the assumption.
 
@@ -26,6 +26,20 @@ Two smaller notes for whoever picks this up:
 Two workstreams landed since this note was written that a video stimulus surface must consume rather than re-invent: the broad theming contract (`../prds/pie-727-broad-theming-contract.md` and the token inventory) for media control styling, and the line-reader window view plus inline TTS work for media-control focus and reading-tool coordination. Both postdate [`../prds/shared-contracts/accessibility-runtime-patterns.md`](../prds/shared-contracts/accessibility-runtime-patterns.md).
 
 Added 2026-08-07: sign-language (ASL) video came up as a candidate use for this section flavor and was scoped out into its own contract. Section-player is still the runtime host for signing — via the existing accessibility-catalog rail, not a new section flavor. See [Sign Language Is Not This Section Flavor](#sign-language-is-not-this-section-flavor) and [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
+
+### Revalidation, 2026-08-09
+
+The sign-language work (PIE-880 in `pie-players`, PIE-881 in `pie-api-aws`) left this note's direction intact — the fence in [Sign Language Is Not This Section Flavor](#sign-language-is-not-this-section-flavor) held, and signing shipped through the catalog rail rather than as a section flavor. It moved four things this note describes, none of them a reversal.
+
+**1. The media vocabulary is ratified, and has two shipped consumers rather than one.** [`../prds/shared-contracts/media-asset-contract.md`](../prds/shared-contracts/media-asset-contract.md) is `Ready` as of 2026-08-09, ratified against this note's own proposed shapes before the release that first publishes the types. Two results bind this side: a cue range is `MediaFragmentRange { startSeconds, endSeconds? }` carried beside the asset, and `video-stimulus` needs nothing `MediaAssetRef` lacks — every field of [`VideoStimulusModel`](#stimulus-api-expectations) below maps onto a shipped one. The second consumer is `SpokenAudioCardPayload`, recorded audio as a `spoken` alternate, which exercised the same shape for `kind: "audio"` without a field change. So the media half of this workstream is inheritance, not design. What remains for the section contract is to say what a cue range *means* — the range type deliberately carries no playback semantics, and a cue's "window in which this cue is active" is not the signing consumer's "play only this slice".
+
+**2. A shared media validation layer exists and must be consumed, not re-implemented.** `assessment-toolkit/src/services/catalog-media.ts` holds the source-scheme allow-list, source normalization, dedupe by `src`, and fragment normalization, extracted when the second media consumer arrived. Authored media URLs are wire-facing and untrusted; `video-stimulus` gets its validation from here rather than writing a second allow-list.
+
+**3. PIE now ships a media player, which changes what the Video.js v10 decision argues against.** Signing renders through a deliberately minimal native `<video controls>` wrapper in `section-player/src/components/shared/SectionItemMediaRegion.svelte`, chosen because the clips are seconds long and a dependency on an unbuilt element buys nothing. That is not a reversal of v10 as the target for a real stimulus player — a section-scale stimulus needs seek gating, caption UI, and playback policy that a bare `<video>` does not give. It does mean [Video Player Dependency Decision](#video-player-dependency-decision) no longer argues against nothing: the dependency has to beat a working native baseline, and the two must not both end up rendering learner-facing media on different stacks without a stated reason.
+
+**4. Three accessibility requirements below have shipped answers, and one has a shipped refusal.** See [Accessibility and Toolkit Implications](#accessibility-and-toolkit-implications), where each is now attributed. The refusal is the useful one for this side: signing has no equivalent of `data-tts-suppress` and none should be added, because suppression is per content node while a signed alternate is one video per item. Cue-scoped suppression, if it ever comes up here, inherits that reasoning rather than the read-aloud precedent.
+
+One addition, not a correction: the vocabulary now has a **producer**. The `pie-api-aws` Learnosity importer writes `accessibilityCatalogs` carrying `MediaAssetRef`-shaped media, which has already constrained the contract once — `transcript` had to join the known catalog types because the importer emits it. [QTI 3 Mapping](#qti-3-mapping) should be read with a live import path in mind rather than as a purely prospective concern.
 
 ## Context
 
@@ -371,6 +385,13 @@ Timed-media delivery must satisfy WCAG 2.2 AA expectations and work with section
 - seek-lock policy must not trap keyboard or assistive-technology users;
 - high-contrast and zoom layouts must support the video, cue list, transcript, and child item region.
 
+Four of these have answers as of 2026-08-09, from the signing and recorded-audio work rather than from this workstream. Adopt them rather than re-deciding them:
+
+- **TTS versus media playback.** The action the learner just took wins: starting one pauses the other. Settled in [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md) and implemented for both catalog media paths.
+- **Media control styling.** Comes from the broad theming contract through three `--pie-section-player-item-media-*` tokens; the region stacks and its divider withdraws below a 560px card width. A timed-media stimulus is a different scale and will need its own tokens, but the token family and the naming pattern already exist.
+- **Playback failure.** A clip that will not play degrades to the docked node's `content` card. The general rule this establishes — a media accommodation falls back to its text equivalent rather than failing silently — applies to a stimulus that will not load, though a stimulus has no `content` card to fall back to and this note owes that case an answer.
+- **Suppression.** There is no signing equivalent of `data-tts-suppress`, deliberately: suppression is per content node, a signed alternate is one video per item, and the only available rule would withhold a deaf candidate's whole translation over one word. Read-aloud suppression itself did ship, as `data-tts-suppress` on the content element, mapping QTI's `data-qti-suppress-tts`. If cue-scoped suppression comes up here, the signing reasoning is the closer precedent.
+
 Toolkit placement needs later PRD detail. At minimum, the timed-media section variant should reuse section-level tool coordination rather than inventing a parallel tool system.
 
 ## Video Player Dependency Decision
@@ -400,6 +421,8 @@ Fallback context:
 
 The key architectural rule is dependency isolation: the timed-media section player talks to the PIE-owned `video-stimulus` API, not directly to Video.js.
 
+Revised 2026-08-09: **PIE now ships learner-facing media on a native `<video>` element**, so this decision has a baseline to beat. The signing region (`SectionItemMediaRegion.svelte`) is a deliberately minimal native wrapper with `controls`, chosen because the clips are seconds long and depending on an unbuilt element bought nothing; the reasoning is recorded in [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md). Two things follow. The v10 evaluation must be argued against native-plus-custom-controls rather than against nothing, and the features that justify it are the ones a stimulus needs and a signing clip does not: seek-range gating, caption and transcript UI, quality/track selection, and a control surface a playback policy can disable. And if v10 lands, the two paths should not silently diverge — either the signing region stays native by stated decision, or it migrates; what should not happen is two media stacks in one player because nobody revisited the question.
+
 ## Sign Language Is Not This Section Flavor
 
 Sign-language (ASL) delivery looks adjacent to this note — it is video, it is accessibility-driven, and it needs a media player — and it is a different contract. Recorded 2026-08-07 after review of real ASL-bearing content; the full contract is [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
@@ -425,6 +448,8 @@ So signing is an **item-level alternate representation** — many short recordin
 Two things genuinely are shared and should not be duplicated: the [media asset contract](../prds/shared-contracts/media-asset-contract.md), and time-ranged playback. QTI 3 expresses signing time slices with Media Fragments URIs so one recording can serve several content nodes — the same "video plus timestamps" primitive this note needs, minus all the cue policy. If both contracts land, share that primitive rather than writing it twice.
 
 Updated 2026-08-08: signing landed first, so both are now in code rather than pending — `MediaAssetRef` and friends in `@pie-players/pie-players-shared/types`, with the time range as a separate `MediaFragmentRange` carried beside the asset rather than inside it, since a range describes one *use* of a recording. Cue ranges should reuse it in that position. The sequencing worry in the shared-contracts note has partly resolved itself: the vocabulary exists, and this side's job is to ratify or extend it, not to write a second one.
+
+Updated 2026-08-09: that ratification happened, and the answer was to inherit unchanged. [`../prds/shared-contracts/media-asset-contract.md`](../prds/shared-contracts/media-asset-contract.md) is `Ready`, checked against this note's proposed `VideoStimulusModel` and `cues[].startTime` shapes; a cue range fits `MediaFragmentRange` in both its point and ranged forms, and a stimulus needs no field `MediaAssetRef` lacks. A second catalog consumer arrived in the meantime — recorded audio as a `spoken` alternate — so the shape has carried two media kinds and two accommodations without changing. This side no longer has a media-vocabulary decision to make; it has a cue-semantics one, since the range type carries no playback meaning and a cue's activation window is not a slice to play.
 
 ## Rejected Alternatives
 

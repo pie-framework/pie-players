@@ -10,7 +10,7 @@ Related architecture:
 
 - [Timed media section architecture](../architecture/timed-media-section.md)
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
-- [Media asset contract](./shared-contracts/media-asset-contract.md) — now a hard prerequisite, see below
+- [Media asset contract](./shared-contracts/media-asset-contract.md) — prerequisite, satisfied 2026-08-09; see below
 - [Interaction event contract](./shared-contracts/interaction-event-contract.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
@@ -47,6 +47,12 @@ Noted 2026-08-07. Sign-language support is starting around the same time as this
 The specific piece both need is a time range within an asset: Media Fragments for signing, where one recording serves several content nodes, and cue ranges here. Same primitive, two callers, so it gets designed once in the shared contract rather than twice.
 
 Updated 2026-08-08: signing moved first, so the vocabulary now exists in code — `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef` and `MediaFragmentRange` in `@pie-players/pie-players-shared/types`. That changes this prerequisite rather than removing it. Cue ranges should reuse `MediaFragmentRange` in the same position it holds for signing (beside the asset, not inside it — a range describes a *use* of an asset, not the asset), and anything this contract needs that the shipped types lack should extend them. What must not happen is a second media vocabulary growing beside the first because this side found the first one inconvenient.
+
+**Satisfied 2026-08-09.** `media-asset-contract` is `Ready`, ratified against this workstream's proposed shapes before the release that first publishes the types. Cue ranges fit `MediaFragmentRange` in both forms — a point cue omits `endSeconds`, a ranged cue carries it — and nothing a stimulus needs is missing from `MediaAssetRef`, so `video-stimulus` inherits the vocabulary rather than extending it. The `cues[].startTime` name in the architecture note becomes `startSeconds` to match.
+
+What this leaves for this PRD is narrower than a media contract and must not be skipped as though the ratification covered it: **cue-range semantics**. `MediaFragmentRange` deliberately carries no playback meaning. The two shipped consumers read it as "play only this slice" — the start offset applied as a Media Fragments URI, the end bound enforced by the player because browser support for it is inconsistent. A cue range means "the window during which this cue is active," which is not a slice to play and does not imply seeking. This PRD states that meaning for cues; it does not add a discriminant to the range type or fork it.
+
+Two media-handling facts also arrive as constraints rather than choices. Authored media URLs are validated by `assessment-toolkit/src/services/catalog-media.ts` — scheme allow-list, source normalization, dedupe by `src`, fragment normalization — and `video-stimulus` consumes it rather than writing a second allow-list. And `MediaAssetRef.version: 1` is a required literal, so anything this contract emits carries it.
 
 ## Package And Export Ownership
 

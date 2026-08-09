@@ -94,7 +94,7 @@ interface MediaFragmentRange {
 
 `MediaFragmentRange` is carried **beside** the asset by whatever references it, never inside `MediaAssetRef` or `MediaSource`: a range describes one *use* of a recording, and the same recording is meant to serve several content nodes. `SignLanguageCardPayload.fragment` and `SpokenAudioCardPayload.fragment` hold it today; timed-media cue ranges take the same position.
 
-The range carries no playback semantics, and consumers must not add any to it. The two shipped consumers read it as "play only this slice" — `applyMediaFragment` writes the start offset as a Media Fragments URI and the player enforces the end bound, because browser support for the end bound is inconsistent. A timed-media cue would read the same shape as "the window in which this cue is active," which is not a slice to play at all. Each consumer states what its range means; nothing gets a `mode` discriminant and nothing forks the type.
+The range carries no playback semantics, and consumers must not add any to it. The two shipped consumers read it as "play only this slice," and **the player enforces both bounds itself**: `applyMediaFragment` writes a Media Fragments URI, but that is a hint only — browsers honour the start offset inconsistently, so the signing region seeks explicitly on `loadedmetadata` (forward only, so it never fights a learner who already scrubbed), and they vary on the end bound, so it pauses on `timeupdate`. A timed-media cue would read the same shape as "the window in which this cue is active," which is not a slice to play at all. Each consumer states what its range means; nothing gets a `mode` discriminant and nothing forks the type.
 
 Which fields are required is declared per consumer rather than at the type level — see [Second Carrier](#second-carrier-accessibility-catalog-cards). Which accessibility fields are required by policy rather than by schema stays open, and is a policy question that does not move a field.
 
@@ -166,13 +166,15 @@ Required test coverage:
 - adapter round-trip fixtures once `../pie-qti` consumes this contract;
 - accessibility review evidence for any runtime UI that consumes the contract.
 
-What the two shipped consumers already cover, as of ratification: `sign-language-cards.test.ts` and `spoken-audio-cards.test.ts` exercise payload validation for `kind: "video"` and `kind: "audio"` including multiple sources with MIME types, and `accessibility-catalog-card-forms.test.ts` covers the `content`-versus-`payload` rule. Signing plays end to end in a browser under an e2e spec.
+What the two shipped consumers already cover, as of ratification: `sign-language-cards.test.ts` and `spoken-audio-cards.test.ts` exercise payload validation and the `content`-versus-`payload` rule, including rejection of an unsafe source scheme. `accessibility-catalog-card-forms.test.ts` covers something adjacent but distinct — form preference between a script card and a recording of it on the same node — not the payload shape. `section-item-media.test.ts` covers content discovery, strict sign-language matching and region sizing. Signing plays end to end in a browser under two specs, `section-player-sign-language-region.spec.ts` and `pie881-imported-asl-integration.spec.ts`, the second one on imported footage.
 
-Three gaps follow from that, and they are the coverage a third consumer would otherwise discover:
+Five gaps follow, and they are the coverage a third consumer would otherwise discover:
 
-- **`catalog-media.ts` has no direct test.** It is the shared validation layer — scheme allow-list, normalization, dedupe, fragment normalization — and is reached only through its two callers, so a rule that both callers happen not to exercise is untested. It is also the security-relevant file of the set.
-- **`tracks` and `transcript` are untested, because neither shipped consumer uses them.** They are meaningless for signing and unused for recorded audio, so the first real exercise will be `video-stimulus`. Their shape is ratified on inspection, not on use.
-- **`bitrate`, `thumbnail` and `durationSeconds` are likewise unread by any consumer.**
+- **`catalog-media.ts` has no direct test.** It is the shared validation layer — scheme allow-list, source normalization, dedupe by `src`, fragment normalization — reached only through its two callers, so a rule neither caller exercises is untested. It is also the security-relevant file of the set.
+- **Multi-source payloads are untested.** Every fixture in both consumers carries a single source, so `normalizeMediaSources`' dedupe-by-`src` path and any encoding negotiation are unexercised. Dedupe is not cosmetic: a duplicate `src` would throw Svelte's duplicate-key error in the region's `{#each}` and take the region down rather than degrade.
+- **`tracks` and `transcript` are untested, because neither shipped consumer uses them.** Meaningless for signing, unused for recorded audio, so the first real exercise is `video-stimulus`. Their shape is ratified on inspection, not on use.
+- **`bitrate`, `thumbnail` and `durationSeconds` are unread by any consumer.**
+- **`kind` validation is asymmetric.** `spoken-audio-cards.ts` rejects a card whose `media.kind` is not `"audio"` and reports why; `sign-language-cards.ts` does not check `kind` at all, so a card declaring `kind: "audio"` with a video URL renders in the signing region. Not a field change and not urgent — signing cards come from an importer that always writes `"video"` — but a third consumer should not read the shipped pair as a consistent precedent for how strictly to treat `kind`.
 
 Commands:
 
@@ -244,7 +246,7 @@ None of these moves a field or a field position, which is why they do not hold u
 
 Three questions are answered and recorded rather than left open. The first two were settled by the shipped signing consumer (2026-08-08):
 
-- **Where a time range lives.** Not in `MediaSource` and not in `MediaAssetRef`: a range is a property of *this use* of an asset, not of the asset or of one encoding of it, and the same recording is meant to serve several content nodes. It is a separate `MediaFragmentRange { startSeconds, endSeconds? }` carried beside the asset by whatever references it — `SignLanguageCardPayload.fragment` today. Timed-media cue ranges should reuse the type in the same position rather than nesting it inside the asset. Browsers honour the start offset when it is applied as a Media Fragments URI; the end offset is enforced by the player, because support for the end bound is inconsistent.
+- **Where a time range lives.** Not in `MediaSource` and not in `MediaAssetRef`: a range is a property of *this use* of an asset, not of the asset or of one encoding of it, and the same recording is meant to serve several content nodes. It is a separate `MediaFragmentRange { startSeconds, endSeconds? }` carried beside the asset by whatever references it — `SignLanguageCardPayload.fragment` today. Timed-media cue ranges should reuse the type in the same position rather than nesting it inside the asset. Corrected 2026-08-09 against the shipped region: the Media Fragments URI is written but treated as a hint for *both* bounds, not just the end. Browsers honour the start offset inconsistently too, so the player seeks explicitly once metadata loads and pauses on `timeupdate` at the end — an earlier reading of this line credited the URI with the start offset.
 - **Whether `MediaAssetRef` is the signing card payload.** Yes — `SignLanguageCardPayload` wraps it rather than restating media fields, and the required subset is declared per consumer as described above.
 
 And the third by the shipped shape itself:

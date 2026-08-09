@@ -462,6 +462,27 @@ export interface SignLanguageCardPayload {
 }
 
 /**
+ * Payload for a `spoken` catalog card that is a recording rather than a script.
+ *
+ * QTI 3 treats recorded audio and synthesized speech as the *same* support:
+ * both are `spoken`, and a card holds recorded audio through `qti-file-href`
+ * plus a MIME type. So this is not a new accommodation, it is the other form the
+ * existing one can take.
+ *
+ * A node commonly carries both this and a `content` card in the same language —
+ * APIP's pattern, which QTI's migration guidance keeps, because the script is
+ * both what the audio was generated from and the fallback for when the audio
+ * cannot play. Resolution picks between them with `CatalogLookupOptions.form`.
+ *
+ * No `kind` discriminant, for the same reason `SignLanguageCardPayload` has
+ * none: the card's `catalog` already says what this is.
+ */
+export interface SpokenAudioCardPayload {
+	media: MediaAssetRef;
+	fragment?: MediaFragmentRange;
+}
+
+/**
  * Structured payloads a catalog card may carry instead of a `content` string.
  *
  * Which member applies is decided by the card's `catalog`, not by a field
@@ -470,7 +491,9 @@ export interface SignLanguageCardPayload {
  * must do regardless, since catalog data is authored, wire-facing, and
  * untrusted.
  */
-export type CatalogCardPayload = SignLanguageCardPayload;
+export type CatalogCardPayload =
+	| SignLanguageCardPayload
+	| SpokenAudioCardPayload;
 
 /**
  * One alternate representation of a content node, keyed to it by

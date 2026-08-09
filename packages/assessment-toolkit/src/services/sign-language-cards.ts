@@ -26,6 +26,18 @@ import type {
 	MediaSource,
 	SignLanguageCardPayload,
 } from "@pie-players/pie-players-shared/types";
+import {
+	applyMediaFragment,
+	isSafeMediaSrc,
+	normalizeMediaFragment,
+	normalizeMediaSources,
+	trimmedOrUndefined,
+} from "./catalog-media.js";
+
+// Re-exported because `applyMediaFragment` is part of the toolkit's public
+// surface under this module's name; the implementation is shared with spoken
+// audio cards now that both forms reference media.
+export { applyMediaFragment };
 
 /** Catalog type token for signed alternates. Matches QTI 3's `support` value. */
 export const SIGN_LANGUAGE_CATALOG_TYPE = "sign-language";
@@ -79,70 +91,6 @@ type SignLanguageCardLike = {
 };
 
 /**
- * Media source URLs are handed to a `<video>` in the learner's browser. Only
- * schemes a media element can actually fetch are allowed; anything else is
- * dropped so an authored `javascript:` / `file:` URL cannot ride into the DOM.
- * Relative and protocol-relative URLs are allowed — host content is commonly
- * served from the same origin as the player.
- */
-const DISALLOWED_SRC_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
-const ALLOWED_SRC_SCHEMES = new Set(["http:", "https:", "data:", "blob:"]);
-
-function isSafeMediaSrc(raw: unknown): raw is string {
-	if (typeof raw !== "string") return false;
-	const src = raw.trim();
-	if (!src) return false;
-	// Relative ("/video.mp4", "video.mp4") and protocol-relative ("//cdn/x.mp4")
-	// forms carry no scheme to check and inherit the document's.
-	if (src.startsWith("//") || !DISALLOWED_SRC_SCHEME.test(src)) return true;
-	const scheme = src.slice(0, src.indexOf(":") + 1).toLowerCase();
-	return ALLOWED_SRC_SCHEMES.has(scheme);
-}
-
-function normalizeSources(raw: unknown): MediaSource[] {
-	if (!Array.isArray(raw)) return [];
-	const sources: MediaSource[] = [];
-	for (const entry of raw) {
-		if (!entry || typeof entry !== "object") continue;
-		const candidate = entry as Partial<MediaSource>;
-		if (!isSafeMediaSrc(candidate.src)) continue;
-		const source: MediaSource = { src: candidate.src.trim() };
-		if (typeof candidate.type === "string" && candidate.type.trim()) {
-			source.type = candidate.type.trim();
-		}
-		if (Number.isFinite(candidate.width)) source.width = candidate.width;
-		if (Number.isFinite(candidate.height)) source.height = candidate.height;
-		// Deduplicated by `src`, because the region renders `<source>` elements in a
-		// keyed `{#each}` keyed on exactly that: an authored card listing one URL
-		// twice — the same file under two MIME types is the plausible way — would
-		// otherwise throw Svelte's duplicate-key error and take the whole region
-		// down rather than degrade. The first entry wins, so authored order still
-		// decides which encoding the browser is offered first.
-		if (sources.some((existing) => existing.src === source.src)) continue;
-		sources.push(source);
-	}
-	return sources;
-}
-
-function normalizeFragment(raw: unknown): MediaFragmentRange | undefined {
-	if (!raw || typeof raw !== "object") return undefined;
-	const candidate = raw as Partial<MediaFragmentRange>;
-	const start = Number(candidate.startSeconds);
-	if (!Number.isFinite(start) || start < 0) return undefined;
-	const end = Number(candidate.endSeconds);
-	// An end at or before the start would produce a zero/negative slice; treat
-	// it as "no end" rather than a range that can never play.
-	if (!Number.isFinite(end) || end <= start) return { startSeconds: start };
-	return { startSeconds: start, endSeconds: end };
-}
-
-function trimmedOrUndefined(value: unknown): string | undefined {
-	if (typeof value !== "string") return undefined;
-	const trimmed = value.trim();
-	return trimmed || undefined;
-}
-
-/**
  * Validate a `sign-language` card into something renderable, or `null`.
  *
  * Returns `null` — meaning "this card is absent" — when the payload yields no
@@ -184,7 +132,7 @@ export function resolveSignLanguageMedia(
 	}
 
 	const media = payload.media as Partial<MediaAssetRef> | undefined;
-	const sources = normalizeSources(media?.sources);
+	const sources = normalizeMediaSources(media?.sources);
 	if (sources.length === 0) return null;
 	const poster = trimmedOrUndefined(media?.poster);
 	return {
@@ -192,7 +140,7 @@ export function resolveSignLanguageMedia(
 		sources,
 		poster: poster && isSafeMediaSrc(poster) ? poster : undefined,
 		label: trimmedOrUndefined(media?.label),
-		fragment: normalizeFragment(payload.fragment),
+		fragment: normalizeMediaFragment(payload.fragment),
 	};
 }
 
@@ -215,25 +163,6 @@ export function matchesRequestedSignLanguage(
 	const requested = (requestedSignLang || "").trim();
 	if (!requested) return true;
 	return media.signLang.toLowerCase() === requested.toLowerCase();
-}
-
-/**
- * Apply a fragment range to a source URL as a Media Fragments URI, so one
- * recording can serve several content nodes. Browsers honour the start offset;
- * the region enforces the end offset itself, because support for the end bound
- * is inconsistent.
- */
-export function applyMediaFragment(
-	src: string,
-	fragment?: MediaFragmentRange,
-): string {
-	if (!fragment) return src;
-	// Never stack a second fragment onto a URL that already carries one — the
-	// authored value wins.
-	if (src.includes("#")) return src;
-	const end =
-		fragment.endSeconds !== undefined ? `,${fragment.endSeconds}` : "";
-	return `${src}#t=${fragment.startSeconds}${end}`;
 }
 
 /** Whether a catalog card is a sign-language card at all. */

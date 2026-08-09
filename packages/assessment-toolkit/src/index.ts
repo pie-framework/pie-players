@@ -216,6 +216,12 @@ export {
 	resolveSignLanguageMedia,
 	SIGN_LANGUAGE_CATALOG_TYPE,
 } from "./services/sign-language-cards.js";
+// Spoken catalog cards carrying recorded audio rather than a reading script
+export type { SpokenAudioMedia } from "./services/spoken-audio-cards.js";
+export {
+	resolveSpokenAudioMedia,
+	SPOKEN_CATALOG_TYPE,
+} from "./services/spoken-audio-cards.js";
 // Sign-language Extractor (Auto-generates catalogs from inline signing video)
 export type { SignLanguageExtractionResult } from "./services/SignLanguageExtractor.js";
 export {

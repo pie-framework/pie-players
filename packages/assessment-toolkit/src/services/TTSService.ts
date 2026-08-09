@@ -27,7 +27,12 @@ import type {
 	CatalogLookupContext,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
+import { applyMediaFragment } from "./catalog-media.js";
 import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
+import {
+	resolveSpokenAudioMedia,
+	type SpokenAudioMedia,
+} from "./spoken-audio-cards.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import type {
@@ -142,8 +147,17 @@ interface SpeechCompositionChunk {
 	mathAlignment?: MathAwareAlignment;
 	mathAlignments?: Array<{ element: Element; alignment: MathAwareAlignment }>;
 	visibleMap?: NormalizedTextMap;
-	// Plain-text variant for speak-time fallback (generated SSML math chunks).
-	// If the provider rejects the SSML `speechText`, playback retries this.
+	/**
+	 * Recorded speech for this node, in place of synthesis. Present only for a
+	 * `spoken` card whose payload resolved to playable audio; `speechText` still
+	 * carries the reading script (or the visible text) so seek and offset
+	 * bookkeeping is unaffected.
+	 */
+	audio?: SpokenAudioMedia;
+	// Variant for speak-time fallback, retried once if speaking this chunk throws.
+	// Two producers: a generated SSML math chunk falls back to its precomputed
+	// plain text, and a recorded-audio chunk falls back to the reading script —
+	// which is exactly why QTI's guidance keeps the script alongside the audio.
 	plainFallback?: SpeechCompositionChunk;
 }
 
@@ -222,6 +236,13 @@ export class TTSService {
 	private activeWordBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
 	private playbackChunks: SpeechCompositionChunk[] = [];
+	// The recording currently playing, if any. `cancel` settles the pending play
+	// promise as well as stopping the element, so stop/seek cannot wedge the
+	// chunk loop on a run that has already been superseded.
+	private activeRecordedAudio: {
+		element: HTMLAudioElement;
+		cancel: () => void;
+	} | null = null;
 	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
 	private activeSentenceStartOffset: number | null = null;
@@ -1602,22 +1623,38 @@ export class TTSService {
 				speechMatchesVisibleText: true,
 			});
 		};
-		type SpokenCatalog = ResolvedCatalog & { content: string };
-		const resolveCatalog = (element: Element): SpokenCatalog | null => {
+		// A docked node's spoken alternate can be a reading script, a recording, or
+		// both — the last being APIP's pattern, which QTI's migration guidance
+		// keeps because the script is the recording's fallback.
+		type SpokenAlternate = { script?: string; audio?: SpokenAudioMedia };
+		const resolveCatalog = (element: Element): SpokenAlternate | null => {
 			const catalogIdRef = element.getAttribute("data-catalog-idref");
 			if (!catalogIdRef) return null;
-			const resolved = this.catalogResolver!.getAlternative(catalogIdRef, {
+			const lookup = {
 				type: "spoken",
 				language: options.language || "en-US",
 				useFallback: true,
 				context: options.catalogContext,
+			} as const;
+			// Two lookups rather than one, because `form` is a preference: asking for
+			// the payload form happily returns a script card when no recording
+			// exists, so the answer has to be checked rather than assumed.
+			const audioCard = this.catalogResolver!.getAlternative(catalogIdRef, {
+				...lookup,
+				form: "payload",
+			});
+			const audio = audioCard?.payload
+				? (resolveSpokenAudioMedia({ payload: audioCard.payload }) ?? undefined)
+				: undefined;
+			const scriptCard = this.catalogResolver!.getAlternative(catalogIdRef, {
+				...lookup,
 				form: "content",
 			});
-			// Only a card with a string form can contribute speech. The same
-			// docking node may also carry a signing card; that one is not ours.
-			return resolved?.content !== undefined
-				? (resolved as SpokenCatalog)
-				: null;
+			// Only a card with a string form can contribute synthesized speech. The
+			// same docking node may also carry a signing card; that one is not ours.
+			const script = scriptCard?.content;
+			if (audio === undefined && script === undefined) return null;
+			return { script, audio };
 		};
 		const getSingleMathElementForAlignment = (
 			element: Element,
@@ -1665,42 +1702,77 @@ export class TTSService {
 				const visibleText =
 					collectedVisible.visibleText ||
 					normalizeTextForSpeech(element.textContent || "");
-				const alignment = createCatalogSpanAlignment({
-					speechText: catalog.content,
-					visibleText,
-				});
-				const mathElement = getSingleMathElementForAlignment(
-					element,
-					visibleText,
-				);
-				const mathAlignment = mathElement
-					? createMathAwareAlignment({
-							mathElement,
-							speechText: catalog.content,
-						})
-					: undefined;
-				const mathAlignments = mathAlignment
-					? undefined
-					: getMathElementsForAlignment(element).map((candidate) => ({
-							element: candidate,
-							alignment: createMathAwareAlignment({
-								mathElement: candidate,
-								speechText: catalog.content,
-							}),
-						}));
-				const speechText = normalizeTextForSpeech(catalog.content);
-				chunks.push({
-					speechText: catalog.content,
-					visibleText,
-					sourceElement: element,
-					regionElement: resolveReadableRegion(element, root),
-					speechMatchesVisibleText: speechText === visibleText,
-					playbackMode: alignment.playbackMode,
-					alignment,
-					mathAlignment,
-					mathAlignments,
-					visibleMap: collectedVisible.map,
-				});
+				const regionElement = resolveReadableRegion(element, root);
+				// The script chunk, when there is a script. Built exactly as before,
+				// and it doubles as the recording's fallback: word-level alignment is
+				// only meaningful for the synthesized path, which is the one that runs
+				// if the audio cannot play.
+				const scriptChunk =
+					catalog.script !== undefined
+						? (() => {
+								const script = catalog.script as string;
+								const alignment = createCatalogSpanAlignment({
+									speechText: script,
+									visibleText,
+								});
+								const mathElement = getSingleMathElementForAlignment(
+									element,
+									visibleText,
+								);
+								const mathAlignment = mathElement
+									? createMathAwareAlignment({
+											mathElement,
+											speechText: script,
+										})
+									: undefined;
+								const mathAlignments = mathAlignment
+									? undefined
+									: getMathElementsForAlignment(element).map((candidate) => ({
+											element: candidate,
+											alignment: createMathAwareAlignment({
+												mathElement: candidate,
+												speechText: script,
+											}),
+										}));
+								return {
+									speechText: script,
+									visibleText,
+									sourceElement: element,
+									regionElement,
+									speechMatchesVisibleText:
+										normalizeTextForSpeech(script) === visibleText,
+									playbackMode: alignment.playbackMode,
+									alignment,
+									mathAlignment,
+									mathAlignments,
+									visibleMap: collectedVisible.map,
+								} satisfies SpeechCompositionChunk;
+							})()
+						: null;
+				if (catalog.audio) {
+					chunks.push(
+						scriptChunk
+							? {
+									...scriptChunk,
+									audio: catalog.audio,
+									plainFallback: scriptChunk,
+								}
+							: {
+									// No script to fall back to, and nothing synthesizes the
+									// recording's words, so `speechText` exists only to keep seek
+									// and offset bookkeeping consistent with the visible text.
+									speechText: visibleText,
+									visibleText,
+									sourceElement: element,
+									regionElement,
+									speechMatchesVisibleText: false,
+									visibleMap: collectedVisible.map,
+									audio: catalog.audio,
+								},
+					);
+					return;
+				}
+				if (scriptChunk) chunks.push(scriptChunk);
 				return;
 			}
 			for (const child of Array.from(element.childNodes)) {
@@ -2078,12 +2150,95 @@ export class TTSService {
 		}
 	}
 
+	/**
+	 * Play a recorded spoken alternate, resolving when it finishes.
+	 *
+	 * Rejects if the clip cannot play, which is what routes playback to the
+	 * chunk's `plainFallback` — the reading script — in `speakCatalogChunk`.
+	 * Highlighting is the docked node as a block for the clip's duration: a
+	 * recording emits no word boundaries, and inventing them from its duration
+	 * would highlight the wrong words confidently rather than the right region
+	 * vaguely.
+	 */
+	private async playRecordedAudio(media: SpokenAudioMedia): Promise<void> {
+		if (typeof document === "undefined") {
+			throw new Error("[tts] no document available to play recorded audio");
+		}
+		const source = media.sources[0];
+		const element = document.createElement("audio");
+		element.preload = "auto";
+		element.src = applyMediaFragment(source.src, media.fragment);
+		element.playbackRate = this.normalizePlaybackRate(
+			Number(this.ttsConfig.rate || 1),
+		);
+		await new Promise<void>((resolve, reject) => {
+			let endGuard: ReturnType<typeof setInterval> | undefined;
+			const cleanup = () => {
+				element.removeEventListener("ended", onEnded);
+				element.removeEventListener("error", onError);
+				if (endGuard !== undefined) clearInterval(endGuard);
+				if (this.activeRecordedAudio?.element === element) {
+					this.activeRecordedAudio = null;
+				}
+			};
+			const onEnded = () => {
+				cleanup();
+				resolve();
+			};
+			const onError = () => {
+				cleanup();
+				reject(new Error(`[tts] recorded audio failed to play: ${source.src}`));
+			};
+			// Cancellation has to settle this promise, not just stop the element:
+			// `stop()` bumps the run id, and a pending play that never resolves would
+			// wedge the chunk loop on a run nobody is listening to any more.
+			this.activeRecordedAudio = {
+				element,
+				cancel: () => {
+					cleanup();
+					element.pause();
+					resolve();
+				},
+			};
+			element.addEventListener("ended", onEnded);
+			element.addEventListener("error", onError);
+			// Browsers honour a Media Fragments start offset but are inconsistent
+			// about the end bound, so the end is enforced here — the same reason the
+			// signing region enforces its own.
+			const endSeconds = media.fragment?.endSeconds;
+			if (endSeconds !== undefined) {
+				endGuard = setInterval(() => {
+					if (element.currentTime >= endSeconds) onEnded();
+				}, 100);
+			}
+			Promise.resolve(element.play()).catch(onError);
+		}).finally(() => {
+			if (this.activeRecordedAudio?.element === element) {
+				this.activeRecordedAudio = null;
+			}
+			element.pause();
+			element.removeAttribute("src");
+		});
+	}
+
+	private cancelRecordedAudio(): void {
+		const active = this.activeRecordedAudio;
+		if (!active) return;
+		this.activeRecordedAudio = null;
+		active.cancel();
+	}
+
 	private async speakCatalogChunkOnce(
 		chunk: SpeechCompositionChunk,
 		runId: number,
 	): Promise<void> {
 		if (!this.provider) return;
 		this.lastRenderedRegionTarget = null;
+		if (chunk.audio) {
+			this.highlightCatalogRegion(chunk);
+			await this.playRecordedAudio(chunk.audio);
+			return;
+		}
 		const contentRoot =
 			chunk.regionElement || chunk.sourceElement || this.currentContentElement;
 		const pipelineChunk = contentRoot
@@ -2313,6 +2468,7 @@ export class TTSService {
 		if (!this.provider) return;
 
 		if (this.state === PlaybackState.PLAYING) {
+			this.activeRecordedAudio?.element.pause();
 			this.provider.pause();
 			this.setState(PlaybackState.PAUSED);
 		}
@@ -2325,6 +2481,8 @@ export class TTSService {
 		if (!this.provider) return;
 
 		if (this.state === PlaybackState.PAUSED) {
+			const recorded = this.activeRecordedAudio?.element;
+			if (recorded) void Promise.resolve(recorded.play()).catch(() => {});
 			this.provider.resume();
 			this.setState(PlaybackState.PLAYING);
 		}
@@ -2346,6 +2504,7 @@ export class TTSService {
 			: null;
 
 		this.speakRunId += 1;
+		this.cancelRecordedAudio();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		this.currentSeekSegmentIndex = safeTargetIndex;
@@ -2442,6 +2601,7 @@ export class TTSService {
 	stop(): void {
 		if (!this.provider) return;
 		this.speakRunId += 1;
+		this.cancelRecordedAudio();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		this.highlightTargetResolverProvider = null;

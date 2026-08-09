@@ -446,6 +446,51 @@ before the option existed.
 `getAllAlternatives` keys on type, language **and** form, so both cards are
 reported. Keying on type and language alone silently dropped the second.
 
+### Recorded Audio as a Spoken Alternate
+
+A `spoken` card may carry a recording instead of a script. QTI 3 treats the two
+as the *same* support — both are `spoken`, with recorded audio referenced by file
+and MIME type — so this is not a separate accommodation and needs no separate
+PNP entitlement.
+
+```typescript
+{
+  catalog: 'spoken',
+  language: 'en-US',
+  payload: {
+    media: {
+      version: 1,
+      id: 'prompt-audio',
+      kind: 'audio',
+      sources: [{ src: '/audio/prompt.mp3', type: 'audio/mpeg' }],
+    },
+    fragment: { startSeconds: 4, endSeconds: 9 },  // optional slice of a longer file
+  },
+}
+```
+
+**Highlighting is the node as a block, not word by word.** A recording emits no
+word-boundary events, and deriving them from its duration would highlight the
+wrong words confidently rather than the right region vaguely. Word-level
+highlighting stays available on the synthesized path.
+
+**Playback details.** `media.kind` must be `audio`; a video filed under `spoken`
+is refused rather than guessed at, so signing and speech cards cannot quietly
+swap roles. The first source is used — an `<audio>` element with alternative
+`<source>` children reports failure through a path that is awkward to observe,
+and a dependable fallback matters more than encoding negotiation. `fragment`
+becomes a Media Fragments URI, with the end bound enforced by the player because
+browser support for it is inconsistent. The TTS rate setting applies via
+`playbackRate`; voice selection does not apply to a recording.
+
+**Failure degrades to the script.** If the clip will not play, playback retries
+that node with its `content` card. This is exactly why the script is worth
+authoring alongside the recording — see the section above — and if there is no
+script, read-aloud reports the failure rather than silently skipping the node.
+
+**Suppression still wins.** A node marked `data-tts-suppress` is not played from a
+file any more than it is spoken by a voice.
+
 ### Suppressing Read-Aloud
 
 Some content must be shown and never spoken. `data-tts-suppress` on a content

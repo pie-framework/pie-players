@@ -84,10 +84,6 @@ temp/
 
 .claude/settings.local.json
 
-# Host-supplied signing clip for the sign-language demo; see
-# apps/section-demos/static/demo-assets/sign-language/README.md
-apps/section-demos/static/demo-assets/sign-language/sample-asl.mp4
-
 # A real secure assessment item, imported from the Renaissance bank to prove the
 # PIE-881 transform end to end. Never commit it: it carries live item content and
 # its correct answer. The demo loads it only when present — see

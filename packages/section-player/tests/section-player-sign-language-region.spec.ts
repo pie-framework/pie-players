@@ -10,11 +10,13 @@ import { expect, test, type Page } from "@playwright/test";
  * the region lands beside the item content without the item player noticing, and
  * that the divider is operable from the keyboard.
  *
- * No signing clip is bundled (see
- * `apps/section-demos/static/demo-assets/sign-language/README.md`), so these
- * tests assert on the region, its sources and its naming rather than on
- * playback.
+ * The demo bundles a public-domain ASL recording (see
+ * `apps/section-demos/static/demo-assets/sign-language/README.md`), so playback
+ * is assertable here too: a region that renders a `<video>` no browser can decode
+ * looks identical to a working one in every assertion that stops at the DOM.
  */
+
+const CLIP_SRC = "/demo-assets/sign-language/cdc-asl-handwashing.webm";
 
 const GRANTED_PATH =
 	"/sign-language?page=signing-granted&mode=candidate&layout=splitpane";
@@ -61,8 +63,42 @@ test.describe("sign-language region — availability", () => {
 		await expect(region.getByText("American Sign Language")).toBeVisible();
 		await expect(region.locator("video source")).toHaveAttribute(
 			"src",
-			"/demo-assets/sign-language/sample-asl.mp4",
+			CLIP_SRC,
 		);
+	});
+
+	test("decodes and plays the bundled clip", async ({ page }) => {
+		await gotoDemo(page, GRANTED_PATH);
+		const video = mediaRegion(page, "asl-q1-inline").locator("video");
+		await expect(video).toBeVisible();
+
+		// The region sets preload="metadata", so readyState climbs to HAVE_METADATA
+		// on its own. Anything less means the browser could not decode what we
+		// shipped — wrong container, a codec this Chromium build lacks, or a 404 —
+		// and no assertion that stops at the DOM would notice.
+		await expect
+			.poll(() => video.evaluate((el: HTMLVideoElement) => el.readyState), {
+				timeout: 30_000,
+				message: "video never reached HAVE_METADATA",
+			})
+			.toBeGreaterThanOrEqual(1);
+
+		const state = await video.evaluate((el: HTMLVideoElement) => ({
+			duration: el.duration,
+			error: el.error?.code ?? null,
+		}));
+		expect(state.error).toBeNull();
+		expect(state.duration).toBeGreaterThan(0);
+
+		// The element is rendered muted, so programmatic play is not blocked by
+		// autoplay policy and needs no synthesized gesture.
+		await video.evaluate((el: HTMLVideoElement) => el.play());
+		await expect
+			.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime), {
+				timeout: 15_000,
+				message: "playback did not advance",
+			})
+			.toBeGreaterThan(0);
 	});
 
 	test("resolves an authored catalog card the same way as extracted markup", async ({
@@ -107,6 +143,70 @@ test.describe("sign-language region — availability", () => {
 		await expect(
 			card.getByText("Photosynthesis", { exact: true }),
 		).toBeVisible();
+	});
+});
+
+test.describe("sign-language region — reactive stability", () => {
+	/**
+	 * A guard, not a feature test.
+	 *
+	 * Resolving a catalog card is driven by a signal from the resolver, and the
+	 * resolver's catalogs are registered by the item shell — so a reader that
+	 * invalidates on every signal can drive the shell to re-register, which signals
+	 * again. That loop shipped once: a thousand register/unregister rounds per item,
+	 * ending in Svelte aborting the update at its depth limit with the DOM
+	 * half-applied. Every assertion in this file passed while it was happening,
+	 * because the region and the divider were in the DOM — only the classes and the
+	 * grid columns the aborted update never reached were wrong.
+	 *
+	 * So this asserts the shape of the *update*, not of the output: each item
+	 * registers about once, and the page raises no reactive-loop error. Both are
+	 * invisible to any assertion that only reads the finished DOM.
+	 */
+	test("resolves without driving the item shell into a re-registration loop", async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			const counts = { register: 0, unregister: 0 };
+			(
+				window as Window & { __pieRegistrationCounts?: typeof counts }
+			).__pieRegistrationCounts = counts;
+			window.addEventListener("pie-register", () => counts.register++, true);
+			window.addEventListener(
+				"pie-unregister",
+				() => counts.unregister++,
+				true,
+			);
+		});
+		const pageErrors: string[] = [];
+		page.on("pageerror", (error) => pageErrors.push(error.message));
+
+		await gotoDemo(page, GRANTED_PATH);
+		await expect(mediaRegion(page, "asl-q1-inline")).toBeVisible();
+		// Let any loop run: the depth limit is reached in well under a second, so a
+		// settled page stays settled while an unsettled one has already blown up.
+		await page.waitForTimeout(3_000);
+
+		const counts = await page.evaluate(
+			() =>
+				(
+					window as Window & {
+						__pieRegistrationCounts?: { register: number; unregister: number };
+					}
+				).__pieRegistrationCounts ?? { register: 0, unregister: 0 },
+		);
+		const shellCount = await page.locator("pie-item-shell").count();
+		expect(shellCount).toBeGreaterThan(0);
+		// One per shell, with headroom for a legitimate re-register when an item's
+		// content is substituted; a loop overshoots this by three orders of magnitude.
+		expect(counts.register).toBeLessThanOrEqual(shellCount * 2);
+		// A shell that is still mounted should not have unregistered at all.
+		expect(counts.unregister).toBe(0);
+		expect(
+			pageErrors.filter((message) =>
+				message.includes("effect_update_depth_exceeded"),
+			),
+		).toEqual([]);
 	});
 });
 

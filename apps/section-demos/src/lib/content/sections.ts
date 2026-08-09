@@ -512,7 +512,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The first item authors its signing video inline with `data-sign-language`; the runtime extractor lifts it into a catalog card, the signing counterpart of `<speak>` SSML.",
 			"The third item carries an authored `accessibilityCatalogs` card with a typed media payload — the shape an importer writes — proving both paths land in the same region.",
 			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
-			"No signing clip is bundled (see `static/demo-assets/sign-language/README.md`) — the poster stands in, since ASL video production and hosting are host-owned.",
+			"The fourth item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
+			"The bundled clip is a real public-domain ASL recording that does not sign these prompts — a stand-in, since ASL video production and hosting are host-owned. See `static/demo-assets/sign-language/README.md`.",
 		],
 		sections: [
 			{

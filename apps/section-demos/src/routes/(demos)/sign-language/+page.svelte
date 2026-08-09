@@ -112,9 +112,10 @@
 			</div>
 			<p class="policy-snapshot-help">
 				Question 1 authors its signing video inline; question 3 carries an authored
-				catalog card; question 2 has no signing content and must show no region even
-				when signing is granted. No signing clip is bundled, so the poster stands in —
-				see <code>static/demo-assets/sign-language/README.md</code>.
+				catalog card; question 4 is verbatim importer output; question 2 has no signing
+				content and must show no region even when signing is granted. The bundled clip
+				is a real public-domain ASL recording, but it does not sign these prompts — see
+				<code>static/demo-assets/sign-language/README.md</code>.
 			</p>
 		</div>
 

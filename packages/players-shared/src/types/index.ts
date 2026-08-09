@@ -179,7 +179,15 @@ export interface ItemEntity
 		ConfigContainerEntity,
 		SearchMetaDataEntity {
 	name?: string;
-	passage?: string | PassageEntity;
+	/**
+	 * `null` as well as absent, because importers write it. JSON has no
+	 * `undefined`, so an item transformed from another format carries an explicit
+	 * `passage: null` for "no passage" — `isPassageEntity` has always tested for
+	 * null, so the runtime expected it while the type denied it. Excluding null
+	 * only meant a host feeding real importer output through a typed path had to
+	 * cast it away.
+	 */
+	passage?: string | PassageEntity | null;
 	/** QTI/APIP-style accessibility catalogs owned by the item root. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
@@ -911,7 +919,7 @@ export class InsertSoundEvent extends CustomEvent<SoundHandler> {
 }
 
 export const isPassageEntity = (
-	passage: string | PassageEntity | undefined,
+	passage: string | PassageEntity | null | undefined,
 ): passage is PassageEntity => typeof passage === "object" && passage !== null;
 
 export function isPrerelease(version: any): version is SemVer {

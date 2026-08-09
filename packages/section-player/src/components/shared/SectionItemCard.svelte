@@ -155,10 +155,6 @@
 	// derivation reruns when policy inputs change (assessment binding, PNP
 	// enforcement, custom sources). Same fanout pattern as `<pie-item-toolbar>`.
 	let policyChangeVersion = $state(0);
-	// Bumped from the coordinator's catalog-change stream, for the same reason
-	// `policyChangeVersion` exists: the resolver is not reactive, so a `$derived`
-	// reading it needs a signal when its contents change.
-	let catalogChangeVersion = $state(0);
 	let mediaRegionPercent = $state(MEDIA_REGION_DEFAULT_PERCENT);
 	let mediaSplitContainer = $state<HTMLDivElement | null>(null);
 	let mediaSplitWidthPx = $state(0);
@@ -212,9 +208,24 @@
 	 * Content half of availability: the resolver has a matching card. Both halves
 	 * are required and neither implies the other, so a learner with the
 	 * accommodation still sees nothing on the vast majority of items.
+	 *
+	 * State rather than `$derived`, and written only when the answer changes.
+	 * The resolver is not reactive, so this has to be recomputed on a signal from
+	 * it — and the obvious form of that, a version counter the `$derived` reads,
+	 * invalidates on every signal whether or not the answer moved. That is a
+	 * feedback loop here, not merely wasted work: re-rendering this card
+	 * re-applies the `item` prop on `<pie-item-shell>`, whose registration effect
+	 * re-runs and re-registers the item's catalogs, which makes the resolver emit
+	 * again. One unconditional write per emission is all it takes to make that
+	 * cycle self-sustaining, and Svelte aborts the update at its depth limit with
+	 * the DOM half-applied. Comparing before writing breaks the cycle at the only
+	 * point where it can be broken without either side knowing about the other.
 	 */
-	const resolvedMedia = $derived.by((): ResolvedSignLanguageAlternate | null => {
-		void catalogChangeVersion;
+	let resolvedMedia = $state<ResolvedSignLanguageAlternate | null>(null);
+	/** Signature of the value in `resolvedMedia`; deliberately not reactive. */
+	let resolvedMediaSignature = "";
+
+	function computeSignLanguageAlternate(): ResolvedSignLanguageAlternate | null {
 		if (!signLanguageGranted) return null;
 		const resolver = runtimeContext?.catalogResolver;
 		if (!resolver || prepared.refs.length === 0) return null;
@@ -224,6 +235,22 @@
 			ownerContext: catalogOwnerContext,
 			requestedSignLang,
 		});
+	}
+
+	function syncSignLanguageAlternate(): void {
+		const next = computeSignLanguageAlternate();
+		// Structural, not by identity: every resolution builds a fresh object, so
+		// identity would report a change on every call and defeat the guard.
+		const signature = next ? JSON.stringify(next) : "";
+		if (signature === resolvedMediaSignature) return;
+		resolvedMediaSignature = signature;
+		resolvedMedia = next;
+	}
+
+	// Policy, eligibility and the item's own refs are reactive, so reading them
+	// through `computeSignLanguageAlternate` is what re-resolves when they move.
+	$effect(() => {
+		syncSignLanguageAlternate();
 	});
 
 	const mediaRegionVisible = $derived(resolvedMedia !== null);
@@ -276,16 +303,19 @@
 	$effect(() => {
 		const coordinator = runtimeContext?.toolkitCoordinator;
 		if (!coordinator) return;
-		const unsubscribe = coordinator.onCatalogsChange(() => {
-			catalogChangeVersion += 1;
-		});
-		// Sync once on subscribe, because effects run after the DOM update that
+		// `untrack` so resolving does not add its own inputs to this effect's
+		// dependencies. Policy, eligibility and the item's refs all belong to the
+		// effect above; tracking them here too would tear down and re-establish the
+		// subscription every time any of them moved.
+		const unsubscribe = coordinator.onCatalogsChange(() =>
+			untrack(syncSignLanguageAlternate),
+		);
+		// Resolve once on subscribe, because effects run after the DOM update that
 		// mounted this card — and the item shell inside that subtree can register
 		// its catalogs from `connectedCallback` during the very same update, before
 		// this listener exists. Subscribing without re-resolving would miss exactly
-		// the fast case. Safe against a loop: the effect writes this counter and
-		// never reads it.
-		catalogChangeVersion += 1;
+		// the fast case.
+		untrack(syncSignLanguageAlternate);
 		return () => {
 			try {
 				unsubscribe?.();

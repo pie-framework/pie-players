@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" width="300" height="400" role="img" aria-label="Placeholder poster for a sign language recording">
+	<rect width="300" height="400" fill="#1f2937" />
+	<g fill="none" stroke="#9ca3af" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+		<circle cx="150" cy="120" r="44" />
+		<path d="M78 300c0-40 32-72 72-72s72 32 72 72" />
+		<path d="M96 250l-24 34M204 250l24 34" />
+	</g>
+	<text x="150" y="345" fill="#e5e7eb" font-family="system-ui, sans-serif" font-size="17" text-anchor="middle">
+		Sample ASL clip not bundled
+	</text>
+	<text x="150" y="370" fill="#9ca3af" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">
+		see demo-assets/sign-language/README.md
+	</text>
+</svg>

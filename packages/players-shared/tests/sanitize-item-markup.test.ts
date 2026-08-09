@@ -1,148 +1,30 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	test,
-} from "bun:test";
+import { describe, expect, test } from "bun:test";
 
 import {
 	buildAuthoringAllowList,
-	createDefaultItemMarkupSanitizer,
-	resetPurifierForTesting,
 	sanitizeItemMarkup,
 } from "../src/security/sanitize-item-markup.js";
 
-beforeAll(() => {
-	if (
-		typeof (globalThis as unknown as { window?: unknown }).window ===
-		"undefined"
-	) {
-		GlobalRegistrator.register();
-	}
-});
-
-afterAll(() => {
-	if (GlobalRegistrator.isRegistered) {
-		GlobalRegistrator.unregister();
-	}
-});
-
-beforeEach(() => {
-	resetPurifierForTesting();
-});
+/**
+ * This file deliberately does NOT cover DOMPurify's actual sanitization
+ * behavior (script/handler stripping, custom-element allow/deny, the
+ * wrap-overwide wrappers, or the sanitizer-factory wiring that threads
+ * through to any of that). DOMPurify >=3.4.8 fails to sanitize under
+ * happy-dom — confirmed 2026-08-06, bisected against this exact module and
+ * verified correct in real Chromium in the same investigation — so a
+ * happy-dom assertion about sanitization passing is not evidence the
+ * sanitizer works, only that happy-dom didn't crash. Those assertions live in
+ * `tests/e2e/sanitize-item-markup.spec.ts` (Playwright, real Chromium)
+ * instead. What stays here never reaches the purifier: the empty-markup
+ * short-circuit returns before `resolvePurifier()` is called, and
+ * `buildAuthoringAllowList` is pure string logic with no DOM involved.
+ */
 
 describe("sanitizeItemMarkup", () => {
-	test("strips <script> tags entirely", () => {
-		const html = "<p>Hello</p><script>alert('xss')</script><p>World</p>";
-		const out = sanitizeItemMarkup(html);
-		expect(out).not.toContain("<script");
-		expect(out).not.toContain("alert");
-		expect(out).toContain("<p>Hello</p>");
-		expect(out).toContain("<p>World</p>");
-	});
-
-	test("drops event-handler attributes (onerror, onclick, onload)", () => {
-		const html =
-			'<img src="x" onerror="alert(1)"><button onclick="evil()">Go</button><svg onload="boom()"></svg>';
-		const out = sanitizeItemMarkup(html);
-		expect(out.toLowerCase()).not.toContain("onerror");
-		expect(out.toLowerCase()).not.toContain("onclick");
-		expect(out.toLowerCase()).not.toContain("onload");
-	});
-
-	test("rejects javascript: URLs", () => {
-		const html = '<a href="javascript:alert(1)">click</a>';
-		const out = sanitizeItemMarkup(html);
-		expect(out.toLowerCase()).not.toContain("javascript:");
-	});
-
-	test("preserves pie-* custom elements and their attributes", () => {
-		const html =
-			'<pie-multiple-choice id="q1" class="my" model-id="m1" session-id="s1"><span slot="label">pick</span></pie-multiple-choice>';
-		const out = sanitizeItemMarkup(html);
-		expect(out).toContain("<pie-multiple-choice");
-		// pie-item contract compatibility: model lookup (updateSinglePieElement)
-		// matches `pieElement.id` to `config.models[].id` by strict equality,
-		// so the sanitizer must leave `id` untouched and not apply DOMPurify's
-		// `user-content-` prefix via SANITIZE_NAMED_PROPS.
-		expect(out).toContain('id="q1"');
-		expect(out).not.toContain("user-content-");
-		expect(out).toContain('model-id="m1"');
-		expect(out).toContain('session-id="s1"');
-	});
-
-	test("strips unknown (non pie-*) custom elements by default", () => {
-		const html =
-			'<p>before</p><evil-widget onclick="x">hi</evil-widget><p>after</p>';
-		const out = sanitizeItemMarkup(html);
-		expect(out).not.toContain("<evil-widget");
-		expect(out).toContain("<p>before</p>");
-		expect(out).toContain("<p>after</p>");
-	});
-
-	test("respects an explicit allowedCustomElements list", () => {
-		const html = "<my-widget>hello</my-widget>";
-		const out = sanitizeItemMarkup(html, {
-			allowedCustomElements: ["my-widget"],
-		});
-		expect(out).toContain("<my-widget");
-		expect(out).toContain("hello");
-	});
-
-	test("allows the authoring-mode -config variants when included in allow-list", () => {
-		const html =
-			'<pie-multiple-choice-config id="q1"></pie-multiple-choice-config>';
-		const allowList = buildAuthoringAllowList(["pie-multiple-choice"]);
-		const out = sanitizeItemMarkup(html, {
-			allowedCustomElements: allowList,
-		});
-		expect(out).toContain("<pie-multiple-choice-config");
-	});
-
 	test("empty markup returns empty string", () => {
 		expect(sanitizeItemMarkup("")).toBe("");
 		expect(sanitizeItemMarkup(undefined as unknown as string)).toBe("");
 		expect(sanitizeItemMarkup(null as unknown as string)).toBe("");
-	});
-
-	test("createDefaultItemMarkupSanitizer returns a callable sanitizer", () => {
-		const sanitize = createDefaultItemMarkupSanitizer({
-			allowedCustomElements: ["my-widget"],
-		});
-		const out = sanitize("<my-widget><script>bad()</script></my-widget>");
-		expect(out).toContain("<my-widget");
-		expect(out).not.toContain("<script");
-	});
-
-	describe("wrapOverwideContent", () => {
-		const markup = `<img src="wide.png" alt="chart"><table><tr><td>x</td></tr></table>`;
-
-		test("wraps overwide images and tables by default", () => {
-			const out = sanitizeItemMarkup(markup);
-			expect(out).toContain("pie-image-scroll");
-			expect(out).toContain("pie-table-scroll");
-		});
-
-		test("skips the wrappers when disabled, keeping the content", () => {
-			// Print rendering needs this: the wrappers are `overflow-x: auto`, and
-			// `overflow` clips rather than scrolls in print media, so a wide image
-			// or table would be cut off at the column edge.
-			const out = sanitizeItemMarkup(markup, { wrapOverwideContent: false });
-			expect(out).not.toContain("pie-image-scroll");
-			expect(out).not.toContain("pie-table-scroll");
-			expect(out).toContain("wide.png");
-			expect(out).toContain("<table");
-		});
-
-		test("createDefaultItemMarkupSanitizer forwards the flag", () => {
-			const sanitize = createDefaultItemMarkupSanitizer({
-				wrapOverwideContent: false,
-			});
-			expect(sanitize(markup)).not.toContain("pie-image-scroll");
-		});
 	});
 });
 

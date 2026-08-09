@@ -257,7 +257,13 @@ explicitly runs that preprocessing step.
 1. Preprocessing extracts `<speak>` content
 2. Generates catalog entry with ID `auto-prompt-q1`
 3. Removes `<speak>` tags from visual markup
-4. Runtime catalog registration registers the extracted catalog
+4. Docks the catalog on the element wrapping the `<speak>` — the `<div>` above — via `data-catalog-idref`
+5. Runtime catalog registration registers the extracted catalog
+
+**Two authoring requirements for step 4**, each reported with a console warning when unmet:
+
+- **The `<speak>` needs an element around it**, holding the visible content it speaks — the `<div>` in the example. Nothing is synthesized to stand in for one, because a `<speak>` with no element around it has no content node to be an alternate *for*, and an invented wrapper would have to invent visible content too. The catalog is still emitted, but TTS resolves by walking the DOM, so it will not be found.
+- **That element must not already carry a `data-catalog-idref`.** An existing reference is never overwritten: it names a whole card array, so replacing it to win the spoken type would take that node's braille, simplified-language and sign-language cards down with it. If the node is already docked, author the SSML as a `spoken` card on that catalog (Method 2) instead of inline.
 
 ### Method 2: Explicit Accessibility Catalogs (QTI 3.0 Standard)
 

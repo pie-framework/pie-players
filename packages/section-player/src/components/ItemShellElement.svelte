@@ -25,8 +25,6 @@
 	import {
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 		PIE_ITEM_SESSION_CHANGED_EVENT,
-		PIE_REGISTER_EVENT,
-		PIE_UNREGISTER_EVENT,
 		assessmentToolkitRegionScopeContext,
 		assessmentToolkitShellContext,
 		dispatchCrossBoundaryEvent,
@@ -34,11 +32,14 @@
 		type AssessmentToolkitShellContext,
 		type InternalItemSessionChangedDetail,
 		type ItemSessionChangedDetail,
-		type RuntimeRegistrationDetail,
 		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { normalizeItemSessionChange } from "@pie-players/pie-players-shared";
 	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
+	import {
+		createShellRegistrationDispatcher,
+		type ShellRegistrationIdentity,
+	} from "./shared/shell-registration.js";
 
 	const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
 	const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
@@ -113,17 +114,18 @@
 		},
 	);
 
-	function dispatchRegistration(eventName: string): void {
-		if (!host || !itemId) return;
-		const detail: RuntimeRegistrationDetail = {
+	const registration = createShellRegistrationDispatcher();
+
+	function currentRegistrationIdentity(): ShellRegistrationIdentity | null {
+		if (!host || !itemId) return null;
+		return {
 			kind: "item",
+			host,
 			itemId,
 			canonicalItemId: canonicalItemId || itemId,
 			contentKind,
 			item,
-			element: host,
 		};
-		dispatchCrossBoundaryEvent(host, eventName, detail);
 	}
 
 	function normalizeAndDispatchSession(event: Event): void {
@@ -189,9 +191,18 @@
 		}
 	}
 
+	/**
+	 * Listener attachment keyed on `host` alone, so it survives every prop change.
+	 * These handlers read `itemId` and friends when an event arrives, not while
+	 * the effect runs, so nothing else belongs in this dependency set — and the
+	 * per-run dedupe state below stays intact across prop changes instead of
+	 * being rebuilt (and forgetting what it had forwarded) on each one.
+	 *
+	 * Its teardown is the shell's only real teardown, which is why `pie-unregister`
+	 * is dispatched from here.
+	 */
 	$effect(() => {
 		if (!host) return;
-		dispatchRegistration(PIE_REGISTER_EVENT);
 
 		const seenSessionEvents = new WeakSet<Event>();
 		let lastForwardedFingerprint = "";
@@ -238,8 +249,16 @@
 			host?.removeEventListener("session-changed", onSessionChanged);
 			host?.removeEventListener("load-complete", onLoadComplete);
 			host?.removeEventListener("player-error", onPlayerError);
-			dispatchRegistration(PIE_UNREGISTER_EVENT);
+			registration.retire();
 		};
+	});
+
+	// Re-runs on every parent re-render, because Svelte re-applies
+	// custom-element properties whenever the parent template updates. The
+	// dispatcher is what decides whether that means anything — see
+	// `shell-registration.ts` for what an unconditional dispatch from here cost.
+	$effect(() => {
+		registration.sync(currentRegistrationIdentity());
 	});
 
 	$effect(() => {

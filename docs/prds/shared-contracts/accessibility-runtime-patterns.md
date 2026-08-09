@@ -8,6 +8,7 @@ Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
 - [Timed media section architecture](../../architecture/timed-media-section.md)
+- [Sign language (ASL) support](../sign-language-asl-support.md)
 
 ## Problem
 
@@ -52,7 +53,10 @@ This PRD is primarily a behavioral contract. Future implementation PRDs should c
 - TTS/media handoff rules so speech tools and media audio do not compete unexpectedly;
 - seek/navigation restriction rules with accommodation override behavior;
 - high-contrast, zoom, and reduced-motion expectations;
-- non-video alternatives where video itself is not an accessible source.
+- non-video alternatives where video itself is not an accessible source;
+- **alternate-representation coexistence**: when an accommodation renders content in another language or modality, the original content stays visible and usable rather than being replaced. Sign language is the driving case — deaf learners typically use ASL and written English together, so a signed prompt translation must appear alongside the English prompt, not instead of it. See [`../sign-language-asl-support.md`](../sign-language-asl-support.md).
+
+One framing rule for accommodation work under this PRD: WCAG 2.2 AA is the baseline, and some accommodations sit outside it entirely. Sign language appears in WCAG only at SC 1.2.6, Level AAA, scoped to prerecorded audio in synchronized media, so signing a text prompt is not an AA obligation at all. Accommodations are driven by assessment policy and 1EdTech Elevated Accessibility expectations; AA conformance is never evidence that an accommodation is covered.
 
 Documentation sketch only:
 
@@ -157,3 +161,5 @@ bun run check:custom-elements
 - Should there be a shared handoff type, or should this remain a behavioral PRD consumed by implementation tests?
 - What manual assistive technology review matrix is required for timed-media MVP?
 - How should accommodation overrides interact with seek locks, forced pauses, and branch restrictions?
+- What is the arbitration rule when two audio/visual language channels compete — TTS speaking a prompt while a signing video plays the same prompt? One must yield; which, and does the learner choose?
+- How do content-node-scoped accommodations (signing, line reader, highlighter) coexist when they target the same node?

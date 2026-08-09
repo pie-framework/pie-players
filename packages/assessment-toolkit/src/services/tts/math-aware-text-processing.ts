@@ -3,7 +3,7 @@ import {
 	collectVisibleTextAndMap,
 	type NormalizedTextMap,
 	type TextProcessingOptions,
-	isNodeHiddenForTTS,
+	isNodeExcludedFromSpeech,
 	normalizeTextForSpeech,
 	shouldInsertWordBoundarySpace,
 } from "./text-processing.js";
@@ -306,7 +306,7 @@ const collectVisibleMathFallback = (
 ): { text: string; map: NormalizedTextMap } => {
 	const mathAcc = createAccumulator(options);
 	const visit = (node: Node): void => {
-		if (isNodeHiddenForTTS(node, element)) return;
+		if (isNodeExcludedFromSpeech(node, element)) return;
 		if (node.nodeType === 3) {
 			appendTextNode(mathAcc, node as Text);
 			return;
@@ -373,7 +373,7 @@ const collectMathAware = (
 	};
 
 	const processNode = (node: Node): void => {
-		if (isNodeHiddenForTTS(node, root)) return;
+		if (isNodeExcludedFromSpeech(node, root)) return;
 		if (node.nodeType === Node.TEXT_NODE) {
 			const sourceElement = resolveTextChunkSourceElement(node as Text, root);
 			if (textChunkSourceElement && sourceElement !== textChunkSourceElement) {

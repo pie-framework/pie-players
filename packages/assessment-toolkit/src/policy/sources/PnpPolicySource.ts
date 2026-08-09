@@ -115,6 +115,54 @@ export class PnpPolicySource {
 	}
 
 	apply(args: PnpPolicyApplyArgs): PnpPolicyResult {
+		const { ctx, result } = this.prepare(args);
+		const { pnp, districtPolicy, itemSettings } = ctx;
+
+		const allSupports = new Set<string>();
+		pnp?.supports?.forEach((s) => allSupports.add(s));
+		pnp?.prohibitedSupports?.forEach((s) => allSupports.add(s));
+		districtPolicy?.blockedTools?.forEach((s) => allSupports.add(s));
+		districtPolicy?.requiredTools?.forEach((s) => allSupports.add(s));
+		itemSettings?.requiredTools?.forEach((s) => allSupports.add(s));
+		itemSettings?.restrictedTools?.forEach((s) => allSupports.add(s));
+
+		for (const supportId of allSupports) {
+			this.resolveSupport(supportId, ctx, result);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Evaluate exactly one PNP support id through the same six-level
+	 * precedence `apply(...)` uses.
+	 *
+	 * This exists for **policy-addressable capabilities that are not toolbar
+	 * tools** — a signed alternate rendered as its own region, for example.
+	 * `apply(...)` only evaluates support ids that appear somewhere in the
+	 * bound policy inputs, and it keys its result maps by *mapped tool id*, so
+	 * a caller asking about one feature would have to re-derive that mapping
+	 * and could collide with another support id that maps to the same tool.
+	 * Evaluating one id in isolation avoids both problems: the returned result
+	 * carries exactly one decision, and `decisions[0].action` is the verdict.
+	 *
+	 * Reusing `resolveSupport(...)` rather than re-walking the precedence rules
+	 * is the point — a second copy of the six levels would drift.
+	 */
+	resolveFeature(featureId: string, args: PnpPolicyApplyArgs): PnpPolicyResult {
+		const { ctx, result } = this.prepare(args);
+		this.resolveSupport(featureId, ctx, result);
+		return result;
+	}
+
+	/**
+	 * Build the rule-evaluation context and the empty result (with its
+	 * configuration-source attribution) from the bound policy inputs.
+	 */
+	private prepare(args: PnpPolicyApplyArgs): {
+		ctx: PnpResolutionContext;
+		result: PnpPolicyResult;
+	} {
 		const { assessment, currentItemRef } = args;
 		const pnp = assessment?.personalNeedsProfile;
 		const settings = assessment?.settings as AssessmentSettings | undefined;
@@ -150,14 +198,6 @@ export class PnpPolicySource {
 			};
 		}
 
-		const allSupports = new Set<string>();
-		pnp?.supports?.forEach((s) => allSupports.add(s));
-		pnp?.prohibitedSupports?.forEach((s) => allSupports.add(s));
-		settings?.districtPolicy?.blockedTools?.forEach((s) => allSupports.add(s));
-		settings?.districtPolicy?.requiredTools?.forEach((s) => allSupports.add(s));
-		itemSettings?.requiredTools?.forEach((s) => allSupports.add(s));
-		itemSettings?.restrictedTools?.forEach((s) => allSupports.add(s));
-
 		const ctx: PnpResolutionContext = {
 			pnp,
 			districtPolicy: settings?.districtPolicy,
@@ -166,11 +206,7 @@ export class PnpPolicySource {
 			toolConfigs: settings?.toolConfigs,
 		};
 
-		for (const supportId of allSupports) {
-			this.resolveSupport(supportId, ctx, result);
-		}
-
-		return result;
+		return { ctx, result };
 	}
 
 	private resolveSupport(

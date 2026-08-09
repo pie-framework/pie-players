@@ -39,6 +39,14 @@ export {
 	connectAssessmentToolkitShellContext,
 } from "./context/runtime-context-consumer.js";
 export {
+	catalogOwnerContextFor,
+	collectCatalogRegistrations,
+	collectEntityCatalogRegistrations,
+	type CatalogOwnerIdentity,
+	type CatalogRegistration,
+	type CatalogSourceEntity,
+} from "./runtime/catalog-registration.js";
+export {
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
@@ -83,6 +91,10 @@ export type {
 
 // Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
 export type {
+	CatalogCardForm,
+	CatalogChangeEvent,
+	CatalogChangeListener,
+	CatalogChangeReason,
 	CatalogLookupContext,
 	CatalogLookupOptions,
 	CatalogOwnerContext,
@@ -91,7 +103,12 @@ export type {
 	CatalogType,
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
-export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
+export {
+	AccessibilityCatalogResolver,
+	catalogCardForm,
+	isKnownCatalogType,
+	KNOWN_CATALOG_TYPES,
+} from "./services/AccessibilityCatalogResolver.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)
@@ -165,6 +182,7 @@ export {
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
 export {
+	ACCOMMODATION_ONLY_SUPPORT_IDS,
 	DEFAULT_PERSONAL_NEEDS_PROFILE,
 	createDefaultPersonalNeedsProfile,
 } from "./services/defaultPersonalNeedsProfile.js";
@@ -189,6 +207,23 @@ export {
 	isStandardAccessFeature,
 	QTI_STANDARD_ACCESS_FEATURES,
 } from "./services/pnp-standard-features.js";
+// Sign-language catalog cards (payload validation + language matching)
+export type { SignLanguageMedia } from "./services/sign-language-cards.js";
+export {
+	AMERICAN_SIGN_LANGUAGE,
+	applyMediaFragment,
+	describeSignLanguage,
+	isSignLanguageCard,
+	matchesRequestedSignLanguage,
+	resolveSignLanguageMedia,
+	SIGN_LANGUAGE_CATALOG_TYPE,
+} from "./services/sign-language-cards.js";
+// Spoken catalog cards carrying recorded audio rather than a reading script
+export type { SpokenAudioMedia } from "./services/spoken-audio-cards.js";
+export {
+	resolveSpokenAudioMedia,
+	SPOKEN_CATALOG_TYPE,
+} from "./services/spoken-audio-cards.js";
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";

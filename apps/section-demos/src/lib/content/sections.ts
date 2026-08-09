@@ -13,6 +13,11 @@ import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
+import {
+	demoSignLanguageGrantedSection,
+	demoSignLanguageNotGrantedSection,
+} from "./demo-sign-language";
+import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 
@@ -495,6 +500,35 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		allowElementVersionOverrides: false,
 		section: metadataSessionForwardingSection,
 	},
+	"sign-language": {
+		id: "sign-language",
+		name: "Sign Language (ASL) Region",
+		description:
+			"Signed alternates rendered in the item card's media region, gated on the signLanguage PNP support — one page with the accommodation granted, one without",
+		integrationLevel: 4,
+		integrationTheme: "Accessibility catalogs",
+		focus:
+			"Validates that signing shows only when the item carries a matching sign-language catalog card AND policy grants eligibility — both halves required, neither a default.",
+		whatMakesItTick: [
+			"A signed alternate arrives only as a catalog card. The first item authors one by hand on `accessibilityCatalogs` with a typed media payload; nothing lifts a signing video out of item markup at render time.",
+			"The second item carries no signing content and shows no region, because an affordance where no content exists is a dead affordance.",
+			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
+			"The third item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
+			"The bundled clip is a real public-domain ASL recording that does not sign these prompts — a stand-in, since ASL video production and hosting are host-owned. See `static/demo-assets/sign-language/README.md`.",
+		],
+		sections: [
+			{
+				id: "signing-granted",
+				name: "Signing granted",
+				section: demoSignLanguageGrantedSection,
+			},
+			{
+				id: "signing-not-granted",
+				name: "Signing not granted",
+				section: demoSignLanguageNotGrantedSection,
+			},
+		],
+	},
 	"three-questions": {
 		id: "three-questions",
 		name: "Three Questions",
@@ -623,6 +657,25 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Toolkit tool config enables `textToSpeech` in item and passage placements.",
 		],
 		section: demo4Section,
+	},
+	"read-aloud-accommodations": {
+		id: "read-aloud-accommodations",
+		name: "Read-Aloud: suppression and recorded audio",
+		description:
+			"Content shown but never spoken, and `spoken` cards that carry a recording instead of a script",
+		integrationLevel: 4,
+		integrationTheme: "Accessibility catalogs",
+		focus:
+			"Shows the two things read-aloud does beyond synthesizing visible text: withholding content whose reading is the construct, and playing authored audio in place of synthesis.",
+		whatMakesItTick: [
+			'Item 1 marks one word `data-tts-suppress="all"`. Read-aloud speaks the rest of the prompt and the options but not that word, because the item measures whether the candidate can read it — an item-level read-aloud switch would have taken the directions away too.',
+			"Item 2's `spoken` card carries an audio payload rather than a script, so the clip plays and the prompt highlights as a block: a recording emits no word boundaries, and timing them from its duration would highlight the wrong words confidently.",
+			"Item 3 carries a recording *and* a script on the same node in the same language — APIP's pattern, which QTI's migration guidance keeps. Nothing distinguishes them but the slot each fills, and resolution prefers the recording.",
+			"Item 4 points at a URL that 404s, so the fallback is observable: read-aloud speaks the script and says why in the console. Silence on a read-aloud node is the one failure a candidate cannot report.",
+			"Worth doing by hand: select the suppressed word and use the annotation toolbar's read-aloud. It refuses — that path passes `range.toString()` straight to the provider and consults no catalog, so filtering only the DOM walk would leave selecting the word as a way around the guard.",
+			"The narration is macOS `say` output, not human recording — it proves the file-playback path, not the fidelity of anyone's narration. See `static/demo-assets/read-aloud/README.md`.",
+		],
+		section: demoReadAloudAccommodationsSection,
 	},
 	"tts-generated-ssml": {
 		id: "tts-generated-ssml",

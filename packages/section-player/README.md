@@ -232,6 +232,35 @@ When both max-width attributes are set, the with-passage cap resolves to the gre
 of the two configured values (after clamp), so with-passage mode never ends up narrower
 than no-passage mode.
 
+### Item card media region
+
+An item card can carry a `data-region="media"` region beside its content region,
+holding a resolved accessibility-catalog media card — today a sign-language
+(ASL) video, gated on the `signLanguage` PNP support. The region only appears
+when the item carries a matching catalog card *and* policy grants the feature, so
+there is no dead affordance on items without signing.
+
+It sits to the right of the question content and is resizable via a
+keyboard-accessible divider (`role="separator"`; arrow keys, `Home`/`End`,
+`Escape` to cancel a drag). Below a card width of 560px the region stacks under
+the content and the divider is withdrawn. Placement is fixed in this iteration:
+there is no orientation toggle and no free repositioning.
+
+Signing legibility needs height for hands and face, so the video is sized by an
+aspect-ratio target with a height floor rather than by width alone. Hosts can
+retune it:
+
+- `--pie-section-player-item-media-aspect-ratio` (default `3 / 4`)
+- `--pie-section-player-item-media-min-height` (default `220px`)
+- `--pie-section-player-item-media-max-height` (default `60vh`)
+
+```css
+pie-section-player-item-card {
+  --pie-section-player-item-media-aspect-ratio: 4 / 5;
+  --pie-section-player-item-media-min-height: 260px;
+}
+```
+
 ### API direction: CE defaults first, JS customization for advanced cases
 
 The intended usage model is:

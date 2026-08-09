@@ -10,6 +10,20 @@
  *
  * Uses `@happy-dom/global-registrator` for `DOMParser`/`document` (matches the
  * convention in `packages/players-shared/tests/first-focusable.test.ts`).
+ *
+ * Every test here passes `{ trustMarkup: true }`, which routes around
+ * `sanitizeMarkup` entirely: DOMPurify >=3.4.8 fails to sanitize under
+ * happy-dom (confirmed 2026-08-06 in players-shared, cbe7791a — every
+ * element's `tagName` resolves to `""`, so nothing matches the allow-list,
+ * the first top-level element is removed with its children lifted into the
+ * parent, and removing a node mid-walk breaks happy-dom's `NodeIterator`, so
+ * the rest of the tree is serialized unprocessed). None of these tests are
+ * about sanitization — they're about the tag-swap and attribute/child
+ * preservation that happens after it — so bypassing the sanitizer makes them
+ * test what they claim to and removes the happy-dom dependency entirely.
+ * `sanitizeMarkup`'s actual behavior (tag/handler stripping, the
+ * resolutions-driven custom-element allow-list) is verified for real in
+ * `tests/e2e/markup-processor.spec.ts` (Playwright, real Chromium).
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
@@ -61,6 +75,7 @@ describe("processMarkup attribute preservation", () => {
 		const { html } = processMarkup(
 			`<multiple-choice id="1" class="noprint"></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		expect(printEl(html).getAttribute("class")).toBe("noprint");
@@ -78,6 +93,7 @@ describe("processMarkup attribute preservation", () => {
 				data-track="q1"
 			></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		const el = printEl(html);
@@ -93,6 +109,7 @@ describe("processMarkup attribute preservation", () => {
 		const { html, nodes } = processMarkup(
 			`<multiple-choice id="1" pie-id="pie-1" class="noprint"></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		const el = printEl(html);
@@ -108,6 +125,7 @@ describe("processMarkup attribute preservation", () => {
 		const { html } = processMarkup(
 			`<multiple-choice id="1" data-original-tag="bogus-tag"></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		expect(printEl(html).getAttribute("data-original-tag")).toBe(
@@ -119,6 +137,7 @@ describe("processMarkup attribute preservation", () => {
 		const { html } = processMarkup(
 			`<multiple-choice id="1"></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		expect(printEl(html).getAttribute("pie-id")).toBe("1");
@@ -128,6 +147,7 @@ describe("processMarkup attribute preservation", () => {
 		const { html } = processMarkup(
 			`<div class="noprint"><p lang="fr">Bonjour</p><multiple-choice id="1" class="noprint"></multiple-choice></div>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		const doc = new DOMParser().parseFromString(html, "text/html");
@@ -144,6 +164,7 @@ describe("processMarkup attribute preservation", () => {
 		const { html, nodes } = processMarkup(
 			`<multiple-choice class="noprint"></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		expect(nodes).toEqual([]);
@@ -157,6 +178,7 @@ describe("processMarkup child preservation", () => {
 		const { html } = processMarkup(
 			`<multiple-choice id="1"><p class="noprint">Fallback <em>copy</em></p></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		const el = printEl(html);
@@ -167,6 +189,7 @@ describe("processMarkup child preservation", () => {
 		const { html } = processMarkup(
 			`<multiple-choice id="1">before<span>middle</span>after</multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		expect(printEl(html).innerHTML).toBe("before<span>middle</span>after");
@@ -176,6 +199,7 @@ describe("processMarkup child preservation", () => {
 		const { html } = processMarkup(
 			`<multiple-choice id="1"></multiple-choice>`,
 			resolutions,
+			{ trustMarkup: true },
 		);
 
 		expect(printEl(html).innerHTML).toBe("");
@@ -196,6 +220,7 @@ describe("processMarkup child preservation", () => {
 		const { html, nodes } = processMarkup(
 			`<multiple-choice id="1"><div class="noprint"><inline-choice id="2"></inline-choice></div></multiple-choice>`,
 			nested,
+			{ trustMarkup: true },
 		);
 
 		const outer = printEl(html);
@@ -208,61 +233,13 @@ describe("processMarkup child preservation", () => {
 });
 
 describe("processMarkup sanitization", () => {
-	// NOTE: tag removal and attribute removal are asserted in separate tests on
-	// purpose. Under happy-dom, DOMPurify's traversal stops sanitizing
-	// attributes once it removes a node, so markup that mixes a `<script>` with
-	// a dirty attribute would let the attribute through *in this environment
-	// only* (real browsers apply both). Combining them into one fixture
-	// silently under-verifies the attribute half — keep them apart.
-	test("strips dangerous tags by default", () => {
-		const { html } = processMarkup(
-			`<div><script>alert(1)</script><multiple-choice id="1"></multiple-choice></div>`,
-			resolutions,
-		);
-
-		expect(html).not.toContain("<script");
-		expect(html).not.toContain("alert(");
-		// The interactive element still gets swapped.
-		expect(printEl(html).getAttribute("id")).toBe("1");
-	});
-
-	test("strips event-handler attributes by default", () => {
-		const { html } = processMarkup(
-			`<div><img src="x" onerror="alert(2)"><multiple-choice id="1" onclick="evil()"></multiple-choice></div>`,
-			resolutions,
-		);
-
-		expect(html).not.toContain("onerror");
-		expect(html).not.toContain("onclick");
-		expect(html).toContain(`src="x"`);
-		expect(printEl(html).getAttribute("id")).toBe("1");
-	});
-
-	test("keeps the interactive and print tags off the sanitizer's chopping block", () => {
-		// The shared sanitizer only allows `pie-*` custom elements by default;
-		// print tags come from `@pie-element/*`, so the allow-list has to be fed
-		// from the resolutions or every element would be stripped.
-		const { html, nodes } = processMarkup(
-			`<multiple-choice id="1"></multiple-choice>`,
-			resolutions,
-		);
-
-		expect(html).toContain(PRINT_TAG);
-		expect(nodes).toHaveLength(1);
-	});
-
-	test("does not add overwide scroll wrappers, which clip in print", () => {
-		const { html } = processMarkup(
-			`<div><img src="wide.png" alt="a chart"><table><tr><td>x</td></tr></table><multiple-choice id="1"></multiple-choice></div>`,
-			resolutions,
-		);
-
-		expect(html).not.toContain("pie-image-scroll");
-		expect(html).not.toContain("pie-table-scroll");
-		expect(html).toContain("wide.png");
-		expect(html).toContain("<table");
-	});
-
+	// What sanitization actually strips (dangerous tags, event-handler
+	// attributes, the resolutions-driven custom-element allow-list, the
+	// overwide-wrapper opt-out) is verified against real Chromium in
+	// `tests/e2e/markup-processor.spec.ts` — see that file's header for why.
+	// What stays here never depends on `sanitizeMarkup` actually sanitizing:
+	// the `trustMarkup`/host-`sanitize` bypasses, and the empty-markup
+	// short-circuit.
 	test("trustMarkup skips sanitization entirely", () => {
 		const { html } = processMarkup(
 			`<div><script>alert(1)</script><multiple-choice id="1"></multiple-choice></div>`,

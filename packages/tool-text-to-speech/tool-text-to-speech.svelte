@@ -127,6 +127,31 @@
 		}
 	}
 
+	/**
+	 * The nearest docked ancestor that actually holds spoken content.
+	 *
+	 * `data-catalog-idref` names a card array, not a spoken card, so the nearest
+	 * docked ancestor may carry only signing or braille. Stopping there loses the
+	 * authored SSML on an outer node — silently, because generated speech reads
+	 * plausibly. Falls back to the nearest docked id when the service cannot
+	 * answer (no resolver yet), which is the previous behaviour.
+	 */
+	function findSpokenCatalogId(from: Element): string | undefined {
+		let node: Element | null = from;
+		let nearest: string | undefined;
+		while (node) {
+			const docked: Element | null = node.closest('[data-catalog-idref]');
+			if (!docked) break;
+			const id = docked.getAttribute('data-catalog-idref') || undefined;
+			if (id) {
+				nearest ??= id;
+				if (ttsService?.hasSpokenAlternate?.(id)) return id;
+			}
+			node = docked.parentElement;
+		}
+		return nearest;
+	}
+
 	// Speak selected text
 	async function speakSelection() {
 		if (!isInitialized || !hasSelection || !selectedText) return;
@@ -146,10 +171,12 @@
 			// Set the root element for highlighting
 			ttsService.setRootElement(container);
 
-			// Detect catalog reference from selected content (for SSML lookup)
-			const catalogId = container
-				.closest('[data-catalog-idref]')
-				?.getAttribute('data-catalog-idref') || undefined;
+			// Detect catalog reference from selected content (for SSML lookup).
+			// Climbs past docked ancestors that hold no spoken card: the attribute
+			// names a whole card array, so a signing card docked on an inner node
+			// would otherwise shadow the authored SSML on an outer one and the
+			// selection would be read as generated speech instead.
+			const catalogId = findSpokenCatalogId(container);
 
 			await ttsService.speak(selectedText, {
 				catalogId,  // Pass catalog ID for SSML resolution

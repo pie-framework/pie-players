@@ -8,6 +8,7 @@ Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
 - [Timed media section architecture](../../architecture/timed-media-section.md)
+- [Sign language (ASL) support](../sign-language-asl-support.md)
 
 ## Problem
 
@@ -35,7 +36,7 @@ PIE needs enough media metadata to render accessible stimulus media and coordina
 
 - Owning package: proposed `@pie-players/pie-players-shared`.
 - Public export path: open question; candidate shape is `<owner>/media`.
-- Consuming packages or apps: timed-media section-player PRDs, `assessment-toolkit`, `section-player`, `assessment-player`, `pie-elements-ng` `video-stimulus`, and `../pie-qti` adapters.
+- Consuming packages or apps: timed-media section-player PRDs, `assessment-toolkit`, `section-player`, `assessment-player`, `pie-elements-ng` `video-stimulus`, sign-language catalog cards, and `../pie-qti` adapters.
 - Runtime environment: browser, Node-safe, custom element, and adapter-only.
 
 The contract should stay data-only. Rendering APIs belong to element or player implementation PRDs.
@@ -180,9 +181,33 @@ bun run check:custom-elements
 - Documentation updates: timed-media, video-stimulus, and QTI adapter PRDs should link to the accepted contract.
 - Release risk: medium, mainly around accessibility metadata and URL/privacy expectations.
 
+## Second Carrier: Accessibility Catalog Cards
+
+Stimulus media is not the only media path. Accessibility catalogs carry media too — a `sign-language` catalog card is a video docked to a content node — and originally `CatalogCard` carried only a required `content` string, so such a card could only ever hold a bare URL: no multiple sources, no MIME types, no poster. (It could always name a `language`; what it could not express was the media itself.) PIE-880 made `content` optional and added the structured payload described below.
+
+This contract should be the payload for those cards rather than letting the catalog model grow a parallel set of media fields. **This half has shipped ahead of the rest of the contract**: PIE-880 landed `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef` and `MediaFragmentRange` in `@pie-players/pie-players-shared/types`, with `CatalogCard.payload` as their first consumer — so the vocabulary a later timed-media consumer inherits is already fixed in code, not merely proposed here. See [`../sign-language-asl-support.md`](../sign-language-asl-support.md).
+
+Two consequences for this contract:
+
+- `MediaAssetRef` must be usable for a short, single-purpose clip, not only for a section-scale stimulus. Resolve that by having each **consumer declare its required subset**, not by making every field optional at the type level — a type where nothing is required stops catching anything. For signing: sources and language required, poster and duration not applicable, and `tracks`/`transcript` actively meaningless, since captions on a signing video would be the English text already on screen.
+- Catalog cards need a **time range within** an asset, because QTI 3 expresses signing time slices with Media Fragments URIs so one recording can serve several content nodes. Timed media needs the same primitive for cue ranges. Design it once, now — see the sequencing note below.
+
+### Sequencing: Two Concurrent Consumers
+
+Updated 2026-08-07. Timed media and sign-language support are both expected to start soon, possibly in parallel. That changes this contract's position: it is no longer a contract with one prospective consumer but a **blocker for two concurrent ones**.
+
+Two implications. Design `MediaAssetRef` against both consumers from the start rather than letting whichever moves first shape it and the other adapt — a contract with two concrete consumers gets designed better than one designed in the abstract, but only if both are at the table. And land it before either side writes media-handling code, or the result is two media vocabularies and a merge later.
+
+This promotes `media-asset-contract` from third in the [shared-contracts review sequence](./README.md) to first.
+
 ## Open Questions
 
 - Which media fields are schema-required versus policy-required?
 - Should transcript support allow inline HTML, plain text, external references, or all three?
 - Should duration be authoritative, advisory, or always derived by runtime media loading when possible?
 - Does rights/license metadata belong in this contract or host-only metadata?
+
+Two questions here were answered by the shipped signing consumer (2026-08-08), and are recorded rather than left open:
+
+- **Where a time range lives.** Not in `MediaSource` and not in `MediaAssetRef`: a range is a property of *this use* of an asset, not of the asset or of one encoding of it, and the same recording is meant to serve several content nodes. It is a separate `MediaFragmentRange { startSeconds, endSeconds? }` carried beside the asset by whatever references it — `SignLanguageCardPayload.fragment` today. Timed-media cue ranges should reuse the type in the same position rather than nesting it inside the asset. Browsers honour the start offset when it is applied as a Media Fragments URI; the end offset is enforced by the player, because support for the end bound is inconsistent.
+- **Whether `MediaAssetRef` is the signing card payload.** Yes — `SignLanguageCardPayload` wraps it rather than restating media fields, and the required subset is declared per consumer as described above.

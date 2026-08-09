@@ -55,6 +55,8 @@ history and completed implementation plans are intentionally excluded.
 - [`accessibility/tts-authoring-guide.md`](./accessibility/tts-authoring-guide.md) - Authoring guidance for spoken alternatives
 - [`accessibility/aws-polly-setup-guide.md`](./accessibility/aws-polly-setup-guide.md) - AWS Polly setup
 - [`accessibility/aws-ssml-tags-reference.md`](./accessibility/aws-ssml-tags-reference.md) - SSML authoring reference
+- [`prds/sign-language-asl-support.md`](./prds/sign-language-asl-support.md) - PRD for sign-language (ASL) delivery; section-player renders `sign-language` catalogs in a per-item media region, gated on the `signLanguage` PNP support
+- [`prds/audio-accommodations.md`](./prds/audio-accommodations.md) - PRD for the audio transcript accommodation and autoplay control; retires a pre-toolkit CSS-class gate by transforming Star content into catalog cards in the `pie-api-aws` import pipeline
 
 ## WCAG Reference
 

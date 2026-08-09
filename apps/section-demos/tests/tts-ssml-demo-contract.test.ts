@@ -21,17 +21,24 @@ const collectVisibleMarkup = (): string[] => {
 	return visible;
 };
 
+// `CatalogCard.content` is optional — cards whose content is structured (a
+// signing video) carry a payload instead — so collect only the string forms.
+const cardStrings = (cards: { content?: string }[]): string[] =>
+	cards
+		.map((card) => card.content)
+		.filter((content): content is string => typeof content === "string");
+
 const collectSpokenCatalogContent = (): string[] => {
 	const spoken: string[] = [];
 	for (const block of demo4Section.rubricBlocks ?? []) {
 		for (const catalog of block.passage?.accessibilityCatalogs ?? []) {
-			spoken.push(...catalog.cards.map((card) => card.content));
+			spoken.push(...cardStrings(catalog.cards));
 		}
 	}
 	for (const itemRef of demo4Section.assessmentItemRefs ?? []) {
 		for (const model of itemRef.item?.config?.models ?? []) {
 			for (const catalog of model.accessibilityCatalogs ?? []) {
-				spoken.push(...catalog.cards.map((card) => card.content));
+				spoken.push(...cardStrings(catalog.cards));
 			}
 		}
 	}

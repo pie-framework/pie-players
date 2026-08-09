@@ -25,6 +25,8 @@ Two smaller notes for whoever picks this up:
 
 Two workstreams landed since this note was written that a video stimulus surface must consume rather than re-invent: the broad theming contract (`../prds/pie-727-broad-theming-contract.md` and the token inventory) for media control styling, and the line-reader window view plus inline TTS work for media-control focus and reading-tool coordination. Both postdate [`../prds/shared-contracts/accessibility-runtime-patterns.md`](../prds/shared-contracts/accessibility-runtime-patterns.md).
 
+Added 2026-08-07: sign-language (ASL) video came up as a candidate use for this section flavor and was scoped out into its own contract. Section-player is still the runtime host for signing — via the existing accessibility-catalog rail, not a new section flavor. See [Sign Language Is Not This Section Flavor](#sign-language-is-not-this-section-flavor) and [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
+
 ## Context
 
 PIE already has strong primitives for individual interactive questions, shared passages, section composition, and assessment-level routing. A video-linked assessment stretches those primitives in a useful way: one static media stimulus is paired with multiple normal PIE items, and timestamp cues control when those items appear, pause playback, gate progression, and contribute to an aggregate section outcome.
@@ -46,6 +48,7 @@ This is not currently a Renaissance deployment requirement. It is a boundary tes
 - No attempt to force the timed-media container into a leaf PIE element.
 - No opaque PCI/custom-item wrapper that hides child questions from normal PIE item/session/outcome contracts.
 - No commitment that the field names in this note are final. They are proposed handoff names for PRDs to ratify or revise.
+- No sign-language/ASL delivery as a *section flavor*. Section-player renders signing through the existing accessibility-catalog rail (item-level, cue-free), specified in [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md); it is not a `sectionType` and not a new layout.
 
 ## Glossary
 
@@ -62,6 +65,8 @@ This is not currently a Renaissance deployment requirement. It is a boundary tes
 | Assessment authoring | Assembly of sections into a test, activity, or larger assessment definition. | Assessment-player / host-level concern. |
 
 The terminology tension is intentional: current element docs should continue to use **Passage** where they describe today's passage+item pattern. This proposal uses **stimulus** as the broader architecture category because video, audio, and future simulations are not naturally "passages." A later PRD should decide whether to update the ubiquitous language with a hierarchy such as "Stimulus is the broad category; Passage is the text/reading flavor."
+
+One cross-vendor trap, recorded 2026-08-07: **Learnosity's "stimulus" is not this note's "stimulus."** In Learnosity's item model, `stimulus` corresponds to what PIE calls **prompt** — per-item question language, not shared content framing several items. Do not treat a Learnosity `stimulus` field as a PIE passage or as a timed-media stimulus during import mapping; the resemblance is in the word only.
 
 ## Layer Ownership
 
@@ -394,6 +399,32 @@ Fallback context:
 - Media Chrome is MIT licensed and web-component native. It is a strong lower level control-layer fallback if PIE needs to stay close to the native media element API.
 
 The key architectural rule is dependency isolation: the timed-media section player talks to the PIE-owned `video-stimulus` API, not directly to Video.js.
+
+## Sign Language Is Not This Section Flavor
+
+Sign-language (ASL) delivery looks adjacent to this note — it is video, it is accessibility-driven, and it needs a media player — and it is a different contract. Recorded 2026-08-07 after review of real ASL-bearing content; the full contract is [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
+
+**Section-player is still the runtime host** — same as it already is for spoken/TTS catalogs, and for the same reason: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes. What's ruled out is a *different* framing that came up first: modeling the ASL video as a passage and building a specialized ASL section layout for it. That framing fails on two counts:
+
+1. **A signing video translates the prompt, not the passage.** It is per-item question language rendered in another language, not shared content framing several items. Nothing about it is section-scoped, so a section flavor buys nothing.
+2. **ASL coexists with written English rather than replacing it.** Spanish translation produces a separate item with its own id, entirely in Spanish. ASL cannot follow that pattern, because ASL is not written down in everyday practice, and deaf learners in the US typically use both languages with differing fluency in each. The signed alternate has to sit alongside the English content in the same item.
+
+So signing is an **item-level alternate representation** — many short recordings, each docked to one content node, played on learner demand, gating nothing — rendered by section-player through the existing accessibility-catalog rail (`sign-language` catalog cards docked via `data-catalog-idref`, gated by the `signLanguage` PNP support). It is not a `sectionType`, not a passage, and not a specialized layout.
+
+| | Timed media | Sign language |
+| --- | --- | --- |
+| Scope | Section | Content node inside an item |
+| Media count | One shared stimulus | Many short recordings |
+| Purpose | Orchestrates items | Translates language |
+| Timeline role | Reveals, gates, sequences items | None |
+| Trigger | Playback position | Learner demand |
+| Granularity | Item refs | Prompt, and plausibly answer choices |
+| New section flavor? | Yes | No |
+| Runtime host | Section-player (timed-media variant) | Section-player (existing catalog rail) |
+
+Two things genuinely are shared and should not be duplicated: the [media asset contract](../prds/shared-contracts/media-asset-contract.md), and time-ranged playback. QTI 3 expresses signing time slices with Media Fragments URIs so one recording can serve several content nodes — the same "video plus timestamps" primitive this note needs, minus all the cue policy. If both contracts land, share that primitive rather than writing it twice.
+
+Updated 2026-08-08: signing landed first, so both are now in code rather than pending — `MediaAssetRef` and friends in `@pie-players/pie-players-shared/types`, with the time range as a separate `MediaFragmentRange` carried beside the asset rather than inside it, since a range describes one *use* of a recording. Cue ranges should reuse it in that position. The sequencing worry in the shared-contracts note has partly resolved itself: the vocabulary exists, and this side's job is to ratify or extend it, not to write a second one.
 
 ## Rejected Alternatives
 

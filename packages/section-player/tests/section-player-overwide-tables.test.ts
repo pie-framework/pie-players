@@ -1,28 +1,20 @@
 /**
- * Section-player-level assertion that authored `<table>` markup flowing through
- * the shared sanitize pipeline (which is what `pie-item-player` consumes when
- * rendering passages and items in the section player) is wrapped in a
- * horizontal-scroll container so overwide tables surface a scrollbar instead of
- * being clipped by the section layout's `overflow-x: hidden` ancestors.
+ * Authored `<table>` markup rendered by `pie-item-player` inside the section
+ * player is wrapped in a horizontal-scroll container, so overwide tables
+ * surface a scrollbar instead of being clipped by the section layout's
+ * `overflow-x: hidden` ancestors.
  *
  * Mirrors `section-player-overwide-images.test.ts` but for `<table>` /
- * `wrapOverwideTables`.
+ * `wrapOverwideTables`, including why it calls the wrapper directly rather
+ * than through `sanitizeItemMarkup`: DOMPurify >=3.4.8 does not sanitize under
+ * happy-dom, so an assertion made downstream of a sanitize pass here proves
+ * nothing about the sanitizer. See that file's header for the detail.
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	test,
-} from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import {
-	resetPurifierForTesting,
-	sanitizeItemMarkup,
-} from "@pie-players/pie-players-shared";
+import { wrapOverwideTables } from "@pie-players/pie-players-shared";
 
 beforeAll(() => {
 	if (
@@ -37,10 +29,6 @@ afterAll(() => {
 	if (GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.unregister();
 	}
-});
-
-beforeEach(() => {
-	resetPurifierForTesting();
 });
 
 const PASSAGE_MARKUP = `
@@ -68,7 +56,7 @@ const ITEM_STEM_MARKUP = `
 
 describe("section player authored table wrapping", () => {
 	test("passage markup: wraps overwide <table> in a .pie-table-scroll container", () => {
-		const out = sanitizeItemMarkup(PASSAGE_MARKUP);
+		const out = wrapOverwideTables(PASSAGE_MARKUP);
 		expect(out).toContain('class="pie-table-scroll"');
 		expect(out).toContain(
 			'aria-label="Scrollable table: Renaissance city populations (1500)"',
@@ -80,13 +68,13 @@ describe("section player authored table wrapping", () => {
 	});
 
 	test("item stem markup: wraps <table> the same way passages do", () => {
-		const out = sanitizeItemMarkup(ITEM_STEM_MARKUP);
+		const out = wrapOverwideTables(ITEM_STEM_MARKUP);
 		expect(out).toContain('class="pie-table-scroll"');
 		expect(out).toContain('aria-label="Scrollable table: Population summary"');
 	});
 
 	test("wrapper is keyboard-scrollable (tabindex=0) and announces itself as a region", () => {
-		const out = sanitizeItemMarkup(PASSAGE_MARKUP);
+		const out = wrapOverwideTables(PASSAGE_MARKUP);
 		expect(out).toMatch(/<div class="pie-table-scroll"[^>]*tabindex="0"/);
 		expect(out).toMatch(/<div class="pie-table-scroll"[^>]*role="region"/);
 	});
@@ -99,7 +87,7 @@ describe("section player authored table wrapping", () => {
 			</pie-multiple-choice>
 			<table><tr><td>outside</td></tr></table>
 		`;
-		const out = sanitizeItemMarkup(html);
+		const out = wrapOverwideTables(html);
 		// The table inside the pie-* element must not be restructured.
 		expect(out).toMatch(
 			/<pie-multiple-choice[^>]*>\s*<table[^>]*>[\s\S]*?internal[\s\S]*?<\/table>\s*<\/pie-multiple-choice>/,
@@ -110,10 +98,10 @@ describe("section player authored table wrapping", () => {
 		);
 	});
 
-	test("table-less passage markup flows through unchanged shape", () => {
+	test("table-less passage markup flows through unchanged", () => {
 		const html = "<p>No tables here.</p>";
-		const out = sanitizeItemMarkup(html);
+		const out = wrapOverwideTables(html);
 		expect(out).not.toContain("pie-table-scroll");
-		expect(out).toContain("<p>No tables here.</p>");
+		expect(out).toBe(html);
 	});
 });

@@ -212,13 +212,21 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 
 	test.describe("wrapOverwideContent", () => {
 		const markup =
-			'<img src="wide.png" alt="chart"><table><tr><td>x</td></tr></table>';
+			'<img src="wide.png" alt="chart" width="1792" height="592"><table><tr><td>x</td></tr></table>';
 
 		test("wraps overwide images and tables by default", async ({ page }) => {
 			const out = await sanitizeInPage(page, markup);
 			expect(out).toContain("pie-image-scroll");
 			expect(out).toContain("pie-table-scroll");
 			expect(out).toContain("wide.png");
+			// `width` / `height` survive the allow-list and the wrapping pass.
+			// Authored passages carry intrinsic dimensions (the
+			// `question-passage` section demo's `<figure>` is the live case), and
+			// dropping them changes layout rather than failing loudly. The
+			// section-player wrapper tests cannot assert this — they run under
+			// happy-dom, where DOMPurify does not sanitize at all.
+			expect(out).toContain('width="1792"');
+			expect(out).toContain('height="592"');
 		});
 
 		test("skips the wrappers when disabled, keeping the content", async ({

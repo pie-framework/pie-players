@@ -1,0 +1,81 @@
+{
+	"id": "asl-demo-scrub-time_v1.0",
+	"name": "Signed arithmetic question (synthetic ASL sample)",
+	"published": false,
+	"config": {
+		"id": "asl-demo-scrub-time_v1.0",
+		"markup": "<pie-element-multiple-choice id=\"asl-demo-scrub-time-q1\"></pie-element-multiple-choice>",
+		"elements": {
+			"pie-element-multiple-choice": "@pie-element/multiple-choice@latest"
+		},
+		"models": [
+			{
+				"element": "pie-element-multiple-choice",
+				"id": "asl-demo-scrub-time-q1",
+				"weights": [
+					{
+						"id": "asl-demo-scrub-time-q1",
+						"weight": "1"
+					}
+				],
+				"prompt": "<p>Maya scrubs her hands for 20 seconds each time she washes them. She washes her hands 4 times a day. How many seconds does she spend scrubbing in one day? <span data-catalog-idref=\"00000000-0000-4000-8000-000000000881\" hidden></span></p>",
+				"partialScoring": false,
+				"choiceMode": "radio",
+				"choicePrefix": "none",
+				"lockChoiceOrder": true,
+				"choices": [
+					{
+						"correct": false,
+						"label": "<div>24 seconds</div>",
+						"value": "twentyfour"
+					},
+					{
+						"correct": true,
+						"label": "<div>80 seconds</div>",
+						"value": "eighty"
+					},
+					{
+						"correct": false,
+						"label": "<div>200 seconds</div>",
+						"value": "twohundred"
+					}
+				],
+				"fontSizeFactor": 1,
+				"selectedAnswerBackgroundColor": "rgb(182,210,232)",
+				"autoplayAudioEnabled": false,
+				"completeAudioEnabled": false,
+				"language": "en_US",
+				"isSelectionButtonBelow": false,
+				"choicesLayout": "vertical",
+				"keyboardEventsEnabled": true,
+				"accessibilityCatalogs": [
+					{
+						"identifier": "00000000-0000-4000-8000-000000000881",
+						"cards": [
+							{
+								"catalog": "sign-language",
+								"language": "ase",
+								"payload": {
+									"media": {
+										"version": 1,
+										"id": "cdc-asl-handwashing",
+										"kind": "video",
+										"sources": [
+											{
+												"src": "/demo-assets/sign-language/cdc-asl-handwashing.webm",
+												"type": "video/webm"
+											}
+										],
+										"label": "American Sign Language translation"
+									}
+								}
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"searchMetaData": {},
+	"passage": null
+}

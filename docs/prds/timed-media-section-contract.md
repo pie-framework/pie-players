@@ -10,10 +10,11 @@ Related architecture:
 
 - [Timed media section architecture](../architecture/timed-media-section.md)
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
-- [Media asset contract](./shared-contracts/media-asset-contract.md)
+- [Media asset contract](./shared-contracts/media-asset-contract.md) — now a hard prerequisite, see below
 - [Interaction event contract](./shared-contracts/interaction-event-contract.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
+- [Sign language (ASL) support](./sign-language-asl-support.md) — sibling media contract, deliberately out of scope here
 
 ## Problem
 
@@ -37,6 +38,15 @@ This PRD defines the section contract that timed-media section-player variants, 
 - No generic `profileState` bag for section behavior.
 - No composition authoring UI in this PRD; that is a future PRD for cue timelines, item bindings, preview, and policy editing.
 - No final QTI profile or conformance claim; QTI mapping belongs in `pie-qti` after this contract is reviewed.
+- No sign-language/ASL delivery as a section flavor. Section-player still hosts signing at runtime — through the existing accessibility-catalog rail, since the resolver lives in `assessment-toolkit` and section-player already consumes it — but not through `sectionType` or a specialized layout. Signed alternate representations are item-level, learner-triggered, and gate nothing; see [`./sign-language-asl-support.md`](./sign-language-asl-support.md). The two contracts should share the media asset contract and, if both land, time-ranged playback.
+
+## Prerequisite: Media Asset Contract
+
+Noted 2026-08-07. Sign-language support is starting around the same time as this work, and both consume [`media-asset-contract`](./shared-contracts/media-asset-contract.md). That contract should be reviewed and landed **before** either side writes media-handling code, and designed against both consumers rather than shaped by whichever moves first — otherwise the result is two media vocabularies in one codebase and a merge later.
+
+The specific piece both need is a time range within an asset: Media Fragments for signing, where one recording serves several content nodes, and cue ranges here. Same primitive, two callers, so it gets designed once in the shared contract rather than twice.
+
+Updated 2026-08-08: signing moved first, so the vocabulary now exists in code — `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef` and `MediaFragmentRange` in `@pie-players/pie-players-shared/types`. That changes this prerequisite rather than removing it. Cue ranges should reuse `MediaFragmentRange` in the same position it holds for signing (beside the asset, not inside it — a range describes a *use* of an asset, not the asset), and anything this contract needs that the shipped types lack should extend them. What must not happen is a second media vocabulary growing beside the first because this side found the first one inconvenient.
 
 ## Package And Export Ownership
 

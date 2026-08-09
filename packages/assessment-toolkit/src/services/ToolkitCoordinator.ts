@@ -34,6 +34,7 @@ import {
 	type ToolConfigStrictness,
 } from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
+import type { CatalogChangeListener } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import {
 	frameworkErrorFromCoordinatorContext,
@@ -69,6 +70,7 @@ import type {
 } from "./ToolRegistry.js";
 import {
 	ToolPolicyEngine,
+	type FeaturePolicyDecision,
 	type PnpEnforcementMode,
 	type PolicySource,
 	type ResolvedEngineInputs,
@@ -102,6 +104,7 @@ export type {
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 export type {
+	FeaturePolicyDecision,
 	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyChangeListener,
@@ -2250,6 +2253,18 @@ export class ToolkitCoordinator {
 	}
 
 	/**
+	 * Resolve eligibility for one PNP/AfA feature id, independent of toolbar
+	 * placement.
+	 *
+	 * Thin shim over the owned tool-policy engine; see
+	 * {@link ToolPolicyEngine.decideFeature} for the contract, including why
+	 * `pnpEnforcement` is not consulted.
+	 */
+	decideFeaturePolicy(featureId: string): FeaturePolicyDecision {
+		return this.policyEngine.decideFeature(featureId);
+	}
+
+	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound inputs change (`updateToolConfig`,
 	 * `updateToolPlacement`, `updateAssessment`, `updateCurrentItemRef`,
@@ -2269,6 +2284,20 @@ export class ToolkitCoordinator {
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
 		return this.policyEngine.onPolicyChange(listener);
+	}
+
+	/**
+	 * Subscribe to accessibility-catalog registrations and removals.
+	 *
+	 * Delegates to the owned resolver, the same way {@link onPolicyChange}
+	 * delegates to the owned policy engine, so a consumer holding only the
+	 * coordinator can react to both of the mutable inputs a catalog-backed
+	 * capability depends on without reaching for the services directly.
+	 *
+	 * @returns Unsubscribe function
+	 */
+	onCatalogsChange(listener: CatalogChangeListener): () => void {
+		return this.catalogResolver.onCatalogsChange(listener);
 	}
 
 	/**

@@ -8,6 +8,8 @@ the same setup flow.
 | Catalog resolver basics and direct API examples | [Accessibility Catalogs Quick Start](./accessibility-catalogs-quick-start.md) |
 | Section-player and `ToolkitCoordinator` integration | [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) |
 | Catalog-aware TTS behavior and troubleshooting | [Accessibility Catalogs TTS Integration](./accessibility-catalogs-tts-integration.md) |
+| Sign-language (ASL) delivery | [Sign Language (ASL) Support PRD](../prds/sign-language-asl-support.md) |
+| Audio transcript accommodation and autoplay control | [Audio Accommodations PRD](../prds/audio-accommodations.md) |
 | Runtime call flow from toolbar click to speech | [TTS Deep Dive](./tts-deep-dive.md) |
 | Package/provider architecture | [TTS Architecture](./tts-architecture.md) |
 | Authoring SSML in item content and catalogs | [TTS Authoring Guide](./tts-authoring-guide.md) |

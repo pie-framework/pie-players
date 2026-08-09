@@ -23,15 +23,54 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 
 ### Supported Catalog Types
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `spoken` | Pre-authored TTS scripts (SSML) | Screen readers, TTS |
-| `sign-language` | Video URLs for signed content | Deaf/hard-of-hearing |
-| `braille` | Braille-ready transcriptions | Blind users with refreshable displays |
-| `tactile` | Descriptions for tactile graphics | Tactile diagram readers |
-| `simplified-language` | Plain language alternatives | Cognitive accessibility, ELL |
-| `audio-description` | Extended audio descriptions | Visual content for blind users |
-| `extended-description` | Detailed text descriptions | Complex diagrams/images |
+| Type | Description | Use Case | Rendered by PIE |
+|------|-------------|----------|-----------------|
+| `spoken` | A TTS script (SSML), or a recording of one as a media payload | Screen readers, TTS | Yes — `TTSService` |
+| `sign-language` | Signed video, as a structured media payload | Deaf/hard-of-hearing | Yes — section-player item media region, gated on the `signLanguage` PNP support |
+| `transcript` | Text transcript of an audio stimulus | Deaf/hard-of-hearing | No — resolvable, host-consumed |
+| `braille` | Braille-ready transcriptions | Blind users with refreshable displays | No — resolvable, host-consumed |
+| `tactile` | Descriptions for tactile graphics | Tactile diagram readers | No — resolvable, host-consumed |
+| `simplified-language` | Plain language alternatives | Cognitive accessibility, ELL | No — resolvable, host-consumed |
+| `audio-description` | Extended audio descriptions | Visual content for blind users | No — resolvable, host-consumed |
+| `extended-description` | Detailed text descriptions | Complex diagrams/images | No — resolvable, host-consumed |
+
+**Other types are allowed, and unknown ones are reported.** QTI's support
+vocabulary is extensible, so `CatalogType` stays open and a token PIE does not
+name is still stored and still resolvable by a host that asks for it. Use QTI's
+`ext:` prefix for a vendor extension (`ext:custom-pronunciation`) and it passes
+without comment. Anything else — including `"spokn"` — is registered but logged,
+on both the card side ("stored but no reader asks for that type") and the lookup
+side ("cannot match any card"), once per distinct token. The openness is
+deliberate; the previous silence was not, since a mistyped card was a valid
+`CatalogType` that simply never appeared. `isKnownCatalogType` is exported if a
+host wants to check before registering.
+
+### Card Content: String Or Payload
+
+A card carries **either** `content` **or** `payload`, never both, and `catalog`
+is the only thing that says which to read — it is QTI's `qti-card@support`, and
+QTI gives `qti-card` one content slot:
+
+```typescript
+interface CatalogCard {
+  catalog: string;    // 'spoken', 'sign-language', 'braille', …
+  language?: string;  // the card entry's xml:lang
+  content?: string;   // the string form: SSML for `spoken`, text for `braille`
+  payload?: CatalogCardPayload;  // the structured form, read according to `catalog`
+}
+```
+
+`content` is optional because some types have no string form at all. A signing
+card needs a second source, a MIME type, a poster and a time range, so it carries
+`payload` and no `content`; nothing is mirrored between the two, so there is
+never a second copy of the same URL to fall out of sync, and the payload carries
+no type tag of its own that could disagree with `catalog`.
+
+Consequences for consumers: select by `catalog` type, then validate the form you
+expect. `TTSService` treats a resolved card with no string form as "no catalog"
+and falls through to generated speech rather than speaking an empty string, and a
+`sign-language` card carrying a bare URL in `content` is reported and ignored
+rather than half-rendered.
 
 ---
 
@@ -72,8 +111,21 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
    passages, items, models, and `config.extractedCatalogs`.
 4. **Content Request**: `TTSService` resolves `data-catalog-idref` references
    for spoken catalogs before falling back to generated speech or visible text.
+   Section-player's item card resolves `sign-language` cards for the same item in
+   parallel, through the same resolver.
 5. **Navigation/Unmount**: Shell lifecycle unregisters scoped item and passage
    catalog registrations.
+
+Step 3 and step 4 have to agree on *where* a catalog is filed, because the
+resolver matches owner contexts field by field: a reader that assembled its own
+context by hand would silently resolve nothing the day either side gained a
+field. So one function decides it — `collectEntityCatalogRegistrations` walks the
+three places catalogs hang off an entity (entity-level `accessibilityCatalogs`,
+`config.extractedCatalogs`, and each model's own catalogs, the last filed under
+that `modelId` so two models can reuse one identifier), and
+`catalogOwnerContextFor` builds the context both sides use. Both are exported
+from `@pie-players/pie-assessment-toolkit`; readers should call the latter rather
+than construct a `CatalogOwnerContext` literal.
 
 ---
 
@@ -86,6 +138,15 @@ QTI 3.0 accessibility catalogs. Run it as a preprocessing/import step before
 rendering, then pass the cleaned config and `config.extractedCatalogs` to the
 player. The runtime registers `extractedCatalogs` when shells mount, but it does
 not invoke extraction during shell registration.
+
+Signed content has no equivalent. A `sign-language` card is authored or written
+by an importer, never lifted out of markup at render time: a counterpart to
+`SSMLExtractor` was implemented and removed, because nothing produced the inline
+form — the Learnosity transform writes `accessibilityCatalogs` directly — and a
+runtime that failed to parse the markup left the video in the visible content,
+showing the accommodation to every learner. Inline `<speak>` earns its extractor
+because it is real authored content PIE does not control; inline signing video is
+not.
 
 #### Why Extraction?
 
@@ -362,6 +423,140 @@ const item = {
   <p>Photosynthesis is the process by which...</p>
 </div>
 ```
+
+### Two Cards of One Type: Script and Recording
+
+A `spoken` node may carry both a reading script and a recording of it, in the same
+language. This is APIP's pattern, kept by QTI 3's migration guidance: the script
+is what the recording was generated from and its fallback when the clip cannot
+play.
+
+```typescript
+{
+  identifier: 'prompt-1',
+  cards: [
+    { catalog: 'spoken', language: 'en-US', content: '<speak>A plant absorbs…</speak>' },
+    { catalog: 'spoken', language: 'en-US', payload: { media: { /* audio */ } } },
+  ],
+}
+```
+
+A card carries exactly one of `content` or `payload`, so the slot is already the
+discriminator and no extra field is needed. A lookup picks one with `form`:
+
+```typescript
+resolver.getAlternative('prompt-1', { type: 'spoken', language: 'en-US', form: 'payload' });
+```
+
+`form` is a **preference, not a filter**: an absent preferred form still returns
+the other card, so callers check what they got. It applies *within* a language
+rung and never across one — a recording in the requested language beats a script
+in that language, but a script in the requested language beats a recording in
+another. Omit `form` for first-match resolution.
+
+`getAllAlternatives` keys on type, language **and** form, so both cards are
+reported.
+
+### Recorded Audio as a Spoken Alternate
+
+A `spoken` card may carry a recording instead of a script. QTI 3 treats the two as
+the *same* support, so this is not a separate accommodation and needs no separate
+PNP entitlement.
+
+```typescript
+{
+  catalog: 'spoken',
+  language: 'en-US',
+  payload: {
+    media: {
+      version: 1,
+      id: 'prompt-audio',
+      kind: 'audio',
+      sources: [{ src: '/audio/prompt.mp3', type: 'audio/mpeg' }],
+    },
+    fragment: { startSeconds: 4, endSeconds: 9 },  // optional slice of a longer file
+  },
+}
+```
+
+- **Highlighting is the node as a block**, not word by word: a recording emits no
+  word-boundary events. Word-level highlighting stays on the synthesized path.
+- **`media.kind` must be `audio`.** A video filed under `spoken` is refused, so
+  signing and speech cards cannot swap roles.
+- **The first source is used.** An `<audio>` element with alternative `<source>`
+  children signals failure through a path that is awkward to observe, and a
+  dependable fallback matters more than encoding negotiation.
+- **`fragment` becomes a Media Fragments URI**, with the end bound enforced by the
+  player because browser support for it is inconsistent.
+- **The rate setting applies** via `playbackRate`; voice selection does not.
+- **Failure degrades to the script** — playback retries the node with its
+  `content` card. With no script authored, the failure is reported rather than
+  silently skipped.
+- **Suppression still wins**, below.
+
+The `read-aloud-accommodations` section demo exercises all of this, including a
+clip that fails to load.
+
+### Suppressing Read-Aloud
+
+Some content must be shown and never spoken — items where reading *is* the
+construct, such as decoding and spelling. `data-tts-suppress` marks an element and
+its subtree not-to-be-spoken:
+
+```html
+<p>
+  Which word begins with the same sound as
+  <span data-tts-suppress="all">cake</span>?
+</p>
+```
+
+| Value                | Effect                                                            |
+| -------------------- | ----------------------------------------------------------------- |
+| `computer-read-aloud` | Not spoken by PIE's TTS.                                          |
+| `all`                | Not spoken by PIE's TTS, and the host should also hide it from AT. |
+| `screen-reader`      | Aimed at assistive technology only — **still machine-read aloud**. |
+
+One value, not a list. An unrecognized or empty value suppresses anyway and logs
+why: a token that fell through on a typo would speak the word the item was
+measuring, with no visible symptom.
+
+**Not a catalog card, and not a PNP field.** A suppression card would carry
+neither `content` nor `payload` and would only work on docked nodes, and it has to
+be enforceable in the selection read-aloud path, which consults no catalog.
+`prohibitedSupports` is the learner declining a support; this is the item saying
+"not here, for anyone", so it overrides an entitlement and beats an authored
+`spoken` card on the same node.
+
+**Enforced in every path that produces speech**, since a filter on one of them is
+a filter a candidate can walk around:
+
+- the composed catalog path, checked before card resolution;
+- the generated-speech and visible-text collectors, via
+  `isNodeExcludedFromSpeech`;
+- structural pause boundaries, so a suppressed node leaves no audible seam;
+- `speakRange`, the annotation-toolbar selection path. It passes
+  `range.toString()` straight through and `Range.toString()` honours no DOM
+  filter, so it filters the range itself. A selection wholly inside suppressed
+  content speaks nothing; one that spans it speaks the rest, with highlight
+  offsets from the same filtered text.
+
+A host passing its own string to `ttsService.speak(text, { ignoreCatalogs: true })`
+bypasses this — there is no DOM to filter. Pass a `contentElement`, or a `Range`
+via `speakRange`.
+
+**Speech-only, with no braille or signing equivalent.** The test is whether a
+modality preserves the information the item measures. Speech destroys spelling;
+braille preserves it, so braille of a spelling item is how a blind candidate takes
+that test; signing preserves it only when the signer fingerspells. For signing
+that decides it: the fact lives in the recording and is known to the signer, not
+to whoever authors an attribute, and suppression is per node while a signed
+alternate is one video per item — so the only available rule would withhold a deaf
+candidate's whole translation over one word.
+
+**Importing QTI content.** QTI 3 spells this `data-qti-suppress-tts`, same
+vocabulary and placement. PIE reads only `data-tts-suppress`, following its own
+`data-tts-*` family, so an importer maps it on the way in; accepting both
+spellings is how one fact under two names starts disagreeing with itself.
 
 ### Multi-Level Catalog Support
 

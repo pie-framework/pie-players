@@ -179,7 +179,15 @@ export interface ItemEntity
 		ConfigContainerEntity,
 		SearchMetaDataEntity {
 	name?: string;
-	passage?: string | PassageEntity;
+	/**
+	 * `null` as well as absent, because importers write it. JSON has no
+	 * `undefined`, so an item transformed from another format carries an explicit
+	 * `passage: null` for "no passage" — `isPassageEntity` has always tested for
+	 * null, so the runtime expected it while the type denied it. Excluding null
+	 * only meant a host feeding real importer output through a typed path had to
+	 * cast it away.
+	 */
+	passage?: string | PassageEntity | null;
 	/** QTI/APIP-style accessibility catalogs owned by the item root. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
@@ -318,6 +326,15 @@ export interface AssessmentSection
 	// Shared context (passages/instructions/rubrics) for this section
 	rubricBlocks?: RubricBlock[];
 
+	/**
+	 * QTI 3.0: Personal Needs Profile (PNP 3.0) for section-scoped delivery.
+	 *
+	 * Section players read this (falling back to `settings.personalNeedsProfile`,
+	 * then to the computed default profile) to drive PNP policy when a section is
+	 * delivered without an enclosing assessment.
+	 */
+	personalNeedsProfile?: PersonalNeedsProfile;
+
 	sort?: string;
 }
 
@@ -351,10 +368,175 @@ export interface ContextDeclaration {
 	defaultValue?: any;
 }
 
+// ----------------------------------------------------------------------------
+// Media asset references
+// ----------------------------------------------------------------------------
+
+export type MediaKind = "image" | "audio" | "video" | "other";
+
+export interface MediaSource {
+	src: string;
+	type?: string;
+	width?: number;
+	height?: number;
+	bitrate?: number;
+}
+
+export interface TextTrackRef {
+	src: string;
+	kind: "captions" | "subtitles" | "descriptions" | "chapters" | "metadata";
+	lang: string;
+	label: string;
+	default?: boolean;
+}
+
+export interface TranscriptRef {
+	src?: string;
+	html?: string;
+	plainText?: string;
+	lang?: string;
+}
+
+/**
+ * A referenced media asset and its accessible alternates.
+ *
+ * Deliberately one vocabulary for every media consumer (accessibility catalog
+ * cards today, stimulus media later) rather than per-consumer media fields.
+ * Which fields are *required* is resolved per consumer instead of by making
+ * everything optional at the type level — a type where nothing is required
+ * stops catching anything. For a sign-language card, `sources` carries the
+ * signing recording, `poster`/`durationSeconds` are not applicable, and
+ * `tracks`/`transcript` are meaningless (captions on a signing video would be
+ * the English text already on screen).
+ */
+export interface MediaAssetRef {
+	version: 1;
+	id: string;
+	kind: MediaKind;
+	sources: MediaSource[];
+	poster?: string;
+	thumbnail?: string;
+	durationSeconds?: number;
+	tracks?: TextTrackRef[];
+	transcript?: TranscriptRef;
+	label?: string;
+	description?: string;
+	lang?: string;
+}
+
+/**
+ * Time slice of a longer recording, so one file can serve several content
+ * nodes. Mirrors QTI 3's Media Fragments URI usage, which replaced APIP's
+ * separate start/end cue elements.
+ */
+export interface MediaFragmentRange {
+	startSeconds: number;
+	endSeconds?: number;
+}
+
+/**
+ * Payload for a `sign-language` catalog card.
+ *
+ * A signing video cannot be expressed as a string, so it does not use the
+ * card's `content` field at all. This payload carries what QTI 3 expresses
+ * inside `qti-card-entry` — multiple sources, MIME types, poster, and an
+ * optional time range.
+ *
+ * Note there is no `kind` discriminant: the card's `catalog` field is QTI's
+ * `qti-card@support` and is the only discriminator. Restating it here would
+ * create a second source of truth that can disagree with the first.
+ */
+export interface SignLanguageCardPayload {
+	/**
+	 * ISO 639-3 sign language code of the *adaptation*, not of the item's base
+	 * content (AfA/PNP's `languageOfAdaptation` distinction). A Spanish item's
+	 * signed alternate is LSM, not ASL, so this must never be inferred from the
+	 * item or assessment content language.
+	 *
+	 * Optional, and redundant when it equals the card's `language`. The card's
+	 * `language` is QTI's `xml:lang` on the card entry and is the only field
+	 * catalog resolution selects on — it decides *which* card is returned, before
+	 * anything knows the card is a signing card. This one is read after
+	 * resolution, to name the language in the region's accessible label and to
+	 * refuse a card in a sign language the learner did not ask for. Author it only
+	 * where the two genuinely differ, which is a card tagged with the item's
+	 * content language (`language: "en-US"`, `signLang: "ase"`) so that resolution
+	 * reaches it by the default-language rung.
+	 */
+	signLang?: string;
+	media: MediaAssetRef;
+	fragment?: MediaFragmentRange;
+}
+
+/**
+ * Payload for a `spoken` catalog card that is a recording rather than a script.
+ *
+ * QTI 3 treats recorded audio and synthesized speech as the *same* support:
+ * both are `spoken`, and a card holds recorded audio through `qti-file-href`
+ * plus a MIME type. So this is not a new accommodation, it is the other form the
+ * existing one can take.
+ *
+ * A node commonly carries both this and a `content` card in the same language —
+ * APIP's pattern, which QTI's migration guidance keeps, because the script is
+ * both what the audio was generated from and the fallback for when the audio
+ * cannot play. Resolution picks between them with `CatalogLookupOptions.form`.
+ *
+ * No `kind` discriminant, for the same reason `SignLanguageCardPayload` has
+ * none: the card's `catalog` already says what this is.
+ */
+export interface SpokenAudioCardPayload {
+	media: MediaAssetRef;
+	fragment?: MediaFragmentRange;
+}
+
+/**
+ * Structured payloads a catalog card may carry instead of a `content` string.
+ *
+ * Which member applies is decided by the card's `catalog`, not by a field
+ * inside the payload, so this union carries no discriminant. Consumers select a
+ * card by catalog type and then validate the payload structurally — which they
+ * must do regardless, since catalog data is authored, wire-facing, and
+ * untrusted.
+ */
+export type CatalogCardPayload =
+	| SignLanguageCardPayload
+	| SpokenAudioCardPayload;
+
+/**
+ * One alternate representation of a content node, keyed to it by
+ * `data-catalog-idref`.
+ *
+ * Maps onto QTI 3's `qti-card`: `catalog` is `@support`, `language` is the card
+ * entry's `xml:lang`, and QTI's single content slot is represented by exactly
+ * one of `content` or `payload`.
+ *
+ * One generic `payload` slot, not a field per accommodation. This is the shape
+ * `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
+ * (PIE-881) restate structurally; all three read the same authored JSON and none
+ * of them takes a package dependency on the others, so keeping the declarations
+ * identical is the only thing holding interop together. It briefly was not:
+ * those two producers wrote the signing payload under `signLanguage`, this
+ * repo tolerated that as an input alias, and the alias was folded in on the
+ * resolution path but not the enumeration path — so an imported card rendered
+ * its signing video and simultaneously reported that the item had no signed
+ * alternate. Both producers now emit `payload` and the alias is gone.
+ */
 export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
 	language?: string;
-	content: string;
+	/**
+	 * The string form of the card's content, for catalog types a string can
+	 * express: SSML for `spoken`, plain text for `simplified-language`, and so
+	 * on. Absent on cards that carry a structured `payload` instead — nothing
+	 * is projected or mirrored into it, so there is never a second copy of the
+	 * payload's data to fall out of sync.
+	 */
+	content?: string;
+	/**
+	 * The structured form, for catalog types a string cannot express. Interpreted
+	 * according to `catalog`.
+	 */
+	payload?: CatalogCardPayload;
 }
 
 export interface AccessibilityCatalog {
@@ -760,7 +942,7 @@ export class InsertSoundEvent extends CustomEvent<SoundHandler> {
 }
 
 export const isPassageEntity = (
-	passage: string | PassageEntity | undefined,
+	passage: string | PassageEntity | null | undefined,
 ): passage is PassageEntity => typeof passage === "object" && passage !== null;
 
 export function isPrerelease(version: any): version is SemVer {

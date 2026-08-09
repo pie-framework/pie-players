@@ -183,15 +183,34 @@ breaking change to two published types — taken deliberately while nothing outs
 this repo consumes catalogs beyond TTS. `TTSService` treats a card with no string
 form as "no catalog" and falls through to generated speech.
 
-One integration consequence, resolved 2026-08-08. Two landed producers —
-`pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer (PIE-881) —
-carry the media block under `signLanguage`, while this repo read only `payload`,
-so an imported or element-authored card resolved to nothing: it validates, it
-imports, and then no signing video renders. `signLanguage` is now accepted as an
-alias, folded into `payload` at the single point where the resolver projects a
-card, so exactly one field reaches consumers. Converging the three repos on one
-name remains open; the alias is what makes that a scheduled change rather than a
-flag day.
+One integration consequence, resolved 2026-08-08, then re-resolved the same day.
+Two landed producers — `pie-elements-ng` (PIE-879) and the `pie-api-aws`
+Learnosity importer (PIE-881) — carried the media block under `signLanguage`,
+while this repo read only `payload`, so an imported or element-authored card
+resolved to nothing: it validates, it imports, and then no signing video renders.
+The first repair accepted `signLanguage` as an input alias, folded into `payload`
+where the resolver projects a card.
+
+That repair was withdrawn, because it caused a worse version of the same bug.
+The fold-in was on the resolution path only; `getAllAlternatives` read `payload`
+alone, so a card that arrived under the alias rendered its signing video *and*
+answered "no" to `hasAlternativeType(..., "sign-language")`. The accommodation
+worked and anything asking whether it existed was told it did not — invisible to
+everyone except the learner. One fact under two names makes every read path a
+place to forget one of them, and the first new read path forgot.
+
+Both producers now emit `payload`, so the alias has nothing left to accept and is
+gone from the type, from `resolveCard`, and from `resolveSignLanguageMedia`. All
+three repos declare one card shape: a single generic `payload` slot interpreted
+by `catalog`, which is what QTI's one-content-slot `qti-card` describes and what
+keeps braille — the next structured alternate — additive rather than a breaking
+widening in three places. `resolveSignLanguageMedia` now warns on *any*
+`sign-language` card it cannot resolve, so a card left over from the old spelling
+says so instead of silently resolving to nothing.
+
+The three changes must land together: a host shipping this player against content
+built by the older element types or the older importer will see signing cards
+stop resolving, with that warning as the signal.
 
 `MediaAssetRef` is reused deliberately rather than defining media fields here — decided 2026-08-07 — to avoid two media vocabularies in one codebase. Two consequences the accepted contract must carry:
 
@@ -374,7 +393,7 @@ Settled during PIE-880 implementation, 2026-08-08:
 | --- | --- |
 | Card content shape | Either `content` or `payload`, never both; `catalog` is the only discriminator, so the payload carries no `kind`; nothing is mirrored between the two, so `content` is optional. See [Contract Shape](#contract-shape). |
 | Bare-URL signing cards | Not accepted. Reported and ignored rather than half-rendered through a second code path. Supersedes the original compatibility requirement. |
-| Payload key name | `payload` is canonical; `signLanguage` is accepted as an input alias and folded into it at resolution, because `pie-elements-ng` and the `pie-api-aws` importer both landed with that name. Pinned by tests on both paths. Converging on one name across the three repos is still open. |
+| Payload key name | `payload`, and only `payload`. The `signLanguage` alias two producers had landed with was accepted for part of a day and then withdrawn: it was folded in on the resolution path but not the enumeration path, so an aliased card rendered its video while reporting that no signed alternate existed. `pie-elements-ng` and the `pie-api-aws` importer now emit `payload` too, on branches that land with this one. |
 | Non-tool feature decisions | A feature id is sufficient — no non-tool feature concept is needed. `ToolPolicyEngine.decideFeature(featureId)` and `ToolkitCoordinator.decideFeaturePolicy(featureId)` resolve one id through `PnpPolicySource`'s existing six levels, independent of placement, and `PnpPolicySource.resolveFeature(...)` reuses that rule evaluation rather than copying it. Answers an Open Question below. |
 | Video sizing | An aspect-ratio target with a height floor, not a flat width percentage, retunable through three `--pie-section-player-item-media-*` theme tokens. The region stacks and the divider withdraws below a 560px card width. |
 | Owner-scope agreement | One function decides where a catalog is filed and one builds the context readers look it up with (`collectEntityCatalogRegistrations`, `catalogOwnerContextFor`), so the region cannot look up a scope registration never wrote. |

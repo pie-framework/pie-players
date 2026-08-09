@@ -143,10 +143,11 @@ interface SignLanguageCardPayload {
    * language — AfA/PNP's `languageOfAdaptation` distinction, and a real one:
    * a Spanish item's signed alternate is LSM, not ASL, so `signLang` must
    * never be inferred from the item/assessment content language. Decided
-   * 2026-08-07; see Open Questions for the still-open per-student/per-content
-   * selection rule when more than one signed language is authored.
+   * 2026-08-07. Optional, and only worth authoring where it differs from the
+   * card's `language`, which is what resolution selects on — see Resolved
+   * Decisions.
    */
-  signLang: string;
+  signLang?: string;
   /** Reuses the shared media contract rather than inventing media fields here. */
   media: MediaAssetRef;
   /**
@@ -302,7 +303,7 @@ QTI 3 is **inspiration, not an interop target.** PIE's catalog model borrows the
 | --- | --- | --- |
 | `qti-catalog id="..."` | `AccessibilityCatalog.identifier` | Direct. |
 | `qti-card support="sign-language"` | `CatalogCard.catalog: "sign-language"` | Token already matches. |
-| `qti-card-entry xml:lang="ase"` | card language / `signLang` | ISO 639-3; `ase` is ASL. |
+| `qti-card-entry xml:lang="ase"` | `CatalogCard.language` | ISO 639-3; `ase` is ASL. The payload's optional `signLang` names the same code and is only authored where it differs. |
 | `qti-html-content` with `<video>` and multiple `<source>` | `SignLanguageCardPayload.media` | Today's flat `content: string` cannot carry this. |
 | Media Fragments URI on the source | `fragment` | QTI 3 replaced APIP's separate start/end cue elements with fragment notation, letting one recording serve several nodes. |
 | `data-catalog-idref` docking, conventionally on a hidden docking div | `data-catalog-idref` | Already the same attribute PIE uses for TTS. |
@@ -400,6 +401,7 @@ Settled during PIE-880 implementation, 2026-08-08:
 | Recorded audio as a spoken alternate | Built. QTI treats a recording and synthesized speech as the same `spoken` support, so this is another form of an existing accommodation and needs no new PNP entitlement. `SpokenAudioCardPayload` carries a `MediaAssetRef` of `kind: "audio"` plus an optional range. Highlighting is the docked node as a block, since a recording emits no word boundaries; word-level highlighting stays on the synthesized path. A clip that will not play degrades to the node's `content` card — the reason QTI's guidance keeps the script beside the audio. Supersedes the earlier open question, which held off pending a decision about timing marks; marks turned out not to be a prerequisite. |
 | Script and recording on one node | Both are `spoken` cards in the same language, distinguished only by which slot each fills, so no new field and no second discriminant. `CatalogLookupOptions.form` selects one, as a preference rather than a filter, within a language rung and never across one — otherwise a Spanish lookup could be answered with English audio. Before this, both resolution rungs and enumeration keyed on type and language alone, so whichever card was written second was unreachable and nothing said so. |
 | Unknown catalog types | `CatalogType` stays open — QTI's vocabulary is extensible and catalogs arrive as authored JSON — but unknown tokens are reported once per token, on the card side and the lookup side. `isKnownCatalogType` accepts the named types plus QTI's `ext:` extensions. `transcript` joined the named set because the Learnosity importer emits it, and a validator that warns on ordinary imported content trains people past the warning that mattered. Supersedes the earlier open question about narrowing the type: the silence was the defect, not the openness. |
+| `signLang` versus card `language` | `signLang` is optional (2026-08-09); the card's `language` is the field resolution selects on, and the two coincide on almost every card. Resolution runs before anything knows the card is a signing card, so it can only key on the generic field; `signLang` is read afterwards, for the region's accessible label and the no-cross-sign-language guard, falling back to the card's `language` when absent. It earns its place only where the two differ — a card tagged with the item's content language (`language: "en-US"`, `signLang: "ase"`) so resolution reaches it by the default-language rung. It was typed required while the code had always treated it as optional. |
 | Signing suppression | No signing equivalent of `data-tts-suppress`, and none should be added. Whether a clip gives a decoding item away depends on fingerspelling versus lexical signing — a fact about the recording, known to the signer rather than to whoever authors an attribute. And suppression is per node while a signed alternate is one video per item, so the only available rule would withhold a deaf candidate's whole translation over one word. Unlike TTS, which speaks whatever text is present with nobody in the loop, a signed alternate does not exist until a signer films it. Revisit only if per-node signing docking lands *and* a programme authors signing for decoding-construct items. |
 | Read-aloud suppression | Built as `data-tts-suppress` on the content element — not a catalog card, not a PNP field. Corrects an earlier reading of this document, which put QTI's reading-type vocabulary out of scope wholesale: QTI has a purpose-built attribute for exactly this (`data-qti-suppress-tts`, same vocabulary and placement), so PIE was not honouring a standard. The name follows PIE's `data-tts-*` family; importers map QTI's spelling. What stays out is reading-type as delivery policy — who may read a node aloud is the PNP's job, and a second authority on the card could contradict it. See the [integration guide](../accessibility/accessibility-catalogs-integration-guide.md#suppressing-read-aloud). |
 | Shared card structure | **Not** done. `SectionItemCard.svelte` and `SectionPassageCard.svelte` still hand-duplicate header/content/footer; a token-documentation test asserts the card tokens appear in both files, so factoring them together is its own change. No third copy was written — the media region lives in the item card only. Supersedes the suggestion in [Region Presentation](#region-presentation). |

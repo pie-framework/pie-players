@@ -501,7 +501,6 @@ MIME types, poster, or a time range, all of which QTI 3 expresses inside
   catalog: 'sign-language',
   language: 'ase',
   payload: {
-    signLang: 'ase',
     media: {
       version: 1,
       id: 'asl-prompt-1',
@@ -523,10 +522,17 @@ there is never a second copy to fall out of sync. Which one applies is decided b
 carries no type tag of its own. A `sign-language` card with a bare URL in
 `content` is malformed; it is reported and ignored rather than rendered.
 
-Use `ase` (ISO 639-3 for American Sign Language) rather than a spoken-language
-tag like `en-US`, matching QTI 3's `xml:lang` on the card entry. The code is the
-language of the *adaptation*, so never derive it from the item's content
-language — a Spanish item's signed alternate is LSM, not ASL.
+Tag the card `language: 'ase'` (ISO 639-3 for American Sign Language) rather than
+with a spoken-language code like `en-US`, matching QTI 3's `xml:lang` on the card
+entry. The code is the language of the *adaptation*, so never derive it from the
+item's content language — a Spanish item's signed alternate is LSM, not ASL.
+
+The payload's optional `signLang` names the same thing and is worth authoring
+only where the two differ: a card tagged with the item's content language
+(`language: 'en-US'`, `signLang: 'ase'`) so resolution reaches it by the
+default-language rung. Resolution selects on `language` alone; `signLang` is read
+afterwards, for the region's accessible label and to refuse a card in a sign
+language the learner did not ask for.
 
 Section-player renders these in a per-item `data-region="media"` region when the
 item carries a matching card **and** policy grants the `signLanguage` PNP

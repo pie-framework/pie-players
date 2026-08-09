@@ -120,9 +120,10 @@ const authoredCardItem = {
 					{
 						catalog: "sign-language",
 						language: "ase",
-						// No `content`: the payload is the content.
+						// No `content`: the payload is the content. No `signLang`
+						// either — the card's `language` is what resolution selects
+						// on, and it already says `ase`.
 						payload: {
-							signLang: "ase",
 							media: {
 								version: 1 as const,
 								id: "asl-q3-prompt-media",

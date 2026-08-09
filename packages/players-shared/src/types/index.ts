@@ -448,15 +448,22 @@ export interface MediaFragmentRange {
  */
 export interface SignLanguageCardPayload {
 	/**
-	 * ISO 639-3 sign language code. `"ase"` is American Sign Language,
-	 * matching QTI 3's `xml:lang` on the card entry.
+	 * ISO 639-3 sign language code of the *adaptation*, not of the item's base
+	 * content (AfA/PNP's `languageOfAdaptation` distinction). A Spanish item's
+	 * signed alternate is LSM, not ASL, so this must never be inferred from the
+	 * item or assessment content language.
 	 *
-	 * This is the language of the *adaptation*, not the item's base content
-	 * language (AfA/PNP's `languageOfAdaptation` distinction). A Spanish
-	 * item's signed alternate is LSM, not ASL, so this must never be inferred
-	 * from the item or assessment content language.
+	 * Optional, and redundant when it equals the card's `language`. The card's
+	 * `language` is QTI's `xml:lang` on the card entry and is the only field
+	 * catalog resolution selects on — it decides *which* card is returned, before
+	 * anything knows the card is a signing card. This one is read after
+	 * resolution, to name the language in the region's accessible label and to
+	 * refuse a card in a sign language the learner did not ask for. Author it only
+	 * where the two genuinely differ, which is a card tagged with the item's
+	 * content language (`language: "en-US"`, `signLang: "ase"`) so that resolution
+	 * reaches it by the default-language rung.
 	 */
-	signLang: string;
+	signLang?: string;
 	media: MediaAssetRef;
 	fragment?: MediaFragmentRange;
 }

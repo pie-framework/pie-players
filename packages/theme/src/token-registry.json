@@ -1050,6 +1050,48 @@
 		"fallbackPolicy": "Outline of the floating annotation toolbar. Deliberately does not fall through --pie-border, which the DaisyUI bridge maps to the base-300 surface tint and which leaves the outline near 1.1:1; the component default is a measured light-dark(#5c5c5c, #949494) pair instead -- dark grey on light surfaces, light grey on dark ones, each measured against DaisyUI's real theme bases rather than pure white and black. The data-color-scheme accessibility palettes and the PIE dark theme set it explicitly so their own boundary colour wins. Hosts overriding it must keep 3:1 against both the toolbar surface and the content behind it (WCAG 2.2 SC 1.4.11)."
 	},
 	{
+		"name": "--pie-tool-line-reader-control-color",
+		"owner": "@pie-players/pie-tool-line-reader",
+		"scope": "component-public",
+		"category": "button",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-line-reader/tool-line-reader.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-line-reader/README.md"
+		],
+		"fallbackPolicy": "Glyph colour of the line reader's close and resize controls. Registered as the required companion to --pie-tool-line-reader-frame-color rather than as a hook worth setting on its own: the controls sit on the frame, so this is paired with the fill and not with the page, and the #fff default only holds while the fill stays dark. A host that sets a light fill must set this too. Does not fall through --pie-text or the canonical button tokens, which track the page rather than the scrim the glyphs are drawn on. Must keep 3:1 against the resolved fill (WCAG 2.2 SC 1.4.11); the controls are fully opaque regardless of --pie-tool-line-reader-frame-opacity, so the fill alone determines the ratio."
+	},
+	{
+		"name": "--pie-tool-line-reader-frame-color",
+		"owner": "@pie-players/pie-tool-line-reader",
+		"scope": "component-public",
+		"category": "surface",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-line-reader/tool-line-reader.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-line-reader/README.md"
+		],
+		"fallbackPolicy": "Fill of the line reader's obscuring frame, configured per deployment alongside --pie-tool-line-reader-frame-opacity. Deliberately does not fall through --pie-text or any canonical surface token, and deliberately does not follow data-color-scheme: masking works by collapsing the contrast of whatever it covers, and an ink-coloured scrim defeats that on its own scheme -- a yellow scrim over yellow-on-blue text hides nothing, and a white one glares in a dark scheme the reader chose to avoid glare. The #000 default dims in both directions instead, dropping covered text from 10.9-19.3:1 to 1.09-1.71:1 across the six built-in schemes. A host overriding it owns that verification for every scheme it ships, and must set --pie-tool-line-reader-control-color with it when picking a light fill, because the control glyphs default to white to pair with the dark scrim."
+	},
+	{
+		"name": "--pie-tool-line-reader-frame-opacity",
+		"owner": "@pie-players/pie-tool-line-reader",
+		"scope": "component-public",
+		"category": "surface",
+		"status": "active",
+		"definedIn": [
+			"packages/tool-line-reader/tool-line-reader.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-line-reader/README.md"
+		],
+		"fallbackPolicy": "Masking strength of the line reader's obscuring frame. A programme-level decision rather than a student one -- it sets how much surrounding context a test taker can still see -- so it is configured per deployment and the tool exposes no in-session control for it. Read as var() with a 0.8 default and never written inline by the component, so a host declaration wins without !important. Does not fall through any canonical token: this is unitless masking strength, not a palette value. Lowering it weakens the masking the tool exists to provide and invalidates the contrast figures recorded for --pie-tool-line-reader-frame-color, which were measured at the 0.8 default."
+	},
+	{
 		"name": "--pie-tool-trigger-active-background",
 		"owner": "@pie-players/pie-tool-tts-inline",
 		"scope": "component-public",

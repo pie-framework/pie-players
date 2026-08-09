@@ -351,7 +351,9 @@
       },
       "devDependencies": {
         "@happy-dom/global-registrator": "^20.11.1",
+        "@playwright/test": "^1.62.1",
         "@types/node": "^22.10.2",
+        "esbuild": "^0.28.1",
         "svelte": "^5.56.8",
         "typescript": "^5.9.3",
         "vite": "^8.0.10",

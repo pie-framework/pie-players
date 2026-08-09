@@ -605,6 +605,8 @@ Yellow highlight with border (::highlight CSS)
 - **Floating selection TTS** (`tool-text-to-speech`): Can detect the nearest `data-catalog-idref` and request a catalog-backed utterance.
 - **Annotation toolbar read-aloud**: Speaks the selected visible range and intentionally bypasses catalogs with `ignoreCatalogs`.
 
+**Read-aloud suppression:** `data-tts-suppress` on a content element marks it never-spoken, for items where reading is the construct (decoding, spelling). It is enforced in *every* entry point above — including the selection path, which filters the `Range` because it never walks the DOM — and it overrides both an authored `spoken` card and the learner's PNP entitlement. See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md#suppressing-read-aloud).
+
 **Design Decision:** TTS is a singleton service, not a tool. Multiple entry points all use the same service to prevent conflicts. Catalog resolution is shared for entry points that pass catalog IDs or content elements; selection-only read-aloud can intentionally use visible text.
 
 ---

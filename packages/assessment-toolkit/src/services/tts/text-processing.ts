@@ -80,6 +80,149 @@ export const isNodeHiddenForTTS = (
 	return false;
 };
 
+/**
+ * Marks content that must be shown but never spoken.
+ *
+ * This exists because read-aloud is not universally safe. When reading *is* the
+ * construct — a decoding item ("which word starts with the /k/ sound: cake,
+ * cat, sun"), a spelling item where synthesized speech voices both options
+ * identically — speaking the node hands over the answer. That cannot be
+ * expressed in the learner's `PersonalNeedsProfile`: `prohibitedSupports` is the
+ * learner saying "not for me", whereas this is the item saying "not here, for
+ * anyone", and it must therefore override an entitlement rather than yield to
+ * it.
+ *
+ * The shape follows QTI 3's `data-qti-suppress-tts`: an attribute on the content
+ * element rather than a field on a catalog card, single-valued, with the
+ * vocabulary below. Element placement is what makes it usable on undocked nodes
+ * and enforceable in the selection read-aloud path, where no catalog is
+ * consulted. The name follows PIE's own `data-tts-*` family instead of QTI's
+ * spelling, and PIE reads only this one name — an importer converting QTI
+ * content maps the attribute on the way in, rather than both spellings being
+ * accepted here.
+ */
+export const TTS_SUPPRESS_ATTRIBUTE = "data-tts-suppress";
+
+const SUPPRESSES_COMPUTER_READ_ALOUD = new Set(["computer-read-aloud", "all"]);
+// `screen-reader` is in the vocabulary but is not ours: it asks the delivery
+// engine to hide the node from assistive technology, which is the host's job
+// (and is what `aria-hidden` above already covers on the way in). A node marked
+// only `screen-reader` is still legitimately machine-read aloud.
+const SUPPRESS_VALUES = new Set([
+	...SUPPRESSES_COMPUTER_READ_ALOUD,
+	"screen-reader",
+]);
+const warnedSuppressValues = new Set<string>();
+
+/**
+ * Whether this element forbids machine read-aloud of itself and its subtree.
+ *
+ * Unrecognized and empty values suppress rather than pass through, and say so
+ * once per distinct value. The two failure directions are not symmetric: a
+ * mistyped token that falls through speaks a word the item was measuring the
+ * candidate's ability to read, invalidating the score with no visible symptom,
+ * while over-suppressing withholds speech from a node an author had already
+ * marked as not-to-be-spoken. So an author's evident intent wins over their
+ * spelling, and the warning is what makes the typo findable.
+ */
+export const isElementSuppressedForTTS = (element: Element): boolean => {
+	const raw = element.getAttribute?.(TTS_SUPPRESS_ATTRIBUTE);
+	if (raw === null || raw === undefined) return false;
+	const value = raw.trim().toLowerCase();
+	if (SUPPRESSES_COMPUTER_READ_ALOUD.has(value)) return true;
+	if (SUPPRESS_VALUES.has(value)) return false;
+	if (!warnedSuppressValues.has(value)) {
+		warnedSuppressValues.add(value);
+		console.warn(
+			`[tts] ${TTS_SUPPRESS_ATTRIBUTE}="${raw}" is not one of ${Array.from(
+				SUPPRESS_VALUES,
+			).join(", ")}; suppressing read-aloud for this content anyway, because a suppression attribute that fails open would leak the answer to items where reading is the construct. Correct the value to silence this.`,
+		);
+	}
+	return true;
+};
+
+export const isNodeSuppressedForTTS = (
+	node: Node,
+	root?: Element | null,
+): boolean => {
+	let current =
+		node.nodeType === 1
+			? (node as Element)
+			: (node.parentElement as Element | null);
+	while (current) {
+		if (isElementSuppressedForTTS(current)) return true;
+		if (root && current === root) break;
+		current = current.parentElement;
+	}
+	return false;
+};
+
+/**
+ * The predicate every speech-producing path filters on: hidden *or* suppressed.
+ *
+ * Kept distinct from `isNodeHiddenForTTS`, which stays a question about
+ * visibility — suppressed content is visible on purpose, and the highlight
+ * geometry resolvers that ask "can the candidate see this" must keep getting
+ * the visibility answer rather than this one.
+ */
+export const isNodeExcludedFromSpeech = (
+	node: Node,
+	root?: Element | null,
+): boolean => isNodeHiddenForTTS(node, root) || isNodeSuppressedForTTS(node);
+
+/**
+ * Text of a range with the parts that must not be spoken removed.
+ *
+ * `Range.toString()` is not usable for speech: it is pure character extraction
+ * and honours no DOM filter at all, so it happily returns suppressed — and
+ * hidden — text. The selection read-aloud path is a text-in path rather than a
+ * DOM walk, which makes this the only place its content can be filtered.
+ *
+ * `filtered` reports whether anything was dropped, so a caller can tell "the
+ * candidate selected nothing speakable" apart from "the candidate selected
+ * nothing".
+ */
+export const collectRangeTextForSpeech = (
+	range: Range,
+	root: Element,
+): { text: string; filtered: boolean } => {
+	if (
+		typeof document === "undefined" ||
+		typeof (document as { createTreeWalker?: unknown }).createTreeWalker !==
+			"function" ||
+		typeof NodeFilter === "undefined" ||
+		typeof (range as { intersectsNode?: unknown }).intersectsNode !== "function"
+	) {
+		// Degraded, and deliberately not silent about the difference: callers still
+		// enforce whole-selection suppression from the range's common ancestor, so
+		// the construct guard holds even here. What is lost is per-node filtering
+		// of a selection that only partly overlaps suppressed content.
+		return { text: range.toString(), filtered: false };
+	}
+	const parts: string[] = [];
+	let filtered = false;
+	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+	let current = walker.nextNode();
+	while (current) {
+		const textNode = current as Text;
+		if (range.intersectsNode(textNode)) {
+			if (isNodeExcludedFromSpeech(textNode, root)) {
+				filtered = true;
+			} else {
+				const raw = textNode.textContent || "";
+				const start =
+					textNode === range.startContainer ? range.startOffset : 0;
+				const end =
+					textNode === range.endContainer ? range.endOffset : raw.length;
+				parts.push(raw.slice(start, end));
+			}
+		}
+		current = walker.nextNode();
+	}
+	return { text: parts.join(""), filtered };
+};
+
 export const shouldInsertWordBoundarySpace = (
 	previousChar: string | null,
 	nextChar: string | null,
@@ -140,7 +283,7 @@ export const collectVisibleTextAndMap = (
 	while (current) {
 		const textNode = current as Text;
 		const parent = textNode.parentElement;
-		if (parent && !isNodeHiddenForTTS(textNode, element)) {
+		if (parent && !isNodeExcludedFromSpeech(textNode, element)) {
 			const raw = textNode.textContent || "";
 			const firstVisibleMatch = raw.match(/\S/);
 			const firstVisibleChar = firstVisibleMatch ? firstVisibleMatch[0] : null;

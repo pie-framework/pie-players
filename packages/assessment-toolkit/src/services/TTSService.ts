@@ -38,9 +38,11 @@ import type {
 } from "./tts/highlight-target-resolver.js";
 import {
 	type BoundarySpacingMode,
+	collectRangeTextForSpeech,
 	collectVisibleTextAndMap,
 	isElementHiddenForTTS,
-	isNodeHiddenForTTS,
+	isNodeExcludedFromSpeech,
+	isNodeSuppressedForTTS,
 	type NormalizedTextMap,
 	normalizeTextForSpeech,
 } from "./tts/text-processing.js";
@@ -877,7 +879,11 @@ export class TTSService {
 		while (currentNode) {
 			const textNode = currentNode as Text;
 			const parent = textNode.parentElement;
-			if (parent && !this.isElementHidden(parent)) {
+			if (
+				parent &&
+				!this.isElementHidden(parent) &&
+				!isNodeSuppressedForTTS(textNode)
+			) {
 				const boundary = this.getBoundaryAnchor(textNode, contentElement);
 				const boundaryPoint = nodeStartOffsets.get(textNode);
 				if (
@@ -1633,7 +1639,10 @@ export class TTSService {
 			return mathElements;
 		};
 		const visit = (node: Node) => {
-			if (isNodeHiddenForTTS(node, root)) return;
+			// Before `resolveCatalog`, so suppression beats an authored `spoken`
+			// card on the same node: the card says how to speak this content, the
+			// suppression says it must not be spoken at all.
+			if (isNodeExcludedFromSpeech(node, root)) return;
 			if (node.nodeType === Node.TEXT_NODE) {
 				textBuffer += ` ${node.textContent || ""}`;
 				return;
@@ -2228,8 +2237,15 @@ export class TTSService {
 			throw new Error("TTS service not initialized");
 		}
 
-		const text = range.toString().trim();
-		if (!text) return;
+		// Enforced from the live ancestors rather than from `root`, because the
+		// element carrying the suppression may sit above whatever root the caller
+		// passed or the range happens to resolve to.
+		if (isNodeSuppressedForTTS(range.commonAncestorContainer)) {
+			console.warn(
+				"[tts] selection lies inside content marked not-to-be-spoken; nothing was spoken. Selecting a node and pressing read-aloud must not become a way around suppression.",
+			);
+			return;
+		}
 
 		// Use explicit content root when provided; otherwise keep highlighting scoped
 		// to the selected range's nearest element ancestor.
@@ -2244,11 +2260,26 @@ export class TTSService {
 		}
 		if (!root) return;
 
-		// Calculate the offset of the range start within the root element
+		const selected = collectRangeTextForSpeech(range, root);
+		const text = selected.text.trim();
+		if (!text) {
+			if (selected.filtered) {
+				console.warn(
+					"[tts] every part of the selection is either hidden or marked not-to-be-spoken; nothing was spoken.",
+				);
+			}
+			return;
+		}
+
+		// Calculate the offset of the range start within the root element. Filtered
+		// the same way as the speech itself: the offset indexes into the highlight
+		// text, which comes from the exclusion-aware collectors, so counting
+		// characters here that never reach that text would shift every highlight
+		// after the excluded node.
 		const beforeRange = document.createRange();
 		beforeRange.selectNodeContents(root);
 		beforeRange.setEnd(range.startContainer, range.startOffset);
-		const textBeforeRange = beforeRange.toString();
+		const textBeforeRange = collectRangeTextForSpeech(beforeRange, root).text;
 		const normalizedTextBeforeRange = normalizeTextForSpeech(textBeforeRange);
 		const offset =
 			normalizedTextBeforeRange.length +

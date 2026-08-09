@@ -410,6 +410,65 @@ const item = {
 </div>
 ```
 
+### Suppressing Read-Aloud
+
+Some content must be shown and never spoken. `data-tts-suppress` on a content
+element marks it and its whole subtree as not-to-be-spoken:
+
+```html
+<p>
+  Which word begins with the same sound as
+  <span data-tts-suppress="all">cake</span>?
+</p>
+```
+
+| Value                | Effect                                                            |
+| -------------------- | ----------------------------------------------------------------- |
+| `computer-read-aloud` | Not spoken by PIE's TTS.                                          |
+| `all`                | Not spoken by PIE's TTS, and the host should also hide it from AT. |
+| `screen-reader`      | Aimed at assistive technology only — **still machine-read aloud**. |
+
+One value, not a list. An unrecognized or empty value suppresses anyway and logs
+why: a mistyped token that fell through would speak the word an item was
+measuring the candidate's ability to read, with no visible symptom.
+
+**Why this is not a catalog card.** A suppression card would carry neither
+`content` nor `payload`, breaking the card invariant, and it would only work on
+docked nodes. More importantly it has to be enforceable in the selection
+read-aloud path, which consults no catalog at all.
+
+**Why this is not in the PNP.** `prohibitedSupports` is the learner saying "not
+for me". This is the item saying "not here, for anyone" — so it overrides an
+entitlement instead of yielding to it, and it beats an authored `spoken` card on
+the same node. A card says *how* to speak content; suppression says it is not
+spoken.
+
+**What enforces it.** Every path that produces speech, because a filter applied
+to only one of them is a filter a candidate can walk around:
+
+- the composed catalog path (`collectCatalogSpeechChunks`), checked before card
+  resolution;
+- the generated-speech and visible-text collectors, via
+  `isNodeExcludedFromSpeech`;
+- structural pause boundaries, so a suppressed node contributes no audible seam;
+- `speakRange`, the annotation-toolbar selection path. This one is a text-in
+  path — it passes `range.toString()` straight through, and `Range.toString()`
+  honours no DOM filter — so it filters the range itself. A selection wholly
+  inside suppressed content speaks nothing; a selection that spans it speaks the
+  rest, with highlight offsets computed from the same filtered text so
+  highlighting stays aligned.
+
+A host calling `ttsService.speak(rawString, { ignoreCatalogs: true })` with its
+own string bypasses this, because there is no DOM to filter. Pass a
+`contentElement`, or a `Range` via `speakRange`, for suppression to apply.
+
+**Importing QTI content.** QTI 3 spells this `data-qti-suppress-tts`, with the
+same vocabulary and the same placement on the content element. PIE reads only
+`data-tts-suppress`, following its own `data-tts-*` attribute family, so an
+importer maps the attribute on the way in. PIE deliberately does not accept both
+spellings — two names for one thing is how a card ends up rendering and
+reporting absent at the same time.
+
 ### Multi-Level Catalog Support
 
 ```typescript

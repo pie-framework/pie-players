@@ -56,7 +56,6 @@
 								"catalog": "sign-language",
 								"language": "ase",
 								"payload": {
-									"signLang": "ase",
 									"media": {
 										"version": 1,
 										"id": "cdc-asl-handwashing",

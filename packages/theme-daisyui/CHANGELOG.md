@@ -1,5 +1,13 @@
 # @pie-players/pie-theme-daisyui
 
+## 0.3.64
+
+### Patch Changes
+
+- Updated dependencies [dc44392]
+- Updated dependencies [a5241b9]
+  - @pie-players/pie-theme@0.3.64
+
 ## 0.3.63
 
 ### Patch Changes

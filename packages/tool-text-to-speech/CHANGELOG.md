@@ -1,5 +1,32 @@
 # @pie-players/pie-tool-text-to-speech
 
+## 0.3.64
+
+### Patch Changes
+
+- 30baec4: Resolve a selection's spoken catalog by climbing to the nearest ancestor that actually holds spoken content.
+
+  `data-catalog-idref` names a whole card array, not a spoken card. The TTS tool took the nearest docked ancestor of a selection and passed its id straight to `speak()`, which was correct while spoken cards were the only kind that got docked. They are not any more: `SignLanguageExtractor` docks a signing catalog onto the element wrapping a marked video, and that element can sit inside a node the author docked to a catalog carrying the SSML. The inner reference then wins, the lookup finds no spoken card, and the selection is read as generated speech — plausible enough that nobody notices the authored pronunciation was dropped.
+
+  `TTSService.hasSpokenAlternate(catalogId, language?)` answers whether a catalog holds speakable content, and the tool walks up from the selection until one does, falling back to the nearest docked id when the service cannot answer (no resolver attached), which is the previous behaviour. The composed-speech path never had this problem — it descends into children when a card has no string form — so only the selection path changes.
+
+- Updated dependencies [82118ce]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [acee584]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [5749bc1]
+- Updated dependencies [bb1a90b]
+- Updated dependencies [82edb28]
+- Updated dependencies [a5241b9]
+- Updated dependencies [0dcec2e]
+- Updated dependencies [acee584]
+- Updated dependencies [b3acac4]
+- Updated dependencies [25511d7]
+- Updated dependencies [bbcabc0]
+- Updated dependencies [30baec4]
+  - @pie-players/pie-assessment-toolkit@0.3.64
+  - @pie-players/pie-players-shared@0.3.64
+
 ## 0.3.63
 
 ### Patch Changes

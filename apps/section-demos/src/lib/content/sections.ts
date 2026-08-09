@@ -17,6 +17,7 @@ import {
 	demoSignLanguageGrantedSection,
 	demoSignLanguageNotGrantedSection,
 } from "./demo-sign-language";
+import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 
@@ -656,6 +657,25 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Toolkit tool config enables `textToSpeech` in item and passage placements.",
 		],
 		section: demo4Section,
+	},
+	"read-aloud-accommodations": {
+		id: "read-aloud-accommodations",
+		name: "Read-Aloud: suppression and recorded audio",
+		description:
+			"Content shown but never spoken, and `spoken` cards that carry a recording instead of a script",
+		integrationLevel: 4,
+		integrationTheme: "Accessibility catalogs",
+		focus:
+			"Shows the two things read-aloud does beyond synthesizing visible text: withholding content whose reading is the construct, and playing authored audio in place of synthesis.",
+		whatMakesItTick: [
+			'Item 1 marks one word `data-tts-suppress="all"`. Read-aloud speaks the rest of the prompt and the options but not that word, because the item measures whether the candidate can read it — an item-level read-aloud switch would have taken the directions away too.',
+			"Item 2's `spoken` card carries an audio payload rather than a script, so the clip plays and the prompt highlights as a block: a recording emits no word boundaries, and timing them from its duration would highlight the wrong words confidently.",
+			"Item 3 carries a recording *and* a script on the same node in the same language — APIP's pattern, which QTI's migration guidance keeps. Nothing distinguishes them but the slot each fills, and resolution prefers the recording.",
+			"Item 4 points at a URL that 404s, so the fallback is observable: read-aloud speaks the script and says why in the console. Silence on a read-aloud node is the one failure a candidate cannot report.",
+			"Worth doing by hand: select the suppressed word and use the annotation toolbar's read-aloud. It refuses — that path passes `range.toString()` straight to the provider and consults no catalog, so filtering only the DOM walk would leave selecting the word as a way around the guard.",
+			"The narration is macOS `say` output, not human recording — it proves the file-playback path, not the fidelity of anyone's narration. See `static/demo-assets/read-aloud/README.md`.",
+		],
+		section: demoReadAloudAccommodationsSection,
 	},
 	"tts-generated-ssml": {
 		id: "tts-generated-ssml",

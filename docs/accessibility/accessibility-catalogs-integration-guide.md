@@ -503,6 +503,9 @@ script, read-aloud reports the failure rather than silently skipping the node.
 **Suppression still wins.** A node marked `data-tts-suppress` is not played from a
 file any more than it is spoken by a voice.
 
+Both behaviours are exercised by the `read-aloud-accommodations` section demo,
+which also covers a recording that fails to load and a node carrying both forms.
+
 ### Suppressing Read-Aloud
 
 Some content must be shown and never spoken. `data-tts-suppress` on a content

@@ -506,6 +506,25 @@ file any more than it is spoken by a voice.
 Both behaviours are exercised by the `read-aloud-accommodations` section demo,
 which also covers a recording that fails to load and a node carrying both forms.
 
+**Suppression is speech-only, and there is no signing or braille equivalent.**
+The axis is not "may this node be accommodated" but "does this modality preserve
+the information the item measures". Speech destroys orthography, so a decoding or
+spelling item needs it withheld. Braille preserves orthography — braille of a
+spelling item is exactly how a blind candidate takes a spelling test — so
+suppressing it would remove access for no gain. Signing is not uniform either
+way: fingerspelling preserves the letter sequence, lexical signing does not.
+
+For signing that non-uniformity is decisive, because the deciding fact lives in
+the recording rather than the markup. Only the signer knows whether a clip
+fingerspells the target word, so an attribute authored beside the prompt would be
+a guess presented as a guarantee. And the granularities do not meet: suppression
+is per node, a signed alternate is one video per item, so the only mechanically
+available rule would let one suppressed word withhold a deaf candidate's entire
+signed translation. Read-aloud needs a machine-readable guard because a
+synthesizer speaks whatever text is present with nobody in the loop; a signed
+alternate does not exist until a person films it, and "do not give the answer
+away" is a decision that person is already making.
+
 ### Suppressing Read-Aloud
 
 Some content must be shown and never spoken. `data-tts-suppress` on a content

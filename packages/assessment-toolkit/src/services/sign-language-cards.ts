@@ -15,6 +15,32 @@
  * Validation is "treat as absent, never as text": a malformed payload must not
  * degrade to an empty video or render a URL as visible content.
  *
+ * ## There is no signing equivalent of `data-tts-suppress`, deliberately
+ *
+ * Read-aloud has one because a synthesizer reads whatever text is on the page
+ * with no human in the loop, so an item measuring whether a candidate can *read*
+ * a word needs a machine-readable way to withhold it. Signing is not in that
+ * position: a signed alternate does not exist until a signer films it, so "do not
+ * give the answer away" is a decision a person already makes while looking at the
+ * item — the discipline the demo's own asset README documents.
+ *
+ * Two things make a flag actively wrong rather than merely unnecessary:
+ *
+ * 1. The deciding information is in the recording, not the markup. Whether a clip
+ *    gives away a decoding item depends on whether it fingerspells the target
+ *    word or signs it lexically, which the signer knows and the item author
+ *    writing an attribute does not. A boolean there would be a guess presented as
+ *    a guarantee.
+ * 2. The granularities do not meet. Suppression is per node; a signed alternate
+ *    is one video per item. The only mechanically available rule — any suppressed
+ *    node withholds the item's signing — lets one word delete the whole
+ *    accommodation for a deaf candidate, which is a worse failure than the one it
+ *    would prevent.
+ *
+ * Revisit only if per-node signing docking lands *and* a program authors signed
+ * alternates for items whose construct is decoding. Even then the first move is
+ * authoring review, not a flag.
+ *
  * Part of PIE Assessment Toolkit.
  */
 

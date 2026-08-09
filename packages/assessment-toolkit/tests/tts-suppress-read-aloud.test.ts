@@ -169,6 +169,58 @@ describe("read-aloud suppression across every speech path", () => {
 		expect(impl.speakCalls).toEqual(["authored prompt", "tail."]);
 	});
 
+	test("does not withhold a signed alternate on the same node", async () => {
+		// Decided, not incidental: suppression is speech-only. Read-aloud needs a
+		// machine-readable guard because a synthesizer speaks whatever text is
+		// present with nobody in the loop, whereas a signed alternate does not exist
+		// until a signer films it. And whether a clip gives a decoding item away
+		// depends on fingerspelling versus lexical signing — a fact that lives in
+		// the recording, not in an attribute authored beside the prompt.
+		//
+		// This test exists so that "make suppression consistent across modalities"
+		// has to argue with a failing assertion rather than look like a tidy-up.
+		const { impl, service } = await newService();
+		const resolver = new AccessibilityCatalogResolver([
+			{
+				identifier: "choice-a",
+				cards: [
+					{ catalog: "spoken", language: "en-US", content: "the word cake" },
+					{
+						catalog: "sign-language",
+						language: "ase",
+						payload: {
+							signLang: "ase",
+							media: {
+								version: 1,
+								id: "signed-choice",
+								kind: "video",
+								sources: [{ src: "/signing/choice-a.webm" }],
+							},
+						},
+					},
+				],
+			},
+		]);
+		service.setCatalogResolver(resolver);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Rhymes with <span data-catalog-idref="choice-a" data-tts-suppress="all">cake</span>?</p>`;
+
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+			language: "en-US",
+		} as never);
+
+		expect(impl.speakCalls.join(" | ")).not.toContain("cake");
+		// Still resolvable for the region that renders it: a deaf candidate does not
+		// lose the translation because a hearing candidate must not be read to.
+		expect(
+			resolver.getAlternative("choice-a", {
+				type: "sign-language",
+				language: "ase",
+			})?.payload,
+		).toBeDefined();
+	});
+
 	test("selection read-aloud refuses a selection inside suppressed content", async () => {
 		const { impl, service } = await newService();
 		const root = document.createElement("div");

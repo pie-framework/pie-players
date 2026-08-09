@@ -45,14 +45,80 @@ export type CatalogChangeListener = (event: CatalogChangeEvent) => void;
  * Supported accessibility catalog types from QTI 3.0 / APIP
  */
 export type CatalogType =
-	| "spoken" // Text-to-speech scripts
-	| "sign-language" // Video URLs for signed content
+	| "spoken" // Text-to-speech scripts, or a recording of one
+	| "sign-language" // Signing video
+	| "transcript" // Text transcript of an audio stimulus
 	| "braille" // Braille transcriptions
 	| "tactile" // Tactile graphics descriptions
 	| "simplified-language" // Plain language alternatives
 	| "audio-description" // Extended audio descriptions
 	| "extended-description" // Extended text descriptions
-	| string; // Support custom types
+	| string; // Support custom types — see isKnownCatalogType
+
+/**
+ * The catalog types PIE names, plus the rule for the ones it does not.
+ *
+ * The type above stays open on purpose: QTI treats the support vocabulary as
+ * extensible, and closing it here would reject content PIE has no reason to
+ * reject and could not usefully validate anyway, since catalogs arrive as
+ * authored JSON rather than through this type. Keeping it open cost something
+ * though — the named literals were documentation only, so a card written
+ * `"spokn"` was a perfectly valid `CatalogType` that no reader would ever ask
+ * for, and it failed by being invisible rather than by failing. That is what
+ * `isKnownCatalogType` and the warnings below are for: the openness stays, the
+ * silence does not.
+ */
+export const KNOWN_CATALOG_TYPES: ReadonlySet<string> = new Set([
+	"spoken",
+	"sign-language",
+	"transcript",
+	"braille",
+	"tactile",
+	"simplified-language",
+	"audio-description",
+	"extended-description",
+]);
+
+/**
+ * QTI reserves an `ext:` prefix for vendor extensions, and pairs such a card
+ * with a standard one on the same node in its own examples. A prefixed token is
+ * therefore a deliberate extension rather than a typo, and passes without
+ * comment even though PIE ships no consumer for it.
+ */
+const EXTENSION_TYPE_PREFIX = "ext:";
+
+export function isKnownCatalogType(type: string): boolean {
+	if (KNOWN_CATALOG_TYPES.has(type)) return true;
+	return (
+		type.startsWith(EXTENSION_TYPE_PREFIX) &&
+		type.length > EXTENSION_TYPE_PREFIX.length
+	);
+}
+
+// One report per distinct token per side, because the interesting information is
+// "this token is not a thing", and repeating it per card or per lookup would bury
+// it under itself.
+const reportedUnknownTypes = new Set<string>();
+
+function reportUnknownCatalogType(
+	type: string,
+	side: "card" | "lookup",
+	where: string,
+): void {
+	const key = `${side}|${type}`;
+	if (reportedUnknownTypes.has(key)) return;
+	reportedUnknownTypes.add(key);
+	const known = `${Array.from(KNOWN_CATALOG_TYPES).join(", ")}, or an "${EXTENSION_TYPE_PREFIX}" prefixed vendor extension`;
+	if (side === "card") {
+		console.warn(
+			`[AccessibilityCatalogResolver] catalog "${where}" has a card of unknown type "${type}"; it is stored but no reader asks for that type, so the alternate will never be shown. Expected one of: ${known}.`,
+		);
+		return;
+	}
+	console.warn(
+		`[AccessibilityCatalogResolver] lookup for unknown catalog type "${type}" on "${where}" cannot match any card. Expected one of: ${known}.`,
+	);
+}
 
 /**
  * Which of a card's two content slots it fills.
@@ -357,6 +423,11 @@ export class AccessibilityCatalogResolver {
 		catalogId: string,
 		options: CatalogLookupOptions,
 	): ResolvedCatalog | null {
+		// A typo on this side is as silent as one on a card: the lookup simply finds
+		// nothing and the caller reads that as "no alternate authored".
+		if (!isKnownCatalogType(options.type)) {
+			reportUnknownCatalogType(options.type, "lookup", catalogId);
+		}
 		const scopedCatalog = options.context
 			? this.scopedCatalogs
 					.get(this.getOwnerKey(options.context))
@@ -490,18 +561,27 @@ export class AccessibilityCatalogResolver {
 		return true;
 	}
 
+	// The single funnel every registration path runs through — the constructor and
+	// `addItemCatalogs` by way of `indexCatalogs`, and `registerCatalogs`
+	// directly — which is why the unknown-type report lives here rather than at
+	// each entry point.
 	private sanitizeCatalogs(
 		catalogs: AccessibilityCatalog[],
 	): AccessibilityCatalog[] {
 		return catalogs.map((catalog) => ({
 			...catalog,
-			cards: catalog.cards.map((card) => ({
-				...card,
-				content:
-					card.catalog === "spoken" && card.content !== undefined
-						? sanitizeSsmlString(card.content)
-						: card.content,
-			})),
+			cards: catalog.cards.map((card) => {
+				if (!isKnownCatalogType(card.catalog)) {
+					reportUnknownCatalogType(card.catalog, "card", catalog.identifier);
+				}
+				return {
+					...card,
+					content:
+						card.catalog === "spoken" && card.content !== undefined
+							? sanitizeSsmlString(card.content)
+							: card.content,
+				};
+			}),
 		}));
 	}
 

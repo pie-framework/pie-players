@@ -106,6 +106,8 @@ export type {
 export {
 	AccessibilityCatalogResolver,
 	catalogCardForm,
+	isKnownCatalogType,
+	KNOWN_CATALOG_TYPES,
 } from "./services/AccessibilityCatalogResolver.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";

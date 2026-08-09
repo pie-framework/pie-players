@@ -25,13 +25,25 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 
 | Type | Description | Use Case | Rendered by PIE |
 |------|-------------|----------|-----------------|
-| `spoken` | Pre-authored TTS scripts (SSML) | Screen readers, TTS | Yes — `TTSService` |
+| `spoken` | A TTS script (SSML), or a recording of one as a media payload | Screen readers, TTS | Yes — `TTSService` |
 | `sign-language` | Signed video, as a structured media payload | Deaf/hard-of-hearing | Yes — section-player item media region, gated on the `signLanguage` PNP support |
+| `transcript` | Text transcript of an audio stimulus | Deaf/hard-of-hearing | No — resolvable, host-consumed |
 | `braille` | Braille-ready transcriptions | Blind users with refreshable displays | No — resolvable, host-consumed |
 | `tactile` | Descriptions for tactile graphics | Tactile diagram readers | No — resolvable, host-consumed |
 | `simplified-language` | Plain language alternatives | Cognitive accessibility, ELL | No — resolvable, host-consumed |
 | `audio-description` | Extended audio descriptions | Visual content for blind users | No — resolvable, host-consumed |
 | `extended-description` | Detailed text descriptions | Complex diagrams/images | No — resolvable, host-consumed |
+
+**Other types are allowed, and unknown ones are reported.** QTI's support
+vocabulary is extensible, so `CatalogType` stays open and a token PIE does not
+name is still stored and still resolvable by a host that asks for it. Use QTI's
+`ext:` prefix for a vendor extension (`ext:custom-pronunciation`) and it passes
+without comment. Anything else — including `"spokn"` — is registered but logged,
+on both the card side ("stored but no reader asks for that type") and the lookup
+side ("cannot match any card"), once per distinct token. The openness is
+deliberate; the previous silence was not, since a mistyped card was a valid
+`CatalogType` that simply never appeared. `isKnownCatalogType` is exported if a
+host wants to check before registering.
 
 ### Card Content: String Or Payload
 

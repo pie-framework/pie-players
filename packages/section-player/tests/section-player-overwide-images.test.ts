@@ -1,26 +1,27 @@
 /**
- * PIE-94 regression — section-player-level assertion that authored `<img>`
- * markup flowing through the shared sanitize pipeline (which is what
- * `pie-item-player` consumes when rendering passages and items in the
- * section player) is wrapped in a horizontal-scroll container so overwide
- * images surface a scrollbar instead of being clipped by the section
+ * PIE-94 regression — authored `<img>` markup rendered by `pie-item-player`
+ * inside the section player is wrapped in a horizontal-scroll container, so
+ * overwide images surface a scrollbar instead of being clipped by the section
  * layout's `overflow-x: hidden` ancestors.
+ *
+ * Exercises `wrapOverwideImages` directly rather than through
+ * `sanitizeItemMarkup`, even though the sanitizer is what calls it in
+ * production. DOMPurify >=3.4.8 does not sanitize under happy-dom — see the
+ * header of `players-shared/tests/sanitize-item-markup.test.ts` — and its
+ * failure mode here was to remove the markup's first element and abort the
+ * walk, which made `sanitizeItemMarkup("<p>x</p>")` return `x` and left the
+ * rest of the tree unexamined. Assertions downstream of a sanitize pass under
+ * happy-dom therefore prove nothing about the sanitizer. The wrapper is a
+ * separate post-sanitization step with no DOMPurify involvement, so calling it
+ * directly is what makes these assertions mean what they say. The sanitizer
+ * contract — including that it applies these wrappers by default — is verified
+ * in real Chromium by `players-shared/tests/e2e/sanitize-item-markup.spec.ts`.
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	test,
-} from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import {
-	resetPurifierForTesting,
-	sanitizeItemMarkup,
-} from "@pie-players/pie-players-shared";
+import { wrapOverwideImages } from "@pie-players/pie-players-shared";
 
 beforeAll(() => {
 	if (
@@ -35,10 +36,6 @@ afterAll(() => {
 	if (GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.unregister();
 	}
-});
-
-beforeEach(() => {
-	resetPurifierForTesting();
 });
 
 const PASSAGE_MARKUP = `
@@ -58,7 +55,7 @@ const ITEM_STEM_MARKUP = `
 
 describe("section player authored image wrapping", () => {
 	test("passage markup: wraps overwide <img> in a .pie-image-scroll container", () => {
-		const out = sanitizeItemMarkup(PASSAGE_MARKUP);
+		const out = wrapOverwideImages(PASSAGE_MARKUP);
 		expect(out).toContain('class="pie-image-scroll"');
 		expect(out).toContain(
 			'aria-label="Scrollable image: Labelled animal cell"',
@@ -71,13 +68,13 @@ describe("section player authored image wrapping", () => {
 	});
 
 	test("item stem markup: wraps <img> the same way passages do", () => {
-		const out = sanitizeItemMarkup(ITEM_STEM_MARKUP);
+		const out = wrapOverwideImages(ITEM_STEM_MARKUP);
 		expect(out).toContain('class="pie-image-scroll"');
 		expect(out).toContain('aria-label="Scrollable image: organelle"');
 	});
 
 	test("wrapper is keyboard-scrollable (tabindex=0) and announces itself as a region", () => {
-		const out = sanitizeItemMarkup(PASSAGE_MARKUP);
+		const out = wrapOverwideImages(PASSAGE_MARKUP);
 		expect(out).toMatch(/<span class="pie-image-scroll"[^>]*tabindex="0"/);
 		expect(out).toMatch(/<span class="pie-image-scroll"[^>]*role="region"/);
 	});
@@ -90,7 +87,7 @@ describe("section player authored image wrapping", () => {
 			</pie-multiple-choice>
 			<img src="/fixtures/outside.png" alt="outside">
 		`;
-		const out = sanitizeItemMarkup(html);
+		const out = wrapOverwideImages(html);
 		// The image inside the pie-* element must not be restructured.
 		expect(out).toMatch(
 			/<pie-multiple-choice[^>]*>\s*<img[^>]*src="\/fixtures\/internal-icon.png"[^>]*>\s*<\/pie-multiple-choice>/,
@@ -101,18 +98,20 @@ describe("section player authored image wrapping", () => {
 		);
 	});
 
-	test("image-less passage markup flows through unchanged shape", () => {
+	test("image-less passage markup flows through unchanged", () => {
 		const html = "<p>No images here.</p>";
-		const out = sanitizeItemMarkup(html);
+		const out = wrapOverwideImages(html);
 		expect(out).not.toContain("pie-image-scroll");
-		expect(out).toContain("<p>No images here.</p>");
+		expect(out).toBe(html);
 	});
 
 	test("figure + figcaption passage markup (demo shape) keeps width/height and is wrapped", () => {
 		// Mirrors the shape used by the `question-passage` section demo
 		// (`apps/section-demos/.../demo2-question-passage.ts`) so that demo
-		// regresses immediately if DOMPurify / wrapOverwideImages ever starts
-		// dropping these pieces.
+		// regresses immediately if `wrapOverwideImages` starts dropping these
+		// pieces as it re-serializes. That DOMPurify keeps `width` / `height`
+		// through the allow-list is a separate claim, asserted in the real-browser
+		// spec named in this file's header.
 		const html = `
 			<figure class="passage-figure">
 				<img
@@ -124,7 +123,7 @@ describe("section player authored image wrapping", () => {
 				<figcaption>Renaissance timeline caption.</figcaption>
 			</figure>
 		`;
-		const out = sanitizeItemMarkup(html);
+		const out = wrapOverwideImages(html);
 		expect(out).toContain("<figure");
 		expect(out).toContain("<figcaption>");
 		expect(out).toContain('width="1792"');

@@ -197,9 +197,10 @@ test.describe("sign-language region — reactive stability", () => {
 		);
 		const shellCount = await page.locator("pie-item-shell").count();
 		expect(shellCount).toBeGreaterThan(0);
-		// One per shell, with headroom for a legitimate re-register when an item's
-		// content is substituted; a loop overshoots this by three orders of magnitude.
-		expect(counts.register).toBeLessThanOrEqual(shellCount * 2);
+		// One per shell. The shell's dispatch is idempotent by value
+		// (`section-player-item-shell-registration.spec.ts` pins that), so anything
+		// above this is churn even before it becomes a loop.
+		expect(counts.register).toBe(shellCount);
 		// A shell that is still mounted should not have unregistered at all.
 		expect(counts.unregister).toBe(0);
 		expect(

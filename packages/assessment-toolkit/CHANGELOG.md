@@ -1,5 +1,281 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.64
+
+### Patch Changes
+
+- 82118ce: Make a script and a recording of it addressable on the same node.
+
+  A `spoken` node can legitimately carry two cards in the same language: the
+  reading script, and a recording of it. That is APIP's authoring pattern, and QTI
+  3's migration guidance keeps the script when legacy audio moves into catalogs,
+  because it is both the source the audio was generated from and the fallback when
+  the audio cannot play. PIE could store both and resolve neither reliably: both
+  rungs of `findMatchingCard` took the first card matching type and language, and
+  `getAllAlternatives` deduped on type and language alone, so whichever card was
+  written second was unreachable and enumeration under-reported it — with no
+  diagnostic, the same silent-no-op shape as the withdrawn `signLanguage` alias.
+
+  `CatalogLookupOptions` gains `form?: "content" | "payload"`. No new field on the
+  card: a card carries exactly one of `content` or `payload`, so the slot it fills
+  is already an unambiguous discriminator, and `catalogCardForm(card)` names it.
+  `form` is a preference rather than a filter — an absent preferred form still
+  returns the other card, so callers check what they got, as they already must for
+  a card of an unexpected type. It applies _within_ a language rung and never
+  across one, so a Spanish lookup is never answered with English audio in
+  preference to Spanish text. Omitting it preserves first-match resolution exactly.
+
+  `getAllAlternatives` now keys on type, language and form, so both cards are
+  reported. `TTSService`'s three spoken lookups ask for `form: "content"`
+  explicitly, so which card an item lists first cannot change what read-aloud
+  speaks.
+
+- 9b2f37d: `CatalogCard.payload` is the only name for a card's structured content; the `signLanguage` alias is removed.
+
+  `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer (PIE-881) had both landed with the signing payload under `signLanguage`, so this repo accepted that spelling on input and folded it into `payload` during resolution. That kept imported items rendering, and it introduced a worse failure than the one it prevented: only the resolution path knew about the alias, so an imported card rendered its signing video _and_ reported that the item had no signed alternate to anything that enumerated alternates. One fact under two names means every read path is a place to forget one of them, and the enumeration path forgot.
+
+  Both producers now emit `payload`, on branches that land alongside this one, so the alias has nothing left to accept. It is gone from `CatalogCard`, from `resolveCard`, and from `resolveSignLanguageMedia`.
+
+  `resolveSignLanguageMedia` now warns on _any_ `sign-language` card it cannot resolve, not only one carrying a string in `content`. A card written against the old spelling arrives with no payload at all, and the previous code returned `null` for it in silence — which is the shape of bug that reaches a learner and no one else. The new message names `payload` and says the card needs re-importing.
+
+  Sequencing matters for anyone landing these: a host that ships this player against content built by the older `pie-elements-ng` types or the older importer will see signing cards stop resolving, with that warning as the signal. Re-import, or take all three changes together.
+
+- acee584: `onCatalogsChange` on the catalog resolver and the toolkit coordinator, replacing a timed retry in the item card's signing region.
+
+  A reader that _renders_ a catalog card has to answer "is there content for this item" before the catalogs exist: registration is driven by an item shell's mount event, which lands after a card rendered alongside that item has already computed its first answer. TTS never hit this because it resolves by DOM lookup at the moment it speaks. The signing region did, and it compensated with a bounded retry — 20 attempts, 50 ms apart — after which it stopped for good. No budget is right for that: a second is too short when element bundles load slowly, and running out of it left an eligible learner with no signing video and nothing logged. An accommodation that fails this way is invisible to everyone except the person who needed it.
+
+  `AccessibilityCatalogResolver.onCatalogsChange(listener)` now reports registrations and removals, with `ToolkitCoordinator.onCatalogsChange` delegating to it exactly as `onPolicyChange` delegates to the policy engine. The event names what changed (`scoped-registered`, `scoped-removed`, `item-added`, `item-cleared`) and carries the owner context for the scoped reasons, but no resolved cards: listeners re-query with their own lookup context, which keeps the resolver free of assumptions about who is reading. It fires after the mutation, so re-querying from a listener sees the new state. Subscriber errors are swallowed and dispatch iterates a copy of the listener set, so one bad listener can neither break registration nor cause its neighbours to be skipped.
+
+  `SectionItemCard` holds the resolved alternate in state and rewrites it from that stream **only when the resolved value actually changes**, rather than bumping a version counter a `$derived` reads. The counter is the pattern this file already uses for `onPolicyChange`, and for policy it is fine, but for catalogs it closes a feedback loop. Re-rendering the card re-applies the `item` prop on `<pie-item-shell>`, whose registration effect re-runs and re-registers the item's catalogs, which makes the resolver emit again. One unconditional write per emission is enough to make that cycle self-sustaining: measured 1000 register/unregister rounds per item before Svelte aborted the update at its depth limit — and an aborted update leaves the DOM half-applied, so the media region mounted while the container it lives in never got its side-by-side layout. It was not confined to signing either; any page with the toolkit hit it, including TTS demos with no signing content, because every card subscribes.
+
+  Comparing before writing breaks the cycle at the only point where neither side has to know about the other: a re-registration that changes nothing resolves to the same value and stops there. The comparison is structural, because each resolution builds a fresh object and identity would report a change every time.
+
+  `onCatalogsChange` is required on the coordinator interface rather than optional. It ships with its only consumer, so there are no pre-existing host stubs to stay assignable to, and `AGENTS.md` rules out internal-API compatibility shims without a documented exception.
+
+  Any future region rendering a catalog card — a transcript region, braille, simplified language — subscribes instead of adding a second retry loop, and should guard its writes the same way for the same reason.
+
+  Still latent underneath: `<pie-item-shell>` re-dispatches registration whenever its `item` prop is re-applied, even when the value is unchanged, so any future source of card re-renders will re-register catalogs and re-attach session listeners. Harmless now that nothing feeds it in a cycle, and worth a guard on the shell's side independently.
+
+- 9b2f37d: `AccessibilityCatalogResolver.getAllAlternatives` now projects each card through the same code path as `getAlternative`, so enumeration and resolution cannot describe the same card differently.
+
+  It hand-rolled the projection, and the two drifted the moment one of them gained a rule. The rule was the `signLanguage` payload alias, folded in by `resolveCard` and unknown to `getAllAlternatives`, which read `payload` alone: a card that arrived under the alias rendered its signing video and was simultaneously reported as carrying no payload, so `hasAlternativeType` said the item had no signed alternate and anything driving a learner-facing "alternates available" affordance off that answer would have hidden an accommodation that works. Silent for a sighted developer, and it fails in exactly the direction the sign-language work exists to rule out. The alias itself is gone now — see the accompanying changeset — but the two paths staying in sync is the durable half of the fix, and it is what a test now pins.
+
+  Two smaller consequences of sharing the projection: enumerated `spoken` content is sanitized on the way out, matching resolution, and a card is enumerated once per type-and-language rather than once per occurrence. A second card with the same type and language was already unreachable — `findMatchingCard` returns the first — so reporting it as available promised content no lookup would return.
+
+  `getAllAlternatives` still reports item-level cards ahead of assessment-level ones and treats context-scoped registrations as `item`, which is the precedence `getAlternative` applies.
+
+- 5749bc1: Report unknown catalog types instead of storing them silently.
+
+  `CatalogType` ends in `| string`, so its named literals were documentation only:
+  a card authored `"spokn"` was a perfectly valid `CatalogType` that no reader would
+  ever ask for, and a lookup for `"brallie"` returned `null` exactly as it would for
+  a node with no alternate. Both failed by being invisible, which for an
+  accommodation means the only person who notices is the candidate who needed it.
+
+  The type stays open — QTI's support vocabulary is extensible, and catalogs arrive
+  as authored JSON rather than through this type, so closing it would reject
+  content PIE cannot usefully validate anyway. What changes is the silence.
+  `isKnownCatalogType` accepts the types PIE names plus QTI's `ext:`-prefixed
+  vendor extensions, which pass without comment. Anything else is still registered
+  and still resolvable, but logged once per distinct token: on the card side naming
+  the catalog and saying the alternate will never be shown, and on the lookup side
+  saying it cannot match any card.
+
+  The card-side check sits in the one funnel every registration path already runs
+  through, so the constructor, `addItemCatalogs` and `registerCatalogs` are all
+  covered without per-entry-point checks.
+
+  `transcript` joins the named types. The Learnosity importer emits it, so treating
+  it as unknown would have warned on ordinary imported audio items — which is the
+  failure mode this kind of check invites, and the reason the known set was taken
+  from what producers actually emit rather than from the existing union.
+
+- 82edb28: Honour `data-tts-suppress` so content can be shown but never spoken.
+
+  Read-aloud is not universally safe. Where reading _is_ the construct — a decoding
+  item ("which word begins with the same sound as _cake_"), a spelling item where
+  synthesized speech voices both options identically — speaking the node hands over
+  the answer. Nothing in PIE could express that: the learner's
+  `PersonalNeedsProfile` carries `prohibitedSupports`, but that is the learner
+  saying "not for me", not the item saying "not here, for anyone", and this case has
+  to override an entitlement rather than yield to it. The workaround was disabling
+  read-aloud for a whole item, which also costs the candidate the directions —
+  content that was never the construct.
+
+  `data-tts-suppress` on a content element marks it and its subtree not-to-be-spoken.
+  It takes one value: `computer-read-aloud` or `all` suppress PIE's TTS, while
+  `screen-reader` targets assistive technology only and stays machine-read aloud.
+  An unrecognized or empty value suppresses anyway and logs why — a token that fell
+  through on a typo would leak an answer with no visible symptom, whereas
+  over-suppressing only withholds speech an author had already marked as withheld.
+
+  Enforced in every path that produces speech, since a filter on one of them is a
+  filter a candidate can walk around: the composed catalog path (before card
+  resolution, so suppression beats an authored `spoken` card on the same node), the
+  generated-speech and visible-text collectors, structural pause boundaries, and
+  `speakRange`. That last one mattered most and was the actual hole: the annotation
+  toolbar's selection read-aloud is a text-in path that hands `range.toString()`
+  straight to the provider, and `Range.toString()` honours no DOM filter at all, so
+  selecting a word and pressing read-aloud would have walked around a filter applied
+  only to the DOM walk. It now filters the range, and derives the highlight offset
+  from the same filtered text so word highlighting stays aligned when suppressed
+  content precedes the selection.
+
+  The shape follows QTI 3's `data-qti-suppress-tts` — same vocabulary, same
+  placement on the content element rather than on a catalog card — under PIE's own
+  `data-tts-*` attribute name. PIE reads one spelling; an importer converting QTI
+  content maps the attribute on the way in.
+
+- a5241b9: Render `sign-language` accessibility catalog cards. `sign-language` has been a declared `CatalogType` with no consumer since catalogs landed — only `spoken` was wired, through `TTSService` — so an item carrying an ASL video showed the question and no video. This adds the four pieces that make signed alternates appear, deliberately shaped as a second instance of the spoken/TTS path rather than as new machinery.
+
+  ## Card payload
+
+  `CatalogCard.content` is a flat string, so a signing card could only hold a bare URL — no second source, no MIME type, no poster, no time range, all of which QTI 3 expresses inside `qti-card-entry`. `CatalogCard` gains an optional structured `payload`, and `players-shared` gains the media vocabulary it uses (`MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef`, `MediaFragmentRange`, `SignLanguageCardPayload`).
+
+  A card carries **either** `content` **or** `payload`, never both. QTI gives `qti-card` one content slot and names the type in `@support`, which PIE already models as `CatalogCard.catalog`; so `content` is the string form for types a string can express (SSML for `spoken`), `payload` is the structured form for types it cannot, and `catalog` is the only discriminator. Two consequences, both deliberate:
+
+  - **`content` becomes optional.** A signing card has no string form at all. Nothing is projected or mirrored into `content`, so there is never a second copy of the payload's primary URL to fall out of sync with it — and no precedence rule silently deciding which copy wins. `ResolvedCatalog.content` is optional for the same reason; `TTSService` treats a card with no string form as "no catalog", falling through to generated speech.
+  - **The payload carries no `kind` tag.** Restating `catalog` inside the payload would be a second source of truth for the type that can disagree with the first. Consumers select a card by catalog type and then validate the payload structurally, which they must do anyway for authored wire data.
+
+  One media vocabulary rather than two: `MediaAssetRef` is defined against both this consumer and prospective stimulus media, with the required subset resolved per consumer instead of by making every field optional at the type level — a type where nothing is required stops catching anything. For signing, sources and language are required, poster and duration do not apply, and `tracks`/`transcript` are actively meaningless, since captions on a signing video would be the English text already on screen. Stated explicitly so no future policy adds a caption requirement to signed content.
+
+  Validation is "treat as absent, never as text": a payload with no usable source resolves to `null` instead of rendering an empty player or a URL as visible content, and a `sign-language` card carrying a bare URL in `content` is reported and ignored rather than half-rendered. Source URLs are restricted to schemes a media element can actually fetch, so an authored `javascript:` or `file:` URL cannot ride into the DOM.
+
+  ## Extraction
+
+  `SignLanguageExtractor` is the signing counterpart of `SSMLExtractor` and exists for the same reason: authors carry the accessibility material inline, and the runtime needs catalog cards. It probes content for `data-sign-language` regions, lifts the video into a card with sources, poster and an optional `data-sign-language-start` / `-end` range, removes it from the visible markup, and docks the catalog on the content it translates via `data-catalog-idref`.
+
+  Removing the video from visible content is the substantive divergence from Learnosity, where a signing video is ordinary item content that renders unconditionally with nothing to gate. In PIE it becomes catalog data that policy decides on.
+
+  An existing `data-catalog-idref` is never overwritten. The attribute is one canonical name with two readers, and clobbering it would break TTS resolution for that node; the synthesized catalog is still emitted and still resolves, because the region finds cards through the item's catalog set rather than by walking the DOM.
+
+  ## Resolution
+
+  Lookup goes through `AccessibilityCatalogResolver.getAlternative(catalogId, { type: "sign-language", language })`, so assessment/item/scoped priority and owner scoping are not re-implemented. `ResolvedCatalog` now carries the card's `payload`.
+
+  Owner scoping needed one consolidation to make that true. Catalogs are placed dynamically — a shell registers what its entity carries on mount, and readers resolve by identifier within an owner scope — so registration and lookup have to agree on where a catalog is filed, and the resolver matches contexts field by field, meaning a disagreement resolves nothing rather than failing loudly. The walk over the three places catalogs hang off an entity, and the construction of the context each is filed under, now live in one place: `collectEntityCatalogRegistrations` and `catalogOwnerContextFor`, both exported from `pie-assessment-toolkit`, with the runtime registration event handler reduced to an adapter over the first. The media region borrows the walk rather than repeating it, so a lookup cannot name a scope registration never wrote.
+
+  One behaviour is deliberately stricter than the resolver's default. Its last fallback rung matches any card of the requested type regardless of language, which is helpful for spoken content and wrong for signing: ASL, BSL and LSF are not interchangeable, so handing an ASL learner a BSL recording is worse than handing them nothing. A card reached by that rung is accepted only if its language matches, or if it asserts no language at all — a card that names no language cannot be shown to be a mismatch, while one that positively claims another language can.
+
+  ## Policy
+
+  Signing is gated on the `signLanguage` PNP support id through the existing six-level `PnpPolicySource` precedence. Because the region is not a toolbar surface, a placement-scoped `decide(...)` would answer the wrong question — absent because it was never placed, not because policy said no — so `ToolPolicyEngine.decideFeature(featureId)` and `ToolkitCoordinator.decideFeaturePolicy(featureId)` resolve one feature id independent of placement. `PnpPolicySource.resolveFeature(...)` reuses the existing rule evaluation rather than copying the six levels, so the two cannot drift.
+
+  `pnpEnforcement` is not consulted for a feature decision: that flag governs whether profile policy _refines_ an otherwise-visible tool set, and a feature with no placement has no unrefined baseline to fall back to, so skipping the profile read would make the accommodation permanently unavailable rather than merely unrefined.
+
+  `computeDefaultSupports()` now excludes `ACCOMMODATION_ONLY_SUPPORT_IDS`, which lists `signLanguage`. That function derives the fallback profile from every registered tool's `pnpSupportIds`, which is right for universal features and wrong for an accommodation: signing requires a documented need, so inheriting it by default would invert the eligibility tier. Excluded by id rather than by declining to register, so the guarantee holds however a signing tool later reaches the registry. Hosts that supply their own profile are unaffected.
+
+  ## Region
+
+  `SectionItemCard.svelte` gains a `data-region="media"` region beside its existing `header` and `content` regions, holding a resolved catalog card. Named for the slot rather than its first tenant — audio description is the same "docked alternate media, gated by PNP" shape.
+
+  `item-player` needs no changes and learns nothing about signing.
+
+  - **Fixed to the right of the content.** Not below: signing is re-checked _while_ an answer is being formed, so a bottom placement means scrolling between video and choices repeatedly. Side by side keeps both visible however long the item is, and the region is sticky within the card so it follows a long question down. Being parallel rather than sequential also sidesteps a problem an above/below split cannot solve, since `item-player` renders prompt and choices as one opaque block.
+  - **Resizable** via a keyboard-accessible `role="separator"` divider following `SectionSplitDivider.svelte`'s shape rather than reusing it — that component is wired to the passage/items grid and converts a drag with a fixed 0.1%-per-pixel factor. Inside a card the same drag has to mean the same thing whether the card is wide or narrow, so the math here is container-relative.
+  - **Sized for legibility** by an aspect-ratio target with a height floor, not a flat width percentage, which either wastes space on a short clip or crushes signing on a narrow device. Retunable via `--pie-section-player-item-media-aspect-ratio`, `--pie-section-player-item-media-min-height` and `--pie-section-player-item-media-max-height`. Below a 560px card width the region stacks and the divider withdraws.
+  - No orientation toggle and no free repositioning. Free 2D positioning is the floating-tool pattern, built for movable utility windows; the `toolParameters` seam is the right place for a policy-driven generalization, and nothing hangs there yet.
+
+  The split wrapper is always present and the content region always occupies the same slot within it, so a card resolving after mount adds siblings rather than re-creating the item player. An item with no signing markup comes back from extraction by reference, so nothing downstream sees config churn.
+
+  Playback is a minimal `<video>` wrapper: the clips are seconds long, so sharing a player with a section-scale stimulus element buys nothing. Its own audio is muted by default, its accessible name states the language ("American Sign Language") rather than saying "video", and starting it pauses TTS — the action the learner just took wins.
+
+  ## Availability
+
+  Signing appears when **both** conditions hold: the item carries a matching card, and policy grants eligibility. Both are checked independently and neither is a default. The content half is AfA's resource-side declaration (QTI approximates DRD in-band — the presence of a card _is_ the declaration) and is what keeps the region off the overwhelming majority of items, so a learner with the accommodation still sees no dead affordance where no signing was authored.
+
+  ## Also
+
+  `AssessmentSection` gains an optional `personalNeedsProfile`. Section players already read it (falling back to `settings.personalNeedsProfile`, then to the computed default) through an `any` cast; this types an existing runtime contract.
+
+- 0dcec2e: Remove `SignLanguageExtractor`. A signed alternate is a catalog card, authored or imported, never lifted out of item markup at render time.
+
+  The extractor mirrored `SSMLExtractor` for signing: it found `[data-sign-language]` video regions in an item's markup, prompts and choice labels, turned each into a `sign-language` card, removed the video from the visible content and docked the card via `data-catalog-idref`. Section-player ran it on every item card mount.
+
+  Nothing produced that inline form. The Learnosity transform in `pie-api-aws` writes `accessibilityCatalogs` directly, and signing is new enough in PIE that no legacy content carries a video inline — the attribute's only producer was this repo's own demo. The symmetry with `SSMLExtractor` was the whole case for it, and it does not hold: inline `<speak>` is real authored content PIE does not control.
+
+  It also failed in the wrong direction. Extraction needed `DOMParser`, so under SSR it no-opped, and a parse error took the same path — in both cases the `<video>` stayed in the visible prompt and rendered to every learner, granted the accommodation or not. A card cannot leak that way, because it was never in the content. Its synthesized catalog ids were positional (`auto-sign-prompt-q1-0`), so inserting a signing region renumbered the reference docking another one.
+
+  Breaking for anyone importing `SignLanguageExtractor`, `SIGN_LANGUAGE_ATTRIBUTE` or `SignLanguageExtractionResult` from `@pie-players/pie-assessment-toolkit`, and for `prepareSignLanguageItem` from section-player's shared components: author the card on `accessibilityCatalogs` instead, at item or model level. Resolution, gating and rendering are unchanged — `collectSignLanguageCatalogRefs` reads the same three places catalogs hang off an entity as it always did. `SSMLExtractor` is untouched.
+
+- acee584: Accept `signLanguage` as an input alias for a sign-language card's `payload`, so cards from the two producers that already shipped resolve.
+
+  `CatalogCard.payload` was the only accepted name for a signing card's structured media. Two landed implementations disagree with that: `pie-elements-ng` declares the payload as `signLanguage` (PIE-879), and the `pie-api-aws` Learnosity importer emits `signLanguage` (PIE-881). A card from either validated, imported, stored and then resolved to `null` — no signing video, no error a learner or proctor would ever see. That is the exact failure mode the accommodation model exists to prevent, and it is invisible precisely to the people who depend on it.
+
+  `CatalogCard.signLanguage` is now accepted and folded into `payload` at the one point where `AccessibilityCatalogResolver` projects a card, so a single field still reaches every consumer and nothing downstream learns two names. `resolveSignLanguageMedia` reads the alias too, for callers that hand it a raw card. `payload` wins when a card somehow carries both.
+
+  Tolerated on input, never canonical. Which name the three repos settle on is a separate decision; this stops content from silently losing its accommodation while that decision is made.
+
+- 25511d7: Play recorded audio as a `spoken` alternate.
+
+  PIE's `spoken` card was a string, so it could carry a reading script but never
+  "play this file for this node" — and some programs prefer a human voice to
+  synthesis. QTI 3 treats the two as the _same_ support, with recorded audio
+  referenced by file and MIME type on a `spoken` card, so this adds a form of an
+  existing accommodation rather than a new one. No new PNP entitlement: a recording
+  played by the player is still computer-delivered speech.
+
+  `SpokenAudioCardPayload` carries a `MediaAssetRef` of `kind: "audio"` plus an
+  optional time range. `resolveSpokenAudioMedia` validates it with the same
+  "absent, never partially valid" posture as sign-language cards, refusing
+  non-audio media so signing and speech cards cannot quietly swap roles, and
+  staying silent for a plain script card — which arrives on that path routinely,
+  since form resolution is a preference.
+
+  Highlighting is the docked node as a block for the clip's duration. A recording
+  emits no word-boundary events, and deriving them from its duration would
+  highlight the wrong words confidently rather than the right region vaguely; word
+  -level highlighting stays available on the synthesized path. The rate setting
+  applies through `playbackRate`, a time range becomes a Media Fragments URI with
+  the end bound enforced by the player, and the first source is used because an
+  `<audio>` element with alternative `<source>` children reports failure through a
+  path that is awkward to observe reliably.
+
+  A clip that will not play degrades to the node's `content` card through the
+  existing speak-time fallback — which is the concrete reason QTI's guidance keeps
+  the script alongside the audio. With no script, the failure is reported rather
+  than silently skipped. `stop()` and seeking cancel a playing clip and settle its
+  pending playback, so a superseded run cannot wedge the chunk loop, and
+  `data-tts-suppress` withholds a recording exactly as it withholds a script.
+
+  Also extracts the media-URL allow-list, source and fragment normalization shared
+  by signing and spoken-audio cards into one module, rather than keeping two copies
+  of a security-relevant allow-list.
+
+- bbcabc0: One docking rule for both catalog extractors, and no synthesized content to hold a reference.
+
+  `data-catalog-idref` is a single canonical attribute naming a whole card array, with more than one reader now that signed alternates render. `SSMLExtractor` was overwriting it unconditionally on whatever element wrapped an inline `<speak>` — usually an element the author wrote. When that element already carried a reference, the authored one was silently replaced, taking every card under it out of reach: not just the spoken alternate the extractor cares about, but that node's braille, simplified-language and sign-language cards too. `SignLanguageExtractor` already refused to overwrite; both now follow the same rule. `SSMLExtractor` also reports the collision; `SignLanguageExtractor` still declines silently, because a signing card is resolved through the item's catalog set rather than by DOM lookup and so loses nothing it was relying on.
+
+  Also removed: the invented docking node. Both extractors used to insert a `<span>` when the marked content sat at the root of a fragment, so the reference had somewhere to live — and on the SSML side that span was filled with the `<speak>` element's own text content, which is spoken phrasing, not visible phrasing. Where an author wrote `<speak>x squared, plus two x, equals eight</speak>` as an item's whole markup, that spoken phrasing became the visible content — the documented authoring examples avoid this only because their `<speak>` sits inside a `<div>`, which took the other branch. A `<speak>` or a signing video with no element around it has no content node to be an alternate _for_, so neither extractor now synthesizes one: the catalog is still emitted and still resolves through the item's catalog set, and on the SSML side the missing docking node is reported.
+
+  The trade this makes deliberately: a `<speak>` that _is_ an item's entire markup now leaves the visible content empty rather than showing spoken phrasing. Sibling visible content is unaffected — a `<speak>` beside a `<p>` removes only the `<speak>`.
+
+  Two consequences for authored content, both surfaced as console warnings rather than silent behavior:
+
+  - Inline `<speak>` inside an already-docked node no longer applies to TTS. Move the SSML into a `spoken` card on the existing catalog, or give the `<speak>` its own wrapper.
+  - Root-level inline `<speak>` no longer produces visible text or a docked catalog. Wrap the visible content the SSML speaks in an element.
+
+  Authored `accessibilityCatalogs` are unaffected — this is extraction-time behavior only.
+
+- 30baec4: Resolve a selection's spoken catalog by climbing to the nearest ancestor that actually holds spoken content.
+
+  `data-catalog-idref` names a whole card array, not a spoken card. The TTS tool took the nearest docked ancestor of a selection and passed its id straight to `speak()`, which was correct while spoken cards were the only kind that got docked. They are not any more: `SignLanguageExtractor` docks a signing catalog onto the element wrapping a marked video, and that element can sit inside a node the author docked to a catalog carrying the SSML. The inner reference then wins, the lookup finds no spoken card, and the selection is read as generated speech — plausible enough that nobody notices the authored pronunciation was dropped.
+
+  `TTSService.hasSpokenAlternate(catalogId, language?)` answers whether a catalog holds speakable content, and the tool walks up from the selection until one does, falling back to the nearest docked id when the service cannot answer (no resolver attached), which is the previous behaviour. The composed-speech path never had this problem — it descends into children when a card has no string form — so only the selection path changes.
+
+- Updated dependencies [9b2f37d]
+- Updated dependencies [bb1a90b]
+- Updated dependencies [a5241b9]
+- Updated dependencies [acee584]
+- Updated dependencies [b3acac4]
+- Updated dependencies [25511d7]
+  - @pie-players/pie-players-shared@0.3.64
+  - @pie-players/pie-calculator@0.3.64
+  - @pie-players/pie-calculator-desmos@0.3.64
+  - @pie-players/pie-context@0.3.64
+  - @pie-players/pie-tts@0.3.64
+  - @pie-players/tts-client-server@0.3.64
+
 ## 0.3.63
 
 ### Patch Changes

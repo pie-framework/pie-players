@@ -1,5 +1,49 @@
 # @pie-players/section-demos
 
+## 0.1.77
+
+### Patch Changes
+
+- Updated dependencies [82118ce]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [acee584]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [5749bc1]
+- Updated dependencies [bb1a90b]
+- Updated dependencies [c811bf2]
+- Updated dependencies [dc44392]
+- Updated dependencies [82edb28]
+- Updated dependencies [a5241b9]
+- Updated dependencies [0dcec2e]
+- Updated dependencies [acee584]
+- Updated dependencies [b3acac4]
+- Updated dependencies [25511d7]
+- Updated dependencies [bbcabc0]
+- Updated dependencies [30baec4]
+  - @pie-players/pie-assessment-toolkit@0.3.64
+  - @pie-players/pie-players-shared@0.3.64
+  - @pie-players/pie-section-player@0.3.64
+  - @pie-players/pie-theme@0.3.64
+  - @pie-players/pie-tool-text-to-speech@0.3.64
+  - @pie-players/pie-section-player-tools-pnp-debugger@0.3.64
+  - @pie-players/pie-section-player-tools-tts-settings@0.3.64
+  - @pie-players/pie-tool-annotation-toolbar@0.3.64
+  - @pie-players/pie-tool-answer-eliminator@0.3.64
+  - @pie-players/pie-tool-calculator-desmos@0.3.64
+  - @pie-players/pie-tool-tts-inline@0.3.64
+  - @pie-players/pie-print-player@0.3.64
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.64
+  - @pie-players/pie-section-player-tools-event-debugger@0.3.64
+  - @pie-players/pie-section-player-tools-session-debugger@0.3.64
+  - @pie-players/pie-section-player-tools-shared@0.3.64
+  - @pie-players/pie-default-tool-loaders@0.3.64
+  - @pie-players/pie-context@0.3.64
+  - @pie-players/tts-client-server@0.3.64
+  - @pie-players/tts-server-core@0.3.64
+  - @pie-players/tts-server-google@0.3.64
+  - @pie-players/tts-server-polly@0.3.64
+  - @pie-players/tts-server-sc@0.3.64
+
 ## 0.1.76
 
 ### Patch Changes

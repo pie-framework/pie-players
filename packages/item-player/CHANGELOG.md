@@ -1,5 +1,19 @@
 # @pie-players/pie-item-player
 
+## 0.3.64
+
+### Patch Changes
+
+- Updated dependencies [9b2f37d]
+- Updated dependencies [bb1a90b]
+- Updated dependencies [dc44392]
+- Updated dependencies [a5241b9]
+- Updated dependencies [acee584]
+- Updated dependencies [b3acac4]
+- Updated dependencies [25511d7]
+  - @pie-players/pie-players-shared@0.3.64
+  - @pie-players/pie-theme@0.3.64
+
 ## 0.3.63
 
 ### Patch Changes

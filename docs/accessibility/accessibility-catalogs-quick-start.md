@@ -103,6 +103,28 @@ const simplified = resolver.getAlternative('welcome-message', {
 
 ---
 
+## Beyond the Basics
+
+Four things this quick start does not cover, each documented in the
+[Integration Guide](./accessibility-catalogs-integration-guide.md):
+
+- **A card carries `content` *or* `payload`, never both.** Types a string cannot
+  express — signing video, recorded audio — use the structured form.
+  ([Card content](./accessibility-catalogs-integration-guide.md#card-content-string-or-payload))
+- **One node can carry two `spoken` cards** in the same language: a reading script
+  and a recording of it. Select between them with `form`.
+  ([Script and recording](./accessibility-catalogs-integration-guide.md#two-cards-of-one-type-script-and-recording))
+- **`data-tts-suppress` withholds content from read-aloud** without hiding it,
+  for items where reading is the construct. It overrides both an authored card
+  and the learner's PNP entitlement.
+  ([Suppressing read-aloud](./accessibility-catalogs-integration-guide.md#suppressing-read-aloud))
+- **Unknown catalog types are allowed but reported.** A mistyped `catalog` is
+  stored and never resolved, so it is logged rather than left silent; use QTI's
+  `ext:` prefix for deliberate vendor extensions.
+  ([Supported types](./accessibility-catalogs-integration-guide.md#supported-catalog-types))
+
+---
+
 ## Common Patterns
 
 ### Pattern 1: Assessment-Level Catalogs (Shared Content)

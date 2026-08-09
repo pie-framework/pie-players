@@ -20,7 +20,7 @@
 	"scripts": {
 		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",
 		"dev": "bun x vite build --watch",
-		"test": "bun test tests",
+		"test": "bun test '.test.ts'",
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {
@@ -30,7 +30,9 @@
 	},
 	"devDependencies": {
 		"@happy-dom/global-registrator": "^20.11.1",
+		"@playwright/test": "^1.62.1",
 		"@types/node": "^22.10.2",
+		"esbuild": "^0.28.1",
 		"svelte": "^5.56.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.10"

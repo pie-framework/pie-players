@@ -138,11 +138,9 @@
 	 * cached resolved promise must invalidate when the aggregate tag set
 	 * changes.
 	 */
-	const warmupInputsSignature = $derived(
-		JSON.stringify({
-			preloadEnabled,
-			strategy: playerStrategy,
-			renderables: preloadedRenderables.map((renderable: ItemEntity, index: number) => {
+	const renderablesFingerprint = $derived(
+		JSON.stringify(
+			preloadedRenderables.map((renderable: ItemEntity, index: number) => {
 				const entity = ((renderable ?? {}) as unknown) as Record<string, unknown>;
 				const id =
 					typeof entity.id === "string" && entity.id
@@ -165,6 +163,14 @@
 					.join(",");
 				return `${id}:${elementsSignature}`;
 			}),
+		),
+	);
+
+	const warmupInputsSignature = $derived(
+		JSON.stringify({
+			preloadEnabled,
+			strategy: playerStrategy,
+			renderables: renderablesFingerprint,
 			iifeBundleHost,
 			mode:
 				(resolvedPlayerProps as Record<string, unknown> | undefined)?.mode ?? null,
@@ -257,6 +263,32 @@
 	});
 
 	const elementsLoaded = $derived(readiness.current.status === "resolved");
+
+	/*
+	 * Whether the cards may stay in the DOM, which is not the same question as
+	 * whether the warmup is currently resolved.
+	 *
+	 * The warmup signature carries inputs that change the *bundle request* but
+	 * not the *element set* — `hosted`, `mode`, `loaderOptions`. Enabling a
+	 * delivery backend at runtime flips `hosted` to `true`, so re-warming is
+	 * correct; tearing the cards down to do it is not. Every item player was
+	 * destroyed and recreated, which discarded in-progress session state and made
+	 * each item POST its delivery load twice — once from the dying instance and
+	 * once from its replacement.
+	 *
+	 * So the placeholder is for a first paint and for a genuine content swap. Once
+	 * a warmup has resolved for an element set, the cards stay mounted through any
+	 * later invalidation that leaves that set alone; item players re-register their
+	 * own elements on demand either way.
+	 */
+	let resolvedRenderablesFingerprint = $state<string | null>(null);
+	$effect(() => {
+		if (readiness.current.status !== "resolved") return;
+		resolvedRenderablesFingerprint = renderablesFingerprint;
+	});
+	const cardsMountable = $derived(
+		elementsLoaded || resolvedRenderablesFingerprint === renderablesFingerprint,
+	);
 
 	$effect(() => {
 		dispatch("elements-loaded-change", { elementsLoaded });
@@ -382,7 +414,7 @@
 
 <div bind:this={scrollHintSentinel} style="display:none" aria-hidden="true"></div>
 
-{#if !elementsLoaded}
+{#if !cardsMountable}
 	<div class="pie-section-player-content-card">
 		<div
 			class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"

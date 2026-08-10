@@ -69,14 +69,17 @@
 		})
 		.catch(() => {});
 
-	// Pass baseHeadingLevel and includeSrHeading through the player config so the
-	// section-player kernel forwards them as props to every item player element.
+	// `baseHeadingLevel` goes on the section player itself: it is the level the
+	// player's own card headings occupy, and every descendant derives its outline
+	// from it, so driving it here moves the cards, the passages and the items
+	// together. `includeSrHeading` stays a per-player override, which is what this
+	// demo is for — a host that furnishes no question headings of its own asks the
+	// element to keep furnishing them.
 	const sectionPlayerConfig = $derived({
 		loaderConfig: {
 			trackPageActions: true,
 			instrumentationProvider: sectionInstrumentationProvider
 		},
-		baseHeadingLevel,
 		includeSrHeading
 	});
 
@@ -371,6 +374,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				base-heading-level={baseHeadingLevel}
 				toolbar-position="right"
 				show-toolbar={true}
 				ontoolkit-ready={handleToolkitReady}
@@ -389,6 +393,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				base-heading-level={baseHeadingLevel}
 				toolbar-position="right"
 				show-toolbar={true}
 				ontoolkit-ready={handleToolkitReady}

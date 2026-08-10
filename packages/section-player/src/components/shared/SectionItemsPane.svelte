@@ -14,6 +14,7 @@
 			},
 			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
 			playerStrategy: { attribute: "player-strategy", type: "String" },
+			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
@@ -55,8 +56,10 @@
 		warmupSectionElements,
 	} from "./player-preload.js";
 	import {
+		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getCanonicalItemId,
 		getItemPlayerParams,
+		type HeadingLevel,
 	} from "./section-player-view-state.js";
 	import { useZoomCompensation } from "@pie-players/pie-players-shared/ui/use-zoom-compensation";
 
@@ -67,6 +70,7 @@
 		resolvedPlayerAttributes = {} as Record<string, string>,
 		resolvedPlayerProps = {} as Record<string, unknown>,
 		playerStrategy = "preloaded",
+		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as HeadingLevel,
 		itemToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
@@ -86,6 +90,7 @@
 		resolvedPlayerAttributes: Record<string, string>;
 		resolvedPlayerProps: Record<string, unknown>;
 		playerStrategy: string;
+		baseHeadingLevel?: HeadingLevel;
 		itemToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
@@ -393,6 +398,7 @@
 			itemCount={items.length}
 			isCurrent={itemIndex === currentItemIndex}
 			canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+			{baseHeadingLevel}
 			playerParams={getItemPlayerParams({
 				item,
 				compositionModel,
@@ -401,6 +407,7 @@
 				resolvedPlayerProps,
 				playerStrategy,
 				itemIndex,
+				baseHeadingLevel,
 			})}
 			itemToolbarTools={itemToolbarTools}
 			{toolRegistry}

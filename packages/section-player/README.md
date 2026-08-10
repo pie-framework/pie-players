@@ -138,6 +138,7 @@ Both layout elements support:
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
 - `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
 - `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
+- `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
@@ -169,6 +170,51 @@ To force splitpane stacked mode to use vertical rendering:
 ```
 
 By default, splitpane stacked mode uses tabs. The dedicated `pie-section-player-tabbed` layout also always renders passage/items tabs when passages are present.
+
+### Heading structure
+
+The player publishes one number and every descendant derives its outline from it.
+Set `base-heading-level` to the level the cards should occupy in the surrounding
+page — 2 when the page has its own `<h1>` above the player, 3 when the player sits
+under an `<h2>`, and so on:
+
+```html
+<pie-section-player-splitpane base-heading-level="3"></pie-section-player-splitpane>
+```
+
+At the default of 2 that produces:
+
+```
+h2   Passage                    <- passage card heading
+h3     Sea Turtles in Trouble   <- passage title
+h4       Danger on Land         <- authored data-heading content
+h2   Question 1                 <- item card heading
+h3     Part A                   <- authored data-heading content in the prompt
+```
+
+The two content kinds derive different levels from the same number, and the
+difference is deliberate. An item card's heading *is* the item's heading, so the
+item player is told not to emit a screen-reader item heading of its own — one at
+that level already exists, and a second would read as its sibling. A passage
+card's heading is a group label, so the passage player is told to start one level
+deeper, putting the passage's own title beneath it.
+
+Authored `data-heading="headingN"` markup in passages and prompts becomes real
+heading elements only when a level is published, which the player now always does.
+Content authored against
+[PIE-151](https://illuminate.atlassian.net/browse/PIE-151) therefore renders as
+structure without any host configuration.
+
+A host that needs the element's own screen-reader item heading — because it is not
+supplying question headings of its own — overrides per player through the runtime:
+
+```js
+sectionPlayer.runtime = { player: { includeSrHeading: true } };
+```
+
+The pattern behind this, and the reason the value is published rather than pushed,
+is in
+[`docs/architecture/composition-context.md`](../../docs/architecture/composition-context.md).
 
 ### Tab styling hooks
 

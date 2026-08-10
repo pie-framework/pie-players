@@ -277,6 +277,8 @@ Two constraints follow. A `region` capability is gated on the feature question a
 
 `@pie-players/pie-tool-sign-language` is the worked example. It is deliberately absent from `createPackagedToolRegistry`, because a content-dependent accommodation is opt-in, so a host installs and registers it exactly as it would one of its own. `packages/assessment-toolkit/docs/TOOL_REGISTRY.md` carries both contracts.
 
+Host surfaces are one instance of a broader pattern: a fact only the container knows, published for whichever descendant needs it rather than pushed to a known list of consumers. `renderSurface(context)` publishes, the capability resolves, and `sync(context)` is the change signal — which it lacked until it was found to be re-applying the values the host already had. [`../architecture/composition-context.md`](../architecture/composition-context.md) states the pattern and the invariants that failure violated.
+
 ---
 
 ## Tool Scope Architecture: Placement + Scoped IDs

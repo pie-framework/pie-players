@@ -118,6 +118,7 @@
 		type SectionRuntimeLifecycleHandle,
 	} from "../runtime/section-runtime-engine-host-context.js";
 	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
+	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
 		createRuntimeId,
 	} from "../runtime/runtime-id.js";
@@ -266,8 +267,11 @@ const DEFAULT_ENV = {
 	let lastOwnedBootstrapFailureKey = "";
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
-	let pendingCompositionEmit = false;
-	let compositionEmitRaf: number | null = null;
+	// PIE-885: the emit latch and its frame/deadline handles live in the
+	// scheduler, so a cancelled or superseded frame can never leave the latch
+	// set — which is what stranded `composition-changed` forever in a document
+	// that never paints. See `runtime/composition-emit-scheduler.ts`.
+	const compositionEmitScheduler = createCompositionEmitScheduler();
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();
 	const catalogRegistrationCleanups = new WeakMap<HTMLElement, Array<() => void>>();
@@ -939,18 +943,11 @@ const DEFAULT_ENV = {
 
 	function emitCompositionChanged(nextModel?: unknown) {
 		pendingCompositionModel = nextModel ?? sectionEngine.getCompositionModel();
-		if (pendingCompositionEmit) return;
-		pendingCompositionEmit = true;
-		const flush = () => {
-			pendingCompositionEmit = false;
-			compositionEmitRaf = null;
+		// Coalescing lives in the scheduler: repeated calls before the cycle
+		// resolves only replace the model, and the flush reads the latest one.
+		compositionEmitScheduler.schedule(() => {
 			flushCompositionChanged(pendingCompositionModel);
-		};
-		if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-			compositionEmitRaf = window.requestAnimationFrame(flush);
-			return;
-		}
-		queueMicrotask(flush);
+		});
 	}
 
 	function unregisterCatalogsForElement(element?: HTMLElement | null): void {
@@ -1597,11 +1594,7 @@ const DEFAULT_ENV = {
 
 	$effect(() => {
 		return () => {
-			if (compositionEmitRaf !== null && typeof window !== "undefined") {
-				window.cancelAnimationFrame(compositionEmitRaf);
-				compositionEmitRaf = null;
-			}
-			pendingCompositionEmit = false;
+			compositionEmitScheduler.cancel();
 			void sectionEngine
 				.dispose()
 				.catch((error) => {

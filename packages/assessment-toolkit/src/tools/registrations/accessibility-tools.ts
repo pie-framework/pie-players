@@ -13,6 +13,7 @@
 
 import type {
 	ToolRegistration,
+	ToolSurfaceRenderResult,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
@@ -21,6 +22,7 @@ import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
 import {
 	createToolElement,
+	resolveToolTag,
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
 import {
@@ -228,6 +230,16 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	activation: "selection-gateway",
 	singletonScope: "section",
 
+	/**
+	 * Section-scoped singleton surface. The gateway used to be mounted by
+	 * `PieSectionPlayerBaseElement.svelte`, which named this tool id in three
+	 * places — the policy check, the module load and the element — so no host
+	 * could contribute a second section-scoped capability. Declaring the surface
+	 * moves that wiring into this registration, and the renderer discovers it
+	 * through `ToolRegistry.getToolsBySurface("section-overlay")`.
+	 */
+	surfaces: ["section-overlay"],
+
 	// Annotation appears where there's text content
 	supportedLevels: ["passage", "rubric", "item", "element"],
 
@@ -246,6 +258,37 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
 		return hasReadableText(context);
+	},
+
+	/**
+	 * Mount the section-scoped gateway. The element positions itself (`position:
+	 * fixed` inside its shadow root) and finds its scope through the toolkit's
+	 * context, which bubbles from wherever the host mounted it, so this needs to
+	 * know nothing about the host's layout.
+	 */
+	renderSurface(context): ToolSurfaceRenderResult | null {
+		const componentOverrides =
+			(context.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const tagName = resolveToolTag(context.toolId, componentOverrides);
+		if (typeof customElements !== "undefined" && !customElements.get(tagName)) {
+			// The host loads the module before mounting, so reaching here means the
+			// optional package is absent. Declining is the right answer: mounting an
+			// undefined element would render an empty box the learner cannot use.
+			return null;
+		}
+		const element = document.createElement(tagName) as HTMLElement & {
+			enabled?: boolean;
+			ttsService?: unknown;
+			highlightCoordinator?: unknown;
+		};
+		const applyServices = () => {
+			element.enabled = true;
+			element.ttsService = context.services.ttsService;
+			element.highlightCoordinator =
+				context.services.toolkitCoordinator?.highlightCoordinator ?? null;
+		};
+		applyServices();
+		return { element, sync: applyServices };
 	},
 
 	renderToolbar(

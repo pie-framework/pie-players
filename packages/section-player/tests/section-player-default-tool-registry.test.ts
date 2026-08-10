@@ -30,7 +30,9 @@ describe("section-player default tool registry boundary", () => {
 			expect(source).toContain(
 				"const defaultToolRegistry = createPackagedToolRegistry({",
 			);
-			expect(source).toContain("toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS");
+			expect(source).toContain(
+				"toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS",
+			);
 			expect(source).toContain(
 				"const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);",
 			);
@@ -45,7 +47,38 @@ describe("section-player default tool registry boundary", () => {
 
 		expect(source).toContain("let:toolRegistry={layoutToolRegistry}");
 		expect(source).toContain("toolRegistry={layoutToolRegistry}");
-		expect(source).not.toContain("passageToolbarTools={passageToolbarTools}\n\t\t\t\t{toolRegistry}");
-		expect(source).not.toContain("itemToolbarTools={itemToolbarTools}\n\t\t\t{toolRegistry}");
+		expect(source).not.toContain(
+			"passageToolbarTools={passageToolbarTools}\n\t\t\t\t{toolRegistry}",
+		);
+		expect(source).not.toContain(
+			"itemToolbarTools={itemToolbarTools}\n\t\t\t{toolRegistry}",
+		);
+	});
+});
+describe("section-player names no capability for its section-scoped surface", () => {
+	test("base element discovers overlay capabilities through the registry", () => {
+		const source = readSource(BASE_ELEMENT_PATH);
+
+		expect(source).toContain(
+			'const SECTION_OVERLAY_SURFACE = "section-overlay";',
+		);
+		expect(source).toContain("getToolsBySurface?.(SECTION_OVERLAY_SURFACE)");
+		// The grant check runs against each capability's own toolId rather than a
+		// literal, and the module load and mount follow from the same list.
+		expect(source).toContain("candidate.toolId === tool.toolId");
+		expect(source).toContain(".ensureToolModuleLoaded(toolId)");
+		expect(source).toContain("tool.renderSurface?.({");
+	});
+
+	test("base element names no capability id or element tag", () => {
+		// The regression this guards: the gateway used to be named here three times
+		// — the policy check, the module load and the element — so no host could
+		// contribute a second section-scoped capability without a PR against this
+		// repo. `check:player-tool-boundaries` already forbids the package name;
+		// this covers the tool id and the tag.
+		const source = readSource(BASE_ELEMENT_PATH);
+
+		expect(source).not.toContain("annotationToolbar");
+		expect(source).not.toContain("pie-tool-annotation-toolbar");
 	});
 });

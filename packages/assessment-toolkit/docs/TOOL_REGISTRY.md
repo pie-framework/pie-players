@@ -541,6 +541,7 @@ Tool registration supports explicit activation semantics:
 
 - `toolbar-toggle` (default): rendered as a regular toolbar button and toggled by the coordinator.
 - `selection-gateway`: mounted as a singleton gateway that reacts to text selection and opens in-place actions.
+- `region`: rendered into a host surface, with no toolbar button and no icon.
 
 ### Selection-Gateway Example
 
@@ -550,6 +551,51 @@ Tool registration supports explicit activation semantics:
 - `singletonScope: "section"`
 
 This keeps one active annotation gateway per section runtime while still honoring canonical tool config (`policy`, `placement`, `providers`).
+
+## Host Surfaces
+
+Not every policy-addressable capability is a toolbar surface. A signed alternate renders as its own region beside item content; asking `decide({ level: "item" })` about it answers the wrong question, since it comes back absent because nothing placed it rather than because policy said no.
+
+A capability that renders somewhere other than a toolbar declares which host surfaces it fits, and implements `renderSurface`:
+
+```ts
+export const alternateMediaRegistration: ToolRegistration = {
+  toolId: 'hostAlternateMedia',
+  name: 'Alternate media',
+  description: 'Docked alternate media for an item',
+  supportedLevels: ['item'],
+  activation: 'region',
+  surfaces: ['item-media'],
+  pnpSupportIds: ['hostAlternateMedia'],
+  isVisibleInContext: () => true,
+  renderSurface: ({ surface, content, services, featureId }) => {
+    const element = document.createElement('pie-host-alternate-media');
+    (element as any).media = content;
+    return { element, ariaLabel: 'Alternate media' };
+  },
+};
+```
+
+Surface names belong to the host, not to this package. Core validates only that a region capability claims at least one, so a host can open a new surface without a change here. `section-player` ships two: `item-media` (the per-item card region) and `section-overlay` (the section-scoped singleton).
+
+A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability:
+
+```ts
+for (const tool of registry.getToolsBySurface('item-media')) {
+  const decision = coordinator.decideFeaturePolicy(tool.pnpSupportIds[0]);
+  if (!decision.granted) continue;
+  const rendered = tool.renderSurface({ /* ... */ });
+  if (rendered) mount(rendered.element);
+}
+```
+
+Three consequences of `activation: "region"`:
+
+- `icon` and `renderToolbar` are not required — there is no button to put them on. They stay required for the two toolbar activations, so no existing registration is relaxed.
+- Naming a region capability in `placement.{section,item,passage}` is a `tools.unplaceableActivation` error. It would never render there, and reporting it at the config rather than at render time is the difference between a diagnostic and a silently absent accommodation.
+- `renderForToolbar` throws with the activation named if a caller asks a region capability for a button.
+
+A capability can be both: `annotationToolbar` is a toolbar button at item and passage level *and* a section-scoped singleton, so it carries `renderToolbar` and `renderSurface` together.
 
 ### Interaction-Specific
 - **Answer Eliminator** - Shows only on choice-based questions (MC, inline choice, select text)

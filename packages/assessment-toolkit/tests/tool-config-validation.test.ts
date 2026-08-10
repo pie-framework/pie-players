@@ -322,4 +322,38 @@ describe("tool-config-validation", () => {
 		expect(model.source).toBe("test.framework");
 		expect(model.message).toBe("bad config");
 	});
+	test("reports a region capability named in toolbar placement", () => {
+		// A region capability has no toolbar button, so placing it names a surface
+		// that will never render it. Caught at the config rather than at render
+		// time, where the symptom is an absent accommodation and no error.
+		const registry = new ToolRegistry();
+		registry.register({
+			toolId: "hostAlternateMedia",
+			name: "Host Alternate Media",
+			description: "Docked alternate media for an item",
+			supportedLevels: ["item"],
+			activation: "region",
+			surfaces: ["item-media"],
+			pnpSupportIds: ["hostAlternateMedia"],
+			isVisibleInContext: () => true,
+			renderSurface: () => ({ element: {} as HTMLElement }),
+		} as ToolRegistration);
+
+		const result = normalizeAndValidateToolsConfig(
+			{ placement: { item: ["hostAlternateMedia"] } },
+			{ strictness: "off", source: "test", toolRegistry: registry },
+		);
+
+		const diagnostic = result.diagnostics.find(
+			(entry) => entry.code === "tools.unplaceableActivation",
+		);
+		expect(diagnostic?.severity).toBe("error");
+		expect(diagnostic?.toolId).toBe("hostAlternateMedia");
+		expect(diagnostic?.path).toBe("placement.item");
+		// Not also reported as an unsupported level: the placement is wrong for a
+		// reason that has nothing to do with which levels it supports.
+		expect(result.diagnostics.map((entry) => entry.code)).not.toContain(
+			"tools.unsupportedLevel",
+		);
+	});
 });

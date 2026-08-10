@@ -65,6 +65,20 @@ const mockSelectionGatewayTool: ToolRegistration = {
 	renderToolbar: () => null,
 };
 
+const mockRegionTool: ToolRegistration = {
+	toolId: "hostAlternateMedia",
+	name: "Host Alternate Media",
+	description: "Host-contributed capability rendering into a card region",
+	supportedLevels: ["item"],
+	activation: "region",
+	surfaces: ["item-media"],
+	pnpSupportIds: ["hostAlternateMedia"],
+	isVisibleInContext: () => true,
+	renderSurface: (context) => ({
+		element: { className: `region-${context.surface}` } as any,
+	}),
+};
+
 describe("ToolRegistry", () => {
 	let registry: ToolRegistry;
 
@@ -365,6 +379,7 @@ describe("ToolRegistry", () => {
 				supportedLevels: ["item", "section", "element"],
 				activation: "toolbar-toggle",
 				singletonScope: null,
+				surfaces: [],
 			});
 		});
 	});
@@ -489,6 +504,117 @@ describe("ToolRegistry", () => {
 			expect(() =>
 				registry.renderForToolbar("missing-tool", context, toolbarContext),
 			).toThrow("Tool 'missing-tool' is not registered");
+		});
+	});
+	describe("region activation and host surfaces", () => {
+		test("registers a capability with no icon and no renderToolbar", () => {
+			// The point of the mechanism: a host can contribute a capability that
+			// renders somewhere other than a toolbar, with no id of ours involved.
+			expect(() => registry.register(mockRegionTool)).not.toThrow();
+			expect(registry.getToolActivation("hostAlternateMedia")).toBe("region");
+		});
+
+		test("discovers surface capabilities by surface name, not by tool id", () => {
+			registry.register(mockRegionTool);
+			registry.register(mockCalculatorTool);
+
+			expect(
+				registry.getToolsBySurface("item-media").map((tool) => tool.toolId),
+			).toEqual(["hostAlternateMedia"]);
+			expect(registry.getToolsBySurface("section-overlay")).toEqual([]);
+			expect(registry.getToolsBySurface("")).toEqual([]);
+		});
+
+		test("finds a toolbar tool that also declares a surface", () => {
+			// The annotation toolbar is both: a button at item/passage level and a
+			// section-scoped singleton. Declaring a surface must not remove it from
+			// the toolbar path.
+			registry.register({
+				...mockSelectionGatewayTool,
+				surfaces: ["section-overlay"],
+				renderSurface: () => ({ element: {} as any }),
+			});
+
+			expect(
+				registry.getToolsBySurface("section-overlay").map((t) => t.toolId),
+			).toEqual(["annotationToolbar"]);
+			expect(
+				registry.filterToolIdsByActivation(
+					["annotationToolbar"],
+					"selection-gateway",
+				),
+			).toEqual(["annotationToolbar"]);
+		});
+
+		test("reports surfaces in tool metadata", () => {
+			registry.register(mockRegionTool);
+			const meta = registry
+				.getToolMetadata()
+				.find((entry) => entry.toolId === "hostAlternateMedia");
+			expect(meta?.activation).toBe("region");
+			expect(meta?.surfaces).toEqual(["item-media"]);
+		});
+
+		test("rejects a region tool with no surfaces", () => {
+			expect(() =>
+				registry.register({ ...mockRegionTool, surfaces: [] }),
+			).toThrow("must declare at least one host surface");
+		});
+
+		test("rejects a region tool with no renderSurface", () => {
+			const { renderSurface: _omitted, ...withoutRenderSurface } =
+				mockRegionTool;
+			expect(() =>
+				registry.register(withoutRenderSurface as ToolRegistration),
+			).toThrow('must implement "renderSurface"');
+		});
+
+		test("rejects a renderSurface no host can find", () => {
+			// A surface renderer with no surface silently never renders, which is the
+			// failure mode this mechanism exists to remove.
+			const { surfaces: _omitted, ...withoutSurfaces } = mockRegionTool;
+			expect(() =>
+				registry.register({
+					...withoutSurfaces,
+					activation: "toolbar-toggle",
+					icon: "x",
+					renderToolbar: () => null,
+				} as ToolRegistration),
+			).toThrow('requires at least one entry in "surfaces"');
+		});
+
+		test("rejects non-string surfaces", () => {
+			expect(() =>
+				registry.register({
+					...mockRegionTool,
+					surfaces: ["item-media", " "],
+				}),
+			).toThrow('"surfaces" must be an array of non-empty strings');
+		});
+
+		test("still requires an icon and renderToolbar for toolbar activations", () => {
+			const { icon: _icon, ...noIcon } = mockCalculatorTool;
+			expect(() => registry.register(noIcon as ToolRegistration)).toThrow(
+				'"icon" must be a string or function',
+			);
+
+			const { renderToolbar: _render, ...noToolbar } = mockTTSTool;
+			expect(() => registry.register(noToolbar as ToolRegistration)).toThrow(
+				'"renderToolbar" must be a function',
+			);
+		});
+
+		test("renderForToolbar names the activation instead of failing on a missing method", () => {
+			registry.register(mockRegionTool);
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: {} as any,
+			};
+			expect(() =>
+				registry.renderForToolbar("hostAlternateMedia", context, {} as any),
+			).toThrow(/renders into a host surface, not a toolbar/);
 		});
 	});
 });

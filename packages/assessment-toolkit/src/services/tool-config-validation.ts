@@ -21,6 +21,7 @@ export interface ToolConfigDiagnostic {
 	code:
 		| "tools.unknownToolId"
 		| "tools.unsupportedLevel"
+		| "tools.unplaceableActivation"
 		| "tools.unknownProviderKey"
 		| "tools.removedProviderKey"
 		| "tools.providerSanitizeFailed"
@@ -212,6 +213,22 @@ function collectPlacementDiagnostics(
 						severity: "error",
 						path: `placement.${level}`,
 						message: `Unknown tool id "${toolId}" in placement.${level}.`,
+						toolId,
+					}),
+				);
+				continue;
+			}
+			if (tool.activation === "region") {
+				// A region capability has no toolbar button, so placing it names a
+				// surface that will never render it. Reported at the placement rather
+				// than at render time, where the symptom is an absent accommodation and
+				// no error.
+				diagnostics.push(
+					createDiagnostic({
+						code: "tools.unplaceableActivation",
+						severity: "error",
+						path: `placement.${level}`,
+						message: `Tool "${toolId}" renders into a host surface (activation "region") and cannot be placed on the ${level} toolbar. Remove it from placement.${level}; its availability comes from policy plus its content dependency.`,
 						toolId,
 					}),
 				);

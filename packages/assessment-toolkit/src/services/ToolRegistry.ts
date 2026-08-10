@@ -8,6 +8,7 @@
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
 import type {
+	AccessibilityCatalogResolverApi,
 	ElementToolStateStoreApi,
 	ToolCoordinatorApi,
 	ToolkitCoordinatorApi,
@@ -23,7 +24,14 @@ export type ToolModuleLoader = () => Promise<unknown>;
 export interface ToolToolbarButtonDefinition {
 	toolId: string;
 	label: string;
-	icon: string;
+	/**
+	 * Optional to match what the renderers already do: `ToolButton.svelte` and
+	 * `ItemToolBar.svelte` both guard on `button.icon`, and `ToolbarItem.icon` is
+	 * already optional, so requiring it here claimed a guarantee nothing relied
+	 * on. A registration that renders a button still has to declare an icon —
+	 * `assertToolRegistrationShape` enforces that.
+	 */
+	icon?: string;
 	ariaLabel: string;
 	tooltip?: string;
 	onClick: () => void;
@@ -187,8 +195,60 @@ export interface ToolToolbarRenderResult {
 	subscribeActive?: (callback: (active: boolean) => void) => () => void;
 }
 
-export type ToolActivation = "toolbar-toggle" | "selection-gateway";
+export type ToolActivation = "toolbar-toggle" | "selection-gateway" | "region";
 export type ToolSingletonScope = "section";
+
+/**
+ * Services a host hands a capability rendering into one of its surfaces.
+ *
+ * Deliberately the same three references a toolbar tool reaches through
+ * `ToolbarContext`, and no more: a capability that needs the coordinator can ask
+ * it for anything else. Passing the host's own component or state would make the
+ * registration depend on which renderer mounted it.
+ */
+export interface ToolSurfaceServices {
+	toolkitCoordinator: ToolkitCoordinatorApi | null;
+	ttsService: TtsServiceApi | null;
+	catalogResolver: AccessibilityCatalogResolverApi | null;
+}
+
+/**
+ * What a host tells a capability when asking it to fill a surface.
+ *
+ * `surface` is a host-defined slot name. Core defines none and validates only
+ * that a region capability claims at least one, so a host can open a new surface
+ * without a change here and a capability can declare which of a host's surfaces
+ * it fits. Section-player ships `"item-media"` (the per-item card region) and
+ * `"section-overlay"` (the section-scoped singleton).
+ *
+ * `content` carries whatever the capability's own `requiresAuthoredContent`
+ * resolved, so the host neither inspects nor names it — it hands back what the
+ * capability asked for.
+ */
+export interface ToolSurfaceRenderContext {
+	toolId: string;
+	/** The PNP/AfA support id policy granted for this render. */
+	featureId: string;
+	/** Host slot being filled. */
+	surface: string;
+	/** Feature parameters from the policy decision, if any. */
+	parameters?: unknown;
+	/** Resolved content dependency, when the capability declares one. */
+	content?: unknown;
+	services: ToolSurfaceServices;
+	componentOverrides?: ToolComponentOverrides;
+}
+
+export interface ToolSurfaceRenderResult {
+	/** Element for the host to mount into its surface. */
+	element: HTMLElement;
+	/** Accessible name for the surface, when the capability owns that wording. */
+	ariaLabel?: string;
+	/** Reapply props after policy, parameters or content change. */
+	sync?: () => void;
+	/** Release listeners and media before the host unmounts the element. */
+	destroy?: () => void;
+}
 
 /**
  * Tool registration interface
@@ -203,8 +263,11 @@ export interface ToolRegistration {
 	/** Description of what the tool does */
 	description: string;
 
-	/** Icon identifier or SVG string */
-	icon: string | ((context: ToolContext) => string);
+	/**
+	 * Icon identifier or SVG string. Required for the activations that render a
+	 * toolbar button; a region capability has no button, so it has no icon.
+	 */
+	icon?: string | ((context: ToolContext) => string);
 
 	/** Which levels this tool supports */
 	supportedLevels: ToolLevel[];
@@ -213,8 +276,21 @@ export interface ToolRegistration {
 	 * Activation model for this tool.
 	 * - toolbar-toggle: rendered as a toolbar button (default)
 	 * - selection-gateway: rendered as a singleton selection-driven gateway
+	 * - region: rendered into a host surface, with no toolbar button
 	 */
 	activation?: ToolActivation;
+
+	/**
+	 * Host surfaces this capability can fill. Required for `activation: "region"`
+	 * and meaningful for any activation whose capability also has a non-toolbar
+	 * surface — the annotation toolbar is both a toolbar button and a
+	 * section-scoped singleton.
+	 *
+	 * Names are the host's, not core's. A host discovers what it can mount by
+	 * asking {@link ToolRegistry.getToolsBySurface}, which is what keeps a
+	 * renderer from naming a capability.
+	 */
+	surfaces?: string[];
 
 	/**
 	 * Optional singleton scope for activation models that mount exactly one instance.
@@ -259,11 +335,27 @@ export interface ToolRegistration {
 	 */
 	isVisibleInContext(context: ToolContext): boolean;
 
-	/** Required toolbar-first render contract. */
-	renderToolbar(
+	/**
+	 * Toolbar render contract. Required for `toolbar-toggle` and
+	 * `selection-gateway`; a region capability renders through
+	 * {@link ToolRegistration.renderSurface} instead.
+	 */
+	renderToolbar?(
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult | null;
+
+	/**
+	 * Render into one of the host surfaces this capability declares.
+	 *
+	 * Returning `null` means "nothing to show for this render" and is not an
+	 * error — a capability may decline once the host has already granted and
+	 * resolved content. The host mounts the returned element and calls `sync()`
+	 * when policy, parameters or content move.
+	 */
+	renderSurface?(
+		context: ToolSurfaceRenderContext,
+	): ToolSurfaceRenderResult | null;
 }
 
 const VALID_TOOL_LEVELS: ToolLevel[] = [
@@ -333,13 +425,20 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 	assertNonEmptyString(registration.name, "name");
 	assertNonEmptyString(registration.description, "description");
 
-	if (
-		typeof registration.icon !== "string" &&
-		typeof registration.icon !== "function"
-	) {
-		throw new Error(
-			`Invalid tool registration "${registration.toolId}": "icon" must be a string or function.`,
-		);
+	// A region capability renders into a host surface and has no toolbar button,
+	// so it needs neither an icon nor `renderToolbar`. Both stay required for the
+	// activations that do render a button, so no existing registration is relaxed.
+	const isRegion = registration.activation === "region";
+
+	if (!isRegion || registration.icon !== undefined) {
+		if (
+			typeof registration.icon !== "string" &&
+			typeof registration.icon !== "function"
+		) {
+			throw new Error(
+				`Invalid tool registration "${registration.toolId}": "icon" must be a string or function.`,
+			);
+		}
 	}
 	if (typeof registration.icon === "string") {
 		assertIconStringIsSafe(registration.toolId, registration.icon, "icon");
@@ -363,10 +462,47 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 	if (
 		registration.activation !== undefined &&
 		registration.activation !== "toolbar-toggle" &&
-		registration.activation !== "selection-gateway"
+		registration.activation !== "selection-gateway" &&
+		registration.activation !== "region"
 	) {
 		throw new Error(
 			`Invalid tool registration "${registration.toolId}": unsupported activation "${String(registration.activation)}".`,
+		);
+	}
+	if (
+		registration.surfaces !== undefined &&
+		(!Array.isArray(registration.surfaces) ||
+			registration.surfaces.some(
+				(surface) => typeof surface !== "string" || surface.trim().length === 0,
+			))
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "surfaces" must be an array of non-empty strings.`,
+		);
+	}
+	if (isRegion && !registration.surfaces?.length) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": region tools must declare at least one host surface in "surfaces".`,
+		);
+	}
+	if (isRegion && typeof registration.renderSurface !== "function") {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": region tools must implement "renderSurface".`,
+		);
+	}
+	if (
+		registration.renderSurface !== undefined &&
+		typeof registration.renderSurface !== "function"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "renderSurface" must be a function.`,
+		);
+	}
+	if (registration.renderSurface && !registration.surfaces?.length) {
+		// A surface renderer nothing can find is a registration that silently does
+		// not render, which is the failure mode this mechanism exists to remove.
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "renderSurface" requires at least one entry in "surfaces".`,
 		);
 	}
 	if (
@@ -401,7 +537,13 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 			`Invalid tool registration "${registration.toolId}": "isVisibleInContext" must be a function.`,
 		);
 	}
-	if (typeof registration.renderToolbar !== "function") {
+	if (registration.renderToolbar !== undefined) {
+		if (typeof registration.renderToolbar !== "function") {
+			throw new Error(
+				`Invalid tool registration "${registration.toolId}": "renderToolbar" must be a function.`,
+			);
+		}
+	} else if (!isRegion) {
 		throw new Error(
 			`Invalid tool registration "${registration.toolId}": "renderToolbar" must be a function.`,
 		);
@@ -589,6 +731,23 @@ export class ToolRegistry {
 	}
 
 	/**
+	 * Registrations that can fill a named host surface.
+	 *
+	 * The discovery call a renderer makes instead of naming a capability. Order
+	 * follows registration order, so a host mounting several capabilities into one
+	 * surface gets a stable sequence without core deciding a precedence it has no
+	 * basis for.
+	 */
+	getToolsBySurface(surface: string): ToolRegistration[] {
+		if (!surface) return [];
+		return this.getAllTools().filter(
+			(tool) =>
+				typeof tool.renderSurface === "function" &&
+				tool.surfaces?.includes(surface),
+		);
+	}
+
+	/**
 	 * Filter tool IDs by activation type.
 	 */
 	filterToolIdsByActivation(
@@ -658,6 +817,7 @@ export class ToolRegistry {
 		supportedLevels: ToolLevel[];
 		activation: ToolActivation;
 		singletonScope: ToolSingletonScope | null;
+		surfaces: string[];
 	}> {
 		return this.getAllTools().map((tool) => ({
 			toolId: tool.toolId,
@@ -667,6 +827,7 @@ export class ToolRegistry {
 			supportedLevels: tool.supportedLevels,
 			activation: tool.activation || "toolbar-toggle",
 			singletonScope: tool.singletonScope || null,
+			surfaces: tool.surfaces || [],
 		}));
 	}
 
@@ -782,6 +943,14 @@ export class ToolRegistry {
 		const tool = this.get(toolId);
 		if (!tool) {
 			throw new Error(`Tool '${toolId}' is not registered`);
+		}
+		if (typeof tool.renderToolbar !== "function") {
+			// Naming the activation rather than "renderToolbar is not a function":
+			// the caller's mistake is asking a surface capability for a toolbar
+			// button, and it is fixed by placement config, not by the registration.
+			throw new Error(
+				`Tool '${toolId}' has activation "${tool.activation || "toolbar-toggle"}" and renders into a host surface, not a toolbar. Remove it from toolbar placement.`,
+			);
 		}
 
 		const mergedContext: ToolbarContext = {

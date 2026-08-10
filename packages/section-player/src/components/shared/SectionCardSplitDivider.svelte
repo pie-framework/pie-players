@@ -15,7 +15,7 @@
 	import {
 		clampMediaRegionPercent,
 		mediaRegionPercentFromDrag,
-	} from "./section-item-media.js";
+	} from "./card-media-region.js";
 
 	let {
 		value = 34,

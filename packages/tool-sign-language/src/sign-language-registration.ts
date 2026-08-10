@@ -6,7 +6,7 @@
  * exists to prove the shape works from outside: it is authored against
  * `@pie-players/pie-assessment-toolkit/tools/internal`, the same entry point our
  * own registrations use, and section-player reaches it only through
- * `getToolsBySurface("item-media")`. Nothing in the player names signing, the
+ * `getToolsBySurface("content-media")`. Nothing in the player names signing, the
  * `signLanguage` support id, the `sign-language` catalog type or this package.
  *
  * `activation: "region"` rather than a toolbar activation: there is no button to
@@ -35,8 +35,14 @@ import {
 	type ResolvedSignLanguageAlternate,
 } from "./sign-language-content.js";
 
-/** Host surface this capability docks into: media beside an item's content. */
-export const ITEM_MEDIA_SURFACE = "item-media";
+/**
+ * Host surface this capability docks into: media beside a card's content.
+ *
+ * Item cards and passage cards open the same surface, so declaring it once
+ * reaches both. A signed alternate is authored against a content node, and a
+ * passage owns content nodes as an item does.
+ */
+export const CONTENT_MEDIA_SURFACE = "content-media";
 
 /** Element tag this package registers. A host may substitute its own. */
 export const SIGN_LANGUAGE_ELEMENT_TAG = "pie-tool-sign-language";
@@ -44,16 +50,17 @@ export const SIGN_LANGUAGE_ELEMENT_TAG = "pie-tool-sign-language";
 export const signLanguageRegistration: ToolRegistration = {
 	toolId: SIGN_LANGUAGE_FEATURE_ID,
 	name: "Sign Language",
-	description: "Signed translation of the item, docked beside its content",
+	description: "Signed translation, docked beside the content it interprets",
 
-	// Item-scoped only. A signed alternate is authored per item, so there is no
-	// section- or passage-level answer to give.
-	supportedLevels: ["item"],
+	// Item and passage, because an alternate docks to a content node and both
+	// carry content nodes. No section-level answer: a section is a container, and
+	// its shared content is a passage or a rubric block that answers for itself.
+	supportedLevels: ["item", "passage"],
 
 	pnpSupportIds: [SIGN_LANGUAGE_FEATURE_ID],
 
 	activation: "region",
-	surfaces: [ITEM_MEDIA_SURFACE],
+	surfaces: [CONTENT_MEDIA_SURFACE],
 
 	/**
 	 * The resource half of the AfA pair. The host asks this after policy grants
@@ -65,7 +72,9 @@ export const signLanguageRegistration: ToolRegistration = {
 		},
 	},
 
-	renderSurface(context: ToolSurfaceRenderContext): ToolSurfaceRenderResult | null {
+	renderSurface(
+		context: ToolSurfaceRenderContext,
+	): ToolSurfaceRenderResult | null {
 		const media = context.content as ResolvedSignLanguageAlternate | null;
 		// No content means the host asked before resolving, or resolved to nothing.
 		// Declining is the honest answer; an empty player is not.

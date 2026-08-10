@@ -7,7 +7,7 @@ This package is also the worked example of a capability contributed entirely fro
 outside the player. It is authored against
 `@pie-players/pie-assessment-toolkit/tools/internal` — the same entry point the
 packaged registrations use — and `@pie-players/pie-section-player` reaches it only
-through `ToolRegistry.getToolsBySurface("item-media")`. No package in the player
+through `ToolRegistry.getToolsBySurface("content-media")`. No package in the player
 names signing, the `signLanguage` support id, the `sign-language` catalog type or
 this package.
 

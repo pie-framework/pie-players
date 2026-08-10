@@ -220,8 +220,8 @@ export interface ToolSurfaceServices {
  * `surface` is a host-defined slot name. Core defines none and validates only
  * that a region capability claims at least one, so a host can open a new surface
  * without a change here and a capability can declare which of a host's surfaces
- * it fits. Section-player ships `"item-media"` (the per-item card region) and
- * `"section-overlay"` (the section-scoped singleton).
+ * it fits. Section-player ships `"content-media"` (the media region on an item
+ * or passage card) and `"section-overlay"` (the section-scoped singleton).
  *
  * `content` carries whatever the capability's own `requiresAuthoredContent`
  * resolved, so the host neither inspects nor names it — it hands back what the

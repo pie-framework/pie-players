@@ -2,7 +2,7 @@
  * Content discovery and strict sign-language matching.
  *
  * Assertions are unchanged from when this lived in section-player as
- * `section-item-media.test.ts`: extracting signing into its own package is a move,
+ * `card-media-region.test.ts`: extracting signing into its own package is a move,
  * not a behaviour change, and PIE-880 is in testing against this behaviour.
  */
 

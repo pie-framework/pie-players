@@ -317,7 +317,7 @@ Import/export mapping, if it is ever built, belongs in `pie-qti` and is where an
 
 ## Relationship To Section-Player And To Timed Media
 
-**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. Since PIE-886 the host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["item-media"]`, and signing lives in its own package.
+**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. Since PIE-886 the host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["content-media"]`, and signing lives in its own package.
 
 What this PRD is *not* is a new section flavor. [Timed media](./timed-media-section-contract.md) is a section flavor — it introduces `sectionType: "timed-media"`, cue orchestration, and a specialized layout custom element — because it composes multiple items around a shared timeline. Signing does none of that: many short recordings, each translating one content node, played on learner demand, gating nothing.
 

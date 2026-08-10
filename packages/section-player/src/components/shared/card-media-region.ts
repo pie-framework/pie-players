@@ -1,13 +1,24 @@
 /**
- * How wide the item card's media region is.
+ * The media region a content card docks an alternate into: its surface name, and
+ * how wide it is.
  *
  * Sizing only. Which capability fills the region, and whether it has anything to
  * show, belongs to the capability: the card asks the registry for whatever is
- * registered on the `item-media` surface and knows nothing else about it. The
+ * registered on the surface below and knows nothing else about it. The
  * signed-alternate resolution that used to live here moved to
  * `@pie-players/pie-tool-sign-language` behind that capability's own
  * `requiresAuthoredContent`.
  */
+
+/**
+ * Host slot for media docked beside a card's content.
+ *
+ * Named for the relationship rather than for one card kind, because item cards
+ * and passage cards open the same slot: an alternate is authored against a
+ * content node, and a passage owns content nodes exactly as an item does. A
+ * capability declares this surface once and reaches both.
+ */
+export const CONTENT_MEDIA_SURFACE = "content-media";
 
 /**
  * Default and bounds for the media region's share of the card width.

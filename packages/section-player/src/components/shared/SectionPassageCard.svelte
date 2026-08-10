@@ -25,8 +25,14 @@
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import type {
+		AssessmentToolkitRuntimeContext,
+		CatalogOwnerContext,
 		ToolRegistry,
 		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		catalogOwnerContextFor,
+		connectAssessmentToolkitRuntimeContext,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
@@ -40,6 +46,7 @@
 		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
 
 	let {
 		passage,
@@ -110,6 +117,56 @@
 		}
 	});
 
+	// ------------------------------------------------------------------
+	// Docked media
+	// ------------------------------------------------------------------
+	//
+	// A passage owns content nodes, so it carries alternates for them exactly as an
+	// item does — a signed reading of a shared passage is authored once, against the
+	// passage. The region is `SectionCardMediaSplit`, shared with the item card; this
+	// card differs only in the owner scope it looks catalogs up under, which is the
+	// same scope `<pie-passage-shell>` registered them in.
+
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Bumped from the coordinator's policy-change stream so the eligibility
+	// derivation reruns when policy inputs change.
+	let policyChangeVersion = $state(0);
+
+	const mediaRegionId = $derived(`${headingId}-media`);
+
+	// Built by the same function the runtime registers catalogs with, so the lookup
+	// scope cannot drift from the registered one.
+	const catalogOwnerContext = $derived.by((): CatalogOwnerContext =>
+		catalogOwnerContextFor({
+			kind: "passage",
+			itemId: passage?.id ?? "",
+			assessmentId: runtimeContext?.assessmentId,
+			sectionId: runtimeContext?.sectionId,
+		}),
+	);
+
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
+			runtimeContext = value;
+		});
+	});
+
+	$effect(() => {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator || typeof coordinator.onPolicyChange !== "function") return;
+		const unsubscribe = coordinator.onPolicyChange(() => {
+			policyChangeVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// Detach errors are non-fatal: the coordinator may already be gone.
+			}
+		};
+	});
+
 	function resetContextOverrides(): void {
 		contextConnected = false;
 		contextResolvedPlayerTag = null;
@@ -172,15 +229,27 @@
 				{hostButtons}
 			></pie-item-toolbar>
 		</div>
-		<div
-			class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
-			data-region="content"
+		<SectionCardMediaSplit
+			regionId={mediaRegionId}
+			entity={passage}
+			ownerContext={catalogOwnerContext}
+			{runtimeContext}
+			{toolRegistry}
+			{policyChangeVersion}
+			dividerAriaLabel="Resize passage and media panels"
 		>
-			<svelte:element
-				this={effectiveResolvedPlayerTag}
-				use:effectivePlayerAction={playerParams}
-			></svelte:element>
-		</div>
+			{#snippet content()}
+				<div
+					class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
+					data-region="content"
+				>
+					<svelte:element
+						this={effectiveResolvedPlayerTag}
+						use:effectivePlayerAction={playerParams}
+					></svelte:element>
+				</div>
+			{/snippet}
+		</SectionCardMediaSplit>
 	</div>
 </pie-passage-shell>
 

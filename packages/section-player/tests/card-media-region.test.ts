@@ -2,7 +2,7 @@
  * Media-region sizing.
  *
  * What fills the region, and whether it has anything to show, belongs to the
- * capability registered on the `item-media` surface — see
+ * capability registered on the `content-media` surface — see
  * `@pie-players/pie-tool-sign-language` for the first one. Only the host's sizing
  * is decidable here.
  */
@@ -15,7 +15,7 @@ import {
 	MEDIA_REGION_MAX_PERCENT,
 	MEDIA_REGION_MIN_PERCENT,
 	mediaRegionPercentFromDrag,
-} from "../src/components/shared/section-item-media.js";
+} from "../src/components/shared/card-media-region.js";
 
 describe("media region sizing", () => {
 	test("clamps to the region bounds", () => {

@@ -18,9 +18,17 @@ const ITEM_CARD_PATH = resolve(
 	__dirname,
 	"../src/components/shared/SectionItemCard.svelte",
 );
-const ITEM_MEDIA_PATH = resolve(
+const PASSAGE_CARD_PATH = resolve(
 	__dirname,
-	"../src/components/shared/section-item-media.ts",
+	"../src/components/shared/SectionPassageCard.svelte",
+);
+const MEDIA_SPLIT_PATH = resolve(
+	__dirname,
+	"../src/components/shared/SectionCardMediaSplit.svelte",
+);
+const MEDIA_REGION_PATH = resolve(
+	__dirname,
+	"../src/components/shared/card-media-region.ts",
 );
 
 function readSource(path: string): string {
@@ -131,7 +139,7 @@ describe("section-player names no capability for its section-scoped surface", ()
 		expect(readCode(BASE_ELEMENT_PATH)).toContain(
 			"mounted.sync?.(overlaySurfaceContext(granted, coord))",
 		);
-		expect(readCode(ITEM_CARD_PATH)).toContain(
+		expect(readCode(MEDIA_SPLIT_PATH)).toContain(
 			"existing.sync?.(mediaSurfaceContext(entry))",
 		);
 	});
@@ -149,12 +157,11 @@ describe("section-player names no capability for its section-scoped surface", ()
 	});
 });
 
-describe("section-player names no capability for its item media surface", () => {
-	test("the item card discovers media capabilities through the registry", () => {
-		const source = readSource(ITEM_CARD_PATH);
+describe("section-player names no capability for its card media surface", () => {
+	test("the shared media region discovers capabilities through the registry", () => {
+		const source = readSource(MEDIA_SPLIT_PATH);
 
-		expect(source).toContain('const ITEM_MEDIA_SURFACE = "item-media";');
-		expect(source).toContain("getToolsBySurface?.(ITEM_MEDIA_SURFACE)");
+		expect(source).toContain("getToolsBySurface?.(CONTENT_MEDIA_SURFACE)");
 		// Eligibility against the capability's own support ids, and the content half
 		// through its own declaration — so a host capability is gated by its own id
 		// with no list here to extend.
@@ -168,7 +175,20 @@ describe("section-player names no capability for its item media surface", () => 
 		expect(source).toContain(".ensureToolModuleLoaded(toolId)");
 	});
 
-	test("the item card follows what mounted, not what was granted", () => {
+	test("the surface is named for the relationship, not for one card kind", () => {
+		// The regression this guards: the surface was `item-media` and lived in the
+		// item card, so an alternate authored against passage content had nowhere to
+		// render even though it resolved. Both cards now open one surface, which is
+		// also why a capability declares it once.
+		expect(readSource(MEDIA_REGION_PATH)).toContain(
+			'export const CONTENT_MEDIA_SURFACE = "content-media";',
+		);
+		for (const sourcePath of [ITEM_CARD_PATH, PASSAGE_CARD_PATH]) {
+			expect(readSource(sourcePath)).toContain("<SectionCardMediaSplit");
+		}
+	});
+
+	test("the region follows what mounted, not what was granted", () => {
 		// The regression this guards: the region and its focusable resize divider
 		// were rendered from the grant count, but `renderSurface` returning `null` is
 		// a legitimate answer — so a host that remapped the element tag got an empty
@@ -176,21 +196,28 @@ describe("section-player names no capability for its item media surface", () => 
 		// the anchor, which the mount effect used to treat as "nothing to do",
 		// leaving a detached `<video>` playing and the region permanently blank on
 		// the next grant.
-		const source = readCode(ITEM_CARD_PATH);
+		const source = readCode(MEDIA_SPLIT_PATH);
 
 		expect(source).toContain("mountedMediaCount > 0");
 		expect(source).toContain("unmountMediaTool(toolId)");
-		expect(source).toContain("mediaDividerVisible = $derived(mediaRegionOccupied");
+		expect(source).toContain(
+			"mediaDividerVisible = $derived(mediaRegionOccupied",
+		);
 	});
 
-	test("the item card and its sizing module name no capability, support id or tag", () => {
+	test("the cards, the region and its sizing module name no capability, support id or tag", () => {
 		// The regression this guards: signing used to be named here in six places —
 		// the support id, the catalog refs walk, the resolver call, the requested
 		// language, the region import and the element — so no host could contribute a
 		// docked accommodation without a PR against this repo. PIE-886 removed all
 		// six. `check:player-tool-boundaries` forbids the package name; this covers
 		// the ids and the element tag.
-		for (const sourcePath of [ITEM_CARD_PATH, ITEM_MEDIA_PATH]) {
+		for (const sourcePath of [
+			ITEM_CARD_PATH,
+			PASSAGE_CARD_PATH,
+			MEDIA_SPLIT_PATH,
+			MEDIA_REGION_PATH,
+		]) {
 			const source = readCode(sourcePath);
 
 			expect(source).not.toContain("signLanguage");

@@ -98,7 +98,7 @@
 		}
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.6",
+		"@biomejs/biome": "^2.5.7",
 		"@happy-dom/global-registrator": "^20.11.1",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",

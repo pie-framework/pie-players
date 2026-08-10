@@ -1068,4 +1068,37 @@ export class ToolRegistry {
 
 		return tool.renderToolbar(context, mergedContext);
 	}
+
+	/**
+	 * Render a capability into a host surface, with component overrides attached.
+	 *
+	 * The surface counterpart of {@link renderForToolbar}, and it exists for the
+	 * same reason: the registry owns the component-override map, so a host calling
+	 * `registration.renderSurface(...)` directly would resolve element tags against
+	 * nothing and fail on every packaged capability. Overrides passed in the
+	 * context still win, matching the toolbar path's precedence.
+	 */
+	renderForSurface(
+		toolId: string,
+		context: Omit<ToolSurfaceRenderContext, "componentOverrides"> & {
+			componentOverrides?: ToolComponentOverrides;
+		},
+	): ToolSurfaceRenderResult | null {
+		const tool = this.get(toolId);
+		if (!tool) {
+			throw new Error(`Tool '${toolId}' is not registered`);
+		}
+		if (typeof tool.renderSurface !== "function") {
+			throw new Error(
+				`Tool '${toolId}' does not render into a host surface. Surface capabilities declare "surfaces" and implement "renderSurface".`,
+			);
+		}
+		return tool.renderSurface({
+			...context,
+			componentOverrides: {
+				...(this.componentOverrides || {}),
+				...(context.componentOverrides || {}),
+			},
+		});
+	}
 }

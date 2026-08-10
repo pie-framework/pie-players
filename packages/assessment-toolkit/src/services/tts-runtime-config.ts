@@ -149,7 +149,10 @@ const trimOptionalText = (value: unknown): string | undefined => {
 
 const formatSpeedLabel = (rate: number): string => `${rate}x`;
 
-const formatSpeedAriaLabel = (label: string, usedDefaultLabel: boolean): string =>
+const formatSpeedAriaLabel = (
+	label: string,
+	usedDefaultLabel: boolean,
+): string =>
 	label.toLowerCase() === "normal"
 		? "Normal speed"
 		: usedDefaultLabel
@@ -170,7 +173,8 @@ const normalizeTTSSpeedOptionConfig = (
 	entry: unknown,
 ): TTSSpeedOption | undefined => {
 	if (typeof entry === "number") return normalizeSpeedRate(entry);
-	if (!entry || typeof entry !== "object" || Array.isArray(entry)) return undefined;
+	if (!entry || typeof entry !== "object" || Array.isArray(entry))
+		return undefined;
 	const record = entry as Record<string, unknown>;
 	const rate = normalizeSpeedRate(record.rate);
 	if (rate === undefined) return undefined;
@@ -225,8 +229,9 @@ export const normalizeTTSSpeedControlOptions = (
 	if (input.length === 0) return [];
 
 	const dedupedRates = new Set<number>();
-	const normalized: Array<NormalizedTTSSpeedOption & { requestedDefault: boolean }> =
-		[];
+	const normalized: Array<
+		NormalizedTTSSpeedOption & { requestedDefault: boolean }
+	> = [];
 
 	for (const entry of input) {
 		const record = toRecord(entry);
@@ -238,7 +243,11 @@ export const normalizeTTSSpeedControlOptions = (
 		dedupedRates.add(rate);
 
 		const defaultLabel =
-			rate === 1 ? "Normal" : typeof entry === "number" ? formatSpeedLabel(rate) : formatSpeedLabel(rate);
+			rate === 1
+				? "Normal"
+				: typeof entry === "number"
+					? formatSpeedLabel(rate)
+					: formatSpeedLabel(rate);
 		const label =
 			typeof entry === "number"
 				? defaultLabel
@@ -259,7 +268,8 @@ export const normalizeTTSSpeedControlOptions = (
 			ariaLabel,
 			isDefault: false,
 			requestedDefault:
-				record.default === true || (record as { isDefault?: unknown }).isDefault === true,
+				record.default === true ||
+				(record as { isDefault?: unknown }).isDefault === true,
 		});
 	}
 
@@ -291,10 +301,12 @@ export const normalizeTTSSpeedControlOptions = (
 			? requestedDefaultIndex
 			: normalized.findIndex((option) => option.rate === 1);
 
-	return normalized.map(({ requestedDefault: _requestedDefault, ...option }, index) => ({
-		...option,
-		isDefault: index === defaultIndex,
-	}));
+	return normalized.map(
+		({ requestedDefault: _requestedDefault, ...option }, index) => ({
+			...option,
+			isDefault: index === defaultIndex,
+		}),
+	);
 };
 
 export const formatTTSSpeedOptionsAsText = (values: number[]): string =>

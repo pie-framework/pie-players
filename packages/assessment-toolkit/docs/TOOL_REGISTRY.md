@@ -16,7 +16,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 - Toolkit APIs use semantic `toolId` values (for example `calculator`, `textToSpeech`).
 - Web component tags (for example `pie-tool-calculator`) are resolved through `toolTagMap`.
 - Integrators can override both tag mapping and creation logic via
-  `createPackagedToolRegistry({ toolTagMap, toolComponentFactories })`.
+  `createPackagedToolRegistry({ toolTagMap, toolComponentFactories })` from `@pie-players/pie-default-tool-loaders`.
 
 ## Architecture
 
@@ -280,7 +280,7 @@ isVisibleInContext(context: ToolContext): boolean {
 ### Creating a Registry
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 import {
   DEFAULT_TOOL_MODULE_LOADERS,
 } from '@pie-players/pie-default-tool-loaders';

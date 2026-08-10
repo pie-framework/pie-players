@@ -12,10 +12,10 @@ import type {
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "../../services/ToolRegistry.js";
-import type { ToolContext } from "../../services/tool-context.js";
-import { hasReadableText } from "../../services/tool-context.js";
-import { createScopedToolId } from "../../services/tool-instance-id.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	buildRuntimeTTSConfig,
 	normalizeTTSLayoutMode,
@@ -27,8 +27,8 @@ import {
 	resolveTTSRuntimeSettings,
 	resolveRuntimeProvider,
 	resolveTransportMode,
-} from "../../services/tts-runtime-config.js";
-import { TTSToolProvider } from "../../services/tool-providers/index.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 const inlineTTSControls = new Map<string, HTMLElement>();
 export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
@@ -238,10 +238,10 @@ export const ttsToolRegistration: ToolRegistration = {
 				(
 					element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
 				).speedOptions = resolveElementSpeedOptions();
-			(
-				element as HTMLElement & { showSingleSpeedOption?: boolean }
-			).showSingleSpeedOption =
-				resolveRuntimeSettings().showSingleSpeedOption === true;
+				(
+					element as HTMLElement & { showSingleSpeedOption?: boolean }
+				).showSingleSpeedOption =
+					resolveRuntimeSettings().showSingleSpeedOption === true;
 			},
 		};
 	},

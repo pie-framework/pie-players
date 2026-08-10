@@ -24,11 +24,18 @@ describe("section-player default tool registry boundary", () => {
 		for (const sourcePath of [BASE_ELEMENT_PATH, KERNEL_PATH]) {
 			const source = readSource(sourcePath);
 
-			expect(source).toContain(
-				'import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";',
-			);
+			// Both the packaged registry factory and the loaders now come from the
+			// composition package: the registrations they hold name capabilities, so
+			// they cannot live in the generic toolkit.
+			expect(source).toContain('from "@pie-players/pie-default-tool-loaders"');
+			expect(source).toContain("createPackagedToolRegistry,");
+			expect(source).toContain("DEFAULT_TOOL_MODULE_LOADERS,");
 			expect(source).toContain(
 				"const defaultToolRegistry = createPackagedToolRegistry({",
+			);
+			// And not from the toolkit, which no longer exports it.
+			expect(source).not.toContain(
+				'createPackagedToolRegistry } from "@pie-players/pie-assessment-toolkit"',
 			);
 			expect(source).toContain(
 				"toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS",

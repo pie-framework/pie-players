@@ -8,10 +8,12 @@
 	} from '@pie-players/pie-players-shared';
 	import {
 		createToolsConfig,
-		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
+	import {
+		createUniversalPersonalNeedsProfile,
+		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
+	} from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-tool-answer-eliminator';

@@ -136,16 +136,18 @@ describe("read-aloud suppression", () => {
 			isElementSuppressedForTTS(makeSuppressElement("computer-read-aloud")),
 		).toBe(true);
 		expect(isElementSuppressedForTTS(makeSuppressElement("all"))).toBe(true);
-		expect(isElementSuppressedForTTS(makeSuppressElement("  ALL  "))).toBe(true);
+		expect(isElementSuppressedForTTS(makeSuppressElement("  ALL  "))).toBe(
+			true,
+		);
 	});
 
 	test("leaves content speakable when only assistive technology is suppressed", () => {
 		(globalThis as any).window = undefined;
 		// `screen-reader` asks the host to hide the node from AT. It says nothing
 		// about machine read-aloud, so TTS still speaks it.
-		expect(isElementSuppressedForTTS(makeSuppressElement("screen-reader"))).toBe(
-			false,
-		);
+		expect(
+			isElementSuppressedForTTS(makeSuppressElement("screen-reader")),
+		).toBe(false);
 	});
 
 	test("ignores the attribute when it is absent", () => {

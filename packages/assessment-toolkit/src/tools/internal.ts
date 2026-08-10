@@ -1,0 +1,115 @@
+/**
+ * Registration-authoring surface.
+ *
+ * What a package outside this one needs to write a `ToolRegistration`: the
+ * registration types, the context predicates a tool answers `isVisibleInContext`
+ * with, scoped-id and element-creation helpers, the toolbar button/overlay
+ * helpers, and the provider descriptors for the two capabilities that ship a
+ * provider.
+ *
+ * A separate entry point rather than additions to `.` for the same reason
+ * `runtime/internal` and `policy/internal` exist: this is a surface for sibling
+ * packages in this repo, not a contract offered to hosts. Widening `.` with two
+ * dozen registration-authoring helpers would make every one of them something a
+ * host could reasonably expect us to keep.
+ *
+ * It exists because the packaged registrations moved out to the composition layer
+ * (`@pie-players/pie-default-tool-loaders`) so core stops naming capabilities.
+ * A host writing its own capability package imports from here too, which is the
+ * point — the mechanism is the same one our own registrations use.
+ */
+
+// Registration contract.
+export type {
+	HostedToolContext,
+	HostedToolSize,
+	ResolvedToolContext,
+	ToolActivation,
+	ToolContentDependency,
+	ToolContentDependencyContext,
+	ToolModuleLoader,
+	ToolProviderDescriptor,
+	ToolRegistration,
+	ToolRenderElement,
+	ToolSingletonScope,
+	ToolSurfaceRenderContext,
+	ToolSurfaceRenderResult,
+	ToolSurfaceServices,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
+	ToolWindowShellConfig,
+	ToolbarContext,
+} from "../services/ToolRegistry.js";
+export { ToolRegistry } from "../services/ToolRegistry.js";
+
+// Context a registration reads to answer `isVisibleInContext`.
+export type { ToolContext, ToolLevel } from "../services/tool-context.js";
+export {
+	hasChoiceInteraction,
+	hasMathContent,
+	hasReadableText,
+	hasScienceContent,
+} from "../services/tool-context.js";
+
+// Scoped tool instance ids, so two placements of one tool do not share state.
+export { createScopedToolId } from "../services/tool-instance-id.js";
+
+// Element creation and tag resolution. `resolveToolTag` reads only the overrides
+// it is given — the packaged tag map lives in the composition layer.
+export type {
+	ToolComponentFactory,
+	ToolComponentFactoryMap,
+	ToolComponentOverrides,
+	ToolTagMap,
+} from "./tool-tag-map.js";
+export {
+	createToolElement,
+	resolveToolTag,
+	toToolIdFromTag,
+} from "./tool-tag-map.js";
+
+// Toolbar button/overlay wiring shared by every toolbar-toggle registration.
+export {
+	applyOverlaySurface,
+	createScopedVisibilityBinding,
+	syncButtonAndOverlayVisibility,
+} from "./registrations/toolbar-registration-helpers.js";
+
+// Services a registration reaches through its render context.
+export type {
+	ElementToolStateStoreApi,
+	ToolCoordinatorApi,
+	ToolkitCoordinatorApi,
+	TtsServiceApi,
+} from "../services/interfaces.js";
+
+// Canonical tools config shapes a provider descriptor validates against.
+export type {
+	ToolPlacementConfig,
+	ToolProviderConfig,
+} from "../services/tools-config-normalizer.js";
+export type { ToolConfigDiagnostic } from "../services/tool-config-validation.js";
+
+// Provider descriptors for the two packaged capabilities that ship one. These
+// stay here rather than moving with the registrations because they are written
+// against the `pie-calculator` and `pie-tts` contract packages, which the
+// toolkit's own `TTSService` and provider registry also depend on.
+export {
+	DesmosToolProvider,
+	TTSToolProvider,
+} from "../services/tool-providers/index.js";
+
+// TTS runtime config resolution, used by the TTS registration to turn host
+// config into element props.
+export type { NormalizedTTSSpeedOption } from "../services/tts-runtime-config.js";
+export {
+	buildRuntimeTTSConfig,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedControlOptions,
+	resolveRuntimeProvider,
+	resolveTTSBackend,
+	resolveTTSHostToolbarLayout,
+	resolveTTSLayoutMode,
+	resolveTTSRuntimeSettings,
+	resolveTransportMode,
+} from "../services/tts-runtime-config.js";

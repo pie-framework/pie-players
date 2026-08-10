@@ -32,14 +32,16 @@
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
-		createPackagedToolRegistry,
 		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
 		type ToolSurfaceRenderResult,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";
+	import {
+		createPackagedToolRegistry,
+		DEFAULT_TOOL_MODULE_LOADERS,
+	} from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher, onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
@@ -335,9 +337,10 @@
 	$effect(() => {
 		const anchor = overlayAnchor;
 		const coord = activeToolkitCoordinator;
+		const registry = effectiveToolRegistry;
 		const granted = grantedOverlayTools;
 		const loaded = loadedOverlayModules;
-		if (!anchor || !coord) {
+		if (!anchor || !coord || !registry) {
 			untrack(() => {
 				for (const toolId of [...mountedOverlays.keys()]) unmountOverlay(toolId);
 			});
@@ -371,7 +374,10 @@
 				}
 				let rendered: ToolSurfaceRenderResult | null | undefined;
 				try {
-					rendered = tool.renderSurface?.({
+					// Through the registry, not `tool.renderSurface` directly: the
+					// registry owns the component-override map a capability resolves its
+					// element tag against.
+					rendered = registry.renderForSurface(tool.toolId, {
 						toolId: tool.toolId,
 						// The grant came through a placement-scoped tool decision, so the
 						// feature id is the capability's own first support id.

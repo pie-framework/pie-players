@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { ToolbarContext } from "../src/services/ToolRegistry";
-import type { ToolContext } from "../src/services/tool-context";
+import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP,
 	ttsToolRegistration,
-} from "../src/tools/registrations/tts";
+} from "../src/registrations/tts.js";
 
 const createFakeElement = (tag: string) =>
 	({

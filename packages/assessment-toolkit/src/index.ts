@@ -178,14 +178,7 @@ export {
 	isRubricContext,
 	isSectionContext,
 } from "./services/tool-context.js";
-export {
-	DEFAULT_TOOL_PLACEMENT,
-	DEFAULT_TOOL_ORDER,
-	createPackagedToolRegistry,
-	PACKAGED_TOOL_PLACEMENT,
-	registerPackagedTools,
-	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
-} from "./services/createDefaultToolRegistry.js";
+export { DEFAULT_TOOL_PLACEMENT } from "./services/createDefaultToolRegistry.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
 export { createEmptyPersonalNeedsProfile } from "./services/defaultPersonalNeedsProfile.js";
@@ -197,7 +190,6 @@ export type {
 } from "./tools/tool-tag-map.js";
 export {
 	createToolElement,
-	DEFAULT_TOOL_TAG_MAP,
 	resolveToolTag,
 	toToolIdFromTag,
 } from "./tools/tool-tag-map.js";

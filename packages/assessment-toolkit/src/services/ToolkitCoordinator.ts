@@ -59,14 +59,14 @@ import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { TTSToolProviderConfig } from "./tool-providers/index.js";
-import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
+
+import { ToolRegistry } from "./ToolRegistry.js";
 import type {
 	ResolvedToolContext,
 	ToolContextResolver,
 	ToolContextResolverContext,
 	ToolContextResolverMap,
 	ToolRegistration,
-	ToolRegistry,
 } from "./ToolRegistry.js";
 import {
 	ToolPolicyEngine,
@@ -685,7 +685,13 @@ export class ToolkitCoordinator {
 		const strictness = normalizeToolConfigStrictness(
 			config.toolConfigStrictness,
 		);
-		const toolRegistry = config.toolRegistry ?? createPackagedToolRegistry();
+		// An empty registry when the host supplies none. This package no longer
+		// holds the packaged capability set, so there is nothing to fall back to —
+		// a host that wants stock tools passes a registry from
+		// `@pie-players/pie-default-tool-loaders`. Tool-id validation is skipped
+		// against an empty registry (with a diagnostic saying so) rather than
+		// rejecting every configured id.
+		const toolRegistry = config.toolRegistry ?? new ToolRegistry();
 		const normalized =
 			config.deferToolConfigValidation === true
 				? normalizeToolsConfig(config.tools as any)
@@ -732,8 +738,7 @@ export class ToolkitCoordinator {
 
 		this.assessmentId = resolvedConfig.assessmentId;
 		this.config = resolvedConfig;
-		this.toolRegistry =
-			resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
+		this.toolRegistry = resolvedConfig.toolRegistry ?? new ToolRegistry();
 		this.installToolContextResolvers(resolvedConfig.toolContextResolvers);
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
@@ -1946,13 +1951,20 @@ export class ToolkitCoordinator {
 				window.clearTimeout(timeoutId);
 				if (canUseEventTarget) {
 					synth.removeEventListener("voiceschanged", onVoicesChanged);
-				} else if (assignedHandler && synth.onvoiceschanged === onVoicesChanged) {
+				} else if (
+					assignedHandler &&
+					synth.onvoiceschanged === onVoicesChanged
+				) {
 					synth.onvoiceschanged = previousHandler;
 				}
 				resolve();
 			};
 			const onVoicesChanged = (event?: Event) => {
-				if (!canUseEventTarget && typeof previousHandler === "function" && event) {
+				if (
+					!canUseEventTarget &&
+					typeof previousHandler === "function" &&
+					event
+				) {
 					previousHandler.call(synth, event);
 				}
 				finish();

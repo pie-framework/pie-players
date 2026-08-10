@@ -47,10 +47,10 @@
 		connectAssessmentToolkitRuntimeContext,
 		connectAssessmentToolkitShellContext,
 	} from '../context/runtime-context-consumer.js';
+	import { ToolRegistry } from '../services/ToolRegistry.js';
 	import type {
 		HostedToolContext,
 		ResolvedToolContext,
-		ToolRegistry,
 		ToolRenderElement,
 		ToolToolbarRenderResult,
 		ToolbarContext
@@ -71,7 +71,6 @@
 		FOCUSABLE_SELECTOR,
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
-	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
 	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
@@ -232,11 +231,17 @@
 	const resolveFaIconName = (item: ToolbarItem): string | null =>
 		TOOL_FA_ICON_BY_ID[item.id] ?? null;
 
-	// Metadata-only fallback: assessment-toolkit must not import the stock
-	// module-loader package because those loaders depend on concrete tool
-	// custom-element packages that themselves depend on the toolkit. Hosts that
-	// want stock tool auto-registration pass a loader-backed ToolRegistry.
-	const fallbackToolRegistry = createPackagedToolRegistry();
+	// No fallback registry. This package holds no capability set to fall back to —
+	// a host that wants stock tools passes a registry built by the composition
+	// package. A toolbar with no registry renders no buttons, which is the honest
+	// answer: with nothing registered there is nothing whose visibility or render
+	// contract could be consulted.
+	//
+	// The composition package is deliberately not named here, even in a comment:
+	// `tests/toolbar-items.test.ts` forbids any mention, which is a cheap guard
+	// against this file growing an import of the package whose loaders depend on
+	// concrete tool packages that depend back on this one.
+	const fallbackToolRegistry = new ToolRegistry();
 
 	let activeToolState = $state<Record<string, boolean>>({});
 

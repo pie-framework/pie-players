@@ -94,8 +94,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const styleEl = styleStore.get("pie-highlight-styles");
 		expect(styleEl).toBeTruthy();
 		const annotationCss =
-			styleEl.textContent.split("/* Annotation highlights - persistent */")[1] ??
-			"";
+			styleEl.textContent.split(
+				"/* Annotation highlights - persistent */",
+			)[1] ?? "";
 		expect(annotationCss).toContain("rgba(253, 233, 149, 0.5)");
 		expect(annotationCss).toContain("rgba(255, 159, 174, 0.5)");
 		expect(annotationCss).toContain("rgba(167, 224, 246, 0.5)");
@@ -116,9 +117,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		// against the app's own background, so inheriting it left the mark
 		// illegible on whichever background it was not picked for.
 		const lightValue = "var(--pie-annotation-underline, #4221d5)";
-		expect(css).toContain(
-			`text-decoration: underline 2px solid ${lightValue}`,
-		);
+		expect(css).toContain(`text-decoration: underline 2px solid ${lightValue}`);
 
 		// Dark defaults to #9c89ec, which clears WCAG AA/AAA on black (7.20:1)
 		// where #4221d5 does not (2.41:1). It uses its OWN token so overriding one
@@ -126,8 +125,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		// so a host-set accent cannot drag either one off its intended value.
 		const darkValue = "var(--pie-annotation-underline-dark, #9c89ec)";
 		const osDarkBlock =
-			css.split("@media (prefers-color-scheme: dark) {")[1]?.split("}\n\n")[0] ??
-			"";
+			css
+				.split("@media (prefers-color-scheme: dark) {")[1]
+				?.split("}\n\n")[0] ?? "";
 		expect(osDarkBlock).toContain(darkValue);
 		// An app that forces dark itself is signalled by data-theme, not by the OS
 		// media query, so that path has to be covered too.

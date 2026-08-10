@@ -1235,11 +1235,11 @@ Use `createToolsConfig()` when you want to pre-validate and inspect diagnostics 
 
 ```typescript
 import {
-  createPackagedToolRegistry,
   createToolsConfig,
   ToolkitCoordinator
 } from "@pie-players/pie-assessment-toolkit";
 
+// createPackagedToolRegistry comes from @pie-players/pie-default-tool-loaders
 const toolRegistry = createPackagedToolRegistry();
 const { config, diagnostics } = createToolsConfig({
   source: "host.bootstrap",

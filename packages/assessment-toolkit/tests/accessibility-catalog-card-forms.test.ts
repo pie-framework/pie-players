@@ -10,7 +10,10 @@
  * unreachable and enumeration under-reported it.
  */
 import { describe, expect, test } from "bun:test";
-import type { AccessibilityCatalog, CatalogCard } from "@pie-players/pie-players-shared";
+import type {
+	AccessibilityCatalog,
+	CatalogCard,
+} from "@pie-players/pie-players-shared";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 
 const script = (language = "en-US"): CatalogCard => ({

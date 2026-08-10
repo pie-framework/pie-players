@@ -8,8 +8,10 @@
 		ToolbarItem,
 		ToolConfigStrictness,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { createPackagedToolRegistry } from "@pie-players/pie-assessment-toolkit";
-	import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";
+	import {
+		createPackagedToolRegistry,
+		DEFAULT_TOOL_MODULE_LOADERS,
+	} from "@pie-players/pie-default-tool-loaders";
 	import {
 		SECTION_RUNTIME_ENGINE_KEY,
 		SectionRuntimeEngine,

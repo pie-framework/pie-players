@@ -11,7 +11,6 @@ import {
 	type FrameworkErrorModel,
 } from "./framework-error.js";
 import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
-import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 
 export type ToolConfigStrictness = "off" | "warn" | "error";
 
@@ -22,6 +21,7 @@ export interface ToolConfigDiagnostic {
 		| "tools.unknownToolId"
 		| "tools.unsupportedLevel"
 		| "tools.unplaceableActivation"
+		| "tools.registryUnavailable"
 		| "tools.unknownProviderKey"
 		| "tools.removedProviderKey"
 		| "tools.providerSanitizeFailed"
@@ -349,11 +349,33 @@ export function normalizeAndValidateToolsConfig(
 ): ToolConfigValidationResult {
 	const strictness = normalizeToolConfigStrictness(options.strictness);
 	const source = options.source ?? "tools";
-	const registryTools = getRegistryToolMap(
-		options.toolRegistry ?? createPackagedToolRegistry(),
-	);
+	const registryTools = getRegistryToolMap(options.toolRegistry);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
+
+	// Tool-id and provider checks need a registry to check against, and every
+	// collector below returns early without one. Say so: this package no longer
+	// falls back to a packaged registry, so a caller that used to get id
+	// validation for free now gets none, and a silent downgrade from "your ids are
+	// valid" to "nobody looked" is the kind of change that surfaces as a typo
+	// reaching a learner.
+	const hasConfiguredTools =
+		Object.values(normalized.placement).some((ids) => ids.length > 0) ||
+		Object.keys(normalized.providers).length > 0 ||
+		(normalized.policy.allowed?.length ?? 0) > 0 ||
+		(normalized.policy.blocked?.length ?? 0) > 0;
+	if (registryTools.size === 0 && hasConfiguredTools) {
+		diagnostics.push(
+			createDiagnostic({
+				code: "tools.registryUnavailable",
+				severity: "warning",
+				path: "tools",
+				message:
+					'No tool registry was supplied, so tool ids, placement levels and provider config were not validated. Pass `toolRegistry` — for the packaged capability set, `createPackagedToolRegistry()` from "@pie-players/pie-default-tool-loaders".',
+			}),
+		);
+	}
+
 	const hasRemovedTtsKey = Object.hasOwn(normalized.providers, "tts");
 
 	const nextProviders: CanonicalToolsConfig["providers"] = {
@@ -401,8 +423,17 @@ export function normalizeAndValidateToolsConfig(
 	if (strictness === "warn") {
 		emitWarnings(diagnostics, source);
 	}
-	if (strictness === "error" && diagnostics.length > 0) {
-		throwValidationError(diagnostics, source);
+	// Severity decides what `strictness: "error"` rejects. Every diagnostic this
+	// function raised was `"error"` until `tools.registryUnavailable`, which
+	// reports that validation could not run rather than that the config is wrong —
+	// throwing on it would turn "no registry supplied" from a host's existing,
+	// working setup into a construction failure.
+	const blocking = diagnostics.filter((entry) => entry.severity === "error");
+	if (strictness === "error" && blocking.length > 0) {
+		throwValidationError(blocking, source);
+	}
+	if (strictness === "error" && blocking.length === 0) {
+		emitWarnings(diagnostics, source);
 	}
 
 	return {

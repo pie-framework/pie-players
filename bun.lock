@@ -278,6 +278,7 @@
       "name": "@pie-players/pie-default-tool-loaders",
       "version": "0.3.50",
       "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",

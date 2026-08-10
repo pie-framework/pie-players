@@ -13,18 +13,18 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "../../services/ToolRegistry.js";
-import type { ToolContext } from "../../services/tool-context.js";
-import { hasMathContent } from "../../services/tool-context.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
-} from "../tool-tag-map.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	applyOverlaySurface,
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
-} from "./toolbar-registration-helpers.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 /**
  * Ruler tool registration

@@ -25,6 +25,10 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
+		"./tools/internal": {
+			"types": "./dist/tools/internal.d.ts",
+			"import": "./dist/tools/internal.js"
+		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
 			"import": "./dist/components/item-toolbar-element.js"

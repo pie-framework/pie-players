@@ -317,9 +317,9 @@ describe("resolver payload passthrough", () => {
 				language: AMERICAN_SIGN_LANGUAGE,
 			}),
 		);
-		expect(resolver.hasAlternativeType("prompt-1", SIGN_LANGUAGE_CATALOG_TYPE)).toBe(
-			true,
-		);
+		expect(
+			resolver.hasAlternativeType("prompt-1", SIGN_LANGUAGE_CATALOG_TYPE),
+		).toBe(true);
 	});
 
 	test("getAllAlternatives reports a scoped registration, which is the runtime's path", () => {
@@ -358,7 +358,10 @@ describe("resolver payload passthrough", () => {
 
 		const alternatives = resolver.getAllAlternatives("prompt-1");
 		expect(
-			alternatives.map((alternative) => [alternative.language, alternative.source]),
+			alternatives.map((alternative) => [
+				alternative.language,
+				alternative.source,
+			]),
 		).toEqual([
 			[AMERICAN_SIGN_LANGUAGE, "item"],
 			["bfi", "item"],

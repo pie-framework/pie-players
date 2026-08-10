@@ -1,30 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { createPackagedToolRegistry } from "../src/services/createDefaultToolRegistry";
-import { createToolsConfig } from "../src/services/create-tools-config";
+import { createToolsConfig } from "@pie-players/pie-assessment-toolkit";
+import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
 import {
-	DEFAULT_TOOL_PLACEMENT,
 	PACKAGED_TOOL_PLACEMENT,
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
-} from "../src/services/tool-config-defaults";
-import { normalizeToolsConfig } from "../src/services/tools-config-normalizer";
+} from "../src/tool-placement";
 
-describe("tool config defaults", () => {
-	test("keeps toolkit defaults opt-in", () => {
-		expect(DEFAULT_TOOL_PLACEMENT).toEqual({
-			assessment: [],
-			section: [],
-			item: [],
-			passage: [],
-			rubric: [],
-			element: [],
-		});
-		expect(normalizeToolsConfig(undefined).placement).toEqual({
-			section: [],
-			item: [],
-			passage: [],
-		});
-	});
-
+describe("packaged tool placement", () => {
 	test("keeps packaged placement unchanged for exhaustive hosts", () => {
 		expect(PACKAGED_TOOL_PLACEMENT).toMatchObject({
 			assessment: ["theme"],
@@ -106,7 +88,7 @@ describe("tool config defaults", () => {
 
 	test("validates the preferred placement with packaged tools", () => {
 		const result = createToolsConfig({
-			source: "tool-config-defaults.test",
+			source: "tool-placement.test",
 			strictness: "error",
 			toolRegistry: createPackagedToolRegistry(),
 			tools: {

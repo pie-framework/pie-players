@@ -2073,6 +2073,14 @@ export class ToolkitCoordinator {
 				`Tool id "tts" is no longer supported. Use "textToSpeech".`,
 			);
 		}
+		// An empty registry means the host supplied none, not that every id is
+		// wrong. There is nothing to check an id against, and throwing turns a
+		// host's every tool-config call into an exception — including the calls
+		// this coordinator's own default-provider block provokes, which is how a
+		// host that passes no registry ended up unable to read its own config.
+		// `normalizeAndValidateToolsConfig` already reports the missing registry
+		// once, as `tools.registryUnavailable`; a second report per call is noise.
+		if (this.toolRegistry.getAllToolIds().length === 0) return;
 		if (!this.toolRegistry.get(toolId)) {
 			throw new Error(`Unknown tool id "${toolId}".`);
 		}

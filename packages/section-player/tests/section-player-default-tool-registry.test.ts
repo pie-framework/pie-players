@@ -27,6 +27,24 @@ function readSource(path: string): string {
 	return readFileSync(path, "utf8");
 }
 
+/**
+ * Source with comments removed, for the assertions about what these files must
+ * not name.
+ *
+ * Same position `scripts/check-capability-neutrality.mjs` takes, and for the same
+ * reason: a comment naming a capability is usually explaining why the code no
+ * longer does, and matching prose pushes authors toward vaguer comments rather
+ * than cleaner code. It did exactly that here before this helper existed — the
+ * comments left behind pointed at "the package README" for a name they were not
+ * allowed to write.
+ */
+function readCode(path: string): string {
+	return readSource(path)
+		.replace(/\/\*[\s\S]*?\*\//g, " ")
+		.replace(/(^|[^:\w])\/\/[^\n]*/g, "$1")
+		.replace(/<!--[\s\S]*?-->/g, " ");
+}
+
 describe("section-player default tool registry boundary", () => {
 	test("base and layout kernel create a synchronous default-loader-backed registry", () => {
 		for (const sourcePath of [BASE_ELEMENT_PATH, KERNEL_PATH]) {
@@ -86,7 +104,36 @@ describe("section-player names no capability for its section-scoped surface", ()
 		// registry owns the component-override map a capability resolves its element
 		// tag against, so calling the registration straight from here left every
 		// packaged surface capability unable to find its tag.
-		expect(source).toContain("registry.renderForSurface(tool.toolId, {");
+		expect(source).toContain("registry.renderForSurface(");
+	});
+
+	test("base element asks the feature question for region capabilities", () => {
+		// The regression this guards: the surface was gated only on
+		// `decideToolPolicy`, whose candidates are seeded from `tools.placement`, so
+		// a capability that is only ever a region could not be granted here at all —
+		// and placing it to compensate is a `tools.unplaceableActivation` error. The
+		// mechanism worked for exactly the one capability that motivated it, which
+		// also has a toolbar activation.
+		const source = readCode(BASE_ELEMENT_PATH);
+
+		expect(source).toContain('tool.activation === "region"');
+		expect(source).toContain("coord.decideFeaturePolicy(supportId)");
+		expect(source).toContain("coord.decideToolPolicy({");
+	});
+
+	test("both surfaces hand the capability a freshly built context", () => {
+		// The regression this guards: `sync` took no argument, so a registration
+		// closed over the context captured at mount and re-applied the values the
+		// host already had. Reconciling by toolId instead of remounting exists so a
+		// re-resolve reaches the mounted element; with a captured context it reached
+		// nothing, and a learner whose signed language changed kept watching the
+		// previous recording.
+		expect(readCode(BASE_ELEMENT_PATH)).toContain(
+			"mounted.sync?.(overlaySurfaceContext(granted, coord))",
+		);
+		expect(readCode(ITEM_CARD_PATH)).toContain(
+			"existing.sync?.(mediaSurfaceContext(entry))",
+		);
 	});
 
 	test("base element names no capability id or element tag", () => {
@@ -95,7 +142,7 @@ describe("section-player names no capability for its section-scoped surface", ()
 		// contribute a second section-scoped capability without a PR against this
 		// repo. `check:player-tool-boundaries` already forbids the package name;
 		// this covers the tool id and the tag.
-		const source = readSource(BASE_ELEMENT_PATH);
+		const source = readCode(BASE_ELEMENT_PATH);
 
 		expect(source).not.toContain("annotationToolbar");
 		expect(source).not.toContain("pie-tool-annotation-toolbar");
@@ -115,7 +162,25 @@ describe("section-player names no capability for its item media surface", () => 
 		expect(source).toContain("tool.requiresAuthoredContent.resolve({");
 		// Through the registry, which owns the component-override map a capability
 		// resolves its element tag against.
-		expect(source).toContain("registry.renderForSurface(entry.toolId, {");
+		expect(source).toContain("registry.renderForSurface(");
+		// And after its module resolves, so a capability registered through the lazy
+		// loader path renders instead of silently missing its element.
+		expect(source).toContain(".ensureToolModuleLoaded(toolId)");
+	});
+
+	test("the item card follows what mounted, not what was granted", () => {
+		// The regression this guards: the region and its focusable resize divider
+		// were rendered from the grant count, but `renderSurface` returning `null` is
+		// a legitimate answer — so a host that remapped the element tag got an empty
+		// column with a handle dividing nothing. And losing the last grant destroys
+		// the anchor, which the mount effect used to treat as "nothing to do",
+		// leaving a detached `<video>` playing and the region permanently blank on
+		// the next grant.
+		const source = readCode(ITEM_CARD_PATH);
+
+		expect(source).toContain("mountedMediaCount > 0");
+		expect(source).toContain("unmountMediaTool(toolId)");
+		expect(source).toContain("mediaDividerVisible = $derived(mediaRegionOccupied");
 	});
 
 	test("the item card and its sizing module name no capability, support id or tag", () => {
@@ -126,7 +191,7 @@ describe("section-player names no capability for its item media surface", () => 
 		// six. `check:player-tool-boundaries` forbids the package name; this covers
 		// the ids and the element tag.
 		for (const sourcePath of [ITEM_CARD_PATH, ITEM_MEDIA_PATH]) {
-			const source = readSource(sourcePath);
+			const source = readCode(sourcePath);
 
 			expect(source).not.toContain("signLanguage");
 			expect(source).not.toContain("signLang");

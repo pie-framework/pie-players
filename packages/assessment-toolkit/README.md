@@ -1097,20 +1097,20 @@ item.config.extractedCatalogs = result.catalogs;
 catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
-### Sign-language cards
+### Cards without an extractor
 
-Signed alternates have no extractor and deliberately so: a `sign-language` card is
-authored or written by an importer, never lifted out of item markup at render
-time. One such lift existed and was removed — nothing produced the inline form,
-and a runtime that could not parse the markup left the video in the visible
-content, showing the accommodation to every learner regardless of eligibility.
+Not every catalog card is lifted out of item markup. A signed alternate is
+authored or written by an importer and has no extractor at all; one such lift
+existed and was removed, because nothing produced the inline form and a runtime
+that could not parse the markup left the video in the visible content, showing the
+accommodation to every learner regardless of eligibility.
 
-Whether a card describes a playable signed alternate is decided in one place,
-`resolveSignLanguageMedia` — a payload with no usable source resolves to `null`
-rather than rendering an empty player, and source URLs are restricted to schemes
-a media element can actually fetch. `matchesRequestedSignLanguage` holds the
-deliberate strictness: there is no cross-sign-language substitution, since
-handing an ASL learner a BSL recording is worse than handing them nothing.
+This package resolves and registers those cards through
+`AccessibilityCatalogResolver` and the generic media helpers in
+`catalog-media.ts`. Which card types mean what belongs to the capability that
+needs them — signing's card validators and its resolution rules live in
+`@pie-players/pie-tool-sign-language`, behind that capability's
+`requiresAuthoredContent`.
 
 ### Feature policy without a placement
 
@@ -1238,8 +1238,8 @@ import {
   createToolsConfig,
   ToolkitCoordinator
 } from "@pie-players/pie-assessment-toolkit";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
-// createPackagedToolRegistry comes from @pie-players/pie-default-tool-loaders
 const toolRegistry = createPackagedToolRegistry();
 const { config, diagnostics } = createToolsConfig({
   source: "host.bootstrap",
@@ -1310,6 +1310,26 @@ pick the stability surface that matches their use case:
   and the `resolveRuntime` / `resolveToolsConfig` /
   `resolveSectionEngineRuntimeState` helpers. Symbols here may change
   between minor versions with a changeset note.
+
+## Writing a capability package
+
+`@pie-players/pie-assessment-toolkit/tools/internal` is what a capability
+package imports: the `ToolRegistration` contract, the surface and content
+dependency types, `resolveToolTag` and the toolbar registration helpers. Same
+stability contract as the other `*/internal` entry points — symbols may change
+between minor versions with a changeset note.
+
+Import it rather than the package root: the root pulls in `ToolkitCoordinator`,
+`TTSService` and the components, none of which a registration needs, and a
+capability bundle that inlines them ends up with a second `ToolRegistry` class
+that fails every `instanceof` across the host boundary. Mark the toolkit external
+in the package's build with a pattern that covers subpaths, not a bare specifier.
+
+`@pie-players/pie-tool-sign-language` is the worked example end to end: a
+registration, a content resolver, its own custom element, and no edit to any
+generic package. `packages/default-tool-loaders/README.md` covers how a
+deployment then composes it in, and `docs/TOOL_REGISTRY.md` the registration and
+host-surface contracts.
 
 ### Lifecycle emit coordination
 

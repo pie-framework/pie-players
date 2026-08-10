@@ -4,8 +4,9 @@
  * Sizing only. Which capability fills the region, and whether it has anything to
  * show, belongs to the capability: the card asks the registry for whatever is
  * registered on the `item-media` surface and knows nothing else about it. The
- * content resolution that used to live here moved out with its capability — see
- * the package README for which one.
+ * signed-alternate resolution that used to live here moved to
+ * `@pie-players/pie-tool-sign-language` behind that capability's own
+ * `requiresAuthoredContent`.
  */
 
 /**

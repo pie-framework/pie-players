@@ -554,7 +554,7 @@ This keeps one active annotation gateway per section runtime while still honorin
 
 ## Host Surfaces
 
-Not every policy-addressable capability is a toolbar surface. A signed alternate renders as its own region beside item content; asking `decide({ level: "item" })` about it answers the wrong question, since it comes back absent because nothing placed it rather than because policy said no.
+Not every policy-addressable capability is a toolbar surface. A signed alternate renders as its own region beside item content; asking `decide({ level: "item" })` about it answers the wrong question, since it comes back absent because nothing placed it rather than because policy said no. That is why a host gates a `region` capability on `decideFeaturePolicy` — the placement-scoped question cannot be made to work, since placing a region capability is itself a `tools.unplaceableActivation` error.
 
 A capability that renders somewhere other than a toolbar declares which host surfaces it fits, and implements `renderSurface`:
 
@@ -567,28 +567,94 @@ export const alternateMediaRegistration: ToolRegistration = {
   activation: 'region',
   surfaces: ['item-media'],
   pnpSupportIds: ['hostAlternateMedia'],
-  renderSurface: ({ surface, content, services, featureId }) => {
-    const element = document.createElement('pie-host-alternate-media');
-    (element as any).media = content;
-    return { element, ariaLabel: 'Alternate media' };
+  requiresAuthoredContent: {
+    description: 'an alternate-media catalog card on the item',
+    resolve: ({ catalogResolver, ownerContext, item }) =>
+      findAlternateMediaCard(catalogResolver, ownerContext, item),
+  },
+  renderSurface: (context) => {
+    // Through `resolveToolTag`, not a literal tag: that is what lets a deployment
+    // substitute its own element for this capability through `componentOverrides`.
+    const tagName = resolveToolTag(context.toolId, context.componentOverrides ?? {});
+    if (!customElements.get(tagName)) return null;
+    const element = document.createElement(tagName) as HTMLElement & {
+      media?: unknown;
+    };
+    // Reads the context it is handed, never the one captured at mount: `sync` is
+    // called with the current context, and closing over this one re-applies the
+    // values the host already had.
+    const apply = (current: ToolSurfaceRenderContext) => {
+      element.media = current.content;
+    };
+    apply(context);
+    return { element, ariaLabel: 'Alternate media', sync: apply };
   },
 };
 ```
 
-Surface names belong to the host, not to this package. Core validates only that a region capability claims at least one, so a host can open a new surface without a change here. `section-player` ships two: `item-media` (the per-item card region) and `section-overlay` (the section-scoped singleton).
+Surface names belong to the host, not to this package. Core validates only that a region capability claims at least one, so a host can open a new surface without a change here. `section-player` ships two:
 
-A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability:
+| Surface | Scope | Grant question | Content dependency |
+| --- | --- | --- | --- |
+| `item-media` | per item card | `decideFeaturePolicy` | resolved and passed as `content` |
+| `section-overlay` | section singleton | `decideFeaturePolicy` for `region`, `decideToolPolicy` for a placed toolbar activation | not resolvable — see below |
+
+A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability. Both halves of availability are the host's job:
 
 ```ts
 for (const tool of registry.getToolsBySurface('item-media')) {
-  const decision = coordinator.decideFeaturePolicy(tool.pnpSupportIds[0]);
-  if (!decision.granted) continue;
+  // A capability declares which support ids grant it; any one is enough.
+  const supportIds = tool.pnpSupportIds?.length ? tool.pnpSupportIds : [tool.toolId];
+  let featureId: string | undefined;
+  let decision: FeaturePolicyDecision | undefined;
+  for (const supportId of supportIds) {
+    const candidate = coordinator.decideFeaturePolicy(supportId);
+    if (candidate?.granted) {
+      featureId = supportId;
+      decision = candidate;
+      break;
+    }
+  }
+  if (!featureId || !decision) continue;
+
+  // The content half. Skipping it mounts the capability with `content: undefined`,
+  // which is the dead affordance the declaration exists to prevent.
+  let content: unknown = null;
+  if (tool.requiresAuthoredContent) {
+    content = tool.requiresAuthoredContent.resolve({
+      featureId,
+      parameters: decision.parameters,
+      catalogResolver,
+      ownerContext,
+      item,
+    });
+    if (content == null) continue;
+  }
+
+  // A capability may register its element through a lazy module loader, so its
+  // tag can be undefined until this resolves.
+  await registry.ensureToolModuleLoaded(tool.toolId);
+
   // Through the registry, not `tool.renderSurface` directly: the registry owns
   // the component-override map a capability resolves its element tag against.
-  const rendered = registry.renderForSurface(tool.toolId, { /* ... */ });
+  const rendered = registry.renderForSurface(tool.toolId, {
+    toolId: tool.toolId,
+    featureId,
+    surface: 'item-media',
+    parameters: decision.parameters,
+    content,
+    services: { toolkitCoordinator: coordinator, ttsService, catalogResolver },
+  });
+  // `null` is a legitimate answer, not an error — a capability whose element tag
+  // was remapped to one nothing defined declines here. Drive the region's own
+  // visibility off what mounted, not off what was granted.
   if (rendered) mount(rendered.element);
 }
 ```
+
+Reconcile by `toolId` on re-resolve and call `sync(context)` with a freshly built context rather than remounting: a `<video>` recreated mid-playback restarts the recording, and a capability handed its render-time context back learns nothing. Call `destroy()` and remove the element when a capability loses its grant — including when losing the last one destroys the surface itself, where returning early leaves a detached element with its listeners and playback intact.
+
+A content dependency is resolvable only on a surface the host renders per item or per passage. `CatalogOwnerContext` names an item model or a passage and never a section, because a DRD resource pairs with a piece of content rather than with a container; `section-overlay` therefore declines a capability that declares one instead of mounting it with nothing.
 
 `@pie-players/pie-tool-sign-language` is the shipped example of this end to end: a
 capability package that owns its registration, its content resolver and its

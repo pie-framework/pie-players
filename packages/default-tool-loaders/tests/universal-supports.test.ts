@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
 import {
 	UNIVERSAL_SUPPORTS_PRESET,
 	createUniversalPersonalNeedsProfile,
@@ -54,15 +55,30 @@ describe("universal supports preset", () => {
 
 	test("grants no content-dependent accommodation", () => {
 		// A capability needing an authored resource must not arrive through a
-		// wholesale grant: it would grant an accommodation to learners with no
-		// documented need for it.
+		// wholesale grant: on the vast majority of items it has nothing to show, so
+		// granting it universally hands learners an accommodation with no documented
+		// need for it and a dead affordance wherever the resource is absent.
 		//
-		// Checked by id here because the registrations still live in the toolkit.
-		// The declaration-driven form — asserting the preset holds nothing in
-		// `registry.getContentDependentSupportIds()` — lands with the registrations
-		// in PIE-886 step 5, and is what lets a host add its own accommodation
-		// without editing a list of ours.
-		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain("signLanguage");
+		// Read off the registrations rather than compared against a list of ids.
+		// The compile-time array this replaced could only ever name capabilities of
+		// ours, so a host adding its own accommodation to a registry had no way to
+		// keep it out of a preset — the declaration is the thing a host can supply.
+		const registry = createPackagedToolRegistry();
+		const contentDependent = registry.getContentDependentSupportIds();
+		expect(
+			[...UNIVERSAL_SUPPORTS_PRESET].filter((id) => contentDependent.includes(id)),
+		).toEqual([]);
+	});
+
+	test("no packaged registration declares a content dependency", () => {
+		// The preset check above can only see what the packaged registry holds, and
+		// nothing forces a content-dependent capability into it: signing is a
+		// separate opt-in package precisely because it needs an authored card. So
+		// this is the other half — a twelfth registration added here with a content
+		// dependency would pass the preset check by being invisible to it, and its
+		// ids would then need adding to the preset to render at all.
+		const registry = createPackagedToolRegistry();
+		expect(registry.getContentDependentSupportIds()).toEqual([]);
 	});
 
 	test("is sorted and free of duplicates", () => {

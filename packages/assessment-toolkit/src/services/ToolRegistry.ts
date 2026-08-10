@@ -283,9 +283,26 @@ export interface ToolContentDependencyContext {
  * through `ToolSurfaceRenderContext.content` without inspecting it. That is what
  * keeps the resolver and the host from knowing which accommodation they are
  * resolving.
+ *
+ * Resolvable only on a surface the host renders per item or per passage:
+ * `ownerContext` names an item model or a passage, never a section, because a DRD
+ * resource pairs with a piece of content and not with a container. A capability
+ * declaring one and claiming a section-scoped surface is declined there rather
+ * than mounted with no content. `resolve` is also synchronous — a capability whose
+ * resource has to be fetched resolves the reference here and fetches inside its
+ * own element, where it can show its own pending state.
  */
 export interface ToolContentDependency {
-	/** The resolved content, or `null` when the item carries none. */
+	/**
+	 * The resolved content, or `null` when the item carries none.
+	 *
+	 * Must be JSON-serializable. A host re-resolves on every policy and catalog
+	 * signal and compares the answer structurally to decide whether anything moved,
+	 * because every resolution builds fresh objects and identity would report a
+	 * change each time. A `Map`, a function or a DOM node therefore compares equal
+	 * to itself across a real change and the capability never hears about it; a
+	 * cyclic value throws inside the host's own reconciliation.
+	 */
 	resolve(context: ToolContentDependencyContext): unknown | null;
 	/**
 	 * Optional human-readable description of what has to be authored, for a
@@ -299,8 +316,18 @@ export interface ToolSurfaceRenderResult {
 	element: HTMLElement;
 	/** Accessible name for the surface, when the capability owns that wording. */
 	ariaLabel?: string;
-	/** Reapply props after policy, parameters or content change. */
-	sync?: () => void;
+	/**
+	 * Reapply props after policy, parameters or content change.
+	 *
+	 * Takes the current context rather than closing over the one captured at
+	 * render: the whole point of reconciling by `toolId` instead of remounting is
+	 * that a re-resolve reaches the mounted element, and a closure over the
+	 * render-time context re-applies the values the host already had. A signed
+	 * alternate re-resolved to a different recording — a live `signLang` change, or
+	 * a catalog registering after first paint — would otherwise leave the learner
+	 * watching the previous one with no error anywhere.
+	 */
+	sync?: (context: ToolSurfaceRenderContext) => void;
 	/** Release listeners and media before the host unmounts the element. */
 	destroy?: () => void;
 }

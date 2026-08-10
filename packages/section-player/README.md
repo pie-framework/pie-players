@@ -252,21 +252,13 @@ keyboard-accessible divider (`role="separator"`; arrow keys, `Home`/`End`,
 the content and the divider is withdrawn. Placement is fixed in this iteration:
 there is no orientation toggle and no free repositioning.
 
-Signing legibility needs height for hands and face, so the video is sized by an
-aspect-ratio target with a height floor rather than by width alone. Those three
-tokens are defined by the signing package rather than here, and are documented in
-[its README](../tool-sign-language/README.md); hosts set them on the card:
-
-- `--pie-section-player-item-media-aspect-ratio` (default `3 / 4`)
-- `--pie-section-player-item-media-min-height` (default `220px`)
-- `--pie-section-player-item-media-max-height` (default `60vh`)
-
-```css
-pie-section-player-item-card {
-  --pie-section-player-item-media-aspect-ratio: 4 / 5;
-  --pie-section-player-item-media-min-height: 260px;
-}
-```
+This package owns the region's share of the card width and nothing inside it. A
+capability mounted here sizes its own content: signing legibility needs height for
+hands and face, so it is sized by an aspect-ratio target with a height floor
+rather than by width alone. The `--pie-section-player-item-media-*` tokens hosts
+set for that belong to `@pie-players/pie-tool-sign-language` and are documented
+with their defaults in [its README](../tool-sign-language/README.md) — they keep
+the `pie-section-player` prefix because hosts already set them by those names.
 
 ### API direction: CE defaults first, JS customization for advanced cases
 

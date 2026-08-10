@@ -13,6 +13,7 @@
 
 import type {
 	ToolRegistration,
+	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
@@ -281,13 +282,18 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			ttsService?: unknown;
 			highlightCoordinator?: unknown;
 		};
-		const applyServices = () => {
+		// Reads the context it is handed. These were reactive props before the
+		// gateway moved behind `renderSurface`, and a host calling
+		// `updateAssessment(...)` mid-session swaps the coordinator without
+		// remounting — closing over the render-time services would leave the gateway
+		// highlighting into the previous session's coordinator.
+		const applyServices = (current: ToolSurfaceRenderContext) => {
 			element.enabled = true;
-			element.ttsService = context.services.ttsService;
+			element.ttsService = current.services.ttsService;
 			element.highlightCoordinator =
-				context.services.toolkitCoordinator?.highlightCoordinator ?? null;
+				current.services.toolkitCoordinator?.highlightCoordinator ?? null;
 		};
-		applyServices();
+		applyServices(context);
 		return { element, sync: applyServices };
 	},
 

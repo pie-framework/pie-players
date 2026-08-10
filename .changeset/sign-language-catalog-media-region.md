@@ -42,11 +42,11 @@ Signing is gated on the `signLanguage` PNP support id through the existing six-l
 
 `pnpEnforcement` is not consulted for a feature decision: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a feature with no placement has no unrefined baseline to fall back to, so skipping the profile read would make the accommodation permanently unavailable rather than merely unrefined.
 
-`computeDefaultSupports()` now excludes `ACCOMMODATION_ONLY_SUPPORT_IDS`, which lists `signLanguage`. That function derives the fallback profile from every registered tool's `pnpSupportIds`, which is right for universal features and wrong for an accommodation: signing requires a documented need, so inheriting it by default would invert the eligibility tier. Excluded by id rather than by declining to register, so the guarantee holds however a signing tool later reaches the registry. Hosts that supply their own profile are unaffected.
+Signing is kept out of any wholesale grant, because it requires a documented need and inheriting it by default would invert the eligibility tier. This was first done by excluding it by id from a derived default profile; both the derivation and the exclusion list are gone as of PIE-886, and the guarantee now comes from the capability declaring `requiresAuthoredContent` — see `.changeset/pnp-default-profile-is-configuration.md`. Hosts that supply their own profile were unaffected throughout.
 
 ## Region
 
-`SectionItemCard.svelte` gains a `data-region="media"` region beside its existing `header` and `content` regions, holding a resolved catalog card. Named for the slot rather than its first tenant — audio description is the same "docked alternate media, gated by PNP" shape.
+`SectionItemCard.svelte` gains a `data-region="media"` region beside its existing `header` and `content` regions. Named for the slot rather than its first tenant — audio description is the same "docked alternate media, gated by PNP" shape — and PIE-886 made it exactly that: a host surface any registered capability can fill, with signing arriving from `@pie-players/pie-tool-sign-language`.
 
 `item-player` needs no changes and learns nothing about signing.
 
@@ -65,4 +65,4 @@ Signing appears when **both** conditions hold: the item carries a matching card,
 
 ## Also
 
-`AssessmentSection` gains an optional `personalNeedsProfile`. Section players already read it (falling back to `settings.personalNeedsProfile`, then to the computed default) through an `any` cast; this types an existing runtime contract.
+`AssessmentSection` gains an optional `personalNeedsProfile`. Section players already read it (falling back to `settings.personalNeedsProfile`) through an `any` cast; this types an existing runtime contract.

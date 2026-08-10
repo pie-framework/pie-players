@@ -38,9 +38,14 @@ export default defineConfig({
 			// The toolkit is a peer in the host's graph, not a copy inlined here:
 			// two `ToolRegistry` classes would fail every `instanceof` across the
 			// boundary, and the host already has it.
+			// Patterns, not bare specifiers: the registration imports from
+			// `pie-assessment-toolkit/tools/internal`, which an exact-string external
+			// does not match, so the subpath was being inlined. Harmless while only
+			// pure functions came through it, and a duplicate `ToolRegistry` class the
+			// moment anything stateful does.
 			external: [
-				"@pie-players/pie-assessment-toolkit",
-				/^@pie-players\/pie-players-shared/,
+				/^@pie-players\/pie-assessment-toolkit(\/|$)/,
+				/^@pie-players\/pie-players-shared(\/|$)/,
 			],
 			output: {
 				format: "es",

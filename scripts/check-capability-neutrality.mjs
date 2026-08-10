@@ -166,8 +166,9 @@ if (failures.length > 0) {
 	console.error(
 		"\nMove the capability-specific part into a capability package, or into the" +
 			"\ncomposition layer (@pie-players/pie-default-tool-loaders) if it is a" +
-			"\ndecision about which capabilities a deployment has. See PIE-886 and" +
-			"\ndocs/tools-and-accomodations/architecture.md.",
+			"\ndecision about which capabilities a deployment has. The layers, and which" +
+			"\none this belongs in, are in docs/tools-and-accomodations/architecture.md" +
+			"\nunder Capability Ownership Layers. See also PIE-886.",
 	);
 	process.exit(1);
 }

@@ -237,9 +237,8 @@
 	// answer: with nothing registered there is nothing whose visibility or render
 	// contract could be consulted.
 	//
-	// The composition package is deliberately not named here, even in a comment:
-	// `tests/toolbar-items.test.ts` forbids any mention, which is a cheap guard
-	// against this file growing an import of the package whose loaders depend on
+	// `@pie-players/pie-default-tool-loaders` is that package, and importing it here
+	// is what `tests/toolbar-items.test.ts` guards against: its loaders depend on
 	// concrete tool packages that depend back on this one.
 	const fallbackToolRegistry = new ToolRegistry();
 

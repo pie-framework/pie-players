@@ -114,11 +114,14 @@ describe("resolvePnpProfile", () => {
 		expect(result.source).toBe("section.settings.personalNeedsProfile");
 	});
 
-	test("falls back to default when neither path is set", () => {
+	test("falls back to the panel's own profile when neither path is set", () => {
+		// Named as the panel's fallback, not as a derived default: nothing derives a
+		// profile any more, and labelling an empty `supports` array "derived" read as
+		// a broken derivation rather than as an unconfigured section.
 		const result = resolvePnpProfile({}, DEFAULT_PNP);
 		expect(result.profile).toBe(DEFAULT_PNP);
-		expect(result.source).toBe("toolkit default profile (derived)");
-		expect(result.note).toContain("default PNP profile is applied");
+		expect(result.source).toBe("panel fallback (no profile in section)");
+		expect(result.note).toContain("Nothing derives one");
 	});
 
 	test("handles null section data", () => {

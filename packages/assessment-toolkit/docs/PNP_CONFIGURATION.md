@@ -228,9 +228,9 @@ Here's a complete example showing how all levels interact:
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // 1. Create tool registry
-// createPackagedToolRegistry comes from @pie-players/pie-default-tool-loaders
 const toolRegistry = createPackagedToolRegistry();
 
 // 2. Create coordinator with the registry and configured placements
@@ -412,8 +412,9 @@ When integrating the PNP system, ensure you:
 ### API Integration
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
 // 1. Create registry and coordinator
-// createPackagedToolRegistry comes from @pie-players/pie-default-tool-loaders
 const registry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,

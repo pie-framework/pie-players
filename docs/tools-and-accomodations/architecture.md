@@ -252,6 +252,33 @@ Tiering belongs where the district and test-administration levels already live, 
 
 ---
 
+## Capability Ownership Layers
+
+Four layers, and which one a piece of code belongs to is decided by whether it names a capability.
+
+| Layer | Package | Knows |
+| --- | --- | --- |
+| Core | `assessment-toolkit` | `featureId`, placement levels, activation kinds, precedence, the registration contract. **No capability ids.** |
+| Capability | `tool-*` | One capability: its registration, its content resolver, its element |
+| Composition | `default-tool-loaders` | Which capabilities a deployment has, their tags, placement presets, universal supports, module loaders |
+| Renderer | `section-player`, `item-player`, toolbars | Surfaces and layout. Asks the registry what to mount |
+
+`bun run check:capability-neutrality` fails when a capability id or a `pie-tool-*` tag appears in core. A renderer is held to the same rule by its own source-boundary tests, because a renderer that names one is the same defect one layer up: it means a host cannot contribute that kind of capability without a PR here.
+
+The rule this encodes: **a capability id may only appear in the layer that is a decision about capabilities.** Core naming one turns a deployment choice into a code change. That happened three ways at once — the packaged registry was core's fallback for an absent one, the default profile was derived from registry membership, and two renderers named the specific capability they mounted — and each had to be undone before a host could contribute anything.
+
+### Host surfaces
+
+A capability that does not render on a toolbar declares `activation: "region"`, the host slot names it fits in `surfaces`, and `renderSurface(context)`. The renderer asks `registry.getToolsBySurface(name)` and mounts what comes back, so it names no capability and a host opens a new surface without a change here. Surface names belong to the renderer; core validates only that a region capability claims one.
+
+Availability at a surface is grant **and** content: `decideFeaturePolicy(supportId)`, then `requiresAuthoredContent.resolve(...)`, then `renderSurface`. Neither half implies the other, which is what keeps a learner with an accommodation from seeing a dead affordance on the items that carry no resource.
+
+Two constraints follow. A `region` capability is gated on the feature question and never the placement question — placing one is a `tools.unplaceableActivation` error, so the placement question has no answer to give. And a content dependency resolves against an item model or a passage, never a section, because a DRD resource pairs with content rather than with a container: a section-scoped surface declines a capability that declares one.
+
+`@pie-players/pie-tool-sign-language` is the worked example. It is deliberately absent from `createPackagedToolRegistry`, because a content-dependent accommodation is opt-in, so a host installs and registers it exactly as it would one of its own. `packages/assessment-toolkit/docs/TOOL_REGISTRY.md` carries both contracts.
+
+---
+
 ## Tool Scope Architecture: Placement + Scoped IDs
 
 In addition to the three-tier dependency hierarchy, tools are categorized by their **scope and lifecycle** within an assessment:

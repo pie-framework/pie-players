@@ -1,6 +1,7 @@
 ---
 "@pie-players/pie-players-shared": patch
 "@pie-players/pie-assessment-toolkit": patch
+"@pie-players/pie-tool-sign-language": patch
 ---
 
 Accept `signLanguage` as an input alias for a sign-language card's `payload`, so cards from the two producers that already shipped resolve.

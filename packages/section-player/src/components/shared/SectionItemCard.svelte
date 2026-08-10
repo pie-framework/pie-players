@@ -27,6 +27,7 @@
 		AssessmentToolkitRuntimeContext,
 		CatalogOwnerContext,
 		ToolRegistry,
+		ToolSurfaceRenderContext,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
@@ -133,8 +134,9 @@
 	 * A host slot, not a capability. Whatever registers on it renders here if
 	 * policy grants it and its content dependency resolves; this file names no
 	 * capability, no support id and no element tag, which is what lets a host
-	 * contribute a docked accommodation without a change here. Which capabilities
-	 * exist is the deployment's choice — see the package README.
+	 * contribute a docked accommodation without a change here. Signing was named
+	 * here six times before PIE-886 and now arrives like any other host capability,
+	 * from `@pie-players/pie-tool-sign-language`.
 	 *
 	 * The card is never rewritten to produce that content: a docked alternate
 	 * arrives as an authored or imported catalog, so the config handed to the item
@@ -147,6 +149,15 @@
 	// derivation reruns when policy inputs change (assessment binding, PNP
 	// enforcement, custom sources). Same fanout pattern as `<pie-item-toolbar>`.
 	let policyChangeVersion = $state(0);
+	/**
+	 * How many capabilities actually mounted, which is what the region's own
+	 * visibility follows. A grant plus resolved content is not yet a rendered
+	 * element: `renderSurface` returning `null` is a legitimate answer — a host that
+	 * remapped the element tag to one it never defined takes that path — and driving
+	 * the layout from the grant instead left an empty 34% column with a focusable
+	 * resize handle dividing nothing.
+	 */
+	let mountedMediaCount = $state(0);
 	let mediaRegionPercent = $state(MEDIA_REGION_DEFAULT_PERCENT);
 	let mediaSplitContainer = $state<HTMLDivElement | null>(null);
 	let mediaSplitWidthPx = $state(0);
@@ -280,13 +291,20 @@
 		syncGrantedMediaCapabilities();
 	});
 
-	const mediaRegionVisible = $derived(grantedMediaCapabilities.length > 0);
+	/**
+	 * Whether the region exists in the DOM, so a granted capability has an anchor to
+	 * mount into. Not the same question as whether the region takes up space — see
+	 * `mediaRegionOccupied`.
+	 */
+	const mediaRegionMountable = $derived(grantedMediaCapabilities.length > 0);
+	/** Whether anything is in the region, which is what the layout follows. */
+	const mediaRegionOccupied = $derived(mountedMediaCount > 0);
 	// Below the breakpoint the region stacks under the content, where a resize
 	// handle has nothing to divide.
 	const mediaRegionStacked = $derived(
 		mediaSplitWidthPx > 0 && mediaSplitWidthPx < MEDIA_REGION_STACK_BREAKPOINT_PX,
 	);
-	const mediaDividerVisible = $derived(mediaRegionVisible && !mediaRegionStacked);
+	const mediaDividerVisible = $derived(mediaRegionOccupied && !mediaRegionStacked);
 	const mediaSplitColumns = $derived(
 		mediaDividerVisible
 			? `minmax(0, ${100 - mediaRegionPercent}fr) auto minmax(0, ${mediaRegionPercent}fr)`
@@ -363,33 +381,114 @@
 	let mediaAnchor = $state<HTMLDivElement | null>(null);
 	const mountedMediaTools = new Map<
 		string,
-		{ element: HTMLElement; sync?: () => void; destroy?: () => void }
+		{
+			element: HTMLElement;
+			sync?: (context: ToolSurfaceRenderContext) => void;
+			destroy?: () => void;
+		}
 	>();
+	/**
+	 * Tool ids whose custom-element module is present. A capability stays unmounted
+	 * until its module resolves, so a lazily-registered one renders rather than
+	 * silently missing its element; `ensureToolModuleLoaded` resolves immediately
+	 * for a capability that registered its element eagerly, so this costs those a
+	 * microtask and nothing else.
+	 */
+	let loadedMediaModules = $state<string[]>([]);
+
+	$effect(() => {
+		const registry = toolRegistry;
+		if (!registry || typeof registry.ensureToolModuleLoaded !== "function") return;
+		const pending = grantedMediaCapabilities
+			.map((entry) => entry.toolId)
+			.filter((toolId) => !loadedMediaModules.includes(toolId));
+		if (pending.length === 0) return;
+		let cancelled = false;
+		for (const toolId of pending) {
+			void registry
+				.ensureToolModuleLoaded(toolId)
+				.then(() => {
+					if (cancelled) return;
+					loadedMediaModules = [...loadedMediaModules, toolId];
+				})
+				.catch((error: unknown) => {
+					console.error(
+						`[pie-section-player] tool "${toolId}" failed to load its module for the "${ITEM_MEDIA_SURFACE}" surface`,
+						error,
+					);
+				});
+		}
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	/**
+	 * What the host tells the capability, rebuilt per mount and per re-sync.
+	 *
+	 * Rebuilt rather than captured: `sync` exists so a re-resolve reaches an element
+	 * already on screen, and handing it the context from first mount would re-apply
+	 * the values it already has.
+	 */
+	function mediaSurfaceContext(
+		entry: GrantedMediaCapability,
+	): ToolSurfaceRenderContext {
+		return {
+			toolId: entry.toolId,
+			featureId: entry.featureId,
+			surface: ITEM_MEDIA_SURFACE,
+			parameters: entry.parameters,
+			content: entry.content,
+			services: {
+				toolkitCoordinator: runtimeContext?.toolkitCoordinator ?? null,
+				ttsService: runtimeContext?.ttsService ?? null,
+				catalogResolver: runtimeContext?.catalogResolver ?? null,
+			},
+		};
+	}
+
+	function unmountMediaTool(toolId: string): void {
+		const mounted = mountedMediaTools.get(toolId);
+		if (!mounted) return;
+		mountedMediaTools.delete(toolId);
+		try {
+			mounted.destroy?.();
+		} catch {
+			// A capability that throws on teardown must not strand the element.
+		}
+		mounted.element.remove();
+		mountedMediaCount = mountedMediaTools.size;
+	}
 
 	$effect(() => {
 		const anchor = mediaAnchor;
 		const granted = grantedMediaCapabilities;
 		const registry = toolRegistry;
-		if (!anchor || !registry) return;
+		const loaded = loadedMediaModules;
+		if (!anchor || !registry) {
+			// The anchor lives inside the region, so losing the last grant destroys it
+			// — and returning here instead of tearing down left the elements detached
+			// but alive (a `<video>` keeps playing audio) and kept their entries in the
+			// map, so the next grant found an "existing" mount that was no longer in
+			// the document and the region stayed empty for the rest of the session.
+			untrack(() => {
+				for (const toolId of [...mountedMediaTools.keys()]) unmountMediaTool(toolId);
+			});
+			return;
+		}
 
 		untrack(() => {
-			const wanted = new Set(granted.map((entry) => entry.toolId));
-			for (const [toolId, mounted] of [...mountedMediaTools]) {
-				if (wanted.has(toolId)) continue;
-				try {
-					mounted.destroy?.();
-				} catch {
-					// A capability that throws on teardown must not strand the element.
-				}
-				mounted.element.remove();
-				mountedMediaTools.delete(toolId);
+			const mountable = granted.filter((entry) => loaded.includes(entry.toolId));
+			const wanted = new Set(mountable.map((entry) => entry.toolId));
+			for (const toolId of [...mountedMediaTools.keys()]) {
+				if (!wanted.has(toolId)) unmountMediaTool(toolId);
 			}
 
-			for (const entry of granted) {
+			for (const entry of mountable) {
 				const existing = mountedMediaTools.get(entry.toolId);
 				if (existing) {
 					try {
-						existing.sync?.();
+						existing.sync?.(mediaSurfaceContext(entry));
 					} catch {
 						// A failed reapply leaves the element as it was, which is better
 						// than removing a region the learner is watching.
@@ -398,19 +497,15 @@
 				}
 				let rendered: ReturnType<typeof registry.renderForSurface> = null;
 				try {
-					rendered = registry.renderForSurface(entry.toolId, {
-						toolId: entry.toolId,
-						featureId: entry.featureId,
-						surface: ITEM_MEDIA_SURFACE,
-						parameters: entry.parameters,
-						content: entry.content,
-						services: {
-							toolkitCoordinator: runtimeContext?.toolkitCoordinator ?? null,
-							ttsService: runtimeContext?.ttsService ?? null,
-							catalogResolver: runtimeContext?.catalogResolver ?? null,
-						},
-					});
-				} catch {
+					rendered = registry.renderForSurface(
+						entry.toolId,
+						mediaSurfaceContext(entry),
+					);
+				} catch (error) {
+					console.error(
+						`[pie-section-player] tool "${entry.toolId}" failed to render into the "${ITEM_MEDIA_SURFACE}" surface`,
+						error,
+					);
 					rendered = null;
 				}
 				if (!rendered?.element) continue;
@@ -423,21 +518,14 @@
 					sync: rendered.sync,
 					destroy: rendered.destroy,
 				});
+				mountedMediaCount = mountedMediaTools.size;
 			}
 		});
 	});
 
 	$effect(() => {
 		return () => {
-			for (const mounted of mountedMediaTools.values()) {
-				try {
-					mounted.destroy?.();
-				} catch {
-					// Teardown errors are non-fatal while the card is going away.
-				}
-				mounted.element.remove();
-			}
-			mountedMediaTools.clear();
+			for (const toolId of [...mountedMediaTools.keys()]) unmountMediaTool(toolId);
 		};
 	});
 
@@ -523,7 +611,7 @@
 		     adds siblings rather than re-creating the item player. -->
 		<div
 			class={`pie-section-player-item-card-split ${
-				mediaRegionVisible ? "pie-section-player-item-card-split--with-media" : ""
+				mediaRegionOccupied ? "pie-section-player-item-card-split--with-media" : ""
 			} ${mediaRegionStacked ? "pie-section-player-item-card-split--stacked" : ""}`}
 			bind:this={mediaSplitContainer}
 			style={`grid-template-columns: ${mediaSplitColumns};`}
@@ -549,13 +637,21 @@
 					onresize={onMediaRegionResize}
 				/>
 			{/if}
-			{#if mediaRegionVisible}
+			{#if mediaRegionMountable}
+				<!-- Present as soon as something is granted, so there is an anchor to
+				     mount into, but it only takes up space once something actually
+				     mounted: `data-occupied` is what the stylesheet below keys on. -->
 				<div
 					id={mediaRegionId}
 					class="pie-section-player-item-card-media"
 					data-region="media"
+					data-occupied={mediaRegionOccupied ? "" : undefined}
 				>
-					<div bind:this={mediaAnchor} data-pie-tool-surface={ITEM_MEDIA_SURFACE}></div>
+					<div
+						bind:this={mediaAnchor}
+						class="pie-section-player-item-card-media-surface"
+						data-pie-tool-surface={ITEM_MEDIA_SURFACE}
+					></div>
 				</div>
 			{/if}
 		</div>
@@ -649,6 +745,21 @@
 
 	.pie-section-player-item-card-media {
 		padding: 1rem 1rem 1rem 0;
+	}
+
+	/* Granted but nothing mounted: the region is in the DOM only to give the
+	   capability an anchor, so it must not claim a grid column or reach the
+	   accessibility tree. */
+	.pie-section-player-item-card-media:not([data-occupied]) {
+		display: none;
+	}
+
+	/* Layout-transparent, so the capability's element is a direct child of the
+	   region as it was before the region became a host surface. An anchor that
+	   generated its own box broke any `height: 100%` chain through it, and the
+	   sizing tokens hosts set on the region are being tested against that chain. */
+	.pie-section-player-item-card-media-surface {
+		display: contents;
 	}
 
 	.pie-section-player-item-card-split--stacked .pie-section-player-item-card-media {

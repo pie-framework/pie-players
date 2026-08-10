@@ -75,6 +75,12 @@ describe("toolbar-items validation", () => {
 
 	test("keeps the standalone toolbar fallback empty", () => {
 		const source = readFileSync(ITEM_TOOLBAR_PATH, "utf8");
+		// Comments exempt, matching `scripts/check-capability-neutrality.mjs`: what
+		// this guards is an import, and matching prose only bought a comment that
+		// could not say which package it was warning about.
+		const code = source
+			.replace(/\/\*[\s\S]*?\*\//g, " ")
+			.replace(/(^|[^:\w])\/\/[^\n]*/g, "$1");
 
 		// This package holds no capability set to fall back to, so a toolbar given
 		// no registry renders no buttons. That is the honest answer: with nothing
@@ -85,9 +91,9 @@ describe("toolbar-items validation", () => {
 		expect(source).toContain(
 			"const fallbackToolRegistry = new ToolRegistry();",
 		);
-		expect(source).not.toContain("createPackagedToolRegistry");
-		expect(source).not.toContain("@pie-players/pie-default-tool-loaders");
-		expect(source).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
+		expect(code).not.toContain("createPackagedToolRegistry");
+		expect(code).not.toContain("@pie-players/pie-default-tool-loaders");
+		expect(code).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
 	});
 });
 

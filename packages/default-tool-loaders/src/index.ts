@@ -1,3 +1,47 @@
+export {
+	UNIVERSAL_SUPPORTS_PRESET,
+	createUniversalPersonalNeedsProfile,
+} from "./universal-supports.js";
+
+// The packaged capability set: which capabilities exist in a deployment.
+export type {
+	PackagedToolRegistryOptions,
+	RegisterPackagedToolsOptions,
+} from "./packaged-tool-registry.js";
+export {
+	createPackagedToolRegistry,
+	PACKAGED_TOOL_ORDER,
+	PACKAGED_TOOL_REGISTRATIONS,
+	registerPackagedTools,
+} from "./packaged-tool-registry.js";
+export { PACKAGED_TOOL_TAG_MAP } from "./tool-tag-map.js";
+export {
+	PACKAGED_TOOL_PLACEMENT,
+	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
+} from "./tool-placement.js";
+
+// Individual registrations, for a host composing a subset rather than the whole
+// packaged set.
+export {
+	annotationToolbarRegistration,
+	lineReaderToolRegistration,
+	themeToolRegistration,
+} from "./registrations/accessibility-tools.js";
+export { calculatorToolRegistration } from "./registrations/calculator.js";
+export {
+	answerEliminatorToolRegistration,
+	highlighterToolRegistration,
+} from "./registrations/interaction-tools.js";
+export {
+	protractorToolRegistration,
+	rulerToolRegistration,
+} from "./registrations/measurement-tools.js";
+export {
+	graphToolRegistration,
+	periodicTableToolRegistration,
+} from "./registrations/subject-specific-tools.js";
+export { ttsToolRegistration } from "./registrations/tts.js";
+
 export type ToolModuleLoader = () => Promise<unknown>;
 
 export interface ToolRegistryLike {

@@ -68,13 +68,13 @@
 		onSessionChanged?: (detail?: any) => void;
 		onModelUpdated?: (detail?: any) => void;
 		/**
-		 * The level of the first heading emitted inside this player.
+		 * The level of the first heading the item emits.
 		 * Passed through to `PieItemPlayer` unchanged — see that component for full docs.
 		 */
 		baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 		/**
-		 * Whether to inject a visually-hidden (screen-reader-only) heading at the
-		 * top of the player's rendered content.
+		 * Whether the element emits its visually-hidden (screen-reader-only) item
+		 * heading.
 		 * Passed through to `PieItemPlayer` unchanged — see that component for full docs.
 		 */
 		includeSrHeading?: boolean;

@@ -69,6 +69,7 @@
 					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
 					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
 					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+					baseHeadingLevel={layoutModel.baseHeadingLevel}
 					playerStrategy={layoutModel.playerStrategy}
 					passageToolbarTools={passageToolbarTools}
 					toolRegistry={toolRegistry || layoutModel.toolRegistry}
@@ -88,6 +89,7 @@
 				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
 				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
 				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+				baseHeadingLevel={layoutModel.baseHeadingLevel}
 				playerStrategy={layoutModel.playerStrategy}
 				itemToolbarTools={itemToolbarTools}
 				toolRegistry={toolRegistry || layoutModel.toolRegistry}

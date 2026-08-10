@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { calculatorToolRegistration } from "../src/tools/registrations/calculator";
-import type { ToolContext } from "../src/services/tool-context";
-import type { ToolbarContext } from "../src/services/ToolRegistry";
+import { calculatorToolRegistration } from "../src/registrations/calculator.js";
+import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map.js";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 const createFakeElement = (tag: string) =>
 	({
@@ -116,6 +117,10 @@ describe("calculator tool registration", () => {
 				calculatorType: "basic",
 				availableTypes: ["basic"],
 			}),
+			// The registry installs this map through `setComponentOverrides`, and the
+			// toolkit no longer carries a packaged default to fall back to. A
+			// registration exercised outside a registry has to supply it.
+			componentOverrides: { toolTagMap: PACKAGED_TOOL_TAG_MAP },
 		} as ToolbarContext;
 
 		const result = withFakeDocument(() =>

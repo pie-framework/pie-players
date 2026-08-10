@@ -16,12 +16,7 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
-import {
-	ACCOMMODATION_ONLY_SUPPORT_IDS,
-	DEFAULT_PERSONAL_NEEDS_PROFILE,
-	createDefaultPersonalNeedsProfile,
-} from "../../src/services/defaultPersonalNeedsProfile.js";
-import { createPackagedToolRegistry } from "../../src/services/createDefaultToolRegistry.js";
+import { createEmptyPersonalNeedsProfile } from "../../src/services/defaultPersonalNeedsProfile.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 
 const FEATURE = "signLanguage";
@@ -195,25 +190,34 @@ describe("signLanguage feature eligibility", () => {
 	});
 });
 
-describe("default personal needs profile", () => {
-	test("excludes accommodation-only support ids", () => {
-		// Registering a signing tool must not switch signing on for every student
-		// whose host does not supply a profile.
-		expect(ACCOMMODATION_ONLY_SUPPORT_IDS).toContain(FEATURE);
-		expect(DEFAULT_PERSONAL_NEEDS_PROFILE.supports).not.toContain(FEATURE);
-		expect(createDefaultPersonalNeedsProfile().supports).not.toContain(FEATURE);
+describe("the core ships no populated default profile", () => {
+	test("grants nothing", () => {
+		// The core once derived a profile from every registered tool's
+		// `pnpSupportIds`, which read registry membership as eligibility tier and
+		// granted an accommodation to every student whose host supplied no profile.
+		// Nothing is granted now, so no exclusion list is needed to keep signing
+		// out.
+		const profile = createEmptyPersonalNeedsProfile();
+		expect(profile.supports).toEqual([]);
+		expect(profile.prohibitedSupports).toEqual([]);
+		expect(profile.activateAtInit).toEqual([]);
 	});
 
-	test("still includes the universal features the packaged registry declares", () => {
-		const declared = new Set<string>();
-		for (const tool of createPackagedToolRegistry().getAllTools()) {
-			for (const supportId of tool.pnpSupportIds || []) declared.add(supportId);
-		}
-		const expected = [...declared].filter(
-			(supportId) => !ACCOMMODATION_ONLY_SUPPORT_IDS.includes(supportId),
-		);
-		expect(DEFAULT_PERSONAL_NEEDS_PROFILE.supports.sort()).toEqual(
-			expected.sort(),
-		);
+	test("returns a fresh profile per call", () => {
+		// Profiles flow into policy inputs hosts mutate; a shared reference would
+		// let one host's edit reach another's.
+		const first = createEmptyPersonalNeedsProfile();
+		first.supports.push(FEATURE);
+		expect(createEmptyPersonalNeedsProfile().supports).toEqual([]);
+	});
+
+	test("an empty profile does not grant the accommodation", () => {
+		const decision = engine({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: createEmptyPersonalNeedsProfile(),
+			} as AssessmentEntity,
+		}).decideFeature(FEATURE);
+		expect(decision.granted).toBe(false);
 	});
 });

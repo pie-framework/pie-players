@@ -16,6 +16,11 @@ import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
  *     region, and no signing video appears as item content either: in PIE the
  *     video is catalog data the toolkit gates, never unconditional item content.
  *
+ *   - "Signed passage" — the alternate is authored on a shared passage rather than
+ *     on an item, and renders on the passage card. Same card model, same region,
+ *     resolved under the passage owner scope. Its own page rather than an
+ *     addition to the two above, whose assertions pin the item card's geometry.
+ *
  * A signed alternate reaches the region one way: as a catalog card. One item here
  * authors one by hand on `accessibilityCatalogs`; the rest are real importer
  * output, committed verbatim, so the demo shows what an import actually produces
@@ -189,6 +194,64 @@ const importedItemRefs = Object.values(importedAslModules).map(
 	}),
 ) as NonNullable<AssessmentSection["assessmentItemRefs"]>;
 
+/**
+ * A shared passage carrying its own signed reading.
+ *
+ * The point of the fixture: the alternate is authored once, on the passage, and
+ * the passage card renders it beside the passage — no item mentions it, and the
+ * two items below that reference the passage do not each carry a copy. The card
+ * looks its catalogs up under the passage owner scope `<pie-passage-shell>`
+ * registered them in.
+ */
+const signedPassageBlock: NonNullable<
+	AssessmentSection["rubricBlocks"]
+>[number] = {
+	identifier: "asl-passage-block",
+	view: ["candidate"],
+	class: "stimulus",
+	passage: {
+		id: "asl-passage",
+		name: "Photosynthesis (signed)",
+		baseId: "asl-passage",
+		version: { major: 1, minor: 0, patch: 0 },
+		accessibilityCatalogs: [
+			{
+				identifier: "asl-passage-body",
+				cards: [
+					{
+						catalog: "sign-language",
+						language: "ase",
+						payload: {
+							media: {
+								version: 1 as const,
+								id: "asl-passage-media",
+								kind: "video" as const,
+								sources: [{ src: CLIP, type: CLIP_TYPE }],
+								poster: POSTER,
+								lang: "ase",
+							},
+						},
+					},
+				],
+			},
+		],
+		config: {
+			markup: '<passage id="asl-passage-content"></passage>',
+			elements: {
+				passage: "@pie-element/passage@latest",
+			},
+			models: [
+				{
+					id: "asl-passage-content",
+					element: "passage",
+					title: "Photosynthesis",
+					text: '<p data-catalog-idref="asl-passage-body">Plants convert light energy into chemical energy. The reaction takes in carbon dioxide and water, and releases oxygen.</p>',
+				},
+			],
+		},
+	},
+};
+
 export const demoSignLanguageGrantedSection: AssessmentSection = {
 	identifier: "demo-sign-language-granted",
 	title: "Sign Language: signing granted",
@@ -223,4 +286,19 @@ export const demoSignLanguageNotGrantedSection: AssessmentSection = {
 		importedDemoItemRef,
 		...importedItemRefs,
 	],
+};
+
+export const demoSignLanguagePassageSection: AssessmentSection = {
+	identifier: "demo-sign-language-passage",
+	title: "Sign Language: signed passage",
+	keepTogether: true,
+	personalNeedsProfile: {
+		supports: ["signLanguage"],
+		prohibitedSupports: [],
+		activateAtInit: [],
+	},
+	rubricBlocks: [signedPassageBlock],
+	// One item, carrying no signing of its own: what shows is the passage's own
+	// signed reading, on the passage card.
+	assessmentItemRefs: [noSigningItem],
 };

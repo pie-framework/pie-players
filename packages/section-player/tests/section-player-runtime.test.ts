@@ -283,3 +283,100 @@ describe("mapRenderablesToItems", () => {
 		expect((result[1] as { id: string }).id).toBe("ok");
 	});
 });
+
+/**
+ * Heading depth is composition context: the section player publishes one level
+ * and each content kind derives its own from it. These pin the derivation and
+ * the precedence, because both are silent when wrong — a resolver that reads a
+ * stale or absent level still renders, it just renders the wrong outline.
+ * See `docs/architecture/composition-context.md`.
+ */
+describe("heading composition context", () => {
+	async function loadViewState() {
+		return import("../src/components/shared/section-player-view-state");
+	}
+
+	test("an invalid level falls back to the default rather than an <h0>", async () => {
+		const { normalizeBaseHeadingLevel, DEFAULT_SECTION_BASE_HEADING_LEVEL } =
+			await loadViewState();
+		expect(normalizeBaseHeadingLevel(3)).toBe(3);
+		expect(normalizeBaseHeadingLevel("4")).toBe(4);
+		for (const bad of [0, 7, -1, 2.5, "x", null, undefined, {}]) {
+			expect(normalizeBaseHeadingLevel(bad)).toBe(
+				DEFAULT_SECTION_BASE_HEADING_LEVEL,
+			);
+		}
+	});
+
+	test("an item card heading fills the item's slot, so the element adds none", async () => {
+		const { itemHeadingContext } = await loadViewState();
+		expect(itemHeadingContext(2)).toEqual({
+			baseHeadingLevel: 2,
+			includeSrHeading: false,
+		});
+	});
+
+	test("a passage card heading is a group label, so the title sits below it", async () => {
+		const { passageHeadingContext } = await loadViewState();
+		expect(passageHeadingContext(2)).toEqual({ baseHeadingLevel: 3 });
+		// Clamped: an h7 is not a heading.
+		expect(passageHeadingContext(6)).toEqual({ baseHeadingLevel: 6 });
+	});
+
+	test("the two content kinds derive different levels from one published value", async () => {
+		const { getItemPlayerParams, getPassagePlayerParams } = await loadViewState();
+		const shared = {
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "iife",
+			baseHeadingLevel: 3 as const,
+		};
+		const item = getItemPlayerParams({
+			item: { id: "i1", config: {} } as never,
+			compositionModel: {
+				items: [],
+				passages: [],
+				itemViewModels: [],
+				sessions: [],
+			} as never,
+			...shared,
+		});
+		const passage = getPassagePlayerParams({
+			passage: { id: "p1", config: {} },
+			...shared,
+		});
+		expect(item.props?.baseHeadingLevel).toBe(3);
+		expect(item.props?.includeSrHeading).toBe(false);
+		expect(passage.props?.baseHeadingLevel).toBe(4);
+	});
+
+	test("a host naming either prop through runtime.player wins", async () => {
+		const { getItemPlayerParams, getPassagePlayerParams } = await loadViewState();
+		const shared = {
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			// What `runtime.player` resolves into.
+			resolvedPlayerProps: { baseHeadingLevel: 5, includeSrHeading: true },
+			playerStrategy: "iife",
+			baseHeadingLevel: 2 as const,
+		};
+		const item = getItemPlayerParams({
+			item: { id: "i1", config: {} } as never,
+			compositionModel: {
+				items: [],
+				passages: [],
+				itemViewModels: [],
+				sessions: [],
+			} as never,
+			...shared,
+		});
+		const passage = getPassagePlayerParams({
+			passage: { id: "p1", config: {} },
+			...shared,
+		});
+		expect(item.props?.baseHeadingLevel).toBe(5);
+		expect(item.props?.includeSrHeading).toBe(true);
+		expect(passage.props?.baseHeadingLevel).toBe(5);
+	});
+});

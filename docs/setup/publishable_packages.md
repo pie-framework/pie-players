@@ -45,6 +45,7 @@ Publishable packages (36):
 - `@pie-players/pie-tool-periodic-table`
 - `@pie-players/pie-tool-protractor`
 - `@pie-players/pie-tool-ruler`
+- `@pie-players/pie-tool-sign-language`
 - `@pie-players/pie-tool-text-to-speech`
 - `@pie-players/pie-tool-tts-inline`
 - `@pie-players/pie-tts`

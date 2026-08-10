@@ -14,7 +14,7 @@
 <script lang="ts">
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, untrack } from 'svelte';
-	import { createDefaultPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
+	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
 	import {
 		createPatchedPnpProfile,
 		derivePnpPanelData,
@@ -93,7 +93,7 @@
 			sectionData: effectiveSectionData,
 			roleType,
 			floatingTools,
-			defaultPnpProfile: createDefaultPersonalNeedsProfile(),
+			defaultPnpProfile: createEmptyPersonalNeedsProfile(),
 			coordinator: toolkitCoordinator as PolicyPanelCoordinator | null
 		});
 	});
@@ -241,22 +241,39 @@
 						<div class="pie-section-player-tools-pnp-debugger__tool-name">
 							<strong>{row.name}</strong>
 							<span>{row.toolId}</span>
+							{#if row.contentDependency}
+								<span class="pie-section-player-tools-pnp-debugger__muted"
+									>needs {row.contentDependency}</span
+								>
+							{/if}
 						</div>
 						<div class="pie-section-player-tools-pnp-debugger__button-row">
-							{#each TOOL_PLACEMENT_LEVELS as level}
-								{#if row.supportedLevels.includes(level)}
-									<button
-										type="button"
-										class:active={row.placement[level]}
-										onclick={() => togglePlacement(row, level)}
-										data-testid={`pnp-tool-toggle-${row.toolId}-${level}`}
-									>
-										{level}{row.visible[level] ? ' visible' : ''}
-									</button>
-								{:else}
-									<span class="pie-section-player-tools-pnp-debugger__muted">{level}</span>
-								{/if}
-							{/each}
+							{#if row.placeable}
+								{#each TOOL_PLACEMENT_LEVELS as level}
+									{#if row.supportedLevels.includes(level)}
+										<button
+											type="button"
+											class:active={row.placement[level]}
+											onclick={() => togglePlacement(row, level)}
+											data-testid={`pnp-tool-toggle-${row.toolId}-${level}`}
+										>
+											{level}{row.visible[level] ? ' visible' : ''}
+										</button>
+									{:else}
+										<span class="pie-section-player-tools-pnp-debugger__muted">{level}</span>
+									{/if}
+								{/each}
+							{:else}
+								<!-- A region capability has no placement to toggle and never appears
+								     in a placement-scoped decision, so a toggle here could only write
+								     config the validator rejects and a "visible" marker could only
+								     ever read false. Its availability is the PNP row below plus its
+								     content dependency. -->
+								<span
+									class="pie-section-player-tools-pnp-debugger__muted"
+									data-testid={`pnp-tool-region-${row.toolId}`}>host surface (not placed)</span
+								>
+							{/if}
 						</div>
 						<div>
 							<button

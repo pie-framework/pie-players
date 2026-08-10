@@ -7,10 +7,10 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import {
-		createDefaultPersonalNeedsProfile,
 		createToolsConfig,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
+	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-tool-annotation-toolbar';
@@ -132,7 +132,7 @@
 		if (hasExplicitPnp) return section;
 		return {
 			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile()
+			personalNeedsProfile: createUniversalPersonalNeedsProfile()
 		};
 	});
 	let sessionPanelSectionId = $derived(

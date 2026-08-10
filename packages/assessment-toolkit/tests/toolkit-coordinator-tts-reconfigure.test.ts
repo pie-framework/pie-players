@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
-import { createPackagedToolRegistry } from "../src/services/createDefaultToolRegistry.js";
+import { createTestToolRegistry } from "./fixtures/test-tool-registry.js";
 import type { ToolRegistration } from "../src/services/ToolRegistry.js";
 
 describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
@@ -8,6 +8,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-prewarm-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 
 		let voices: SpeechSynthesisVoice[] = [];
@@ -60,6 +61,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-timeout-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 		const removeCalls: Array<() => void> = [];
 		let voicesChangedListener: (() => void) | null = null;
@@ -99,6 +101,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-no-events-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 		const synthMock = {
 			getVoices: () => [] as SpeechSynthesisVoice[],
@@ -111,12 +114,14 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		};
 		try {
 			const result = await Promise.race([
-				(coordinator as any).ensureBrowserVoicesReady(
-					{
-						providerId: "browser",
-					},
-					1,
-				).then(() => "ready"),
+				(coordinator as any)
+					.ensureBrowserVoicesReady(
+						{
+							providerId: "browser",
+						},
+						1,
+					)
+					.then(() => "ready"),
 				new Promise((resolve) => setTimeout(() => resolve("timeout"), 20)),
 			]);
 			expect(result).toBe("ready");
@@ -129,6 +134,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-prewarm-noop-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 
 		await (coordinator as any).ensureBrowserVoicesReady({
@@ -140,6 +146,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-reconfigure-sequencing-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 
 		const internals = coordinator as any;
@@ -240,6 +247,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				},
 			},
+			toolRegistry: createTestToolRegistry(),
 		} as any);
 
 		const internals = coordinator as any;
@@ -274,6 +282,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				},
 			},
+			toolRegistry: createTestToolRegistry(),
 		} as any);
 
 		const internals = coordinator as any;
@@ -307,6 +316,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				},
 			},
+			toolRegistry: createTestToolRegistry(),
 		} as any);
 
 		const internals = coordinator as any;
@@ -361,6 +371,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				},
 			},
+			toolRegistry: createTestToolRegistry(),
 		} as any);
 
 		const internals = coordinator as any;
@@ -412,6 +423,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				},
 			},
+			toolRegistry: createTestToolRegistry(),
 		} as any);
 
 		const internals = coordinator as any;
@@ -450,6 +462,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-retry-after-failure-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 
 		const internals = coordinator as any;
@@ -476,6 +489,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-concurrent-ensure-dedupe-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 
 		const internals = coordinator as any;
@@ -495,7 +509,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 	});
 
 	test("accepts custom tool ids when coordinator receives matching toolRegistry", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		const customRegistration: ToolRegistration = {
 			toolId: "customRuntimeTool",
 			name: "Custom Runtime Tool",
@@ -527,6 +541,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-method-id-rejection-test",
 			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
 		});
 		expect(() => coordinator.isToolEnabled("tts")).toThrow(
 			`Tool id "tts" is no longer supported`,

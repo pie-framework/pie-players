@@ -28,11 +28,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	async speak(text: string): Promise<void> {
 		this.speakCalls.push(text);
 		for (const boundary of this.boundariesByText.get(text) || []) {
-			this.onWordBoundary?.(
-				boundary.word,
-				boundary.position,
-				boundary.length,
-			);
+			this.onWordBoundary?.(boundary.word, boundary.position, boundary.length);
 		}
 	}
 	pause(): void {}
@@ -144,7 +140,10 @@ describe("TTSService highlight target resolver", () => {
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl));
 		const root = document.createElement("div");
-		const context: TTSHighlightContext = { scopeElement: root, itemId: "item-1" };
+		const context: TTSHighlightContext = {
+			scopeElement: root,
+			itemId: "item-1",
+		};
 		const resolver: TTSHighlightTargetResolver = {
 			resolveWordRange: (range) => range,
 			resolveSentenceRanges: (ranges) => ranges,
@@ -170,7 +169,9 @@ describe("TTSService highlight target resolver", () => {
 			context: { scopeElement: root },
 		}));
 
-		await service.speak(root.textContent || "", { contentElement: root } as any);
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+		} as any);
 
 		expect(recording.wordHighlights).toContain("spoken");
 	});
@@ -194,7 +195,9 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", { contentElement: root } as any);
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+		} as any);
 
 		expect(recording.wordHighlights).toContain("visible");
 		expect(recording.wordHighlights).not.toContain("spoken");
@@ -272,7 +275,9 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", { contentElement: root } as any);
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+		} as any);
 
 		expect(recording.wordHighlights).toContain("spoken");
 	});
@@ -296,7 +301,9 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", { contentElement: root } as any);
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+		} as any);
 
 		expect(recording.wordHighlights).toContain("spoken");
 		expect(recording.wordHighlights).not.toContain("detached");
@@ -370,7 +377,9 @@ describe("TTSService highlight target resolver", () => {
 		}));
 
 		disposeOld();
-		await service.speak(root.textContent || "", { contentElement: root } as any);
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+		} as any);
 		disposeCurrent();
 
 		expect(recording.wordHighlights).toContain("first");
@@ -396,10 +405,11 @@ describe("TTSService highlight target resolver", () => {
 		}));
 
 		service.stop();
-		await service.speak(root.textContent || "", { contentElement: root } as any);
+		await service.speak(root.textContent || "", {
+			contentElement: root,
+		} as any);
 
 		expect(recording.wordHighlights).toContain("spoken");
 		expect(recording.wordHighlights).not.toContain("first");
 	});
-
 });

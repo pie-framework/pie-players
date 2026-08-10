@@ -65,6 +65,20 @@ const mockSelectionGatewayTool: ToolRegistration = {
 	renderToolbar: () => null,
 };
 
+const mockRegionTool: ToolRegistration = {
+	toolId: "hostAlternateMedia",
+	name: "Host Alternate Media",
+	description: "Host-contributed capability rendering into a card region",
+	supportedLevels: ["item"],
+	activation: "region",
+	surfaces: ["item-media"],
+	pnpSupportIds: ["hostAlternateMedia"],
+	isVisibleInContext: () => true,
+	renderSurface: (context) => ({
+		element: { className: `region-${context.surface}` } as any,
+	}),
+};
+
 describe("ToolRegistry", () => {
 	let registry: ToolRegistry;
 
@@ -365,6 +379,9 @@ describe("ToolRegistry", () => {
 				supportedLevels: ["item", "section", "element"],
 				activation: "toolbar-toggle",
 				singletonScope: null,
+				surfaces: [],
+				requiresAuthoredContent: false,
+				contentDependencyDescription: null,
 			});
 		});
 	});
@@ -489,6 +506,212 @@ describe("ToolRegistry", () => {
 			expect(() =>
 				registry.renderForToolbar("missing-tool", context, toolbarContext),
 			).toThrow("Tool 'missing-tool' is not registered");
+		});
+	});
+	describe("region activation and host surfaces", () => {
+		test("registers a capability with no icon and no renderToolbar", () => {
+			// The point of the mechanism: a host can contribute a capability that
+			// renders somewhere other than a toolbar, with no id of ours involved.
+			expect(() => registry.register(mockRegionTool)).not.toThrow();
+			expect(registry.getToolActivation("hostAlternateMedia")).toBe("region");
+		});
+
+		test("discovers surface capabilities by surface name, not by tool id", () => {
+			registry.register(mockRegionTool);
+			registry.register(mockCalculatorTool);
+
+			expect(
+				registry.getToolsBySurface("item-media").map((tool) => tool.toolId),
+			).toEqual(["hostAlternateMedia"]);
+			expect(registry.getToolsBySurface("section-overlay")).toEqual([]);
+			expect(registry.getToolsBySurface("")).toEqual([]);
+		});
+
+		test("finds a toolbar tool that also declares a surface", () => {
+			// The annotation toolbar is both: a button at item/passage level and a
+			// section-scoped singleton. Declaring a surface must not remove it from
+			// the toolbar path.
+			registry.register({
+				...mockSelectionGatewayTool,
+				surfaces: ["section-overlay"],
+				renderSurface: () => ({ element: {} as any }),
+			});
+
+			expect(
+				registry.getToolsBySurface("section-overlay").map((t) => t.toolId),
+			).toEqual(["annotationToolbar"]);
+			expect(
+				registry.filterToolIdsByActivation(
+					["annotationToolbar"],
+					"selection-gateway",
+				),
+			).toEqual(["annotationToolbar"]);
+		});
+
+		test("reports surfaces in tool metadata", () => {
+			registry.register(mockRegionTool);
+			const meta = registry
+				.getToolMetadata()
+				.find((entry) => entry.toolId === "hostAlternateMedia");
+			expect(meta?.activation).toBe("region");
+			expect(meta?.surfaces).toEqual(["item-media"]);
+		});
+
+		test("rejects a region tool with no surfaces", () => {
+			expect(() =>
+				registry.register({ ...mockRegionTool, surfaces: [] }),
+			).toThrow("must declare at least one host surface");
+		});
+
+		test("rejects a region tool with no renderSurface", () => {
+			const { renderSurface: _omitted, ...withoutRenderSurface } =
+				mockRegionTool;
+			expect(() =>
+				registry.register(withoutRenderSurface as ToolRegistration),
+			).toThrow('must implement "renderSurface"');
+		});
+
+		test("rejects a renderSurface no host can find", () => {
+			// A surface renderer with no surface silently never renders, which is the
+			// failure mode this mechanism exists to remove.
+			const { surfaces: _omitted, ...withoutSurfaces } = mockRegionTool;
+			expect(() =>
+				registry.register({
+					...withoutSurfaces,
+					activation: "toolbar-toggle",
+					icon: "x",
+					renderToolbar: () => null,
+				} as ToolRegistration),
+			).toThrow('requires at least one entry in "surfaces"');
+		});
+
+		test("rejects non-string surfaces", () => {
+			expect(() =>
+				registry.register({
+					...mockRegionTool,
+					surfaces: ["item-media", " "],
+				}),
+			).toThrow('"surfaces" must be an array of non-empty strings');
+		});
+
+		test("still requires an icon and renderToolbar for toolbar activations", () => {
+			const { icon: _icon, ...noIcon } = mockCalculatorTool;
+			expect(() => registry.register(noIcon as ToolRegistration)).toThrow(
+				'"icon" must be a string or function',
+			);
+
+			const { renderToolbar: _render, ...noToolbar } = mockTTSTool;
+			expect(() => registry.register(noToolbar as ToolRegistration)).toThrow(
+				'"renderToolbar" must be a function',
+			);
+		});
+
+		test("renderForToolbar names the activation instead of failing on a missing method", () => {
+			registry.register(mockRegionTool);
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: {} as any,
+			};
+			expect(() =>
+				registry.renderForToolbar("hostAlternateMedia", context, {} as any),
+			).toThrow(/renders into a host surface, not a toolbar/);
+		});
+	});
+	describe("content dependency", () => {
+		const contentDependentTool: ToolRegistration = {
+			toolId: "hostSignedAlternate",
+			name: "Host Signed Alternate",
+			description: "Host-contributed signed alternate",
+			supportedLevels: ["item"],
+			activation: "region",
+			surfaces: ["item-media"],
+			pnpSupportIds: ["hostSignLanguage", "hostSigning"],
+			requiresAuthoredContent: {
+				description: "a signing card on the item",
+				resolve: (context) => (context.item as any)?.cards?.[0] ?? null,
+			},
+			isVisibleInContext: () => true,
+			renderSurface: () => ({ element: {} as any }),
+		};
+
+		test("resolves content the host hands straight back", () => {
+			registry.register(contentDependentTool);
+			const tool = registry.get("hostSignedAlternate");
+
+			// The host never inspects the result; it passes it through to
+			// renderSurface. That is what keeps it from knowing which accommodation
+			// it is resolving.
+			expect(
+				tool?.requiresAuthoredContent?.resolve({
+					featureId: "hostSignLanguage",
+					catalogResolver: null,
+					ownerContext: { ownerKind: "itemModel", itemId: "i1" },
+					item: { id: "i1", cards: ["a-card"] } as any,
+				}),
+			).toBe("a-card");
+
+			expect(
+				tool?.requiresAuthoredContent?.resolve({
+					featureId: "hostSignLanguage",
+					catalogResolver: null,
+					ownerContext: { ownerKind: "itemModel", itemId: "i2" },
+					item: { id: "i2" } as any,
+				}),
+			).toBeNull();
+		});
+
+		test("exposes content-dependent support ids for a host grant list", () => {
+			// The structural replacement for the compile-time exclusion array: a host
+			// filters on the declaration, so it can add its own accommodation.
+			registry.register(contentDependentTool);
+			registry.register(mockCalculatorTool);
+
+			expect(registry.getContentDependentSupportIds()).toEqual([
+				"hostSignLanguage",
+				"hostSigning",
+			]);
+		});
+
+		test("reports the dependency in tool metadata", () => {
+			registry.register(contentDependentTool);
+			const meta = registry
+				.getToolMetadata()
+				.find((entry) => entry.toolId === "hostSignedAlternate");
+			expect(meta?.requiresAuthoredContent).toBe(true);
+			expect(meta?.contentDependencyDescription).toBe(
+				"a signing card on the item",
+			);
+		});
+
+		test("reports no dependency for a capability without one", () => {
+			registry.register(mockCalculatorTool);
+			const meta = registry
+				.getToolMetadata()
+				.find((entry) => entry.toolId === "calculator");
+			expect(meta?.requiresAuthoredContent).toBe(false);
+			expect(meta?.contentDependencyDescription).toBeNull();
+			expect(registry.getContentDependentSupportIds()).toEqual([]);
+		});
+
+		test("rejects a dependency with no resolve function", () => {
+			expect(() =>
+				registry.register({
+					...contentDependentTool,
+					requiresAuthoredContent: { description: "x" } as any,
+				}),
+			).toThrow('must be an object with a "resolve" function');
+		});
+
+		test("rejects a dependency with no support id to filter on", () => {
+			// Declaring a content dependency with no support id would silently drop
+			// the keep-it-out-of-a-wholesale-grant guarantee.
+			const { pnpSupportIds: _omitted, ...withoutSupportIds } =
+				contentDependentTool;
+			expect(() =>
+				registry.register(withoutSupportIds as ToolRegistration),
+			).toThrow('requires at least one entry in "pnpSupportIds"');
 		});
 	});
 });

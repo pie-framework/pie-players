@@ -16,7 +16,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 - Toolkit APIs use semantic `toolId` values (for example `calculator`, `textToSpeech`).
 - Web component tags (for example `pie-tool-calculator`) are resolved through `toolTagMap`.
 - Integrators can override both tag mapping and creation logic via
-  `createPackagedToolRegistry({ toolTagMap, toolComponentFactories })`.
+  `createPackagedToolRegistry({ toolTagMap, toolComponentFactories })` from `@pie-players/pie-default-tool-loaders`.
 
 ## Architecture
 
@@ -280,7 +280,7 @@ isVisibleInContext(context: ToolContext): boolean {
 ### Creating a Registry
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 import {
   DEFAULT_TOOL_MODULE_LOADERS,
 } from '@pie-players/pie-default-tool-loaders';
@@ -541,6 +541,7 @@ Tool registration supports explicit activation semantics:
 
 - `toolbar-toggle` (default): rendered as a regular toolbar button and toggled by the coordinator.
 - `selection-gateway`: mounted as a singleton gateway that reacts to text selection and opens in-place actions.
+- `region`: rendered into a host surface, with no toolbar button and no icon.
 
 ### Selection-Gateway Example
 
@@ -550,6 +551,143 @@ Tool registration supports explicit activation semantics:
 - `singletonScope: "section"`
 
 This keeps one active annotation gateway per section runtime while still honoring canonical tool config (`policy`, `placement`, `providers`).
+
+## Host Surfaces
+
+Not every policy-addressable capability is a toolbar surface. A signed alternate renders as its own region beside item content; asking `decide({ level: "item" })` about it answers the wrong question, since it comes back absent because nothing placed it rather than because policy said no. That is why a host gates a `region` capability on `decideFeaturePolicy` — the placement-scoped question cannot be made to work, since placing a region capability is itself a `tools.unplaceableActivation` error.
+
+A capability that renders somewhere other than a toolbar declares which host surfaces it fits, and implements `renderSurface`:
+
+```ts
+export const alternateMediaRegistration: ToolRegistration = {
+  toolId: 'hostAlternateMedia',
+  name: 'Alternate media',
+  description: 'Docked alternate media for an item',
+  supportedLevels: ['item'],
+  activation: 'region',
+  surfaces: ['item-media'],
+  pnpSupportIds: ['hostAlternateMedia'],
+  requiresAuthoredContent: {
+    description: 'an alternate-media catalog card on the item',
+    resolve: ({ catalogResolver, ownerContext, item }) =>
+      findAlternateMediaCard(catalogResolver, ownerContext, item),
+  },
+  renderSurface: (context) => {
+    // Through `resolveToolTag`, not a literal tag: that is what lets a deployment
+    // substitute its own element for this capability through `componentOverrides`.
+    const tagName = resolveToolTag(context.toolId, context.componentOverrides ?? {});
+    if (!customElements.get(tagName)) return null;
+    const element = document.createElement(tagName) as HTMLElement & {
+      media?: unknown;
+    };
+    // Reads the context it is handed, never the one captured at mount: `sync` is
+    // called with the current context, and closing over this one re-applies the
+    // values the host already had.
+    const apply = (current: ToolSurfaceRenderContext) => {
+      element.media = current.content;
+    };
+    apply(context);
+    return { element, ariaLabel: 'Alternate media', sync: apply };
+  },
+};
+```
+
+Surface names belong to the host, not to this package. Core validates only that a region capability claims at least one, so a host can open a new surface without a change here. `section-player` ships two:
+
+| Surface | Scope | Grant question | Content dependency |
+| --- | --- | --- | --- |
+| `item-media` | per item card | `decideFeaturePolicy` | resolved and passed as `content` |
+| `section-overlay` | section singleton | `decideFeaturePolicy` for `region`, `decideToolPolicy` for a placed toolbar activation | not resolvable — see below |
+
+A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability. Both halves of availability are the host's job:
+
+```ts
+for (const tool of registry.getToolsBySurface('item-media')) {
+  // A capability declares which support ids grant it; any one is enough.
+  const supportIds = tool.pnpSupportIds?.length ? tool.pnpSupportIds : [tool.toolId];
+  let featureId: string | undefined;
+  let decision: FeaturePolicyDecision | undefined;
+  for (const supportId of supportIds) {
+    const candidate = coordinator.decideFeaturePolicy(supportId);
+    if (candidate?.granted) {
+      featureId = supportId;
+      decision = candidate;
+      break;
+    }
+  }
+  if (!featureId || !decision) continue;
+
+  // The content half. Skipping it mounts the capability with `content: undefined`,
+  // which is the dead affordance the declaration exists to prevent.
+  let content: unknown = null;
+  if (tool.requiresAuthoredContent) {
+    content = tool.requiresAuthoredContent.resolve({
+      featureId,
+      parameters: decision.parameters,
+      catalogResolver,
+      ownerContext,
+      item,
+    });
+    if (content == null) continue;
+  }
+
+  // A capability may register its element through a lazy module loader, so its
+  // tag can be undefined until this resolves.
+  await registry.ensureToolModuleLoaded(tool.toolId);
+
+  // Through the registry, not `tool.renderSurface` directly: the registry owns
+  // the component-override map a capability resolves its element tag against.
+  const rendered = registry.renderForSurface(tool.toolId, {
+    toolId: tool.toolId,
+    featureId,
+    surface: 'item-media',
+    parameters: decision.parameters,
+    content,
+    services: { toolkitCoordinator: coordinator, ttsService, catalogResolver },
+  });
+  // `null` is a legitimate answer, not an error — a capability whose element tag
+  // was remapped to one nothing defined declines here. Drive the region's own
+  // visibility off what mounted, not off what was granted.
+  if (rendered) mount(rendered.element);
+}
+```
+
+Reconcile by `toolId` on re-resolve and call `sync(context)` with a freshly built context rather than remounting: a `<video>` recreated mid-playback restarts the recording, and a capability handed its render-time context back learns nothing. Call `destroy()` and remove the element when a capability loses its grant — including when losing the last one destroys the surface itself, where returning early leaves a detached element with its listeners and playback intact.
+
+A content dependency is resolvable only on a surface the host renders per item or per passage. `CatalogOwnerContext` names an item model or a passage and never a section, because a DRD resource pairs with a piece of content rather than with a container; `section-overlay` therefore declines a capability that declares one instead of mounting it with nothing.
+
+`@pie-players/pie-tool-sign-language` is the shipped example of this end to end: a
+capability package that owns its registration, its content resolver and its
+element, registered by the host rather than by us.
+
+Three consequences of `activation: "region"`:
+
+- `icon`, `renderToolbar` and `isVisibleInContext` are not required — there is no button to put them on, and the question `isVisibleInContext` would answer (is there anything to show here) is `requiresAuthoredContent`. All three stay required for the two toolbar activations, so no existing registration is relaxed. A registration without `isVisibleInContext` is never returned by `getVisibleTools`.
+- Naming a region capability in `placement.{section,item,passage}` is a `tools.unplaceableActivation` error. It would never render there, and reporting it at the config rather than at render time is the difference between a diagnostic and a silently absent accommodation.
+- `renderForToolbar` throws with the activation named if a caller asks a region capability for a button.
+
+A capability can be both: `annotationToolbar` is a toolbar button at item and passage level *and* a section-scoped singleton, so it carries `renderToolbar` and `renderSurface` together.
+
+## Content Dependencies
+
+Some capabilities need authored content before they have anything to show. Signing needs a catalog card, braille a transcription, authored SSML a `<speak>` in that item. A registration declares that with `requiresAuthoredContent`:
+
+```ts
+requiresAuthoredContent: {
+  description: 'a sign-language catalog card on the item',
+  resolve: ({ catalogResolver, ownerContext, item }) =>
+    findSigningCard(catalogResolver, ownerContext, item),
+},
+```
+
+This is the resource half of AfA's PNP/DRD pair, and it is intrinsic to the capability — unlike eligibility tier, which is a property of the program and belongs in policy configuration.
+
+Two independent things follow, and both were previously done by naming ids in core:
+
+- **Availability is grant AND content.** A host renders only when policy granted the feature *and* `resolve` returned something. Neither half implies the other and neither is a default, so a learner who has the accommodation still sees nothing on an item carrying no resource — no dead affordance. `resolve`'s return value is handed straight back through `ToolSurfaceRenderContext.content`; the host never inspects it, which is what keeps the host from knowing which accommodation it is resolving.
+- **It is never granted wholesale.** `registry.getContentDependentSupportIds()` is what a host filters a default grant list on, in place of a compile-time array of ids it cannot extend. A host adding its own accommodation gets the same guarantee by declaring the dependency.
+
+A registration declaring a content dependency must carry at least one `pnpSupportIds` entry — that is what a host filters on, so declaring the dependency with nothing to filter would silently drop the second guarantee. Registration rejects it.
 
 ### Interaction-Specific
 - **Answer Eliminator** - Shows only on choice-based questions (MC, inline choice, select text)

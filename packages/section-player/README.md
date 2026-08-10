@@ -234,11 +234,17 @@ than no-passage mode.
 
 ### Item card media region
 
-An item card can carry a `data-region="media"` region beside its content region,
-holding a resolved accessibility-catalog media card — today a sign-language
-(ASL) video, gated on the `signLanguage` PNP support. The region only appears
-when the item carries a matching catalog card *and* policy grants the feature, so
-there is no dead affordance on items without signing.
+An item card can carry a `data-region="media"` region beside its content region.
+It is a host surface named `item-media`, not a feature: whatever capability
+declares `surfaces: ['item-media']` in its registration renders there, and this
+package names none of them. The region appears only when policy grants the
+capability *and* the capability's own `requiresAuthoredContent` resolves, so
+there is no dead affordance on items that carry nothing.
+
+Today's occupant is `@pie-players/pie-tool-sign-language` — a signed (ASL)
+translation gated on the `signLanguage` PNP support. It is not part of the
+packaged capability set: a deployment opts in by registering it on the tool
+registry it passes to the player.
 
 It sits to the right of the question content and is resizable via a
 keyboard-accessible divider (`role="separator"`; arrow keys, `Home`/`End`,
@@ -247,8 +253,9 @@ the content and the divider is withdrawn. Placement is fixed in this iteration:
 there is no orientation toggle and no free repositioning.
 
 Signing legibility needs height for hands and face, so the video is sized by an
-aspect-ratio target with a height floor rather than by width alone. Hosts can
-retune it:
+aspect-ratio target with a height floor rather than by width alone. Those three
+tokens are defined by the signing package rather than here, and are documented in
+[its README](../tool-sign-language/README.md); hosts set them on the card:
 
 - `--pie-section-player-item-media-aspect-ratio` (default `3 / 4`)
 - `--pie-section-player-item-media-min-height` (default `220px`)

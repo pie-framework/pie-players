@@ -190,6 +190,7 @@
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
         "@pie-players/pie-tool-calculator-desmos": "workspace:*",
+        "@pie-players/pie-tool-sign-language": "workspace:*",
         "@pie-players/pie-tool-text-to-speech": "workspace:*",
         "@pie-players/pie-tool-tts-inline": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
@@ -662,6 +663,22 @@
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
         "moveable": "^0.53.0",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.6",
+        "@sveltejs/vite-plugin-svelte": "^7.2.0",
+        "svelte": "^5.56.8",
+        "typescript": "^5.9.3",
+        "vite": "^8.0.10",
+        "vite-plugin-dts": "^4.5.4",
+      },
+    },
+    "packages/tool-sign-language": {
+      "name": "@pie-players/pie-tool-sign-language",
+      "version": "0.3.50",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.6",
@@ -1206,6 +1223,8 @@
     "@pie-players/pie-tool-protractor": ["@pie-players/pie-tool-protractor@workspace:packages/tool-protractor"],
 
     "@pie-players/pie-tool-ruler": ["@pie-players/pie-tool-ruler@workspace:packages/tool-ruler"],
+
+    "@pie-players/pie-tool-sign-language": ["@pie-players/pie-tool-sign-language@workspace:packages/tool-sign-language"],
 
     "@pie-players/pie-tool-text-to-speech": ["@pie-players/pie-tool-text-to-speech@workspace:packages/tool-text-to-speech"],
 

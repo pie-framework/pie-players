@@ -567,7 +567,6 @@ export const alternateMediaRegistration: ToolRegistration = {
   activation: 'region',
   surfaces: ['item-media'],
   pnpSupportIds: ['hostAlternateMedia'],
-  isVisibleInContext: () => true,
   renderSurface: ({ surface, content, services, featureId }) => {
     const element = document.createElement('pie-host-alternate-media');
     (element as any).media = content;
@@ -584,14 +583,20 @@ A renderer finds what it can mount by asking the registry, which is what keeps i
 for (const tool of registry.getToolsBySurface('item-media')) {
   const decision = coordinator.decideFeaturePolicy(tool.pnpSupportIds[0]);
   if (!decision.granted) continue;
-  const rendered = tool.renderSurface({ /* ... */ });
+  // Through the registry, not `tool.renderSurface` directly: the registry owns
+  // the component-override map a capability resolves its element tag against.
+  const rendered = registry.renderForSurface(tool.toolId, { /* ... */ });
   if (rendered) mount(rendered.element);
 }
 ```
 
+`@pie-players/pie-tool-sign-language` is the shipped example of this end to end: a
+capability package that owns its registration, its content resolver and its
+element, registered by the host rather than by us.
+
 Three consequences of `activation: "region"`:
 
-- `icon` and `renderToolbar` are not required — there is no button to put them on. They stay required for the two toolbar activations, so no existing registration is relaxed.
+- `icon`, `renderToolbar` and `isVisibleInContext` are not required — there is no button to put them on, and the question `isVisibleInContext` would answer (is there anything to show here) is `requiresAuthoredContent`. All three stay required for the two toolbar activations, so no existing registration is relaxed. A registration without `isVisibleInContext` is never returned by `getVisibleTools`.
 - Naming a region capability in `placement.{section,item,passage}` is a `tools.unplaceableActivation` error. It would never render there, and reporting it at the config rather than at render time is the difference between a diagnostic and a silently absent accommodation.
 - `renderForToolbar` throws with the activation named if a caller asks a region capability for a button.
 

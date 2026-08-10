@@ -98,12 +98,13 @@ Merging satisfies this trivially. Emitting both satisfies it only if assembly an
 
 ## Package And Export Ownership
 
-- Owning package for resolution and policy: `@pie-players/pie-assessment-toolkit` (source at `packages/assessment-toolkit`). It already owns `AccessibilityCatalogResolver`, the PNP feature vocabulary, and `ToolPolicyEngine`.
+- Owning package for the generic machinery: `@pie-players/pie-assessment-toolkit` (source at `packages/assessment-toolkit`). It owns `AccessibilityCatalogResolver`, the PNP feature vocabulary, `ToolPolicyEngine` and the registration contract — and, since PIE-886, names no capability.
+- Owning package for signing itself: `@pie-players/pie-tool-sign-language` (source at `packages/tool-sign-language`), added 2026-08-10. It holds the card validation, the content resolver, the registration and the region element. Signing is the worked example of a capability contributed from outside the player: it is not in `createPackagedToolRegistry`, so a deployment opts in by registering it.
 - Owning package for data types: `@pie-players/pie-players-shared` (source at `packages/players-shared`), where `CatalogCard`, `AccessibilityCatalog`, and `PersonalNeedsProfile` already live.
-- Runtime host: `@pie-players/pie-section-player`, same as spoken/TTS catalogs today. Section-player consumes `assessment-toolkit` (which owns the catalog resolver and PNP policy), so no new host is introduced — only a new catalog card type and a new renderer for it.
-- Rendering placement: **a per-item region in `SectionItemCard.svelte`**, alongside the `header` and `content` regions it already declares — decided 2026-08-07. Not a toolbar surface, and not an item-player affordance. `item-player` needs to know nothing about signing.
+- Runtime host: `@pie-players/pie-section-player`, same as spoken/TTS catalogs today. It offers the `item-media` surface and mounts whatever is registered on it; it does not depend on the signing package and does not name signing, the `signLanguage` support id or the `sign-language` catalog type.
+- Rendering placement: **a per-item region in `SectionItemCard.svelte`**, alongside the `header` and `content` regions it already declares — decided 2026-08-07, and since 2026-08-10 reached through the generic `item-media` surface rather than by name. Not a toolbar surface, and not an item-player affordance. `item-player` needs to know nothing about signing.
 - Policy identity: **signing takes a feature id and registers for policy**, so it inherits the six-level precedence in `PnpPolicySource` (`district-block`, `test-admin-override`, `item-restriction`, `item-requirement`, `district-requirement`, `pnp-support`, `pnp-prohibited`). Policy identity and rendering placement are deliberately separated here; see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool).
-- Public export path: open question; expected to be additive exports from the two owners above plus the region and its registration.
+- Public export path: `@pie-players/pie-tool-sign-language` for the registration, the card validators and the content resolver; the generic media-payload helpers (`applyMediaFragment` and the normalizers) stay on the toolkit's public surface.
 - Consuming packages or apps: `section-player`, `assessment-toolkit` registry and policy engine, demo apps, `pie-elements-ng` only if per-node docking below the prompt is later scoped, and `pie-qti` adapters.
 - Runtime environment: browser and custom element; data types must stay Node-safe for importers and adapters.
 
@@ -316,7 +317,7 @@ Import/export mapping, if it is ever built, belongs in `pie-qti` and is where an
 
 ## Relationship To Section-Player And To Timed Media
 
-**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host.
+**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. Since PIE-886 the host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["item-media"]`, and signing lives in its own package.
 
 What this PRD is *not* is a new section flavor. [Timed media](./timed-media-section-contract.md) is a section flavor — it introduces `sectionType: "timed-media"`, cue orchestration, and a specialized layout custom element — because it composes multiple items around a shared timeline. Signing does none of that: many short recordings, each translating one content node, played on learner demand, gating nothing.
 
@@ -360,7 +361,7 @@ Playwright-backed tests must run outside the sandbox.
 
 ## Rollout And Release Notes
 
-- Changeset required: yes. This adds public exports and a section-player region under the lockstep versioning policy.
+- Changeset required: yes. This adds public exports, a section-player region and (2026-08-10) the `@pie-players/pie-tool-sign-language` package, under the lockstep versioning policy.
 - Migration notes: additive for authored content — existing `spoken`, `braille` and other string-form catalogs keep working untouched. Not additive at the type level: `CatalogCard.content` and `ResolvedCatalog.content` became optional (see [Contract Shape](#contract-shape)), so a consumer that reads `.content` as a `string` needs a guard. Hosts supplying their own `PersonalNeedsProfile` see no behavior change until they grant signing eligibility.
 - Documentation updates: accessibility catalog quick start and integration guide, tools-and-accommodations docs, the PNP debugger tool docs, and `pie-qti` adapter PRDs.
 - Release risk: medium-high. The runtime surface is small, but it is an accommodation — a silent failure means a learner cannot read the item at all, and the failure mode is invisible to hosts that do not test with `signLanguage` granted.

@@ -395,10 +395,16 @@ export interface ToolRegistration {
 	 * Pass 2: Tool decides if it's relevant in this context
 	 * Called ONLY if orchestrator has already allowed the tool (Pass 1)
 	 *
+	 * Required for the toolbar activations, and meaningless for `activation:
+	 * "region"`: a region capability has no toolbar presence to be relevant to, and
+	 * the question it *would* answer — is there anything to show here — is
+	 * `requiresAuthoredContent`. A registration that omits this is never returned
+	 * by `getVisibleTools`.
+	 *
 	 * @param context - Rich context about where tool is being evaluated
 	 * @returns true if tool should be visible, false to hide
 	 */
-	isVisibleInContext(context: ToolContext): boolean;
+	isVisibleInContext?(context: ToolContext): boolean;
 
 	/**
 	 * Toolbar render contract. Required for `toolbar-toggle` and
@@ -597,9 +603,20 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 			`Invalid tool registration "${registration.toolId}": "pnpSupportIds" must be an array of non-empty strings.`,
 		);
 	}
-	if (typeof registration.isVisibleInContext !== "function") {
+	if (
+		registration.activation !== "region" &&
+		typeof registration.isVisibleInContext !== "function"
+	) {
 		throw new Error(
 			`Invalid tool registration "${registration.toolId}": "isVisibleInContext" must be a function.`,
+		);
+	}
+	if (
+		registration.isVisibleInContext !== undefined &&
+		typeof registration.isVisibleInContext !== "function"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "isVisibleInContext" must be a function when present.`,
 		);
 	}
 	if (registration.requiresAuthoredContent !== undefined) {
@@ -887,9 +904,10 @@ export class ToolRegistry {
 				continue;
 			}
 
-			// Pass 2: Ask tool if it's relevant
+			// Pass 2: Ask tool if it's relevant. A region capability declares no
+			// answer and has no toolbar presence, so it is never visible here.
 			try {
-				if (tool.isVisibleInContext(context)) {
+				if (tool.isVisibleInContext?.(context)) {
 					visible.push(tool);
 				}
 			} catch (error) {

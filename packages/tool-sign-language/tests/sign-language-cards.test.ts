@@ -5,15 +5,17 @@ import type {
 	SignLanguageCardPayload,
 } from "@pie-players/pie-players-shared/types";
 
-import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
+import {
+	AccessibilityCatalogResolver,
+	applyMediaFragment,
+} from "@pie-players/pie-assessment-toolkit";
 import {
 	AMERICAN_SIGN_LANGUAGE,
-	applyMediaFragment,
 	describeSignLanguage,
 	matchesRequestedSignLanguage,
 	resolveSignLanguageMedia,
 	SIGN_LANGUAGE_CATALOG_TYPE,
-} from "../src/services/sign-language-cards";
+} from "../src/sign-language-cards";
 
 function payload(
 	overrides: Partial<SignLanguageCardPayload> = {},

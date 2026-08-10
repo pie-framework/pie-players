@@ -42,17 +42,12 @@
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 	import SectionCardSplitDivider from "./SectionCardSplitDivider.svelte";
-	import SectionItemMediaRegion from "./SectionItemMediaRegion.svelte";
 	import {
 		clampMediaRegionPercent,
-		collectSignLanguageCatalogRefs,
 		MEDIA_REGION_DEFAULT_PERCENT,
 		MEDIA_REGION_MAX_PERCENT,
 		MEDIA_REGION_MIN_PERCENT,
 		MEDIA_REGION_STACK_BREAKPOINT_PX,
-		resolveSignLanguageAlternate,
-		SIGN_LANGUAGE_FEATURE_ID,
-		type ResolvedSignLanguageAlternate,
 	} from "./section-item-media.js";
 
 	let {
@@ -131,15 +126,21 @@
 	});
 
 	// ------------------------------------------------------------------
-	// Catalog media region (signed alternates today, audio description next)
+	// Item media surface
 	// ------------------------------------------------------------------
 
 	/**
-	 * Which of the item's catalogs carry signing cards. The card is never rewritten
-	 * to produce them: a signed alternate arrives as an authored or imported
-	 * catalog, so the config handed to the item player is the one it was given.
+	 * A host slot, not a capability. Whatever registers on it renders here if
+	 * policy grants it and its content dependency resolves; this file names no
+	 * capability, no support id and no element tag, which is what lets a host
+	 * contribute a docked accommodation without a change here. Which capabilities
+	 * exist is the deployment's choice — see the package README.
+	 *
+	 * The card is never rewritten to produce that content: a docked alternate
+	 * arrives as an authored or imported catalog, so the config handed to the item
+	 * player is the one it was given.
 	 */
-	const signLanguageRefs = $derived(collectSignLanguageCatalogRefs(item));
+	const ITEM_MEDIA_SURFACE = "item-media";
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Bumped from the coordinator's policy-change stream so the eligibility
@@ -152,36 +153,26 @@
 
 	const mediaRegionId = $derived(`${headingId}-media`);
 
+	/** Capabilities that have declared themselves renderable in this slot. */
+	const mediaSurfaceTools = $derived(
+		toolRegistry?.getToolsBySurface?.(ITEM_MEDIA_SURFACE) ?? [],
+	);
+
 	/**
-	 * Eligibility half of availability. A feature decision rather than a
-	 * placement-scoped tool decision: the region is not a toolbar surface, so
-	 * asking the placement question would answer "absent" for the wrong reason.
+	 * Eligibility half of availability, per capability. A feature decision rather
+	 * than a placement-scoped tool decision: the region is not a toolbar surface,
+	 * so asking the placement question would answer "absent" for the wrong reason.
+	 *
+	 * The support id comes from the capability's own `pnpSupportIds`, so a host
+	 * capability is gated by its own id with no list here to extend.
 	 */
-	const signLanguageDecision = $derived.by(() => {
-		void policyChangeVersion;
+	function decideFeatureFor(supportId: string) {
 		const coordinator = runtimeContext?.toolkitCoordinator;
 		if (!coordinator || typeof coordinator.decideFeaturePolicy !== "function") {
 			return null;
 		}
-		return coordinator.decideFeaturePolicy(SIGN_LANGUAGE_FEATURE_ID);
-	});
-	const signLanguageGranted = $derived(signLanguageDecision?.granted === true);
-	/**
-	 * Which sign language the learner is entitled to. Read from the feature's
-	 * policy parameters (`toolParameters` / `toolConfigs`), never inferred from
-	 * the item's content language — a Spanish item's signed alternate is LSM,
-	 * not ASL.
-	 */
-	const requestedSignLang = $derived.by(() => {
-		const parameters = signLanguageDecision?.parameters;
-		if (parameters && typeof parameters === "object") {
-			const candidate = (parameters as { signLang?: unknown }).signLang;
-			if (typeof candidate === "string" && candidate.trim()) {
-				return candidate.trim();
-			}
-		}
-		return undefined;
-	});
+		return coordinator.decideFeaturePolicy(supportId);
+	}
 
 	// Built by the same function the runtime registers catalogs with, so the
 	// lookup scope cannot drift from the registered one.
@@ -196,9 +187,10 @@
 	);
 
 	/**
-	 * Content half of availability: the resolver has a matching card. Both halves
-	 * are required and neither implies the other, so a learner with the
-	 * accommodation still sees nothing on the vast majority of items.
+	 * Content half of availability: the capability's own `requiresAuthoredContent`
+	 * found what it needs. Both halves are required and neither implies the other,
+	 * so a learner with an accommodation still sees nothing on the vast majority of
+	 * items.
 	 *
 	 * State rather than `$derived`, and written only when the answer changes.
 	 * The resolver is not reactive, so this has to be recomputed on a signal from
@@ -212,39 +204,83 @@
 	 * the DOM half-applied. Comparing before writing breaks the cycle at the only
 	 * point where it can be broken without either side knowing about the other.
 	 */
-	let resolvedMedia = $state<ResolvedSignLanguageAlternate | null>(null);
-	/** Signature of the value in `resolvedMedia`; deliberately not reactive. */
-	let resolvedMediaSignature = "";
+	type GrantedMediaCapability = {
+		toolId: string;
+		featureId: string;
+		parameters?: unknown;
+		content: unknown;
+	};
+	let grantedMediaCapabilities = $state<GrantedMediaCapability[]>([]);
+	/** Signature of what is in `grantedMediaCapabilities`; not reactive. */
+	let grantedMediaSignature = "";
 
-	function computeSignLanguageAlternate(): ResolvedSignLanguageAlternate | null {
-		if (!signLanguageGranted) return null;
-		const resolver = runtimeContext?.catalogResolver;
-		if (!resolver || signLanguageRefs.length === 0) return null;
-		return resolveSignLanguageAlternate({
-			resolver,
-			refs: signLanguageRefs,
-			ownerContext: catalogOwnerContext,
-			requestedSignLang,
-		});
+	function computeGrantedMediaCapabilities(): GrantedMediaCapability[] {
+		const granted: GrantedMediaCapability[] = [];
+		for (const tool of mediaSurfaceTools) {
+			// A capability declares which support ids grant it; any one is enough.
+			const supportIds = tool.pnpSupportIds?.length
+				? tool.pnpSupportIds
+				: [tool.toolId];
+			let decision: ReturnType<typeof decideFeatureFor> = null;
+			let featureId = "";
+			for (const supportId of supportIds) {
+				const candidate = decideFeatureFor(supportId);
+				if (candidate?.granted === true) {
+					decision = candidate;
+					featureId = supportId;
+					break;
+				}
+			}
+			if (!decision) continue;
+
+			// A capability with no content dependency needs only the grant.
+			let content: unknown = null;
+			if (tool.requiresAuthoredContent) {
+				try {
+					content = tool.requiresAuthoredContent.resolve({
+						featureId,
+						parameters: decision.parameters,
+						catalogResolver: runtimeContext?.catalogResolver ?? null,
+						ownerContext: catalogOwnerContext,
+						item,
+					});
+				} catch {
+					// A capability that throws while looking for its content is absent,
+					// not fatal to the card.
+					content = null;
+				}
+				if (content === null || content === undefined) continue;
+			}
+			granted.push({
+				toolId: tool.toolId,
+				featureId,
+				parameters: decision.parameters,
+				content,
+			});
+		}
+		return granted;
 	}
 
-	function syncSignLanguageAlternate(): void {
-		const next = computeSignLanguageAlternate();
-		// Structural, not by identity: every resolution builds a fresh object, so
+	function syncGrantedMediaCapabilities(): void {
+		const next = computeGrantedMediaCapabilities();
+		// Structural, not by identity: every resolution builds fresh objects, so
 		// identity would report a change on every call and defeat the guard.
-		const signature = next ? JSON.stringify(next) : "";
-		if (signature === resolvedMediaSignature) return;
-		resolvedMediaSignature = signature;
-		resolvedMedia = next;
+		const signature = next.length > 0 ? JSON.stringify(next) : "";
+		if (signature === grantedMediaSignature) return;
+		grantedMediaSignature = signature;
+		grantedMediaCapabilities = next;
 	}
 
-	// Policy, eligibility and the item's own refs are reactive, so reading them
-	// through `computeSignLanguageAlternate` is what re-resolves when they move.
+	// Policy, the registered surface set and the item are reactive, so reading them
+	// through `computeGrantedMediaCapabilities` is what re-resolves when they move.
 	$effect(() => {
-		syncSignLanguageAlternate();
+		void policyChangeVersion;
+		void mediaSurfaceTools;
+		void item;
+		syncGrantedMediaCapabilities();
 	});
 
-	const mediaRegionVisible = $derived(resolvedMedia !== null);
+	const mediaRegionVisible = $derived(grantedMediaCapabilities.length > 0);
 	// Below the breakpoint the region stacks under the content, where a resize
 	// handle has nothing to divide.
 	const mediaRegionStacked = $derived(
@@ -299,20 +335,109 @@
 		// effect above; tracking them here too would tear down and re-establish the
 		// subscription every time any of them moved.
 		const unsubscribe = coordinator.onCatalogsChange(() =>
-			untrack(syncSignLanguageAlternate),
+			untrack(syncGrantedMediaCapabilities),
 		);
 		// Resolve once on subscribe, because effects run after the DOM update that
 		// mounted this card — and the item shell inside that subtree can register
 		// its catalogs from `connectedCallback` during the very same update, before
 		// this listener exists. Subscribing without re-resolving would miss exactly
 		// the fast case.
-		untrack(syncSignLanguageAlternate);
+		untrack(syncGrantedMediaCapabilities);
 		return () => {
 			try {
 				unsubscribe?.();
 			} catch {
 				// Detach errors are non-fatal: the coordinator may already be gone.
 			}
+		};
+	});
+
+	/**
+	 * Mount each granted capability's element into the region.
+	 *
+	 * Imperative rather than a `{#each}` of components, because what renders is a
+	 * host-registered element this package must not import. Reconciled by toolId so
+	 * a re-resolve reapplies props through `sync` instead of tearing the element
+	 * down — a `<video>` recreated mid-playback would restart the recording.
+	 */
+	let mediaAnchor = $state<HTMLDivElement | null>(null);
+	const mountedMediaTools = new Map<
+		string,
+		{ element: HTMLElement; sync?: () => void; destroy?: () => void }
+	>();
+
+	$effect(() => {
+		const anchor = mediaAnchor;
+		const granted = grantedMediaCapabilities;
+		const registry = toolRegistry;
+		if (!anchor || !registry) return;
+
+		untrack(() => {
+			const wanted = new Set(granted.map((entry) => entry.toolId));
+			for (const [toolId, mounted] of [...mountedMediaTools]) {
+				if (wanted.has(toolId)) continue;
+				try {
+					mounted.destroy?.();
+				} catch {
+					// A capability that throws on teardown must not strand the element.
+				}
+				mounted.element.remove();
+				mountedMediaTools.delete(toolId);
+			}
+
+			for (const entry of granted) {
+				const existing = mountedMediaTools.get(entry.toolId);
+				if (existing) {
+					try {
+						existing.sync?.();
+					} catch {
+						// A failed reapply leaves the element as it was, which is better
+						// than removing a region the learner is watching.
+					}
+					continue;
+				}
+				let rendered: ReturnType<typeof registry.renderForSurface> = null;
+				try {
+					rendered = registry.renderForSurface(entry.toolId, {
+						toolId: entry.toolId,
+						featureId: entry.featureId,
+						surface: ITEM_MEDIA_SURFACE,
+						parameters: entry.parameters,
+						content: entry.content,
+						services: {
+							toolkitCoordinator: runtimeContext?.toolkitCoordinator ?? null,
+							ttsService: runtimeContext?.ttsService ?? null,
+							catalogResolver: runtimeContext?.catalogResolver ?? null,
+						},
+					});
+				} catch {
+					rendered = null;
+				}
+				if (!rendered?.element) continue;
+				if (rendered.ariaLabel) {
+					rendered.element.setAttribute("aria-label", rendered.ariaLabel);
+				}
+				anchor.appendChild(rendered.element);
+				mountedMediaTools.set(entry.toolId, {
+					element: rendered.element,
+					sync: rendered.sync,
+					destroy: rendered.destroy,
+				});
+			}
+		});
+	});
+
+	$effect(() => {
+		return () => {
+			for (const mounted of mountedMediaTools.values()) {
+				try {
+					mounted.destroy?.();
+				} catch {
+					// Teardown errors are non-fatal while the card is going away.
+				}
+				mounted.element.remove();
+			}
+			mountedMediaTools.clear();
 		};
 	});
 
@@ -394,7 +519,7 @@
 			></pie-item-toolbar>
 		</div>
 		<!-- The split wrapper is always present, and the content region always sits
-		     in the same slot within it, so a signed alternate resolving after mount
+		     in the same slot within it, so a docked alternate resolving after mount
 		     adds siblings rather than re-creating the item player. -->
 		<div
 			class={`pie-section-player-item-card-split ${
@@ -424,17 +549,13 @@
 					onresize={onMediaRegionResize}
 				/>
 			{/if}
-			{#if mediaRegionVisible && resolvedMedia}
+			{#if mediaRegionVisible}
 				<div
 					id={mediaRegionId}
 					class="pie-section-player-item-card-media"
 					data-region="media"
 				>
-					<SectionItemMediaRegion
-						media={resolvedMedia}
-						regionId={mediaRegionId}
-						ttsService={runtimeContext?.ttsService ?? null}
-					/>
+					<div bind:this={mediaAnchor} data-pie-tool-surface={ITEM_MEDIA_SURFACE}></div>
 				</div>
 			{/if}
 		</div>
@@ -534,9 +655,9 @@
 		padding: 0 1rem 1rem;
 	}
 
-	/* Signing is re-checked while an answer is being formed, not read once
-	   beforehand, so the recording follows a long question down the scroll
-	   rather than disappearing above it. */
+	/* A docked alternate is consulted while an answer is being formed, not read
+	   once beforehand, so it follows a long question down the scroll rather than
+	   disappearing above it. */
 	.pie-section-player-item-card-split--with-media:not(.pie-section-player-item-card-split--stacked)
 		.pie-section-player-item-card-media {
 		position: sticky;

@@ -24,10 +24,14 @@
  * guard because a synthesizer speaks whatever text is present; signed content does
  * not exist until a signer films it. Revisit only if per-node signing docking
  * lands and a program authors signing for decoding-construct items.
- *
- * Part of PIE Assessment Toolkit.
  */
 
+import {
+	isSafeMediaSrc,
+	normalizeMediaFragment,
+	normalizeMediaSources,
+	trimmedOrUndefined,
+} from "@pie-players/pie-assessment-toolkit";
 import type {
 	CatalogCard,
 	CatalogCardPayload,
@@ -36,18 +40,6 @@ import type {
 	MediaSource,
 	SignLanguageCardPayload,
 } from "@pie-players/pie-players-shared/types";
-import {
-	applyMediaFragment,
-	isSafeMediaSrc,
-	normalizeMediaFragment,
-	normalizeMediaSources,
-	trimmedOrUndefined,
-} from "./catalog-media.js";
-
-// Re-exported because `applyMediaFragment` is part of the toolkit's public
-// surface under this module's name; the implementation is shared with spoken
-// audio cards now that both forms reference media.
-export { applyMediaFragment };
 
 /** Catalog type token for signed alternates. Matches QTI 3's `support` value. */
 export const SIGN_LANGUAGE_CATALOG_TYPE = "sign-language";

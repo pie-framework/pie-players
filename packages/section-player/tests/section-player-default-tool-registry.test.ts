@@ -14,6 +14,14 @@ const KERNEL_HOST_PATH = resolve(
 	__dirname,
 	"../src/components/PieSectionPlayerKernelHostElement.svelte",
 );
+const ITEM_CARD_PATH = resolve(
+	__dirname,
+	"../src/components/shared/SectionItemCard.svelte",
+);
+const ITEM_MEDIA_PATH = resolve(
+	__dirname,
+	"../src/components/shared/section-item-media.ts",
+);
 
 function readSource(path: string): string {
 	return readFileSync(path, "utf8");
@@ -74,7 +82,11 @@ describe("section-player names no capability for its section-scoped surface", ()
 		// literal, and the module load and mount follow from the same list.
 		expect(source).toContain("candidate.toolId === tool.toolId");
 		expect(source).toContain(".ensureToolModuleLoaded(toolId)");
-		expect(source).toContain("tool.renderSurface?.({");
+		// Through the registry rather than `tool.renderSurface` directly: the
+		// registry owns the component-override map a capability resolves its element
+		// tag against, so calling the registration straight from here left every
+		// packaged surface capability unable to find its tag.
+		expect(source).toContain("registry.renderForSurface(tool.toolId, {");
 	});
 
 	test("base element names no capability id or element tag", () => {
@@ -87,5 +99,40 @@ describe("section-player names no capability for its section-scoped surface", ()
 
 		expect(source).not.toContain("annotationToolbar");
 		expect(source).not.toContain("pie-tool-annotation-toolbar");
+	});
+});
+
+describe("section-player names no capability for its item media surface", () => {
+	test("the item card discovers media capabilities through the registry", () => {
+		const source = readSource(ITEM_CARD_PATH);
+
+		expect(source).toContain('const ITEM_MEDIA_SURFACE = "item-media";');
+		expect(source).toContain("getToolsBySurface?.(ITEM_MEDIA_SURFACE)");
+		// Eligibility against the capability's own support ids, and the content half
+		// through its own declaration — so a host capability is gated by its own id
+		// with no list here to extend.
+		expect(source).toContain("tool.pnpSupportIds");
+		expect(source).toContain("tool.requiresAuthoredContent.resolve({");
+		// Through the registry, which owns the component-override map a capability
+		// resolves its element tag against.
+		expect(source).toContain("registry.renderForSurface(entry.toolId, {");
+	});
+
+	test("the item card and its sizing module name no capability, support id or tag", () => {
+		// The regression this guards: signing used to be named here in six places —
+		// the support id, the catalog refs walk, the resolver call, the requested
+		// language, the region import and the element — so no host could contribute a
+		// docked accommodation without a PR against this repo. PIE-886 removed all
+		// six. `check:player-tool-boundaries` forbids the package name; this covers
+		// the ids and the element tag.
+		for (const sourcePath of [ITEM_CARD_PATH, ITEM_MEDIA_PATH]) {
+			const source = readSource(sourcePath);
+
+			expect(source).not.toContain("signLanguage");
+			expect(source).not.toContain("signLang");
+			expect(source).not.toContain("sign-language");
+			expect(source).not.toContain("pie-tool-sign-language");
+			expect(source).not.toContain("SectionItemMediaRegion");
+		}
 	});
 });

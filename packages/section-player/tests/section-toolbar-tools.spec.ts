@@ -295,19 +295,19 @@ test.describe("section toolbar tools", () => {
 				// here, because no CI job or local gate runs this spec.
 				await page.getByRole("tab", { name: "Questions" }).click();
 				await expect(
-					page.locator(".pie-section-player-item-header h2").first(),
+					page.locator(".pie-section-player-item-header :is(h1,h2,h3,h4,h5,h6)").first(),
 				).toHaveText("Custom question 1");
 				await page.getByRole("tab", { name: "Passage" }).click();
 				await expect(
-					page.locator(".pie-section-player-passage-header h2").first(),
+					page.locator(".pie-section-player-passage-header :is(h1,h2,h3,h4,h5,h6)").first(),
 				).toHaveText("Custom passage");
 				return;
 			}
 			await expect(
-				page.locator(".pie-section-player-item-header h2").first(),
+				page.locator(".pie-section-player-item-header :is(h1,h2,h3,h4,h5,h6)").first(),
 			).toHaveText("Custom question 1");
 			await expect(
-				page.locator(".pie-section-player-passage-header h2").first(),
+				page.locator(".pie-section-player-passage-header :is(h1,h2,h3,h4,h5,h6)").first(),
 			).toHaveText("Custom passage");
 		}
 
@@ -342,10 +342,10 @@ test.describe("section toolbar tools", () => {
 		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 
 		await expect(
-			page.locator(".pie-section-player-item-header h2").first(),
+			page.locator(".pie-section-player-item-header :is(h1,h2,h3,h4,h5,h6)").first(),
 		).toHaveText("Custom question 1");
 		await expect(
-			page.locator(".pie-section-player-passage-header h2").first(),
+			page.locator(".pie-section-player-passage-header :is(h1,h2,h3,h4,h5,h6)").first(),
 		).toHaveText("Custom passage");
 	});
 

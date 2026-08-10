@@ -291,7 +291,9 @@ test.describe("section toolbar tools", () => {
 				name: "Section content tabs",
 			});
 			if ((await tablist.count()) > 0) {
-				await page.getByRole("tab", { name: "Items" }).click();
+				// "Questions", not "Items": renamed in b0fd4af2 (pie-547) and missed
+				// here, because no CI job or local gate runs this spec.
+				await page.getByRole("tab", { name: "Questions" }).click();
 				await expect(
 					page.locator(".pie-section-player-item-header h2").first(),
 				).toHaveText("Custom question 1");

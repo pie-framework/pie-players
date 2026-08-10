@@ -150,6 +150,26 @@
 		return safeFontSizePx * SPLIT_DIVIDER_TRACK_REM;
 	}
 
+	/**
+	 * Horizontal space a pane spends on its own gutter, which is margin rather than
+	 * padding so the gutter sits outside the scrollable region.
+	 *
+	 * Measured rather than read from the constant the stylesheet uses, so a theme or
+	 * host override that changes the gutter cannot silently shrink the region a host
+	 * asked to guarantee.
+	 */
+	function getPaneGutterPx(container: HTMLElement): number {
+		const pane = container.querySelector<HTMLElement>(
+			".pie-section-player-passages-pane, .pie-section-player-items-pane",
+		);
+		if (!pane) return 0;
+		const style = getComputedStyle(pane);
+		const left = Number.parseFloat(style.marginLeft || "0");
+		const right = Number.parseFloat(style.marginRight || "0");
+		const total = (Number.isFinite(left) ? left : 0) + (Number.isFinite(right) ? right : 0);
+		return total > 0 ? total : 0;
+	}
+
 	function computeSplitBounds(
 		container: HTMLElement,
 		minRegionWidthPx: number,
@@ -163,7 +183,13 @@
 		if (usableWidthPx <= 0) {
 			return { min: 50, max: 50 };
 		}
-		const rawMinPercent = (minRegionWidthPx / usableWidthPx) * 100;
+		// The bound is on the region, not on the grid track it sits in. Each pane
+		// spends its gutter out of its own track, so sizing the track to the
+		// requested width handed back a region that much narrower — a host asking for
+		// 280px to keep a passage legible got 264px, and the shortfall grows with the
+		// gutter.
+		const trackWidthPx = minRegionWidthPx + getPaneGutterPx(container);
+		const rawMinPercent = (trackWidthPx / usableWidthPx) * 100;
 		if (!Number.isFinite(rawMinPercent) || rawMinPercent >= 50) {
 			return { min: 50, max: 50 };
 		}

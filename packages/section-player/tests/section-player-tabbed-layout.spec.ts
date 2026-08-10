@@ -18,7 +18,9 @@ test.describe("section player tabbed layout", () => {
 		await expect(tablist).toBeVisible();
 
 		const passageTab = page.getByRole("tab", { name: "Passage" });
-		const itemsTab = page.getByRole("tab", { name: "Items" });
+		// "Questions", not "Items": renamed in b0fd4af2 (pie-547) and missed here,
+		// because no CI job or local gate runs this spec.
+		const itemsTab = page.getByRole("tab", { name: "Questions" });
 		await expect(passageTab).toBeVisible();
 		await expect(itemsTab).toBeVisible();
 		await expect(passageTab).toHaveAttribute(
@@ -138,7 +140,7 @@ test.describe("section player tabbed layout", () => {
 			page.locator("pie-section-player-splitpane").first(),
 		).toBeVisible();
 		await expect(page.getByRole("tab", { name: "Passage" })).toBeVisible();
-		await expect(page.getByRole("tab", { name: "Items" })).toBeVisible();
+		await expect(page.getByRole("tab", { name: "Questions" })).toBeVisible();
 		await expect(page.getByText("Urban Trees and Heat")).toBeVisible();
 	});
 });

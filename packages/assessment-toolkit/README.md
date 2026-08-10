@@ -1121,10 +1121,18 @@ placement. Use it for capabilities that are not toolbar surfaces — signing is 
 first — where a placement-scoped `decide(...)` would answer the wrong question:
 absent because it was never placed, rather than absent because policy said no.
 
-`computeDefaultSupports()` excludes `ACCOMMODATION_ONLY_SUPPORT_IDS`, which lists
-`signLanguage`. The computed default profile derives from every registered tool's
-`pnpSupportIds`, which is right for universal features and wrong for an
-accommodation requiring a documented need.
+`createEmptyPersonalNeedsProfile()` is the only profile this package ships, and it
+grants nothing. Which capabilities a deployment grants by default is a property
+of the program rather than of a capability — TTS is a universal feature in one
+program and a documented accommodation in another — so it belongs in policy
+configuration alongside the district and test-administration levels. Hosts that
+want today's universal set take `createUniversalPersonalNeedsProfile()` from
+`@pie-players/pie-default-tool-loaders`, which ships it as data.
+
+Nothing derives a profile from the registry any more. Doing so read registry
+membership as eligibility tier — registration means "policy-addressable", not
+"universal, on by default" — and had to be corrected with a compile-time list of
+ids to exclude that a host could not extend for its own accommodation.
 
 ## Integration with Section Player
 

@@ -2,11 +2,11 @@
 	import { browser } from "$app/environment";
 	import { afterNavigate, replaceState } from "$app/navigation";
 	import {
-		createDefaultPersonalNeedsProfile,
 		createToolsConfig,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 	import "@pie-players/pie-section-player/components/section-player-vertical-element";
 	import "@pie-players/pie-tool-theme";
@@ -110,7 +110,7 @@
 		if (hasExplicitPnp) return section;
 		return {
 			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile(),
+			personalNeedsProfile: createUniversalPersonalNeedsProfile(),
 		};
 	});
 	const sessionPanelSectionId = $derived(

@@ -14,7 +14,7 @@
 <script lang="ts">
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, untrack } from 'svelte';
-	import { createDefaultPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
+	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
 	import {
 		createPatchedPnpProfile,
 		derivePnpPanelData,
@@ -93,7 +93,7 @@
 			sectionData: effectiveSectionData,
 			roleType,
 			floatingTools,
-			defaultPnpProfile: createDefaultPersonalNeedsProfile(),
+			defaultPnpProfile: createEmptyPersonalNeedsProfile(),
 			coordinator: toolkitCoordinator as PolicyPanelCoordinator | null
 		});
 	});

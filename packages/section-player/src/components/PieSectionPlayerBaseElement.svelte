@@ -33,7 +33,6 @@
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
 		createPackagedToolRegistry,
-		createDefaultPersonalNeedsProfile,
 		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
@@ -137,20 +136,8 @@
 		() => runtime?.onStageChange ?? onStageChange,
 	);
 	const effectiveSectionId = $derived.by(
-		() => sectionId || (resolvedSection as any)?.identifier || "",
+		() => sectionId || (section as any)?.identifier || "",
 	);
-	let resolvedSection = $derived.by(() => {
-		if (!section) return null;
-		const sectionAny = section as any;
-		const hasExplicitPnp = Boolean(
-			sectionAny?.personalNeedsProfile || sectionAny?.settings?.personalNeedsProfile,
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile(),
-		};
-	});
 
 	function emit<K extends keyof BaseSectionPlayerEvents>(
 		name: K,
@@ -415,7 +402,7 @@
 <pie-assessment-toolkit
 	bind:this={toolkitElement}
 	assessment-id={effectiveAssessmentId}
-	section={resolvedSection}
+	section={section}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}

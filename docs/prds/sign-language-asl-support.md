@@ -230,7 +230,7 @@ Signing is available when **both** conditions hold: the content carries a matchi
 
 This is deliberately not framed as "default on versus default off." The content condition is the DRD half of AfA's matching pair (see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool)), and it is what prevents a dead affordance on the overwhelming majority of items that carry no signing video — regardless of what the computed default profile happens to say. The eligibility half follows the accommodation tier: not granted by default, because signing requires a documented need.
 
-One consequence worth stating for implementation: signing takes a feature id, so it is picked up by `computeDefaultSupports()` and would enter `DEFAULT_PERSONAL_NEEDS_PROFILE` unless deliberately excluded. Exclude it. Hosts that supply their own profile are unaffected either way.
+Revised 2026-08-09 (PIE-886): the core no longer synthesizes a default profile, so there is nothing for signing to leak into. An earlier version of this line required excluding `signLanguage` from `computeDefaultSupports()` by id; that derivation and its exclusion list are both gone. Signing instead declares `requiresAuthoredContent`, which is what keeps it out of a host's wholesale grant structurally. Hosts that supply their own profile are unaffected either way.
 
 Validation: `sign-language` cards need indexing and validation distinct from text cards, since a malformed media payload must not silently degrade to an empty string or render a URL as visible text.
 
@@ -240,7 +240,7 @@ This PRD touches these surfaces:
 
 - **Contract attributes.** It adds a second consumer of `data-catalog-idref`. TTS behavior through that attribute must not change; the attribute stays one canonical name with two readers.
 - **Persisted/authored wire data.** `CatalogCard` gains a payload shape. Existing `{ catalog, language?, content }` cards keep resolving unchanged, and `content` is where every text-ish type still lives. Revised 2026-08-08: an earlier version of this bullet also required `sign-language` cards carrying a bare URL in `content` to keep working as a legacy single-source form. That requirement is dropped — no producer writes that shape, and accepting it would mean a second code path and a second source of truth for the same URL while silently discarding the MIME type, label, and any second source. Such a card is now reported and ignored.
-- **Default PNP.** `DEFAULT_PERSONAL_NEEDS_PROFILE` is *computed* from the packaged tool registry by `computeDefaultSupports()`. Registering a signing tool with `pnpSupportIds: ["signLanguage"]` would therefore widen the default profile for every host that does not supply its own. Decided 2026-08-08: signing must be explicitly opted into. `signLanguage` is listed in `ACCOMMODATION_ONLY_SUPPORT_IDS` and filtered out of that computation by id — not by declining to register the tool, so the guarantee survives however a signing tool later reaches the registry.
+- **Default PNP.** Signing must be explicitly opted into (decided 2026-08-08). The mechanism changed on 2026-08-09 under PIE-886: rather than excluding `signLanguage` by id from a profile computed off the packaged registry, the core stops computing a profile at all — `createEmptyPersonalNeedsProfile()` grants nothing, and `@pie-players/pie-default-tool-loaders` ships the universal set as a named preset a host adopts. Signing's registration declares `requiresAuthoredContent`, so a host building its own grant list has a declaration to filter on instead of a compile-time array it cannot extend.
 - **`pie-elements-ng`.** Choice-level docking requires element markup to carry `data-catalog-idref` on choice nodes. That is element-repo work and must not be faked by synthesizing ids in the player.
 
 It must not change PIE element runtime/controller contracts, versioned `pie-*` tag names, `pie-item-player` properties/events/methods, section completion state, or assessment-player routing.
@@ -340,7 +340,7 @@ Required test coverage:
 - payload validation fixtures for single-source, multi-source, poster, fragment range, and malformed payload, plus one pinning that a bare URL in `content` resolves to nothing and that a payload under any other key name does too;
 - docking tests proving a `data-catalog-idref` node resolves a signing card without changing TTS resolution for the same attribute;
 - PNP gating tests: affordance absent without `signLanguage`, present with it, and absent when prohibited via `prohibitedSupports`;
-- a regression test pinning that `signLanguage` stays out of `computeDefaultSupports()` however a signing tool is registered;
+- a regression test pinning that `signLanguage` stays out of any wholesale grant: the core's profile grants nothing, and the composition package's universal preset excludes every id belonging to a registration that declares `requiresAuthoredContent`;
 - keyboard and focus tests for opening, playing, and dismissing the affordance, including focus restoration;
 - TTS/signing mutual-exclusion tests;
 - a test that the docked English content remains visible during signing playback;

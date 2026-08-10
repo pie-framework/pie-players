@@ -41,7 +41,8 @@
 		"@pie-players/pie-tool-periodic-table": "workspace:*",
 		"@pie-players/pie-tool-protractor": "workspace:*",
 		"@pie-players/pie-tool-ruler": "workspace:*",
-		"@pie-players/pie-tool-tts-inline": "workspace:*"
+		"@pie-players/pie-tool-tts-inline": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.6",

@@ -1,3 +1,8 @@
+export {
+	UNIVERSAL_SUPPORTS_PRESET,
+	createUniversalPersonalNeedsProfile,
+} from "./universal-supports.js";
+
 export type ToolModuleLoader = () => Promise<unknown>;
 
 export interface ToolRegistryLike {

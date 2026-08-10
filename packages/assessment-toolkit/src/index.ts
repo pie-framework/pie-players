@@ -181,11 +181,7 @@ export {
 } from "./services/createDefaultToolRegistry.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
-export {
-	ACCOMMODATION_ONLY_SUPPORT_IDS,
-	DEFAULT_PERSONAL_NEEDS_PROFILE,
-	createDefaultPersonalNeedsProfile,
-} from "./services/defaultPersonalNeedsProfile.js";
+export { createEmptyPersonalNeedsProfile } from "./services/defaultPersonalNeedsProfile.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,

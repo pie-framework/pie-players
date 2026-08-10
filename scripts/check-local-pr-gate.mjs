@@ -56,10 +56,20 @@ const requiredLocalPrCommands = [
 ];
 
 const requiredCiE2eCommands = [
-	"test:e2e:section-player:critical",
 	"test:e2e:item-player:critical",
 	"test:e2e:assessment-player",
 ];
+
+/**
+ * CI must run the whole section-player suite, not the critical subset. Matched on
+ * the full matrix line rather than by substring, because
+ * `test:e2e:section-player` is a prefix of `test:e2e:section-player:critical` and
+ * a substring check would accept the subset it exists to forbid.
+ *
+ * The subset stays in `verify:local-pr` on purpose: CI is the safety net, and an
+ * ordinary push should not pay ten minutes for it.
+ */
+const requiredCiSectionPlayerCommand = /command:\s*test:e2e:section-player\s*$/m;
 
 function collectMissingOrderedCommands({
 	scripts,
@@ -166,6 +176,12 @@ export function collectGateFailures({
 		if (!ciWorkflow.includes(command)) {
 			failures.push(`CI critical e2e matrix is missing "${command}".`);
 		}
+	}
+
+	if (!requiredCiSectionPlayerCommand.test(ciWorkflow)) {
+		failures.push(
+			'CI e2e matrix must run the full section-player suite ("command: test:e2e:section-player"), not a subset.',
+		);
 	}
 
 	return failures;

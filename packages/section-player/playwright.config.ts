@@ -21,7 +21,9 @@ export default defineConfig({
 	reporter: "list",
 	use: {
 		baseURL,
-		screenshot: "on",
+		// Only on failure: the suite runs every spec in CI, and a PNG per passing
+		// test is artifact weight nobody reads.
+		screenshot: "only-on-failure",
 		video: "retain-on-failure",
 	},
 	webServer: {

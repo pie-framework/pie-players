@@ -18,7 +18,7 @@ const baseLefthook =
 	"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      use_stdin: true\n      run: bun ./scripts/pre-push-gate.mjs\n";
 
 const baseCiWorkflow =
-	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  command:\n    - test:e2e:section-player:critical\n    - test:e2e:item-player:critical\n    - test:e2e:assessment-player\n";
+	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  include:\n    - command: test:e2e:section-player\n    - command: test:e2e:item-player:critical\n    - command: test:e2e:assessment-player\n";
 
 const basePrePushGate =
 	'const gate = spawnSync("bun", ["run", "verify:pre-push"], { stdio: "inherit" });\n';
@@ -80,6 +80,25 @@ describe("check-local-pr-gate policy", () => {
 		);
 		expect(failures).toContain(
 			'verify:local-pr is missing "bun run test:e2e:assessment-player".',
+		);
+	});
+
+	test("rejects a CI matrix that runs only the critical section-player subset", () => {
+		// The subset is what let three stale specs and two product defects sit
+		// undetected for months. A substring check would accept it, because
+		// `test:e2e:section-player` is a prefix of `...:critical`.
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow.replace(
+				"command: test:e2e:section-player\n",
+				"command: test:e2e:section-player:critical\n",
+			),
+			prePushGate: basePrePushGate,
+		});
+
+		expect(failures).toContain(
+			'CI e2e matrix must run the full section-player suite ("command: test:e2e:section-player"), not a subset.',
 		);
 	});
 

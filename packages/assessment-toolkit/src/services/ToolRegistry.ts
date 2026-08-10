@@ -5,6 +5,8 @@
  * and button/instance creation. Supports dynamic registration and override by integrators.
  */
 
+import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import type { CatalogOwnerContext } from "./AccessibilityCatalogResolver.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
 import type {
@@ -239,6 +241,59 @@ export interface ToolSurfaceRenderContext {
 	componentOverrides?: ToolComponentOverrides;
 }
 
+/**
+ * What a host tells a capability when asking whether the content it needs is
+ * present.
+ */
+export interface ToolContentDependencyContext {
+	/** The PNP/AfA support id being resolved. */
+	featureId: string;
+	/** Feature parameters from the policy decision, if any. */
+	parameters?: unknown;
+	catalogResolver: AccessibilityCatalogResolverApi | null;
+	/** Owner scope for catalog lookups, without `modelId`. */
+	ownerContext: CatalogOwnerContext;
+	/** The item in scope, when the host renders per item. */
+	item?: ItemEntity | null;
+}
+
+/**
+ * A capability's declaration that it needs authored content to have anything to
+ * show, and the check that decides whether that content is present.
+ *
+ * This is the resource half of AfA's PNP/DRD pair. Signing needs an authored
+ * catalog card, braille a transcription, authored SSML a `<speak>` in that item.
+ * It is intrinsic to the capability, unlike eligibility tier, which is a property
+ * of the program.
+ *
+ * Two independent things follow from declaring it, and both used to be done by
+ * naming ids in core:
+ *
+ *   1. **Availability is grant AND content.** The host renders only when policy
+ *      granted the feature *and* `resolve` returned something. Neither half
+ *      implies the other and neither is a default, so a learner with the
+ *      accommodation still sees nothing on an item that carries no resource — no
+ *      dead affordance.
+ *   2. **It is not granted wholesale.** A host building a default grant list
+ *      filters on this declaration instead of on a compile-time array of ids it
+ *      cannot extend. `@pie-players/pie-default-tool-loaders` asserts its
+ *      universal preset holds no id belonging to a capability that declares one.
+ *
+ * `resolve` returns the resolved content, which the host hands straight back
+ * through `ToolSurfaceRenderContext.content` without inspecting it. That is what
+ * keeps the resolver and the host from knowing which accommodation they are
+ * resolving.
+ */
+export interface ToolContentDependency {
+	/** The resolved content, or `null` when the item carries none. */
+	resolve(context: ToolContentDependencyContext): unknown | null;
+	/**
+	 * Optional human-readable description of what has to be authored, for a
+	 * policy debugger explaining why an otherwise-granted capability is absent.
+	 */
+	description?: string;
+}
+
 export interface ToolSurfaceRenderResult {
 	/** Element for the host to mount into its surface. */
 	element: HTMLElement;
@@ -303,6 +358,16 @@ export interface ToolRegistration {
 	 * Example: ['calculator', 'basic-calculator', 'scientific-calculator']
 	 */
 	pnpSupportIds?: string[];
+
+	/**
+	 * Authored content this capability needs before it has anything to show.
+	 *
+	 * Declaring it makes availability "grant AND content", and excludes the
+	 * capability from any wholesale default grant. See
+	 * {@link ToolContentDependency}.
+	 */
+	requiresAuthoredContent?: ToolContentDependency;
+
 	/**
 	 * Optional provider registration metadata.
 	 * When present, ToolkitCoordinator can register provider(s) generically
@@ -537,6 +602,25 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 			`Invalid tool registration "${registration.toolId}": "isVisibleInContext" must be a function.`,
 		);
 	}
+	if (registration.requiresAuthoredContent !== undefined) {
+		if (
+			typeof registration.requiresAuthoredContent !== "object" ||
+			registration.requiresAuthoredContent === null ||
+			typeof registration.requiresAuthoredContent.resolve !== "function"
+		) {
+			throw new Error(
+				`Invalid tool registration "${registration.toolId}": "requiresAuthoredContent" must be an object with a "resolve" function.`,
+			);
+		}
+		if (!registration.pnpSupportIds?.length) {
+			// A content dependency's second job is keeping the capability out of a
+			// wholesale grant, and a host filters that by support id. Declaring one
+			// with no id to filter on would silently drop that guarantee.
+			throw new Error(
+				`Invalid tool registration "${registration.toolId}": "requiresAuthoredContent" requires at least one entry in "pnpSupportIds", which is what a host filters a default grant list on.`,
+			);
+		}
+	}
 	if (registration.renderToolbar !== undefined) {
 		if (typeof registration.renderToolbar !== "function") {
 			throw new Error(
@@ -748,6 +832,22 @@ export class ToolRegistry {
 	}
 
 	/**
+	 * Support ids belonging to capabilities that need authored content.
+	 *
+	 * What a host filters a default grant list on, in place of the compile-time
+	 * exclusion array this replaced: granting one of these wholesale grants an
+	 * accommodation to learners with no documented need for it.
+	 */
+	getContentDependentSupportIds(): string[] {
+		const ids = new Set<string>();
+		for (const tool of this.getAllTools()) {
+			if (!tool.requiresAuthoredContent) continue;
+			for (const supportId of tool.pnpSupportIds || []) ids.add(supportId);
+		}
+		return [...ids].sort();
+	}
+
+	/**
 	 * Filter tool IDs by activation type.
 	 */
 	filterToolIdsByActivation(
@@ -818,6 +918,8 @@ export class ToolRegistry {
 		activation: ToolActivation;
 		singletonScope: ToolSingletonScope | null;
 		surfaces: string[];
+		requiresAuthoredContent: boolean;
+		contentDependencyDescription: string | null;
 	}> {
 		return this.getAllTools().map((tool) => ({
 			toolId: tool.toolId,
@@ -828,6 +930,9 @@ export class ToolRegistry {
 			activation: tool.activation || "toolbar-toggle",
 			singletonScope: tool.singletonScope || null,
 			surfaces: tool.surfaces || [],
+			requiresAuthoredContent: Boolean(tool.requiresAuthoredContent),
+			contentDependencyDescription:
+				tool.requiresAuthoredContent?.description ?? null,
 		}));
 	}
 

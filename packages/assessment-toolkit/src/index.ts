@@ -139,6 +139,8 @@ export type {
 	ToolContextResolverMap,
 	ToolContextResolverResult,
 	ToolActivation,
+	ToolContentDependency,
+	ToolContentDependencyContext,
 	ToolModuleLoader,
 	ToolSingletonScope,
 	ToolSurfaceRenderContext,

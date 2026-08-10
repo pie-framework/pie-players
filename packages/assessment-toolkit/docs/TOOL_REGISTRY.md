@@ -597,6 +597,27 @@ Three consequences of `activation: "region"`:
 
 A capability can be both: `annotationToolbar` is a toolbar button at item and passage level *and* a section-scoped singleton, so it carries `renderToolbar` and `renderSurface` together.
 
+## Content Dependencies
+
+Some capabilities need authored content before they have anything to show. Signing needs a catalog card, braille a transcription, authored SSML a `<speak>` in that item. A registration declares that with `requiresAuthoredContent`:
+
+```ts
+requiresAuthoredContent: {
+  description: 'a sign-language catalog card on the item',
+  resolve: ({ catalogResolver, ownerContext, item }) =>
+    findSigningCard(catalogResolver, ownerContext, item),
+},
+```
+
+This is the resource half of AfA's PNP/DRD pair, and it is intrinsic to the capability — unlike eligibility tier, which is a property of the program and belongs in policy configuration.
+
+Two independent things follow, and both were previously done by naming ids in core:
+
+- **Availability is grant AND content.** A host renders only when policy granted the feature *and* `resolve` returned something. Neither half implies the other and neither is a default, so a learner who has the accommodation still sees nothing on an item carrying no resource — no dead affordance. `resolve`'s return value is handed straight back through `ToolSurfaceRenderContext.content`; the host never inspects it, which is what keeps the host from knowing which accommodation it is resolving.
+- **It is never granted wholesale.** `registry.getContentDependentSupportIds()` is what a host filters a default grant list on, in place of a compile-time array of ids it cannot extend. A host adding its own accommodation gets the same guarantee by declaring the dependency.
+
+A registration declaring a content dependency must carry at least one `pnpSupportIds` entry — that is what a host filters on, so declaring the dependency with nothing to filter would silently drop the second guarantee. Registration rejects it.
+
 ### Interaction-Specific
 - **Answer Eliminator** - Shows only on choice-based questions (MC, inline choice, select text)
 

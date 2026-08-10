@@ -54,9 +54,14 @@ describe("universal supports preset", () => {
 
 	test("grants no content-dependent accommodation", () => {
 		// A capability needing an authored resource must not arrive through a
-		// wholesale grant. `signLanguage` is the one shipped today; step 3 of
-		// PIE-886 replaces this id check with an assertion against every
-		// registration declaring `requiresAuthoredContent`.
+		// wholesale grant: it would grant an accommodation to learners with no
+		// documented need for it.
+		//
+		// Checked by id here because the registrations still live in the toolkit.
+		// The declaration-driven form — asserting the preset holds nothing in
+		// `registry.getContentDependentSupportIds()` — lands with the registrations
+		// in PIE-886 step 5, and is what lets a host add its own accommodation
+		// without editing a list of ours.
 		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain("signLanguage");
 	});
 

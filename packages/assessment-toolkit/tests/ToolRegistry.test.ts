@@ -380,6 +380,8 @@ describe("ToolRegistry", () => {
 				activation: "toolbar-toggle",
 				singletonScope: null,
 				surfaces: [],
+				requiresAuthoredContent: false,
+				contentDependencyDescription: null,
 			});
 		});
 	});
@@ -615,6 +617,101 @@ describe("ToolRegistry", () => {
 			expect(() =>
 				registry.renderForToolbar("hostAlternateMedia", context, {} as any),
 			).toThrow(/renders into a host surface, not a toolbar/);
+		});
+	});
+	describe("content dependency", () => {
+		const contentDependentTool: ToolRegistration = {
+			toolId: "hostSignedAlternate",
+			name: "Host Signed Alternate",
+			description: "Host-contributed signed alternate",
+			supportedLevels: ["item"],
+			activation: "region",
+			surfaces: ["item-media"],
+			pnpSupportIds: ["hostSignLanguage", "hostSigning"],
+			requiresAuthoredContent: {
+				description: "a signing card on the item",
+				resolve: (context) => (context.item as any)?.cards?.[0] ?? null,
+			},
+			isVisibleInContext: () => true,
+			renderSurface: () => ({ element: {} as any }),
+		};
+
+		test("resolves content the host hands straight back", () => {
+			registry.register(contentDependentTool);
+			const tool = registry.get("hostSignedAlternate");
+
+			// The host never inspects the result; it passes it through to
+			// renderSurface. That is what keeps it from knowing which accommodation
+			// it is resolving.
+			expect(
+				tool?.requiresAuthoredContent?.resolve({
+					featureId: "hostSignLanguage",
+					catalogResolver: null,
+					ownerContext: { ownerKind: "itemModel", itemId: "i1" },
+					item: { id: "i1", cards: ["a-card"] } as any,
+				}),
+			).toBe("a-card");
+
+			expect(
+				tool?.requiresAuthoredContent?.resolve({
+					featureId: "hostSignLanguage",
+					catalogResolver: null,
+					ownerContext: { ownerKind: "itemModel", itemId: "i2" },
+					item: { id: "i2" } as any,
+				}),
+			).toBeNull();
+		});
+
+		test("exposes content-dependent support ids for a host grant list", () => {
+			// The structural replacement for the compile-time exclusion array: a host
+			// filters on the declaration, so it can add its own accommodation.
+			registry.register(contentDependentTool);
+			registry.register(mockCalculatorTool);
+
+			expect(registry.getContentDependentSupportIds()).toEqual([
+				"hostSignLanguage",
+				"hostSigning",
+			]);
+		});
+
+		test("reports the dependency in tool metadata", () => {
+			registry.register(contentDependentTool);
+			const meta = registry
+				.getToolMetadata()
+				.find((entry) => entry.toolId === "hostSignedAlternate");
+			expect(meta?.requiresAuthoredContent).toBe(true);
+			expect(meta?.contentDependencyDescription).toBe(
+				"a signing card on the item",
+			);
+		});
+
+		test("reports no dependency for a capability without one", () => {
+			registry.register(mockCalculatorTool);
+			const meta = registry
+				.getToolMetadata()
+				.find((entry) => entry.toolId === "calculator");
+			expect(meta?.requiresAuthoredContent).toBe(false);
+			expect(meta?.contentDependencyDescription).toBeNull();
+			expect(registry.getContentDependentSupportIds()).toEqual([]);
+		});
+
+		test("rejects a dependency with no resolve function", () => {
+			expect(() =>
+				registry.register({
+					...contentDependentTool,
+					requiresAuthoredContent: { description: "x" } as any,
+				}),
+			).toThrow('must be an object with a "resolve" function');
+		});
+
+		test("rejects a dependency with no support id to filter on", () => {
+			// Declaring a content dependency with no support id would silently drop
+			// the keep-it-out-of-a-wholesale-grant guarantee.
+			const { pnpSupportIds: _omitted, ...withoutSupportIds } =
+				contentDependentTool;
+			expect(() =>
+				registry.register(withoutSupportIds as ToolRegistration),
+			).toThrow('requires at least one entry in "pnpSupportIds"');
 		});
 	});
 });

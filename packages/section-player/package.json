@@ -108,7 +108,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@types/node": "^25.1.0",
 		"svelte": "^5.56.8",
-		"svelte-check": "^4.4.6",
+		"svelte-check": "^4.7.5",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.10",
 		"vite-plugin-dts": "^4.5.4"

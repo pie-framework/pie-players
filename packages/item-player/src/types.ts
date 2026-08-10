@@ -44,6 +44,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	renderStimulus?: boolean;
 	allowedResize?: boolean;
 	baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+	includeSrHeading?: boolean;
 	passageContainerClass?: string;
 	customClassName?: string;
 	customClassname?: string;

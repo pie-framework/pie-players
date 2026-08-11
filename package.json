@@ -113,6 +113,7 @@
 		"check:provenance": "bun ./scripts/check-provenance.mjs",
 		"check:trusted-publishers": "bun ./scripts/check-trusted-publishers.mjs",
 		"trusted-publishers": "node ./scripts/configure-trusted-publishers.mjs",
+		"bootstrap-package": "node ./scripts/bootstrap-package.mjs",
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release:with-version": "bun run check:changeset-patch-only && bun ./scripts/create-temporary-release-changeset.mjs && bun run version && bun run restore:workspace-ranges && bun run check:npm-auth && bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges",

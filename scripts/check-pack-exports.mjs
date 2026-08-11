@@ -2,6 +2,8 @@ import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { parsePackJson } from "./lib/pack-inspection.mjs";
+
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const HASH_ONLY_FILE_PATTERN = /^(?:module|chunk|index)?-?[a-f0-9]{8,}\.m?js$/i;
@@ -85,16 +87,6 @@ const getWorkspaceDirs = () => {
 	}
 
 	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
-
-const parsePackJson = (rawOutput) => {
-	const start = rawOutput.indexOf("[");
-	const end = rawOutput.lastIndexOf("]");
-	if (start < 0 || end < 0 || end < start) {
-		throw new Error("npm pack output did not include JSON payload");
-	}
-	const jsonText = rawOutput.slice(start, end + 1);
-	return JSON.parse(jsonText);
 };
 
 const run = () => {

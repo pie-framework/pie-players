@@ -231,6 +231,9 @@ Notes:
   as the real rehearsal.
 - npm permits only **one** trusted publisher per package, so re-applying to an
   already-configured package fails. That is expected; confirm with `--verify`.
+- A record attaches only to a package the registry already has. `--apply` on a name that has
+  never been published fails with `E404 Package not found`; that package needs
+  `bun run bootstrap-package` first (see *Adding a publishable package later*).
 - The record names a specific workflow file. `@pie-players/pie-preloaded-player` is
   registered against `publish-preloaded-player.yml`; everything else against `release.yml`.
 - Each confirmed claim is recorded in `scripts/trusted-publishers.json`, written per package
@@ -240,22 +243,52 @@ Notes:
 
 ### Adding a publishable package later
 
-A new package has no trusted publisher of its own, and versioning is fixed — so the next
-release authenticates the run as a whole, publishes its siblings, and fails the new package
-with `ENEEDAUTH`, leaving the registry split across two versions and git holding a version
-that was never fully published. Claim the record before the package's first release:
+A new package needs one interactive first publish before the release workflow can ever publish
+it, because trusted publishing is circular for a name that does not exist:
+
+- A release authenticates by OIDC, which requires a trusted-publisher record per package.
+- `npm trust github` attaches a record to a package **on the registry**. For a name npm has
+  never seen it fails with `E404 Package not found`.
+
+`bun run bootstrap-package` is that first publish. One package per run, from the repository
+root, with an npm session (`npm login`) that holds publish rights on the scope:
 
 ```bash
-npm login
-bun run trusted-publishers -- --apply --only @pie-players/<new-package>
+bun run bootstrap-package -- --only @pie-players/<new-package> --dry-run
+bun run bootstrap-package -- --only @pie-players/<new-package>
 git add scripts/trusted-publishers.json   # the claim ledger is part of the change
 ```
 
-`bun run check:trusted-publishers` asserts that every package a release would publish has a
-recorded claim, and names the missing ones with a ready-made `--apply` command. It runs in
-`release.yml` ahead of the version bump (oidc mode, publish runs only) — so a forgotten claim
-fails the release *before* changesets commits bumped versions, instead of halfway through
-publishing.
+It preflights everything reversible before anything irreversible — the package is publishable
+and in the fixed group, the group version is uniform, npm has never seen the name, every
+`workspace:` range resolves to a version that is actually published, and you are logged in —
+then builds, resolves the manifest's workspace ranges the way a release does, shows the exact
+tarball, publishes, restores the manifest, and delegates the claim to
+`configure-trusted-publishers.mjs` so the `npm trust` call and the ledger have one owner.
+Expect two OTP prompts: one for the publish, one for the claim.
+
+Two constraints the script enforces rather than explains at the prompt:
+
+- **One package per run.** A first publish is irreversible — npm allows unpublishing only
+  within 72 hours and never permits reusing a name/version pair — so a batch that failed
+  halfway would leave a partial set of new names on the registry.
+- **The group version must already be published for every dependency.** A first publish from
+  a long-lived branch resolves `workspace:*` against that branch's group version, which can be
+  behind what was ever released; pinning an unpublished sibling produces a package that
+  resolves for nobody, and the failure surfaces at a consumer's install.
+
+After the bootstrap the package is ordinary: add a changeset, merge, and the release publishes
+it with the rest of the group over OIDC at the next group version.
+
+Versioning is fixed, so a release authenticates the run as a whole. A package with no record
+fails with `ENEEDAUTH` while its siblings succeed, leaving the registry split across two
+versions and git holding a version that was never fully published.
+`bun run check:trusted-publishers` is the guard: it asserts that every package a release would
+publish has a recorded claim, and routes each missing one to the command that can actually fix
+it — `bootstrap-package` for a name the registry does not have, `trusted-publishers -- --apply`
+for one it does. It runs in `release.yml` ahead of the version bump (oidc mode, publish runs
+only), so a forgotten claim fails the release *before* changesets commits bumped versions
+instead of halfway through publishing.
 
 It is deliberately **not** part of `verify:publish`. Trusted-publisher records only matter
 when the run authenticates by OIDC, and `verify:publish` cannot know whether it will:

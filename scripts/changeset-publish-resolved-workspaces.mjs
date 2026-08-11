@@ -2,15 +2,14 @@ import { spawn } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createNpmAuthEnvironment } from "./npm-auth-env.mjs";
+import {
+	DEP_SECTIONS,
+	resolveWorkspaceRange,
+} from "./lib/workspace-ranges.mjs";
 
 const repoRoot = process.cwd();
 const workspaceRoots = ["packages", "tools", "apps"];
-const depSections = [
-	"dependencies",
-	"peerDependencies",
-	"optionalDependencies",
-	"devDependencies",
-];
+const depSections = DEP_SECTIONS;
 
 const localPackages = new Map();
 const packageJsonPaths = [];
@@ -35,17 +34,6 @@ for (const root of workspaceRoots) {
 	}
 }
 
-const resolveWorkspaceRange = (workspaceSpecifier, packageName) => {
-	const localVersion = localPackages.get(packageName);
-	if (!localVersion) return workspaceSpecifier;
-
-	const suffix = workspaceSpecifier.slice("workspace:".length);
-	if (suffix === "*" || suffix === "") return localVersion;
-	if (suffix === "^") return `^${localVersion}`;
-	if (suffix === "~") return `~${localVersion}`;
-	return suffix;
-};
-
 const backups = new Map();
 const changedFiles = [];
 
@@ -60,7 +48,7 @@ const rewriteWorkspaceRanges = () => {
 			if (!deps) continue;
 			for (const [name, range] of Object.entries(deps)) {
 				if (typeof range === "string" && range.startsWith("workspace:")) {
-					const next = resolveWorkspaceRange(range, name);
+					const next = resolveWorkspaceRange(range, localPackages.get(name));
 					if (next !== range) {
 						deps[name] = next;
 						changed = true;

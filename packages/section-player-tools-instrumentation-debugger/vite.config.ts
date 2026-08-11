@@ -13,7 +13,7 @@ export default defineConfig({
 		}),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
-			outDir: "dist",
+			outDirs: "dist",
 			insertTypesEntry: true,
 			include: ["**/*.ts", "**/*.svelte"],
 		}),

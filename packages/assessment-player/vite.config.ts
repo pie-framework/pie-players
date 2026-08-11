@@ -23,7 +23,7 @@ export default defineConfig({
 	plugins: [
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
-			outDir: "dist",
+			outDirs: "dist",
 			insertTypesEntry: true,
 		}),
 		assertNoEvalRequireInOutput,

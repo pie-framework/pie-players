@@ -18,7 +18,7 @@ export default defineConfig({
 				customElement: true,
 			},
 		}),
-		dts({ rollupTypes: false }),
+		dts({ bundleTypes: false }),
 	],
 	build: {
 		lib: {

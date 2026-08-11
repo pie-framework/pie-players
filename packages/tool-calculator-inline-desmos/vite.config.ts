@@ -10,7 +10,7 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
-		dts({ rollupTypes: false }),
+		dts({ bundleTypes: false }),
 	],
 	build: {
 		lib: {

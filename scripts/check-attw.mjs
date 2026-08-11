@@ -175,6 +175,16 @@ const shouldSuppressProblem = (problem) => {
 		if (entrypoint.endsWith(".css")) return true;
 	}
 
+	// Declarations that re-export Svelte components keep the `.svelte` specifier.
+	// It resolves for consumers through Svelte's ambient `*.svelte` module
+	// declaration, which ATTW's isolated program never loads.
+	if (
+		problem.kind === "InternalResolutionError" &&
+		moduleSpecifier.endsWith(".svelte")
+	) {
+		return true;
+	}
+
 	return false;
 };
 

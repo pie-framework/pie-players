@@ -13,7 +13,7 @@ export default defineConfig({
 		}),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
-			outDir: "dist",
+			outDirs: "dist",
 			insertTypesEntry: true,
 			// Only generate types for the entry point
 			include: ["index.ts"],

@@ -1,5 +1,119 @@
 # @pie-players/pie-theme
 
+## 0.3.65
+
+### Patch Changes
+
+- c16c77c: Mark eliminated answer choices that are not made of text: an X over images, and a
+  line-through over rendered math, both in the same strike colour as the text.
+
+  The strikethrough strategy paints with the CSS Custom Highlight API, which — like
+  `text-decoration` — only draws on text. An answer choice whose content is a
+  picture therefore looked completely untouched after being eliminated: the student
+  got a pressed toggle button and nothing else.
+
+  Images are replaced elements, so they cannot carry a pseudo-element either. Each
+  `img` in an eliminated choice is now wrapped in a positioned
+  `span.pie-answer-eliminator-image-strike` that hosts an absolutely-positioned SVG
+  overlay drawing two diagonals corner to corner — upper-left to lower-right and
+  lower-left to upper-right — for a big X over the whole image. Wrapping (rather
+  than measuring and re-positioning an overlay) keeps the X glued to the image
+  through later reflow: responsive resizing, a late image `load`, zoom.
+
+  The wrapper preserves the image's own box: a fluid image that already spans its
+  parent gets a block wrapper, a block-level image gets a `fit-content` block
+  wrapper so it stays on its own line at its own width, and the wrapper's line box
+  is collapsed so no descender gap lets the X overhang the artwork. Restoring the
+  choice unwraps the image and returns the DOM to its original shape.
+
+  The overlay is `aria-hidden` and `pointer-events: none` — the eliminated state is
+  already announced on the label — and each diagonal is painted over a wider light
+  casing line (`--pie-answer-eliminator-image-strike-casing-color`) so the X clears
+  3:1 (SC 1.4.11) over dark artwork.
+
+  ## Rendered math
+
+  Math had the same problem for a different reason. MathJax's CHTML output draws
+  every visible glyph as an `mjx-c` element with empty `textContent` — the character
+  comes from `::before` generated content, which belongs to no Range — and its SVG
+  output has no text at all. The highlight was painting only MathJax's
+  `mjx-assistive-mml` copy of the source MathML, which is clipped to 1px, so a
+  math-only choice looked identical to an un-eliminated one.
+
+  For each `mjx-container` in an eliminated choice, the inner `mjx-math` box is now
+  marked with `pie-answer-eliminator-math-strike` and painted by the theme. The
+  rendered math box is an ordinary element, so this needs only a class and a
+  pseudo-element — no wrapper, and MathJax's own layout is untouched.
+
+  Which mark depends on the shape of the expression. A single row of symbols takes
+  the centred line-through the prose takes. An expression that draws horizontal
+  rules of its own — a fraction bar, a table rule — takes the diagonals an
+  eliminated image takes, because a centred line lands on the math axis, exactly
+  where the fraction bar already sits, and reads as a recoloured bar rather than an
+  elimination. The split is structural (`mjx-mfrac`, `mjx-mtable`) rather than
+  height-based: an inline `a/b` is only 1.16x its font size, indistinguishable in
+  height from a radical (1.17x) or a parenthesised row (1.10x), yet it is precisely
+  the colliding case. Radicals and stacked limits keep the line — their bars sit at
+  the top, or the strike simply crosses the base.
+
+  The paint target is the inner `mjx-math`, not the container: for inline math
+  `mjx-container` is `display: inline`, so its rect is the surrounding line box — a
+  constant ~1.16x font size whatever it holds — while the expression overflows it,
+  a fraction by 3px above and 8px below. Painting the container both mismeasured
+  the expression and drew the line in the wrong place.
+
+  Only MathJax containers are marked. Natively rendered MathML keeps real text in
+  `mi`/`mn`/`mo`, so the highlight already strikes every token there, and marking it
+  too would double the line over one expression.
+
+  ## One strike colour
+
+  Text, images, and math all read `--pie-answer-eliminator-strike-color` (defaulting
+  to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a
+  single treatment rather than three, and a host can restyle every part of an
+  elimination from one property.
+
+- 3f6e33a: Signing becomes a capability package. New `@pie-players/pie-tool-sign-language`, and no package in the player names signing any more.
+
+  The last capability-specific code in the generic core was signing's: the toolkit validated `sign-language` catalog cards, and section-player's item card knew the `signLanguage` support id, the catalog type, the language-matching rule and the region element by name. So the one accommodation PIE most needs hosts to be able to add was the one thing only we could add.
+
+  ## The new package
+
+  `@pie-players/pie-tool-sign-language` owns `signLanguageRegistration` (`activation: "region"`, `surfaces: ["item-media"]`, `supportedLevels: ["item"]`, `requiresAuthoredContent`), the card validators and language matching that were `services/sign-language-cards.ts` in the toolkit, the content resolver that was the signing half of section-player's `section-item-media.ts`, and `<pie-tool-sign-language>`, which was `SectionItemMediaRegion.svelte`.
+
+  It is authored against `@pie-players/pie-assessment-toolkit/tools/internal` — the same entry point our packaged registrations use — and it is the worked example of a capability contributed from outside the player. A host opts in with two lines:
+
+  ```ts
+  import { signLanguageRegistration } from "@pie-players/pie-tool-sign-language";
+  registry.register(signLanguageRegistration);
+  ```
+
+  Importing the package registers the element, so there is no module-loader entry to add.
+
+  **Deliberately not in `createPackagedToolRegistry` or `DEFAULT_TOOL_MODULE_LOADERS.`** An accommodation with an authored-content dependency is a deployment's decision: a default that granted it would hand signing to every learner whose item happened to carry a card. The `apps/section-demos` `sign-language` route now registers it itself, which is the demonstration that a host can contribute a capability with no id of ours involved.
+
+  ## What section-player kept and what it lost
+
+  `SectionItemCard.svelte` iterates `getToolsBySurface("item-media")`, decides each capability against **its own** `pnpSupportIds`, calls its `requiresAuthoredContent.resolve`, and mounts through `ToolRegistry.renderForSurface`. It names no capability, no support id, no catalog type and no element tag, and it does not depend on the signing package — `check:player-tool-boundaries` forbids even the string.
+
+  The region's own layout stays here, because it is the card's geometry rather than the capability's: `MEDIA_REGION_*`, `clampMediaRegionPercent`, `mediaRegionPercentFromDrag` and `SectionCardSplitDivider`. The three `--pie-section-player-item-media-*` tokens keep their names — hosts set them and PIE-880 is in testing against them — but the registry now records the signing package as their owner.
+
+  Two behaviours the old file documented are preserved and re-keyed generically, because both were load-bearing: the `onCatalogsChange` re-resolve with a resolve-once-on-subscribe, and the write-only-when-the-signature-changed guard. That guard is not an optimisation. Re-rendering the card re-applies `item` on `<pie-item-shell>`, which re-registers the item's catalogs, which makes the resolver emit again; one unconditional write per emission makes the cycle self-sustaining and Svelte aborts at its depth limit with the DOM half-applied.
+
+  ## Contract changes
+
+  `isVisibleInContext` is now optional on `ToolRegistration`, required for the two toolbar activations and rejected only when present and not a function. A region capability has no toolbar presence to be relevant to, and the question it would answer — is there anything to show here — is `requiresAuthoredContent`. A registration that omits it is never returned by `getVisibleTools`. Callers that invoke it on a registration they wrap need `?.` — the one in-repo case was a demo decorator.
+
+  `applyMediaFragment` reached the public surface through `sign-language-cards.js`; it is now exported from `services/catalog-media.js` directly, along with `isSafeMediaSrc`, `normalizeMediaSources`, `normalizeMediaFragment` and `trimmedOrUndefined` — the validators any capability package needs to read a media payload. The signing-specific exports (`SIGN_LANGUAGE_CATALOG_TYPE`, `AMERICAN_SIGN_LANGUAGE`, `describeSignLanguage`, `isSignLanguageCard`, `matchesRequestedSignLanguage`, `resolveSignLanguageMedia`, `SignLanguageMedia`) move to the new package.
+
+  `packages/players-shared`'s `SignLanguageCardPayload` stays. It is authored wire data alongside `CatalogCard`, and a published shape for a standard support id is not a core dependency on a capability — the same argument that exempts `pnp-standard-features.ts`.
+
+  ## Behaviour
+
+  Unchanged, and that is the whole point. PIE-880 is in testing, so the guard is that its specs pass with import-path edits and **no assertion changes**: `section-player-sign-language-region.spec.ts` and `pie881-imported-asl-integration.spec.ts` (14 specs, including the re-registration-loop and keyboard-divider cases), plus the unit tests, now split between `sign-language-content.test.ts` in the new package and the sizing half left behind.
+
+  `check:fixed-versioning` treated a 404 from npm as a failure, so adding any publishable package broke it. A never-published package is now reported and excluded from the version-sequence comparison; a network or auth failure still stops the gate, because "cannot tell" must not read as "fine".
+
 ## 0.3.64
 
 ### Patch Changes

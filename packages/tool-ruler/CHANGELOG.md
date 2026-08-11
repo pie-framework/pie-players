@@ -1,5 +1,24 @@
 # @pie-players/pie-tool-ruler
 
+## 0.3.65
+
+### Patch Changes
+
+- Updated dependencies [35f1cc9]
+- Updated dependencies [c5fbf21]
+- Updated dependencies [c4c3aca]
+- Updated dependencies [2b015a9]
+- Updated dependencies [411b2cd]
+- Updated dependencies [f0d5802]
+- Updated dependencies [f588924]
+- Updated dependencies [3f6e33a]
+- Updated dependencies [3972f16]
+- Updated dependencies [5183654]
+- Updated dependencies [c59396b]
+  - @pie-players/pie-assessment-toolkit@0.3.65
+  - @pie-players/pie-players-shared@0.3.65
+  - @pie-players/pie-context@0.3.65
+
 ## 0.3.64
 
 ### Patch Changes

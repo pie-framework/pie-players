@@ -88,6 +88,32 @@ const fetchPublishedVersion = (pkgName) => {
 	}
 };
 
+/**
+ * Every version the registry holds for a package, oldest first.
+ *
+ * Only needed for packages sitting off the group's version, where the release-history length is
+ * what separates a bootstrapped newcomer from a member that drifted. Fetching it for all 37
+ * packages would double the registry round trips this gate already makes for no added signal.
+ */
+const fetchPublishedVersions = (pkgName) => {
+	try {
+		const out = execSync(`npm view "${pkgName}" versions --json`, {
+			cwd: ROOT,
+			stdio: "pipe",
+		})
+			.toString("utf8")
+			.trim();
+		const parsed = JSON.parse(out);
+		// npm collapses a single-version package to a bare string.
+		if (typeof parsed === "string") return [parsed];
+		if (Array.isArray(parsed)) return parsed.map(String);
+		return null;
+	} catch (error) {
+		const detail = error.stderr?.toString()?.trim() || error.message || "";
+		fail(`Failed to read published versions for ${pkgName} from npm: ${detail}`);
+	}
+};
+
 const publishablePackages = discoverPublishablePackages();
 if (publishablePackages.length === 0) {
 	fail("No publishable @pie-players packages found in packages/*.");
@@ -176,14 +202,31 @@ if (process.env.SKIP_NPM_VERSION_SEQUENCE_CHECK !== "1") {
 		fail("No publishable package has a published version to compare against.");
 	}
 
+	// The version the bulk of the group is on. Anything off it needs its release history read
+	// before the sequence can be judged.
+	const versionTally = new Map();
+	for (const version of publishedVersionMap.values()) {
+		versionTally.set(version, (versionTally.get(version) || 0) + 1);
+	}
+	const groupVersion = [...versionTally.entries()].sort(
+		([, a], [, b]) => b - a,
+	)[0][0];
+
+	const publishedHistoryMap = new Map();
+	for (const [name, version] of publishedVersionMap) {
+		if (version === groupVersion) continue;
+		publishedHistoryMap.set(name, fetchPublishedVersions(name));
+	}
+
 	const sequence = classifyPublishedSequence({
 		localVersion,
 		publishedVersionMap,
+		publishedHistoryMap,
 	});
 	if (sequence.verdict === "stop") {
 		fail(sequence.message);
 	}
-	if (sequence.verdict === "completing-partial-publish") {
+	if (sequence.message) {
 		console.log(`[check-fixed-versioning] ${sequence.message}`);
 	}
 }

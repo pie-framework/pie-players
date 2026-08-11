@@ -26,6 +26,35 @@ const formatDetails = (entries) =>
 		.join("\n");
 
 /**
+ * Decide whether a package sitting below the group baseline is a bootstrapped newcomer
+ * catching up rather than a member that drifted.
+ *
+ * `bootstrap-package` resolves the group version from the branch it runs on, and on this repo
+ * `develop` carries whatever version the last back-merge left, not what was last released — so
+ * a first publish lands well below the baseline (sign-language went out at 0.3.50 against a
+ * published group at 0.3.64). The documented flow from there is ordinary: the next release
+ * publishes it with the group at the group's version.
+ *
+ * The discriminant is the package's own release history, not its distance from the baseline —
+ * distance alone cannot tell a newcomer from a member that stopped being released. A newcomer
+ * has published exactly once, at that single bootstrap version. A drifted member has published
+ * repeatedly, so it fails this and still stops the release.
+ *
+ * @param {{ semver: {major: number, minor: number, patch: number}, version: string }} entry
+ * @param {{major: number, minor: number, patch: number}} localSemver
+ * @param {string[] | undefined} history every version the registry holds for this package
+ */
+const isCatchingUpNewcomer = (entry, localSemver, history) => {
+	if (!Array.isArray(history) || history.length !== 1) return false;
+	if (history[0] !== entry.version) return false;
+	if (entry.semver.major !== localSemver.major) return false;
+	if (entry.semver.minor !== localSemver.minor) return false;
+	// More than one patch behind. A package exactly one patch behind is the ordinary
+	// mid-publish shape, which the partial-publish branch below already owns.
+	return entry.semver.patch < localSemver.patch - 1;
+};
+
+/**
  * Classify the local version against the versions npm reports for the fixed group.
  *
  * Returns one of:
@@ -35,11 +64,17 @@ const formatDetails = (entries) =>
  *   caller should report the message and continue.
  * - `{ verdict: "stop", message }` — anything else.
  *
- * @param {{ localVersion: string, publishedVersionMap: Map<string, string> }} input
+ * `ok` and `completing-partial-publish` carry `catchingUp` when bootstrapped newcomers were
+ * excluded from the comparison, so the caller can report which packages jump to the group
+ * version.
+ *
+ * @param {{ localVersion: string, publishedVersionMap: Map<string, string>,
+ *   publishedHistoryMap?: Map<string, string[]> }} input
  */
 export function classifyPublishedSequence({
 	localVersion,
 	publishedVersionMap,
+	publishedHistoryMap,
 }) {
 	const localSemver = parseSemver(localVersion);
 	if (!localSemver) {
@@ -49,7 +84,7 @@ export function classifyPublishedSequence({
 		};
 	}
 
-	const entries = [];
+	const allEntries = [];
 	for (const [name, version] of publishedVersionMap) {
 		const semver = parseSemver(version);
 		if (!semver) {
@@ -58,8 +93,26 @@ export function classifyPublishedSequence({
 				message: `Published version "${version}" is not a valid semver.`,
 			};
 		}
-		entries.push({ name, version, semver });
+		allEntries.push({ name, version, semver });
 	}
+
+	const catchingUp = allEntries.filter((entry) =>
+		isCatchingUpNewcomer(entry, localSemver, publishedHistoryMap?.get(entry.name)),
+	);
+	const catchingUpNames = new Set(catchingUp.map((entry) => entry.name));
+	const entries = allEntries.filter((entry) => !catchingUpNames.has(entry.name));
+
+	const catchingUpNote =
+		catchingUp.length > 0
+			? {
+					catchingUp: catchingUp.map(({ name, version }) => ({ name, version })),
+					message:
+						`Publishing ${localVersion} for ${catchingUp.length} package(s) whose only released version is ` +
+						`below the group: ${catchingUp.map(({ name, version }) => `${name}@${version}`).sort().join(", ")}. ` +
+						"A bootstrapped package joins the group at the next release rather than stepping through the " +
+						"versions it missed, so these are excluded from the lockstep comparison.",
+				}
+			: null;
 
 	if (entries.length === 0) {
 		return {
@@ -84,7 +137,11 @@ export function classifyPublishedSequence({
 		}
 
 		const delta = localSemver.patch - publishedSemver.patch;
-		if (delta === 1) return { verdict: "ok" };
+		if (delta === 1) {
+			return catchingUpNote
+				? { verdict: "ok", ...catchingUpNote }
+				: { verdict: "ok" };
+		}
 		if (delta <= 0) {
 			return {
 				verdict: "stop",
@@ -132,10 +189,12 @@ export function classifyPublishedSequence({
 		const pending = entries.length - landed.length;
 		return {
 			verdict: "completing-partial-publish",
+			...(catchingUpNote ? { catchingUp: catchingUpNote.catchingUp } : {}),
 			message:
 				`Completing a partial publish of ${localVersion}. ${landed.length} package(s) already published it ` +
 				`(${landed.join(", ")}) and ${pending} are still one patch behind, which is the state a lockstep ` +
-				`publish leaves when it loses auth partway. Publishing ${localVersion} again reconciles the group.\n${details}`,
+				`publish leaves when it loses auth partway. Publishing ${localVersion} again reconciles the group.\n${details}` +
+				(catchingUpNote ? `\n\n${catchingUpNote.message}` : ""),
 		};
 	}
 

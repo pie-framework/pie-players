@@ -1,5 +1,328 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.65
+
+### Patch Changes
+
+- 35f1cc9: Deliver the section composition without waiting for the document to paint, so a
+  section renders in a context that has no compositor.
+
+  `PieAssessmentToolkit` publishes the composition to the players through exactly
+  one path, the `composition-changed` event, and coalesces bursts of updates behind
+  a one-shot emit latch. That latch was cleared only by a `requestAnimationFrame`
+  callback, and the frame branch was taken whenever `window.requestAnimationFrame`
+  merely _existed_ rather than when it was known to fire. Where no frame ever
+  arrives the latch never cleared, no `composition-changed` was dispatched, and the
+  layout kernel kept its initial empty composition — `section: null`, empty `items`
+  and `renderables`. The `queueMicrotask` fallback could not rescue it, because it
+  was only reached when rAF was absent entirely.
+
+  The distinguishing symptom was a split between the two halves: the section
+  controller held a correct view model with the right item ids while the player's
+  `compositionModel` was the empty default. The content was computed and simply
+  never delivered, so it did not read as a content, catalog, or bundle problem.
+
+  Frame scheduling now lives in an internal `composition-emit-scheduler`, which
+  races the frame against a 100ms deadline timer. Whichever arrives first releases
+  the latch and flushes. On a painting document the frame still wins with six
+  frames of margin at 60fps, so emits stay paint-aligned and coalescing is
+  unchanged — several composition updates within one frame still produce a single
+  `composition-changed`. Where frames never arrive the timer takes over and the
+  document degrades to a slower render instead of a permanent blank. Svelte's own
+  `tick()` races the same two primitives for the same reason.
+
+  The scheduler owns the latch and both handles, so releasing the latch and
+  releasing the handles is one operation in one place — a cancelled or superseded
+  frame can no longer strand the latch. The toolkit's dispose path cancels through
+  it rather than clearing two variables by hand.
+
+  Impact was confined to verification and automation, with no known learner-facing
+  scoring or data effect. A background tab recovered on refocus, because its
+  pending frame becomes due then, so learner delivery saw at most a delayed first
+  render. The permanent failure was in contexts that never paint — headless
+  browsers without a compositor, hidden or offscreen tabs, and agent or CI
+  automation harnesses — where every `pie-section-player` route rendered no content
+  and read as whatever feature was under test being broken.
+
+- c4c3aca: The packaged capability set moves out of the generic toolkit into the composition layer. `@pie-players/pie-assessment-toolkit` now names no capability.
+
+  Eleven concrete registrations, the element tag map and the placement presets lived inside the generic package, so the registry and policy core knew every capability by name and a host could not contribute one without a PR against that package. They are now in `@pie-players/pie-default-tool-loaders`, which already owned the deployment's capability set for module loading.
+
+  ## Moved
+
+  `createPackagedToolRegistry`, `registerPackagedTools`, `PACKAGED_TOOL_REGISTRATIONS`, the six registration modules, `PACKAGED_TOOL_TAG_MAP` (was `DEFAULT_TOOL_TAG_MAP`), `PACKAGED_TOOL_PLACEMENT`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` and `PACKAGED_TOOL_ORDER` (was `DEFAULT_TOOL_ORDER`). Each registration is also exported individually, for a host composing a subset.
+
+  Import them from `@pie-players/pie-default-tool-loaders` instead of the toolkit. Section-player already depended on that package for `DEFAULT_TOOL_MODULE_LOADERS`, so a host using the section-player elements needs no manifest change.
+
+  ## Kept in the toolkit
+
+  `ToolRegistry`, the registration contract, `createDefaultToolRegistry`, the toolbar button/overlay helpers, `createToolElement` / `resolveToolTag` / `toToolIdFromTag`, and `DEFAULT_TOOL_PLACEMENT`. It knows `featureId`, placement levels, activation kinds and precedence rules, and knows no capability ids.
+
+  Three of those kept the name and changed what they do:
+
+  - **`createDefaultToolRegistry()` builds an empty registry.** Its option bag changed with it: `overrides` (a toolId-keyed map replacing a packaged registration) became `registrations` (the registrations to register); `includePackagedTools` and `toolIds` are gone, because there is no packaged set here to include or filter; and `toolTagMap` no longer merges a built-in map, so a partial map is now the whole map. For the packaged set, call `createPackagedToolRegistry()` from the composition package.
+  - **`DEFAULT_TOOL_PLACEMENT` is empty at every level.** A host using it as a starting preset gets no tools and no diagnostic. `PACKAGED_TOOL_PLACEMENT` and `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` in the composition package are the populated presets.
+  - **`toToolIdFromTag` reads only supplied overrides.** It returns `undefined` for a packaged tag with no installed map, where it previously resolved from the built-in one.
+
+  A new `@pie-players/pie-assessment-toolkit/tools/internal` entry point carries what a package needs to _write_ a registration — the contract types, the context predicates, scoped-id and element helpers, the toolbar helpers, and the two provider descriptors. A separate entry point for the same reason `runtime/internal` and `policy/internal` exist: it serves sibling packages, and widening `.` with two dozen registration-authoring helpers would make each one something a host could expect us to keep. A host writing its own capability package imports from here too — the same mechanism our registrations use.
+
+  ## Migration
+
+  If you call `createToolsConfig` / `normalizeAndValidateToolsConfig`, or construct a `ToolkitCoordinator`, **without** passing a `toolRegistry`, add the composition package and pass one:
+
+  ```ts
+  import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+
+  const result = createToolsConfig({
+    source,
+    tools,
+    toolRegistry: createPackagedToolRegistry(),
+  });
+  ```
+
+  Without it your tool ids, levels and provider keys are no longer validated — see the diagnostic below. Tools still render: a host using the section-player elements gets its registry from the player, which builds one itself.
+
+  ## Consequences
+
+  **No fallback registry anywhere in the toolkit.** `ToolkitCoordinator` and `<pie-item-toolbar>` used to build a packaged registry when the host supplied none; they now use an empty one. A toolbar with no registry renders no buttons, which is the honest answer — with nothing registered there is nothing whose visibility or render contract could be consulted.
+
+  **Tool-id validation reports when it cannot run.** With no registry there is nothing to check ids against, so `normalizeAndValidateToolsConfig` emits one `tools.registryUnavailable` diagnostic at `warning` severity naming the missing registry, and skips the id, level and provider checks. Two deliberate choices there: not throwing, because that would turn an existing working host setup into a construction failure; and not skipping silently, because downgrading "your ids are valid" to "nobody looked" with no signal is how a typo reaches a learner.
+
+  `strictness: "error"` now rejects only `severity: "error"` diagnostics. Every diagnostic was `"error"` before this one, so nothing else changes.
+
+  **`resolveToolTag` has no built-in map.** It reads only the overrides it is handed, which `createPackagedToolRegistry` installs via `setComponentOverrides`. Asking for an unmapped, non-hyphenated tool id throws naming the missing mapping rather than reporting a hyphen rule the caller did not break. `ToolRegistry.renderForSurface(toolId, context)` is new and is how a host should mount a surface capability: it merges the registry's component overrides the way `renderForToolbar` always has, so a capability can resolve its element tag.
+
+  ## Guard
+
+  `bun run check:capability-neutrality` fails when a capability id or `pie-tool-*` tag appears in the generic core — policy, the registry, catalog resolution, tools-config validation, the registry/tag factories. Without it the regression returns with the next capability, which is how these arrived: each reasonable on its own, each a name in a file that should not have had it. Wired into `verify:pre-commit`, `verify:ci-lint-typecheck` and `verify:publish`.
+
+  It carries one reviewable exception: the `providers.tts` → `providers.textToSpeech` migration diagnostic in tools-config validation. That is one capability's rename in generic code and a legacy shim of the kind this repo disallows outside the `pie-item` contract, but deleting it drops a useful migration error and generalising it (a `deprecatedProviderKeys` declaration on the registration) is a design change rather than part of this move.
+
+  `services/tts/**`, `TTSService`, `TTSToolProvider`, `DesmosToolProvider` and `tools/calculators/` stay in the toolkit; moving them is separate, larger work. The `pie-calculator` and `pie-tts` dependencies therefore remain — contrary to what PIE-886 assumed, they never came from the registrations. Both are interface-only packages with no dependencies of their own, imported type-only by `TTSService`, `interfaces.ts` and the provider descriptors.
+
+- 2b015a9: Render docked alternates on the passage card, not only the item card.
+
+  A catalog card docks to a content node, and a passage owns content nodes exactly
+  as an item does — so a signed reading of a shared passage is authored once, on the
+  passage, under the owner scope `<pie-passage-shell>` already registers. Resolution
+  worked; nothing rendered it, because the media region existed only on the item
+  card.
+
+  The region moves to `SectionCardMediaSplit`, shared by both cards, so there is one
+  implementation of grant-plus-content availability, mount reconciliation and split
+  sizing rather than a copy per card kind. The host surface is renamed
+  `item-media` → `content-media`, since item cards and passage cards open the same
+  slot and a capability should declare it once: `@pie-players/pie-tool-sign-language`
+  now exports `CONTENT_MEDIA_SURFACE` in place of `ITEM_MEDIA_SURFACE` and declares
+  `supportedLevels: ["item", "passage"]`. A host capability that declared
+  `surfaces: ["item-media"]` must declare `"content-media"` to keep mounting.
+
+- 411b2cd: **Breaking.** The core no longer synthesizes a default personal-needs profile. A host that supplied none now has none.
+
+  What this does **not** change is which toolbar tools appear. Toolbar candidates come from `tools.placement`, and `PnpPolicySource` only evaluates support ids that appear somewhere in the bound policy inputs — so an empty profile blocks nothing and mandates nothing, and a placement-driven toolbar renders exactly as before. If your tools come from placement, this entry costs you nothing.
+
+  What does change is `ToolkitCoordinator.decideFeaturePolicy(supportId)`. For the 38 ids the derivation used to produce it answered `granted: true` for every host that supplied no profile, and now answers `granted: false` with reason `Feature "…" not configured`. That is the path capabilities without a toolbar placement are gated on — a host surface capability, and any host code asking "is this granted for this learner" outside a toolbar. Supply a profile if you rely on it; the one-line adoption is below.
+
+  `computeDefaultSupports()` derived the fallback profile from every registered tool's `pnpSupportIds`, which reads _registry membership_ as _eligibility tier_. Registration means a capability is policy-addressable; it does not mean "universal, on by default". So an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time array naming `signLanguage` — which worked for the one accommodation shipped in this repo and gave a host contributing its own accommodation nothing to add to.
+
+  Which capabilities a deployment grants by default is a property of the program, not of a capability: TTS is a universal feature in one program and a documented accommodation in another. It belongs in policy configuration, alongside the district and test-administration levels that already live there.
+
+  ## What changed
+
+  `@pie-players/pie-assessment-toolkit` drops `computeDefaultSupports()`, `DEFAULT_PERSONAL_NEEDS_PROFILE`, `ACCOMMODATION_ONLY_SUPPORT_IDS` and `createDefaultPersonalNeedsProfile()`. In their place, `createEmptyPersonalNeedsProfile()` returns a profile granting nothing. No alias for the old name: a function called "default" is what invited a populated default in the first place, and the rename is the signal that the return value changed.
+
+  `@pie-players/pie-default-tool-loaders` gains `UNIVERSAL_SUPPORTS_PRESET` and `createUniversalPersonalNeedsProfile()` — the 38 support ids the old derivation produced, frozen as data. Adopt it, extend it, or replace it. It is pinned by a test rather than recomputed, so a diff there is a deliberate program decision instead of a side-effect of registering a tool. It excludes any capability declaring `requiresAuthoredContent`, asserted against `registry.getContentDependentSupportIds()` rather than against a list of ids — which is what lets a host's own accommodation get the same guarantee.
+
+  `section-player` stops injecting a profile into a section that carries none. `pnpEnforcement` auto-detection engages on any non-empty profile, so the injected default silently turned enforcement on for every host — a gate whose profile granted everything, so it could not deny anything. Enforcement now engages only on real host policy material: a profile, a district policy, a test administration block, or item-level tool settings.
+
+  The PNP debugger no longer labels its fallback "toolkit default profile (derived)". Nothing derives one, and that label over an empty `supports` array read as a broken derivation rather than as an unconfigured section.
+
+  ## Migration
+
+  A host that wants the previous grants adds one line at the point it builds a section or assessment:
+
+  ```ts
+  import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";
+
+  const section = {
+    ...authoredSection,
+    personalNeedsProfile: createUniversalPersonalNeedsProfile(),
+  };
+  ```
+
+  A host already supplying `personalNeedsProfile` is unaffected. The one case that changes a toolbar: a host that relied on the implicit default _and_ supplies `settings.districtPolicy` or `settings.testAdministration`. Enforcement stays on from that material, and there are now no supports to satisfy a `requiredTools` entry or to survive a `blockedTools` one.
+
+  `@pie-players/pie-item-player` consumers are unaffected — it does not depend on the toolkit.
+
+  This supersedes the statement in the sign-language catalog media region entry, which described `signLanguage` being filtered out of the computed default by id. Both the computation and the filter are gone; signing stays out of a wholesale grant because it declares a content dependency, not because it is named.
+
+- f0d5802: A `ToolkitCoordinator` built without a tool registry no longer throws on every tool-config call.
+
+  Moving the packaged capability set into the composition package removed the coordinator's registry fallback, so a host that supplies no `toolRegistry` now gets an empty one. `assertCanonicalToolId` validated against it and threw `Unknown tool id "…"` for everything — including the ids the coordinator's own default-provider block installs, so `isToolEnabled("textToSpeech")` threw on a coordinator that had just enabled text-to-speech itself. Any host constructing its own coordinator, which is the documented pattern for `element-QuizEngineFixedFormPlayer`, hit it.
+
+  An empty registry means the host supplied none, not that every id is wrong: there is nothing to validate against, so the check is skipped. `normalizeAndValidateToolsConfig` already reports the missing registry once as `tools.registryUnavailable`, with the `createPackagedToolRegistry()` remedy; repeating it as an exception per call was the defect. A supplied registry still rejects ids it does not carry, and the `"tts"` → `"textToSpeech"` migration error still fires either way because it is checked first.
+
+  Found by the assessment-player smoke suite, which builds a coordinator with no registry — the same shape the affected consumer uses.
+
+- f588924: Section-player's section-scoped overlay is registry-driven. It no longer names `annotationToolbar`.
+
+  `PieSectionPlayerBaseElement.svelte` named that tool id in three places — the policy check, the module load and the `<pie-tool-annotation-toolbar>` element — so a host could not contribute a second section-scoped capability without a PR against this repo. The base element now offers a named surface, `section-overlay`, and asks `registry.getToolsBySurface("section-overlay")` what can fill it. Nothing in section-player names a capability, an element tag, or a package.
+
+  `annotationToolbarRegistration` declares `surfaces: ["section-overlay"]` and owns the mounting it used to have done for it: resolving its element tag through the component-override map, setting `enabled`, `ttsService` and `highlightCoordinator`, and returning a `sync` so a policy change reapplies props instead of remounting. Remounting would drop the element's own state and, for a selection gateway, the learner's current selection. It keeps `activation: "selection-gateway"` and its `renderToolbar`, so nothing about the toolbar path changes.
+
+  Three behaviours the generic path has to keep, and does:
+
+  - **Same grant check.** The three-level `decideToolPolicy` sweep over section, item and passage runs per discovered capability against its own `toolId`, with the same scope shape, so a custom `PolicySource` reading `assessmentId` cannot disagree with a toolbar's verdict for the same level.
+  - **Same module gating.** A capability stays unmounted until `ensureToolModuleLoaded` resolves and its element is defined, so an optional package that is not installed leaves the surface empty rather than mounting an undefined element. The registration declines by returning `null` if its tag is still unknown.
+  - **One instance.** The mount effect reconciles against what is already mounted, so a capability that stays granted is never torn down and remounted, and one that loses its grant is unmounted and destroyed.
+
+  A capability returning `null` from `renderSurface` means "nothing to show", which is a legitimate answer and not an error. One throwing is logged against its tool id and skipped, so a broken capability cannot take the surface down with it.
+
+  The mount point is an always-present `<div data-pie-tool-surface="section-overlay">` inside `<pie-assessment-toolkit>`, so a capability granted mid-session has somewhere to land and the toolkit's context requests still bubble to the provider from a mounted element.
+
+- 3f6e33a: Signing becomes a capability package. New `@pie-players/pie-tool-sign-language`, and no package in the player names signing any more.
+
+  The last capability-specific code in the generic core was signing's: the toolkit validated `sign-language` catalog cards, and section-player's item card knew the `signLanguage` support id, the catalog type, the language-matching rule and the region element by name. So the one accommodation PIE most needs hosts to be able to add was the one thing only we could add.
+
+  ## The new package
+
+  `@pie-players/pie-tool-sign-language` owns `signLanguageRegistration` (`activation: "region"`, `surfaces: ["item-media"]`, `supportedLevels: ["item"]`, `requiresAuthoredContent`), the card validators and language matching that were `services/sign-language-cards.ts` in the toolkit, the content resolver that was the signing half of section-player's `section-item-media.ts`, and `<pie-tool-sign-language>`, which was `SectionItemMediaRegion.svelte`.
+
+  It is authored against `@pie-players/pie-assessment-toolkit/tools/internal` — the same entry point our packaged registrations use — and it is the worked example of a capability contributed from outside the player. A host opts in with two lines:
+
+  ```ts
+  import { signLanguageRegistration } from "@pie-players/pie-tool-sign-language";
+  registry.register(signLanguageRegistration);
+  ```
+
+  Importing the package registers the element, so there is no module-loader entry to add.
+
+  **Deliberately not in `createPackagedToolRegistry` or `DEFAULT_TOOL_MODULE_LOADERS.`** An accommodation with an authored-content dependency is a deployment's decision: a default that granted it would hand signing to every learner whose item happened to carry a card. The `apps/section-demos` `sign-language` route now registers it itself, which is the demonstration that a host can contribute a capability with no id of ours involved.
+
+  ## What section-player kept and what it lost
+
+  `SectionItemCard.svelte` iterates `getToolsBySurface("item-media")`, decides each capability against **its own** `pnpSupportIds`, calls its `requiresAuthoredContent.resolve`, and mounts through `ToolRegistry.renderForSurface`. It names no capability, no support id, no catalog type and no element tag, and it does not depend on the signing package — `check:player-tool-boundaries` forbids even the string.
+
+  The region's own layout stays here, because it is the card's geometry rather than the capability's: `MEDIA_REGION_*`, `clampMediaRegionPercent`, `mediaRegionPercentFromDrag` and `SectionCardSplitDivider`. The three `--pie-section-player-item-media-*` tokens keep their names — hosts set them and PIE-880 is in testing against them — but the registry now records the signing package as their owner.
+
+  Two behaviours the old file documented are preserved and re-keyed generically, because both were load-bearing: the `onCatalogsChange` re-resolve with a resolve-once-on-subscribe, and the write-only-when-the-signature-changed guard. That guard is not an optimisation. Re-rendering the card re-applies `item` on `<pie-item-shell>`, which re-registers the item's catalogs, which makes the resolver emit again; one unconditional write per emission makes the cycle self-sustaining and Svelte aborts at its depth limit with the DOM half-applied.
+
+  ## Contract changes
+
+  `isVisibleInContext` is now optional on `ToolRegistration`, required for the two toolbar activations and rejected only when present and not a function. A region capability has no toolbar presence to be relevant to, and the question it would answer — is there anything to show here — is `requiresAuthoredContent`. A registration that omits it is never returned by `getVisibleTools`. Callers that invoke it on a registration they wrap need `?.` — the one in-repo case was a demo decorator.
+
+  `applyMediaFragment` reached the public surface through `sign-language-cards.js`; it is now exported from `services/catalog-media.js` directly, along with `isSafeMediaSrc`, `normalizeMediaSources`, `normalizeMediaFragment` and `trimmedOrUndefined` — the validators any capability package needs to read a media payload. The signing-specific exports (`SIGN_LANGUAGE_CATALOG_TYPE`, `AMERICAN_SIGN_LANGUAGE`, `describeSignLanguage`, `isSignLanguageCard`, `matchesRequestedSignLanguage`, `resolveSignLanguageMedia`, `SignLanguageMedia`) move to the new package.
+
+  `packages/players-shared`'s `SignLanguageCardPayload` stays. It is authored wire data alongside `CatalogCard`, and a published shape for a standard support id is not a core dependency on a capability — the same argument that exempts `pnp-standard-features.ts`.
+
+  ## Behaviour
+
+  Unchanged, and that is the whole point. PIE-880 is in testing, so the guard is that its specs pass with import-path edits and **no assertion changes**: `section-player-sign-language-region.spec.ts` and `pie881-imported-asl-integration.spec.ts` (14 specs, including the re-registration-loop and keyboard-divider cases), plus the unit tests, now split between `sign-language-content.test.ts` in the new package and the sizing half left behind.
+
+  `check:fixed-versioning` treated a 404 from npm as a failure, so adding any publishable package broke it. A never-published package is now reported and excluded from the version-sequence comparison; a network or auth failure still stops the gate, because "cannot tell" must not read as "fine".
+
+- 3972f16: **Breaking for capability packages.** `ToolSurfaceRenderResult.sync` takes the current render context: `sync?: (context: ToolSurfaceRenderContext) => void`.
+
+  It took no argument, so a registration had nothing to read but the context captured when it rendered. A host reconciles surface capabilities by `toolId` and calls `sync` rather than remounting — a `<video>` recreated mid-playback restarts the recording — so `sync` is the _only_ path a re-resolve has to an element already on screen, and with a captured context it re-applied the values the host already had. Two live consequences: a signed alternate re-resolved to a different recording (a `signLang` parameter change, or a catalog registering after first paint) left the learner watching the previous one, and a host calling `updateAssessment(...)` mid-session left the annotation gateway wired to the previous coordinator. Both were silent.
+
+  Update a registration by reading the parameter instead of the closure:
+
+  ```diff
+  -const applyProps = () => {
+  -  element.media = context.content;
+  +const applyProps = (current: ToolSurfaceRenderContext) => {
+  +  element.media = current.content;
+   };
+  -applyProps();
+  +applyProps(context);
+   return { element, sync: applyProps };
+  ```
+
+  ## Host surfaces a region capability can actually reach
+
+  `section-overlay` gated every capability on `decideToolPolicy`, whose candidates are seeded only from `tools.placement` — and placing an `activation: "region"` capability is a `tools.unplaceableActivation` error at `error` severity. A capability that is only ever a region was therefore unreachable on that surface in both directions, and the mechanism worked for exactly the one capability that motivated it, which also has a toolbar activation. Region capabilities are now gated on `decideFeaturePolicy`, matching the item-media surface; placement-driven ones keep the placement question, which is where their candidacy comes from.
+
+  `item-media` now awaits `ensureToolModuleLoaded` before mounting, so a capability registered through the documented lazy module-loader path renders instead of silently missing its element. This costs a capability that registers its element eagerly one microtask.
+
+  `requiresAuthoredContent` is resolvable only on a surface the host renders per item or per passage. `CatalogOwnerContext` names an item model or a passage and never a section, because a DRD resource pairs with content rather than with a container — so `section-overlay` now declines a capability declaring one, with a console warning, instead of mounting it with `content: undefined`. That is documented on the contract; `resolve` must also be synchronous and return JSON-serializable content, both of which hosts already relied on and neither of which was stated.
+
+  ## Item media region lifecycle
+
+  Three fixes in `SectionItemCard`, all reachable by toggling an accommodation at runtime:
+
+  - **Losing the last grant destroys the region, and the mount effect treated a missing anchor as "nothing to do."** The capability's `destroy()` never ran, so a detached `<video>` kept playing audio, and its entry stayed in the mounted map — so the next grant found an "existing" mount that was no longer in the document and the region stayed blank for the rest of the session. It now tears down, matching what the section-overlay surface already did.
+  - **The region and its keyboard-focusable resize divider followed the grant count, not what mounted.** `renderSurface` returning `null` is a legitimate answer — a host that remapped the element tag through `toolTagMap` to one it never defined takes that path — which produced an empty 34% column with a handle dividing nothing. Both now follow the mounted count.
+  - **Both surface anchors are `display: contents`.** They were always-present elements generating their own box: the overlay anchor as a permanent flex item shifting `gap` and child-index selectors, the media anchor breaking any `height: 100%` chain between the region and the capability's element.
+
+  ## Guarantee that was asserted but not enforced
+
+  `UNIVERSAL_SUPPORTS_PRESET`'s exclusion of content-dependent accommodations was a hardcoded `not.toContain("signLanguage")`, with a comment deferring the declaration-driven form to the step that has now landed. It reads `registry.getContentDependentSupportIds()`, which had no caller outside its own unit test, and a second assertion covers the other half: no packaged registration declares a content dependency, so a twelfth one could not pass by being invisible to the first check.
+
+  ## PNP debugger
+
+  Region capabilities no longer get per-level placement toggles or an "all available tools" entry. Clicking one wrote config that fails `tools.unplaceableActivation` at `error` severity, and the "visible" marker beside it read a placement-scoped decision a region capability is never in — so it reported "not visible" while the capability was correctly rendering. Rows show `host surface (not placed)` and, for a content-dependent capability, what has to be authored, which is what `contentDependencyDescription` was added for.
+
+- 5183654: `ToolRegistration.requiresAuthoredContent` lets a capability declare the authored content it needs, so nothing in core has to know which accommodation it is resolving.
+
+  Signing needs a catalog card, braille a transcription, authored SSML a `<speak>` in that item. This is the resource half of AfA's PNP/DRD pair, and it is intrinsic to the capability — unlike eligibility tier, which is a property of the program and belongs in policy configuration.
+
+  ```ts
+  requiresAuthoredContent: {
+    description: 'a sign-language catalog card on the item',
+    resolve: ({ catalogResolver, ownerContext, item }) => findSigningCard(...) ?? null,
+  },
+  ```
+
+  Two independent things follow from declaring it, and both were previously done by naming ids in core.
+
+  **Availability becomes grant AND content.** A host renders only when policy granted the feature _and_ `resolve` returned something. Neither half implies the other and neither is a default, so a learner who has the accommodation still sees nothing on an item that carries no resource — no dead affordance on the overwhelming majority of items. `resolve`'s return value is handed straight back through `ToolSurfaceRenderContext.content`, and the host never inspects it; that is what keeps the host and the resolver from knowing which accommodation is in play.
+
+  **It is never granted wholesale.** `ToolRegistry.getContentDependentSupportIds()` is what a host filters a default grant list on, replacing the compile-time array of ids a host could not extend. A host adding its own accommodation gets the same guarantee by declaring the dependency — no change to our code.
+
+  Registration rejects a content dependency with no `pnpSupportIds` entry. That is what a host filters on, so declaring the dependency with nothing to filter would silently drop the second guarantee.
+
+  `getToolMetadata()` reports `requiresAuthoredContent` and the optional `description`, so a policy debugger can explain why an otherwise-granted capability is absent — the one question the grant trail alone cannot answer.
+
+  Scope note: the composition package still keeps `signLanguage` out of its universal preset by id, because the packaged registrations have not moved there yet. The declaration-driven assertion replaces that id check when they do.
+
+- c59396b: Capabilities can render into a host surface instead of a toolbar: `activation: "region"`, a `surfaces` list, and a `renderSurface` hook on `ToolRegistration`.
+
+  Not every policy-addressable capability is a toolbar surface. A signed alternate renders as its own region beside item content, so a renderer that wants to show one has had to name `signLanguage` and its renderer directly — which is why a host cannot contribute an accommodation without a PR against this repo. The registry now answers "what can fill this slot" so a renderer never has to know.
+
+  ## Contract
+
+  ```ts
+  activation: "region"
+  surfaces: ["item-media"]
+  renderSurface(context: ToolSurfaceRenderContext): ToolSurfaceRenderResult | null
+  ```
+
+  `ToolSurfaceRenderContext` carries the granted `featureId`, the policy `parameters`, the resolved content dependency, the surface name, and the same three services a toolbar tool reaches through `ToolbarContext` — coordinator, TTS, catalog resolver — and no more. A capability that needs anything else asks the coordinator. Passing the host's own component or state would make the registration depend on which renderer mounted it. `ToolSurfaceRenderResult` returns the element plus optional `ariaLabel`, `sync()` and `destroy()`.
+
+  Surface names belong to the host. Core defines none and validates only that a region capability claims at least one, so a host can open a new surface without a change here, and a capability can say which of a host's surfaces it fits. Discovery is `registry.getToolsBySurface(surface)`, in registration order — core has no basis for a precedence between two capabilities in one slot.
+
+  A capability can be both. The annotation toolbar is a toolbar button at item and passage level _and_ a section-scoped singleton, so it carries `renderToolbar` and `renderSurface` together; declaring a surface does not remove it from the toolbar path.
+
+  ## Additive, not a migration
+
+  `ToolActivation` gains `"region"` and keeps `"toolbar-toggle"` and `"selection-gateway"`. `icon` and `renderToolbar` become optional on `ToolRegistration` but stay _required for the two toolbar activations_, so every existing registration validates unchanged. A region registration with no `surfaces`, or a `renderSurface` with no surface to be found under, is rejected at registration: a surface renderer nothing can discover silently never renders, which is the failure mode this mechanism exists to remove.
+
+  `ToolToolbarButtonDefinition.icon` is now optional, matching what the renderers already did — `ToolButton.svelte` and `ItemToolBar.svelte` both guard on `button.icon`, and `ToolbarItem.icon` was already optional, so requiring it claimed a guarantee nothing relied on.
+
+  ## Diagnostics
+
+  Naming a region capability in `placement.{section,item,passage}` is a new `tools.unplaceableActivation` error. It would never render there, and reporting it against the config is the difference between a diagnostic and an accommodation that is silently absent. `renderForToolbar` now throws with the activation named rather than failing on a missing method, because the caller's mistake is in placement config, not in the registration.
+
+  `getToolMetadata()` reports `surfaces`, which is the PNP debugger's region-placement column.
+
+- Updated dependencies [c5fbf21]
+  - @pie-players/pie-players-shared@0.3.65
+  - @pie-players/pie-calculator@0.3.65
+  - @pie-players/pie-calculator-desmos@0.3.65
+  - @pie-players/pie-context@0.3.65
+  - @pie-players/pie-tts@0.3.65
+  - @pie-players/tts-client-server@0.3.65
+
 ## 0.3.64
 
 ### Patch Changes

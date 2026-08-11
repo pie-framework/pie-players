@@ -1,5 +1,16 @@
 # @pie-players/pie-section-player-tools-instrumentation-debugger
 
+## 0.3.65
+
+### Patch Changes
+
+- Updated dependencies [c16c77c]
+- Updated dependencies [c5fbf21]
+- Updated dependencies [3f6e33a]
+  - @pie-players/pie-theme@0.3.65
+  - @pie-players/pie-players-shared@0.3.65
+  - @pie-players/pie-section-player-tools-shared@0.3.65
+
 ## 0.3.64
 
 ### Patch Changes

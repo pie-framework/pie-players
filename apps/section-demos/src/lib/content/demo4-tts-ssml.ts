@@ -39,7 +39,26 @@ const q1EquationMath = mathml(`<mrow>
                     <mo>+</mo><mn>6</mn><mo>=</mo><mn>0</mn>
                   </mrow>`);
 
+// A fraction over a radical, so this inline expression is several lines tall.
+// Tall 2D layouts are the interesting case for anything that has to decorate
+// rendered math (TTS read-along highlighting, answer-eliminator strikethrough).
 const factoredEquationMath = mathml(`<mrow>
+                    <mfrac>
+                      <mrow>
+                        <mo>(</mo><mi>x</mi><mo>-</mo><mn>2</mn><mo>)</mo>
+                        <mo>&#x2062;</mo>
+                        <mo>(</mo><mi>x</mi><mo>-</mo><mn>3</mn><mo>)</mo>
+                      </mrow>
+                      <mrow>
+                        <msqrt>
+                          <mrow><mi>x</mi><mo>+</mo><mn>1</mn></mrow>
+                        </msqrt>
+                      </mrow>
+                    </mfrac>
+                  </mrow>`);
+
+// A single row of symbols, for contrast with the stacked expression above.
+const equationMath = mathml(`<mrow>
                     <mo>(</mo><mi>x</mi><mo>-</mo><mn>2</mn><mo>)</mo>
                     <mo>&#x2062;</mo>
                     <mo>(</mo><mi>x</mi><mo>-</mo><mn>3</mn><mo>)</mo>
@@ -60,7 +79,8 @@ const factoredEquationMath = mathml(`<mrow>
  *
  * TTS Features Demonstrated:
  * - Passage with SSML for controlled pacing around a math expression
- * - Q1: SSML in prompt (slow speech for complex math) and choices (emphasis)
+ * - Q1: SSML in prompt (slow speech for complex math) and choices (emphasis),
+ *   including a choice whose graph image is described by its spoken card
  * - Q2: Practical non-math SSML for directions, dates, and acronyms
  * - Content-level TTS buttons in headers
  */
@@ -234,7 +254,7 @@ export const demo4Section: AssessmentSection = {
 											catalog: "spoken",
 											language: "en-US",
 											content:
-												'<speak><prosody rate="slow">X minus 2, times X minus 3</prosody></speak>',
+												'<speak><prosody rate="slow">X minus 2, times X minus 3, all divided by the square root of X plus 1</prosody></speak>',
 										},
 									],
 								},
@@ -244,17 +264,33 @@ export const demo4Section: AssessmentSection = {
 										{
 											catalog: "spoken",
 											language: "en-US",
-											content: "<speak>Completing the square</speak>",
+											// The choice carries a picture, so the spoken card names it
+											// rather than leaving the image unread.
+											content: `<speak>Completing the square.
+                  <break time="250ms"/>
+                  A cartoon dog placeholder picture is shown.
+                </speak>`,
 										},
 									],
 								},
 								{
-									identifier: "q1-choice-d",
+									identifier: "q1-choice-d-text",
 									cards: [
 										{
 											catalog: "spoken",
 											language: "en-US",
 											content: "<speak>Graphing the equation</speak>",
+										},
+									],
+								},
+								{
+									identifier: "q1-choice-d-equation",
+									cards: [
+										{
+											catalog: "spoken",
+											language: "en-US",
+											content:
+												'<speak><prosody rate="slow">X minus 2, times X minus 3</prosody></speak>',
 										},
 									],
 								},
@@ -284,13 +320,22 @@ export const demo4Section: AssessmentSection = {
 									value: "c",
 									label: `<div data-catalog-idref="q1-choice-c">
                     Completing the square
+                    <div>
+                      <img
+                        src="/demo-assets/tts-ssml/dog-test-image.png"
+                        alt="Cartoon dog, a placeholder test image"
+                        width="240"
+                        height="180"
+                      />
+                    </div>
                   </div>`,
 									correct: false,
 								},
 								{
 									value: "d",
-									label: `<div data-catalog-idref="q1-choice-d">
-                    Graphing the equation
+									label: `<div>
+                    <span data-catalog-idref="q1-choice-d-text">Graphing the equation</span>
+                    <span data-catalog-idref="q1-choice-d-equation">${equationMath}</span>
                   </div>`,
 									correct: false,
 								},

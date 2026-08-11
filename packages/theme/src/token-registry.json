@@ -1,5 +1,20 @@
 [
 	{
+		"name": "--pie-answer-eliminator-strike-color",
+		"owner": "@pie-players/pie-tool-answer-eliminator",
+		"scope": "component-public",
+		"category": "feedback",
+		"status": "active",
+		"definedIn": [
+			"packages/theme/src/components.css",
+			"packages/tool-answer-eliminator/strategies/strikethrough-strategy.ts"
+		],
+		"documentedIn": [
+			"packages/tool-answer-eliminator/README.md"
+		],
+		"fallbackPolicy": "Single colour for every part of an elimination: the text line-through, the diagonals over an image, and the line or diagonals over rendered math, so one choice reads as one treatment. Must fall back through canonical --pie-incorrect so a host that themes only the canonical feedback tokens still gets a coherent strike."
+	},
+	{
 		"name": "--pie-background",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

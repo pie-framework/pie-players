@@ -213,6 +213,23 @@ Elimination styling is applied by a pluggable `EliminationStrategy` built on the
 - `strikethrough` (default): a `::highlight(pie-answer-eliminated-<id>)` rule renders a line-through over the choice label.
 - `mask`: a `::highlight(pie-answer-masked-<id>)` rule dims and blurs the choice.
 
+Images need separate treatment: they are replaced elements, so neither `::highlight()` nor `text-decoration` paints on them and a picture choice would look untouched. The `strikethrough` strategy therefore wraps each `img` in the eliminated choice in a `span.pie-answer-eliminator-image-strike` (marked with `data-pie-answer-eliminator-image-strike`) and overlays a decorative, `pointer-events: none` SVG that draws an X corner to corner — upper-left to lower-right and lower-left to upper-right. Restoring the choice unwraps the image and returns the DOM to its original shape. Each diagonal is painted over a wider light casing line (`--pie-answer-eliminator-image-strike-casing-color`) so it stays legible over dark artwork.
+
+MathJax-rendered math needs its own mark for the same reason. MathJax's CHTML output draws each glyph as an `mjx-c` element with empty `textContent` (the character comes from `::before` generated content, which belongs to no Range), and its SVG output has no text at all — so the highlight had nothing to decorate and a math-only choice looked untouched. For each `mjx-container` in the eliminated choice, the `strikethrough` strategy marks the inner `mjx-math` box with `pie-answer-eliminator-math-strike` plus one of two modifiers, and the theme paints it:
+
+| expression | mark | `data-pie-answer-eliminator-math-strike` |
+| --- | --- | --- |
+| single row of symbols | centred line-through, as the prose gets | `line` |
+| contains a fraction bar or table rule | diagonals, as an eliminated image gets | `cross` |
+
+A centred line on a fraction lands on the math axis — exactly where the fraction bar already sits — so it reads as a recoloured bar rather than an elimination. The split is structural (`mjx-mfrac`, `mjx-mtable`), not height-based: an inline `a/b` is only 1.16× its font size, indistinguishable in height from a radical or a parenthesised row, yet it is precisely the colliding case. Radicals and stacked limits keep the line, since their bars sit at the top or the strike simply crosses the base.
+
+The inner `mjx-math` box is the paint target, not the container: for inline math `mjx-container` is `display: inline`, so its rect is the surrounding line box while the expression itself overflows it — a fraction sticks out several pixels above and below.
+
+Only MathJax containers are marked: natively rendered MathML keeps real text in `mi`/`mn`/`mo`, so the highlight already strikes every token there.
+
+All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one colour, `--pie-answer-eliminator-strike-color` (defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
+
 For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, plus `aria-disabled`/`aria-hidden` and an offscreen "(eliminated)" announcement) for assistive technology.
 
 ### 4. Toggle Behavior

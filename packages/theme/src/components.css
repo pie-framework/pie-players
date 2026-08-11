@@ -727,8 +727,111 @@ table {
 .pie-answer-eliminator-eliminated-fallback {
 	text-decoration: line-through;
 	text-decoration-thickness: 2px;
-	text-decoration-color: var(--pie-incorrect, #ff9800);
-	opacity: 0.6;
+	text-decoration-color: var(
+		--pie-answer-eliminator-strike-color,
+		var(--pie-incorrect, #ff9800)
+	);
+}
+
+.pie-answer-eliminator-image-strike {
+	position: relative;
+	display: inline-block;
+	max-width: 100%;
+	/*
+	 * Collapse the line-box strut so the wrapper hugs the image exactly (no
+	 * baseline descender gap under it) and the X cannot overhang the artwork.
+	 * It also keeps the image bottom on the text baseline, as an unwrapped
+	 * baseline-aligned image sits.
+	 */
+	line-height: 0;
+}
+
+.pie-answer-eliminator-image-strike-overlay {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.pie-answer-eliminator-image-strike-line {
+	stroke: var(
+		--pie-answer-eliminator-strike-color,
+		var(--pie-incorrect, #ff9800)
+	);
+	stroke-width: 3;
+	stroke-linecap: square;
+}
+
+/* Wider light line under each diagonal so the X stays legible on dark imagery. */
+.pie-answer-eliminator-image-strike-casing {
+	stroke: var(
+		--pie-answer-eliminator-image-strike-casing-color,
+		rgba(255, 255, 255, 0.85)
+	);
+	stroke-width: 6;
+	stroke-linecap: square;
+}
+
+/*
+ * Eliminated math: MathJax's rendered glyphs are generated content, so neither
+ * `::highlight()` nor `text-decoration` reaches them. The eliminator marks the
+ * rendered math box instead and the paint happens here, in the same colour and
+ * weight as the text line-through so a choice mixing prose and math reads as one
+ * strike. Which mark it gets depends on the shape of the expression — the tool
+ * measures the box and picks `--line` or `--cross`.
+ */
+.pie-answer-eliminator-math-strike {
+	position: relative;
+	/*
+	 * Internal: the resolved strike paint, so the rules below need not repeat the
+	 * fallback chain. Not a themeable knob — set --pie-answer-eliminator-strike-color.
+	 */
+	--pie-answer-eliminator-strike-paint: var(
+		--pie-answer-eliminator-strike-color,
+		var(--pie-incorrect, #ff9800)
+	);
+}
+
+/* A single row of symbols takes the same line-through as the surrounding prose. */
+.pie-answer-eliminator-math-strike--line::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	border-top: 2px solid var(--pie-answer-eliminator-strike-paint);
+	pointer-events: none;
+}
+
+/*
+ * A stacked 2D layout (fraction, radical, matrix) takes the diagonals instead.
+ * A centred line would land on the math axis — precisely where the fraction bar
+ * already is — and read as a recoloured bar rather than an elimination, so the
+ * expression is crossed out the way an eliminated image is. Corner keywords make
+ * each gradient's transition run exactly corner to corner at any aspect ratio,
+ * with a 1px feather either side of the 1px core for a smooth 2px line.
+ */
+.pie-answer-eliminator-math-strike--cross::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image:
+		linear-gradient(
+			to bottom right,
+			transparent calc(50% - 1.5px),
+			var(--pie-answer-eliminator-strike-paint) calc(50% - 0.5px),
+			var(--pie-answer-eliminator-strike-paint) calc(50% + 0.5px),
+			transparent calc(50% + 1.5px)
+		),
+		linear-gradient(
+			to bottom left,
+			transparent calc(50% - 1.5px),
+			var(--pie-answer-eliminator-strike-paint) calc(50% - 0.5px),
+			var(--pie-answer-eliminator-strike-paint) calc(50% + 0.5px),
+			transparent calc(50% + 1.5px)
+		);
 }
 
 .pie-answer-masked-fallback {

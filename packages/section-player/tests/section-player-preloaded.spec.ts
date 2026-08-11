@@ -29,9 +29,12 @@ test.describe("section player preloaded strategy", () => {
 		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
 			timeout: 30_000,
 		});
+		// Two items, not three: `q2-find-factors` was dropped from the tts-ssml
+		// fixture in f3dffd7d (PIE-619). The passage is a `pie-passage-shell`, so it
+		// is not in this count.
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
-		).toHaveCount(3, { timeout: 30_000 });
+		).toHaveCount(2, { timeout: 30_000 });
 
 		const playerAttrs = await page
 			.locator("pie-item-player")
@@ -55,9 +58,12 @@ test.describe("section player preloaded strategy", () => {
 			timeout: 30_000,
 		});
 		await expect(page.locator(".preload-status.error")).toHaveCount(0);
+		// Two items, not three: `q2-find-factors` was dropped from the tts-ssml
+		// fixture in f3dffd7d (PIE-619). The passage is a `pie-passage-shell`, so it
+		// is not in this count.
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
-		).toHaveCount(3, { timeout: 30_000 });
+		).toHaveCount(2, { timeout: 30_000 });
 	});
 
 	test("fixed-version demo preloads pinned passage and item versions", async ({
@@ -332,6 +338,11 @@ test.describe("section player preloaded strategy", () => {
 		expect(itemPlayerCount).toBeGreaterThan(0);
 
 		await page.evaluate(() => {
+			for (const shell of document.querySelectorAll(
+				'pie-item-shell[data-pie-shell-root="item"]',
+			)) {
+				shell.setAttribute("data-remount-probe", "");
+			}
 			const sectionPlayer = document.querySelector(
 				"pie-section-player-splitpane",
 			) as HTMLElement & { runtime?: Record<string, unknown> };
@@ -356,6 +367,20 @@ test.describe("section player preloaded strategy", () => {
 		await expect
 			.poll(() => loadCalls.length, { timeout: 30_000 })
 			.toBe(itemPlayerCount);
+
+		// The cards must survive enabling the backend. Enabling it flips `hosted`,
+		// which re-warms the element bundles; tearing the cards down to do that
+		// destroyed every item player, discarded in-progress session state, and made
+		// each item load twice — once from the dying instance, once from its
+		// replacement. Element identity is the assertion that catches a remount.
+		expect(
+			await page.evaluate(
+				() =>
+					(
+						window as unknown as { __pieShellIdentity?: unknown[] }
+					).__pieShellIdentity?.length ?? 0,
+			),
+		).toBe(0);
 		await page.waitForTimeout(500);
 		expect(loadCalls).toHaveLength(itemPlayerCount);
 		expect(new Set(loadCalls.map((call) => call.itemId)).size).toBe(

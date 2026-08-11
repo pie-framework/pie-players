@@ -1,18 +1,19 @@
 /**
- * Per-item catalog media: which signed alternate an item card should show, and
- * how wide the region holding it is.
+ * Which signed alternate an item carries, if any.
  *
- * Availability has two independent halves, and both are required:
+ * The resource half of AfA's PNP/DRD pair. Availability has two independent
+ * halves and both are required:
  *
- *   1. **Content** — the item carries a matching catalog card. This is AfA's
- *      resource-side declaration (QTI approximates DRD in-band: the presence of
- *      the card *is* the declaration), and it is what keeps the region off the
- *      overwhelming majority of items, which carry no signing video.
+ *   1. **Content** — the item carries a matching catalog card. QTI approximates
+ *      DRD in-band: the presence of the card *is* the resource declaration, and
+ *      it is what keeps the region off the overwhelming majority of items, which
+ *      carry no signing video.
  *   2. **Eligibility** — policy granted the feature id. Signing is an
  *      accommodation, so silence means no.
  *
  * Deliberately not framed as "default on versus default off": neither half
- * implies the other, and neither is a default.
+ * implies the other, and neither is a default. The host asks about eligibility
+ * and then calls `resolve` here; it does not know which of the two answered no.
  *
  * A signed alternate reaches an item one way only: as a catalog card, authored
  * or written by an importer. There is deliberately no path that lifts a signing
@@ -30,24 +31,23 @@
  */
 
 import {
-	AMERICAN_SIGN_LANGUAGE,
-	SIGN_LANGUAGE_CATALOG_TYPE,
 	collectEntityCatalogRegistrations,
+	type CatalogOwnerContext,
+	type CatalogSourceEntity,
+	type AccessibilityCatalogResolverApi,
+	type ToolContentDependencyContext,
+} from "@pie-players/pie-assessment-toolkit";
+import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import {
+	AMERICAN_SIGN_LANGUAGE,
 	isSignLanguageCard,
 	matchesRequestedSignLanguage,
 	resolveSignLanguageMedia,
-	type AccessibilityCatalogResolverApi,
-	type CatalogOwnerContext,
-	type CatalogSourceEntity,
+	SIGN_LANGUAGE_CATALOG_TYPE,
 	type SignLanguageMedia,
-} from "@pie-players/pie-assessment-toolkit";
-import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+} from "./sign-language-cards.js";
 
-/**
- * QTI 3.0 / AfA support id gating signed alternates. Excluded from the computed
- * default PNP profile by `ACCOMMODATION_ONLY_SUPPORT_IDS`, so it is only ever
- * granted deliberately.
- */
+/** QTI 3.0 / AfA support id gating signed alternates. */
 export const SIGN_LANGUAGE_FEATURE_ID = "signLanguage";
 
 /** A catalog on this item that carries at least one sign-language card. */
@@ -170,56 +170,45 @@ export function resolveSignLanguageAlternate(
 	return null;
 }
 
-// ----------------------------------------------------------------------------
-// Region sizing
-// ----------------------------------------------------------------------------
-
 /**
- * Default and bounds for the media region's share of the card width.
+ * Which sign language the learner is entitled to.
  *
- * Signing needs height for hands and face, so the region is sized by an
- * aspect-ratio target with a minimum height rather than by width alone — a flat
- * viewport percentage either wastes space on a short clip or crushes it on a
- * narrow device. The percentage below only decides how the card's width is
- * split; legibility is defended by the region's CSS.
+ * Read from the feature's policy parameters (`toolParameters` / `toolConfigs`),
+ * never inferred from the item's content language — a Spanish item's signed
+ * alternate is LSM, not ASL.
  */
-export const MEDIA_REGION_DEFAULT_PERCENT = 34;
-export const MEDIA_REGION_MIN_PERCENT = 20;
-export const MEDIA_REGION_MAX_PERCENT = 55;
-/** Below this card width the split is dropped and the region stacks. */
-export const MEDIA_REGION_STACK_BREAKPOINT_PX = 560;
-
-export function clampMediaRegionPercent(
-	value: number,
-	min: number = MEDIA_REGION_MIN_PERCENT,
-	max: number = MEDIA_REGION_MAX_PERCENT,
-): number {
-	if (!Number.isFinite(value)) return MEDIA_REGION_DEFAULT_PERCENT;
-	return Math.max(min, Math.min(max, value));
+export function resolveRequestedSignLanguage(
+	parameters: unknown,
+): string | undefined {
+	if (!parameters || typeof parameters !== "object") return undefined;
+	const candidate = (parameters as { signLang?: unknown }).signLang;
+	if (typeof candidate === "string" && candidate.trim()) {
+		return candidate.trim();
+	}
+	return undefined;
 }
 
 /**
- * Convert a pointer drag into a media-region width percentage.
+ * The registration's `requiresAuthoredContent` implementation: the whole
+ * content half behind the one call the host makes.
  *
- * Container-relative, unlike the passage/items divider's fixed 0.1%-per-pixel
- * factor: the same drag has to mean the same thing in a wide card and a narrow
- * one. The region is on the right, so dragging left grows it.
+ * The host supplies the item, the resolver and the owner scope, and learns only
+ * whether there is something to render. It never sees a catalog type, a card
+ * shape or a sign-language code.
  */
-export function mediaRegionPercentFromDrag(args: {
-	startPercent: number;
-	deltaX: number;
-	containerWidthPx: number;
-	min?: number;
-	max?: number;
-}): number {
-	const width = args.containerWidthPx;
-	if (!Number.isFinite(width) || width <= 0) {
-		return clampMediaRegionPercent(args.startPercent, args.min, args.max);
-	}
-	const deltaPercent = (args.deltaX / width) * 100;
-	return clampMediaRegionPercent(
-		args.startPercent - deltaPercent,
-		args.min,
-		args.max,
+export function resolveSignLanguageContent(
+	context: ToolContentDependencyContext,
+): ResolvedSignLanguageAlternate | null {
+	const resolver = context.catalogResolver;
+	if (!resolver) return null;
+	const refs = collectSignLanguageCatalogRefs(
+		context.item as ItemEntity | null | undefined,
 	);
+	if (refs.length === 0) return null;
+	return resolveSignLanguageAlternate({
+		resolver,
+		refs,
+		ownerContext: context.ownerContext,
+		requestedSignLang: resolveRequestedSignLanguage(context.parameters),
+	});
 }

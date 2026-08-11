@@ -1,0 +1,65 @@
+{
+	"name": "@pie-players/pie-tool-sign-language",
+	"version": "0.3.50",
+	"type": "module",
+	"description": "Sign-language accommodation for PIE assessment players: registration, catalog-card resolution and the docked media region",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tool-sign-language"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"accommodation",
+		"sign-language",
+		"asl",
+		"accessibility"
+	],
+	"main": "./dist/tool-sign-language.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/tool-sign-language.js"
+		}
+	},
+	"files": [
+		"dist",
+		"package.json",
+		"README.md"
+	],
+	"license": "MIT",
+	"unpkg": "./dist/tool-sign-language.js",
+	"jsdelivr": "./dist/tool-sign-language.js",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"test": "bun test"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.7",
+		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"svelte": "^5.56.8",
+		"typescript": "^5.9.3",
+		"vite": "^8.0.10",
+		"vite-plugin-dts": "^4.5.4"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-sign-language#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": true
+}

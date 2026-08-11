@@ -5,15 +5,17 @@ import type {
 	SignLanguageCardPayload,
 } from "@pie-players/pie-players-shared/types";
 
-import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
+import {
+	AccessibilityCatalogResolver,
+	applyMediaFragment,
+} from "@pie-players/pie-assessment-toolkit";
 import {
 	AMERICAN_SIGN_LANGUAGE,
-	applyMediaFragment,
 	describeSignLanguage,
 	matchesRequestedSignLanguage,
 	resolveSignLanguageMedia,
 	SIGN_LANGUAGE_CATALOG_TYPE,
-} from "../src/services/sign-language-cards";
+} from "../src/sign-language-cards";
 
 function payload(
 	overrides: Partial<SignLanguageCardPayload> = {},
@@ -317,9 +319,9 @@ describe("resolver payload passthrough", () => {
 				language: AMERICAN_SIGN_LANGUAGE,
 			}),
 		);
-		expect(resolver.hasAlternativeType("prompt-1", SIGN_LANGUAGE_CATALOG_TYPE)).toBe(
-			true,
-		);
+		expect(
+			resolver.hasAlternativeType("prompt-1", SIGN_LANGUAGE_CATALOG_TYPE),
+		).toBe(true);
 	});
 
 	test("getAllAlternatives reports a scoped registration, which is the runtime's path", () => {
@@ -358,7 +360,10 @@ describe("resolver payload passthrough", () => {
 
 		const alternatives = resolver.getAllAlternatives("prompt-1");
 		expect(
-			alternatives.map((alternative) => [alternative.language, alternative.source]),
+			alternatives.map((alternative) => [
+				alternative.language,
+				alternative.source,
+			]),
 		).toEqual([
 			[AMERICAN_SIGN_LANGUAGE, "item"],
 			["bfi", "item"],

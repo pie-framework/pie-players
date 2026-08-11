@@ -1,20 +1,24 @@
 import { describe, expect, test } from "bun:test";
+// Host-facing TTS config helpers come from the public surface; the
+// registration-authoring resolvers come from `tools/internal`.
 import {
-	buildRuntimeTTSConfig,
 	DEFAULT_TTS_SPEED_OPTIONS,
 	formatTTSSpeedOptionsAsText,
-	normalizeTTSLayoutMode,
-	normalizeTTSSpeedControlOptions,
 	normalizeTTSSpeedOptions,
 	parseTTSSpeedOptionsFromText,
+} from "@pie-players/pie-assessment-toolkit";
+import {
+	buildRuntimeTTSConfig,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedControlOptions,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
 	resolveRuntimeProvider,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
 	resolveTransportMode,
-} from "../src/services/tts-runtime-config";
-import { ttsToolRegistration } from "../src/tools/registrations/tts";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { ttsToolRegistration } from "../src/registrations/tts.js";
 
 describe("tts-runtime-config defaults", () => {
 	test("applies minimal Polly defaults for server-backed setup", () => {
@@ -390,7 +394,12 @@ describe("normalizeTTSSpeedControlOptions", () => {
 		expect(
 			normalizeTTSSpeedControlOptions([
 				{ rate: 0.8, label: " Slow ", ariaLabel: " Slow speed " },
-				{ rate: 1, label: " Normal ", ariaLabel: " Normal speed ", default: true },
+				{
+					rate: 1,
+					label: " Normal ",
+					ariaLabel: " Normal speed ",
+					default: true,
+				},
 				{ rate: 1.5, label: "Fast" },
 				{ rate: 1.5, label: "Duplicate fast" },
 				{ rate: Number.NaN, label: "Bad" },
@@ -409,7 +418,12 @@ describe("normalizeTTSSpeedControlOptions", () => {
 				{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
 			]),
 		).toEqual([
-			{ rate: 0.8, label: "Slow", ariaLabel: "Slow Reduced pace", isDefault: false },
+			{
+				rate: 0.8,
+				label: "Slow",
+				ariaLabel: "Slow Reduced pace",
+				isDefault: false,
+			},
 			{
 				rate: 1,
 				label: "Normal",
@@ -421,7 +435,9 @@ describe("normalizeTTSSpeedControlOptions", () => {
 	});
 
 	test("honors a single visible option while marking it as selected", () => {
-		expect(normalizeTTSSpeedControlOptions([{ rate: 1, label: "Normal" }])).toEqual([
+		expect(
+			normalizeTTSSpeedControlOptions([{ rate: 1, label: "Normal" }]),
+		).toEqual([
 			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 		]);
 	});
@@ -440,12 +456,8 @@ describe("parseTTSSpeedOptionsFromText / formatTTSSpeedOptionsAsText", () => {
 	});
 
 	test("non-empty text with no parseable numbers falls back to defaults", () => {
-		expect(parseTTSSpeedOptionsFromText("foo, bar")).toEqual([
-			0.8, 1, 1.25,
-		]);
-		expect(parseTTSSpeedOptionsFromText(",")).toEqual([
-			0.8, 1, 1.25,
-		]);
+		expect(parseTTSSpeedOptionsFromText("foo, bar")).toEqual([0.8, 1, 1.25]);
+		expect(parseTTSSpeedOptionsFromText(",")).toEqual([0.8, 1, 1.25]);
 	});
 
 	test("formats round-trip", () => {

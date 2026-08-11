@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import {
-		createDefaultPersonalNeedsProfile,
 		createToolsConfig,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
+	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import {
 		BundleType,
 		CompositeInstrumentationProvider,
@@ -95,7 +95,7 @@
 		if (hasExplicitPnp) return section;
 		return {
 			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile()
+			personalNeedsProfile: createUniversalPersonalNeedsProfile()
 		};
 	});
 	let sessionPanelSectionId = $derived(

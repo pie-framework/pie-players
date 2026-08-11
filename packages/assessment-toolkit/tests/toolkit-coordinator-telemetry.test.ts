@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
+import {
+	createFailingAuthProviderDescriptor,
+	createTestToolRegistration,
+} from "./fixtures/test-tool-registry.js";
+import { ToolRegistry } from "../src/services/ToolRegistry.js";
 
 describe("ToolkitCoordinator telemetry listeners", () => {
 	test("subscribeTelemetry receives emitted telemetry payloads", async () => {
@@ -48,6 +53,23 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 					},
 				},
 			},
+			toolRegistry: (() => {
+				// The provider registry keys off the registration's provider
+				// descriptor, so the tool under test needs one. A stub whose auth fetch
+				// throws is what this test actually needs; it used to reach the same
+				// path through the real TTS descriptor, which is a capability and now
+				// lives in the composition layer.
+				const registry = new ToolRegistry();
+				registry.register(
+					createTestToolRegistration({
+						toolId: "textToSpeech",
+						supportedLevels: ["item", "passage"],
+						pnpSupportIds: ["textToSpeech"],
+						provider: createFailingAuthProviderDescriptor("tts"),
+					}),
+				);
+				return registry;
+			})(),
 		});
 
 		const received: Array<{

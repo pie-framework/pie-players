@@ -16,6 +16,7 @@ import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 import {
 	demoSignLanguageGrantedSection,
 	demoSignLanguageNotGrantedSection,
+	demoSignLanguagePassageSection,
 } from "./demo-sign-language";
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoTwoPassagesSection } from "./demo-two-passages";
@@ -514,6 +515,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The second item carries no signing content and shows no region, because an affordance where no content exists is a dead affordance.",
 			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
 			"The third item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
+			"A third page authors the alternate on a shared passage instead of an item; it renders on the passage card, from the same card model and the same host surface.",
 			"The bundled clip is a real public-domain ASL recording that does not sign these prompts — a stand-in, since ASL video production and hosting are host-owned. See `static/demo-assets/sign-language/README.md`.",
 		],
 		sections: [
@@ -526,6 +528,11 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 				id: "signing-not-granted",
 				name: "Signing not granted",
 				section: demoSignLanguageNotGrantedSection,
+			},
+			{
+				id: "signing-passage",
+				name: "Signed passage",
+				section: demoSignLanguagePassageSection,
 			},
 		],
 	},

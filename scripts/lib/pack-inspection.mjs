@@ -86,13 +86,39 @@ export const isPackedMatch = (declaredPath, packedFiles) => {
 	return [...packedFiles].some((file) => pattern.test(file));
 };
 
+/**
+ * The pack results in `npm pack --dry-run --json` output, always as an array.
+ *
+ * npm changed the payload's top-level shape in 12: through 11 it is an array of pack results,
+ * from 12 it is an object keyed by package name. Both are normalised to an array here so callers
+ * keep indexing `[0]`.
+ *
+ * Locating the payload by scanning for the first `[` — which is what this did before npm 12 —
+ * lands inside the nested `files` array on a 12 payload and slices a fragment that does not
+ * parse. That failed every publish-surface check on any machine with npm 12 installed, reported
+ * as "JSON Parse error" for all 37 packages, which reads like 37 broken packages rather than one
+ * broken parser. The opening brace or bracket is whichever comes first.
+ */
 export const parsePackJson = (rawOutput) => {
-	const start = rawOutput.indexOf("[");
-	const end = rawOutput.lastIndexOf("]");
-	if (start < 0 || end < 0 || end < start) {
+	const candidates = [rawOutput.indexOf("{"), rawOutput.indexOf("[")].filter(
+		(index) => index >= 0,
+	);
+	if (candidates.length === 0) {
 		throw new Error("npm pack output did not include JSON payload");
 	}
-	return JSON.parse(rawOutput.slice(start, end + 1));
+
+	const start = Math.min(...candidates);
+	const end = rawOutput.lastIndexOf(rawOutput[start] === "[" ? "]" : "}");
+	if (end < start) {
+		throw new Error("npm pack output did not include JSON payload");
+	}
+
+	const payload = JSON.parse(rawOutput.slice(start, end + 1));
+	if (Array.isArray(payload)) return payload;
+	if (payload && typeof payload === "object") return Object.values(payload);
+	throw new Error(
+		`npm pack JSON payload was neither an array nor an object: ${typeof payload}`,
+	);
 };
 
 export const getWorkspaceDirs = ({

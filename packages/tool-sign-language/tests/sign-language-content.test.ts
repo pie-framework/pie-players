@@ -1,9 +1,9 @@
 /**
- * Per-item catalog media: content discovery, strict sign-language matching, and
- * region sizing.
+ * Content discovery and strict sign-language matching.
  *
- * The rendering half lives in `SectionItemCard.svelte`; everything decidable
- * without a DOM is here.
+ * Assertions are unchanged from when this lived in section-player as
+ * `card-media-region.test.ts`: extracting signing into its own package is a move,
+ * not a behaviour change, and PIE-880 is in testing against this behaviour.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -19,14 +19,12 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 
 import {
-	clampMediaRegionPercent,
 	collectSignLanguageCatalogRefs,
-	MEDIA_REGION_DEFAULT_PERCENT,
-	MEDIA_REGION_MAX_PERCENT,
-	MEDIA_REGION_MIN_PERCENT,
-	mediaRegionPercentFromDrag,
+	resolveRequestedSignLanguage,
 	resolveSignLanguageAlternate,
-} from "../src/components/shared/section-item-media.js";
+	resolveSignLanguageContent,
+	SIGN_LANGUAGE_FEATURE_ID,
+} from "../src/sign-language-content.js";
 
 const OWNER: CatalogOwnerContext = {
 	ownerKind: "itemModel",
@@ -244,55 +242,78 @@ describe("resolveSignLanguageAlternate", () => {
 	});
 });
 
-describe("media region sizing", () => {
-	test("clamps to the region bounds", () => {
-		expect(clampMediaRegionPercent(5)).toBe(MEDIA_REGION_MIN_PERCENT);
-		expect(clampMediaRegionPercent(95)).toBe(MEDIA_REGION_MAX_PERCENT);
-		expect(clampMediaRegionPercent(40)).toBe(40);
-		expect(clampMediaRegionPercent(Number.NaN)).toBe(
-			MEDIA_REGION_DEFAULT_PERCENT,
-		);
+describe("resolveRequestedSignLanguage", () => {
+	test("reads the sign language from policy parameters", () => {
+		expect(resolveRequestedSignLanguage({ signLang: " bfi " })).toBe("bfi");
 	});
 
-	test("converts a drag relative to the container, so the same drag means the same thing", () => {
-		// Dragging left grows the region, which sits on the right.
-		expect(
-			mediaRegionPercentFromDrag({
-				startPercent: 34,
-				deltaX: -100,
-				containerWidthPx: 1000,
+	test("is undefined when parameters carry no usable code", () => {
+		expect(resolveRequestedSignLanguage(undefined)).toBeUndefined();
+		expect(resolveRequestedSignLanguage({})).toBeUndefined();
+		expect(resolveRequestedSignLanguage({ signLang: "  " })).toBeUndefined();
+		expect(resolveRequestedSignLanguage({ signLang: 7 })).toBeUndefined();
+		expect(resolveRequestedSignLanguage("bfi")).toBeUndefined();
+	});
+});
+
+describe("resolveSignLanguageContent", () => {
+	// The one call the host makes. It hands over an item, a resolver and an owner
+	// scope, and learns only whether there is something to render — no catalog
+	// type, card shape or sign-language code crosses the boundary.
+	function contentFor(args: {
+		item: ItemEntity | null;
+		catalogs?: AccessibilityCatalog[];
+		parameters?: unknown;
+		withResolver?: boolean;
+	}) {
+		let resolver: AccessibilityCatalogResolver | null = null;
+		if (args.withResolver !== false) {
+			resolver = new AccessibilityCatalogResolver();
+			resolver.registerCatalogs(OWNER, args.catalogs ?? []);
+		}
+		return resolveSignLanguageContent({
+			featureId: SIGN_LANGUAGE_FEATURE_ID,
+			parameters: args.parameters,
+			catalogResolver: resolver,
+			ownerContext: OWNER,
+			item: args.item,
+		});
+	}
+
+	test("resolves the alternate an eligible learner should see", () => {
+		const resolved = contentFor({
+			item: item({
+				accessibilityCatalogs: [signCatalog("c1", "ase", "asl.mp4")],
 			}),
-		).toBe(44);
-		expect(
-			mediaRegionPercentFromDrag({
-				startPercent: 34,
-				deltaX: -50,
-				containerWidthPx: 500,
-			}),
-		).toBe(44);
-		expect(
-			mediaRegionPercentFromDrag({
-				startPercent: 34,
-				deltaX: 100,
-				containerWidthPx: 1000,
-			}),
-		).toBe(24);
+			catalogs: [signCatalog("c1", "ase", "asl.mp4")],
+		});
+		expect(resolved?.catalogId).toBe("c1");
+		expect(resolved?.sources[0].src).toBe("asl.mp4");
 	});
 
-	test("clamps a drag past the bounds and survives a zero-width container", () => {
+	test("honours the requested sign language from policy parameters", () => {
+		// A BSL entitlement must not be served an ASL recording.
 		expect(
-			mediaRegionPercentFromDrag({
-				startPercent: 34,
-				deltaX: -900,
-				containerWidthPx: 1000,
+			contentFor({
+				item: item({
+					accessibilityCatalogs: [signCatalog("c1", "ase", "asl.mp4")],
+				}),
+				catalogs: [signCatalog("c1", "ase", "asl.mp4")],
+				parameters: { signLang: "bfi" },
 			}),
-		).toBe(MEDIA_REGION_MAX_PERCENT);
+		).toBeNull();
+	});
+
+	test("is absent when the item carries no signing, with no resolver, or with no item", () => {
+		expect(contentFor({ item: item() })).toBeNull();
 		expect(
-			mediaRegionPercentFromDrag({
-				startPercent: 34,
-				deltaX: -100,
-				containerWidthPx: 0,
+			contentFor({
+				item: item({
+					accessibilityCatalogs: [signCatalog("c1", "ase", "asl.mp4")],
+				}),
+				withResolver: false,
 			}),
-		).toBe(34);
+		).toBeNull();
+		expect(contentFor({ item: null })).toBeNull();
 	});
 });

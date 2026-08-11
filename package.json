@@ -45,8 +45,8 @@
 		"lint:biome": "biome lint .",
 		"lint:svelte": "turbo check",
 		"lint:all": "bun run lint && bun run typecheck",
-		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
-		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
+		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
+		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:pre-push": "bun run verify:local-pr",
 		"verify:local-pr": "bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player && bun run test:e2e:players-shared && bun run test:e2e:print-player",
 		"format:check": "biome format .",
@@ -97,6 +97,7 @@
 		"check:runtime-compat": "bun ./scripts/check-runtime-compat.mjs",
 		"check:node-consumer-imports": "bun ./scripts/check-node-consumer-imports.mjs",
 		"check:bundle-safety": "bun ./scripts/check-bundle-safety.mjs && bun run check:player-tool-boundaries",
+		"check:capability-neutrality": "bun ./scripts/check-capability-neutrality.mjs",
 		"check:player-tool-boundaries": "bun ./scripts/check-player-tool-boundaries.mjs",
 		"check:theme-tokens": "bun ./scripts/check-theme-tokens.mjs",
 		"check:math-rendering-version": "bun ./scripts/check-math-rendering-version.mjs",
@@ -107,11 +108,12 @@
 		"check:engine-core-purity": "bun ./scripts/check-engine-core-purity.mjs",
 		"check:speech-composition-purity": "bun ./scripts/check-speech-composition-purity.mjs",
 		"restore:workspace-ranges": "node ./scripts/restore-workspace-ranges.mjs",
-		"verify:publish": "bun run build && bun run check:changeset-patch-only && bun run check:fixed-versioning && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity:real && bun run check:deps && bun run check:consumer-boundaries && bun run check:ce-consumer-contract && bun run check:node-consumer-imports && bun run check:bundle-safety && bun run check:math-rendering-version && bun run check:engine-core-purity && bun run check:speech-composition-purity && bun run check:scripts",
+		"verify:publish": "bun run build && bun run check:changeset-patch-only && bun run check:fixed-versioning && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity:real && bun run check:deps && bun run check:consumer-boundaries && bun run check:ce-consumer-contract && bun run check:node-consumer-imports && bun run check:bundle-safety && bun run check:math-rendering-version && bun run check:engine-core-purity && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:scripts",
 		"check:npm-auth": "dotenvx run -f .env -- node ./scripts/check-npm-auth.mjs",
 		"check:provenance": "bun ./scripts/check-provenance.mjs",
 		"check:trusted-publishers": "bun ./scripts/check-trusted-publishers.mjs",
 		"trusted-publishers": "node ./scripts/configure-trusted-publishers.mjs",
+		"bootstrap-package": "node ./scripts/bootstrap-package.mjs",
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release:with-version": "bun run check:changeset-patch-only && bun ./scripts/create-temporary-release-changeset.mjs && bun run version && bun run restore:workspace-ranges && bun run check:npm-auth && bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges",
@@ -125,7 +127,7 @@
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.5",
 		"@axe-core/playwright": "^4.12.1",
-		"@biomejs/biome": "^2.5.6",
+		"@biomejs/biome": "^2.5.7",
 		"@changesets/cli": "^2.31.1",
 		"@dotenvx/dotenvx": "^2.19.1",
 		"@playwright/test": "^1.62.1",
@@ -134,8 +136,8 @@
 		"glob": "^13.0.6",
 		"lefthook": "^2.1.10",
 		"playwright": "^1.62.1",
-		"publint": "^0.3.22",
-		"turbo": "^2.10.8",
+		"publint": "^0.3.23",
+		"turbo": "^2.10.9",
 		"typescript": "^5.9.3"
 	},
 	"packageManager": "bun@1.3.11",
@@ -181,7 +183,7 @@
 	"dependencies": {
 		"@sveltejs/kit": "^2.70.1",
 		"svelte": "^5.56.8",
-		"svelte-check": "^4.4.8",
+		"svelte-check": "^4.7.5",
 		"vite": "8.0.16"
 	}
 }

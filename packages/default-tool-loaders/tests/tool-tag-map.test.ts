@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { createDefaultToolRegistry } from "../src/services/createDefaultToolRegistry";
-import type { ToolContext } from "../src/services/tool-context";
-import type { ToolbarContext } from "../src/services/ToolRegistry";
 import {
 	createToolElement,
-	DEFAULT_TOOL_TAG_MAP,
 	resolveToolTag,
-} from "../src/tools/tool-tag-map";
+	type ToolbarContext,
+	type ToolContext,
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
+import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map";
 
 const createFakeElement = (tag: string) =>
 	({
@@ -42,13 +42,30 @@ const itemContext: ToolContext = {
 	item: {} as any,
 };
 
-describe("tool-tag-map", () => {
-	test("resolves canonical tags for default tools", () => {
-		expect(resolveToolTag("calculator")).toBe("pie-tool-calculator");
-		expect(resolveToolTag("textToSpeech")).toBe("pie-tool-text-to-speech");
-		expect(resolveToolTag("highlighter")).toBe("pie-tool-annotation-toolbar");
-		expect(resolveToolTag("theme")).toBe("pie-tool-theme");
-		expect("colorScheme" in DEFAULT_TOOL_TAG_MAP).toBe(false);
+describe("packaged tool tag map", () => {
+	test("maps each packaged capability to its element tag", () => {
+		const overrides = { toolTagMap: PACKAGED_TOOL_TAG_MAP };
+		expect(resolveToolTag("calculator", overrides)).toBe("pie-tool-calculator");
+		expect(resolveToolTag("textToSpeech", overrides)).toBe(
+			"pie-tool-text-to-speech",
+		);
+		expect(resolveToolTag("highlighter", overrides)).toBe(
+			"pie-tool-annotation-toolbar",
+		);
+		expect(resolveToolTag("theme", overrides)).toBe("pie-tool-theme");
+		expect("colorScheme" in PACKAGED_TOOL_TAG_MAP).toBe(false);
+	});
+
+	test("the toolkit carries no packaged tag map to fall back to", () => {
+		// The catalogue lived in core, which is why a host could not add a
+		// capability without editing that package. Asking for a packaged tag with no
+		// map installed now names the missing mapping rather than rendering a bogus
+		// element or reporting a hyphen rule the caller did not break.
+		expect(() => resolveToolTag("calculator")).toThrow(
+			/No element tag is mapped for tool "calculator"/,
+		);
+		// A host whose tool id already looks like a tag needs no mapping.
+		expect(resolveToolTag("host-own-tool")).toBe("host-own-tool");
 	});
 
 	test("allows per-tool tag override", () => {
@@ -65,6 +82,7 @@ describe("tool-tag-map", () => {
 				itemContext,
 				{},
 				{
+					toolTagMap: PACKAGED_TOOL_TAG_MAP,
 					toolComponentFactory: ({ tagName }) => {
 						const out = document.createElement(tagName) as any;
 						out.setAttribute("data-factory", "yes");
@@ -77,14 +95,10 @@ describe("tool-tag-map", () => {
 	});
 });
 
-describe("createDefaultToolRegistry component overrides", () => {
+describe("createPackagedToolRegistry component overrides", () => {
 	test("applies custom tool tag map during toolbar render", () => {
-		const registry = createDefaultToolRegistry({
-			includePackagedTools: true,
-			toolTagMap: {
-				...DEFAULT_TOOL_TAG_MAP,
-				calculator: "custom-calculator",
-			},
+		const registry = createPackagedToolRegistry({
+			toolTagMap: { calculator: "custom-calculator" },
 		});
 
 		const toolbarContext: ToolbarContext = {

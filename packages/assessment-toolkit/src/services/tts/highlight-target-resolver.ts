@@ -23,5 +23,7 @@ export interface TTSHighlightTargetResolverRuntime {
 	resolver?: TTSHighlightTargetResolver | null;
 }
 
-export type TTSHighlightTargetResolverProvider =
-	() => TTSHighlightTargetResolverRuntime | null | undefined;
+export type TTSHighlightTargetResolverProvider = () =>
+	| TTSHighlightTargetResolverRuntime
+	| null
+	| undefined;

@@ -792,43 +792,43 @@
 	},
 	{
 		"name": "--pie-section-player-item-media-aspect-ratio",
-		"owner": "@pie-players/pie-section-player",
+		"owner": "@pie-players/pie-tool-sign-language",
 		"scope": "component-public",
 		"category": "section-card",
 		"status": "active",
 		"definedIn": [
-			"packages/section-player/src/components/shared/SectionItemMediaRegion.svelte"
+			"packages/tool-sign-language/src/SignLanguageMediaRegion.svelte"
 		],
 		"documentedIn": [
-			"packages/section-player/README.md"
+			"packages/tool-sign-language/README.md"
 		],
 		"fallbackPolicy": "Public sizing hook for the item card media region; defaults to 3 / 4 because signed content needs height for hands and face. Geometry-only, but hosts must keep signing legible when overriding."
 	},
 	{
 		"name": "--pie-section-player-item-media-min-height",
-		"owner": "@pie-players/pie-section-player",
+		"owner": "@pie-players/pie-tool-sign-language",
 		"scope": "component-public",
 		"category": "section-card",
 		"status": "active",
 		"definedIn": [
-			"packages/section-player/src/components/shared/SectionItemMediaRegion.svelte"
+			"packages/tool-sign-language/src/SignLanguageMediaRegion.svelte"
 		],
 		"documentedIn": [
-			"packages/section-player/README.md"
+			"packages/tool-sign-language/README.md"
 		],
 		"fallbackPolicy": "Public legibility floor for the item card media region; defaults to 220px so a narrow content column cannot crush signed content. Geometry-only."
 	},
 	{
 		"name": "--pie-section-player-item-media-max-height",
-		"owner": "@pie-players/pie-section-player",
+		"owner": "@pie-players/pie-tool-sign-language",
 		"scope": "component-public",
 		"category": "section-card",
 		"status": "active",
 		"definedIn": [
-			"packages/section-player/src/components/shared/SectionItemMediaRegion.svelte"
+			"packages/tool-sign-language/src/SignLanguageMediaRegion.svelte"
 		],
 		"documentedIn": [
-			"packages/section-player/README.md"
+			"packages/tool-sign-language/README.md"
 		],
 		"fallbackPolicy": "Public ceiling for the item card media region; defaults to 60vh so a tall recording cannot push question content off screen. Geometry-only."
 	},

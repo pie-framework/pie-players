@@ -119,6 +119,10 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-tool-sign-language": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-tool-text-to-speech": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"

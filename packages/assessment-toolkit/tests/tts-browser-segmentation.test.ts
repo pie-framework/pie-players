@@ -3,7 +3,8 @@ import { BrowserTTSProvider } from "../src/services/tts/browser-provider";
 
 const originalWindow = (globalThis as any).window;
 const originalSpeechSynthesis = (globalThis as any).speechSynthesis;
-const originalSpeechSynthesisUtterance = (globalThis as any).SpeechSynthesisUtterance;
+const originalSpeechSynthesisUtterance = (globalThis as any)
+	.SpeechSynthesisUtterance;
 const originalNavigator = (globalThis as any).navigator;
 const originalSegmenter = (globalThis as any).Intl?.Segmenter;
 

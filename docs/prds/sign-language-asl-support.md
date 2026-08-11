@@ -98,12 +98,13 @@ Merging satisfies this trivially. Emitting both satisfies it only if assembly an
 
 ## Package And Export Ownership
 
-- Owning package for resolution and policy: `@pie-players/pie-assessment-toolkit` (source at `packages/assessment-toolkit`). It already owns `AccessibilityCatalogResolver`, the PNP feature vocabulary, and `ToolPolicyEngine`.
+- Owning package for the generic machinery: `@pie-players/pie-assessment-toolkit` (source at `packages/assessment-toolkit`). It owns `AccessibilityCatalogResolver`, the PNP feature vocabulary, `ToolPolicyEngine` and the registration contract — and, since PIE-886, names no capability.
+- Owning package for signing itself: `@pie-players/pie-tool-sign-language` (source at `packages/tool-sign-language`), added 2026-08-10. It holds the card validation, the content resolver, the registration and the region element. Signing is the worked example of a capability contributed from outside the player: it is not in `createPackagedToolRegistry`, so a deployment opts in by registering it.
 - Owning package for data types: `@pie-players/pie-players-shared` (source at `packages/players-shared`), where `CatalogCard`, `AccessibilityCatalog`, and `PersonalNeedsProfile` already live.
-- Runtime host: `@pie-players/pie-section-player`, same as spoken/TTS catalogs today. Section-player consumes `assessment-toolkit` (which owns the catalog resolver and PNP policy), so no new host is introduced — only a new catalog card type and a new renderer for it.
-- Rendering placement: **a per-item region in `SectionItemCard.svelte`**, alongside the `header` and `content` regions it already declares — decided 2026-08-07. Not a toolbar surface, and not an item-player affordance. `item-player` needs to know nothing about signing.
+- Runtime host: `@pie-players/pie-section-player`, same as spoken/TTS catalogs today. It offers the `item-media` surface and mounts whatever is registered on it; it does not depend on the signing package and does not name signing, the `signLanguage` support id or the `sign-language` catalog type.
+- Rendering placement: **a per-item region in `SectionItemCard.svelte`**, alongside the `header` and `content` regions it already declares — decided 2026-08-07, and since 2026-08-10 reached through the generic `item-media` surface rather than by name. Not a toolbar surface, and not an item-player affordance. `item-player` needs to know nothing about signing.
 - Policy identity: **signing takes a feature id and registers for policy**, so it inherits the six-level precedence in `PnpPolicySource` (`district-block`, `test-admin-override`, `item-restriction`, `item-requirement`, `district-requirement`, `pnp-support`, `pnp-prohibited`). Policy identity and rendering placement are deliberately separated here; see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool).
-- Public export path: open question; expected to be additive exports from the two owners above plus the region and its registration.
+- Public export path: `@pie-players/pie-tool-sign-language` for the registration, the card validators and the content resolver; the generic media-payload helpers (`applyMediaFragment` and the normalizers) stay on the toolkit's public surface.
 - Consuming packages or apps: `section-player`, `assessment-toolkit` registry and policy engine, demo apps, `pie-elements-ng` only if per-node docking below the prompt is later scoped, and `pie-qti` adapters.
 - Runtime environment: browser and custom element; data types must stay Node-safe for importers and adapters.
 
@@ -230,7 +231,7 @@ Signing is available when **both** conditions hold: the content carries a matchi
 
 This is deliberately not framed as "default on versus default off." The content condition is the DRD half of AfA's matching pair (see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool)), and it is what prevents a dead affordance on the overwhelming majority of items that carry no signing video — regardless of what the computed default profile happens to say. The eligibility half follows the accommodation tier: not granted by default, because signing requires a documented need.
 
-One consequence worth stating for implementation: signing takes a feature id, so it is picked up by `computeDefaultSupports()` and would enter `DEFAULT_PERSONAL_NEEDS_PROFILE` unless deliberately excluded. Exclude it. Hosts that supply their own profile are unaffected either way.
+Revised 2026-08-09 (PIE-886): the core no longer synthesizes a default profile, so there is nothing for signing to leak into. An earlier version of this line required excluding `signLanguage` from `computeDefaultSupports()` by id; that derivation and its exclusion list are both gone. Signing instead declares `requiresAuthoredContent`, which is what keeps it out of a host's wholesale grant structurally. Hosts that supply their own profile are unaffected either way.
 
 Validation: `sign-language` cards need indexing and validation distinct from text cards, since a malformed media payload must not silently degrade to an empty string or render a URL as visible text.
 
@@ -240,7 +241,7 @@ This PRD touches these surfaces:
 
 - **Contract attributes.** It adds a second consumer of `data-catalog-idref`. TTS behavior through that attribute must not change; the attribute stays one canonical name with two readers.
 - **Persisted/authored wire data.** `CatalogCard` gains a payload shape. Existing `{ catalog, language?, content }` cards keep resolving unchanged, and `content` is where every text-ish type still lives. Revised 2026-08-08: an earlier version of this bullet also required `sign-language` cards carrying a bare URL in `content` to keep working as a legacy single-source form. That requirement is dropped — no producer writes that shape, and accepting it would mean a second code path and a second source of truth for the same URL while silently discarding the MIME type, label, and any second source. Such a card is now reported and ignored.
-- **Default PNP.** `DEFAULT_PERSONAL_NEEDS_PROFILE` is *computed* from the packaged tool registry by `computeDefaultSupports()`. Registering a signing tool with `pnpSupportIds: ["signLanguage"]` would therefore widen the default profile for every host that does not supply its own. Decided 2026-08-08: signing must be explicitly opted into. `signLanguage` is listed in `ACCOMMODATION_ONLY_SUPPORT_IDS` and filtered out of that computation by id — not by declining to register the tool, so the guarantee survives however a signing tool later reaches the registry.
+- **Default PNP.** Signing must be explicitly opted into (decided 2026-08-08). The mechanism changed on 2026-08-09 under PIE-886: rather than excluding `signLanguage` by id from a profile computed off the packaged registry, the core stops computing a profile at all — `createEmptyPersonalNeedsProfile()` grants nothing, and `@pie-players/pie-default-tool-loaders` ships the universal set as a named preset a host adopts. Signing's registration declares `requiresAuthoredContent`, so a host building its own grant list has a declaration to filter on instead of a compile-time array it cannot extend.
 - **`pie-elements-ng`.** Choice-level docking requires element markup to carry `data-catalog-idref` on choice nodes. That is element-repo work and must not be faked by synthesizing ids in the player.
 
 It must not change PIE element runtime/controller contracts, versioned `pie-*` tag names, `pie-item-player` properties/events/methods, section completion state, or assessment-player routing.
@@ -316,7 +317,7 @@ Import/export mapping, if it is ever built, belongs in `pie-qti` and is where an
 
 ## Relationship To Section-Player And To Timed Media
 
-**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host.
+**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. Since PIE-886 the host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["content-media"]`, and signing lives in its own package.
 
 What this PRD is *not* is a new section flavor. [Timed media](./timed-media-section-contract.md) is a section flavor — it introduces `sectionType: "timed-media"`, cue orchestration, and a specialized layout custom element — because it composes multiple items around a shared timeline. Signing does none of that: many short recordings, each translating one content node, played on learner demand, gating nothing.
 
@@ -340,7 +341,7 @@ Required test coverage:
 - payload validation fixtures for single-source, multi-source, poster, fragment range, and malformed payload, plus one pinning that a bare URL in `content` resolves to nothing and that a payload under any other key name does too;
 - docking tests proving a `data-catalog-idref` node resolves a signing card without changing TTS resolution for the same attribute;
 - PNP gating tests: affordance absent without `signLanguage`, present with it, and absent when prohibited via `prohibitedSupports`;
-- a regression test pinning that `signLanguage` stays out of `computeDefaultSupports()` however a signing tool is registered;
+- a regression test pinning that `signLanguage` stays out of any wholesale grant: the core's profile grants nothing, and the composition package's universal preset excludes every id belonging to a registration that declares `requiresAuthoredContent`;
 - keyboard and focus tests for opening, playing, and dismissing the affordance, including focus restoration;
 - TTS/signing mutual-exclusion tests;
 - a test that the docked English content remains visible during signing playback;
@@ -360,7 +361,7 @@ Playwright-backed tests must run outside the sandbox.
 
 ## Rollout And Release Notes
 
-- Changeset required: yes. This adds public exports and a section-player region under the lockstep versioning policy.
+- Changeset required: yes. This adds public exports, a section-player region and (2026-08-10) the `@pie-players/pie-tool-sign-language` package, under the lockstep versioning policy.
 - Migration notes: additive for authored content — existing `spoken`, `braille` and other string-form catalogs keep working untouched. Not additive at the type level: `CatalogCard.content` and `ResolvedCatalog.content` became optional (see [Contract Shape](#contract-shape)), so a consumer that reads `.content` as a `string` needs a guard. Hosts supplying their own `PersonalNeedsProfile` see no behavior change until they grant signing eligibility.
 - Documentation updates: accessibility catalog quick start and integration guide, tools-and-accommodations docs, the PNP debugger tool docs, and `pie-qti` adapter PRDs.
 - Release risk: medium-high. The runtime surface is small, but it is an accommodation — a silent failure means a learner cannot read the item at all, and the failure mode is invisible to hosts that do not test with `signLanguage` granted.

@@ -15,11 +15,23 @@
 	 * the profile off the active section — the same
 	 * `ToolkitCoordinator.updateAssessment(...)` wiring the pnp-default-on demo
 	 * uses.
+	 *
+	 * It is also where signing is *contributed*: `@pie-players/pie-tool-sign-language`
+	 * is not in the packaged capability set, because an accommodation with an
+	 * authored-content dependency is a deployment's decision. So this page builds
+	 * the registry, registers the capability onto it, and hands it to the player.
+	 * Nothing in section-player or the toolkit names signing — this import and the
+	 * `register` call below are the whole opt-in.
 	 */
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-tool-text-to-speech';
 	import '@pie-players/pie-tool-theme';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
+	import {
+		createPackagedToolRegistry,
+		DEFAULT_TOOL_MODULE_LOADERS
+	} from '@pie-players/pie-default-tool-loaders';
+	import { signLanguageRegistration } from '@pie-players/pie-tool-sign-language';
 	import type {
 		AssessmentEntity,
 		PersonalNeedsProfile
@@ -27,6 +39,12 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	// The deployment's capability set, plus the one this host chose to add.
+	const toolRegistry = createPackagedToolRegistry({
+		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+	});
+	toolRegistry.register(signLanguageRegistration);
 
 	const toolkitToolsConfig = {
 		placement: {
@@ -121,6 +139,7 @@
 
 		<pie-section-player-splitpane
 			runtime={{ tools: toolkitToolsConfig }}
+			{toolRegistry}
 			assessment-id={assessmentEntity.id}
 			{sectionId}
 			{attemptId}

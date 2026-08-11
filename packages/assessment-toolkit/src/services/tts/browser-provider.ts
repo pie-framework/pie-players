@@ -47,10 +47,14 @@ const findBrowserVoice = (
 	const languagePrefix = language.split("-")[0] || "en";
 	const matchesLanguage = (voice: SpeechSynthesisVoice) => {
 		const voiceLanguage = normalizeLanguageCode(voice.lang);
-		return voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`);
+		return (
+			voiceLanguage === language ||
+			voiceLanguage.startsWith(`${languagePrefix}-`)
+		);
 	};
 	const ranked = [
-		(voice: SpeechSynthesisVoice) => voice.localService && matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) =>
+			voice.localService && matchesLanguage(voice),
 		(voice: SpeechSynthesisVoice) => voice.default && matchesLanguage(voice),
 		(voice: SpeechSynthesisVoice) => matchesLanguage(voice),
 		(voice: SpeechSynthesisVoice) => voice.localService,
@@ -63,7 +67,8 @@ const findBrowserVoice = (
 	return voices[0] || null;
 };
 
-const shouldAssignBrowserVoice = (voice: SpeechSynthesisVoice): boolean => !voice.default;
+const shouldAssignBrowserVoice = (voice: SpeechSynthesisVoice): boolean =>
+	!voice.default;
 
 /**
  * Browser TTS Provider

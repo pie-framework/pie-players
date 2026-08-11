@@ -25,6 +25,10 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
+		"./tools/internal": {
+			"types": "./dist/tools/internal.d.ts",
+			"import": "./dist/tools/internal.js"
+		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
 			"import": "./dist/components/item-toolbar-element.js"
@@ -94,7 +98,7 @@
 		}
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.6",
+		"@biomejs/biome": "^2.5.7",
 		"@happy-dom/global-registrator": "^20.11.1",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",

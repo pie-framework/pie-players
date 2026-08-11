@@ -668,7 +668,11 @@ test.describe("section player demo tts-ssml", () => {
 			const card = header?.closest(
 				".pie-section-player-content-card",
 			) as HTMLElement | null;
-			const heading = header?.querySelector("h2") as HTMLElement | null;
+			// Level-agnostic: the card heading level is composition context the host
+			// publishes, so it is not always an h2.
+			const heading = header?.querySelector(
+				"h1,h2,h3,h4,h5,h6",
+			) as HTMLElement | null;
 			const ttsInline = toolbar?.shadowRoot?.querySelector(
 				"pie-tool-tts-inline",
 			) as HTMLElement | null;

@@ -1,6 +1,7 @@
 ---
 "@pie-players/pie-players-shared": patch
 "@pie-players/pie-assessment-toolkit": patch
+"@pie-players/pie-tool-sign-language": patch
 ---
 
 `CatalogCard.payload` is the only name for a card's structured content; the `signLanguage` alias is removed.

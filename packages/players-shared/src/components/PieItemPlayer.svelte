@@ -131,34 +131,47 @@
       properties: Record<string, unknown>,
     ) => void;
     /**
-     * The level of the first heading emitted inside this player.
+     * The level the item's own heading occupies, whoever supplies it: the
+     * element's visually-hidden item heading when `includeSrHeading` is on, and
+     * the host's own natural heading — "Question 5" — when it is off.
      *
-     * Rewrites `<p data-heading="headingN">…</p>` →
-     * `<h{clamp(baseLevel + N − 1, 1, 6)} data-heading="headingN">…</h…>`,
-     * preserving the `data-heading` attribute so host CSS keyed on
-     * `[data-heading]` continues to match.
+     * The element owns the outline and resolves this itself, by walking up to
+     * the nearest player host:
      *
-     * Fast path: when `baseHeadingLevel` is `undefined` **or** the markup
-     * contains no `data-heading=` substring, the input is returned unchanged,
-     * so the common case is effectively free.
-     *
-     * PIE elements can read this value by walking up the DOM:
-     *
-     *   const player = element.closest('pie-item-player');
+     *   const player = element.closest('pie-player')
+     *              ?? element.closest('pie-item-player');
      *   let raw = player?.baseHeadingLevel
      *          ?? player?.getAttribute('base-heading-level')
      *          ?? player?.getAttribute('baseheadinglevel');
+     *
+     * It then nests authored `data-heading` content one level below that —
+     * `<p data-heading="headingN">` becomes `<h{clamp(base + N, 1, 6)}>` with
+     * the `data-heading` attribute preserved, so host CSS keyed on
+     * `[data-heading]` still matches. Content nests below `base` whether or not
+     * the element supplied the heading there, which is why a host that
+     * suppresses the item heading has to be emitting one of its own at `base`.
+     * Unsupplied, content lands as if `base` were 1.
+     *
+     * This component is a pass-through: the value has to arrive on the player
+     * custom element for the walk-up to find it, which is why
+     * `@pie-players/pie-item-player` reflects it to `base-heading-level`.
+     * Nothing here rewrites markup.
      */
     baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
     /**
-     * Whether to inject a visually-hidden (screen-reader-only) heading at the
-     * top of the player's rendered content.
+     * Whether the element emits its visually-hidden (screen-reader-only) item
+     * heading.
      *
-     * Set to `false` in contexts where an SR heading would be redundant or
-     * counter-indicated (e.g. the player is already labelled by a surrounding
-     * landmark, or the host page manages its own heading structure).
-     * Defaults to `true` so that assistive-technology users get a navigable
-     * heading out of the box.
+     * Set to `false` where that heading would be redundant or
+     * counter-indicated — the player is already labelled by a surrounding
+     * landmark, or the host page manages its own heading structure. Defaults to
+     * `true` so assistive-technology users get a navigable heading out of the
+     * box.
+     *
+     * Resolved by the element the same way as `baseHeadingLevel`, and a
+     * pass-through here for the same reason. Because the default is `true`,
+     * hosts turn it off through the property: HTML boolean-attribute semantics
+     * make a present `include-sr-heading` mean on, whatever its value.
      */
     includeSrHeading?: boolean;
   } = $props();

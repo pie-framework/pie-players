@@ -14,14 +14,14 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "../../services/ToolRegistry.js";
-import type { ToolCoordinatorApi } from "../../services/interfaces.js";
-import type { ToolProviderConfig } from "../../services/tools-config-normalizer.js";
-import type { ToolContext } from "../../services/tool-context.js";
-import { hasMathContent } from "../../services/tool-context.js";
-import { createScopedToolId } from "../../services/tool-instance-id.js";
-import { DesmosToolProvider } from "../../services/tool-providers/index.js";
-import { createToolElement } from "../tool-tag-map.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolCoordinatorApi } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 type CalculatorType = "basic" | "scientific";
 

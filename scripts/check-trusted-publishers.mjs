@@ -35,6 +35,7 @@
  * they stay visible to whoever owns that workflow; `--all` makes every package fatal.
  */
 
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -94,6 +95,45 @@ export function collectTrustedPublisherFailures({
 	return { failures, advisories, unclaimed };
 }
 
+/**
+ * Split unclaimed packages by whether the registry knows their name, because the remedy differs
+ * and only one of the two is possible.
+ *
+ * `npm trust github` attaches a record to an existing package and fails with `E404 Package not
+ * found` otherwise, so a package that has never been published cannot be claimed at all — it has
+ * to be published once by hand first. This check used to print the claim command for both cases,
+ * which sent anyone adding a new package to a command that cannot succeed.
+ *
+ * `isPublished(name)` is supplied by the caller so the routing can be asserted without a registry.
+ */
+export function partitionUnclaimedByRegistry({ unclaimed, isPublished }) {
+	const needsBootstrap = [];
+	const needsClaim = [];
+	for (const name of unclaimed) {
+		(isPublished(name) ? needsClaim : needsBootstrap).push(name);
+	}
+	return { needsBootstrap, needsClaim };
+}
+
+/**
+ * Does the registry know this package name?
+ *
+ * Only reached on the failure path, for the handful of unclaimed packages, so the cost is a
+ * couple of unauthenticated reads on a run that is already failing. A read that fails for any
+ * reason other than a 404 answers "yes", which routes to the claim command: that is the
+ * conservative direction, since suggesting a bootstrap publish for a package that already exists
+ * is the more expensive mistake.
+ */
+function registryKnows(name) {
+	const res = spawnSync("npm", ["view", name, "version", "--json"], {
+		encoding: "utf8",
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+	if (res.status === 0) return true;
+	const detail = `${res.stdout ?? ""}${res.stderr ?? ""}`;
+	return !/E404|404 Not Found/.test(detail);
+}
+
 /** Ledger entries for packages this repo no longer publishes. Reported, never fatal. */
 export function collectStaleClaims({ packages, ledger }) {
 	const names = new Set(packages.map((p) => p.name));
@@ -151,12 +191,34 @@ if (isEntrypoint) {
 		);
 		for (const failure of failures) console.error(`  - ${failure}`);
 		if (unclaimed.length > 0) {
-			console.error(
-				`\n  Claim the missing record(s) from a local terminal (one OTP each), which records them in ${LEDGER_RELATIVE_PATH}:\n` +
-					`    npm login\n` +
-					`    bun run trusted-publishers -- --apply --only ${unclaimed.join(",")}\n` +
-					"\n  Then commit the updated ledger. See docs/setup/publishing.md.",
-			);
+			const { needsBootstrap, needsClaim } = partitionUnclaimedByRegistry({
+				unclaimed,
+				isPublished: registryKnows,
+			});
+
+			if (needsClaim.length > 0) {
+				console.error(
+					`\n  Claim the missing record(s) from a local terminal (one OTP each), which records them in ${LEDGER_RELATIVE_PATH}:\n` +
+						`    npm login\n` +
+						`    bun run trusted-publishers -- --apply --only ${needsClaim.join(",")}\n` +
+						"\n  Then commit the updated ledger. See docs/setup/publishing.md.",
+				);
+			}
+
+			// A name npm has never seen cannot be claimed: `npm trust` has nothing to attach to.
+			// One interactive publish creates it, after which the claim is possible and every
+			// later version ships through this workflow.
+			for (const name of needsBootstrap) {
+				console.error(
+					`\n  ${name} has never been published, so it cannot be claimed yet — a trusted\n` +
+						"  publisher attaches to an existing package. Bootstrap it once from a local\n" +
+						"  terminal (publishes, then claims, then writes the ledger):\n" +
+						`    npm login\n` +
+						`    bun run bootstrap-package -- --only ${name} --dry-run\n` +
+						`    bun run bootstrap-package -- --only ${name}\n` +
+						"\n  Then commit the updated ledger. See docs/setup/publishing.md.",
+				);
+			}
 		}
 		process.exit(1);
 	}

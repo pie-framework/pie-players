@@ -16,20 +16,20 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "../../services/ToolRegistry.js";
-import type { ToolContext } from "../../services/tool-context.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	hasMathContent,
 	hasScienceContent,
-} from "../../services/tool-context.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
-} from "../tool-tag-map.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
-} from "./toolbar-registration-helpers.js";
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 /**
  * Graph tool registration

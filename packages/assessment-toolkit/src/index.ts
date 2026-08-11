@@ -138,7 +138,14 @@ export type {
 	ToolContextResolverContext,
 	ToolContextResolverMap,
 	ToolContextResolverResult,
+	ToolActivation,
+	ToolContentDependency,
+	ToolContentDependencyContext,
 	ToolModuleLoader,
+	ToolSingletonScope,
+	ToolSurfaceRenderContext,
+	ToolSurfaceRenderResult,
+	ToolSurfaceServices,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolWindowShellAction,
@@ -171,21 +178,10 @@ export {
 	isRubricContext,
 	isSectionContext,
 } from "./services/tool-context.js";
-export {
-	DEFAULT_TOOL_PLACEMENT,
-	DEFAULT_TOOL_ORDER,
-	createPackagedToolRegistry,
-	PACKAGED_TOOL_PLACEMENT,
-	registerPackagedTools,
-	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
-} from "./services/createDefaultToolRegistry.js";
+export { DEFAULT_TOOL_PLACEMENT } from "./services/createDefaultToolRegistry.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
-export {
-	ACCOMMODATION_ONLY_SUPPORT_IDS,
-	DEFAULT_PERSONAL_NEEDS_PROFILE,
-	createDefaultPersonalNeedsProfile,
-} from "./services/defaultPersonalNeedsProfile.js";
+export { createEmptyPersonalNeedsProfile } from "./services/defaultPersonalNeedsProfile.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,
@@ -194,7 +190,6 @@ export type {
 } from "./tools/tool-tag-map.js";
 export {
 	createToolElement,
-	DEFAULT_TOOL_TAG_MAP,
 	resolveToolTag,
 	toToolIdFromTag,
 } from "./tools/tool-tag-map.js";
@@ -207,17 +202,18 @@ export {
 	isStandardAccessFeature,
 	QTI_STANDARD_ACCESS_FEATURES,
 } from "./services/pnp-standard-features.js";
-// Sign-language catalog cards (payload validation + language matching)
-export type { SignLanguageMedia } from "./services/sign-language-cards.js";
+// Media-bearing catalog cards: the generic half, shared by every card form that
+// references a recording rather than carrying text. `applyMediaFragment` reached
+// the public surface through `sign-language-cards.js` until signing moved to
+// `@pie-players/pie-tool-sign-language`; it is exported from its own module now,
+// alongside the validators a capability package needs to read a media payload.
 export {
-	AMERICAN_SIGN_LANGUAGE,
 	applyMediaFragment,
-	describeSignLanguage,
-	isSignLanguageCard,
-	matchesRequestedSignLanguage,
-	resolveSignLanguageMedia,
-	SIGN_LANGUAGE_CATALOG_TYPE,
-} from "./services/sign-language-cards.js";
+	isSafeMediaSrc,
+	normalizeMediaFragment,
+	normalizeMediaSources,
+	trimmedOrUndefined,
+} from "./services/catalog-media.js";
 // Spoken catalog cards carrying recorded audio rather than a reading script
 export type { SpokenAudioMedia } from "./services/spoken-audio-cards.js";
 export {

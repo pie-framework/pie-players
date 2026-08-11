@@ -72,14 +72,18 @@ No new types. A transcript is a string alternate, so it is a `CatalogCard` with 
 
 `transcript` is **already** in the toolkit's AfA vocabulary — `packages/assessment-toolkit/src/services/pnp-standard-features.ts:74`, under "visual alternatives for audio", beside `signLanguage`. It is a support id looking for a consumer, which is the same position `sign-language` was in before PIE-880.
 
-It must join the accommodation exclusion list, for the reason the source page gives — a transcript shown to a student who did not need it can invalidate a listening-comprehension item, so inheriting it by default is worse than not having it at all:
+It must not be granted by default, for the reason the source page gives — a transcript shown to a student who did not need it can invalidate a listening-comprehension item, so inheriting it by default is worse than not having it at all.
+
+Revised 2026-08-09 (PIE-886): an earlier version of this section added `transcript` to `ACCOMMODATION_ONLY_SUPPORT_IDS` in `defaultPersonalNeedsProfile.ts`. That array and the profile derivation it filtered are both gone — the core grants nothing, and `@pie-players/pie-default-tool-loaders` ships the universal set as a named preset. The transcript registration declares `requiresAuthoredContent` instead, which is both the render gate (no card, nothing to show) and the declaration a host filters on when building its own grant list:
 
 ```ts
-// packages/assessment-toolkit/src/services/defaultPersonalNeedsProfile.ts
-export const ACCOMMODATION_ONLY_SUPPORT_IDS: readonly string[] = [
-  "signLanguage",
-  "transcript",
-];
+requiresAuthoredContent: {
+  resolve: (context) =>
+    context.catalogResolver?.getAlternative(catalogId, {
+      type: "transcript",
+      context: context.ownerContext,
+    }) ?? null,
+},
 ```
 
 ### What The Backend Transform Emits
@@ -199,7 +203,7 @@ No new persisted or wire-facing types. The transcript card is `CatalogCard` unch
 Required test coverage:
 
 - feature-decision tests for `transcript` across all six precedence levels, mirroring `tests/policy/sign-language-feature-policy.test.ts`;
-- a regression test pinning that `transcript` stays out of `computeDefaultSupports()`;
+- a regression test pinning that `transcript` stays out of any wholesale grant, via the composition package's assertion that no id in `UNIVERSAL_SUPPORTS_PRESET` belongs to a registration declaring `requiresAuthoredContent`;
 - resolver tests for a `transcript` card resolved by owner scope with no `data-catalog-idref` present — the case signing never exercises;
 - section-player tests for granted / not-granted / granted-but-no-card, and for reading order placing the transcript before the audio;
 - an accessibility test asserting the transcript is associated with its audio across the region boundary;

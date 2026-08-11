@@ -11,6 +11,10 @@
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			debug: { attribute: "debug", type: "String" },
+			// Composition context: the level this player's card headings occupy.
+			// Descendants derive their own outline from it — see
+			// docs/architecture/composition-context.md.
+			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
@@ -73,6 +77,7 @@
 		attemptId = "",
 		iifeBundleHost,
 		debug = undefined as string | boolean | undefined,
+		baseHeadingLevel = undefined as number | undefined,
 		showToolbar = "false",
 		toolbarPosition = "right",
 		toolRegistry = null as ToolRegistry | null,
@@ -230,6 +235,7 @@
 	{attemptId}
 	{iifeBundleHost}
 	{debug}
+	{baseHeadingLevel}
 	{showToolbar}
 	{toolbarPosition}
 	{toolRegistry}
@@ -272,6 +278,7 @@
 	let:resolvedPlayerAttributes
 	let:resolvedPlayerProps
 	let:playerStrategy
+	let:baseHeadingLevel
 	let:preloadedRenderables
 	let:preloadedRenderablesSignature
 	let:preloadEnabled
@@ -291,6 +298,7 @@
 				{resolvedPlayerEnv}
 				{resolvedPlayerAttributes}
 				{resolvedPlayerProps}
+				{baseHeadingLevel}
 				{playerStrategy}
 				passageToolbarTools={passageToolbarTools}
 				toolRegistry={layoutToolRegistry}
@@ -303,6 +311,7 @@
 			{resolvedPlayerEnv}
 			{resolvedPlayerAttributes}
 			{resolvedPlayerProps}
+			{baseHeadingLevel}
 			{playerStrategy}
 			itemToolbarTools={itemToolbarTools}
 			toolRegistry={layoutToolRegistry}

@@ -14,6 +14,7 @@
 			},
 			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
 			playerStrategy: { attribute: "player-strategy", type: "String" },
+			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
@@ -28,7 +29,11 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
-	import { getPassagePlayerParams } from "./section-player-view-state.js";
+	import {
+		DEFAULT_SECTION_BASE_HEADING_LEVEL,
+		getPassagePlayerParams,
+		type HeadingLevel,
+	} from "./section-player-view-state.js";
 
 	let {
 		passages = [] as PassageEntity[],
@@ -37,6 +42,7 @@
 		resolvedPlayerAttributes = {} as Record<string, string>,
 		resolvedPlayerProps = {} as Record<string, unknown>,
 		playerStrategy = "preloaded",
+		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as HeadingLevel,
 		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
@@ -47,6 +53,7 @@
 		resolvedPlayerAttributes: Record<string, string>;
 		resolvedPlayerProps: Record<string, unknown>;
 		playerStrategy: string;
+		baseHeadingLevel?: HeadingLevel;
 		passageToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
@@ -65,12 +72,14 @@
 	{#each passages as passage, passageIndex (passage.id || passageIndex)}
 		<pie-section-player-passage-card
 			{passage}
+			{baseHeadingLevel}
 			playerParams={getPassagePlayerParams({
 				passage,
 				resolvedPlayerEnv,
 				resolvedPlayerAttributes,
 				resolvedPlayerProps,
 				playerStrategy,
+				baseHeadingLevel,
 			})}
 			passageToolbarTools={passageToolbarTools}
 			{toolRegistry}

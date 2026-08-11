@@ -108,7 +108,7 @@ Any `/api/...` route referenced by a toolkit provider must be:
   config before `initialize()`. The built-in calculator default uses
   `fetch(..., { credentials: "same-origin" })`, i.e. it rides whatever
   session cookie the host already issued for the assessment. See
-  [`packages/assessment-toolkit/src/tools/registrations/calculator.ts`](../../packages/assessment-toolkit/src/tools/registrations/calculator.ts).
+  [`packages/default-tool-loaders/src/registrations/calculator.ts`](../../packages/default-tool-loaders/src/registrations/calculator.ts).
 - **`authToken` + `apiEndpoint`** — `ServerTTSProvider` configuration. The
   token is sent as `Authorization: Bearer <token>` on synthesis requests.
   Host obtains the token (via its own identity provider or through

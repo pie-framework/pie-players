@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createPackagedToolRegistry } from "../src/services/createDefaultToolRegistry.js";
+import { createTestToolRegistry } from "./fixtures/test-tool-registry.js";
 import {
 	ToolRegistry,
 	type ToolRegistration,
@@ -11,7 +11,7 @@ import {
 
 describe("tool-config-validation", () => {
 	test("keeps deterministic validation pipeline diagnostics", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(
 			{
 				placement: {
@@ -37,7 +37,7 @@ describe("tool-config-validation", () => {
 	});
 
 	test("supports strictness warn without throwing", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(
 			{
 				providers: {
@@ -60,7 +60,7 @@ describe("tool-config-validation", () => {
 	});
 
 	test("normalizes invalid strictness to error behavior", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		expect(() =>
 			normalizeAndValidateToolsConfig(
 				{
@@ -80,24 +80,39 @@ describe("tool-config-validation", () => {
 		).toThrow(`Unknown provider key "unknownProvider"`);
 	});
 
-	test("defaults to packaged registry semantics when no registry is supplied", () => {
-		expect(() =>
-			normalizeAndValidateToolsConfig(
-				{
-					placement: {
-						item: ["notARealTool"],
-					},
-				},
-				{
-					strictness: "error",
-					source: "test",
-				},
-			),
-		).toThrow(`Unknown tool id "notARealTool"`);
+	test("reports that it could not validate when no registry is supplied", () => {
+		// This package holds no capability set to fall back to, so there is nothing
+		// to check ids against. It says so rather than rejecting every configured id,
+		// which would turn an existing host setup into a construction failure — and
+		// rather than skipping in silence, which downgrades "your ids are valid" to
+		// "nobody looked" with no signal.
+		const result = normalizeAndValidateToolsConfig(
+			{ placement: { item: ["notARealTool"] } },
+			{ strictness: "error", source: "test" },
+		);
+
+		const diagnostic = result.diagnostics.find(
+			(entry) => entry.code === "tools.registryUnavailable",
+		);
+		expect(diagnostic?.severity).toBe("warning");
+		expect(diagnostic?.message).toContain("createPackagedToolRegistry");
+		expect(result.diagnostics.map((entry) => entry.code)).not.toContain(
+			"tools.unknownToolId",
+		);
+		expect(result.config.placement.item).toEqual(["notARealTool"]);
+	});
+
+	test("stays silent when no registry is supplied and no tools are configured", () => {
+		// A host that configures no tools is not missing a registry.
+		const result = normalizeAndValidateToolsConfig(
+			{},
+			{ strictness: "error", source: "test" },
+		);
+		expect(result.diagnostics).toEqual([]);
 	});
 
 	test("throws in strict error mode when diagnostics exist", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		expect(() =>
 			normalizeAndValidateToolsConfig(
 				{
@@ -117,7 +132,7 @@ describe("tool-config-validation", () => {
 	});
 
 	test("removed providers.tts always throws regardless of strictness", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		expect(() =>
 			normalizeAndValidateToolsConfig(
 				{
@@ -153,7 +168,7 @@ describe("tool-config-validation", () => {
 	});
 
 	test("flags unsupported placement level for known tool id", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(
 			{
 				placement: {
@@ -174,7 +189,7 @@ describe("tool-config-validation", () => {
 	});
 
 	test("rejects removed colorScheme tool id", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(
 			{
 				placement: {
@@ -197,7 +212,7 @@ describe("tool-config-validation", () => {
 	});
 
 	test("allows section-capable tools in item placement without unsupported-level diagnostics", () => {
-		const registry = createPackagedToolRegistry();
+		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(
 			{
 				placement: {
@@ -321,5 +336,39 @@ describe("tool-config-validation", () => {
 		expect(model.kind).toBe("tool-config");
 		expect(model.source).toBe("test.framework");
 		expect(model.message).toBe("bad config");
+	});
+	test("reports a region capability named in toolbar placement", () => {
+		// A region capability has no toolbar button, so placing it names a surface
+		// that will never render it. Caught at the config rather than at render
+		// time, where the symptom is an absent accommodation and no error.
+		const registry = new ToolRegistry();
+		registry.register({
+			toolId: "hostAlternateMedia",
+			name: "Host Alternate Media",
+			description: "Docked alternate media for an item",
+			supportedLevels: ["item"],
+			activation: "region",
+			surfaces: ["item-media"],
+			pnpSupportIds: ["hostAlternateMedia"],
+			isVisibleInContext: () => true,
+			renderSurface: () => ({ element: {} as HTMLElement }),
+		} as ToolRegistration);
+
+		const result = normalizeAndValidateToolsConfig(
+			{ placement: { item: ["hostAlternateMedia"] } },
+			{ strictness: "off", source: "test", toolRegistry: registry },
+		);
+
+		const diagnostic = result.diagnostics.find(
+			(entry) => entry.code === "tools.unplaceableActivation",
+		);
+		expect(diagnostic?.severity).toBe("error");
+		expect(diagnostic?.toolId).toBe("hostAlternateMedia");
+		expect(diagnostic?.path).toBe("placement.item");
+		// Not also reported as an unsupported level: the placement is wrong for a
+		// reason that has nothing to do with which levels it supports.
+		expect(result.diagnostics.map((entry) => entry.code)).not.toContain(
+			"tools.unsupportedLevel",
+		);
 	});
 });

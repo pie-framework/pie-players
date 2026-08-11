@@ -32,16 +32,19 @@
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
-		createPackagedToolRegistry,
-		createDefaultPersonalNeedsProfile,
 		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
+		type ToolSurfaceRenderContext,
+		type ToolSurfaceRenderResult,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";
+	import {
+		createPackagedToolRegistry,
+		DEFAULT_TOOL_MODULE_LOADERS,
+	} from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
-	import { createEventDispatcher } from "svelte";
+	import { createEventDispatcher, onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -137,20 +140,8 @@
 		() => runtime?.onStageChange ?? onStageChange,
 	);
 	const effectiveSectionId = $derived.by(
-		() => sectionId || (resolvedSection as any)?.identifier || "",
+		() => sectionId || (section as any)?.identifier || "",
 	);
-	let resolvedSection = $derived.by(() => {
-		if (!section) return null;
-		const sectionAny = section as any;
-		const hasExplicitPnp = Boolean(
-			sectionAny?.personalNeedsProfile || sectionAny?.settings?.personalNeedsProfile,
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile(),
-		};
-	});
 
 	function emit<K extends keyof BaseSectionPlayerEvents>(
 		name: K,
@@ -212,11 +203,11 @@
 		handleToolkitEvent(event, "runtime-inherited");
 	}
 
-	// M8 PR 3 — annotation-toolbar visibility goes through the
-	// coordinator's `ToolPolicyEngine`. The engine already applies
-	// placement + `policy.allowed` / `policy.blocked` + provider
-	// veto + PNP/profile gates in one pass, so the base CE no longer
-	// duplicates those checks against the raw `tools` config.
+	// Section-scoped overlay capabilities go through the coordinator's
+	// `ToolPolicyEngine`, which applies placement + `policy.allowed` /
+	// `policy.blocked` + provider veto + PNP/profile gates in one pass,
+	// so this CE does not duplicate those checks against the raw
+	// `tools` config.
 	//
 	// The engine answer can change without the coordinator reference
 	// changing (e.g. host calls `updateAssessment(...)` mid-session),
@@ -246,55 +237,265 @@
 	// the section id as the scope id and let `assessmentId` /
 	// `sectionId` carry the rest.
 	//
-	// `Array.some` short-circuits on the first matching level, so
-	// the typical case (annotation toolbar registered at one level)
-	// is one engine call; the worst case is three.
-	const ANNOTATION_LEVELS = ["section", "item", "passage"] as const;
-	const shouldRenderAnnotationToolbar = $derived.by(() => {
+	// `Array.some` short-circuits on the first matching level, so a
+	// capability registered at one level costs one engine call; the
+	// worst case is three.
+	const OVERLAY_LEVELS = ["section", "item", "passage"] as const;
+
+	/**
+	 * The section-scoped surface this CE offers. Capabilities opt in by listing it
+	 * in their registration's `surfaces`, so nothing here names one — the
+	 * annotation toolbar used to be named in three places in this file, which is
+	 * why a host could not contribute a second section-scoped capability without
+	 * a PR against this repo.
+	 */
+	const SECTION_OVERLAY_SURFACE = "section-overlay";
+
+	const overlayCapabilities = $derived(
+		effectiveToolRegistry?.getToolsBySurface?.(SECTION_OVERLAY_SURFACE) ?? [],
+	);
+
+	type GrantedOverlayCapability = {
+		tool: (typeof overlayCapabilities)[number];
+		featureId: string;
+		parameters?: unknown;
+	};
+
+	/**
+	 * Which registered capabilities this surface may mount, and under which of the
+	 * two policy questions.
+	 *
+	 * A placement-driven capability (`toolbar-toggle`, `selection-gateway`) is
+	 * granted through a placement-scoped tool decision, because that is where its
+	 * candidacy comes from. A `region` capability has no toolbar presence, so it
+	 * never appears in a placement list and `decideToolPolicy` would answer "absent"
+	 * for the wrong reason — and placing it to compensate is a hard
+	 * `tools.unplaceableActivation` error. Asking the feature question for those is
+	 * what makes this surface reachable by a capability that is only ever a region,
+	 * matching how the item card gates its own surface.
+	 */
+	const grantedOverlayTools = $derived.by((): GrantedOverlayCapability[] => {
 		void policyVersion;
 		const coord = activeToolkitCoordinator;
-		if (!coord || typeof coord.decideToolPolicy !== "function") return false;
+		if (!coord) return [];
 		const scopeId = effectiveSectionId || "*";
-		return ANNOTATION_LEVELS.some((level) =>
-			coord
-				.decideToolPolicy({
+		const decisionForLevel = (level: (typeof OVERLAY_LEVELS)[number]) =>
+			coord.decideToolPolicy({
+				level,
+				scope: {
 					level,
-					scope: {
-						level,
-						scopeId,
-						assessmentId: effectiveAssessmentId,
-						sectionId: effectiveSectionId || undefined,
-					},
-				})
-				.visibleTools.some((entry) => entry.toolId === "annotationToolbar"),
+					scopeId,
+					assessmentId: effectiveAssessmentId,
+					sectionId: effectiveSectionId || undefined,
+				},
+			});
+		return overlayCapabilities.flatMap(
+			(tool): GrantedOverlayCapability[] => {
+				// A capability declares which support ids grant it; any one is enough.
+				const supportIds = tool.pnpSupportIds?.length
+					? tool.pnpSupportIds
+					: [tool.toolId];
+
+				if (tool.activation === "region") {
+					if (typeof coord.decideFeaturePolicy !== "function") return [];
+					for (const supportId of supportIds) {
+						const decision = coord.decideFeaturePolicy(supportId);
+						if (decision?.granted !== true) continue;
+						if (tool.requiresAuthoredContent) {
+							// A content dependency resolves against a catalog owner scope,
+							// and this surface is section-scoped: `CatalogOwnerContext` names
+							// an item model or a passage, never a section. Mounting anyway
+							// would hand the capability `content: undefined`, which is the
+							// dead-affordance the declaration exists to prevent.
+							console.warn(
+								`[pie-section-player] tool "${tool.toolId}" declares a content dependency, which the section-scoped "${SECTION_OVERLAY_SURFACE}" surface cannot resolve. Register it on a per-item surface instead.`,
+							);
+							return [];
+						}
+						return [
+							{ tool, featureId: supportId, parameters: decision.parameters },
+						];
+					}
+					return [];
+				}
+
+				if (typeof coord.decideToolPolicy !== "function") return [];
+				for (const level of OVERLAY_LEVELS) {
+					const entry = decisionForLevel(level).visibleTools.find(
+						(candidate) => candidate.toolId === tool.toolId,
+					);
+					if (entry) {
+						return [
+							{
+								tool,
+								// The grant came through a placement-scoped tool decision, so
+								// the feature id is the capability's own first support id.
+								featureId: supportIds[0],
+								parameters: entry.settings,
+							},
+						];
+					}
+				}
+				return [];
+			},
 		);
 	});
-	let annotationToolbarModuleLoaded = $state(false);
+
+	// Tool ids whose custom-element module is present. A capability stays unmounted
+	// until its module resolves, so an optional package that is not installed
+	// leaves the surface empty rather than mounting an undefined element.
+	let loadedOverlayModules = $state<string[]>([]);
 
 	$effect(() => {
-		if (!shouldRenderAnnotationToolbar) return;
-		if (annotationToolbarModuleLoaded) return;
 		const registry = effectiveToolRegistry;
 		if (!registry) return;
+		const pending = grantedOverlayTools
+			.map(({ tool }) => tool.toolId)
+			.filter((toolId) => !loadedOverlayModules.includes(toolId));
+		if (pending.length === 0) return;
 		let cancelled = false;
-		void registry
-			.ensureToolModuleLoaded("annotationToolbar")
-			.then(() => {
-				if (!cancelled) {
-					annotationToolbarModuleLoaded =
-						typeof customElements === "undefined" ||
-						!!customElements.get("pie-tool-annotation-toolbar");
-				}
-			})
-			.catch(() => {
-				// Keep rendering gated if the optional module is not installed.
-				if (!cancelled) {
-					annotationToolbarModuleLoaded = false;
-				}
-			});
+		for (const toolId of pending) {
+			void registry
+				.ensureToolModuleLoaded(toolId)
+				.then(() => {
+					if (cancelled) return;
+					if (!loadedOverlayModules.includes(toolId)) {
+						loadedOverlayModules = [...loadedOverlayModules, toolId];
+					}
+				})
+				.catch(() => {
+					// Keep the capability unmounted if its optional module is absent.
+				});
+		}
 		return () => {
 			cancelled = true;
 		};
+	});
+
+	let overlayAnchor = $state<HTMLDivElement | null>(null);
+	/**
+	 * Mounted surface instances by tool id. Deliberately not `$state`: the mount
+	 * effect writes it on every run, and a reactive map would re-invalidate the
+	 * effect that just wrote it.
+	 */
+	const mountedOverlays = new Map<
+		string,
+		{
+			element: HTMLElement;
+			sync?: (context: ToolSurfaceRenderContext) => void;
+			destroy?: () => void;
+		}
+	>();
+
+	/**
+	 * What the host tells the capability, rebuilt per mount and per re-sync so a
+	 * coordinator swap mid-session reaches an already-mounted element. These were
+	 * reactive props before the surface mechanism, and a closure over the
+	 * render-time services would leave the capability wired to the previous
+	 * session's coordinator.
+	 */
+	function overlaySurfaceContext(
+		granted: GrantedOverlayCapability,
+		coord: NonNullable<typeof activeToolkitCoordinator>,
+	): ToolSurfaceRenderContext {
+		return {
+			toolId: granted.tool.toolId,
+			featureId: granted.featureId,
+			surface: SECTION_OVERLAY_SURFACE,
+			parameters: granted.parameters,
+			services: {
+				toolkitCoordinator: coord,
+				ttsService: coord.ttsService ?? null,
+				catalogResolver: coord.catalogResolver ?? null,
+			},
+		};
+	}
+
+	function unmountOverlay(toolId: string): void {
+		const mounted = mountedOverlays.get(toolId);
+		if (!mounted) return;
+		mountedOverlays.delete(toolId);
+		try {
+			mounted.destroy?.();
+		} catch {
+			// A capability failing to tear down must not strand the others.
+		}
+		mounted.element.remove();
+	}
+
+	$effect(() => {
+		const anchor = overlayAnchor;
+		const coord = activeToolkitCoordinator;
+		const registry = effectiveToolRegistry;
+		const granted = grantedOverlayTools;
+		const loaded = loadedOverlayModules;
+		if (!anchor || !coord || !registry) {
+			untrack(() => {
+				for (const toolId of [...mountedOverlays.keys()]) unmountOverlay(toolId);
+			});
+			return;
+		}
+
+		// Wiring only, per the Svelte subscription guidance: everything below reads
+		// and writes non-reactive state, and tracking it would re-invalidate this
+		// effect on its own writes.
+		untrack(() => {
+			const mountable = granted.filter(({ tool }) =>
+				loaded.includes(tool.toolId),
+			);
+			const wanted = new Set(mountable.map(({ tool }) => tool.toolId));
+			for (const toolId of [...mountedOverlays.keys()]) {
+				if (!wanted.has(toolId)) unmountOverlay(toolId);
+			}
+
+			for (const granted of mountable) {
+				const tool = granted.tool;
+				const mounted = mountedOverlays.get(tool.toolId);
+				if (mounted) {
+					// Already mounted: let the capability reapply props rather than
+					// remounting, which would drop its own state and, for a selection
+					// gateway, the learner's current selection.
+					try {
+						mounted.sync?.(overlaySurfaceContext(granted, coord));
+					} catch {
+						// A failed re-sync must not break the other capabilities.
+					}
+					continue;
+				}
+				let rendered: ToolSurfaceRenderResult | null | undefined;
+				try {
+					// Through the registry, not `tool.renderSurface` directly: the
+					// registry owns the component-override map a capability resolves its
+					// element tag against.
+					rendered = registry.renderForSurface(
+						tool.toolId,
+						overlaySurfaceContext(granted, coord),
+					);
+				} catch (error) {
+					console.error(
+						`[pie-section-player] tool "${tool.toolId}" failed to render into the "${SECTION_OVERLAY_SURFACE}" surface`,
+						error,
+					);
+					continue;
+				}
+				// `null` means "nothing to show", which is a legitimate answer from a
+				// capability and not an error.
+				if (!rendered?.element) continue;
+				if (rendered.ariaLabel) {
+					rendered.element.setAttribute("aria-label", rendered.ariaLabel);
+				}
+				anchor.appendChild(rendered.element);
+				mountedOverlays.set(tool.toolId, {
+					element: rendered.element,
+					sync: rendered.sync,
+					destroy: rendered.destroy,
+				});
+			}
+		});
+	});
+
+	onDestroy(() => {
+		for (const toolId of [...mountedOverlays.keys()]) unmountOverlay(toolId);
 	});
 
 	$effect(() => {
@@ -415,7 +616,7 @@
 <pie-assessment-toolkit
 	bind:this={toolkitElement}
 	assessment-id={effectiveAssessmentId}
-	section={resolvedSection}
+	section={section}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}
@@ -438,13 +639,15 @@
 	onruntime-owned={handleRuntimeOwnedEvent}
 	onruntime-inherited={handleRuntimeInheritedEvent}
 >
-	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded && activeToolkitCoordinator}
-		<pie-tool-annotation-toolbar
-			enabled={true}
-			ttsService={activeToolkitCoordinator.ttsService}
-			highlightCoordinator={activeToolkitCoordinator.highlightCoordinator}
-		></pie-tool-annotation-toolbar>
-	{/if}
+	<!-- Mount point for section-scoped surface capabilities. Always present so a
+	     capability granted mid-session has somewhere to land, and inside
+	     <pie-assessment-toolkit> so the toolkit's context requests still bubble to
+	     it from a mounted element. -->
+	<div
+		bind:this={overlayAnchor}
+		class="pie-section-player-surface-anchor"
+		data-pie-tool-surface={SECTION_OVERLAY_SURFACE}
+	></div>
 	<slot></slot>
 </pie-assessment-toolkit>
 
@@ -454,6 +657,13 @@
 		width: 100%;
 		height: 100%;
 		min-height: 0;
+	}
+
+	/* Layout-transparent: the anchor is always present, and a permanent flex item
+	   would shift `gap` and child-index selectors in the column below it whether or
+	   not any capability is mounted. */
+	.pie-section-player-surface-anchor {
+		display: contents;
 	}
 
 	pie-assessment-toolkit {

@@ -19,7 +19,9 @@ afterAll(() => {
 
 const catalog = (identifier: string): AccessibilityCatalog => ({
 	identifier,
-	cards: [{ catalog: "spoken", language: "en-US", content: "<speak>hi</speak>" }],
+	cards: [
+		{ catalog: "spoken", language: "en-US", content: "<speak>hi</speak>" },
+	],
 });
 
 const itemContext = { ownerKind: "itemModel" as const, itemId: "item-1" };
@@ -117,7 +119,9 @@ describe("catalog change events", () => {
 	test("unsubscribing stops delivery", () => {
 		const resolver = new AccessibilityCatalogResolver();
 		const events: CatalogChangeEvent[] = [];
-		const unsubscribe = resolver.onCatalogsChange((event) => events.push(event));
+		const unsubscribe = resolver.onCatalogsChange((event) =>
+			events.push(event),
+		);
 
 		unsubscribe();
 		resolver.registerCatalogs(itemContext, [catalog("c1")]);

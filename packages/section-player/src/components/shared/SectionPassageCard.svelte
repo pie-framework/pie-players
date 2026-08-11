@@ -5,6 +5,11 @@
 		shadow: "none",
 		props: {
 			passage: { type: "Object", reflect: false },
+			// Composition context published by the pane: the level this card's own
+			// heading occupies. The card renders it, and the item/passage player
+			// beneath derives its outline from the same number — see
+			// docs/architecture/composition-context.md.
+			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
 			resolvedPlayerTag: { attribute: "resolved-player-tag", type: "String" },
 			playerAction: { type: "Object", reflect: false },
 			playerParams: { attribute: "player-params", type: "Object", reflect: false },
@@ -20,20 +25,32 @@
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import type {
+		AssessmentToolkitRuntimeContext,
+		CatalogOwnerContext,
 		ToolRegistry,
 		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		catalogOwnerContextFor,
+		connectAssessmentToolkitRuntimeContext,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
+		DEFAULT_SECTION_BASE_HEADING_LEVEL,
+		normalizeBaseHeadingLevel,
+	} from "./section-player-view-state.js";
+	import {
 		connectSectionPlayerCardRenderContext,
 		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
 
 	let {
 		passage,
+		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as number,
 		resolvedPlayerTag = "div",
 		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
 		playerParams,
@@ -42,6 +59,7 @@
 		hostButtons = [] as ToolbarItem[],
 	} = $props<{
 		passage: PassageEntity;
+		baseHeadingLevel?: number;
 		resolvedPlayerTag?: string;
 		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
 		playerParams: PlayerElementParams;
@@ -49,6 +67,13 @@
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
 	}>();
+
+	// Clamped here rather than trusted: the pane normalizes, but this card is a
+	// custom element a host can drive directly, and an out-of-range level would
+	// render an `<h0>`/`<h7>` that is not a heading at all.
+	const resolvedHeadingLevel = $derived(
+		normalizeBaseHeadingLevel(baseHeadingLevel),
+	);
 
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
@@ -90,6 +115,56 @@
 		} catch {
 			return defaultTitle;
 		}
+	});
+
+	// ------------------------------------------------------------------
+	// Docked media
+	// ------------------------------------------------------------------
+	//
+	// A passage owns content nodes, so it carries alternates for them exactly as an
+	// item does — a signed reading of a shared passage is authored once, against the
+	// passage. The region is `SectionCardMediaSplit`, shared with the item card; this
+	// card differs only in the owner scope it looks catalogs up under, which is the
+	// same scope `<pie-passage-shell>` registered them in.
+
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Bumped from the coordinator's policy-change stream so the eligibility
+	// derivation reruns when policy inputs change.
+	let policyChangeVersion = $state(0);
+
+	const mediaRegionId = $derived(`${headingId}-media`);
+
+	// Built by the same function the runtime registers catalogs with, so the lookup
+	// scope cannot drift from the registered one.
+	const catalogOwnerContext = $derived.by((): CatalogOwnerContext =>
+		catalogOwnerContextFor({
+			kind: "passage",
+			itemId: passage?.id ?? "",
+			assessmentId: runtimeContext?.assessmentId,
+			sectionId: runtimeContext?.sectionId,
+		}),
+	);
+
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
+			runtimeContext = value;
+		});
+	});
+
+	$effect(() => {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator || typeof coordinator.onPolicyChange !== "function") return;
+		const unsubscribe = coordinator.onPolicyChange(() => {
+			policyChangeVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// Detach errors are non-fatal: the coordinator may already be gone.
+			}
+		};
 	});
 
 	function resetContextOverrides(): void {
@@ -138,7 +213,11 @@
 			class="pie-section-player-content-card-header pie-section-player-passage-header pie-section-player__passage-header"
 			data-region="header"
 		>
-			<h2 id={headingId} data-pie-tool-overlay-protect>{headerTitle}</h2>
+			<svelte:element
+				this={`h${resolvedHeadingLevel}`}
+				id={headingId}
+				data-pie-tool-overlay-protect
+			>{headerTitle}</svelte:element>
 			<pie-item-toolbar
 				item-id={passage.id}
 				catalog-id={passage.id}
@@ -150,15 +229,27 @@
 				{hostButtons}
 			></pie-item-toolbar>
 		</div>
-		<div
-			class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
-			data-region="content"
+		<SectionCardMediaSplit
+			regionId={mediaRegionId}
+			entity={passage}
+			ownerContext={catalogOwnerContext}
+			{runtimeContext}
+			{toolRegistry}
+			{policyChangeVersion}
+			dividerAriaLabel="Resize passage and media panels"
 		>
-			<svelte:element
-				this={effectiveResolvedPlayerTag}
-				use:effectivePlayerAction={playerParams}
-			></svelte:element>
-		</div>
+			{#snippet content()}
+				<div
+					class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
+					data-region="content"
+				>
+					<svelte:element
+						this={effectiveResolvedPlayerTag}
+						use:effectivePlayerAction={playerParams}
+					></svelte:element>
+				</div>
+			{/snippet}
+		</SectionCardMediaSplit>
 	</div>
 </pie-passage-shell>
 

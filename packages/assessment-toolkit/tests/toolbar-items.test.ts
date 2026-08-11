@@ -73,15 +73,27 @@ describe("toolbar-items validation", () => {
 		]);
 	});
 
-	test("keeps the standalone toolbar fallback metadata-only", () => {
+	test("keeps the standalone toolbar fallback empty", () => {
 		const source = readFileSync(ITEM_TOOLBAR_PATH, "utf8");
+		// Comments exempt, matching `scripts/check-capability-neutrality.mjs`: what
+		// this guards is an import, and matching prose only bought a comment that
+		// could not say which package it was warning about.
+		const code = source
+			.replace(/\/\*[\s\S]*?\*\//g, " ")
+			.replace(/(^|[^:\w])\/\/[^\n]*/g, "$1");
 
-		expect(source).toContain("Metadata-only fallback");
+		// This package holds no capability set to fall back to, so a toolbar given
+		// no registry renders no buttons. That is the honest answer: with nothing
+		// registered there is nothing whose visibility or render contract could be
+		// consulted. It previously fell back to the packaged registry, which is what
+		// kept eleven capability names inside the generic package.
+		expect(source).toContain("No fallback registry");
 		expect(source).toContain(
-			"const fallbackToolRegistry = createPackagedToolRegistry();",
+			"const fallbackToolRegistry = new ToolRegistry();",
 		);
-		expect(source).not.toContain("@pie-players/pie-default-tool-loaders");
-		expect(source).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
+		expect(code).not.toContain("createPackagedToolRegistry");
+		expect(code).not.toContain("@pie-players/pie-default-tool-loaders");
+		expect(code).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
 	});
 });
 

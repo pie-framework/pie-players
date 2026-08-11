@@ -22,10 +22,12 @@ message payload.
 
 ```ts
 import {
-  createPackagedToolRegistry,
   createToolsConfig,
   ToolkitCoordinator
 } from "@pie-players/pie-assessment-toolkit";
+// The packaged capability set is composition, not core: the toolkit knows
+// placement levels and precedence and no capability ids.
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
 const registry = createPackagedToolRegistry();
 registry.register(wordCounterToolRegistration);

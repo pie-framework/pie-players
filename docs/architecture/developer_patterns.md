@@ -43,6 +43,18 @@ Use this as practical guidance when adding features or fixing bugs.
 - Avoid document-wide broadcast listeners for internal synchronization when a scoped context or controller stream exists.
 - Do not mirror the same state across context + DOM events + local component state unless there is a clear boundary reason.
 
+### Composition Context
+
+A fact about *where* content renders — heading depth, media arbitration, region
+scope, available width — is published by the container and resolved by whichever
+descendant needs it. The container never enumerates its consumers. Every such
+context needs three things declared together: a resolution order, a graceful
+default for when no publisher is present, and a change signal. Omitting the
+change signal makes resolvers pin the first value they see, silently.
+
+See [`composition-context.md`](./composition-context.md) for the pattern, its
+invariants, and the worked heading-depth example.
+
 ### Communication Rule of Thumb
 
 - Same CE/runtime dependency scope: `@pie-players/pie-context`.

@@ -1,53 +1,27 @@
 import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types";
-import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 
 /**
- * PNP support ids that must never enter the computed default profile, however
- * they reach the registry.
+ * An empty personal-needs profile: nothing granted, nothing prohibited, nothing
+ * activated at init.
  *
- * `computeDefaultSupports()` derives the fallback profile from every registered
- * tool's `pnpSupportIds`, which is right for universal features — a highlighter
- * or a zoom control should be there for every student by default. It is wrong
- * for an **accommodation**: signing requires a documented need (IEP / 504), so
- * granting it to every host that does not supply its own profile would invert
- * the eligibility tier. Registry membership is about being policy-addressable,
- * not about who may enable it.
+ * The core ships no populated default on purpose. It once derived one from every
+ * registered tool's `pnpSupportIds`, which read *registry membership* as
+ * *eligibility tier* — registration means "policy-addressable", not "universal,
+ * on by default" — so an accommodation-tier capability was granted to every
+ * student of every host that supplied no profile. The remedy at the time was a
+ * compile-time list of ids to exclude, which a host could not extend for its own
+ * accommodation.
  *
- * Excluded here rather than by declining to register, so the guarantee holds
- * even if a signing tool is later registered for some other reason.
+ * Which capabilities a deployment grants by default is a property of the
+ * program, not of this package: TTS is a universal feature in one program and a
+ * documented accommodation in another. That belongs in policy configuration
+ * alongside the district and test-administration levels. A named preset of
+ * today's universal set ships as data from
+ * `@pie-players/pie-default-tool-loaders`, for hosts that want it.
  */
-export const ACCOMMODATION_ONLY_SUPPORT_IDS: readonly string[] = [
-	// QTI 3.0 / AfA `signLanguage`. Signed alternates are rendered by
-	// section-player's per-item media region, gated on this id.
-	"signLanguage",
-];
-
-function computeDefaultSupports(): string[] {
-	const registry = createPackagedToolRegistry();
-	const supports = new Set<string>();
-	const excluded = new Set(ACCOMMODATION_ONLY_SUPPORT_IDS);
-
-	for (const tool of registry.getAllTools()) {
-		for (const supportId of tool.pnpSupportIds || []) {
-			if (excluded.has(supportId)) continue;
-			supports.add(supportId);
-		}
-	}
-
-	return [...supports].sort();
-}
-
-const DEFAULT_SUPPORTS = computeDefaultSupports();
-
-export const DEFAULT_PERSONAL_NEEDS_PROFILE: PersonalNeedsProfile = {
-	supports: [...DEFAULT_SUPPORTS],
-	prohibitedSupports: [],
-	activateAtInit: [],
-};
-
-export function createDefaultPersonalNeedsProfile(): PersonalNeedsProfile {
+export function createEmptyPersonalNeedsProfile(): PersonalNeedsProfile {
 	return {
-		supports: [...DEFAULT_SUPPORTS],
+		supports: [],
 		prohibitedSupports: [],
 		activateAtInit: [],
 	};

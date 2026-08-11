@@ -234,6 +234,13 @@ bun run check:consumer-boundaries
 bun run check:custom-elements
 ```
 
+For changes to the toolkit core, the policy engine or a player, also run:
+
+```sh
+bun run check:capability-neutrality
+bun run check:player-tool-boundaries
+```
+
 For release work, follow `docs/setup/publishing.md` and the release alignment
 rule in this file.
 
@@ -254,6 +261,12 @@ rule in this file.
 - `packages/assessment-player` - multi-section assessment delivery.
 - `packages/print-player` - item-level print rendering.
 - `packages/assessment-toolkit` - shared assessment services and components.
+  Generic core: it knows `featureId`, placement levels, activation kinds and
+  precedence, and names no capability. `bun run check:capability-neutrality`
+  enforces that.
+- `packages/default-tool-loaders` - composition layer: which capabilities a
+  deployment has, their tag map, placement presets, universal supports and lazy
+  module loaders. The only place a packaged capability set is named.
 - `packages/players-shared` - shared utilities, sanitizer, and PIE config.
 - `packages/pie-context` - shared runtime context.
 - `packages/theme*` - theme token contract and bridges.

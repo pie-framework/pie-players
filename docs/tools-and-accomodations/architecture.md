@@ -246,7 +246,38 @@ Two mechanisms this needed, added 2026-08-08 when signing shipped:
 
 **Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same six levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. Note it deliberately does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
 
-**Eligibility tier versus the computed default.** `DEFAULT_PERSONAL_NEEDS_PROFILE` is derived by `computeDefaultSupports()` from every registered tool's `pnpSupportIds`. That is right for universal features and inverts the tier for an accommodation — registering a signing tool would switch signing on for every student of every host that does not supply its own profile. `ACCOMMODATION_ONLY_SUPPORT_IDS` is excluded from that computation by id rather than by declining to register, so the guarantee holds however such a capability later reaches the registry. It is the one place the eligibility tiering AfA omits shows up in code, and it is a filter, not a new concept.
+**Eligibility tier is configuration, not a derivation.** The core ships no populated default profile: `createEmptyPersonalNeedsProfile()` grants nothing. A default was briefly derived from every registered tool's `pnpSupportIds`, which read registry membership as eligibility tier — registration means "policy-addressable", not "universal, on by default" — so an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time list of ids to exclude that a host could not extend for its own accommodation; both the derivation and the list are gone.
+
+Tiering belongs where the district and test-administration levels already live, because it is a property of the program rather than of the capability: TTS is a universal feature in one program and a documented accommodation in another. `@pie-players/pie-default-tool-loaders` ships today's universal set as `UNIVERSAL_SUPPORTS_PRESET` and `createUniversalPersonalNeedsProfile()` — data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, it is intrinsic to the capability, and declaring it keeps a content-dependent accommodation out of a wholesale grant structurally rather than by name.
+
+---
+
+## Capability Ownership Layers
+
+Four layers, and which one a piece of code belongs to is decided by whether it names a capability.
+
+| Layer | Package | Knows |
+| --- | --- | --- |
+| Core | `assessment-toolkit` | `featureId`, placement levels, activation kinds, precedence, the registration contract. **No capability ids.** |
+| Capability | `tool-*` | One capability: its registration, its content resolver, its element |
+| Composition | `default-tool-loaders` | Which capabilities a deployment has, their tags, placement presets, universal supports, module loaders |
+| Renderer | `section-player`, `item-player`, toolbars | Surfaces and layout. Asks the registry what to mount |
+
+`bun run check:capability-neutrality` fails when a capability id or a `pie-tool-*` tag appears in core. A renderer is held to the same rule by its own source-boundary tests, because a renderer that names one is the same defect one layer up: it means a host cannot contribute that kind of capability without a PR here.
+
+The rule this encodes: **a capability id may only appear in the layer that is a decision about capabilities.** Core naming one turns a deployment choice into a code change. That happened three ways at once — the packaged registry was core's fallback for an absent one, the default profile was derived from registry membership, and two renderers named the specific capability they mounted — and each had to be undone before a host could contribute anything.
+
+### Host surfaces
+
+A capability that does not render on a toolbar declares `activation: "region"`, the host slot names it fits in `surfaces`, and `renderSurface(context)`. The renderer asks `registry.getToolsBySurface(name)` and mounts what comes back, so it names no capability and a host opens a new surface without a change here. Surface names belong to the renderer; core validates only that a region capability claims one.
+
+Availability at a surface is grant **and** content: `decideFeaturePolicy(supportId)`, then `requiresAuthoredContent.resolve(...)`, then `renderSurface`. Neither half implies the other, which is what keeps a learner with an accommodation from seeing a dead affordance on the items that carry no resource.
+
+Two constraints follow. A `region` capability is gated on the feature question and never the placement question — placing one is a `tools.unplaceableActivation` error, so the placement question has no answer to give. And a content dependency resolves against an item model or a passage, never a section, because a DRD resource pairs with content rather than with a container: a section-scoped surface declines a capability that declares one.
+
+`@pie-players/pie-tool-sign-language` is the worked example. It is deliberately absent from `createPackagedToolRegistry`, because a content-dependent accommodation is opt-in, so a host installs and registers it exactly as it would one of its own. `packages/assessment-toolkit/docs/TOOL_REGISTRY.md` carries both contracts.
+
+Host surfaces are one instance of a broader pattern: a fact only the container knows, published for whichever descendant needs it rather than pushed to a known list of consumers. `renderSurface(context)` publishes, the capability resolves, and `sync(context)` is the change signal — which it lacked until it was found to be re-applying the values the host already had. [`../architecture/composition-context.md`](../architecture/composition-context.md) states the pattern and the invariants that failure violated.
 
 ---
 

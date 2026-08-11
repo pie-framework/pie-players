@@ -57,6 +57,9 @@ const fail = (message) => {
 	process.exit(1);
 };
 
+/** Sentinel for a package that exists here but has never been published. */
+const UNPUBLISHED = Symbol("unpublished");
+
 const fetchPublishedVersion = (pkgName) => {
 	try {
 		const out = execSync(`npm view "${pkgName}" version --json`, {
@@ -72,8 +75,15 @@ const fetchPublishedVersion = (pkgName) => {
 		}
 		return null;
 	} catch (error) {
+		const detail = error.stderr?.toString()?.trim() || error.message || "";
+		// A package added in this change has nothing on npm yet, which is not a
+		// versioning problem — it is what adding a publishable package looks like
+		// before its first release. Only a 404 is treated this way; a network or
+		// auth failure still stops the gate, because "cannot tell" must not read as
+		// "fine".
+		if (/E404|404 Not Found/.test(detail)) return UNPUBLISHED;
 		fail(
-			`Failed to read published version for ${pkgName} from npm: ${error.stderr?.toString()?.trim() || error.message}`,
+			`Failed to read published version for ${pkgName} from npm: ${detail}`,
 		);
 	}
 };
@@ -142,12 +152,28 @@ if (process.env.SKIP_NPM_VERSION_SEQUENCE_CHECK !== "1") {
 	}
 
 	const publishedVersionMap = new Map();
+	const unpublished = [];
 	for (const pkg of publishablePackages) {
 		const published = fetchPublishedVersion(pkg.name);
+		if (published === UNPUBLISHED) {
+			unpublished.push(pkg.name);
+			continue;
+		}
 		if (!published) {
 			fail(`Package ${pkg.name} has no published version on npm.`);
 		}
 		publishedVersionMap.set(pkg.name, published);
+	}
+	if (unpublished.length > 0) {
+		// Excluded from the sequence comparison rather than compared against
+		// nothing: a first release publishes these at the lockstep version, and the
+		// fixed-group membership check above is what guarantees they go with it.
+		console.log(
+			`[check-fixed-versioning] not yet on npm, first release will publish at the lockstep version: ${unpublished.join(", ")}`,
+		);
+	}
+	if (publishedVersionMap.size === 0) {
+		fail("No publishable package has a published version to compare against.");
 	}
 
 	const sequence = classifyPublishedSequence({

@@ -18,7 +18,20 @@
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
 			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
 			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
-			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
+			// Both reflect: PIE elements read these off the nearest player host and
+			// re-render on a MutationObserver watching these attributes, so a prop
+			// that never reaches the attribute is honoured at first paint and inert
+			// after it. See the `baseHeadingLevel` docs below.
+			baseHeadingLevel: {
+				attribute: "base-heading-level",
+				type: "Number",
+				reflect: true,
+			},
+			includeSrHeading: {
+				attribute: "include-sr-heading",
+				type: "Boolean",
+				reflect: true,
+			},
 			bundleHost: { attribute: "bundle-host", type: "String" },
 			bundleEndpoints: { attribute: "bundle-endpoints", type: "Object" },
 			disableBundler: { attribute: "disable-bundler", type: "Boolean" },
@@ -163,6 +176,7 @@
 		renderStimulus = true,
 		allowedResize = false,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
+		includeSrHeading = true,
 		bundleHost = "",
 		bundleEndpoints = null as Record<string, unknown> | null,
 		disableBundler = false,
@@ -763,6 +777,28 @@
 
 	// pie-item contract compatibility: legacy <pie-player> exposed `allowedResize`
 	// for opt-in passage resizing; the default current layout remains unchanged.
+
+	/**
+	 * `baseHeadingLevel` / `includeSrHeading` are host surface, not a transform
+	 * this player performs.
+	 *
+	 * A PIE element resolves them itself, by walking up to the nearest
+	 * `pie-player` / `pie-item-player` and reading the property, falling back to
+	 * the `base-heading-level` / `include-sr-heading` attribute. The element owns
+	 * the outline it emits: it places its own visually-hidden item heading at
+	 * `baseHeadingLevel` and nests authored `data-heading` content one level
+	 * below, so `baseHeadingLevel: 2` yields `h2` for the item heading and
+	 * `h3`/`h4` for `heading1`/`heading2`. `baseHeadingLevel` names the level the
+	 * item's heading occupies, not the level the element emits: content nests
+	 * below it either way, so a host suppressing the item heading has to be
+	 * emitting its own heading there.
+	 *
+	 * `includeSrHeading` has a `true` default, so the attribute cannot express
+	 * "off" under HTML boolean-attribute semantics — presence means on. Hosts
+	 * suppress the heading through the property, which reflection then clears.
+	 *
+	 * This player validates and reflects; it does not rewrite markup.
+	 */
 	const resolvedBaseHeadingLevel = $derived.by(() => {
 		if (
 			typeof baseHeadingLevel === "number" &&
@@ -1883,6 +1919,7 @@
 					customClassName={scopeClass}
 					passageContainerClass={resolvedPassageContainerClass}
 					baseHeadingLevel={resolvedBaseHeadingLevel}
+					{includeSrHeading}
 					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
 					{loaderConfig}
 					mode={resolvedMode}

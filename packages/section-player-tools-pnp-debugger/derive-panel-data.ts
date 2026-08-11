@@ -70,6 +70,17 @@ export interface ToolRegistrationLike {
 	description?: string;
 	supportedLevels?: readonly string[];
 	pnpSupportIds?: readonly string[];
+	/**
+	 * How the capability reaches the learner. `"region"` capabilities are the
+	 * reason this panel cannot treat every row alike: they render into a host
+	 * surface, so they have no placement to toggle and never appear in a
+	 * placement-scoped decision's `visibleTools`.
+	 */
+	activation?: string;
+	/** Whether the capability needs authored content to show anything. */
+	requiresAuthoredContent?: unknown;
+	/** What has to be authored, when the capability says. */
+	contentDependencyDescription?: string;
 }
 
 export interface ToolRegistryLike {
@@ -140,6 +151,19 @@ export interface EditableToolRow {
 	visible: Record<ToolPlacementLevel, boolean>;
 	pnpSupported: boolean;
 	pnpProhibited: boolean;
+	/**
+	 * Whether this capability can be placed on a toolbar at all.
+	 *
+	 * `false` for `activation: "region"`. The panel offered placement toggles for
+	 * those, and writing one produces a `tools.unplaceableActivation` diagnostic at
+	 * `error` severity — so the control could only ever break the config it was
+	 * editing. The `visible` flags are meaningless for the same reason: they read a
+	 * placement-scoped decision, which a region capability is never in, so they
+	 * reported "not visible" while it was correctly rendering.
+	 */
+	placeable: boolean;
+	/** What has to be authored for this capability to show anything, if anything. */
+	contentDependency: string | null;
 }
 
 /**
@@ -157,11 +181,11 @@ export function resolvePnpProfile(
 		? "section.personalNeedsProfile"
 		: settingsProfile
 			? "section.settings.personalNeedsProfile"
-			: "toolkit default profile (derived)";
+			: "panel fallback (no profile in section)";
 	const note =
 		directProfile || settingsProfile
 			? "Profile was taken directly from section payload."
-			: "No explicit PNP profile was found in section payload, so the toolkit default PNP profile is applied.";
+			: "The section carries no PNP profile. Nothing derives one — a player grants no support the host did not configure, so placement alone decides which tools appear. This panel is showing its own fallback profile so the rows below have something to read.";
 	return { profile, source, note };
 }
 
@@ -329,6 +353,7 @@ export function buildEditableToolRows(args: {
 			const pnpSupportIds = [
 				...new Set([...(tool.pnpSupportIds ?? []), tool.toolId]),
 			];
+			const placeable = tool.activation !== "region";
 			return {
 				toolId: tool.toolId,
 				name: tool.name || tool.toolId,
@@ -337,6 +362,10 @@ export function buildEditableToolRows(args: {
 				pnpSupportIds,
 				primaryPnpSupportId: pnpSupportIds[0] || tool.toolId,
 				providerEnabled: providers[tool.toolId]?.enabled !== false,
+				placeable,
+				contentDependency: tool.requiresAuthoredContent
+					? tool.contentDependencyDescription || "authored content on the item"
+					: null,
 				placement: buildPlacementState(placement, tool.toolId),
 				visible: buildVisibleState(args.decisions, tool.toolId),
 				pnpSupported: hasAnySupport(supports, pnpSupportIds),
@@ -347,17 +376,25 @@ export function buildEditableToolRows(args: {
 		.sort((left, right) => left.name.localeCompare(right.name));
 }
 
+/**
+ * Placement naming every capability that can be placed.
+ *
+ * Region capabilities are excluded: placing one is a `tools.unplaceableActivation`
+ * error, so an "all available tools" button that included them wrote a config the
+ * validator rejects.
+ */
 export function deriveAllAvailablePlacement(
 	rows: EditableToolRow[],
 ): Record<ToolPlacementLevel, string[]> {
+	const placeable = rows.filter((row) => row.placeable);
 	return {
-		section: rows
+		section: placeable
 			.filter((row) => row.supportedLevels.includes("section"))
 			.map((row) => row.toolId),
-		item: rows
+		item: placeable
 			.filter((row) => row.supportedLevels.includes("item"))
 			.map((row) => row.toolId),
-		passage: rows
+		passage: placeable
 			.filter((row) => row.supportedLevels.includes("passage"))
 			.map((row) => row.toolId),
 	};

@@ -6,7 +6,8 @@
 		DebugPanelInstrumentationProvider,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
-	import { createDefaultPersonalNeedsProfile, type ToolkitCoordinatorHooks } from '@pie-players/pie-assessment-toolkit';
+	import { type ToolkitCoordinatorHooks } from '@pie-players/pie-assessment-toolkit';
+	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-tool-text-to-speech';
@@ -68,14 +69,17 @@
 		})
 		.catch(() => {});
 
-	// Pass baseHeadingLevel and includeSrHeading through the player config so the
-	// section-player kernel forwards them as props to every item player element.
+	// `baseHeadingLevel` goes on the section player itself: it is the level the
+	// player's own card headings occupy, and every descendant derives its outline
+	// from it, so driving it here moves the cards, the passages and the items
+	// together. `includeSrHeading` stays a per-player override, which is what this
+	// demo is for — a host that furnishes no question headings of its own asks the
+	// element to keep furnishing them.
 	const sectionPlayerConfig = $derived({
 		loaderConfig: {
 			trackPageActions: true,
 			instrumentationProvider: sectionInstrumentationProvider
 		},
-		baseHeadingLevel,
 		includeSrHeading
 	});
 
@@ -119,7 +123,7 @@
 		if (hasExplicitPnp) return section;
 		return {
 			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile()
+			personalNeedsProfile: createUniversalPersonalNeedsProfile()
 		};
 	});
 	let sessionPanelSectionId = $derived(
@@ -370,6 +374,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				base-heading-level={baseHeadingLevel}
 				toolbar-position="right"
 				show-toolbar={true}
 				ontoolkit-ready={handleToolkitReady}
@@ -388,6 +393,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				base-heading-level={baseHeadingLevel}
 				toolbar-position="right"
 				show-toolbar={true}
 				ontoolkit-ready={handleToolkitReady}

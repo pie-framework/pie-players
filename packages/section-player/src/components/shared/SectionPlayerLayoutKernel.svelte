@@ -8,8 +8,10 @@
 		ToolbarItem,
 		ToolConfigStrictness,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { createPackagedToolRegistry } from "@pie-players/pie-assessment-toolkit";
-	import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";
+	import {
+		createPackagedToolRegistry,
+		DEFAULT_TOOL_MODULE_LOADERS,
+	} from "@pie-players/pie-default-tool-loaders";
 	import {
 		SECTION_RUNTIME_ENGINE_KEY,
 		SectionRuntimeEngine,
@@ -41,6 +43,7 @@
 		type LayoutCompositionSnapshot,
 		deriveLayoutCompositionSnapshot,
 		getCompositionSnapshotFromEvent,
+		normalizeBaseHeadingLevel,
 	} from "./section-player-view-state.js";
 	import { EMPTY_COMPOSITION } from "./composition.js";
 	import { resolveSectionPlayerRuntimeState } from "./section-player-host-runtime.js";
@@ -94,6 +97,10 @@
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
 		debug = undefined as string | boolean | undefined,
+		// Composition context: the level this player's card headings occupy, from
+		// which every descendant's outline derives. See `normalizeBaseHeadingLevel`
+		// and `docs/architecture/composition-context.md`.
+		baseHeadingLevel = undefined as number | undefined,
 		playerActionConfig = {
 			stateKey: "__sectionPlayerAppliedParams",
 			includeSessionRefInState: false,
@@ -279,6 +286,9 @@
 	});
 	const resolvedPlayerEnv = $derived(playerRuntime.resolvedPlayerEnv);
 	const playerStrategy = $derived(playerRuntime.strategy);
+	const resolvedBaseHeadingLevel = $derived(
+		normalizeBaseHeadingLevel(baseHeadingLevel),
+	);
 	const playerAction = $derived.by(() => createPlayerAction(playerActionConfig));
 	const effectiveCardTitleFormatter = $derived(hooks?.cardTitleFormatter);
 	const cardRenderContextValue = $derived.by(
@@ -713,6 +723,7 @@
 			resolvedPlayerAttributes,
 			resolvedPlayerProps: effectiveResolvedPlayerProps,
 			playerStrategy,
+			baseHeadingLevel: resolvedBaseHeadingLevel,
 			iifeBundleHost,
 			paneElementsLoaded,
 			toolRegistry: effectiveToolRegistry,
@@ -735,6 +746,7 @@
 		{resolvedPlayerAttributes}
 		resolvedPlayerProps={effectiveResolvedPlayerProps}
 		{playerStrategy}
+		baseHeadingLevel={resolvedBaseHeadingLevel}
 		{iifeBundleHost}
 		{paneElementsLoaded}
 		toolRegistry={effectiveToolRegistry}

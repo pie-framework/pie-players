@@ -74,7 +74,7 @@
 		"dist"
 	],
 	"dependencies": {
-		"@pie-lib/math-rendering-module": "5.1.0",
+		"@pie-lib/math-rendering-module": "5.1.2",
 		"dompurify": "^3.4.13",
 		"semver": "^7.8.5"
 	},
@@ -89,10 +89,10 @@
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.6",
+		"@biomejs/biome": "^2.5.7",
 		"@happy-dom/global-registrator": "^20.11.1",
 		"@playwright/test": "^1.62.1",
-		"@types/semver": "^7.7.1",
+		"@types/semver": "^7.8.0",
 		"esbuild": "^0.28.1",
 		"glob": "^13.0.0",
 		"svelte": "^5.56.8",

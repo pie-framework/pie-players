@@ -22,6 +22,8 @@ const GRANTED_PATH =
 	"/sign-language?page=signing-granted&mode=candidate&layout=splitpane";
 const NOT_GRANTED_PATH =
 	"/sign-language?page=signing-not-granted&mode=candidate&layout=splitpane";
+const SIGNED_PASSAGE_PATH =
+	"/sign-language?page=signing-passage&mode=candidate&layout=splitpane";
 
 const AUTHORED_PROMPT =
 	"Where in a plant cell does photosynthesis mainly happen?";
@@ -33,7 +35,9 @@ async function gotoDemo(page: Page, path: string) {
 		state: "attached",
 	});
 	// The PIE elements load asynchronously; poll for rendered prompt text.
-	await expect(page.getByText(AUTHORED_PROMPT)).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText(AUTHORED_PROMPT)).toBeVisible({
+		timeout: 30_000,
+	});
 }
 
 function itemCard(page: Page, itemId: string) {
@@ -44,6 +48,10 @@ function itemCard(page: Page, itemId: string) {
 
 function mediaRegion(page: Page, itemId: string) {
 	return itemCard(page, itemId).locator('[data-region="media"]');
+}
+
+function passageMediaRegion(page: Page) {
+	return page.locator('pie-section-player-passage-card [data-region="media"]');
 }
 
 test.describe("sign-language region — availability", () => {
@@ -99,6 +107,28 @@ test.describe("sign-language region — availability", () => {
 			.toBeGreaterThan(0);
 	});
 
+	test("shows the signed reading a shared passage carries, on the passage card", async ({
+		page,
+	}) => {
+		await page.goto(SIGNED_PASSAGE_PATH, { waitUntil: "networkidle" });
+		await page.waitForSelector("pie-section-player-passage-card", {
+			state: "attached",
+		});
+
+		// Authored once on the passage, not on either item that references it — so
+		// this proves the passage owner scope resolves and that the region is not an
+		// item-card-only surface.
+		const region = passageMediaRegion(page);
+		await expect(region).toBeVisible();
+		await expect(
+			region.getByLabel("American Sign Language translation"),
+		).toBeVisible();
+		await expect(region.locator("video source")).toHaveAttribute(
+			"src",
+			CLIP_SRC,
+		);
+	});
+
 	test("leaves no dead affordance on an item with no signing content", async ({
 		page,
 	}) => {
@@ -113,6 +143,8 @@ test.describe("sign-language region — availability", () => {
 		page,
 	}) => {
 		await gotoDemo(page, NOT_GRANTED_PATH);
+		// Every card kind, so an ungranted learner gets no region on the passage
+		// either.
 		await expect(page.locator('[data-region="media"]')).toHaveCount(0);
 		// And no signing video renders as ordinary item content either. The clip
 		// lives only on the catalog card, so an ungranted learner has nothing to

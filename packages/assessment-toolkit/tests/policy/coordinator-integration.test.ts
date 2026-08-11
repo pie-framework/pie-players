@@ -35,12 +35,16 @@ import type {
 } from "../../src/policy/engine.js";
 import type { ToolContext } from "../../src/services/tool-context.js";
 import type { ToolbarContext } from "../../src/services/ToolRegistry.js";
+import { createTestToolRegistry } from "../fixtures/test-tool-registry.js";
 
 // Tool ids chosen to satisfy the registry's per-tool `supportedLevels`
 // validation. `graph` / `periodicTable` are section-only; `theme` is
 // assessment+section; `lineReader` works across section/passage/item.
-// `textToSpeech` is item+passage. The default packaged registry
-// (`createPackagedToolRegistry`) registers all of these.
+// `textToSpeech` is item+passage.
+//
+// Supplied explicitly from a test-local registry: the coordinator no longer
+// falls back to a packaged one, and this package cannot import the composition
+// package that owns it without a dependency cycle.
 function makeCoordinator(extra?: {
 	tools?: ConstructorParameters<typeof ToolkitCoordinator>[0]["tools"];
 	toolContextResolvers?: ConstructorParameters<
@@ -57,6 +61,7 @@ function makeCoordinator(extra?: {
 			},
 		},
 		toolContextResolvers: extra?.toolContextResolvers,
+		toolRegistry: createTestToolRegistry(),
 	});
 }
 

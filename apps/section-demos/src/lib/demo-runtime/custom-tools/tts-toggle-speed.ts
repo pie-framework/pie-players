@@ -402,7 +402,11 @@ export function createToggleSpeedTtsToolRegistry(): ToolRegistry {
 			context: ToolContext,
 			toolbarContext: ToolbarContext,
 		): ToolToolbarRenderResult | null {
-			if (!baseRegistration.isVisibleInContext(context)) return null;
+			// Optional on the contract: a region capability declares no answer. The
+			// base registration here is a toolbar tool and does declare one, so a
+			// missing implementation means the base changed shape — decline rather
+			// than render a control whose relevance nobody vouched for.
+			if (!baseRegistration.isVisibleInContext?.(context)) return null;
 			return {
 				toolId: this.toolId,
 				button: null,

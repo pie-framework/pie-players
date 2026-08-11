@@ -318,6 +318,11 @@ export const demo4Section: AssessmentSection = {
 								},
 								{
 									value: "c",
+									// The image carries max-width inline rather than relying on the shared
+									// sanitizer's .pie-image-scroll wrapper: that wrapper reaches prompt and
+									// passage markup, not choice labels, so a fixed-width image here forces
+									// the choice row wider than the pane and fails the 320px reflow guard in
+									// section-player-reflow.spec.ts. width/height stay for the aspect ratio.
 									label: `<div data-catalog-idref="q1-choice-c">
                     Completing the square
                     <div>
@@ -326,6 +331,7 @@ export const demo4Section: AssessmentSection = {
                         alt="Cartoon dog, a placeholder test image"
                         width="240"
                         height="180"
+                        style="max-width: 100%; height: auto;"
                       />
                     </div>
                   </div>`,

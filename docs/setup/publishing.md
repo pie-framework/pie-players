@@ -280,6 +280,16 @@ Two constraints the script enforces rather than explains at the prompt:
 After the bootstrap the package is ordinary: add a changeset, merge, and the release publishes
 it with the rest of the group over OIDC at the next group version.
 
+The bootstrap version is usually **not** the published group version, because `bootstrap-package`
+reads it from the branch it runs on and release bumps land only on `master`. A bootstrap from
+`develop` therefore publishes whatever version the last back-merge left there —
+`@pie-players/pie-tool-sign-language` went out at 0.3.50 against a group published at 0.3.64.
+`check-fixed-versioning` tolerates that gap for a package whose entire release history is one
+version below the group, and reports the packages it excused. The discriminant is release
+history, not distance: a package that published repeatedly and then fell behind is drift, and
+still fails. The newcomer joins the group at the next release version rather than stepping
+through the versions it missed.
+
 Versioning is fixed, so a release authenticates the run as a whole. A package with no record
 fails with `ENEEDAUTH` while its siblings succeed, leaving the registry split across two
 versions and git holding a version that was never fully published.

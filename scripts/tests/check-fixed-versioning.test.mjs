@@ -151,6 +151,96 @@ describe("classifyPublishedSequence — partial publish", () => {
 	});
 });
 
+describe("classifyPublishedSequence — bootstrapped newcomer catching up", () => {
+	/** The shape 0.3.65 hit: sign-language bootstrapped from develop at 0.3.50. */
+	const newcomerRegistry = publishedMap({
+		a: "0.3.64",
+		b: "0.3.64",
+		newcomer: "0.3.50",
+	});
+
+	test("a package whose only release is below the group publishes with the group", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.65",
+			publishedVersionMap: newcomerRegistry,
+			publishedHistoryMap: new Map([["newcomer", ["0.3.50"]]]),
+		});
+		expect(result.verdict).toBe("ok");
+		expect(result.catchingUp).toEqual([
+			{ name: "newcomer", version: "0.3.50" },
+		]);
+		expect(result.message).toContain("newcomer@0.3.50");
+	});
+
+	test("a package with a release history below the group is drift, not a newcomer", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.65",
+			publishedVersionMap: newcomerRegistry,
+			publishedHistoryMap: new Map([["newcomer", ["0.3.48", "0.3.50"]]]),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).toContain("align the group manually");
+	});
+
+	test("without a history the newcomer allowance cannot apply", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.65",
+			publishedVersionMap: newcomerRegistry,
+		});
+		expect(result.verdict).toBe("stop");
+	});
+
+	test("the rest of the group must still be exactly one patch behind", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.66",
+			publishedVersionMap: newcomerRegistry,
+			publishedHistoryMap: new Map([["newcomer", ["0.3.50"]]]),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).toContain("skips patch versions");
+	});
+
+	test("a newcomer does not mask a genuine split in the rest of the group", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.65",
+			publishedVersionMap: publishedMap({
+				a: "0.3.64",
+				b: "0.3.60",
+				newcomer: "0.3.50",
+			}),
+			publishedHistoryMap: new Map([["newcomer", ["0.3.50"]]]),
+		});
+		expect(result.verdict).toBe("stop");
+	});
+
+	test("a newcomer only one patch behind stays on the partial-publish path", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.65",
+			publishedVersionMap: publishedMap({
+				a: "0.3.65",
+				b: "0.3.64",
+				newcomer: "0.3.64",
+			}),
+			publishedHistoryMap: new Map([["newcomer", ["0.3.64"]]]),
+		});
+		expect(result.verdict).toBe("completing-partial-publish");
+		expect(result.catchingUp).toBeUndefined();
+	});
+
+	test("a newcomer on another release line is not excused", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "0.3.65",
+			publishedVersionMap: publishedMap({
+				a: "0.3.64",
+				b: "0.3.64",
+				newcomer: "0.2.10",
+			}),
+			publishedHistoryMap: new Map([["newcomer", ["0.2.10"]]]),
+		});
+		expect(result.verdict).toBe("stop");
+	});
+});
+
 describe("classifyPublishedSequence — malformed input", () => {
 	test("an unparseable local version stops", () => {
 		const result = classifyPublishedSequence({

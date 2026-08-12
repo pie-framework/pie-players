@@ -159,6 +159,23 @@ permanently unreachable for that package and forces the whole group forward anyw
 Publish-path runs execute the full `bun run verify:publish` gate before
 `changesets/action` can publish.
 
+### Back-merge to develop
+
+A release commit exists only on `master`: `changesets/action` bumps the manifests, assembles the
+`CHANGELOG.md` files, and deletes the consumed changesets there. After a successful publish
+`release.yml` opens a `master` → `develop` PR to return it. Merge it.
+
+Deferring it leaves the manifests on `develop` at whatever version the last back-merge set, and
+`bootstrap-package` reads the group version from the branch it runs on — so the next new package
+is published far below the group and `check-fixed-versioning` blocks the following release.
+`@pie-players/pie-tool-sign-language` was published at 0.3.50 against a group at 0.3.64 this way.
+
+A PR rather than an automatic push, because the merge can conflict where `develop` and the release
+both appended to a `CHANGELOG.md`. Take both sides, release entry first. The step is idempotent: it
+reuses an open back-merge PR instead of opening a second, and skips when `develop` already contains
+`master`. It cannot fail a release — a publish that succeeded is not reported as failed over its
+follow-up bookkeeping.
+
 After publish, CI also validates internal dependency closure in the registry:
 
 - `scripts/check-published-closure.mjs`

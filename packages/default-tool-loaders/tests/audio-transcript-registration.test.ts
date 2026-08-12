@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import {
-	AUDIO_TRANSCRIPT_CONTENT_CLASS,
 	AUDIO_TRANSCRIPT_FEATURE_ID,
 	audioTranscriptRegistration,
 	resolveAudioTranscript,
@@ -31,28 +30,6 @@ const dependencyContext = (item: unknown, granted: boolean) =>
 		granted,
 	}) as never;
 
-const markerContext = (content: unknown, granted: boolean) =>
-	({
-		toolId: AUDIO_TRANSCRIPT_FEATURE_ID,
-		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
-		surface: "content-marker",
-		content,
-		granted,
-	}) as never;
-
-/** The whole capability end to end, as the host runs it. */
-const classesFor = (item: unknown, granted: boolean): string[] | null => {
-	const content = audioTranscriptRegistration.requiresAuthoredContent?.resolve(
-		dependencyContext(item, granted),
-	);
-	if (content === null || content === undefined) return null;
-	return (
-		audioTranscriptRegistration.markContent?.resolve(
-			markerContext(content, granted),
-		) ?? null
-	);
-};
-
 describe("audio transcript content resolution", () => {
 	it("finds nothing on an item with no catalogs", () => {
 		expect(
@@ -71,6 +48,8 @@ describe("audio transcript content resolution", () => {
 		]);
 		expect(resolveAudioTranscript(dependencyContext(item, false))).toEqual({
 			catalogId: "model-1-transcript",
+			text: "the text",
+			language: undefined,
 			always: true,
 		});
 		expect(resolveAudioTranscript(dependencyContext(item, true))?.always).toBe(
@@ -85,6 +64,8 @@ describe("audio transcript content resolution", () => {
 		expect(resolveAudioTranscript(dependencyContext(item, false))).toBeNull();
 		expect(resolveAudioTranscript(dependencyContext(item, true))).toEqual({
 			catalogId: "model-1-transcript",
+			text: "the text",
+			language: undefined,
 			always: false,
 		});
 	});
@@ -99,6 +80,13 @@ describe("audio transcript content resolution", () => {
 		);
 	});
 
+	it("ignores a transcript card carrying no text", () => {
+		const item = itemWithCards([
+			{ catalog: "transcript", content: "   ", visibility: "always" },
+		]);
+		expect(resolveAudioTranscript(dependencyContext(item, true))).toBeNull();
+	});
+
 	it("prefers an always card over an accommodation card found earlier", () => {
 		const item = itemWithCards([
 			{ catalog: "transcript", content: "gated", visibility: "onGrant" },
@@ -107,29 +95,6 @@ describe("audio transcript content resolution", () => {
 		expect(resolveAudioTranscript(dependencyContext(item, false))?.always).toBe(
 			true,
 		);
-	});
-});
-
-describe("audio transcript marker", () => {
-	it("marks the container for an always card with no grant", () => {
-		const item = itemWithCards([
-			{ catalog: "transcript", content: "the text", visibility: "always" },
-		]);
-		expect(classesFor(item, false)).toEqual([AUDIO_TRANSCRIPT_CONTENT_CLASS]);
-	});
-
-	it("marks the container for an onGrant card once granted", () => {
-		const item = itemWithCards([
-			{ catalog: "transcript", content: "the text", visibility: "onGrant" },
-		]);
-		expect(classesFor(item, false)).toBeNull();
-		expect(classesFor(item, true)).toEqual([AUDIO_TRANSCRIPT_CONTENT_CLASS]);
-	});
-
-	it("marks nothing for an item with no transcript, granted or not", () => {
-		const item = itemWithCards([]);
-		expect(classesFor(item, true)).toBeNull();
-		expect(classesFor(item, false)).toBeNull();
 	});
 });
 
@@ -154,5 +119,9 @@ describe("audio transcript packaging", () => {
 	it("has no toolbar presence to place", () => {
 		expect(audioTranscriptRegistration.activation).toBe("region");
 		expect(audioTranscriptRegistration.renderToolbar).toBeUndefined();
+	});
+
+	it("is consulted without a grant, which is what makes packaging it safe", () => {
+		expect(audioTranscriptRegistration.resolvesWithoutGrant).toBe(true);
 	});
 });

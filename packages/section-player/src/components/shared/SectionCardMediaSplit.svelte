@@ -26,6 +26,10 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import SectionCardSplitDivider from "./SectionCardSplitDivider.svelte";
 	import {
+		resolveSurfaceCapabilities,
+		type GrantedSurfaceCapability,
+	} from "./card-surface-capabilities.js";
+	import {
 		clampMediaRegionPercent,
 		CONTENT_MEDIA_SURFACE,
 		MEDIA_REGION_DEFAULT_PERCENT,
@@ -80,30 +84,18 @@
 	);
 
 	/**
-	 * Eligibility half of availability, per capability. A feature decision rather
-	 * than a placement-scoped tool decision: the region is not a toolbar surface,
-	 * so asking the placement question would answer "absent" for the wrong reason.
+	 * Availability, per capability: policy granted one of its own support ids and
+	 * its `requiresAuthoredContent` found something. Both halves live in
+	 * `card-surface-capabilities.ts`, shared with every other card surface, so the
+	 * rule cannot drift between slots.
 	 *
-	 * The support id comes from the capability's own `pnpSupportIds`, so a host
-	 * capability is gated by its own id with no list here to extend.
-	 */
-	function decideFeatureFor(supportId: string) {
-		const coordinator = runtimeContext?.toolkitCoordinator;
-		if (!coordinator || typeof coordinator.decideFeaturePolicy !== "function") {
-			return null;
-		}
-		return coordinator.decideFeaturePolicy(supportId);
-	}
-
-	/**
-	 * Content half of availability: the capability's own `requiresAuthoredContent`
-	 * found what it needs. Both halves are required and neither implies the other,
-	 * so a learner with an accommodation still sees nothing on the vast majority of
-	 * items.
+	 * A feature decision rather than a placement-scoped tool decision: the region is
+	 * not a toolbar surface, so asking the placement question would answer "absent"
+	 * for the wrong reason.
 	 *
-	 * State rather than `$derived`, and written only when the answer changes.
-	 * The resolver is not reactive, so this has to be recomputed on a signal from
-	 * it — and the obvious form of that, a version counter the `$derived` reads,
+	 * State rather than `$derived`, and written only when the answer changes. The
+	 * resolver is not reactive, so this has to be recomputed on a signal from it —
+	 * and the obvious form of that, a version counter the `$derived` reads,
 	 * invalidates on every signal whether or not the answer moved. That is a
 	 * feedback loop here, not merely wasted work: re-rendering the card re-applies
 	 * the entity prop on its shell, whose registration effect re-runs and
@@ -113,61 +105,25 @@
 	 * half-applied. Comparing before writing breaks the cycle at the only point
 	 * where it can be broken without either side knowing about the other.
 	 */
-	type GrantedMediaCapability = {
-		toolId: string;
-		featureId: string;
-		parameters?: unknown;
-		content: unknown;
-	};
+	type GrantedMediaCapability = GrantedSurfaceCapability;
 	let grantedMediaCapabilities = $state<GrantedMediaCapability[]>([]);
 	/** Signature of what is in `grantedMediaCapabilities`; not reactive. */
 	let grantedMediaSignature = "";
 
 	function computeGrantedMediaCapabilities(): GrantedMediaCapability[] {
-		const granted: GrantedMediaCapability[] = [];
-		for (const tool of mediaSurfaceTools) {
-			// A capability declares which support ids grant it; any one is enough.
-			const supportIds = tool.pnpSupportIds?.length
-				? tool.pnpSupportIds
-				: [tool.toolId];
-			let decision: ReturnType<typeof decideFeatureFor> = null;
-			let featureId = "";
-			for (const supportId of supportIds) {
-				const candidate = decideFeatureFor(supportId);
-				if (candidate?.granted === true) {
-					decision = candidate;
-					featureId = supportId;
-					break;
+		return resolveSurfaceCapabilities({
+			tools: mediaSurfaceTools,
+			decideFeature: (supportId) => {
+				const coordinator = runtimeContext?.toolkitCoordinator;
+				if (!coordinator || typeof coordinator.decideFeaturePolicy !== "function") {
+					return null;
 				}
-			}
-			if (!decision) continue;
-
-			// A capability with no content dependency needs only the grant.
-			let resolved: unknown = null;
-			if (tool.requiresAuthoredContent) {
-				try {
-					resolved = tool.requiresAuthoredContent.resolve({
-						featureId,
-						parameters: decision.parameters,
-						catalogResolver: runtimeContext?.catalogResolver ?? null,
-						ownerContext,
-						item: entity,
-					});
-				} catch {
-					// A capability that throws while looking for its content is absent,
-					// not fatal to the card.
-					resolved = null;
-				}
-				if (resolved === null || resolved === undefined) continue;
-			}
-			granted.push({
-				toolId: tool.toolId,
-				featureId,
-				parameters: decision.parameters,
-				content: resolved,
-			});
-		}
-		return granted;
+				return coordinator.decideFeaturePolicy(supportId);
+			},
+			catalogResolver: runtimeContext?.catalogResolver ?? null,
+			ownerContext,
+			entity,
+		});
 	}
 
 	function syncGrantedMediaCapabilities(): void {

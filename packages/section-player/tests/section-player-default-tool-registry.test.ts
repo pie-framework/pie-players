@@ -30,6 +30,14 @@ const MEDIA_REGION_PATH = resolve(
 	__dirname,
 	"../src/components/shared/card-media-region.ts",
 );
+const SURFACE_CAPABILITIES_PATH = resolve(
+	__dirname,
+	"../src/components/shared/card-surface-capabilities.ts",
+);
+const SURFACE_STACK_PATH = resolve(
+	__dirname,
+	"../src/components/shared/SectionCardSurfaceStack.svelte",
+);
 
 function readSource(path: string): string {
 	return readFileSync(path, "utf8");
@@ -164,9 +172,12 @@ describe("section-player names no capability for its card media surface", () => 
 		expect(source).toContain("getToolsBySurface?.(CONTENT_MEDIA_SURFACE)");
 		// Eligibility against the capability's own support ids, and the content half
 		// through its own declaration — so a host capability is gated by its own id
-		// with no list here to extend.
-		expect(source).toContain("tool.pnpSupportIds");
-		expect(source).toContain("tool.requiresAuthoredContent.resolve({");
+		// with no list here to extend. Both halves live in the module every card
+		// surface shares, which is what keeps the rule from drifting between slots.
+		expect(source).toContain("resolveSurfaceCapabilities({");
+		const shared = readSource(SURFACE_CAPABILITIES_PATH);
+		expect(shared).toContain("tool.pnpSupportIds");
+		expect(shared).toContain("tool.requiresAuthoredContent.resolve({");
 		// Through the registry, which owns the component-override map a capability
 		// resolves its element tag against.
 		expect(source).toContain("registry.renderForSurface(");
@@ -186,6 +197,33 @@ describe("section-player names no capability for its card media surface", () => 
 		for (const sourcePath of [ITEM_CARD_PATH, PASSAGE_CARD_PATH]) {
 			expect(readSource(sourcePath)).toContain("<SectionCardMediaSplit");
 		}
+	});
+
+	test("the lead surface is a host slot both cards open, named for the relationship", () => {
+		// A text alternate has to be read in order with the content rather than
+		// watched beside it, which the docked media geometry cannot express. Both
+		// cards open the slot, so a capability declares it once and reaches an item
+		// and a passage alike.
+		expect(readSource(MEDIA_REGION_PATH)).toContain(
+			'export const CONTENT_LEAD_SURFACE = "content-lead";',
+		);
+		for (const sourcePath of [ITEM_CARD_PATH, PASSAGE_CARD_PATH]) {
+			const source = readCode(sourcePath);
+			expect(source).toContain("<SectionCardSurfaceStack");
+			expect(source).toContain("surface={CONTENT_LEAD_SURFACE}");
+			// No capability named in the code, and no reveal class: the slot mounts
+			// whatever registered on it. The regression this guards is the design this
+			// replaced, where the card resolved the transcript card itself and stamped
+			// an element-specific class.
+			expect(source).not.toContain("transcript");
+			expect(source).not.toContain("rli-with-audio");
+		}
+		// And the stack itself reaches capabilities the same way the media region
+		// does, through the registry.
+		const stack = readSource(SURFACE_STACK_PATH);
+		expect(stack).toContain("getToolsBySurface?.(surface)");
+		expect(stack).toContain("registry.renderForSurface(");
+		expect(stack).toContain(".ensureToolModuleLoaded(toolId)");
 	});
 
 	test("the region follows what mounted, not what was granted", () => {

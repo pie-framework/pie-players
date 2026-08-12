@@ -28,8 +28,9 @@ export {
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
 export {
-	AUDIO_TRANSCRIPT_CONTENT_CLASS,
 	AUDIO_TRANSCRIPT_FEATURE_ID,
+	AUDIO_TRANSCRIPT_REGION_CLASS,
+	AUDIO_TRANSCRIPT_REGION_LABEL,
 	audioTranscriptRegistration,
 	resolveAudioTranscript,
 	type ResolvedAudioTranscript,

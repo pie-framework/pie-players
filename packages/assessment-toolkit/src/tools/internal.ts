@@ -27,8 +27,6 @@ export type {
 	ToolActivation,
 	ToolContentDependency,
 	ToolContentDependencyContext,
-	ToolContentMarker,
-	ToolContentMarkerContext,
 	ToolModuleLoader,
 	ToolProviderDescriptor,
 	ToolRegistration,

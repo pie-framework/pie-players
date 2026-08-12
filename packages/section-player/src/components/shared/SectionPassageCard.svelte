@@ -47,6 +47,10 @@
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
+	import {
+		CONTENT_MARKER_SURFACE,
+		resolveContentMarkerClasses,
+	} from "./card-content-markers.js";
 
 	let {
 		passage,
@@ -145,6 +149,72 @@
 		}),
 	);
 
+	// ------------------------------------------------------------------
+	// Content markers
+	// ------------------------------------------------------------------
+	//
+	// A capability that changes how the passage's own content presents itself asks
+	// for classes on the container instead of a region to mount into. Same two
+	// halves as docked media and the same surface-driven lookup, so this card names
+	// no capability. See `card-content-markers.ts`.
+
+	let contentMarkerClasses = $state<string[]>([]);
+	/** Signature of what is in `contentMarkerClasses`; not reactive. */
+	let contentMarkerSignature = "";
+
+	const contentMarkerTools = $derived(
+		toolRegistry?.getToolsBySurface?.(CONTENT_MARKER_SURFACE) ?? [],
+	);
+
+	function syncContentMarkerClasses(): void {
+		const next = resolveContentMarkerClasses({
+			tools: contentMarkerTools,
+			decideFeature: (supportId) => {
+				const coordinator = runtimeContext?.toolkitCoordinator;
+				if (!coordinator || typeof coordinator.decideFeaturePolicy !== "function") {
+					return null;
+				}
+				return coordinator.decideFeaturePolicy(supportId);
+			},
+			catalogResolver: runtimeContext?.catalogResolver ?? null,
+			ownerContext: catalogOwnerContext,
+			entity: passage,
+		});
+		// Compared before writing: the resolver is not reactive, so this runs on its
+		// change signal, and an unconditional write per signal re-renders the card,
+		// which re-registers its catalogs, which makes the resolver signal again.
+		const signature = next.join(" ");
+		if (signature === contentMarkerSignature) return;
+		contentMarkerSignature = signature;
+		contentMarkerClasses = next;
+	}
+
+	$effect(() => {
+		void policyChangeVersion;
+		void contentMarkerTools;
+		void passage;
+		void catalogOwnerContext;
+		syncContentMarkerClasses();
+	});
+
+	// Catalogs register in response to the shell's event, which lands after this
+	// card mounts, so the first lookup legitimately misses.
+	$effect(() => {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator || typeof coordinator.onCatalogsChange !== "function") return;
+		const unsubscribe = coordinator.onCatalogsChange(() =>
+			untrack(syncContentMarkerClasses),
+		);
+		untrack(syncContentMarkerClasses);
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// Detach errors are non-fatal: the coordinator may already be gone.
+			}
+		};
+	});
+
 	$effect(() => {
 		if (!contextAnchor) return;
 		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
@@ -240,7 +310,7 @@
 		>
 			{#snippet content()}
 				<div
-					class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
+					class={`pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content ${contentMarkerClasses.join(" ")}`.trim()}
 					data-region="content"
 				>
 					<svelte:element

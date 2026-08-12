@@ -26,6 +26,7 @@ import {
 	lineReaderToolRegistration,
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
+import { audioTranscriptRegistration } from "./registrations/audio-transcript.js";
 import { calculatorToolRegistration } from "./registrations/calculator.js";
 import {
 	answerEliminatorToolRegistration,
@@ -54,6 +55,7 @@ export const PACKAGED_TOOL_REGISTRATIONS = [
 	annotationToolbarRegistration,
 	graphToolRegistration,
 	periodicTableToolRegistration,
+	audioTranscriptRegistration,
 ] as const;
 
 export interface PackagedToolRegistryOptions {

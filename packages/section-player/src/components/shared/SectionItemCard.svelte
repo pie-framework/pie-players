@@ -51,6 +51,10 @@
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
+	import {
+		CONTENT_MARKER_SURFACE,
+		resolveContentMarkerClasses,
+	} from "./card-content-markers.js";
 
 	let {
 		item,
@@ -165,6 +169,74 @@
 		}),
 	);
 
+	// ------------------------------------------------------------------
+	// Content markers
+	// ------------------------------------------------------------------
+	//
+	// A capability that changes how the item's own content presents itself — an
+	// alternate the element renders and the player must not duplicate — asks for
+	// classes on the container instead of a region to mount into. Same two halves
+	// as docked media, same surface-driven lookup, so this card still names no
+	// capability. See `card-content-markers.ts`.
+
+	let contentMarkerClasses = $state<string[]>([]);
+	/** Signature of what is in `contentMarkerClasses`; not reactive. */
+	let contentMarkerSignature = "";
+
+	const contentMarkerTools = $derived(
+		toolRegistry?.getToolsBySurface?.(CONTENT_MARKER_SURFACE) ?? [],
+	);
+
+	function syncContentMarkerClasses(): void {
+		const next = resolveContentMarkerClasses({
+			tools: contentMarkerTools,
+			decideFeature: (supportId) => {
+				const coordinator = runtimeContext?.toolkitCoordinator;
+				if (!coordinator || typeof coordinator.decideFeaturePolicy !== "function") {
+					return null;
+				}
+				return coordinator.decideFeaturePolicy(supportId);
+			},
+			catalogResolver: runtimeContext?.catalogResolver ?? null,
+			ownerContext: catalogOwnerContext,
+			entity: item,
+		});
+		// Compared before writing for the same reason the media surface does it: the
+		// resolver is not reactive, so this runs on its change signal, and an
+		// unconditional write per signal re-renders the card, which re-registers the
+		// entity's catalogs, which makes the resolver signal again.
+		const signature = next.join(" ");
+		if (signature === contentMarkerSignature) return;
+		contentMarkerSignature = signature;
+		contentMarkerClasses = next;
+	}
+
+	$effect(() => {
+		void policyChangeVersion;
+		void contentMarkerTools;
+		void item;
+		void catalogOwnerContext;
+		syncContentMarkerClasses();
+	});
+
+	// Catalogs register in response to the shell's event, which lands after this
+	// card mounts, so the first lookup legitimately misses.
+	$effect(() => {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (!coordinator || typeof coordinator.onCatalogsChange !== "function") return;
+		const unsubscribe = coordinator.onCatalogsChange(() =>
+			untrack(syncContentMarkerClasses),
+		);
+		untrack(syncContentMarkerClasses);
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// Detach errors are non-fatal: the coordinator may already be gone.
+			}
+		};
+	});
+
 	$effect(() => {
 		if (!contextAnchor) return;
 		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
@@ -266,8 +338,11 @@
 			dividerAriaLabel="Resize question and media panels"
 		>
 			{#snippet content()}
+				<!-- Marker classes sit on the container above the item player, which is
+				     the nearest box a capability can reach without owning the content
+				     inside it. -->
 				<div
-					class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+					class={`pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content ${contentMarkerClasses.join(" ")}`.trim()}
 					data-region="content"
 				>
 					<svelte:element

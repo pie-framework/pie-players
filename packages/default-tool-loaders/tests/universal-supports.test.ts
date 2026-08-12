@@ -66,19 +66,35 @@ describe("universal supports preset", () => {
 		const registry = createPackagedToolRegistry();
 		const contentDependent = registry.getContentDependentSupportIds();
 		expect(
-			[...UNIVERSAL_SUPPORTS_PRESET].filter((id) => contentDependent.includes(id)),
+			[...UNIVERSAL_SUPPORTS_PRESET].filter((id) =>
+				contentDependent.includes(id),
+			),
 		).toEqual([]);
 	});
 
-	test("no packaged registration declares a content dependency", () => {
-		// The preset check above can only see what the packaged registry holds, and
-		// nothing forces a content-dependent capability into it: signing is a
-		// separate opt-in package precisely because it needs an authored card. So
-		// this is the other half — a twelfth registration added here with a content
-		// dependency would pass the preset check by being invisible to it, and its
-		// ids would then need adding to the preset to render at all.
+	test("a packaged content-dependent capability works without a grant", () => {
+		// The preset check above can only see what the packaged registry holds, so
+		// this is the other half: a content-dependent capability shipped by default
+		// must not need preset membership to do anything, or the way to make it work
+		// becomes granting an accommodation wholesale.
+		//
+		// `resolvesWithoutGrant` is what makes that safe. It says the capability can
+		// answer from its authored content alone — content authored as presentation,
+		// which no profile grants and none revokes — so its useful half reaches every
+		// deployment while its accommodation half stays policy-gated. A packaged
+		// capability that cannot say that belongs in its own opt-in package, as
+		// signing does.
 		const registry = createPackagedToolRegistry();
-		expect(registry.getContentDependentSupportIds()).toEqual([]);
+		const contentDependent = registry.getContentDependentSupportIds();
+		const withoutPresentationHalf = contentDependent.filter((id) => {
+			const tool = registry
+				.getAllTools()
+				.find((candidate) =>
+					(candidate.pnpSupportIds ?? [candidate.toolId]).includes(id),
+				);
+			return !tool?.resolvesWithoutGrant;
+		});
+		expect(withoutPresentationHalf).toEqual([]);
 	});
 
 	test("is sorted and free of duplicates", () => {

@@ -255,6 +255,15 @@ export interface ToolContentDependencyContext {
 	ownerContext: CatalogOwnerContext;
 	/** The item in scope, when the host renders per item. */
 	item?: ItemEntity | null;
+	/**
+	 * Whether policy granted one of this capability's support ids.
+	 *
+	 * `false` reaches `resolve` only for a capability that declares
+	 * {@link ToolRegistration.resolvesWithoutGrant}, and it is the signal that the
+	 * capability must answer from the content alone. Everything else sees `true`,
+	 * because the host asks about eligibility first and stops there.
+	 */
+	granted: boolean;
 }
 
 /**
@@ -308,6 +317,54 @@ export interface ToolContentDependency {
 	 * Optional human-readable description of what has to be authored, for a
 	 * policy debugger explaining why an otherwise-granted capability is absent.
 	 */
+	description?: string;
+}
+
+/**
+ * What a host tells a capability when asking which classes to put on the content
+ * container.
+ */
+export interface ToolContentMarkerContext {
+	toolId: string;
+	/** The support id policy granted, or `""` when the content stands alone. */
+	featureId: string;
+	/** Host slot being marked. */
+	surface: string;
+	/** Feature parameters from the policy decision, if any. */
+	parameters?: unknown;
+	/** Resolved content dependency, when the capability declares one. */
+	content?: unknown;
+	/** Whether policy granted one of this capability's support ids. */
+	granted: boolean;
+}
+
+/**
+ * A capability that changes how content already in the page presents itself,
+ * rather than mounting anything of its own.
+ *
+ * The case this exists for is an alternate the element owns: a transcript is
+ * rendered and `aria-describedby`-wired by the element that owns the audio
+ * control, so a player-rendered copy would put that association in two places.
+ * What the element cannot know is whether *this* learner should see it, which is
+ * exactly what policy plus the authored card answer. So the capability returns
+ * class names and the host puts them on the container above the content — the
+ * only thing a host can do for content it does not own.
+ *
+ * Class names, not styles: the presentation contract belongs to whatever renders
+ * the content, and a capability that shipped declarations would be styling
+ * elements it knows nothing about.
+ */
+export interface ToolContentMarker {
+	/**
+	 * Class names for the host to apply, or `null` for none.
+	 *
+	 * Names must be single tokens — a value with whitespace is dropped rather than
+	 * split, since a capability that means two classes should return two. The host
+	 * re-asks on every policy and catalog signal and compares structurally, so this
+	 * must be a pure function of the context.
+	 */
+	resolve(context: ToolContentMarkerContext): string[] | null;
+	/** Optional human-readable description, for a policy debugger. */
 	description?: string;
 }
 
@@ -394,6 +451,29 @@ export interface ToolRegistration {
 	 * {@link ToolContentDependency}.
 	 */
 	requiresAuthoredContent?: ToolContentDependency;
+
+	/**
+	 * Ask this capability for its content even when policy granted nothing.
+	 *
+	 * Only meaningful together with {@link ToolRegistration.requiresAuthoredContent},
+	 * and only correct for a capability whose authored content can declare itself
+	 * *presentation* rather than an accommodation — content authored to be delivered
+	 * that way to everyone, which no profile grants and none revokes. Such a
+	 * capability must return `null` from `resolve` when its content is the
+	 * accommodation kind and the grant is absent, and the `granted` flag on the
+	 * context is how it tells the two apart.
+	 *
+	 * Without this, "no grant" ends the question before content is consulted, which
+	 * is the right default: it is what keeps an accommodation off the item of a
+	 * learner with no documented need.
+	 */
+	resolvesWithoutGrant?: boolean;
+
+	/**
+	 * Classes this capability asks the host to put on the container above the
+	 * content, instead of mounting an element. See {@link ToolContentMarker}.
+	 */
+	markContent?: ToolContentMarker;
 
 	/**
 	 * Optional provider registration metadata.
@@ -583,9 +663,50 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 			`Invalid tool registration "${registration.toolId}": region tools must declare at least one host surface in "surfaces".`,
 		);
 	}
-	if (isRegion && typeof registration.renderSurface !== "function") {
+	// A region capability answers its surface one of two ways: it mounts an element,
+	// or it marks the content already there. One of them is required — a region with
+	// neither declares a surface it can do nothing with.
+	if (
+		isRegion &&
+		typeof registration.renderSurface !== "function" &&
+		typeof registration.markContent?.resolve !== "function"
+	) {
 		throw new Error(
-			`Invalid tool registration "${registration.toolId}": region tools must implement "renderSurface".`,
+			`Invalid tool registration "${registration.toolId}": region tools must implement "renderSurface" or "markContent.resolve".`,
+		);
+	}
+	if (
+		registration.markContent !== undefined &&
+		typeof registration.markContent?.resolve !== "function"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "markContent.resolve" must be a function.`,
+		);
+	}
+	if (registration.markContent && !registration.surfaces?.length) {
+		// Same failure this mechanism exists to remove: a contract nothing can find
+		// is a registration that silently does nothing.
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "markContent" requires at least one entry in "surfaces".`,
+		);
+	}
+	if (
+		registration.resolvesWithoutGrant !== undefined &&
+		typeof registration.resolvesWithoutGrant !== "boolean"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "resolvesWithoutGrant" must be a boolean.`,
+		);
+	}
+	if (
+		registration.resolvesWithoutGrant &&
+		!registration.requiresAuthoredContent
+	) {
+		// The flag only decides whether content is consulted without a grant, so on a
+		// capability with no content dependency it reads as "granted to everyone" and
+		// does nothing at all.
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "resolvesWithoutGrant" requires "requiresAuthoredContent".`,
 		);
 	}
 	if (
@@ -870,7 +991,8 @@ export class ToolRegistry {
 		if (!surface) return [];
 		return this.getAllTools().filter(
 			(tool) =>
-				typeof tool.renderSurface === "function" &&
+				(typeof tool.renderSurface === "function" ||
+					typeof tool.markContent?.resolve === "function") &&
 				tool.surfaces?.includes(surface),
 		);
 	}

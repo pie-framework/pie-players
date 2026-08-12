@@ -15,6 +15,10 @@
  * feature id?* Whether the capability has anything to show is a separate,
  * independent check owned by its renderer — for signing, whether a matching
  * catalog card exists. Both are required; neither implies the other.
+ *
+ * A denial carries `assessmentBound`, because "nobody asked for this" and
+ * "nothing was bound to ask against" are the same verdict for different
+ * reasons, and only the second is a defect.
  */
 
 import type { PnpPolicyResult } from "../sources/PnpPolicySource.js";
@@ -41,6 +45,24 @@ export interface FeaturePolicyDecision {
 	/** Human-readable explanation, suitable for a policy debugger. */
 	reason: string;
 	/**
+	 * Whether an assessment was bound when this was decided.
+	 *
+	 * `false` makes a *denial* a wiring gap rather than a verdict: no profile,
+	 * district policy or test administration could be consulted, because there was
+	 * no assessment to read them from. It is not itself a denial — an item ref
+	 * carrying `requiredTools` mandates a feature at precedence 4 with no
+	 * assessment bound — so read it alongside `granted` rather than instead of it.
+	 *
+	 * Granting is unaffected either way: an unbound host with no item mandate still
+	 * gets `granted: false`, since an accommodation requires a documented need and
+	 * an absent profile documents nothing.
+	 *
+	 * A bound assessment carrying no profile material is deliberately `true`: a
+	 * test that grants nobody an accommodation is a legitimate configuration,
+	 * while never binding one cannot be.
+	 */
+	assessmentBound: boolean;
+	/**
 	 * `true` when the grant is a mandate (item or district `requiredTools`)
 	 * rather than a student-profile support.
 	 */
@@ -53,6 +75,23 @@ export interface FeaturePolicyDecision {
 	parameters?: unknown;
 }
 
+/** What the engine knows that a single support-id resolution does not. */
+export interface FeatureDecisionContext {
+	/** Whether the engine has an assessment bound. */
+	assessmentBound: boolean;
+}
+
+/**
+ * Reason text for a denial that had no assessment to decide against.
+ *
+ * Replaces the `pnp-support` skip's "not configured at any level", which is
+ * true but reads as a completed evaluation. `rule` and `precedence` stay as the
+ * source reported them: nothing fired, so naming a seventh rule would describe
+ * a precedence level that does not exist.
+ */
+const unboundAssessmentReason = (featureId: string) =>
+	`No assessment is bound, so no policy source could grant "${featureId}"`;
+
 /**
  * Interpret a single-feature `PnpPolicySource.resolveFeature(...)` result.
  *
@@ -63,18 +102,29 @@ export interface FeaturePolicyDecision {
 export function interpretFeatureResult(
 	featureId: string,
 	result: PnpPolicyResult,
+	context: FeatureDecisionContext,
 ): FeaturePolicyDecision {
 	const decision = result.decisions[0];
 	const flags = Array.from(result.perToolFlags.values())[0];
+	const granted = decision?.action === "enable";
+	const reason = decision?.reason ?? `Feature "${featureId}" not configured`;
 	return {
 		featureId,
-		granted: decision?.action === "enable",
+		granted,
 		action: decision?.action ?? "skip",
 		rule: decision?.rule ?? "pnp-support",
 		precedence: decision?.precedence ?? 6,
 		sourceType: decision?.sourceType ?? "system",
-		reason: decision?.reason ?? `Feature "${featureId}" not configured`,
+		// Only a denial is re-worded. An unbound host can still be granted the
+		// feature — an item ref carrying `requiredTools` mandates it at precedence 4
+		// with no assessment in sight — and there the source's reason is the true
+		// one.
+		reason:
+			context.assessmentBound || granted
+				? reason
+				: unboundAssessmentReason(featureId),
 		required: Boolean(flags?.required),
 		parameters: flags?.settings,
+		assessmentBound: context.assessmentBound,
 	};
 }

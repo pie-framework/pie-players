@@ -255,6 +255,15 @@ export interface ToolContentDependencyContext {
 	ownerContext: CatalogOwnerContext;
 	/** The item in scope, when the host renders per item. */
 	item?: ItemEntity | null;
+	/**
+	 * Whether policy granted one of this capability's support ids.
+	 *
+	 * `false` reaches `resolve` only for a capability that declares
+	 * {@link ToolRegistration.resolvesWithoutGrant}, and it is the signal that the
+	 * capability must answer from the content alone. Everything else sees `true`,
+	 * because the host asks about eligibility first and stops there.
+	 */
+	granted: boolean;
 }
 
 /**
@@ -394,6 +403,23 @@ export interface ToolRegistration {
 	 * {@link ToolContentDependency}.
 	 */
 	requiresAuthoredContent?: ToolContentDependency;
+
+	/**
+	 * Ask this capability for its content even when policy granted nothing.
+	 *
+	 * Only meaningful together with {@link ToolRegistration.requiresAuthoredContent},
+	 * and only correct for a capability whose authored content can declare itself
+	 * *presentation* rather than an accommodation — content authored to be delivered
+	 * that way to everyone, which no profile grants and none revokes. Such a
+	 * capability must return `null` from `resolve` when its content is the
+	 * accommodation kind and the grant is absent, and the `granted` flag on the
+	 * context is how it tells the two apart.
+	 *
+	 * Without this, "no grant" ends the question before content is consulted, which
+	 * is the right default: it is what keeps an accommodation off the item of a
+	 * learner with no documented need.
+	 */
+	resolvesWithoutGrant?: boolean;
 
 	/**
 	 * Optional provider registration metadata.
@@ -586,6 +612,25 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 	if (isRegion && typeof registration.renderSurface !== "function") {
 		throw new Error(
 			`Invalid tool registration "${registration.toolId}": region tools must implement "renderSurface".`,
+		);
+	}
+	if (
+		registration.resolvesWithoutGrant !== undefined &&
+		typeof registration.resolvesWithoutGrant !== "boolean"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "resolvesWithoutGrant" must be a boolean.`,
+		);
+	}
+	if (
+		registration.resolvesWithoutGrant &&
+		!registration.requiresAuthoredContent
+	) {
+		// The flag only decides whether content is consulted without a grant, so on a
+		// capability with no content dependency it reads as "granted to everyone" and
+		// does nothing at all.
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "resolvesWithoutGrant" requires "requiresAuthoredContent".`,
 		);
 	}
 	if (

@@ -54,7 +54,9 @@ const warnedDeepLevels = new Set<number>();
 
 export function normalizeBaseHeadingLevel(value: unknown): HeadingLevel {
 	const parsed =
-		typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+		typeof value === "number"
+			? value
+			: Number.parseInt(String(value ?? ""), 10);
 	if (!Number.isInteger(parsed) || parsed < 1 || parsed > 6) {
 		return DEFAULT_SECTION_BASE_HEADING_LEVEL;
 	}
@@ -163,7 +165,10 @@ export function getItemPlayerParams(args: {
 	baseHeadingLevel?: HeadingLevel;
 }): PlayerElementParams {
 	const rawItemSession = getSessionForItem(args.compositionModel, args.item);
-	const itemSession = getSessionForItemOrEmpty(args.compositionModel, args.item);
+	const itemSession = getSessionForItemOrEmpty(
+		args.compositionModel,
+		args.item,
+	);
 	const canonicalItemId = getCanonicalItemIdForItem(
 		args.compositionModel,
 		args.item,

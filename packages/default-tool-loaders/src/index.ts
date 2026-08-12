@@ -27,6 +27,14 @@ export {
 	lineReaderToolRegistration,
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
+export {
+	AUDIO_TRANSCRIPT_FEATURE_ID,
+	AUDIO_TRANSCRIPT_REGION_CLASS,
+	AUDIO_TRANSCRIPT_REGION_LABEL,
+	audioTranscriptRegistration,
+	resolveAudioTranscript,
+	type ResolvedAudioTranscript,
+} from "./registrations/audio-transcript.js";
 export { calculatorToolRegistration } from "./registrations/calculator.js";
 export {
 	answerEliminatorToolRegistration,

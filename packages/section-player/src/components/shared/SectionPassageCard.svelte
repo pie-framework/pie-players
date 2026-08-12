@@ -47,6 +47,8 @@
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
+	import SectionCardSurfaceStack from "./SectionCardSurfaceStack.svelte";
+	import { CONTENT_LEAD_SURFACE } from "./card-media-region.js";
 
 	let {
 		passage,
@@ -133,6 +135,7 @@
 	let policyChangeVersion = $state(0);
 
 	const mediaRegionId = $derived(`${headingId}-media`);
+	const leadRegionId = $derived(`${headingId}-lead`);
 
 	// Built by the same function the runtime registers catalogs with, so the lookup
 	// scope cannot drift from the registered one.
@@ -229,6 +232,18 @@
 				{hostButtons}
 			></pie-item-toolbar>
 		</div>
+		<!-- Text alternates the capability set contributes, read in order before the
+		     content: a transcript precedes the audio control it transcribes, and no
+		     element has to know it exists. -->
+		<SectionCardSurfaceStack
+			regionId={leadRegionId}
+			surface={CONTENT_LEAD_SURFACE}
+			entity={passage}
+			ownerContext={catalogOwnerContext}
+			{runtimeContext}
+			{toolRegistry}
+			{policyChangeVersion}
+		/>
 		<SectionCardMediaSplit
 			regionId={mediaRegionId}
 			entity={passage}

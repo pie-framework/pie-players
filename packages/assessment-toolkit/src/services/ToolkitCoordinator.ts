@@ -679,6 +679,18 @@ export class ToolkitCoordinator {
 	 */
 	private boundCurrentItemRef: AssessmentItemRef | null = null;
 
+	/**
+	 * Whether {@link decideFeaturePolicy} has already reported serving a decision
+	 * with no assessment bound.
+	 *
+	 * One report per coordinator, not per decision: a feature policy is consulted
+	 * once per capability per card, so a per-decision warning would bury itself.
+	 * Never reset — {@link updateAssessment} arriving later fixes the deployment,
+	 * and re-arming would report the same gap again on the next unbound coordinator
+	 * lifetime for no new information.
+	 */
+	private reportedUnboundFeaturePolicy = false;
+
 	private static resolveConfig(
 		config: ToolkitCoordinatorConfig,
 	): ToolkitCoordinatorConfig {
@@ -2279,9 +2291,22 @@ export class ToolkitCoordinator {
 	 * Thin shim over the owned tool-policy engine; see
 	 * {@link ToolPolicyEngine.decideFeature} for the contract, including why
 	 * `pnpEnforcement` is not consulted.
+	 *
+	 * Reports once per coordinator when it is asked about a feature with no
+	 * assessment bound. A host in that state gets a correct denial for every
+	 * capability it asks about, which is indistinguishable from a student who was
+	 * properly declined — so without this, forgetting {@link updateAssessment}
+	 * presents as an accommodation that silently never appears.
 	 */
 	decideFeaturePolicy(featureId: string): FeaturePolicyDecision {
-		return this.policyEngine.decideFeature(featureId);
+		const decision = this.policyEngine.decideFeature(featureId);
+		if (!decision.assessmentBound && !this.reportedUnboundFeaturePolicy) {
+			this.reportedUnboundFeaturePolicy = true;
+			console.warn(
+				`[ToolkitCoordinator] Feature policy was asked about "${featureId}" with no assessment bound, so every capability will be declined for want of a profile to read. Call updateAssessment(...) with the assessment (its personalNeedsProfile, settings.districtPolicy and settings.testAdministration are what policy reads) before relying on any accommodation. Reported once per coordinator.`,
+			);
+		}
+		return decision;
 	}
 
 	/**

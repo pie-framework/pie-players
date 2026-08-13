@@ -179,6 +179,10 @@ export class ToolPolicyEngine {
 	 * whenever profile material exists, so this only diverges for a host that
 	 * explicitly forces `"off"` while supplying a profile that grants the
 	 * feature — and there, honouring the profile is the safer failure.
+	 *
+	 * The decision reports whether an assessment was bound, which is the engine's
+	 * to answer rather than the policy source's — see
+	 * {@link FeaturePolicyDecision.assessmentBound}.
 	 */
 	decideFeature(featureId: string): FeaturePolicyDecision {
 		this.assertNotDisposed();
@@ -188,6 +192,10 @@ export class ToolPolicyEngine {
 				assessment: this.assessment ?? undefined,
 				currentItemRef: this.currentItemRef ?? undefined,
 			}),
+			// `resolveFeature` takes the assessment as `undefined` either way, so the
+			// source cannot tell an unbound host from one whose profile is silent.
+			// The engine can.
+			{ assessmentBound: this.assessment !== null },
 		);
 	}
 

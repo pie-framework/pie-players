@@ -510,6 +510,49 @@ describe("derivePnpPanelData", () => {
 		expect(data.determination.runtimeContext.catalogCount).toBe(0);
 	});
 
+	test("reports an unbound assessment, distinctly from a profile that grants nothing", () => {
+		const withNothingBound = derivePnpPanelData({
+			sectionData: { id: "s1" },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				getPolicyInputs: () =>
+					({ pnpEnforcement: "off", assessment: null }) as never,
+			},
+		});
+		expect(withNothingBound.determination.runtimeContext.assessmentBound).toBe(
+			false,
+		);
+
+		const withOne = derivePnpPanelData({
+			sectionData: { id: "s1" },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				getPolicyInputs: () =>
+					({ pnpEnforcement: "off", assessment: { id: "a1" } }) as never,
+			},
+		});
+		expect(withOne.determination.runtimeContext.assessmentBound).toBe(true);
+	});
+
+	test("leaves the binding unstated when the coordinator exposes no inputs", () => {
+		// "Cannot tell" must not read as "nothing is bound", which would report a
+		// wiring gap against a host that simply predates `getPolicyInputs`.
+		const data = derivePnpPanelData({
+			sectionData: { id: "s1" },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+			},
+		});
+		expect(data.determination.runtimeContext.assessmentBound).toBeUndefined();
+	});
+
 	test("survives a throwing engine and renders an empty decision", () => {
 		const data = derivePnpPanelData({
 			sectionData: { id: "s1" },

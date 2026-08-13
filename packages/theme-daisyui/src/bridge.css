@@ -154,7 +154,14 @@
 		var(--color-base-content)
 	);
 	--pie-button-hover-color: var(--color-base-content);
-	--pie-button-active-bg: var(--color-base-300);
+	/* Base-content is chosen against base-100, not every deeper surface.
+	   A 70% share of base-300 is the nearest 5% step that keeps active button
+	   text at 4.5:1 across all shipped themes. */
+	--pie-button-active-bg: color-mix(
+		in srgb,
+		var(--color-base-300) 70%,
+		var(--color-base-100)
+	);
 	/* The keyboard focus indicator, and the only token here that is always an
 	   `outline`. `--color-primary` is chosen to sit behind
 	   `--color-primary-content`, not for contrast against the page, so it arrived

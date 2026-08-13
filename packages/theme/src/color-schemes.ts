@@ -1,439 +1,625 @@
 import {
+	createBuiltInColorSchemeDescriptor,
+	createPieColorSchemePreview,
+	diagnoseThemeContrast,
+	getBaseThemeVariables,
+	getBuiltInColorSchemeDefinition,
+	getDefaultColorSchemeDescriptor,
+	getSchemeParticipation,
+	listBuiltInColorSchemeDefinitions,
+} from "./theme-definitions.js";
+import {
 	normalizePieThemeVariables,
+	type ColorSchemeSnapshot,
+	type PieColorSchemeDescriptor,
+	type PieThemeObserver,
+	type PieThemeDiagnostic,
+	type RegisteredPieColorScheme,
+	type RegistrationReceipt,
+	type ResolvePieThemeInput,
+	type ThemeResolution,
 	type ThemeVariables,
+	type Unsubscribe,
 } from "./theme-types.js";
 
-export type PieColorSchemePreview = {
-	bg: string;
-	text: string;
-	primary: string;
-};
-
-export type PieColorSchemeDefinition = {
+type CustomSchemeRecord = Readonly<{
+	key: number;
 	id: string;
 	name: string;
 	description?: string;
-	variables: ThemeVariables;
-	preview?: PieColorSchemePreview;
-};
+	variables: Readonly<ThemeVariables>;
+}>;
 
-export const BUILTIN_PIE_COLOR_SCHEMES: PieColorSchemeDefinition[] = [
-	{
-		id: "default",
-		name: "Default",
-		description: "Standard PIE colors",
-		variables: {},
-		preview: { bg: "#ffffff", text: "#000000", primary: "#3f51b5" },
-	},
-	{
-		id: "black-on-white",
-		name: "Black on White",
-		description: "High contrast for readability",
-		variables: {
-			"--pie-background": "#ffffff",
-			"--pie-background-dark": "#f5f5f5",
-			"--pie-secondary-background": "#eeeeee",
-			"--pie-dropdown-background": "#e0e0e0",
-			"--pie-text": "#000000",
-			"--pie-white": "#ffffff",
-			"--pie-black": "#000000",
-			"--pie-primary": "#0000cc",
-			"--pie-primary-light": "#6666ff",
-			"--pie-primary-dark": "#000088",
-			"--pie-border": "#000000",
-			"--pie-border-light": "#666666",
-			"--pie-border-dark": "#000000",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#4221d5",
-			"--pie-annotation-underline-dark": "#4221d5",
-			"--pie-button-bg": "#ffffff",
-			"--pie-button-border": "#666666",
-			"--pie-button-color": "#000000",
-			"--pie-button-hover-bg": "#f5f5f5",
-			"--pie-button-hover-border": "#000000",
-			"--pie-button-hover-color": "#000000",
-			"--pie-button-active-bg": "#eeeeee",
-			"--pie-button-focus-outline": "#0000cc",
-			"--pie-focus-checked": "#0066ff",
-			"--pie-focus-checked-border": "#0000cc",
-		},
-		preview: { bg: "#ffffff", text: "#000000", primary: "#0000cc" },
-	},
-	{
-		id: "white-on-black",
-		name: "White on Black",
-		description: "Inverse high contrast",
-		variables: {
-			"--pie-background": "#000000",
-			"--pie-background-dark": "#1a1a1a",
-			"--pie-secondary-background": "#222222",
-			"--pie-dropdown-background": "#2a2a2a",
-			"--pie-text": "#ffffff",
-			"--pie-white": "#000000",
-			"--pie-black": "#ffffff",
-			"--pie-primary": "#ffff00",
-			"--pie-primary-light": "#ffff99",
-			"--pie-primary-dark": "#cccc00",
-			"--pie-border": "#ffffff",
-			"--pie-border-light": "#cccccc",
-			"--pie-border-dark": "#ffffff",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#9c89ec",
-			"--pie-annotation-underline-dark": "#9c89ec",
-			"--pie-button-bg": "#000000",
-			"--pie-button-border": "#cccccc",
-			"--pie-button-color": "#ffffff",
-			"--pie-button-hover-bg": "#1a1a1a",
-			"--pie-button-hover-border": "#ffffff",
-			"--pie-button-hover-color": "#ffffff",
-			"--pie-button-active-bg": "#222222",
-			"--pie-button-focus-outline": "#ffff00",
-			"--pie-focus-checked": "#ffff00",
-			"--pie-focus-checked-border": "#ffff00",
-		},
-		preview: { bg: "#000000", text: "#ffffff", primary: "#ffff00" },
-	},
-	{
-		id: "rose-on-green",
-		name: "Rose on Green",
-		description: "Color blind friendly (protanopia/deuteranopia)",
-		variables: {
-			"--pie-background": "#ccffcc",
-			"--pie-background-dark": "#aaeedd",
-			"--pie-secondary-background": "#99ddbb",
-			"--pie-dropdown-background": "#88cc99",
-			"--pie-text": "#3d0022",
-			"--pie-white": "#ccffcc",
-			"--pie-black": "#3d0022",
-			"--pie-primary": "#660044",
-			"--pie-primary-light": "#cc6699",
-			"--pie-primary-dark": "#440033",
-			"--pie-border": "#3d0022",
-			"--pie-border-light": "#663344",
-			"--pie-border-dark": "#220011",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#4221d5",
-			"--pie-annotation-underline-dark": "#4221d5",
-			"--pie-button-bg": "#ccffcc",
-			"--pie-button-border": "#663344",
-			"--pie-button-color": "#3d0022",
-			"--pie-button-hover-bg": "#aaeedd",
-			"--pie-button-hover-border": "#3d0022",
-			"--pie-button-hover-color": "#3d0022",
-			"--pie-button-active-bg": "#99ddbb",
-			"--pie-button-focus-outline": "#660044",
-			"--pie-focus-checked": "#880055",
-			"--pie-focus-checked-border": "#660044",
-		},
-		preview: { bg: "#ccffcc", text: "#3d0022", primary: "#660044" },
-	},
-	{
-		id: "yellow-on-blue",
-		name: "Yellow on Blue",
-		description: "Strong contrast scheme",
-		variables: {
-			"--pie-background": "#000066",
-			"--pie-background-dark": "#000055",
-			"--pie-secondary-background": "#000044",
-			"--pie-dropdown-background": "#000033",
-			"--pie-text": "#ffff00",
-			"--pie-white": "#000066",
-			"--pie-black": "#ffff00",
-			"--pie-primary": "#ffff66",
-			"--pie-primary-light": "#ffffaa",
-			"--pie-primary-dark": "#cccc00",
-			"--pie-border": "#ffff00",
-			"--pie-border-light": "#aaaa66",
-			"--pie-border-dark": "#cccc00",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#9c89ec",
-			"--pie-annotation-underline-dark": "#9c89ec",
-			"--pie-button-bg": "#000066",
-			"--pie-button-border": "#aaaa66",
-			"--pie-button-color": "#ffff00",
-			"--pie-button-hover-bg": "#000055",
-			"--pie-button-hover-border": "#ffff00",
-			"--pie-button-hover-color": "#ffff00",
-			"--pie-button-active-bg": "#000044",
-			"--pie-button-focus-outline": "#ffff66",
-			"--pie-focus-checked": "#ffff00",
-			"--pie-focus-checked-border": "#cccc00",
-		},
-		preview: { bg: "#000066", text: "#ffff00", primary: "#ffff66" },
-	},
-	{
-		id: "black-on-rose",
-		name: "Black on Rose",
-		description: "Warm tinted background",
-		variables: {
-			"--pie-background": "#ffccdd",
-			"--pie-background-dark": "#ffb3cc",
-			"--pie-secondary-background": "#ff99bb",
-			"--pie-dropdown-background": "#ff88aa",
-			"--pie-text": "#000000",
-			"--pie-white": "#ffccdd",
-			"--pie-black": "#000000",
-			"--pie-primary": "#880044",
-			"--pie-primary-light": "#dd6699",
-			"--pie-primary-dark": "#550033",
-			"--pie-border": "#000000",
-			"--pie-border-light": "#555555",
-			"--pie-border-dark": "#000000",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#4221d5",
-			"--pie-annotation-underline-dark": "#4221d5",
-			"--pie-button-bg": "#ffccdd",
-			"--pie-button-border": "#555555",
-			"--pie-button-color": "#000000",
-			"--pie-button-hover-bg": "#ffb3cc",
-			"--pie-button-hover-border": "#000000",
-			"--pie-button-hover-color": "#000000",
-			"--pie-button-active-bg": "#ff99bb",
-			"--pie-button-focus-outline": "#880044",
-			"--pie-focus-checked": "#880044",
-			"--pie-focus-checked-border": "#550033",
-		},
-		preview: { bg: "#ffccdd", text: "#000000", primary: "#880044" },
-	},
-	{
-		id: "light-gray-on-dark-gray",
-		name: "Light Gray on Dark Gray",
-		description: "Reduced brightness for light sensitivity",
-		variables: {
-			"--pie-background": "#333333",
-			"--pie-background-dark": "#2a2a2a",
-			"--pie-secondary-background": "#222222",
-			"--pie-dropdown-background": "#1a1a1a",
-			"--pie-text": "#e0e0e0",
-			"--pie-white": "#333333",
-			"--pie-black": "#e0e0e0",
-			"--pie-primary": "#aaaaaa",
-			"--pie-primary-light": "#cccccc",
-			"--pie-primary-dark": "#888888",
-			"--pie-border": "#e0e0e0",
-			"--pie-border-light": "#cccccc",
-			"--pie-border-dark": "#ffffff",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#9c89ec",
-			"--pie-annotation-underline-dark": "#9c89ec",
-			"--pie-button-bg": "#333333",
-			"--pie-button-border": "#cccccc",
-			"--pie-button-color": "#e0e0e0",
-			"--pie-button-hover-bg": "#2a2a2a",
-			"--pie-button-hover-border": "#ffffff",
-			"--pie-button-hover-color": "#e0e0e0",
-			"--pie-button-active-bg": "#222222",
-			"--pie-button-focus-outline": "#aaaaaa",
-			"--pie-focus-checked": "#cccccc",
-			"--pie-focus-checked-border": "#aaaaaa",
-		},
-		preview: { bg: "#333333", text: "#e0e0e0", primary: "#aaaaaa" },
-	},
-	{
-		id: "grey-on-light-grey",
-		name: "Grey on Light Grey",
-		description: "Low-glare neutral palette",
-		variables: {
-			"--pie-background": "#ebebeb",
-			"--pie-background-dark": "#dcdcdc",
-			"--pie-secondary-background": "#d0d0d0",
-			"--pie-dropdown-background": "#c4c4c4",
-			"--pie-text": "#4a4a4a",
-			"--pie-white": "#ebebeb",
-			"--pie-black": "#4a4a4a",
-			"--pie-primary": "#3d3d3d",
-			"--pie-primary-light": "#6f6f6f",
-			"--pie-primary-dark": "#2b2b2b",
-			"--pie-border": "#4a4a4a",
-			"--pie-border-light": "#7a7a7a",
-			"--pie-border-dark": "#2b2b2b",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#4221d5",
-			"--pie-annotation-underline-dark": "#4221d5",
-			"--pie-button-bg": "#ebebeb",
-			"--pie-button-border": "#7a7a7a",
-			"--pie-button-color": "#4a4a4a",
-			"--pie-button-hover-bg": "#dcdcdc",
-			"--pie-button-hover-border": "#4a4a4a",
-			"--pie-button-hover-color": "#4a4a4a",
-			"--pie-button-active-bg": "#d0d0d0",
-			"--pie-button-focus-outline": "#3d3d3d",
-			"--pie-focus-checked": "#6f6f6f",
-			"--pie-focus-checked-border": "#3d3d3d",
-		},
-		preview: { bg: "#ebebeb", text: "#4a4a4a", primary: "#3d3d3d" },
-	},
-	{
-		id: "purple-on-light-green",
-		name: "Purple on Light Green",
-		description: "Color blind friendly, low-glare background",
-		variables: {
-			"--pie-background": "#cce8d4",
-			"--pie-background-dark": "#b8dcc3",
-			"--pie-secondary-background": "#a6d0b2",
-			"--pie-dropdown-background": "#94c4a1",
-			"--pie-text": "#8e2464",
-			"--pie-white": "#cce8d4",
-			"--pie-black": "#8e2464",
-			"--pie-primary": "#6d1a4c",
-			"--pie-primary-light": "#b3608e",
-			"--pie-primary-dark": "#4f1237",
-			"--pie-border": "#8e2464",
-			"--pie-border-light": "#a85a86",
-			"--pie-border-dark": "#4f1237",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#4221d5",
-			"--pie-annotation-underline-dark": "#4221d5",
-			"--pie-button-bg": "#cce8d4",
-			"--pie-button-border": "#a85a86",
-			"--pie-button-color": "#8e2464",
-			"--pie-button-hover-bg": "#b8dcc3",
-			"--pie-button-hover-border": "#8e2464",
-			"--pie-button-hover-color": "#8e2464",
-			"--pie-button-active-bg": "#a6d0b2",
-			"--pie-button-focus-outline": "#6d1a4c",
-			"--pie-focus-checked": "#8e2464",
-			"--pie-focus-checked-border": "#6d1a4c",
-		},
-		preview: { bg: "#cce8d4", text: "#8e2464", primary: "#6d1a4c" },
-	},
-	{
-		id: "black-on-violet",
-		name: "Black on Violet",
-		description: "Cool tinted background",
-		variables: {
-			"--pie-background": "#d4a9de",
-			"--pie-background-dark": "#c795d3",
-			"--pie-secondary-background": "#b982c8",
-			"--pie-dropdown-background": "#ac70bd",
-			"--pie-text": "#000000",
-			"--pie-white": "#d4a9de",
-			"--pie-black": "#000000",
-			"--pie-primary": "#4a1259",
-			"--pie-primary-light": "#8e4fa1",
-			"--pie-primary-dark": "#330d3f",
-			"--pie-border": "#000000",
-			"--pie-border-light": "#4a4a4a",
-			"--pie-border-dark": "#000000",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "#4221d5",
-			"--pie-annotation-underline-dark": "#4221d5",
-			"--pie-button-bg": "#d4a9de",
-			"--pie-button-border": "#4a4a4a",
-			"--pie-button-color": "#000000",
-			"--pie-button-hover-bg": "#c795d3",
-			"--pie-button-hover-border": "#000000",
-			"--pie-button-hover-color": "#000000",
-			"--pie-button-active-bg": "#b982c8",
-			"--pie-button-focus-outline": "#4a1259",
-			"--pie-focus-checked": "#4a1259",
-			"--pie-focus-checked-border": "#330d3f",
-		},
-		preview: { bg: "#d4a9de", text: "#000000", primary: "#4a1259" },
-	},
-	{
-		id: "yellow-on-navy",
-		name: "Yellow on Navy",
-		description: "Strong contrast on a softened dark blue",
-		variables: {
-			"--pie-background": "#33508a",
-			"--pie-background-dark": "#2b4576",
-			"--pie-secondary-background": "#243a63",
-			"--pie-dropdown-background": "#1d2f50",
-			"--pie-text": "#ffff55",
-			"--pie-white": "#33508a",
-			"--pie-black": "#ffff55",
-			"--pie-primary": "#ffff99",
-			"--pie-primary-light": "#ffffc2",
-			"--pie-primary-dark": "#e0e04a",
-			"--pie-border": "#ffff55",
-			"--pie-border-light": "#c2c266",
-			"--pie-border-dark": "#e0e04a",
-			"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
-			"--pie-annotation-underline": "var(--pie-primary)",
-			"--pie-annotation-underline-dark": "var(--pie-primary)",
-			"--pie-button-bg": "#33508a",
-			"--pie-button-border": "#c2c266",
-			"--pie-button-color": "#ffff55",
-			"--pie-button-hover-bg": "#2b4576",
-			"--pie-button-hover-border": "#ffff55",
-			"--pie-button-hover-color": "#ffff55",
-			"--pie-button-active-bg": "#243a63",
-			"--pie-button-focus-outline": "#ffff99",
-			"--pie-focus-checked": "#ffff55",
-			"--pie-focus-checked-border": "#e0e04a",
-		},
-		preview: { bg: "#33508a", text: "#ffff55", primary: "#ffff99" },
-	},
-];
-
-const builtInSchemeMap = new Map(
-	BUILTIN_PIE_COLOR_SCHEMES.map((scheme) => [scheme.id, scheme]),
+const customSchemes = new Map<string, CustomSchemeRecord>();
+const observers = new Set<PieThemeObserver>();
+const notificationQueue: ColorSchemeSnapshot[] = [];
+const warnedDiagnostics = new Set<string>();
+const BUILT_IN_IDS = new Set(
+	listBuiltInColorSchemeDefinitions().map((scheme) => scheme.id),
 );
-const customSchemeMap = new Map<string, PieColorSchemeDefinition>();
+let generation = 0;
+let nextRegistrationKey = 1;
+let notifying = false;
 
-function normalizeScheme(
-	scheme: PieColorSchemeDefinition,
-): PieColorSchemeDefinition | null {
-	const id = scheme.id?.trim();
-	if (!id) {
-		return null;
+const OPAQUE_NAMED_COLORS = new Set(
+	`aliceblue antiquewhite aqua aquamarine azure beige bisque black
+	blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse
+	chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan
+	darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta
+	darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen
+	darkslateblue darkslategray darkslategrey darkturquoise darkviolet
+	deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite
+	forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green
+	greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender
+	lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan
+	lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon
+	lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue
+	lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue
+	mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen
+	mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin
+	navajowhite navy oldlace olive olivedrab orange orangered orchid
+	palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff
+	peru pink plum powderblue purple rebeccapurple red rosybrown royalblue
+	saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue
+	slateblue slategray slategrey snow springgreen steelblue tan teal thistle
+	tomato turquoise violet wheat white whitesmoke yellow yellowgreen`.split(
+		/\s+/,
+	),
+);
+const CSS_NUMBER_SOURCE = String.raw`[+-]?(?:\d+|\d*\.\d+)(?:e[+-]?\d+)?`;
+const CSS_NUMBER = new RegExp(`^${CSS_NUMBER_SOURCE}$`, "i");
+const CSS_PERCENTAGE = new RegExp(`^${CSS_NUMBER_SOURCE}%$`, "i");
+const CSS_NUMBER_OR_PERCENTAGE = new RegExp(`^${CSS_NUMBER_SOURCE}%?$`, "i");
+const CSS_ANGLE = new RegExp(
+	`^${CSS_NUMBER_SOURCE}(?:deg|grad|rad|turn)?$`,
+	"i",
+);
+const CSS_WHITESPACE = /[ \t\n\f\r]+/;
+const CSS_COLOR_SPACES = new Set([
+	"srgb",
+	"srgb-linear",
+	"display-p3",
+	"a98-rgb",
+	"prophoto-rgb",
+	"rec2020",
+	"xyz",
+	"xyz-d50",
+	"xyz-d65",
+]);
+
+function freezeVariables(variables: ThemeVariables): Readonly<ThemeVariables> {
+	return Object.freeze({ ...variables });
+}
+
+function freezeDiagnostics(
+	diagnostics: readonly PieThemeDiagnostic[],
+): readonly PieThemeDiagnostic[] {
+	return Object.freeze(
+		diagnostics.map((diagnostic) => Object.freeze({ ...diagnostic })),
+	);
+}
+
+function trimCssWhitespace(value: string): string {
+	return value.replace(/^[ \t\n\f\r]+|[ \t\n\f\r]+$/g, "");
+}
+
+function isAscii(value: string): boolean {
+	for (let index = 0; index < value.length; index += 1) {
+		if (value.charCodeAt(index) > 0x7f) return false;
 	}
-	const name = scheme.name?.trim() || id;
-	const normalizedVars = normalizePieThemeVariables(scheme.variables);
-	if (Object.keys(normalizedVars).length === 0 && id !== "default") {
-		console.warn(
-			`[pie-theme] color scheme "${id}" does not define valid --pie-* variables.`,
-		);
+	return true;
+}
+
+function hasComponents(
+	body: string,
+	predicates: readonly RegExp[],
+	allowCommas = false,
+): boolean {
+	if (body.includes("/")) return false;
+	const hasCommas = body.includes(",");
+	if (hasCommas && !allowCommas) return false;
+	const components = (
+		hasCommas ? body.split(",") : trimCssWhitespace(body).split(CSS_WHITESPACE)
+	).map(trimCssWhitespace);
+	return (
+		components.length === predicates.length &&
+		components.every(
+			(component, index) =>
+				component.length > 0 && predicates[index]?.test(component),
+		)
+	);
+}
+
+/**
+ * A Scheme Preview is portable catalog data, so retain only deterministic,
+ * opaque color forms that can be checked identically without a DOM. Unsupported
+ * syntax affects the preview swatch only; the authored theme variable is kept.
+ */
+function isStablePreviewColor(value: string | undefined): boolean {
+	// This deliberately supported preview subset is ASCII. Rejecting other code
+	// points also prevents JavaScript's broader whitespace and Unicode case folding
+	// from accepting strings that CSS tokenization rejects.
+	if (!value || !isAscii(value)) return false;
+	const normalized = trimCssWhitespace(value).toLowerCase();
+	if (!normalized) return false;
+	if (/^#[\da-f]{3}$/i.test(normalized) || /^#[\da-f]{6}$/i.test(normalized)) {
+		return true;
 	}
-	return {
-		id,
-		name,
+	if (OPAQUE_NAMED_COLORS.has(normalized)) return true;
+
+	// A flat body deliberately rules out relative colors, color-mix(), calc(),
+	// var(), and any other nested or host-dependent expression.
+	const functionMatch = /^([a-z-]+)\(([^()]*)\)$/.exec(normalized);
+	if (!functionMatch) return false;
+	const [, functionName, body] = functionMatch;
+	if (!functionName || body === undefined) return false;
+
+	switch (functionName) {
+		case "rgb": {
+			if (body.includes(",")) {
+				return (
+					hasComponents(body, [CSS_NUMBER, CSS_NUMBER, CSS_NUMBER], true) ||
+					hasComponents(
+						body,
+						[CSS_PERCENTAGE, CSS_PERCENTAGE, CSS_PERCENTAGE],
+						true,
+					)
+				);
+			}
+			return hasComponents(body, [
+				CSS_NUMBER_OR_PERCENTAGE,
+				CSS_NUMBER_OR_PERCENTAGE,
+				CSS_NUMBER_OR_PERCENTAGE,
+			]);
+		}
+		case "hsl":
+		case "hwb":
+			return hasComponents(
+				body,
+				[CSS_ANGLE, CSS_PERCENTAGE, CSS_PERCENTAGE],
+				functionName === "hsl",
+			);
+		case "lab":
+		case "oklab":
+			return hasComponents(body, [
+				CSS_NUMBER_OR_PERCENTAGE,
+				CSS_NUMBER_OR_PERCENTAGE,
+				CSS_NUMBER_OR_PERCENTAGE,
+			]);
+		case "lch":
+		case "oklch":
+			return hasComponents(body, [
+				CSS_NUMBER_OR_PERCENTAGE,
+				CSS_NUMBER_OR_PERCENTAGE,
+				CSS_ANGLE,
+			]);
+		case "color": {
+			if (body.includes(",") || body.includes("/")) return false;
+			const [space, ...components] =
+				trimCssWhitespace(body).split(CSS_WHITESPACE);
+			return Boolean(
+				space &&
+					CSS_COLOR_SPACES.has(space) &&
+					components.length === 3 &&
+					components.every((component) =>
+						CSS_NUMBER_OR_PERCENTAGE.test(component),
+					),
+			);
+		}
+		default:
+			return false;
+	}
+}
+
+function createCustomDescriptor(
+	scheme: CustomSchemeRecord,
+): PieColorSchemeDescriptor {
+	const previewVariables = {
+		...getBaseThemeVariables("light"),
+		...scheme.variables,
+	};
+	const previewBackground = previewVariables["--pie-background"];
+	if (!isStablePreviewColor(previewBackground)) {
+		previewVariables["--pie-background"] = "#ffffff";
+	}
+	for (const token of ["--pie-text", "--pie-primary"] as const) {
+		if (!isStablePreviewColor(previewVariables[token])) {
+			previewVariables[token] = getBaseThemeVariables("light")[token];
+		}
+	}
+	return Object.freeze({
+		id: scheme.id,
+		name: scheme.name,
 		description: scheme.description,
-		preview: scheme.preview,
-		variables: normalizedVars,
+		kind: "custom" as const,
+		preview: createPieColorSchemePreview(previewVariables),
+	});
+}
+
+function createSnapshot(): ColorSchemeSnapshot {
+	return Object.freeze({
+		generation,
+		schemes: Object.freeze([
+			getDefaultColorSchemeDescriptor(),
+			...listBuiltInColorSchemeDefinitions().map(
+				createBuiltInColorSchemeDescriptor,
+			),
+			...Array.from(customSchemes.values(), createCustomDescriptor),
+		]),
+	});
+}
+
+let currentSnapshot = createSnapshot();
+
+function warnDiagnostic(diagnostic: PieThemeDiagnostic): void {
+	const key = [
+		diagnostic.code,
+		diagnostic.schemeId ?? "",
+		diagnostic.token ?? "",
+		diagnostic.message,
+	].join("|");
+	if (warnedDiagnostics.has(key)) return;
+	warnedDiagnostics.add(key);
+	console.warn(`[pie-theme] ${diagnostic.message}`);
+}
+
+function notifyObservers(snapshot: ColorSchemeSnapshot): void {
+	notificationQueue.push(snapshot);
+	if (notifying) return;
+	notifying = true;
+	try {
+		while (notificationQueue.length > 0) {
+			const next = notificationQueue.shift();
+			if (!next) continue;
+			for (const listener of [...observers]) {
+				try {
+					listener(next);
+				} catch {
+					warnDiagnostic({
+						code: "observer-error",
+						severity: "warning",
+						message: "A color-scheme observer threw while receiving an update.",
+					});
+				}
+			}
+		}
+	} finally {
+		notifying = false;
+	}
+}
+
+function publishSnapshot(): void {
+	generation += 1;
+	currentSnapshot = createSnapshot();
+	notifyObservers(currentSnapshot);
+}
+
+function diagnostic(
+	value: PieThemeDiagnostic,
+	diagnostics: PieThemeDiagnostic[],
+): void {
+	diagnostics.push(value);
+	warnDiagnostic(value);
+}
+
+function normalizeRequestedScheme(value: string | null | undefined): string {
+	const normalized = value?.trim();
+	return normalized && normalized !== "default" ? normalized : "default";
+}
+
+function normalizeExplicitVariables(value: unknown): ThemeVariables {
+	if (!value || typeof value !== "object") return {};
+	const normalized: ThemeVariables = {};
+	for (const [token, rawValue] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
+		if (!token.startsWith("--")) continue;
+		if (typeof rawValue === "string" && rawValue.trim()) {
+			normalized[token] = rawValue.trim();
+		} else if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+			normalized[token] = String(rawValue);
+		}
+	}
+	return normalized;
+}
+
+function validateRegistration(
+	entry: RegisteredPieColorScheme,
+	index: number,
+): {
+	record?: CustomSchemeRecord;
+	diagnostics: PieThemeDiagnostic[];
+} {
+	const diagnostics: PieThemeDiagnostic[] = [];
+	if (!entry || typeof entry !== "object") {
+		return {
+			diagnostics: [
+				{
+					code: "invalid-registration",
+					severity: "error",
+					message: `Color-scheme entry ${index} must be an object.`,
+					index,
+				},
+			],
+		};
+	}
+
+	const id = typeof entry.id === "string" ? entry.id.trim() : "";
+	if (!id || /[\s"'<>]/.test(id)) {
+		diagnostics.push({
+			code: "invalid-scheme-id",
+			severity: "error",
+			message: `Color-scheme entry ${index} has an invalid id.`,
+			index,
+			schemeId: id || undefined,
+		});
+	}
+	if (id === "default" || BUILT_IN_IDS.has(id)) {
+		diagnostics.push({
+			code: "reserved-scheme-id",
+			severity: "error",
+			message: `Color-scheme id "${id}" is reserved by PIE.`,
+			index,
+			schemeId: id,
+		});
+	}
+
+	const variables: ThemeVariables = {};
+	if (
+		!entry.variables ||
+		typeof entry.variables !== "object" ||
+		Array.isArray(entry.variables)
+	) {
+		diagnostics.push({
+			code: "empty-scheme",
+			severity: "error",
+			message: `Color scheme "${id || index}" must define a token overlay.`,
+			index,
+			schemeId: id || undefined,
+		});
+	} else {
+		for (const [token, rawValue] of Object.entries(entry.variables)) {
+			const participation = getSchemeParticipation(token);
+			if (!participation) {
+				diagnostics.push({
+					code: "invalid-token-name",
+					severity: "error",
+					message: `Color scheme "${id || index}" uses unknown token "${token}".`,
+					index,
+					schemeId: id || undefined,
+					token,
+				});
+				continue;
+			}
+			if (participation === "excluded") {
+				diagnostics.push({
+					code: "excluded-token",
+					severity: "error",
+					message: `Color scheme "${id || index}" cannot set excluded token "${token}".`,
+					index,
+					schemeId: id || undefined,
+					token,
+				});
+				continue;
+			}
+			if (typeof rawValue === "string" && rawValue.trim()) {
+				variables[token] = rawValue.trim();
+			} else if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+				variables[token] = String(rawValue);
+			} else {
+				diagnostics.push({
+					code: "invalid-token-value",
+					severity: "error",
+					message: `Color scheme "${id || index}" has an invalid value for "${token}".`,
+					index,
+					schemeId: id || undefined,
+					token,
+				});
+			}
+		}
+	}
+
+	if (Object.keys(variables).length === 0) {
+		diagnostics.push({
+			code: "empty-scheme",
+			severity: "error",
+			message: `Color scheme "${id || index}" must define at least one participating token.`,
+			index,
+			schemeId: id || undefined,
+		});
+	}
+	if (diagnostics.some((item) => item.severity === "error")) {
+		return { diagnostics };
+	}
+
+	const existing = customSchemes.get(id);
+	if (existing) {
+		diagnostics.push({
+			code: "custom-scheme-replaced",
+			severity: "warning",
+			message: `Color scheme "${id}" replaced its previous custom registration.`,
+			index,
+			schemeId: id,
+		});
+	}
+
+	return {
+		diagnostics,
+		record: Object.freeze({
+			key: nextRegistrationKey++,
+			id,
+			name:
+				typeof entry.name === "string" && entry.name.trim()
+					? entry.name.trim()
+					: id,
+			description:
+				typeof entry.description === "string"
+					? entry.description.trim() || undefined
+					: undefined,
+			variables: freezeVariables(variables),
+		}),
 	};
 }
 
-export function listPieColorSchemes(): PieColorSchemeDefinition[] {
-	return [...builtInSchemeMap.values(), ...customSchemeMap.values()];
+/** Returns the current deeply immutable catalog snapshot. */
+export function listPieColorSchemes(): ColorSchemeSnapshot {
+	return currentSnapshot;
 }
 
-export function getPieColorScheme(
-	schemeId: string | null | undefined,
-): PieColorSchemeDefinition | undefined {
-	if (!schemeId) {
-		return builtInSchemeMap.get("default");
+/** Delivers the current snapshot immediately, then once per registry mutation. */
+export function observePieColorSchemes(
+	listener: PieThemeObserver,
+): Unsubscribe {
+	observers.add(listener);
+	try {
+		listener(currentSnapshot);
+	} catch {
+		warnDiagnostic({
+			code: "observer-error",
+			severity: "warning",
+			message: "A color-scheme observer threw while receiving an update.",
+		});
 	}
-	return customSchemeMap.get(schemeId) ?? builtInSchemeMap.get(schemeId);
+	let active = true;
+	return () => {
+		if (!active) return;
+		active = false;
+		observers.delete(listener);
+	};
 }
 
-export function resolvePieColorSchemeVariables(
-	schemeId: string | null | undefined,
-): ThemeVariables {
-	return getPieColorScheme(schemeId)?.variables ?? {};
+/** Resolves Base Theme → Theme Provider → Scheme → Explicit Theme Override. */
+export function resolvePieTheme(
+	input: ResolvePieThemeInput = {},
+): ThemeResolution {
+	const baseTheme = input.baseTheme === "dark" ? "dark" : "light";
+	const requestedScheme = normalizeRequestedScheme(input.requestedScheme);
+	const providerVariables = normalizePieThemeVariables(input.providerVariables);
+	const explicitVariables = normalizeExplicitVariables(input.variables);
+	const variables: ThemeVariables = {
+		...getBaseThemeVariables(baseTheme),
+		...providerVariables,
+	};
+	// Provider adapters own validation/correction of their own palette. Resolver
+	// diagnostics cover managed schemes and explicit per-instance changes.
+	const contrastRelevantTokens = new Set<string>();
+	let resolvedScheme: PieColorSchemeDescriptor | null = null;
+	let status: ThemeResolution["status"] = "default";
+	const diagnostics: PieThemeDiagnostic[] = [];
+
+	if (requestedScheme !== "default") {
+		const builtIn = getBuiltInColorSchemeDefinition(requestedScheme);
+		const custom = customSchemes.get(requestedScheme);
+		if (builtIn) {
+			// Built-ins completely replace the required accessibility palette.
+			// Optional component hooks remain provider-controlled when the built-in
+			// deliberately does not define them, matching the CSS adapter cascade.
+			Object.assign(variables, builtIn.variables);
+			for (const token of Object.keys(builtIn.variables)) {
+				contrastRelevantTokens.add(token);
+			}
+			resolvedScheme = createBuiltInColorSchemeDescriptor(builtIn);
+			status = "built-in";
+		} else if (custom) {
+			Object.assign(variables, custom.variables);
+			for (const token of Object.keys(custom.variables)) {
+				contrastRelevantTokens.add(token);
+			}
+			resolvedScheme = createCustomDescriptor(custom);
+			status = "custom";
+		} else {
+			status = "unavailable";
+			diagnostics.push({
+				code: "unknown-scheme",
+				severity: "warning",
+				message: `Requested color scheme "${requestedScheme}" is unavailable; the base theme and provider remain active.`,
+				schemeId: requestedScheme,
+			});
+		}
+	}
+
+	Object.assign(variables, explicitVariables);
+	for (const token of Object.keys(explicitVariables)) {
+		contrastRelevantTokens.add(token);
+	}
+	if (contrastRelevantTokens.size > 0) {
+		diagnostics.push(
+			...diagnoseThemeContrast(
+				variables,
+				requestedScheme === "default" ? undefined : requestedScheme,
+				contrastRelevantTokens,
+			),
+		);
+	}
+	for (const item of diagnostics) warnDiagnostic(item);
+	return Object.freeze({
+		baseTheme,
+		requestedScheme,
+		resolvedScheme,
+		status,
+		variables: freezeVariables(variables),
+		diagnostics: freezeDiagnostics(diagnostics),
+	});
 }
 
+/**
+ * Registers valid entries from a batch and returns a generation-aware receipt.
+ * Invalid entries never disturb an existing valid registration.
+ */
 export function registerPieColorSchemes(
-	schemes: PieColorSchemeDefinition[],
-	options: { overwrite?: boolean } = {},
-): void {
-	const overwrite = options.overwrite ?? true;
-	for (const rawScheme of schemes) {
-		const scheme = normalizeScheme(rawScheme);
-		if (!scheme) {
-			continue;
+	entries: readonly RegisteredPieColorScheme[],
+): RegistrationReceipt {
+	const diagnostics: PieThemeDiagnostic[] = [];
+	const installed = new Map<string, number>();
+	if (!Array.isArray(entries)) {
+		diagnostic(
+			{
+				code: "invalid-registration",
+				severity: "error",
+				message: "Color-scheme registration must be an array.",
+			},
+			diagnostics,
+		);
+	} else {
+		for (const [index, entry] of entries.entries()) {
+			const validated = validateRegistration(entry, index);
+			for (const item of validated.diagnostics) {
+				diagnostic(item, diagnostics);
+			}
+			if (!validated.record) continue;
+			customSchemes.set(validated.record.id, validated.record);
+			installed.set(validated.record.id, validated.record.key);
+			const resolved = {
+				...getBaseThemeVariables("light"),
+				...validated.record.variables,
+			};
+			for (const item of diagnoseThemeContrast(
+				resolved,
+				validated.record.id,
+				new Set(Object.keys(validated.record.variables)),
+			)) {
+				diagnostic({ ...item, index }, diagnostics);
+			}
 		}
-		if (!overwrite && customSchemeMap.has(scheme.id)) {
-			continue;
-		}
-		customSchemeMap.set(scheme.id, scheme);
 	}
-}
 
-export function unregisterPieColorScheme(schemeId: string): void {
-	if (!schemeId || builtInSchemeMap.has(schemeId)) {
-		return;
-	}
-	customSchemeMap.delete(schemeId);
+	if (installed.size > 0) publishSnapshot();
+	let active = true;
+	const acceptedSchemeIds = Object.freeze([...installed.keys()]);
+	const receipt: RegistrationReceipt = {
+		acceptedSchemeIds,
+		diagnostics: freezeDiagnostics(diagnostics),
+		unregister() {
+			if (!active) return;
+			active = false;
+			let changed = false;
+			for (const [id, key] of installed) {
+				if (customSchemes.get(id)?.key !== key) continue;
+				customSchemes.delete(id);
+				changed = true;
+			}
+			if (changed) publishSnapshot();
+		},
+	};
+	return Object.freeze(receipt);
 }

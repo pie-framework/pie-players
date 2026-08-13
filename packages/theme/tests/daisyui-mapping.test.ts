@@ -24,6 +24,15 @@ const LIGHT: Partial<Record<DaisySlot, string>> = {
 	warning: "#fcb700",
 };
 
+/** DaisyUI's `valentine` surfaces, whose deepest base tint exposed the gap. */
+const VALENTINE: Partial<Record<DaisySlot, string>> = {
+	...LIGHT,
+	base100: "#fcf2f8",
+	base200: "#f9e4f0",
+	base300: "#f9cbe5",
+	baseContent: "#c5005a",
+};
+
 const HEX = /^#([0-9a-f]{6})$/i;
 const MIX = /^color-mix\(in srgb, (.+) (\d+)%, (.+)\)$/;
 
@@ -135,6 +144,13 @@ describe("resolveDaisyPieVariables", () => {
 		expect(
 			ratio(resolve(dark)["--pie-button-focus-outline"], "#1c1c1c"),
 		).toBeGreaterThanOrEqual(3);
+	});
+
+	test("keeps active button text legible on DaisyUI's deeper surface", () => {
+		const vars = resolve(VALENTINE);
+		expect(
+			ratio(vars["--pie-button-color"], vars["--pie-button-active-bg"]),
+		).toBeGreaterThanOrEqual(4.5);
 	});
 
 	test("leaves the dual-purpose accent alone", () => {

@@ -4,11 +4,17 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const DEFAULT_ROOT = process.cwd();
-const THEME_DEFAULTS_PATH = "packages/theme/src/theme-defaults.ts";
+const THEME_DEFINITIONS_PATH = "packages/theme/src/theme-definitions.ts";
 const TOKENS_CSS_PATH = "packages/theme/src/tokens.css";
-const COLOR_SCHEMES_TS_PATH = "packages/theme/src/color-schemes.ts";
 const COLOR_SCHEMES_CSS_PATH = "packages/theme/src/color-schemes.css";
+const SCHEME_PARTICIPATION_PATH = "packages/theme/src/scheme-participation.ts";
 const TOKEN_REGISTRY_PATH = "packages/theme/src/token-registry.json";
+
+const VALID_SCHEME_PARTICIPATION = new Set([
+	"required",
+	"optional",
+	"excluded",
+]);
 
 const VALID_SOURCE_EXTENSIONS = new Set([
 	".css",
@@ -145,35 +151,95 @@ function extractCssDeclarations(content) {
 	);
 }
 
-function extractObjectTokenKeys(source, constName, failures) {
-	const start = source.indexOf(`export const ${constName}`);
+function extractObjectTokenKeys(source, sourcePath, constName, failures) {
+	const declaration = new RegExp(
+		`(?:export\\s+)?const\\s+${constName}\\b`,
+	).exec(source);
+	const start = declaration?.index ?? -1;
 	if (start === -1) {
-		failures.push(
-			`[theme-tokens] ${constName} not found in ${THEME_DEFAULTS_PATH}`,
-		);
+		failures.push(`[theme-tokens] ${constName} not found in ${sourcePath}`);
 		return new Set();
 	}
 	const end = source.indexOf("\n};", start);
 	if (end === -1) {
 		failures.push(
-			`[theme-tokens] could not parse ${constName} in ${THEME_DEFAULTS_PATH}`,
+			`[theme-tokens] could not parse ${constName} in ${sourcePath}`,
 		);
 		return new Set();
 	}
 	return extractCssDeclarations(source.slice(start, end));
 }
 
-function assertSameSet(failures, label, actual, expected) {
+function extractSchemeParticipation(source, failures) {
+	const declaration = source.indexOf("PIE_THEME_SCHEME_PARTICIPATION");
+	const start = source.indexOf("{", declaration);
+	const end = source.indexOf("} as const", start);
+	if (declaration === -1 || start === -1 || end === -1) {
+		failures.push(
+			`[theme-tokens] could not parse PIE_THEME_SCHEME_PARTICIPATION in ${SCHEME_PARTICIPATION_PATH}`,
+		);
+		return new Map();
+	}
+
+	const participation = new Map();
+	for (const match of source
+		.slice(start, end)
+		.matchAll(
+			/["'](--pie-[a-z0-9]+(?:-[a-z0-9]+)*)["']\s*:\s*["'](required|optional|excluded)["']/g,
+		)) {
+		if (participation.has(match[1])) {
+			failures.push(
+				`[theme-tokens] duplicate ${match[1]} in ${SCHEME_PARTICIPATION_PATH}`,
+			);
+		}
+		participation.set(match[1], match[2]);
+	}
+	return participation;
+}
+
+function assertSameSet(failures, label, actual, expected, expectedLabel) {
 	const actualSet = new Set(actual);
 	const expectedSet = new Set(expected);
 	const missing = formatSetDifference(expectedSet, actualSet);
 	const extra = formatSetDifference(actualSet, expectedSet);
 	if (missing || extra) {
 		failures.push(
-			`[theme-tokens] ${label} do not match LIGHT_THEME_VARS` +
+			`[theme-tokens] ${label} do not match ${expectedLabel}` +
 				`${missing ? `; missing: ${missing}` : ""}` +
 				`${extra ? `; extra: ${extra}` : ""}`,
 		);
+	}
+}
+
+function assertSameParticipation(failures, registry, generated) {
+	const registryByName = new Map();
+	for (const entry of registry) {
+		if (registryByName.has(entry.name)) {
+			failures.push(
+				`[theme-tokens] duplicate registry entry for ${entry.name}`,
+			);
+		}
+		registryByName.set(entry.name, entry.schemeParticipation);
+		if (!VALID_SCHEME_PARTICIPATION.has(entry.schemeParticipation)) {
+			failures.push(
+				`[theme-tokens] ${entry.name} has invalid schemeParticipation: ${String(entry.schemeParticipation)}`,
+			);
+		}
+	}
+
+	assertSameSet(
+		failures,
+		"generated scheme participation keys",
+		generated.keys(),
+		registryByName.keys(),
+		"token-registry.json entries",
+	);
+	for (const [token, value] of registryByName) {
+		if (generated.has(token) && generated.get(token) !== value) {
+			failures.push(
+				`[theme-tokens] ${token} scheme participation is ${generated.get(token)} in ${SCHEME_PARTICIPATION_PATH} but ${value} in ${TOKEN_REGISTRY_PATH}`,
+			);
+		}
 	}
 }
 
@@ -203,9 +269,13 @@ function isSourceUsageFile(absPath) {
 function checkRootScript(root, failures) {
 	const packageJson = readJson(root, "package.json", failures);
 	const script = packageJson?.scripts?.["check:theme-tokens"];
-	if (!script || !script.includes("check-theme-tokens.mjs")) {
+	if (
+		!script ||
+		!script.includes("check-theme-tokens.mjs") ||
+		!script.includes("check:generated-css")
+	) {
 		failures.push(
-			'[theme-tokens] package.json scripts must include "check:theme-tokens" running scripts/check-theme-tokens.mjs',
+			'[theme-tokens] package.json scripts must include "check:theme-tokens" running scripts/check-theme-tokens.mjs and the pie-theme check:generated-css command',
 		);
 	}
 }
@@ -237,18 +307,26 @@ function checkRegistryPaths(root, registry, failures) {
 }
 
 function checkCanonicalParity(root, registry, failures) {
-	const themeDefaults = readText(root, THEME_DEFAULTS_PATH, failures);
+	const themeDefinitions = readText(root, THEME_DEFINITIONS_PATH, failures);
 	const lightTokens = extractObjectTokenKeys(
-		themeDefaults,
-		"LIGHT_THEME_VARS",
+		themeDefinitions,
+		THEME_DEFINITIONS_PATH,
+		"LIGHT_BASE_THEME",
 		failures,
 	);
 	const darkTokens = extractObjectTokenKeys(
-		themeDefaults,
-		"DARK_THEME_VARS",
+		themeDefinitions,
+		THEME_DEFINITIONS_PATH,
+		"DARK_BASE_THEME",
 		failures,
 	);
-	assertSameSet(failures, "DARK_THEME_VARS", darkTokens, lightTokens);
+	assertSameSet(
+		failures,
+		"DARK_BASE_THEME",
+		darkTokens,
+		lightTokens,
+		"LIGHT_BASE_THEME",
+	);
 
 	const activeCanonical = registry
 		.filter(
@@ -261,25 +339,54 @@ function checkCanonicalParity(root, registry, failures) {
 		"active canonical registry entries",
 		activeCanonical,
 		lightTokens,
+		"LIGHT_BASE_THEME",
 	);
+
+	const requiredSchemeTokens = registry
+		.filter((entry) => entry.schemeParticipation === "required")
+		.map((entry) => entry.name);
+	const requiredNonCanonicalTokens = registry
+		.filter(
+			(entry) =>
+				entry.schemeParticipation === "required" &&
+				!(entry.scope === "canonical-semantic" && entry.status === "active"),
+		)
+		.map((entry) => entry.name);
+	const expectedBaseTokens = new Set([
+		...lightTokens,
+		...requiredNonCanonicalTokens,
+	]);
 
 	const tokensCss = readText(root, TOKENS_CSS_PATH, failures);
 	assertSameSet(
 		failures,
 		"tokens.css declarations",
 		extractCssDeclarations(tokensCss),
-		lightTokens,
+		expectedBaseTokens,
+		"Base Theme token set",
 	);
+	const colorSchemesCss = readText(root, COLOR_SCHEMES_CSS_PATH, failures);
+	assertSameSet(
+		failures,
+		"color-schemes.css declarations",
+		extractCssDeclarations(colorSchemesCss),
+		requiredSchemeTokens,
+		"required scheme tokens",
+	);
+
+	const participation = extractSchemeParticipation(
+		readText(root, SCHEME_PARTICIPATION_PATH, failures),
+		failures,
+	);
+	assertSameParticipation(failures, registry, participation);
 
 	const registeredNames = new Set(registry.map((entry) => entry.name));
 	for (const [relPath, tokens] of [
+		[THEME_DEFINITIONS_PATH, extractPieTokens(themeDefinitions)],
+		[COLOR_SCHEMES_CSS_PATH, extractCssDeclarations(colorSchemesCss)],
 		[
-			COLOR_SCHEMES_TS_PATH,
-			extractPieTokens(readText(root, COLOR_SCHEMES_TS_PATH, failures)),
-		],
-		[
-			COLOR_SCHEMES_CSS_PATH,
-			extractCssDeclarations(readText(root, COLOR_SCHEMES_CSS_PATH, failures)),
+			SCHEME_PARTICIPATION_PATH,
+			extractPieTokens(readText(root, SCHEME_PARTICIPATION_PATH, failures)),
 		],
 	]) {
 		for (const token of tokens) {

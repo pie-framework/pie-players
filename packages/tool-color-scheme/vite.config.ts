@@ -31,7 +31,9 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: [],
+			// The observable scheme registry must be the host's single theme module,
+			// not a private copy embedded in this custom-element bundle.
+			external: [/^@pie-players\/pie-theme(?:\/|$)/],
 			output: {
 				format: "es",
 			},

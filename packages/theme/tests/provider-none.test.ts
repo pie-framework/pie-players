@@ -10,10 +10,11 @@
  * the target or `document`, so a stub target is the honest way to exercise it.
  */
 
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 
 import {
 	PIE_THEME_PROVIDER_NONE,
+	getPieThemeProvider,
 	registerPieThemeProvider,
 	resolveProviderVariables,
 	unregisterPieThemeProvider,
@@ -46,9 +47,9 @@ describe("resolveProviderVariables with the none mode", () => {
 	});
 
 	test("resolves nothing even though a provider can read the target", () => {
-		expect(resolveProviderVariables({ target, provider: "auto" })).toHaveProperty(
-			PROBE_TOKEN,
-		);
+		expect(
+			resolveProviderVariables({ target, provider: "auto" }),
+		).toHaveProperty(PROBE_TOKEN);
 		expect(
 			resolveProviderVariables({ target, provider: PIE_THEME_PROVIDER_NONE }),
 		).toEqual({});
@@ -69,6 +70,24 @@ describe("resolveProviderVariables with the none mode", () => {
 		expect(
 			resolveProviderVariables({ target, provider: PIE_THEME_PROVIDER_NONE }),
 		).toEqual({});
+	});
+
+	test("cannot be shadowed by a registered provider", () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			registerPieThemeProvider({
+				id: PIE_THEME_PROVIDER_NONE,
+				canRead: () => true,
+				read: () => ({ [PROBE_TOKEN]: "shadowed" }),
+			});
+			expect(getPieThemeProvider(PIE_THEME_PROVIDER_NONE)).toBeUndefined();
+			expect(
+				resolveProviderVariables({ target, provider: PIE_THEME_PROVIDER_NONE }),
+			).toEqual({});
+			expect(warn).toHaveBeenCalledTimes(1);
+		} finally {
+			warn.mockRestore();
+		}
 	});
 
 	test("is spelled the same as the attribute value a host writes", () => {

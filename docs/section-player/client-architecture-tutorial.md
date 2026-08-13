@@ -471,11 +471,21 @@ Boundary rules for this setup:
 
 ## 6. Theming
 
-PIE item elements and toolkit UI components use a shared set of CSS custom properties (`--pie-*`) for all colors, contrast states, and font scaling. You control those variables through the `<pie-theme>` custom element from `@pie-players/pie-theme`.
+PIE item elements and toolkit UI components use shared Theme Tokens (`--pie-*`)
+for colors, contrast states, and font scaling. Control them through the
+`<pie-theme>` custom element from `@pie-players/pie-theme`.
 
 ### Basic usage
 
 Wrap the section player (and any toolkit UI) in a `<pie-theme>` element:
+
+```ts
+// Registers <pie-theme> as an import side effect.
+import "@pie-players/pie-theme";
+```
+
+If a host needs explicit registration, import the side-effect-free
+`@pie-players/pie-theme/theme-element` subpath and call `definePieTheme()`.
 
 ```html
 <!-- Light theme, scoped to the element and its descendants -->
@@ -502,19 +512,103 @@ To apply the theme to the entire document rather than a subtree:
 | --- | --- | --- |
 | `theme` | `light` / `dark` / `auto` / named | Base theme. `auto` tracks `prefers-color-scheme`. Named values (e.g. DaisyUI theme names) use light base defaults while still driving provider resolution. |
 | `scope` | `self` (default) / `document` | `self` applies variables to the element itself; `document` applies them to `<html>`. |
-| `provider` | `auto` (default) / `daisyui` / custom id | How to read variables from an existing design system. `auto` tries all registered providers. |
-| `scheme` | `default` / color scheme id | Applies a color scheme overlay on top of the base theme (see color schemes below). |
+| `provider` | `auto` (default) / `none` / `daisyui` / custom id | How to read variables from an existing design system. `auto` tries registered providers; `none` uses no provider. |
+| `scheme` | `default` / color scheme id | Records the Requested Scheme. `default` means no named scheme. |
 | `variables` | `Record<string, string>` | Direct CSS custom property overrides, applied last — highest specificity. |
 
 ### Adapting to an existing design system
 
-The theme system uses a provider adapter model to read variables from an existing design system and map them to `--pie-*` properties. A DaisyUI adapter is built in — set `provider="daisyui"` (or leave it as `auto`) and the section player inherits your host's DaisyUI theme automatically. For other design systems, implement the `ThemeProviderAdapter` interface (`canRead`, `read`) and register it via `registerPieThemeProvider()` before mounting. For direct overrides, the `variables` property accepts a `Record<string, string>` of CSS custom properties applied with highest specificity.
+The theme system uses a provider adapter to read values from an existing design
+system and map them to `--pie-*` tokens. A DaisyUI adapter is built in — set
+`provider="daisyui"` (or leave it as `auto`) and the section player inherits the
+host's DaisyUI theme. For another design system, implement
+`ThemeProviderAdapter` (`canRead`, `read`) and call
+`registerPieThemeProvider()`. Existing theme elements update after provider
+registration or removal. For direct overrides, the `variables` property accepts
+a `Record<string, string>` applied last.
 
 ### Color schemes and the theme tool
 
-Color schemes are overlays on top of the base theme — sets of `--pie-*` variable overrides designed for accessibility needs like high contrast or inverted colors. PIE ships several built-in schemes and supports custom scheme registration via `registerPieColorSchemes()`. The `theme` toolbar tool lets students pick their preferred scheme at runtime; the selection is stored in tool state managed by the coordinator.
+PIE's Built-in Color Schemes are complete accessibility palettes. A Registered
+Custom Scheme is a partial host-owned overlay. Resolution always follows:
 
-Separately, the `theme` toolbar tool is a student-facing control for switching between light and dark mode. This is distinct from the `<pie-theme>` element, which is developer-controlled and set at integration time. Both layers compose: your baseline sets the default, the student's runtime selection overrides it.
+1. Base Theme (`light`, `dark`, or the result of `auto`)
+2. Theme Provider
+3. Resolved registered scheme
+4. Explicit `variables`
+
+The package interface is intentionally small:
+
+```ts
+import {
+  listPieColorSchemes,
+  observePieColorSchemes,
+  registerPieColorSchemes,
+  resolvePieTheme,
+} from "@pie-players/pie-theme";
+
+const snapshot = listPieColorSchemes();
+for (const scheme of snapshot.schemes) {
+  console.log(scheme.id, scheme.preview);
+}
+
+const unsubscribe = observePieColorSchemes((next) => {
+  renderSchemeOptions(next.schemes);
+});
+
+const registration = registerPieColorSchemes([
+  {
+    id: "district-high-contrast",
+    name: "District High Contrast",
+    variables: {
+      "--pie-background": "#000000",
+      "--pie-text": "#ffffff",
+      "--pie-primary": "#00ffff",
+    },
+  },
+]);
+
+const resolved = resolvePieTheme({
+  baseTheme: "light",
+  requestedScheme: "district-high-contrast",
+});
+
+// When this integration no longer owns the registration:
+registration.unregister();
+unsubscribe();
+```
+
+Snapshots and resolutions are immutable. Registration is synchronous and
+returns structured diagnostics instead of throwing for ordinary invalid input.
+Built-in ids are reserved; custom definitions may use only tokens whose registry
+Scheme Participation is `required` or `optional`.
+
+Requested and Resolved Scheme are deliberately separate. If a saved id is not
+registered, `<pie-theme>` retains it in `scheme` and `data-color-scheme`, renders
+the safe base/provider result plus explicit `variables`, and switches to it
+automatically after late registration. The theme picker shows that request as
+unavailable instead of resetting the preference. A host may still provide a
+CSS-only `[data-color-scheme="..."]` rule, but that is a best-effort selector
+hook and the host owns its cascade and accessibility. It participates in the
+normal cascade in a stylesheet-only integration; when a mounted `<pie-theme>`
+owns the resolved tokens inline, the rule needs `!important` or should become a
+Registered Custom Scheme.
+
+The `theme` toolbar tool is the student-facing control for selecting these color
+schemes. The `<pie-theme>` element remains the integration-owned resolver. The
+tool observes the package catalog, uses its canonical light-base preview, and
+writes the learner's Requested Scheme to the nearest theme host. The preview is
+derived rather than authored separately; a host-specific provider can still
+make the applied page differ from that catalog swatch.
+
+### Stylesheet-only integration
+
+`tokens.css` and `color-schemes.css` are checked-in generated adapters for hosts
+that apply tokens through CSS rather than `<pie-theme>`. They remain unlayered,
+so host declarations and `!important` keep their normal leverage. Do not copy or
+edit palette values in those files directly; update the canonical definition and
+run `bun --cwd packages/theme run generate:css`. The existing stylesheet export
+names and literal `dist` filenames are integration contracts.
 
 ---
 

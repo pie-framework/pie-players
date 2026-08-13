@@ -35,6 +35,15 @@ export type PieThemeTokenStatus =
 	| "intentional-gap"
 	| "planned";
 
+/**
+ * Whether a color scheme must, may, or must not set a token.
+ *
+ * Built-in schemes are complete for `required` tokens. Registered custom
+ * schemes may set `required` and `optional` tokens, while `excluded` tokens stay
+ * under their existing owner or fallback chain.
+ */
+export type PieThemeSchemeParticipation = "required" | "optional" | "excluded";
+
 export interface PieThemeTokenRegistryEntry {
 	/** The custom property, including the leading `--`. */
 	name: string;
@@ -49,6 +58,8 @@ export interface PieThemeTokenRegistryEntry {
 	 */
 	category: string;
 	status: PieThemeTokenStatus;
+	/** The token's role in built-in and registered custom color schemes. */
+	schemeParticipation: PieThemeSchemeParticipation;
 	/** Repo-relative paths that define the token. */
 	definedIn: string[];
 	/** Repo-relative paths that document it. */

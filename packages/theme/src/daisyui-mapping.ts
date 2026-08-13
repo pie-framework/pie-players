@@ -165,7 +165,10 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	direct("--pie-button-hover-bg", "base200"),
 	boundary("--pie-button-hover-border", "base300"),
 	direct("--pie-button-hover-color", "baseContent"),
-	direct("--pie-button-active-bg", "base300"),
+	// DaisyUI guarantees base-content against the page, not every deeper surface.
+	// `valentine` is 4.17:1 on base-300. A 70% share is the nearest 5% step
+	// toward base-100 that keeps the pair at 4.5:1 across all shipped themes.
+	mix("--pie-button-active-bg", "base300", "base100", 70),
 	// The keyboard focus indicator, and the one token here that is only ever an
 	// `outline` -- eight declarations across the tools, never a fill. It takes
 	// `--color-primary`, which DaisyUI pairs with `--color-primary-content` for

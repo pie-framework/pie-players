@@ -29,6 +29,14 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 	).filter((el) => isProgrammaticFocusTarget(el));
 }
 
+function getDeepActiveElement(root: Document | ShadowRoot): Element | null {
+	let active: Element | null = root.activeElement;
+	while (active?.shadowRoot?.activeElement) {
+		active = active.shadowRoot.activeElement;
+	}
+	return active;
+}
+
 function focusInitialTarget(
 	container: HTMLElement,
 	initialFocus?: HTMLElement | null,
@@ -61,7 +69,7 @@ export function createFocusTrap(
 ): () => void {
 	const prev =
 		typeof document !== "undefined"
-			? (document.activeElement as HTMLElement | null)
+			? (getDeepActiveElement(document) as HTMLElement | null)
 			: null;
 	const wrap = options.wrap ?? true;
 	const onKeydown = (event: KeyboardEvent) => {
@@ -79,7 +87,11 @@ export function createFocusTrap(
 			return;
 		}
 
-		const current = document.activeElement as HTMLElement | null;
+		const current = getDeepActiveElement(
+			container.getRootNode() instanceof ShadowRoot
+				? (container.getRootNode() as ShadowRoot)
+				: document,
+		) as HTMLElement | null;
 		const currentIndex = focusable.indexOf(current || focusable[0]);
 		if (event.shiftKey) {
 			if (currentIndex <= 0) {

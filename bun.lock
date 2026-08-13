@@ -488,6 +488,7 @@
       "version": "0.3.50",
       "devDependencies": {
         "@biomejs/biome": "^2.5.7",
+        "@happy-dom/global-registrator": "^20.11.1",
         "typescript": "^5.9.3",
       },
     },
@@ -579,6 +580,7 @@
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.7",
+        "@happy-dom/global-registrator": "^20.11.1",
         "@sveltejs/vite-plugin-svelte": "^7.2.0",
         "svelte": "^5.56.8",
         "typescript": "^5.9.3",

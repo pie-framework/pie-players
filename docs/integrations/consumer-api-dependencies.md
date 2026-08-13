@@ -18,6 +18,13 @@ lives per-machine in the gitignored `.claude/consumer-checkouts.local.json`; the
 Last verified against consumer checkouts and this repo's `develop` line:
 **2026-08-13**.
 
+The canonical theming implementation updated these notes without performing a
+new full refresh and therefore did not advance that verification date. The Host
+R checkout was unavailable for the focused work; its existing rows remain prior
+observations rather than newly verified claims. The removed mainline-divergence
+warning was checked against this repository: the token-registry change is now in
+the current line and its package export is present here.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |
@@ -49,19 +56,6 @@ Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
 and to fix it there in the same push.
 
-## Mainline is currently behind what is published
-
-`@pie-players/pie-theme@0.3.65` on npm exports `./token-registry.json` and the
-`PieThemeTokenRegistry`, `PieThemeTokenRegistryEntry`, `PieThemeTokenScope`, and
-`PieThemeTokenStatus` types. None of those five exist on `develop`, `master`, or
-any published tag's ancestry — they were added in a commit that lives only on an
-unmerged feature branch, and 0.3.65 was published from that branch. Host R
-depends on all five for its theme inspector.
-
-The next release cut from `develop` therefore *removes* them from the published
-package. Merge that branch before the next release, or Host R breaks on upgrade
-with no change on its side.
-
 ## Package entrypoints in use
 
 | Specifier | Consumers | Note |
@@ -71,7 +65,7 @@ with no change on its side.
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | |
-| `@pie-players/pie-theme/token-registry.json` | R | See the divergence note above |
+| `@pie-players/pie-theme/token-registry.json` | R | Previously observed; not re-derived during the focused theming update |
 | `@pie-players/pie-theme-daisyui/bridge.css` | R | |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
 | `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
@@ -151,6 +145,16 @@ declare all five.
 Neither V nor A uses `theme="auto"`. Both deliberately force light so an
 OS-dark-mode user does not get dark-rendered content inside a light-only host
 UI. R is the only consumer that exercises scheme switching at all.
+
+For the canonical theme change, no client-facing host was recorded using the
+programmatic scheme catalog, custom-scheme registration, raw base/palette
+constants, or the theme picker's `schemes` / `schemeCatalog` inputs. Host A's
+stylesheet-only path still requires its live token names, literal CSS filenames,
+and unlayered override leverage. Host V still requires explicit-light behavior
+and a side-effect-free `theme-element` entrypoint. Host R's observed
+`listPieColorSchemes()` call must migrate to the new snapshot return shape when
+that internally controlled checkout is available; it does not constrain the
+interface in the meantime.
 
 ### Internal layout CEs as style selectors (Host A)
 
@@ -432,10 +436,13 @@ change it and fix Host R in the same push.
 - Retyping `show-toolbar` or `debug` to `Boolean`, or dropping either the string
   or the boolean form of `show-toolbar`
 - Moving `definePieTheme()` between the `pie-theme` index and `theme-element`
+- Layering generated theme CSS, resolving Host A's tokens at build time, or
+  otherwise preventing its outside `!important` declarations from winning
 - Changing how content styles are delivered, without accounting for all three
   host positions above
 
-**Host R only. Change freely; land the pieoneer fix in the same push.**
+**Host R only. Change freely; land the internally controlled host fix in the
+same push when its checkout is available.**
 
 - `pie-section-player-vertical`, and anything in `default-tool-loaders`
 - Requiring an explicit registration call from a `pie-tool-*` package that
@@ -446,6 +453,9 @@ change it and fix Host R in the same push.
   `updateAssessment`, `onPolicyChange`, `decideFeaturePolicy`
 - The theme token registry, its four types, and the `tts-server-*` provider
   classes
+- The return shape of `listPieColorSchemes()` and removed raw scheme helpers;
+  migrate the internally controlled host to snapshots and `resolvePieTheme()`
+  when its checkout is available
 - `dist/pie-item-player.js` as a CDN filename
 
 The coordinator constructor and `createToolsConfig` are pinned with `satisfies`

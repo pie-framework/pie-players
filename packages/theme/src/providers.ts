@@ -15,6 +15,19 @@ export interface ThemeProviderAdapter {
 }
 
 const themeProviderRegistry = new Map<string, ThemeProviderAdapter>();
+const themeProviderObservers = new Set<() => void>();
+
+function notifyThemeProviderObservers(): void {
+	for (const listener of [...themeProviderObservers]) {
+		try {
+			listener();
+		} catch {
+			console.warn(
+				"[pie-theme] A theme-provider observer threw while receiving an update.",
+			);
+		}
+	}
+}
 
 /**
  * Provider mode that resolves nothing, leaving this package's shipped defaults
@@ -83,7 +96,17 @@ export function registerPieThemeProvider(adapter: ThemeProviderAdapter): void {
 	if (!adapter?.id) {
 		return;
 	}
+	if (adapter.id === PIE_THEME_PROVIDER_NONE) {
+		console.warn(
+			`[pie-theme] Theme-provider id "${PIE_THEME_PROVIDER_NONE}" is reserved.`,
+		);
+		return;
+	}
+	if (themeProviderRegistry.get(adapter.id) === adapter) {
+		return;
+	}
 	themeProviderRegistry.set(adapter.id, adapter);
+	notifyThemeProviderObservers();
 }
 
 export function unregisterPieThemeProvider(providerId: string): void {
@@ -93,7 +116,20 @@ export function unregisterPieThemeProvider(providerId: string): void {
 	if (providerId === DAISYUI_THEME_PROVIDER_ADAPTER.id) {
 		return;
 	}
-	themeProviderRegistry.delete(providerId);
+	if (themeProviderRegistry.delete(providerId)) {
+		notifyThemeProviderObservers();
+	}
+}
+
+/** Package-internal invalidation used by connected pie-theme elements. */
+export function observePieThemeProviders(listener: () => void): () => void {
+	themeProviderObservers.add(listener);
+	let active = true;
+	return () => {
+		if (!active) return;
+		active = false;
+		themeProviderObservers.delete(listener);
+	};
 }
 
 export function listPieThemeProviders(): ThemeProviderAdapter[] {

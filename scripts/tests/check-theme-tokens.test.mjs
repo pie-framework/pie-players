@@ -19,38 +19,52 @@ function createFixtureRoot() {
 		"package.json",
 		JSON.stringify({
 			scripts: {
-				"check:theme-tokens": "bun ./scripts/check-theme-tokens.mjs",
+				"check:theme-tokens":
+					"bun ./scripts/check-theme-tokens.mjs && bun run --cwd packages/theme check:generated-css",
 			},
 		}),
 	);
 	write(
 		root,
-		"packages/theme/src/theme-defaults.ts",
+		"packages/theme/src/theme-definitions.ts",
 		[
-			"export const LIGHT_THEME_VARS = {",
+			"const LIGHT_BASE_THEME = {",
 			'  "--pie-background": "#fff",',
 			'  "--pie-button-bg": "#fff",',
 			"};",
-			"export const DARK_THEME_VARS = {",
+			"const DARK_BASE_THEME = {",
 			'  "--pie-background": "#000",',
 			'  "--pie-button-bg": "#111",',
 			"};",
+			"const BUILT_IN_COLOR_SCHEMES = [{ variables: {",
+			'  "--pie-background": "#fff",',
+			'  "--pie-button-bg": "#fff",',
+			'  "--pie-tool-example-border": "#000",',
+			"} }];",
 		].join("\n"),
 	);
 	write(
 		root,
 		"packages/theme/src/tokens.css",
-		':root { --pie-background: #fff; --pie-button-bg: #fff; }\n[data-theme="dark"] { --pie-background: #000; --pie-button-bg: #111; }\n',
+		':root { --pie-background: #fff; --pie-button-bg: #fff; --pie-tool-example-border: #000; }\n[data-theme="dark"] { --pie-background: #000; --pie-button-bg: #111; --pie-tool-example-border: #fff; }\n',
 	);
 	write(
 		root,
-		"packages/theme/src/color-schemes.ts",
-		'export const BUILTIN_PIE_COLOR_SCHEMES = [{ variables: { "--pie-background": "#fff" } }];\n',
+		"packages/theme/src/scheme-participation.ts",
+		[
+			"export const PIE_THEME_SCHEME_PARTICIPATION = {",
+			'  "--pie-background": "required",',
+			'  "--pie-button-bg": "required",',
+			'  "--pie-tool-example-border": "required",',
+			'  "--pie-tool-trigger-active-background": "optional",',
+			'  "--pie-button-background-color": "excluded",',
+			"} as const;",
+		].join("\n"),
 	);
 	write(
 		root,
 		"packages/theme/src/color-schemes.css",
-		'[data-color-scheme="black-on-white"] { --pie-background: #fff; }\n',
+		'[data-color-scheme="black-on-white"] { --pie-background: #fff; --pie-button-bg: #fff; --pie-tool-example-border: #000; }\n',
 	);
 	write(
 		root,
@@ -62,7 +76,8 @@ function createFixtureRoot() {
 				scope: "canonical-semantic",
 				category: "surface",
 				status: "active",
-				definedIn: ["packages/theme/src/theme-defaults.ts"],
+				schemeParticipation: "required",
+				definedIn: ["packages/theme/src/theme-definitions.ts"],
 				documentedIn: ["packages/theme/README.md"],
 				fallbackPolicy: "Canonical background token.",
 			},
@@ -72,9 +87,21 @@ function createFixtureRoot() {
 				scope: "canonical-semantic",
 				category: "button",
 				status: "active",
-				definedIn: ["packages/theme/src/theme-defaults.ts"],
+				schemeParticipation: "required",
+				definedIn: ["packages/theme/src/theme-definitions.ts"],
 				documentedIn: ["packages/theme/README.md"],
 				fallbackPolicy: "Canonical button background token.",
+			},
+			{
+				name: "--pie-tool-example-border",
+				owner: "@pie-players/pie-tool-example",
+				scope: "component-public",
+				category: "tool-boundary",
+				status: "active",
+				schemeParticipation: "required",
+				definedIn: ["packages/theme/src/theme-definitions.ts"],
+				documentedIn: ["packages/tool-example/README.md"],
+				fallbackPolicy: "Accessibility boundary included in every scheme.",
 			},
 			{
 				name: "--pie-tool-trigger-active-background",
@@ -82,6 +109,7 @@ function createFixtureRoot() {
 				scope: "component-public",
 				category: "tool-trigger",
 				status: "active",
+				schemeParticipation: "optional",
 				definedIn: ["packages/tool-example/tool-example.svelte"],
 				documentedIn: ["packages/tool-example/README.md"],
 				fallbackPolicy: "Component active trigger background token.",
@@ -92,6 +120,7 @@ function createFixtureRoot() {
 				scope: "legacy",
 				category: "button",
 				status: "active",
+				schemeParticipation: "excluded",
 				definedIn: ["packages/tool-example/tool-example.svelte"],
 				documentedIn: ["packages/tool-example/README.md"],
 				fallbackPolicy: "Legacy alias that falls back through --pie-button-bg.",
@@ -106,7 +135,7 @@ function createFixtureRoot() {
 	write(
 		root,
 		"packages/tool-example/README.md",
-		"--pie-tool-trigger-active-background and --pie-button-background-color are documented.\n",
+		"--pie-tool-example-border, --pie-tool-trigger-active-background, and --pie-button-background-color are documented.\n",
 	);
 	write(
 		root,
@@ -128,6 +157,23 @@ describe("check-theme-tokens", () => {
 
 		expect(checkThemeTokens(root).join("\n")).toContain(
 			'package.json scripts must include "check:theme-tokens"',
+		);
+	});
+
+	test("requires the root command to verify generated CSS bytes", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"package.json",
+			JSON.stringify({
+				scripts: {
+					"check:theme-tokens": "bun ./scripts/check-theme-tokens.mjs",
+				},
+			}),
+		);
+
+		expect(checkThemeTokens(root).join("\n")).toContain(
+			"pie-theme check:generated-css command",
 		);
 	});
 
@@ -159,7 +205,41 @@ describe("check-theme-tokens", () => {
 		);
 
 		expect(checkThemeTokens(root).join("\n")).toContain(
-			"tokens.css declarations do not match LIGHT_THEME_VARS",
+			"tokens.css declarations do not match Base Theme token set",
+		);
+	});
+
+	test("rejects generated scheme-participation drift", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/theme/src/scheme-participation.ts",
+			[
+				"export const PIE_THEME_SCHEME_PARTICIPATION = {",
+				'  "--pie-background": "optional",',
+				'  "--pie-button-bg": "required",',
+				'  "--pie-tool-example-border": "required",',
+				'  "--pie-tool-trigger-active-background": "optional",',
+				'  "--pie-button-background-color": "excluded",',
+				"} as const;",
+			].join("\n"),
+		);
+
+		expect(checkThemeTokens(root).join("\n")).toContain(
+			"--pie-background scheme participation is optional",
+		);
+	});
+
+	test("rejects non-required tokens in generated color-scheme CSS", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/theme/src/color-schemes.css",
+			'[data-color-scheme="black-on-white"] { --pie-background: #fff; --pie-button-bg: #fff; --pie-tool-example-border: #000; --pie-tool-trigger-active-background: #eee; }\n',
+		);
+
+		expect(checkThemeTokens(root).join("\n")).toContain(
+			"color-schemes.css declarations do not match required scheme tokens",
 		);
 	});
 

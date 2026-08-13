@@ -11,6 +11,7 @@
 import { describe, expect, test } from "bun:test";
 
 import type {
+	PieThemeSchemeParticipation,
 	PieThemeTokenScope,
 	PieThemeTokenStatus,
 } from "../src/token-registry-types";
@@ -27,7 +28,12 @@ const manifest = (await Bun.file(
 
 const registry = (await Bun.file(
 	new URL("../src/token-registry.json", import.meta.url),
-).json()) as Array<{ scope: string; status: string; category: string }>;
+).json()) as Array<{
+	scope: string;
+	status: string;
+	category: string;
+	schemeParticipation: string;
+}>;
 
 describe("the registry is reachable from outside the package", () => {
 	test("the exports map names it", () => {
@@ -40,7 +46,9 @@ describe("the registry is reachable from outside the package", () => {
 		// `tsc` emits only the TypeScript; a JSON file next to the sources is not
 		// part of that output, so the copy is what makes the export resolve rather
 		// than 404 for every consumer.
-		expect(manifest.scripts.build).toContain("cp src/token-registry.json dist/");
+		expect(manifest.scripts.build).toContain(
+			"cp src/token-registry.json dist/",
+		);
 	});
 
 	test("dist is published", () => {
@@ -57,9 +65,9 @@ describe("the published types describe the published data", () => {
 			"unsupported",
 			"legacy",
 		]);
-		const unknown = [
-			...new Set(registry.map((entry) => entry.scope)),
-		].filter((scope) => !allowed.has(scope as PieThemeTokenScope));
+		const unknown = [...new Set(registry.map((entry) => entry.scope))].filter(
+			(scope) => !allowed.has(scope as PieThemeTokenScope),
+		);
 		expect(unknown).toEqual([]);
 	});
 
@@ -70,10 +78,32 @@ describe("the published types describe the published data", () => {
 			"intentional-gap",
 			"planned",
 		]);
-		const unknown = [
-			...new Set(registry.map((entry) => entry.status)),
-		].filter((status) => !allowed.has(status as PieThemeTokenStatus));
+		const unknown = [...new Set(registry.map((entry) => entry.status))].filter(
+			(status) => !allowed.has(status as PieThemeTokenStatus),
+		);
 		expect(unknown).toEqual([]);
+	});
+
+	test("every scheme participation value is in the participation union", () => {
+		const allowed = new Set<PieThemeSchemeParticipation>([
+			"required",
+			"optional",
+			"excluded",
+		]);
+		const unknown = [
+			...new Set(registry.map((entry) => entry.schemeParticipation)),
+		].filter((value) => !allowed.has(value as PieThemeSchemeParticipation));
+
+		expect(unknown).toEqual([]);
+		expect(
+			Object.fromEntries(
+				[...allowed].map((value) => [
+					value,
+					registry.filter((entry) => entry.schemeParticipation === value)
+						.length,
+				]),
+			),
+		).toEqual({ required: 50, optional: 10, excluded: 24 });
 	});
 
 	test("category stays a plain string, and every entry has one", () => {

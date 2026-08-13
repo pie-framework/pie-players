@@ -49,14 +49,23 @@ given its own contrast-checked border token because, as the note in
 outline at ~1.1:1". Correcting the token means the next component does not need its
 own escape hatch.
 
-Both corrections go through `legibleColorAgainst`: the slot untouched when it
-already clears its minimum against `--color-base-100`, otherwise the largest 5%
-share of it that does, mixed toward `--color-base-content`. Mixing toward the
-theme's own text colour borrows the theme's guarantee — base-content is what that
-theme chose to be readable on that surface — so one code path lightens a mark in a
-dark theme and darkens it in a light one. Stepping down from the top keeps as much
-hue as the threshold allows: 36 of the 84 theme/slot feedback combinations need no
-correction and keep their exact colour.
+The selected button surface had the related inverse problem. DaisyUI chooses
+`--color-base-content` against `--color-base-100`, but PIE also paints it on
+`--pie-button-active-bg`. Under `valentine`, the direct `--color-base-300` mapping
+left selected picker text at 4.17:1. The active background now keeps 70% of that
+deeper tint and mixes toward `--color-base-100`, the nearest 5% step that clears
+4.5:1 across the shipped DaisyUI themes. The public PIE token and cascade stay the
+same; only the inaccessible provider-derived value is corrected.
+
+The feedback and boundary corrections go through `legibleColorAgainst`: they
+leave a slot untouched when it already clears its minimum against
+`--color-base-100`; otherwise they use the largest 5% share that passes, mixed
+toward `--color-base-content`. Mixing toward the theme's own text colour borrows
+the theme's guarantee — base-content is what that theme chose to be readable on
+that surface — so one code path lightens a mark in a dark theme and darkens it in
+a light one. Stepping down from the top keeps as much hue as the threshold allows:
+36 of the 84 theme/slot feedback combinations need no correction and keep their
+exact colour.
 
 `--pie-border-light` is deliberately left alone. It is the token the players use for
 card edges and pane dividers, which 1.4.11 exempts, and a 3:1 outline around every

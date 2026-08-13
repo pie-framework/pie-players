@@ -1,6 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
+const TOKENS_CSS = readFileSync(
+	new URL("../../theme/src/tokens.css", import.meta.url),
+	"utf8",
+);
+const COLOR_SCHEMES_CSS = readFileSync(
+	new URL("../../theme/src/color-schemes.css", import.meta.url),
+	"utf8",
+);
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
@@ -8,6 +17,105 @@ async function gotoDemo(page: Page) {
 }
 
 test.describe("section theme and color scheme integration", () => {
+	test("keeps stylesheet-only built-in and host schemes in the normal cascade", async ({
+		page,
+	}) => {
+		await page.setContent("<main>CSS adapter probe</main>");
+		const result = await page.evaluate(
+			({ tokensCss, schemesCss }) => {
+				const frame = document.createElement("iframe");
+				document.body.append(frame);
+				const frameDocument = frame.contentDocument;
+				if (!frameDocument) throw new Error("CSS probe iframe unavailable");
+				frameDocument.open();
+				frameDocument.write(
+					`<style>${tokensCss}\n${schemesCss}\n` +
+						'[data-color-scheme="host-css-only"] { --pie-primary: #123456; }</style>' +
+						'<pie-theme id="built-in" theme="light" data-color-scheme="white-on-black"></pie-theme>' +
+						'<pie-theme id="host-css-only" theme="light" data-color-scheme="host-css-only" style="--pie-tool-trigger-active-color: host-optional-value"></pie-theme>',
+				);
+				frameDocument.close();
+				const builtIn = frameDocument.querySelector("#built-in");
+				const hostCssOnly = frameDocument.querySelector("#host-css-only");
+				if (!builtIn || !hostCssOnly) {
+					throw new Error("CSS probe elements unavailable");
+				}
+				const builtInStyle = frame.contentWindow?.getComputedStyle(builtIn);
+				const hostStyle = frame.contentWindow?.getComputedStyle(hostCssOnly);
+				return {
+					builtIn: {
+						background: builtInStyle
+							?.getPropertyValue("--pie-background")
+							.trim(),
+						primary: builtInStyle?.getPropertyValue("--pie-primary").trim(),
+					},
+					hostCssOnly: {
+						primary: hostStyle?.getPropertyValue("--pie-primary").trim(),
+						optional: hostStyle
+							?.getPropertyValue("--pie-tool-trigger-active-color")
+							.trim(),
+					},
+				};
+			},
+			{ tokensCss: TOKENS_CSS, schemesCss: COLOR_SCHEMES_CSS },
+		);
+
+		expect(result).toEqual({
+			builtIn: {
+				background: "#000000",
+				primary: "#ffff00",
+			},
+			hostCssOnly: {
+				primary: "#123456",
+				optional: "host-optional-value",
+			},
+		});
+	});
+
+	test("requires important for CSS-only rules competing with mounted runtime tokens", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+
+		const result = await page.evaluate(() => {
+			const style = document.createElement("style");
+			style.textContent = `
+				[data-color-scheme="host-css-normal"] {
+					--pie-primary: #123456;
+				}
+				[data-color-scheme="host-css-important"] {
+					--pie-primary: #654321 !important;
+				}
+			`;
+			document.head.append(style);
+
+			const themeHost = document.querySelector('pie-theme[scope="document"]');
+			if (!themeHost) throw new Error("Document theme host unavailable");
+
+			themeHost.setAttribute("theme", "light");
+			themeHost.setAttribute("provider", "none");
+			themeHost.setAttribute("scheme", "host-css-normal");
+			const normal = getComputedStyle(document.documentElement)
+				.getPropertyValue("--pie-primary")
+				.trim();
+			const normalRequest =
+				document.documentElement.getAttribute("data-color-scheme");
+
+			themeHost.setAttribute("scheme", "host-css-important");
+			const important = getComputedStyle(document.documentElement)
+				.getPropertyValue("--pie-primary")
+				.trim();
+
+			return { normal, normalRequest, important };
+		});
+
+		expect(result).toEqual({
+			normal: "#3f51b5",
+			normalRequest: "host-css-normal",
+			important: "#654321",
+		});
+	});
+
 	test("propagates themed css variables to light and shadow dom", async ({
 		page,
 	}) => {
@@ -183,5 +291,361 @@ test.describe("section theme and color scheme integration", () => {
 			expect(applied.bg, `${scheme.id} background`).toBe(scheme.bg);
 			expect(applied.text, `${scheme.id} text`).toBe(scheme.text);
 		}
+	});
+
+	test("keeps every built-in picker state at its named contrast threshold", async ({
+		page,
+	}) => {
+		const schemeIds = [
+			"black-on-white",
+			"white-on-black",
+			"rose-on-green",
+			"yellow-on-blue",
+			"black-on-rose",
+			"light-gray-on-dark-gray",
+			"grey-on-light-grey",
+			"purple-on-light-green",
+			"black-on-violet",
+			"yellow-on-navy",
+		];
+
+		await gotoDemo(page);
+		await page
+			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.first()
+			.click();
+		const themeTool = page.locator("pie-tool-theme").first();
+		await themeTool.getByRole("button", { name: "Select theme" }).click();
+		const options = themeTool.locator(".pie-tool-color-scheme__option");
+		const activeOption = themeTool.locator(
+			".pie-tool-color-scheme__option--active",
+		);
+		const hoverOption = options.nth(1);
+		const contrastProbe = await page.evaluateHandle(() => {
+			const canvas = document.createElement("canvas");
+			canvas.width = 1;
+			canvas.height = 1;
+			const context = canvas.getContext("2d", { willReadFrequently: true });
+			if (!context) throw new Error("Canvas color parser unavailable");
+			return {
+				ratio(foreground: string, background: string) {
+					const parse = (value: string) => {
+						context.clearRect(0, 0, 1, 1);
+						context.fillStyle = "rgba(1, 2, 3, 0.5)";
+						context.fillStyle = value;
+						context.fillRect(0, 0, 1, 1);
+						return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+					};
+					const luminance = (value: string) => {
+						const channels = parse(value).map((channel) => {
+							const normalized = channel / 255;
+							return normalized <= 0.04045
+								? normalized / 12.92
+								: ((normalized + 0.055) / 1.055) ** 2.4;
+						});
+						return (
+							0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+						);
+					};
+					const a = luminance(foreground);
+					const b = luminance(background);
+					return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+				},
+			};
+		});
+
+		for (const schemeId of schemeIds) {
+			await page.evaluate(async (id) => {
+				const host =
+					document.querySelector('pie-theme[scope="document"]') ||
+					document.querySelector("pie-theme");
+				host?.setAttribute("scheme", id);
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(resolve)),
+				);
+			}, schemeId);
+			await page.waitForTimeout(200);
+
+			await hoverOption.hover();
+			await page.waitForTimeout(200);
+			await page.keyboard.press("Tab");
+			await activeOption.focus();
+			const states = await themeTool.evaluate((element) => {
+				const root = element.shadowRoot;
+				if (!root) throw new Error("Theme tool has no shadow root");
+				const find = <T extends Element>(selector: string) => {
+					const match = root.querySelector<T>(selector);
+					if (!match) throw new Error(`Missing ${selector}`);
+					return match;
+				};
+				const allOptions = root.querySelectorAll<HTMLElement>(
+					".pie-tool-color-scheme__option",
+				);
+				const active = find<HTMLElement>(
+					".pie-tool-color-scheme__option--active",
+				);
+				const activeStyle = getComputedStyle(active);
+				const hoverStyle = getComputedStyle(allOptions[1]);
+				const normalStyle = getComputedStyle(allOptions[2]);
+				const dropdownStyle = getComputedStyle(
+					find<HTMLElement>(".pie-tool-color-scheme__dropdown"),
+				);
+				return {
+					active: {
+						color: activeStyle.color,
+						background: activeStyle.backgroundColor,
+						outline: activeStyle.outlineColor,
+						outlineStyle: activeStyle.outlineStyle,
+						name: getComputedStyle(
+							find<HTMLElement>(
+								".pie-tool-color-scheme__option--active .pie-tool-color-scheme__name",
+							),
+						).color,
+						description: getComputedStyle(
+							find<HTMLElement>(
+								".pie-tool-color-scheme__option--active .pie-tool-color-scheme__description",
+							),
+						).color,
+						check: getComputedStyle(
+							find<HTMLElement>(".pie-tool-color-scheme__check"),
+						).color,
+					},
+					hover: {
+						color: hoverStyle.color,
+						background: hoverStyle.backgroundColor,
+					},
+					normal: {
+						color: normalStyle.color,
+						background: dropdownStyle.backgroundColor,
+					},
+				};
+			});
+
+			const ratios = await contrastProbe.evaluate(
+				(probe, values) => ({
+					active: probe.ratio(values.active.color, values.active.background),
+					hover: probe.ratio(values.hover.color, values.hover.background),
+					normal: probe.ratio(values.normal.color, values.normal.background),
+					focus: probe.ratio(values.active.outline, values.active.background),
+				}),
+				states,
+			);
+			expect(
+				ratios.active,
+				`${schemeId} selected text (${states.active.color} on ${states.active.background})`,
+			).toBeGreaterThanOrEqual(4.5);
+			expect(states.active.name).toBe(states.active.color);
+			expect(states.active.description).toBe(states.active.color);
+			expect(states.active.check).toBe(states.active.color);
+			expect(ratios.hover, `${schemeId} hover text`).toBeGreaterThanOrEqual(
+				4.5,
+			);
+			expect(
+				ratios.normal,
+				`${schemeId} ordinary option text`,
+			).toBeGreaterThanOrEqual(4.5);
+			expect(states.active.outlineStyle).not.toBe("none");
+			expect(
+				ratios.focus,
+				`${schemeId} selected focus indicator (${states.active.outline} on ${states.active.background})`,
+			).toBeGreaterThanOrEqual(3);
+		}
+	});
+
+	test("keeps selected picker text legible through the DaisyUI provider", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await page.evaluate(async () => {
+			document.documentElement.setAttribute("data-theme", "valentine");
+			const host =
+				document.querySelector('pie-theme[scope="document"]') ||
+				document.querySelector("pie-theme");
+			host?.setAttribute("theme", "valentine");
+			host?.setAttribute("scheme", "default");
+			await new Promise((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(resolve)),
+			);
+		});
+		await page
+			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.first()
+			.click();
+
+		const themeTool = page.locator("pie-tool-theme").first();
+		await themeTool.getByRole("button", { name: "Select theme" }).click();
+		const activeOption = themeTool.locator(
+			".pie-tool-color-scheme__option--active",
+		);
+		const result = await activeOption.evaluate((element) => {
+			const computed = getComputedStyle(element);
+			const rootStyle = getComputedStyle(document.documentElement);
+			const canvas = document.createElement("canvas");
+			canvas.width = 1;
+			canvas.height = 1;
+			const context = canvas.getContext("2d", { willReadFrequently: true });
+			if (!context) throw new Error("Canvas color parser unavailable");
+			const luminance = (value: string) => {
+				context.clearRect(0, 0, 1, 1);
+				context.fillStyle = value;
+				context.fillRect(0, 0, 1, 1);
+				const channels = [
+					...context.getImageData(0, 0, 1, 1).data.slice(0, 3),
+				].map((channel) => {
+					const normalized = channel / 255;
+					return normalized <= 0.04045
+						? normalized / 12.92
+						: ((normalized + 0.055) / 1.055) ** 2.4;
+				});
+				return (
+					0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+				);
+			};
+			const foreground = luminance(computed.color);
+			const background = luminance(computed.backgroundColor);
+			return {
+				color: computed.color,
+				background: computed.backgroundColor,
+				pieButtonColor: rootStyle.getPropertyValue("--pie-button-color").trim(),
+				daisyBaseContent: rootStyle
+					.getPropertyValue("--color-base-content")
+					.trim(),
+				ratio:
+					(Math.max(foreground, background) + 0.05) /
+					(Math.min(foreground, background) + 0.05),
+			};
+		});
+
+		expect(result.pieButtonColor).toBe(result.daisyBaseContent);
+		expect(
+			result.ratio,
+			`DaisyUI valentine selected text (${result.color} on ${result.background})`,
+		).toBeGreaterThanOrEqual(4.5);
+	});
+
+	test("supports menu keyboard navigation and returns focus on Escape", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await page
+			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.first()
+			.click();
+
+		const themeTool = page.locator("pie-tool-theme").first();
+		const trigger = themeTool.getByRole("button", { name: "Select theme" });
+		await trigger.click();
+
+		await page.keyboard.press("ArrowDown");
+		const defaultOption = themeTool.getByRole("menuitem", {
+			name: "Default",
+			exact: true,
+		});
+		await expect(defaultOption).toBeFocused();
+
+		await page.keyboard.press("ArrowDown");
+		await expect(
+			themeTool.getByRole("menuitem", {
+				name: "Black on White",
+				exact: true,
+			}),
+		).toBeFocused();
+
+		await page.keyboard.press("Escape");
+		await expect(themeTool.getByRole("menu")).toHaveCount(0);
+		await expect(trigger).toBeFocused();
+	});
+
+	test("keeps a persisted unavailable scheme visible without making it selectable", async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			window.localStorage.setItem("pie-color-scheme", "district-retired");
+		});
+		await gotoDemo(page);
+		await page
+			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.first()
+			.click();
+
+		const themeTool = page.locator("pie-tool-theme").first();
+		await expect(themeTool.getByRole("status")).toContainText(
+			"selected theme is unavailable",
+		);
+
+		const trigger = themeTool.getByRole("button", {
+			name: /Unavailable theme: district-retired/,
+		});
+		await trigger.click();
+		const unavailableOption = themeTool.getByRole("menuitem", {
+			name: "Unavailable theme: district-retired, unavailable",
+			exact: true,
+		});
+		await expect(unavailableOption).toBeVisible();
+		await expect(unavailableOption).toBeDisabled();
+		await expect(page.locator('pie-theme[scope="document"]')).toHaveAttribute(
+			"scheme",
+			"district-retired",
+		);
+	});
+
+	test("leaves forced-color rendering to the browser and keeps keyboard focus visible", async ({
+		page,
+	}) => {
+		await page.emulateMedia({ forcedColors: "active" });
+		await page.addInitScript(() => {
+			window.localStorage.setItem("pie-color-scheme", "forced-unavailable");
+		});
+		await gotoDemo(page);
+		await page
+			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.first()
+			.click();
+
+		const themeTool = page.locator("pie-tool-theme").first();
+		await expect(themeTool).toBeVisible();
+		await expect(themeTool.getByRole("status")).toContainText("unavailable");
+		const trigger = themeTool.getByRole("button", { name: /Select theme/ });
+
+		// Establish keyboard modality before moving focus directly to the control.
+		await page.keyboard.press("Tab");
+		await trigger.focus();
+		await expect
+			.poll(() =>
+				trigger.evaluate((element) => element.matches(":focus-visible")),
+			)
+			.toBe(true);
+
+		const styles = await trigger.evaluate((element) => {
+			const computed = getComputedStyle(element);
+			return {
+				forcedColorAdjust: computed.forcedColorAdjust,
+				outlineStyle: computed.outlineStyle,
+				outlineWidth: Number.parseFloat(computed.outlineWidth),
+			};
+		});
+
+		expect(styles.forcedColorAdjust).toBe("auto");
+		expect(styles.outlineStyle).not.toBe("none");
+		expect(styles.outlineWidth).toBeGreaterThanOrEqual(2);
+
+		await trigger.click();
+		await page.keyboard.press("ArrowDown");
+		const option = themeTool.getByRole("menuitem", {
+			name: "Default",
+			exact: true,
+		});
+		await expect(option).toBeFocused();
+		const optionStyles = await option.evaluate((element) => {
+			const computed = getComputedStyle(element);
+			return {
+				forcedColorAdjust: computed.forcedColorAdjust,
+				outlineStyle: computed.outlineStyle,
+				outlineWidth: Number.parseFloat(computed.outlineWidth),
+			};
+		});
+		expect(optionStyles.forcedColorAdjust).toBe("auto");
+		expect(optionStyles.outlineStyle).not.toBe("none");
+		expect(optionStyles.outlineWidth).toBeGreaterThanOrEqual(2);
 	});
 });

@@ -4,6 +4,7 @@ export { PieThemeElement, definePieTheme };
 export {
 	DAISYUI_THEME_PROVIDER_ADAPTER,
 	getPieThemeProvider,
+	PIE_THEME_PROVIDER_NONE,
 	listPieThemeProviders,
 	registerPieThemeProvider,
 	resolveProviderVariables,
@@ -19,6 +20,12 @@ export {
 	type ThemeVariables,
 } from "./theme-types.js";
 export { DARK_THEME_VARS, LIGHT_THEME_VARS } from "./theme-defaults.js";
+export type {
+	PieThemeTokenRegistry,
+	PieThemeTokenRegistryEntry,
+	PieThemeTokenScope,
+	PieThemeTokenStatus,
+} from "./token-registry-types.js";
 export {
 	BUILTIN_PIE_COLOR_SCHEMES,
 	getPieColorScheme,

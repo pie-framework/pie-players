@@ -28,7 +28,7 @@ import "@pie-players/pie-theme/font-sizes.css";
 
 - `theme`: `light | dark | auto`
 - `scope`: `self | document`
-- `provider`: provider id or `auto` (default)
+- `provider`: provider id, `auto` (default), or `none`
 - `scheme`: color scheme id (`default` by default)
 - `variables`: JSON object of CSS variable overrides
 
@@ -83,6 +83,13 @@ Then activate with `scheme="district-high-contrast"` on `pie-theme`.
 
 - If DaisyUI tokens are present on the target scope, `pie-theme` uses the built-in `daisyui` provider adapter.
 - Override precedence is: base PIE -> provider output -> scheme -> `variables`.
+- `provider="none"` (`PIE_THEME_PROVIDER_NONE`) resolves no provider at all, leaving this package's shipped defaults. It is how a host reproduces the palette it had before adopting a provider, which is the first thing to check when colours differ between two environments.
+
+## Token registry
+
+`@pie-players/pie-theme/token-registry.json` lists every `--pie-*` token with its owner, scope, category, status and fallback policy. `PieThemeTokenRegistryEntry` types it.
+
+It is published so a host can show a person what a token is for and who owns it. Read the registry rather than deriving grouping from token names or keeping a local copy: both drift as soon as a token is added here, and `check:theme-tokens` holds the registry against source on every commit.
 
 ## Light DOM and Shadow DOM
 

@@ -19,35 +19,78 @@ Last verified against consumer checkouts and this repo's `develop` line:
 
 ## Consumer profiles
 
-| Label | Stack | Packages consumed | Depth | Breakage cost |
-| --- | --- | --- | --- | --- |
-| **Host V** | Vue 3 + Vite | `pie-item-player`, `pie-theme` | One item at a time, read-only instructor rendering, behind a host feature flag; migrating off `@pie-framework/pie-player-components` | High — external client-facing |
-| **Host A** | Angular + webpack | `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`, `pie-theme-daisyui`, `pie-calculator-desmos`, `pie-tool-calculator-desmos`, `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two section-player debugger tools | Full fixed-form delivery: layout CE, toolkit coordinator, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
-| **Host S** | Stencil component suite | none | Wraps the legacy `@pie-framework/pie-player-components`; shares only the authored-content shape and the `@pie-element/*` version list | Low — internally controlled, and no `@pie-players` dependency to break |
+| Label | Stack | Depth | Breakage cost |
+| --- | --- | --- | --- |
+| **Host V** | Vue 3 + Vite | One item at a time, read-only instructor rendering, behind a host feature flag; migrating off `@pie-framework/pie-player-components` | High — external client-facing |
+| **Host A** | Angular + webpack | Full fixed-form delivery: one layout CE, the toolkit coordinator via `toolkit-ready`, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
+| **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it constructs `ToolkitCoordinator` itself, drives the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
+
+Packages consumed:
+
+- **Host V** — `pie-item-player`, `pie-theme`.
+- **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
+  `pie-theme-daisyui`, `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
+  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
+  section-player debugger tools.
+- **Host R** — all of the above plus `pie-players-shared`,
+  `pie-default-tool-loaders`, every `pie-tool-*` in the suite, all five
+  `section-player-tools-*` debuggers, `tts-server-core`, `tts-server-google`,
+  `tts-server-sc`. It loads `pie-item-player` from a CDN by version rather
+  than as a dependency.
 
 Host V pins an exact patch (`0.3.53` at last read), so it upgrades
-deliberately. Host A uses a caret range on the `0.3.x` line, so **every
-published patch reaches it on its next install** — a lockstep patch that changes
-behavior lands there without a code change on their side.
+deliberately. Host A and Host R both use caret ranges on the `0.3.x` line
+(`^0.3.59` and `^0.3.65`), so **every published patch reaches them on their
+next install** — a lockstep patch that changes behavior lands in live delivery
+without a code change on their side.
 
-Host S matters only as a migration target. Nothing in this pad constrains
-changes to `@pie-players` on its account.
+Host R is not client-facing and is ours to fix, so its rows are not a reason to
+avoid a change. They are a reason to expect the change to show up there first,
+and to fix it there in the same push.
+
+## Mainline is currently behind what is published
+
+`@pie-players/pie-theme@0.3.65` on npm exports `./token-registry.json` and the
+`PieThemeTokenRegistry`, `PieThemeTokenRegistryEntry`, `PieThemeTokenScope`, and
+`PieThemeTokenStatus` types. None of those five exist on `develop`, `master`, or
+any published tag's ancestry — they were added in a commit that lives only on an
+unmerged feature branch, and 0.3.65 was published from that branch. Host R
+depends on all five for its theme inspector.
+
+The next release cut from `develop` therefore *removes* them from the published
+package. Merge that branch before the next release, or Host R breaks on upgrade
+with no change on its side.
 
 ## Package entrypoints in use
 
-| Specifier | Consumer | Note |
+| Specifier | Consumers | Note |
 | --- | --- | --- |
-| `@pie-players/pie-item-player` | V | Dynamic `import()`, registration by side effect |
-| `@pie-players/pie-theme` | A | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope |
+| `@pie-players/pie-item-player` | V | Dynamic `import()`, registration by side effect. R loads the same file from a CDN by version instead |
+| `@pie-players/pie-theme` | A, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
-| `@pie-players/pie-section-player/components/section-player-splitpane-element` | A | Static import, eager-bundled |
+| `@pie-players/pie-theme/tokens.css` | R | |
+| `@pie-players/pie-theme/token-registry.json` | R | See the divergence note above |
+| `@pie-players/pie-theme-daisyui/bridge.css` | R | |
+| `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
+| `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
+| `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
+| `@pie-players/pie-default-tool-loaders` | R | |
+| `@pie-players/pie-players-shared` | R | Instrumentation providers |
+| `@pie-players/pie-players-shared/types` | R | `AssessmentSection`, `AssessmentEntity`, `RubricBlock`, `PersonalNeedsProfile` |
+| `@pie-players/pie-tool-*` (13 packages) | R | Bare side-effect imports; each self-registers at import time |
+| `@pie-players/pie-section-player-tools-*` (5 packages) | A (2), R (5) | Bare side-effect imports |
+| `@pie-players/tts-server-core` / `-google` / `-sc` | R | Node side, in SvelteKit server routes |
 
 The self-registration asymmetry between `pie-theme` and
 `pie-theme/theme-element` is load-bearing in both directions: V depends on
-`theme-element` staying side-effect-free, A depends on the index entry keeping
-its module-scope `definePieTheme()` call. Moving the call, or adding one to
-`theme-element`, breaks one of them.
+`theme-element` staying side-effect-free, A and R depend on the index entry
+keeping its module-scope `definePieTheme()` call. Moving the call, or adding one
+to `theme-element`, breaks one of them.
+
+Tool packages are consumed as bare side-effect imports on the strength of
+registering themselves. A tool that starts requiring an explicit registration
+call disappears silently from Host R rather than failing to build.
 
 ## Custom-element surface
 
@@ -69,34 +112,44 @@ reconstruct `env` down to its declared keys.
 `role: "student"` to suppress rationale, because the item player has no
 `preview` mode.
 
-### `pie-section-player-splitpane` (Host A)
+### `pie-section-player-splitpane` and `-vertical` (Hosts A, R)
 
-Object properties: `runtime`, `section`, `hooks`.
+Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
 
-Attributes: `section-id`, `attempt-id`, `show-toolbar="false"`, `debug="false"`,
-`narrow-layout-breakpoint`, `split-pane-initial-passage-width`,
-`nds-icons="true"`.
+Attributes and props across both hosts: `assessment-id`, `section-id`,
+`attempt-id`, `show-toolbar`, `toolbar-position`, `debug`,
+`narrow-layout-breakpoint`, `split-pane-initial-passage-width`, `nds-icons`,
+`iife-bundle-host`.
 
-Method called off a `document.querySelector` handle:
-`waitForSectionController(timeoutMs)`.
+Method: `waitForSectionController(timeoutMs)` (A, off a
+`document.querySelector` handle) and the zero-argument `getSectionController()`
+(R, off the event's `currentTarget`). Both overloads are live.
 
-Event consumed: `toolkit-ready`, read as `event.detail.coordinator`.
+Event: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
+`addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form.
 
-`show-toolbar` and `debug` are declared `type: "String"` and passed the literal
-string `"false"`. Retyping either to `Boolean` inverts the host's intent, since
-attribute presence would then read as `true`. Same trap for any other
-`type: "String"` attribute a host sets to `"false"`.
+`show-toolbar` is declared `type: "String"`, and the two hosts pass it
+differently: A sets the attribute to the literal string `"false"`, R sets the
+property to boolean `true`. Both must keep working. Retyping it to `Boolean`
+inverts A's intent, since attribute presence would then read as `true`. Same
+trap for `debug` and any other `type: "String"` attribute a host sets to
+`"false"`.
 
-### `pie-theme` (both)
+The vertical layout is exercised only by Host R, which is exactly why a
+splitpane-only change that skips it stays invisible until someone opens the
+reference app.
+
+### `pie-theme` (all three)
 
 Attributes used: `theme`, `scope`. V uses `theme="light" scope="self"`; A uses
 `theme="light" scope="document"`. `observedAttributes` also carries `provider`,
-`scheme`, and `variables`; neither host sets them today, and V's local typings
+`scheme`, and `variables`; R drives `provider` and `scheme` programmatically
+through the theme module API rather than as markup, and V's local typings
 declare all five.
 
-Neither host uses `theme="auto"`. Both deliberately force light so an
+Neither V nor A uses `theme="auto"`. Both deliberately force light so an
 OS-dark-mode user does not get dark-rendered content inside a light-only host
-UI.
+UI. R is the only consumer that exercises scheme switching at all.
 
 ### Internal layout CEs as style selectors (Host A)
 
@@ -111,25 +164,80 @@ targeting these tag names:
 These tags are structural API to this host even though they are not entrypoints
 in the section-player `exports` map. Renaming them, or moving a card out from
 under the splitpane element, changes rendering there silently — no build error,
-no runtime error.
+no runtime error. Host R styles the two layout hosts through `:global()` and is
+similarly exposed.
+
+## Programmatic API (Host R only)
+
+The deepest coupling in the set, and the one no client-facing host has. From
+`@pie-players/pie-assessment-toolkit`:
+
+- `new ToolkitCoordinator(config)` — constructed by the host, not obtained from
+  `toolkit-ready`. Config keys used: `assessmentId`, `toolRegistry`,
+  `toolConfigStrictness`, `tools`, `hooks`, `toolContextResolvers`. The host
+  pins its call site with `satisfies ConstructorParameters<…>[0]`, so a
+  constructor-signature change is a type error there rather than a silent
+  misconfiguration.
+- `coordinator.setHooks({ onFrameworkError })`
+- `coordinator.updateAssessment(entity)`
+- `coordinator.onPolicyChange(cb)`
+- `coordinator.decideFeaturePolicy(...)`
+- `coordinator.getSectionController({ sectionId, attemptId })` → `persist()`
+- `coordinator.subscribeSectionLifecycleEvents({ … })`
+- `createToolsConfig({ source, strictness, toolRegistry, tools })` →
+  `{ config, diagnostics }`
+- Diagnostic shape `{ code, severity, path, message }`, with the host branching
+  on `severity === 'error'` and constructing a diagnostic of its own with the
+  code string `tools.invalidProviderValidation`. Diagnostic **codes are API**
+  here.
+- Types: `CanonicalToolsConfig`, `ToolRegistry`, `ToolConfigDiagnostic`,
+  `ToolConfigStrictness`, `ToolkitCoordinatorApi`,
+  `ToolkitCoordinatorConfig`, `ToolkitCoordinatorHooks`,
+  `ToolContextResolver`, `ToolContextResolverMap`.
+
+From `@pie-players/pie-default-tool-loaders`:
+
+- `createPackagedToolRegistry()` and `createPackagedToolRegistry(options)`
+- `registry.get(toolId)` → registration, then `registry.override({ …registration,
+  supportedLevels: [...] })`. The host promotes `protractor`, `lineReader`, and
+  `ruler` to the `section` level this way, so `supportedLevels` and the
+  `override` semantics are load-bearing, not decorative.
+- `DEFAULT_TOOL_MODULE_LOADERS`
+- `createUniversalPersonalNeedsProfile()`
+- `signLanguageRegistration` from `pie-tool-sign-language`, registered
+  explicitly because signing is deliberately outside the packaged set.
+
+From `@pie-players/pie-players-shared`: `CompositeInstrumentationProvider`,
+`NewRelicInstrumentationProvider`, `DebugPanelInstrumentationProvider`, all
+constructed with `new` and driven through `initialize()`.
+
+From `@pie-players/pie-theme`: `listPieColorSchemes()`,
+`listPieThemeProviders()`, `resolveProviderVariables()`, and the token-registry
+JSON plus its four types.
+
+Node-side, in server routes: `new GoogleCloudTTSProvider()` with
+`GoogleCloudTTSConfig`, `new SchoolCityServerProvider()`, `PollyServerProvider`,
+and `TTSError` / `TTSErrorCode` — the host maps the `INVALID_REQUEST`,
+`TEXT_TOO_LONG`, `AUTHENTICATION_ERROR`, and `RATE_LIMIT_EXCEEDED` members onto
+HTTP status codes, so those **enum member names are API**.
 
 ## Events and coordinator callbacks
 
-| Name | Route | Consumer | Use |
+| Name | Route | Consumers | Use |
 | --- | --- | --- | --- |
-| `toolkit-ready` | DOM event on the layout CE | A | Captures `detail.coordinator`, then subscribes and hydrates |
+| `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator` |
 | `item-session-data-changed` | `subscribeItemEvents` | A | Response capture → store dispatch → autosave |
 | `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
-| `section-loading-complete` | `subscribeSectionLifecycleEvents` | A | Subscribed, no handler body |
+| `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with an empty handler; R uses it |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A | Subscribed, no handler body |
 | `section-error` | `subscribeSectionLifecycleEvents` | A | Fatal: exits the delivery session |
 | `item-session-changed` | DOM, bubbling and composed | A | `document`-level listener → snapshot + persist |
 
-The `content-loaded` payload fields the host reads are `itemId` and
-`contentKind`. It counts distinct `itemId`s against the section's expected item
-list and treats equality as "section loaded". Emitting `content-loaded` more
-than once per item, or for an item outside the section, would leave the count
-short or overshoot; either way the host's watchdog fires and ends the session.
+The `content-loaded` payload fields Host A reads are `itemId` and `contentKind`.
+It counts distinct `itemId`s against the section's expected item list and treats
+equality as "section loaded". Emitting `content-loaded` more than once per item,
+or for an item outside the section, would leave the count short or overshoot;
+either way the host's watchdog fires and ends the session.
 
 `item-session-changed` reaches `document` because it is dispatched through
 `dispatchCrossBoundaryEvent` in
@@ -145,36 +253,37 @@ capture rather than degrading it.
 
 ## Controller and coordinator methods
 
-Reached via `coordinator.getSectionController({ sectionId, attemptId })` or
-`waitForSectionController(5000)`, all on Host A:
+Reached via `coordinator.getSectionController({ sectionId, attemptId })`,
+`waitForSectionController(5000)`, or the CE's zero-arg
+`getSectionController()`:
 
-- `persist()` — on section switch and on every session change
-- `hydrate()` — after `toolkit-ready`, with a retry loop while the method is
-  absent
-- `getSession()` — snapshot before switching sections
-- `applySession(session, { mode: "replace" })` — resume, with a hand-built
-  `{ currentItemIndex, visitedItemIdentifiers, itemSessions }` payload
+- `persist()` — A on section switch and on every session change; R after
+  demo interactions
+- `hydrate()` — A only, after `toolkit-ready`, with a retry loop while the
+  method is absent
+- `getSession()` — A only, snapshot before switching sections
+- `applySession(session, { mode: "replace" })` — A only, resume, with a
+  hand-built `{ currentItemIndex, visitedItemIdentifiers, itemSessions }`
+  payload
 
-Also consumed off the coordinator:
+Also consumed off the coordinator by Host A:
+`subscribeItemEvents({ eventTypes, listener })` and
+`subscribeSectionLifecycleEvents({ eventTypes, listener })`, both returning an
+unsubscribe function; `ttsService.stop()`; and
+`toolCoordinator.getVisibleTools()` / `toolCoordinator.hideTool(id)`.
 
-- `subscribeItemEvents({ eventTypes, listener })` → unsubscribe function
-- `subscribeSectionLifecycleEvents({ eventTypes, listener })` → unsubscribe
-  function
-- `ttsService.stop()`
-- `toolCoordinator.getVisibleTools()` and `toolCoordinator.hideTool(id)`
-
-The host filters `getVisibleTools()` by `id.startsWith("calculator:")` to hide
+Host A filters `getVisibleTools()` by `id.startsWith("calculator:")` to hide
 open calculators on navigation. Tool-id prefixes are therefore observable API.
 
 `applySession` keys `itemSessions` by the bare `item.id`, not by the QTI
-identifier or the versioned item id. The host maintains an explicit translation
+identifier or the versioned item id. Host A maintains an explicit translation
 between the three id forms because the session map and the emitted session
 events use the bare form. Changing which id form appears in either place breaks
 resume and response routing at once.
 
-Both hosts guard every controller method with optional-call syntax, so a method
-that disappears degrades to a silent no-op — persist and hydrate stop happening
-with no error surfaced. Removing one of these will not fail loudly downstream.
+Every host guards these methods with optional-call syntax, so a method that
+disappears degrades to a silent no-op — persist and hydrate stop happening with
+no error surfaced. Removing one will not fail loudly downstream.
 
 ## Runtime configuration keys
 
@@ -199,14 +308,24 @@ combination in particular (`transportMode: "custom"` +
 deliberately unvalidated path; treat it as a supported configuration, not as a
 loophole to tighten.
 
+Host R builds `runtime` as `{ assessmentId, toolConfigStrictness: 'off', tools:
+<CanonicalToolsConfig> }` plus per-demo overrides, and passes `toolRegistry` as
+a separate property. It is the only host that feeds the player a
+`createToolsConfig` output rather than a hand-written literal, so it is the only
+one that would notice `CanonicalToolsConfig` and the CE's expected `tools` shape
+drifting apart.
+
 ## Hooks
 
-Host A passes `hooks.cardTitleFormatter`, a function reading
-`context.kind` (`"item"` / `"passage"`), `context.itemIndex`,
-`context.defaultTitle`, and `context.passage?.name`. It renumbers questions
-across sections, so the formatter is the only thing producing correct question
-numbers in that delivery. Changing the context shape, or calling the formatter
-for a new `kind` without a `defaultTitle`, produces wrong or blank card titles.
+Host A passes `hooks.cardTitleFormatter`, a function reading `context.kind`
+(`"item"` / `"passage"`), `context.itemIndex`, `context.defaultTitle`, and
+`context.passage?.name`. It renumbers questions across sections, so the
+formatter is the only thing producing correct question numbers in that delivery.
+Changing the context shape, or calling the formatter for a new `kind` without a
+`defaultTitle`, produces wrong or blank card titles.
+
+Host R sets `onFrameworkError` through `coordinator.setHooks` instead of on the
+element.
 
 ## Theme tokens set by hosts
 
@@ -225,10 +344,17 @@ on the host side: `--pie-tts-word-color` and `--pie-tts-word-hightlight` (a
 typo the host keeps "for compatibility"). Renaming or dropping any of the live
 ones changes that delivery's appearance with no build signal.
 
-The host also relies on being able to *win* against player styles at equal
+Host A also relies on being able to *win* against player styles at equal
 specificity from outside, including with `!important`. Moving any of these
 tokens behind a cascade layer, or resolving them at build time, removes that
 lever.
+
+Host R takes the opposite approach: it reads the token registry and inspects
+computed values at runtime, so it depends on token *names and metadata* staying
+addressable rather than on any particular value. It imports `tokens.css` and the
+DaisyUI `bridge.css` but **not** `color-schemes.css`, carrying its own
+`data-color-scheme` rules instead — so new upstream scheme mappings do not reach
+it until someone syncs them by hand.
 
 ## Direct `dist` path references
 
@@ -246,9 +372,13 @@ bare names, so the `exports` map alone is not enough to protect this host —
 **the `dist` filenames themselves are API here**. Renaming, splitting, or
 merging any of those four files breaks that build.
 
+Host R additionally hard-codes the CDN path
+`@pie-players/pie-item-player@<version>/dist/pie-item-player.js`, so that
+filename is API too.
+
 ## Content stylesheet delivery
 
-The most fragile shared surface, because it changed underneath both hosts.
+The most fragile shared surface, because it changed underneath the hosts.
 
 `packages/item-player/src/pie-item-player.ts` inlines
 `@pie-players/pie-theme/components.css?raw` and installs it into
@@ -273,16 +403,23 @@ Consequences per host:
   config and resolves a caret range that includes 0.3.61+, so it is in the
   duplicate state now: the player installs a copy and the host's copy loads
   later, winning ties at equal specificity.
+- **Host R** imports no copy of its own, so it is the one host in the healthy
+  configuration and the one that will not surface a regression here.
 
-Any further change to how content styles are delivered has to account for both
-positions.
+Any further change to how content styles are delivered has to account for all
+three positions.
 
 ## Change-risk quick reference
 
-Highest risk, no downstream build signal:
+Grouped by who breaks, not by how hard the change is. Host R is ours and
+refactoring it is expected, so a surface only it touches is not a constraint —
+change it and fix Host R in the same push.
 
-- Renaming internal layout CE tags (`pie-section-player-item-card`,
-  `pie-section-player-passage-card`, `pie-section-player-splitpane`)
+**Silent breakage in a client-facing host (V or A). Coordinate before shipping.**
+
+- Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`, or
+  `pie-section-player-passage-card`, or moving a card out from under the
+  splitpane element
 - Renaming or dropping any `--pie-*` token listed above
 - Renaming any of the four `pie-theme/dist/*.css` files
 - Changing `bubbles` / `composed` defaults on cross-boundary events
@@ -291,22 +428,35 @@ Highest risk, no downstream build signal:
 - Removing a controller method that hosts call with optional-call syntax
 - Filtering unknown keys out of `env`
 - Changing which item-id form appears in session maps or session events
-- Retyping a `type: "String"` CE attribute to `Boolean`
+- Retyping `show-toolbar` or `debug` to `Boolean`, or dropping either the string
+  or the boolean form of `show-toolbar`
 - Moving `definePieTheme()` between the `pie-theme` index and `theme-element`
+- Changing how content styles are delivered, without accounting for all three
+  host positions above
 
-Lower risk, caught at build or startup downstream:
+**Host R only. Change freely; land the pieoneer fix in the same push.**
 
-- Changes to entries in a package `exports` map that a host imports by
-  specifier
-- Removing a CE property a host sets through a typed wrapper
+- `pie-section-player-vertical`, and anything in `default-tool-loaders`
+- Requiring an explicit registration call from a `pie-tool-*` package that
+  currently self-registers on import
+- Renaming a `ToolConfigDiagnostic` code or a `TTSErrorCode` member
+- Changing `supportedLevels` or `ToolRegistry.override` semantics
+- `ToolkitCoordinator` constructor, `createToolsConfig`, `setHooks`,
+  `updateAssessment`, `onPolicyChange`, `decideFeaturePolicy`
+- The theme token registry, its four types, and the `tts-server-*` provider
+  classes
+- `dist/pie-item-player.js` as a CDN filename
 
-Free to change as far as these hosts are concerned:
+The coordinator constructor and `createToolsConfig` are pinned with `satisfies`
+in Host R, so signature changes there surface as type errors on its next
+typecheck rather than at runtime.
 
-- Anything only reachable through the assessment player, print player, tabbed
-  or vertical section layouts, the toolbars package, `pie-context`, or
-  `default-tool-loaders`
-- Attributes and props on the splitpane element not listed above
-- `theme="auto"` / `provider` / `scheme` / `variables` behavior on `pie-theme`
+**Nobody. No coordination needed.**
+
+- The assessment player, the print player, the tabbed section layout, the
+  toolbars package, and `pie-context` — no consumer imports any of them
+- Attributes and props on the layout elements not listed above
+- `theme="auto"` behavior, and `variables` on `pie-theme`
 - Tool ids outside the `calculator:` prefix
 
 ## Consumer-side defects worth reporting upstream
@@ -331,12 +481,16 @@ Re-derive rather than trust the rows. For each consumer checkout:
 1. `grep -rn "@pie-players" <checkout>` outside `node_modules` and lockfiles —
    gives the entrypoint set and the version range.
 2. Grep the same tree for `pie-` tag names, `--pie-` custom properties, and
-   `::ng-deep` / `:deep` / `@scope` blocks — gives the CE and CSS surface.
-3. Read the component that mounts the player end to end. The coordinator,
-   controller, runtime, and hook usage is concentrated there and does not
-   grep well.
-4. Verify each claimed surface still exists in this repo before recording it;
-   several rows above exist only because a grep came back empty.
+   `::ng-deep` / `:deep` / `:global` / `@scope` blocks — gives the CE and CSS
+   surface.
+3. Extract named imports per specifier, not just the specifier list. Host R's
+   surface is mostly module API, and a specifier-only inventory hides it.
+4. Read the component that mounts the player end to end. Coordinator,
+   controller, runtime, and hook usage is concentrated there and does not grep
+   well.
+5. Verify each claimed surface still exists in this repo **on a mainline ref**,
+   not just in the installed package — the two have already diverged once.
+   Several rows above exist only because a grep came back empty.
 
 Update the "last verified" date whenever you do this, and delete rows you could
 not confirm rather than leaving them to rot.

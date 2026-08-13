@@ -1,5 +1,102 @@
 # @pie-players/tts-server-polly
 
+## 0.3.65
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.65
+
+## 0.3.64
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.64
+
+## 0.3.63
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.63
+
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [3b4e461]
+  - @pie-players/tts-server-core@0.3.62
+
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.61
+
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.60
+
+## 0.3.59
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.59
+
+## 0.3.58
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.58
+
+## 0.3.57
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.57
+
+## 0.3.56
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.56
+
+## 0.3.55
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.55
+
+## 0.3.54
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.54
+
+## 0.3.53
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.53
+
+## 0.3.52
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.52
+
+## 0.3.51
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.51
+
 ## 0.3.50
 
 ### Patch Changes

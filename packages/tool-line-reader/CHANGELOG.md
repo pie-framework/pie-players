@@ -1,5 +1,186 @@
 # @pie-players/pie-tool-line-reader
 
+## 0.3.65
+
+### Patch Changes
+
+- Updated dependencies [35f1cc9]
+- Updated dependencies [c5fbf21]
+- Updated dependencies [c4c3aca]
+- Updated dependencies [2b015a9]
+- Updated dependencies [411b2cd]
+- Updated dependencies [f0d5802]
+- Updated dependencies [f588924]
+- Updated dependencies [3f6e33a]
+- Updated dependencies [3972f16]
+- Updated dependencies [5183654]
+- Updated dependencies [c59396b]
+  - @pie-players/pie-assessment-toolkit@0.3.65
+  - @pie-players/pie-players-shared@0.3.65
+  - @pie-players/pie-context@0.3.65
+
+## 0.3.64
+
+### Patch Changes
+
+- dc44392: Make the frame's masking a host setting rather than a student one. How much surrounding context a test taker can still see trades against reading focus, which is a decision a programme makes for its whole population, so `--pie-tool-line-reader-frame-opacity` is now the only way to change it: the keyboard-only `[`/`]` adjustment — undiscoverable to anyone not reading the tool's aria-label, and with no pointer equivalent — is gone, and the component no longer writes the opacity inline, so a host declaration wins without `!important`.
+
+  Promote the frame's masking properties to registered host contract. `--pie-tool-line-reader-frame-opacity`, `--pie-tool-line-reader-frame-color`, and `--pie-tool-line-reader-control-color` are now `component-public` entries in `packages/theme/src/token-registry.json` instead of package-private internals, since a deployment is expected to configure them and needs the compatibility guarantee that carries. The control colour is registered as the fill's companion: the glyphs sit on the frame and default to white for a dark scrim, so a light fill has to set it too and keep 3:1 against the fill. `--pie-tool-line-reader-outline-color` stays package-private.
+
+- Updated dependencies [82118ce]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [acee584]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [5749bc1]
+- Updated dependencies [bb1a90b]
+- Updated dependencies [82edb28]
+- Updated dependencies [a5241b9]
+- Updated dependencies [0dcec2e]
+- Updated dependencies [acee584]
+- Updated dependencies [b3acac4]
+- Updated dependencies [25511d7]
+- Updated dependencies [bbcabc0]
+- Updated dependencies [30baec4]
+  - @pie-players/pie-assessment-toolkit@0.3.64
+  - @pie-players/pie-players-shared@0.3.64
+  - @pie-players/pie-context@0.3.64
+
+## 0.3.63
+
+### Patch Changes
+
+- b960bae: Replace the line reader highlight/obscure modes with a single window view: a fully transparent pane that leaves underlying page content visible, surrounded on all four edges by an obscuring frame (black at 80% opacity by default, themeable via `--pie-tool-line-reader-frame-color` and `--pie-tool-line-reader-frame-opacity`), with 4px rounded corners and a subtle drop shadow. Drag and `+`/`-` now resize the reading window, `[`/`]` adjust frame opacity, and the color cycling (`C`) and mode toggle (`M`) shortcuts are removed. Also fixes the resize handle hit test, which matched a class name the markup never rendered.
+
+  Add frame controls: a close button that hides the tool through the coordinator (also reachable with `Escape`), a reading-window resize handle, and a frame resize handle that adjusts the frame band height and the overall width. All three are real focusable buttons that meet the 24x24 minimum target size, and each drag has an arrow-key equivalent on the focused handle.
+
+  Keep the window readable in every PIE colour scheme: the frame stays a dark scrim rather than following `--pie-text` (an ink-coloured scrim cannot mask its own scheme's text, and a light one glares in a dark scheme), and an ink hairline plus an ink-derived shadow supply the window boundary that a dark scrim on a dark page cannot show on its own. New `--pie-tool-line-reader-outline-color` hook.
+
+  Draw the frame as one element's border box instead of four abutting boxes. Four translucent boxes each antialias their shared edge, so whenever layout landed off whole pixels (page zoom, fractional font scale) the junctions rendered at partial coverage and showed as light seams between the side edges and the top/bottom bands.
+
+  Fix the keyboard move shortcuts going dead after a click: pressing the frame calls `preventDefault` to start a drag, which also suppressed the press's default focus, so the tool never became the focus target and arrow keys went to the page instead. Both the frame and the resize handles now claim focus explicitly (with `preventScroll`).
+
+  - @pie-players/pie-assessment-toolkit@0.3.63
+  - @pie-players/pie-context@0.3.63
+  - @pie-players/pie-players-shared@0.3.63
+
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [c73c995]
+- Updated dependencies [507b56f]
+- Updated dependencies [14666b3]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [a1edde5]
+- Updated dependencies [7864f66]
+- Updated dependencies [3b4e461]
+- Updated dependencies [7605500]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+  - @pie-players/pie-context@0.3.62
+
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.61
+- @pie-players/pie-context@0.3.61
+- @pie-players/pie-players-shared@0.3.61
+
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.60
+- @pie-players/pie-context@0.3.60
+- @pie-players/pie-players-shared@0.3.60
+
+## 0.3.59
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.59
+  - @pie-players/pie-context@0.3.59
+  - @pie-players/pie-players-shared@0.3.59
+
+## 0.3.58
+
+### Patch Changes
+
+- Updated dependencies [8df52bf]
+- Updated dependencies [d5cc905]
+  - @pie-players/pie-players-shared@0.3.58
+  - @pie-players/pie-assessment-toolkit@0.3.58
+  - @pie-players/pie-context@0.3.58
+
+## 0.3.57
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.57
+  - @pie-players/pie-context@0.3.57
+  - @pie-players/pie-players-shared@0.3.57
+
+## 0.3.56
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.56
+  - @pie-players/pie-context@0.3.56
+  - @pie-players/pie-players-shared@0.3.56
+
+## 0.3.55
+
+### Patch Changes
+
+- Updated dependencies [7f45877]
+  - @pie-players/pie-players-shared@0.3.55
+  - @pie-players/pie-assessment-toolkit@0.3.55
+  - @pie-players/pie-context@0.3.55
+
+## 0.3.54
+
+### Patch Changes
+
+- Updated dependencies [bead424]
+  - @pie-players/pie-assessment-toolkit@0.3.54
+  - @pie-players/pie-context@0.3.54
+  - @pie-players/pie-players-shared@0.3.54
+
+## 0.3.53
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.53
+- @pie-players/pie-context@0.3.53
+- @pie-players/pie-players-shared@0.3.53
+
+## 0.3.52
+
+### Patch Changes
+
+- Updated dependencies [905080d]
+- Updated dependencies [017f5a9]
+  - @pie-players/pie-assessment-toolkit@0.3.52
+  - @pie-players/pie-players-shared@0.3.52
+  - @pie-players/pie-context@0.3.52
+
+## 0.3.51
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.51
+  - @pie-players/pie-context@0.3.51
+  - @pie-players/pie-players-shared@0.3.51
+
 ## 0.3.50
 
 ### Patch Changes

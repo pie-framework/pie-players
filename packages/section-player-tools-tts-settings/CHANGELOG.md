@@ -1,5 +1,183 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 0.3.65
+
+### Patch Changes
+
+- Updated dependencies [c16c77c]
+- Updated dependencies [35f1cc9]
+- Updated dependencies [c4c3aca]
+- Updated dependencies [2b015a9]
+- Updated dependencies [411b2cd]
+- Updated dependencies [f0d5802]
+- Updated dependencies [f588924]
+- Updated dependencies [3f6e33a]
+- Updated dependencies [3972f16]
+- Updated dependencies [5183654]
+- Updated dependencies [c59396b]
+  - @pie-players/pie-theme@0.3.65
+  - @pie-players/pie-assessment-toolkit@0.3.65
+
+## 0.3.64
+
+### Patch Changes
+
+- Updated dependencies [82118ce]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [acee584]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [5749bc1]
+- Updated dependencies [dc44392]
+- Updated dependencies [82edb28]
+- Updated dependencies [a5241b9]
+- Updated dependencies [0dcec2e]
+- Updated dependencies [acee584]
+- Updated dependencies [25511d7]
+- Updated dependencies [bbcabc0]
+- Updated dependencies [30baec4]
+  - @pie-players/pie-assessment-toolkit@0.3.64
+  - @pie-players/pie-theme@0.3.64
+
+## 0.3.63
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.63
+- @pie-players/pie-theme@0.3.63
+
+## 0.3.62
+
+### Patch Changes
+
+- 99929d8: Move debugger panel styling out of the shared content stylesheet and into the panels that own it.
+
+  `components.css` carried a `SECTION PLAYER DEBUGGER OVERLAYS` block styling the PNP
+  and session debugger panels. That file is for authored-content classes no component
+  owns, so panel-private rules did not belong in it, and the split was already
+  inconsistent: each panel defined most of its own classes locally and left a handful
+  behind.
+
+  Those rules now live in each panel's own `<style>` block. The two classes applied by
+  `SharedFloatingPanel` rather than by the panel template — the panel root and
+  `__content-shell` — are wrapped in `:global()`, since Svelte would otherwise scope
+  them to the panel component and they would match nothing.
+
+  Of the 37 classes in the removed block, 14 were referenced nowhere at all
+  (`__header*`, `__title`, `__icon-button`, `__icon-xs`, `__resize-*`) — leftovers from
+  before `SharedFloatingPanel` renamed those parts to `pie-shared-floating-panel__*`.
+  They were deleted rather than relocated.
+
+  Five panels also dropped a `@pie-players/pie-theme/components.css` import that never
+  did anything: these packages build with Vite in library mode, so the import was
+  extracted to a `dist` CSS file that the built JS never referenced and that no
+  `exports` entry exposed — the same defect fixed for `PieItemPlayer.svelte`. Each
+  package now ships one fewer dead file.
+
+  If you import `@pie-players/pie-theme/components.css` directly and relied on the
+  `pie-section-player-tools-{pnp,session}-debugger*` classes it used to define, they are
+  no longer there; they ship with their panel packages instead.
+
+- Updated dependencies [c73c995]
+- Updated dependencies [c73c995]
+- Updated dependencies [507b56f]
+- Updated dependencies [14666b3]
+- Updated dependencies [99929d8]
+- Updated dependencies [a1edde5]
+- Updated dependencies [7864f66]
+- Updated dependencies [3b4e461]
+- Updated dependencies [7605500]
+- Updated dependencies [c810459]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-theme@0.3.62
+
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.61
+- @pie-players/pie-theme@0.3.61
+
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.60
+- @pie-players/pie-theme@0.3.60
+
+## 0.3.59
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.59
+  - @pie-players/pie-theme@0.3.59
+
+## 0.3.58
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.58
+- @pie-players/pie-theme@0.3.58
+
+## 0.3.57
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.57
+  - @pie-players/pie-theme@0.3.57
+
+## 0.3.56
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.56
+  - @pie-players/pie-theme@0.3.56
+
+## 0.3.55
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.55
+- @pie-players/pie-theme@0.3.55
+
+## 0.3.54
+
+### Patch Changes
+
+- bead424: Make inline TTS speed controls a single-select radio-style group with visible Normal selected by default, while preserving host ordering and numeric helper compatibility.
+- Updated dependencies [bead424]
+  - @pie-players/pie-assessment-toolkit@0.3.54
+  - @pie-players/pie-theme@0.3.54
+
+## 0.3.53
+
+### Patch Changes
+
+- Updated dependencies [ee6c081]
+  - @pie-players/pie-theme@0.3.53
+  - @pie-players/pie-assessment-toolkit@0.3.53
+
+## 0.3.52
+
+### Patch Changes
+
+- Updated dependencies [905080d]
+  - @pie-players/pie-assessment-toolkit@0.3.52
+  - @pie-players/pie-theme@0.3.52
+
+## 0.3.51
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.51
+  - @pie-players/pie-theme@0.3.51
+
 ## 0.3.50
 
 ### Patch Changes

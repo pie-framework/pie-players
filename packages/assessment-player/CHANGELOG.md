@@ -1,5 +1,183 @@
 # @pie-players/pie-assessment-player
 
+## 0.3.65
+
+### Patch Changes
+
+- Updated dependencies [35f1cc9]
+- Updated dependencies [8e0342a]
+- Updated dependencies [c5fbf21]
+- Updated dependencies [c4c3aca]
+- Updated dependencies [2b015a9]
+- Updated dependencies [411b2cd]
+- Updated dependencies [f0d5802]
+- Updated dependencies [f588924]
+- Updated dependencies [23da920]
+- Updated dependencies [3f6e33a]
+- Updated dependencies [13cfc61]
+- Updated dependencies [3972f16]
+- Updated dependencies [5183654]
+- Updated dependencies [c59396b]
+  - @pie-players/pie-assessment-toolkit@0.3.65
+  - @pie-players/pie-section-player@0.3.65
+  - @pie-players/pie-players-shared@0.3.65
+
+## 0.3.64
+
+### Patch Changes
+
+- Updated dependencies [82118ce]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [acee584]
+- Updated dependencies [9b2f37d]
+- Updated dependencies [5749bc1]
+- Updated dependencies [bb1a90b]
+- Updated dependencies [c811bf2]
+- Updated dependencies [82edb28]
+- Updated dependencies [a5241b9]
+- Updated dependencies [0dcec2e]
+- Updated dependencies [acee584]
+- Updated dependencies [b3acac4]
+- Updated dependencies [25511d7]
+- Updated dependencies [bbcabc0]
+- Updated dependencies [30baec4]
+  - @pie-players/pie-assessment-toolkit@0.3.64
+  - @pie-players/pie-players-shared@0.3.64
+  - @pie-players/pie-section-player@0.3.64
+
+## 0.3.63
+
+### Patch Changes
+
+- @pie-players/pie-section-player@0.3.63
+- @pie-players/pie-assessment-toolkit@0.3.63
+- @pie-players/pie-players-shared@0.3.63
+
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [c73c995]
+- Updated dependencies [507b56f]
+- Updated dependencies [14666b3]
+- Updated dependencies [001486e]
+- Updated dependencies [6a18f3c]
+- Updated dependencies [a1edde5]
+- Updated dependencies [7864f66]
+- Updated dependencies [3b4e461]
+- Updated dependencies [7605500]
+  - @pie-players/pie-assessment-toolkit@0.3.62
+  - @pie-players/pie-players-shared@0.3.62
+  - @pie-players/pie-section-player@0.3.62
+
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.61
+- @pie-players/pie-players-shared@0.3.61
+- @pie-players/pie-section-player@0.3.61
+
+## 0.3.60
+
+### Patch Changes
+
+- Updated dependencies [6a18740]
+  - @pie-players/pie-section-player@0.3.60
+  - @pie-players/pie-assessment-toolkit@0.3.60
+  - @pie-players/pie-players-shared@0.3.60
+
+## 0.3.59
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.59
+  - @pie-players/pie-section-player@0.3.59
+  - @pie-players/pie-players-shared@0.3.59
+
+## 0.3.58
+
+### Patch Changes
+
+- Updated dependencies [8df52bf]
+- Updated dependencies [d5cc905]
+  - @pie-players/pie-players-shared@0.3.58
+  - @pie-players/pie-section-player@0.3.58
+  - @pie-players/pie-assessment-toolkit@0.3.58
+
+## 0.3.57
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.57
+  - @pie-players/pie-players-shared@0.3.57
+  - @pie-players/pie-section-player@0.3.57
+
+## 0.3.56
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.56
+  - @pie-players/pie-players-shared@0.3.56
+  - @pie-players/pie-section-player@0.3.56
+
+## 0.3.55
+
+### Patch Changes
+
+- Updated dependencies [7f45877]
+  - @pie-players/pie-players-shared@0.3.55
+  - @pie-players/pie-assessment-toolkit@0.3.55
+  - @pie-players/pie-section-player@0.3.55
+
+## 0.3.54
+
+### Patch Changes
+
+- 1748ed5: Add namespaced backend delivery and authoring support, including server-backed model refresh, authoring load/save/release and media hooks, and indirect section/assessment runtime configuration for item backends.
+- Updated dependencies [f44aa3b]
+- Updated dependencies [1748ed5]
+- Updated dependencies [bead424]
+  - @pie-players/pie-section-player@0.3.54
+  - @pie-players/pie-assessment-toolkit@0.3.54
+  - @pie-players/pie-players-shared@0.3.54
+
+## 0.3.53
+
+### Patch Changes
+
+- ee6c081: Add the initial PIE theme token registry contract, source-usage gate, theme parity checks, compatibility fallback chains, and broad theming accessibility planning artifacts for safer host theme overrides.
+- Updated dependencies [ee6c081]
+  - @pie-players/pie-section-player@0.3.53
+  - @pie-players/pie-assessment-toolkit@0.3.53
+  - @pie-players/pie-players-shared@0.3.53
+
+## 0.3.52
+
+### Patch Changes
+
+- Updated dependencies [905080d]
+- Updated dependencies [017f5a9]
+- Updated dependencies [c2ac471]
+  - @pie-players/pie-assessment-toolkit@0.3.52
+  - @pie-players/pie-section-player@0.3.52
+  - @pie-players/pie-players-shared@0.3.52
+
+## 0.3.51
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.51
+  - @pie-players/pie-players-shared@0.3.51
+  - @pie-players/pie-section-player@0.3.51
+
 ## 0.3.50
 
 ### Patch Changes

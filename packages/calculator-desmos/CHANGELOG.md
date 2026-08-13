@@ -1,5 +1,108 @@
 # @pie-players/pie-calculator-desmos
 
+## 0.3.65
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.65
+
+## 0.3.64
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.64
+
+## 0.3.63
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.63
+
+## 0.3.62
+
+### Patch Changes
+
+- 3b4e461: Keep every runtime dependency external in the assessment toolkit's custom-element build, and stop publishing sourcemaps.
+
+  Inlining a dependency into a prebuilt custom-element chunk creates a copy a consumer's bundler cannot deduplicate, because its module id is the chunk file rather than the dependency's path in `node_modules`. `speech-rule-engine` was reaching the section player twice for exactly that reason — once through `services/tts/math-speech.js` and once inside the prebuilt chunk — about 1.3 MB of duplicate payload. Externalizing the manifest's dependencies collapses that to one copy. It asks nothing new of consumers: these artifacts already emitted bare `@pie-players/*` specifiers, so they always required a bundler or an import map.
+
+  Publishable packages ship only `dist`, so a usable sourcemap also required `inlineSources`, which embedded every TypeScript source into the tarball. That cost roughly 2.5 MB across the tsc-built packages while every Vite-built package in the repo already shipped none. Sourcemaps are now off everywhere.
+
+- Updated dependencies [3b4e461]
+  - @pie-players/pie-calculator@0.3.62
+
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.61
+
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.60
+
+## 0.3.59
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.59
+
+## 0.3.58
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.58
+
+## 0.3.57
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.57
+
+## 0.3.56
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.56
+
+## 0.3.55
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.55
+
+## 0.3.54
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.54
+
+## 0.3.53
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.53
+
+## 0.3.52
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.52
+
+## 0.3.51
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.51
+
 ## 0.3.50
 
 ### Patch Changes

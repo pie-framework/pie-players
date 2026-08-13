@@ -1,5 +1,111 @@
 # @pie-players/pie-section-player-tools-shared
 
+## 0.3.65
+
+### Patch Changes
+
+- Updated dependencies [c16c77c]
+- Updated dependencies [3f6e33a]
+  - @pie-players/pie-theme@0.3.65
+
+## 0.3.64
+
+### Patch Changes
+
+- Updated dependencies [dc44392]
+- Updated dependencies [a5241b9]
+  - @pie-players/pie-theme@0.3.64
+
+## 0.3.63
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.63
+
+## 0.3.62
+
+### Patch Changes
+
+- Updated dependencies [c73c995]
+- Updated dependencies [c73c995]
+- Updated dependencies [14666b3]
+- Updated dependencies [99929d8]
+- Updated dependencies [c810459]
+  - @pie-players/pie-theme@0.3.62
+
+## 0.3.61
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.61
+
+## 0.3.60
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.60
+
+## 0.3.59
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.59
+
+## 0.3.58
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.58
+
+## 0.3.57
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-theme@0.3.57
+
+## 0.3.56
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-theme@0.3.56
+
+## 0.3.55
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.55
+
+## 0.3.54
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.54
+
+## 0.3.53
+
+### Patch Changes
+
+- Updated dependencies [ee6c081]
+  - @pie-players/pie-theme@0.3.53
+
+## 0.3.52
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.52
+
+## 0.3.51
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-theme@0.3.51
+
 ## 0.3.50
 
 ### Patch Changes

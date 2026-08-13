@@ -46,6 +46,7 @@ history and completed implementation plans are intentionally excluded.
 ## Integrations
 
 - [`integrations/lti.md`](./integrations/lti.md) - Launching players from an LTI tool host after protocol validation
+- [`integrations/consumer-api-dependencies.md`](./integrations/consumer-api-dependencies.md) - Which surfaces downstream hosts actually depend on, and which break silently
 
 ## Accessibility And TTS
 

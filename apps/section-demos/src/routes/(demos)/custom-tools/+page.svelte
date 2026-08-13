@@ -18,6 +18,7 @@
 		applyToolkitScheme,
 		ATTEMPT_QUERY_PARAM,
 		ATTEMPT_STORAGE_KEY,
+		bindDemoAssessment,
 		createAttemptId,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
@@ -131,6 +132,12 @@
 			...section,
 			personalNeedsProfile: createUniversalPersonalNeedsProfile(),
 		};
+	});
+
+	// Bind the profile so policy has an input to decide against; the section
+	// payload alone is invisible to `decideFeaturePolicy`.
+	$effect(() => {
+		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
 	});
 	const sessionPanelSectionId = $derived(
 		String(

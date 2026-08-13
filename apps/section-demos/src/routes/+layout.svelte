@@ -6,6 +6,9 @@
 		DEFAULT_DAISY_THEME,
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import '../app.css';
+	import type { Snippet } from 'svelte';
+
+	let { children }: { children?: Snippet } = $props();
 
 	$effect(() => {
 		if (!browser) return;
@@ -19,4 +22,4 @@
 	<link rel="icon" href="/pie-favicon.svg" type="image/svg+xml" />
 </svelte:head>
 
-<slot />
+{@render children?.()}

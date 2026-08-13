@@ -1,12 +1,19 @@
+/**
+ * DaisyUI-to-`--pie-*` bridging for hosts that are not using `<pie-theme>`:
+ * `bridge.css` as static CSS, or these mappers to write the variables yourself.
+ *
+ * There is no provider adapter here. `@pie-players/pie-theme` registers one under
+ * the id `daisyui` at import time, and since both now resolve the same
+ * `DAISYUI_PIE_TOKEN_MAP`, a second adapter under that id could only overwrite the
+ * built-in with a clone of itself.
+ */
+
 import {
 	DAISY_SLOT_CSS_VARIABLES,
 	createCanvasColorMeasure,
-	registerPieThemeProvider,
 	resolveDaisyPieVariables,
 	type ColorMeasure,
 	type DaisySlot,
-	type ThemeProviderAdapter,
-	type ThemeVariables,
 } from "@pie-players/pie-theme";
 
 export type DaisyThemeTokens = {
@@ -117,19 +124,4 @@ export function readDaisyThemeTokensFromElement(
 	};
 
 	return tokens.base100 || tokens.primary || tokens.baseContent ? tokens : null;
-}
-
-export const daisyThemeProviderAdapter: ThemeProviderAdapter = {
-	id: "daisyui",
-	canRead(target: HTMLElement): boolean {
-		return Boolean(readDaisyThemeTokensFromElement(target));
-	},
-	read(target: HTMLElement): ThemeVariables {
-		const tokens = readDaisyThemeTokensFromElement(target);
-		return tokens ? mapResolvedDaisyThemeToPieVariables(tokens) : {};
-	},
-};
-
-export function registerDaisyThemeProvider(): void {
-	registerPieThemeProvider(daisyThemeProviderAdapter);
 }

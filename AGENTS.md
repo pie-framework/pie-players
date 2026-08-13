@@ -89,6 +89,27 @@ registered under its own distinct tag.
   `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
   `bun run check:custom-elements`.
 
+### Downstream Consumer Impact
+
+`docs/integrations/consumer-api-dependencies.md` records which `@pie-players`
+surfaces real downstream hosts touch, and which of those break silently.
+
+- Consult it before changing any public surface: custom-element tag names,
+  attributes, properties, DOM events and their `bubbles`/`composed` init, event
+  payload shapes and emission cardinality, controller and coordinator methods,
+  `runtime` / `hooks` config keys, `--pie-*` tokens, package `exports`, or
+  `dist` filenames. Its "Change-risk quick reference" is the short version.
+- Consumers are identified by integration shape only. This repository is
+  public and those hosts are not, so do not add repository names, product
+  names, ticket keys, endpoints, tenant or customer detail, host config key
+  names, or quoted host code to that file or anywhere else in `docs/`.
+- Treat the pad as observed usage with a verification date, not as a contract.
+  Confirm a row against the cited code before relying on it, and refresh it
+  with the procedure at the end of the file rather than editing rows in place.
+- A surface listed there is not frozen. Change it when the design calls for it,
+  and say in the changeset and PR description which listed host is affected and
+  how, so the coordination is visible instead of discovered on upgrade.
+
 ### Legacy Compatibility Boundaries
 
 - Do not add legacy/backward-compatibility shims outside the `pie-item` client

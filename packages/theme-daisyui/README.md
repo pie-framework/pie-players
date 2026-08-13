@@ -19,20 +19,15 @@ Or apply variables with JavaScript:
 import { applyDaisyThemeToElement } from "@pie-players/pie-theme-daisyui";
 ```
 
-Register the explicit Daisy provider adapter (optional, mostly useful for custom bootstraps):
-
-```ts
-import { registerDaisyThemeProvider } from "@pie-players/pie-theme-daisyui";
-
-registerDaisyThemeProvider();
-```
-
 You can also read resolved Daisy tokens from an element and map them:
 
 ```ts
 import {
 	readDaisyThemeTokensFromElement,
-	mapResolvedDaisyThemeToPieVariables,
-	daisyThemeProviderAdapter
+	mapResolvedDaisyThemeToPieVariables
 } from "@pie-players/pie-theme-daisyui";
 ```
+
+There is no provider adapter to register. `@pie-players/pie-theme` registers one
+under the id `daisyui` at import time; both resolve the same table, so a second
+adapter under that id could only overwrite the built-in with a clone of itself.

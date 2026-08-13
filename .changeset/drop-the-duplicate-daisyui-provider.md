@@ -15,3 +15,8 @@ Nothing was calling them. Hosts using `<pie-theme>` already get the built-in
 adapter; hosts writing variables themselves keep `applyDaisyThemeToElement`,
 `readDaisyThemeTokensFromElement` and the two mappers, which differ from the
 adapter in input shape rather than duplicating it.
+
+Upgrade note: a host that calls `registerDaisyThemeProvider()` drops the call and
+the import. Importing `@pie-players/pie-theme` registers the same adapter. No
+recorded consumer entrypoint uses either export — one consumer of this package
+imports `bridge.css` only — but that is the one call site an upgrade has to check.

@@ -11,6 +11,17 @@ export {
 	type ThemeProviderAdapter,
 } from "./providers.js";
 export {
+	DAISY_SLOT_CSS_VARIABLES,
+	DAISYUI_PIE_TOKEN_MAP,
+	resolveDaisyPieVariables,
+	type DaisyMappingEntry,
+	type DaisySlot,
+} from "./daisyui-mapping.js";
+export {
+	createCanvasColorMeasure,
+	type ColorMeasure,
+} from "./contrast.js";
+export {
 	isThemeMode,
 	isThemeScope,
 	normalizePieThemeVariables,

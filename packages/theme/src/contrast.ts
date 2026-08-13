@@ -23,6 +23,9 @@ export type ColorMeasure = (value: string) => Srgb | null;
 /** WCAG 2.2 1.4.3 for text. */
 export const LEGIBLE_TEXT_MINIMUM = 4.5;
 
+/** WCAG 2.2 1.4.11 for component boundaries, states and graphical objects. */
+export const LEGIBLE_NON_TEXT_MINIMUM = 3;
+
 /**
  * The hue share used when contrast cannot be measured. 30% is the largest 5%
  * step that clears 4.5:1 for every success, error and warning slot across
@@ -31,6 +34,12 @@ export const LEGIBLE_TEXT_MINIMUM = 4.5;
  * correction at all still gets pulled most of the way to the text colour.
  */
 export const UNMEASURED_HUE_WEIGHT = 30;
+
+/**
+ * The same pessimistic fallback for a 3:1 target: 35% is the largest 5% step
+ * that clears 3:1 for `--color-base-300` and `--color-neutral` in all 28 themes.
+ */
+export const UNMEASURED_NON_TEXT_HUE_WEIGHT = 35;
 
 const HUE_WEIGHT_STEP = 5;
 
@@ -133,6 +142,7 @@ export function legibleColorAgainst(args: {
 	background?: string;
 	measure?: ColorMeasure | null;
 	minimum?: number;
+	unmeasuredHueWeight?: number;
 }): string | undefined {
 	const { hue, text, background, measure } = args;
 	if (!hue) {
@@ -142,7 +152,8 @@ export function legibleColorAgainst(args: {
 		return hue;
 	}
 	const minimum = args.minimum ?? LEGIBLE_TEXT_MINIMUM;
-	const unmeasured = (): string => mixTowards(hue, text, UNMEASURED_HUE_WEIGHT);
+	const fallbackWeight = args.unmeasuredHueWeight ?? UNMEASURED_HUE_WEIGHT;
+	const unmeasured = (): string => mixTowards(hue, text, fallbackWeight);
 	if (!measure || !background) {
 		return unmeasured();
 	}

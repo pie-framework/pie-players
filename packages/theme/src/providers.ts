@@ -11,6 +11,21 @@ export interface ThemeProviderAdapter {
 
 const themeProviderRegistry = new Map<string, ThemeProviderAdapter>();
 
+/**
+ * Provider mode that resolves nothing, leaving this package's shipped defaults
+ * in place.
+ *
+ * `"auto"` lets any registered adapter that can read the target win, which on a
+ * DaisyUI page means PIE tokens follow `--color-*`. This is how a host asks for
+ * the palette it would have had before adopting a provider — the first question
+ * to answer when colours differ between two environments.
+ *
+ * Distinct from naming an unregistered provider, which lands in the same place
+ * by accident. `unregisterPieThemeProvider` cannot remove this one because it is
+ * not in the registry at all, so the mode cannot be taken away from a host.
+ */
+export const PIE_THEME_PROVIDER_NONE = "none";
+
 function trimCssVar(value: string): string | undefined {
 	const trimmed = value.trim();
 	return trimmed ? trimmed : undefined;
@@ -168,6 +183,12 @@ export function resolveProviderVariables(args: {
 	provider?: string | null;
 }): ThemeVariables {
 	const providerMode = args.provider?.trim() || "auto";
+	// Before the registry lookup and before the documentElement retry below: the
+	// point of this mode is that nothing resolves, and a retry against a themed
+	// <html> would put the provider's values back.
+	if (providerMode === PIE_THEME_PROVIDER_NONE) {
+		return {};
+	}
 	const resolveFromTarget = (target: HTMLElement): ThemeVariables => {
 		if (providerMode && providerMode !== "auto") {
 			const provider = themeProviderRegistry.get(providerMode);

@@ -1,6 +1,7 @@
 /**
  * PNP Policy Source for the M8 engine
- * (see `.cursor/plans/m8-design.md` § 3 step 5 and § 5).
+ * (see
+ * `docs/tools-and-accomodations/architecture.md`).
  *
  * This source applies the PNP/profile precedence rules as a `(candidates, pnpPolicyInputs) →
  * (refinedCandidates, perToolFlags, mandates, decisions)` function the

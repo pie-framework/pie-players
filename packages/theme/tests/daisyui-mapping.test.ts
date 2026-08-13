@@ -122,6 +122,28 @@ describe("resolveDaisyPieVariables", () => {
 		}
 	});
 
+	test("brings the focus indicator up to the non-text minimum", () => {
+		// DaisyUI's dark themes pick a primary that is legible behind
+		// `--color-primary-content`, not against the page: `business` resolves the
+		// pair to 1.90:1, and a keyboard user has nothing else to go on.
+		const dark = {
+			...LIGHT,
+			base100: "#1c1c1c",
+			baseContent: "#d4d4d4",
+			primary: "#2f4f7f",
+		};
+		expect(
+			ratio(resolve(dark)["--pie-button-focus-outline"], "#1c1c1c"),
+		).toBeGreaterThanOrEqual(3);
+	});
+
+	test("leaves the dual-purpose accent alone", () => {
+		// `--pie-primary` is a foreground in some components and a button fill in
+		// others, so there is no single value that is right for both. Correcting it
+		// would break the fills.
+		expect(resolve(LIGHT)["--pie-primary"]).toBe("#422ad5");
+	});
+
 	test("leaves the divider token alone", () => {
 		// Card edges and pane dividers, which 1.4.11 exempts. Correcting it would
 		// put a hard outline around every item card.

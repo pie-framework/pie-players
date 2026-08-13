@@ -155,5 +155,15 @@
 	);
 	--pie-button-hover-color: var(--color-base-content);
 	--pie-button-active-bg: var(--color-base-300);
-	--pie-button-focus-outline: var(--color-primary);
+	/* The keyboard focus indicator, and the only token here that is always an
+	   `outline`. `--color-primary` is chosen to sit behind
+	   `--color-primary-content`, not for contrast against the page, so it arrived
+	   at 1.90:1 in `business`. `--pie-primary` is left uncorrected on purpose: PIE
+	   paints it as a foreground in some components and as a button fill in others,
+	   and no single value serves both. */
+	--pie-button-focus-outline: color-mix(
+		in srgb,
+		var(--color-primary) 35%,
+		var(--color-base-content)
+	);
 }

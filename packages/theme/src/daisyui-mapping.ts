@@ -166,7 +166,15 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	boundary("--pie-button-hover-border", "base300"),
 	direct("--pie-button-hover-color", "baseContent"),
 	direct("--pie-button-active-bg", "base300"),
-	direct("--pie-button-focus-outline", "primary"),
+	// The keyboard focus indicator, and the one token here that is only ever an
+	// `outline` -- eight declarations across the tools, never a fill. It takes
+	// `--color-primary`, which DaisyUI pairs with `--color-primary-content` for
+	// fills rather than choosing for contrast against the page, so it inherited
+	// 1.90:1 in `business`. `--pie-primary` itself cannot be corrected the same
+	// way: PIE paints it as a foreground in some places and as a button fill in
+	// others, and a value legible against the page is the wrong one behind
+	// `--color-primary-content`.
+	boundary("--pie-button-focus-outline", "primary"),
 ];
 
 /**

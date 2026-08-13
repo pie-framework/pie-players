@@ -5,7 +5,7 @@ description: Author changesets and prepare releases under the fixed (lockstep) v
 
 # Releases and Changesets (Fixed / Lockstep Versioning)
 
-Canonical rule: [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor/rules/release-version-alignment.mdc).
+Canonical rule: [`AGENTS.md`](../../../AGENTS.md) "Release Version Alignment".
 Lockstep package list (source of truth):
 [`.changeset/config.json`](../../../.changeset/config.json) (the `fixed`
 block).
@@ -42,7 +42,7 @@ lockstep invariant already keeps consumers aligned.
 - Author every changeset entry as `patch`. Do not propose `minor` /
   `major` unless the maintainer explicitly lifts this constraint and
   updates
-  [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor/rules/release-version-alignment.mdc).
+  [`AGENTS.md`](../../../AGENTS.md) "Release Version Alignment".
 - A pending changeset declaring `minor` / `major` is a release blocker —
   flip it to `patch` before running `bun run release:with-version`. The
   auto-generated temporary all-packages changeset is always `patch`; the
@@ -130,7 +130,7 @@ When adding a new package under `packages/*` that ships to npm:
 
 - Author a `minor` or `major` changeset. Patch-only is the policy until
   the maintainer rewrites
-  [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor/rules/release-version-alignment.mdc).
+  [`AGENTS.md`](../../../AGENTS.md) "Release Version Alignment".
   Even breaking changes ship as `patch` on the `0.x.y` line.
 - Prepare release bumps for only a subset of changed packages. "Only
   package X changed, so only bump X" is the wrong framing for this repo —
@@ -159,6 +159,6 @@ This runs build + `check:fixed-versioning`, `check:package-metadata`,
 
 ## Related rule
 
-- [`.cursor/rules/playwright-sandbox.mdc`](../../../.cursor/rules/playwright-sandbox.mdc)
+- [`AGENTS.md`](../../../AGENTS.md) "Playwright And Sandboxed Execution"
   — `bun run release:with-version` runs `bun run test`, which can trigger
   Playwright; invoke with `required_permissions: ["all"]`.

@@ -11,8 +11,9 @@ described at the end.
 Consumers are identified by integration shape, not by repository, product, or
 ticket. This repository is public and the hosts are not, so nothing here names
 them, quotes their code, or records their endpoints, config keys, tenants, or
-business logic. Keep it that way when editing. Maintainers know the mapping;
-agents working in this repo also have it in project memory.
+business logic. Keep it that way when editing. The label-to-checkout mapping
+lives per-machine in the gitignored `.claude/consumer-checkouts.local.json`; the
+`consumer-dependency-audit` skill reads it, and asks for anything missing.
 
 Last verified against consumer checkouts and this repo's `develop` line:
 **2026-08-13**.
@@ -476,7 +477,16 @@ repo.
 
 ## Refresh procedure
 
-Re-derive rather than trust the rows. For each consumer checkout:
+Follow
+[`consumer-api-dependencies-maintenance.md`](./consumer-api-dependencies-maintenance.md).
+It owns the full procedure for every harness and for doing it by hand: the
+redaction rule, how consumer checkout paths resolve — including asking the
+developer for any that cannot be found — and the rules for rewriting the risk
+groups. In Claude Code the `consumer-dependency-audit` skill and command trigger
+it automatically.
+
+The shape of it, for orientation. Re-derive rather than trust the rows. For each
+consumer checkout:
 
 1. `grep -rn "@pie-players" <checkout>` outside `node_modules` and lockfiles —
    gives the entrypoint set and the version range.

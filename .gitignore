@@ -84,6 +84,13 @@ temp/
 
 .claude/settings.local.json
 
+# Local map from the consumer labels in
+# docs/integrations/consumer-api-dependencies.md to checkout paths on this
+# machine. Never commit it: the pad is deliberately label-only because this
+# repository is public and those consumers are not. See
+# .claude/skills/consumer-dependency-audit/SKILL.md.
+.claude/consumer-checkouts.local.json
+
 # A real secure assessment item, imported from the Renaissance bank to prove the
 # PIE-881 transform end to end. Never commit it: it carries live item content and
 # its correct answer. The demo loads it only when present — see

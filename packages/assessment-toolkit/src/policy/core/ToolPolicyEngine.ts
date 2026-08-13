@@ -1,6 +1,6 @@
 /**
- * Tool Policy Engine — facade class (M8 — see
- * `.cursor/plans/m8-design.md` § 2).
+ * Tool Policy Engine — facade class. See
+ * `docs/tools-and-accomodations/architecture.md`.
  *
  * Wraps `composeDecision(...)` with engine-instance state:
  *   - bound inputs (`tools`, `assessment`, `currentItemRef`, ...)
@@ -52,7 +52,7 @@ export interface ToolPolicyEngineInputs {
 	 * `assessment` and `currentItemRef`: `"on"` if they carry any
 	 * PNP/profile policy material (PNP, district policy, test
 	 * administration, item-level required/restricted/parameters),
-	 * `"off"` otherwise. See `.cursor/plans/m8-design.md` F2.
+	 * `"off"` otherwise. `tests/policy/pnp-default-on.test.ts` locks the rule.
 	 *
 	 * Hosts that want to force a mode pass `"on"` or `"off"`
 	 * explicitly. Embedded under `<pie-section-player-*>` the preferred

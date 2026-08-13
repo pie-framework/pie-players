@@ -29,7 +29,7 @@ themselves prove contrast or focus appearance.
 - Target size checks apply to interactive controls where WCAG 2.5.8 is in scope.
 - Manual review is allowed only when the row explains why automation cannot prove
   the requirement.
-- Playwright-backed checks must run outside the Cursor sandbox.
+- Playwright-backed checks must run outside a default agent tool sandbox.
 
 ## Theme And Scheme Set
 

@@ -1,5 +1,6 @@
 /**
- * Compose-decision pipeline (M8 — see `.cursor/plans/m8-design.md` § 3).
+ * Compose-decision pipeline. See
+ * `docs/tools-and-accomodations/architecture.md`.
  *
  * Pure function: given a decision request, the host's tools config,
  * an optional PNP policy source, and the registered custom sources, returns
@@ -7,7 +8,7 @@
  * mutable state, and never reaches into Svelte / DOM — that is the
  * `ToolPolicyEngine` class's job.
  *
- * The six steps below mirror the design doc exactly. The tests in
+ * The tests in
  * `tests/policy/compose-decision.test.ts` lock the orchestration in.
  */
 

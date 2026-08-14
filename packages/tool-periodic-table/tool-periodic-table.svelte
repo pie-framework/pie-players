@@ -507,10 +507,15 @@
 		z-index: 11;
 	}
 
-	/* Text inside each element box */
+	/*
+	 * Text inside each element box. The secondary lines carry no opacity: size and
+	 * weight already separate them from the symbol, and fading them spent contrast
+	 * the palette cannot always afford. At 0.8 the atomic mass measured 4.12:1 under
+	 * grey-on-light-grey and 4.00:1 under purple-on-light-green, whose ink and
+	 * recessed surface only hold 6.46:1 and 5.44:1 to begin with.
+	 */
 	.pie-tool-periodic-table__atomic-number {
 		font-size: 9px;
-		opacity: 0.8;
 		text-align: left;
 	}
 
@@ -523,7 +528,6 @@
 
 	.pie-tool-periodic-table__name {
 		font-size: 8px;
-		opacity: 0.9;
 		overflow: hidden;
 		text-align: center;
 		white-space: nowrap;
@@ -531,7 +535,6 @@
 
 	.pie-tool-periodic-table__atomic-mass {
 		font-size: 9px;
-		opacity: 0.8;
 		text-align: right;
 	}
 
@@ -576,9 +579,8 @@
 	 * The category fills below are a fixed data encoding, so their ink has to be
 	 * fixed too: everything carrying one otherwise inherits --pie-text, which is
 	 * near-white under every dark theme and left the element symbol and name at
-	 * about 1.2:1 on a pastel. The tightest pairing this ink leaves is the
-	 * 0.8-opacity atomic mass on the darkest fill, #ff9e9e, at 6.0:1; the symbol
-	 * on the same fill is 9.0:1.
+	 * about 1.2:1 on a pastel. The tightest pairing this ink leaves is the darkest
+	 * fill in the set, #ff9e9e, at 9.0:1.
 	 *
 	 * A colour scheme takes that encoding away: --pie-fixed-hue-collapse is 100%
 	 * under every scheme, which folds each fill into --pie-background-dark and the

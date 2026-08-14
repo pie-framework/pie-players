@@ -16,8 +16,8 @@ declared. Fading a cell far enough to read as dimmed composites its text towards
 the page and takes it under 4.5:1 — 0.4 leaves it near 1.8:1 — and these cells
 stay focusable and clickable, so SC 1.4.3 applies. A filtered-out cell drops its
 category fill to the panel surface and takes theme ink instead, which measures
-17.7:1 under the light Base Theme and 16.4:1 under yellow-on-blue, and it turns
-its border dashed. The border *style* rather than its colour: under a colour
+17.7:1 under the light Base Theme and, across the ten built-in schemes, 6.21:1 at
+worst, and it turns its border dashed. The border *style* rather than its colour: under a colour
 scheme every cell already shares one surface, so the fill can no longer carry the
 state, and a stronger edge would read as emphasis when the matching cells' edge is
 deliberately faint.

@@ -146,23 +146,31 @@ describe("periodic table category encoding", () => {
 		}
 	});
 
-	test("the pinned ink clears AA on every fill, at every opacity the cell uses", () => {
-		// The cell fades its secondary text: 0.9 for the element name, 0.8 for the
-		// atomic number and mass. Measuring the ink alone would miss both.
-		const CELL_TEXT_OPACITIES = [1, 0.9, 0.8] as const;
-
+	test("the pinned ink clears AA on every fill", () => {
 		for (const fill of new Set(AUTHORED_FILLS)) {
-			for (const opacity of CELL_TEXT_OPACITIES) {
-				expect(
-					contrastRatio(flatten(PINNED_INK, fill, opacity), fill),
-					`${fill} at ${opacity}`,
-				).toBeGreaterThanOrEqual(4.5);
-			}
+			expect(contrastRatio(PINNED_INK, fill), fill).toBeGreaterThanOrEqual(4.5);
 		}
-		// The two numbers the stylesheet comment claims, against the darkest fill.
-		expect(
-			contrastRatio(flatten(PINNED_INK, "#ff9e9e", 0.8), "#ff9e9e"),
-		).toBeCloseTo(6.0, 1);
+		// The number the stylesheet comment claims, against the darkest fill.
 		expect(contrastRatio(PINNED_INK, "#ff9e9e")).toBeCloseTo(9.0, 1);
+	});
+
+	test("cell text spends no contrast on opacity", () => {
+		// A faded secondary line costs contrast the palette cannot always afford:
+		// at 0.8 the atomic mass measured 4.12:1 under grey-on-light-grey and
+		// 4.00:1 under purple-on-light-green once the fills collapse, where ink on
+		// the recessed surface holds only 6.46:1 and 5.44:1 to begin with. Size and
+		// weight carry the hierarchy instead.
+		for (const part of [
+			"__atomic-number {",
+			"__symbol {",
+			"__name {",
+			"__atomic-mass {",
+		]) {
+			const rule = collapsed.slice(collapsed.indexOf(part));
+			expect(rule.slice(0, rule.indexOf("}")), part).not.toContain("opacity");
+		}
+		// Full-strength ink on the tightest built-in pairing still clears AA.
+		expect(contrastRatio("#4a4a4a", "#dcdcdc")).toBeGreaterThanOrEqual(4.5);
+		expect(contrastRatio("#8e2464", "#b8dcc3")).toBeGreaterThanOrEqual(4.5);
 	});
 });

@@ -25,7 +25,8 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "bun run check:composition && tsc -p tsconfig.json",
+		"check:composition": "bun test tests/packaged-capability-composition.test.ts",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",

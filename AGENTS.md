@@ -2,8 +2,13 @@
 
 Use this file as the single project guidance entry point for agent tools.
 This file contains the repo's project brief, canonical rules, and the inventory
-of project skills and commands. Do not duplicate this guidance into Cursor
-rules, Cursor skills, or Cursor commands.
+of project skills and commands.
+
+Do not duplicate this guidance into harness-specific rule files — no
+`.cursor/rules`, `.github/copilot-instructions.md`, `GEMINI.md`, or equivalent.
+Anything that needs project rules reads this file; a harness that cannot should
+get a pointer to it, never a copy. Copies drift silently and the drift is only
+discovered when two agents give contradictory answers.
 
 ## Project Context
 
@@ -89,6 +94,53 @@ registered under its own distinct tag.
   `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
   `bun run check:custom-elements`.
 
+### Downstream Consumer Impact
+
+`docs/integrations/consumer-api-dependencies.md` records which `@pie-players`
+surfaces real downstream hosts touch, and which of those break silently.
+
+- Consult it before changing any public surface: custom-element tag names,
+  attributes, properties, DOM events and their `bubbles`/`composed` init, event
+  payload shapes and emission cardinality, controller and coordinator methods,
+  `runtime` / `hooks` config keys, `--pie-*` tokens, package `exports`, or
+  `dist` filenames. Its "Change-risk quick reference" is the short version.
+- Consumers are identified by integration shape only. This repository is
+  public and those hosts are not, so do not add repository names, product
+  names, ticket keys, endpoints, tenant or customer detail, host config key
+  names, or quoted host code to that file or anywhere else in `docs/`.
+- Treat the pad as observed usage with a verification date, not as a contract.
+  Confirm a row against the cited code before relying on it, and refresh it
+  with the procedure at the end of the file rather than editing rows in place.
+- A surface listed there is not frozen. Change it when the design calls for it,
+  and say in the changeset and PR description which listed host is affected and
+  how, so the coordination is visible instead of discovered on upgrade.
+- A surface only the internally-controlled consumer touches is not a constraint
+  at all. Change it and fix that consumer in the same push; never narrow a
+  design to spare it.
+- To refresh, extend, or add a consumer to the pad, follow
+  `docs/integrations/consumer-api-dependencies-maintenance.md`. That file is the
+  procedure for every harness and for doing it by hand: it carries the redaction
+  rule, how to resolve consumer checkout paths — including asking the developer
+  for any it cannot find, rather than auditing a silent subset — and the rules
+  for rewriting the risk groups. Do not improvise a refresh, and do not copy the
+  procedure into a harness-specific file; the Claude Code skill and command of
+  the same name are thin wrappers over it.
+- `bun run check:consumer-pad` enforces this independently of any agent harness.
+  It compares the branch against its merge-base with `origin/develop` and fails
+  when a curated set of surface-defining files changed and the pad did not. It
+  runs inside `verify:ci-lint-typecheck`, so it reaches the full local PR gate
+  and CI. Satisfy it by updating the pad; when the pad genuinely still reads
+  true, record why in a commit message trailer instead:
+
+  ```
+  Consumer-pad: rows unchanged, <what you checked>
+  ```
+
+  Reaching for the trailer routinely means the trigger list in
+  `scripts/check-consumer-pad.mjs` is too wide — narrow it there rather than
+  normalizing the override. `PIE_CONSUMER_PAD_OVERRIDE="<reason>"` exists for a
+  one-off local run and is not a substitute for the trailer.
+
 ### Legacy Compatibility Boundaries
 
 - Do not add legacy/backward-compatibility shims outside the `pie-item` client
@@ -166,7 +218,7 @@ version. The source of truth is the `fixed` block in `.changeset/config.json`.
 ### Playwright And Sandboxed Execution
 
 Playwright cannot reliably install browsers, spawn dev servers, or launch
-Chromium inside the default Cursor tool sandbox.
+Chromium inside a default agent tool sandbox.
 
 When running any command that may invoke Playwright, request
 `required_permissions: ["all"]` so it runs outside the sandbox and can reuse the
@@ -200,8 +252,10 @@ introduces nothing.
 ## Skills And Commands
 
 Canonical project skills and commands live in `.claude/skills/` and
-`.claude/commands/`. Do not duplicate them into Cursor files or replace them
-with symlinks.
+`.claude/commands/`. Do not duplicate them into other harnesses' files or
+replace them with symlinks. Where a skill carries a procedure that a person or
+another harness would also need, the procedure belongs in `docs/` with the skill
+as a thin wrapper over it — `consumer-dependency-audit` is the pattern.
 
 Skills:
 
@@ -211,6 +265,9 @@ Skills:
   slot, and cross-package contract review.
 - `ce-package-packaging` — custom-element package entrypoints, exports, build
   artifacts, and preflight workflow.
+- `consumer-dependency-audit` — trigger coverage and Claude-side mechanics for
+  `docs/integrations/consumer-api-dependencies-maintenance.md`, which owns the
+  procedure.
 - `grill-with-docs` — opt-in design grilling with terminology/ADR capture.
 - `loop-review-agents` — opt-in repeated three-agent review loop with consensus
   thresholds and churn control.
@@ -219,6 +276,8 @@ Skills:
 
 Commands:
 
+- `consumer-dependency-audit` — invoke the `consumer-dependency-audit` skill,
+  optionally scoped to one consumer label or one surface.
 - `grill-with-docs` — invoke the `grill-with-docs` skill with optional plan
   context.
 - `loop-review-agents` — invoke the `loop-review-agents` skill with optional

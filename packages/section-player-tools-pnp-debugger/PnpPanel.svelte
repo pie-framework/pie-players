@@ -202,6 +202,20 @@
 		class="pie-section-player-tools-pnp-debugger__content"
 		style="height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
 	>
+		{#if pnpPanelData.determination.runtimeContext.assessmentBound === false}
+			<div
+				class="pie-section-player-tools-pnp-debugger__card pie-section-player-tools-pnp-debugger__card--warning"
+				data-testid="pnp-no-assessment-bound"
+				role="status"
+			>
+				<div class="pie-section-player-tools-pnp-debugger__card-title">No assessment bound</div>
+				<p class="pie-section-player-tools-pnp-debugger__card-text">
+					Every accommodation below is declined because nothing supplied a profile, not
+					because policy denied it. Call <code>updateAssessment(...)</code> on the toolkit
+					coordinator.
+				</p>
+			</div>
+		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">
 			<div class="pie-section-player-tools-pnp-debugger__card-title">Determination (read-only)</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
@@ -379,6 +393,18 @@
 		font-size: 0.75rem;
 		font-weight: 600;
 		margin-bottom: 0.5rem;
+	}
+
+	/* Literal amber rather than a token: the registry defines no warning colour,
+	 * and this panel is a debug surface no deployment themes. */
+	.pie-section-player-tools-pnp-debugger__card--warning {
+		border-left: 3px solid #b45309;
+	}
+
+	.pie-section-player-tools-pnp-debugger__card-text {
+		font-size: 0.75rem;
+		line-height: 1.4;
+		margin: 0;
 	}
 
 	.pie-section-player-tools-pnp-debugger__card-pre {

@@ -156,13 +156,52 @@ element.dispatchEvent(
 
 ## Theming Contract (Shadow-Safe)
 
-- Treat `--pie-*` CSS variables as the stable public theming API for both light-DOM and shadow-DOM CEs.
-- Keep a single source of truth in `@pie-players/pie-theme` for defaults and built-in color schemes; consumers should read from `listPieColorSchemes()` instead of duplicating scheme catalogs.
-- Resolve theme values in this order: base theme (`light`/`dark`/`auto`) -> provider variables -> color-scheme variables -> explicit `variables` overrides.
+- Treat `--pie-*` CSS variables as the stable public theming interface for both
+  light-DOM and shadow-DOM CEs.
+- Keep one side-effect-free TypeScript definition in
+  `@pie-players/pie-theme` for light/dark bases and complete built-in color
+  schemes. Raw base and palette tables are package-private.
+- Cross the theme seam through `resolvePieTheme`, `listPieColorSchemes`,
+  `observePieColorSchemes`, and `registerPieColorSchemes`. A mounted catalog UI
+  observes snapshots; it does not copy the list once or maintain its own palette
+  metadata.
+- `listPieColorSchemes()` returns an immutable `{ generation, schemes }`
+  snapshot. Catalog previews resolve over PIE's canonical light Base Theme and
+  project background, text, and primary; they are never separately authored
+  swatches or a promise to mirror a host-specific provider.
+- Resolve theme values in this order: base theme -> Theme Provider -> resolved
+  registered scheme -> explicit `variables` override. DaisyUI stays a provider
+  adapter because it reads host state rather than defining a built-in palette.
+- Distinguish Requested Scheme from Resolved Scheme. An unavailable requested id
+  remains in `scheme` and `data-color-scheme`, renders the base/provider result
+  plus explicit overrides, and resolves after late registration. Do not reset it
+  to `default`.
+- Use Registered Custom Schemes for managed precedence, diagnostics, and picker
+  discovery. CSS-only schemes are a best-effort selector hook whose author owns
+  the cascade: normal cascade rules work in stylesheet-only integrations, while
+  rules competing with a mounted `<pie-theme>` need `!important`.
+- Retain a registration receipt when the caller owns lifecycle cleanup. Its
+  `unregister()` is idempotent and cannot remove a newer replacement for the
+  same id.
+- Built-ins define every `required` Scheme Participant. Custom entries may use
+  only registry tokens marked `required` or `optional`; explicit instance-only
+  values belong in `variables`.
+- Regenerate checked-in adapters with
+  `bun --cwd packages/theme run generate:css`; verify without writes using
+  `bun --cwd packages/theme run check:generated-css`. Builds and
+  `bun run check:theme-tokens` reject stale adapters.
+- Keep `tokens.css` and `color-schemes.css` unlayered and at their existing
+  export/`dist` paths. External hosts depend on those paths and on being able to
+  win with normal cascade and `!important`.
+- Preserve entrypoint asymmetry: the package root self-registers `<pie-theme>`;
+  `@pie-players/pie-theme/theme-element` is side-effect-free.
 - In shadow-DOM CEs, style internals from `:host` tokens and expose host customization via documented `::part(...)`/attributes only when needed.
 - In light-DOM CEs, avoid depending on host app utility classes; still consume the same `--pie-*` variables so migration to `shadow: "open"` stays incremental.
 - Include interaction/accessibility tokens (`--pie-focus-*`, `--pie-button-*`) in component styles; avoid hardcoded color literals for focus/active/hover states.
-- Theme switching must update existing nodes (light and shadow) without remounts; keep E2E coverage for live scheme switching.
+- Theme switching and scheme/provider registration must update existing nodes
+  (light and shadow) without remounts.
+- Cover forced-colors behavior without `forced-color-adjust: none`; system color
+  replacement is an accessibility feature, not a palette failure.
 
 ## DOM Usage Rules
 

@@ -3,21 +3,52 @@ import type {
 	CatalogCard,
 	CatalogCardPayload,
 } from "@pie-players/pie-players-shared/types";
+import {
+	catalogOwnerContextFor,
+	collectOwnerCatalogRegistrations,
+	type CatalogOwnerContext,
+	type CatalogOwnerIdentity,
+	type CatalogSourceEntity,
+} from "./catalog-owner.js";
 import { sanitizeSsmlString } from "./SSMLExtractor.js";
 
-export type CatalogOwnerKind = "global" | "passage" | "itemModel";
+export type CatalogLookupContext = CatalogOwnerContext;
 
-export interface CatalogOwnerContext {
-	ownerKind: CatalogOwnerKind;
-	assessmentId?: string;
-	sectionId?: string;
-	canonicalItemId?: string;
-	itemId?: string;
-	passageId?: string;
-	modelId?: string;
+/** One card visible from a mounted content owner's catalog scope. */
+export interface CatalogOwnerCard {
+	/** Author-owned identifier; never normalized or prefixed. */
+	readonly catalogId: string;
+	/** Read-only authored card, including capability-specific metadata. */
+	readonly card: Readonly<CatalogCard>;
 }
 
-export type CatalogLookupContext = CatalogOwnerContext;
+/**
+ * Immutable point-in-time view of the cards owned by an item or passage.
+ *
+ * Ordering is deterministic and matches registration precedence: entity-root,
+ * extractor-generated, then model-owned catalogs in model order. Capabilities
+ * interpret card meaning; the generic resolver owns only scope and traversal.
+ */
+export interface CatalogOwnerSnapshot {
+	readonly cards: readonly CatalogOwnerCard[];
+}
+
+/**
+ * Owner-bound catalog interface used by content capabilities and their host.
+ *
+ * The owner context is captured once. Callers no longer coordinate a raw entity,
+ * a resolver and a separately assembled lookup context.
+ */
+export interface CatalogOwnerView {
+	snapshot(): CatalogOwnerSnapshot;
+	onChange(listener: () => void): () => void;
+}
+
+/** Everything needed to register one mounted catalog owner. */
+export interface CatalogOwnerRegistration {
+	owner: CatalogOwnerIdentity;
+	entity: CatalogSourceEntity | null | undefined;
+}
 
 /** What changed in the resolver's catalog set. */
 export type CatalogChangeReason =
@@ -99,6 +130,50 @@ export function isKnownCatalogType(type: string): boolean {
 // "this token is not a thing", and repeating it per card or per lookup would bury
 // it under itself.
 const reportedUnknownTypes = new Set<string>();
+
+function cloneAndFreezeCatalogValue(
+	value: unknown,
+	seen = new Set<object>(),
+): unknown {
+	if (
+		value === null ||
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean" ||
+		typeof value === "undefined"
+	) {
+		return value;
+	}
+	if (typeof value !== "object") {
+		throw new TypeError("catalog cards must contain JSON-compatible values");
+	}
+	if (seen.has(value)) {
+		throw new TypeError("catalog cards must not contain cycles");
+	}
+	seen.add(value);
+	try {
+		if (Array.isArray(value)) {
+			return Object.freeze(
+				value.map((entry) => cloneAndFreezeCatalogValue(entry, seen)),
+			);
+		}
+		const prototype = Object.getPrototypeOf(value);
+		if (prototype !== Object.prototype && prototype !== null) {
+			throw new TypeError(
+				"catalog cards must contain only plain objects and arrays",
+			);
+		}
+		const cloned: Record<string, unknown> = {};
+		for (const [key, entry] of Object.entries(
+			value as Record<string, unknown>,
+		)) {
+			cloned[key] = cloneAndFreezeCatalogValue(entry, seen);
+		}
+		return Object.freeze(cloned);
+	} finally {
+		seen.delete(value);
+	}
+}
 
 function reportUnknownCatalogType(
 	type: string,
@@ -251,6 +326,7 @@ export class AccessibilityCatalogResolver {
 	// pass per unique string (sanitizeSsmlString is idempotent).
 	private sanitizedSpokenCache = new Map<string, string>();
 	private catalogChangeListeners = new Set<CatalogChangeListener>();
+	private reportedSnapshotProblems = new Set<string>();
 
 	constructor(
 		assessmentCatalogs?: AccessibilityCatalog[],
@@ -336,11 +412,16 @@ export class AccessibilityCatalogResolver {
 		}
 	}
 
-	registerCatalogs(
+	private insertScopedCatalogs(
 		context: CatalogOwnerContext,
 		catalogs?: AccessibilityCatalog[],
-	): () => void {
-		if (!catalogs || catalogs.length === 0) return () => {};
+	): {
+		key: string;
+		context: CatalogOwnerContext;
+		catalogs: Map<string, AccessibilityCatalog>;
+		insertedIds: string[];
+	} | null {
+		if (!catalogs || catalogs.length === 0) return null;
 		const key = this.getOwnerKey(context);
 		const existing = this.scopedCatalogs.get(key);
 		const scoped =
@@ -356,31 +437,119 @@ export class AccessibilityCatalogResolver {
 			scoped.set(catalog.identifier, catalog);
 			insertedIds.push(catalog.identifier);
 		}
-		if (!existing) {
+		if (!existing && insertedIds.length > 0) {
 			this.scopedCatalogs.set(key, {
 				context: { ...context },
 				catalogs: scoped,
 			});
 		}
+		return { key, context: { ...context }, catalogs: scoped, insertedIds };
+	}
+
+	private removeScopedInsertion(insertion: {
+		key: string;
+		catalogs: Map<string, AccessibilityCatalog>;
+		insertedIds: string[];
+	}): boolean {
+		const current = this.scopedCatalogs.get(insertion.key);
+		if (current?.catalogs !== insertion.catalogs) return false;
+		let removed = false;
+		for (const insertedId of insertion.insertedIds) {
+			removed = current.catalogs.delete(insertedId) || removed;
+		}
+		if (current.catalogs.size === 0) {
+			this.scopedCatalogs.delete(insertion.key);
+		}
+		return removed;
+	}
+
+	registerCatalogs(
+		context: CatalogOwnerContext,
+		catalogs?: AccessibilityCatalog[],
+	): () => void {
+		const insertion = this.insertScopedCatalogs(context, catalogs);
 		// Only when something was actually inserted: an all-duplicates call changes
 		// nothing, and waking every reader to re-resolve for that would make the
 		// signal untrustworthy.
-		if (insertedIds.length > 0) {
+		if (insertion && insertion.insertedIds.length > 0) {
 			this.emitCatalogsChange({ reason: "scoped-registered", context });
 		}
+		let active = true;
 		return () => {
-			const current = this.scopedCatalogs.get(key);
-			if (current?.catalogs !== scoped) return;
-			for (const insertedId of insertedIds) {
-				current.catalogs.delete(insertedId);
-			}
-			if (current.catalogs.size === 0) {
-				this.scopedCatalogs.delete(key);
-			}
-			if (insertedIds.length > 0) {
+			if (!active) return;
+			active = false;
+			if (insertion && this.removeScopedInsertion(insertion)) {
 				this.emitCatalogsChange({ reason: "scoped-removed", context });
 			}
 		};
+	}
+
+	/**
+	 * Register every catalog carried by one mounted item or passage as one
+	 * owner-level transaction.
+	 *
+	 * The resolver owns the entity walk and emits one post-mutation signal, so a
+	 * reader never observes only the root or only the model half of an owner.
+	 */
+	registerOwner(registration: CatalogOwnerRegistration): () => void {
+		const { owner, entity } = registration;
+		const context = catalogOwnerContextFor(owner);
+		const insertions: Array<
+			NonNullable<ReturnType<typeof this.insertScopedCatalogs>>
+		> = [];
+		let registrations: ReturnType<typeof collectOwnerCatalogRegistrations> = [];
+		try {
+			registrations = collectOwnerCatalogRegistrations(entity, owner);
+		} catch (error) {
+			console.warn(
+				"[AccessibilityCatalogResolver] A mounted content owner could not be traversed for catalogs; the primary content remains available.",
+				error,
+			);
+		}
+		for (const entry of registrations) {
+			try {
+				const insertion = this.insertScopedCatalogs(
+					entry.context,
+					entry.catalogs,
+				);
+				if (insertion) insertions.push(insertion);
+			} catch (error) {
+				console.warn(
+					"[AccessibilityCatalogResolver] Invalid catalogs on a mounted content owner were ignored; the primary content and other valid catalogs remain available.",
+					error,
+				);
+			}
+		}
+		const changed = insertions.some(
+			(insertion) => insertion.insertedIds.length > 0,
+		);
+		if (changed) {
+			this.emitCatalogsChange({ reason: "scoped-registered", context });
+		}
+		let active = true;
+		return () => {
+			if (!active) return;
+			active = false;
+			let removed = false;
+			for (const insertion of insertions) {
+				removed = this.removeScopedInsertion(insertion) || removed;
+			}
+			if (removed) {
+				this.emitCatalogsChange({ reason: "scoped-removed", context });
+			}
+		};
+	}
+
+	/** Bind catalog reads and change observation to one content owner. */
+	forOwner(context: CatalogOwnerContext): CatalogOwnerView {
+		const ownerContext = { ...context };
+		return Object.freeze({
+			snapshot: () => this.createOwnerSnapshot(ownerContext),
+			onChange: (listener: () => void) =>
+				this.onCatalogsChange((event) => {
+					if (this.catalogChangeAffectsOwner(event, ownerContext)) listener();
+				}),
+		});
 	}
 
 	/**
@@ -561,6 +730,76 @@ export class AccessibilityCatalogResolver {
 		return true;
 	}
 
+	private ownerScopedCatalogEntries(
+		context: CatalogOwnerContext,
+	): Array<[string, AccessibilityCatalog]> {
+		const entries: Array<[string, AccessibilityCatalog]> = [];
+		const exact = this.scopedCatalogs.get(this.getOwnerKey(context));
+		if (exact) entries.push(...exact.catalogs.entries());
+
+		for (const owner of this.scopedCatalogs.values()) {
+			if (owner === exact) continue;
+			if (!this.isCompatibleOwnerContext(owner.context, context)) continue;
+			entries.push(...owner.catalogs.entries());
+		}
+		return entries;
+	}
+
+	private createOwnerSnapshot(
+		context: CatalogOwnerContext,
+	): CatalogOwnerSnapshot {
+		const cards: CatalogOwnerCard[] = [];
+		const entries = this.ownerScopedCatalogEntries(context);
+		if (context.ownerKind === "global") {
+			entries.push(...this.assessmentCatalogs.entries());
+		}
+		for (const [catalogId, catalog] of entries) {
+			for (const card of catalog.cards) {
+				try {
+					cards.push(
+						Object.freeze({
+							catalogId,
+							card: cloneAndFreezeCatalogValue(card) as Readonly<CatalogCard>,
+						}),
+					);
+				} catch (error) {
+					const key = `${this.getOwnerKey(context)}\u0000${catalogId}`;
+					if (!this.reportedSnapshotProblems.has(key)) {
+						this.reportedSnapshotProblems.add(key);
+						console.warn(
+							`[AccessibilityCatalogResolver] Catalog "${catalogId}" contains a card that cannot be exposed in an owner snapshot; that card was ignored.`,
+							error,
+						);
+					}
+				}
+			}
+		}
+		return Object.freeze({ cards: Object.freeze(cards) });
+	}
+
+	private catalogChangeAffectsOwner(
+		event: CatalogChangeEvent,
+		context: CatalogOwnerContext,
+	): boolean {
+		if (!event.context) return false;
+		if (this.isCompatibleOwnerContext(event.context, context)) return true;
+		// `registerOwner` emits once at the entity root after registering root and
+		// model catalogs transactionally. A model-bound reader belongs to that same
+		// owner family and must observe the root event too.
+		if (
+			context.ownerKind === "itemModel" &&
+			context.modelId &&
+			event.context.ownerKind === "itemModel" &&
+			!event.context.modelId
+		) {
+			return this.isCompatibleOwnerContext(
+				{ ...event.context, modelId: context.modelId },
+				context,
+			);
+		}
+		return false;
+	}
+
 	// The single funnel every registration path runs through — the constructor and
 	// `addItemCatalogs` by way of `indexCatalogs`, and `registerCatalogs`
 	// directly — which is why the unknown-type report lives here rather than at
@@ -712,6 +951,15 @@ export class AccessibilityCatalogResolver {
 			}
 		}
 
+		for (const owner of this.scopedCatalogs.values()) {
+			for (const catalog of owner.catalogs.values()) {
+				for (const card of catalog.cards) {
+					allTypes.add(card.catalog);
+					if (card.language) allLanguages.add(card.language);
+				}
+			}
+		}
+
 		return {
 			totalCatalogs:
 				this.assessmentCatalogs.size +
@@ -775,6 +1023,7 @@ export class AccessibilityCatalogResolver {
 		this.itemCatalogs.clear();
 		this.scopedCatalogs.clear();
 		this.sanitizedSpokenCache.clear();
+		this.reportedSnapshotProblems.clear();
 	}
 
 	/**

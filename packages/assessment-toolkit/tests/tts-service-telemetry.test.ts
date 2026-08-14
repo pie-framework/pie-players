@@ -245,7 +245,14 @@ describe("TTSService telemetry", () => {
 		const service = new TTSService();
 		await expect(
 			service.initialize(new FailingInitializeProvider(), {
+				voice: "Joanna",
+				rate: 1.25,
+				pitch: 0.8,
+				region: "us-east-1",
+				organizationId: "server-tenant",
+				mathTokenHighlighting: true,
 				providerOptions: {
+					engine: "neural",
 					__pieTelemetry: (
 						eventName: string,
 						payload?: Record<string, unknown>,
@@ -255,6 +262,11 @@ describe("TTSService telemetry", () => {
 				},
 			}),
 		).resolves.toBeUndefined();
+		expect((service as any).ttsConfig).toEqual({
+			rate: 1.25,
+			pitch: 0.8,
+			mathTokenHighlighting: true,
+		});
 
 		await expect(
 			service.speak("fallback should succeed"),

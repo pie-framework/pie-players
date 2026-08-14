@@ -1,3 +1,8 @@
+import { type ColorMeasure, createCanvasColorMeasure } from "./contrast.js";
+import {
+	DAISY_SLOT_CSS_VARIABLES,
+	resolveDaisyPieVariables,
+} from "./daisyui-mapping.js";
 import {
 	normalizePieThemeVariables,
 	type ThemeVariables,
@@ -10,110 +15,61 @@ export interface ThemeProviderAdapter {
 }
 
 const themeProviderRegistry = new Map<string, ThemeProviderAdapter>();
+const themeProviderObservers = new Set<() => void>();
+
+function notifyThemeProviderObservers(): void {
+	for (const listener of [...themeProviderObservers]) {
+		try {
+			listener();
+		} catch {
+			console.warn(
+				"[pie-theme] A theme-provider observer threw while receiving an update.",
+			);
+		}
+	}
+}
+
+/**
+ * Provider mode that resolves nothing, leaving this package's shipped defaults
+ * in place.
+ *
+ * `"auto"` lets any registered adapter that can read the target win, which on a
+ * DaisyUI page means PIE tokens follow `--color-*`. This is how a host asks for
+ * the palette it would have had before adopting a provider — the first question
+ * to answer when colours differ between two environments.
+ *
+ * Distinct from naming an unregistered provider, which lands in the same place
+ * by accident. `unregisterPieThemeProvider` cannot remove this one because it is
+ * not in the registry at all, so the mode cannot be taken away from a host.
+ */
+export const PIE_THEME_PROVIDER_NONE = "none";
 
 function trimCssVar(value: string): string | undefined {
 	const trimmed = value.trim();
 	return trimmed ? trimmed : undefined;
 }
 
-function mixResolvedColors(args: {
-	left?: string;
-	right?: string;
-	leftWeight: string;
-}): string | undefined {
-	if (!args.left || !args.right) {
-		return undefined;
+let cachedColorMeasure: ColorMeasure | null | undefined;
+
+/**
+ * One measurer for the lifetime of the page. Parsing a colour does not depend on
+ * which document asked, and a resolution pass touches every corrected slot.
+ */
+function colorMeasure(): ColorMeasure | null {
+	if (cachedColorMeasure === undefined) {
+		cachedColorMeasure = createCanvasColorMeasure();
 	}
-	return `color-mix(in srgb, ${args.left} ${args.leftWeight}, ${args.right})`;
+	return cachedColorMeasure;
 }
 
 function mapComputedDaisyVars(computed: CSSStyleDeclaration): ThemeVariables {
-	const value = (key: string) => trimCssVar(computed.getPropertyValue(key));
-	return normalizePieThemeVariables({
-		"--pie-background": value("--color-base-100"),
-		"--pie-background-dark": value("--color-base-200"),
-		"--pie-secondary-background": value("--color-base-200"),
-		"--pie-dropdown-background": value("--color-base-300"),
-		"--pie-text": value("--color-base-content"),
-		"--pie-primary": value("--color-primary"),
-		"--pie-primary-light": mixResolvedColors({
-			left: value("--color-primary"),
-			right: value("--color-base-100"),
-			leftWeight: "60%",
+	return normalizePieThemeVariables(
+		resolveDaisyPieVariables({
+			read: (slot) =>
+				trimCssVar(computed.getPropertyValue(DAISY_SLOT_CSS_VARIABLES[slot])),
+			measure: colorMeasure(),
 		}),
-		"--pie-primary-dark": mixResolvedColors({
-			left: value("--color-primary"),
-			right: value("--color-base-content"),
-			leftWeight: "75%",
-		}),
-		"--pie-faded-primary": mixResolvedColors({
-			left: value("--color-primary"),
-			right: value("--color-base-100"),
-			leftWeight: "20%",
-		}),
-		"--pie-secondary": value("--color-secondary"),
-		"--pie-secondary-light": mixResolvedColors({
-			left: value("--color-secondary"),
-			right: value("--color-base-100"),
-			leftWeight: "60%",
-		}),
-		"--pie-secondary-dark": mixResolvedColors({
-			left: value("--color-secondary"),
-			right: value("--color-base-content"),
-			leftWeight: "75%",
-		}),
-		"--pie-tertiary": value("--color-accent"),
-		"--pie-tertiary-light": mixResolvedColors({
-			left: value("--color-accent"),
-			right: value("--color-base-100"),
-			leftWeight: "60%",
-		}),
-		"--pie-border": value("--color-base-300"),
-		"--pie-border-light": value("--color-base-200"),
-		"--pie-border-dark": value("--color-neutral"),
-		"--pie-border-gray": value("--color-base-300"),
-		"--pie-correct": value("--color-success"),
-		"--pie-correct-secondary": mixResolvedColors({
-			left: value("--color-success"),
-			right: value("--color-base-100"),
-			leftWeight: "20%",
-		}),
-		"--pie-correct-tertiary": value("--color-success"),
-		"--pie-correct-icon": value("--color-success"),
-		"--pie-incorrect": value("--color-error"),
-		"--pie-incorrect-secondary": mixResolvedColors({
-			left: value("--color-error"),
-			right: value("--color-base-100"),
-			leftWeight: "20%",
-		}),
-		"--pie-incorrect-icon": value("--color-error"),
-		"--pie-missing": value("--color-error"),
-		"--pie-missing-icon": value("--color-error"),
-		"--pie-disabled": value("--color-base-300"),
-		"--pie-disabled-secondary": value("--color-base-200"),
-		"--pie-focus-checked": mixResolvedColors({
-			left: value("--color-primary"),
-			right: value("--color-base-100"),
-			leftWeight: "20%",
-		}),
-		"--pie-focus-checked-border": value("--color-primary"),
-		"--pie-focus-unchecked": value("--color-base-200"),
-		"--pie-focus-unchecked-border": value("--color-base-300"),
-		"--pie-blue-grey-100": value("--color-base-100"),
-		"--pie-blue-grey-300": value("--color-base-200"),
-		"--pie-blue-grey-600": value("--color-base-300"),
-		"--pie-blue-grey-900": value("--color-base-content"),
-		"--pie-black": value("--color-neutral-content"),
-		"--pie-white": value("--color-base-100"),
-		"--pie-button-bg": value("--color-base-100"),
-		"--pie-button-border": value("--color-base-300"),
-		"--pie-button-color": value("--color-base-content"),
-		"--pie-button-hover-bg": value("--color-base-200"),
-		"--pie-button-hover-border": value("--color-base-300"),
-		"--pie-button-hover-color": value("--color-base-content"),
-		"--pie-button-active-bg": value("--color-base-300"),
-		"--pie-button-focus-outline": value("--color-primary"),
-	});
+	);
 }
 
 export const DAISYUI_THEME_PROVIDER_ADAPTER: ThemeProviderAdapter = {
@@ -140,7 +96,17 @@ export function registerPieThemeProvider(adapter: ThemeProviderAdapter): void {
 	if (!adapter?.id) {
 		return;
 	}
+	if (adapter.id === PIE_THEME_PROVIDER_NONE) {
+		console.warn(
+			`[pie-theme] Theme-provider id "${PIE_THEME_PROVIDER_NONE}" is reserved.`,
+		);
+		return;
+	}
+	if (themeProviderRegistry.get(adapter.id) === adapter) {
+		return;
+	}
 	themeProviderRegistry.set(adapter.id, adapter);
+	notifyThemeProviderObservers();
 }
 
 export function unregisterPieThemeProvider(providerId: string): void {
@@ -150,7 +116,20 @@ export function unregisterPieThemeProvider(providerId: string): void {
 	if (providerId === DAISYUI_THEME_PROVIDER_ADAPTER.id) {
 		return;
 	}
-	themeProviderRegistry.delete(providerId);
+	if (themeProviderRegistry.delete(providerId)) {
+		notifyThemeProviderObservers();
+	}
+}
+
+/** Package-internal invalidation used by connected pie-theme elements. */
+export function observePieThemeProviders(listener: () => void): () => void {
+	themeProviderObservers.add(listener);
+	let active = true;
+	return () => {
+		if (!active) return;
+		active = false;
+		themeProviderObservers.delete(listener);
+	};
 }
 
 export function listPieThemeProviders(): ThemeProviderAdapter[] {
@@ -168,6 +147,12 @@ export function resolveProviderVariables(args: {
 	provider?: string | null;
 }): ThemeVariables {
 	const providerMode = args.provider?.trim() || "auto";
+	// Before the registry lookup and before the documentElement retry below: the
+	// point of this mode is that nothing resolves, and a retry against a themed
+	// <html> would put the provider's values back.
+	if (providerMode === PIE_THEME_PROVIDER_NONE) {
+		return {};
+	}
 	const resolveFromTarget = (target: HTMLElement): ThemeVariables => {
 		if (providerMode && providerMode !== "auto") {
 			const provider = themeProviderRegistry.get(providerMode);

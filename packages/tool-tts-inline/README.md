@@ -231,6 +231,41 @@ indication — so these defaults do not introduce one. Hosts remain responsible 
 maintaining WCAG AA foreground/background contrast when overriding active trigger
 colors.
 
+### Overlay panel colours
+
+The floating and left-aligned panels take their shape from the Knowledge-Check
+design and their colour from the active theme. Each surface resolves a
+component-scoped hook first, then a canonical token, then a literal that only
+applies when no theme is loaded:
+
+```css
+--pie-tts-button-color        /* media glyphs, selected speed → --pie-button-color */
+--pie-tts-inline-muted-color  /* unselected speed labels     → --pie-button-color */
+--pie-tts-selected-bg         /* the card                    → --pie-surface / --pie-white */
+--pie-selected-button-background /* selected speed chip      → --pie-button-active-bg */
+--pie-selected-button-border  /* selected speed chip border  → --pie-button-border */
+--pie-tts-menu-shadow         /* card elevation */
+--pie-tts-card-border         /* card hairline; `transparent` for shadow-only */
+```
+
+The card carries a hairline mixed from `--pie-text` because its shadow is black
+and disappears once the surface goes dark. It is deliberately not derived from
+`--pie-border`: a host that wants borderless controls sets that to transparent,
+which is the case where the shadow is the only edge. Set
+`--pie-tts-card-border: transparent` for the shadow-only card.
+
+A host that sets `--pie-button-border: transparent` also flattens the selected
+speed chip, which defaults through it — set `--pie-selected-button-border` to
+keep the chip outlined.
+
+Foregrounds default through `--pie-button-color` (DaisyUI `base-content`) rather
+than `--pie-primary` or `--pie-tertiary`: those are direct mappings of DaisyUI
+slots chosen to pair with their own `-content` colour, so an accent glyph taken
+from either falls under 3:1 against the card in 11 of the 35 shipped themes.
+Selection reads from the chip fill and the bolder weight instead of from hue. A
+host that wants a branded accent sets `--pie-tts-button-color` and owns the
+contrast, as with the active-trigger hooks above.
+
 Ordinary trigger and control button styling also preserves these legacy aliases:
 `--pie-button-background-color`, `--pie-button-border-color`, and
 `--pie-button-hover-background-color`. They remain supported for host

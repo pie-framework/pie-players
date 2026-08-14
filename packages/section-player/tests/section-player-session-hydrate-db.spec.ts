@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_PATH =
 	"/session-hydrate-db?mode=candidate&layout=splitpane&page=session-page-one";
@@ -95,6 +96,7 @@ async function readSessionDemoState(args: {
 async function openSessionDbPanel(
 	page: import("@playwright/test").Page,
 ): Promise<void> {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle database state panel",
 	});

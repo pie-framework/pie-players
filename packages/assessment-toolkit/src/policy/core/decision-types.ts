@@ -6,8 +6,8 @@
  * composition pipeline that produces the response, lives in sibling
  * modules.
  *
- * See `.cursor/plans/m8-design.md` § 2 for the engine shape, § 3 for
- * the composition rule, and § 4 for the provenance contract.
+ * `docs/tools-and-accomodations/architecture.md` covers the engine shape,
+ * the composition rule, and the provenance contract.
  */
 
 import type { ToolPlacementLevel } from "../../services/tools-config-normalizer.js";

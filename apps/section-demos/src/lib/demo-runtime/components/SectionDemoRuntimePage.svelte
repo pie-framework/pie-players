@@ -27,6 +27,7 @@
 		applyToolkitScheme,
 		ATTEMPT_QUERY_PARAM,
 		ATTEMPT_STORAGE_KEY,
+		bindDemoAssessment,
 		createAttemptId,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
@@ -151,6 +152,12 @@
 			personalNeedsProfile: createUniversalPersonalNeedsProfile()
 		};
 	});
+	// Re-runs only when `resolvedSectionForPlayer` recomputes, which is what keeps
+	// the binding off the engine's change feed — see `bindDemoAssessment`.
+	$effect(() => {
+		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
+	});
+
 	let sessionPanelSectionId = $derived(
 		String(
 			(resolvedSectionForPlayer as any)?.identifier ||

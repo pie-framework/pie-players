@@ -355,7 +355,9 @@
 
 	function handleFrameworkError(event: Event) {
 		const detail = (event as CustomEvent<FrameworkErrorModel>).detail;
-		runtimeErrorState = true;
+		// Recoverable framework warnings remain observable but do not block the
+		// assessment. Only a non-recoverable failure latches readiness to `error`.
+		if (detail?.recoverable !== true) runtimeErrorState = true;
 		// Route the framework-error model into the section runtime
 		// engine so the engine's framework-error / DOM-event bridges
 		// fan out a `framework-error` DOM event on the layout CE host.

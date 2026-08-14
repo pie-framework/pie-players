@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/three-section-assessment";
 const KNOWN_A11Y_BASELINE_DEBT = new Set<string>(["aria-allowed-attr"]);
@@ -520,6 +521,7 @@ test.describe("assessment player smoke", () => {
 		page,
 	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		await openDemoMenuIfCollapsed(page);
 		const host = page.locator("pie-assessment-player-default");
 		await host.getByRole("button", { name: "Next" }).click();
 		await page
@@ -542,6 +544,7 @@ test.describe("assessment player smoke", () => {
 		page,
 	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		await openDemoMenuIfCollapsed(page);
 		const host = page.locator("pie-assessment-player-default");
 		await expect(host).toBeVisible();
 

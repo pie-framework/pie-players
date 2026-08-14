@@ -1,6 +1,6 @@
 /**
- * PNP/profile policy input detection (M8 PR 4 — see `.cursor/plans/m8-design.md` F2 and
- * `.cursor/plans/m8-implementation-plan.md` § PR 4).
+ * PNP/profile policy input detection. See
+ * `docs/tools-and-accomodations/architecture.md`.
  *
  * Pure helpers that decide whether the inputs the engine has been given
  * actually carry PNP/profile policy material. Used by:

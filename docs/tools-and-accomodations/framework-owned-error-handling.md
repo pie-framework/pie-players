@@ -106,7 +106,11 @@ should not assume startup tool validation always emits `kind: "tool-config"`.
 
 Recoverable framework errors are still logged and emitted through
 `framework-error`, but they do not trigger the built-in fatal fallback
-panel. The default slot remains active when `recoverable === true`.
+panel or move section readiness to `error`. The default slot remains active when
+`recoverable === true`. Tool Surface Host failures use `kind: "tool-surface"`,
+`severity: "warning"`, and `recoverable: true`: one optional capability may be
+omitted or keep its last working element while the assessment and other
+capabilities continue.
 
 ### Optional host extension points
 

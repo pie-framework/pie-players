@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 /**
  * PIE-512 regression e2e.
@@ -103,21 +104,13 @@ type EventPanelHandle = HTMLElement & {
 async function openEventPanel(
 	page: import("@playwright/test").Page,
 ): Promise<void> {
-	// Narrow-viewport toolbar items overlap, so click via JavaScript bypasses
-	// pointer-event interception. The regression we test is event delivery,
-	// not toolbar hit-testing.
-	await page.evaluate(() => {
-		const button = document.querySelector(
-			'button[aria-label="Toggle event broadcast panel"]',
-		) as HTMLButtonElement | null;
-		if (!button) {
-			throw new Error("[pie-512 e2e] event broadcast toggle button not found");
-		}
-		const pressed = button.getAttribute("aria-pressed") === "true";
-		if (!pressed) {
-			button.click();
-		}
+	await openDemoMenuIfCollapsed(page);
+	const toggle = page.getByRole("button", {
+		name: "Toggle event broadcast panel",
 	});
+	if ((await toggle.getAttribute("aria-pressed")) !== "true") {
+		await toggle.click();
+	}
 	const panel = page.locator("pie-section-player-tools-event-debugger");
 	await expect(panel).toBeAttached();
 	await page.waitForFunction(() => {

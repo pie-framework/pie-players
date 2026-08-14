@@ -1,36 +1,43 @@
 import { describe, expect, test } from "bun:test";
 
-import { BUILTIN_PIE_COLOR_SCHEMES } from "../src/color-schemes";
-import { DARK_THEME_VARS, LIGHT_THEME_VARS } from "../src/theme-defaults";
-
-type TokenScope =
-	| "canonical-semantic"
-	| "component-public"
-	| "package-private"
-	| "legacy"
-	| "unsupported";
-
-type TokenStatus = "active" | "deprecated" | "planned" | "intentional-gap";
-
-type TokenRegistryEntry = {
-	name: `--pie-${string}`;
-	owner: `@pie-players/${string}`;
-	scope: TokenScope;
-	category: string;
-	status: TokenStatus;
-	definedIn: string[];
-	documentedIn: string[];
-	fallbackPolicy: string;
-};
+import { PIE_THEME_SCHEME_PARTICIPATION } from "../src/scheme-participation";
+import {
+	getBaseThemeVariables,
+	listBuiltInColorSchemeDefinitions,
+} from "../src/theme-definitions";
+import type { PieThemeTokenRegistry } from "../src/token-registry-types";
 
 const registry = (await Bun.file(
 	new URL("../src/token-registry.json", import.meta.url),
-).json()) as TokenRegistryEntry[];
+).json()) as PieThemeTokenRegistry;
 
 const entriesByName = new Map(registry.map((entry) => [entry.name, entry]));
 
-const canonicalDefaultTokens = Object.keys(LIGHT_THEME_VARS).sort();
-const darkDefaultTokens = Object.keys(DARK_THEME_VARS).sort();
+const activeCanonicalEntries = registry.filter(
+	(entry) =>
+		entry.owner === "@pie-players/pie-theme" &&
+		entry.scope === "canonical-semantic" &&
+		entry.status === "active",
+);
+const canonicalDefaultTokens = activeCanonicalEntries
+	.map((entry) => entry.name)
+	.sort();
+const requiredSchemeTokens = registry
+	.filter((entry) => entry.schemeParticipation === "required")
+	.map((entry) => entry.name)
+	.sort();
+const requiredNonCanonicalTokens = registry
+	.filter(
+		(entry) =>
+			entry.schemeParticipation === "required" &&
+			!(entry.scope === "canonical-semantic" && entry.status === "active"),
+	)
+	.map((entry) => entry.name);
+const expectedBaseTokens = [
+	...new Set([...canonicalDefaultTokens, ...requiredNonCanonicalTokens]),
+].sort();
+const lightBaseTokens = Object.keys(getBaseThemeVariables("light")).sort();
+const darkBaseTokens = Object.keys(getBaseThemeVariables("dark")).sort();
 
 const requiredComponentPublicTokens = [
 	"--pie-tool-trigger-active-background",
@@ -72,81 +79,80 @@ const extractCssDeclarations = (css: string): string[] =>
 	[...css.matchAll(/(--pie-[a-z0-9-]+)\s*:/g)].map((match) => match[1]);
 
 describe("PIE theme token registry contract", () => {
-	test("registry entries use the expected shape", () => {
+	test("registry entries use the expected unique shape", () => {
 		expect(registry.length).toBeGreaterThan(0);
+		expect(entriesByName.size).toBe(registry.length);
 
 		for (const entry of registry) {
 			expect(entry.name).toMatch(/^--pie-[a-z0-9-]+$/);
 			expect(entry.owner).toMatch(/^@pie-players\/[a-z0-9-]+/);
 			expect(entry.category.trim()).not.toBe("");
-			expect(entry.fallbackPolicy.trim()).not.toBe("");
+			expect(entry.fallbackPolicy?.trim()).not.toBe("");
 			expect(entry.definedIn.length).toBeGreaterThan(0);
-			expect(entry.documentedIn.length).toBeGreaterThan(0);
-		}
-	});
-
-	test("canonical theme defaults are registered as active semantic tokens", () => {
-		for (const token of canonicalDefaultTokens) {
-			const entry = entriesByName.get(token as `--pie-${string}`);
-
-			expect(
-				entry,
-				`${token} must be listed in token-registry.json`,
-			).toBeDefined();
-			expect(entry?.owner).toBe("@pie-players/pie-theme");
-			expect(entry?.scope).toBe("canonical-semantic");
-			expect(entry?.status).toBe("active");
-			expect(entry?.definedIn).toContain(
-				"packages/theme/src/theme-defaults.ts",
+			expect(entry.documentedIn?.length).toBeGreaterThan(0);
+			expect(["required", "optional", "excluded"]).toContain(
+				entry.schemeParticipation,
 			);
-			expect(entry?.documentedIn).toContain("packages/theme/README.md");
 		}
 	});
 
-	test("light and dark runtime defaults expose the same token set", () => {
-		expect(darkDefaultTokens).toEqual(canonicalDefaultTokens);
+	test("canonical theme defaults are registered at their canonical definition", () => {
+		for (const entry of activeCanonicalEntries) {
+			expect(entry.definedIn).toContain(
+				"packages/theme/src/theme-definitions.ts",
+			);
+			expect(entry.documentedIn).toContain("packages/theme/README.md");
+		}
 	});
 
-	test("active canonical registry entries are backed by runtime defaults", () => {
-		const canonicalRuntimeSet = new Set(canonicalDefaultTokens);
-		const activeCanonicalEntries = registry.filter(
-			(entry) =>
-				entry.owner === "@pie-players/pie-theme" &&
-				entry.scope === "canonical-semantic" &&
-				entry.status === "active",
-		);
+	test("both Base Themes expose canonical defaults plus required accessibility hooks", () => {
+		expect(lightBaseTokens).toEqual(expectedBaseTokens);
+		expect(darkBaseTokens).toEqual(expectedBaseTokens);
+	});
+
+	test("active canonical registry entries are backed by both Base Themes", () => {
+		const lightBaseSet = new Set(lightBaseTokens);
+		const darkBaseSet = new Set(darkBaseTokens);
 
 		for (const entry of activeCanonicalEntries) {
 			expect(
-				canonicalRuntimeSet.has(entry.name),
-				`${entry.name} is active canonical but missing from theme-defaults.ts`,
+				lightBaseSet.has(entry.name),
+				`${entry.name} is active canonical but missing from the light Base Theme`,
+			).toBe(true);
+			expect(
+				darkBaseSet.has(entry.name),
+				`${entry.name} is active canonical but missing from the dark Base Theme`,
 			).toBe(true);
 		}
 	});
 
-	test("tokens.css stays in parity with runtime theme defaults", () => {
+	test("tokens.css stays in parity with canonical Base Theme definitions", () => {
 		const cssTokenSet = new Set(extractCssDeclarations(tokensCss));
 
-		expect([...cssTokenSet].sort()).toEqual(canonicalDefaultTokens);
+		expect([...cssTokenSet].sort()).toEqual(expectedBaseTokens);
 	});
 
-	test("color scheme CSS and TS overrides use registered tokens", () => {
+	test("generated scheme participation stays byte-for-value aligned with the registry", () => {
+		const registryParticipation = Object.fromEntries(
+			registry.map((entry) => [entry.name, entry.schemeParticipation]),
+		);
+
+		expect(PIE_THEME_SCHEME_PARTICIPATION).toEqual(registryParticipation);
+	});
+
+	test("built-in definitions and generated CSS use exactly required scheme tokens", () => {
 		const registeredNames = new Set(registry.map((entry) => entry.name));
 		const cssSchemeTokens = new Set(extractCssDeclarations(colorSchemesCss));
 
-		for (const token of cssSchemeTokens) {
-			expect(
-				registeredNames.has(token as `--pie-${string}`),
-				`${token} from color-schemes.css`,
-			).toBe(true);
-		}
-
-		for (const scheme of BUILTIN_PIE_COLOR_SCHEMES) {
+		expect([...cssSchemeTokens].sort()).toEqual(requiredSchemeTokens);
+		for (const scheme of listBuiltInColorSchemeDefinitions()) {
+			expect(Object.keys(scheme.variables).sort(), scheme.id).toEqual(
+				requiredSchemeTokens,
+			);
 			for (const token of Object.keys(scheme.variables)) {
-				expect(
-					registeredNames.has(token as `--pie-${string}`),
-					`${token} from ${scheme.id}`,
-				).toBe(true);
+				expect(registeredNames.has(token), `${token} from ${scheme.id}`).toBe(
+					true,
+				);
 			}
 		}
 	});
@@ -161,7 +167,7 @@ describe("PIE theme token registry contract", () => {
 			).toBeDefined();
 			expect(entry?.scope).toBe("component-public");
 			expect(entry?.status).toBe("active");
-			expect(entry?.documentedIn.length).toBeGreaterThan(0);
+			expect(entry?.documentedIn?.length).toBeGreaterThan(0);
 		}
 	});
 

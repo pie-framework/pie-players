@@ -46,11 +46,9 @@ export {
 // needs to answer "does this item carry signing" outside a render.
 export type {
 	ResolvedSignLanguageAlternate,
-	SignLanguageCatalogRef,
 	SignLanguageLookupArgs,
 } from "./src/sign-language-content.js";
 export {
-	collectSignLanguageCatalogRefs,
 	resolveRequestedSignLanguage,
 	resolveSignLanguageAlternate,
 	resolveSignLanguageContent,

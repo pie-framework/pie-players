@@ -1,3 +1,8 @@
+import type {
+	AssessmentEntity,
+	PersonalNeedsProfile,
+} from "@pie-players/pie-players-shared/types";
+
 export const PLAYER_OPTIONS = ["iife", "esm", "preloaded"] as const;
 export const MODE_OPTIONS = ["candidate", "scorer"] as const;
 export const LAYOUT_OPTIONS = ["splitpane", "vertical"] as const;
@@ -144,4 +149,41 @@ export function buildSectionPageHref(args: {
 	url.searchParams.set(ATTEMPT_QUERY_PARAM, args.attemptId);
 	url.searchParams.set("page", args.targetPageId);
 	return url.toString();
+}
+
+/**
+ * Bind the demo's assessment so the policy engine has something to decide
+ * against.
+ *
+ * A section's `personalNeedsProfile` reaches the player but not policy:
+ * `decideFeaturePolicy` reads the *bound assessment*, so a demo that never
+ * called this declined every capability gating on a feature decision rather
+ * than on toolbar placement — with the same verdict a properly-declined student
+ * gets. Toolbars were unaffected throughout, which is why it went unnoticed.
+ *
+ * Only the profile is bound. District policy and test administration have their
+ * own demos, and placeholders here would make every demo assert precedence it
+ * does not exercise.
+ *
+ * Safe to call repeatedly with the same section: the engine diffs its inputs by
+ * `Object.is`, so pass a stable section reference (a `$derived` value, not a
+ * fresh literal per effect run) or a re-push emits a policy-change event that
+ * every panel counting those events will re-render on.
+ */
+export function bindDemoAssessment(
+	coordinator: {
+		updateAssessment?: (assessment: AssessmentEntity | null) => void;
+	} | null,
+	section: {
+		personalNeedsProfile?: PersonalNeedsProfile;
+		settings?: { personalNeedsProfile?: PersonalNeedsProfile };
+	} | null,
+): void {
+	if (typeof coordinator?.updateAssessment !== "function") return;
+	if (!section) return;
+	coordinator.updateAssessment({
+		id: DEMO_ASSESSMENT_ID,
+		personalNeedsProfile:
+			section.personalNeedsProfile ?? section.settings?.personalNeedsProfile,
+	});
 }

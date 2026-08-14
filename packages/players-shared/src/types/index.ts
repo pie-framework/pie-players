@@ -525,6 +525,12 @@ export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
 	language?: string;
 	/**
+	 * Optional presentation policy carried by catalog-backed UI such as an audio
+	 * transcript. Unknown values remain authored metadata for the capability that
+	 * understands them; the generic catalog resolver does not reinterpret them.
+	 */
+	visibility?: string;
+	/**
 	 * The string form of the card's content, for catalog types a string can
 	 * express: SSML for `spoken`, plain text for `simplified-language`, and so
 	 * on. Absent on cards that carry a structured `payload` instead — nothing

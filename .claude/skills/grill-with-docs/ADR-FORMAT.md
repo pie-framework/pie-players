@@ -43,5 +43,5 @@ If a decision is easy to reverse, skip it — you'll just reverse it. If it's no
 - **Technology choices that carry lock-in.** Custom-element packaging strategy, Svelte runes patterns, persisted session shape, or release tooling. Not every library — just choices that are expensive to unwind.
 - **Boundary and scope decisions.** "PIE owns runtime projections; hosts own durable persistence, identity, policy, reporting, and standards certification unless an adapter PRD says otherwise." The explicit no-s are as valuable as the yes-s.
 - **Deliberate deviations from the obvious path.** "We keep versioned `pie-*--version-*` tags in authored markup because custom elements cannot be redefined." Anything where a reasonable reader might otherwise simplify it away.
-- **Constraints not visible in the code.** "Playwright must run outside the Cursor sandbox." "All publishable packages release in lockstep as patch bumps."
+- **Constraints not visible in the code.** "Playwright must run outside a default agent tool sandbox." "All publishable packages release in lockstep as patch bumps."
 - **Rejected alternatives when the rejection is non-obvious.** If you considered normalizing model IDs, importing package source from a consumer, or splitting package versions independently and rejected it, record why.

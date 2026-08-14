@@ -114,6 +114,31 @@ describe("ServerTTSProvider", () => {
 		]);
 	});
 
+	test("reports playback start from the active audio element", async () => {
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+				metadata: {
+					providerId: "polly",
+					voice: "Joanna",
+					duration: 1,
+					charCount: 5,
+					cached: false,
+				},
+			}),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const starts: string[] = [];
+		impl.onPlaybackStart = () => starts.push("start");
+
+		await impl.speak("hello");
+
+		expect(starts).toEqual(["start"]);
+	});
+
 	test("does not media-rescale initially synthesized server audio", async () => {
 		const fetchMock = vi.fn(async () =>
 			createJSONResponse({

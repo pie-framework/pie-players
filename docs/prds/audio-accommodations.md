@@ -78,11 +78,8 @@ Revised 2026-08-09 (PIE-886): an earlier version of this section added `transcri
 
 ```ts
 requiresAuthoredContent: {
-  resolve: (context) =>
-    context.catalogResolver?.getAlternative(catalogId, {
-      type: "transcript",
-      context: context.ownerContext,
-    }) ?? null,
+  resolve: ({ catalogs, granted }) =>
+    findTranscriptCard(catalogs, { granted }),
 },
 ```
 

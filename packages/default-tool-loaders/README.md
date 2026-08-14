@@ -8,7 +8,7 @@ dependency-light and cycle-safe, and it is the layer above core — core knows
 `featureId`, placement levels, activation kinds and precedence rules, and knows
 no capability ids.
 
-It owns four things, all answers to "which capabilities does this deployment have
+It owns five things, all answers to "which capabilities does this deployment have
 and how does the program tier them":
 
 | Export | What it decides |
@@ -21,6 +21,22 @@ and how does the program tier them":
 
 The individual registrations are exported too, so a host can compose its own set
 rather than take the packaged one whole.
+
+These exports are projections of one internal **Packaged Capability
+Composition**. Each packaged capability is authored once with its registration,
+element delivery, loader bootstrap sets, placement/order membership and explicit
+universal-support policy. The package build rejects contradictory PIE-owned data
+— for example, a region capability with a toolbar tag, or a universal support
+id its registration does not declare — so release tests find a missing facet
+instead of a learner finding a dead affordance. The browser does not repeat that
+strict gate at import time: a PIE authoring defect must block publication, not an
+otherwise usable assessment.
+
+That invariant boundary does not make host input stricter. The existing public
+factory and constants are unchanged: lazy module loading remains opt-in,
+registration/tag/factory overrides retain precedence, an empty `toolIds` array
+still selects the full packaged set, and unknown selected ids are ignored while
+known ids continue to register.
 
 ## Usage
 
@@ -54,13 +70,19 @@ const registry = createDefaultToolRegistry({
 registerSectionToolModuleLoaders(registry);
 ```
 
-## Accommodations are not in the packaged set
+## Content-dependent capabilities require an explicit packaging decision
 
-A capability declaring `requiresAuthoredContent` is absent from
-`PACKAGED_TOOL_REGISTRATIONS` and its support ids from
-`UNIVERSAL_SUPPORTS_PRESET`. Signing is the shipped example: install
-`@pie-players/pie-tool-sign-language` and register it, which is the same two lines
-a host writes for a capability of its own.
+A content-dependent capability is never inferred into
+`UNIVERSAL_SUPPORTS_PRESET`. It may ship in `PACKAGED_TOOL_REGISTRATIONS` only
+when it has a useful presentation path without a grant and declares
+`resolvesWithoutGrant`. Audio transcript is the shipped example: an authored
+`visibility: "always"` transcript reaches every player, while its accommodation
+path remains policy-gated and `transcript` stays out of the universal preset.
+
+A content-dependent capability with no presentation path remains an explicit
+deployment choice. Signing is the shipped example: install
+`@pie-players/pie-tool-sign-language` and register it, which is the same two
+lines a host writes for a capability of its own.
 
 ```ts
 import { signLanguageRegistration } from "@pie-players/pie-tool-sign-language";
@@ -94,4 +116,3 @@ capability that declares a content dependency.
 A section carrying no profile is left alone. `pnpEnforcement` auto-detection
 engages on real host policy material, so supplying no profile means placement
 alone decides which tools appear.
-

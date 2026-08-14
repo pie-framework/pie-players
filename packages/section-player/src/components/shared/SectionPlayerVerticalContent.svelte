@@ -136,7 +136,7 @@
 		background: var(--pie-background-dark, #ecedf1);
 		scrollbar-width: thin;
 		scrollbar-color:
-			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
+			var(--pie-scrollbar-thumb, var(--pie-border, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}
 
 	.pie-section-player-vertical-content::-webkit-scrollbar {
@@ -145,18 +145,18 @@
 	}
 
 	.pie-section-player-vertical-content::-webkit-scrollbar-track {
-		background: var(--pie-scrollbar-track, #d1d5db);
+		background: var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 		border-radius: 999px;
 	}
 
 	.pie-section-player-vertical-content::-webkit-scrollbar-thumb {
-		background: var(--pie-scrollbar-thumb, #6b7280);
+		background: var(--pie-scrollbar-thumb, var(--pie-border, #6b7280));
 		border-radius: 999px;
-		border: 2px solid var(--pie-scrollbar-track, #d1d5db);
+		border: 2px solid var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}
 
 	.pie-section-player-vertical-content::-webkit-scrollbar-thumb:hover {
-		background: var(--pie-scrollbar-thumb-hover, #4b5563);
+		background: var(--pie-scrollbar-thumb-hover, var(--pie-border-dark, #4b5563));
 	}
 
 	.pie-section-player-passages-section,

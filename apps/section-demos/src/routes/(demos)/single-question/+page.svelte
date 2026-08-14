@@ -23,6 +23,7 @@
 		applyToolkitScheme,
 		ATTEMPT_QUERY_PARAM,
 		ATTEMPT_STORAGE_KEY,
+		bindDemoAssessment,
 		createAttemptId,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
@@ -141,6 +142,9 @@
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: any }>).detail;
 		toolkitCoordinator = detail?.coordinator || null;
+		// Bind the profile so policy has an input to decide against; the section
+		// payload alone is invisible to `decideFeaturePolicy`.
+		bindDemoAssessment(toolkitCoordinator, resolvedSectionForPlayer as any);
 		toolkitCoordinator?.setHooks?.({
 			onFrameworkError: (model) => {
 				console.error('[Demo] Toolkit framework error:', model);

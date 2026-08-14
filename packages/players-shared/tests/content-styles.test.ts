@@ -144,6 +144,16 @@ describe("auditContentStyles", () => {
 		expect(await captureWarnings()).toEqual([]);
 	});
 
+	test("ignores scoped CSS-wide resets of the sentinel property", async () => {
+		installContentStyles(CSS, "pie-item-player");
+		const resetStyle = document.createElement("style");
+		resetStyle.textContent =
+			".svelte-custom-element-reset { --pie-content-styles: unset; }";
+		document.head.append(resetStyle);
+
+		expect(await captureWarnings()).toEqual([]);
+	});
+
 	test("stays silent when nothing is loaded and the host did not opt out", async () => {
 		// Not a state the players produce — installation precedes the audit — but
 		// the audit must not invent a complaint about a stylesheet nobody asked for.

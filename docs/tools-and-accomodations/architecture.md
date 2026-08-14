@@ -267,13 +267,57 @@ Four layers, and which one a piece of code belongs to is decided by whether it n
 
 The rule this encodes: **a capability id may only appear in the layer that is a decision about capabilities.** Core naming one turns a deployment choice into a code change. That happened three ways at once — the packaged registry was core's fallback for an absent one, the default profile was derived from registry membership, and two renderers named the specific capability they mounted — and each had to be undone before a host could contribute anything.
 
+Within the composition layer, PIE's packaged set is authored through one
+**Packaged Capability Composition**. A capability entry binds its registration
+to its custom-element delivery and lazy-loader bootstrap sets, its membership
+and order in the shipped placement presets, its toolbar order, and an explicit
+list of support ids this program treats as universal. The familiar root exports
+— `PACKAGED_TOOL_REGISTRATIONS`, tag and loader maps, placement/order constants,
+the universal preset, and `createPackagedToolRegistry()` — are projections of
+that module rather than independent catalogues. Universal policy remains
+explicit data: the composition validates a declared universal id against its
+registration but never infers eligibility from registry membership.
+
+Composition invariants are strict in the package build because they are
+PIE-authored release data, not runtime host input. They are not repeated as a
+browser import-time exception. Host behavior stays fail-soft: loader
+installation is still opt-in, overrides keep their existing precedence, and an
+unknown id in a `toolIds` selection is ignored while known capabilities continue
+to register. That distinction catches a package author forgetting a loader or
+tagging a region as a toolbar element without making our defect — or a host's
+non-critical stale selection — block an assessment.
+
 ### Host surfaces
 
 A capability that does not render on a toolbar declares `activation: "region"`, the host slot names it fits in `surfaces`, and `renderSurface(context)`. The renderer asks `registry.getToolsBySurface(name)` and mounts what comes back, so it names no capability and a host opens a new surface without a change here. Surface names belong to the renderer; core validates only that a region capability claims one.
 
-Availability at a surface is grant **and** content: `decideFeaturePolicy(supportId)`, then `requiresAuthoredContent.resolve(...)`, then `renderSurface`. Neither half implies the other, which is what keeps a learner with an accommodation from seeing a dead affordance on the items that carry no resource.
+Section-player's three slots — `content-lead`, `content-media`, and
+`section-overlay` — are geometry adapters over one internal **Tool Surface
+Host**. Its narrow interface is `update(currentInput)` plus `destroy()`, with a
+snapshot containing only `mountable` and `occupied`. The module owns registry,
+policy, and catalog observation; eligibility; structural comparison; lazy
+loading; ordered DOM reconciliation; synchronization; diagnostics; and
+teardown. Deleting it would put the same lifecycle back into all three
+adapters, which is why this seam earns its place.
+
+Availability at a surface is grant **and** content: `decideFeaturePolicy(supportId)`, then `requiresAuthoredContent.resolve(...)`, then `renderSurface`. Neither half implies the other, which is what keeps a learner with an accommodation from seeing a dead affordance on the items that carry no resource. The catalog resolver owns entity/model traversal and owner-filtered observation; `resolve` receives only the immutable cards visible to that owner, not the raw entity plus resolver plus a separately assembled context.
 
 Two constraints follow. A `region` capability is gated on the feature question and never the placement question — placing one is a `tools.unplaceableActivation` error, so the placement question has no answer to give. And a content dependency resolves against an item model or a passage, never a section, because a DRD resource pairs with content rather than with a container: a section-scoped surface declines a capability that declares one.
+
+The host observes successful `ToolRegistry` mutations. Registering a capability
+adds it in registration order; unregistering or clearing destroys it; overriding
+remounts that id with the new registration; component-override and late-loader
+changes are reconciled without a player rerender. Lazy completions are guarded
+against stale registrations and teardown, and mounted nodes are reordered
+without recreation when modules resolve out of order.
+
+A failure in resolution, loading, rendering, synchronization, or teardown is
+isolated to that capability and reported as a recoverable `tool-surface`
+framework warning. Render failure omits only that capability, sync failure keeps
+its last working element, and destroy failure still force-removes the node.
+Recoverable warnings remain observable through events and hooks but do not set
+section readiness to `error`; nonrecoverable framework errors retain the
+existing blocking behavior.
 
 `@pie-players/pie-tool-sign-language` is the worked example. It is deliberately absent from `createPackagedToolRegistry`, because a content-dependent accommodation is opt-in, so a host installs and registers it exactly as it would one of its own. `packages/assessment-toolkit/docs/TOOL_REGISTRY.md` carries both contracts.
 

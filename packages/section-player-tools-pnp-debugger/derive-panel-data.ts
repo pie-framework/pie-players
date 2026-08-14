@@ -126,6 +126,15 @@ export interface PnpPanelData {
 			catalogCount: number;
 			assessmentCatalogCount: number;
 			itemCatalogCount: number;
+			/**
+			 * Whether an assessment is bound. `undefined` when the coordinator does
+			 * not expose its policy inputs, which is not the same as nothing bound.
+			 *
+			 * `false` is the deployment defect this panel exists to make findable: a
+			 * host that never called `updateAssessment` declines every accommodation
+			 * with the same verdict a properly-declined student gets.
+			 */
+			assessmentBound?: boolean;
 		};
 	};
 }
@@ -477,8 +486,17 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		? (coordinator?.catalogResolver?.getStatistics?.() ?? null)
 		: null;
 	const policyInputs = coordinator?.getPolicyInputs?.() as
-		| { pnpEnforcement?: "on" | "off" }
+		| { pnpEnforcement?: "on" | "off"; assessment?: unknown }
 		| undefined;
+	// Distinguished from a profile that grants nothing, which looks identical in
+	// every other field on this panel: with no assessment bound there is no
+	// profile, district policy or test administration for policy to read, so every
+	// capability is declined for want of an input rather than by a verdict.
+	// `undefined` means the coordinator does not expose its inputs, which is not
+	// the same claim as "nothing is bound".
+	const assessmentBound = policyInputs
+		? policyInputs.assessment != null
+		: undefined;
 
 	return {
 		pnpProfile: profile,
@@ -509,6 +527,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 				catalogCount: catalogStats?.totalCatalogs ?? 0,
 				assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
 				itemCatalogCount: catalogStats?.itemCatalogs ?? 0,
+				assessmentBound,
 			},
 		},
 	};

@@ -37,6 +37,7 @@
 		applyToolkitScheme,
 		ATTEMPT_QUERY_PARAM,
 		ATTEMPT_STORAGE_KEY,
+		bindDemoAssessment,
 		createAttemptId,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
@@ -209,6 +210,9 @@ const sectionPlayerHooks = $derived.by(() =>
 		if (!coordinator) return;
 		if (detail?.coordinator !== coordinator) return;
 		coordinatorReady = true;
+		// Bind the profile so policy has an input to decide against; the section
+		// payload alone is invisible to `decideFeaturePolicy`.
+		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
 		coordinator.setHooks({
 			onFrameworkError: (model) => {
 				console.error('[Demo] Toolkit framework error:', model);

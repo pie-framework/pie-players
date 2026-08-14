@@ -37,12 +37,15 @@ placement: `activation: "region"` means there is no button to press, so a
 `tools.placement` entry naming this capability is reported as unplaceable rather
 than silently doing nothing.
 
-**Content** — the item carries a matching `sign-language` catalog card. QTI
+**Content** — the item or passage carries a matching `sign-language` catalog card. QTI
 approximates AfA's DRD in-band: the presence of the card *is* the resource
 declaration. This half is `requiresAuthoredContent.resolve`, and it is why a
-learner with the accommodation still sees nothing on the vast majority of items.
+learner with the accommodation still sees nothing on content that has no signed
+alternate. The catalog resolver supplies an immutable owner snapshot after it
+has applied entity/extracted/model traversal and registration precedence; this
+package owns only card validation and sign-language matching.
 
-A signed alternate reaches an item one way only: as a catalog card, authored or
+A signed alternate reaches content one way only: as a catalog card, authored or
 written by an importer. There is no path that lifts a signing video out of item
 markup at render time — one was implemented and removed, because it had no
 producer and failed in the wrong direction, leaving the video in visible content
@@ -50,12 +53,11 @@ for every learner when the markup could not be parsed.
 
 ## No cross-sign-language substitution
 
-ASL, BSL and LSF are not interchangeable. The catalog resolver's last fallback
-rung matches any card of the requested type regardless of language, which helps
-for spoken audio and harms here: handing an ASL learner a BSL recording is worse
-than handing them nothing. `resolveSignLanguageAlternate` therefore accepts a
-card reached by that rung only when its language matches, or when the card
-asserts no language at all.
+ASL, BSL and LSF are not interchangeable. Handing an ASL learner a BSL recording
+is worse than handing them nothing. `resolveSignLanguageAlternate` scans the
+owner snapshot for an exact requested-language match first, then permits an
+unlabelled card as the only fallback. A card labelled with another sign language
+is never substituted.
 
 ## The element
 

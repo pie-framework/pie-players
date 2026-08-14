@@ -1,54 +1,76 @@
 import assert from "node:assert/strict";
-import test from "node:test";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import { mapDaisyThemeToPieVariables } from "../dist/index.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
-const srcDir = resolve(currentDir, "..", "src");
+const bridgeCss = readFileSync(
+	resolve(currentDir, "..", "src", "bridge.css"),
+	"utf8",
+);
 
-function extractPieKeysFromCss(content) {
-	return new Set(
-		[...content.matchAll(/(--pie-[a-z0-9-]+)\s*:/gi)].map((match) => match[1]),
-	);
+/** Whitespace in a `color-mix()` is formatting, not meaning. */
+function normalizeExpression(value) {
+	return value
+		.replace(/\s+/g, " ")
+		.replace(/\(\s+/g, "(")
+		.replace(/\s+\)/g, ")")
+		.replace(/\s*,\s*/g, ", ")
+		.trim();
 }
 
-function extractFunctionContent(source, functionName) {
-	const start = source.indexOf(`export function ${functionName}`);
-	if (start === -1) {
-		throw new Error(`Function not found: ${functionName}`);
+function declarationsFromCss(content) {
+	const withoutComments = content.replace(/\/\*[\s\S]*?\*\//g, "");
+	const declarations = {};
+	for (const match of withoutComments.matchAll(
+		/(--pie-[a-z0-9-]+):\s*([^;]+);/gi,
+	)) {
+		declarations[match[1]] = normalizeExpression(match[2]);
 	}
-	const nextExport = source.indexOf("\nexport function ", start + 1);
-	return source.slice(start, nextExport === -1 ? undefined : nextExport);
+	return declarations;
 }
 
-function extractPieKeysFromMapperFunction(source, functionName) {
-	const functionContent = extractFunctionContent(source, functionName);
-	return new Set(
-		[...functionContent.matchAll(/"--pie-[a-z0-9-]+"/gi)].map((match) =>
-			match[0].slice(1, -1),
-		),
+/**
+ * bridge.css cannot import the mapping table, so it is checked against it. Both
+ * sides describe the same thing: every `--pie-*` token, the DaisyUI slot it comes
+ * from, and the correction applied on the way. Comparing the whole expression
+ * rather than the token names is deliberate — the names already matched while
+ * `--pie-missing` pointed at `--color-error` in one copy and `--color-warning` in
+ * another.
+ */
+test("bridge.css matches the shared DaisyUI mapping table", () => {
+	// No caller-supplied tokens, so every value comes out as a `var()` reference
+	// to DaisyUI's own variable: the same shape bridge.css is written in.
+	const fromTable = Object.fromEntries(
+		Object.entries(mapDaisyThemeToPieVariables({})).map(([token, value]) => [
+			token,
+			normalizeExpression(value),
+		]),
 	);
-}
+	const fromCss = declarationsFromCss(bridgeCss);
 
-function sortSet(set) {
-	return [...set].sort();
-}
-
-test("bridge.css and JS mappers expose the same PIE key set", () => {
-	const bridgeCss = readFileSync(resolve(srcDir, "bridge.css"), "utf8");
-	const indexTs = readFileSync(resolve(srcDir, "index.ts"), "utf8");
-
-	const cssKeys = extractPieKeysFromCss(bridgeCss);
-	const mapDaisyKeys = extractPieKeysFromMapperFunction(
-		indexTs,
-		"mapDaisyThemeToPieVariables",
+	assert.deepEqual(
+		Object.keys(fromCss).sort(),
+		Object.keys(fromTable).sort(),
+		"bridge.css and the mapping table declare different tokens",
 	);
-	const mapResolvedKeys = extractPieKeysFromMapperFunction(
-		indexTs,
-		"mapResolvedDaisyThemeToPieVariables",
-	);
+	for (const [token, expected] of Object.entries(fromTable)) {
+		assert.equal(
+			fromCss[token],
+			expected,
+			`bridge.css derives ${token} differently from the mapping table`,
+		);
+	}
+});
 
-	assert.deepEqual(sortSet(mapDaisyKeys), sortSet(mapResolvedKeys));
-	assert.deepEqual(sortSet(cssKeys), sortSet(mapDaisyKeys));
+test("every feedback state resolves to a slot of its own", () => {
+	// An unanswered question sharing a colour with a wrong one is the defect this
+	// locks out; it survived because nothing compared the two states.
+	const variables = mapDaisyThemeToPieVariables({});
+	assert.notEqual(variables["--pie-missing"], variables["--pie-incorrect"]);
+	assert.notEqual(variables["--pie-missing"], variables["--pie-correct"]);
+	assert.notEqual(variables["--pie-incorrect"], variables["--pie-correct"]);
 });

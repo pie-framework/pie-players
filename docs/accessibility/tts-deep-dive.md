@@ -227,10 +227,10 @@ turning every catalog id into a global key.
 2. Visible markup includes elements whose `data-catalog-idref` matches catalog
    identifiers.
 3. When a passage or item shell mounts, it dispatches registration details.
-4. The toolkit calls `collectCatalogRegistrations(...)`, which gathers catalogs
-   from the entity and its config/model fields.
-5. `AccessibilityCatalogResolver.registerCatalogs(...)` stores those catalogs
-   under the scoped owner context.
+4. The toolkit calls `AccessibilityCatalogResolver.registerOwner(...)` once for
+   the mounted entity.
+5. The resolver walks entity-root, `config.extractedCatalogs`, and model catalogs
+   and stores them under the scoped owner as one transaction.
 6. The student clicks play in `pie-tool-tts-inline`.
 7. The inline tool passes both `catalogContext` and `contentElement` to
    `TTSService.speak(...)`.
@@ -362,9 +362,9 @@ pause logic; SSML is applied per playback chunk.
   `@pie-players/pie-tool-tts-inline` (registration entrypoint consumed through
   package exports); source:
   [`packages/tool-tts-inline/tool-tts-inline.svelte`](../../packages/tool-tts-inline/tool-tts-inline.svelte)
-- Catalog registration:
-  [`packages/assessment-toolkit/src/runtime/catalog-registration.ts`](../../packages/assessment-toolkit/src/runtime/catalog-registration.ts)
-- Catalog resolution:
+- Catalog owner identity and traversal:
+  [`packages/assessment-toolkit/src/services/catalog-owner.ts`](../../packages/assessment-toolkit/src/services/catalog-owner.ts)
+- Catalog registration and resolution:
   [`packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts`](../../packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts)
 - Math-aware DOM extraction:
   [`packages/assessment-toolkit/src/services/tts/math-aware-text-processing.ts`](../../packages/assessment-toolkit/src/services/tts/math-aware-text-processing.ts)

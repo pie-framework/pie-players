@@ -1,7 +1,7 @@
 /**
- * PNP auto-default — narrow auto-on rule (M8 PR 4).
+ * PNP auto-default — narrow auto-on rule.
  *
- * Locks the rule documented in `.cursor/plans/m8-design.md` F2:
+ * Locks the rule:
  *
  *   `pnpEnforcement` defaults to `"on"` only when the bound inputs
  *   actually carry profile material. A bare assessment record (just

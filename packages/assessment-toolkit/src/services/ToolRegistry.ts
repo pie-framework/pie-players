@@ -5,8 +5,7 @@
  * and button/instance creation. Supports dynamic registration and override by integrators.
  */
 
-import type { ItemEntity } from "@pie-players/pie-players-shared/types";
-import type { CatalogOwnerContext } from "./AccessibilityCatalogResolver.js";
+import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
 import type {
@@ -22,6 +21,24 @@ import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
 import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
+
+export type ToolRegistryChangeKind =
+	| "register"
+	| "override"
+	| "unregister"
+	| "clear"
+	| "component-overrides"
+	| "module-loaders";
+
+/** A successful mutation to discoverable or rendering registry state. */
+export interface ToolRegistryChangeEvent {
+	kind: ToolRegistryChangeKind;
+	toolIds: readonly string[];
+}
+
+export type ToolRegistryChangeListener = (
+	event: ToolRegistryChangeEvent,
+) => void;
 
 export interface ToolToolbarButtonDefinition {
 	toolId: string;
@@ -220,8 +237,8 @@ export interface ToolSurfaceServices {
  * `surface` is a host-defined slot name. Core defines none and validates only
  * that a region capability claims at least one, so a host can open a new surface
  * without a change here and a capability can declare which of a host's surfaces
- * it fits. Section-player ships `"content-media"` (the media region on an item
- * or passage card) and `"section-overlay"` (the section-scoped singleton).
+ * it fits. Section-player ships `"content-lead"` and `"content-media"` on item
+ * and passage cards, plus `"section-overlay"` at section scope.
  *
  * `content` carries whatever the capability's own `requiresAuthoredContent`
  * resolved, so the host neither inspects nor names it — it hands back what the
@@ -250,11 +267,23 @@ export interface ToolContentDependencyContext {
 	featureId: string;
 	/** Feature parameters from the policy decision, if any. */
 	parameters?: unknown;
-	catalogResolver: AccessibilityCatalogResolverApi | null;
-	/** Owner scope for catalog lookups, without `modelId`. */
-	ownerContext: CatalogOwnerContext;
-	/** The item in scope, when the host renders per item. */
-	item?: ItemEntity | null;
+	/**
+	 * Owner-scoped catalog cards, or `null` when no resolver is available.
+	 *
+	 * The catalog module has already applied item/passage/model traversal and
+	 * registration precedence. A capability interprets its own card type without
+	 * reconstructing the owner scope or reading the raw entity.
+	 */
+	catalogs: CatalogOwnerSnapshot | null;
+	/**
+	 * Whether policy granted one of this capability's support ids.
+	 *
+	 * `false` reaches `resolve` only for a capability that declares
+	 * {@link ToolRegistration.resolvesWithoutGrant}, and it is the signal that the
+	 * capability must answer from the content alone. Everything else sees `true`,
+	 * because the host asks about eligibility first and stops there.
+	 */
+	granted: boolean;
 }
 
 /**
@@ -284,8 +313,8 @@ export interface ToolContentDependencyContext {
  * keeps the resolver and the host from knowing which accommodation they are
  * resolving.
  *
- * Resolvable only on a surface the host renders per item or per passage:
- * `ownerContext` names an item model or a passage, never a section, because a DRD
+ * Resolvable only on a surface the host renders per item or per passage. The
+ * owner snapshot represents an item/model or passage, never a section, because a DRD
  * resource pairs with a piece of content and not with a container. A capability
  * declaring one and claiming a section-scoped surface is declined there rather
  * than mounted with no content. `resolve` is also synchronous — a capability whose
@@ -299,9 +328,9 @@ export interface ToolContentDependency {
 	 * Must be JSON-serializable. A host re-resolves on every policy and catalog
 	 * signal and compares the answer structurally to decide whether anything moved,
 	 * because every resolution builds fresh objects and identity would report a
-	 * change each time. A `Map`, a function or a DOM node therefore compares equal
-	 * to itself across a real change and the capability never hears about it; a
-	 * cyclic value throws inside the host's own reconciliation.
+	 * change each time. A `Map`, function, DOM node, cyclic value, or other
+	 * non-serializable result is rejected for that capability and reported as a
+	 * recoverable surface warning instead of escaping into the player.
 	 */
 	resolve(context: ToolContentDependencyContext): unknown | null;
 	/**
@@ -394,6 +423,23 @@ export interface ToolRegistration {
 	 * {@link ToolContentDependency}.
 	 */
 	requiresAuthoredContent?: ToolContentDependency;
+
+	/**
+	 * Ask this capability for its content even when policy granted nothing.
+	 *
+	 * Only meaningful together with {@link ToolRegistration.requiresAuthoredContent},
+	 * and only correct for a capability whose authored content can declare itself
+	 * *presentation* rather than an accommodation — content authored to be delivered
+	 * that way to everyone, which no profile grants and none revokes. Such a
+	 * capability must return `null` from `resolve` when its content is the
+	 * accommodation kind and the grant is absent, and the `granted` flag on the
+	 * context is how it tells the two apart.
+	 *
+	 * Without this, "no grant" ends the question before content is consulted, which
+	 * is the right default: it is what keeps an accommodation off the item of a
+	 * learner with no documented need.
+	 */
+	resolvesWithoutGrant?: boolean;
 
 	/**
 	 * Optional provider registration metadata.
@@ -589,6 +635,25 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 		);
 	}
 	if (
+		registration.resolvesWithoutGrant !== undefined &&
+		typeof registration.resolvesWithoutGrant !== "boolean"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "resolvesWithoutGrant" must be a boolean.`,
+		);
+	}
+	if (
+		registration.resolvesWithoutGrant &&
+		!registration.requiresAuthoredContent
+	) {
+		// The flag only decides whether content is consulted without a grant, so on a
+		// capability with no content dependency it reads as "granted to everyone" and
+		// does nothing at all.
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "resolvesWithoutGrant" requires "requiresAuthoredContent".`,
+		);
+	}
+	if (
 		registration.renderSurface !== undefined &&
 		typeof registration.renderSurface !== "function"
 	) {
@@ -690,6 +755,31 @@ export class ToolRegistry {
 	private moduleLoaders = new Map<string, ToolModuleLoader>();
 	private loadedToolModules = new Set<string>();
 	private moduleLoadPromises = new Map<string, Promise<void>>();
+	private changeListeners = new Set<ToolRegistryChangeListener>();
+
+	private emitChange(event: ToolRegistryChangeEvent): void {
+		for (const listener of this.changeListeners) {
+			try {
+				listener(event);
+			} catch (error) {
+				console.warn("[ToolRegistry] change listener failed:", error);
+			}
+		}
+	}
+
+	/**
+	 * Observe successful registry mutations. Delivery is synchronous, listener
+	 * failures are isolated, and the returned unsubscribe is idempotent.
+	 */
+	onRegistryChange(listener: ToolRegistryChangeListener): () => void {
+		this.changeListeners.add(listener);
+		let subscribed = true;
+		return () => {
+			if (!subscribed) return;
+			subscribed = false;
+			this.changeListeners.delete(listener);
+		};
+	}
 
 	/**
 	 * Normalize a single tool alias to canonical toolId.
@@ -728,6 +818,7 @@ export class ToolRegistry {
 				this.pnpIndex.get(pnpId)!.add(registration.toolId);
 			}
 		}
+		this.emitChange({ kind: "register", toolIds: [registration.toolId] });
 	}
 
 	/**
@@ -763,6 +854,7 @@ export class ToolRegistry {
 				this.pnpIndex.get(pnpId)!.add(registration.toolId);
 			}
 		}
+		this.emitChange({ kind: "override", toolIds: [registration.toolId] });
 	}
 
 	/**
@@ -782,6 +874,7 @@ export class ToolRegistry {
 		}
 
 		this.tools.delete(toolId);
+		this.emitChange({ kind: "unregister", toolIds: [toolId] });
 	}
 
 	/**
@@ -1007,15 +1100,20 @@ export class ToolRegistry {
 	 * Clear all registrations (useful for testing)
 	 */
 	clear(): void {
+		const toolIds = this.getAllToolIds();
+		if (toolIds.length === 0) return;
 		this.tools.clear();
 		this.pnpIndex.clear();
+		this.emitChange({ kind: "clear", toolIds });
 	}
 
 	/**
 	 * Configure global component overrides used by tool instance creation.
 	 */
 	setComponentOverrides(overrides: ToolComponentOverrides): void {
+		if (this.componentOverrides === overrides) return;
 		this.componentOverrides = overrides;
+		this.emitChange({ kind: "component-overrides", toolIds: [] });
 	}
 
 	/**
@@ -1025,15 +1123,26 @@ export class ToolRegistry {
 	setToolModuleLoaders(
 		loaders: Partial<Record<string, ToolModuleLoader>>,
 	): void {
-		for (const [toolId, loader] of Object.entries(loaders)) {
-			if (!loader) continue;
+		const entries = Object.entries(loaders).filter(
+			(entry): entry is [string, ToolModuleLoader] => entry[1] !== undefined,
+		);
+		for (const [toolId, loader] of entries) {
 			assertNonEmptyString(toolId, "tool module loader id");
 			if (typeof loader !== "function") {
 				throw new Error(
 					`Invalid tool module loader for "${toolId}": expected a function.`,
 				);
 			}
+		}
+
+		const changedToolIds: string[] = [];
+		for (const [toolId, loader] of entries) {
+			if (this.moduleLoaders.get(toolId) === loader) continue;
 			this.moduleLoaders.set(toolId, loader);
+			changedToolIds.push(toolId);
+		}
+		if (changedToolIds.length > 0) {
+			this.emitChange({ kind: "module-loaders", toolIds: changedToolIds });
 		}
 	}
 

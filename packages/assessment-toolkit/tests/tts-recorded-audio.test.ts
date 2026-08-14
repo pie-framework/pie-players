@@ -20,7 +20,7 @@ import {
 
 import type { CatalogCard } from "@pie-players/pie-players-shared";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
-import { TTSService } from "../src/services/TTSService";
+import { PlaybackState, TTSService } from "../src/services/TTSService";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
@@ -99,7 +99,7 @@ const audioCard = (fragment?: {
 let createdAudio: HTMLAudioElement[] = [];
 let realCreateElement: typeof document.createElement | null = null;
 
-const captureAudioElements = () => {
+const captureAudioElements = (play?: () => Promise<void>) => {
 	createdAudio = [];
 	realCreateElement = document.createElement.bind(document);
 	document.createElement = ((tag: string, ...rest: unknown[]) => {
@@ -107,6 +107,9 @@ const captureAudioElements = () => {
 			realCreateElement as (tag: string, ...rest: unknown[]) => Element
 		)(tag, ...rest);
 		if (String(tag).toLowerCase() === "audio") {
+			if (play) {
+				(element as HTMLAudioElement).play = play;
+			}
 			createdAudio.push(element as HTMLAudioElement);
 		}
 		return element;
@@ -138,6 +141,12 @@ const itemRoot = (suppress = false) => {
 	root.innerHTML = `<p>Before <span data-catalog-idref="prompt"${
 		suppress ? ' data-tts-suppress="all"' : ""
 	}>the prompt</span> after.</p>`;
+	return root;
+};
+
+const audioOnlyRoot = () => {
+	const root = document.createElement("div");
+	root.innerHTML = '<span data-catalog-idref="prompt">the prompt</span>';
 	return root;
 };
 
@@ -181,6 +190,66 @@ describe("recorded audio as a spoken alternate", () => {
 		expect(impl.speakCalls).toEqual(["Before", "after."]);
 	});
 
+	test("keeps recorded-first playback loading until media actually starts", async () => {
+		const { service } = await newService([audioCard()]);
+		let resolvePlay: (() => void) | null = null;
+		captureAudioElements(
+			() =>
+				new Promise<void>((resolve) => {
+					resolvePlay = resolve;
+				}),
+		);
+		const speaking = speakItem(service, audioOnlyRoot());
+
+		const element = await nextAudioElement();
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		resolvePlay?.();
+		await Promise.resolve();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+
+		element.dispatchEvent(new Event("ended"));
+		await speaking;
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	test("keeps a recorded-audio replacement loading until replacement media starts", async () => {
+		const { service } = await newService([]);
+		let resolvePlay: (() => void) | null = null;
+		captureAudioElements(
+			() =>
+				new Promise<void>((resolve) => {
+					resolvePlay = resolve;
+				}),
+		);
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "recorded prompt";
+		(service as any).seekSegments = [
+			{ text: "recorded prompt", startOffset: 0, pauseMsAfter: 0 },
+		];
+		(service as any).playbackChunks = [
+			{
+				speechText: "recorded prompt",
+				audio: {
+					id: "replacement-audio",
+					sources: [{ src: "/audio/replacement.mp3", type: "audio/mpeg" }],
+				},
+			},
+		];
+
+		const replacement = (service as any).restartFromSeekIndex(0);
+		const element = await nextAudioElement();
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		resolvePlay?.();
+		await Promise.resolve();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+
+		element.dispatchEvent(new Event("ended"));
+		await replacement;
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
 	test("prefers the recording when the node carries both forms", async () => {
 		const { impl, service } = await newService([scriptCard(), audioCard()]);
 		captureAudioElements();
@@ -204,6 +273,22 @@ describe("recorded audio as a spoken alternate", () => {
 		element.dispatchEvent(new Event("error"));
 		await speaking;
 
+		expect(impl.speakCalls).toContain("authored prompt speech");
+	});
+
+	test("leaves media loading state when a recorded-first clip falls back to synthesis", async () => {
+		const { impl, service } = await newService([scriptCard(), audioCard()]);
+		captureAudioElements(() => new Promise<void>(() => {}));
+		const states: PlaybackState[] = [];
+		service.onStateChange("recorded-fallback", (state) => states.push(state));
+		const speaking = speakItem(service, audioOnlyRoot());
+
+		const element = await nextAudioElement();
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+		element.dispatchEvent(new Event("error"));
+		await speaking;
+
+		expect(states).toContain(PlaybackState.PLAYING);
 		expect(impl.speakCalls).toContain("authored prompt speech");
 	});
 

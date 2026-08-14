@@ -246,6 +246,16 @@ export class TTSService {
 	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
 	private activeSentenceStartOffset: number | null = null;
+	private playbackStartDeferredRunId: number | null = null;
+	private pendingPlaybackStartHighlights: Array<() => void> = [];
+	private playbackStartBarrierCleanup: (() => void) | null = null;
+	private playbackRateWriteQueue: Promise<void> = Promise.resolve();
+	private playbackRateRequestId = 0;
+	private pendingPlaybackRateRequest: {
+		rate: number;
+		promise: Promise<void>;
+	} | null = null;
+	private activePlaybackRate: number | null = null;
 	private activeHighlightMode: HighlightMode = "word";
 	private lastRenderedRegionTarget: RenderableHighlightTarget | null = null;
 	private telemetryReporter:
@@ -289,6 +299,73 @@ export class TTSService {
 		} else {
 			console.debug(message, detail);
 		}
+	}
+
+	private clearPlaybackStartBarrier(
+		cleanup = this.playbackStartBarrierCleanup,
+	): void {
+		cleanup?.();
+		if (this.playbackStartBarrierCleanup === cleanup) {
+			this.playbackStartBarrierCleanup = null;
+		}
+	}
+
+	private notifyPlaybackStarted(runId: number): void {
+		if (
+			this.playbackStartDeferredRunId !== runId ||
+			runId !== this.speakRunId
+		) {
+			return;
+		}
+		this.setState(PlaybackState.PLAYING);
+		const pendingHighlights = this.pendingPlaybackStartHighlights.splice(0);
+		for (const applyHighlight of pendingHighlights) {
+			applyHighlight();
+		}
+	}
+
+	private installPlaybackStartBarrier(
+		runId: number,
+		hasMediaStartSignal = false,
+	): (() => void) | null {
+		this.clearPlaybackStartBarrier();
+		const provider = this.provider;
+		const startAwareProvider =
+			provider && "onPlaybackStart" in provider ? provider : null;
+		if (!startAwareProvider && !hasMediaStartSignal) return null;
+
+		const previousOnPlaybackStart = startAwareProvider?.onPlaybackStart;
+		const onPlaybackStart = () => {
+			try {
+				this.notifyPlaybackStarted(runId);
+			} finally {
+				previousOnPlaybackStart?.();
+			}
+		};
+		if (startAwareProvider) {
+			startAwareProvider.onPlaybackStart = onPlaybackStart;
+		}
+		this.playbackStartDeferredRunId = runId;
+
+		const cleanup = () => {
+			if (startAwareProvider?.onPlaybackStart === onPlaybackStart) {
+				startAwareProvider.onPlaybackStart = previousOnPlaybackStart;
+			}
+			if (this.playbackStartDeferredRunId === runId) {
+				this.playbackStartDeferredRunId = null;
+				this.pendingPlaybackStartHighlights = [];
+			}
+		};
+		this.playbackStartBarrierCleanup = cleanup;
+		return cleanup;
+	}
+
+	private runWhenPlaybackStarts(runId: number, callback: () => void): void {
+		if (this.playbackStartDeferredRunId === runId) {
+			this.pendingPlaybackStartHighlights.push(callback);
+			return;
+		}
+		callback();
 	}
 
 	private async emitTelemetry(
@@ -1150,7 +1227,9 @@ export class TTSService {
 			}
 			this.currentBoundaryOffset = segment.startOffset;
 			if (shouldTrackSentenceProgress) {
-				this.highlightSentenceSegment(segment.startOffset, segment.text);
+				this.runWhenPlaybackStarts(runId, () => {
+					this.highlightSentenceSegment(segment.startOffset, segment.text);
+				});
 			}
 			await this.provider.speak(segment.text);
 			const pauseMs = segment.pauseMsAfter ?? 0;
@@ -1276,6 +1355,8 @@ export class TTSService {
 			throw new Error("TTS service not initialized");
 		}
 		const runId = ++this.speakRunId;
+		this.clearPlaybackStartBarrier();
+		let playbackStartBarrier: (() => void) | null = null;
 		try {
 			await this.applyLanguageSettings(options);
 			if (runId !== this.speakRunId) return;
@@ -1324,11 +1405,16 @@ export class TTSService {
 						playbackSegments: this.seekSegments,
 					});
 			this.setState(PlaybackState.LOADING);
+			playbackStartBarrier = this.installPlaybackStartBarrier(
+				runId,
+				!!this.playbackChunks[0]?.audio,
+			);
 			this.prepareHighlightsForSpeak({
 				contentToSpeak: highlightText,
 				options,
 				highlightMode,
 				shouldUsePlan,
+				runId,
 			});
 
 			if (speechMatchesVisibleText) {
@@ -1339,7 +1425,12 @@ export class TTSService {
 			} else {
 				this.clearWordBoundaryHighlighting();
 			}
-			this.setState(PlaybackState.PLAYING);
+			if (!playbackStartBarrier) {
+				this.setState(PlaybackState.PLAYING);
+			}
+			this.activePlaybackRate = this.normalizePlaybackRate(
+				Number(this.ttsConfig.rate ?? 1),
+			);
 			await this.executeSpeakPlayback({
 				shouldUsePlan,
 				runId,
@@ -1359,6 +1450,8 @@ export class TTSService {
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
 			throw finalError;
+		} finally {
+			this.clearPlaybackStartBarrier(playbackStartBarrier);
 		}
 	}
 
@@ -1369,7 +1462,21 @@ export class TTSService {
 		if (!this.currentProvider) return false;
 		const fallbackProvider = new BrowserTTSProvider();
 		const previousProviderId = this.currentProvider.providerId;
-		const browserConfig: Partial<TTSConfig> = { ...this.ttsConfig };
+		// Voice identifiers and provider extensions belong to the provider that
+		// rejected initialization. Carry only settings whose meaning is portable
+		// when crossing the provider boundary; otherwise a Polly/Google/SC voice
+		// such as "Joanna" can incorrectly become an explicit Browser voice.
+		const browserConfig: Partial<TTSConfig> = {};
+		if (this.ttsConfig.rate !== undefined) {
+			browserConfig.rate = this.ttsConfig.rate;
+		}
+		if (this.ttsConfig.pitch !== undefined) {
+			browserConfig.pitch = this.ttsConfig.pitch;
+		}
+		if (this.ttsConfig.mathTokenHighlighting !== undefined) {
+			browserConfig.mathTokenHighlighting =
+				this.ttsConfig.mathTokenHighlighting;
+		}
 		const operation = context?.operation || "tts-initialize";
 		const offendingText = context?.contentToSpeak ?? "";
 		const offendingPreview = offendingText
@@ -1899,6 +2006,7 @@ export class TTSService {
 		options?: SpeakOptions;
 		highlightMode: HighlightMode;
 		shouldUsePlan: boolean;
+		runId: number;
 	}): void {
 		if (!this.currentContentElement || !this.highlightCoordinator) return;
 		this.buildPositionMap(
@@ -1911,21 +2019,23 @@ export class TTSService {
 		}
 		const initialSegment =
 			this.sentenceHighlightSegments[0] || this.seekSegments[0];
-		if (initialSegment) {
-			this.highlightSentenceSegment(
-				initialSegment.startOffset,
-				initialSegment.text,
-			);
-			this.debugLog("[TTSService] Applied initial sentence highlighting");
-		} else {
-			try {
-				const range = document.createRange();
-				range.selectNodeContents(this.currentContentElement);
-				this.paintTTSSentenceRanges([range]);
-			} catch {
-				// No-op fallback when DOM range creation fails.
+		this.runWhenPlaybackStarts(args.runId, () => {
+			if (initialSegment) {
+				this.highlightSentenceSegment(
+					initialSegment.startOffset,
+					initialSegment.text,
+				);
+				this.debugLog("[TTSService] Applied initial sentence highlighting");
+			} else {
+				try {
+					const range = document.createRange();
+					range.selectNodeContents(this.currentContentElement!);
+					this.paintTTSSentenceRanges([range]);
+				} catch {
+					// No-op fallback when DOM range creation fails.
+				}
 			}
-		}
+		});
 	}
 
 	private configureWordBoundaryHighlighting(args: {
@@ -2143,6 +2253,18 @@ export class TTSService {
 					"[TTSService] SSML chunk speak failed; retrying plain text",
 					{ message: error instanceof Error ? error.message : String(error) },
 				);
+				// A recorded-first run can own the start barrier even when its fallback
+				// provider has no formal start signal. Drop the failed recording's queued
+				// highlight and resume that non-start-aware provider's immediate-start lifecycle.
+				if (
+					this.playbackStartDeferredRunId === runId &&
+					this.provider &&
+					!("onPlaybackStart" in this.provider)
+				) {
+					this.pendingPlaybackStartHighlights = [];
+					this.clearPlaybackStartBarrier();
+					this.setState(PlaybackState.PLAYING);
+				}
 				await this.speakCatalogChunkOnce(chunk.plainFallback, runId);
 				return;
 			}
@@ -2160,7 +2282,10 @@ export class TTSService {
 	 * would highlight the wrong words confidently rather than the right region
 	 * vaguely.
 	 */
-	private async playRecordedAudio(media: SpokenAudioMedia): Promise<void> {
+	private async playRecordedAudio(
+		media: SpokenAudioMedia,
+		onPlaybackStart?: () => void,
+	): Promise<void> {
 		if (typeof document === "undefined") {
 			throw new Error("[tts] no document available to play recorded audio");
 		}
@@ -2173,19 +2298,31 @@ export class TTSService {
 		);
 		await new Promise<void>((resolve, reject) => {
 			let endGuard: ReturnType<typeof setInterval> | undefined;
+			let didStart = false;
+			let settled = false;
+			const markStarted = () => {
+				if (settled || didStart) return;
+				didStart = true;
+				onPlaybackStart?.();
+			};
 			const cleanup = () => {
 				element.removeEventListener("ended", onEnded);
 				element.removeEventListener("error", onError);
+				element.removeEventListener("playing", markStarted);
 				if (endGuard !== undefined) clearInterval(endGuard);
 				if (this.activeRecordedAudio?.element === element) {
 					this.activeRecordedAudio = null;
 				}
 			};
 			const onEnded = () => {
+				if (settled) return;
+				settled = true;
 				cleanup();
 				resolve();
 			};
 			const onError = () => {
+				if (settled) return;
+				settled = true;
 				cleanup();
 				reject(new Error(`[tts] recorded audio failed to play: ${source.src}`));
 			};
@@ -2195,6 +2332,8 @@ export class TTSService {
 			this.activeRecordedAudio = {
 				element,
 				cancel: () => {
+					if (settled) return;
+					settled = true;
 					cleanup();
 					element.pause();
 					resolve();
@@ -2202,6 +2341,7 @@ export class TTSService {
 			};
 			element.addEventListener("ended", onEnded);
 			element.addEventListener("error", onError);
+			element.addEventListener("playing", markStarted);
 			// Browsers honour a Media Fragments start offset but are inconsistent
 			// about the end bound, so the end is enforced here — the same reason the
 			// signing region enforces its own.
@@ -2211,7 +2351,7 @@ export class TTSService {
 					if (element.currentTime >= endSeconds) onEnded();
 				}, 100);
 			}
-			Promise.resolve(element.play()).catch(onError);
+			Promise.resolve(element.play()).then(markStarted).catch(onError);
 		}).finally(() => {
 			if (this.activeRecordedAudio?.element === element) {
 				this.activeRecordedAudio = null;
@@ -2235,8 +2375,12 @@ export class TTSService {
 		if (!this.provider) return;
 		this.lastRenderedRegionTarget = null;
 		if (chunk.audio) {
-			this.highlightCatalogRegion(chunk);
-			await this.playRecordedAudio(chunk.audio);
+			this.runWhenPlaybackStarts(runId, () => {
+				this.highlightCatalogRegion(chunk);
+			});
+			await this.playRecordedAudio(chunk.audio, () => {
+				this.notifyPlaybackStarted(runId);
+			});
 			return;
 		}
 		const contentRoot =
@@ -2257,13 +2401,15 @@ export class TTSService {
 					mathTokenHighlighting,
 				})
 			: null;
-		if (highlightPlan && pipelineChunk && chunk.mathAlignment) {
-			this.renderHighlightDecision(
-				highlightPlan.resolveInitial(pipelineChunk.id),
-			);
-		} else {
-			this.highlightCatalogRegion(chunk);
-		}
+		this.runWhenPlaybackStarts(runId, () => {
+			if (highlightPlan && pipelineChunk && chunk.mathAlignment) {
+				this.renderHighlightDecision(
+					highlightPlan.resolveInitial(pipelineChunk.id),
+				);
+			} else {
+				this.highlightCatalogRegion(chunk);
+			}
+		});
 		const canUseChunkBoundaries =
 			chunk.sourceElement &&
 			((chunk.mathAlignment && chunk.mathAlignment.speech.tokens.length > 0) ||
@@ -2367,6 +2513,8 @@ export class TTSService {
 	}
 
 	private clearHighlightsAndTracking(): void {
+		this.pendingPlaybackStartHighlights = [];
+		this.activePlaybackRate = null;
 		if (this.highlightCoordinator) {
 			this.highlightCoordinator.clearTTS();
 		}
@@ -2504,14 +2652,27 @@ export class TTSService {
 			: null;
 
 		this.speakRunId += 1;
+		this.clearPlaybackStartBarrier();
 		this.cancelRecordedAudio();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		this.currentSeekSegmentIndex = safeTargetIndex;
 		const runId = ++this.speakRunId;
 		const restartSegments = this.seekSegments.slice(safeTargetIndex);
+		this.highlightCoordinator?.clearTTS();
+		this.activeSentenceStartOffset = null;
 
-		this.setState(PlaybackState.PLAYING);
+		this.setState(PlaybackState.LOADING);
+		const playbackStartBarrier = this.installPlaybackStartBarrier(
+			runId,
+			!!restartChunks?.[0]?.audio,
+		);
+		if (!playbackStartBarrier) {
+			this.setState(PlaybackState.PLAYING);
+		}
+		this.activePlaybackRate = this.normalizePlaybackRate(
+			Number(this.ttsConfig.rate ?? 1),
+		);
 		try {
 			this.configureWordBoundaryHighlighting({
 				highlightMode: this.activeHighlightMode,
@@ -2544,21 +2705,80 @@ export class TTSService {
 			this.clearHighlightsAndTracking();
 			this.highlightTargetResolverProvider = null;
 			throw error;
+		} finally {
+			this.clearPlaybackStartBarrier(playbackStartBarrier);
 		}
 	}
 
 	async setPlaybackRate(rate: number): Promise<void> {
+		if (!this.provider) {
+			throw new Error("TTSService not initialized. Call initialize() first.");
+		}
 		const nextRate = this.normalizePlaybackRate(rate);
-		await this.updateSettings({ rate: nextRate });
-		if (
-			this.state !== PlaybackState.PLAYING ||
-			!this.currentText ||
-			this.seekSegments.length === 0 ||
-			this.hasExplicitBreakSemantics(this.currentText)
-		) {
+		const pendingRequest = this.pendingPlaybackRateRequest;
+		if (pendingRequest?.rate === nextRate) {
+			await pendingRequest.promise;
 			return;
 		}
-		await this.restartFromSeekIndex(this.getCurrentSeekSegmentIndex());
+
+		const requestId = ++this.playbackRateRequestId;
+		const settingsWrite = this.playbackRateWriteQueue.then(async () => {
+			const playbackRunId = this.speakRunId;
+			// A newer distinct target supersedes queued work before it mutates either
+			// provider settings or playback. An already-running write cannot be
+			// cancelled, so its post-write generation check still suppresses restart.
+			if (requestId !== this.playbackRateRequestId) {
+				return { didUpdate: false, playbackRunId };
+			}
+			// An omitted rate is the provider-default 1× rate. Re-check inside the
+			// serialized operation so overlapping callers observe the preceding write.
+			const currentRate = this.normalizePlaybackRate(
+				Number(this.ttsConfig.rate ?? 1),
+			);
+			if (nextRate === currentRate) {
+				return { didUpdate: false, playbackRunId };
+			}
+			await this.updateSettings({ rate: nextRate });
+			return { didUpdate: true, playbackRunId };
+		});
+		this.playbackRateWriteQueue = settingsWrite.then(
+			() => undefined,
+			() => undefined,
+		);
+
+		const operation = settingsWrite.then(async (result) => {
+			if (
+				requestId !== this.playbackRateRequestId ||
+				result.playbackRunId !== this.speakRunId
+			) {
+				return;
+			}
+			const activePlaybackNeedsRate =
+				this.activePlaybackRate !== null &&
+				this.activePlaybackRate !== nextRate;
+			if (!result.didUpdate && !activePlaybackNeedsRate) return;
+			if (
+				(this.state !== PlaybackState.PLAYING &&
+					this.state !== PlaybackState.LOADING) ||
+				!this.currentText ||
+				this.seekSegments.length === 0 ||
+				this.hasExplicitBreakSemantics(this.currentText)
+			) {
+				return;
+			}
+			await this.restartFromSeekIndex(this.getCurrentSeekSegmentIndex());
+		});
+		let trackedOperation: Promise<void>;
+		trackedOperation = operation.finally(() => {
+			if (this.pendingPlaybackRateRequest?.promise === trackedOperation) {
+				this.pendingPlaybackRateRequest = null;
+			}
+		});
+		this.pendingPlaybackRateRequest = {
+			rate: nextRate,
+			promise: trackedOperation,
+		};
+		await trackedOperation;
 	}
 
 	private async seekBy(units: number): Promise<void> {
@@ -2601,6 +2821,7 @@ export class TTSService {
 	stop(): void {
 		if (!this.provider) return;
 		this.speakRunId += 1;
+		this.clearPlaybackStartBarrier();
 		this.cancelRecordedAudio();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
@@ -2624,6 +2845,7 @@ export class TTSService {
 		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
+		this.activePlaybackRate = null;
 	}
 
 	/**

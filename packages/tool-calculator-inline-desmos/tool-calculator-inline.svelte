@@ -195,9 +195,10 @@
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
 	.pie-tool-calculator-inline__button:focus-visible {
-		outline: 2px solid #0066cc;
+		outline: 2px solid var(--pie-button-focus-outline, #0066cc);
 		outline-offset: 2px;
-		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
+		box-shadow: 0 0 0 4px
+			color-mix(in srgb, var(--pie-button-focus-outline, #0066cc) 20%, transparent);
 		z-index: 1;
 	}
 
@@ -253,11 +254,11 @@
 
 	.pie-tool-calculator-inline__icon {
 		fill: currentColor;
-		color: #555;
+		color: var(--pie-button-color, #555);
 	}
 
 	.pie-tool-calculator-inline__button:not(.pie-tool-calculator-inline__button--active):hover:not(:disabled) .pie-tool-calculator-inline__icon {
-		color: #667eea;
+		color: var(--pie-button-hover-color, #667eea);
 	}
 
 	.pie-tool-calculator-inline__button--active .pie-tool-calculator-inline__icon {

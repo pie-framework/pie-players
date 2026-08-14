@@ -12,6 +12,7 @@ export type FrameworkErrorKind =
 	| "tool-state-save"
 	| "section-controller-init"
 	| "section-controller-dispose"
+	| "tool-surface"
 	| "unknown";
 
 export type FrameworkErrorSeverity = "warning" | "error";

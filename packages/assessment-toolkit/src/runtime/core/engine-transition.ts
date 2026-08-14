@@ -277,7 +277,10 @@ export function transition(
 					lastFrameworkError: input.error,
 					readinessSignals: {
 						...state.readinessSignals,
-						runtimeError: true,
+						runtimeError:
+							input.error.recoverable === true
+								? state.readinessSignals.runtimeError
+								: true,
 					},
 				},
 				outputs: [{ kind: "framework-error", error: input.error }],

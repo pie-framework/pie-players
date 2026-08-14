@@ -72,7 +72,7 @@
 
 	.toggle-tabs {
 		display: flex;
-		border-bottom: 2px solid #e0e0e0;
+		border-bottom: 2px solid var(--pie-border-light, #e0e0e0);
 		gap: 0.5rem;
 	}
 
@@ -84,24 +84,27 @@
 		cursor: pointer;
 		font-size: 1rem;
 		font-weight: 500;
-		color: #666;
+		color: var(--pie-button-color, #666);
 		transition: all 0.2s ease;
 		margin-bottom: -2px;
 	}
 
 	.toggle-tab:hover {
-		color: #333;
-		background: rgba(0, 0, 0, 0.05);
+		color: var(--pie-button-hover-color, #333);
+		background: color-mix(in srgb, var(--pie-text, #000) 5%, transparent);
 	}
 
 	.toggle-tab:focus {
-		outline: 2px solid #1976d2;
+		outline: 2px solid var(--pie-button-focus-outline, #1976d2);
 		outline-offset: 2px;
 	}
 
 	.toggle-tab.active {
-		color: #1976d2;
-		border-bottom-color: #1976d2;
+		/* The selected tab is signalled by the underline and the text stepping to
+		   full base-content; the accent slots DaisyUI exposes are picked to pair
+		   with their own -content colour, not with the page. */
+		color: var(--pie-text, #1976d2);
+		border-bottom-color: var(--pie-button-focus-outline, #1976d2);
 	}
 
 	.toggle-tab:active {

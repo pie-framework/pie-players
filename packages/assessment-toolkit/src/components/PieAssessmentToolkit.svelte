@@ -111,7 +111,7 @@
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
-	import { collectCatalogRegistrations } from "../runtime/catalog-registration.js";
+	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
 		connectSectionRuntimeEngineHostContext,
@@ -969,20 +969,21 @@ const DEFAULT_ENV = {
 	function registerCatalogsForDetail(detail: RuntimeRegistrationDetail): void {
 		unregisterCatalogsForElement(detail.element);
 		if (!effectiveCoordinator) return;
-		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver as {
-			registerCatalogs?: (context: unknown, catalogs: unknown[]) => () => void;
-		};
-		if (typeof resolver.registerCatalogs !== "function") return;
-		const registrations = collectCatalogRegistrations(detail, {
-			assessmentId: effectiveAssessmentId,
-			sectionId: effectiveSectionId,
-		});
-		if (registrations.length === 0) return;
+		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver;
 		catalogRegistrationCleanups.set(
 			detail.element,
-			registrations.map((registration) =>
-				resolver.registerCatalogs!(registration.context, registration.catalogs),
-			),
+			[
+				resolver.registerOwner({
+					owner: {
+						kind: detail.kind,
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
+						assessmentId: effectiveAssessmentId,
+						sectionId: effectiveSectionId,
+					},
+					entity: detail.item as CatalogSourceEntity | null | undefined,
+				}),
+			],
 		);
 	}
 
@@ -1633,9 +1634,10 @@ const DEFAULT_ENV = {
 		margin: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-radius: 0.5rem;
-		border: 1px solid color-mix(in srgb, #dc2626 40%, transparent);
-		background: color-mix(in srgb, #dc2626 12%, transparent);
-		color: #7f1d1d;
+		border: 1px solid
+			color-mix(in srgb, var(--pie-incorrect-icon, #dc2626) 40%, transparent);
+		background: color-mix(in srgb, var(--pie-incorrect-icon, #dc2626) 12%, transparent);
+		color: var(--pie-incorrect, #7f1d1d);
 		font-size: 0.9rem;
 	}
 

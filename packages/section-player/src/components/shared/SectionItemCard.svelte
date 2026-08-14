@@ -51,6 +51,8 @@
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
+	import SectionCardSurfaceStack from "./SectionCardSurfaceStack.svelte";
+	import { CONTENT_LEAD_SURFACE } from "./card-media-region.js";
 
 	let {
 		item,
@@ -146,12 +148,9 @@
 	// what this card supplies.
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	// Bumped from the coordinator's policy-change stream so the eligibility
-	// derivation reruns when policy inputs change (assessment binding, PNP
-	// enforcement, custom sources). Same fanout pattern as `<pie-item-toolbar>`.
-	let policyChangeVersion = $state(0);
 
 	const mediaRegionId = $derived(`${headingId}-media`);
+	const leadRegionId = $derived(`${headingId}-lead`);
 
 	// Built by the same function the runtime registers catalogs with, so the
 	// lookup scope cannot drift from the registered one.
@@ -170,21 +169,6 @@
 		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
 			runtimeContext = value;
 		});
-	});
-
-	$effect(() => {
-		const coordinator = runtimeContext?.toolkitCoordinator;
-		if (!coordinator || typeof coordinator.onPolicyChange !== "function") return;
-		const unsubscribe = coordinator.onPolicyChange(() => {
-			policyChangeVersion += 1;
-		});
-		return () => {
-			try {
-				unsubscribe?.();
-			} catch {
-				// Detach errors are non-fatal: the coordinator may already be gone.
-			}
-		};
 	});
 
 	function resetContextOverrides(): void {
@@ -256,13 +240,21 @@
 				{hostButtons}
 			></pie-item-toolbar>
 		</div>
-		<SectionCardMediaSplit
-			regionId={mediaRegionId}
-			entity={item}
+		<!-- Text alternates the capability set contributes, read in order before the
+		     content: a transcript precedes the audio control it transcribes, and no
+		     element has to know it exists. -->
+		<SectionCardSurfaceStack
+			regionId={leadRegionId}
+			surface={CONTENT_LEAD_SURFACE}
 			ownerContext={catalogOwnerContext}
 			{runtimeContext}
 			{toolRegistry}
-			{policyChangeVersion}
+		/>
+		<SectionCardMediaSplit
+			regionId={mediaRegionId}
+			ownerContext={catalogOwnerContext}
+			{runtimeContext}
+			{toolRegistry}
 			dividerAriaLabel="Resize question and media panels"
 		>
 			{#snippet content()}

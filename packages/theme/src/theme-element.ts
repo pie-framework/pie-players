@@ -1,6 +1,8 @@
-import { resolvePieColorSchemeVariables } from "./color-schemes.js";
-import { DARK_THEME_VARS, LIGHT_THEME_VARS } from "./theme-defaults.js";
-import { resolveProviderVariables } from "./providers.js";
+import { observePieColorSchemes, resolvePieTheme } from "./color-schemes.js";
+import {
+	observePieThemeProviders,
+	resolveProviderVariables,
+} from "./providers.js";
 import {
 	isThemeMode,
 	isThemeScope,
@@ -57,13 +59,98 @@ function parseVariableOverrides(value: unknown): ThemeVariables {
 			continue;
 		}
 
-		if (typeof rawValue === "string") {
-			output[key] = rawValue;
-		} else if (typeof rawValue === "number") {
+		if (typeof rawValue === "string" && rawValue.trim()) {
+			output[key] = rawValue.trim();
+		} else if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
 			output[key] = String(rawValue);
 		}
 	}
 	return output;
+}
+
+type DocumentThemeState = Readonly<{
+	dataTheme: string;
+	dataColorScheme: string | null;
+	variables: Readonly<ThemeVariables>;
+}>;
+
+type DocumentThemeBaseline = {
+	dataTheme: string | null;
+	dataColorScheme: string | null;
+	variables: Map<string, { value: string; priority: string } | null>;
+};
+
+const documentThemeOwners = new Map<PieThemeElement, DocumentThemeState>();
+let documentThemeBaseline: DocumentThemeBaseline | null = null;
+let documentThemeAppliedKeys = new Set<string>();
+
+function ensureDocumentThemeBaseline(
+	target: HTMLElement,
+	tokens: readonly string[],
+): void {
+	documentThemeBaseline ??= {
+		dataTheme: target.getAttribute("data-theme"),
+		dataColorScheme: target.getAttribute("data-color-scheme"),
+		variables: new Map(),
+	};
+	for (const token of tokens) {
+		if (documentThemeBaseline.variables.has(token)) continue;
+		const value = target.style.getPropertyValue(token);
+		documentThemeBaseline.variables.set(
+			token,
+			value
+				? { value, priority: target.style.getPropertyPriority(token) }
+				: null,
+		);
+	}
+}
+
+function restoreDocumentThemeVariables(target: HTMLElement): void {
+	for (const token of documentThemeAppliedKeys) {
+		target.style.removeProperty(token);
+	}
+	const baseline = documentThemeBaseline;
+	if (!baseline) return;
+	for (const [token, original] of baseline.variables) {
+		if (original) {
+			target.style.setProperty(token, original.value, original.priority);
+		} else {
+			target.style.removeProperty(token);
+		}
+	}
+}
+
+function applyDocumentThemeState(
+	target: HTMLElement,
+	state: DocumentThemeState,
+): void {
+	ensureDocumentThemeBaseline(target, Object.keys(state.variables));
+	restoreDocumentThemeVariables(target);
+	target.setAttribute("data-theme", state.dataTheme);
+	if (state.dataColorScheme) {
+		target.setAttribute("data-color-scheme", state.dataColorScheme);
+	} else {
+		target.removeAttribute("data-color-scheme");
+	}
+	for (const [token, value] of Object.entries(state.variables)) {
+		target.style.setProperty(token, value);
+	}
+	documentThemeAppliedKeys = new Set(Object.keys(state.variables));
+}
+
+function restoreDocumentThemeBaseline(target: HTMLElement): void {
+	const baseline = documentThemeBaseline;
+	if (!baseline) return;
+	if (baseline.dataTheme === null) target.removeAttribute("data-theme");
+	else target.setAttribute("data-theme", baseline.dataTheme);
+	if (baseline.dataColorScheme === null) {
+		target.removeAttribute("data-color-scheme");
+	} else {
+		target.setAttribute("data-color-scheme", baseline.dataColorScheme);
+	}
+	restoreDocumentThemeVariables(target);
+	documentThemeBaseline = null;
+	documentThemeAppliedKeys.clear();
 }
 
 export class PieThemeElement extends HTMLElementBase {
@@ -74,7 +161,11 @@ export class PieThemeElement extends HTMLElementBase {
 	private mediaQuery: MediaQueryList | null = null;
 	private readonly onMediaChange = () => this.applyTheme();
 	private previousKeys = new Set<string>();
+	private previousTarget: HTMLElement | null = null;
 	private variablesOverride: ThemeVariables = {};
+	private promoteDocumentOwnership = false;
+	private stopObservingSchemes: (() => void) | null = null;
+	private stopObservingProviders: (() => void) | null = null;
 
 	get theme(): ThemeMode {
 		const value = this.getAttribute("theme");
@@ -101,7 +192,6 @@ export class PieThemeElement extends HTMLElementBase {
 	set variables(value: ThemeVariables) {
 		this.variablesOverride = parseVariableOverrides(value);
 		this.setAttribute("variables", JSON.stringify(this.variablesOverride));
-		this.applyTheme();
 	}
 
 	get provider(): string {
@@ -125,7 +215,12 @@ export class PieThemeElement extends HTMLElementBase {
 			this.style.display = "contents";
 		}
 		this.setupAutoThemeListener();
-		this.applyTheme();
+		this.stopObservingProviders ??= observePieThemeProviders(() =>
+			this.applyTheme(),
+		);
+		this.stopObservingSchemes ??= observePieColorSchemes(() =>
+			this.applyTheme(),
+		);
 	}
 
 	disconnectedCallback() {
@@ -133,12 +228,11 @@ export class PieThemeElement extends HTMLElementBase {
 			this.mediaQuery.removeEventListener("change", this.onMediaChange);
 		}
 		this.mediaQuery = null;
-
-		if (this.scope === "self") {
-			this.clearPreviousKeys(this);
-			this.removeAttribute("data-theme");
-			this.removeAttribute("data-color-scheme");
-		}
+		this.stopObservingSchemes?.();
+		this.stopObservingSchemes = null;
+		this.stopObservingProviders?.();
+		this.stopObservingProviders = null;
+		this.clearPreviousTarget();
 	}
 
 	attributeChangedCallback(
@@ -157,6 +251,7 @@ export class PieThemeElement extends HTMLElementBase {
 		if (name === "theme") {
 			this.setupAutoThemeListener();
 		}
+		this.promoteDocumentOwnership = true;
 
 		this.applyTheme();
 	}
@@ -169,38 +264,62 @@ export class PieThemeElement extends HTMLElementBase {
 	}
 
 	protected applyTheme() {
-		if (typeof document === "undefined" || typeof window === "undefined") {
+		if (
+			!this.isConnected ||
+			typeof document === "undefined" ||
+			typeof window === "undefined"
+		) {
 			return;
 		}
 
 		const { effectiveTheme, dataTheme } = this.resolveThemeState();
 		const target = this.getTarget();
-		target.setAttribute("data-theme", dataTheme);
-		if (this.scheme && this.scheme !== "default") {
-			target.setAttribute("data-color-scheme", this.scheme);
-		} else {
-			target.removeAttribute("data-color-scheme");
+		if (this.previousTarget && this.previousTarget !== target) {
+			this.clearPreviousTarget();
 		}
 
-		const themeVars =
-			effectiveTheme === "dark" ? DARK_THEME_VARS : LIGHT_THEME_VARS;
-		const providerVars = resolveProviderVariables({
+		const providerVariables = resolveProviderVariables({
 			target,
 			provider: this.provider,
 		});
-		const schemeVars = resolvePieColorSchemeVariables(this.scheme);
-		const vars = {
-			...themeVars,
-			...providerVars,
-			...schemeVars,
-			...this.variablesOverride,
-		};
+		const resolution = resolvePieTheme({
+			baseTheme: effectiveTheme,
+			providerVariables,
+			requestedScheme: this.scheme,
+			variables: this.variablesOverride,
+		});
 
-		this.clearPreviousKeys(target);
-		for (const [key, value] of Object.entries(vars)) {
-			target.style.setProperty(key, value);
+		const state: DocumentThemeState = Object.freeze({
+			dataTheme,
+			dataColorScheme: this.scheme === "default" ? null : this.scheme,
+			variables: resolution.variables,
+		});
+		if (this.scope === "document") {
+			if (this.promoteDocumentOwnership && documentThemeOwners.has(this)) {
+				documentThemeOwners.delete(this);
+			}
+			// Observer-driven re-resolution updates state in place, while a direct
+			// attribute/property mutation deliberately makes this the latest owner.
+			documentThemeOwners.set(this, state);
+			this.promoteDocumentOwnership = false;
+			const activeOwner = [...documentThemeOwners.entries()].at(-1);
+			if (activeOwner?.[0] === this) {
+				applyDocumentThemeState(target, state);
+			}
+		} else {
+			target.setAttribute("data-theme", dataTheme);
+			if (state.dataColorScheme) {
+				target.setAttribute("data-color-scheme", state.dataColorScheme);
+			} else {
+				target.removeAttribute("data-color-scheme");
+			}
+			this.clearPreviousKeys(target);
+			for (const [key, value] of Object.entries(resolution.variables)) {
+				target.style.setProperty(key, value);
+			}
 		}
-		this.previousKeys = new Set(Object.keys(vars));
+		this.previousTarget = target;
+		this.previousKeys = new Set(Object.keys(resolution.variables));
 	}
 
 	private resolveThemeState(): {
@@ -218,12 +337,29 @@ export class PieThemeElement extends HTMLElementBase {
 		if (rawTheme === "dark" || rawTheme === "light") {
 			return { effectiveTheme: rawTheme, dataTheme: rawTheme };
 		}
-		// Non-standard theme ids (for example DaisyUI theme names) map to
-		// light base defaults while still driving provider resolution.
+		// Non-standard ids (for example DaisyUI theme names) keep their provider
+		// selector while resolving from PIE's light Base Theme.
 		if (rawTheme) {
 			return { effectiveTheme: "light", dataTheme: rawTheme };
 		}
 		return { effectiveTheme: "light", dataTheme: "light" };
+	}
+
+	private clearPreviousTarget() {
+		if (!this.previousTarget) return;
+		const target = this.previousTarget;
+		if (target === document.documentElement && documentThemeOwners.has(this)) {
+			documentThemeOwners.delete(this);
+			const survivingOwner = [...documentThemeOwners.values()].at(-1);
+			if (survivingOwner) applyDocumentThemeState(target, survivingOwner);
+			else restoreDocumentThemeBaseline(target);
+		} else {
+			this.clearPreviousKeys(target);
+			target.removeAttribute("data-theme");
+			target.removeAttribute("data-color-scheme");
+		}
+		this.previousTarget = null;
+		this.previousKeys.clear();
 	}
 
 	private clearPreviousKeys(target: HTMLElement) {
@@ -240,6 +376,9 @@ export class PieThemeElement extends HTMLElementBase {
 		if (this.mediaQuery) {
 			this.mediaQuery.removeEventListener("change", this.onMediaChange);
 			this.mediaQuery = null;
+		}
+		if (!this.isConnected) {
+			return;
 		}
 
 		if (this.getAttribute("theme")?.trim() === "auto") {

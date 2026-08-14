@@ -25,6 +25,7 @@
 			"types": "./dist/theme-element.d.ts",
 			"import": "./dist/theme-element.js"
 		},
+		"./token-registry.json": "./dist/token-registry.json",
 		"./tokens.css": "./dist/tokens.css",
 		"./color-schemes.css": "./dist/color-schemes.css",
 		"./font-sizes.css": "./dist/font-sizes.css",
@@ -35,8 +36,10 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json && cp src/*.css dist/",
-		"dev": "tsc -p tsconfig.json --watch",
+		"build": "bun run check:generated-css && tsc -p tsconfig.json && cp src/*.css dist/ && cp src/token-registry.json dist/",
+		"dev": "bun ./scripts/dev-theme.ts",
+		"generate:css": "bun ./scripts/generate-theme-css.ts --write",
+		"check:generated-css": "bun ./scripts/generate-theme-css.ts --check",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
 		"check": "tsc -p tsconfig.json --noEmit",
@@ -44,6 +47,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.7",
+		"@happy-dom/global-registrator": "^20.11.1",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/theme#readme",

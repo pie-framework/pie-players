@@ -116,16 +116,14 @@ rather than half-rendered.
 5. **Navigation/Unmount**: Shell lifecycle unregisters scoped item and passage
    catalog registrations.
 
-Step 3 and step 4 have to agree on *where* a catalog is filed, because the
-resolver matches owner contexts field by field: a reader that assembled its own
-context by hand would silently resolve nothing the day either side gained a
-field. So one function decides it — `collectEntityCatalogRegistrations` walks the
-three places catalogs hang off an entity (entity-level `accessibilityCatalogs`,
-`config.extractedCatalogs`, and each model's own catalogs, the last filed under
-that `modelId` so two models can reuse one identifier), and
-`catalogOwnerContextFor` builds the context both sides use. Both are exported
-from `@pie-players/pie-assessment-toolkit`; readers should call the latter rather
-than construct a `CatalogOwnerContext` literal.
+Step 3 and step 4 have to agree on *where* a catalog is filed. The resolver owns
+that agreement: `registerOwner(...)` walks entity-level
+`accessibilityCatalogs`, `config.extractedCatalogs`, and each model's own
+catalogs, filing the last under its `modelId` so two models can reuse one
+identifier. `forOwner(...)` binds reads and observation to the matching owner;
+content capabilities receive only its immutable snapshot. Direct lookup clients
+such as TTS should build their context with `catalogOwnerContextFor(...)` rather
+than assemble a `CatalogOwnerContext` literal.
 
 ---
 
@@ -952,4 +950,3 @@ const german = resolver.getAlternative('welcome-message', {
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 - [Nemeth Braille Code](http://www.brailleauthority.org/nemeth/nemeth.pdf)
-

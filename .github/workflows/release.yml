@@ -354,6 +354,59 @@ jobs:
         continue-on-error: ${{ steps.npm_auth.outputs.mode != 'oidc' }}
         run: bun ./scripts/check-provenance.mjs "${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}"
 
+      # A release commit exists only on master: changesets/action bumps the manifests and deletes
+      # the consumed changesets there, and nothing carries that back. develop therefore keeps
+      # whatever version the last back-merge left it, which is what published
+      # @pie-players/pie-tool-sign-language at 0.3.50 against a group at 0.3.64 —
+      # bootstrap-package reads the group version from the branch it runs on, and that branch was
+      # develop.
+      #
+      # A PR rather than a direct push to develop: a back-merge can conflict on CHANGELOG.md, and
+      # resolving that is a human's job. continue-on-error because a release that published must
+      # not be reported as failed over its follow-up bookkeeping.
+      - name: Open master -> develop back-merge PR
+        if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin develop master
+
+          existing="$(gh pr list --base develop --head master --state open --json number --jq '.[].number' | head -1)"
+          if [ -n "$existing" ]; then
+            echo "PR #${existing} already back-merges master into develop; it will carry ${VERSION} too."
+            exit 0
+          fi
+
+          ahead="$(git rev-list --count origin/develop..origin/master)"
+          if [ "$ahead" = "0" ]; then
+            echo "develop already contains master; nothing to back-merge."
+            exit 0
+          fi
+
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          Returns the \`${VERSION}\` release commit to \`develop\`: bumped manifests, assembled
+          \`CHANGELOG.md\` files, and the deletion of the changesets this release consumed.
+
+          Opened automatically after the publish of \`${VERSION}\` succeeded. Without it the manifests
+          on \`develop\` keep drifting behind what is published, and \`bootstrap-package\` — which reads
+          the group version from the branch it runs on — gives the next new package a version far below
+          the group. That is how \`@pie-players/pie-tool-sign-language\` was published at 0.3.50 against
+          a group at 0.3.64.
+
+          Expect conflicts only in \`CHANGELOG.md\` files, where \`develop\` and this release both added
+          entries. Take both sides, release entry first.
+          EOF
+
+          gh pr create \
+            --base develop \
+            --head master \
+            --title "chore(release): back-merge ${VERSION} into develop" \
+            --body-file "$body_file"
+
       - name: Notify Slack on Successful Publish
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true

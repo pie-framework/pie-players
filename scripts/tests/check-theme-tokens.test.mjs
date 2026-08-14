@@ -11,6 +11,19 @@ function write(root, relPath, content) {
 	writeFileSync(absPath, content);
 }
 
+const NDS_MOUNT_WITH_BRIDGE = [
+	'<nds-icon-button variant="tertiary"></nds-icon-button>',
+	"<style>",
+	"nds-icon-button {",
+	"  --color-interactive-blue: var(--pie-button-bg, #222);",
+	"  --color-new-gray: var(--pie-background-dark, #f3f5f7);",
+	"  --color-primary-white: var(--pie-white, #ffffff);",
+	"  --color-primary-black: var(--pie-text, #000000);",
+	"  --color-focus-blue: var(--pie-button-focus-outline, #2b87ff);",
+	"}",
+	"</style>",
+].join("\n");
+
 function createFixtureRoot() {
 	const root = mkdtempSync(path.join(tmpdir(), "pie-theme-tokens-"));
 
@@ -19,38 +32,52 @@ function createFixtureRoot() {
 		"package.json",
 		JSON.stringify({
 			scripts: {
-				"check:theme-tokens": "bun ./scripts/check-theme-tokens.mjs",
+				"check:theme-tokens":
+					"bun ./scripts/check-theme-tokens.mjs && bun run --cwd packages/theme check:generated-css",
 			},
 		}),
 	);
 	write(
 		root,
-		"packages/theme/src/theme-defaults.ts",
+		"packages/theme/src/theme-definitions.ts",
 		[
-			"export const LIGHT_THEME_VARS = {",
+			"const LIGHT_BASE_THEME = {",
 			'  "--pie-background": "#fff",',
 			'  "--pie-button-bg": "#fff",',
 			"};",
-			"export const DARK_THEME_VARS = {",
+			"const DARK_BASE_THEME = {",
 			'  "--pie-background": "#000",',
 			'  "--pie-button-bg": "#111",',
 			"};",
+			"const BUILT_IN_COLOR_SCHEMES = [{ variables: {",
+			'  "--pie-background": "#fff",',
+			'  "--pie-button-bg": "#fff",',
+			'  "--pie-tool-example-border": "#000",',
+			"} }];",
 		].join("\n"),
 	);
 	write(
 		root,
 		"packages/theme/src/tokens.css",
-		':root { --pie-background: #fff; --pie-button-bg: #fff; }\n[data-theme="dark"] { --pie-background: #000; --pie-button-bg: #111; }\n',
+		':root { --pie-background: #fff; --pie-button-bg: #fff; --pie-tool-example-border: #000; }\n[data-theme="dark"] { --pie-background: #000; --pie-button-bg: #111; --pie-tool-example-border: #fff; }\n',
 	);
 	write(
 		root,
-		"packages/theme/src/color-schemes.ts",
-		'export const BUILTIN_PIE_COLOR_SCHEMES = [{ variables: { "--pie-background": "#fff" } }];\n',
+		"packages/theme/src/scheme-participation.ts",
+		[
+			"export const PIE_THEME_SCHEME_PARTICIPATION = {",
+			'  "--pie-background": "required",',
+			'  "--pie-button-bg": "required",',
+			'  "--pie-tool-example-border": "required",',
+			'  "--pie-tool-trigger-active-background": "optional",',
+			'  "--pie-button-background-color": "excluded",',
+			"} as const;",
+		].join("\n"),
 	);
 	write(
 		root,
 		"packages/theme/src/color-schemes.css",
-		'[data-color-scheme="black-on-white"] { --pie-background: #fff; }\n',
+		'[data-color-scheme="black-on-white"] { --pie-background: #fff; --pie-button-bg: #fff; --pie-tool-example-border: #000; }\n',
 	);
 	write(
 		root,
@@ -62,7 +89,8 @@ function createFixtureRoot() {
 				scope: "canonical-semantic",
 				category: "surface",
 				status: "active",
-				definedIn: ["packages/theme/src/theme-defaults.ts"],
+				schemeParticipation: "required",
+				definedIn: ["packages/theme/src/theme-definitions.ts"],
 				documentedIn: ["packages/theme/README.md"],
 				fallbackPolicy: "Canonical background token.",
 			},
@@ -72,9 +100,21 @@ function createFixtureRoot() {
 				scope: "canonical-semantic",
 				category: "button",
 				status: "active",
-				definedIn: ["packages/theme/src/theme-defaults.ts"],
+				schemeParticipation: "required",
+				definedIn: ["packages/theme/src/theme-definitions.ts"],
 				documentedIn: ["packages/theme/README.md"],
 				fallbackPolicy: "Canonical button background token.",
+			},
+			{
+				name: "--pie-tool-example-border",
+				owner: "@pie-players/pie-tool-example",
+				scope: "component-public",
+				category: "tool-boundary",
+				status: "active",
+				schemeParticipation: "required",
+				definedIn: ["packages/theme/src/theme-definitions.ts"],
+				documentedIn: ["packages/tool-example/README.md"],
+				fallbackPolicy: "Accessibility boundary included in every scheme.",
 			},
 			{
 				name: "--pie-tool-trigger-active-background",
@@ -82,6 +122,7 @@ function createFixtureRoot() {
 				scope: "component-public",
 				category: "tool-trigger",
 				status: "active",
+				schemeParticipation: "optional",
 				definedIn: ["packages/tool-example/tool-example.svelte"],
 				documentedIn: ["packages/tool-example/README.md"],
 				fallbackPolicy: "Component active trigger background token.",
@@ -92,6 +133,7 @@ function createFixtureRoot() {
 				scope: "legacy",
 				category: "button",
 				status: "active",
+				schemeParticipation: "excluded",
 				definedIn: ["packages/tool-example/tool-example.svelte"],
 				documentedIn: ["packages/tool-example/README.md"],
 				fallbackPolicy: "Legacy alias that falls back through --pie-button-bg.",
@@ -106,14 +148,13 @@ function createFixtureRoot() {
 	write(
 		root,
 		"packages/tool-example/README.md",
-		"--pie-tool-trigger-active-background and --pie-button-background-color are documented.\n",
+		"--pie-tool-example-border, --pie-tool-trigger-active-background, and --pie-button-background-color are documented.\n",
 	);
 	write(
 		root,
 		"packages/tool-example/tool-example.svelte",
 		"<style>.trigger { background: var(--pie-tool-trigger-active-background, var(--pie-button-background-color, var(--pie-button-bg, #fff))); }</style>\n",
 	);
-
 	return root;
 }
 
@@ -128,6 +169,108 @@ describe("check-theme-tokens", () => {
 
 		expect(checkThemeTokens(root).join("\n")).toContain(
 			'package.json scripts must include "check:theme-tokens"',
+		);
+	});
+
+	test("accepts a mount that bridges the vendored NDS palette", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-nds.svelte",
+			NDS_MOUNT_WITH_BRIDGE,
+		);
+
+		const ndsFailures = checkThemeTokens(root).filter((failure) =>
+			failure.includes("nds-icon-button"),
+		);
+
+		expect(ndsFailures).toEqual([]);
+	});
+
+	test("flags a mount that leaves the NDS palette unbridged", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-nds.svelte",
+			'<nds-icon-button variant="tertiary"></nds-icon-button>\n<style></style>\n',
+		);
+
+		const failures = checkThemeTokens(root)
+			.filter((failure) => failure.includes("nds-icon-button"))
+			.join("\n");
+
+		expect(failures).toContain("does not bridge `--color-new-gray`");
+		expect(failures).toContain("does not bridge `--color-focus-blue`");
+		expect(failures).toContain("does not remap --color-interactive-blue");
+	});
+
+	test("ignores files that only name nds-icon-button in prose", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-docs.svelte",
+			"<script>\n// Controls render <nds-icon-button> only when the host opts in.\n</script>\n",
+		);
+
+		const ndsFailures = checkThemeTokens(root).filter((failure) =>
+			failure.includes("nds-icon-button"),
+		);
+
+		expect(ndsFailures).toEqual([]);
+	});
+
+	test("flags a bare colour literal set from an inline style", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/inline.ts",
+			[
+				'el.style.borderBottom = "1px solid #ddd";',
+				'const markup = `<div style="color: red">bad</div>`;',
+			].join("\n"),
+		);
+
+		const failures = checkThemeTokens(root)
+			.filter((failure) => failure.includes("literal"))
+			.join("\n");
+
+		expect(failures).toContain("sets `border-bottom` to the literal");
+		expect(failures).toContain("sets `color` to the literal");
+	});
+
+	test("accepts inline styles that route through a --pie-* token", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/inline.ts",
+			[
+				"el.style.background = 'var(--pie-background, #fff)';",
+				"el.style.setProperty('--pie-tool-example-border', '#000');",
+				"el.style.borderColor = 'rgba(0, 0, 0, 0)';",
+			].join("\n"),
+		);
+
+		const failures = checkThemeTokens(root).filter((failure) =>
+			failure.includes("literal"),
+		);
+
+		expect(failures).toEqual([]);
+	});
+
+	test("requires the root command to verify generated CSS bytes", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"package.json",
+			JSON.stringify({
+				scripts: {
+					"check:theme-tokens": "bun ./scripts/check-theme-tokens.mjs",
+				},
+			}),
+		);
+
+		expect(checkThemeTokens(root).join("\n")).toContain(
+			"pie-theme check:generated-css command",
 		);
 	});
 
@@ -159,7 +302,41 @@ describe("check-theme-tokens", () => {
 		);
 
 		expect(checkThemeTokens(root).join("\n")).toContain(
-			"tokens.css declarations do not match LIGHT_THEME_VARS",
+			"tokens.css declarations do not match Base Theme token set",
+		);
+	});
+
+	test("rejects generated scheme-participation drift", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/theme/src/scheme-participation.ts",
+			[
+				"export const PIE_THEME_SCHEME_PARTICIPATION = {",
+				'  "--pie-background": "optional",',
+				'  "--pie-button-bg": "required",',
+				'  "--pie-tool-example-border": "required",',
+				'  "--pie-tool-trigger-active-background": "optional",',
+				'  "--pie-button-background-color": "excluded",',
+				"} as const;",
+			].join("\n"),
+		);
+
+		expect(checkThemeTokens(root).join("\n")).toContain(
+			"--pie-background scheme participation is optional",
+		);
+	});
+
+	test("rejects non-required tokens in generated color-scheme CSS", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/theme/src/color-schemes.css",
+			'[data-color-scheme="black-on-white"] { --pie-background: #fff; --pie-button-bg: #fff; --pie-tool-example-border: #000; --pie-tool-trigger-active-background: #eee; }\n',
+		);
+
+		expect(checkThemeTokens(root).join("\n")).toContain(
+			"color-schemes.css declarations do not match required scheme tokens",
 		);
 	});
 

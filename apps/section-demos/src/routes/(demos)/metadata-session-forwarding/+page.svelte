@@ -16,6 +16,7 @@
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import {
+		bindDemoAssessment,
 		DEMO_ASSESSMENT_ID,
 		getOrCreateAttemptId,
 		getUrlEnumParam,
@@ -97,6 +98,12 @@
 			...section,
 			personalNeedsProfile: createUniversalPersonalNeedsProfile()
 		};
+	});
+
+	// Bind the profile so policy has an input to decide against; the section
+	// payload alone is invisible to `decideFeaturePolicy`.
+	$effect(() => {
+		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
 	});
 	let sessionPanelSectionId = $derived(
 		String(

@@ -21,6 +21,17 @@
 export const CONTENT_MEDIA_SURFACE = "content-media";
 
 /**
+ * Host slot for a text alternate that has to be read in order with the content:
+ * full width, above the card body, in document flow.
+ *
+ * Separate from {@link CONTENT_MEDIA_SURFACE} because the geometry is the whole
+ * difference. Docked media is watched beside the content and is sized by an
+ * aspect ratio; a transcript or a plain-language alternate is read *before* the
+ * control it belongs to, which a sticky side column cannot express.
+ */
+export const CONTENT_LEAD_SURFACE = "content-lead";
+
+/**
  * Default and bounds for the media region's share of the card width.
  *
  * Docked media generally needs height rather than width — a person on camera

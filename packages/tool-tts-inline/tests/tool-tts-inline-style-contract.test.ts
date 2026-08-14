@@ -297,7 +297,9 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 		// and --plain's accent colour is dead. Falling back to the accent would
 		// turn the glyph blue on open. Verified in Chromium: the plain trigger
 		// computes the dark --pie-button-color, not #146eb3.
-		expect(control).toContain("color:var(--pie-button-color,var(--pie-text,#222))");
+		expect(control).toContain(
+			"color:var(--pie-button-color,var(--pie-text,#222))",
+		);
 		expect(active).toContain("var(--pie-button-color,var(--pie-text,#222))");
 		// Guard the trap directly: the accent must not be the active fallback.
 		expect(active).not.toContain("var(--pie-tts-button-color,#146eb3)");
@@ -313,7 +315,9 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 			'.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"]',
 		).replace(/\s+/g, "");
 
-		expect(body).toContain("--color-interactive-blue:var(--pie-tool-trigger-active-color,");
+		expect(body).toContain(
+			"--color-interactive-blue:var(--pie-tool-trigger-active-color,",
+		);
 		expect(body).not.toContain("background:");
 		expect(body).not.toContain("border-color:");
 	});
@@ -340,17 +344,20 @@ describe("tool-tts-inline keyboard order contract", () => {
 		);
 	});
 
-	test("the trigger never disables itself while the play action is in flight", () => {
+	test("the trigger never disables itself while playback startup is in flight", () => {
 		// A disabled element cannot hold focus, so disabling the trigger mid-action
 		// blurs it and a keyboard user loses their place on every Play press.
-		// Re-entrancy is guarded in handlePlayPause; the pending state is aria-busy.
+		// Re-entrancy is guarded through initialization and native playback start;
+		// the pending state is exposed with aria-busy.
 		expect(source).not.toContain(
 			"disabled={!ttsService || playActionInFlight}",
 		);
-		expect(source).toContain("'aria-busy': playActionInFlight ? 'true' : null");
+		expect(source).not.toContain("disabled={!ttsService || startupInFlight}");
+		expect(source).toContain("'aria-busy': startupInFlight ? 'true' : null");
 		expect(source).toContain(
-			"aria-busy={playActionInFlight ? 'true' : undefined}",
+			"aria-busy={startupInFlight ? 'true' : undefined}",
 		);
+		expect(source).toContain("startupInFlight ||");
 		expect(source).toContain("if (playActionInFlight) return;");
 	});
 
@@ -405,7 +412,7 @@ describe("tool-tts-inline keyboard order contract", () => {
 			source.indexOf("ttsService.onStateChange"),
 		);
 		expect(listener.indexOf("isSeekControlFocused()")).toBeLessThan(
-			listener.indexOf("syncFromState(state as string)"),
+			listener.indexOf("syncFromState(playbackState)"),
 		);
 		expect(listener).toContain("moveFocusOffDisabledSeekControl");
 		// Focus lands on Stop, falling back to the trigger if the panel has closed.

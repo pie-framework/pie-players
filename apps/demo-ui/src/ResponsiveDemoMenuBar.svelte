@@ -22,9 +22,13 @@
 
 	let compactMenuOpen = $state(false);
 	let compactMenuButton = $state<HTMLButtonElement>();
+	let menuBar = $state<HTMLElement>();
 
 	function handleWindowKeydown(event: KeyboardEvent): void {
 		if (event.key !== "Escape" || !compactMenuOpen) return;
+		// Escape belongs to the focused control. Do not let an open demo menu
+		// steal it from dialogs and tool shells elsewhere on the page.
+		if (!menuBar || !event.composedPath().includes(menuBar)) return;
 		compactMenuOpen = false;
 		if (compactMenuButton?.offsetParent) {
 			compactMenuButton.focus();
@@ -34,7 +38,7 @@
 
 <svelte:window onkeydown={handleWindowKeydown} />
 
-<nav class={`pie-demo-menu-bar ${className}`} aria-label={label}>
+<nav bind:this={menuBar} class={`pie-demo-menu-bar ${className}`} aria-label={label}>
 	<div class="pie-demo-menu-bar__start">
 		{@render start()}
 	</div>

@@ -42,6 +42,20 @@ helper or constructs `ToolContentDependencyContext`; those are capability
 authoring surfaces. Root `ToolkitCoordinator`, resolver, registry, runtime, and
 custom-element signatures observed below remain unchanged.
 
+The theming pass that routed the content stylesheet, the vendored NDS button
+palette and the remaining tool chrome through canonical tokens was assessed
+against the recorded rows, not against a fresh consumer-checkout refresh, and
+does not advance the verification date. It changes values behind existing token
+names; no token name, selector, `dist` filename, custom-element tag, attribute
+or prop type changed, and content-style delivery is untouched. Host A keeps
+owning the tool-shell header through
+`--pie-section-player-card-header-background`, which the change only reads as
+before. The surfaces it newly makes theme-sensitive — `--pie-text`,
+`--pie-white`, `--pie-background-dark`, `--pie-primary`, `--pie-border`,
+`--pie-border-dark`, `--pie-button-active-bg`, `--pie-button-focus-outline` —
+are not in Host A's set list, so they resolve from the active theme there. See
+the two sections below for what a host sees.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |
@@ -375,6 +389,13 @@ specificity from outside, including with `!important`. Moving any of these
 tokens behind a cascade layer, or resolving them at build time, removes that
 lever.
 
+Authored-content classes and player chrome now read the canonical families
+rather than the literals they used to pin, so a host that sets a theme and none
+of these tokens gets theme-driven values where it previously got fixed ones.
+That is the intent — the literals were unreachable — but it is a rendering
+change without a build signal, the same class of surface as the rest of this
+section.
+
 Host R takes the opposite approach: it reads the token registry and inspects
 computed values at runtime, so it depends on token *names and metadata* staying
 addressable rather than on any particular value. It imports `tokens.css` and the
@@ -434,6 +455,13 @@ Consequences per host:
 
 Any further change to how content styles are delivered has to account for all
 three positions.
+
+Separately from delivery, the stylesheet's own colours now resolve through
+canonical tokens. For a host on the base light theme the values are the ones it
+already rendered, with one visible exception: legacy `kds-*` table headers take
+`--pie-background-dark`, so their fill lightens from `#d3d3d3` to `#ecedf1`.
+Hosts V and A both load a copy of this stylesheet and neither sets `--pie-text`
+or `--pie-white`, so both see it on upgrade.
 
 ## Change-risk quick reference
 

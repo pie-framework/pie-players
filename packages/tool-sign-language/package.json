@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-sign-language",
-	"version": "0.3.65",
+	"version": "0.3.66",
 	"type": "module",
 	"description": "Sign-language accommodation for PIE assessment players: registration, catalog-card resolution and the docked media region",
 	"repository": {

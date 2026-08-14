@@ -1,5 +1,11 @@
 # @pie-players/pie-calculator-desmos
 
+## 0.3.66
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

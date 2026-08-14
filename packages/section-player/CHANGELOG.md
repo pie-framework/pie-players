@@ -1,5 +1,153 @@
 # @pie-players/pie-section-player
 
+## 0.3.66
+
+### Patch Changes
+
+- 5e6fcde: Make accessibility catalog ownership one resolver contract.
+
+  Mounted items and passages now register all entity-root, extracted, and model
+  catalogs through one owner transaction. Content surfaces observe a bound owner
+  view and give capabilities an immutable, deterministic catalog snapshot instead
+  of exposing the raw entity, resolver, and separately assembled owner context.
+  Signing and transcript capabilities now own only their card interpretation.
+
+  Capability authors should read `ToolContentDependencyContext.catalogs` and no
+  longer use the removed catalog-collection exports. Direct resolver clients,
+  including inline TTS, retain `getAlternative(...)` and
+  `catalogOwnerContextFor(...)`. Existing catalog IDs, card and payload shapes,
+  `data-catalog-idref`, scoped lookup precedence, TTS fallback behavior, and
+  section-player custom-element contracts are unchanged. Invalid optional catalog
+  data remains recoverable: it is warned about and omitted without blocking the
+  primary assessment content.
+
+- 2bcd9fa: Bridge the vendored NDS icon button's palette to the PIE token families.
+
+  `nds-icon-button` paints from the NDS design-system names — `--color-new-gray`,
+  `--color-primary-white`, `--color-primary-black`, `--color-focus-blue` — and no
+  PIE theme sets any of them, so the vendored literals were what every host
+  rendered: a `#f3f5f7` tertiary pill and a `#2b87ff` focus ring under every theme.
+  Remapping only the glyph made the dark-theme case worse, since a light
+  `base-content` glyph then sat on that near-white pill and disappeared. Every host
+  that opts into `nds-icons` saw it: the calculator button, the inline-TTS trigger,
+  the items-pane scroll-down control and the floating tool shell's window controls.
+
+  The tertiary fill now resolves through `--pie-background-dark`, the on-accent
+  glyph through `--pie-white`, the hover ring through `--pie-text` and the focus
+  ring through `--pie-button-focus-outline`, each keeping the NDS literal as the
+  no-theme last resort. Glyph-on-pill measures 14.3:1 under `dracula`, 16.7:1 under
+  `light`, 17.3:1 under `pastel` and 4.9:1 under `valentine`; the light theme is
+  visually unchanged, since `--pie-background-dark` resolves to `#ecedf1` against
+  the `#f3f5f7` it replaces.
+
+  The bridge is declared at each element that mounts a button rather than in one
+  stylesheet: the vendored bundle is a build artifact we do not re-author, and two
+  of the mounts sit inside a shadow root a document stylesheet cannot reach. The
+  tool shell's window controls are created imperatively, so the shell element
+  carries the properties directly — its scoped CSS never matches them.
+  `check:theme-tokens` now fails if a mount is added without the bridge or if the
+  copies drift.
+
+- 2bcd9fa: Paint the remaining player and tool chrome from the active theme.
+
+  The floating tool shell's header fell back to `#f3f4f6` whenever the host had not
+  set `--pie-section-player-card-header-background`, which is the normal case, so
+  the shell's themed title text sat on a light grey strip — 2.3:1 under `pastel`,
+  worse under the dark themes. It now defaults through `--pie-button-active-bg`,
+  the mapping's contrast-tuned one-step-off-the-page fill, whose light value is the
+  `#f3f4f6` that was pinned; the title measures 14.7:1 under `dracula`, 16.0:1 under
+  `light` and 4.5:1 under `valentine`, and the light theme is unchanged.
+
+  The three scrolling panes defaulted `--pie-scrollbar-thumb`,
+  `--pie-scrollbar-track` and `--pie-scrollbar-thumb-hover` to greys, and nothing
+  sets those hooks, so a light scrollbar shipped on every dark theme and colour
+  scheme. Thumb and hover now default through `--pie-border` and
+  `--pie-border-dark`, which the mapping corrects to 3:1 against the surface, and
+  the track through `--pie-background-dark`.
+
+  Also routed through tokens: the Desmos calculator frame and its loading/error
+  overlay, the inline calculator's focus ring and glyph colours, the toolkit's
+  framework-error panel, the item-player build warning, the preview toggle's tabs
+  and the tool-settings hover tint, which now mixes from `currentColor` so it
+  tracks whatever header it sits on.
+
+  The embedded Desmos canvas stays white by decision: the third-party calculator
+  paints its own white UI and a themed mount would only band it. The frame around
+  it follows the theme so the shell's header and window controls read against it.
+
+- 5e6fcde: Make section-player tool surfaces share one failure-isolated lifecycle.
+
+  `content-lead`, `content-media`, and `section-overlay` now delegate discovery,
+  policy and catalog invalidation, lazy loading, ordered mounting,
+  synchronization, and teardown to one internal Tool Surface Host. Existing
+  section-player custom-element tags, card placement, DOM hooks, CSS variables,
+  surface names, and host setup remain unchanged.
+
+  `ToolRegistry.onRegistryChange(listener)` is an additive synchronous observer
+  for successful registration, override, removal, clear, component-override, and
+  module-loader changes. Section-player uses it automatically: capabilities can
+  appear after mount, overrides remount the affected registration, and removal
+  destroys the mounted element without a host-forced rerender.
+
+  Surface lifecycle failures now emit an isolated `tool-surface` framework
+  warning with `recoverable: true`. A failing optional capability is omitted or
+  keeps its last working element while the assessment and other capabilities
+  continue. Recoverable framework warnings remain observable through the existing
+  event, hook, and coordinator routes but no longer force section readiness to
+  `error`; nonrecoverable errors retain the existing blocking behavior.
+
+- 5f133be: The audio transcript is a packaged capability rendering into a new `content-lead` host surface. No element and no host names a transcript.
+
+  The shipping implementation had `mc-populated-blank` render `model.audioTranscript` and reveal it from an `.rli-with-audio-transcript` class on an ancestor. A DOM class is invisible to policy — no support id is consulted, so district, test-administration and item-level precedence cannot reach it and the PNP debugger cannot explain it. `pie-elements-ng` now renders no transcript at all, the Learnosity import writes a `transcript` catalog card carrying its own visibility, and this is the half that resolves the card and puts the text on the page.
+
+  ## Content without a grant
+
+  `ToolRegistration.resolvesWithoutGrant` says a content-dependent capability must be consulted even when policy granted none of its support ids, and `ToolContentDependencyContext.granted` is how `resolve` learns which case it is in.
+
+  Availability as grant AND content is the right default and stays the default. A transcript is the exception, because the card is authored for one of two different jobs: an item family designed to be delivered with its transcript on screen carries `visibility: "always"` and no student profile grants or revokes it, while a family whose construct a visible transcript would invalidate carries `onGrant` and is the accommodation. Only the content knows which, so the capability has to be able to answer from the content alone — and it still returns null for an `onGrant` card with no grant, which is where fail-closed lives.
+
+  Registration rejects `resolvesWithoutGrant` without `requiresAuthoredContent`: there would be no `resolve` to reach, so the flag would claim a behaviour nothing implements.
+
+  ## The `content-lead` surface
+
+  Full-width, in flow, above the content body. `content-media` is a sticky side column sized to its media's aspect ratio — correct for a signed video, wrong for multiple sentences of prose that should be met on the way into the item.
+
+  Surface names still belong to the host: core defines none, and `CONTENT_LEAD_SURFACE` is section-player's own geometry rather than anything the capability declares.
+
+  ## One resolution path for both surfaces
+
+  `resolveSurfaceCapabilities` decides eligibility and resolves content for every surface, and `SectionCardMediaSplit` now calls it instead of carrying its own copy — the second surface is what made the duplication a fork rather than a coincidence. It tries each `pnpSupportIds` entry, falls back to `toolId`, skips ungranted tools unless they declare `resolvesWithoutGrant`, and treats a resolver that returns null or throws as nothing to show.
+
+  `SectionCardSurfaceStack` mounts what comes back, on both the item and passage cards. It carries over the write-only-when-the-signature-changed guard from the split pane, which is not an optimisation: re-rendering the card re-applies `item`, which re-registers the item's catalogs, which makes the resolver emit again, and one unconditional write per emission is self-sustaining until Svelte aborts at its depth limit with the DOM half-applied.
+
+  ## Reading order instead of a description
+
+  The region is labelled and placed immediately before the element's content. The alternative was preserving the `aria-describedby` from the audio control, which would have required a described-by id channel in the delivery contract so the player could reach a control inside an element it does not own — and a description is announced as a flat string on focus, so pointing one at a multi-sentence transcript is worse to listen to than reading order.
+
+  ## Scope
+
+  The packaged-registration invariant that no default-granted capability declares a content dependency now permits one that declares `resolvesWithoutGrant`, since such a capability reaching a learner is a statement about the item rather than about the grant list.
+
+  Print has no toolkit and renders `model.audioTranscript` directly; print resolving catalogs itself is PIE-904.
+
+- Updated dependencies [556c422]
+- Updated dependencies [2a741c6]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [1f29de7]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [5f133be]
+- Updated dependencies [9a183cf]
+  - @pie-players/pie-assessment-toolkit@0.3.66
+  - @pie-players/pie-players-shared@0.3.66
+  - @pie-players/pie-default-tool-loaders@0.3.66
+  - @pie-players/pie-item-player@0.3.66
+  - @pie-players/pie-context@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

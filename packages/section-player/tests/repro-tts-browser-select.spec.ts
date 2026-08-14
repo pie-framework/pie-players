@@ -3,10 +3,13 @@ import { expect, test, type Page } from "@playwright/test";
 // Reproduction: from the Polly-default tts demo, select the Browser backend
 // from the settings panel, preview a voice, apply it, and confirm the runtime
 // switches to the browser provider.
-const DEMO_PATH = "/tts-generated-ssml?mode=candidate&layout=splitpane";
+const SERVER_DEFAULT_DEMO_PATH =
+	"/tts-generated-ssml?mode=candidate&layout=splitpane";
+const BROWSER_DEFAULT_DEMO_PATH =
+	"/question-passage?mode=candidate&layout=splitpane";
 
-async function gotoDemo(page: Page) {
-	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+async function gotoDemo(page: Page, path = SERVER_DEFAULT_DEMO_PATH) {
+	await page.goto(path, { waitUntil: "networkidle" });
 	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 }
 
@@ -167,6 +170,48 @@ function finishSpeech(page: Page): Promise<void> {
 	);
 }
 
+test("ordinary section demos default to browser TTS without server requests", async ({
+	page,
+}) => {
+	await installWebSpeechMock(page);
+	const serverTtsRequests: string[] = [];
+	page.on("request", (request) => {
+		const url = new URL(request.url());
+		if (url.pathname.startsWith("/api/tts")) {
+			serverTtsRequests.push(url.pathname);
+		}
+	});
+	await gotoDemo(page, BROWSER_DEFAULT_DEMO_PATH);
+
+	const runtimeTts = await page.evaluate(async () => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
+		await coordinator?.ensureTTSReady?.(
+			coordinator?.getToolConfig?.("textToSpeech"),
+		);
+		return {
+			backend: coordinator?.getToolConfig?.("textToSpeech")?.backend ?? null,
+			providerId: coordinator?.ttsService?.currentProvider?.providerId ?? null,
+		};
+	});
+	expect(runtimeTts).toEqual({
+		backend: "browser",
+		providerId: "browser",
+	});
+
+	const passageInlineTts = page
+		.getByRole("complementary", { name: "Passages" })
+		.locator("pie-tool-tts-inline:visible")
+		.first();
+	await expect(passageInlineTts).toBeVisible();
+	await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+	await expect
+		.poll(async () => (await speakCalls(page)).length)
+		.toBeGreaterThan(0);
+	expect(serverTtsRequests).toEqual([]);
+});
+
 test("can preview and apply Browser backend from the TTS settings panel", async ({
 	page,
 }) => {
@@ -301,4 +346,50 @@ test("can preview and apply Browser backend from the TTS settings panel", async 
 		.locator(".pie-tts-dialog")
 		.getByRole("button", { name: "Browser", exact: true });
 	await expect(browserTab).toHaveClass(/btn-active/);
+
+	// The panel persists settings, so a new coordinator created on reload must
+	// hydrate Browser before playback instead of returning to this route's Polly
+	// source default while merely showing Browser in the panel.
+	await page.reload({ waitUntil: "networkidle" });
+	const reloadedRuntimeTts = await page.evaluate(async () => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
+		await coordinator?.ensureTTSReady?.(
+			coordinator?.getToolConfig?.("textToSpeech"),
+		);
+		return {
+			backend: coordinator?.getToolConfig?.("textToSpeech")?.backend ?? null,
+			provider: coordinator?.getToolConfig?.("textToSpeech")?.provider ?? null,
+			serverProvider:
+				coordinator?.getToolConfig?.("textToSpeech")?.serverProvider ?? null,
+			apiEndpoint:
+				coordinator?.getToolConfig?.("textToSpeech")?.apiEndpoint ?? null,
+			providerId: coordinator?.ttsService?.currentProvider?.providerId ?? null,
+		};
+	});
+	expect(reloadedRuntimeTts).toEqual({
+		backend: "browser",
+		provider: null,
+		serverProvider: null,
+		apiEndpoint: null,
+		providerId: "browser",
+	});
+
+	const reloadedDialog = page.locator(".pie-tts-dialog");
+	if (await reloadedDialog.isVisible()) {
+		await reloadedDialog
+			.getByRole("button", { name: "Close", exact: true })
+			.click();
+	}
+	const reloadedPassageTts = page
+		.getByRole("complementary", { name: "Passages" })
+		.locator("pie-tool-tts-inline:visible")
+		.first();
+	await reloadedPassageTts
+		.getByRole("button", { name: "Play reading" })
+		.click();
+	await expect
+		.poll(async () => (await speakCalls(page)).length)
+		.toBeGreaterThan(0);
 });

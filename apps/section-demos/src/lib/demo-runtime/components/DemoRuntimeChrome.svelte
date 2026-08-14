@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import type { Snippet } from 'svelte';
+	import { type Snippet, untrack } from 'svelte';
 	import '@pie-players/pie-section-player-tools-event-debugger';
 	import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 	import '@pie-players/pie-section-player-tools-session-debugger';
@@ -22,6 +22,11 @@
 		removeOverrideParams
 	} from '$lib/demo-runtime/override-url-helpers';
 	import type { ElementOverrides } from '@pie-players/pie-players-shared/pie';
+	import {
+		applyStoredSectionDemoTtsSettings,
+		createSectionDemoTtsSettingsStorageKey,
+		type SectionDemoTtsSettingsCoordinator
+	} from '$lib/demo-runtime/tts-settings-persistence';
 
 	interface Props {
 		data: any;
@@ -177,6 +182,31 @@
 			aspect: 'visibility'
 		})
 	);
+	let hydratedTtsSettingsCoordinator: SectionDemoTtsSettingsCoordinator | null = null;
+	let hydratedTtsSettingsStorageKey: string | null = null;
+
+	$effect(() => {
+		if (!browser || !toolkitCoordinator) return;
+		const coordinator = toolkitCoordinator as SectionDemoTtsSettingsCoordinator;
+		const storageKey = createSectionDemoTtsSettingsStorageKey(panelPersistenceScope);
+		if (
+			hydratedTtsSettingsCoordinator === coordinator &&
+			hydratedTtsSettingsStorageKey === storageKey
+		) {
+			return;
+		}
+		hydratedTtsSettingsCoordinator = coordinator;
+		hydratedTtsSettingsStorageKey = storageKey;
+		untrack(() => {
+			void applyStoredSectionDemoTtsSettings({
+				coordinator,
+				storage: window.localStorage,
+				storageKey
+			}).catch((error) => {
+				console.warn('[section-demos] Failed to restore persisted TTS settings:', error);
+			});
+		});
+	});
 
 	let candidateHref = $derived(
 		buildDemoHref({

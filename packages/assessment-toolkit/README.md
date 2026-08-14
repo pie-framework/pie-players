@@ -1053,33 +1053,41 @@ Consumers select by type and then validate the form they expect; a card with no
 string form is not text content, and treating it as such would speak or render an
 empty string.
 
-Catalogs registered for a rendered item or passage are filed under a
-`CatalogOwnerContext`, which the resolver matches field by field. Build lookup
-contexts with `catalogOwnerContextFor` rather than as a literal — it is the same
-function the runtime registers with, so the two cannot drift:
+Catalogs carried by a rendered item or passage are registered as one owner-level
+transaction. The resolver owns the walk over entity-root,
+`config.extractedCatalogs`, and model catalogs, along with their registration
+precedence and change notification:
 
 ```typescript
 import {
   catalogOwnerContextFor,
-  collectEntityCatalogRegistrations,
 } from '@pie-players/pie-assessment-toolkit';
 
-const context = catalogOwnerContextFor({
+const owner = {
   kind: 'item',
   itemId: item.id,
   canonicalItemId,
   assessmentId,
   sectionId,
+} as const;
+
+const unregister = resolver.registerOwner({ owner, entity: item });
+const ownerView = resolver.forOwner(catalogOwnerContextFor(owner));
+
+const stopObserving = ownerView.onChange(() => {
+  const snapshot = ownerView.snapshot();
+  // Interpret only the card types your capability owns.
 });
 
-// Every catalog an entity carries, paired with the scope it belongs in:
-// entity-level `accessibilityCatalogs`, `config.extractedCatalogs`, and each
-// model's own catalogs (filed under that `modelId`).
-const registrations = collectEntityCatalogRegistrations(item, {
-  kind: 'item',
-  itemId: item.id,
-});
+stopObserving();
+unregister();
 ```
+
+`CatalogOwnerSnapshot` is immutable and deterministic. A content capability
+receives it as `ToolContentDependencyContext.catalogs`; it does not receive the
+raw entity, resolver, or separately assembled lookup context. Direct consumers
+such as TTS may still call `getAlternative(...)` with a context built by
+`catalogOwnerContextFor`.
 
 ### SSMLExtractor
 
@@ -1133,6 +1141,16 @@ Nothing derives a profile from the registry any more. Doing so read registry
 membership as eligibility tier — registration means "policy-addressable", not
 "universal, on by default" — and had to be corrected with a compile-time list of
 ids to exclude that a host could not extend for its own accommodation.
+
+### Live registry changes
+
+`ToolRegistry.onRegistryChange(listener)` observes successful `register`,
+`override`, `unregister`, `clear`, component-override, and module-loader
+changes synchronously. Invalid and no-op mutations do not emit, listener
+failures do not interrupt other listeners, and unsubscribe is idempotent.
+Section-player subscribes internally, so a capability registered after mount
+appears without a host-forced rerender; unregister and clear destroy their
+mounted surface elements immediately.
 
 ## Integration with Section Player
 
@@ -1275,7 +1293,9 @@ Notes:
   `ToolkitCoordinator.subscribeFrameworkErrors(listener)`. The callback
   prop fires exactly once per error, regardless of wrapper depth. Filter
   by `model.kind` (e.g. `"tts-init"`, `"provider-init"`,
-  `"provider-register"`) for tool- or provider-specific handling.
+	`"provider-register"`, `"tool-surface"`) for tool- or provider-specific
+	handling. Recoverable warnings remain observable but do not move section
+	readiness to `error`.
 - See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
 ## Section Runtime Engine (advanced)

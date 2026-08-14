@@ -42,7 +42,6 @@ import type {
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { collectEntityCatalogRegistrations } from "@pie-players/pie-assessment-toolkit";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
 export const AUDIO_TRANSCRIPT_FEATURE_ID = "transcript";
@@ -94,9 +93,9 @@ const cardText = (card: TranscriptCardLike): string =>
 /**
  * The transcript an entity carries, or `null`.
  *
- * Read from the catalogs the entity puts in play, by the same walk the runtime
- * uses to register them, so a card can only be found in a scope registration
- * actually files under.
+ * Read from the owner snapshot the resolver produced. Item/passage/model
+ * traversal and registration precedence have already been applied, so this
+ * capability owns only transcript interpretation.
  *
  * The cards are read directly rather than through `AccessibilityCatalogResolver`,
  * which flattens a card to type/language/content and so cannot carry
@@ -107,37 +106,25 @@ const cardText = (card: TranscriptCardLike): string =>
 export function resolveAudioTranscript(
 	context: ToolContentDependencyContext,
 ): ResolvedAudioTranscript | null {
-	const entity = context.item;
-	if (!entity) return null;
-
-	const registrations = collectEntityCatalogRegistrations(entity as never, {
-		kind: "item",
-		itemId: (entity as { id?: string }).id ?? "",
-	});
+	if (!context.catalogs) return null;
 
 	let firstOnGrant: ResolvedAudioTranscript | null = null;
-	for (const registration of registrations) {
-		for (const catalog of registration.catalogs) {
-			if (!Array.isArray(catalog?.cards)) continue;
-			for (const card of catalog.cards as TranscriptCardLike[]) {
-				if (!isTranscriptCard(card)) continue;
-				const text = cardText(card);
-				// A card with no text is not a transcript; rendering an empty region
-				// would announce an alternate that is not there.
-				if (!text) continue;
-				const resolved: ResolvedAudioTranscript = {
-					catalogId: catalog.identifier,
-					text,
-					language:
-						typeof card.language === "string" ? card.language : undefined,
-					always: isAlwaysVisible(card),
-				};
-				// An `always` card answers whether or not policy granted anything, so it
-				// wins over an accommodation card found earlier.
-				if (resolved.always) return resolved;
-				firstOnGrant ??= resolved;
-			}
-		}
+	for (const { catalogId, card } of context.catalogs.cards) {
+		if (!isTranscriptCard(card)) continue;
+		const text = cardText(card);
+		// A card with no text is not a transcript; rendering an empty region
+		// would announce an alternate that is not there.
+		if (!text) continue;
+		const resolved: ResolvedAudioTranscript = {
+			catalogId,
+			text,
+			language: typeof card.language === "string" ? card.language : undefined,
+			always: isAlwaysVisible(card),
+		};
+		// An `always` card answers whether or not policy granted anything, so it
+		// wins over an accommodation card found earlier.
+		if (resolved.always) return resolved;
+		firstOnGrant ??= resolved;
 	}
 
 	if (!firstOnGrant) return null;

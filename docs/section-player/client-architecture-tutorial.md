@@ -909,7 +909,7 @@ These are the events to build host integrations against. They are dispatched on 
 | `toolkit-ready` | `{ coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
 | `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`, with a single subscription that correlates across wrapper depths. |
 | `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort when every item has finished loading (gated on `interactive`). |
-| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. |
+| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. Recoverable warnings remain observable without setting readiness to `error`. |
 
 Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` object) wins over the top-level CE prop. Both fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
 
@@ -917,7 +917,7 @@ Recommended host wiring:
 
 - Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(output => { if (output.kind === "stage-change" && output.detail.stage === "interactive") { /* … */ } })` if you hold a programmatic engine reference.
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
-- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once.
+- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
 
 ### Event Mapping
 

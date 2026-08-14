@@ -41,6 +41,10 @@ export type {
 	ToolbarContext,
 } from "../services/ToolRegistry.js";
 export { ToolRegistry } from "../services/ToolRegistry.js";
+export type {
+	CatalogOwnerCard,
+	CatalogOwnerSnapshot,
+} from "../services/AccessibilityCatalogResolver.js";
 
 // Context a registration reads to answer `isVisibleInContext`.
 export type { ToolContext, ToolLevel } from "../services/tool-context.js";

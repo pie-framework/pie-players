@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import {
+	AccessibilityCatalogResolver,
+	type ToolContentDependencyContext,
+} from "@pie-players/pie-assessment-toolkit";
+import type { CatalogCard } from "@pie-players/pie-players-shared/types";
+import {
 	AUDIO_TRANSCRIPT_FEATURE_ID,
 	audioTranscriptRegistration,
 	resolveAudioTranscript,
@@ -7,7 +12,7 @@ import {
 import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-tool-registry.js";
 import { UNIVERSAL_SUPPORTS_PRESET } from "../src/universal-supports.js";
 
-const itemWithCards = (cards: unknown[]) =>
+const itemWithCards = (cards: CatalogCard[]) =>
 	({
 		id: "item-1",
 		config: {
@@ -21,48 +26,56 @@ const itemWithCards = (cards: unknown[]) =>
 		},
 	}) as never;
 
-const dependencyContext = (item: unknown, granted: boolean) =>
-	({
+const dependencyContext = (
+	cards: CatalogCard[],
+	granted: boolean,
+): ToolContentDependencyContext => {
+	const resolver = new AccessibilityCatalogResolver();
+	const owner = { kind: "item" as const, itemId: "item-1" };
+	resolver.registerOwner({ owner, entity: itemWithCards(cards) });
+	return {
 		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
-		catalogResolver: null,
-		ownerContext: { kind: "item", itemId: "item-1" },
-		item,
+		catalogs: resolver
+			.forOwner({ ownerKind: "itemModel", itemId: "item-1" })
+			.snapshot(),
 		granted,
-	}) as never;
+	};
+};
 
 describe("audio transcript content resolution", () => {
 	it("finds nothing on an item with no catalogs", () => {
-		expect(
-			resolveAudioTranscript(dependencyContext({ id: "item-1" }, true)),
-		).toBeNull();
+		expect(resolveAudioTranscript(dependencyContext([], true))).toBeNull();
 	});
 
 	it("finds nothing on an item whose catalogs carry no transcript card", () => {
-		const item = itemWithCards([{ catalog: "sign-language", payload: {} }]);
-		expect(resolveAudioTranscript(dependencyContext(item, true))).toBeNull();
+		expect(
+			resolveAudioTranscript(
+				dependencyContext([{ catalog: "sign-language", payload: {} }], true),
+			),
+		).toBeNull();
 	});
 
 	it("reports an always card whether or not policy granted anything", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "the text", visibility: "always" },
-		]);
-		expect(resolveAudioTranscript(dependencyContext(item, false))).toEqual({
+		];
+		expect(resolveAudioTranscript(dependencyContext(cards, false))).toEqual({
 			catalogId: "model-1-transcript",
 			text: "the text",
 			language: undefined,
 			always: true,
 		});
-		expect(resolveAudioTranscript(dependencyContext(item, true))?.always).toBe(
+		expect(resolveAudioTranscript(dependencyContext(cards, true))?.always).toBe(
 			true,
 		);
 	});
 
 	it("reports an onGrant card only when policy granted", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "the text", visibility: "onGrant" },
-		]);
-		expect(resolveAudioTranscript(dependencyContext(item, false))).toBeNull();
-		expect(resolveAudioTranscript(dependencyContext(item, true))).toEqual({
+		];
+		expect(resolveAudioTranscript(dependencyContext(cards, false))).toBeNull();
+		expect(resolveAudioTranscript(dependencyContext(cards, true))).toEqual({
 			catalogId: "model-1-transcript",
 			text: "the text",
 			language: undefined,
@@ -71,30 +84,30 @@ describe("audio transcript content resolution", () => {
 	});
 
 	it("treats a card with no visibility as the accommodation", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "the text" },
-		]);
-		expect(resolveAudioTranscript(dependencyContext(item, false))).toBeNull();
-		expect(resolveAudioTranscript(dependencyContext(item, true))?.always).toBe(
+		];
+		expect(resolveAudioTranscript(dependencyContext(cards, false))).toBeNull();
+		expect(resolveAudioTranscript(dependencyContext(cards, true))?.always).toBe(
 			false,
 		);
 	});
 
 	it("ignores a transcript card carrying no text", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "   ", visibility: "always" },
-		]);
-		expect(resolveAudioTranscript(dependencyContext(item, true))).toBeNull();
+		];
+		expect(resolveAudioTranscript(dependencyContext(cards, true))).toBeNull();
 	});
 
 	it("prefers an always card over an accommodation card found earlier", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "gated", visibility: "onGrant" },
 			{ catalog: "transcript", content: "authored", visibility: "always" },
-		]);
-		expect(resolveAudioTranscript(dependencyContext(item, false))?.always).toBe(
-			true,
-		);
+		];
+		expect(
+			resolveAudioTranscript(dependencyContext(cards, false))?.always,
+		).toBe(true);
 	});
 });
 

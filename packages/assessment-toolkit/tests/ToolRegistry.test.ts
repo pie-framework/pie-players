@@ -459,6 +459,64 @@ describe("ToolRegistry", () => {
 		});
 	});
 
+	describe("onRegistryChange", () => {
+		test("emits successful mutations synchronously in operation order", () => {
+			const events: Array<{ kind: string; toolIds: readonly string[] }> = [];
+			registry.onRegistryChange((event) => events.push(event));
+			const updated = { ...mockCalculatorTool, name: "Updated Calculator" };
+
+			registry.register(mockCalculatorTool);
+			registry.override(updated);
+			registry.unregister(updated.toolId);
+
+			expect(events).toEqual([
+				{ kind: "register", toolIds: ["calculator"] },
+				{ kind: "override", toolIds: ["calculator"] },
+				{ kind: "unregister", toolIds: ["calculator"] },
+			]);
+		});
+
+		test("reports clear, component overrides, and changed lazy loaders", () => {
+			const events: Array<{ kind: string; toolIds: readonly string[] }> = [];
+			registry.onRegistryChange((event) => events.push(event));
+			const overrides = {};
+			const loader = async () => undefined;
+
+			registry.register(mockCalculatorTool);
+			registry.setComponentOverrides(overrides);
+			registry.setComponentOverrides(overrides);
+			registry.setToolModuleLoaders({ calculator: loader });
+			registry.setToolModuleLoaders({ calculator: loader });
+			registry.clear();
+			registry.clear();
+
+			expect(events.slice(1)).toEqual([
+				{ kind: "component-overrides", toolIds: [] },
+				{ kind: "module-loaders", toolIds: ["calculator"] },
+				{ kind: "clear", toolIds: ["calculator"] },
+			]);
+		});
+
+		test("does not emit invalid or no-op mutations and isolates listeners", () => {
+			let calls = 0;
+			const unsubscribe = registry.onRegistryChange(() => {
+				throw new Error("listener failure");
+			});
+			registry.onRegistryChange(() => {
+				calls += 1;
+			});
+
+			expect(() => registry.unregister("missing")).not.toThrow();
+			expect(() => registry.override(mockCalculatorTool)).toThrow();
+			registry.register(mockCalculatorTool);
+			expect(calls).toBe(1);
+			unsubscribe();
+			unsubscribe();
+			registry.unregister(mockCalculatorTool.toolId);
+			expect(calls).toBe(2);
+		});
+	});
+
 	describe("renderForToolbar", () => {
 		const toolbarContext: ToolbarContext = {
 			scope: {
@@ -630,7 +688,7 @@ describe("ToolRegistry", () => {
 			pnpSupportIds: ["hostSignLanguage", "hostSigning"],
 			requiresAuthoredContent: {
 				description: "a signing card on the item",
-				resolve: (context) => (context.item as any)?.cards?.[0] ?? null,
+				resolve: (context) => context.catalogs?.cards[0]?.card.content ?? null,
 			},
 			isVisibleInContext: () => true,
 			renderSurface: () => ({ element: {} as any }),
@@ -646,18 +704,23 @@ describe("ToolRegistry", () => {
 			expect(
 				tool?.requiresAuthoredContent?.resolve({
 					featureId: "hostSignLanguage",
-					catalogResolver: null,
-					ownerContext: { ownerKind: "itemModel", itemId: "i1" },
-					item: { id: "i1", cards: ["a-card"] } as any,
+					catalogs: {
+						cards: [
+							{
+								catalogId: "prompt",
+								card: { catalog: "sign-language", content: "a-card" },
+							},
+						],
+					},
+					granted: true,
 				}),
 			).toBe("a-card");
 
 			expect(
 				tool?.requiresAuthoredContent?.resolve({
 					featureId: "hostSignLanguage",
-					catalogResolver: null,
-					ownerContext: { ownerKind: "itemModel", itemId: "i2" },
-					item: { id: "i2" } as any,
+					catalogs: { cards: [] },
+					granted: true,
 				}),
 			).toBeNull();
 		});

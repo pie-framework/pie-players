@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import type { CatalogSourceEntity } from "../src/services/catalog-owner";
 
 beforeAll(() => {
 	if (typeof (globalThis as { window?: unknown }).window === "undefined") {
@@ -25,6 +26,154 @@ const spokenCatalog = (
 });
 
 describe("AccessibilityCatalogResolver scoped catalogs", () => {
+	test("registers one owner transaction and snapshots root, extracted, then model cards", () => {
+		const resolver = new AccessibilityCatalogResolver();
+		const events: string[] = [];
+		resolver.onCatalogsChange((event) => events.push(event.reason));
+		const owner = {
+			kind: "item" as const,
+			itemId: "item-a",
+			canonicalItemId: "canonical-a",
+			assessmentId: "assessment-a",
+			sectionId: "section-a",
+		};
+		const entity: CatalogSourceEntity = {
+			accessibilityCatalogs: [spokenCatalog("root", "Root")],
+			config: {
+				extractedCatalogs: [spokenCatalog("extracted", "Extracted")],
+				models: [
+					{
+						id: "model-a",
+						accessibilityCatalogs: [spokenCatalog("model", "Model")],
+					},
+				],
+			},
+		};
+
+		const unregister = resolver.registerOwner({ owner, entity });
+		const view = resolver.forOwner({
+			ownerKind: "itemModel",
+			itemId: "item-a",
+			canonicalItemId: "canonical-a",
+			assessmentId: "assessment-a",
+			sectionId: "section-a",
+		});
+		const snapshot = view.snapshot();
+
+		expect(snapshot.cards.map((entry) => entry.catalogId)).toEqual([
+			"root",
+			"extracted",
+			"model",
+		]);
+		expect(snapshot.cards.map((entry) => entry.card.content)).toEqual([
+			"Root",
+			"Extracted",
+			"Model",
+		]);
+		expect(events).toEqual(["scoped-registered"]);
+		expect(Object.isFrozen(snapshot)).toBe(true);
+		expect(Object.isFrozen(snapshot.cards)).toBe(true);
+		expect(Object.isFrozen(snapshot.cards[0]?.card)).toBe(true);
+
+		unregister();
+		unregister();
+		expect(view.snapshot().cards).toEqual([]);
+		expect(events).toEqual(["scoped-registered", "scoped-removed"]);
+	});
+
+	test("owner views observe only their owner family", () => {
+		const resolver = new AccessibilityCatalogResolver();
+		const ownerA = resolver.forOwner({
+			ownerKind: "itemModel",
+			itemId: "item-a",
+		});
+		const ownerB = resolver.forOwner({
+			ownerKind: "itemModel",
+			itemId: "item-b",
+		});
+		let changesA = 0;
+		let changesB = 0;
+		const unsubscribeA = ownerA.onChange(() => (changesA += 1));
+		const unsubscribeB = ownerB.onChange(() => (changesB += 1));
+
+		resolver.registerOwner({
+			owner: { kind: "item", itemId: "item-a" },
+			entity: { accessibilityCatalogs: [spokenCatalog("a", "A")] },
+		});
+		expect(changesA).toBe(1);
+		expect(changesB).toBe(0);
+
+		resolver.registerOwner({
+			owner: { kind: "item", itemId: "item-b" },
+			entity: { accessibilityCatalogs: [spokenCatalog("b", "B")] },
+		});
+		expect(changesA).toBe(1);
+		expect(changesB).toBe(1);
+
+		unsubscribeA();
+		unsubscribeB();
+	});
+
+	test("ignores one malformed catalog group while registering the owner's valid groups", () => {
+		const resolver = new AccessibilityCatalogResolver();
+		const warnings: unknown[][] = [];
+		const originalWarn = console.warn;
+		console.warn = (...args: unknown[]) => warnings.push(args);
+		try {
+			const malformed = {
+				identifier: "malformed",
+				cards: null,
+			} as unknown as AccessibilityCatalog;
+			const unregister = resolver.registerOwner({
+				owner: { kind: "item", itemId: "item-a" },
+				entity: {
+					accessibilityCatalogs: [malformed],
+					config: {
+						extractedCatalogs: [spokenCatalog("valid", "Still available")],
+					},
+				},
+			});
+
+			expect(
+				resolver
+					.forOwner({ ownerKind: "itemModel", itemId: "item-a" })
+					.snapshot()
+					.cards.map((entry) => entry.catalogId),
+			).toEqual(["valid"]);
+			expect(warnings).toHaveLength(1);
+			expect(String(warnings[0]?.[0])).toContain("other valid catalogs");
+			unregister();
+		} finally {
+			console.warn = originalWarn;
+		}
+	});
+
+	test("passage owner snapshots exclude item-model catalog storage", () => {
+		const resolver = new AccessibilityCatalogResolver();
+		const owner = { kind: "passage" as const, itemId: "passage-a" };
+		resolver.registerOwner({
+			owner,
+			entity: {
+				accessibilityCatalogs: [spokenCatalog("passage", "Passage")],
+				config: {
+					models: [
+						{
+							id: "not-a-passage-owner",
+							accessibilityCatalogs: [spokenCatalog("model", "Must not leak")],
+						},
+					],
+				},
+			},
+		});
+
+		expect(
+			resolver
+				.forOwner({ ownerKind: "passage", passageId: "passage-a" })
+				.snapshot()
+				.cards.map((entry) => entry.catalogId),
+		).toEqual(["passage"]);
+	});
+
 	test("resolves duplicate local catalog idrefs by owner context", () => {
 		const resolver = new AccessibilityCatalogResolver();
 		resolver.registerCatalogs(

@@ -111,7 +111,7 @@
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
-	import { collectCatalogRegistrations } from "../runtime/catalog-registration.js";
+	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
 		connectSectionRuntimeEngineHostContext,
@@ -969,20 +969,21 @@ const DEFAULT_ENV = {
 	function registerCatalogsForDetail(detail: RuntimeRegistrationDetail): void {
 		unregisterCatalogsForElement(detail.element);
 		if (!effectiveCoordinator) return;
-		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver as {
-			registerCatalogs?: (context: unknown, catalogs: unknown[]) => () => void;
-		};
-		if (typeof resolver.registerCatalogs !== "function") return;
-		const registrations = collectCatalogRegistrations(detail, {
-			assessmentId: effectiveAssessmentId,
-			sectionId: effectiveSectionId,
-		});
-		if (registrations.length === 0) return;
+		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver;
 		catalogRegistrationCleanups.set(
 			detail.element,
-			registrations.map((registration) =>
-				resolver.registerCatalogs!(registration.context, registration.catalogs),
-			),
+			[
+				resolver.registerOwner({
+					owner: {
+						kind: detail.kind,
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
+						assessmentId: effectiveAssessmentId,
+						sectionId: effectiveSectionId,
+					},
+					entity: detail.item as CatalogSourceEntity | null | undefined,
+				}),
+			],
 		);
 	}
 

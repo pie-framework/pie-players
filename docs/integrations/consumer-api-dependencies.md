@@ -25,6 +25,23 @@ observations rather than newly verified claims. The removed mainline-divergence
 warning was checked against this repository: the token-registry change is now in
 the current line and its package export is present here.
 
+The Tool Surface Host refactor likewise updated the in-repo contract notes
+without a new consumer-checkout refresh. It preserves the client-facing
+section-player tag hierarchy and CSS hooks recorded below. The additive
+`ToolRegistry.onRegistryChange` method and `FrameworkErrorKind: "tool-surface"`
+member are not used by any previously observed host; existing `register`,
+`override`, unregister, and player setup calls keep their signatures. Host R was
+unavailable as noted above, so this is a statement about the recorded rows, not
+a fresh external audit.
+
+The owner-aware catalog refactor was assessed against the same recorded rows,
+not against unavailable consumer checkouts. Host A's inline TTS still uses the
+same `data-catalog-idref` lookup, scoped context, direct resolver path, and
+fallback behavior. No recorded host imports the removed catalog-collection
+helper or constructs `ToolContentDependencyContext`; those are capability
+authoring surfaces. Root `ToolkitCoordinator`, resolver, registry, runtime, and
+custom-element signatures observed below remain unchanged.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |
@@ -207,6 +224,10 @@ From `@pie-players/pie-default-tool-loaders`:
   supportedLevels: [...] })`. The host promotes `protractor`, `lineReader`, and
   `ruler` to the `section` level this way, so `supportedLevels` and the
   `override` semantics are load-bearing, not decorative.
+- `ToolRegistry.onRegistryChange(listener)` is additive and was not present at
+  the last consumer observation. Section-player uses it internally so live
+  registration changes reconcile without a host-forced rerender; existing Host
+  R override order and replacement semantics remain unchanged.
 - `DEFAULT_TOOL_MODULE_LOADERS`
 - `createUniversalPersonalNeedsProfile()`
 - `signLanguageRegistration` from `pie-tool-sign-language`, registered
@@ -468,6 +489,9 @@ typecheck rather than at runtime.
   toolbars package, and `pie-context` — no consumer imports any of them
 - Attributes and props on the layout elements not listed above
 - `theme="auto"` behavior, and `variables` on `pie-theme`
+- The additive `ToolRegistry.onRegistryChange` observer and recoverable
+  `tool-surface` framework-warning kind; no recorded host calls or branches on
+  either surface
 - Tool ids outside the `calculator:` prefix
 
 ## Consumer-side defects worth reporting upstream

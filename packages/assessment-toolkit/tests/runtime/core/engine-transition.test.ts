@@ -449,6 +449,29 @@ describe("transition: framework-error", () => {
 		expect(next.outputs).toHaveLength(1);
 		expect(next.state.lastFrameworkError?.kind).toBe("coordinator-init");
 	});
+
+	test("recoverable framework warnings emit without forcing readiness to error", () => {
+		const start = fold(createInitialEngineState(), [
+			initialize(COHORT_A),
+			{ kind: "section-controller-resolved" },
+		]);
+		const next = transition(start.state, {
+			kind: "framework-error",
+			error: {
+				kind: "tool-surface",
+				severity: "warning",
+				source: "test",
+				message: "one optional surface failed",
+				details: [],
+				recoverable: true,
+			},
+		});
+
+		expect(next.state.lastFrameworkError?.kind).toBe("tool-surface");
+		expect(next.state.readinessSignals.runtimeError).toBe(false);
+		expect(next.outputs).toHaveLength(1);
+		expect(next.outputs[0]?.kind).toBe("framework-error");
+	});
 });
 
 describe("transition: dispose", () => {

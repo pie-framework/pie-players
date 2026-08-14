@@ -9,17 +9,21 @@
  */
 
 import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
+import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import type {
 	AccessibilityCatalogResolver,
 	CatalogChangeListener,
 	CatalogLookupContext,
 	CatalogLookupOptions,
-	CatalogOwnerContext,
+	CatalogOwnerRegistration,
+	CatalogOwnerView,
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
+import type { CatalogOwnerContext } from "./catalog-owner.js";
 import type { FrameworkErrorListener } from "./framework-error-bus.js";
+import type { FrameworkErrorModel } from "./framework-error.js";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type {
 	SectionControllerHandle,
@@ -406,12 +410,21 @@ export interface AccessibilityCatalogResolverApi {
 	/**
 	 * Add item-level catalogs (called when rendering a new item)
 	 */
-	addItemCatalogs(catalogs: any[]): void;
+	addItemCatalogs(catalogs: AccessibilityCatalog[]): void;
 
 	/**
 	 * Register catalogs scoped to a mounted content owner.
 	 */
-	registerCatalogs?(context: CatalogOwnerContext, catalogs: any[]): () => void;
+	registerCatalogs(
+		context: CatalogOwnerContext,
+		catalogs: AccessibilityCatalog[],
+	): () => void;
+
+	/** Register every catalog carried by one mounted item or passage. */
+	registerOwner(registration: CatalogOwnerRegistration): () => void;
+
+	/** Bind read and change observation to one catalog owner. */
+	forOwner(context: CatalogOwnerContext): CatalogOwnerView;
 
 	/**
 	 * Clear item-level catalogs (called when leaving an item)
@@ -768,6 +781,12 @@ export interface ToolkitCoordinatorApi {
 	 * `<pie-assessment-toolkit>` consume the same bus.
 	 */
 	subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void;
+
+	/**
+	 * Report a pre-built framework warning or error through the canonical bus.
+	 * Optional so structural host coordinators remain assignable.
+	 */
+	reportFrameworkError?(model: FrameworkErrorModel): void;
 
 	// ----------------------------------------------------------------
 	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).

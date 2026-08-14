@@ -278,21 +278,25 @@ When both max-width attributes are set, the with-passage cap resolves to the gre
 of the two configured values (after clamp), so with-passage mode never ends up narrower
 than no-passage mode.
 
-### Item card media region
+### Content-card tool surfaces
 
-An item card can carry a `data-region="media"` region beside its content region.
-It is a host surface named `item-media`, not a feature: whatever capability
-declares `surfaces: ['item-media']` in its registration renders there, and this
-package names none of them. The region appears only when policy grants the
-capability *and* the capability's own `requiresAuthoredContent` resolves, so
-there is no dead affordance on items that carry nothing.
+Item and passage cards offer two content-scoped host surfaces:
+
+- `content-lead` is a full-width stack before the authored player content.
+- `content-media` is the resizable region beside that content.
+
+They are host surfaces, not features: whatever capability declares one of those
+names in `surfaces` may render there, and this package names no capability. A
+surface becomes mountable only when policy grants the capability and its own
+`requiresAuthoredContent` resolves, so an item or passage without the authored
+resource gets no dead affordance.
 
 Today's occupant is `@pie-players/pie-tool-sign-language` — a signed (ASL)
 translation gated on the `signLanguage` PNP support. It is not part of the
 packaged capability set: a deployment opts in by registering it on the tool
 registry it passes to the player.
 
-It sits to the right of the question content and is resizable via a
+The `content-media` adapter sits to the right of the content and is resizable via a
 keyboard-accessible divider (`role="separator"`; arrow keys, `Home`/`End`,
 `Escape` to cancel a drag). Below a card width of 560px the region stacks under
 the content and the divider is withdrawn. Placement is fixed in this iteration:
@@ -305,6 +309,16 @@ rather than by width alone. The `--pie-section-player-item-media-*` tokens hosts
 set for that belong to `@pie-players/pie-tool-sign-language` and are documented
 with their defaults in [its README](../tool-sign-language/README.md) — they keep
 the `pie-section-player` prefix because hosts already set them by those names.
+
+All three section-player surfaces (`content-lead`, `content-media`, and
+`section-overlay`) share one internal Tool Surface Host. It observes live
+`ToolRegistry` mutations and policy/catalog changes, preserves registration
+order across lazy loads, synchronizes an existing element when its current
+context changes, and always calls `destroy()` before removing it. Surface
+failures are isolated per capability and emitted as recoverable
+`framework-error` warnings; they never block readiness or remove another
+working capability. A `renderSurface()` result of `null` is a normal
+mountable-but-unoccupied result, not an error.
 
 ### API direction: CE defaults first, JS customization for advanced cases
 

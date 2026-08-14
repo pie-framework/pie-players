@@ -40,12 +40,11 @@ export {
 } from "./context/runtime-context-consumer.js";
 export {
 	catalogOwnerContextFor,
-	collectCatalogRegistrations,
-	collectEntityCatalogRegistrations,
+	type CatalogOwnerContext,
 	type CatalogOwnerIdentity,
-	type CatalogRegistration,
+	type CatalogOwnerKind,
 	type CatalogSourceEntity,
-} from "./runtime/catalog-registration.js";
+} from "./services/catalog-owner.js";
 export {
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -97,8 +96,10 @@ export type {
 	CatalogChangeReason,
 	CatalogLookupContext,
 	CatalogLookupOptions,
-	CatalogOwnerContext,
-	CatalogOwnerKind,
+	CatalogOwnerCard,
+	CatalogOwnerRegistration,
+	CatalogOwnerSnapshot,
+	CatalogOwnerView,
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
@@ -142,6 +143,9 @@ export type {
 	ToolContentDependency,
 	ToolContentDependencyContext,
 	ToolModuleLoader,
+	ToolRegistryChangeEvent,
+	ToolRegistryChangeKind,
+	ToolRegistryChangeListener,
 	ToolSingletonScope,
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,

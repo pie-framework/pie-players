@@ -15,6 +15,7 @@
 
 <script lang="ts">
 	import {
+		catalogOwnerContextFor,
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
@@ -23,6 +24,7 @@
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
+		type CatalogLookupContext,
 		type HighlightCoordinatorApi,
 		type NormalizedTTSSpeedOption,
 		type TTSSpeedOption,
@@ -568,23 +570,15 @@
 		return asElement;
 	}
 
-	function resolveCatalogContext(): Record<string, string> | undefined {
+	function resolveCatalogContext(): CatalogLookupContext | undefined {
 		if (!shellContext) return undefined;
-		if (shellContext.kind === 'passage') {
-			return {
-				ownerKind: 'passage',
-				assessmentId: runtimeContext?.assessmentId || '',
-				sectionId: runtimeContext?.sectionId || '',
-				passageId: shellContext.canonicalItemId || shellContext.itemId,
-			};
-		}
-		return {
-			ownerKind: 'itemModel',
-			assessmentId: runtimeContext?.assessmentId || '',
-			sectionId: runtimeContext?.sectionId || '',
+		return catalogOwnerContextFor({
+			kind: shellContext.kind,
+			assessmentId: runtimeContext?.assessmentId,
+			sectionId: runtimeContext?.sectionId,
 			itemId: shellContext.itemId,
 			canonicalItemId: shellContext.canonicalItemId || shellContext.itemId,
-		};
+		});
 	}
 
 	function syncHighlightTargetResolverProvider(readingTarget: Element): (() => void) | null {

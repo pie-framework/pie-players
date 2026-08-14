@@ -130,9 +130,6 @@
 	// same scope `<pie-passage-shell>` registered them in.
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	// Bumped from the coordinator's policy-change stream so the eligibility
-	// derivation reruns when policy inputs change.
-	let policyChangeVersion = $state(0);
 
 	const mediaRegionId = $derived(`${headingId}-media`);
 	const leadRegionId = $derived(`${headingId}-lead`);
@@ -153,21 +150,6 @@
 		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
 			runtimeContext = value;
 		});
-	});
-
-	$effect(() => {
-		const coordinator = runtimeContext?.toolkitCoordinator;
-		if (!coordinator || typeof coordinator.onPolicyChange !== "function") return;
-		const unsubscribe = coordinator.onPolicyChange(() => {
-			policyChangeVersion += 1;
-		});
-		return () => {
-			try {
-				unsubscribe?.();
-			} catch {
-				// Detach errors are non-fatal: the coordinator may already be gone.
-			}
-		};
 	});
 
 	function resetContextOverrides(): void {
@@ -238,19 +220,15 @@
 		<SectionCardSurfaceStack
 			regionId={leadRegionId}
 			surface={CONTENT_LEAD_SURFACE}
-			entity={passage}
 			ownerContext={catalogOwnerContext}
 			{runtimeContext}
 			{toolRegistry}
-			{policyChangeVersion}
 		/>
 		<SectionCardMediaSplit
 			regionId={mediaRegionId}
-			entity={passage}
 			ownerContext={catalogOwnerContext}
 			{runtimeContext}
 			{toolRegistry}
-			{policyChangeVersion}
 			dividerAriaLabel="Resize passage and media panels"
 		>
 			{#snippet content()}

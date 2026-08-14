@@ -1,9 +1,9 @@
-# PIE Players Theme Language
+# PIE Players Domain Language
 
-This context names the theming concepts shared by PIE Players and its runtime
-hosts so palette behavior and ownership can be discussed consistently.
+This context names concepts shared by PIE Players and its runtime hosts so
+behavior and ownership can be discussed consistently.
 
-## Language
+## Theme Language
 
 **Theme Token**:
 A `--pie-*` custom property whose meaning and ownership are recorded in the theme token registry.
@@ -75,3 +75,60 @@ _Avoid_: Provider value, scheme value
 - "theme" previously referred to both light/dark selection and accessibility palettes — resolved: use **Base Theme** for light/dark and **Color Scheme** for a named accessibility palette.
 - "custom scheme" previously covered both registered data and host CSS selectors — resolved: distinguish **Registered Custom Scheme** from **CSS-only Scheme**.
 - "complete palette" does not mean every non-color token — completeness is defined by **Scheme Participation**.
+
+## Tool Surface Language
+
+**Tool Surface**:
+A host-owned, named slot that registered capabilities may fill outside a toolbar. The slot defines where content is rendered, not which capability renders there.
+_Avoid_: Tool, capability region
+
+**Tool Surface Host**:
+The PIE-owned module that discovers capabilities registered for a **Tool Surface** and owns their eligibility resolution, catalog invalidation, lazy loading, mounting, synchronization, and teardown.
+_Avoid_: Surface component, tool renderer
+
+**Content Surface**:
+A **Tool Surface** scoped to an item or passage. It can resolve a capability's authored-content dependency from that owner's immutable **Catalog Owner Snapshot**.
+_Avoid_: Item-only surface
+
+**Section Surface**:
+A **Tool Surface** scoped to the section runtime. It has no item or passage catalog owner context, so it cannot resolve an authored-content dependency.
+_Avoid_: Content surface
+
+**Tool Surface Failure**:
+A failure in one capability's resolution, loading, rendering, synchronization, or teardown. It is isolated to that capability and reported as a recoverable framework warning; it never changes assessment readiness or blocks other content.
+_Avoid_: Runtime failure, assessment error
+
+**Catalog Owner**:
+One mounted item or passage whose entity-root, extracted, and model catalogs are registered as a single resolver-owned transaction.
+_Avoid_: Catalog source, raw entity
+
+**Catalog Owner View**:
+The resolver-bound interface for one **Catalog Owner**. It supplies current immutable snapshots and owner-filtered change observation; it does not expose traversal or capability semantics.
+_Avoid_: Scoped resolver
+
+**Catalog Owner Snapshot**:
+An immutable, deterministic sequence of the catalog cards visible to one **Catalog Owner** after resolver-owned traversal and precedence. Capabilities interpret their own card types from this snapshot.
+_Avoid_: Catalog registry, entity catalogs
+
+**Packaged Capability Composition**:
+The PIE-owned composition module that binds each packaged registration to its
+element delivery, lazy-loader bootstrap sets, placement and toolbar ordering,
+and explicit universal-support policy, then projects the stable public
+registries, maps and presets.
+_Avoid_: Default tool list, loader catalogue
+
+## Tool Surface Relationships
+
+- `content-lead` and `content-media` are **Content Surfaces** with different geometry.
+- `section-overlay` is a **Section Surface**.
+- The **Tool Surface Host** owns capability lifecycle behavior shared by all three surfaces.
+- The catalog resolver owns entity traversal, owner scoping, registration precedence, and owner-filtered observation; capabilities receive only a **Catalog Owner Snapshot**.
+- Lead, docked, and overlay geometry remain adapters over the **Tool Surface Host** interface.
+- A surface name belongs to the host; a registered capability declares which surfaces it can fill.
+- A **Tool Surface Failure** may omit or preserve one capability depending on lifecycle phase, but never blocks the assessment or another capability.
+- The **Packaged Capability Composition** validates PIE-authored relationships
+  strictly before release, while host selection remains fail-soft: unknown
+  selected ids do not prevent known packaged capabilities from registering.
+- Universal support membership is explicit program policy inside the
+  **Packaged Capability Composition**; it is validated against registrations but
+  never derived from registration membership.

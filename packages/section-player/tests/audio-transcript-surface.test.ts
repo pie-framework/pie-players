@@ -9,6 +9,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import {
+	AccessibilityCatalogResolver,
+	type ToolContentDependencyContext,
+} from "@pie-players/pie-assessment-toolkit";
+import type { CatalogCard } from "@pie-players/pie-players-shared/types";
+import {
 	AUDIO_TRANSCRIPT_FEATURE_ID,
 	AUDIO_TRANSCRIPT_REGION_CLASS,
 	AUDIO_TRANSCRIPT_REGION_LABEL,
@@ -28,7 +33,7 @@ afterAll(() => {
 	}
 });
 
-const itemWithCards = (cards: unknown[]) =>
+const itemWithCards = (cards: CatalogCard[]) =>
 	({
 		id: "item-1",
 		config: {
@@ -42,14 +47,23 @@ const itemWithCards = (cards: unknown[]) =>
 		},
 	}) as never;
 
-const dependencyContext = (item: unknown, granted: boolean) =>
-	({
+const dependencyContext = (
+	cards: CatalogCard[],
+	granted: boolean,
+): ToolContentDependencyContext => {
+	const resolver = new AccessibilityCatalogResolver();
+	resolver.registerOwner({
+		owner: { kind: "item", itemId: "item-1" },
+		entity: itemWithCards(cards),
+	});
+	return {
 		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
-		catalogResolver: null,
-		ownerContext: { kind: "item", itemId: "item-1" },
-		item,
+		catalogs: resolver
+			.forOwner({ ownerKind: "itemModel", itemId: "item-1" })
+			.snapshot(),
 		granted,
-	}) as never;
+	};
+};
 
 const renderContext = (content: unknown, granted: boolean) =>
 	({
@@ -65,9 +79,12 @@ const renderContext = (content: unknown, granted: boolean) =>
 	}) as never;
 
 /** The whole capability end to end, as the card runs it. */
-const renderFor = (item: unknown, granted: boolean): HTMLElement | null => {
+const renderFor = (
+	cards: CatalogCard[],
+	granted: boolean,
+): HTMLElement | null => {
 	const content = audioTranscriptRegistration.requiresAuthoredContent?.resolve(
-		dependencyContext(item, granted),
+		dependencyContext(cards, granted),
 	);
 	if (content === null || content === undefined) return null;
 	const rendered = audioTranscriptRegistration.renderSurface?.(
@@ -82,10 +99,10 @@ const renderFor = (item: unknown, granted: boolean): HTMLElement | null => {
 
 describe("audio transcript rendering", () => {
 	it("renders a labelled region holding the text for an always card, with no grant", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "the text", visibility: "always" },
-		]);
-		const region = renderFor(item, false);
+		];
+		const region = renderFor(cards, false);
 		expect(region).not.toBeNull();
 		expect(region?.getAttribute("role")).toBe("region");
 		expect(region?.getAttribute("aria-label")).toBe(
@@ -99,31 +116,30 @@ describe("audio transcript rendering", () => {
 	});
 
 	it("renders for an onGrant card only once granted", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "the text", visibility: "onGrant" },
-		]);
-		expect(renderFor(item, false)).toBeNull();
-		const region = renderFor(item, true);
+		];
+		expect(renderFor(cards, false)).toBeNull();
+		const region = renderFor(cards, true);
 		expect(region?.textContent).toContain("the text");
 		expect(region?.dataset.transcriptVisibility).toBe("onGrant");
 	});
 
 	it("carries the card language onto the region", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{
 				catalog: "transcript",
 				content: "el texto",
 				language: "es-ES",
 				visibility: "always",
 			},
-		]);
-		expect(renderFor(item, false)?.getAttribute("lang")).toBe("es-ES");
+		];
+		expect(renderFor(cards, false)?.getAttribute("lang")).toBe("es-ES");
 	});
 
 	it("renders nothing for an item with no transcript, granted or not", () => {
-		const item = itemWithCards([]);
-		expect(renderFor(item, true)).toBeNull();
-		expect(renderFor(item, false)).toBeNull();
+		expect(renderFor([], true)).toBeNull();
+		expect(renderFor([], false)).toBeNull();
 	});
 
 	it("declines when the host renders before resolving content", () => {
@@ -133,12 +149,12 @@ describe("audio transcript rendering", () => {
 	});
 
 	it("reapplies the current card on sync rather than the one it mounted with", () => {
-		const item = itemWithCards([
+		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "first", visibility: "always" },
-		]);
+		];
 		const content =
 			audioTranscriptRegistration.requiresAuthoredContent?.resolve(
-				dependencyContext(item, false),
+				dependencyContext(cards, false),
 			);
 		const rendered = audioTranscriptRegistration.renderSurface?.(
 			renderContext(content, false),

@@ -537,6 +537,13 @@ describe("framework-error single-emit — kernel-source mirror", () => {
 		);
 	});
 
+	test("kernel latches readiness error only for nonrecoverable framework errors", () => {
+		const source = readFileSync(KERNEL_PATH, "utf8");
+		expect(source).toContain(
+			"if (detail?.recoverable !== true) runtimeErrorState = true;",
+		);
+	});
+
 	test("kernel `handleFrameworkError` calls `event.stopPropagation()` to collapse the layout-host dual-emit to a single canonical engine-bridge emit", () => {
 		const source = readFileSync(KERNEL_PATH, "utf8");
 		// Pin the propagation-stop so a future refactor that drops it

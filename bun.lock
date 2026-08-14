@@ -31,6 +31,7 @@
       "name": "@pie-players/assessment-demos",
       "version": "0.1.37",
       "dependencies": {
+        "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-player": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-item-player": "workspace:*",
@@ -62,6 +63,7 @@
       "name": "@pie-players/backend-demos",
       "version": "0.1.8",
       "dependencies": {
+        "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-section-player": "workspace:*",
       },
@@ -78,6 +80,18 @@
         "tailwindcss": "^4.2.2",
         "typescript": "^5.9.3",
         "vite": "^8.0.10",
+      },
+    },
+    "apps/demo-ui": {
+      "name": "@pie-players/demo-ui",
+      "version": "0.1.0",
+      "dependencies": {
+        "svelte": "^5.56.8",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.7",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
       },
     },
     "apps/docs": {
@@ -102,6 +116,7 @@
       "name": "@pie-players/item-demos",
       "version": "0.1.57",
       "dependencies": {
+        "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-section-player-tools-instrumentation-debugger": "workspace:*",
@@ -174,6 +189,7 @@
       "name": "@pie-players/section-demos",
       "version": "0.1.63",
       "dependencies": {
+        "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-default-tool-loaders": "workspace:*",
@@ -1161,6 +1177,8 @@
     "@pie-players/assessment-demos": ["@pie-players/assessment-demos@workspace:apps/assessment-demos"],
 
     "@pie-players/backend-demos": ["@pie-players/backend-demos@workspace:apps/backend-demos"],
+
+    "@pie-players/demo-ui": ["@pie-players/demo-ui@workspace:apps/demo-ui"],
 
     "@pie-players/item-demos": ["@pie-players/item-demos@workspace:apps/item-demos"],
 

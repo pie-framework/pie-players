@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 // Reproduction: from the Polly-default tts demo, select the Browser backend
 // from the settings panel, preview a voice, apply it, and confirm the runtime
@@ -10,7 +11,7 @@ const BROWSER_DEFAULT_DEMO_PATH =
 
 async function gotoDemo(page: Page, path = SERVER_DEFAULT_DEMO_PATH) {
 	await page.goto(path, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 type SpeechCall = { type: string; text?: string; voice?: string | null };

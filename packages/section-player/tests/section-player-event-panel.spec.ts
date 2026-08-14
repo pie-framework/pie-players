@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO_PATH = "/tts-ssml?mode=candidate&layout=vertical";
@@ -8,6 +9,7 @@ const RESOURCE_DEMO_PATH =
 	"/resource-observability?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle event broadcast panel",
 	});
@@ -22,6 +24,7 @@ async function openEventPanel(page: import("@playwright/test").Page) {
 }
 
 async function openSessionPanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle session panel",
 	});
@@ -36,6 +39,7 @@ async function openSessionPanel(page: import("@playwright/test").Page) {
 }
 
 async function openInstrumentationPanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle instrumentation panel",
 	});
@@ -52,6 +56,7 @@ async function openInstrumentationPanel(page: import("@playwright/test").Page) {
 }
 
 async function openSourcePanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle source panel",
 	});
@@ -66,6 +71,7 @@ async function openSourcePanel(page: import("@playwright/test").Page) {
 async function openTTSSettingsPanel(page: import("@playwright/test").Page) {
 	const panel = page.locator(".pie-tts-dialog-backdrop");
 	if (!(await panel.isVisible())) {
+		await openDemoMenuIfCollapsed(page);
 		const toggleButton = page.getByRole("button", {
 			name: "Toggle TTS settings panel",
 		});

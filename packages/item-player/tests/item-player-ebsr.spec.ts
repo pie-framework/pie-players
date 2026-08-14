@@ -1,10 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const EBSR_DELIVERY_PATH = "/demo/ebsr-default/delivery?player=iife";
 const EBSR_SESSION_STORAGE_KEY = "item-demos:session:ebsr-default";
 
 async function gotoEbsrDelivery(page: Page) {
 	await page.goto(EBSR_DELIVERY_PATH, { waitUntil: "domcontentloaded" });
+	await expect(
+		page.getByRole("navigation", { name: "Demo controls" }),
+	).toBeVisible();
+	await openDemoMenuIfCollapsed(page);
 	await expect(page.getByRole("link", { name: "Delivery" })).toBeVisible();
 }
 

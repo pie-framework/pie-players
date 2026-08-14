@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const TOKENS_CSS = readFileSync(
@@ -13,7 +14,7 @@ const COLOR_SCHEMES_CSS = readFileSync(
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 test.describe("section theme and color scheme integration", () => {

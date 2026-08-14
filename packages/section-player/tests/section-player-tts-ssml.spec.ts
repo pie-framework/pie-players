@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import {
+	expectDemoChromeReady,
+	openDemoMenuIfCollapsed,
+} from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const KNOWN_A11Y_BASELINE_DEBT = new Set([
@@ -42,7 +46,7 @@ function isKnownA11yBaselineDebt(violation: {
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 async function openSessionPanel(page: Page) {
@@ -1513,6 +1517,7 @@ test.describe("section player demo tts-ssml", () => {
 		// Switch to scorer mode and confirm evaluate-mode rendering path.
 		await page.getByRole("link", { name: "Scorer" }).click();
 		await expect(page).toHaveURL(/mode=scorer/);
+		await openDemoMenuIfCollapsed(page);
 		await expect(itemShells).toHaveCount(2);
 
 		// In scorer mode, answers are review-only and include the expected canonical correct option.
@@ -1832,7 +1837,7 @@ test.describe("section player demo tts-ssml", () => {
 		await page.goto("/tts-toggle-speed?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+		await expectDemoChromeReady(page);
 		await forceBrowserTtsRuntime(page);
 
 		const passageInlineTts = page

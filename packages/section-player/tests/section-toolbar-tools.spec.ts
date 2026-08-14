@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 
@@ -50,7 +51,7 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 async function mockDesmosCalculatorScript(page: Page): Promise<void> {
@@ -315,7 +316,7 @@ test.describe("section toolbar tools", () => {
 		await page.goto(`${DEMO_PATH}&customTitles=1`, {
 			waitUntil: "networkidle",
 		});
-		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+		await expectDemoChromeReady(page);
 
 		await expectCustomTitles();
 		await expect(
@@ -339,7 +340,7 @@ test.describe("section toolbar tools", () => {
 		await page.goto("/tts-ssml?mode=candidate&layout=vertical&customTitles=1", {
 			waitUntil: "networkidle",
 		});
-		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+		await expectDemoChromeReady(page);
 
 		await expect(
 			page.locator(".pie-section-player-item-header :is(h1,h2,h3,h4,h5,h6)").first(),

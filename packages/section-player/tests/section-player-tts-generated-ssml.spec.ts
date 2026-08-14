@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 /**
  * E2E coverage for the generated-SSML pipeline (PIE-623).
@@ -20,7 +21,7 @@ const DEMO_PATH = "/tts-generated-ssml?mode=candidate&layout=splitpane";
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 /**
@@ -546,7 +547,7 @@ async function readPassageAndRecordHighlights(
 	await page.goto(`${demoPath}?mode=candidate&layout=splitpane`, {
 		waitUntil: "networkidle",
 	});
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 
 	const passageRegion = page.getByRole("complementary", { name: "Passages" });
 	await expect(passageRegion.locator("p.formula math")).toBeVisible({

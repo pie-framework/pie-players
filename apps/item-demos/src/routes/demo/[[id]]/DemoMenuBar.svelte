@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ResponsiveDemoMenuBar } from '@pie-players/demo-ui';
 	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
 
 	interface Props {
@@ -46,16 +47,16 @@
 	}: Props = $props();
 </script>
 
-<div class="navbar bg-base-200 sticky top-0 z-50 shadow-lg pie-demo-menu-bar">
-	<div class="navbar-start gap-3 min-w-0">
+<ResponsiveDemoMenuBar class="bg-base-200 sticky top-0 z-50 shadow-lg">
+	{#snippet start()}
 		<a href="/" class="btn btn-ghost btn-sm shrink-0">&#8592; Back to Demos</a>
 		<div class="min-w-0">
 			<div class="font-semibold truncate">{demoName}</div>
 			<div class="text-xs opacity-85 truncate">{demoPackage}</div>
 		</div>
-	</div>
+	{/snippet}
 
-	<div class="navbar-center flex flex-wrap gap-3">
+	{#snippet primary()}
 		<div class="join">
 			{#if !authorOnly}
 				<a
@@ -146,11 +147,11 @@
 				>
 					Scorer
 				</a>
-			</div>
-		{/if}
-	</div>
+				</div>
+			{/if}
+	{/snippet}
 
-	<div class="navbar-end gap-2">
+	{#snippet secondary()}
 		<ThemeSelect />
 		{#if showSessionToggle}
 			<button
@@ -195,23 +196,7 @@
 				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 13h4l2 6 4-14 2 8h4" />
 				</svg>
-			</button>
-		{/if}
-	</div>
-</div>
-
-<style>
-	.pie-demo-menu-bar {
-		padding-left: 1rem;
-		padding-right: 1rem;
-	}
-
-	@media (max-width: 960px) {
-		.pie-demo-menu-bar {
-			align-items: stretch;
-			gap: 0.75rem;
-			padding-top: 0.75rem;
-			padding-bottom: 0.75rem;
-		}
-	}
-</style>
+				</button>
+			{/if}
+	{/snippet}
+</ResponsiveDemoMenuBar>

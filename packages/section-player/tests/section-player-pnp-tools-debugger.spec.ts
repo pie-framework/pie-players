@@ -1,11 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 const DEMO_PATH =
 	"/three-questions?mode=candidate&layout=splitpane&attempt=pnp-tools-debugger";
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 async function openPnpToolsEditor(page: Page): Promise<Locator> {

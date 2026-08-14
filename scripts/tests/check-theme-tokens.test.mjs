@@ -219,6 +219,44 @@ describe("check-theme-tokens", () => {
 		expect(ndsFailures).toEqual([]);
 	});
 
+	test("flags a bare colour literal set from an inline style", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/inline.ts",
+			[
+				'el.style.borderBottom = "1px solid #ddd";',
+				'const markup = `<div style="color: red">bad</div>`;',
+			].join("\n"),
+		);
+
+		const failures = checkThemeTokens(root)
+			.filter((failure) => failure.includes("literal"))
+			.join("\n");
+
+		expect(failures).toContain("sets `border-bottom` to the literal");
+		expect(failures).toContain("sets `color` to the literal");
+	});
+
+	test("accepts inline styles that route through a --pie-* token", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/inline.ts",
+			[
+				"el.style.background = 'var(--pie-background, #fff)';",
+				"el.style.setProperty('--pie-tool-example-border', '#000');",
+				"el.style.borderColor = 'rgba(0, 0, 0, 0)';",
+			].join("\n"),
+		);
+
+		const failures = checkThemeTokens(root).filter((failure) =>
+			failure.includes("literal"),
+		);
+
+		expect(failures).toEqual([]);
+	});
+
 	test("requires the root command to verify generated CSS bytes", () => {
 		const root = createFixtureRoot();
 		write(

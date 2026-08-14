@@ -24,6 +24,7 @@
 	--pie-button-hover-bg: #f9fafb;
 	--pie-button-hover-border: #8b919c;
 	--pie-button-hover-color: #111827;
+	--pie-content-emphasis: #b00000;
 	--pie-correct: #208537;
 	--pie-correct-icon: #087d38;
 	--pie-correct-secondary: #e8f5e9;
@@ -79,6 +80,7 @@
 	--pie-button-hover-bg: #374151;
 	--pie-button-hover-border: #6b7280;
 	--pie-button-hover-color: #ffffff;
+	--pie-content-emphasis: #ff6666;
 	--pie-correct: #00ff00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003300;

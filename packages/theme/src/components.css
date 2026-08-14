@@ -13,7 +13,11 @@
 .pie-loading {
 	/* The Figma indigo is --pie-primary at 90%, so the ring follows the theme's
 	   primary instead of pinning MD indigo on every page. */
-	--pie-loading-accent: color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
+	--pie-loading-accent: color-mix(
+		in srgb,
+		var(--pie-primary, #3f51b5) 90%,
+		transparent
+	);
 	position: absolute;
 	height: 100%;
 	width: 100%;
@@ -211,13 +215,13 @@ span.short-quote:after {
 	text-transform: uppercase;
 }
 
-/* Authored red emphasis, pushed toward the theme's ink until it clears SC 1.4.3:
-   pure red measures 4:1 on white and fails today, and stays red-on-white under
-   a dark theme. The mix darkens it to 7.4:1 on the light page and lightens it to
-   4.6:1 on a dark one, keeping the hue the author chose. */
+/* Authored red emphasis. --pie-content-emphasis is mapped from the DaisyUI error
+   slot through the legible correction, so it clears 4.5:1 against the page on
+   every shipped theme; the `red` literal it replaces measures 4:1 on white and
+   fails SC 1.4.3 before any theme is involved. */
 .content-emphasis {
 	font-weight: bold;
-	color: color-mix(in srgb, red 65%, var(--pie-text, black));
+	color: var(--pie-content-emphasis, #b00000);
 }
 
 span.passage-title:before {
@@ -249,6 +253,21 @@ span.passage-title:after {
 
 .embedded-error {
 	font-style: italic;
+}
+
+/*
+ * The 20% gutters above are a wide-viewport look. Held at a 320px-equivalent
+ * width they leave a ~190px column of very short lines, so they collapse there
+ * instead — SC 1.4.10 Reflow.
+ */
+@media (max-width: 30rem) {
+	.block-quote,
+	.text-block,
+	.equation-block {
+		margin-left: 0;
+		margin-right: 0;
+		width: auto;
+	}
 }
 
 /*
@@ -593,16 +612,19 @@ table.KdsTable02 > tbody > tr > td {
 .table td {
 	padding: 0.75em;
 	vertical-align: top;
-	border-top: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 1px solid
+		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
 .table tbody + tbody {
-	border-top: 2px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 2px solid
+		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
 .table thead th {
 	vertical-align: bottom;
-	border-bottom: 2px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-bottom: 2px solid
+		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
 th {
@@ -642,6 +664,9 @@ h6 {
 	margin-top: 0;
 }
 
+/* Spacing and inheritance only: `font-weight: 500` used to sit here and flatten
+   every authored heading to lighter-than-bold, weakening the visual hierarchy
+   a screen-reader user gets from the heading level. */
 .h1,
 .h2,
 .h3,
@@ -656,31 +681,19 @@ h5,
 h6 {
 	margin-bottom: 0.5em;
 	font-family: inherit;
-	font-weight: 500;
 	line-height: 1.2;
 	color: inherit;
 }
 
-/* LEARNOSITY OVERRIDES */
-.lrn_feature h3 {
-	margin-top: 0 !important;
-}
-
-/* PIE OVERRIDES */
-
-#stimulus {
-	width: 50%;
-	float: left;
-}
-
-#item {
-	width: 50%;
-	float: left;
-}
-
-.lrn_width_auto.table {
-	width: auto;
-}
+/*
+ * Removed: a `#stimulus` / `#item` pair of 50% left floats, a `.lrn_feature h3`
+ * margin override and `.lrn_width_auto.table`. The float pair hard-coded a
+ * two-column layout keyed to two global ids — it cannot reflow at 400% zoom
+ * (SC 1.4.10), and it applied to any element in the host document carrying
+ * those ids. The other two styled a third-party product's markup that PIE does
+ * not render. None of the three could be made correct here, so they are gone
+ * rather than patched.
+ */
 
 .TEX-S3 {
 	font-family: MJXZERO, MJXTEX-S3 !important;
@@ -714,25 +727,33 @@ table {
 .evaluate-bottom-border > :first-child::after {
 	content: "";
 	display: block;
-	border-bottom: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-bottom: 1px solid
+		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
 /* ANSWER ELIMINATOR */
 
 .pie-answer-eliminator-toggle {
-	width: 28px;
-	height: 28px;
+	/* em, not px: PNP font scaling raises the surrounding text size without
+	   touching px boxes, which left a fixed 28px control under grown text. At the
+	   default 16px base these are the 28px/18px the control used to pin, and the
+	   box stays past SC 2.5.8's 24px minimum for any base at or above 14px. */
+	width: 1.75em;
+	height: 1.75em;
 	padding: 0;
 	border: 1px solid var(--pie-border, #ccc);
 	border-radius: 4px;
 	background: var(--pie-white, #fff);
 	cursor: pointer;
-	font-size: 18px;
+	font-size: 1.125em;
 	line-height: 1;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--pie-answer-eliminator-toggle-color, var(--pie-button-color, #8c8c8c));
+	color: var(
+		--pie-answer-eliminator-toggle-color,
+		var(--pie-button-color, #8c8c8c)
+	);
 	transition: all 0.2s ease;
 	z-index: 10;
 }

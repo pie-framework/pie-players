@@ -1238,7 +1238,8 @@
 					const elements = hostElement?.querySelectorAll(tag) ?? [];
 					for (const el of elements) {
 						if (el instanceof HTMLElement) {
-							el.style.borderBottom = "1px solid #ddd";
+							el.style.borderBottom =
+								"1px solid var(--pie-border-light, #ddd)";
 							el.style.paddingBottom = "20px";
 							el.style.marginBottom = "20px";
 						}

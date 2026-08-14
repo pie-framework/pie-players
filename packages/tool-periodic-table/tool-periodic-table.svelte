@@ -365,6 +365,10 @@
 	}
 
 	.pie-tool-periodic-table__selected-element.pie-tool-periodic-table__selected-grid {
+		/* This panel carries a category class for its label, but takes the theme
+		   surface below rather than the category fill — so its ink stays with the
+		   theme instead of the dark ink pinned for the pastel-filled cells. */
+		color: var(--pie-text, #111827);
 		align-items: center;
 		border: 2px solid var(--pie-border-dark, #000);
 		border-radius: 8px;
@@ -390,7 +394,10 @@
 	}
 
 	.pie-tool-periodic-table__element-name {
-		color: var(--pie-text, #333);
+		/* inherit, not --pie-text: this sits inside a category-filled cell, whose
+		   ink is pinned for legibility against a fixed pastel. Outside one it
+		   inherits --pie-text from the tool root anyway. */
+		color: inherit;
 		font-size: 1rem;
 		font-weight: 500;
 		overflow: hidden;
@@ -423,14 +430,16 @@
 	}
 
 	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__label {
-		color: var(--pie-text, #444);
+		/* See __element-name: inside the selected-element panel this sits on the
+		   category fill. */
+		color: inherit;
 		font-size: 0.75rem;
 		font-weight: bold;
 		margin-bottom: 2px;
 	}
 
 	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__value {
-		color: var(--pie-text, #000);
+		color: inherit;
 		font-size: 0.85rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -539,6 +548,34 @@
 	.pie-tool-periodic-table__period-label {
 		padding-right: 0.2em;
 		text-align: right;
+	}
+
+	/*
+	 * The category fills below are a fixed data encoding, so their ink has to be
+	 * fixed too: everything carrying one otherwise inherits --pie-text, which is
+	 * near-white under every dark theme and left the element symbol and name at
+	 * about 1.2:1 on a pastel. Measured against the darkest fill in the set,
+	 * #a3d8f4, this ink is 10.7:1.
+	 *
+	 * Not addressed here: under a PNP colour scheme, encoding a category by hue
+	 * is meaningless to a learner who chose one — the fills should collapse to the
+	 * scheme, which is a design question rather than a colour swap.
+	 */
+	.pie-tool-periodic-table__category--alkali-metal,
+	.pie-tool-periodic-table__category--alkaline-earth-metal,
+	.pie-tool-periodic-table__category--alkaline-earth,
+	.pie-tool-periodic-table__category--lanthanide,
+	.pie-tool-periodic-table__category--actinide,
+	.pie-tool-periodic-table__category--transition-metal,
+	.pie-tool-periodic-table__category--post-transition-metal,
+	.pie-tool-periodic-table__category--metalloid,
+	.pie-tool-periodic-table__category--diatomic-nonmetal,
+	.pie-tool-periodic-table__category--noble-gas,
+	.pie-tool-periodic-table__category--polyatomic-nonmetal,
+	.pie-tool-periodic-table__category--nonmetal,
+	.pie-tool-periodic-table__category--halogen,
+	.pie-tool-periodic-table__category--unknown {
+		color: #111827;
 	}
 
 	/* Category-based background colors (matching production implementation) */

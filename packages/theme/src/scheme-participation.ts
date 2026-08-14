@@ -29,6 +29,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-button-hover-border": "required",
 	"--pie-button-hover-color": "required",
 	"--pie-content-styles": "excluded",
+	"--pie-content-emphasis": "required",
 	"--pie-correct": "required",
 	"--pie-correct-icon": "required",
 	"--pie-correct-secondary": "required",

@@ -14,6 +14,8 @@ const rgb = (hex: string): Srgb => ({
 const COMPONENTS_CSS_PATH = resolve(import.meta.dir, "../src/components.css");
 
 const source = readFileSync(COMPONENTS_CSS_PATH, "utf8");
+const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, "");
+const collapsed = withoutComments.replace(/\s+/g, "");
 const declarations = source
 	.replace(/\/\*[\s\S]*?\*\//g, "")
 	.split("\n")
@@ -41,7 +43,7 @@ const literalPaints = declarations.flatMap((line) => {
 	const withoutTransparent = value.replace(/rgba\(0,\s*0,\s*0,\s*0\)/g, "");
 	if (!LITERAL_COLOUR.test(withoutTransparent)) return [];
 	// A literal is fine as the tail of a var() chain or a mix with a token.
-	if (/var\(--pie-|color-mix\(in srgb, (red|var\(--pie-)/.test(value)) {
+	if (/var\(--pie-|color-mix\(in srgb, var\(--pie-/.test(value)) {
 		return [];
 	}
 	return [line];
@@ -81,22 +83,44 @@ describe("content stylesheet theming", () => {
 		expect(source).not.toContain("#dee2e6;");
 	});
 
-	test("authored red emphasis clears SC 1.4.3 on the light page", () => {
-		// color-mix(in srgb, red 65%, black) === #a60000.
-		expect(source).toContain(
-			"color: color-mix(in srgb, red 65%, var(--pie-text, black))",
-		);
+	test("authored red emphasis takes the contrast-corrected content token", () => {
+		// A red-toward-ink mix was measured first and rejected: it falls under
+		// 4.5:1 on seven of the 35 shipped themes, 2.91:1 on `aqua`.
+		expect(source).toContain("color: var(--pie-content-emphasis, #b00000)");
+		expect(source).not.toContain("color-mix(in srgb, red");
+		// The no-theme default and the literal it replaces, on the light page.
 		expect(
-			contrastRatio(rgb("#a60000"), rgb("#ffffff")),
+			contrastRatio(rgb("#b00000"), rgb("#ffffff")),
 		).toBeGreaterThanOrEqual(4.5);
-		// The literal it replaces does not.
 		expect(contrastRatio(rgb("#ff0000"), rgb("#ffffff"))).toBeLessThan(4.5);
 	});
 
 	test("the loading scrim and its ring follow the theme", () => {
 		expect(source).toContain("background-color: var(--pie-white, #fff)");
-		expect(source).toContain(
-			"--pie-loading-accent: color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent)",
+		expect(collapsed).toContain(
+			"--pie-loading-accent:color-mix(insrgb,var(--pie-primary,#3f51b5)90%,transparent)",
 		);
+	});
+
+	test("the shipped rules that could not be made accessible are gone", () => {
+		// Global-id 50% floats cannot reflow and applied to any host element with
+		// those ids; the `lrn_` rules styled a product PIE does not render.
+		// The removal is recorded in a comment, so assert against the rules only.
+		expect(withoutComments).not.toContain("#stimulus");
+		expect(withoutComments).not.toContain("#item {");
+		expect(withoutComments).not.toContain(".lrn_");
+		// Headings keep the browser's weight, so the level still reads visually.
+		expect(collapsed).not.toContain("font-weight:500");
+	});
+
+	test("the eliminator toggle scales with the text around it", () => {
+		// A px box under PNP font scaling stays put while the text grows.
+		expect(collapsed).toContain("width:1.75em");
+		expect(collapsed).toContain("font-size:1.125em");
+		expect(collapsed).not.toContain("font-size:18px");
+	});
+
+	test("centred content blocks drop their gutters at reflow width", () => {
+		expect(collapsed).toContain("@media(max-width:30rem)");
 	});
 });

@@ -22,6 +22,7 @@
 	--pie-button-hover-bg: #f5f5f5;
 	--pie-button-hover-border: #000000;
 	--pie-button-hover-color: #000000;
+	--pie-content-emphasis: #cc0000;
 	--pie-correct: #006600;
 	--pie-correct-icon: #004400;
 	--pie-correct-secondary: #ccffcc;
@@ -75,6 +76,7 @@
 	--pie-button-hover-bg: #1a1a1a;
 	--pie-button-hover-border: #ffffff;
 	--pie-button-hover-color: #ffffff;
+	--pie-content-emphasis: #ff3333;
 	--pie-correct: #00ff00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003300;
@@ -128,6 +130,7 @@
 	--pie-button-hover-bg: #aaeedd;
 	--pie-button-hover-border: #3d0022;
 	--pie-button-hover-color: #3d0022;
+	--pie-content-emphasis: #aa0044;
 	--pie-correct: #004400;
 	--pie-correct-icon: #003300;
 	--pie-correct-secondary: #aaffaa;
@@ -181,6 +184,7 @@
 	--pie-button-hover-bg: #000055;
 	--pie-button-hover-border: #ffff00;
 	--pie-button-hover-color: #ffff00;
+	--pie-content-emphasis: #ff6666;
 	--pie-correct: #00ff00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003333;
@@ -234,6 +238,7 @@
 	--pie-button-hover-bg: #ffb3cc;
 	--pie-button-hover-border: #000000;
 	--pie-button-hover-color: #000000;
+	--pie-content-emphasis: #990000;
 	--pie-correct: #006600;
 	--pie-correct-icon: #004400;
 	--pie-correct-secondary: #ccffcc;
@@ -287,6 +292,7 @@
 	--pie-button-hover-bg: #2a2a2a;
 	--pie-button-hover-border: #ffffff;
 	--pie-button-hover-color: #e0e0e0;
+	--pie-content-emphasis: #ff6a6a;
 	--pie-correct: #00cc00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003300;
@@ -340,6 +346,7 @@
 	--pie-button-hover-bg: #dcdcdc;
 	--pie-button-hover-border: #4a4a4a;
 	--pie-button-hover-color: #4a4a4a;
+	--pie-content-emphasis: #8c1c1c;
 	--pie-correct: #145c1e;
 	--pie-correct-icon: #0e3f15;
 	--pie-correct-secondary: #dde9de;
@@ -393,6 +400,7 @@
 	--pie-button-hover-bg: #b8dcc3;
 	--pie-button-hover-border: #8e2464;
 	--pie-button-hover-color: #8e2464;
+	--pie-content-emphasis: #8c1c1c;
 	--pie-correct: #14591f;
 	--pie-correct-icon: #0e3d16;
 	--pie-correct-secondary: #d8ecdc;
@@ -446,6 +454,7 @@
 	--pie-button-hover-bg: #c795d3;
 	--pie-button-hover-border: #000000;
 	--pie-button-hover-color: #000000;
+	--pie-content-emphasis: #7d1414;
 	--pie-correct: #0d4f16;
 	--pie-correct-icon: #093a0f;
 	--pie-correct-secondary: #e0cfe6;
@@ -499,6 +508,7 @@
 	--pie-button-hover-bg: #2b4576;
 	--pie-button-hover-border: #ffff55;
 	--pie-button-hover-color: #ffff55;
+	--pie-content-emphasis: #ffbebe;
 	--pie-correct: #7fe08a;
 	--pie-correct-icon: #a8f0b0;
 	--pie-correct-secondary: #1d3a24;

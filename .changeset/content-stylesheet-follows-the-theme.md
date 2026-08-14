@@ -27,11 +27,7 @@ instead of being hoisted into a shared custom property, because a custom propert
 substitutes `var(--pie-text)` where it is declared, and a
 `<pie-theme scope="self">` below `:root` would not reach it.
 
-`.content-emphasis` keeps the authored hue but mixes 65% red toward the theme's
-ink, which measures 7.0:1 on the default light page and 4.8:1 under `dracula`.
-The literal it replaces sits at 4:1 on white and fails SC 1.4.3 today. One gap
-remains: under `valentine`, whose own `base-content` measures 4.9:1, the mix
-lands at 3.8:1 — better than the 3.3:1 pure red gave, and short of 4.5:1. Closing
-it means dropping the red the author chose.
+`.content-emphasis` moves to the new `--pie-content-emphasis` token; see the
+separate entry for why a red mixed toward the ink was not enough.
 
 `PieSpinner` duplicates the `.pie-loading` rules and follows the same change.

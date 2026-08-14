@@ -496,11 +496,113 @@ function checkNdsPaletteBridge(root, failures) {
 	}
 }
 
+/*
+ * Colours set from JS — an inline style string, a `.style.x =` assignment, a
+ * setProperty() call — are invisible to a scan of `<style>` blocks and `.css`
+ * files, and that is exactly where the worst offender hid: the floating tool
+ * shell's header pinned a light grey strip under themed title text on every
+ * dark theme, while every stylesheet in the repo looked clean.
+ */
+const PAINT_PROPERTIES = new Set([
+	"background",
+	"background-color",
+	"border",
+	"border-color",
+	"border-top",
+	"border-bottom",
+	"border-left",
+	"border-right",
+	"outline",
+	"outline-color",
+	"color",
+	"fill",
+	"stroke",
+]);
+
+const DECLARATION_IN_STRING = /([a-zA-Z-]+)\s*:\s*([^;"'`]+)/g;
+
+/** `el.style.borderBottom = "..."` and `el.style.setProperty("--x", "...")`. */
+const STYLE_ASSIGNMENT =
+	/\.style\.(?:setProperty\(\s*["']([^"']+)["']\s*,\s*|([A-Za-z]+)\s*=\s*)(["'])((?:(?!\3).)*)\3/g;
+
+/** `style="..."` in markup, including inside a template literal. */
+const STYLE_ATTRIBUTE = /style\s*=\s*(["'])((?:(?!\1).)*)\1/g;
+
+const LITERAL_COLOUR =
+	/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(|\b(?:white|black|silver|gray|grey|red|blue|green|yellow|orange|purple|pink|brown|navy|teal|olive|maroon|lime|aqua|fuchsia|cyan|magenta|gold|darkred|lightgray|lightgrey|darkgray|darkgrey|dimgray|dimgrey)\b/;
+
+const kebab = (name) => name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+
+/**
+ * Fully transparent rgba() is `transparent` spelled long, and a --pie-* chain's
+ * own tail literal is the intended no-theme fallback. Neither is a finding.
+ */
+function stripInertColours(value) {
+	return value
+		.replace(/rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/g, "")
+		.replace(/var\(\s*--pie-[\s\S]*$/g, "");
+}
+
+function collectInlinePaints(source) {
+	const paints = [];
+	for (const match of source.matchAll(STYLE_ASSIGNMENT)) {
+		const [, customProperty, jsProperty, , value] = match;
+		// A custom property is a handoff, not a paint: its own consumer decides.
+		if (customProperty) continue;
+		const property = kebab(jsProperty);
+		if (!PAINT_PROPERTIES.has(property)) continue;
+		paints.push({ property, value, kind: "style assignment" });
+	}
+	for (const match of source.matchAll(STYLE_ATTRIBUTE)) {
+		for (const declaration of match[2].matchAll(DECLARATION_IN_STRING)) {
+			const property = declaration[1].toLowerCase();
+			if (!PAINT_PROPERTIES.has(property)) continue;
+			paints.push({
+				property,
+				value: declaration[2],
+				kind: "inline style attribute",
+			});
+		}
+	}
+	return paints;
+}
+
+/*
+ * Colours set from JS — an inline style string or a `.style.x =` assignment —
+ * are invisible to a scan of `<style>` blocks and `.css` files, which is how a
+ * `color: red` error frame in the print player and a `#ddd` element divider in
+ * the item player survived a stylesheet audit that found everything else.
+ *
+ * Bounded deliberately to a *bare* literal. The other shape — a literal sitting
+ * behind a registered token that hosts rarely set, which is what left the tool
+ * shell's header a light grey strip under themed title text — is not
+ * mechanically separable from a legitimate host-tint opt-in, and stays a review
+ * question.
+ */
+function checkInlineStyleLiterals(root, failures) {
+	for (const usageRoot of SOURCE_USAGE_ROOTS) {
+		walkFiles(root, usageRoot, (absPath) => {
+			if (!isSourceUsageFile(absPath)) return;
+			const relPath = rel(root, absPath);
+			const source = readFileSync(absPath, "utf8");
+			if (!source.includes("style")) return;
+
+			for (const { property, value, kind } of collectInlinePaints(source)) {
+				if (!LITERAL_COLOUR.test(stripInertColours(value))) continue;
+				failures.push(
+					`[theme-tokens] ${relPath} sets \`${property}\` to the literal \`${value.trim()}\` from a ${kind}; route it through a --pie-* token with the literal as the fallback`,
+				);
+			}
+		});
+	}
+}
+
 export function checkThemeTokens(root = DEFAULT_ROOT) {
 	const failures = [];
 
 	checkRootScript(root, failures);
 	checkNdsPaletteBridge(root, failures);
+	checkInlineStyleLiterals(root, failures);
 
 	const registry = readJson(root, TOKEN_REGISTRY_PATH, failures) || [];
 	if (!Array.isArray(registry)) {

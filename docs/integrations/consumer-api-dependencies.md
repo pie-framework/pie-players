@@ -456,6 +456,15 @@ Consequences per host:
 Any further change to how content styles are delivered has to account for all
 three positions.
 
+Three rules were removed from it outright: a `#stimulus` / `#item` pair of
+50%-wide left floats, a `.lrn_feature h3` margin override and
+`.lrn_width_auto.table`. The float pair is the one to check against a host — it
+laid out two global ids as columns, so a host page carrying either id got the
+layout whether or not it wanted it, and the recorded rows show no host relying on
+that. The `lrn_` pair styled a third-party product's markup. Also gone from the
+heading reset is `font-weight: 500`, so authored headings render at the browser's
+weight; hosts V and A both load this stylesheet and will see that.
+
 Separately from delivery, the stylesheet's own colours now resolve through
 canonical tokens. For a host on the base light theme the values are the ones it
 already rendered, with one visible exception: legacy `kds-*` table headers take

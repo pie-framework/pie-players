@@ -1,5 +1,69 @@
 # @pie-players/pie-item-player
 
+## 0.3.66
+
+### Patch Changes
+
+- e8a6f0e: Fix the element-cell text in the periodic table, and the last two colours set
+  from JS.
+
+  The periodic table encodes element categories as fixed pastel fills, and the
+  symbol and name on them inherited `--pie-text` — near-white under every dark
+  theme, leaving the cell text at about 1.2:1 on a pastel. The fills are a data
+  encoding, so their ink is pinned to match: the tightest pairing it leaves is the
+  0.8-opacity atomic mass on the darkest fill, at 6.0:1. The selected-element panel
+  takes the theme surface rather than a category fill, so it keeps theme ink.
+
+  Under a colour scheme the fills collapse into the palette instead; see the
+  separate entry for `--pie-fixed-hue-collapse`.
+
+  The print player's "cannot load" frame drew bare `red` — 4:1 on white, and print
+  is the one surface where nobody sees the problem until it is on paper — and the
+  item player set a `#ddd` divider between stacked elements. Both now resolve
+  through the theme's families. `check:theme-tokens` gained a rule for this shape:
+  a paint set from an inline style string or a `.style.x =` assignment with a bare
+  literal now fails, which is how these two survived a stylesheet-only audit.
+
+- 2bcd9fa: Paint the remaining player and tool chrome from the active theme.
+
+  The floating tool shell's header fell back to `#f3f4f6` whenever the host had not
+  set `--pie-section-player-card-header-background`, which is the normal case, so
+  the shell's themed title text sat on a light grey strip — 2.3:1 under `pastel`,
+  worse under the dark themes. It now defaults through `--pie-button-active-bg`,
+  the mapping's contrast-tuned one-step-off-the-page fill, whose light value is the
+  `#f3f4f6` that was pinned; the title measures 14.7:1 under `dracula`, 16.0:1 under
+  `light` and 4.5:1 under `valentine`, and the light theme is unchanged.
+
+  The three scrolling panes defaulted `--pie-scrollbar-thumb`,
+  `--pie-scrollbar-track` and `--pie-scrollbar-thumb-hover` to greys, and nothing
+  sets those hooks, so a light scrollbar shipped on every dark theme and colour
+  scheme. Thumb and hover now default through `--pie-border` and
+  `--pie-border-dark`, which the mapping corrects to 3:1 against the surface, and
+  the track through `--pie-background-dark`.
+
+  Also routed through tokens: the Desmos calculator frame and its loading/error
+  overlay, the inline calculator's focus ring and glyph colours, the toolkit's
+  framework-error panel, the item-player build warning, the preview toggle's tabs
+  and the tool-settings hover tint, which now mixes from `currentColor` so it
+  tracks whatever header it sits on.
+
+  The embedded Desmos canvas stays white by decision: the third-party calculator
+  paints its own white UI and a themed mount would only band it. The frame around
+  it follows the theme so the shell's header and window controls read against it.
+
+- Updated dependencies [556c422]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [6bbfae1]
+- Updated dependencies [1e0c10f]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [a4beb70]
+- Updated dependencies [1f29de7]
+  - @pie-players/pie-players-shared@0.3.66
+  - @pie-players/pie-theme@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

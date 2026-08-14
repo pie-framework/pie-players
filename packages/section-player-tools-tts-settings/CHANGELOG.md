@@ -1,5 +1,37 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 0.3.66
+
+### Patch Changes
+
+- 556c422: Make Browser API playback reliable by coalescing and serializing rate updates,
+  publishing playback state and sentence highlighting from the provider's real
+  start event, and rejecting native speech that ends or stalls before starting.
+  Keep Chrome's native default voice unassigned while assigning explicitly chosen
+  non-default voices. Browser voice identifiers accept an exact voice URI or
+  documented name, while newly applied selections persist the unique URI. Server
+  fallbacks now carry only portable rate, pitch, and highlighting settings into
+  the Browser provider instead of leaking a server-specific voice. Ignore CSS-wide
+  custom-element reset declarations when checking for a duplicate PIE content
+  stylesheet.
+- Updated dependencies [556c422]
+- Updated dependencies [2a741c6]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [6bbfae1]
+- Updated dependencies [1e0c10f]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [a4beb70]
+- Updated dependencies [1f29de7]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [5f133be]
+- Updated dependencies [9a183cf]
+  - @pie-players/pie-assessment-toolkit@0.3.66
+  - @pie-players/pie-theme@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

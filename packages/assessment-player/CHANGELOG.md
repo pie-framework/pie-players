@@ -1,5 +1,23 @@
 # @pie-players/pie-assessment-player
 
+## 0.3.66
+
+### Patch Changes
+
+- Updated dependencies [556c422]
+- Updated dependencies [2a741c6]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [1f29de7]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [5f133be]
+- Updated dependencies [9a183cf]
+  - @pie-players/pie-assessment-toolkit@0.3.66
+  - @pie-players/pie-players-shared@0.3.66
+  - @pie-players/pie-section-player@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

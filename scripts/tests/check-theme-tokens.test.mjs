@@ -11,6 +11,19 @@ function write(root, relPath, content) {
 	writeFileSync(absPath, content);
 }
 
+const NDS_MOUNT_WITH_BRIDGE = [
+	'<nds-icon-button variant="tertiary"></nds-icon-button>',
+	"<style>",
+	"nds-icon-button {",
+	"  --color-interactive-blue: var(--pie-button-bg, #222);",
+	"  --color-new-gray: var(--pie-background-dark, #f3f5f7);",
+	"  --color-primary-white: var(--pie-white, #ffffff);",
+	"  --color-primary-black: var(--pie-text, #000000);",
+	"  --color-focus-blue: var(--pie-button-focus-outline, #2b87ff);",
+	"}",
+	"</style>",
+].join("\n");
+
 function createFixtureRoot() {
 	const root = mkdtempSync(path.join(tmpdir(), "pie-theme-tokens-"));
 
@@ -142,7 +155,6 @@ function createFixtureRoot() {
 		"packages/tool-example/tool-example.svelte",
 		"<style>.trigger { background: var(--pie-tool-trigger-active-background, var(--pie-button-background-color, var(--pie-button-bg, #fff))); }</style>\n",
 	);
-
 	return root;
 }
 
@@ -158,6 +170,53 @@ describe("check-theme-tokens", () => {
 		expect(checkThemeTokens(root).join("\n")).toContain(
 			'package.json scripts must include "check:theme-tokens"',
 		);
+	});
+
+	test("accepts a mount that bridges the vendored NDS palette", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-nds.svelte",
+			NDS_MOUNT_WITH_BRIDGE,
+		);
+
+		const ndsFailures = checkThemeTokens(root).filter((failure) =>
+			failure.includes("nds-icon-button"),
+		);
+
+		expect(ndsFailures).toEqual([]);
+	});
+
+	test("flags a mount that leaves the NDS palette unbridged", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-nds.svelte",
+			'<nds-icon-button variant="tertiary"></nds-icon-button>\n<style></style>\n',
+		);
+
+		const failures = checkThemeTokens(root)
+			.filter((failure) => failure.includes("nds-icon-button"))
+			.join("\n");
+
+		expect(failures).toContain("does not bridge `--color-new-gray`");
+		expect(failures).toContain("does not bridge `--color-focus-blue`");
+		expect(failures).toContain("does not remap --color-interactive-blue");
+	});
+
+	test("ignores files that only name nds-icon-button in prose", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-docs.svelte",
+			"<script>\n// Controls render <nds-icon-button> only when the host opts in.\n</script>\n",
+		);
+
+		const ndsFailures = checkThemeTokens(root).filter((failure) =>
+			failure.includes("nds-icon-button"),
+		);
+
+		expect(ndsFailures).toEqual([]);
 	});
 
 	test("requires the root command to verify generated CSS bytes", () => {

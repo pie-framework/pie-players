@@ -1278,6 +1278,17 @@
 		   paints with. It defaults through --pie-button-color so the glyph follows
 		   the active theme; the literal is the no-theme last resort. */
 		--color-interactive-blue: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
+		/* NDS palette bridge — keep in sync with the copies in
+		   assessment-toolkit ItemToolBar and section-player SectionItemsPane
+		   (asserted by scripts/check-theme-tokens.mjs). The vendored button
+		   paints its fill, its on-accent glyph, its hover ring and its focus
+		   ring from the NDS design-system palette, which no PIE theme sets, so
+		   a tertiary trigger kept a #f3f5f7 pill on every page — and once the
+		   glyph followed the theme, a light glyph landed on that light pill. */
+		--color-new-gray: var(--pie-background-dark, #f3f5f7);
+		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-black: var(--pie-text, #000000);
+		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
 
 	/* Non-NDS fallback trigger (host opted out of nds-icon-button). Inherits

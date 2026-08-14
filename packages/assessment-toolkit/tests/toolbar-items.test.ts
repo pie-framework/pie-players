@@ -123,6 +123,51 @@ describe("calculator nds-icon-button styling contract", () => {
 		);
 	});
 
+	test("the vendored NDS palette is bridged to the PIE token families", () => {
+		// Unbridged, the vendored button's own literals win: a #f3f5f7 pill and a
+		// #2b87ff focus ring under every theme, which a themed (light) glyph then
+		// disappears into.
+		const declarations = source
+			.slice(source.lastIndexOf("<style"))
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\s+/g, "");
+		expect(declarations).toContain(
+			"--color-new-gray:var(--pie-background-dark,#f3f5f7)",
+		);
+		expect(declarations).toContain(
+			"--color-primary-white:var(--pie-white,#ffffff)",
+		);
+		expect(declarations).toContain(
+			"--color-primary-black:var(--pie-text,#000000)",
+		);
+		expect(declarations).toContain(
+			"--color-focus-blue:var(--pie-button-focus-outline,#2b87ff)",
+		);
+	});
+
+	test("the floating shell bridges the palette for its own header controls", () => {
+		// The shell's window controls are created imperatively, so the scoped
+		// `.item-toolbar nds-icon-button` rule never matches them.
+		const script = source.slice(0, source.lastIndexOf("<style"));
+		expect(script).toContain(
+			"shellEl.style.setProperty('--color-new-gray', 'var(--pie-background-dark, #f3f5f7)')",
+		);
+		expect(script).toContain("'--color-interactive-blue'");
+		expect(script).toContain(
+			"shellEl.style.setProperty('--color-primary-black', 'var(--pie-text, #000000)')",
+		);
+	});
+
+	test("the tool shell header falls back to a themed surface, not a literal", () => {
+		// Hosts rarely set --pie-section-player-card-header-background, so the
+		// default is what ships: a literal there left the themed title text on a
+		// light grey strip under every dark theme.
+		const script = source.slice(0, source.lastIndexOf("<style"));
+		expect(script).toContain(
+			"'var(--pie-section-player-card-header-background, var(--pie-button-active-bg, #f3f4f6))'",
+		);
+	});
+
 	test("calculator button size is settable per toolbar size", () => {
 		expect(stripped).toContain(
 			"--height-32:var(--pie-calculator-button-size,2rem)",

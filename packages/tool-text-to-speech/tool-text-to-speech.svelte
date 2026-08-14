@@ -473,7 +473,7 @@
 	}
 
 	.pie-tool-text-to-speech__close-button {
-		background: rgb(255 255 255 / 0.2);
+		background: color-mix(in srgb, var(--pie-white, #fff) 20%, transparent);
 		border: none;
 		color: var(--pie-white, #fff);
 		width: 24px;
@@ -489,7 +489,7 @@
 	}
 
 	.pie-tool-text-to-speech__close-button:hover {
-		background: rgb(255 255 255 / 0.3);
+		background: color-mix(in srgb, var(--pie-white, #fff) 30%, transparent);
 	}
 
 	.pie-tool-text-to-speech__content {

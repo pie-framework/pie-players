@@ -523,7 +523,10 @@ import { onMount } from 'svelte';
 
 	.pie-tool-calculator {
 		position: relative;
-		background: white;
+		/* Frame follows the theme; the Desmos mount below keeps its own white,
+		   because the third-party calculator paints a white UI and a themed mount
+		   would only band it. */
+		background: var(--pie-white, white);
 		overflow: hidden;
 		min-width: 100%;
 		min-height: 0;
@@ -533,6 +536,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-calculator__container {
+		/* Desmos paints its own white UI here — deliberately not themed. */
 		background: white;
 		width: 100%;
 		height: 100%;
@@ -548,14 +552,14 @@ import { onMount } from 'svelte';
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(255, 255, 255, 0.9);
-		color: #334155;
+		background: color-mix(in srgb, var(--pie-white, #fff) 90%, transparent);
+		color: var(--pie-text, #334155);
 		font-size: 0.9rem;
 		z-index: 2;
 	}
 
 	.pie-tool-calculator__loading--error {
-		color: #b91c1c;
+		color: var(--pie-incorrect, #b91c1c);
 		flex-direction: column;
 		gap: 0.5rem;
 		padding: 0.75rem;
@@ -565,7 +569,7 @@ import { onMount } from 'svelte';
 	.pie-tool-calculator__error-details {
 		font-size: 0.8rem;
 		line-height: 1.2;
-		color: #7f1d1d;
+		color: var(--pie-incorrect, #7f1d1d);
 		max-width: 95%;
 		word-break: break-word;
 	}

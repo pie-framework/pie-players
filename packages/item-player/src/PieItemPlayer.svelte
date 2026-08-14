@@ -1971,7 +1971,7 @@
 	.pie-item-player-build-warning {
 		margin: 0;
 		font-size: 0.95rem;
-		color: #9a6700;
+		color: var(--pie-missing, #9a6700);
 		text-align: center;
 	}
 </style>

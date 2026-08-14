@@ -73,6 +73,7 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-elements-ng-root",
 	"--pie-font-family",
 	"--pie-header-text",
+	"--pie-loading-accent",
 	"--pie-scrollbar-thumb",
 	"--pie-scrollbar-thumb-hover",
 	"--pie-scrollbar-track",
@@ -429,10 +430,77 @@ function checkSourceUsage(root, registry, failures) {
 	}
 }
 
+/*
+ * The vendored NDS icon button paints from the NDS design-system palette
+ * (`--color-*`), which no PIE theme sets. Its own defaults are literals, so an
+ * unbridged button keeps a #f3f5f7 pill and a #2b87ff focus ring under every
+ * theme — and once its glyph follows the theme, a light glyph lands on that
+ * light pill and disappears.
+ *
+ * The bridge has to be declared at every element that mounts one: the vendored
+ * bundle is a build artifact we do not re-author, and some mounts sit inside a
+ * shadow root a document stylesheet cannot reach. Mount sites are discovered
+ * rather than listed, so a rename or a new mount cannot drop the guard.
+ */
+const NDS_BRIDGE_DECLARATIONS = [
+	"--color-new-gray: var(--pie-background-dark, #f3f5f7);",
+	"--color-primary-white: var(--pie-white, #ffffff);",
+	"--color-primary-black: var(--pie-text, #000000);",
+	"--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);",
+];
+
+const NDS_MOUNT_PATTERNS = [
+	/<nds-icon-button[\s/>]/,
+	/createElement\(\s*["']nds-icon-button["']/,
+];
+
+/** Comment text mentions the tag far more often than markup mounts it. */
+function stripComments(source) {
+	return source
+		.replace(/\/\*[\s\S]*?\*\//g, " ")
+		.replace(/<!--[\s\S]*?-->/g, " ")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+}
+
+function checkNdsPaletteBridge(root, failures) {
+	for (const usageRoot of SOURCE_USAGE_ROOTS) {
+		walkFiles(root, usageRoot, (absPath) => {
+			if (!isSourceUsageFile(absPath)) return;
+			const relPath = rel(root, absPath);
+			const source = readFileSync(absPath, "utf8");
+			if (!source.includes("nds-icon-button")) return;
+			const code = stripComments(source);
+			if (!NDS_MOUNT_PATTERNS.some((pattern) => pattern.test(code))) return;
+
+			for (const declaration of NDS_BRIDGE_DECLARATIONS) {
+				const [property, value] = declaration
+					.replace(/;$/, "")
+					.split(/:\s(.+)/);
+				// The imperative mounts set the same mapping via setProperty().
+				const asStyleProperty = `'${property}', '${value}'`;
+				if (
+					!source.includes(declaration) &&
+					!source.includes(asStyleProperty)
+				) {
+					failures.push(
+						`[theme-tokens] ${relPath} mounts nds-icon-button but does not bridge \`${property}\` to a --pie-* token`,
+					);
+				}
+			}
+			if (!/--color-interactive-blue:\s*var\(--pie-/.test(source)) {
+				failures.push(
+					`[theme-tokens] ${relPath} mounts nds-icon-button but does not remap --color-interactive-blue through a --pie-* token`,
+				);
+			}
+		});
+	}
+}
+
 export function checkThemeTokens(root = DEFAULT_ROOT) {
 	const failures = [];
 
 	checkRootScript(root, failures);
+	checkNdsPaletteBridge(root, failures);
 
 	const registry = readJson(root, TOKEN_REGISTRY_PATH, failures) || [];
 	if (!Array.isArray(registry)) {

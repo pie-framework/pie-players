@@ -125,12 +125,32 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("tertiary trigger glyph meets WCAG AA contrast on the NDS new-gray hover", () => {
+	test("tertiary trigger glyph meets WCAG AA contrast on its themed pill", () => {
 		// NDS `variant="tertiary"` paints --color-interactive-blue on
-		// --color-new-gray (#f3f5f7). The glyph now defaults to the theme's
-		// --pie-button-color (#374151 under the base light theme) rather than the
-		// #146eb3 literal, so that is the pairing to guard.
-		expect(contrastRatio("#374151", "#f3f5f7")).toBeGreaterThanOrEqual(4.5);
+		// --color-new-gray. Both are bridged to the PIE families below, so the
+		// pairing to guard is --pie-button-color on --pie-background-dark, at
+		// their base-light-theme values.
+		expect(contrastRatio("#374151", "#ecedf1")).toBeGreaterThanOrEqual(4.5);
+	});
+
+	test("the vendored NDS palette is bridged to the PIE token families", () => {
+		// Unbridged, the vendored button's own literals win: a #f3f5f7 pill under
+		// every theme, which a themed (light) glyph then disappears into.
+		const declarations = styleSource
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\s+/g, "");
+		expect(declarations).toContain(
+			"--color-new-gray:var(--pie-background-dark,#f3f5f7)",
+		);
+		expect(declarations).toContain(
+			"--color-primary-white:var(--pie-white,#ffffff)",
+		);
+		expect(declarations).toContain(
+			"--color-primary-black:var(--pie-text,#000000)",
+		);
+		expect(declarations).toContain(
+			"--color-focus-blue:var(--pie-button-focus-outline,#2b87ff)",
+		);
 	});
 });
 

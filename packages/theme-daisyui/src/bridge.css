@@ -101,6 +101,14 @@
 		var(--color-success) 30%,
 		var(--color-base-content)
 	);
+	/* Authored red emphasis in content, taken from the error slot through the same
+	   legible correction: a red mixed toward the ink instead falls under 4.5:1 on
+	   seven of the shipped themes. */
+	--pie-content-emphasis: color-mix(
+		in srgb,
+		var(--color-error) 30%,
+		var(--color-base-content)
+	);
 	--pie-incorrect: color-mix(
 		in srgb,
 		var(--color-error) 30%,

@@ -24,6 +24,7 @@
 	--pie-button-hover-bg: #f9fafb;
 	--pie-button-hover-border: #8b919c;
 	--pie-button-hover-color: #111827;
+	--pie-content-emphasis: #b00000;
 	--pie-correct: #208537;
 	--pie-correct-icon: #087d38;
 	--pie-correct-secondary: #e8f5e9;
@@ -32,6 +33,7 @@
 	--pie-disabled-secondary: #ababab;
 	--pie-dropdown-background: #e0e1e6;
 	--pie-faded-primary: #dcdafb;
+	--pie-fixed-hue-collapse: 0%;
 	--pie-focus-checked: #bbdefb;
 	--pie-focus-checked-border: #1565c0;
 	--pie-focus-unchecked: #e0e0e0;
@@ -79,6 +81,7 @@
 	--pie-button-hover-bg: #374151;
 	--pie-button-hover-border: #6b7280;
 	--pie-button-hover-color: #ffffff;
+	--pie-content-emphasis: #ff6666;
 	--pie-correct: #00ff00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003300;
@@ -87,6 +90,7 @@
 	--pie-disabled-secondary: #777777;
 	--pie-dropdown-background: #2a2a2a;
 	--pie-faded-primary: #666600;
+	--pie-fixed-hue-collapse: 0%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #ffff00;
 	--pie-focus-unchecked: #666666;

@@ -177,6 +177,25 @@ cascade requirements are intentional. Such a selector follows the normal
 cascade in a stylesheet-only integration; when it competes with a mounted
 `<pie-theme>`'s inline tokens, it needs `!important`.
 
+## Fixed hues
+
+Some components paint a hue the palette does not own: a data encoding, like the
+periodic table's category fills. `--pie-fixed-hue-collapse` is the share by
+which such a hue folds into the palette — the component mixes its own value
+towards `--pie-background-dark` and `--pie-text` by this share, so `0%` renders
+the authored hue exactly and `100%` removes it.
+
+Base Themes set `0%`, because a full palette leaves a hue encoding readable.
+Every colour scheme sets `100%`: a two-colour palette is a promise, and a hue
+that survives it is a colour the learner did not choose. A registered custom
+scheme collapses without declaring anything, and keeps its encodings by setting
+`--pie-fixed-hue-collapse: 0%` itself.
+
+Both ends of the mix are exact, so this costs nothing under a Base Theme. What
+it costs under a scheme is the encoding: a component collapsing hues has to
+carry category, state or series somewhere else — a label, a filter, or the
+accessible name.
+
 ## DaisyUI Integration
 
 - If DaisyUI tokens are present on the target scope, `pie-theme` uses the built-in `daisyui` provider adapter.

@@ -1274,8 +1274,21 @@
 		   keeps the NDS-native icon size (size="small") so it isn't oversized. */
 		--height-32: 2rem;
 		/* Host-settable accent: the NDS tertiary glyph colour derives from
-		   --color-interactive-blue, remapped here to a themeable variable. */
-		--color-interactive-blue: var(--pie-tts-button-color, #146eb3);
+		   --color-interactive-blue, remapped here to the same chain the panel
+		   paints with. It defaults through --pie-button-color so the glyph follows
+		   the active theme; the literal is the no-theme last resort. */
+		--color-interactive-blue: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
+		/* NDS palette bridge — keep in sync with the copies in
+		   assessment-toolkit ItemToolBar and section-player SectionItemsPane
+		   (asserted by scripts/check-theme-tokens.mjs). The vendored button
+		   paints its fill, its on-accent glyph, its hover ring and its focus
+		   ring from the NDS design-system palette, which no PIE theme sets, so
+		   a tertiary trigger kept a #f3f5f7 pill on every page — and once the
+		   glyph followed the theme, a light glyph landed on that light pill. */
+		--color-new-gray: var(--pie-background-dark, #f3f5f7);
+		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-black: var(--pie-text, #000000);
+		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
 
 	/* Non-NDS fallback trigger (host opted out of nds-icon-button). Inherits
@@ -1283,7 +1296,7 @@
 	   shape and the themeable accent colour on its glyph. */
 	.pie-tool-tts-inline__trigger--plain {
 		border-radius: 50%;
-		color: var(--pie-tts-button-color, #146eb3);
+		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 	}
 
 	/* Active/open trigger hooks (PIE-727).
@@ -1307,11 +1320,8 @@
 		/* All three fallbacks are `__control`'s chains, including the glyph colour.
 		   Not `--plain`'s: that rule also declares `color`, but `__control` repeats
 		   it further down the sheet at equal specificity, so `__control` wins and
-		   `--plain`'s accent colour never applies. Falling back to the accent here
-		   would therefore have turned the glyph blue on open -- a visible change
-		   for every host, which is exactly what these fallbacks exist to avoid.
-		   Measured in Chromium: the plain trigger's glyph is the dark
-		   --pie-button-color, not the #146eb3 accent. */
+		   `--plain`'s accent declaration never applies. Measured in Chromium: the
+		   plain trigger's glyph is --pie-button-color either way. */
 		background: var(
 			--pie-tool-trigger-active-background,
 			var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)))
@@ -1334,7 +1344,7 @@
 	.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"] {
 		--color-interactive-blue: var(
 			--pie-tool-trigger-active-color,
-			var(--pie-tts-button-color, #146eb3)
+			var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)))
 		);
 	}
 
@@ -1490,22 +1500,45 @@
 	}
 
 	/* ── Overlay layouts (floating-overlay + left-aligned) ──────────────────────
-	   Per the Knowledge-Check design the controls sit transparently on the
-	   surrounding Question/Passage header: no panel chrome, media controls are
-	   accent-blue icon-only glyphs, and the speed radios are plain muted text with
-	   the selected one lifted into a white chip. The accent stays the same
-	   host-settable variable as the play/pause + calculator buttons
-	   (--pie-tts-button-color). Themeable knobs: --pie-tts-inline-muted-color,
-	   --pie-tts-selected-bg/-border/-shadow, --pie-tts-menu-shadow,
-	   --pie-tts-trigger-shadow. */
+	   The Knowledge-Check design keeps the controls on the surrounding
+	   Question/Passage header: a low-chrome card, icon-only media glyphs, and speed
+	   radios as plain text with the selected one lifted into a chip.
+
+	   Shape comes from that design; colour comes from the theme. The overlay used
+	   to paint literals (#146eb3 glyphs on a #fff card with a #f3f5f7 chip), which
+	   left a blue-on-white panel floating over every non-default theme — a DaisyUI
+	   `valentine` page rendered a pink player with a blue TTS panel. Each surface
+	   now defaults through a canonical token and keeps its literal only as the
+	   no-theme last resort.
+
+	   Foregrounds resolve through --pie-button-color (DaisyUI base-content), the
+	   one family whose contrast against the card is guaranteed in every shipped
+	   theme: --pie-primary and --pie-tertiary are `direct` mappings of DaisyUI
+	   slots chosen to pair with their own -content colour, so an accent glyph taken
+	   from either drops to 1.37:1 on `pastel` and 11 of 35 themes fall under 3:1.
+	   Selection is signalled by the chip and the bolder weight rather than by hue.
+
+	   Host knobs, all unchanged: --pie-tts-button-color (accent),
+	   --pie-tts-inline-muted-color, --pie-tts-selected-bg,
+	   --pie-selected-button-background/-border, --pie-tts-menu-shadow. */
 	.pie-tool-tts-inline__panel--floating,
 	.pie-tool-tts-inline__panel--left-aligned-inline {
 		min-height: 0;
 		height: calc(3rem * var(--pie-tts-zoom-comp, 1)); /* Figma: 48px */
 		justify-content: center;
 		gap: calc(0.375rem * var(--pie-tts-zoom-comp, 1));
-		background: var(--pie-tts-selected-bg, #fff);
-		border: 0;
+		/* --pie-white, not --pie-background: the base light theme sets
+		   --pie-background to rgba(255,255,255,0) so page content shows through,
+		   and a floating card cannot be transparent. --pie-white is the theme's
+		   opaque page surface (DaisyUI base-100; #000 under the dark theme). */
+		background: var(--pie-tts-selected-bg, var(--pie-surface, var(--pie-white, #fff)));
+		/* The Figma card is shadow-only, but the shadow is black: once the card
+		   takes a dark theme's surface it has no visible edge left. A hairline
+		   derived from the text colour reads on either. Not --pie-border: a host
+		   that wants borderless controls sets that to transparent, which is
+		   exactly the case where the shadow is the only edge. --pie-tts-card-border
+		   is the opt-out (`transparent` restores the shadow-only card). */
+		border: 1px solid var(--pie-tts-card-border, color-mix(in srgb, var(--pie-text, #000) 15%, transparent));
 		border-radius: 0.5rem; /* Figma: --radius-8 (8px) */
 		box-shadow: var(--pie-tts-menu-shadow, 0 1px 5px 0 rgba(0, 0, 0, 0.3));
 	}
@@ -1521,19 +1554,19 @@
 		padding: 0;
 	}
 
-	/* Media controls (rewind / fast-forward / stop): accent-blue, no chrome. */
+	/* Media controls (rewind / fast-forward / stop): accent glyph, no chrome. */
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--secondary,
 	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--secondary {
 		border: 0;
 		background: transparent;
-		color: var(--pie-tts-button-color, #146eb3);
+		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 	}
 
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--secondary:hover:not(:disabled),
 	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--secondary:hover:not(:disabled) {
 		transform: none;
 		box-shadow: none;
-		background: color-mix(in srgb, var(--pie-tts-button-color, #146eb3) 12%, transparent);
+		background: color-mix(in srgb, var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222))) 12%, transparent);
 	}
 
 	/* Speed radios (inline / roomy): plain muted text with breathing room between
@@ -1545,7 +1578,11 @@
 		border: 1px solid transparent;
 		background: transparent;
 		box-shadow: none;
-		color: var(--pie-tts-inline-muted-color, #5b6b73);
+		/* Unselected labels are text on the card, so they take the full text colour
+		   rather than a dimmed mix: DaisyUI only guarantees base-content against the
+		   surface, and `valentine` is 5.46:1 there — a 10% dim already lands under
+		   4.5:1. Hosts that want them dimmer set --pie-tts-inline-muted-color. */
+		color: var(--pie-tts-inline-muted-color, var(--pie-button-color, var(--pie-text, #5b6b73)));
 		font-size: 1rem;
 	}
 
@@ -1553,17 +1590,19 @@
 	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed:hover:not(:disabled) {
 		transform: none;
 		box-shadow: none;
-		background: color-mix(in srgb, var(--pie-tts-button-color, #146eb3) 8%, transparent);
+		background: color-mix(in srgb, var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222))) 8%, transparent);
 	}
 
-	/* Selected inline radio: white "chip" treatment. Placed after the muted rule
-	   so it wins at equal specificity. */
+	/* Selected inline radio: "chip" treatment. Placed after the muted rule so it
+	   wins at equal specificity. The fill is --pie-button-active-bg, which the
+	   DaisyUI mapping already tunes (base-300 at 70% toward base-100) to hold
+	   base-content text at 4.5:1 in every shipped theme. */
 	.pie-tool-tts-inline__panel--floating .pie-tool-tts-inline__control--speed[aria-checked='true'],
 	.pie-tool-tts-inline__panel--left-aligned-inline .pie-tool-tts-inline__control--speed[aria-checked='true'] {
-		border: 1px solid var(--pie-selected-button-border, #d9dada);
+		border: 1px solid var(--pie-selected-button-border, var(--pie-button-border, var(--pie-border, #d9dada)));
 		border-radius: 6px;
-		background: var(--pie-selected-button-background, #f3f5f7);
-		color: var(--pie-tts-button-color, #146eb3);
+		background: var(--pie-selected-button-background, var(--pie-button-active-bg, #f3f5f7));
+		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 		font-weight: 600;
 	}
 
@@ -1581,8 +1620,8 @@
 	}
 
 	/* In the card every option reads in the accent colour; the selected one is
-	   lifted into a bordered white chip. Options size to their content and centre
-	   (no full-width stretch), keeping the popper compact. */
+	   lifted into a bordered chip. Options size to their content and centre (no
+	   full-width stretch), keeping the popper compact. */
 	.pie-tool-tts-inline__speed-group--stacked .pie-tool-tts-inline__control--speed {
 		justify-content: center;
 		width: auto;
@@ -1593,16 +1632,16 @@
 		border-radius: 0.5rem;
 		background: transparent;
 		box-shadow: none;
-		color: var(--pie-tts-button-color, #146eb3);
+		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 		font-size: 0.75rem;
 		font-weight: 500;
 	}
 
 	.pie-tool-tts-inline__speed-group--stacked .pie-tool-tts-inline__control--speed[aria-checked='true'] {
-		border: 1px solid var(--pie-selected-button-border, #d9dada);
+		border: 1px solid var(--pie-selected-button-border, var(--pie-button-border, var(--pie-border, #d9dada)));
 		border-radius: 6px;
-		background: var(--pie-selected-button-background, #f3f5f7);
-		color: var(--pie-tts-button-color, #146eb3);
+		background: var(--pie-selected-button-background, var(--pie-button-active-bg, #f3f5f7));
+		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 		font-weight: 700;
 	}
 

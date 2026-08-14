@@ -6,10 +6,14 @@
 
 <style>
     .pie-loading {
+        /* Same spinner as the .pie-loading rules in pie-theme components.css.
+           The Figma indigo is --pie-primary at 90%, so the ring follows the
+           theme's primary instead of pinning MD indigo on every page. */
+        --pie-loading-accent: color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
         position: absolute;
         height: 100%;
         width: 100%;
-        background-color: #fff;
+        background-color: var(--pie-white, #fff);
         bottom: 0;
         left: 0;
         right: 0;
@@ -25,12 +29,12 @@
     .pie-loading:before {
         content: "";
         background-color: rgba(0, 0, 0, 0);
-        border: 5px solid rgba(63, 81, 181, 0.9);
+        border: 5px solid var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
         opacity: 0.9;
         border-right: 5px solid rgba(0, 0, 0, 0);
         border-left: 5px solid rgba(0, 0, 0, 0);
         border-radius: 50px;
-        box-shadow: 0 0 35px rgba(63, 81, 181, 0.9);
+        box-shadow: 0 0 35px var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
         width: 50px;
         height: 50px;
         animation: spinPulse 1s infinite linear;
@@ -43,12 +47,12 @@
     .pie-loading:after {
         content: "";
         background-color: rgba(0, 0, 0, 0);
-        border: 5px solid rgba(63, 81, 181, 0.9);
+        border: 5px solid var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
         opacity: 0.9;
         border-left: 5px solid rgba(0, 0, 0, 0);
         border-right: 5px solid rgba(0, 0, 0, 0);
         border-radius: 50px;
-        box-shadow: 0 0 15px rgba(63, 81, 181, 0.9);
+        box-shadow: 0 0 15px var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
         width: 30px;
         height: 30px;
         animation: spinoffPulse 1s infinite linear;
@@ -62,7 +66,7 @@
         0% {
             transform: rotate(160deg);
             opacity: 0;
-            box-shadow: 0 0 1px rgba(63, 81, 181, 0.9);
+            box-shadow: 0 0 1px var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
         }
         50% {
             transform: rotate(145deg);

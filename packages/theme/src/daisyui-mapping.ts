@@ -138,6 +138,11 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	mix("--pie-correct-secondary", "success", "base100", 20),
 	legible("--pie-correct-tertiary", "success"),
 	legible("--pie-correct-icon", "success"),
+	// Authored red emphasis inside content. Taken from the error slot through the
+	// legible correction rather than mixed from a bare red: a red-toward-ink mix
+	// falls under 4.5:1 on seven of the 35 shipped themes (2.91:1 on `aqua`),
+	// while the corrected error family clears it on all of them.
+	legible("--pie-content-emphasis", "error"),
 	legible("--pie-incorrect", "error"),
 	mix("--pie-incorrect-secondary", "error", "base100", 20),
 	legible("--pie-incorrect-icon", "error"),

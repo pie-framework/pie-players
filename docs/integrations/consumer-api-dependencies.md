@@ -42,6 +42,20 @@ helper or constructs `ToolContentDependencyContext`; those are capability
 authoring surfaces. Root `ToolkitCoordinator`, resolver, registry, runtime, and
 custom-element signatures observed below remain unchanged.
 
+The theming pass that routed the content stylesheet, the vendored NDS button
+palette and the remaining tool chrome through canonical tokens was assessed
+against the recorded rows, not against a fresh consumer-checkout refresh, and
+does not advance the verification date. It changes values behind existing token
+names; no token name, selector, `dist` filename, custom-element tag, attribute
+or prop type changed, and content-style delivery is untouched. Host A keeps
+owning the tool-shell header through
+`--pie-section-player-card-header-background`, which the change only reads as
+before. The surfaces it newly makes theme-sensitive — `--pie-text`,
+`--pie-white`, `--pie-background-dark`, `--pie-primary`, `--pie-border`,
+`--pie-border-dark`, `--pie-button-active-bg`, `--pie-button-focus-outline` —
+are not in Host A's set list, so they resolve from the active theme there. See
+the two sections below for what a host sees.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |
@@ -375,12 +389,27 @@ specificity from outside, including with `!important`. Moving any of these
 tokens behind a cascade layer, or resolving them at build time, removes that
 lever.
 
+Authored-content classes and player chrome now read the canonical families
+rather than the literals they used to pin, so a host that sets a theme and none
+of these tokens gets theme-driven values where it previously got fixed ones.
+That is the intent — the literals were unreachable — but it is a rendering
+change without a build signal, the same class of surface as the rest of this
+section.
+
 Host R takes the opposite approach: it reads the token registry and inspects
 computed values at runtime, so it depends on token *names and metadata* staying
 addressable rather than on any particular value. It imports `tokens.css` and the
 DaisyUI `bridge.css` but **not** `color-schemes.css`, carrying its own
 `data-color-scheme` rules instead — so new upstream scheme mappings do not reach
 it until someone syncs them by hand.
+
+`--pie-fixed-hue-collapse` is one such mapping, added to the required scheme set:
+every built-in scheme sets `100%`, which collapses a component's own fixed hues
+into the palette. Host R's hand-carried scheme rules do not set it, so a
+component encoding data by hue keeps that hue under Host R's schemes even though
+it collapses under the shipped ones. Activating a scheme through `<pie-theme>`
+rather than by writing the attribute does supply it, since the resolver defaults
+it for any scheme it resolves.
 
 ## Direct `dist` path references
 
@@ -434,6 +463,22 @@ Consequences per host:
 
 Any further change to how content styles are delivered has to account for all
 three positions.
+
+Three rules were removed from it outright: a `#stimulus` / `#item` pair of
+50%-wide left floats, a `.lrn_feature h3` margin override and
+`.lrn_width_auto.table`. The float pair is the one to check against a host — it
+laid out two global ids as columns, so a host page carrying either id got the
+layout whether or not it wanted it, and the recorded rows show no host relying on
+that. The `lrn_` pair styled a third-party product's markup. Also gone from the
+heading reset is `font-weight: 500`, so authored headings render at the browser's
+weight; hosts V and A both load this stylesheet and will see that.
+
+Separately from delivery, the stylesheet's own colours now resolve through
+canonical tokens. For a host on the base light theme the values are the ones it
+already rendered, with one visible exception: legacy `kds-*` table headers take
+`--pie-background-dark`, so their fill lightens from `#d3d3d3` to `#ecedf1`.
+Hosts V and A both load a copy of this stylesheet and neither sets `--pie-text`
+or `--pie-white`, so both see it on upgrade.
 
 ## Change-risk quick reference
 

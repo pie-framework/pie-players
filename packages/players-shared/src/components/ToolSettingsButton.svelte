@@ -46,7 +46,7 @@
 	}
 
 	.tool-settings-button:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, currentColor 12%, transparent);
 	}
 
 	.tool-settings-button:focus-visible {

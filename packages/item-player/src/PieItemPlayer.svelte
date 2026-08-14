@@ -1238,7 +1238,8 @@
 					const elements = hostElement?.querySelectorAll(tag) ?? [];
 					for (const el of elements) {
 						if (el instanceof HTMLElement) {
-							el.style.borderBottom = "1px solid #ddd";
+							el.style.borderBottom =
+								"1px solid var(--pie-border-light, #ddd)";
 							el.style.paddingBottom = "20px";
 							el.style.marginBottom = "20px";
 						}
@@ -1971,7 +1972,7 @@
 	.pie-item-player-build-warning {
 		margin: 0;
 		font-size: 0.95rem;
-		color: #9a6700;
+		color: var(--pie-missing, #9a6700);
 		text-align: center;
 	}
 </style>

@@ -1634,9 +1634,10 @@ const DEFAULT_ENV = {
 		margin: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-radius: 0.5rem;
-		border: 1px solid color-mix(in srgb, #dc2626 40%, transparent);
-		background: color-mix(in srgb, #dc2626 12%, transparent);
-		color: #7f1d1d;
+		border: 1px solid
+			color-mix(in srgb, var(--pie-incorrect-icon, #dc2626) 40%, transparent);
+		background: color-mix(in srgb, var(--pie-incorrect-icon, #dc2626) 12%, transparent);
+		color: var(--pie-incorrect, #7f1d1d);
 		font-size: 0.9rem;
 	}
 

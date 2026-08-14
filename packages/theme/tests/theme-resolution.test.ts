@@ -70,6 +70,43 @@ describe("resolvePieTheme", () => {
 		expect(resolved.diagnostics).toEqual([]);
 	});
 
+	test("collapses fixed component hues under any scheme, built-in or custom", () => {
+		register([
+			{ id: "district-two-colour", variables: { "--pie-text": "#ffffff" } },
+			{
+				id: "district-keeps-hues",
+				variables: { "--pie-fixed-hue-collapse": "0%" },
+			},
+		]);
+
+		expect(resolvePieTheme({}).variables["--pie-fixed-hue-collapse"]).toBe(
+			"0%",
+		);
+		expect(
+			resolvePieTheme({ requestedScheme: "black-on-white" }).variables[
+				"--pie-fixed-hue-collapse"
+			],
+		).toBe("100%");
+		// A custom scheme is a palette a host chose for a learner: it collapses
+		// without having to know the token exists, and opts out by declaring it.
+		expect(
+			resolvePieTheme({ requestedScheme: "district-two-colour" }).variables[
+				"--pie-fixed-hue-collapse"
+			],
+		).toBe("100%");
+		expect(
+			resolvePieTheme({ requestedScheme: "district-keeps-hues" }).variables[
+				"--pie-fixed-hue-collapse"
+			],
+		).toBe("0%");
+		// An unavailable request leaves the base palette in force, hues included.
+		expect(
+			resolvePieTheme({ requestedScheme: "district-absent" }).variables[
+				"--pie-fixed-hue-collapse"
+			],
+		).toBe("0%");
+	});
+
 	test("validates custom contrast after final explicit overrides", () => {
 		register([
 			{

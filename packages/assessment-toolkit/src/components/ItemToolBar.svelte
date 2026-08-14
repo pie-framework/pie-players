@@ -1834,6 +1834,23 @@
 			// visually clipped by a parent's overflow:hidden + border-radius, so
 			// clicking/touching the corner tip of a handle would miss if this were hidden.
 			// Individual sections (header, content) carry their own overflow/radius.
+			// NDS palette bridge for the shell's header controls. They are created
+			// imperatively, so the scoped `.item-toolbar nds-icon-button` rule below
+			// never matches them: without this they kept a #146eb3 glyph on a
+			// near-white pill on top of a themed header. Set on the shell so every
+			// nds-icon-button inside inherits it. Same mapping as the style block —
+			// see scripts/check-theme-tokens.mjs.
+			shellEl.style.setProperty(
+				'--color-interactive-blue',
+				'var(--pie-calculator-button-color, var(--pie-button-color, var(--pie-text, #222)))'
+			);
+			shellEl.style.setProperty('--color-new-gray', 'var(--pie-background-dark, #f3f5f7)');
+			shellEl.style.setProperty('--color-primary-white', 'var(--pie-white, #ffffff)');
+			shellEl.style.setProperty('--color-primary-black', 'var(--pie-text, #000000)');
+			shellEl.style.setProperty(
+				'--color-focus-blue',
+				'var(--pie-button-focus-outline, #2b87ff)'
+			);
 			shellEl.style.overflow = 'visible';
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
 			shellEl.style.flexDirection = 'column';
@@ -1868,8 +1885,14 @@
 				// up the host-provided tint when set. Fallback is an off-white so
 				// the circular control buttons have a visible surface to contrast
 				// against (transparent would let the white shell body show through).
+					// Hosts rarely set the card-header var, so the default carries that
+					// look: --pie-button-active-bg is the DaisyUI mapping's contrast-tuned
+					// one-step-off-the-page fill (base-300 at 70% toward base-100, tuned to
+					// hold base-content at 4.5:1) and its light literal is the #f3f4f6 this
+					// used to pin. Pinned, it left the themed title text on a light grey
+					// strip — illegible under every dark theme.
 				headerEl.style.background =
-					'var(--pie-section-player-card-header-background, #f3f4f6)';
+					'var(--pie-section-player-card-header-background, var(--pie-button-active-bg, #f3f4f6))';
 				headerEl.style.color = 'var(--pie-text, #111827)';
 				headerEl.style.borderBottom = '1px solid var(--pie-border-light, #e5e7eb)';
 			} else {
@@ -2547,8 +2570,26 @@
 		--height-32: var(--pie-calculator-button-size, 2rem);
 		/* Host-settable accent for the calculator button: the NDS tertiary glyph
 		   colour derives from --color-interactive-blue, remapped here to a
-		   themeable variable. */
-		--color-interactive-blue: var(--pie-calculator-button-color, #146eb3);
+		   themeable variable. --pie-calculator-button-color is package-private, so
+		   nothing sets it and the default is what ships: it now resolves through
+		   --pie-button-color (DaisyUI base-content) instead of holding the Figma
+		   blue on every theme, with the literal as the no-theme last resort.
+		   Not --pie-primary or --pie-tertiary: both are `direct` mappings of
+		   DaisyUI slots chosen to pair with their own -content colour, so a glyph
+		   taken from either sits at 1.37:1 against the page under `pastel` and 11
+		   of the 35 shipped themes fall under SC 1.4.11's 3:1. */
+		--color-interactive-blue: var(--pie-calculator-button-color, var(--pie-button-color, var(--pie-text, #222)));
+		/* NDS palette bridge — keep in sync with the copies in tool-tts-inline
+		   and section-player SectionItemsPane (asserted by
+		   scripts/check-theme-tokens.mjs). The vendored button paints its fill,
+		   its on-accent glyph, its hover ring and its focus ring from the NDS
+		   design-system palette, which no PIE theme sets, so a tertiary button
+		   kept a #f3f5f7 pill on every page — and once the glyph followed the
+		   theme, a light glyph landed on that light pill. */
+		--color-new-gray: var(--pie-background-dark, #f3f5f7);
+		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-black: var(--pie-text, #000000);
+		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
 
 	.item-toolbar--sm nds-icon-button {

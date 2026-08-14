@@ -19,7 +19,9 @@ Tag: `pie-tool-periodic-table`
 
 - Full 118-element periodic table laid out on an 18x10 CSS grid
 - Element detail panel showing symbol, name, atomic mass, atomic number, electron configuration, and phase
-- Category filter badges (Alkali Metal, Transition Metal, Noble Gas, etc.)
+- Category filter badges (Alkali Metal, Transition Metal, Noble Gas, etc.), which
+  de-emphasise the elements outside the filter rather than removing them, so the
+  table keeps its layout
 - Category-based color coding
 - Keyboard accessible: focusable cells with Enter/Space to select
 

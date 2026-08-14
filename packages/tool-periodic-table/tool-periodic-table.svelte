@@ -98,16 +98,17 @@
 	});
 
 	/**
-	 * Filter elements by category
+	 * Whether a category filter is in force and this element falls outside it.
+	 *
+	 * The filter de-emphasises rather than hides: a periodic table read for one
+	 * category is still read against its layout, and dropping the other cells
+	 * leaves an unreadable grid of holes.
 	 */
-	let displayedElements: Element[] = $derived.by(() => {
-		if (selectedCategory === 'All') {
-			return allElements;
-		}
-		return allElements.filter(
-			(element: Element) => normalizeCategory(element.category) === selectedCategory
+	function isFilteredOut(element: Element): boolean {
+		return (
+			selectedCategory !== 'All' && normalizeCategory(element.category) !== selectedCategory
 		);
-	});
+	}
 
 	/**
 	 * Select element
@@ -219,11 +220,11 @@
 					{/if}
 
 					<!-- Periodic elements -->
-					{#each displayedElements as element (element.symbol)}
+					{#each allElements as element (element.symbol)}
 						<button
 							class="pie-tool-periodic-table__element pie-tool-periodic-table__category--{normalizeCategory(element.category).replace(' ', '-').toLowerCase()}"
 							class:pie-tool-periodic-table__element--selected={selectedElement?.symbol === element.symbol}
-							class:pie-tool-periodic-table__element--dim={selectedCategory !== 'All' && normalizeCategory(element.category) !== selectedCategory}
+							class:pie-tool-periodic-table__element--dim={isFilteredOut(element)}
 							style="grid-row: {element.ypos}; grid-column: {element.xpos};"
 							tabindex="0"
 								onclick={() => showElementDetails(element)}
@@ -234,7 +235,11 @@
 									}
 								}}
 							title={element.name}
-							aria-label="{element.name}, Symbol: {element.symbol}, Atomic number: {element.number}, Atomic mass: {element.atomic_mass.toFixed(3)}, Category: {element.category}"
+							aria-label="{element.name}, Symbol: {element.symbol}, Atomic number: {element.number}, Atomic mass: {element.atomic_mass.toFixed(3)}, Category: {element.category}{isFilteredOut(
+								element
+							)
+								? ', outside the current filter'
+								: ''}"
 						>
 							<div class="pie-tool-periodic-table__atomic-number">{element.number}</div>
 							<div class="pie-tool-periodic-table__symbol">{element.symbol}</div>
@@ -461,6 +466,29 @@
 		transition: transform 0.1s ease-in-out;
 	}
 
+	/*
+	 * A cell outside the active filter. It drops its category fill and takes the
+	 * panel surface with theme ink, rather than fading: an opacity low enough to
+	 * read as dimmed composites the cell text towards the page and takes it under
+	 * 4.5:1 (0.4 leaves it near 1.8:1), and these cells stay focusable and
+	 * clickable, so SC 1.4.3 applies to them. Removing the fill also survives a
+	 * collapsed palette, where the grayscale() this rule used to apply is a no-op.
+	 *
+	 * The second cue is the border style, not its colour: under a palette the
+	 * missing fill carries the state, but under a collapsed one every cell sits on
+	 * a near-uniform surface, and dashed against solid is the difference a
+	 * two-colour palette still has room for. Taking the border colour instead reads
+	 * as emphasis, since the lit cells' own edge is deliberately faint.
+	 *
+	 * Declared before :hover, :focus and --selected so those keep their boundary
+	 * on a filtered-out cell, which can still be any of the three.
+	 */
+	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--dim {
+		background-color: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border-style: dashed;
+	}
+
 	.pie-tool-periodic-table__element:hover {
 		border-color: var(--pie-primary-dark, #2c3e50);
 		transform: scale(1.03);
@@ -477,12 +505,6 @@
 		border-color: var(--pie-primary-dark, #2c3e50);
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--pie-border-dark, #000) 12%, transparent);
 		z-index: 11;
-	}
-
-	/* Dim out elements not in the selected category */
-	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--dim {
-		filter: grayscale(80%);
-		opacity: 0.4;
 	}
 
 	/* Text inside each element box */

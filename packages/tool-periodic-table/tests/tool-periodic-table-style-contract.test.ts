@@ -107,6 +107,45 @@ describe("periodic table category encoding", () => {
 		expect(collapsed).toContain("background: var(--pie-background, #fff);");
 	});
 
+	test("the filter dims in place instead of emptying the grid", () => {
+		// The dim class was unreachable while the each-block iterated a filtered
+		// list: every cell it could have applied to had already been removed.
+		expect(source).toContain("{#each allElements as element (element.symbol)}");
+		expect(source).toContain(
+			"class:pie-tool-periodic-table__element--dim={isFilteredOut(element)}",
+		);
+		// Dimming is visual, so the filtered-out state is in the accessible name too.
+		expect(source).toContain("', outside the current filter'");
+	});
+
+	test("a dimmed cell drops its fill rather than fading below AA", () => {
+		const dimRule = collapsed.slice(
+			collapsed.indexOf(
+				".pie-tool-periodic-table__element.pie-tool-periodic-table__element--dim {",
+			),
+		);
+		const body = dimRule.slice(0, dimRule.indexOf("}"));
+
+		expect(body).toContain("background-color: var(--pie-background, #fff);");
+		expect(body).toContain(`color: var(--pie-text, ${PINNED_INK});`);
+		expect(body).not.toContain("opacity");
+		expect(body).not.toContain("grayscale");
+		// The cue that survives a collapsed palette, where every cell shares a
+		// surface. Style rather than colour: a stronger edge would read as emphasis.
+		expect(body).toContain("border-style: dashed;");
+		expect(body).not.toContain("border-color");
+		// Ahead of the three rules a filtered-out cell can still match, so their
+		// boundary wins at equal specificity.
+		const dimAt = collapsed.indexOf("__element--dim {");
+		for (const later of [
+			"__element:hover {",
+			"__element:focus {",
+			"__element--selected {",
+		]) {
+			expect(dimAt, later).toBeLessThan(collapsed.indexOf(later));
+		}
+	});
+
 	test("the pinned ink clears AA on every fill, at every opacity the cell uses", () => {
 		// The cell fades its secondary text: 0.9 for the element name, 0.8 for the
 		// atomic number and mass. Measuring the ink alone would miss both.

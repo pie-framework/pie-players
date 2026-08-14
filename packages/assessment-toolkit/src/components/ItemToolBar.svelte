@@ -2547,8 +2547,15 @@
 		--height-32: var(--pie-calculator-button-size, 2rem);
 		/* Host-settable accent for the calculator button: the NDS tertiary glyph
 		   colour derives from --color-interactive-blue, remapped here to a
-		   themeable variable. */
-		--color-interactive-blue: var(--pie-calculator-button-color, #146eb3);
+		   themeable variable. --pie-calculator-button-color is package-private, so
+		   nothing sets it and the default is what ships: it now resolves through
+		   --pie-button-color (DaisyUI base-content) instead of holding the Figma
+		   blue on every theme, with the literal as the no-theme last resort.
+		   Not --pie-primary or --pie-tertiary: both are `direct` mappings of
+		   DaisyUI slots chosen to pair with their own -content colour, so a glyph
+		   taken from either sits at 1.37:1 against the page under `pastel` and 11
+		   of the 35 shipped themes fall under SC 1.4.11's 3:1. */
+		--color-interactive-blue: var(--pie-calculator-button-color, var(--pie-button-color, var(--pie-text, #222)));
 	}
 
 	.item-toolbar--sm nds-icon-button {

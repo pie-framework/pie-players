@@ -67,7 +67,7 @@ describe("tool-tts-inline trigger styling contract", () => {
 			"",
 		);
 		expect(body).toContain(
-			"--color-interactive-blue:var(--pie-tts-button-color,#146eb3)",
+			"--color-interactive-blue:var(--pie-tts-button-color,var(--pie-button-color,var(--pie-text,#222)))",
 		);
 	});
 
@@ -125,36 +125,65 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("tertiary trigger glyph meets WCAG AA contrast (interactive blue on NDS new-gray)", () => {
-		// NDS `variant="tertiary"`: --color-interactive-blue (#146eb3) glyph on
-		// --color-new-gray (#f3f5f7). Guard that pairing stays AA.
-		expect(contrastRatio("#146eb3", "#f3f5f7")).toBeGreaterThanOrEqual(4.5);
+	test("tertiary trigger glyph meets WCAG AA contrast on the NDS new-gray hover", () => {
+		// NDS `variant="tertiary"` paints --color-interactive-blue on
+		// --color-new-gray (#f3f5f7). The glyph now defaults to the theme's
+		// --pie-button-color (#374151 under the base light theme) rather than the
+		// #146eb3 literal, so that is the pairing to guard.
+		expect(contrastRatio("#374151", "#f3f5f7")).toBeGreaterThanOrEqual(4.5);
 	});
 });
 
 describe("tool-tts-inline overlay redesign contract", () => {
 	const stripped = styleSource.replace(/\s+/g, "");
+	// Comments name the literals they replaced, so guard the declarations only.
+	const declarations = styleSource
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/\s+/g, "");
 
-	test("overlay panels render as a white card with the Figma dropdown shadow", () => {
+	test("overlay panels render as a themed card with the Figma dropdown shadow", () => {
 		// Grouped rule for floating-overlay + left-aligned panels.
 		expect(stripped).toContain(
 			".pie-tool-tts-inline__panel--floating,.pie-tool-tts-inline__panel--left-aligned-inline{",
 		);
-		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
+		// --pie-white, not --pie-background: the base light theme makes the latter
+		// transparent, which a floating card cannot be.
+		expect(stripped).toContain(
+			"background:var(--pie-tts-selected-bg,var(--pie-surface,var(--pie-white,#fff)))",
+		);
 		expect(stripped).toContain(
 			"box-shadow:var(--pie-tts-menu-shadow,01px5px0rgba(0,0,0,0.3))",
+		);
+		// The black shadow disappears on a dark surface, so the card keeps a
+		// text-derived hairline that reads on either, with a hook to opt out.
+		expect(stripped).toContain(
+			"border:1pxsolidvar(--pie-tts-card-border,color-mix(insrgb,var(--pie-text,#000)15%,transparent))",
 		);
 	});
 
 	test("media + selected-speed accent flows through the settable --pie-tts-button-color", () => {
-		expect(stripped).toContain("color:var(--pie-tts-button-color,#146eb3)");
+		expect(stripped).toContain(
+			"color:var(--pie-tts-button-color,var(--pie-button-color,var(--pie-text,#222)))",
+		);
 	});
 
-	test("selected speed uses a white chip; muted text otherwise (roomy)", () => {
-		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
+	test("selected speed uses a themed chip; plain text otherwise (roomy)", () => {
+		// The chip fill is the mapping's contrast-tuned --pie-button-active-bg.
 		expect(stripped).toContain(
-			"color:var(--pie-tts-inline-muted-color,#5b6b73)",
+			"background:var(--pie-selected-button-background,var(--pie-button-active-bg,#f3f5f7))",
 		);
+		expect(stripped).toContain(
+			"color:var(--pie-tts-inline-muted-color,var(--pie-button-color,var(--pie-text,#5b6b73)))",
+		);
+	});
+
+	test("no overlay surface paints a literal colour a theme cannot reach", () => {
+		// The regression this guards: the overlay used to paint #146eb3 glyphs on a
+		// #fff card, so a DaisyUI `valentine` page showed a blue panel on a pink
+		// player. Every literal here is now a last-resort fallback behind a
+		// canonical token, never a first value.
+		expect(declarations).not.toContain("#146eb3");
+		expect(declarations).not.toContain("var(--pie-tts-selected-bg,#fff)");
 	});
 
 	test("compact stacked card carries the Figma elevation shadow", () => {
@@ -294,16 +323,18 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 
 		// Foreground fallback matches __control, NOT --plain. Both declare `color`
 		// at equal specificity and __control comes later in the sheet, so it wins
-		// and --plain's accent colour is dead. Falling back to the accent would
-		// turn the glyph blue on open. Verified in Chromium: the plain trigger
-		// computes the dark --pie-button-color, not #146eb3.
+		// and --plain's accent declaration is dead. Verified in Chromium: the plain
+		// trigger computes --pie-button-color either way.
 		expect(control).toContain(
 			"color:var(--pie-button-color,var(--pie-text,#222))",
 		);
 		expect(active).toContain("var(--pie-button-color,var(--pie-text,#222))");
-		// Guard the trap directly: the accent must not be the active fallback.
-		expect(active).not.toContain("var(--pie-tts-button-color,#146eb3)");
-		expect(plain).toContain("color:var(--pie-tts-button-color,#146eb3)");
+		// Guard the trap directly: the active fallback must not go through the
+		// host-settable accent, which would restyle the glyph on open.
+		expect(active).not.toContain("var(--pie-tts-button-color,");
+		expect(plain).toContain(
+			"color:var(--pie-tts-button-color,var(--pie-button-color,var(--pie-text,#222)))",
+		);
 	});
 
 	test("remaps the NDS trigger accent rather than painting a box it lacks", () => {

@@ -88,6 +88,7 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-tool-shell-zoom-comp",
 	"--pie-toolbar-zoom-comp",
 	"--pie-tts-button-color",
+	"--pie-tts-card-border",
 	"--pie-tts-inline-muted-color",
 	"--pie-tts-left-aligned-panel-width",
 	"--pie-tts-line-highlight",

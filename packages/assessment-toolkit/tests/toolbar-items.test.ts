@@ -107,7 +107,19 @@ describe("calculator nds-icon-button styling contract", () => {
 
 	test("calculator glyph colour is the settable --pie-calculator-button-color", () => {
 		expect(stripped).toContain(
-			"--color-interactive-blue:var(--pie-calculator-button-color,#146eb3)",
+			"--color-interactive-blue:var(--pie-calculator-button-color,var(--pie-button-color,var(--pie-text,#222)))",
+		);
+	});
+
+	test("the calculator glyph default is themed, not a literal", () => {
+		// The hook is package-private, so its fallback is what every host renders.
+		// A literal there kept the glyph #146eb3 blue on a pink `valentine` toolbar.
+		const declarations = source
+			.slice(source.indexOf("<style"))
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\s+/g, "");
+		expect(declarations).not.toContain(
+			"var(--pie-calculator-button-color,#146eb3)",
 		);
 	});
 

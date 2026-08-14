@@ -403,6 +403,14 @@ DaisyUI `bridge.css` but **not** `color-schemes.css`, carrying its own
 `data-color-scheme` rules instead — so new upstream scheme mappings do not reach
 it until someone syncs them by hand.
 
+`--pie-fixed-hue-collapse` is one such mapping, added to the required scheme set:
+every built-in scheme sets `100%`, which collapses a component's own fixed hues
+into the palette. Host R's hand-carried scheme rules do not set it, so a
+component encoding data by hue keeps that hue under Host R's schemes even though
+it collapses under the shipped ones. Activating a scheme through `<pie-theme>`
+rather than by writing the attribute does supply it, since the resolver defaults
+it for any scheme it resolves.
+
 ## Direct `dist` path references
 
 Host A lists four stylesheets in its build config by literal path:

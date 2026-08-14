@@ -554,12 +554,18 @@
 	 * The category fills below are a fixed data encoding, so their ink has to be
 	 * fixed too: everything carrying one otherwise inherits --pie-text, which is
 	 * near-white under every dark theme and left the element symbol and name at
-	 * about 1.2:1 on a pastel. Measured against the darkest fill in the set,
-	 * #a3d8f4, this ink is 10.7:1.
+	 * about 1.2:1 on a pastel. The tightest pairing this ink leaves is the
+	 * 0.8-opacity atomic mass on the darkest fill, #ff9e9e, at 6.0:1; the symbol
+	 * on the same fill is 9.0:1.
 	 *
-	 * Not addressed here: under a PNP colour scheme, encoding a category by hue
-	 * is meaningless to a learner who chose one — the fills should collapse to the
-	 * scheme, which is a design question rather than a colour swap.
+	 * A colour scheme takes that encoding away: --pie-fixed-hue-collapse is 100%
+	 * under every scheme, which folds each fill into --pie-background-dark and the
+	 * ink back into --pie-text — the two colours the learner asked for, plus the
+	 * scheme's own recessed surface so a cell still reads as a cell. Category then
+	 * lives where it does not depend on hue: the badge row filters by it, the
+	 * selected-element panel names it, and each cell's accessible name carries it.
+	 * The mixes are exact at both ends, so a Base Theme renders the authored
+	 * pastels byte for byte.
 	 */
 	.pie-tool-periodic-table__category--alkali-metal,
 	.pie-tool-periodic-table__category--alkaline-earth-metal,
@@ -575,63 +581,131 @@
 	.pie-tool-periodic-table__category--nonmetal,
 	.pie-tool-periodic-table__category--halogen,
 	.pie-tool-periodic-table__category--unknown {
-		color: #111827;
+		color: color-mix(
+			in srgb,
+			var(--pie-text, #111827) var(--pie-fixed-hue-collapse, 0%),
+			#111827
+		);
+		/* Collapsed fills sit on the panel surface at about 1.1:1, so the cell edge
+		   has to carry the separation a pastel used to: --pie-border is corrected to
+		   3:1 against the page on every palette. */
+		border-color: color-mix(
+			in srgb,
+			var(--pie-border, #646464) var(--pie-fixed-hue-collapse, 0%),
+			color-mix(in srgb, var(--pie-border-dark, #000) 12%, transparent)
+		);
 	}
 
 	/* Category-based background colors (matching production implementation) */
 	.pie-tool-periodic-table__category--alkali-metal {
-		background-color: #ff9e9e;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#ff9e9e
+		);
 	}
 
 	.pie-tool-periodic-table__category--alkaline-earth-metal {
-		background-color: #ffdc8a;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#ffdc8a
+		);
 	}
 
 	.pie-tool-periodic-table__category--alkaline-earth {
-		background-color: #ffdc8a; /* Also handle without "-metal" suffix */
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#ffdc8a
+		); /* Also handle without "-metal" suffix */
 	}
 
 	.pie-tool-periodic-table__category--lanthanide {
-		background-color: #f9a8d4;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f9a8d4
+		);
 	}
 
 	.pie-tool-periodic-table__category--actinide {
-		background-color: #e0aaff;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#e0aaff
+		);
 	}
 
 	.pie-tool-periodic-table__category--transition-metal {
-		background-color: #a3d8f4;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#a3d8f4
+		);
 	}
 
 	.pie-tool-periodic-table__category--post-transition-metal {
-		background-color: #b4f8c8;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#b4f8c8
+		);
 	}
 
 	.pie-tool-periodic-table__category--metalloid {
-		background-color: #d9f99d;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#d9f99d
+		);
 	}
 
 	.pie-tool-periodic-table__category--diatomic-nonmetal {
-		background-color: #f5f5f5;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f5f5f5
+		);
 	}
 
 	.pie-tool-periodic-table__category--noble-gas {
-		background-color: #c4b5fd;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#c4b5fd
+		);
 	}
 
 	.pie-tool-periodic-table__category--polyatomic-nonmetal {
-		background-color: #fbcfe8;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#fbcfe8
+		);
 	}
 
 	.pie-tool-periodic-table__category--nonmetal {
-		background-color: #f0f0f0; /* Production implementation also has this */
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f0f0f0
+		); /* Production implementation also has this */
 	}
 
 	.pie-tool-periodic-table__category--halogen {
-		background-color: #8ef5d0; /* Production implementation has halogen color */
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#8ef5d0
+		); /* Production implementation has halogen color */
 	}
 
 	.pie-tool-periodic-table__category--unknown {
-		background-color: #f5f5f5;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f5f5f5
+		);
 	}
 </style>

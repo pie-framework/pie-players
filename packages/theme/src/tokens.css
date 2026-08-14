@@ -33,6 +33,7 @@
 	--pie-disabled-secondary: #ababab;
 	--pie-dropdown-background: #e0e1e6;
 	--pie-faded-primary: #dcdafb;
+	--pie-fixed-hue-collapse: 0%;
 	--pie-focus-checked: #bbdefb;
 	--pie-focus-checked-border: #1565c0;
 	--pie-focus-unchecked: #e0e0e0;
@@ -89,6 +90,7 @@
 	--pie-disabled-secondary: #777777;
 	--pie-dropdown-background: #2a2a2a;
 	--pie-faded-primary: #666600;
+	--pie-fixed-hue-collapse: 0%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #ffff00;
 	--pie-focus-unchecked: #666666;

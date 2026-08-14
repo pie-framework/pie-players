@@ -82,6 +82,11 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-button-hover-color": "#111827",
 	"--pie-button-active-bg": "#f3f4f6",
 	"--pie-button-focus-outline": "#3b82f6",
+	// Share by which a component's own fixed hues collapse into the palette. A
+	// Base Theme keeps them, because it is a full palette and a hue encoding
+	// still reads against it; every scheme below sets 100%, because a
+	// two-colour palette is a promise the whole surface has to keep.
+	"--pie-fixed-hue-collapse": "0%",
 };
 
 // The three component-public accessibility tokens participate in built-in
@@ -142,6 +147,7 @@ const DARK_BASE_THEME: ThemeVariables = {
 	"--pie-button-hover-color": "#ffffff",
 	"--pie-button-active-bg": "#4b5563",
 	"--pie-button-focus-outline": "#93c5fd",
+	"--pie-fixed-hue-collapse": "0%",
 };
 
 const DARK_BASE_ACCESSIBILITY_VARS: ThemeVariables = {
@@ -213,6 +219,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#000000",
 				"--pie-button-active-bg": "#eeeeee",
 				"--pie-button-focus-outline": "#0000cc",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -271,6 +278,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#ffffff",
 				"--pie-button-active-bg": "#222222",
 				"--pie-button-focus-outline": "#ffff00",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -329,6 +337,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#3d0022",
 				"--pie-button-active-bg": "#99ddbb",
 				"--pie-button-focus-outline": "#660044",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -387,6 +396,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#ffff00",
 				"--pie-button-active-bg": "#000044",
 				"--pie-button-focus-outline": "#ffff66",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -445,6 +455,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#000000",
 				"--pie-button-active-bg": "#ff99bb",
 				"--pie-button-focus-outline": "#880044",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -503,6 +514,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#e0e0e0",
 				"--pie-button-active-bg": "#222222",
 				"--pie-button-focus-outline": "#aaaaaa",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -561,6 +573,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#4a4a4a",
 				"--pie-button-active-bg": "#d0d0d0",
 				"--pie-button-focus-outline": "#3d3d3d",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -619,6 +632,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#8e2464",
 				"--pie-button-active-bg": "#a6d0b2",
 				"--pie-button-focus-outline": "#6d1a4c",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -677,6 +691,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#000000",
 				"--pie-button-active-bg": "#b982c8",
 				"--pie-button-focus-outline": "#4a1259",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -735,6 +750,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#ffff55",
 				"--pie-button-active-bg": "#243a63",
 				"--pie-button-focus-outline": "#ffff99",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 	]);
@@ -781,6 +797,15 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-background",
 			minimum: 4.5,
 			role: "ordinary text",
+		},
+		{
+			// Where a fixed hue collapses to: a component folding its own encoding
+			// into the palette lands on this surface with this ink, so the pair has
+			// to hold on its own and not only against the page.
+			foreground: "--pie-text",
+			background: "--pie-background-dark",
+			minimum: 4.5,
+			role: "recessed surface text",
 		},
 		{
 			foreground: "--pie-tertiary",

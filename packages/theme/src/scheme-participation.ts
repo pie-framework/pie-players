@@ -38,6 +38,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-disabled-secondary": "required",
 	"--pie-dropdown-background": "required",
 	"--pie-faded-primary": "required",
+	"--pie-fixed-hue-collapse": "required",
 	"--pie-focus-checked": "required",
 	"--pie-focus-checked-border": "required",
 	"--pie-focus-outline": "excluded",

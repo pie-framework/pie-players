@@ -512,6 +512,21 @@
 		"fallbackPolicy": "Canonical low-emphasis primary-action token."
 	},
 	{
+		"name": "--pie-fixed-hue-collapse",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "palette",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Share, as a percentage, by which a component's own fixed hues collapse into the palette's surface and ink. Not a colour: a component mixes its fixed value towards --pie-background-dark and --pie-text by this share, so 0% keeps the hue exactly as authored and 100% removes it. Base Themes set 0%; every colour scheme sets 100%, because a two-colour palette is a promise a fixed hue breaks -- the periodic table's category fills are the first consumer. A palette that keeps hue encodings must set 0% explicitly; a registered custom scheme that says nothing collapses them."
+	},
+	{
 		"name": "--pie-focus-checked",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

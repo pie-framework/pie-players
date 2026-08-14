@@ -23,6 +23,20 @@ Tag: `pie-tool-periodic-table`
 - Category-based color coding
 - Keyboard accessible: focusable cells with Enter/Space to select
 
+## Category colours
+
+Category fills are a fixed palette, not theme tokens: they encode the data, so
+their ink is pinned to match rather than inherited from `--pie-text`, which is
+near-white under a dark theme.
+
+Under a colour scheme they collapse. `--pie-fixed-hue-collapse` is `100%` there,
+which folds every fill into `--pie-background-dark` and the ink back into
+`--pie-text`, and takes the cell edge to `--pie-border` so a cell still reads as
+a cell. Category then lives in the badge row that filters by it, the
+selected-element panel that names it, and each cell's accessible name. A host
+that wants the encoding kept under its own registered scheme sets
+`--pie-fixed-hue-collapse: 0%` in that scheme.
+
 ## Integration
 
 Registered through the `ToolRegistry` as `periodicTable`. Managed by `ToolkitCoordinator` via `tools.placement`.

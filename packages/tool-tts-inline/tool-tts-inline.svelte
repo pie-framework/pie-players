@@ -220,8 +220,14 @@
 	let requestedPlaybackRate = $state<number | null>(null);
 	let requestedPlaybackChoicesKey = $state<string | null>(null);
 	let playActionInFlight = $state(false);
+	let playbackStartInFlight = $state(false);
 	let handoffInProgress = $state(false);
 	let highlightTargetResolverProviderDisposer: (() => void) | null = null;
+	const startupInFlight = $derived(playActionInFlight || playbackStartInFlight);
+	let lastSyncedPlaybackRateTarget: {
+		service: TtsServiceApi;
+		choicesKey: string;
+	} | null = null;
 	const speedChoices = $derived.by(() => normalizeTTSSpeedControlOptions(speedOptions));
 	const speedChoicesKey = $derived.by(() => getSpeedChoicesKey(speedChoices));
 	const visibleSpeedChoices = $derived.by(() =>
@@ -285,6 +291,7 @@
 	}
 
 	function resetLocalPlaybackUi(status = '', keepControlsVisible = false): void {
+		playbackStartInFlight = false;
 		speaking = false;
 		paused = false;
 		controlsVisible = keepControlsVisible;
@@ -425,12 +432,22 @@
 			paused = state === 'paused';
 		};
 		const stateListener = (state: unknown) => {
+			const playbackState = String(state);
 			// Read the focused control BEFORE the flags change: the moment `speaking`
 			// flips false (reading finished, or was stopped elsewhere), Svelte marks
 			// rewind / fast-forward disabled and the browser blurs whichever one held
 			// focus — so this is the last point at which it can be identified.
 			const wasSeekControlFocused = isSeekControlFocused();
-			syncFromState(state as string);
+			syncFromState(playbackState);
+			if (playbackState === 'playing') {
+				playbackStartInFlight = false;
+			}
+			if (playbackState === 'playing' && statusMessage === 'Starting reading') {
+				statusMessage = 'Reading started';
+			}
+			if (playbackState === 'error' || playbackState === 'idle') {
+				playbackStartInFlight = false;
+			}
 			if (wasSeekControlFocused && !speaking) {
 				queueMicrotask(moveFocusOffDisabledSeekControl);
 			}
@@ -615,8 +632,28 @@
 		return state === 'playing' || state === 'paused' || state === 'loading';
 	}
 
+	function handlePlaybackStartFailure(
+		resolverDisposer: (() => void) | null,
+	): void {
+		const hadPanelFocus = panelHasFocus();
+		resetLocalPlaybackUi('Unable to start reading');
+		if (isActiveOwner()) {
+			releaseActiveOwner();
+		}
+		if (highlightCoordinator) {
+			highlightCoordinator.clearTTS();
+		}
+		clearHighlightTargetResolverProvider(resolverDisposer);
+		if (hadPanelFocus) {
+			queueMicrotask(() => {
+				focusTriggerIfPanelHadFocus(true);
+			});
+		}
+	}
+
 	async function startSpeaking(): Promise<void> {
 		if (!ttsService) return;
+		let resolverDisposer: (() => void) | null = null;
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
 			console.warn('[TTS Inline] No target container found from shell scope context');
@@ -633,9 +670,14 @@
 				ttsService.setHighlightCoordinator(highlightCoordinator);
 			}
 			await syncTTSPlaybackRate(ttsService, playbackRate);
-			const resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
+			lastSyncedPlaybackRateTarget = {
+				service: ttsService,
+				choicesKey: speedChoicesKey,
+			};
+			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
-			statusMessage = 'Reading started';
+			playbackStartInFlight = true;
+			statusMessage = 'Starting reading';
 			void ttsService.speak(text, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
@@ -643,11 +685,7 @@
 				contentElement: readingTarget,
 			} as any).catch((error) => {
 				console.error('[TTS Inline] Error:', error);
-				statusMessage = 'Unable to start reading';
-				if (highlightCoordinator) {
-					highlightCoordinator.clearTTS();
-				}
-				clearHighlightTargetResolverProvider(resolverDisposer);
+				handlePlaybackStartFailure(resolverDisposer);
 			}).finally(() => {
 				if (!shouldRetainHighlightTargetResolverProvider()) {
 					clearHighlightTargetResolverProvider(resolverDisposer);
@@ -655,16 +693,18 @@
 			});
 		} catch (error) {
 			console.error('[TTS Inline] Error:', error);
-			statusMessage = 'Unable to start reading';
-			if (highlightCoordinator) {
-				highlightCoordinator.clearTTS();
-			}
-			clearHighlightTargetResolverProvider();
+			handlePlaybackStartFailure(resolverDisposer);
 		}
 	}
 
 	async function handlePlayPause() {
 		if (!ttsService) return;
+		if (
+			startupInFlight ||
+			(isActiveOwner() && String(ttsService.getState?.() || '') === 'loading')
+		) {
+			return;
+		}
 		if (isActiveOwner() && paused) {
 			ttsService.resume();
 			statusMessage = 'Reading resumed';
@@ -757,9 +797,17 @@
 		requestedPlaybackRate = option.rate;
 		requestedPlaybackChoicesKey = speedChoicesKey;
 		statusMessage = `Playback speed ${option.label}`;
+		const syncTarget = {
+			service,
+			choicesKey: speedChoicesKey,
+		};
+		lastSyncedPlaybackRateTarget = syncTarget;
 		try {
 			await syncTTSPlaybackRate(service, option.rate);
 		} catch (error) {
+			if (lastSyncedPlaybackRateTarget === syncTarget) {
+				lastSyncedPlaybackRateTarget = null;
+			}
 			console.error('[TTS Inline] Playback speed change failed:', error);
 			requestedPlaybackRate = previousRequestedRate;
 			requestedPlaybackChoicesKey = previousRequestedChoicesKey;
@@ -814,13 +862,30 @@
 
 	$effect(() => {
 		const service = ttsService;
-		const rate = playbackRate;
+		const choicesKey = speedChoicesKey;
 		const active = speaking || paused;
 		if (!service || !active || !isActiveOwner()) return;
+		if (
+			lastSyncedPlaybackRateTarget?.service === service &&
+			lastSyncedPlaybackRateTarget.choicesKey === choicesKey
+		) {
+			return;
+		}
+		const syncTarget = { service, choicesKey };
+		lastSyncedPlaybackRateTarget = syncTarget;
 		let cancelled = false;
 		queueMicrotask(() => {
-			if (cancelled) return;
-			void syncTTSPlaybackRate(service, rate);
+			if (cancelled || lastSyncedPlaybackRateTarget !== syncTarget) return;
+			// Reading this derived value outside the effect's tracked body keeps user
+			// speed selections on the explicit handler path. This effect owns only
+			// external speed-options/service changes while playback is active.
+			const rate = playbackRate;
+			void syncTTSPlaybackRate(service, rate).catch((error) => {
+				if (lastSyncedPlaybackRateTarget === syncTarget) {
+					lastSyncedPlaybackRateTarget = null;
+				}
+				console.error('[TTS Inline] External playback speed sync failed:', error);
+			});
 		});
 		return () => {
 			cancelled = true;
@@ -1012,7 +1077,7 @@
 							'aria-expanded': controlsVisible ? 'true' : 'false',
 							'aria-controls': controlsVisible ? panelId : null,
 							'aria-pressed': controlsVisible ? 'true' : 'false',
-							'aria-busy': playActionInFlight ? 'true' : null,
+							'aria-busy': startupInFlight ? 'true' : null,
 						}}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
 						type="circle"
@@ -1036,7 +1101,7 @@
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
 					aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-					aria-busy={playActionInFlight ? 'true' : undefined}
+					aria-busy={startupInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
 				>

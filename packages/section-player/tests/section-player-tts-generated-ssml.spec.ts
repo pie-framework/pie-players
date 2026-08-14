@@ -53,6 +53,7 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 			enabled: true,
 			backend: "browser",
 			transportMode: "pie",
+			defaultVoice: undefined,
 		});
 		await coordinator?.ensureTTSReady?.(
 			coordinator?.getToolConfig?.("textToSpeech"),

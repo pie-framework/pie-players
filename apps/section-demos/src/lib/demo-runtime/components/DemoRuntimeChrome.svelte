@@ -7,7 +7,6 @@
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
 	import '@pie-players/pie-section-player-tools-tts-settings';
 	import '@pie-players/pie-theme';
-	import '@pie-players/pie-theme/components.css';
 	import DemoInfoDialog from './DemoInfoDialog.svelte';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
@@ -198,12 +197,18 @@
 		hydratedTtsSettingsCoordinator = coordinator;
 		hydratedTtsSettingsStorageKey = storageKey;
 		untrack(() => {
-			void applyStoredSectionDemoTtsSettings({
-				coordinator,
-				storage: window.localStorage,
-				storageKey
-			}).catch((error) => {
-				console.warn('[section-demos] Failed to restore persisted TTS settings:', error);
+			void (async () => {
+				const restored = await applyStoredSectionDemoTtsSettings({
+					coordinator,
+					storage: window.localStorage,
+					storageKey
+				});
+				if (restored) return;
+				const config = coordinator.getToolConfig('textToSpeech');
+				if (config?.enabled === false || config?.backend !== 'browser') return;
+				await coordinator.ensureTTSReady(config);
+			})().catch((error) => {
+				console.warn('[section-demos] Failed to initialize TTS settings:', error);
 			});
 		});
 	});

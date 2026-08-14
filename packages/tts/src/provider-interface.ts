@@ -19,8 +19,12 @@ export interface StandardTTSConfig {
 	/**
 	 * Voice identifier (provider-specific)
 	 *
+	 * For the Browser provider, prefer `SpeechSynthesisVoice.voiceURI`; the
+	 * exposed voice `name` is also accepted. An explicit Browser identifier must
+	 * resolve to a voice exposed by that browser.
+	 *
 	 * @standard W3C Web Speech API (concept)
-	 * @example "Joanna" (Polly), "en-US-Standard-A" (Google), browser voice name
+	 * @example "Joanna" (Polly), "en-US-Standard-A" (Google), browser voiceURI or name
 	 */
 	voice?: string;
 
@@ -193,6 +197,13 @@ export interface ITTSProviderImplementation {
 	 * Check if paused
 	 */
 	isPaused(): boolean;
+
+	/**
+	 * Playback-start callback (optional).
+	 * Providers that expose it call it only when native/media playback actually
+	 * begins, allowing service state and highlighting to follow audible playback.
+	 */
+	onPlaybackStart?: () => void;
 
 	/**
 	 * Word boundary callback (optional)

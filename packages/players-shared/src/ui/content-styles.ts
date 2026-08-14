@@ -30,6 +30,26 @@ const MARKER_ATTRIBUTE = "data-pie-content-styles";
  */
 const SENTINEL_PROPERTY = "--pie-content-styles";
 
+// Svelte's dev-mode custom-element reset expands `all: unset` into individual
+// declarations, including custom properties it has observed elsewhere in the
+// bundle. That can produce `--pie-content-styles: unset` on a scoped selector;
+// it is a reset, not evidence that a host loaded components.css.
+const CSS_WIDE_RESET_VALUES = new Set([
+	"inherit",
+	"initial",
+	"revert",
+	"revert-layer",
+	"unset",
+]);
+
+const declaresContentStylesSentinel = (rule: CSSRule): boolean => {
+	const value = (rule as CSSStyleRule).style
+		?.getPropertyValue(SENTINEL_PROPERTY)
+		.trim()
+		.toLowerCase();
+	return Boolean(value && !CSS_WIDE_RESET_VALUES.has(value));
+};
+
 /** `<html data-pie-content-styles="host">` opts a host out of installation. */
 const OPT_OUT_ATTRIBUTE = "data-pie-content-styles";
 const OPT_OUT_VALUE = "host";
@@ -134,7 +154,7 @@ const countHostContentStyleSheets = (): number => {
 		}
 		if (!rules) continue;
 		for (const rule of Array.from(rules)) {
-			if ((rule as CSSStyleRule).style?.getPropertyValue(SENTINEL_PROPERTY)) {
+			if (declaresContentStylesSentinel(rule)) {
 				count += 1;
 				break;
 			}

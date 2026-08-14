@@ -48,6 +48,7 @@ async function openSessionPanel(page: Page) {
 	if (await sessionTab.isVisible().catch(() => false)) {
 		return panel;
 	}
+	await openDemoMenuIfCollapsed(page);
 	await page.getByRole("button", { name: "Toggle item session panel" }).click();
 	await expect(sessionTab).toBeVisible();
 	return panel;
@@ -63,6 +64,7 @@ async function openInstrumentationPanel(page: Page) {
 	if (await firstRow.isVisible().catch(() => false)) {
 		return panel;
 	}
+	await openDemoMenuIfCollapsed(page);
 	await page
 		.getByRole("button", { name: "Toggle instrumentation panel" })
 		.click();

@@ -15,7 +15,7 @@ async function openEventPanel(page: import("@playwright/test").Page) {
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator("pie-section-player-tools-event-debugger");
 	await expect(
 		panel.locator(".pie-section-player-tools-event-debugger"),
@@ -30,7 +30,7 @@ async function openSessionPanel(page: import("@playwright/test").Page) {
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator("pie-section-player-tools-session-debugger");
 	await expect(
 		panel.locator(".pie-section-player-tools-session-debugger"),
@@ -45,7 +45,7 @@ async function openInstrumentationPanel(page: import("@playwright/test").Page) {
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator(
 		"pie-section-player-tools-instrumentation-debugger",
 	);
@@ -62,7 +62,7 @@ async function openSourcePanel(page: import("@playwright/test").Page) {
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator(".pie-section-player-tools-source-panel");
 	await expect(panel).toBeVisible();
 	return panel;
@@ -77,7 +77,7 @@ async function openTTSSettingsPanel(page: import("@playwright/test").Page) {
 		});
 		await expect(toggleButton).toBeVisible();
 		await expect(toggleButton).toBeEnabled();
-		await toggleButton.click();
+		await toggleButton.press("Enter");
 	}
 	await expect(panel).toBeVisible();
 	return panel;

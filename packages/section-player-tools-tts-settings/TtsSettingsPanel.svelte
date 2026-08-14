@@ -313,6 +313,7 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
 const PREVIEW_DEBUG_PREFIX = "[pie-tts-preview]";
+const BROWSER_PREVIEW_START_TIMEOUT_MS = 5_000;
 const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
 	"reserved-row",
 	"expanding-row",
@@ -349,11 +350,14 @@ function browserLanguage(): string {
 
 function findBrowserVoice(
 	voices: SpeechSynthesisVoice[],
-	preferredName: string | undefined,
+	preferredVoice: string | undefined,
 ): SpeechSynthesisVoice | null {
-	if (preferredName) {
-		const explicit = voices.find((voice) => voice.name === preferredName);
-		if (explicit) return explicit;
+	if (preferredVoice) {
+		return (
+			voices.find((voice) => voice.voiceURI === preferredVoice) ||
+			voices.find((voice) => voice.name === preferredVoice) ||
+			null
+		);
 	}
 	const language = browserLanguage();
 	const languagePrefix = language.split("-")[0] || "en";
@@ -401,17 +405,27 @@ function browserVoiceLabel(voice: DemoVoice): string {
 }
 
 function browserVoiceIdentity(voice: DemoVoice): string {
-	return voice.name || voice.id || "";
+	return voice.id || voice.name || "";
+}
+
+function findConfiguredBrowserDemoVoice(
+	voices: DemoVoice[],
+	preferredVoice: string | undefined,
+): DemoVoice | null {
+	if (!preferredVoice) return null;
+	return (
+		voices.find((voice) => browserVoiceIdentity(voice) === preferredVoice) ||
+		voices.find((voice) => voice.name === preferredVoice) ||
+		null
+	);
 }
 
 function findBrowserDemoVoice(
 	voices: DemoVoice[],
-	preferredName: string | undefined,
+	preferredVoice: string | undefined,
 ): DemoVoice | null {
-	if (preferredName) {
-		const explicit = voices.find((voice) => voice.name === preferredName);
-		if (explicit) return explicit;
-	}
+	const explicit = findConfiguredBrowserDemoVoice(voices, preferredVoice);
+	if (explicit) return explicit;
 	const ranked = [
 		(voice: DemoVoice) => voice.localService && browserVoiceMatchesLanguage(voice),
 		(voice: DemoVoice) => voice.default && browserVoiceMatchesLanguage(voice),
@@ -509,7 +523,7 @@ function findBrowserDemoVoice(
 		() => normalizedCustomProviders.find((provider) => provider.id === activeTab) || null
 	);
 
-	const resolvedBrowserAutoVoice = $derived.by(() =>
+	const resolvedBrowserVoice = $derived.by(() =>
 		findBrowserDemoVoice(browserState.voices, browserVoice || undefined)
 	);
 	const recommendedBrowserVoices = $derived.by(() =>
@@ -919,6 +933,13 @@ function findBrowserDemoVoice(
 				localService: voice.localService,
 				default: voice.default
 			}));
+			const configuredVoice = findConfiguredBrowserDemoVoice(
+				mappedVoices,
+				browserVoice || undefined
+			);
+			if (configuredVoice) {
+				browserVoice = browserVoiceIdentity(configuredVoice);
+			}
 			browserState = {
 				checked: true,
 				loading: false,
@@ -1299,10 +1320,11 @@ function findBrowserDemoVoice(
 		clearPreviewTracking();
 		previewError = null;
 		previewNote = null;
+		const browserPreviewUtterance = currentBrowserPreviewUtterance;
 		cleanupBrowserPreviewPlayback?.();
 		cleanupBrowserPreviewPlayback = null;
 		if (
-			currentBrowserPreviewUtterance &&
+			browserPreviewUtterance &&
 			typeof window !== "undefined" &&
 			"speechSynthesis" in window
 		) {
@@ -1558,13 +1580,23 @@ function normalizePreviewSpeechMarkOffsets(
 		// utterance lifecycle events, with a persistent reference to the utterance
 		// so it is not garbage-collected before onend fires.
 		const synth = window.speechSynthesis;
+		const voices = synth.getVoices();
+		const resolvedVoice = findBrowserVoice(voices, browserVoice || undefined);
+		if (browserVoice && !resolvedVoice) {
+			throw new Error(
+				`Configured browser voice "${browserVoice}" is unavailable. Select a voice exposed by this browser.`
+			);
+		}
+		// Do not publish an owned utterance until all pre-queue validation succeeds.
+		// That keeps Stop/error cleanup from canceling an utterance that was never
+		// handed to the native engine.
 		const utterance = new SpeechSynthesisUtterance(previewText.trim() || getSampleText("browser"));
 		currentBrowserPreviewUtterance = utterance;
 		cleanupBrowserPreviewPlayback = null;
 		utterance.rate = normalizeRate(browserRate);
 		utterance.pitch = normalizePitch(browserPitch);
-		const voices = synth.getVoices();
-		const resolvedVoice = findBrowserVoice(voices, browserVoice || undefined);
+		// Chrome already selects its browser-default voice when this stays null.
+		// Assign the resolved voice only when it is not that native default.
 		if (resolvedVoice && shouldAssignBrowserVoice(resolvedVoice)) {
 			utterance.voice = resolvedVoice;
 		}
@@ -1579,16 +1611,37 @@ function normalizePreviewSpeechMarkOffsets(
 			availableVoices: voices.length
 		});
 		await new Promise<void>((resolve, reject) => {
+			let didStart = false;
 			let settled = false;
+			let startTimeout: number | null = null;
+			let cleanup: (() => void) | null = null;
 			const finish = (callback: () => void) => {
 				if (settled) return;
 				settled = true;
+				if (startTimeout !== null) {
+					window.clearTimeout(startTimeout);
+					startTimeout = null;
+				}
+				utterance.onstart = null;
+				utterance.onboundary = null;
+				utterance.onend = null;
+				utterance.onerror = null;
+				if (cleanupBrowserPreviewPlayback === cleanup) {
+					cleanupBrowserPreviewPlayback = null;
+				}
 				if (currentBrowserPreviewUtterance === utterance) {
 					currentBrowserPreviewUtterance = null;
 				}
 				callback();
 			};
+			cleanup = () => finish(resolve);
+			cleanupBrowserPreviewPlayback = cleanup;
 			utterance.onstart = () => {
+				didStart = true;
+				if (startTimeout !== null) {
+					window.clearTimeout(startTimeout);
+					startTimeout = null;
+				}
 				logBrowserPreview("start");
 				const firstToken = tokens[0];
 				if (!firstToken) return;
@@ -1608,6 +1661,16 @@ function normalizePreviewSpeechMarkOffsets(
 			};
 			utterance.onend = () => {
 				logBrowserPreview("end");
+				if (!didStart) {
+					finish(() =>
+						reject(
+							new Error(
+								"Browser speech synthesis ended before audio started. Restart the browser and try again."
+							)
+						)
+					);
+					return;
+				}
 				finish(resolve);
 			};
 			utterance.onerror = (event) => {
@@ -1619,8 +1682,28 @@ function normalizePreviewSpeechMarkOffsets(
 				}
 				finish(() => reject(new Error("Failed to play browser voice preview.")));
 			};
+			startTimeout = window.setTimeout(() => {
+				finish(() =>
+					reject(
+						new Error(
+							`Browser speech synthesis did not start within ${BROWSER_PREVIEW_START_TIMEOUT_MS / 1_000} seconds. Restart the browser and try again.`
+						)
+					)
+				);
+				synth.cancel();
+			}, BROWSER_PREVIEW_START_TIMEOUT_MS);
 			logBrowserPreview("speak");
-			synth.speak(utterance);
+			try {
+				synth.speak(utterance);
+			} catch (error) {
+				finish(() =>
+					reject(
+						error instanceof Error
+							? error
+							: new Error("Browser speech synthesis failed to queue preview audio.")
+					)
+				);
+			}
 		});
 	}
 
@@ -1759,6 +1842,14 @@ function normalizePreviewSpeechMarkOffsets(
 					backend: "browser" as const,
 					serverProvider: undefined,
 					provider: undefined,
+					apiEndpoint: undefined,
+					endpointMode: undefined,
+					endpointValidationMode: undefined,
+					includeAuthOnAssetFetch: undefined,
+					validateEndpoint: undefined,
+					cache: undefined,
+					speedRate: undefined,
+					lang_id: undefined,
 					defaultVoice: resolveVoiceForBackend("browser"),
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch),
@@ -2052,9 +2143,11 @@ function normalizePreviewSpeechMarkOffsets(
 						aria-live="polite"
 					>
 						{#if browserVoice}
-							Using selected voice: {browserVoice}
-						{:else if resolvedBrowserAutoVoice}
-							Best available voice (auto): {browserVoiceLabel(resolvedBrowserAutoVoice)}
+							Using selected voice: {resolvedBrowserVoice
+								? browserVoiceLabel(resolvedBrowserVoice)
+								: browserVoice}
+						{:else if resolvedBrowserVoice}
+							Best available voice (auto): {browserVoiceLabel(resolvedBrowserVoice)}
 						{:else}
 							Best available voice (auto): waiting for browser voices.
 						{/if}

@@ -53,6 +53,59 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	}
 }
 
+class PlaybackStartAwareMockTTSImpl extends MockTTSImpl {
+	onPlaybackStart: (() => void) | undefined = undefined;
+	private resolveSpeech: (() => void) | null = null;
+	private rejectSpeech: ((error: Error) => void) | null = null;
+
+	constructor() {
+		super(false);
+	}
+
+	override async speak(text: string): Promise<void> {
+		this.speakCalls.push(text);
+		await new Promise<void>((resolve, reject) => {
+			this.resolveSpeech = resolve;
+			this.rejectSpeech = reject;
+		});
+	}
+
+	start(): void {
+		this.onPlaybackStart?.();
+	}
+
+	finish(): void {
+		this.resolveSpeech?.();
+		this.resolveSpeech = null;
+		this.rejectSpeech = null;
+	}
+
+	fail(error: Error): void {
+		this.rejectSpeech?.(error);
+		this.resolveSpeech = null;
+		this.rejectSpeech = null;
+	}
+}
+
+const waitForSpeakCall = async (impl: MockTTSImpl): Promise<void> => {
+	for (let attempt = 0; attempt < 50; attempt++) {
+		if (impl.speakCalls.length > 0) return;
+		await Promise.resolve();
+	}
+	throw new Error("TTS provider was not called");
+};
+
+const waitForSettingsUpdateCount = async (
+	impl: MockTTSImpl,
+	count: number,
+): Promise<void> => {
+	for (let attempt = 0; attempt < 50; attempt++) {
+		if (impl.settingsUpdates.length >= count) return;
+		await Promise.resolve();
+	}
+	throw new Error(`TTS provider did not receive ${count} settings update(s)`);
+};
+
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId: string;
 	readonly providerName = "Mock Provider";
@@ -270,6 +323,107 @@ describe("TTSService structural pauses", () => {
 		expect((service as any).resolveHighlightMode()).toBe("sentence");
 	});
 
+	test("keeps start-aware browser playback loading until native speech starts", async () => {
+		const impl = new PlaybackStartAwareMockTTSImpl();
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser"));
+		let initialHighlightCalls = 0;
+		(service as any).prepareHighlightsForSpeak = ({
+			runId,
+		}: {
+			runId: number;
+		}) => {
+			(service as any).runWhenPlaybackStarts(runId, () => {
+				initialHighlightCalls += 1;
+			});
+		};
+
+		const states: PlaybackState[] = [];
+		service.onStateChange("native-start", (state) => states.push(state));
+		const playback = service.speak("Hello world");
+		await waitForSpeakCall(impl);
+
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+		expect(states).not.toContain(PlaybackState.PLAYING);
+		expect(initialHighlightCalls).toBe(0);
+
+		impl.start();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		expect(initialHighlightCalls).toBe(1);
+
+		impl.finish();
+		await playback;
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	test("clears deferred browser sentence highlighting when native speech fails to start", async () => {
+		const impl = new PlaybackStartAwareMockTTSImpl();
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser"));
+		(service as any).extractVisibleText = () => "First sentence.";
+		(service as any).buildPositionMap = () => {
+			const textNode = { textContent: "First sentence." } as Text;
+			(service as any).normalizedToDOM = new Map();
+			for (let index = 0; index < "First sentence.".length; index++) {
+				(service as any).normalizedToDOM.set(index, {
+					node: textNode,
+					offset: index,
+				});
+			}
+		};
+		(service as any).createSpeechPlan = () =>
+			[
+				{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			] as TTSSpeechSegment[];
+
+		let sentenceHighlights = 0;
+		let clearCalls = 0;
+		const originalDocument = (globalThis as any).document;
+		(globalThis as any).document = {
+			createRange: () => ({
+				selectNodeContents: () => {},
+				setStart: () => {},
+				setEnd: () => {},
+			}),
+		};
+		service.setHighlightCoordinator({
+			highlightRange: () => {},
+			highlightTTSWord: () => {},
+			highlightTTSSentence: () => {
+				sentenceHighlights += 1;
+			},
+			clearTTS: () => {
+				clearCalls += 1;
+			},
+			clearHighlights: () => {},
+			clearAll: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		try {
+			const playback = service.speak("First sentence.", {
+				contentElement: {} as Element,
+			});
+			await waitForSpeakCall(impl);
+
+			expect(service.getState()).toBe(PlaybackState.LOADING);
+			expect(sentenceHighlights).toBe(0);
+
+			impl.fail(
+				new Error("Browser speech synthesis ended before audio started"),
+			);
+			await expect(playback).rejects.toThrow("ended before audio started");
+			expect(service.getState()).toBe(PlaybackState.ERROR);
+			expect(sentenceHighlights).toBe(0);
+			expect(clearCalls).toBeGreaterThan(0);
+		} finally {
+			(globalThis as any).document = originalDocument;
+		}
+	});
+
 	test("keeps non-browser provider on word highlight when supported", async () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
@@ -363,6 +517,74 @@ describe("TTSService structural pauses", () => {
 		expect(restartedSegments).toEqual([
 			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
 		]);
+	});
+
+	test("keeps a start-aware seek replacement loading and unhighlighted until native start", async () => {
+		const impl = new PlaybackStartAwareMockTTSImpl();
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser"));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).activeHighlightMode = "sentence";
+
+		let clearCalls = 0;
+		let sentenceHighlights = 0;
+		(service as any).highlightSentenceSegment = () => {
+			sentenceHighlights += 1;
+		};
+		service.setHighlightCoordinator({
+			clearTTS: () => {
+				clearCalls += 1;
+			},
+		} as any);
+
+		const replacement = service.seekForward();
+		await waitForSpeakCall(impl);
+
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+		expect(clearCalls).toBe(1);
+		expect(sentenceHighlights).toBe(0);
+
+		impl.start();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		expect(sentenceHighlights).toBe(1);
+
+		impl.finish();
+		await replacement;
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	test("cleans up a start-aware seek replacement that fails before native start", async () => {
+		const impl = new PlaybackStartAwareMockTTSImpl();
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser"));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).activeHighlightMode = "sentence";
+		let sentenceHighlights = 0;
+		(service as any).highlightSentenceSegment = () => {
+			sentenceHighlights += 1;
+		};
+
+		const replacement = service.seekForward();
+		await waitForSpeakCall(impl);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		impl.fail(new Error("native replacement failed before start"));
+		await expect(replacement).rejects.toThrow("failed before start");
+		expect(service.getState()).toBe(PlaybackState.ERROR);
+		expect(sentenceHighlights).toBe(0);
+		expect((service as any).playbackStartDeferredRunId).toBeNull();
 	});
 
 	test("tracks seek offset and segment index from speakSegments boundary callbacks", async () => {
@@ -553,6 +775,194 @@ describe("TTSService structural pauses", () => {
 			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
 			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
 		]);
+	});
+
+	test("setPlaybackRate does not restart active playback when the rate is unchanged", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+
+		await service.setPlaybackRate(1);
+
+		expect(impl.settingsUpdates).toHaveLength(0);
+		expect(impl.stopCalls).toBe(0);
+		expect(impl.speakCalls).toHaveLength(0);
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+	});
+
+	test("coalesces overlapping identical rate writes into one update and restart", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		let releaseSettingsWrite: (() => void) | null = null;
+		impl.updateSettings = (settings: Partial<TTSConfig>) => {
+			impl.settingsUpdates.push(settings);
+			return new Promise<void>((resolve) => {
+				releaseSettingsWrite = resolve;
+			});
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		let replacementCalls = 0;
+		(service as any).speakWithPlan = async () => {
+			replacementCalls += 1;
+		};
+
+		const first = service.setPlaybackRate(1.25);
+		await waitForSettingsUpdateCount(impl, 1);
+		const duplicate = service.setPlaybackRate(1.25);
+		releaseSettingsWrite?.();
+		await Promise.all([first, duplicate]);
+
+		expect(impl.settingsUpdates).toEqual([{ rate: 1.25 }]);
+		expect(impl.stopCalls).toBe(1);
+		expect(replacementCalls).toBe(1);
+	});
+
+	test("serializes distinct rate writes and only restarts the latest target", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		const releaseSettingsWrites: Array<() => void> = [];
+		impl.updateSettings = (settings: Partial<TTSConfig>) => {
+			impl.settingsUpdates.push(settings);
+			return new Promise<void>((resolve) => {
+				releaseSettingsWrites.push(resolve);
+			});
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		let replacementCalls = 0;
+		(service as any).speakWithPlan = async () => {
+			replacementCalls += 1;
+		};
+
+		const superseded = service.setPlaybackRate(1.25);
+		await waitForSettingsUpdateCount(impl, 1);
+		const latest = service.setPlaybackRate(1.5);
+		releaseSettingsWrites[0]?.();
+		await waitForSettingsUpdateCount(impl, 2);
+		expect(impl.stopCalls).toBe(0);
+
+		releaseSettingsWrites[1]?.();
+		await Promise.all([superseded, latest]);
+
+		expect(impl.settingsUpdates).toEqual([{ rate: 1.25 }, { rate: 1.5 }]);
+		expect(impl.stopCalls).toBe(1);
+		expect(replacementCalls).toBe(1);
+		expect((service as any).ttsConfig.rate).toBe(1.5);
+	});
+
+	test("restarts the final target in a rapid A-B-A rate sequence without rewriting it", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		let releaseFirstWrite: (() => void) | null = null;
+		impl.updateSettings = (settings: Partial<TTSConfig>) => {
+			impl.settingsUpdates.push(settings);
+			return new Promise<void>((resolve) => {
+				releaseFirstWrite = resolve;
+			});
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).activePlaybackRate = 1;
+		let replacementCalls = 0;
+		(service as any).speakWithPlan = async () => {
+			replacementCalls += 1;
+		};
+
+		const firstA = service.setPlaybackRate(1.25);
+		await waitForSettingsUpdateCount(impl, 1);
+		const supersededB = service.setPlaybackRate(1.5);
+		const finalA = service.setPlaybackRate(1.25);
+		releaseFirstWrite?.();
+		await Promise.all([firstA, supersededB, finalA]);
+
+		expect(impl.settingsUpdates).toEqual([{ rate: 1.25 }]);
+		expect(impl.stopCalls).toBe(1);
+		expect(replacementCalls).toBe(1);
+		expect((service as any).ttsConfig.rate).toBe(1.25);
+	});
+
+	test("does not restart a newer speak run when an older rate write completes", async () => {
+		const impl = new PlaybackStartAwareMockTTSImpl();
+		(impl as any).speakSegments = undefined;
+		let releaseSettingsWrite: (() => void) | null = null;
+		impl.updateSettings = (settings: Partial<TTSConfig>) => {
+			impl.settingsUpdates.push(settings);
+			return new Promise<void>((resolve) => {
+				releaseSettingsWrite = resolve;
+			});
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "Older sentence.";
+		(service as any).seekSegments = [
+			{ text: "Older sentence.", startOffset: 0, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+
+		const rateWrite = service.setPlaybackRate(1.25);
+		await waitForSettingsUpdateCount(impl, 1);
+		const newerSpeak = service.speak("Newer sentence.");
+		await waitForSpeakCall(impl);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		releaseSettingsWrite?.();
+		await rateWrite;
+		expect(impl.stopCalls).toBe(0);
+		expect(impl.speakCalls).toEqual(["Newer sentence."]);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		impl.start();
+		impl.finish();
+		await newerSpeak;
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	test("keeps a changed-rate browser replacement loading until native start", async () => {
+		const impl = new PlaybackStartAwareMockTTSImpl();
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+
+		const replacement = service.setPlaybackRate(1.25);
+		await waitForSpeakCall(impl);
+
+		expect(impl.settingsUpdates).toContainEqual({ rate: 1.25 });
+		expect(impl.stopCalls).toBe(1);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		impl.start();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		impl.finish();
+		await replacement;
+		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
 
 	test("setPlaybackRate restarts active non-segmented playback with updated settings", async () => {

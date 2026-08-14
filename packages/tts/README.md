@@ -49,8 +49,12 @@ import type {
 } from '@pie-players/pie-tts';
 
 class MyTTSImplementation implements ITTSProviderImplementation {
+  onPlaybackStart?: () => void;
+
   async speak(text: string): Promise<void> {
-    // Your implementation
+    await myEngine.speak(text, {
+      onStart: () => this.onPlaybackStart?.(),
+    });
   }
 
   pause(): void { /* ... */ }

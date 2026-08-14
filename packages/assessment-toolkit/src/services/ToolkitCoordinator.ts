@@ -530,7 +530,7 @@ export interface ToolkitServiceBundle {
  *   assessmentId: 'demo-three-questions',
  *   tools: {
  *     providers: {
- *       textToSpeech: { enabled: true, defaultVoice: 'en-US' },
+ *       textToSpeech: { enabled: true, backend: 'browser' },
  *       answerEliminator: { enabled: true, strategy: 'strikethrough' }
  *     },
  *     placement: {

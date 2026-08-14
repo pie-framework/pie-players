@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import {
+	expectDemoChromeReady,
+	openDemoMenuIfCollapsed,
+} from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const KNOWN_A11Y_BASELINE_DEBT = new Set([
@@ -42,7 +46,7 @@ function isKnownA11yBaselineDebt(violation: {
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 async function openSessionPanel(page: Page) {
@@ -95,6 +99,7 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 			enabled: true,
 			backend: "browser",
 			transportMode: "pie",
+			defaultVoice: undefined,
 		});
 		await coordinator?.ensureTTSReady?.(
 			coordinator?.getToolConfig?.("textToSpeech"),
@@ -218,6 +223,50 @@ async function suppressAudibleBrowserTts(
 			value: fakeSynth,
 		});
 	}, utteranceMs);
+}
+
+async function installHoldingServerAudio(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		class FakeAudio {
+			src: string;
+			volume = 1;
+			currentTime = 0;
+			playbackRate = 1;
+			paused = true;
+			onplay: ((event: Event) => void) | null = null;
+			onended: ((event: Event) => void) | null = null;
+			onerror: ((event: Event) => void) | null = null;
+			onpause: ((event: Event) => void) | null = null;
+			private endTimer: number | null = null;
+
+			constructor(src?: string) {
+				this.src = src || "";
+			}
+
+			play(): Promise<void> {
+				this.paused = false;
+				this.onplay?.(new Event("play"));
+				this.endTimer = window.setTimeout(() => {
+					this.onended?.(new Event("ended"));
+				}, 1000);
+				return Promise.resolve();
+			}
+
+			pause(): void {
+				this.paused = true;
+				if (this.endTimer !== null) {
+					window.clearTimeout(this.endTimer);
+					this.endTimer = null;
+				}
+				this.onpause?.(new Event("pause"));
+			}
+		}
+
+		Object.defineProperty(window, "Audio", {
+			configurable: true,
+			value: FakeAudio,
+		});
+	});
 }
 
 async function readBrowserTtsSpeaks(
@@ -1513,6 +1562,7 @@ test.describe("section player demo tts-ssml", () => {
 		// Switch to scorer mode and confirm evaluate-mode rendering path.
 		await page.getByRole("link", { name: "Scorer" }).click();
 		await expect(page).toHaveURL(/mode=scorer/);
+		await openDemoMenuIfCollapsed(page);
 		await expect(itemShells).toHaveCount(2);
 
 		// In scorer mode, answers are review-only and include the expected canonical correct option.
@@ -1556,6 +1606,7 @@ test.describe("section player demo tts-ssml", () => {
 	test("applies Polly backend and routes playback through server synthesis", async ({
 		page,
 	}) => {
+		await installHoldingServerAudio(page);
 		await gotoDemo(page);
 		await openSessionPanel(page);
 
@@ -1751,8 +1802,9 @@ test.describe("section player demo tts-ssml", () => {
 							localService: true,
 							voiceURI: "preview-voice",
 						},
-					] as unknown as SpeechSynthesisVoice[],
+				] as unknown as SpeechSynthesisVoice[],
 				speak: (utterance: SpeechSynthesisUtterance) => {
+					utterance.onstart?.(new Event("start") as SpeechSynthesisEvent);
 					window.setTimeout(() => {
 						const boundary = { name: "word", charIndex: 0 } as Event;
 						utterance.onboundary?.(boundary as SpeechSynthesisEvent);
@@ -1832,7 +1884,7 @@ test.describe("section player demo tts-ssml", () => {
 		await page.goto("/tts-toggle-speed?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+		await expectDemoChromeReady(page);
 		await forceBrowserTtsRuntime(page);
 
 		const passageInlineTts = page

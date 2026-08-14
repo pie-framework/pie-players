@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ResponsiveDemoMenuBar } from "@pie-players/demo-ui";
 	import { DebugPanelToggles } from "@pie-players/pie-section-player-tools-shared";
 
 	interface Props {
@@ -32,12 +33,12 @@
 	}: Props = $props();
 </script>
 
-<div class="navbar bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
-	<div class="navbar-start">
+<ResponsiveDemoMenuBar class="bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
+	{#snippet start()}
 		<a href="/" class="btn btn-ghost btn-sm">&#8592; Back to Demos</a>
-	</div>
+	{/snippet}
 
-	<div class="navbar-center flex gap-4 items-center">
+	{#snippet primary()}
 		<div class="join">
 			<button
 				type="button"
@@ -62,9 +63,9 @@
 				Vertical
 			</button>
 		</div>
-	</div>
+	{/snippet}
 
-	<div class="navbar-end gap-2">
+	{#snippet secondary()}
 		{#if onResetAttempt}
 			<button
 				type="button"
@@ -86,5 +87,5 @@
 			{onToggleInstrumentationPanel}
 			{onToggleDbPanel}
 		/>
-	</div>
-</div>
+	{/snippet}
+</ResponsiveDemoMenuBar>

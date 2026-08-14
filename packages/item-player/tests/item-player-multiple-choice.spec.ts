@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_ID = "multiple-choice-radio-simple";
 const DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student`;
@@ -32,6 +33,10 @@ async function gotoRoute(page: Page, path: string) {
 	// loads) — wait on the rendered nav link as the mount signal instead, with
 	// the same generous timeout the rest of this file uses for client-only routes.
 	await page.goto(path, { waitUntil: "domcontentloaded" });
+	await expect(
+		page.getByRole("navigation", { name: "Demo controls" }),
+	).toBeVisible({ timeout: 15_000 });
+	await openDemoMenuIfCollapsed(page);
 	await expect(page.getByRole("link", { name: "Delivery" })).toBeVisible({
 		timeout: 15_000,
 	});
@@ -43,6 +48,7 @@ async function openSessionPanel(page: Page) {
 	if (await sessionTab.isVisible().catch(() => false)) {
 		return panel;
 	}
+	await openDemoMenuIfCollapsed(page);
 	await page.getByRole("button", { name: "Toggle item session panel" }).click();
 	await expect(sessionTab).toBeVisible();
 	return panel;
@@ -58,6 +64,7 @@ async function openInstrumentationPanel(page: Page) {
 	if (await firstRow.isVisible().catch(() => false)) {
 		return panel;
 	}
+	await openDemoMenuIfCollapsed(page);
 	await page
 		.getByRole("button", { name: "Toggle instrumentation panel" })
 		.click();

@@ -1,10 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tool-visibility?mode=candidate&layout=splitpane";
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 async function mockDesmosCalculatorScript(page: Page): Promise<void> {

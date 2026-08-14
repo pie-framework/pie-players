@@ -40,9 +40,11 @@ export const SECTION_DEMOS_SC_TTS_TOOL_PROVIDER = {
 };
 
 /**
- * Default for section demos and downstream hosts (including Pieoneer):
- * SchoolCity-style transport through the local `/api/tts/sc` proxy.
+ * Default for section demos: browser-backed Web Speech API.
+ * Server transports remain explicit opt-ins because their proxy routes require
+ * host-owned credentials.
  */
 export const SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER = {
-	...SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+	enabled: true,
+	backend: "browser" as const,
 } as const;

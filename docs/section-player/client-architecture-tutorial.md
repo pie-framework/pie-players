@@ -284,7 +284,8 @@ const tools = {
   providers: {
     textToSpeech: {
       backend: 'browser',        // 'browser' | 'polly' | 'google' | 'server'
-      defaultVoice: 'en-US',
+      // Omit defaultVoice for automatic selection. To pin a Browser voice,
+      // use an exact voiceURI or name returned by speechSynthesis.getVoices().
     },
     calculator: {
       authFetcher: async () => {

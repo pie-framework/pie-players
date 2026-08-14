@@ -16,6 +16,44 @@ test.describe("section player splitpane reflow", () => {
 			const host = page.locator("pie-section-player-splitpane").first();
 			await expect(host).toBeVisible();
 
+			const toolbarRects = await page.evaluate(() => {
+				const rects: Array<{
+					tag: string;
+					left: number;
+					right: number;
+					width: number;
+				}> = [];
+				const visit = (root: Document | ShadowRoot) => {
+					for (const element of root.querySelectorAll<HTMLElement>("*")) {
+						if (element.matches("pie-item-toolbar, pie-section-toolbar")) {
+							const rect = element.getBoundingClientRect();
+							if (rect.width > 0) {
+								rects.push({
+									tag: element.tagName.toLowerCase(),
+									left: rect.left,
+									right: rect.right,
+									width: rect.width,
+								});
+							}
+						}
+						if (element.shadowRoot) visit(element.shadowRoot);
+					}
+				};
+				visit(document);
+				return rects;
+			});
+			expect(toolbarRects.length).toBeGreaterThan(0);
+			for (const rect of toolbarRects) {
+				expect(
+					rect.left,
+					`${rect.tag} starts outside the viewport`,
+				).toBeGreaterThanOrEqual(-1);
+				expect(
+					rect.right,
+					`${rect.tag} ends outside the viewport`,
+				).toBeLessThanOrEqual(321);
+			}
+
 			const layoutContainer = page
 				.locator(
 					".pie-section-player-split-content, .pie-section-player-vertical-content, .pie-section-player-tabbed-frame, .pie-section-player-tabbed-content",

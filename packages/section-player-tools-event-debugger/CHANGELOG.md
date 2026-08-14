@@ -1,5 +1,19 @@
 # @pie-players/pie-section-player-tools-event-debugger
 
+## 0.3.66
+
+### Patch Changes
+
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [6bbfae1]
+- Updated dependencies [1e0c10f]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [a4beb70]
+- Updated dependencies [1f29de7]
+  - @pie-players/pie-theme@0.3.66
+  - @pie-players/pie-section-player-tools-shared@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

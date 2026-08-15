@@ -296,7 +296,14 @@
 		gap: 6px;
 		background: var(--pie-background, #ffffff);
 		border-radius: var(--pie-section-player-tab-track-radius, 9999px);
-		border: 1px solid var(--pie-border-gray, #D9DADA);
+		/*
+		 * `--pie-border-gray` clears the 3:1 non-text minimum in every scheme and
+		 * is stepped to it under the DaisyUI provider. The literal only applies to
+		 * a host that mounts the player with no theme at all, where #D9DADA left
+		 * the track at 1.2:1 against the frame -- the same grey the button border
+		 * defaults to holds there instead.
+		 */
+		border: 1px solid var(--pie-border-gray, #767676);
 		padding: var(--pie-section-player-tab-track-padding, 0.25rem);
 		width: fit-content;
 		align-self: center;
@@ -315,7 +322,13 @@
 		border: none;
 		border-radius: 24px;
 		background: var(--pie-section-player-tab-background, transparent);
-		color: var(--pie-section-player-tab-color, #111827);
+		/*
+		 * The unselected tab is transparent, so its ink has to hold against the
+		 * track's own `--pie-background`. Resolving the hook through `--pie-text`
+		 * is what keeps it on the certified ordinary-text pair; a literal here
+		 * stays near-black under every scheme and disappears on the dark ones.
+		 */
+		color: var(--pie-section-player-tab-color, var(--pie-text, #111827));
 		padding: var(--pie-section-player-tab-padding-block, 0.35rem) 12px;
 		font: inherit;
 		font-size: 12px;

@@ -17,7 +17,7 @@
  *
  * The CSS text is passed in rather than imported here: this package builds with
  * plain `tsc`, so it cannot inline a stylesheet. Bundler-built player packages
- * import it with Vite's `?inline` and hand the text over.
+ * import it with Vite's `?raw` and hand the text over.
  */
 
 /** Marks a `<style>` element this module owns, and keeps installs idempotent. */
@@ -25,8 +25,9 @@ const MARKER_ATTRIBUTE = "data-pie-content-styles";
 
 /**
  * Declared by `components.css` itself, so it is observable no matter how the
- * stylesheet arrived — our injection or a host import. Used only to tell a host
- * that opted out but then shipped nothing.
+ * stylesheet arrived — our injection or a host import. Diagnostics only: it
+ * tells a host that opted out and then shipped nothing, and it spots a host copy
+ * sitting alongside ours.
  */
 const SENTINEL_PROPERTY = "--pie-content-styles";
 
@@ -47,7 +48,20 @@ const declaresContentStylesSentinel = (rule: CSSRule): boolean => {
 		?.getPropertyValue(SENTINEL_PROPERTY)
 		.trim()
 		.toLowerCase();
-	return Boolean(value && !CSS_WIDE_RESET_VALUES.has(value));
+	if (value) return !CSS_WIDE_RESET_VALUES.has(value);
+
+	// Grouping rules hold no declarations of their own, so the sentinel sits one
+	// or more levels down. A host that confines its copy — `@scope
+	// (.item-content) { … }`, `@layer pie-content { … }` — presents exactly one
+	// top-level rule with an empty `.style`, and a top-level-only scan reads that
+	// as "no copy here". That made both detection paths blind to the one host
+	// configuration this module most needs to recognise.
+	const nested = (rule as CSSGroupingRule).cssRules;
+	if (!nested) return false;
+	for (const child of Array.from(nested)) {
+		if (declaresContentStylesSentinel(child)) return true;
+	}
+	return false;
 };
 
 /** `<html data-pie-content-styles="host">` opts a host out of installation. */
@@ -75,8 +89,16 @@ export function contentStylesOptedOut(): boolean {
 }
 
 /**
- * True when `components.css` is applied to the document, by any route. Reads the
- * sentinel custom property the stylesheet declares on `:root`.
+ * True when `components.css` is applied to the document, by any route.
+ *
+ * Two probes, because neither alone covers both deliveries. The computed
+ * sentinel on `<html>` is authoritative for a stylesheet applying to the whole
+ * document. A host that confines its copy to its player subtree — `@scope
+ * (.item-content) { … }`, the documented remedy for these rules reaching host
+ * chrome — puts the stylesheet's `:root` rule somewhere it can never match,
+ * since `<html>` is not a descendant of the scoping root; the property then
+ * reads empty while the stylesheet is present and working. So an empty read
+ * falls back to scanning the document's sheets for the sentinel.
  *
  * Only meaningful once the document's stylesheets have been applied — a host
  * that loads CSS via an async `<link>` reads as missing until it lands.
@@ -86,7 +108,8 @@ export function contentStylesPresent(): boolean {
 	const value = getComputedStyle(document.documentElement)
 		.getPropertyValue(SENTINEL_PROPERTY)
 		.trim();
-	return value !== "";
+	if (value !== "") return true;
+	return countContentStyleSheets({ excludeInstalled: false }) > 0;
 }
 
 /**
@@ -127,22 +150,25 @@ export function installContentStyles(
 }
 
 /**
- * Counts content stylesheets in the document that this module did not install —
- * i.e. copies the host loaded itself. Detected by the sentinel property rather
- * than by URL, so a copy arriving as a `<link>`, a bundler-injected `<style>`, or
- * anything else all count the same.
+ * Counts content stylesheets in the document, detected by the sentinel property
+ * rather than by URL, so a copy arriving as a `<link>`, a bundler-injected
+ * `<style>`, or anything else all count the same. `excludeInstalled` narrows the
+ * count to copies the host loaded itself.
  *
  * Cross-origin sheets throw on `cssRules` access and are skipped; a host copy
  * served from another origin therefore reads as absent. That only costs a
  * diagnostic, never correctness.
  */
-const countHostContentStyleSheets = (): number => {
+const countContentStyleSheets = ({
+	excludeInstalled,
+}: { excludeInstalled: boolean }): number => {
 	// Walks the owning elements rather than document.styleSheets: the marker
 	// attribute lives on the element, and CSSStyleSheet.ownerNode is not
 	// universally implemented (happy-dom omits it), which would make our own
 	// installed copy look like a host copy.
+	const exclusion = excludeInstalled ? `:not([${MARKER_ATTRIBUTE}])` : "";
 	const nodes = document.querySelectorAll<HTMLStyleElement | HTMLLinkElement>(
-		`style:not([${MARKER_ATTRIBUTE}]), link[rel~="stylesheet"]:not([${MARKER_ATTRIBUTE}])`,
+		`style${exclusion}, link[rel~="stylesheet"]${exclusion}`,
 	);
 	let count = 0;
 	for (const node of Array.from(nodes)) {
@@ -162,6 +188,10 @@ const countHostContentStyleSheets = (): number => {
 	}
 	return count;
 };
+
+/** Copies the host loaded itself, i.e. not the one this module installed. */
+const countHostContentStyleSheets = (): number =>
+	countContentStyleSheets({ excludeInstalled: true });
 
 let auditWarningIssued = false;
 const pendingChecks: ReturnType<typeof setTimeout>[] = [];

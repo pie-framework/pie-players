@@ -850,6 +850,17 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			role: "incorrect feedback icon",
 		},
 		{
+			// The error-surface pair. `--pie-incorrect-secondary` is a tint of the
+			// page, about 1.1:1 against it in most schemes, so a banner painted with
+			// it reads as a banner only by its `--pie-incorrect` edge -- and the ink
+			// on it is the page's own, not the error hue: `--pie-incorrect` against
+			// this tint falls to 4.14:1 under Black on White.
+			foreground: "--pie-text",
+			background: "--pie-incorrect-secondary",
+			minimum: 4.5,
+			role: "incorrect feedback surface text",
+		},
+		{
 			foreground: "--pie-missing-icon",
 			background: "--pie-background",
 			minimum: 3,

@@ -188,6 +188,75 @@ describe("resolvePieTheme", () => {
 	});
 });
 
+describe("resolved color-scheme polarity", () => {
+	test("reports dark for a dark scheme and light for a light one", () => {
+		expect(resolvePieTheme({ requestedScheme: "yellow-on-blue" }).colorScheme).toBe(
+			"dark",
+		);
+		expect(resolvePieTheme({ requestedScheme: "white-on-black" }).colorScheme).toBe(
+			"dark",
+		);
+		expect(resolvePieTheme({ requestedScheme: "black-on-white" }).colorScheme).toBe(
+			"light",
+		);
+	});
+
+	test("leaves the keyword to the host when no scheme resolves", () => {
+		// Including a dark base theme: the host's own stylesheet decided that
+		// polarity and pie-theme has no standing to restate it.
+		expect(resolvePieTheme({ baseTheme: "dark" }).colorScheme).toBeNull();
+		expect(resolvePieTheme({ baseTheme: "light" }).colorScheme).toBeNull();
+	});
+
+	test("leaves the keyword to the host for an unavailable scheme", () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const resolved = resolvePieTheme({ requestedScheme: "not-registered" });
+			expect(resolved.status).toBe("unavailable");
+			expect(resolved.colorScheme).toBeNull();
+		} finally {
+			warn.mockRestore();
+		}
+	});
+
+	test("derives polarity for a registered custom scheme", () => {
+		register([
+			{
+				id: "district-dark",
+				name: "District dark",
+				variables: { "--pie-background": "#101820", "--pie-text": "#f7f7f7" },
+			},
+		]);
+		expect(resolvePieTheme({ requestedScheme: "district-dark" }).colorScheme).toBe(
+			"dark",
+		);
+	});
+
+	test("declines to guess when the scheme's background is not an opaque colour", () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			register([
+				{
+					id: "host-referenced-background",
+					name: "Host referenced background",
+					variables: {
+						"--pie-background": "var(--host-surface)",
+						"--pie-text": "#000000",
+					},
+				},
+			]);
+			// Polarity depends on whatever the host resolves --host-surface to, so it
+			// is the host's call rather than a coin flip.
+			expect(
+				resolvePieTheme({ requestedScheme: "host-referenced-background" })
+					.colorScheme,
+			).toBeNull();
+		} finally {
+			warn.mockRestore();
+		}
+	});
+});
+
 describe("registerPieColorSchemes", () => {
 	test("projects partial and unresolved custom previews onto a stable swatch", () => {
 		register([

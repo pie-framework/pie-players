@@ -4,7 +4,9 @@ Status: Draft
 
 Owner: PIE Players maintainers
 
-Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05; see [Current State](../architecture/timed-media-section.md#current-state) in the architecture note for what moved underneath this draft. Nothing here is blocked on a ticket.
+Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05 and 2026-08-15; see [Current State](../architecture/timed-media-section.md#current-state) in the architecture note for what moved underneath this draft. Nothing here is blocked on a ticket.
+
+Blocking decision, as of 2026-08-15: every prerequisite this PRD inherits is satisfied — the [media asset contract](./shared-contracts/media-asset-contract.md) is `Ready` and its types are shipped, `assessment-toolkit/src/services/catalog-media.ts` owns media validation, and the [theming contract](./pie-727-broad-theming-contract.md) is `Accepted` so media controls have a palette. What is not settled is where the section flavor attaches: `sectionType`-driven renderer dispatch in assessment-player, which does not exist, or the standalone section-player path where the host picks the tag, which works today. Cue and playback policy ownership — layout custom element versus the toolkit's `ToolPolicyEngine` — rides on the same call, and the layer-ownership table below predates that engine. Taking those two decisions is what moves this PRD to `Ready`.
 
 Related architecture:
 

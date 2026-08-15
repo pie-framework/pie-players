@@ -6,7 +6,7 @@ Tracking: this workstream is deliberately not tracked in an issue tracker. This 
 
 ## Current State
 
-Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary and in shipped media-rendering precedent — see [Revalidation, 2026-08-09](#revalidation-2026-08-09).
+Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work and again 2026-08-15: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary, shipped media-rendering precedent and now theming — see [Revalidation, 2026-08-09](#revalidation-2026-08-09) and [Revalidation, 2026-08-15](#revalidation-2026-08-15).
 
 Four things changed underneath this note as of 2026-08-05. They are open decisions, not corrections to the direction.
 
@@ -20,7 +20,7 @@ Four things changed underneath this note as of 2026-08-05. They are open decisio
 
 Two smaller notes for whoever picks this up:
 
-- The interaction-event shared-contract PRD is now behind its own implementation. `players-shared/src/instrumentation/` ships typed events with DebugPanel, NewRelic, and Composite providers plus an event bridge. That PRD should be rewritten to align with what shipped rather than to design from scratch, which also changes its position in the shared-contracts review sequence.
+- The interaction-event shared-contract PRD is partly overtaken by shipped code, and this line overstated it until 2026-08-15: `players-shared/src/instrumentation/` ships a provider abstraction — DebugPanel, NewRelic, Console, Composite — and `players-shared/src/pie/instrumentation-event-map.ts` ships source-event → telemetry-event *name* mappings behind a bridge. Neither is the projection envelope that PRD designs; there is no source-reference shape, category or version. See [Standing Implementation](../prds/shared-contracts/interaction-event-contract.md#standing-implementation), which now records the boundary and what it costs that PRD's ownership question.
 - `video-stimulus` will not be a code sibling of the passage element. `passage` lives in `pie-elements-ng/packages/elements-react/`; `elements-svelte/` currently holds three elements. A Svelte video-stimulus shares no framework or code with `passage` — the sibling framing in this note is conceptual only.
 
 Two workstreams landed since this note was written that a video stimulus surface must consume rather than re-invent: the broad theming contract (`../prds/pie-727-broad-theming-contract.md` and the token inventory) for media control styling, and the line-reader window view plus inline TTS work for media-control focus and reading-tool coordination. Both postdate [`../prds/shared-contracts/accessibility-runtime-patterns.md`](../prds/shared-contracts/accessibility-runtime-patterns.md).
@@ -40,6 +40,33 @@ The sign-language work (PIE-880 in `pie-players`, PIE-881 in `pie-api-aws`) left
 **4. Four accessibility requirements below have moved — two settled, one settled only for the case that has a text twin, one settled as a refusal.** See [Accessibility and Toolkit Implications](#accessibility-and-toolkit-implications), where each is attributed and bounded. Two are worth naming here. The refusal: signing has no equivalent of `data-tts-suppress` and none should be added, because suppression is per content node while a signed alternate is one video per item, so cue-scoped suppression inherits that reasoning rather than the read-aloud precedent. And the half-answer: media *sizing* tokens shipped, but the signing region uses the browser's default `<video>` controls unstyled, so the media-control styling and keyboard-labelling requirements are untouched by this work rather than resolved by it.
 
 One addition, not a correction: the vocabulary now has a **producer**. The `pie-api-aws` Learnosity importer writes `accessibilityCatalogs` carrying `MediaAssetRef`-shaped media, which has already constrained the contract once — `transcript` had to join the known catalog types because the importer emits it. [QTI 3 Mapping](#qti-3-mapping) should be read with a live import path in mind rather than as a purely prospective concern.
+
+### Revalidation, 2026-08-15
+
+Nothing reversed; three things moved, and the note's central prerequisite is now
+the only thing standing between this workstream and implementation.
+
+**1. `sectionType` still has no occurrence in `packages/`,** so the additive
+section sketch below still lands cleanly and item 1 of [Current
+State](#current-state) is still the open decision: renderer dispatch in
+assessment-player, or the standalone section-player path the host already drives
+by tag. Everything the note lists as a prerequisite — the media vocabulary, the
+shared validation layer, a shipped media-rendering precedent — is satisfied. This
+decision is what a PRD has to take.
+
+**2. Media-control styling now has a palette to consume.** The [broad theming
+contract](../prds/pie-727-broad-theming-contract.md) is `Accepted`: canonical
+resolution, ten complete built-in schemes, `color-scheme` polarity stamped from
+the resolved scheme, and `--pie-fixed-hue-collapse` as the mechanism a pinned
+accent uses to resolve into a palette under an accommodation. A stimulus player's
+controls are exactly the surface item 4 of the 2026-08-09 revalidation left
+unresolved, and they now have a contract to be built against rather than a gap.
+
+**3. The `content-lead` surface is a second shipped placement precedent.** The
+audio-transcript capability (PIE-902) renders a text alternate full width, above
+the card body, in document flow, on both item and passage cards, while signing
+uses the side-docked `content-media` surface. A timed-media section's captions and
+transcript inherit both geometries rather than inventing a third.
 
 ## Context
 

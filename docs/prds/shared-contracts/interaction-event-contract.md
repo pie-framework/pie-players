@@ -8,6 +8,40 @@ Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
 
+## Standing Implementation
+
+An instrumentation path shipped ahead of this contract and occupies part of its
+ground. Read this PRD against it rather than as a greenfield design; the
+[timed-media note](../../architecture/timed-media-section.md#current-state)
+overstates the overlap as "typed events", corrected here 2026-08-15.
+
+What exists:
+
+- `players-shared/src/instrumentation/` — an `InstrumentationProvider` interface
+  over `trackError` / `trackEvent` / `trackMetric` plus optional user and global
+  attributes, with New Relic, Console, DebugPanel and Composite providers, a
+  buffered debug-record stream, and config-level `enabled`, `debug`,
+  `sampleRate`, error/event filters and an attribute transformer.
+- `players-shared/src/pie/instrumentation-event-map.ts` — declarative
+  source-event → telemetry-event **name** mappings for the toolkit, section and
+  assessment surfaces, consumed by `instrumentation-event-bridge.ts` and the
+  toolkit's `runtime/adapter/instrumentation-bridge.ts`.
+
+What does not exist, and is what this PRD still owns: the projection envelope —
+schema version, event id, discriminated type, `InteractionSourceRef`,
+`state` / `analytics` / `debug` category, causality links — and typed payload
+families. The shipped path forwards a renamed event with loose attributes; it
+carries no source-reference shape and no versioning, so an adapter cannot map it
+to xAPI, Caliper or QTI without inferring identity.
+
+Two consequences for the questions below. Ownership is no longer fully open:
+`@pie-players/pie-players-shared` already owns both the provider interface and
+the name map, so a projection type that lives elsewhere splits the vocabulary
+across two packages. And the first accepted version has to say whether the
+projection wraps the bridge — the bridge becoming one provider-facing consumer of
+projections — or sits beside it, because two host-facing event surfaces with
+different identity models is the outcome to avoid.
+
 ## Problem
 
 Hosts and standards adapters need a stable way to observe learner interaction, media progress, branching decisions, tool usage, and process traces without replacing the runtime events that PIE elements and players already emit.

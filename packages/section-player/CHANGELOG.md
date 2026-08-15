@@ -1,5 +1,104 @@
 # @pie-players/pie-section-player
 
+## 0.3.67
+
+### Patch Changes
+
+- 141fc8a: Style the card title at whatever heading level the section player published.
+
+  Both cards render the title through `<svelte:element this={`h${level}`}>` and then
+  styled it as `.pie-section-player-content-card-header h2`. `base-heading-level`
+  defaults to 2, so the shipped default matched and the gap was invisible; a host
+  that published any other level — the reason the prop exists — got a title with the
+  browser's `h3` size and weight inside the card header, and no signal that it had
+  happened.
+
+  The selector takes `:is(h1, h2, h3, h4, h5, h6)`, which keeps the same specificity
+  as the type selector it replaces, so a host rule that already overrides the title
+  still wins exactly as before.
+
+- fe9b4f0: `tools.policy.blocked` now decides feature-scoped capabilities too, so a host can
+  decline one that renders as its own surface.
+
+  `decideFeature(...)` consulted only the PNP source. The host gates —
+  `tools.policy.blocked`, and `tools.policy.allowed` read as an allow-list — were
+  applied in `composeDecision(...)`, which serves the placement-scoped path only.
+  So the one lever that names capabilities rather than placements was inert for
+  exactly the capabilities it was the sole lever for: configuration validation
+  rejects a `region` capability from `tools.placement`, and the feature path
+  deliberately ignores placement, which left a host with nothing to write.
+
+  That became load-bearing when the audio transcript shipped as a packaged
+  capability. It declares `resolvesWithoutGrant`, and an authored
+  `visibility: "always"` card resolves without consulting the grant at all, so no
+  profile, district policy or test administration could keep it off the page.
+  Declining it meant adopting `@pie-players/pie-default-tool-loaders` and composing
+  a registry by hand — the programmatic path, for a host that had deliberately
+  stayed on the custom-element one.
+
+  A host denial outranks `resolvesWithoutGrant`. The flag says the capability may
+  answer from the content when policy granted nobody; a blocklist entry says the
+  capability has no place in this delivery, which is not a question the content gets
+  to reopen. The gate covers the registration's `toolId` as well as its
+  `pnpSupportIds`, because `tools.policy` names capabilities and a host blocking
+  `transcript` means the capability whatever support id it resolves through — gate
+  only, since a grant still has to come from a declared support id.
+
+  That precedence lives in `resolveContentCapabilities`, which both the section
+  player and print resolve through, so the answer cannot differ between the screen
+  and paper: policy answers it in three states — `granted`, `silent`, `denied` —
+  where two could not tell a host's off switch from an unconfigured feature. Print
+  binds no tools config today, so nothing can deny there yet; it reads the same rule
+  so that stays true when one does.
+
+  `provider-disabled` and `placement-membership` stay out of the feature path: both
+  are statements about a toolbar the capability was never on.
+
+  Two additive surfaces come with it. `FeaturePolicyDecision.rule` widens to
+  `FeaturePolicyRule`, adding the `host-blocked` and `host-allowlist` members
+  `ToolPolicyDecisionRule` already carried, and `precedence` admits `0` — the same
+  values `composeDecision(...)` records, so a policy debugger reads one vocabulary
+  for both paths. `isHostDeniedFeature(decision)` is the predicate that tells a host
+  gate apart from an absent grant.
+
+- 61d6aa0: Print resolves accessibility catalogs, so an alternate representation reaches paper. `<pie-print>` takes an `accessibility` config carrying the learner's profile.
+
+  Print renders from the item model alone, so an alternate carried as a catalog card reached paper only where some element happened to render it from a legacy model field. With the transcript moved onto a card and rendered by the toolkit, print was the last consumer of `model.audioTranscript` — and braille, simplified-language and extended-description all arrive the same way.
+
+  ```js
+  player.config = {
+    item,
+    options: { role: "student" },
+    accessibility: {
+      personalNeedsProfile: { supports: ["transcript"] },
+      // district blocks and test-administration overrides, when a program has them
+      settings,
+      // this item's required/restricted supports
+      itemSettings,
+    },
+  };
+  ```
+
+  Three things worth knowing about it:
+
+  - **A print job is one learner with one profile, decided once**, so print has no coordinator and nothing to toggle. It asks the same question the section player asks continuously — given this item and this profile, which alternates are in play — through the same policy engine, the same catalog resolver, and the grant-AND-content rule now shared as `resolveContentCapabilities` in `@pie-players/pie-assessment-toolkit/tools/internal`. A second reader for the one-shot case would be two renderers disagreeing about the same card.
+  - **Policy answers that rule in three states, not two.** A host gate is not the absence of a grant: `resolvesWithoutGrant` lets a capability answer from the content when nobody was granted anything, so a host that switched the capability off has to be distinguishable from silence or the content would reopen it. The rule owns the scan across a capability's support ids, the gate-only probe of its tool id (a host gate names capabilities, and a block must not double as a grant), and denial's precedence over both a grant and the content exception — so a renderer supplies one `policyFor(featureId)` and cannot drift on any of it.
+  - **An alternate the item declares as authored presentation prints with no `accessibility` config at all.** An item family designed to be delivered with its transcript on screen is not an accommodation, and print resolves unconditionally for that reason. An accommodation card with no profile supplied still prints nothing.
+  - **Print opens the in-flow host slot and not the docked-media one.** That is a property of paper rather than a preference: a signed alternate is a video, and on paper a video is a blank rectangle. Every alternate that can be read in order reaches print by declaring the slot, with no change in print.
+
+  The capability's accessible name is rendered as a visible label above its content and pointed at with `aria-labelledby`. Paper has no accessibility tree, and an unlabelled block of prose above an item reads as part of the item.
+
+  The default capability set is `CONTENT_ALTERNATE_REGISTRATIONS` from `@pie-players/pie-default-tool-loaders` — the packaged capabilities that carry an authored alternate and render it as a region, pinned against the packaged composition in both directions so an alternate added there cannot quietly fail to reach print. A deployment composing its own set passes `accessibility.registrations`.
+
+- Updated dependencies [b264ab2]
+- Updated dependencies [fe9b4f0]
+- Updated dependencies [61d6aa0]
+  - @pie-players/pie-players-shared@0.3.67
+  - @pie-players/pie-assessment-toolkit@0.3.67
+  - @pie-players/pie-default-tool-loaders@0.3.67
+  - @pie-players/pie-item-player@0.3.67
+  - @pie-players/pie-context@0.3.67
+
 ## 0.3.66
 
 ### Patch Changes

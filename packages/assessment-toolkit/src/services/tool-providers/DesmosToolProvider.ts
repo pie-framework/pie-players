@@ -11,10 +11,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type {
-	CalculatorProvider,
-	DesmosCalculatorConfig,
-} from "@pie-players/pie-calculator";
+import type { CalculatorProvider } from "@pie-players/pie-calculator";
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
@@ -22,6 +19,11 @@ import type {
 
 /**
  * Desmos tool provider configuration
+ *
+ * Auth and telemetry only. Per-calculator Desmos options are owned by the
+ * calculator component, which derives them from the calculator type and passes
+ * them to `createCalculator()` directly — this provider never sees that config,
+ * so a defaults field here would silently do nothing.
  */
 export interface DesmosToolProviderConfig {
 	/**
@@ -40,11 +42,6 @@ export interface DesmosToolProviderConfig {
 	 * @example 'https://api.myapp.com/tools/desmos/auth'
 	 */
 	proxyEndpoint?: string;
-
-	/**
-	 * Default calculator configuration applied to all instances
-	 */
-	defaultConfig?: DesmosCalculatorConfig;
 
 	/**
 	 * Optional telemetry callback for tool/backend instrumentation.

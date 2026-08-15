@@ -309,7 +309,10 @@
 		);
 	}
 
-	.pie-section-player-content-card-header h2 {
+	/* Any heading level, not `h2`: the card renders at `base-heading-level`, so
+	   the tag is composition context rather than a fixed choice, and a host that
+	   nests the player deeper got an unstyled title. */
+	.pie-section-player-content-card-header :is(h1, h2, h3, h4, h5, h6) {
 		position: relative;
 		z-index: 0;
 		margin: 0;

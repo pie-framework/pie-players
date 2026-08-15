@@ -56,6 +56,21 @@ before. The surfaces it newly makes theme-sensitive — `--pie-text`,
 are not in Host A's set list, so they resolve from the active theme there. See
 the two sections below for what a host sees.
 
+Three fixes assessed against the recorded rows rather than a fresh checkout
+refresh, and none advances the verification date. `tools.policy.blocked` now
+decides feature-scoped capabilities as well as placed ones, which is additive: no
+recorded host lists a capability there, and it is what a host writes to decline
+the default-granted audio transcript without adopting the composition package —
+the alternative was constructing a registry, which only Host R does. The card
+title selector moves from `h2` to `:is(h1, h2, h3, h4, h5, h6)` at identical
+specificity, so a host rule that overrides the title still wins; the default DOM
+is unchanged, and the fix only shows for a host that drives
+`base-heading-level`, which none does today. The eliminated-choice dim moves from
+`.pie-answer-eliminator-eliminated-fallback` to
+`[data-pie-answer-eliminated="true"]`, so it reaches the CSS Highlight API path
+too. Hosts A and V both load `components.css`; neither styles those hooks and the
+answer eliminator is placed in neither delivery.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |

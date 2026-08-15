@@ -7,6 +7,17 @@
 	let { data }: { data: PageData } = $props();
 
 	let role = $state<'student' | 'instructor'>('student');
+	// The print job's learner. Question 1 carries a transcript card, so this is
+	// the difference between an accommodation reaching paper and not.
+	let transcriptGranted = $state(false);
+
+	const accessibility = $derived({
+		personalNeedsProfile: {
+			supports: transcriptGranted ? ['transcript'] : [],
+			prohibitedSupports: [],
+			activateAtInit: []
+		}
+	});
 
 	type PrintEntry = { key: string; label: string; kind: 'stimulus' | 'item'; item: unknown };
 
@@ -41,11 +52,15 @@
 
 	// `<pie-print>` takes its config via a JS property (not an attribute),
 	// so set it imperatively and re-apply whenever the role changes.
-	function printConfig(node: HTMLElement, params: { item: unknown; role: string }) {
-		const apply = (p: { item: unknown; role: string }) => {
+	function printConfig(
+		node: HTMLElement,
+		params: { item: unknown; role: string; accessibility: unknown },
+	) {
+		const apply = (p: { item: unknown; role: string; accessibility: unknown }) => {
 			(node as unknown as { config: unknown }).config = {
 				item: p.item,
 				options: { role: p.role },
+				accessibility: p.accessibility,
 			};
 		};
 		apply(params);
@@ -89,6 +104,16 @@
 						Instructor
 					</button>
 				</div>
+
+				<button
+					type="button"
+					class="btn btn-sm"
+					class:btn-active={transcriptGranted}
+					aria-pressed={transcriptGranted}
+					onclick={() => (transcriptGranted = !transcriptGranted)}
+				>
+					Transcript granted
+				</button>
 			{/snippet}
 
 			{#snippet secondary()}
@@ -112,7 +137,7 @@
 			{#each entries as entry (entry.key)}
 				<section class="print-entry">
 					<h2 class="print-entry__label">{entry.label}</h2>
-					<pie-print use:printConfig={{ item: entry.item, role }}></pie-print>
+					<pie-print use:printConfig={{ item: entry.item, role, accessibility }}></pie-print>
 				</section>
 			{/each}
 		</div>

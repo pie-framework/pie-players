@@ -309,6 +309,7 @@ export {
 	normalizeToolList,
 	parseToolList,
 } from "./services/tools-config-normalizer.js";
+export { isHostDeniedFeature } from "./policy/core/feature-decision.js";
 export {
 	frameworkErrorFromToolConfigValidation,
 	normalizeAndValidateToolsConfig,

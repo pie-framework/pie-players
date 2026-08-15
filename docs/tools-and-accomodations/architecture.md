@@ -304,6 +304,8 @@ Availability at a surface is grant **and** content: `decideFeaturePolicy(support
 
 Two constraints follow. A `region` capability is gated on the feature question and never the placement question — placing one is a `tools.unplaceableActivation` error, so the placement question has no answer to give. And a content dependency resolves against an item model or a passage, never a section, because a DRD resource pairs with content rather than with a container: a section-scoped surface declines a capability that declares one.
 
+The host's off switch for a `region` capability is therefore `tools.policy.blocked`, which names capabilities rather than placements. `decideFeature(...)` applies it, and `tools.policy.allowed` as an allow-list, before any policy source is consulted; the denial reports `rule: "host-blocked"` / `"host-allowlist"` at precedence 0, the same vocabulary `composeDecision(...)` records. `provider-disabled` and `placement-membership` stay out of the feature path, both being statements about a toolbar the capability was never on. A host denial outranks `resolvesWithoutGrant`: that flag lets a content-dependent capability answer from the content when policy granted nobody — an authored `visibility: "always"` transcript is not an accommodation — while a blocklist entry says the capability has no place in this delivery, which the content does not get to reopen.
+
 The host observes successful `ToolRegistry` mutations. Registering a capability
 adds it in registration order; unregistering or clearing destroys it; overriding
 remounts that id with the new registration; component-override and late-loader

@@ -38,7 +38,10 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 function createCoordinator() {
-	const grants = new Map<string, { granted: boolean; parameters?: unknown }>();
+	const grants = new Map<
+		string,
+		{ granted: boolean; parameters?: unknown; rule?: string }
+	>();
 	const visibleTools = new Map<string, unknown>();
 	const policyListeners = new Set<() => void>();
 	const catalogResolver = new AccessibilityCatalogResolver();
@@ -251,6 +254,72 @@ describe("Tool Surface Host", () => {
 		expect(anchor.firstElementChild).toBe(element);
 		expect(contexts.at(-1)?.content).toEqual({ label: "second" });
 		expect(contexts.at(-1)?.parameters).toEqual({ language: "ase" });
+		host.destroy();
+	});
+
+	test("mounts content-only capabilities that resolve without a grant", async () => {
+		const registry = new ToolRegistry();
+		const runtime = createCoordinator();
+		registry.register(
+			regionTool("transcript", {
+				resolvesWithoutGrant: true,
+				requiresAuthoredContent: { resolve: () => ({ text: "always" }) },
+			}),
+		);
+		const anchor = document.createElement("div");
+		const host = createToolSurfaceHost(() => undefined);
+		host.update(contentInput(registry, runtime.coordinator, anchor));
+		await flush();
+
+		expect(anchor.firstElementChild).not.toBeNull();
+		host.destroy();
+	});
+
+	test("a host-blocked capability stays off the surface, grant or not", async () => {
+		// `tools.policy.blocked` is the host's only lever over a region capability,
+		// so it has to outrank `resolvesWithoutGrant` — otherwise a capability that
+		// answers from authored content alone could never be declined.
+		const registry = new ToolRegistry();
+		const runtime = createCoordinator();
+		runtime.grants.set("transcript", { granted: false, rule: "host-blocked" });
+		registry.register(
+			regionTool("transcript", {
+				resolvesWithoutGrant: true,
+				requiresAuthoredContent: { resolve: () => ({ text: "always" }) },
+			}),
+		);
+		const anchor = document.createElement("div");
+		const snapshots: ToolSurfaceHostSnapshot[] = [];
+		const host = createToolSurfaceHost((value) => snapshots.push(value));
+		host.update(contentInput(registry, runtime.coordinator, anchor));
+		await flush();
+
+		expect(anchor.firstElementChild).toBeNull();
+		// Nothing was eligible, so the surface never reports state — a declined
+		// capability is indistinguishable from one that was never registered.
+		expect(snapshots).toEqual([]);
+		// And declining is configuration, not a failure.
+		expect(runtime.errors).toEqual([]);
+		host.destroy();
+	});
+
+	test("blocks on the tool id even when the support ids differ", async () => {
+		const registry = new ToolRegistry();
+		const runtime = createCoordinator();
+		runtime.grants.set("transcript", { granted: false, rule: "host-blocked" });
+		registry.register(
+			regionTool("transcript", {
+				pnpSupportIds: ["audioTranscript"],
+				resolvesWithoutGrant: true,
+				requiresAuthoredContent: { resolve: () => ({ text: "always" }) },
+			}),
+		);
+		const anchor = document.createElement("div");
+		const host = createToolSurfaceHost(() => undefined);
+		host.update(contentInput(registry, runtime.coordinator, anchor));
+		await flush();
+
+		expect(anchor.firstElementChild).toBeNull();
 		host.destroy();
 	});
 

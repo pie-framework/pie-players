@@ -8,6 +8,7 @@
  */
 
 import {
+	isHostDeniedFeature,
 	toFrameworkErrorModel,
 	type CatalogOwnerContext,
 	type CatalogOwnerSnapshot,
@@ -354,14 +355,33 @@ export function createToolSurfaceHost(
 		let featureId = "";
 		let parameters: unknown;
 		let granted = false;
+		let hostDenied = false;
 		try {
 			for (const supportId of supportIds) {
 				const decision = coordinator?.decideFeaturePolicy?.(supportId);
+				if (isHostDeniedFeature(decision)) {
+					hostDenied = true;
+					break;
+				}
 				if (decision?.granted !== true) continue;
 				featureId = supportId;
 				parameters = decision.parameters;
 				granted = true;
 				break;
+			}
+			// The tool id is gated as well, because `tools.policy` names
+			// capabilities: a host blocking `transcript` means that capability
+			// whatever support id it resolves through. Only the gate — a grant still
+			// has to come from a declared support id, or blocking would double as a
+			// second way to switch a capability on.
+			if (
+				!granted &&
+				!hostDenied &&
+				!supportIds.includes(registration.toolId)
+			) {
+				hostDenied = isHostDeniedFeature(
+					coordinator?.decideFeaturePolicy?.(registration.toolId),
+				);
 			}
 		} catch (error) {
 			report(
@@ -373,6 +393,13 @@ export function createToolSurfaceHost(
 			return null;
 		}
 
+		// A host denial outranks `resolvesWithoutGrant`. That flag exists so a
+		// content-dependent capability can answer from the content when policy
+		// granted nobody — an authored `visibility: "always"` transcript is not an
+		// accommodation and no profile speaks for it. `tools.policy.blocked` is the
+		// host saying the capability has no place in this delivery at all, which is
+		// a statement the content cannot overrule.
+		if (hostDenied) return null;
 		if (!granted && !registration.resolvesWithoutGrant) return null;
 		let content: unknown = null;
 		if (registration.requiresAuthoredContent) {

@@ -26,7 +26,10 @@ import type {
 	CanonicalToolsConfig,
 	ToolPlacementLevel,
 } from "../../services/tools-config-normalizer.js";
-import { normalizeToolsConfig } from "../../services/tools-config-normalizer.js";
+import {
+	normalizeToolList,
+	normalizeToolsConfig,
+} from "../../services/tools-config-normalizer.js";
 import type { ToolRegistry } from "../../services/ToolRegistry.js";
 
 import type {
@@ -35,7 +38,10 @@ import type {
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
 import type { FeaturePolicyDecision } from "./feature-decision.js";
-import { interpretFeatureResult } from "./feature-decision.js";
+import {
+	hostFeatureDenial,
+	interpretFeatureResult,
+} from "./feature-decision.js";
 import { composeDecision } from "./compose-decision.js";
 import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
 import { PnpPolicySource } from "../sources/PnpPolicySource.js";
@@ -186,6 +192,8 @@ export class ToolPolicyEngine {
 	 */
 	decideFeature(featureId: string): FeaturePolicyDecision {
 		this.assertNotDisposed();
+		const hostDenial = this.hostFeatureGate(featureId);
+		if (hostDenial) return hostDenial;
 		return interpretFeatureResult(
 			featureId,
 			this.pnpPolicySource.resolveFeature(featureId, {
@@ -197,6 +205,30 @@ export class ToolPolicyEngine {
 			// The engine can.
 			{ assessmentBound: this.assessment !== null },
 		);
+	}
+
+	/**
+	 * The host gates that hold for a feature id, or `null` when none fires.
+	 *
+	 * `policy.allowed` / `policy.blocked` name capabilities, not placements, so
+	 * they are the one part of the host pipeline that is meaningful without a
+	 * placement level — and the only lever a host has over a capability that
+	 * renders as its own surface, since a `region` capability is rejected from
+	 * `tools.placement` by configuration validation. `provider-disabled` and
+	 * `placement-membership` are deliberately not applied: both are statements
+	 * about a toolbar the feature was never on.
+	 */
+	private hostFeatureGate(featureId: string): FeaturePolicyDecision | null {
+		const context = { assessmentBound: this.assessment !== null };
+		const blocked = normalizeToolList(this.tools.policy.blocked);
+		if (blocked.includes(featureId)) {
+			return hostFeatureDenial(featureId, "host-blocked", blocked, context);
+		}
+		const allowed = normalizeToolList(this.tools.policy.allowed);
+		if (allowed.length > 0 && !allowed.includes(featureId)) {
+			return hostFeatureDenial(featureId, "host-allowlist", allowed, context);
+		}
+		return null;
 	}
 
 	/**

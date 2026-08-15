@@ -209,6 +209,83 @@ describe("pie-theme DOM contract", () => {
 		).toBe("");
 	});
 
+	test("resolves provider variables from the theme being applied", () => {
+		const palette: Record<string, string> = {
+			light: "#ffffff",
+			dark: "#111111",
+			cupcake: "#faf7f5",
+		};
+		const observed: string[] = [];
+		registerPieThemeProvider({
+			id: TEST_PROVIDER_ID,
+			canRead: () => true,
+			read: (target) => {
+				const dataTheme = target.getAttribute("data-theme") ?? "";
+				observed.push(dataTheme);
+				return { "--pie-background": palette[dataTheme] ?? "#000000" };
+			},
+		});
+
+		const element = pieThemeElement({
+			scope: "document",
+			provider: TEST_PROVIDER_ID,
+			theme: "light",
+		});
+		document.body.append(element);
+		const background = () =>
+			document.documentElement.style.getPropertyValue("--pie-background");
+		expect(background()).toBe("#ffffff");
+
+		// The adapter reads the target, so a stale read here is a full theme
+		// behind the selection and nothing re-resolves it.
+		element.setAttribute("theme", "dark");
+		expect(background()).toBe("#111111");
+		element.setAttribute("theme", "cupcake");
+		expect(background()).toBe("#faf7f5");
+
+		expect(new Set(observed)).toEqual(new Set(["light", "dark", "cupcake"]));
+		expect(document.documentElement.getAttribute("data-theme")).toBe("cupcake");
+	});
+
+	test("leaves no probe residue on a document target it does not own", () => {
+		document.documentElement.setAttribute("data-theme", "host-theme");
+		const observed: string[] = [];
+		registerPieThemeProvider({
+			id: TEST_PROVIDER_ID,
+			canRead: () => true,
+			read: (target) => {
+				observed.push(target.getAttribute("data-theme") ?? "");
+				return { "--pie-background": "#abcdef" };
+			},
+		});
+
+		const owner = pieThemeElement({
+			scope: "document",
+			theme: "dark",
+			provider: TEST_PROVIDER_ID,
+		});
+		document.body.append(owner);
+		expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+		// A later element that is not the active owner still resolves, so it still
+		// probes; the target must come back out of that read unchanged.
+		const bystander = pieThemeElement({
+			scope: "document",
+			theme: "cupcake",
+			provider: TEST_PROVIDER_ID,
+		});
+		document.body.append(bystander);
+		owner.setAttribute("scheme", "black-on-white");
+		expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+		expect(observed).toContain("cupcake");
+
+		bystander.remove();
+		owner.remove();
+		expect(document.documentElement.getAttribute("data-theme")).toBe(
+			"host-theme",
+		);
+	});
+
 	test("stamps color-scheme for a dark scheme and hands it back on disconnect", () => {
 		document.documentElement.style.setProperty("color-scheme", "light");
 		const element = pieThemeElement({

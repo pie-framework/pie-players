@@ -333,10 +333,12 @@ export class PieThemeElement extends HTMLElementBase {
 			this.clearPreviousTarget();
 		}
 
-		const providerVariables = resolveProviderVariables({
+		const dataColorScheme = this.scheme === "default" ? null : this.scheme;
+		const providerVariables = this.resolveProviderVariablesForState(
 			target,
-			provider: this.provider,
-		});
+			dataTheme,
+			dataColorScheme,
+		);
 		const resolution = resolvePieTheme({
 			baseTheme: effectiveTheme,
 			providerVariables,
@@ -346,7 +348,7 @@ export class PieThemeElement extends HTMLElementBase {
 
 		const state: DocumentThemeState = Object.freeze({
 			dataTheme,
-			dataColorScheme: this.scheme === "default" ? null : this.scheme,
+			dataColorScheme,
 			colorScheme: resolution.colorScheme,
 			variables: resolution.variables,
 		});
@@ -377,6 +379,42 @@ export class PieThemeElement extends HTMLElementBase {
 		}
 		this.previousTarget = target;
 		this.previousKeys = new Set(Object.keys(resolution.variables));
+	}
+
+	/**
+	 * Provider adapters resolve by reading custom properties off the target, and
+	 * those are selected by the target's own `data-theme` -- daisyUI's `--color-*`
+	 * are the case that matters. So the target has to be carrying the incoming
+	 * theme before the read: resolving first resolves the palette of the theme
+	 * being replaced and leaves every `--pie-*` value one selection behind, with
+	 * nothing to re-resolve it until some other attribute changes.
+	 *
+	 * The attributes are restored rather than left in place. For
+	 * `scope="document"` the ownership arbitration in `applyTheme` decides whether
+	 * this element may stamp them at all, and `ensureDocumentThemeBaseline` has to
+	 * see the host's pre-existing value to have something to restore on
+	 * disconnect. Stamp and restore happen in one synchronous pass, so the
+	 * transient state is never painted.
+	 */
+	private resolveProviderVariablesForState(
+		target: HTMLElement,
+		dataTheme: string,
+		dataColorScheme: string | null,
+	): ThemeVariables {
+		const setOrRemove = (name: string, value: string | null): void => {
+			if (value === null) target.removeAttribute(name);
+			else target.setAttribute(name, value);
+		};
+		const previousTheme = target.getAttribute("data-theme");
+		const previousColorScheme = target.getAttribute("data-color-scheme");
+		setOrRemove("data-theme", dataTheme);
+		setOrRemove("data-color-scheme", dataColorScheme);
+		try {
+			return resolveProviderVariables({ target, provider: this.provider });
+		} finally {
+			setOrRemove("data-theme", previousTheme);
+			setOrRemove("data-color-scheme", previousColorScheme);
+		}
 	}
 
 	private resolveThemeState(): {

@@ -2417,8 +2417,11 @@ function normalizePreviewSpeechMarkOffsets(
 		width: min(720px, calc(100vw - 2rem));
 		max-height: calc(100vh - 2rem);
 		overflow: auto;
-		background: var(--color-base-100);
-		border: 1px solid var(--color-base-300);
+		/* A modal surface has to be opaque, so the recessed pair rather than
+		   `--pie-background`, which the light Base Theme leaves transparent. */
+		background: var(--pie-background-dark, #ecedf1);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border, #8f8f8f);
 		border-radius: 0.75rem;
 		box-shadow: 0 24px 48px rgba(0, 0, 0, 0.22);
 		padding: 0.75rem;
@@ -2465,11 +2468,11 @@ function normalizePreviewSpeechMarkOffsets(
 	}
 
 	.pie-tts-ok {
-		color: var(--color-success);
+		color: var(--pie-correct, #208537);
 	}
 
 	.pie-tts-error {
-		color: var(--color-error);
+		color: var(--pie-incorrect, #a65f00);
 	}
 
 	.pie-tts-actions {
@@ -2578,7 +2581,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 	.pie-tts-preview-track {
 		margin-top: 0.15rem;
-		border: 1px dashed var(--color-base-300);
+		border: 1px dashed var(--pie-border, #8f8f8f);
 		border-radius: 0.5rem;
 		padding: 0.4rem 0.5rem;
 		min-height: 2.6rem;
@@ -2587,8 +2590,13 @@ function normalizePreviewSpeechMarkOffsets(
 		line-height: 1.4;
 	}
 
+	/*
+	 * The spoken-word highlight. `--pie-missing` is the warning colour in this
+	 * contract, and the share stays a mix so the ink underneath still shows through
+	 * -- the highlight marks position, it does not carry the text.
+	 */
 	.pie-tts-preview-active {
-		background: color-mix(in srgb, var(--color-warning) 40%, transparent);
+		background: color-mix(in srgb, var(--pie-missing, #d32f2f) 40%, transparent);
 		border-radius: 0.15rem;
 	}
 </style>

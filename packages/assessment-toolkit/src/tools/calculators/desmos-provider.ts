@@ -309,9 +309,13 @@ class DesmosCalculator implements Calculator {
 			desmosOptions.language = config.locale;
 		}
 
-		// Theme mapping (Desmos may support this via CSS, not API)
-		// Note: Desmos doesn't have a theme option in the API, but we keep this
-		// for potential future use or CSS-based theming
+		// config.theme is deliberately not mapped. Desmos v1.12 does carry a dark
+		// UI — `invertedColors: true` renders one for all three types, not just
+		// graphing — but the calculator's mount paints a literal white
+		// (tool-calculator.svelte, .pie-tool-calculator__container) because the
+		// third-party UI is light and a themed mount would only band it. Turning
+		// the option on without switching that mount in the same change flashes
+		// white behind a dark calculator on every open and on init failure.
 
 		return desmosOptions;
 	}

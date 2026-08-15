@@ -358,10 +358,15 @@
 		position: fixed;
 		z-index: 100;
 		overflow: hidden;
-		background: var(--pie-white, #fff);
+		/* `--pie-background-dark` rather than `--pie-white`: the schemes define
+		   `--pie-white` as the inverse of their ink, which happens to work, but the
+		   recessed surface is the pair the contract actually certifies with
+		   `--pie-text`. A floating panel cannot take `--pie-background`, which the
+		   light Base Theme leaves transparent on purpose. */
+		background: var(--pie-background-dark, #ecedf1);
 		border-radius: 0.5rem;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-		border: 2px solid var(--pie-border-light, #d1d5db);
+		border: 2px solid var(--pie-border, #8f8f8f);
 		color: var(--pie-text, #111827);
 		display: flex;
 		flex-direction: column;
@@ -384,7 +389,10 @@
 	}
 
 	.pie-section-player-tools-pnp-debugger__card {
-		background: var(--pie-secondary-background, #f3f4f6);
+		/* The certified button pair, so a card stays distinct from the panel's
+		   recessed surface on every palette rather than only on light ones. */
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		border-radius: 0.375rem;
 		padding: 0.75rem;
 	}
@@ -395,10 +403,13 @@
 		margin-bottom: 0.5rem;
 	}
 
-	/* Literal amber rather than a token: the registry defines no warning colour,
-	 * and this panel is a debug surface no deployment themes. */
+	/*
+	 * `--pie-missing` is the warning colour -- the DaisyUI provider maps it from the
+	 * `warning` slot, and pie-elements-ng keys it the same way. The previous comment
+	 * here claimed the registry had none.
+	 */
 	.pie-section-player-tools-pnp-debugger__card--warning {
-		border-left: 3px solid #b45309;
+		border-left: 3px solid var(--pie-missing, #b45309);
 	}
 
 	.pie-section-player-tools-pnp-debugger__card-text {
@@ -441,17 +452,18 @@
 	}
 
 	.pie-section-player-tools-pnp-debugger__field select {
-		border: 1px solid #d1d5db;
+		border: 1px solid var(--pie-button-border, #8f8f8f);
 		border-radius: 0.375rem;
 		padding: 0.25rem 0.5rem;
-		background: white;
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-pnp-debugger__pill,
 	.pie-section-player-tools-pnp-debugger__muted {
 		border-radius: 999px;
-		background: #f3f4f6;
-		color: #4b5563;
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.75rem;
 		padding: 0.25rem 0.5rem;
 	}
@@ -466,7 +478,7 @@
 	.pie-section-player-tools-pnp-debugger__tool-heading {
 		font-size: 0.75rem;
 		font-weight: 700;
-		color: #4b5563;
+		color: var(--pie-text, #4b5563);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -479,31 +491,39 @@
 	}
 
 	.pie-section-player-tools-pnp-debugger__tool-name span {
-		color: #6b7280;
+		/* The de-emphasis was a lighter grey, which cannot hold on a dark palette.
+		   Size and font carry the hierarchy; the ink stays legible. */
+		color: var(--pie-text, #6b7280);
 		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 		font-size: 0.75rem;
 	}
 
 	.pie-section-player-tools-pnp-debugger button {
-		border: 1px solid #d1d5db;
+		border: 1px solid var(--pie-button-border, #8f8f8f);
 		border-radius: 0.375rem;
-		background: white;
-		color: #111827;
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		cursor: pointer;
 		font-size: 0.75rem;
 		padding: 0.25rem 0.5rem;
 	}
 
 	.pie-section-player-tools-pnp-debugger button.active {
-		border-color: #2563eb;
-		background: #dbeafe;
-		color: #1d4ed8;
+		border-color: var(--pie-button-hover-border, #8b919c);
+		/* `--pie-button-active-bg` is certified against `--pie-button-color` and
+		   nothing else, so the two move together. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
+		font-weight: 600;
 	}
 
 	.pie-section-player-tools-pnp-debugger button.danger {
-		border-color: #dc2626;
-		background: #fee2e2;
-		color: #b91c1c;
+		/* The destructive state rides the border, which keeps the label on a
+		   certified pair; `--pie-incorrect` clears 4.5:1 against the page on every
+		   scheme, past the 3:1 a boundary owes. */
+		border-color: var(--pie-incorrect, #a65f00);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 	}
 
 </style>

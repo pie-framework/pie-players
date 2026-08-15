@@ -46,6 +46,7 @@ function removePieThemeStyles(target: HTMLElement): void {
 	}
 	target.removeAttribute("data-theme");
 	target.removeAttribute("data-color-scheme");
+	target.style.removeProperty("color-scheme");
 }
 
 function installDarkPreference(): () => void {
@@ -283,6 +284,62 @@ describe("pie-theme DOM contract", () => {
 		expect(document.documentElement.getAttribute("data-theme")).toBe(
 			"host-theme",
 		);
+	});
+
+	test("stamps color-scheme for a dark scheme and hands it back on disconnect", () => {
+		document.documentElement.style.setProperty("color-scheme", "light");
+		const element = pieThemeElement({
+			scope: "document",
+			theme: "light",
+			provider: "none",
+		});
+		document.body.append(element);
+		// Without this, UA-styled controls keep the host theme's polarity and render
+		// dark-on-dark under the accommodation.
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("light");
+
+		element.setAttribute("scheme", "yellow-on-blue");
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("dark");
+
+		element.setAttribute("scheme", "black-on-white");
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("light");
+
+		// Back to no scheme: the host's own declaration is the thing to return to,
+		// not the absence of one.
+		element.setAttribute("scheme", "default");
+		element.remove();
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("light");
+		document.documentElement.style.removeProperty("color-scheme");
+	});
+
+	test("leaves color-scheme alone when the host never declared one", () => {
+		const element = pieThemeElement({
+			scope: "document",
+			theme: "dark",
+			provider: "none",
+		});
+		document.body.append(element);
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("");
+
+		element.setAttribute("scheme", "white-on-black");
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("dark");
+
+		element.remove();
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("");
 	});
 
 	test("restores the surviving document owner and then the host baseline", () => {

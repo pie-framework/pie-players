@@ -49,6 +49,11 @@ history and completed implementation plans are intentionally excluded.
 - [`integrations/consumer-api-dependencies.md`](./integrations/consumer-api-dependencies.md) - Which surfaces downstream hosts actually depend on, and which break silently
 - [`integrations/consumer-api-dependencies-maintenance.md`](./integrations/consumer-api-dependencies-maintenance.md) - Harness-neutral procedure for refreshing that pad
 
+## Theming
+
+- [`theming/how-theming-works.md`](./theming/how-theming-works.md) - How `<pie-theme>` resolves tokens and writes them, why a host stylesheet cannot override them, and how a host carries an accommodation into its own chrome
+- [`../packages/theme/README.md`](../packages/theme/README.md) - Element attributes, runtime API, registered custom schemes, and the token registry
+
 ## Accessibility And TTS
 
 - [`accessibility/accessibility-catalogs-quick-start.md`](./accessibility/accessibility-catalogs-quick-start.md) - Quick start for accessibility catalogs

@@ -1,5 +1,14 @@
 # @pie-players/pie-section-player-tools-session-debugger
 
+## 0.3.67
+
+### Patch Changes
+
+- Updated dependencies [73d2be4]
+- Updated dependencies [73d2be4]
+  - @pie-players/pie-theme@0.3.67
+  - @pie-players/pie-section-player-tools-shared@0.3.67
+
 ## 0.3.66
 
 ### Patch Changes

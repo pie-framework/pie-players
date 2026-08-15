@@ -71,14 +71,49 @@ function parseVariableOverrides(value: unknown): ThemeVariables {
 type DocumentThemeState = Readonly<{
 	dataTheme: string;
 	dataColorScheme: string | null;
+	colorScheme: "light" | "dark" | null;
 	variables: Readonly<ThemeVariables>;
 }>;
 
 type DocumentThemeBaseline = {
 	dataTheme: string | null;
 	dataColorScheme: string | null;
+	/** The host's own inline `color-scheme`, restored when no owner is left. */
+	colorScheme: { value: string; priority: string } | null;
 	variables: Map<string, { value: string; priority: string } | null>;
 };
+
+/**
+ * `color-scheme` decides how UA-styled controls paint -- `input` and `select`
+ * text, scrollbars, native form widgets -- and no amount of custom properties
+ * reaches them. A scheme that replaces the palette without it leaves those
+ * controls on the host theme's polarity, which under a dark accommodation on a
+ * light host means dark-on-dark.
+ *
+ * `null` restores rather than removes. Clearing a scheme has to undo this
+ * element's keyword, and the thing to return to is whatever the host declared --
+ * removing outright would take a host's own `color-scheme` away the first time a
+ * document-scoped element resolved without a scheme, which is most of the time.
+ * A self-scoped target has no host declaration to preserve, so its caller passes
+ * no baseline and `null` does remove.
+ */
+function applyColorScheme(
+	target: HTMLElement,
+	colorScheme: "light" | "dark" | null,
+	baseline: { value: string; priority: string } | null,
+): void {
+	if (colorScheme) {
+		target.style.setProperty("color-scheme", colorScheme);
+	} else if (baseline) {
+		target.style.setProperty(
+			"color-scheme",
+			baseline.value,
+			baseline.priority,
+		);
+	} else {
+		target.style.removeProperty("color-scheme");
+	}
+}
 
 const documentThemeOwners = new Map<PieThemeElement, DocumentThemeState>();
 let documentThemeBaseline: DocumentThemeBaseline | null = null;
@@ -91,6 +126,12 @@ function ensureDocumentThemeBaseline(
 	documentThemeBaseline ??= {
 		dataTheme: target.getAttribute("data-theme"),
 		dataColorScheme: target.getAttribute("data-color-scheme"),
+		colorScheme: target.style.getPropertyValue("color-scheme")
+			? {
+					value: target.style.getPropertyValue("color-scheme"),
+					priority: target.style.getPropertyPriority("color-scheme"),
+				}
+			: null,
 		variables: new Map(),
 	};
 	for (const token of tokens) {
@@ -132,6 +173,11 @@ function applyDocumentThemeState(
 	} else {
 		target.removeAttribute("data-color-scheme");
 	}
+	applyColorScheme(
+		target,
+		state.colorScheme,
+		documentThemeBaseline?.colorScheme ?? null,
+	);
 	for (const [token, value] of Object.entries(state.variables)) {
 		target.style.setProperty(token, value);
 	}
@@ -147,6 +193,15 @@ function restoreDocumentThemeBaseline(target: HTMLElement): void {
 		target.removeAttribute("data-color-scheme");
 	} else {
 		target.setAttribute("data-color-scheme", baseline.dataColorScheme);
+	}
+	if (baseline.colorScheme) {
+		target.style.setProperty(
+			"color-scheme",
+			baseline.colorScheme.value,
+			baseline.colorScheme.priority,
+		);
+	} else {
+		target.style.removeProperty("color-scheme");
 	}
 	restoreDocumentThemeVariables(target);
 	documentThemeBaseline = null;
@@ -294,6 +349,7 @@ export class PieThemeElement extends HTMLElementBase {
 		const state: DocumentThemeState = Object.freeze({
 			dataTheme,
 			dataColorScheme,
+			colorScheme: resolution.colorScheme,
 			variables: resolution.variables,
 		});
 		if (this.scope === "document") {
@@ -315,6 +371,7 @@ export class PieThemeElement extends HTMLElementBase {
 			} else {
 				target.removeAttribute("data-color-scheme");
 			}
+			applyColorScheme(target, state.colorScheme, null);
 			this.clearPreviousKeys(target);
 			for (const [key, value] of Object.entries(resolution.variables)) {
 				target.style.setProperty(key, value);
@@ -395,6 +452,9 @@ export class PieThemeElement extends HTMLElementBase {
 			this.clearPreviousKeys(target);
 			target.removeAttribute("data-theme");
 			target.removeAttribute("data-color-scheme");
+			// Self-scoped targets are the element itself, so anything written here
+			// was written by this element -- no host baseline to preserve.
+			target.style.removeProperty("color-scheme");
 		}
 		this.previousTarget = null;
 		this.previousKeys.clear();

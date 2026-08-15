@@ -372,10 +372,12 @@
 		position: fixed;
 		z-index: 100;
 		overflow: hidden;
-		background: var(--pie-white, #fff);
+		/* The certified recessed pair, and opaque on every palette -- see the note in
+		   the PNP panel for why not `--pie-white` or `--pie-background`. */
+		background: var(--pie-background-dark, #ecedf1);
 		border-radius: 0.5rem;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-		border: 2px solid var(--pie-border-light, #d1d5db);
+		border: 2px solid var(--pie-border, #8f8f8f);
 		color: var(--pie-text, #111827);
 	}
 
@@ -444,16 +446,23 @@
 		border: 1px solid transparent;
 	}
 
+	/*
+	 * Both alerts were a pinned tint, edge and ink -- amber and sky, legible only on
+	 * a light page. The state moves to the edge so the label can sit on the certified
+	 * button pair: `--pie-missing` is the warning colour the DaisyUI provider maps
+	 * from the `warning` slot, and `--pie-tertiary` is the informational one, both
+	 * certified at 4.5:1 against the page and so past the 3:1 an edge owes.
+	 */
 	.pie-section-player-tools-session-debugger__alert--warning {
-		background: #fef3c7;
-		border-color: #f59e0b;
-		color: #92400e;
+		background: var(--pie-button-bg, #ffffff);
+		border-color: var(--pie-missing, #b45309);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-session-debugger__alert--info {
-		background: #e0f2fe;
-		border-color: #38bdf8;
-		color: #0c4a6e;
+		background: var(--pie-button-bg, #ffffff);
+		border-color: var(--pie-tertiary, #146eb3);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-session-debugger__icon-md {
@@ -468,7 +477,7 @@
 	}
 
 	.pie-section-player-tools-session-debugger__card-region:focus-visible {
-		outline: 2px solid var(--color-primary, #2563eb);
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 2px;
 		border-radius: 0.5rem;
 	}

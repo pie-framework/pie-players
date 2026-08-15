@@ -1882,10 +1882,7 @@
 			style="
 				padding: 20px;
 				margin: 20px;
-				border: 2px solid #d32f2f;
 				border-radius: 4px;
-				background-color: #ffebee;
-				color: #c62828;
 				font-family: sans-serif;
 			"
 		>
@@ -1974,5 +1971,32 @@
 		font-size: 0.95rem;
 		color: var(--pie-missing, #9a6700);
 		text-align: center;
+	}
+
+	/*
+	 * Fixed red encoding, folded into the palette once a scheme asks for one: exact
+	 * pinned values at 0% collapse, which is every Base Theme. The ink collapses to
+	 * `--pie-text` rather than `--pie-incorrect`, which pairs with this tint at only
+	 * 4.14:1 under Black on White; the tint is roughly 1.1:1 from the page, so the
+	 * `--pie-incorrect` edge is what marks the banner out. Kept in step with the
+	 * same rule in `players-shared`'s `PieItemPlayer`.
+	 */
+	.pie-player-error {
+		border: 2px solid
+			color-mix(
+				in srgb,
+				var(--pie-incorrect, #d32f2f) var(--pie-fixed-hue-collapse, 0%),
+				#d32f2f
+			);
+		background-color: color-mix(
+			in srgb,
+			var(--pie-incorrect-secondary, #ffebee) var(--pie-fixed-hue-collapse, 0%),
+			#ffebee
+		);
+		color: color-mix(
+			in srgb,
+			var(--pie-text, #c62828) var(--pie-fixed-hue-collapse, 0%),
+			#c62828
+		);
 	}
 </style>

@@ -579,12 +579,20 @@
 </div>
 
 <style>
+	/*
+	 * This panel read DaisyUI's `--color-*` slots directly, which follows the host's
+	 * DaisyUI palette or these literals, never the PIE colour scheme -- so a tester
+	 * inspecting an item under White on Black got a light panel over a dark page.
+	 * The surface is the certified `--pie-text` on `--pie-background-dark` recessed
+	 * pair; `--pie-background`, which `--color-base-100` maps to, is transparent in
+	 * the light Base Theme by design and cannot back a floating panel.
+	 */
 	.pie-item-player-session-debugger {
 		position: fixed;
 		z-index: 9999;
-		background: var(--color-base-100, #fff);
-		color: var(--color-base-content, #1f2937);
-		border: 2px solid var(--color-base-300, #d1d5db);
+		background: var(--pie-background-dark, #ecedf1);
+		color: var(--pie-text, #1f2937);
+		border: 2px solid var(--pie-border, #8f8f8f);
 		border-radius: 8px;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 		overflow: hidden;
@@ -596,10 +604,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		background: var(--color-base-200, #f3f4f6);
+		/* The header holds the drag affordance and the window buttons, so it takes the
+		   certified button pair rather than a second recessed surface. */
+		background: var(--pie-button-bg, #f3f4f6);
+		color: var(--pie-button-color, #1f2937);
 		cursor: move;
 		user-select: none;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-item-player-session-debugger__header-title {
@@ -631,19 +642,22 @@
 		width: 1.35rem;
 		height: 1.35rem;
 		padding: 0;
-		border: 1px solid rgba(148, 163, 184, 0.7);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
 		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.65);
-		color: #334155;
+		/* Was a translucent white, a light chip on any dark palette. */
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #334155);
 		cursor: pointer;
 	}
 
 	.pie-item-player-session-debugger__window-button:hover {
-		background: rgba(241, 245, 249, 0.95);
+		background: var(--pie-button-hover-bg, #f9fafb);
+		color: var(--pie-button-hover-color, #111827);
+		border-color: var(--pie-button-hover-border, #8b919c);
 	}
 
 	.pie-item-player-session-debugger__window-button:focus-visible {
-		outline: 2px solid #3b82f6;
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 1px;
 	}
 
@@ -673,24 +687,32 @@
 	.pie-item-player-session-debugger__tab {
 		padding: 0.45rem 0.8rem;
 		border-radius: 9999px;
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-200, #f3f4f6);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		background: var(--pie-button-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.76rem;
 		font-weight: 600;
 		cursor: pointer;
 	}
 
 	.pie-item-player-session-debugger__tab--active {
-		background: var(--color-base-content, #1f2937);
-		border-color: var(--color-base-content, #1f2937);
-		color: var(--color-base-100, #fff);
+		/* Was ink-as-fill with the page colour as its label, an inversion that breaks
+		   the moment the page colour is transparent. `--pie-button-active-bg` with
+		   `--pie-button-color` is the pair the contract certifies for a selected
+		   control. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		border-color: var(--pie-button-hover-border, #8b919c);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-item-player-session-debugger__alert {
 		padding: 0.75rem 0.9rem;
 		border-radius: 0.65rem;
-		border: 1px solid color-mix(in srgb, var(--color-info) 30%, var(--color-base-300));
-		background: color-mix(in srgb, var(--color-info) 10%, var(--color-base-100));
+		/* Informational state on the edge, label on a certified pair: `--pie-tertiary`
+		   clears 4.5:1 against the page on every scheme, past the 3:1 an edge owes. */
+		border: 1px solid var(--pie-tertiary, #146eb3);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.8rem;
 		line-height: 1.4;
 	}
@@ -700,8 +722,9 @@
 		gap: 0.45rem;
 		padding: 0.8rem;
 		border-radius: 0.75rem;
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: color-mix(in srgb, var(--color-base-100) 88%, var(--color-base-200));
+		border: 1px solid var(--pie-border, #8f8f8f);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		min-height: 0;
 	}
 
@@ -717,7 +740,10 @@
 		margin: 0;
 		padding: 0.75rem;
 		border-radius: 0.55rem;
-		background: color-mix(in srgb, var(--color-base-300) 55%, var(--color-base-100));
+		/* The code block sits inside a card, so it takes the deeper certified fill of
+		   the same family rather than a mix of two base slots. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.72rem;
 		line-height: 1.45;
 		overflow: auto;
@@ -726,7 +752,7 @@
 	}
 
 	.pie-item-player-session-debugger__card-region:focus-visible {
-		outline: 2px solid #3b82f6;
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 2px;
 		border-radius: 0.55rem;
 	}
@@ -743,6 +769,8 @@
 	.pie-item-player-session-debugger__resize-icon {
 		width: 100%;
 		height: 100%;
-		color: color-mix(in srgb, var(--color-base-content) 30%, transparent);
+		/* A decorative grip, exempt from 1.4.11, so the faded share stays -- what
+		   changes is whose ink it fades. */
+		color: color-mix(in srgb, var(--pie-text, #334155) 30%, transparent);
 	}
 </style>

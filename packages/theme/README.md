@@ -2,6 +2,11 @@
 
 Shared PIE theming primitives and the `pie-theme` custom element.
 
+This file is the reference. For how the pieces fit — why a host stylesheet
+cannot override a mounted element, what the provider choice actually decides, and
+how a host carries an accommodation into its own chrome — see
+[`docs/theming/how-theming-works.md`](../../docs/theming/how-theming-works.md).
+
 `pie-theme` resolves PIE theme tokens (`--pie-*`) with this precedence:
 
 1. Base PIE theme (`theme=light|dark|auto`)

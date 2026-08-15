@@ -183,12 +183,17 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 		const style = document.createElement("style");
 		style.id = styleId;
+		// No `opacity` here: a highlight pseudo honours only the properties
+		// CSS Highlight API allows — colour, background, text-decoration,
+		// text-shadow — so the dim that pairs with the strike would silently do
+		// nothing. It comes from the eliminated choice's own element instead, via
+		// `[data-pie-answer-eliminated]` in the shared content stylesheet, which is
+		// the one rule both this path and the fallback path share.
 		style.textContent = `
       ::highlight(pie-answer-eliminated-${choiceId}) {
         text-decoration: line-through;
         text-decoration-thickness: 2px;
         text-decoration-color: var(--pie-answer-eliminator-strike-color, var(--pie-incorrect, #ff9800));
-        opacity: 0.6;
       }
     `;
 		document.head.appendChild(style);

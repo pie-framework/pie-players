@@ -16,6 +16,11 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import type { ItemMarkupSanitizer } from "@pie-players/pie-players-shared/security";
 
+import {
+	ALTERNATES_CLASS,
+	mountItemAlternates,
+	type MountedAlternates,
+} from "./accessibility-alternates.js";
 import { define, whenDefined } from "./ce-registry.js";
 import {
 	defaultLoadResolution,
@@ -103,6 +108,7 @@ export class PiePrint extends LitElement {
 	private _floatItem: Item = { markup: "", elements: {}, models: [] };
 	private _trustMarkup = false;
 	private _sanitizeMarkup: ItemMarkupSanitizer | null = null;
+	private _alternates: MountedAlternates | null = null;
 
 	/**
 	 * Custom resolver function for determining element URLs
@@ -230,7 +236,38 @@ export class PiePrint extends LitElement {
 		});
 	}
 
+	/**
+	 * Resolve the item's accessibility catalogs and mount whatever is in play.
+	 *
+	 * Re-resolved from scratch on every config change rather than reconciled: a
+	 * print job has one answer, so there is no mounted state worth preserving
+	 * across a different item or a different learner.
+	 */
+	private _syncAlternates() {
+		this._alternates?.destroy();
+		this._alternates = null;
+		const anchor = this.querySelector<HTMLElement>(`.${ALTERNATES_CLASS}`);
+		if (!anchor) return;
+		this._alternates = mountItemAlternates({
+			anchor,
+			item: this._config.item,
+			accessibility: this._config.accessibility,
+		});
+	}
+
+	disconnectedCallback() {
+		this._alternates?.destroy();
+		this._alternates = null;
+		super.disconnectedCallback();
+	}
+
 	async updated(changedProperties: PropertyValues) {
+		if (changedProperties.has("config")) {
+			// Ahead of the element loads and outside their error handling: an
+			// accommodation must not be lost because a print module failed to resolve.
+			this._syncAlternates();
+		}
+
 		if (changedProperties.has("config") && this.config.item.elements) {
 			try {
 				// Load all print modules
@@ -262,6 +299,7 @@ export class PiePrint extends LitElement {
 	render() {
 		return html`
       <div>
+        <div class="${ALTERNATES_CLASS}"></div>
         ${unsafeHTML(this._printItem.markup)}
         <br />
         ${unsafeHTML(this._floatItem.markup)}

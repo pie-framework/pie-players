@@ -7,7 +7,12 @@
  * inside this module. Svelte callers are geometry adapters over this seam.
  */
 
+// The grant-AND-content rule lives in the registration-authoring surface rather
+// than the host-facing one: it is what a package rendering capabilities into its
+// own surfaces needs, and print resolves through the same module.
+import { resolveContentCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
+	isHostDeniedFeature,
 	toFrameworkErrorModel,
 	type CatalogOwnerContext,
 	type CatalogOwnerSnapshot,
@@ -348,43 +353,48 @@ export function createToolSurfaceHost(
 	): EligibleCapability | null {
 		if (current.scope.kind !== "content") return null;
 		const coordinator = current.services.toolkitCoordinator;
-		const supportIds = registration.pnpSupportIds?.length
-			? registration.pnpSupportIds
-			: [registration.toolId];
-		let featureId = "";
-		let parameters: unknown;
-		let granted = false;
-		try {
-			for (const supportId of supportIds) {
-				const decision = coordinator?.decideFeaturePolicy?.(supportId);
-				if (decision?.granted !== true) continue;
-				featureId = supportId;
-				parameters = decision.parameters;
-				granted = true;
-				break;
-			}
-		} catch (error) {
-			report(
-				registration.toolId,
-				"resolve",
-				`Tool "${registration.toolId}" failed policy resolution for the "${current.surface}" surface.`,
-				error,
-			);
-			return null;
-		}
+		const [resolved] = resolveContentCapabilities({
+			registrations: [registration],
+			catalogs,
+			// One decision per feature id, in the rule's three states. The scan across
+			// a capability's support ids, the gate-only probe of its tool id, and
+			// denial's precedence over both a grant and `resolvesWithoutGrant` live in
+			// the rule, so this host and print cannot answer differently. All this
+			// adapter owns is reading a `FeaturePolicyDecision`: `granted` is not
+			// enough on its own, because a host gate and an unconfigured feature are
+			// both `granted: false` and only one of them may be reopened by content.
+			policyFor: (featureId) => {
+				const decision = coordinator?.decideFeaturePolicy?.(featureId);
+				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
+				if (decision?.granted === true) {
+					return {
+						outcome: "granted",
+						featureId,
+						parameters: decision.parameters,
+					};
+				}
+				return { outcome: "silent" };
+			},
+			onError: (failed, phase, error) => {
+				report(
+					failed.toolId,
+					"resolve",
+					phase === "policy"
+						? `Tool "${failed.toolId}" failed policy resolution for the "${current.surface}" surface.`
+						: `Tool "${failed.toolId}" failed authored-content resolution for the "${current.surface}" surface.`,
+					error,
+				);
+			},
+		});
+		if (!resolved) return null;
 
-		if (!granted && !registration.resolvesWithoutGrant) return null;
-		let content: unknown = null;
-		if (registration.requiresAuthoredContent) {
+		// Serializability is this host's requirement rather than the rule's: it
+		// re-resolves on every policy and catalog signal and compares the answer
+		// structurally, so content it cannot compare would report a change on every
+		// invalidation. Print resolves once and does not care.
+		if (resolved.content !== null) {
 			try {
-				content = registration.requiresAuthoredContent.resolve({
-					featureId,
-					parameters,
-					catalogs,
-					granted,
-				});
-				if (content === null || content === undefined) return null;
-				stableSerializableJson(content);
+				stableSerializableJson(resolved.content);
 			} catch (error) {
 				report(
 					registration.toolId,
@@ -394,16 +404,14 @@ export function createToolSurfaceHost(
 				);
 				return null;
 			}
-		} else if (!granted) {
-			return null;
 		}
 
 		const context: ToolSurfaceRenderContext = {
 			toolId: registration.toolId,
-			featureId,
+			featureId: resolved.featureId,
 			surface: current.surface,
-			parameters,
-			content,
+			parameters: resolved.parameters,
+			content: resolved.content,
 			services: current.services,
 		};
 		return {

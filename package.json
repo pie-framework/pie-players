@@ -20,7 +20,7 @@
 		"build:e2e:item-player": "turbo build --filter=@pie-players/pie-item-player... --filter=@pie-players/pie-section-player-tools-instrumentation-debugger",
 		"build:e2e:assessment-player": "turbo build --filter=@pie-players/pie-assessment-player... --filter=@pie-players/pie-section-player-tools-* --filter=@pie-players/pie-tool-text-to-speech --filter=@pie-players/tts-server-google --filter=@pie-players/tts-server-polly",
 		"build:e2e:players-shared": "turbo build --filter=@pie-players/pie-players-shared",
-		"build:e2e:print-player": "turbo build --filter=@pie-players/pie-players-shared",
+		"build:e2e:print-player": "turbo build --filter=@pie-players/pie-print-player...",
 		"dev": "turbo dev --filter=section-demos",
 		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*'",
 		"test:all": "bun run test",

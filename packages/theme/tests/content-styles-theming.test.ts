@@ -115,9 +115,37 @@ describe("content stylesheet theming", () => {
 
 	test("the eliminator toggle scales with the text around it", () => {
 		// A px box under PNP font scaling stays put while the text grows.
-		expect(collapsed).toContain("width:1.75em");
 		expect(collapsed).toContain("font-size:1.125em");
 		expect(collapsed).not.toContain("font-size:18px");
+
+		// The box is 1.75x the SURROUNDING text, so it divides by the glyph factor:
+		// `em` in a length resolves against this element's own font-size, and a bare
+		// 1.75em next to font-size:1.125em measures 31.5px at a 16px base, not the
+		// 28px the box is specified at.
+		expect(collapsed).toContain("width:calc(1.75em/1.125)");
+		expect(collapsed).toContain("height:calc(1.75em/1.125)");
+		expect(collapsed).not.toContain("width:1.75em");
+		const base = 16;
+		const box = (base * 1.125 * 1.75) / 1.125;
+		expect(box).toBeCloseTo(28, 5);
+		// SC 2.5.8's 24px minimum still clears at the smallest base PNP offers.
+		expect((14 * 1.125 * 1.75) / 1.125).toBeGreaterThanOrEqual(24);
+	});
+
+	test("an eliminated choice is dimmed as well as struck, on both strike paths", () => {
+		// Redundant coding: elimination must survive a strike colour the learner
+		// cannot distinguish from the text. Dropped by accident in the theming pass.
+		expect(collapsed).toContain(
+			".pie-answer-eliminator-eliminated-fallback{text-decoration:line-through",
+		);
+		// The dim hangs off the attribute both strike paths set, not off the class
+		// only the no-Highlight-API path adds — and a highlight pseudo cannot carry
+		// `opacity`, so declaring it there dimmed nothing.
+		expect(collapsed).toContain(
+			'[data-pie-answer-eliminated="true"]{opacity:0.6',
+		);
+		// And no longer on the class, where only one of the two paths reached it.
+		expect(collapsed).not.toContain("#ff9800));opacity:0.6");
 	});
 
 	test("centred content blocks drop their gutters at reflow width", () => {

@@ -735,11 +735,14 @@ table {
 
 .pie-answer-eliminator-toggle {
 	/* em, not px: PNP font scaling raises the surrounding text size without
-	   touching px boxes, which left a fixed 28px control under grown text. At the
-	   default 16px base these are the 28px/18px the control used to pin, and the
-	   box stays past SC 2.5.8's 24px minimum for any base at or above 14px. */
-	width: 1.75em;
-	height: 1.75em;
+	   touching px boxes, which left a fixed 28px control under grown text. The
+	   box is 1.75x the surrounding text and the glyph 1.125x — the 28px/18px the
+	   control used to pin at a 16px base — and the box stays past SC 2.5.8's 24px
+	   minimum for any base at or above 14px. The box divides by the glyph factor
+	   because `em` in a length resolves against this element's own font-size, not
+	   the parent's; a bare 1.75em here measures 31.5px, not 28px. */
+	width: calc(1.75em / 1.125);
+	height: calc(1.75em / 1.125);
 	padding: 0;
 	border: 1px solid var(--pie-border, #ccc);
 	border-radius: 4px;
@@ -778,6 +781,22 @@ table {
 		--pie-answer-eliminator-strike-color,
 		var(--pie-incorrect, #ff9800)
 	);
+}
+
+/*
+ * Dims the choice as well as striking it, so elimination survives a strike
+ * colour the learner cannot distinguish. Kept at 0.6 rather than lower: the text
+ * stays readable, because eliminating a choice is reversible and the learner has
+ * to be able to reconsider it.
+ *
+ * Keyed on the attribute rather than on the fallback class, because the class is
+ * added only by the path for browsers without the CSS Highlight API. The
+ * attribute is set by both paths, and a highlight pseudo cannot carry `opacity`
+ * at all — declaring it there dimmed nothing, so the modern path shipped the
+ * strike as its only cue.
+ */
+[data-pie-answer-eliminated="true"] {
+	opacity: 0.6;
 }
 
 .pie-answer-eliminator-image-strike {

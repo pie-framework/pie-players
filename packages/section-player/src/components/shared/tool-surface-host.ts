@@ -12,6 +12,7 @@
 // own surfaces needs, and print resolves through the same module.
 import { resolveContentCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
+	isHostDeniedFeature,
 	toFrameworkErrorModel,
 	type CatalogOwnerContext,
 	type CatalogOwnerSnapshot,
@@ -355,10 +356,24 @@ export function createToolSurfaceHost(
 		const [resolved] = resolveContentCapabilities({
 			registrations: [registration],
 			catalogs,
-			grantFor: (supportId) => {
-				const decision = coordinator?.decideFeaturePolicy?.(supportId);
-				if (decision?.granted !== true) return null;
-				return { featureId: supportId, parameters: decision.parameters };
+			// One decision per feature id, in the rule's three states. The scan across
+			// a capability's support ids, the gate-only probe of its tool id, and
+			// denial's precedence over both a grant and `resolvesWithoutGrant` live in
+			// the rule, so this host and print cannot answer differently. All this
+			// adapter owns is reading a `FeaturePolicyDecision`: `granted` is not
+			// enough on its own, because a host gate and an unconfigured feature are
+			// both `granted: false` and only one of them may be reopened by content.
+			policyFor: (featureId) => {
+				const decision = coordinator?.decideFeaturePolicy?.(featureId);
+				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
+				if (decision?.granted === true) {
+					return {
+						outcome: "granted",
+						featureId,
+						parameters: decision.parameters,
+					};
+				}
+				return { outcome: "silent" };
 			},
 			onError: (failed, phase, error) => {
 				report(

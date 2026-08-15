@@ -15,7 +15,7 @@ import type {
 import type { CatalogOwnerSnapshot } from "../src/services/AccessibilityCatalogResolver.js";
 import {
 	resolveContentCapabilities,
-	type ContentCapabilityGrant,
+	type ContentCapabilityPolicy,
 } from "../src/tools/content-capability-resolution.js";
 
 const catalogs: CatalogOwnerSnapshot = {
@@ -41,19 +41,30 @@ const withContent = (
 	overrides: Partial<ToolRegistration> = {},
 ) => capability({ requiresAuthoredContent: { resolve }, ...overrides });
 
+const SILENT: ContentCapabilityPolicy = { outcome: "silent" };
+const DENIED: ContentCapabilityPolicy = { outcome: "denied" };
+
 const granting =
 	(...supportIds: string[]) =>
-	(supportId: string): ContentCapabilityGrant | null =>
-		supportIds.includes(supportId) ? { featureId: supportId } : null;
+	(featureId: string): ContentCapabilityPolicy =>
+		supportIds.includes(featureId)
+			? { outcome: "granted", featureId }
+			: SILENT;
 
-const grantsNothing = () => null;
+const grantsNothing = (): ContentCapabilityPolicy => SILENT;
+
+/** Host gate on the named ids; everything else unconfigured. */
+const denying =
+	(...deniedIds: string[]) =>
+	(featureId: string): ContentCapabilityPolicy =>
+		deniedIds.includes(featureId) ? DENIED : SILENT;
 
 describe("resolveContentCapabilities", () => {
 	it("resolves a granted capability whose content is present", () => {
 		const resolved = resolveContentCapabilities({
 			registrations: [withContent(() => ({ text: "here" }))],
 			catalogs,
-			grantFor: granting("alternate"),
+			policyFor: granting("alternate"),
 		});
 
 		expect(resolved).toHaveLength(1);
@@ -65,7 +76,7 @@ describe("resolveContentCapabilities", () => {
 		const resolved = resolveContentCapabilities({
 			registrations: [withContent(() => null)],
 			catalogs,
-			grantFor: granting("alternate"),
+			policyFor: granting("alternate"),
 		});
 
 		expect(resolved).toHaveLength(0);
@@ -81,7 +92,7 @@ describe("resolveContentCapabilities", () => {
 				}),
 			],
 			catalogs,
-			grantFor: grantsNothing,
+			policyFor: grantsNothing,
 		});
 
 		expect(resolved).toHaveLength(0);
@@ -101,7 +112,7 @@ describe("resolveContentCapabilities", () => {
 				),
 			],
 			catalogs,
-			grantFor: grantsNothing,
+			policyFor: grantsNothing,
 		});
 
 		expect(resolved).toHaveLength(1);
@@ -119,7 +130,7 @@ describe("resolveContentCapabilities", () => {
 				}),
 			],
 			catalogs,
-			grantFor: granting("secondary"),
+			policyFor: granting("secondary"),
 		});
 
 		expect(resolved[0]?.featureId).toBe("secondary");
@@ -129,7 +140,7 @@ describe("resolveContentCapabilities", () => {
 		const resolved = resolveContentCapabilities({
 			registrations: [capability()],
 			catalogs,
-			grantFor: granting("alternate"),
+			policyFor: granting("alternate"),
 		});
 
 		expect(resolved).toHaveLength(1);
@@ -145,7 +156,7 @@ describe("resolveContentCapabilities", () => {
 				}),
 			],
 			catalogs,
-			grantFor: granting("alternate"),
+			policyFor: granting("alternate"),
 			onError: (registration, phase) =>
 				failures.push(`${registration.toolId}:${phase}`),
 		});
@@ -162,9 +173,9 @@ describe("resolveContentCapabilities", () => {
 				withContent(() => ({ text: "second" }), { toolId: "second" }),
 			],
 			catalogs,
-			grantFor: (supportId) => {
-				if (supportId === "first") throw new Error("policy exploded");
-				return { featureId: supportId };
+			policyFor: (featureId) => {
+				if (featureId === "first") throw new Error("policy exploded");
+				return { outcome: "granted", featureId };
 			},
 			onError: (registration, phase) =>
 				failures.push(`${registration.toolId}:${phase}`),
@@ -176,6 +187,96 @@ describe("resolveContentCapabilities", () => {
 		expect(failures).toEqual(["first:policy"]);
 	});
 
+	it("does not consult content when a host denied the capability", () => {
+		let asked = false;
+		const resolved = resolveContentCapabilities({
+			registrations: [
+				withContent(
+					() => {
+						asked = true;
+						return { text: "authored presentation" };
+					},
+					{ resolvesWithoutGrant: true },
+				),
+			],
+			catalogs,
+			policyFor: denying("alternate"),
+		});
+
+		// The whole point of the third state: `resolvesWithoutGrant` reads silence as
+		// permission to answer from the content, and an off switch is not silence.
+		expect(resolved).toHaveLength(0);
+		expect(asked).toBe(false);
+	});
+
+	it("lets a denial on one declared support id switch the capability off", () => {
+		const resolved = resolveContentCapabilities({
+			registrations: [
+				withContent(() => ({ text: "here" }), {
+					pnpSupportIds: ["primary", "secondary"],
+					resolvesWithoutGrant: true,
+				}),
+			],
+			catalogs,
+			policyFor: (featureId) =>
+				featureId === "primary" ? DENIED : { outcome: "granted", featureId },
+		});
+
+		expect(resolved).toHaveLength(0);
+	});
+
+	it("honours a host denial named against the tool id, not a support id", () => {
+		const resolved = resolveContentCapabilities({
+			registrations: [
+				withContent(() => ({ text: "here" }), {
+					toolId: "alternate",
+					pnpSupportIds: ["someOtherSupportId"],
+					resolvesWithoutGrant: true,
+				}),
+			],
+			catalogs,
+			// A host gate names capabilities, so the tool id has to be probed even
+			// though the capability answers policy through a different support id.
+			policyFor: denying("alternate"),
+		});
+
+		expect(resolved).toHaveLength(0);
+	});
+
+	it("ignores a grant on the tool id that is not a declared support id", () => {
+		const asked: string[] = [];
+		const resolved = resolveContentCapabilities({
+			registrations: [
+				capability({ toolId: "alternate", pnpSupportIds: ["declared"] }),
+			],
+			catalogs,
+			policyFor: (featureId) => {
+				asked.push(featureId);
+				return featureId === "alternate"
+					? { outcome: "granted", featureId }
+					: SILENT;
+			},
+		});
+
+		// The tool-id probe is a gate, never a second way to switch a capability on.
+		expect(resolved).toHaveLength(0);
+		expect(asked).toEqual(["declared", "alternate"]);
+	});
+
+	it("does not probe the tool id when it is already a declared support id", () => {
+		const asked: string[] = [];
+		resolveContentCapabilities({
+			registrations: [withContent(() => ({ text: "here" }))],
+			catalogs,
+			policyFor: (featureId) => {
+				asked.push(featureId);
+				return SILENT;
+			},
+		});
+
+		expect(asked).toEqual(["alternate"]);
+	});
+
 	it("preserves the order it was offered", () => {
 		const resolved = resolveContentCapabilities({
 			registrations: [
@@ -184,7 +285,7 @@ describe("resolveContentCapabilities", () => {
 				withContent(() => ({ n: 3 }), { toolId: "c" }),
 			],
 			catalogs,
-			grantFor: granting("a", "b", "c"),
+			policyFor: granting("a", "b", "c"),
 		});
 
 		expect(resolved.map((entry) => entry.registration.toolId)).toEqual([

@@ -28,6 +28,17 @@ import type {
 	ToolPolicySourceType,
 } from "./provenance.js";
 
+/**
+ * A feature verdict comes from one of the six PNP precedence levels, or from a
+ * host gate that never reaches them: `tools.policy.blocked` and a non-empty
+ * `tools.policy.allowed` are absolute for the id they name, exactly as they are
+ * on the placement-scoped path.
+ */
+export type FeaturePolicyRule =
+	| PnpPolicySourceRule
+	| "host-allowlist"
+	| "host-blocked";
+
 export interface FeaturePolicyDecision {
 	/** The PNP/AfA support id that was evaluated (e.g. `"signLanguage"`). */
 	featureId: string;
@@ -39,8 +50,8 @@ export interface FeaturePolicyDecision {
 	granted: boolean;
 	action: ToolPolicyResolutionDecision["action"];
 	/** Which precedence rule produced the verdict. */
-	rule: PnpPolicySourceRule;
-	precedence: 1 | 2 | 3 | 4 | 5 | 6;
+	rule: FeaturePolicyRule;
+	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6;
 	sourceType: ToolPolicySourceType;
 	/** Human-readable explanation, suitable for a policy debugger. */
 	reason: string;
@@ -91,6 +102,53 @@ export interface FeatureDecisionContext {
  */
 const unboundAssessmentReason = (featureId: string) =>
 	`No assessment is bound, so no policy source could grant "${featureId}"`;
+
+/**
+ * A host gate denied the feature outright, so no policy source was consulted.
+ *
+ * `precedence: 0` and the two `host-*` rules are the same values
+ * `composeDecision(...)` records for the placement-scoped path, so a debugger
+ * reads one vocabulary for both. `assessmentBound` is still reported: a host
+ * blocklist is a verdict whether or not an assessment was bound, and the flag
+ * only ever qualifies a *policy* denial.
+ */
+export function hostFeatureDenial(
+	featureId: string,
+	rule: "host-allowlist" | "host-blocked",
+	hostValue: readonly string[],
+	context: FeatureDecisionContext,
+): FeaturePolicyDecision {
+	return {
+		featureId,
+		granted: false,
+		action: "block",
+		rule,
+		precedence: 0,
+		sourceType: "host",
+		reason:
+			rule === "host-blocked"
+				? "Listed in tools.policy.blocked"
+				: `Not listed in tools.policy.allowed (${hostValue.join(", ")})`,
+		required: false,
+		assessmentBound: context.assessmentBound,
+	};
+}
+
+/**
+ * Whether a host gate produced the verdict, rather than a policy source.
+ *
+ * The distinction is load-bearing for a content-dependent capability that
+ * declares `resolvesWithoutGrant`: an absent grant is a case it is allowed to
+ * answer from the content alone, while a host denial is the host's off switch
+ * and nothing may reopen it.
+ */
+export function isHostDeniedFeature(
+	decision: Pick<FeaturePolicyDecision, "rule"> | null | undefined,
+): boolean {
+	return (
+		decision?.rule === "host-blocked" || decision?.rule === "host-allowlist"
+	);
+}
 
 /**
  * Interpret a single-feature `PnpPolicySource.resolveFeature(...)` result.

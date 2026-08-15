@@ -28,7 +28,10 @@ import {
 	type ToolRegistration,
 	type ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { ToolPolicyEngine } from "@pie-players/pie-assessment-toolkit/policy/engine";
+import {
+	isHostDeniedFeature,
+	ToolPolicyEngine,
+} from "@pie-players/pie-assessment-toolkit/policy/engine";
 import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver";
 import { CONTENT_ALTERNATE_REGISTRATIONS } from "@pie-players/pie-default-tool-loaders";
 import type {
@@ -207,10 +210,17 @@ export function mountItemAlternates(args: {
 			catalogs: resolver
 				.forOwner({ ownerKind: "itemModel", itemId: PRINT_OWNER_ID })
 				.snapshot(),
-			grantFor: (supportId) => {
-				const decision = engine.decideFeature(supportId);
-				if (!decision.granted) return null;
-				return { featureId: supportId, parameters: decision.parameters };
+			// A host gate and an unconfigured feature are both `granted: false`, and
+			// only one of them may be reopened by an alternate that answers from the
+			// content alone. Mapped here even though a print job binds no tools config
+			// today, so the answer cannot drift from the section player's the moment
+			// one does.
+			policyFor: (featureId) => {
+				const decision = engine.decideFeature(featureId);
+				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
+				return decision.granted
+					? { outcome: "granted", featureId, parameters: decision.parameters }
+					: { outcome: "silent" };
 			},
 			onError: (registration, phase, error) => {
 				console.warn(

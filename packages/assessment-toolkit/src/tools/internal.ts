@@ -50,8 +50,8 @@ export type {
 // into its own surfaces. Data-only, so a renderer with no coordinator — print —
 // asks the same question the section player asks continuously.
 export type {
-	ContentCapabilityGrant,
 	ContentCapabilityPhase,
+	ContentCapabilityPolicy,
 	ResolveContentCapabilitiesArgs,
 	ResolvedContentCapability,
 } from "./content-capability-resolution.js";

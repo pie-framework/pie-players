@@ -271,15 +271,17 @@
 		align-items: center;
 		gap: 8px;
 		padding: 10px 12px;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 		flex-wrap: wrap;
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__kind-select,
 	.pie-section-player-tools-instrumentation-debugger__button {
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-100, #fff);
-		color: inherit;
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		background: var(--pie-button-bg, #ffffff);
+		/* Explicit rather than inherited: `--pie-button-bg` is certified against
+		   `--pie-button-color`, not against the panel's body ink. */
+		color: var(--pie-button-color, #374151);
 		border-radius: 6px;
 		font-size: 0.78rem;
 		padding: 6px 8px;
@@ -293,7 +295,7 @@
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__list {
-		border-right: 1px solid var(--color-base-300, #d1d5db);
+		border-right: 1px solid var(--pie-border, #8f8f8f);
 		overflow: auto;
 	}
 
@@ -308,12 +310,14 @@
 		text-align: left;
 		background: transparent;
 		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-base-300, #e5e7eb);
+		/* Row divider inside the list, which 1.4.11 exempts. */
+		border-bottom: 1px solid var(--pie-border-light, #d1d1d1);
 		cursor: pointer;
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__row--active {
-		background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__row-top {
@@ -346,7 +350,7 @@
 		gap: 3px;
 		padding: 10px 12px;
 		font-size: 0.78rem;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__pre {

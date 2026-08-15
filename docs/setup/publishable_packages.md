@@ -34,7 +34,6 @@ Publishable packages (36):
 - `@pie-players/pie-section-player-tools-tts-settings`
 - `@pie-players/pie-section-player-tools-shared`
 - `@pie-players/pie-theme`
-- `@pie-players/pie-theme-daisyui`
 - `@pie-players/pie-tool-annotation-toolbar`
 - `@pie-players/pie-tool-answer-eliminator`
 - `@pie-players/pie-tool-calculator-desmos`

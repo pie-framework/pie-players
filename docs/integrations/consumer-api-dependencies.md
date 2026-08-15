@@ -83,9 +83,11 @@ Packages consumed:
 
 - **Host V** — `pie-item-player`, `pie-theme`.
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
-  `pie-theme-daisyui`, `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
+  `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
-  section-player debugger tools.
+  section-player debugger tools. Its `package.json` still declares
+  `pie-theme-daisyui`, which no longer exists upstream and which it never
+  imported; the range resolves to the last published version until it is dropped.
 - **Host R** — all of the above plus `pie-players-shared`,
   `pie-default-tool-loaders`, every `pie-tool-*` in the suite, all five
   `section-player-tools-*` debuggers, `tts-server-core`, `tts-server-google`,
@@ -112,7 +114,6 @@ and to fix it there in the same push.
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | |
 | `@pie-players/pie-theme/token-registry.json` | R | Previously observed; not re-derived during the focused theming update |
-| `@pie-players/pie-theme-daisyui/bridge.css` | R | |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
 | `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
@@ -413,10 +414,9 @@ section.
 
 Host R takes the opposite approach: it reads the token registry and inspects
 computed values at runtime, so it depends on token *names and metadata* staying
-addressable rather than on any particular value. It imports `tokens.css` and the
-DaisyUI `bridge.css` but **not** `color-schemes.css`, carrying its own
-`data-color-scheme` rules instead — so new upstream scheme mappings do not reach
-it until someone syncs them by hand.
+addressable rather than on any particular value. It imports `tokens.css` but
+**not** `color-schemes.css`, carrying its own `data-color-scheme` rules instead —
+so new upstream scheme mappings do not reach it until someone syncs them by hand.
 
 `--pie-fixed-hue-collapse` is one such mapping, added to the required scheme set:
 every built-in scheme sets `100%`, which collapses a component's own fixed hues

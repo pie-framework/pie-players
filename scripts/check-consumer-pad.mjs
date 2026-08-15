@@ -75,9 +75,7 @@ const TRIGGERS = [
 		match: (file) =>
 			/^packages\/theme\/src\/(tokens|color-schemes|font-sizes|components)\.css$/.test(
 				file,
-			) ||
-			file === "packages/theme/src/token-registry.json" ||
-			file === "packages/theme-daisyui/src/bridge.css",
+			) || file === "packages/theme/src/token-registry.json",
 	},
 	{
 		reason:

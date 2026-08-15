@@ -73,7 +73,6 @@ Run these unit and contract checks as the base gate:
 
 ```sh
 bun test --dom packages/theme/tests
-bun test packages/theme-daisyui/tests/mapping-parity.test.mjs
 bun --cwd packages/theme run check:generated-css
 bun run check:theme-tokens
 bun test packages/theme/tests/token-registry-contract.test.ts

@@ -328,7 +328,8 @@ rule in this file.
   module loaders. The only place a packaged capability set is named.
 - `packages/players-shared` - shared utilities, sanitizer, and PIE config.
 - `packages/pie-context` - shared runtime context.
-- `packages/theme*` - theme token contract and bridges.
+- `packages/theme` - theme token contract, `<pie-theme>`, colour schemes, and the
+  DaisyUI provider adapter.
 - `packages/tool-*` and `packages/section-player-tools-*` - runtime tools.
 - `packages/tts*` - TTS client and server packages.
 - `apps/*-demos`, `apps/docs`, `apps/local-esm-cdn` - local hosts and docs.

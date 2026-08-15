@@ -206,6 +206,8 @@ accessible name.
 - If DaisyUI tokens are present on the target scope, `pie-theme` uses the built-in `daisyui` provider adapter.
 - Override precedence is: base PIE -> provider output -> scheme -> `variables`.
 - `provider="none"` (`PIE_THEME_PROVIDER_NONE`) resolves no provider at all, leaving this package's shipped defaults. It is how a host reproduces the palette it had before adopting a provider, which is the first thing to check when colours differ between two environments.
+- The adapter is the whole integration. `DAISYUI_PIE_TOKEN_MAP` is its sole source, and it corrects a slot that would land illegible because it reads resolved colours — which a stylesheet cannot do. The separate `pie-theme-daisyui` package that shipped the same table as static CSS was removed: `<pie-theme scope="document">` writes `--pie-*` as inline styles, so a stylesheet declaring them lost to it and the import did nothing.
+- A host on some other token vocabulary aliases its own names to `--pie-*` in its own stylesheet, which is what a non-DaisyUI design system needs anyway. Do that under `[data-color-scheme]` to make an accommodation reach host chrome, since `<pie-theme>` never writes `--color-*` or any other host prefix.
 
 ## Token registry
 

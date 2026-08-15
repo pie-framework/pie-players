@@ -112,7 +112,7 @@ reason to retain the old raw scheme interface.
 
 | Slice | Required Checks |
 | --- | --- |
-| Theme contract tests | `bun run check:theme-tokens`; `bun --cwd packages/theme run check:generated-css`; `bun test --dom packages/theme/tests`; `bun test packages/theme-daisyui/tests/mapping-parity.test.mjs` |
+| Theme contract tests | `bun run check:theme-tokens`; `bun --cwd packages/theme run check:generated-css`; `bun test --dom packages/theme/tests` |
 | Scheme runtime | Interface-level tests for precedence, complete built-ins, custom-entry atomicity, unavailable request retention, late registration, immutable snapshots, notification cardinality, listener isolation, and receipt generations |
 | Theme picker | Package tests plus browser coverage for live catalog changes, disabled/announced unavailable state, derived previews, and forced-colors behavior without `forced-color-adjust: none` |
 | Player chrome source changes | Package-local structural tests; WCAG matrix row update; Playwright computed-style checks outside the sandbox; relevant package build before consumer validation |

@@ -510,17 +510,6 @@
         "typescript": "^5.9.3",
       },
     },
-    "packages/theme-daisyui": {
-      "name": "@pie-players/pie-theme-daisyui",
-      "version": "0.3.66",
-      "dependencies": {
-        "@pie-players/pie-theme": "workspace:*",
-      },
-      "devDependencies": {
-        "@biomejs/biome": "^2.5.7",
-        "typescript": "^5.9.3",
-      },
-    },
     "packages/tool-annotation-toolbar": {
       "name": "@pie-players/pie-tool-annotation-toolbar",
       "version": "0.3.66",
@@ -1225,8 +1214,6 @@
     "@pie-players/pie-section-player-tools-tts-settings": ["@pie-players/pie-section-player-tools-tts-settings@workspace:packages/section-player-tools-tts-settings"],
 
     "@pie-players/pie-theme": ["@pie-players/pie-theme@workspace:packages/theme"],
-
-    "@pie-players/pie-theme-daisyui": ["@pie-players/pie-theme-daisyui@workspace:packages/theme-daisyui"],
 
     "@pie-players/pie-tool-annotation-toolbar": ["@pie-players/pie-tool-annotation-toolbar@workspace:packages/tool-annotation-toolbar"],
 

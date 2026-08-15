@@ -41,8 +41,8 @@ registered or explicitly classified as package-private.
 - CSS adapters: `packages/theme/src/tokens.css` and
   `packages/theme/src/color-schemes.css` are checked-in generated output, not
   parallel sources of palette values.
-- DaisyUI bridge mappings: covered by
-  `packages/theme-daisyui/tests/mapping-parity.test.mjs`.
+- DaisyUI slot mappings: `DAISYUI_PIE_TOKEN_MAP` is the sole source, covered by
+  `packages/theme/tests/daisyui-mapping.test.ts`.
 
 Some regex matches are documentation placeholders rather than real token names,
 for example `--pie-button-`, `--pie-focus-`, and

@@ -444,7 +444,6 @@ Commands:
 
 ```sh
 bun test --dom packages/theme/tests
-bun test packages/theme-daisyui/tests/mapping-parity.test.mjs
 bun test packages/theme/tests/token-registry-contract.test.ts
 bun test packages/assessment-toolkit/tests/highlight-coordinator-tts-style.test.ts
 bun --cwd packages/theme run check:generated-css

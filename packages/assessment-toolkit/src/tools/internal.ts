@@ -46,6 +46,17 @@ export type {
 	CatalogOwnerSnapshot,
 } from "../services/AccessibilityCatalogResolver.js";
 
+// The grant-AND-content rule, for a package that renders content capabilities
+// into its own surfaces. Data-only, so a renderer with no coordinator — print —
+// asks the same question the section player asks continuously.
+export type {
+	ContentCapabilityGrant,
+	ContentCapabilityPhase,
+	ResolveContentCapabilitiesArgs,
+	ResolvedContentCapability,
+} from "./content-capability-resolution.js";
+export { resolveContentCapabilities } from "./content-capability-resolution.js";
+
 // Context a registration reads to answer `isVisibleInContext`.
 export type { ToolContext, ToolLevel } from "../services/tool-context.js";
 export {

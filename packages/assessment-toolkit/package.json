@@ -41,6 +41,10 @@
 			"types": "./dist/components/section-toolbar-element.d.ts",
 			"import": "./dist/components/section-toolbar-element.js"
 		},
+		"./services/AccessibilityCatalogResolver": {
+			"types": "./dist/services/AccessibilityCatalogResolver.d.ts",
+			"import": "./dist/services/AccessibilityCatalogResolver.js"
+		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
 			"import": "./dist/services/pnp-standard-features.js"

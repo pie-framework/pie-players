@@ -571,13 +571,14 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "print-showcase",
 		name: "Print Showcase (pie-print-player)",
 		description:
-			"Renders a section's stimulus + items through @pie-players/pie-print-player (non-interactive print view), loading the ng browser print bundles. Toggle Student/Instructor to reveal the answer key.",
+			"Renders a section's stimulus + items through @pie-players/pie-print-player (non-interactive print view), loading the ng browser print bundles. Toggle Student/Instructor to reveal the answer key, and Transcript granted to print question 1's audio transcript as an accommodation.",
 		integrationLevel: 3,
 		integrationTheme: "Print rendering",
 		focus:
 			"Validates that the new ng browser print bundles (dist/browser/print/index.js) render correctly through the standalone print player, since the section player itself has no print view.",
 		whatMakesItTick: [
-			"Composes each `rubricBlock` passage and `assessmentItemRef` item into a `<pie-print>` config ({ item, options: { role } }).",
+			"Composes each `rubricBlock` passage and `assessmentItemRef` item into a `<pie-print>` config ({ item, options: { role }, accessibility }).",
+			"Question 1 carries a `transcript` accessibility catalog card on its model, so `Transcript granted` is the whole difference between an accommodation reaching paper and not — resolved by the same capability and precedence the section player uses.",
 			"Uses the print player's default resolver, which loads `dist/browser/print/index.js` via the browser-esm loader (React import map injected).",
 			"Pins verified ng bundles: `passage@7.1.2-next.5`, `multiple-choice@13.2.2-next.5`, `ebsr@14.2.2-next.5`.",
 		],

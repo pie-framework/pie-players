@@ -620,14 +620,29 @@ test.describe("section theme and color scheme integration", () => {
 					? trackStyle.backgroundColor
 					: frameStyle.backgroundColor;
 				const tabStyle = getComputedStyle(tab);
+				const selected = track.querySelector<HTMLElement>(
+					".pie-section-player-tab--active",
+				);
+				if (!selected) throw new Error("Selected tab not found");
+				const selectedStyle = getComputedStyle(selected);
 				return {
 					color: tabStyle.color,
 					surface,
 					border: trackStyle.borderTopColor,
+					selectedColor: selectedStyle.color,
+					selectedFill: selectedStyle.backgroundColor,
 					text: ratio(tabStyle.color, surface),
 					boundary: ratio(
 						trackStyle.borderTopColor,
 						frameStyle.backgroundColor,
+					),
+					selectedText: ratio(
+						selectedStyle.color,
+						selectedStyle.backgroundColor,
+					),
+					selectedFillAgainstTrack: ratio(
+						selectedStyle.backgroundColor,
+						surface,
 					),
 				};
 			});
@@ -640,6 +655,19 @@ test.describe("section theme and color scheme integration", () => {
 				measured.boundary,
 				`${schemeId} toggle track boundary (${measured.border})`,
 			).toBeGreaterThanOrEqual(3);
+			expect(
+				measured.selectedText,
+				`${schemeId} selected tab text (${measured.selectedColor} on ${measured.selectedFill})`,
+			).toBeGreaterThanOrEqual(4.5);
+			// The pill is what marks the selection, so it owes 1.4.11's non-text
+			// minimum against the track. `default` is exempt: no scheme is asking for
+			// a palette, so the fill stays the pinned brand hue.
+			if (schemeId !== "default") {
+				expect(
+					measured.selectedFillAgainstTrack,
+					`${schemeId} selected pill against the track (${measured.selectedFill} on ${measured.surface})`,
+				).toBeGreaterThanOrEqual(3);
+			}
 		}
 	});
 

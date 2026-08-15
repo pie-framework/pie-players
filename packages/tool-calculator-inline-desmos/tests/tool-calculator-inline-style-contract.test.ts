@@ -87,4 +87,36 @@ describe("tool-calculator-inline active trigger styling contract", () => {
 	test("documented custom active trigger colors meet WCAG AA contrast", () => {
 		expect(contrastRatio("#ffffff", "#1268aa")).toBeGreaterThanOrEqual(4.5);
 	});
+
+	test("active trigger ink collapses to the page colour under a scheme", () => {
+		for (const selector of [
+			".pie-tool-calculator-inline__button--active",
+			".pie-tool-calculator-inline__button--active:hover:not(:disabled)",
+		]) {
+			const body = cssRuleBody(selector).replace(/\s+/g, "");
+			expect(body, selector).toContain("--pie-fixed-hue-collapse");
+			expect(body, selector).toContain("var(--pie-background");
+		}
+	});
+
+	test("the deeper hover fill collapses to --pie-primary, not --pie-primary-dark", () => {
+		// `--pie-primary-dark` pairs with the page colour at 3.56:1 under Light Gray
+		// on Dark Gray, so it cannot carry this glyph once the ink follows the page.
+		const body = cssRuleBody(
+			".pie-tool-calculator-inline__button--active:hover:not(:disabled)",
+		).replace(/\s+/g, "");
+		expect(body).toContain("color-mix(insrgb,var(--pie-primary,");
+		// Light Gray on Dark Gray: `--pie-primary-dark` #888888 against the page
+		// #333333, versus #aaaaaa for `--pie-primary` on the same page.
+		expect(contrastRatio("#888888", "#333333")).toBeLessThan(4.5);
+		expect(contrastRatio("#aaaaaa", "#333333")).toBeGreaterThanOrEqual(4.5);
+	});
+
+	test("white is not a legible ink on every scheme's primary", () => {
+		// Why the pinned ink had to go: the schemes whose primary is a pale yellow
+		// put white on it at about 1:1, while the page colour they pair it with
+		// clears AA. Yellow on Blue, primary #ffff66 on page #000066.
+		expect(contrastRatio("#ffffff", "#ffff66")).toBeLessThan(4.5);
+		expect(contrastRatio("#000066", "#ffff66")).toBeGreaterThanOrEqual(4.5);
+	});
 });

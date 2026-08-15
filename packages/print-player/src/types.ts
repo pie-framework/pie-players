@@ -2,6 +2,9 @@
  * Type definitions for PIE Print Player
  */
 
+import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import type { PrintAccessibilityConfig } from "./accessibility-alternates.js";
+
 /**
  * Map of element tag names to package names with versions
  * @example { 'multiple-choice': '@pie-element/multiple-choice@12.0.0' }
@@ -30,6 +33,16 @@ export interface Item {
 	elements: Elements;
 	/** Array of element models to be rendered */
 	models: Model[];
+	/**
+	 * Accessibility catalogs carried by the item itself.
+	 *
+	 * A print job takes the PIE config rather than the item entity that wraps it,
+	 * so catalogs written onto a model arrive on {@link Model} already and these
+	 * are the entity-root ones a host has to pass explicitly.
+	 */
+	accessibilityCatalogs?: AccessibilityCatalog[];
+	/** Catalogs an extractor generated from the item's own content. */
+	extractedCatalogs?: AccessibilityCatalog[];
 }
 
 /**
@@ -43,6 +56,12 @@ export interface Config {
 		/** Role for rendering (affects answer visibility) */
 		role?: "student" | "instructor";
 	};
+	/**
+	 * Who the print job is for, so an accommodation carried as an accessibility
+	 * catalog card reaches paper. Absent, only alternates the item declares as
+	 * authored presentation print.
+	 */
+	accessibility?: PrintAccessibilityConfig;
 }
 
 /**

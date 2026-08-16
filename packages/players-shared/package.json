@@ -61,6 +61,10 @@
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"
 		},
+		"./i18n/language-tags": {
+			"types": "./dist/i18n/language-tags.d.ts",
+			"import": "./dist/i18n/language-tags.js"
+		},
 		"./nds-icon-button": {
 			"types": "./dist/components/vendor/nds/nds-icon-button.d.ts",
 			"import": "./dist/components/vendor/nds/nds-icon-button.js"

@@ -1,3 +1,7 @@
+import {
+	languageTagLookupSequence,
+	normalizeLanguageTag,
+} from "@pie-players/pie-players-shared/i18n/language-tags";
 import type {
 	AccessibilityCatalog,
 	CatalogCard,
@@ -833,14 +837,27 @@ export class AccessibilityCatalogResolver {
 	): CatalogCard | null {
 		const { type, language, useFallback = true, form } = options;
 
-		// Language rungs, most specific first: requested language, then the default
-		// language, then any. Unchanged — only what happens *within* a rung is new.
+		// Language rungs, most specific first: the requested language, then the
+		// default language, then any.
+		//
+		// Each requested tag expands into its RFC 4647 lookup sequence, so `es-MX`
+		// tries `es-mx` and then `es` before falling through to the default. Matching
+		// was `===`, which made a POSIX `es_ES` card — what the Learnosity transform
+		// emits — unreachable for an `es-ES` request except through the final
+		// no-constraint rung, i.e. by accident.
 		const languageRungs: Array<(card: CatalogCard) => boolean> = [];
+		const pushLookupRungs = (tag: string) => {
+			for (const step of languageTagLookupSequence(tag)) {
+				languageRungs.push(
+					(card) => normalizeLanguageTag(card.language) === step,
+				);
+			}
+		};
 		if (language) {
-			languageRungs.push((card) => card.language === language);
+			pushLookupRungs(language);
 		}
 		if (useFallback) {
-			languageRungs.push((card) => card.language === this.defaultLanguage);
+			pushLookupRungs(this.defaultLanguage);
 			languageRungs.push(() => true);
 		}
 
@@ -887,7 +904,11 @@ export class AccessibilityCatalogResolver {
 		// asking what alternates exist under-reported them.
 		const claimed = new Set<string>();
 		const add = (card: CatalogCard, source: ResolvedCatalog["source"]) => {
-			const key = `${card.catalog}|${card.language ?? ""}|${catalogCardForm(card)}`;
+			// The language part is normalized, so a POSIX `es_ES` card and a BCP-47
+			// `es-ES` card collapse to one entry here exactly as they now collapse on
+			// the resolution path. Keying on the raw string would report two
+			// alternates where resolution can only ever return one.
+			const key = `${card.catalog}|${normalizeLanguageTag(card.language)}|${catalogCardForm(card)}`;
 			if (claimed.has(key)) return;
 			claimed.add(key);
 			results.push(this.resolveCard(catalogId, card, source));

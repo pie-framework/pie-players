@@ -12,7 +12,13 @@ export {
 	isRTLLocale,
 	loadTranslations,
 } from "./loader.js";
-export { SimpleI18n } from "./simple-i18n.js";
+export {
+	languageTagLookupSequence,
+	languageTagsEqual,
+	findBestLanguageMatch,
+	normalizeLanguageTag,
+} from "./language-tags.js";
+export { detectBrowserLocale, SimpleI18n } from "./simple-i18n.js";
 export type {
 	I18nConfig,
 	I18nServiceApi,

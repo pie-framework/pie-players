@@ -12,6 +12,26 @@ import type {
 } from "./types.js";
 
 /**
+ * The browser's preferred locale, reduced to its primary language subtag, or
+ * `"en"` where there is no `navigator` — so this is safe in Node, which
+ * `players-shared` must remain.
+ *
+ * The region is dropped because the shipped catalogs are keyed by bare language.
+ * Callers that need region-aware selection should match with
+ * `./language-tags.js` against the tags they actually have.
+ */
+export function detectBrowserLocale(): string {
+	if (typeof navigator === "undefined") return "en";
+
+	const browserLang =
+		navigator.language ||
+		(navigator.languages && navigator.languages[0]) ||
+		"en";
+
+	return browserLang.split("-")[0];
+}
+
+/**
  * Simple I18n class for standalone use
  */
 export class SimpleI18n {
@@ -228,13 +248,6 @@ export class SimpleI18n {
 	}
 
 	private detectBrowserLocale(): string {
-		if (typeof navigator === "undefined") return "en";
-
-		const browserLang =
-			navigator.language ||
-			(navigator.languages && navigator.languages[0]) ||
-			"en";
-
-		return browserLang.split("-")[0];
+		return detectBrowserLocale();
 	}
 }

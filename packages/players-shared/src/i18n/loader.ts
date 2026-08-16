@@ -33,24 +33,30 @@ export const BUNDLED_TRANSLATIONS: Record<string, TranslationBundle> = {
 	},
 };
 
+// Every dynamic import here carries `with { type: "json" }`, matching the static
+// English imports above. Bundlers infer the type from the extension, but Node's
+// ESM loader refuses a JSON module without the attribute
+// (`ERR_IMPORT_ATTRIBUTE_MISSING`), and `players-shared` is on the publish
+// policy's `nodeSafe` list. Omitting it made English work and every other locale
+// throw, which the catch below then reported as missing files.
 const LOCALE_IMPORTS: Record<string, () => Promise<[any, any, any]>> = {
 	es: () =>
 		Promise.all([
-			import("./translations/es/common.json"),
-			import("./translations/es/toolkit.json"),
-			import("./translations/es/tools.json"),
+			import("./translations/es/common.json", { with: { type: "json" } }),
+			import("./translations/es/toolkit.json", { with: { type: "json" } }),
+			import("./translations/es/tools.json", { with: { type: "json" } }),
 		]),
 	zh: () =>
 		Promise.all([
-			import("./translations/zh/common.json"),
-			import("./translations/zh/toolkit.json"),
-			import("./translations/zh/tools.json"),
+			import("./translations/zh/common.json", { with: { type: "json" } }),
+			import("./translations/zh/toolkit.json", { with: { type: "json" } }),
+			import("./translations/zh/tools.json", { with: { type: "json" } }),
 		]),
 	ar: () =>
 		Promise.all([
-			import("./translations/ar/common.json"),
-			import("./translations/ar/toolkit.json"),
-			import("./translations/ar/tools.json"),
+			import("./translations/ar/common.json", { with: { type: "json" } }),
+			import("./translations/ar/toolkit.json", { with: { type: "json" } }),
+			import("./translations/ar/tools.json", { with: { type: "json" } }),
 		]),
 };
 
@@ -89,10 +95,13 @@ export async function loadTranslations(
 			},
 		};
 	} catch (error) {
-		console.error(`Failed to load translations for locale: ${locale}`, error);
-		throw new Error(
-			`Translation files not found for locale: ${locale}. Ensure translation files exist in packages/players-shared/src/i18n/translations/${locale}/`,
-		);
+		// Preserve the cause. `locale` is a known key of LOCALE_IMPORTS by this
+		// point, so the files exist and the old "not found" message sent readers
+		// looking for the wrong thing — it masked a loader-level import failure as
+		// a missing-asset problem.
+		throw new Error(`Failed to load translations for locale: ${locale}`, {
+			cause: error,
+		});
 	}
 }
 

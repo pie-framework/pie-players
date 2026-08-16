@@ -1968,7 +1968,10 @@
 
 	.pie-item-player-build-warning {
 		margin: 0;
-		font-size: 0.95rem;
+		/* A learner can be the one reading this, so it follows the accommodation
+		   like any other text. Stated explicitly rather than left to inherit from
+		   the scaled host, to match the other content-path rules. */
+		font-size: calc(0.95rem * var(--pie-font-scale, 1));
 		color: var(--pie-missing, #9a6700);
 		text-align: center;
 	}

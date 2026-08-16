@@ -480,7 +480,10 @@
 		position: relative;
 		z-index: 0;
 		margin: 0;
-		font-size: 0.95rem;
+		/* Reads the scale rather than inheriting it: the card wraps the item shell
+		   that `font-sizes.css` scales, so nothing above this rule carries the
+		   scaled size. Root-relative, so it does not compound with the shell. */
+		font-size: calc(0.95rem * var(--pie-font-scale, 1));
 		font-weight: 600;
 		/* Default to the themed body text color so titles stay legible across
 		   DaisyUI themes; --pie-header-text remains a host opt-in override. */
@@ -512,7 +515,10 @@
 
 	.pie-section-player-formative__status {
 		margin: 0;
-		font-size: 0.9rem;
+		/* Tries remaining and correctness, and the only signal carrying either —
+		   the note below is why no colour accompanies it. So it follows the font
+		   accommodation for the same reason the item body does. */
+		font-size: calc(0.9rem * var(--pie-font-scale, 1));
 		/* Correctness is carried by the text itself, so no state colour is needed
 		   and none is applied — a colour here would be the only signal at exactly
 		   the moment it must not be (WCAG 1.4.1). */

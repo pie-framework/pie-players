@@ -160,6 +160,45 @@ const result = await provider.synthesize({
 });
 ```
 
+## Voice discovery
+
+The service serves 29 locales with one default voice each, and exposes no
+endpoint to ask which. `getVoices()` answers from a table transcribed from the
+map the service reads (`src/helpers/voices.js`), so it costs no request and
+works before any credential is configured:
+
+```ts
+await provider.getVoices();                      // all 29 locales
+await provider.getVoices({ language: "es" });    // es-ES, es-MX, es-US
+await provider.getVoices({ language: "en-GB" }); // en-GB and en-GB-WLS
+```
+
+`language` is a language range matched per RFC 4647 basic filtering, so a bare
+primary subtag reaches every locale under it. Every voice is a Polly *standard*
+voice — the service sends no `Engine` — so `quality: "neural"` answers with an
+empty list rather than a voice that cannot be produced.
+
+A `Voice.id` is the Polly `VoiceId`, which is what `synthesize` takes back as
+`voice`. The service accepts any voice Polly knows; the table names only the
+default per locale, which is what it substitutes when a request omits `voice`.
+
+The same data is available without a provider instance, which is what a route
+serving a picker wants:
+
+```ts
+import {
+  schoolCityVoices,
+  isSupportedSchoolCityLanguage,
+} from "@pie-players/tts-server-sc";
+
+schoolCityVoices({ gender: "male" });
+isSupportedSchoolCityLanguage("es-419"); // false
+```
+
+Check the locale before synthesizing. An unrecognized `lang_id` is not an error
+upstream — the service rewrites it to `en-US` and returns English audio, so an
+unserved locale fails silently rather than loudly.
+
 ## Dogfood adapter example (section-demos shape)
 
 If you need to return the SchoolCity-style response shape (`audioContent`, `word`) while reusing provider logic:

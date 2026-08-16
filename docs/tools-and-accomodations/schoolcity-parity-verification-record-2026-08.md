@@ -17,7 +17,9 @@ Companion to [`schoolcity-tool-parity-report.md`](./schoolcity-tool-parity-repor
 | `support.renaissance.com` articles already cited in the report | SchoolCity documented student-facing behavior | First-party documentation, not source |
 | SharePoint master gap-analysis DOCX | Original basis of the report's SchoolCity rows | **Not opened** — inaccessible in this environment |
 
-Jira was not accessed. All `PIE-###` keys in both documents are carried as text from the report itself or from in-repo PRDs.
+Jira was not accessed for the August pass. All `PIE-###` keys in both documents were carried as text from the report itself or from in-repo PRDs.
+
+Amended 2026-08-16: PIE-472, PIE-478 and PIE-479 were read directly, and one of them contradicted the report. PIE-472 is not simply open — it was deferred out of the SB v1 scope, its owner asked for it to move to PD-5359 as out of launch scope, and the question of which alternate colour schemes matter, and for which learners, went to a stakeholder and never came back. The report's cross-reference table read as a live gap awaiting implementation. The other two carry no acceptance criteria and no constraint the report missed, and all three sit under PIE-500 with the same assignee. Every other `PIE-###` key in these two documents is still carried as text and unverified.
 
 ## Verified In Code Versus Documented
 
@@ -95,5 +97,5 @@ Out of scope for a parity report, recorded once here.
 - `sc-suite-student` defines `answerEliminator()` twice with different arities, and `createTextHighlighter()` twice — a live hazard if both bundles load. A `'Protactor'` misspelling in a hide-list makes that hide a silent no-op.
 - `pie-elements-ng/packages/lib-react/translator/src/index.ts:18` hardcodes `debug: true` in the i18next init.
 - `pie-elements-ng/packages/elements-react/math-templated/src/author/design.tsx:179` defaults new responses to `'symbolic'` while `author/defaults.ts:28` sets `validationDefault: 'literal'`.
-- `packages/theme/src/font-sizes.css` is published as `./font-sizes.css` but imported nowhere in the repository.
+- `packages/theme/src/font-sizes.css` is published as `./font-sizes.css` but imported nowhere in the repository. **Understated — corrected 2026-08-16.** Being unimported was the least of it: every rule targeted `pie-player`, the externally loaded item wrapper, so a host that did import it scaled nothing this repo renders; and `font-size: inherit !important` on `*` flattened every heading in an item to body size at 100% scale. Neither defect reached a consumer, established later against the checkouts: the rules are all scoped under a `data-font-size` attribute that no recorded host sets. `ThemeProvider` writes the same token from its own `FontSize` setting and is constructed nowhere, with nothing carrying the `.pie-themed` class its rules need. Reading a stylesheet for what it declares, rather than against the elements the repo defines, is what let this pass as scaffolding.
 - Five of the eight named accessibility catalog types — `braille`, `tactile`, `simplified-language`, `audio-description`, `extended-description` — have no renderer. Only `spoken`, `sign-language` and `transcript` have consumers.

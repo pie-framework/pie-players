@@ -284,15 +284,26 @@ from the stylesheet:
 <pie-theme variables='{"--pie-font-scale":"1.25"}'>
 ```
 
-Text that inherits its size scales, because the rules set `font-size` on the
-content hosts — `pie-item-shell`, `pie-passage-shell`, `pie-item-player` and the
-externally loaded `pie-player` wrapper — and inheritance crosses shadow
-boundaries. Text whose own rule names `rem` or `px` does not scale: `rem`
-resolves against the document root and `px` against nothing, and no rule inside
-a subtree can change what either means. To carry those along, a host scales the
-root font size itself; that is a page-wide decision this package does not make
-for it. Browser zoom is unaffected either way, so WCAG 2.2 1.4.4 does not depend
-on this feature.
+The content path scales completely. The rules set `font-size` on the content
+hosts — `pie-item-shell`, `pie-passage-shell`, `pie-item-player` and the
+externally loaded `pie-player` wrapper — and `font-size` inheritance crosses
+shadow boundaries, so text that inherits its size follows. Every font size in
+`components.css`, which styles item content, is relative (`em`, `%`,
+`larger`/`smaller`) and follows too. The learner-facing text that declares its
+own size and therefore cannot inherit the scale — the item and passage card
+titles, the formative status line, the tabbed layout's labels, the item player's
+build warning — reads `--pie-font-scale` directly, because a card wraps the shell
+that gets scaled rather than sitting inside it.
+
+Tool and debug chrome does not scale, deliberately: an accommodation applies to
+what the learner reads, and a calculator keypad growing with the passage is a
+layout problem rather than an accommodation.
+
+A rule elsewhere that sizes text in `rem` or `px` still will not follow — `rem`
+resolves against the document root and `px` against nothing, and no rule inside a
+subtree can change what either means — so a host adding its own content chrome
+either sizes it relatively or reads the token as these rules do. Browser zoom is
+unaffected throughout, so WCAG 2.2 1.4.4 does not depend on this feature.
 
 The scale is applied as `calc(1rem * var(--pie-font-scale))` rather than an `em`
 factor because the content hosts nest — an `em` factor would compound, turning a

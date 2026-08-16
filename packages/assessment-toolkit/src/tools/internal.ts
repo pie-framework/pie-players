@@ -57,6 +57,19 @@ export type {
 } from "./content-capability-resolution.js";
 export { resolveContentCapabilities } from "./content-capability-resolution.js";
 
+// The mount/reconcile half of the same rule, for a renderer that opens a surface.
+// Section-player and the annotation toolbar both drive surfaces through this, so
+// discovery, lazy loading, DOM reconciliation and registry observation have one
+// implementation rather than one per renderer.
+export type {
+	ToolSurfaceHost,
+	ToolSurfaceHostInput,
+	ToolSurfaceHostOptions,
+	ToolSurfaceHostSnapshot,
+	ToolSurfaceScope,
+} from "./tool-surface-host.js";
+export { createToolSurfaceHost } from "./tool-surface-host.js";
+
 // Context a registration reads to answer `isVisibleInContext`.
 export type { ToolContext, ToolLevel } from "../services/tool-context.js";
 export {

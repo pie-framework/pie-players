@@ -8,6 +8,10 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "tool-annotation-toolbar.svelte"],
+	"include": [
+		"index.ts",
+		"selection-keyboard.ts",
+		"tool-annotation-toolbar.svelte"
+	],
 	"exclude": ["node_modules", "dist"]
 }

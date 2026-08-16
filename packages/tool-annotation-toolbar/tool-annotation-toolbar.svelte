@@ -11,6 +11,7 @@
 />
 
 <script lang="ts">
+	import { tick, untrack } from 'svelte';
 	import type {
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitShellContext,
@@ -22,6 +23,14 @@
 		connectAssessmentToolkitShellContext,
 		HighlightColor
 	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		clampIndex,
+		isPointerGestureActive,
+		isRectOffScreen,
+		nextControlIndex,
+		requestsSelectionToolbar,
+		toolbarAnchor
+	} from './selection-keyboard.js';
 
 	interface Props {
 		enabled?: boolean;
@@ -85,6 +94,45 @@
 
 	// Track if current selection overlaps with an existing annotation
 	let overlappingAnnotationId = $state<string | null>(null);
+
+	/**
+	 * When the in-progress pointer gesture started, or `null` between gestures.
+	 *
+	 * A timestamp rather than a boolean so the suppression cannot wedge: a release
+	 * outside the window fires no `pointerup`, and a latch stuck on would mean the
+	 * toolbar never appears again. See `isPointerGestureActive`.
+	 */
+	let pointerDownAt: number | null = null;
+	let selectionFrame: number | null = null;
+	let announcementTimer: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * Text the live region last spoke for, so extending a selection does not
+	 * re-announce on every keystroke. Shift+Arrow fires `selectionchange` per
+	 * character; announcing each one makes the strip unusable with a screen reader.
+	 */
+	let announcedForText: string | null = null;
+
+	/** Roving-tabindex cursor. The control set is conditional, so this is clamped on use. */
+	let activeControlIndex = $state(0);
+
+	/** Where focus was before it entered the strip, for Escape and dismissal. */
+	let focusReturnTarget: HTMLElement | null = null;
+
+	/**
+	 * One timer for the live region.
+	 *
+	 * Each announcement used to schedule its own clear, so two in quick succession
+	 * left the first one's timer to blank the second mid-sentence.
+	 */
+	function announce(message: string, clearAfterMs: number): void {
+		if (announcementTimer !== null) clearTimeout(announcementTimer);
+		positionAnnouncement = message;
+		announcementTimer = setTimeout(() => {
+			positionAnnouncement = '';
+			announcementTimer = null;
+		}, clearAfterMs);
+	}
 
 	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
@@ -204,10 +252,37 @@
 	}
 
 	/**
-	 * Handle selection change - show toolbar if valid selection
+	 * Coalesce a burst of `selectionchange` events into one evaluation.
+	 *
+	 * Extending a selection with Shift+Arrow fires one event per character, and a
+	 * caret moving through a paragraph fires one per keypress; evaluating each would
+	 * run `findOverlappingAnnotation` over every annotation that often.
 	 */
-	function handleSelectionChange() {
+	function scheduleSelectionEvaluation() {
+		if (!isBrowser || selectionFrame !== null) return;
+		const raf =
+			typeof requestAnimationFrame === 'function'
+				? requestAnimationFrame
+				: (callback: () => void) => setTimeout(callback, 16) as unknown as number;
+		selectionFrame = raf(() => {
+			selectionFrame = null;
+			evaluateSelection();
+		}) as unknown as number;
+	}
+
+	/**
+	 * Show the toolbar for the current selection, or hide it when there is none.
+	 *
+	 * Driven by `selectionchange` rather than `mouseup`/`touchend`. The pointer
+	 * events could not see a selection made with Shift+Arrow, so highlight,
+	 * underline and read-aloud were unreachable without a mouse — WCAG 2.2 SC 2.1.1.
+	 * Selection is a keyboard operation in every browser, so the trigger has to be
+	 * the selection itself.
+	 */
+	function evaluateSelection() {
 		if (!enabled || !isBrowser) return;
+		// Mid-gesture: `pointerup` will call back once the selection has settled.
+		if (isPointerGestureActive(pointerDownAt, Date.now())) return;
 
 		const sel = window.getSelection();
 		if (!sel || sel.rangeCount === 0) return hideToolbar();
@@ -220,29 +295,67 @@
 			return hideToolbar();
 		}
 
-		// Calculate position
-		const rect = range.getBoundingClientRect();
-		const x = rect.left + rect.width / 2;
-		const y = rect.top - 8;
-
 		// Check if selection overlaps with an existing annotation
 		overlappingAnnotationId = findOverlappingAnnotation(range);
 
+		const alreadyVisible = toolbarState.isVisible;
 		toolbarState.isVisible = true;
 		toolbarState.selectedText = text;
 		toolbarState.selectedRange = range.cloneRange();
-		toolbarState.toolbarPosition = { x, y };
+		repositionToSelection(range);
 
-		// Announce to screen readers
-		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		positionAnnouncement = `Annotation toolbar opened for "${textPreview}"`;
-		setTimeout(() => { positionAnnouncement = ''; }, 2000);
+		// Announce once per selection, not once per keystroke.
+		if (announcedForText !== text) {
+			announcedForText = text;
+			const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
+			announce(
+				`Annotation toolbar available for "${textPreview}". Press Shift+F10 for annotation tools.`,
+				4000
+			);
+		}
 
-		// Set justShown flag to prevent immediate hiding
-		justShown = true;
-		setTimeout(() => {
-			justShown = false;
-		}, 100);
+		if (!alreadyVisible) {
+			// Set justShown flag to prevent immediate hiding
+			justShown = true;
+			setTimeout(() => {
+				justShown = false;
+			}, 100);
+		}
+	}
+
+	/**
+	 * Track the selection's viewport rect.
+	 *
+	 * Scrolling used to hide the toolbar outright, which a keyboard user hits
+	 * constantly: extending a selection past the fold scrolls the page, so the strip
+	 * disappeared on the keystroke that created the selection it was showing. It now
+	 * follows the selection and only withdraws once that selection is off screen.
+	 */
+	function repositionToSelection(range: Range | null = toolbarState.selectedRange) {
+		if (!range) return;
+		const rect = range.getBoundingClientRect();
+		const viewport = { width: window.innerWidth || 0, height: window.innerHeight || 0 };
+		if (isRectOffScreen(rect, viewport)) {
+			// Keep the selection; only the affordance goes away.
+			toolbarState.isVisible = false;
+			return;
+		}
+		toolbarState.isVisible = true;
+		toolbarState.toolbarPosition = toolbarAnchor(rect);
+	}
+
+	function handleScroll() {
+		if (!toolbarState.isVisible && !toolbarState.selectedRange) return;
+		repositionToSelection();
+	}
+
+	function handlePointerDown() {
+		pointerDownAt = Date.now();
+	}
+
+	function handlePointerUp() {
+		pointerDownAt = null;
+		scheduleSelectionEvaluation();
 	}
 
 	/**
@@ -253,9 +366,63 @@
 			ttsService.stop();
 			ttsSpeaking = false;
 		}
+		restoreFocus();
 		toolbarState.isVisible = false;
 		toolbarState.selectedText = '';
 		toolbarState.selectedRange = null;
+		announcedForText = null;
+		activeControlIndex = 0;
+	}
+
+	/**
+	 * Return focus to whatever had it before the strip took it.
+	 *
+	 * Only when the strip currently holds focus: dismissing on an outside click or a
+	 * new selection must not yank focus back from wherever the learner just went,
+	 * which would be a WCAG 2.2 SC 3.2.1 change of context they did not ask for.
+	 */
+	function restoreFocus() {
+		const target = focusReturnTarget;
+		focusReturnTarget = null;
+		if (!target || !stripHasFocus()) return;
+		if (typeof target.focus === 'function' && target.isConnected) {
+			target.focus({ preventScroll: true });
+		}
+	}
+
+	function stripHasFocus(): boolean {
+		if (!toolbarElement || !isBrowser) return false;
+		const root = toolbarElement.getRootNode() as Document | ShadowRoot;
+		const active = (root as DocumentOrShadowRoot).activeElement;
+		return !!active && toolbarElement.contains(active);
+	}
+
+	/** Enabled controls in DOM order. Read from the DOM because the set is conditional. */
+	function toolbarControls(): HTMLElement[] {
+		if (!toolbarElement) return [];
+		return Array.from(
+			toolbarElement.querySelectorAll<HTMLElement>('button:not([disabled])')
+		);
+	}
+
+	/**
+	 * Move focus into the strip, per the ARIA toolbar pattern's single tab stop.
+	 *
+	 * Reached with Shift+F10 or the Menu key — the platform convention for "act on
+	 * the current selection" — because the strip is a floating layer mounted at
+	 * section scope. Tabbing to it would mean traversing the remaining content
+	 * first, and its DOM position bears no relation to where the selection is.
+	 */
+	function focusStrip() {
+		const controls = toolbarControls();
+		if (!controls.length) return;
+		if (!stripHasFocus() && isBrowser) {
+			const root = toolbarElement?.getRootNode() as DocumentOrShadowRoot | undefined;
+			const active = root?.activeElement;
+			focusReturnTarget = active instanceof HTMLElement ? active : null;
+		}
+		activeControlIndex = clampIndex(activeControlIndex, controls.length);
+		controls[activeControlIndex]?.focus();
 	}
 
 	/**
@@ -271,8 +438,7 @@
 		// Announce to screen readers
 		const colorName = color === HighlightColor.UNDERLINE ? 'underlined' : `highlighted in ${color}`;
 		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		positionAnnouncement = `"${textPreview}" ${colorName}`;
-		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+		announce(`"${textPreview}" ${colorName}`, 3000);
 
 		hideToolbar();
 	}
@@ -303,8 +469,7 @@
 
 		// Announce to screen readers
 		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		positionAnnouncement = `Removed annotation from "${textPreview}"`;
-		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+		announce(`Removed annotation from "${textPreview}"`, 3000);
 
 		hideToolbar();
 	}
@@ -319,8 +484,7 @@
 		sessionStorage.removeItem(getStorageKey());
 
 		// Announce to screen readers
-		positionAnnouncement = `${count} annotation${count === 1 ? '' : 's'} cleared`;
-		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
 
 		hideToolbar();
 	}
@@ -357,7 +521,60 @@
 		if (e.key === 'Escape' && toolbarState.isVisible) {
 			e.preventDefault();
 			hideToolbar();
+			return;
 		}
+		if (!requestsSelectionToolbar(e)) return;
+		// Evaluate first: the selection may exist without the strip having been shown
+		// yet, and a keyboard user pressing the shortcut is asking for it either way.
+		// `selectionchange` evaluation is coalesced into a frame, so the shortcut can
+		// easily arrive before it has run — assistive technology that sets a selection
+		// and immediately sends the shortcut hits this every time.
+		if (!toolbarState.isVisible) evaluateSelection();
+		if (!toolbarState.isVisible) return;
+		e.preventDefault();
+		// After the render that the show above just scheduled: focusing in the same
+		// tick finds no controls, because the strip has not been created yet.
+		void tick().then(() => focusStrip());
+	}
+
+	/**
+	 * ARIA toolbar navigation: arrows move between controls, Home/End jump, and the
+	 * strip keeps one tab stop.
+	 *
+	 * Before this, every button was its own tab stop inside a `role="toolbar"`, so a
+	 * screen-reader user was told "toolbar" and then found that the arrow keys the
+	 * role advertises did nothing.
+	 */
+	function handleToolbarKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			hideToolbar();
+			return;
+		}
+		const controls = toolbarControls();
+		const next = nextControlIndex({
+			key: e.key,
+			activeIndex: activeControlIndex,
+			count: controls.length,
+			direction:
+				isBrowser && toolbarElement && getComputedStyle(toolbarElement).direction === 'rtl'
+					? 'rtl'
+					: 'ltr'
+		});
+		if (next === null) return;
+
+		e.preventDefault();
+		activeControlIndex = next;
+		controls[next]?.focus();
+	}
+
+	/** Dismiss once focus leaves the strip entirely, but not while it moves within it. */
+	function handleToolbarFocusOut(e: FocusEvent) {
+		const next = e.relatedTarget;
+		if (next instanceof Node && toolbarElement?.contains(next)) return;
+		// Focus has already left, so there is nothing to restore.
+		focusReturnTarget = null;
+		hideToolbar();
 	}
 
 	/**
@@ -365,10 +582,20 @@
 	 */
 	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
+		if (!toolbarElement) return;
 
-		if (toolbarElement && !toolbarElement.contains(e.target as Node)) {
-			hideToolbar();
-		}
+		// `composedPath()` rather than `contains(e.target)`: the strip lives in this
+		// component's shadow root, so a document-level listener sees the retargeted
+		// host element and `contains` reports false for the strip's own buttons —
+		// dismissing it on the very click that was activating one.
+		const path = (typeof e.composedPath === 'function' ? e.composedPath() : []).filter(
+			(node): node is EventTarget => !!node
+		);
+		if (path.includes(toolbarElement)) return;
+		if (path.length === 0 && toolbarElement.contains(e.target as Node)) return;
+
+		focusReturnTarget = null;
+		hideToolbar();
 	}
 
 	// Effect for event listeners and initialization
@@ -383,27 +610,68 @@
 		}, 2000);
 
 		const pointerEventTarget: HTMLElement | Document = effectiveScopeElement || document;
-		pointerEventTarget.addEventListener('mouseup', handleSelectionChange);
 		pointerEventTarget.addEventListener('click', handleDocumentClick);
-		pointerEventTarget.addEventListener('touchend', handleSelectionChange);
 		pointerEventTarget.addEventListener('touchstart', handleDocumentClick);
+
+		// The selection itself is the trigger, so the toolbar reaches a selection made
+		// with the keyboard, a pointer, touch, or assistive technology alike. The
+		// pointer pair only gates the show until a drag settles.
+		document.addEventListener('selectionchange', scheduleSelectionEvaluation);
+		pointerEventTarget.addEventListener('pointerdown', handlePointerDown);
+		document.addEventListener('pointerup', handlePointerUp);
+		document.addEventListener('pointercancel', handlePointerUp);
 
 		// Keyboard and scroll events
 		document.addEventListener('keydown', handleKeyDown);
-		window.addEventListener('scroll', hideToolbar, true);
+		window.addEventListener('scroll', handleScroll, true);
+		window.addEventListener('resize', handleScroll);
 
 		return () => {
 			clearTimeout(loadTimer);
+			if (announcementTimer !== null) clearTimeout(announcementTimer);
+			if (selectionFrame !== null && typeof cancelAnimationFrame === 'function') {
+				cancelAnimationFrame(selectionFrame);
+				selectionFrame = null;
+			}
 
-			pointerEventTarget.removeEventListener('mouseup', handleSelectionChange);
 			pointerEventTarget.removeEventListener('click', handleDocumentClick);
-			pointerEventTarget.removeEventListener('touchend', handleSelectionChange);
 			pointerEventTarget.removeEventListener('touchstart', handleDocumentClick);
+
+			document.removeEventListener('selectionchange', scheduleSelectionEvaluation);
+			pointerEventTarget.removeEventListener('pointerdown', handlePointerDown);
+			document.removeEventListener('pointerup', handlePointerUp);
+			document.removeEventListener('pointercancel', handlePointerUp);
 
 			// Remove keyboard and scroll events
 			document.removeEventListener('keydown', handleKeyDown);
-			window.removeEventListener('scroll', hideToolbar, true);
+			window.removeEventListener('scroll', handleScroll, true);
+			window.removeEventListener('resize', handleScroll);
 		};
+	});
+
+	/**
+	 * Apply the roving tabindex to whatever controls are currently rendered.
+	 *
+	 * Done here rather than as a `tabindex` binding per button because the control
+	 * set is conditional — read-aloud only with a TTS service, remove only over an
+	 * existing annotation — so a static index per button drifts out of step with the
+	 * rendered order as soon as one of them is absent.
+	 */
+	$effect(() => {
+		void toolbarState.isVisible;
+		void activeControlIndex;
+		void hasOverlappingAnnotation;
+		void hasAnnotations;
+		void ttsSpeaking;
+		untrack(() => {
+			const controls = toolbarControls();
+			if (controls.length === 0) return;
+			const active = clampIndex(activeControlIndex, controls.length);
+			if (active !== activeControlIndex) activeControlIndex = active;
+			controls.forEach((control, index) => {
+				control.tabIndex = index === active ? 0 : -1;
+			});
+		});
 	});
 
 	$effect(() => {
@@ -437,6 +705,9 @@
 		role="toolbar"
 		aria-label="Text annotation toolbar"
 		translate="no"
+		tabindex="-1"
+		onkeydown={handleToolbarKeyDown}
+		onfocusout={handleToolbarFocusOut}
 	>
 		<!-- Highlight Color Swatches -->
 		{#each HIGHLIGHT_COLORS as color}

@@ -30,11 +30,10 @@ function isKnownA11yBaselineDebt(violation: {
 		return (violation.nodes || []).every((node) => {
 			const html = String(node.html || "");
 			return (
-				html.includes('class="button"') &&
-				(html.includes("MuiSvgIcon") ||
-					html === '<button class="button">' ||
-					html === '<button disabled="" class="button">')
-			) || (
+				(html.includes('class="button"') &&
+					(html.includes("MuiSvgIcon") ||
+						html === '<button class="button">' ||
+						html === '<button disabled="" class="button">')) ||
 				// PIE-708 tracks the upstream editor toolbar buttons with no accessible name.
 				html.startsWith('<button class="toolbarButton"') ||
 				html.startsWith('<button disabled="" class="toolbarButton"')
@@ -302,11 +301,13 @@ async function mockPollyVoicesAvailability(page: Page): Promise<void> {
 }
 
 async function mockDesmosCalculatorScript(page: Page): Promise<void> {
-	await page.route("https://www.desmos.com/api/**/calculator.js**", async (route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/javascript",
-			body: `
+	await page.route(
+		"https://www.desmos.com/api/**/calculator.js**",
+		async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/javascript",
+				body: `
 				(() => {
 					const createCalculator = (container) => {
 						const surface = document.createElement("div");
@@ -335,8 +336,9 @@ async function mockDesmosCalculatorScript(page: Page): Promise<void> {
 					};
 				})();
 			`,
-		});
-	});
+			});
+		},
+	);
 }
 
 async function selectPassageText(page: Page): Promise<void> {
@@ -362,7 +364,9 @@ async function selectPassageText(page: Page): Promise<void> {
 			range.setEnd(textNode, end);
 			selection.removeAllRanges();
 			selection.addRange(range);
-			document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+			// No synthetic `mouseup`. It was needed while the annotation toolbar was
+			// shown from pointer events only, which was the defect: a selection the
+			// learner made with anything other than a mouse never reached it.
 		});
 }
 
@@ -394,7 +398,9 @@ test.describe("section player demo tts-ssml", () => {
 			};
 		});
 
-		const firstInlineTts = firstItemShell.locator("pie-tool-tts-inline:visible");
+		const firstInlineTts = firstItemShell.locator(
+			"pie-tool-tts-inline:visible",
+		);
 		await expect(firstInlineTts).toBeVisible();
 		await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
 
@@ -708,9 +714,14 @@ test.describe("section player demo tts-ssml", () => {
 			const toolbars = Array.from(
 				document.querySelectorAll("pie-item-toolbar"),
 			) as HTMLElement[];
-			const toolbar = toolbars.find((candidate) =>
-				Boolean(candidate.shadowRoot?.querySelector("pie-tool-tts-inline[data-active='true']")),
-			) || null;
+			const toolbar =
+				toolbars.find((candidate) =>
+					Boolean(
+						candidate.shadowRoot?.querySelector(
+							"pie-tool-tts-inline[data-active='true']",
+						),
+					),
+				) || null;
 			const header = toolbar?.closest(
 				".pie-section-player-content-card-header",
 			) as HTMLElement | null;
@@ -749,10 +760,8 @@ test.describe("section player demo tts-ssml", () => {
 				found: true,
 				panelPosition: window.getComputedStyle(ttsPanel).position,
 				panelWithinCardInlineBounds:
-					panelRect.left >= cardRect.left &&
-					panelRect.right <= cardRect.right,
-				panelLeftClearOfHeading:
-					panelRect.left >= headingRect.right,
+					panelRect.left >= cardRect.left && panelRect.right <= cardRect.right,
+				panelLeftClearOfHeading: panelRect.left >= headingRect.right,
 				triggerRightAligned: triggerRect.right <= cardRect.right,
 			};
 		});
@@ -962,11 +971,19 @@ test.describe("section player demo tts-ssml", () => {
 		// The speed radios stay a single always-visible radiogroup — no toggle
 		// button, no popover menu — stacked vertically in a card below the media
 		// row. All options remain reachable.
-		const speedGroup = panel.getByRole("radiogroup", { name: "Playback speed" });
+		const speedGroup = panel.getByRole("radiogroup", {
+			name: "Playback speed",
+		});
 		await expect(speedGroup).toBeVisible();
-		await expect(speedGroup.getByRole("radio", { name: "Slow speed" })).toBeVisible();
-		await expect(speedGroup.getByRole("radio", { name: "Normal speed" })).toBeVisible();
-		await expect(speedGroup.getByRole("radio", { name: "Fast speed" })).toBeVisible();
+		await expect(
+			speedGroup.getByRole("radio", { name: "Slow speed" }),
+		).toBeVisible();
+		await expect(
+			speedGroup.getByRole("radio", { name: "Normal speed" }),
+		).toBeVisible();
+		await expect(
+			speedGroup.getByRole("radio", { name: "Fast speed" }),
+		).toBeVisible();
 		// No current-speed toggle button / popover menu in the compact layout.
 		await expect(
 			firstInlineTts.getByRole("menu", { name: "Playback speed" }),
@@ -1802,7 +1819,7 @@ test.describe("section player demo tts-ssml", () => {
 							localService: true,
 							voiceURI: "preview-voice",
 						},
-				] as unknown as SpeechSynthesisVoice[],
+					] as unknown as SpeechSynthesisVoice[],
 				speak: (utterance: SpeechSynthesisUtterance) => {
 					utterance.onstart?.(new Event("start") as SpeechSynthesisEvent);
 					window.setTimeout(() => {

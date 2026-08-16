@@ -78,4 +78,5 @@ section-player path as well as beneath assessment-player — the formative Try r
 trip runs controller → `SectionRuntimeEngine` → `PieAssessmentToolkit` →
 composition republish, with no assessment-player in it — so `ToolPolicyEngine` can
 own cue and playback policy whichever player mounts the section. Where the flavor
-attaches stays open and is now the timed-media PRD's only blocking decision.
+attaches was then decided the same day — the existing layouts on the standalone
+path, no new element — which moved that PRD to `Ready`.

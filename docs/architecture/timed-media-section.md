@@ -10,9 +10,9 @@ Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code ha
 
 Four things changed underneath this note as of 2026-08-05. They are open decisions, not corrections to the direction.
 
-**1. Assessment-player has no data-driven renderer selection.** The worked example below assumes assessment-player reads the section and chooses `pie-section-player-timed-media`. That seam does not exist. `AssessmentPlayerDefaultElement` takes a hardcoded `sectionPlayerLayout: "splitpane" | "vertical"` attribute and imports only those two layouts; tabbed and kernel-host are not reachable through assessment-player at all, and nothing dispatches on section data. Either a `sectionType`-driven dispatch is a prerequisite for the worked example, or timed media targets the standalone section-player path where the host picks the tag directly — which works today. A PRD should choose deliberately rather than inherit the assumption.
+**1. Assessment-player has no data-driven renderer selection.** The worked example below assumes assessment-player reads the section and chooses `pie-section-player-timed-media`. That seam does not exist. `AssessmentPlayerDefaultElement` takes a hardcoded `sectionPlayerLayout: "splitpane" | "vertical"` attribute and imports only those two layouts; tabbed and kernel-host are not reachable through assessment-player at all, and nothing dispatches on section data. **Resolved 2026-08-15:** timed media targets the standalone section-player path where the host picks the tag, and assessment-player gains no `sectionType` dispatch. The worked example below keeps its dispatch step as the assessment-player-mediated variant, which stays possible and is not what this workstream builds; see [Delivery Attachment](../prds/timed-media-section-contract.md#delivery-attachment).
 
-**2. `RubricBlock` is now explicitly passage-typed**, which weakens option 1 in [Video Stimulus Mapping](#video-stimulus-mapping). See that section.
+**2. `RubricBlock` is now explicitly passage-typed.** Read in 2026-08-05 as weakening option 1 in [Video Stimulus Mapping](#video-stimulus-mapping); that reading was wrong, because a passage payload is a PIE config. Option 1 was chosen on 2026-08-15. See that section.
 
 **3. `assessment-toolkit` grew a policy and runtime engine layer** that is a better fit for cue and playback policy than this note assumes. It now owns `SectionRuntimeEngine`, `SectionEngineCore`, engine state/transition/stage-derivation, `RuntimeRegistry`, `SectionEngineAdapter`, an instrumentation bridge, and a `ToolPolicyEngine` with `PolicySource`, `compose-decision`, and provenance tracking. This note puts cue orchestration in the layout custom element and treats the toolkit as tool/service coordination only. Cue policy and playback policy are closer in shape to composed policy decisions than to layout internals. `SectionController` still lives in `section-player`, and the toolkit sits beneath the standalone section-player path as well as beneath assessment-player, so policy placed in the engine is reachable whichever player mounts the section. The layer-ownership table below was re-derived against the engine on 2026-08-15.
 
@@ -52,9 +52,11 @@ State](#current-state) is still the open decision: renderer dispatch in
 assessment-player, or the standalone section-player path the host already drives
 by tag. Everything the note lists as a prerequisite — the media vocabulary, the
 shared validation layer, a shipped media-rendering precedent — is satisfied. This
-decision is what a PRD has to take, against an asymmetry worth stating: no
-integration renders a section through assessment-player, and every one that
-renders a section at all picks the layout tag itself.
+decision was taken the same day, against the asymmetry that settled it: no
+integration renders a section through assessment-player, and every one that renders
+a section at all picks the layout tag itself. Timed media targets the existing
+layouts on the standalone path and adds no custom element; see
+[Delivery Attachment](../prds/timed-media-section-contract.md#delivery-attachment).
 
 **2. Media-control styling now has a palette to consume.** The [broad theming
 contract](../prds/pie-727-broad-theming-contract.md) is `Accepted`: canonical
@@ -254,8 +256,32 @@ const section = {
       identifier: "video-stimulus-1",
       class: "stimulus",
       view: ["candidate"],
-      // PRD decision: embed a Passage-like entity, reference a stimulus entity,
-      // or keep media inside timedMedia.media.
+      // Decided 2026-08-15: the stimulus is a passage, so the media model rides
+      // in a PIE config like any other element. `passageVId` references a shared
+      // one instead when the same video serves several sections.
+      passage: {
+        id: "passage-lab-safety-video",
+        name: "Lab safety video",
+        config: {
+          markup: '<pie-video-stimulus id="lab-safety"></pie-video-stimulus>',
+          elements: { "pie-video-stimulus": "@pie-element/video-stimulus@1.0.0" },
+          models: [
+            {
+              id: "lab-safety",
+              element: "pie-video-stimulus",
+              media: {
+                version: 1,
+                kind: "video",
+                sources: [{ src: "https://cdn.example/lab-safety.mp4", type: "video/mp4" }],
+                poster: "https://cdn.example/lab-safety.jpg",
+              },
+            },
+          ],
+        },
+        // Captions, transcript and signed alternates resolve through the
+        // accessibility-catalog rail this passage owns as a Catalog Owner.
+        accessibilityCatalogs: [/* caption, transcript and signing cards */],
+      },
     },
   ],
   assessmentItemRefs: [
@@ -263,16 +289,9 @@ const section = {
     { identifier: "q-spill-response", itemVId: "item-spill-response" },
   ],
   timedMedia: {
+    // No media payload here. `stimulusRef` names the renderable above that
+    // supplies the time source, and resolution is validated.
     stimulusRef: "video-stimulus-1",
-    media: {
-      kind: "video",
-      sources: [{ src: "https://cdn.example/lab-safety.mp4", type: "video/mp4" }],
-      poster: "https://cdn.example/lab-safety.jpg",
-      captions: [
-        { src: "https://cdn.example/lab-safety.en.vtt", lang: "en", label: "English" },
-      ],
-      transcript: { src: "https://cdn.example/lab-safety-transcript.html" },
-    },
     cues: [
       {
         identifier: "cue-eye-protection",
@@ -301,15 +320,15 @@ const section = {
 
 ### Video Stimulus Mapping
 
-The final storage location for media metadata needs PRD review. Options, revised 2026-08-05 against the current `RubricBlock` type in `players-shared`:
+**Decided 2026-08-15: option 1, the stimulus is a passage.** The [timed-media section contract](../prds/timed-media-section-contract.md#media-representation) owns the record and its reasoning, and `timedMedia` carries a required `stimulusRef` in place of a media payload. The options stay below as what was weighed, with option 1's earlier assessment corrected.
 
-1. Embed/reference a video stimulus through existing `rubricBlocks` with `class: "stimulus"`, keeping the conceptual link to shared content. **Weaker than it looked in June.** `RubricBlock` now carries `class: "stimulus" | "instructions" | "rubric"` alongside `passageVId?: string`, an embedded `passage?: PassageEntity`, and a plain `content?: string`. The `class: "stimulus"` slot is real, but every payload field on it is passage-typed or raw HTML. Taking this option means widening passage-specific fields to carry media, or adding a media-shaped sibling field to a type whose other flavors are text.
+1. Embed/reference a video stimulus through existing `rubricBlocks` with `class: "stimulus"`, keeping the conceptual link to shared content. **Chosen.** The 2026-08-05 objection recorded here — that every `RubricBlock` payload field is passage-typed or raw HTML, so this means widening passage fields to carry media — does not hold. A passage payload is a PIE config: `SectionRenderable` is `{ flavor, entity: ConfigContainerEntity }`, every renderable is rendered through the item-player, and a passage config mounting `pie-video-stimulus` carries the media model the way any config carries an element model. `SectionContentService` already normalizes `class: "stimulus"` blocks with a passage into the section's passage map, so nothing widens and no new shell appears. The deciding reason is narrower than reuse: a passage is a **Catalog Owner**, so captions, transcript and signed alternates resolve through the rail that already serves them.
 2. Add a new renderable flavor. **The premise needs restating:** there is no `item | passage | rubric` union in `players-shared` to extend. The flavor is expressed by `RubricBlock.class` plus separate item and passage shell elements in `section-player`. A media flavor therefore means a new `class` value *and* a new shell, not one union member.
-3. Keep media metadata inside `timedMedia.media` and treat the stimulus as a section-local media resource rather than a generic passage entity. **Currently the cheapest and least invasive**, at the cost of media not being reusable as shared content across sections.
+3. Keep media metadata inside `timedMedia.media` and treat the stimulus as a section-local media resource rather than a generic passage entity. **Rejected.** It is the cheapest field placement and it makes "which content is the video" a type invariant rather than a validation rule, which is a genuine advantage where a section holds both a video and a text stimulus. It loses on ownership: a media blob has no catalog owner, so captions and transcript become a second representation of alternates the accessibility-catalog rail already models, and video is the content type least able to afford that. It would also make media the only PIE content that is not a config container, so tools, TTS, theming and preloading each gain a special case.
 
 The durable decision should preserve this invariant: the video stimulus renders media and exposes playback APIs, but it does not know which question appears at which cue and does not own child sessions.
 
-Note that options 1 and 3 differ on more than field placement: option 1 implies media is a first-class shared-content entity that a host can reference from several sections, and option 3 implies it is section-local. That reuse question should drive the choice.
+Options 1 and 3 differ on more than field placement: option 1 makes media a first-class shared-content entity a host can reference from several sections, option 3 makes it section-local. Reuse was expected to drive the choice and did not — catalog ownership did, and reuse came along with it, since `passageVId` already references a shared passage. The cue timeline stays section-local either way, because cues name this section's `itemRefs`.
 
 ## Cue Semantics
 

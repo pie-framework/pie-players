@@ -1,16 +1,16 @@
 /**
  * I18nService
  *
- * Internationalization service with hybrid loading strategy.
- * Manages translations, locale switching, and RTL/LTR direction.
+ * Internationalization service with hybrid loading strategy: English bundled,
+ * other locales lazy-loaded. Manages translations, locale switching and RTL/LTR
+ * direction, and notifies subscribers on change.
  *
- * Features:
- * - Subscriber/listener pattern for reactive updates
- * - Hybrid loading: Bundle English, lazy-load other locales
- * - Interpolation: {variable} syntax
- * - Pluralization: ICU-style plural rules
- * - RTL detection: Automatic based on locale
- * - Fallback to English for missing keys
+ * This is a thin wrapper over `SimpleI18n` from `players-shared`, adding
+ * toolkit-scoped logging and the `initialize()` convenience. It was previously a
+ * near-verbatim second copy of that class — same fields, same lookup, same
+ * `selectPluralForm` — and duplicate implementations of one contract drift
+ * silently, because nothing fails when only one of them is fixed. Both are
+ * published and neither had a consumer, so the copy was pure exposure.
  *
  * Part of PIE Assessment Toolkit.
  */
@@ -20,6 +20,10 @@ import type {
 	I18nServiceApi,
 	PluralTranslation,
 	TranslationBundle,
+} from "@pie-players/pie-players-shared/i18n";
+import {
+	detectBrowserLocale,
+	SimpleI18n,
 } from "@pie-players/pie-players-shared/i18n";
 import { createLogger } from "../utils/logger.js";
 
@@ -39,38 +43,27 @@ export type {
  * Manages internationalization with reactive state updates.
  */
 export class I18nService implements I18nServiceApi {
-	private locale: string = "en";
-	private fallbackLocale: string = "en";
-	private direction: "ltr" | "rtl" = "ltr";
-	private translations = new Map<string, TranslationBundle>();
-	private listeners = new Set<() => void>();
-	private loadingPromises = new Map<string, Promise<void>>();
-	private config: I18nConfig;
+	private readonly i18n: SimpleI18n;
+	private readonly config: I18nConfig;
 
 	constructor(config: I18nConfig = {}) {
-		this.config = config;
-		this.fallbackLocale = config.fallbackLocale || "en";
+		this.config = { ...config };
+		this.i18n = new SimpleI18n(config);
 
-		log("I18nService initialized", { fallbackLocale: this.fallbackLocale });
-
-		// Load bundled translations (English by default)
-		if (config.bundledTranslations) {
-			for (const [locale, bundle] of Object.entries(
-				config.bundledTranslations,
-			)) {
-				this.translations.set(locale, bundle);
-				log(`Loaded bundled translations for: ${locale}`);
-			}
-		}
+		log("I18nService initialized", {
+			fallbackLocale: config.fallbackLocale || "en",
+		});
 	}
 
 	/**
-	 * Initialize i18n with locale and loading strategy
+	 * Initialize i18n with locale and loading strategy.
+	 *
+	 * Falls back to the browser's locale when the config names none.
 	 */
 	async initialize(config: I18nConfig): Promise<void> {
 		Object.assign(this.config, config);
 
-		const locale = config.locale || this.detectBrowserLocale();
+		const locale = config.locale || detectBrowserLocale();
 		log(`Initializing with locale: ${locale}`);
 
 		await this.setLocale(locale);
@@ -84,8 +77,7 @@ export class I18nService implements I18nServiceApi {
 	 * @returns Translated string
 	 */
 	t(key: string, params?: Record<string, any>): string {
-		const translation = this.getTranslation(key);
-		return this.interpolate(translation as string, params);
+		return this.i18n.t(key, params);
 	}
 
 	/**
@@ -97,22 +89,14 @@ export class I18nService implements I18nServiceApi {
 	 * @returns Translated string with plural form
 	 */
 	tn(key: string, count: number, params?: Record<string, any>): string {
-		const translation = this.getTranslation(key);
-
-		if (typeof translation === "object") {
-			const pluralForm = this.selectPluralForm(count, this.locale);
-			const text = translation[pluralForm] || translation.other;
-			return this.interpolate(text, { ...params, count });
-		}
-
-		return this.interpolate(translation as string, { ...params, count });
+		return this.i18n.tn(key, count, params);
 	}
 
 	/**
 	 * Get current locale
 	 */
 	getLocale(): string {
-		return this.locale;
+		return this.i18n.getLocale();
 	}
 
 	/**
@@ -122,52 +106,28 @@ export class I18nService implements I18nServiceApi {
 	 */
 	async setLocale(locale: string): Promise<void> {
 		log(`Setting locale to: ${locale}`);
-
-		// Check if already loading
-		if (this.loadingPromises.has(locale)) {
-			log(`Locale ${locale} is already loading, waiting...`);
-			await this.loadingPromises.get(locale);
-			return;
-		}
-
-		// Check if already loaded
-		if (this.translations.has(locale)) {
-			log(`Locale ${locale} already loaded`);
-			this.applyLocale(locale);
-			return;
-		}
-
-		// Load translations
-		const loadingPromise = this.loadTranslationsForLocale(locale);
-		this.loadingPromises.set(locale, loadingPromise);
-
-		try {
-			await loadingPromise;
-			this.applyLocale(locale);
-		} finally {
-			this.loadingPromises.delete(locale);
-		}
+		await this.i18n.setLocale(locale);
 	}
 
 	/**
 	 * Get current text direction
 	 */
 	getDirection(): "ltr" | "rtl" {
-		return this.direction;
+		return this.i18n.getDirection();
 	}
 
 	/**
 	 * Get available locales
 	 */
 	getAvailableLocales(): string[] {
-		return Array.from(this.translations.keys());
+		return this.i18n.getAvailableLocales();
 	}
 
 	/**
 	 * Check if locale is loaded
 	 */
 	isLocaleLoaded(locale: string): boolean {
-		return this.translations.has(locale);
+		return this.i18n.isLocaleLoaded(locale);
 	}
 
 	/**
@@ -175,163 +135,13 @@ export class I18nService implements I18nServiceApi {
 	 * Returns unsubscribe function
 	 */
 	subscribe(listener: () => void): () => void {
-		this.listeners.add(listener);
-		return () => {
-			this.listeners.delete(listener);
-		};
+		return this.i18n.subscribe(listener);
 	}
 
 	/**
 	 * Check if a translation key exists
 	 */
 	hasKey(key: string): boolean {
-		const bundle = this.translations.get(this.locale);
-		return !!bundle?.translations[key];
-	}
-
-	/**
-	 * Notify all listeners of state change
-	 */
-	private notifyListeners(): void {
-		this.listeners.forEach((listener) => listener());
-	}
-
-	/**
-	 * Apply locale and notify listeners
-	 */
-	private applyLocale(locale: string): void {
-		const bundle = this.translations.get(locale);
-		if (!bundle) {
-			log(`No bundle found for locale: ${locale}`, "warn");
-			return;
-		}
-
-		const previousLocale = this.locale;
-		this.locale = locale;
-		this.direction = bundle.direction;
-
-		log(`Applied locale: ${locale} (direction: ${this.direction})`);
-
-		this.applyDOMDirection();
-		this.notifyListeners();
-	}
-
-	/**
-	 * Apply direction to DOM
-	 */
-	private applyDOMDirection(): void {
-		if (typeof document === "undefined") return;
-
-		document.documentElement.setAttribute("dir", this.direction);
-		document.documentElement.setAttribute("lang", this.locale);
-
-		log(
-			`Applied DOM attributes: dir="${this.direction}" lang="${this.locale}"`,
-		);
-	}
-
-	/**
-	 * Load translations for a locale
-	 */
-	private async loadTranslationsForLocale(locale: string): Promise<void> {
-		if (!this.config.loadTranslations) {
-			throw new Error(`No translation loader configured for locale: ${locale}`);
-		}
-
-		log(`Loading translations for: ${locale}`);
-
-		try {
-			const bundle = await this.config.loadTranslations(locale);
-			this.translations.set(locale, bundle);
-			log(
-				`Loaded translations for: ${locale} (${Object.keys(bundle.translations).length} keys)`,
-			);
-		} catch (error) {
-			log(`Failed to load translations for: ${locale}`, "error");
-			throw error;
-		}
-	}
-
-	/**
-	 * Get translation for a key
-	 */
-	private getTranslation(key: string): string | PluralTranslation {
-		// Try current locale
-		const currentBundle = this.translations.get(this.locale);
-		if (currentBundle?.translations[key]) {
-			return currentBundle.translations[key];
-		}
-
-		// Try fallback locale
-		const fallbackBundle = this.translations.get(this.fallbackLocale);
-		if (fallbackBundle?.translations[key]) {
-			if (this.config.debug) {
-				log(`Using fallback translation for key: ${key}`);
-			}
-			return fallbackBundle.translations[key];
-		}
-
-		// Missing key handling
-		if (this.config.onMissingKey) {
-			this.config.onMissingKey(key, this.locale);
-		}
-
-		if (this.config.debug) {
-			log(`Missing translation key: ${key} (locale: ${this.locale})`, "warn");
-		}
-
-		return key;
-	}
-
-	/**
-	 * Interpolate variables in translation string
-	 * Replaces {variable} with params.variable
-	 */
-	private interpolate(text: string, params?: Record<string, any>): string {
-		if (!params) return text;
-
-		return text.replace(/\{(\w+)\}/g, (match, key) => {
-			return params[key]?.toString() || match;
-		});
-	}
-
-	/**
-	 * Select plural form based on count and locale
-	 * Simplified implementation - real implementation would use Intl.PluralRules
-	 */
-	private selectPluralForm(
-		count: number,
-		locale: string,
-	): keyof PluralTranslation {
-		// Use Intl.PluralRules if available
-		if (typeof Intl !== "undefined" && Intl.PluralRules) {
-			try {
-				const rules = new Intl.PluralRules(locale);
-				const category = rules.select(count);
-				return category as keyof PluralTranslation;
-			} catch (error) {
-				log(`Failed to use Intl.PluralRules for locale: ${locale}`, "warn");
-			}
-		}
-
-		// Fallback to simple rules
-		if (count === 0) return "zero";
-		if (count === 1) return "one";
-		return "other";
-	}
-
-	/**
-	 * Detect browser locale
-	 */
-	private detectBrowserLocale(): string {
-		if (typeof navigator === "undefined") return "en";
-
-		const browserLang =
-			navigator.language ||
-			(navigator.languages && navigator.languages[0]) ||
-			"en";
-
-		// Extract language code (e.g., 'en-US' -> 'en')
-		return browserLang.split("-")[0];
+		return this.i18n.hasKey(key);
 	}
 }

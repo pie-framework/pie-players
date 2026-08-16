@@ -58,7 +58,10 @@ Two consequences, both host-facing:
 
 The spec asserts the pre-blur state deliberately. A debounce would be a change to
 constructed-response persistence, and it should surface as a failing test here
-rather than land unnoticed.
+rather than land unnoticed. Tracked as
+[PIE-916](https://illuminate.atlassian.net/browse/PIE-916), which also carries the
+unanswered half: whether unmounting an element or navigating a section away commits
+an in-progress response before the editor is torn down.
 
 ## Host Responsibilities
 

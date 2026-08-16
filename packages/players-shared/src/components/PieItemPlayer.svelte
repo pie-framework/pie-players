@@ -741,6 +741,21 @@
           } else {
             // VIEW MODE: Listen for session-changed events from PIE elements
             const handleSessionChanged = (event: Event) => {
+              // The element's own `session-changed` ends here. It carries the PIE
+              // element contract's metadata detail (`complete`, `component`) and no
+              // `session` at all, so a host that read `detail.session` off it got
+              // `undefined` — indistinguishable from the deliberate
+              // `session: null` + `intent: "metadata-only"` signal the player emits
+              // for a metadata-only change. The player re-emits a canonical
+              // `session-changed` from its own host below, which is the one that
+              // reaches hosts; letting the raw event past this point published two
+              // events per change with different contracts under one name.
+              // Section-player's ItemShellElement already dedupes what escapes,
+              // which is the cost this avoids rather than a reason to keep it.
+              // Stop before the re-entry guard so the raw event never escapes on the
+              // early-return paths either.
+              event.stopPropagation();
+
               // CRITICAL: Prevent infinite loop
               // When we dispatch, it triggers this listener again
               // Use flag to detect and break the loop

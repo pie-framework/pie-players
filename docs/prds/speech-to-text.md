@@ -506,7 +506,8 @@ Playwright specs run outside the sandbox.
      `packages/item-player/tests/item-player-dictation.spec.ts`. It also established the commit
      boundary the rest of this PRD has to design around — a constructed response reaches the session
      on blur and not before, so a dictation affordance that keeps focus in the editor keeps the
-     response out of the session for as long as it runs.
+     response out of the session for as long as it runs
+     ([PIE-916](https://illuminate.atlassian.net/browse/PIE-916)).
   3. **Support id and policy identity**, so eligibility is auditable before any recognizer exists.
   4. **The capability package**, behind the on-device Web Speech provider only.
   5. **A remote provider**, only if a program needs a language on-device recognition does not cover on

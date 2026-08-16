@@ -1,223 +1,167 @@
-# PIE Players i18n System
+# Interface i18n
 
-Comprehensive internationalization system with support for English, Spanish, Chinese, and Arabic (RTL).
+The strings the packages in this repository render themselves: toolbar labels,
+tool panels, player status and error text, `aria-label`s.
 
-## Usage Patterns
+Not the language of authored content, and not in-item alternates. Those are
+separate concerns on separate channels —
+[`docs/architecture/internationalization.md`](../../../../docs/architecture/internationalization.md)
+sets out why the three are not one, and
+[`docs/architecture/i18n-interface-locale-adoption.md`](../../../../docs/architecture/i18n-interface-locale-adoption.md)
+records the decisions behind what is here.
 
-### Pattern 1: Standalone Components (Recommended for Individual Components)
+## For a host
 
-Use `useI18nStandalone()` when building standalone components (tools, players) that don't require the full toolkit architecture.
+Set one attribute. Unset, every player renders exactly the English it rendered
+before this existed — the locale is never detected from the browser.
+
+```html
+<pie-section-player-tabbed locale="nl-NL" …></pie-section-player-tabbed>
+<pie-item-player locale="nl-NL" …></pie-item-player>
+```
+
+Or through `runtime`, which wins over the attribute:
+
+```ts
+element.runtime = { locale: "nl-NL", env: { mode: "gather" } };
+```
+
+POSIX (`nl_NL`), bare (`nl`) and regional (`nl-BE`) tags all resolve to the
+`nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. A locale
+this repository ships no catalog for is honoured rather than rejected: supply
+your own messages for it, and anything you omit resolves to English.
+
+```ts
+import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
+
+const i18n = createPieI18n({
+  locale: "cy-GB",
+  customMessages: { "cy-GB": { common: { close: "Cau" } } },
+});
+```
+
+`customMessages` also overrides a shipped catalog one key at a time, so renaming
+a single label needs no fork.
+
+## For a component in this repository
+
+Resolve the provider; never construct one. The toolkit publishes it on its
+runtime context, which is the composition-context pattern
+([`composition-context.md`](../../../../docs/architecture/composition-context.md)):
+the deployment knows the interface language and no tool can.
 
 ```svelte
 <script lang="ts">
-  import { useI18nStandalone } from '@pie-players/pie-players-shared/i18n';
+  import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+  import { getDefaultI18n } from "@pie-players/pie-players-shared/i18n/provider";
+  import { connectToolRuntimeContext } from "@pie-players/pie-assessment-toolkit";
 
-  // Simple setup - no service injection needed
-  const i18n = useI18nStandalone({
-    locale: 'en',  // Optional: defaults to browser language
-    debug: false   // Optional: enable debug logging
+  let containerEl = $state<HTMLDivElement | null>(null);
+  let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+  $effect(() => {
+    if (!containerEl) return;
+    return connectToolRuntimeContext(containerEl, (v) => (runtimeContext = v));
   });
+
+  const interfaceI18n = $derived(runtimeContext?.i18n ?? getDefaultI18n());
 </script>
 
-<div dir={i18n.direction}>
-  <button>{i18n.t('common.save')}</button>
-  <span>{i18n.tn('assessment.questions', 10)}</span>
-
-  <!-- Change locale dynamically -->
-  <button onclick={() => i18n.setLocale('es')}>Español</button>
-  <button onclick={() => i18n.setLocale('ar')}>العربية</button>
+<div
+  bind:this={containerEl}
+  lang={interfaceI18n.getLocale()}
+  dir={interfaceI18n.getDirection?.() ?? "ltr"}
+>
+  <button aria-label={interfaceI18n.t("common.closeA11y")}>×</button>
 </div>
 ```
 
-**Benefits:**
-- ✅ No service architecture required
-- ✅ Self-contained - manages its own I18nService instance
-- ✅ Full feature support (hybrid loading, RTL, pluralization)
-- ✅ Perfect for reusable components and tools
+Three things in there are load-bearing.
 
-### Pattern 2: Integrated with Assessment Toolkit
+**`$derived`, not `const`.** A string captured once pins the English that
+rendered before the catalog's dynamic import resolved. The context republishes
+when the locale moves and again when a catalog lands; only a reactive read sees
+it.
 
-Use `useI18n()` when working within the full assessment toolkit where centralized locale management is needed.
+**`getDefaultI18n()` as the fallback.** No publisher is a legitimate state — a
+tool in `print-player`, in Studio preview, in a unit test. The default provider
+is English-only and shared process-wide, so `t()` returns `"Close"` rather than
+`"common.closeA11y"`.
 
-```svelte
-<script lang="ts">
-  import { useI18n } from '@pie-players/pie-players-shared/i18n';
+**`lang`/`dir` on your own host, never `document.documentElement`.** An embedded
+player has no business writing the host page's root. `direction` is an inherited
+CSS property, so one attribute on the host reaches your content across a shadow
+boundary with no per-node wiring.
 
-  // Receive service from parent/context
-  let { player } = $props();
-  const i18n = useI18n(() => player.getI18nService());
-</script>
+For a capability registration, `ToolbarContext.i18n` carries the same provider;
+`interfaceI18n(toolbarContext)` in `default-tool-loaders` applies the fallback.
 
-<div dir={i18n.direction}>
-  <button>{i18n.t('common.save')}</button>
-  <span>{i18n.tn('assessment.questions', totalQuestions)}</span>
-</div>
+## Adding a key
+
+Add it to `messages/en-US.ts` first. That catalog's *shape* generates
+`MessageKey`, so a typo at a call site is a compile error rather than a key
+rendered on screen. Then translate it in every locale listed as complete, and
+run:
+
+```bash
+bun run check:i18n-coverage
 ```
 
-**Benefits:**
-- ✅ Centralized locale management across entire application
-- ✅ Locale preferences from student profile/IEP
-- ✅ Shared service instance - locale changes sync everywhere
-- ✅ Integration with accommodation system
+The check has two tiers. A **complete** locale must carry every English key; a
+gap fails the build. A **carried** locale is reported and never gates, because
+its gaps resolve to English through the fallback chain and gating would only
+pressure someone into committing translation nobody has reviewed. Both tiers
+fail on a key English no longer defines — an unreachable key is drift.
 
-### Pattern 3: Direct Service Usage (Advanced)
+Conventions the catalog follows:
 
-For non-Svelte contexts or advanced use cases:
+- `{placeholder}` slots interpolate; the names stay identical across locales.
+- A plural group is an object of CLDR categories with `other` required.
+  `Intl.PluralRules` selects, so Arabic's `zero`/`two`/`few`/`many` and Polish's
+  `few`/`many` are reachable and a locale may carry more forms than English has.
+  Call `plural()`, never a `count === 1` branch.
+- Keys ending `A11y` are for assistive technology only.
+- Author whole phrases. `"Open " + name.toLowerCase()` is an English-only
+  transform: Dutch and German capitalize differently, and a language with
+  grammatical case needs the phrase authored rather than assembled.
+- Developer diagnostics — `throw`, `console` — stay in English and stay out.
 
-```typescript
-import { SimpleI18n, BUNDLED_TRANSLATIONS, loadTranslations } from '@pie-players/pie-players-shared/i18n';
+## Locales
 
-const i18n = new SimpleI18n({
-  locale: 'en',
-  bundledTranslations: BUNDLED_TRANSLATIONS,
-  loadTranslations,
-});
+| Tag | Coverage |
+|---|---|
+| `en-US` | source |
+| `nl-NL` | complete |
 
-await i18n.initialize({ locale: 'es' });
+Two locales, because two are audited. The pre-adoption `es`/`zh`/`ar` catalogs
+were removed rather than re-keyed: they were harvested from a design rather than
+from call sites, so over half their keys named UI this codebase does not render,
+and no version ever published could load them outside a bundler.
 
-console.log(i18n.t('common.save')); // "Guardar"
-console.log(i18n.getDirection()); // "ltr"
+To add a locale: copy `messages/nl-NL.ts`, translate, add the tag to
+`BundledLocaleCode` in `types.ts` and to both maps in `catalogs.ts`, then add it
+to `COMPLETE_LOCALES` in `scripts/check-coverage.ts`. A locale still under review
+can sit in `CARRIED_LOCALES` meanwhile — reported, not gating, gaps resolving to
+English.
 
-// Subscribe to changes
-const unsubscribe = i18n.subscribe(() => {
-  console.log('Locale changed to:', i18n.getLocale());
-});
-```
+## Module layout
 
-## Translation Functions
+Which module you import decides what ships. Every player and tool
+`vite.config.ts` sets `external: []`, so anything reachable from an entry inlines
+into that bundle.
 
-### `t(key, params?)` - Basic Translation
+| Module | Contents | Imported by |
+|---|---|---|
+| `i18n/types` | `I18nProvider`, `MessageKey`, `LocaleCode` | components, as `import type` — fully erased |
+| `i18n/provider` | `SimpleI18n`, `getDefaultI18n`, `localeDirection` | components, for the English fallback |
+| `i18n/catalogs` | dynamic loader map for the non-English locales | players only |
+| `i18n` | `createPieI18n()`, wiring provider to catalogs | players only |
+| `i18n/language-tags` | BCP-47 comparison, no locale data, no DOM | catalog resolver, TTS voice selection |
 
-```typescript
-i18n.t('common.save')  // "Save"
-i18n.t('common.cancel') // "Cancel"
+A component reaching only the first two pulls in the interface (a type) and the
+5 KB English catalog. It never reaches `catalogs`, so no locale chunk is emitted
+into a bundle that will never call `setLocale`.
 
-// With interpolation
-i18n.t('assessment.question_of', { current: 5, total: 20 })
-// "Question 5 of 20"
-```
-
-### `tn(key, count, params?)` - Pluralization
-
-```typescript
-i18n.tn('assessment.questions', 1)  // "1 Question"
-i18n.tn('assessment.questions', 10) // "10 Questions"
-
-// With additional params
-i18n.tn('common.item', count, { type: 'folder' })
-```
-
-## Available Translations
-
-### Common Namespace (`common.*`)
-- Buttons: `save`, `cancel`, `close`, `back`, `next`, `previous`, `submit`
-- States: `loading`, `error`, `retry`
-- Common words: `question`, `item`, `character` (all with pluralization)
-
-### Assessment Namespace (`assessment.*`)
-- `title` - Assessment title
-- `questions` - Question count (plural)
-- `question_of` - "Question X of Y"
-- `student_name` - Student name label
-- `fullscreen`, `exit_fullscreen` - Fullscreen controls
-
-### Accommodation Namespace (`accommodation.*`)
-- `audio`, `audio_aria` - Audio/TTS controls
-- `contrast`, `contrast_aria` - Contrast controls
-
-### Navigation Namespace (`navigation.*`)
-- `back`, `next`, `previous`, `submit` - Navigation buttons
-- `navigate_to` - "Navigate to question X"
-- `section` - Section label
-
-### Tool Namespace (`tool.*`)
-- Tool names: `calculator`, `graph`, `periodic_table`, etc.
-- TTS controls: `tts.speak`, `tts.pause`, `tts.stop`, `tts.rate`
-- Calculator types: `calculator.basic`, `calculator.scientific`, `calculator.graphing`
-- Color schemes: `color_scheme.default`, `color_scheme.high_contrast`, `color_scheme.dark`
-
-## Supported Languages
-
-- **English (en)** - Bundled (~15KB)
-- **Spanish (es)** - Lazy-loaded (~12KB)
-- **Chinese (zh)** - Lazy-loaded (~12KB)
-- **Arabic (ar)** - Lazy-loaded (~12KB) with RTL support
-
-## RTL Support
-
-Arabic automatically switches to RTL mode:
-
-```svelte
-<script>
-  const i18n = useI18nStandalone({ locale: 'ar' });
-</script>
-
-<!-- direction automatically set to "rtl" -->
-<div dir={i18n.direction}>
-  {i18n.t('assessment.title')} <!-- التقييم -->
-</div>
-```
-
-## API Reference
-
-### Composable Return Value
-
-```typescript
-{
-  // Reactive getters
-  locale: string;           // Current locale (e.g., 'en', 'es')
-  direction: 'ltr' | 'rtl'; // Text direction
-  isLoading: boolean;       // Locale loading state
-  availableLocales: string[]; // List of loaded locales
-
-  // Methods
-  t(key: string, params?: Record<string, any>): string;
-  tn(key: string, count: number, params?: Record<string, any>): string;
-  setLocale(locale: string): Promise<void>;
-  isLocaleLoaded(locale: string): boolean;
-  hasKey(key: string): boolean;
-}
-```
-
-## When to Use Each Pattern
-
-| Scenario | Use Pattern |
-|----------|-------------|
-| Standalone tool component | `useI18nStandalone()` |
-| Reusable UI component | `useI18nStandalone()` |
-| Individual player | `useI18nStandalone()` |
-| Full assessment application | `useI18n()` |
-| Student profile integration | `useI18n()` |
-| IEP/504 locale requirements | `useI18n()` |
-| Non-Svelte code | `SimpleI18n` class |
-
-## Performance
-
-- **Initial load**: ~15KB (English bundled)
-- **Lazy loading**: ~12KB per additional language (cached)
-- **Hybrid strategy**: Only loads languages when needed
-- **Service reuse**: `useI18nStandalone()` creates one service per component
-
-## Adding New Translations
-
-Translation files are located at:
-```
-packages/players-shared/src/i18n/translations/
-├── en/  (common.json, toolkit.json, tools.json)
-├── es/  (common.json, toolkit.json, tools.json)
-├── zh/  (common.json, toolkit.json, tools.json)
-└── ar/  (common.json, toolkit.json, tools.json)
-```
-
-Format:
-```json
-{
-  "common": {
-    "save": "Save",
-    "question": {
-      "one": "Question",
-      "other": "Questions"
-    }
-  }
-}
-```
+The loader map is written out by hand rather than generated by a bundler macro:
+`tsc` emits the `import()` calls verbatim, so `dist` evaluates under webpack,
+esbuild, Rollup, Node and a browser loading the files directly. Every bundler
+still sees the specifiers statically, so each locale stays its own chunk.

@@ -43,6 +43,8 @@
   import { BundleType } from "../pie/types.js";
   import { updatePieElements } from "../pie/updates.js";
   import { useResourceMonitor } from "../pie/use-resource-monitor.svelte.js";
+  import { resolveInterfaceI18n } from "../i18n/provider.js";
+  import type { I18nProvider } from "../i18n/types.js";
   import type {
     ConfigEntity,
     Env,
@@ -90,6 +92,7 @@
     onElementSessionUpdate,
     baseHeadingLevel = undefined,
     includeSrHeading = true,
+    i18n,
   }: {
     itemConfig: ConfigEntity;
     passageConfig?: ConfigEntity | null;
@@ -174,7 +177,17 @@
      * make a present `include-sr-heading` mean on, whatever its value.
      */
     includeSrHeading?: boolean;
+    /**
+     * Interface-locale provider for the player's own chrome — error banners, status
+     * text. Not the authored content's language, which the item declares.
+     *
+     * Optional: this component renders in Studio preview and in `print-player`,
+     * neither of which publishes one, and the English-only default covers that.
+     */
+    i18n?: I18nProvider;
   } = $props();
+
+  const messages = $derived(resolveInterfaceI18n({ i18n }));
 
   // Track if correct responses have been added
   let correctResponsesAdded = $state(false);
@@ -996,7 +1009,7 @@
         font-family: sans-serif;
       "
     >
-      <h3 style="margin: 0 0 10px 0">Player Error</h3>
+      <h3 style="margin: 0 0 10px 0">{messages.t("player.playerError")}</h3>
       <p style="margin: 0">{runtimePlayerError}</p>
     </div>
   {/if}
@@ -1010,7 +1023,7 @@
         font-family: sans-serif;
       "
     >
-      <h3 style="margin: 0 0 10px 0">Authoring Backend Configuration Error</h3>
+      <h3 style="margin: 0 0 10px 0">{messages.t("player.authoringBackendError")}</h3>
       <p style="margin: 0">{authoringBlockedError}</p>
     </div>
   {:else if passageMarkup}

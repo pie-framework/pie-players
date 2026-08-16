@@ -12,6 +12,14 @@
 <script lang="ts">
 
 	import periodicTableData from './periodic-table-data.json';
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		dynamicMessageKey,
+		resolveInterfaceI18n,
+	} from '@pie-players/pie-players-shared/i18n/provider';
 
 	// TypeScript interface matching production data structure
 	interface Element {
@@ -39,6 +47,17 @@
 
 	// Get all elements from production JSON data
 	const allElements: Element[] = (periodicTableData as any).elements;
+
+	let containerEl = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value) => {
+			runtimeContext = value;
+		});
+	});
 
 	// Tool state
 	let selectedElement = $state<Element | null>(allElements[0] || null); // Initialize with Hydrogen
@@ -73,9 +92,20 @@
 	}
 
 	/**
-	 * Format category name for display
+	 * Category name in the interface locale.
+	 *
+	 * The normalized names above are canonical ids — they drive CSS classes and
+	 * filtering — so display goes through the catalog rather than through the id.
+	 * An id the catalog does not carry falls back to the title-cased id, which is
+	 * what a host-supplied data file with a new category gets.
 	 */
 	function formatCategoryName(category: string): string {
+		const key = dynamicMessageKey(
+			`tools.periodicTable.category.${category
+				.toLowerCase()
+				.replace(/[^a-z]+(.)/g, (_m, c) => c.toUpperCase())}`,
+		);
+		if (interfaceI18n.hasKey?.(key)) return interfaceI18n.t(key);
 		return category
 			.split(' ')
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -131,7 +161,10 @@
 		class="pie-tool-periodic-table"
 		role="dialog"
 		tabindex="-1"
-		aria-label="Periodic Table - Click elements to view details"
+		bind:this={containerEl}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.periodicTable.toolA11y')}
 		data-tool-id={toolId}
 	>
 		<!-- Content wrapper -->
@@ -141,7 +174,7 @@
 				<div
 					class="pie-tool-periodic-table__grid"
 					role="grid"
-					aria-label="Periodic table elements"
+					aria-label={interfaceI18n.t('tools.periodicTable.elementsA11y')}
 				>
 					<!-- Category filter badges in row 1 (matching production implementation) -->
 					<div
@@ -154,10 +187,10 @@
 							class="pie-tool-periodic-table__category-badge"
 							class:pie-tool-periodic-table__category-badge--active={selectedCategory === 'All'}
 							onclick={() => setCategory('All')}
-							aria-label="Show all elements"
+							aria-label={interfaceI18n.t('tools.periodicTable.showAllA11y')}
 							aria-pressed={selectedCategory === 'All'}
 						>
-							All Elements
+							{interfaceI18n.t('tools.periodicTable.allElements')}
 						</button>
 
 						<!-- Each category badge -->
@@ -166,7 +199,9 @@
 								class="pie-tool-periodic-table__category-badge pie-tool-periodic-table__category--{category.replace(' ', '-').toLowerCase()}"
 								class:pie-tool-periodic-table__category-badge--active={selectedCategory === category}
 								onclick={() => setCategory(category)}
-								aria-label="Filter by {category}"
+								aria-label={interfaceI18n.t('tools.periodicTable.filterByA11y', {
+									category: formatCategoryName(category),
+								})}
 								aria-pressed={selectedCategory === category}
 							>
 								{formatCategoryName(category)}
@@ -195,22 +230,22 @@
 									<!-- TOP ROW: Atomic Mass, Atomic No -->
 									<div class="pie-tool-periodic-table__top-row">
 										<div class="pie-tool-periodic-table__info-block">
-											<div class="pie-tool-periodic-table__label">Atomic Mass</div>
+											<div class="pie-tool-periodic-table__label">{interfaceI18n.t('tools.periodicTable.atomicMass')}</div>
 											<div class="pie-tool-periodic-table__value">{selectedElement.atomic_mass}</div>
 										</div>
 										<div class="pie-tool-periodic-table__info-block">
-											<div class="pie-tool-periodic-table__label">Atomic No</div>
+											<div class="pie-tool-periodic-table__label">{interfaceI18n.t('tools.periodicTable.atomicNumber')}</div>
 											<div class="pie-tool-periodic-table__value">{selectedElement.number}</div>
 										</div>
 									</div>
 									<!-- BOTTOM ROW: Electron Configuration, Phase -->
 									<div class="pie-tool-periodic-table__bottom-row">
 										<div class="pie-tool-periodic-table__info-block">
-											<div class="pie-tool-periodic-table__label">Electron Config</div>
+											<div class="pie-tool-periodic-table__label">{interfaceI18n.t('tools.periodicTable.electronConfig')}</div>
 											<div class="pie-tool-periodic-table__value">{selectedElement.electron_configuration_semantic}</div>
 										</div>
 										<div class="pie-tool-periodic-table__info-block">
-											<div class="pie-tool-periodic-table__label">Phase</div>
+											<div class="pie-tool-periodic-table__label">{interfaceI18n.t('tools.periodicTable.phase')}</div>
 											<div class="pie-tool-periodic-table__value">{selectedElement.phase}</div>
 										</div>
 									</div>
@@ -235,11 +270,16 @@
 									}
 								}}
 							title={element.name}
-							aria-label="{element.name}, Symbol: {element.symbol}, Atomic number: {element.number}, Atomic mass: {element.atomic_mass.toFixed(3)}, Category: {element.category}{isFilteredOut(
-								element
-							)
-								? ', outside the current filter'
-								: ''}"
+							aria-label={interfaceI18n.t('tools.periodicTable.elementA11y', {
+								name: element.name,
+								symbol: element.symbol,
+								number: element.number,
+								mass: element.atomic_mass.toFixed(3),
+								category: formatCategoryName(normalizeCategory(element.category)),
+							}) +
+								(isFilteredOut(element)
+									? interfaceI18n.t('tools.periodicTable.outsideFilterA11y')
+									: '')}
 						>
 							<div class="pie-tool-periodic-table__atomic-number">{element.number}</div>
 							<div class="pie-tool-periodic-table__symbol">{element.symbol}</div>

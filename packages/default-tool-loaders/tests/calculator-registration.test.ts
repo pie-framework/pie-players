@@ -3,6 +3,7 @@ import { calculatorToolRegistration } from "../src/registrations/calculator.js";
 import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map.js";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
 const createFakeElement = (tag: string) =>
 	({
@@ -106,6 +107,10 @@ describe("calculator tool registration", () => {
 			itemId: "i1",
 			catalogId: "i1",
 			language: "en-US",
+			// `ToolbarContext.i18n` is required: the toolbar resolves it once and a
+			// registration reads it rather than re-implementing the fallback. Outside
+			// a toolbar, the facade over the English-only default is what it gets.
+			i18n: resolveInterfaceI18n(null),
 			toolCoordinator: null,
 			toolkitCoordinator: null,
 			ttsService: null,

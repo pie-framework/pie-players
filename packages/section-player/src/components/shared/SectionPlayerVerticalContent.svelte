@@ -3,6 +3,7 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	type LayoutModel = {
 		passages: unknown[];
@@ -47,6 +48,9 @@
 		contentMaxWidthWithPassagePx?: number;
 	}>();
 
+	let frameElement = $state<HTMLDivElement | null>(null);
+	const interfaceI18n = useInterfaceI18n(() => frameElement);
+
 	const layoutMaxWidthPx = $derived(
 		layoutModel.passages.length > 0
 			? contentMaxWidthWithPassagePx
@@ -55,6 +59,7 @@
 </script>
 
 <div
+	bind:this={frameElement}
 	class="pie-section-player-vertical-frame"
 	style={`--pie-section-player-layout-max-width: ${
 		layoutMaxWidthPx !== undefined ? `${layoutMaxWidthPx}px` : "none"
@@ -62,7 +67,7 @@
 >
 	<div class="pie-section-player-vertical-content">
 		{#if layoutModel.passages.length > 0 && layoutModel.paneElementsLoaded}
-			<section class="pie-section-player-passages-section" aria-label="Passages">
+			<section class="pie-section-player-passages-section" aria-label={interfaceI18n.t("player.passagesRegionA11y")}>
 				<pie-section-player-passages-pane
 					passages={layoutModel.passages}
 					elementsLoaded={layoutModel.paneElementsLoaded}
@@ -82,7 +87,7 @@
 			</section>
 		{/if}
 
-		<section class="pie-section-player-items-section" aria-label="Items">
+		<section class="pie-section-player-items-section" aria-label={interfaceI18n.t("player.itemsRegionA11y")}>
 			<pie-section-player-items-pane
 				items={layoutModel.items}
 				compositionModel={layoutModel.compositionModel}

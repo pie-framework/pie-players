@@ -18,6 +18,7 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import Moveable from 'moveable';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
@@ -34,6 +35,8 @@
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 	let moveable: Moveable | null = null;
 
@@ -151,51 +154,59 @@
 			case 'ArrowUp':
 				if (isShift) {
 					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					y -= MOVE_STEP;
-					announce(`Moved up to ${Math.round(y)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedUp', { position: Math.round(y) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowDown':
 				if (isShift) {
 					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					y += MOVE_STEP;
-					announce(`Moved down to ${Math.round(y)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedDown', { position: Math.round(y) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowLeft':
 				if (isShift) {
 					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					x -= MOVE_STEP;
-					announce(`Moved left to ${Math.round(x)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedLeft', { position: Math.round(x) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowRight':
 				if (isShift) {
 					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					x += MOVE_STEP;
-					announce(`Moved right to ${Math.round(x)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedRight', { position: Math.round(x) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'PageUp':
 				rotation = (rotation - FINE_ROTATE_STEP + 360) % 360;
-				announce(`Rotated to ${rotation} degrees`);
+				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				handled = true;
 				break;
 			case 'PageDown':
 				rotation = (rotation + FINE_ROTATE_STEP) % 360;
-				announce(`Rotated to ${rotation} degrees`);
+				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				handled = true;
 				break;
 		}
@@ -269,14 +280,16 @@
 		onkeydown={handleKeyDown}
 		role="application"
 		tabindex="0"
-		aria-label="Protractor tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation. Current rotation displayed via Moveable.js"
-		aria-roledescription="Draggable and rotatable protractor measurement tool"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.protractor.toolA11y')}
+		aria-roledescription={interfaceI18n.t('tools.protractor.roleA11y')}
 	>
 		<div class="pie-tool-protractor__container">
 			<img
 				class="pie-tool-protractor__image"
 				src={protractorSvg}
-				alt="Protractor with 180-degree semicircular scale marked from 0 to 180 degrees in both directions, with degree markings every 10 degrees"
+				alt={interfaceI18n.t('tools.protractor.imageAlt')}
 				draggable="false"
 			/>
 		</div>

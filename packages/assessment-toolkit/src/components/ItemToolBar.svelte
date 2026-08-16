@@ -63,6 +63,7 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	// Pure zoom-compensation math (framework-agnostic, shipped in dist so it
 	// resolves through this package's CE bundle which externalizes @pie-players/*).
 	import { approximateZoomFromWidths, computeZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/zoom-compensation';
@@ -316,6 +317,12 @@
 	// <nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise they use plain <button> markup.
 	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
+	// Interface locale. Resolved from the runtime context, which republishes when
+	// the locale moves or a lazily loaded catalog lands, so this re-derives and
+	// every string built from it re-renders. Falls back to the English-only
+	// default provider when no toolkit published one — a toolbar rendered in a
+	// bare harness still reads as English rather than as message keys.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
 	// Bumped from `coordinator.onPolicyChange(...)` so the engine-driven
@@ -565,6 +572,7 @@
 			itemId: effectiveScopeId,
 			catalogId: effectiveCatalogId,
 			language,
+			i18n: interfaceI18n,
 			ui: {
 				size
 			},
@@ -731,6 +739,7 @@
 			itemId: effectiveScopeId,
 			catalogId: effectiveCatalogId,
 			language,
+			i18n: interfaceI18n,
 			ui: {
 				size
 			},
@@ -1940,17 +1949,17 @@
 				);
 			};
 			if (shellConfig?.draggable !== false) {
-				appendControl('Move tool left', '←', 'chevron-left', () => moveBy(-24, 0));
-				appendControl('Move tool right', '→', 'chevron-right', () => moveBy(24, 0));
-				appendControl('Move tool up', '↑', 'chevron-up', () => moveBy(0, -24));
-				appendControl('Move tool down', '↓', 'chevron-down', () => moveBy(0, 24));
+				appendControl(interfaceI18n.t('toolkit.window.moveLeftA11y'), '←', 'chevron-left', () => moveBy(-24, 0));
+				appendControl(interfaceI18n.t('toolkit.window.moveRightA11y'), '→', 'chevron-right', () => moveBy(24, 0));
+				appendControl(interfaceI18n.t('toolkit.window.moveUpA11y'), '↑', 'chevron-up', () => moveBy(0, -24));
+				appendControl(interfaceI18n.t('toolkit.window.moveDownA11y'), '↓', 'chevron-down', () => moveBy(0, 24));
 			}
 			if (shellConfig?.resizable !== false) {
-				appendControl('Shrink tool window', '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
-				appendControl('Grow tool window', '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
+				appendControl(interfaceI18n.t('toolkit.window.shrinkA11y'), '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
+				appendControl(interfaceI18n.t('toolkit.window.growA11y'), '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
 			}
 			if (!isCalculatorShell) {
-				controlsEl.appendChild(createShellControlButton('Center tool window', '◎', centerShell));
+				controlsEl.appendChild(createShellControlButton(interfaceI18n.t('toolkit.window.centerA11y'), '◎', centerShell));
 			}
 			// Calculator: pack controls + close into a single right-side cluster
 			// so `space-between` on the header lays out as `title … [controls x]`.
@@ -1976,14 +1985,14 @@
 			}
 
 			if (useNdsShellIcons) {
-				closeButtonEl = createShellIconButton('Close tool', 'xmark', closeShell, 'fa-regular');
+				closeButtonEl = createShellIconButton(interfaceI18n.t('toolkit.window.closeA11y'), 'xmark', closeShell, 'fa-regular');
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
 			} else {
 				const closeButton = document.createElement('button');
 				closeButton.type = 'button';
 				closeButton.className = 'pie-tool-shell__close';
-				closeButton.setAttribute('aria-label', 'Close tool');
+				closeButton.setAttribute('aria-label', interfaceI18n.t('toolkit.window.closeA11y'));
 				const svgNs = 'http://www.w3.org/2000/svg';
 				const closeIconEl = document.createElementNS(svgNs, 'svg');
 				closeIconEl.setAttribute('xmlns', svgNs);

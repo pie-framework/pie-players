@@ -13,6 +13,12 @@ export type FrameworkErrorKind =
 	| "section-controller-init"
 	| "section-controller-dispose"
 	| "tool-surface"
+	/**
+	 * An interface-locale catalog failed to load. Recoverable by construction: every
+	 * key still resolves through the English fallback chain, so the player renders
+	 * — in the wrong language, which a host wants to know about.
+	 */
+	| "i18n-locale-load"
 	| "unknown";
 
 export type FrameworkErrorSeverity = "warning" | "error";

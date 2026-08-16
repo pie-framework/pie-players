@@ -1,147 +1,125 @@
 /**
  * I18nService
  *
- * Internationalization service with hybrid loading strategy: English bundled,
- * other locales lazy-loaded. Manages translations, locale switching and RTL/LTR
- * direction, and notifies subscribers on change.
+ * The toolkit's view of the shared i18n provider: a delegating wrapper over
+ * `SimpleI18n` from `players-shared` that adds toolkit-scoped logging and wires
+ * the lazy catalog loaders.
  *
- * This is a thin wrapper over `SimpleI18n` from `players-shared`, adding
- * toolkit-scoped logging and the `initialize()` convenience. It was previously a
- * near-verbatim second copy of that class — same fields, same lookup, same
- * `selectPluralForm` — and duplicate implementations of one contract drift
- * silently, because nothing fails when only one of them is fixed. Both are
- * published and neither had a consumer, so the copy was pure exposure.
+ * It was once a near-verbatim second copy of that class — same fields, same
+ * lookup, same plural selection. Duplicate implementations of one contract drift
+ * silently, because nothing fails when only one of them is fixed. Keep this a
+ * wrapper.
  *
  * Part of PIE Assessment Toolkit.
  */
 
 import type {
 	I18nConfig,
+	I18nProvider,
 	I18nServiceApi,
-	PluralTranslation,
-	TranslationBundle,
+	InterpolationValues,
+	LocaleCode,
+	MessageCatalog,
+	MessageKeyInput,
+	PluralOptions,
+	TextDirection,
 } from "@pie-players/pie-players-shared/i18n";
-import {
-	detectBrowserLocale,
-	SimpleI18n,
-} from "@pie-players/pie-players-shared/i18n";
+import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("I18nService");
 
-// Re-export types for convenience
 export type {
 	I18nConfig,
+	I18nProvider,
 	I18nServiceApi,
-	PluralTranslation,
-	TranslationBundle,
+	InterpolationValues,
+	LocaleCode,
+	MessageCatalog,
+	MessageKeyInput,
+	PluralOptions,
+	TextDirection,
 };
 
 /**
- * I18nService
+ * Toolkit-scoped i18n service.
  *
- * Manages internationalization with reactive state updates.
+ * Serves every locale this repository ships, English resident and the rest
+ * lazily loaded.
  */
 export class I18nService implements I18nServiceApi {
-	private readonly i18n: SimpleI18n;
-	private readonly config: I18nConfig;
+	private readonly i18n: I18nServiceApi;
 
 	constructor(config: I18nConfig = {}) {
-		this.config = { ...config };
-		this.i18n = new SimpleI18n(config);
-
-		log("I18nService initialized", {
-			fallbackLocale: config.fallbackLocale || "en",
+		this.i18n = createPieI18n(config);
+		log("I18nService created", {
+			locale: this.i18n.getLocale(),
+			fallbackLocale: config.fallbackLocale ?? "en-US",
 		});
 	}
 
 	/**
-	 * Initialize i18n with locale and loading strategy.
+	 * Set the locale, loading its catalog first.
 	 *
-	 * Falls back to the browser's locale when the config names none.
+	 * Never falls back to the browser locale: a rendered-string change reaches a
+	 * host's live delivery on their next install with no build signal on their
+	 * side, so the locale has to be something the host asked for.
 	 */
 	async initialize(config: I18nConfig): Promise<void> {
-		Object.assign(this.config, config);
-
-		const locale = config.locale || detectBrowserLocale();
-		log(`Initializing with locale: ${locale}`);
-
-		await this.setLocale(locale);
+		log(`Initializing with locale: ${config.locale ?? this.i18n.getLocale()}`);
+		await this.i18n.initialize(config);
 	}
 
-	/**
-	 * Translate a key with optional interpolation
-	 *
-	 * @param key Translation key (e.g., 'common.save')
-	 * @param params Optional parameters for interpolation
-	 * @returns Translated string
-	 */
-	t(key: string, params?: Record<string, any>): string {
-		return this.i18n.t(key, params);
+	t(key: MessageKeyInput, values?: InterpolationValues): string {
+		return this.i18n.t(key, values);
 	}
 
-	/**
-	 * Translate with pluralization
-	 *
-	 * @param key Translation key
-	 * @param count Count for pluralization
-	 * @param params Optional parameters for interpolation
-	 * @returns Translated string with plural form
-	 */
-	tn(key: string, count: number, params?: Record<string, any>): string {
-		return this.i18n.tn(key, count, params);
+	plural(key: MessageKeyInput, options: PluralOptions): string {
+		return this.i18n.plural(key, options);
 	}
 
-	/**
-	 * Get current locale
-	 */
 	getLocale(): string {
 		return this.i18n.getLocale();
 	}
 
-	/**
-	 * Change locale (triggers async loading if needed)
-	 *
-	 * @param locale Locale code (e.g., 'en', 'es', 'zh', 'ar')
-	 */
-	async setLocale(locale: string): Promise<void> {
+	async setLocale(locale: LocaleCode): Promise<void> {
 		log(`Setting locale to: ${locale}`);
 		await this.i18n.setLocale(locale);
 	}
 
-	/**
-	 * Get current text direction
-	 */
-	getDirection(): "ltr" | "rtl" {
+	getDirection(): TextDirection {
 		return this.i18n.getDirection();
 	}
 
-	/**
-	 * Get available locales
-	 */
 	getAvailableLocales(): string[] {
 		return this.i18n.getAvailableLocales();
 	}
 
-	/**
-	 * Check if locale is loaded
-	 */
-	isLocaleLoaded(locale: string): boolean {
+	isLocaleLoaded(locale: LocaleCode): boolean {
 		return this.i18n.isLocaleLoaded(locale);
 	}
 
-	/**
-	 * Subscribe to locale/translation changes
-	 * Returns unsubscribe function
-	 */
 	subscribe(listener: () => void): () => void {
 		return this.i18n.subscribe(listener);
 	}
 
-	/**
-	 * Check if a translation key exists
-	 */
-	hasKey(key: string): boolean {
+	hasKey(key: MessageKeyInput): boolean {
 		return this.i18n.hasKey(key);
+	}
+
+	addCustomMessages(locale: string, messages: MessageCatalog): void {
+		this.i18n.addCustomMessages(locale, messages);
+	}
+
+	withLocale(locale: LocaleCode): I18nProvider {
+		return this.i18n.withLocale(locale);
+	}
+
+	formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
+		return this.i18n.formatNumber?.(value, options) ?? String(value);
+	}
+
+	formatDate(date: Date, options?: Intl.DateTimeFormatOptions): string {
+		return this.i18n.formatDate?.(date, options) ?? date.toISOString();
 	}
 }

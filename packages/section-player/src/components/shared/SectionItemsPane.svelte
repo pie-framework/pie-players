@@ -38,6 +38,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { connectAssessmentToolkitRuntimeContext } from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
@@ -347,6 +348,17 @@
 	// plain <button> — the default.
 	let ndsIconsFromContext = $state<boolean | undefined>(undefined);
 	const useNdsIcons = $derived(ndsIconsFromContext === true);
+	// Interface locale off the same context read, so the pane makes one request
+	// rather than two for two facts the toolkit publishes together.
+	//
+	// The whole context, not just its `i18n`: a provider's identity survives a
+	// locale load, so storing the provider alone leaves `$derived` with nothing to
+	// invalidate on and the scroll hint's label pinned to the English it first
+	// rendered. `resolveInterfaceI18n` is what turns the republish into a change.
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | undefined>(
+		undefined,
+	);
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
 
 	$effect(() => {
 		if (!scrollHintSentinel) return;
@@ -354,6 +366,7 @@
 			scrollHintSentinel,
 			(value: AssessmentToolkitRuntimeContext) => {
 				ndsIconsFromContext = value?.ndsIcons;
+				chromeRuntimeContext = value;
 			},
 		);
 	});
@@ -420,7 +433,7 @@
 		<div
 			class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
 		>
-			Loading section content...
+			{interfaceI18n.t("player.loadingSection")}
 		</div>
 	</div>
 {:else}
@@ -468,7 +481,7 @@
 			variant="tertiary"
 			size="small"
 			icon-name="chevron-down"
-			button-aria-label="Scroll down"
+			button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
 			onclick={scrollDown}
 		></nds-icon-button>
 	{:else}
@@ -477,7 +490,7 @@
 		<button
 			type="button"
 			class="pie-section-player-scroll-hint__button"
-			aria-label="Scroll down"
+			aria-label={interfaceI18n.t("player.scrollDownA11y")}
 			onclick={scrollDown}
 		>
 			<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">

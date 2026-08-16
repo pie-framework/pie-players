@@ -16,7 +16,8 @@ lives per-machine in the gitignored `.claude/consumer-checkouts.local.json`; the
 `consumer-dependency-audit` skill reads it, and asks for anything missing.
 
 Last verified against consumer checkouts and this repo's `develop` line:
-**2026-08-13**.
+**2026-08-16**, scoped to the i18n surfaces described below; every other row
+carries its earlier verification.
 
 The canonical theming implementation updated these notes without performing a
 new full refresh and therefore did not advance that verification date. The Host
@@ -70,6 +71,27 @@ is unchanged, and the fix only shows for a host that drives
 `[data-pie-answer-eliminated="true"]`, so it reaches the CSS Highlight API path
 too. Hosts A and V both load `components.css`; neither styles those hooks and the
 answer eliminator is placed in neither delivery.
+
+Chrome i18n adoption **was** checked against all three checkouts, and advances the
+verification date below. It reaches consumers three ways, all additive: a new
+optional `locale` attribute and prop on `pie-item-player` and the four
+section-player layout elements; new optional `nameKey` / `descriptionKey` on
+`ToolRegistration` alongside the still-required `name` / `description`; and new
+optional `i18n` / `locale` members on the toolkit runtime context, `ToolbarContext`
+and `ToolSurfaceServices`. Nothing was renamed, retyped, or removed from those
+surfaces, and with no `locale` supplied every rendered string — including every
+tool button's accessible name — is byte-identical to before, because the graceful
+default is `en-US` rather than the browser's locale.
+
+The one non-additive change is `@pie-players/pie-players-shared/i18n`, whose
+`SimpleI18n` gained `plural()` in place of `tn()` and lost
+`BUNDLED_TRANSLATIONS` / `loadTranslations` and two Svelte composables. A grep of
+all three checkouts for that specifier, for `SimpleI18n`, `I18nService`,
+`useI18nStandalone`, `ToolRegistration` and `nameKey` returns nothing outside
+build caches and a vendored third-party calculator bundle: the layer was
+published with no call sites anywhere, which is what made replacing it rather
+than versioning it the right move. No host passes `locale` to a `pie-*` element
+either.
 
 ## Consumer profiles
 
@@ -547,7 +569,12 @@ typecheck rather than at runtime.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
-- Attributes and props on the layout elements not listed above
+- Attributes and props on the layout elements not listed above, including the
+  additive `locale` attribute on `pie-item-player` and the section-player layouts
+- `@pie-players/pie-players-shared/i18n` in any form — the pre-adoption layer had
+  no call site in any checkout, so its replacement breaks nobody
+- Additive optional members on `ToolRegistration`, `ToolbarContext`,
+  `ToolSurfaceServices` and the toolkit runtime context
 - `theme="auto"` behavior, and `variables` on `pie-theme`
 - The additive `ToolRegistry.onRegistryChange` observer and recoverable
   `tool-surface` framework-warning kind; no recorded host calls or branches on

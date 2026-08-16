@@ -13,6 +13,7 @@
 />
 
 <script lang="ts">
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		connectToolRuntimeContext,
 		toOverlayToolId,
@@ -42,6 +43,8 @@
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
@@ -132,7 +135,11 @@
 			class="pie-tool-calculator-inline__button {sizeClass}"
 			class:pie-tool-calculator-inline__button--active={calculatorVisible}
 			onclick={handleToggle}
-			aria-label={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			aria-label={interfaceI18n.t(
+				`tools.calculator.${calculatorVisible ? 'close' : 'open'}${
+					effectiveCalculatorType === 'basic' ? 'Basic' : 'Scientific'
+				}A11y`,
+			)}
 			aria-pressed={calculatorVisible}
 			title={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
 			data-calculator-type={effectiveCalculatorType}

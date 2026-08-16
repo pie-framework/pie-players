@@ -1,4 +1,7 @@
 <script lang="ts">
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+
 	interface Props {
 		showSessionPanel: boolean;
 		showEventPanel: boolean;
@@ -8,6 +11,8 @@
 		onToggleEventPanel: () => void;
 		onToggleDbPanel?: () => void;
 		onToggleInstrumentationPanel?: () => void;
+		/** Interface-locale provider; the English-only default covers its absence. */
+		i18n?: I18nProvider;
 	}
 
 	let {
@@ -19,7 +24,10 @@
 		onToggleEventPanel,
 		onToggleDbPanel,
 		onToggleInstrumentationPanel,
+		i18n,
 	}: Props = $props();
+
+	const t = $derived(resolveInterfaceI18n({ i18n }));
 </script>
 
 <button
@@ -27,8 +35,8 @@
 	class="btn btn-sm btn-outline btn-square"
 	class:btn-active={showSessionPanel}
 	onclick={onToggleSessionPanel}
-	title="Session"
-	aria-label="Toggle session panel"
+	title={t.t("debug.session")}
+	aria-label={t.t("debug.toggleSessionPanelA11y")}
 	aria-pressed={showSessionPanel}
 >
 	<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,8 +49,8 @@
 	class="btn btn-sm btn-outline btn-square"
 	class:btn-active={showEventPanel}
 	onclick={onToggleEventPanel}
-	title="Events"
-	aria-label="Toggle event broadcast panel"
+	title={t.t("debug.events")}
+	aria-label={t.t("debug.toggleEventPanelA11y")}
 	aria-pressed={showEventPanel}
 >
 	<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,8 +64,8 @@
 		class="btn btn-sm btn-outline btn-square"
 		class:btn-active={showDbPanel}
 		onclick={onToggleDbPanel}
-		title="Database state"
-		aria-label="Toggle database state panel"
+		title={t.t("debug.databaseState")}
+		aria-label={t.t("debug.toggleDatabasePanelA11y")}
 		aria-pressed={showDbPanel}
 	>
 		<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,8 +81,8 @@
 		class="btn btn-sm btn-outline btn-square"
 		class:btn-active={showInstrumentationPanel}
 		onclick={onToggleInstrumentationPanel}
-		title="Instrumentation"
-		aria-label="Toggle instrumentation panel"
+		title={t.t("debug.instrumentation")}
+		aria-label={t.t("debug.toggleInstrumentationPanelA11y")}
 		aria-pressed={showInstrumentationPanel}
 	>
 		<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">

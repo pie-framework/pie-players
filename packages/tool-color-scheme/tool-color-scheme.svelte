@@ -37,6 +37,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	let {
 		visible = false,
@@ -71,6 +72,13 @@
 		return document.querySelector('pie-theme') as HTMLElement | null;
 	}
 
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+
+	// Scheme names and descriptions come from the theme registry, not from this
+	// catalog. They are registration data a host can extend — the same call as
+	// `ToolRegistration.name` — so localizing them belongs to whoever registers
+	// the scheme.
 	let colorSchemeSnapshot = $state.raw(listPieColorSchemes());
 	const availableSchemes = $derived(
 		colorSchemeSnapshot.schemes.map((scheme) => ({
@@ -135,8 +143,8 @@
 
 		return {
 			id: requestedScheme,
-			name: `Unavailable theme: ${requestedScheme}`,
-			description: "PIE's managed base theme remains active until this theme becomes available again.",
+			name: interfaceI18n.t('tools.theme.unavailableName', { id: requestedScheme }),
+			description: interfaceI18n.t('tools.theme.unavailableDescription'),
 			kind: 'unavailable' as const,
 			preview: fallback.preview,
 			available: false as const
@@ -256,19 +264,25 @@
 		class="pie-tool-color-scheme"
 		role="dialog"
 		tabindex="-1"
-		aria-label="Theme selector"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.theme.selectorA11y')}
 		onkeydown={handleKeyDown}
 	>
 		<div class="pie-tool-color-scheme__content">
 			<p class="pie-tool-color-scheme__description">
-				Select a theme to improve readability and reduce eye strain.
+				{interfaceI18n.t('tools.theme.hint')}
 			</p>
 
 			<button
 				bind:this={dropdownTriggerEl}
 				type="button"
 				class="pie-tool-color-scheme__dropdown-trigger"
-				aria-label={requestedSchemeOption ? `Select theme. Current theme: ${requestedSchemeOption.name}` : 'Select theme'}
+				aria-label={requestedSchemeOption
+					? interfaceI18n.t('tools.theme.selectCurrentA11y', {
+							name: requestedSchemeOption.name
+						})
+					: interfaceI18n.t('tools.theme.selectA11y')}
 				aria-expanded={dropdownOpen}
 				aria-haspopup="menu"
 				aria-controls="pie-tool-color-scheme-menu"
@@ -302,7 +316,7 @@
 				aria-live="polite"
 			>
 				{#if requestedSchemeOption && !requestedSchemeOption.available}
-					The selected theme is unavailable. PIE's managed base theme is active until it becomes available again.
+					{interfaceI18n.t('tools.theme.unavailableStatus')}
 				{/if}
 			</p>
 
@@ -314,7 +328,11 @@
 							class="pie-tool-color-scheme__option"
 							class:pie-tool-color-scheme__option--active={requestedScheme === scheme.id}
 							role="menuitem"
-							aria-label={scheme.available ? scheme.name : `${scheme.name}, unavailable`}
+							aria-label={scheme.available
+								? scheme.name
+								: interfaceI18n.t('tools.theme.optionUnavailableA11y', {
+										name: scheme.name
+									})}
 							aria-current={requestedScheme === scheme.id}
 							aria-disabled={!scheme.available}
 							disabled={!scheme.available}

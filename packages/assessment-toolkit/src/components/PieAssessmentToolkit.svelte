@@ -13,6 +13,11 @@
 			// explicitly `true`; otherwise they use plain <button>s. Defaults
 			// to `false` (opt-in).
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale, published onto the runtime context so every tool
+			// resolves the same provider. `type: "String"` because hosts pass
+			// attribute values as strings and a BCP-47 tag is one; POSIX
+			// (`nl_NL`) and bare (`nl`) forms both resolve.
+			locale: { attribute: "locale", type: "String" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
@@ -72,6 +77,10 @@
 		type StageChangeDetail,
 	} from "@pie-players/pie-players-shared/pie";
 	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
+	import {
+		createPieI18n,
+		DEFAULT_LOCALE,
+	} from "@pie-players/pie-players-shared/i18n";
 	import {
 		assessmentToolkitHostRuntimeContext,
 		assessmentToolkitRuntimeContext,
@@ -204,6 +213,7 @@ const DEFAULT_ENV = {
 		attemptId = "",
 		env = {},
 		ndsIcons = false,
+		locale = "",
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
@@ -904,6 +914,39 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// One interface-i18n provider per toolkit instance, published on the runtime
+	// context. Every capability on the page shares it, so a locale's catalog is
+	// fetched once rather than once per tool, and a host that swaps in its own
+	// `I18nProvider` reaches all of them through the same channel.
+	const interfaceI18n = createPieI18n();
+	// Bumped by the provider's own change signal, which fires once a lazily
+	// loaded catalog is resident. `runtimeContextValue` reads it, so the context
+	// re-publishes and consumers re-read strings that were still English a tick
+	// earlier. Without this the first paint would pin English forever — the same
+	// class of failure as a composition context published with no change signal.
+	let interfaceI18nVersion = $state(0);
+	$effect(() =>
+		interfaceI18n.subscribe(() => {
+			interfaceI18nVersion += 1;
+		}),
+	);
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		untrack(() => {
+			// Rejecting the promise here would take a player down over a missing
+			// locale chunk; every key still resolves through the English fallback.
+			void Promise.resolve(
+				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+			).catch((error) => {
+				reportFrameworkError({
+					kind: "i18n-locale-load",
+					source: "pie-assessment-toolkit",
+					error: error instanceof Error ? error : new Error(String(error)),
+				});
+			});
+		});
+	});
+
 	const effectiveAssessmentId = $derived(
 		assessmentId || effectiveCoordinator?.assessmentId || "",
 	);
@@ -938,6 +981,12 @@ const DEFAULT_ENV = {
 			// Opt-in: NDS icons only when explicitly enabled. Normalize to a
 			// strict boolean so `undefined`/`false` both read as off.
 			ndsIcons: ndsIcons === true,
+			// Interface locale and the provider resolving it. Both live on the
+			// context so a tool reads one value and one provider however deep it
+			// sits. Reading the version counter is what makes a completed catalog
+			// load re-publish this object; see `interfaceI18nVersion`.
+			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
+			i18n: interfaceI18n,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
 				const result = sectionEngine.updateItemSession(itemId, detail);
 				emitNormalizedSessionChanged({

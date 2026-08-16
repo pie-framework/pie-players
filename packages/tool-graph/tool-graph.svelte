@@ -11,7 +11,11 @@
 
 <script lang="ts">
 
-	import { connectToolRuntimeContext } from '@pie-players/pie-assessment-toolkit';
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	// Props
 	let {
@@ -81,37 +85,45 @@
 		return Math.max(100, requiredWidthSVG);
 	});
 
-	// Tool definitions (matching production implementation)
-	const tools: Array<{ name: Tool; icon: string; label: string; title: string }> = [
-		{
-			name: 'selector',
-			icon: 'selector',
-			label: 'Selector',
-			title: 'Selector: Click and drag points to move them or associated lines.'
-		},
-		{
-			name: 'point',
-			icon: 'point',
-			label: 'Point',
-			title: 'Point: Click on the grid to add points.'
-		},
-		{
-			name: 'line',
-			icon: 'line',
-			label: 'Line',
-			title: 'Line: Click a starting point, then an ending point to draw a line.'
-		},
-		{
-			name: 'delete',
-			icon: 'delete',
-			label: 'Delete',
-			title: 'Delete: Click on a point to delete it and any connected lines.'
-		}
-	];
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+
+	// Mode definitions. `$derived` rather than a plain const: the labels come from
+	// the catalog, so the list has to rebuild when the locale moves.
+	const tools: Array<{ name: Tool; icon: string; label: string; title: string }> =
+		$derived([
+			{
+				name: 'selector',
+				icon: 'selector',
+				label: interfaceI18n.t('tools.graph.modeSelector'),
+				title: interfaceI18n.t('tools.graph.modeSelectorHint')
+			},
+			{
+				name: 'point',
+				icon: 'point',
+				label: interfaceI18n.t('tools.graph.modePoint'),
+				title: interfaceI18n.t('tools.graph.modePointHint')
+			},
+			{
+				name: 'line',
+				icon: 'line',
+				label: interfaceI18n.t('tools.graph.modeLine'),
+				title: interfaceI18n.t('tools.graph.modeLineHint')
+			},
+			{
+				name: 'delete',
+				icon: 'delete',
+				label: interfaceI18n.t('tools.graph.modeDelete'),
+				title: interfaceI18n.t('tools.graph.modeDeleteHint')
+			}
+		]);
 
 	$effect(() => {
 		if (!containerEl) return;
-		return connectToolRuntimeContext(containerEl, () => undefined);
+		return connectToolRuntimeContext(containerEl, (value) => {
+			runtimeContext = value;
+		});
 	});
 
 	// Helper functions
@@ -383,7 +395,9 @@
 		class="pie-tool-graph"
 		role="dialog"
 		tabindex="-1"
-		aria-label="Graph Tool - Draw points and lines on a coordinate grid"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.graph.toolA11y')}
 		data-tool-id={toolId}
 	>
 		<!-- Toolbar (matching production implementation: lighter teal) -->
@@ -436,7 +450,7 @@
 
 			<!-- Grid opacity slider (matching production implementation) -->
 			<div class="pie-tool-graph__transparency-control">
-				<label for="grid-opacity">Grid:</label>
+				<label for="grid-opacity">{interfaceI18n.t('tools.graph.grid')}</label>
 				<input
 					type="range"
 					id="grid-opacity"
@@ -444,7 +458,7 @@
 					max="1"
 					step="0.1"
 					bind:value={gridOpacity}
-					aria-label="Grid opacity"
+					aria-label={interfaceI18n.t('tools.graph.gridOpacityA11y')}
 				/>
 			</div>
 		</div>
@@ -457,7 +471,7 @@
 			class="pie-tool-graph__canvas-wrapper"
 			role="img"
 			tabindex="0"
-			aria-label="Graph canvas - Use tools to add points and draw lines"
+			aria-label={interfaceI18n.t('tools.graph.canvasA11y')}
 			onclick={handleCanvasClick}
 			onkeydown={(e) => {
 				if (e.key === 'Enter' || e.key === ' ') {
@@ -550,7 +564,7 @@
 							data-id={point.id}
 							role="button"
 							tabindex="0"
-							aria-label="Graph point {point.id}"
+							aria-label={interfaceI18n.t('tools.graph.pointA11y', { id: point.id })}
 							onpointerdown={(e) => {
 								e.stopPropagation();
 								handlePointPointerDown(point.id, e);

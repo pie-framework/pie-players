@@ -19,6 +19,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "./shared/section-player-props.js";
+	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 
 	const DEFAULT_COLLAPSED_BREAKPOINT_PX = 1100;
 
@@ -35,6 +36,9 @@
 		toolRegistry?: ToolRegistry | null;
 		sectionHostButtons?: ToolbarItem[];
 	}>();
+
+	let layoutBody = $state<HTMLDivElement | null>(null);
+	const interfaceI18n = useInterfaceI18n(() => layoutBody);
 
 	let isNarrow = $state(false);
 
@@ -84,6 +88,7 @@
 	{/if}
 
 	<div
+		bind:this={layoutBody}
 		class={`pie-section-player-layout-body ${
 			shouldRenderToolbar && toolbarInline
 				? `pie-section-player-layout-body--inline pie-section-player-layout-body--inline-${effectiveToolbarPosition}`
@@ -93,7 +98,7 @@
 		{#if shouldRenderToolbar && toolbarInline && effectiveToolbarPosition === "left"}
 			<aside
 				class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--left"
-				aria-label="Section tools"
+				aria-label={interfaceI18n.t("player.sectionToolsA11y")}
 			>
 				<pie-section-toolbar
 					position="left"
@@ -109,7 +114,7 @@
 		{#if shouldRenderToolbar && toolbarInline && effectiveToolbarPosition === "right"}
 			<aside
 				class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--right"
-				aria-label="Section tools"
+				aria-label={interfaceI18n.t("player.sectionToolsA11y")}
 			>
 				<pie-section-toolbar
 					position="right"

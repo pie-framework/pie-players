@@ -2,20 +2,29 @@
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import { createFocusTrap } from '../ui/focus-trap.js';
+	import { resolveInterfaceI18n } from '../i18n/provider.js';
+	import type { I18nProvider } from '../i18n/types.js';
 
 	let {
 		open,
-		title = 'Settings',
+		title,
 		onClose,
 		anchorEl = null,
+		i18n,
 		children
 	}: {
 		open: boolean;
+		/** Heading text. Unset, the localized default heading renders. */
 		title?: string;
 		onClose: () => void;
 		anchorEl?: HTMLElement | null;
+		/** Interface-locale provider; the English-only default covers its absence. */
+		i18n?: I18nProvider;
 		children?: Snippet;
 	} = $props();
+
+	const messages = $derived(resolveInterfaceI18n({ i18n }));
+	const resolvedTitle = $derived(title ?? messages.t('toolkit.settingsTitle'));
 
 	let panelEl = $state<HTMLDivElement | null>(null);
 	let panelPosition = $state<{ top: number; left?: number; right?: number } | null>(null);
@@ -89,13 +98,13 @@
 		bind:this={panelEl}
 		class="tool-settings-panel fixed w-80 rounded-box bg-base-100 shadow p-3 text-base-content"
 		role="dialog"
-		aria-label={title}
+		aria-label={resolvedTitle}
 		tabindex="-1"
 		style="z-index: 4100; {panelPosition ? `top: ${panelPosition.top}px; ${panelPosition.left !== undefined ? `left: ${panelPosition.left}px;` : `right: ${panelPosition.right}px;`}` : 'top: 4rem; right: 1rem;'}"
 	>
 		<div class="flex items-center justify-between gap-2 mb-2">
-			<h2 class="font-semibold text-sm">{title}</h2>
-			<button type="button" class="btn btn-ghost btn-xs" onclick={onClose} aria-label="Close settings">Close</button>
+			<h2 class="font-semibold text-sm">{resolvedTitle}</h2>
+			<button type="button" class="btn btn-ghost btn-xs" onclick={onClose} aria-label={messages.t('toolkit.closeSettingsA11y')}>{messages.t('common.close')}</button>
 		</div>
 		<div class="text-sm">
 			{@render children?.()}

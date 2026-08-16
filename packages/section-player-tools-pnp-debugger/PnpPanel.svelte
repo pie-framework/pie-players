@@ -12,6 +12,11 @@
 />
 
 <script lang="ts">
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, untrack } from 'svelte';
 	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
@@ -163,10 +168,26 @@
 		policyVersion += 1;
 	}
 
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
 <SharedFloatingPanel
-	title="PNP Profile"
+	title={interfaceI18n.t("debug.pnp.title")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag PNP profile panel"
 	minWidth={360}
 	minHeight={260}
@@ -208,7 +229,7 @@
 				data-testid="pnp-no-assessment-bound"
 				role="status"
 			>
-				<div class="pie-section-player-tools-pnp-debugger__card-title">No assessment bound</div>
+				<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.noAssessmentBound")}</div>
 				<p class="pie-section-player-tools-pnp-debugger__card-text">
 					Every accommodation below is declined because nothing supplied a profile, not
 					because policy denied it. Call <code>updateAssessment(...)</code> on the toolkit
@@ -217,22 +238,22 @@
 			</div>
 		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">
-			<div class="pie-section-player-tools-pnp-debugger__card-title">Determination (read-only)</div>
+			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.determinationReadOnly")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
 		</div>
 		{#if editable}
 			<div class="pie-section-player-tools-pnp-debugger__card" data-testid="pnp-tools-editor">
-				<div class="pie-section-player-tools-pnp-debugger__card-title">Tools Editor</div>
+				<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.toolsEditor")}</div>
 				<div class="pie-section-player-tools-pnp-debugger__toolbar">
 					<label class="pie-section-player-tools-pnp-debugger__field">
-						<span>PNP enforcement</span>
+						<span>{interfaceI18n.t("debug.pnp.enforcement")}</span>
 						<select
 							bind:value={pnpEnforcementSelection}
 							onchange={applyPnpEnforcement}
 							data-testid="pnp-enforcement-select"
 						>
-							<option value="auto">Auto</option>
-							<option value="off">Off</option>
+							<option value="auto">{interfaceI18n.t("common.auto")}</option>
+							<option value="off">{interfaceI18n.t("common.off")}</option>
 							<option value="on">On</option>
 						</select>
 					</label>
@@ -240,17 +261,17 @@
 						Effective: {pnpPanelData.pnpEnforcement.effective}
 					</span>
 					<button type="button" onclick={() => applyAllAvailablePlacement(true)} data-testid="pnp-enable-all-tools">
-						All available tools
+						{interfaceI18n.t("debug.pnp.allAvailableTools")}
 					</button>
 					<button type="button" onclick={() => applyAllAvailablePlacement(false)} data-testid="pnp-clear-all-tools">
-						Clear placement
+						{interfaceI18n.t("debug.pnp.clearPlacement")}
 					</button>
 				</div>
 				<div class="pie-section-player-tools-pnp-debugger__tool-table">
-					<div class="pie-section-player-tools-pnp-debugger__tool-heading">Tool</div>
-					<div class="pie-section-player-tools-pnp-debugger__tool-heading">Placement</div>
-					<div class="pie-section-player-tools-pnp-debugger__tool-heading">Provider</div>
-					<div class="pie-section-player-tools-pnp-debugger__tool-heading">PNP simulation</div>
+					<div class="pie-section-player-tools-pnp-debugger__tool-heading">{interfaceI18n.t("debug.pnp.tool")}</div>
+					<div class="pie-section-player-tools-pnp-debugger__tool-heading">{interfaceI18n.t("debug.pnp.placement")}</div>
+					<div class="pie-section-player-tools-pnp-debugger__tool-heading">{interfaceI18n.t("debug.pnp.provider")}</div>
+					<div class="pie-section-player-tools-pnp-debugger__tool-heading">{interfaceI18n.t("debug.pnp.simulation")}</div>
 					{#each pnpPanelData.toolRows as row (row.toolId)}
 						<div class="pie-section-player-tools-pnp-debugger__tool-name">
 							<strong>{row.name}</strong>
@@ -324,19 +345,19 @@
 			</div>
 		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">
-			<div class="pie-section-player-tools-pnp-debugger__card-title">Resolved Tools (toolkit)</div>
+			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.resolvedTools")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.resolvedTools, null, 2)}</pre>
 		</div>
 		<div class="pie-section-player-tools-pnp-debugger__card">
-			<div class="pie-section-player-tools-pnp-debugger__card-title">Tool Policy Provenance Summary</div>
+			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.provenanceSummary")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.provenance, null, 2)}</pre>
 		</div>
 		<div class="pie-section-player-tools-pnp-debugger__card">
-			<div class="pie-section-player-tools-pnp-debugger__card-title">Per-Tool Decisions</div>
+			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.perToolDecisions")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.featureTrails, null, 2)}</pre>
 		</div>
 		<div class="pie-section-player-tools-pnp-debugger__card">
-			<div class="pie-section-player-tools-pnp-debugger__card-title">PNP Profile (read-only)</div>
+			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.profileReadOnly")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.pnpProfile, null, 2)}</pre>
 		</div>
 	</div>

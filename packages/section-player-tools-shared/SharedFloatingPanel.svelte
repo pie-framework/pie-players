@@ -3,6 +3,8 @@
 	import type { Snippet } from "svelte";
 	import PanelResizeHandle from "./PanelResizeHandle.svelte";
 	import PanelWindowControls from "./PanelWindowControls.svelte";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
 		claimNextFloatingPanelZIndex,
 		computePanelSizeFromViewport,
@@ -12,7 +14,7 @@
 
 	let {
 		title,
-		ariaLabel = "Drag panel",
+		ariaLabel = undefined,
 		initialSizing,
 		minWidth = 320,
 		minHeight = 260,
@@ -26,9 +28,11 @@
 		children,
 		icon,
 		headerActions,
+		i18n,
 	}: {
 		title: string;
 		ariaLabel?: string;
+		i18n?: I18nProvider;
 		initialSizing: FloatingPanelViewportSizing;
 		minWidth?: number;
 		minHeight?: number;
@@ -43,6 +47,8 @@
 		icon?: Snippet;
 		headerActions?: Snippet;
 	} = $props();
+
+	const messages = $derived(resolveInterfaceI18n({ i18n }));
 
 	let panelX = $state(16);
 	let panelY = $state(16);
@@ -218,7 +224,7 @@
 		}}
 		role="button"
 		tabindex="0"
-		aria-label={ariaLabel}
+		aria-label={ariaLabel ?? messages.t("toolkit.dragPanelA11y")}
 	>
 		<div class="pie-shared-floating-panel__header-main">
 			<div class="pie-shared-floating-panel__header-title-wrap">
@@ -232,6 +238,7 @@
 				minimized={isMinimized}
 				onToggle={() => (isMinimized = !isMinimized)}
 				onClose={onClose}
+				{i18n}
 			/>
 		</div>
 	</header>
@@ -240,7 +247,10 @@
 		<div class={resolvedBodyClass}>
 			{@render children?.()}
 		</div>
-		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
+		<PanelResizeHandle
+			onPointerDown={(event: MouseEvent) => pointerController.startResize(event)}
+			{i18n}
+		/>
 	{/if}
 </section>
 

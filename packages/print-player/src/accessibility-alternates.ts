@@ -34,6 +34,7 @@ import {
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
 import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver";
 import { CONTENT_ALTERNATE_REGISTRATIONS } from "@pie-players/pie-default-tool-loaders";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import type {
 	AccessibilityCatalog,
 	AssessmentSettings,
@@ -244,6 +245,10 @@ export function mountItemAlternates(args: {
 						toolkitCoordinator: null,
 						ttsService: null,
 						catalogResolver: resolver,
+						// Print has no toolkit publishing a locale, so this is the
+						// English-only default. The facade rather than the provider,
+						// because that is the one implementation of the fallback.
+						i18n: resolveInterfaceI18n(null),
 					},
 				});
 			} catch (error) {

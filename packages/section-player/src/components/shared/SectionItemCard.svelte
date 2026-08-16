@@ -46,6 +46,7 @@
 		type InternalFormativeActionDetail,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type { FormativeItemView } from "@pie-players/pie-players-shared/formative";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
@@ -99,6 +100,11 @@
 		normalizeBaseHeadingLevel(baseHeadingLevel),
 	);
 
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale. Re-derives when the toolkit republishes its context — on a
+	// locale change or once a lazily loaded catalog lands — so every label built
+	// from it re-renders instead of pinning whatever English rendered first.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
 	let contextPlayerAction = $state<
@@ -125,7 +131,14 @@
 		Number.isFinite(itemIndex) ? Math.max(0, Number(itemIndex)) + 1 : 1,
 	);
 	const totalItems = $derived(Number.isFinite(itemCount) ? Math.max(1, Number(itemCount)) : 1);
-	const defaultHeaderTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
+	// "Question 5" rather than "Question" + " " + position: a locale that puts the
+	// ordinal first ("5. Vraag") or inflects the noun cannot be assembled by
+	// concatenation, so the whole phrase is authored per locale.
+	const defaultHeaderTitle = $derived(
+		totalItems > 1
+			? interfaceI18n.t("player.questionNumbered", { position: itemPosition })
+			: interfaceI18n.t("player.question"),
+	);
 	const effectiveCardTitleFormatter = $derived(
 		(contextConnected ? contextCardTitleFormatter : null) || null,
 	);
@@ -157,7 +170,6 @@
 	// render content nodes. What differs is the owner scope of the lookup, which is
 	// what this card supplies.
 
-	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 
 	const mediaRegionId = $derived(`${headingId}-media`);
 	const leadRegionId = $derived(`${headingId}-lead`);
@@ -220,15 +232,21 @@
 		formativeEnabled && (formativeView?.canCheck || formativeView?.canRetry),
 	);
 	const formativeButtonLabel = $derived(
-		formativeView?.canRetry ? "Try again" : "Check answer",
+		interfaceI18n.t(
+			formativeView?.canRetry
+				? "player.formative.tryAgain"
+				: "player.formative.checkAnswer",
+		),
 	);
 
 	function describeTriesRemaining(view: FormativeItemView): string {
 		if (view.triesRemaining === "unlimited") return "";
 		if (view.triesRemaining <= 0) return "";
-		return view.triesRemaining === 1
-			? "1 try left."
-			: `${view.triesRemaining} tries left.`;
+		// `plural` rather than a count === 1 branch: the two-form split is English's,
+		// and a locale with a `few`/`many` category needs the catalog consulted.
+		return interfaceI18n.plural?.("player.formative.triesLeft", {
+			count: view.triesRemaining,
+		}) ?? "";
 	}
 
 	/**
@@ -239,24 +257,26 @@
 	 */
 	function describeOutcome(view: FormativeItemView): string {
 		if (!view.revealed) {
-			return view.tryCount > 0 ? "Answer recorded." : "";
+			return view.tryCount > 0
+				? interfaceI18n.t("player.formative.answerRecorded")
+				: "";
 		}
 		switch (view.lastOutcome?.correctness) {
 			case "correct":
-				return "Correct.";
+				return interfaceI18n.t("player.formative.correct");
 			case "partial":
-				return "Partly correct.";
+				return interfaceI18n.t("player.formative.partlyCorrect");
 			case "incorrect":
-				return "Not correct.";
+				return interfaceI18n.t("player.formative.notCorrect");
 			case "unknown":
-				return "Answer recorded. This question is not scored automatically.";
+				return interfaceI18n.t("player.formative.notAutoScored");
 			default:
-				return "Answer recorded.";
+				return interfaceI18n.t("player.formative.answerRecorded");
 		}
 	}
 
 	const formativeStatus = $derived.by(() => {
-		if (checkFailed) return "This question could not be checked. Try again.";
+		if (checkFailed) return interfaceI18n.t("player.formative.checkFailed");
 		if (!formativeView?.enabled) return "";
 		const outcome = describeOutcome(formativeView);
 		if (!outcome) return "";
@@ -382,7 +402,7 @@
 			ownerContext={catalogOwnerContext}
 			{runtimeContext}
 			{toolRegistry}
-			dividerAriaLabel="Resize question and media panels"
+			dividerAriaLabel={interfaceI18n.t("player.resizeQuestionAndMediaA11y")}
 		>
 			{#snippet content()}
 				<div

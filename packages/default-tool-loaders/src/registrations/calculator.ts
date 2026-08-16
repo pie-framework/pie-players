@@ -18,6 +18,7 @@ import type {
 import type { ToolCoordinatorApi } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
@@ -75,6 +76,8 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 	calculatorType: CalculatorType | null;
 	availableTypes: CalculatorType[] | null;
 	displayName: string;
+	openLabel: string;
+	closeLabel: string;
 } {
 	const params = toolbarContext.getToolRenderParams?.("calculator") ?? {};
 	const calculatorType = normalizeCalculatorType(params.calculatorType);
@@ -87,17 +90,48 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 			? [calculatorType]
 			: null;
 
+	const i18n = toolbarContext.i18n;
+	const keys = CALCULATOR_LABEL_KEYS[calculatorType ?? "untyped"];
+
 	return {
 		calculatorType,
 		availableTypes,
-		displayName:
-			calculatorType === "scientific"
-				? "Scientific Calculator"
-				: calculatorType === "basic"
-					? "Basic Calculator"
-					: "Calculator",
+		displayName: i18n.t(keys.name),
+		openLabel: i18n.t(keys.open),
+		closeLabel: i18n.t(keys.close),
 	};
 }
+
+/**
+ * One key per variant rather than `Open ${displayName.toLowerCase()}`.
+ * Lowercasing a noun to splice it into a sentence is an English-only transform:
+ * Dutch and German capitalize differently, and a language with grammatical case
+ * needs the whole phrase authored, not assembled.
+ *
+ * `untyped` keeps the pre-adoption behaviour of naming the scientific
+ * calculator, which is what the toolbar has always announced when the host
+ * declares no type.
+ */
+const CALCULATOR_LABEL_KEYS: Record<
+	CalculatorType | "untyped",
+	{ name: MessageKey; open: MessageKey; close: MessageKey }
+> = {
+	basic: {
+		name: "tools.calculator.nameBasic",
+		open: "tools.calculator.openBasicA11y",
+		close: "tools.calculator.closeBasicA11y",
+	},
+	scientific: {
+		name: "tools.calculator.nameScientific",
+		open: "tools.calculator.openScientificA11y",
+		close: "tools.calculator.closeScientificA11y",
+	},
+	untyped: {
+		name: "tools.calculator.name",
+		open: "tools.calculator.openScientificA11y",
+		close: "tools.calculator.closeScientificA11y",
+	},
+};
 
 function applyCalculatorParamsToElement(
 	element: HTMLElement,
@@ -136,6 +170,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 	toolId: "calculator",
 	name: "Calculator",
 	description: "Multi-type calculator (basic, scientific, graphing)",
+	nameKey: "tools.calculator.name",
+	descriptionKey: "tools.calculator.description",
 	icon: "calculator",
 	provider: {
 		getProviderId: (config: ToolProviderConfig | undefined) =>
@@ -191,8 +227,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const { calculatorType, availableTypes, displayName } =
-			getCalculatorRenderParams(toolbarContext);
+		const {
+			calculatorType,
+			availableTypes,
+			displayName,
+			openLabel,
+			closeLabel,
+		} = getCalculatorRenderParams(toolbarContext);
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -220,14 +261,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 		overlay.setAttribute("tool-id", fullToolId);
 		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
-		const openLabel =
-			calculatorType === null
-				? "Open scientific calculator"
-				: `Open ${displayName.toLowerCase()}`;
-		const closeLabel =
-			calculatorType === null
-				? "Close scientific calculator"
-				: `Close ${displayName.toLowerCase()}`;
+
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: displayName,

@@ -308,6 +308,15 @@ const sectionPlayerHooks = $derived.by(() =>
 		customTitlesEnabled = url.searchParams.get('customTitles') === '1';
 	});
 
+	// Interface locale from the query string, so the toolbar demo can be visited in a
+	// second language without a second route. A deployment sets this once from its
+	// own configuration.
+	let chromeLocale = $state('');
+	$effect(() => {
+		if (!browser) return;
+		chromeLocale = new URL(window.location.href).searchParams.get('locale') ?? '';
+	});
+
 	$effect(() => {
 		if (!browser) return;
 		const storedDaisyTheme =
@@ -500,6 +509,7 @@ const sectionPlayerHooks = $derived.by(() =>
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
+				locale={chromeLocale}
 				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
@@ -521,6 +531,7 @@ const sectionPlayerHooks = $derived.by(() =>
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
+				locale={chromeLocale}
 				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>

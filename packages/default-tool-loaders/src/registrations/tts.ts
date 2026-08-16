@@ -46,6 +46,8 @@ export const ttsToolRegistration: ToolRegistration = {
 	toolId: "textToSpeech",
 	name: "Text to Speech",
 	description: "Read content aloud",
+	nameKey: "tools.textToSpeech.name",
+	descriptionKey: "tools.textToSpeech.description",
 	icon: "volume-up",
 	provider: {
 		getProviderId: () => "tts",

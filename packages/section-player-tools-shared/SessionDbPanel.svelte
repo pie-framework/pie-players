@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { onMount } from "svelte";
 	import SharedFloatingPanel from "./SharedFloatingPanel.svelte";
 
@@ -13,6 +15,8 @@
 		apiBasePath?: string;
 		onResetDb: () => void | Promise<void>;
 		onClose: () => void;
+		/** Interface-locale provider; the English-only default covers its absence. */
+		i18n?: I18nProvider;
 	}
 
 	let {
@@ -23,7 +27,13 @@
 		apiBasePath = "/api/session-demo",
 		onResetDb,
 		onClose,
+		i18n,
 	}: Props = $props();
+
+	// Interface locale. A prop rather than a context read: this panel is mounted by a
+	// host page directly, outside any toolkit, so there is no published provider to
+	// request. `resolveInterfaceI18n` covers a host that passes none.
+	const interfaceI18n = $derived(resolveInterfaceI18n({ i18n }));
 
 	let pollError = $state<string | null>(null);
 	let activeView = $state<"raw-tables" | "reconstructed" | "request-view">("raw-tables");
@@ -54,7 +64,11 @@
 	);
 
 	const viewTitle = $derived.by(() =>
-		mode === "section" ? "Show section request" : "Show assessment request",
+		interfaceI18n.t(
+			mode === "section"
+				? "debug.showSectionRequest"
+				: "debug.showAssessmentRequest",
+		),
 	);
 
 	function collectColumns(rows: Array<Record<string, unknown>>): string[] {
@@ -247,7 +261,7 @@
 
 	$effect(() => {
 		if (typeof EventSource === "undefined") {
-			pollError = "Live updates are not supported in this browser";
+			pollError = interfaceI18n.t("debug.liveUpdatesUnsupported");
 			void fetchDbStateOnce();
 			return;
 		}
@@ -265,7 +279,7 @@
 		};
 		eventSource.addEventListener("state", onState as EventListener);
 		eventSource.onerror = () => {
-			pollError = "Live updates disconnected; retrying...";
+			pollError = interfaceI18n.t("debug.liveUpdatesDisconnected");
 		};
 		return () => {
 			eventSource.removeEventListener("state", onState as EventListener);
@@ -289,7 +303,8 @@
 </script>
 
 <SharedFloatingPanel
-	title="Session DB (Server)"
+	title={interfaceI18n.t("debug.sessionDb")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag session DB panel"
 	minWidth={420}
 	minHeight={320}
@@ -335,7 +350,7 @@
 				onclick={() => (activeView = "raw-tables")}
 				aria-pressed={activeView === "raw-tables"}
 			>
-				Show raw tables
+				{interfaceI18n.t("debug.showRawTables")}
 			</button>
 			<button
 				type="button"
@@ -343,7 +358,7 @@
 				onclick={() => (activeView = "reconstructed")}
 				aria-pressed={activeView === "reconstructed"}
 			>
-				Show reconstructed snapshots
+				{interfaceI18n.t("debug.showReconstructedSnapshots")}
 			</button>
 			<button
 				type="button"
@@ -375,7 +390,7 @@
 							<tbody>
 								{#if scopedRows[tableName].length === 0}
 									<tr>
-										<td colspan={Math.max(scopedColumns[tableName].length, 1)}>No rows</td>
+										<td colspan={Math.max(scopedColumns[tableName].length, 1)}>{interfaceI18n.t("debug.noRows")}</td>
 									</tr>
 								{:else}
 									{#each scopedRows[tableName] as row}

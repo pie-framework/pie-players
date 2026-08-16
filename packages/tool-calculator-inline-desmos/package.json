@@ -36,7 +36,8 @@
 	"jsdelivr": "./dist/tool-calculator-inline.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-context": "workspace:*"
+		"@pie-players/pie-context": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"scripts": {
 		"build": "vite build",

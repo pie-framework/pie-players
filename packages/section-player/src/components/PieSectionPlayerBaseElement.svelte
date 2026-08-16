@@ -11,6 +11,11 @@
 			// `runtime.ndsIcons` wins over this top-level prop; defaults to
 			// false (opt-in).
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale: the language the player renders its own UI in, as a
+			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
+			// (runtime wins if both are set). Unset renders `en-US`. Distinct
+			// from the authored content language, which travels on `env`.
+			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -42,6 +47,11 @@
 		DEFAULT_TOOL_MODULE_LOADERS,
 	} from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { createEventDispatcher, onDestroy } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import type { SectionCompositionModel } from "../controllers/types.js";
@@ -60,6 +70,7 @@
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = false,
+		locale = "",
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
@@ -121,6 +132,36 @@
 	const effectiveNdsIcons = $derived.by(() =>
 		(runtime?.ndsIcons ?? ndsIcons) === true ? true : undefined,
 	);
+	// Two-tier resolution: `runtime.locale` wins over the top-level prop.
+	//
+	// Resolves to a tag or `undefined`, never `""`. A Svelte custom element
+	// serializes an unset string prop to an empty attribute, and forwarding that
+	// would have the toolkit resolve the empty locale rather than fall back to
+	// its `en-US` default.
+	const effectiveLocale = $derived.by(
+		() => runtime?.locale || locale || undefined,
+	);
+	// Interface locale for the section-overlay surfaces this element mounts.
+	//
+	// Resolved from the toolkit's runtime context rather than from a second
+	// provider: `overlayAnchor` sits inside `<pie-assessment-toolkit>` precisely so
+	// context requests from a mounted element bubble to it, and the same is true of
+	// a request made on the anchor itself. One provider serves the page.
+	let surfaceRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(
+		null,
+	);
+	// Unconditional: the facade wraps the English-only default before the anchor's
+	// context request resolves, so a surface never sees an absent provider.
+	const interfaceI18nForSurfaces = $derived(
+		resolveInterfaceI18n(surfaceRuntimeContext),
+	);
+	$effect(() => {
+		const anchor = overlayAnchor;
+		if (!anchor) return;
+		return connectToolRuntimeContext(anchor, (value) => {
+			surfaceRuntimeContext = value;
+		});
+	});
 	const defaultToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 	});
@@ -215,6 +256,11 @@
 
 	$effect(() => {
 		const coordinator = activeToolkitCoordinator;
+		// Reading the provider here is what re-mounts the surfaces when the locale
+		// moves or a catalog lands: the toolkit republishes its context, the
+		// derived provider changes identity, and a region label resolved before the
+		// catalog arrived is not the one the learner keeps.
+		void interfaceI18nForSurfaces;
 		overlaySurfaceHost.update({
 			anchor: overlayAnchor,
 			surface: SECTION_OVERLAY_SURFACE,
@@ -223,6 +269,7 @@
 				toolkitCoordinator: coordinator,
 				ttsService: coordinator?.ttsService ?? null,
 				catalogResolver: coordinator?.catalogResolver ?? null,
+				i18n: interfaceI18nForSurfaces,
 			},
 			scope: {
 				kind: "section",
@@ -359,6 +406,7 @@
 	player={effectivePlayer}
 	env={effectiveEnv}
 	nds-icons={effectiveNdsIcons}
+	locale={effectiveLocale}
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}

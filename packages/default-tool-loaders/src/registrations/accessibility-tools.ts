@@ -42,6 +42,8 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	toolId: "lineReader",
 	name: "Line Reader",
 	description: "Reading guide overlay",
+	nameKey: "tools.lineReader.name",
+	descriptionKey: "tools.lineReader.description",
 	icon: "bars-3",
 
 	// Line reader appears where there's text to read
@@ -77,8 +79,8 @@ export const lineReaderToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Line reader - Reading guide",
-			tooltip: "Line Reader",
+			ariaLabel: toolbarContext.i18n.t("tools.lineReader.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.lineReader.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -127,6 +129,8 @@ export const themeToolRegistration: ToolRegistration = {
 	toolId: "theme",
 	name: "Theme",
 	description: "Accessible themes and contrast",
+	nameKey: "tools.theme.name",
+	descriptionKey: "tools.theme.description",
 	icon: "swatch",
 
 	// Color scheme is assessment-wide
@@ -163,8 +167,8 @@ export const themeToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Theme - Change colors and contrast",
-			tooltip: "Theme",
+			ariaLabel: toolbarContext.i18n.t("tools.theme.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.theme.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -227,6 +231,8 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	toolId: "annotationToolbar",
 	name: "Highlighter",
 	description: "Highlight and annotate text",
+	nameKey: "tools.annotationToolbar.name",
+	descriptionKey: "tools.annotationToolbar.description",
 	icon: "highlighter",
 	activation: "selection-gateway",
 	singletonScope: "section",
@@ -310,8 +316,12 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Annotation toolbar - Highlight text",
-			tooltip: "Highlight",
+			ariaLabel: toolbarContext.i18n.t(
+				"tools.annotationToolbar.buttonA11y",
+			),
+			tooltip: toolbarContext.i18n.t(
+				"tools.annotationToolbar.tooltip",
+			),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};

@@ -1,6 +1,8 @@
 # Internationalization
 
-Status: `Active` — research and direction. No slice has been scoped to a PRD yet.
+Status: `Active` — research and direction. The interface-locale slice has shipped
+(see `i18n-interface-locale-adoption.md`); content language and in-item alternates have
+not.
 
 Language is three concerns, not one, and every implementation in the PIE estate
 conflates at least two of them. Separating them is most of the design work; the
@@ -11,7 +13,7 @@ The three concerns, with the AfA PNP 3.0 field that names each:
 
 | Concern | Whose fact | PNP field | Scope |
 |---|---|---|---|
-| **Chrome locale** | the deployment | `language-of-interface` | player, toolbar, tool UI, `aria-label`s |
+| **Interface locale** | the deployment | `language-of-interface` | player, toolbar, tool UI, `aria-label`s |
 | **Content language** | the authored item | — (declared by content) | item body, prompt, choices, passage |
 | **In-item alternates** | the learner | `keyword-translation`, `item-translation`, `sign-language` | a word up to the whole item body |
 
@@ -25,32 +27,42 @@ is the standard's, and we currently model none of it.
 
 ## Current state
 
-**`pie-players` has a complete i18n layer with zero call sites.**
-`packages/players-shared/src/i18n/` implements `SimpleI18n` with interpolation,
-ICU plurals via `Intl.PluralRules`, an RTL locale list, `dir`/`lang` DOM
-stamping, a fallback chain and lazy per-locale dynamic imports, against 142 keys
-translated to `en`/`es`/`zh`/`ar` at 100% coverage, with a coverage checker and a
-hardcoded-string scanner. `packages/assessment-toolkit/src/services/I18nService.ts`
-is a near-verbatim duplicate. Both are published; neither is instantiated
-anywhere. The `useI18n(() => player.getI18nService())` pattern in the README
-describes a provider that does not exist, and neither script runs in CI.
+**Interface locale is adopted in `pie-players`.** A `locale` attribute on the item
+and section players publishes a provider on the toolkit runtime context, and every
+component that renders a string of its own resolves it from there;
+`en-US` and `nl-NL` ship complete at 401 keys, and `check:i18n-coverage` gates
+both the pre-commit and CI runs. `docs/architecture/i18n-interface-locale-adoption.md` is
+the design record. Content language and in-item alternates are untouched — the
+rest of this document still describes the gap.
 
-Catalog shipping is fine — `src/**/*.json` is in the package's tsconfig
-`include`, so `tsc` copies the catalogs into `dist` without a copy step. Lazy
-loading was not: the static English imports carried `with { type: "json" }` and
-the dynamic ones did not, so under Node's ESM loader every non-English locale
-threw `ERR_IMPORT_ATTRIBUTE_MISSING`, which the `catch` rethrew as "Translation
-files not found" — pointing at files that were present. English worked, which is
-why nothing surfaced it. Fixed, and all four locales now load under plain Node.
-`players-shared` is on the publish policy's `nodeSafe` list, so this was a
-conformance break and not only a latent one.
+What was there before is why that slice was a replacement rather than an
+extension. `SimpleI18n` and its near-verbatim duplicate
+`assessment-toolkit/src/services/I18nService.ts` were both published with zero
+call sites, against 142 keys translated to `en`/`es`/`zh`/`ar` at nominal 100%
+coverage. The number certified nothing: the reference had been harvested from a
+design rather than from call sites, so 76 of the 142 keys named UI this codebase
+does not render — a section-builder, an assessment shell, 25 Desmos internals —
+while `"Passage"`, `"Try again"`, the formative feedback strings and the
+sign-language names had no keys at all. Nor could the translations load: the
+static English imports carried `with { type: "json" }` and the three dynamic ones
+did not, so under Node's ESM loader every non-English locale threw
+`ERR_IMPORT_ATTRIBUTE_MISSING`, which the `catch` rethrew as "Translation files
+not found" — pointing at files that were present. English worked, which is why
+nothing surfaced it, and `players-shared` is on the publish policy's `nodeSafe`
+list, so it was a conformance break and not only a latent one. The four catalogs
+were deleted with the layer.
 
-The scanner reports 616 hardcoded strings across 141 files, concentrated in
-`players-shared` (33), `assessment-toolkit` (29), `section-player` (12) and
-`item-player` (8), plus 162 lines carrying `aria-label`. The existing catalog was
-harvested from an earlier state of the code and has drifted: nothing covers the
-formative feedback strings, `"Passage"`, `"Try again"`, or the sign-language
-names.
+The hardcoded-string scanner reports 465 strings across 128 of 476 files, and it
+stays advisory: it excludes lines that already resolve through a provider, so the
+count falls as adoption lands, but it matches quoted capitalized text and
+therefore cannot tell a rendered label from a `KeyboardEvent.key` value, a
+font-family name or an HTTP header. That number is not comparable with the 616
+the ticket cites: the scanner used to skip any line carrying `aria-*`, `title`,
+`alt` or `placeholder`, so it could not see accessible names — the surface this
+pass most needed it to police — and those exclusions are gone. Two blind spots
+remain, both structural: plain template text (`Item header row reservation:`
+between tags) and a lowercase-initial label. Widening either buries the leads
+under CSS values and identifiers, so it is a lead list, never a gate.
 
 **`pie-elements-ng` localizes through i18next, keyed on authored content.** 66
 `translator.t(` call sites across 15 packages, every one passing
@@ -60,7 +72,7 @@ the authored item. Catalogs are `en`/`es` only, both eagerly imported, and marke
 keys cannot be added there. `packages/elements-svelte/*` has no i18n at all.
 Classic `pie-elements` is the same design through `@pie-lib/translator`.
 
-The consequence of keying on `model.language` is that chrome locale is a side
+The consequence of keying on `model.language` is that interface locale is a side
 effect of content locale: a Spanish item renders Spanish widget chrome because it
 is a Spanish item. That is coherent for wholesale-translated parallel items and
 wrong for every other case — an English-chrome deployment showing a Spanish
@@ -228,7 +240,7 @@ It belongs in `players-shared` as a pure function with no DOM and no locale data
 which keeps it inside the `nodeSafe` publish constraint and makes it usable by
 the catalog resolver, the TTS voice selector and the chrome layer alike.
 
-### Chrome locale is a composition context
+### Interface locale is a composition context
 
 The deployment picks the interface language; no element or item can know it. That
 is the exact shape `composition-context.md` describes, and locale belongs in its
@@ -244,11 +256,11 @@ bundle service — it is a property with a reflected attribute and a
 default is English with no publisher present, which is what keeps elements
 working in Studio preview, authoring harnesses and `print-player`.
 
-Do **not** route chrome locale through `model`. The four arguments in
+Do **not** route interface locale through `model`. The four arguments in
 `composition-context.md` apply verbatim: the publisher does not know its
 consumers, the consumer set is open, resolvers must work with no container, and
 the value changes after mount. `model.language` is how classic PIE does it and is
-why chrome locale is currently a side effect of content locale.
+why interface locale is currently a side effect of content locale.
 
 ### Content language travels in `env`
 
@@ -258,7 +270,7 @@ authored content, and `mode` already drives controllers to filter correct answer
 out of the model. Selecting which language variant of authored content to return
 is the same operation.
 
-This is not in tension with the previous section. Chrome locale is a fact about
+This is not in tension with the previous section. Interface locale is a fact about
 the container that content cannot know; content language is an input to a filter
 over authored data. Different facts, different channels, and the reason differs
 rather than the convention.
@@ -270,9 +282,10 @@ must be `type: "String"`, given that hosts already pass `show-toolbar` as both
 the literal `"false"` and boolean `true` and both must keep working.
 
 Separately, and cheaply: the player should reflect the resolved content language
-to `lang`, and direction to `dir`, on the content subtree. Nothing in either repo
-writes `dir` today, which is why the Arabic catalog is unreachable dead weight
-and why `:lang()`, hyphenation and screen-reader pronunciation cannot work. This
+to `lang`, and direction to `dir`, on the content subtree. Chrome adoption stamps
+both on the chrome subtree; nothing writes either for *content* in either repo,
+which is why `:lang()`, hyphenation and screen-reader pronunciation cannot work
+and why an RTL content language has no rendering at all. This
 is the highest-leverage slice per unit of effort in the whole document, and it is
 blocked only on the item payload carrying a language at all.
 
@@ -390,17 +403,13 @@ locale.
    language, player reflects `lang`/`dir` to the content subtree. Requires the
    matching Studio change to emit locale on the PIE content channel and
    `xml:lang` on the QTI channel, where it currently emits a hardcoded `"en"`.
-3. **Chrome locale as composition context.** Publisher, resolution order, change
+3. **Interface locale as composition context.** Publisher, resolution order, change
    signal, graceful default. Add locale to the composition-context table.
-4. **Consolidate the i18n layer.** Partly done: `I18nService` is now a
-   delegating wrapper over `SimpleI18n` rather than a second copy of it, adding
-   only toolkit logging and `initialize()`, and `detectBrowserLocale` has one
-   implementation. Both export paths still work, so nothing breaks for a consumer
-   that never had one. Outstanding: re-harvest the drifted catalog, and decide
-   which of the two entry points survives adoption. Wiring `check-i18n` and
-   `scan-hardcoded` into CI waits on adoption — coverage is already 100%, and the
-   hardcoded scanner reports 616 findings, so it needs a baseline before it can
-   gate anything.
+4. **Consolidate the i18n layer.** Done. `I18nService` is a delegating wrapper
+   over `SimpleI18n` rather than a second copy of it, the catalog is re-harvested
+   from call sites, and `check:i18n-coverage` runs in the pre-commit and CI gates.
+   `scan-hardcoded` stays advisory: it cannot separate a rendered label from a
+   diagnostic, so gating on it would need a baseline nobody would maintain.
 5. **Parameterized PNP and language catalog cards.** `keyword-translation` and
    `glossary-on-screen` as first consumers.
 6. **Tool and accommodation locale.** TTS voice selection from the resolved
@@ -413,7 +422,7 @@ locale.
 
 - Where per-capability tool strings live, given capability neutrality in core and
   `ToolRegistration.name` being host-facing API.
-- Whether chrome locale defaults to following content language when a host
+- Whether interface locale defaults to following content language when a host
   supplies neither, which is what classic PIE effectively does today.
 - Whether a whole-body `language-translation` card is a model we want to offer,
   given it asserts item equivalence that a separately calibrated parallel item

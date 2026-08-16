@@ -18,6 +18,7 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import Moveable from 'moveable';
 	import { onDestroy, onMount } from 'svelte';
 	import rulerCm from './ruler-cm.svg';
@@ -35,6 +36,9 @@
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	// Interface locale. Re-derives on every context republish, so a label rendered
+	// before the catalog loaded is replaced rather than pinned.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 	let unit = $state<'inches' | 'cm'>('inches');
 	let moveable: Moveable | null = null;
@@ -63,7 +67,29 @@
 
 	function toggleUnit() {
 		unit = unit === 'inches' ? 'cm' : 'inches';
-		announce(`Switched to ${unit === 'inches' ? 'inches' : 'centimeters'}`);
+		announce(
+			interfaceI18n.t('tools.ruler.switchedTo', {
+				unit: interfaceI18n.t(unitNameInSentenceKey(unit)),
+			}),
+		);
+	}
+
+	/**
+	 * The unit name as it reads inside a sentence, not as a standalone label.
+	 * `tools.ruler.inches` is the button's Title Case form; interpolating it
+	 * into "Switched to {unit}" would announce "Switched to Inches".
+	 */
+	function unitNameInSentenceKey(current: string) {
+		return current === 'inches'
+			? 'tools.ruler.inchesInSentence'
+			: 'tools.ruler.centimetersInSentence';
+	}
+
+	/** The unit as the accessible name and the image alt spell it. */
+	function unitAbbrevKey(current: string) {
+		return current === 'inches'
+			? 'tools.ruler.inchesAbbrev'
+			: 'tools.ruler.centimetersAbbrev';
 	}
 
 	// Initialize Moveable.js (matching production configuration)
@@ -158,51 +184,59 @@
 			case 'ArrowUp':
 				if (isShift) {
 					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					y -= MOVE_STEP;
-					announce(`Moved up to ${Math.round(y)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedUp', { position: Math.round(y) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowDown':
 				if (isShift) {
 					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					y += MOVE_STEP;
-					announce(`Moved down to ${Math.round(y)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedDown', { position: Math.round(y) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowLeft':
 				if (isShift) {
 					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					x -= MOVE_STEP;
-					announce(`Moved left to ${Math.round(x)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedLeft', { position: Math.round(x) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowRight':
 				if (isShift) {
 					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					x += MOVE_STEP;
-					announce(`Moved right to ${Math.round(x)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedRight', { position: Math.round(x) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'PageUp':
 				rotation = (rotation - FINE_ROTATE_STEP + 360) % 360;
-				announce(`Rotated to ${rotation} degrees`);
+				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				handled = true;
 				break;
 			case 'PageDown':
 				rotation = (rotation + FINE_ROTATE_STEP) % 360;
-				announce(`Rotated to ${rotation} degrees`);
+				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				handled = true;
 				break;
 			case 'u':
@@ -281,14 +315,20 @@
 		onkeydown={handleKeyDown}
 		role="application"
 		tabindex="0"
-		aria-label="Ruler tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation, U to toggle units. Current unit: {unit}"
-		aria-roledescription="Draggable and rotatable ruler measurement tool"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.ruler.applicationA11y', {
+			unit: interfaceI18n.t(unitAbbrevKey(unit)),
+		})}
+		aria-roledescription={interfaceI18n.t('tools.ruler.toolA11y')}
 	>
 		<div class="pie-tool-ruler__container">
 			<img
 				class="pie-tool-ruler__image"
 				src={currentRuler}
-				alt="Ruler showing {unit}"
+				alt={interfaceI18n.t('tools.ruler.imageAlt', {
+					unit: interfaceI18n.t(unitAbbrevKey(unit)),
+				})}
 				draggable="false"
 			/>
 
@@ -296,7 +336,7 @@
 			<div
 				class="pie-tool-ruler__unit-group"
 				role="group"
-				aria-label="Ruler unit selection"
+				aria-label={interfaceI18n.t('tools.ruler.unitSelectionA11y')}
 				onpointerdown={(e) => e.stopPropagation()}
 			>
 				<button
@@ -304,26 +344,34 @@
 					class:pie-tool-ruler__unit-button--active={unit === 'inches'}
 					onclick={() => {
 						unit = 'inches';
-						announce('Switched to inches');
+						announce(
+							interfaceI18n.t('tools.ruler.switchedTo', {
+								unit: interfaceI18n.t('tools.ruler.inchesInSentence'),
+							}),
+						);
 					}}
-					title="Inches"
-					aria-label="Switch to inches"
+					title={interfaceI18n.t('tools.ruler.inches')}
+					aria-label={interfaceI18n.t('tools.ruler.switchToInchesA11y')}
 					aria-pressed={unit === 'inches'}
 				>
-					<span class="pie-tool-ruler__unit-label">Inches</span>
+					<span class="pie-tool-ruler__unit-label">{interfaceI18n.t('tools.ruler.inches')}</span>
 				</button>
 				<button
 					class="pie-tool-ruler__unit-button"
 					class:pie-tool-ruler__unit-button--active={unit === 'cm'}
 					onclick={() => {
 						unit = 'cm';
-						announce('Switched to centimeters');
+						announce(
+							interfaceI18n.t('tools.ruler.switchedTo', {
+								unit: interfaceI18n.t('tools.ruler.centimetersInSentence'),
+							}),
+						);
 					}}
-					title="Centimeters"
-					aria-label="Switch to centimeters"
+					title={interfaceI18n.t('tools.ruler.centimeters')}
+					aria-label={interfaceI18n.t('tools.ruler.switchToCentimetersA11y')}
 					aria-pressed={unit === 'cm'}
 				>
-					<span class="pie-tool-ruler__unit-label">Centimeters</span>
+					<span class="pie-tool-ruler__unit-label">{interfaceI18n.t('tools.ruler.centimeters')}</span>
 				</button>
 			</div>
 		</div>

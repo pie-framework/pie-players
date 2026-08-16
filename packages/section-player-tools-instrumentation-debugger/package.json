@@ -34,6 +34,7 @@
 	],
 	"license": "MIT",
 	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*"

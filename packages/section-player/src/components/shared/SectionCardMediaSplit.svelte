@@ -35,7 +35,7 @@
 	import {
 		createToolSurfaceHost,
 		type ToolSurfaceHostSnapshot,
-	} from "./tool-surface-host.js";
+	} from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 	let {
 		regionId,
@@ -65,9 +65,12 @@
 		mountable: false,
 		occupied: false,
 	});
-	const surfaceHost = createToolSurfaceHost((next) => {
-		surfaceSnapshot = next;
-	});
+	const surfaceHost = createToolSurfaceHost(
+		(next) => {
+			surfaceSnapshot = next;
+		},
+		{ hostLabel: "pie-section-player" }
+	);
 
 	$effect(() => {
 		surfaceHost.update({

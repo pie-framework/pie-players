@@ -30,10 +30,6 @@ const MEDIA_REGION_PATH = resolve(
 	__dirname,
 	"../src/components/shared/card-media-region.ts",
 );
-const TOOL_SURFACE_HOST_PATH = resolve(
-	__dirname,
-	"../src/components/shared/tool-surface-host.ts",
-);
 const SURFACE_STACK_PATH = resolve(
 	__dirname,
 	"../src/components/shared/SectionCardSurfaceStack.svelte",
@@ -118,11 +114,9 @@ describe("section-player tool surface host seam", () => {
 			expect(source).not.toContain("renderForSurface(");
 		}
 
-		const host = readCode(TOOL_SURFACE_HOST_PATH);
-		expect(host).toContain("registry.getToolsBySurface(current.surface)");
-		expect(host).toContain("registry.ensureToolModuleLoaded(toolId)");
-		expect(host).toContain("registry.renderForSurface(toolId, entry.context)");
-		expect(host).toContain("existing.sync?.(entry.context)");
+		// The other half — that the host is what calls the registry — moved with the
+		// module into `@pie-players/pie-assessment-toolkit`, where a second renderer
+		// now drives the same seam. Its own suite owns those assertions.
 	});
 
 	test("the section adapter declares only its surface and scope", () => {

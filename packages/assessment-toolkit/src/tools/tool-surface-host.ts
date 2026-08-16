@@ -1,29 +1,37 @@
 /**
- * Headless host for capabilities that render into section-player surfaces.
+ * Headless host for capabilities that render into a renderer's surfaces.
  *
  * The interface deliberately exposes only current input, a two-boolean snapshot,
  * and teardown. Discovery, policy/catalog invalidation, content resolution, lazy
  * loading, DOM reconciliation, error isolation, and registry observation stay
  * inside this module. Svelte callers are geometry adapters over this seam.
+ *
+ * It lives here rather than in `section-player`, where it was written, because a
+ * second renderer now opens a surface: the annotation toolbar hosts the
+ * capabilities that act on a text selection. Two copies of mount/reconcile/
+ * registry-observation would drift, and the drift would be invisible until one
+ * renderer stopped honouring the grant-AND-content rule. Nothing about the module
+ * was section-shaped — it already imported only from this package — so the move
+ * is a relocation, not a rewrite. The one thing that *was* section-shaped is the
+ * name it reported errors under, which is now {@link ToolSurfaceHostOptions.hostLabel}.
  */
 
-// The grant-AND-content rule lives in the registration-authoring surface rather
-// than the host-facing one: it is what a package rendering capabilities into its
-// own surfaces needs, and print resolves through the same module.
-import { resolveContentCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	isHostDeniedFeature,
-	toFrameworkErrorModel,
-	type CatalogOwnerContext,
-	type CatalogOwnerSnapshot,
-	type CatalogOwnerView,
-	type ToolRegistration,
-	type ToolRegistry,
-	type ToolRegistryChangeEvent,
-	type ToolSurfaceRenderContext,
-	type ToolSurfaceRenderResult,
-	type ToolSurfaceServices,
-} from "@pie-players/pie-assessment-toolkit";
+import { isHostDeniedFeature } from "../policy/core/feature-decision.js";
+import type {
+	CatalogOwnerSnapshot,
+	CatalogOwnerView,
+} from "../services/AccessibilityCatalogResolver.js";
+import type { CatalogOwnerContext } from "../services/catalog-owner.js";
+import { toFrameworkErrorModel } from "../services/framework-error.js";
+import type {
+	ToolRegistration,
+	ToolRegistry,
+	ToolRegistryChangeEvent,
+	ToolSurfaceRenderContext,
+	ToolSurfaceRenderResult,
+	ToolSurfaceServices,
+} from "../services/ToolRegistry.js";
+import { resolveContentCapabilities } from "./content-capability-resolution.js";
 
 export type ToolSurfaceScope =
 	| {
@@ -54,6 +62,18 @@ export interface ToolSurfaceHostSnapshot {
 export interface ToolSurfaceHost {
 	update(input: ToolSurfaceHostInput): void;
 	destroy(): void;
+}
+
+export interface ToolSurfaceHostOptions {
+	/**
+	 * Which renderer this host belongs to, for framework-error `source` and console
+	 * warnings — `"pie-section-player"`, `"pie-tool-annotation-toolbar"`.
+	 *
+	 * A warning that named the module but not its renderer would be unactionable
+	 * now that two of them mount surfaces: the same `render` failure on the same
+	 * `toolId` means different things depending on which surface asked.
+	 */
+	hostLabel: string;
 }
 
 type LifecyclePhase = "resolve" | "load" | "render" | "sync" | "destroy";
@@ -233,7 +253,9 @@ function sameContext(
 /** Create one lifecycle owner for one host surface anchor. */
 export function createToolSurfaceHost(
 	onSnapshot: (snapshot: ToolSurfaceHostSnapshot) => void,
+	options: ToolSurfaceHostOptions,
 ): ToolSurfaceHost {
+	const { hostLabel } = options;
 	let input: ToolSurfaceHostInput | null = null;
 	let destroyed = false;
 	let snapshot: ToolSurfaceHostSnapshot = { mountable: false, occupied: false };
@@ -270,7 +292,7 @@ export function createToolSurfaceHost(
 		const model = toFrameworkErrorModel({
 			kind: "tool-surface",
 			severity: "warning",
-			source: "pie-section-player/tool-surface-host",
+			source: `${hostLabel}/tool-surface-host`,
 			message,
 			details: [
 				`surface=${current?.surface ?? "unknown"}`,
@@ -288,7 +310,7 @@ export function createToolSurfaceHost(
 				return;
 			} catch (error) {
 				console.warn(
-					"[pie-section-player] tool surface warning reporter failed:",
+					`[${hostLabel}] tool surface warning reporter failed:`,
 					error,
 				);
 			}
@@ -304,7 +326,7 @@ export function createToolSurfaceHost(
 			);
 			return;
 		}
-		console.warn(`[pie-section-player] ${message}`, cause);
+		console.warn(`[${hostLabel}] ${message}`, cause);
 	}
 
 	function unmount(toolId: string): void {

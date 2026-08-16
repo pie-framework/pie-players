@@ -23,7 +23,7 @@ See also:
 1. [Architectural Principles](#architectural-principles)
 2. [System Context](#system-context)
 3. [Component Architecture](#component-architecture)
-4. [Tool Hierarchy](#tool-hierarchy)
+4. [Tool Invocation](#tool-invocation)
 5. [What Counts As A Tool](#what-counts-as-a-tool)
 6. [Core Services](#core-services)
 7. [Integration Patterns](#integration-patterns)
@@ -140,75 +140,47 @@ The PIE Assessment Tools system provides:
 **Annotation Toolbar**
 - Text selection detection
 - Floating toolbar on selection
-- Gateway to translation and TTS
 - Annotation creation (highlight/underline)
+- Read-aloud of the selection
+- Renders host-supplied selection actions, without naming what they open
 
 ---
 
-## Tool Hierarchy
+## Tool Invocation
 
-### Three-Tier Architecture
+### Activation
 
-Tools are organized into three tiers based on their dependencies:
+A capability declares how it is invoked, as `ToolActivation`:
 
-#### Tier 1: Standalone Tools
+- **`toolbar-toggle`** — a button on a toolbar opens it. The default, and what a floating panel uses: calculator, ruler, protractor, periodic table, graph, line reader, both dictionaries.
+- **`selection-gateway`** — a section-scoped singleton that appears over a text selection and offers actions on it. `annotationToolbar` is the one PIE ships.
+- **`region`** — rendered into a host surface with no toolbar button, for a capability that is part of the content rather than a tool over it.
 
-**Characteristics:**
-- No dependencies on other tools
-- Direct user interaction
-- Independent functionality
-- Modal or floating UI
+Activation is orthogonal to placement, to eligibility, and to whether the capability needs authored content. See [What Counts As A Tool](#what-counts-as-a-tool).
 
-**Examples:**
-- Calculator (basic, scientific, graphing)
-- Ruler (metric/imperial)
-- Protractor
-- Periodic Table
-- Graph Tool
-- Line Reader (masking overlay)
+### No capability depends on a gateway for its only input
 
-#### Tier 2: Orchestrator Tools
+A gateway hands the learner's selection to a capability through `ToolkitCoordinator.requestTool`. That is a shortcut onto a capability that is reachable without it, never the capability's only door.
 
-**Characteristics:**
-- Enable other tools
-- Detect user intent or content state
-- Coordinate multiple functions
-- May have own UI
+The constraint is a browser fact, not a preference. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS-level toggle absent on mobile — so a sighted keyboard-only learner cannot originate a text selection at all. A capability reachable only through a selection is unreachable for them, which is WCAG 2.2 SC 2.1.1. This was measured against a live passage: twelve Shift+ArrowRight presses leave the selection empty.
 
-**Examples:**
-- Annotation Toolbar (text selection gateway)
-- Color Scheme Selector
-- Answer Eliminator
+Both dictionaries therefore carry a toolbar button and their own term field, and treat an incoming `term` as one of two equal entry points. A capability designed the other way round — receiving text from a gateway and offering no input of its own — cannot be made keyboard accessible by any amount of work inside the gateway.
 
-**Why This Tier Matters:**
-- Encapsulates complex selection logic once
-- Provides consistent UX for text-based tools
-- Centralizes accessibility implementation
+### Where selection actions are paired to capabilities
 
-#### Tier 3: Dependent Tools
+Three layers, and the split is what keeps each of them able to change alone:
 
-**Characteristics:**
-- Require Tier 2 orchestrator for input
-- Cannot function standalone
-- Receive data via props/events
+- The **gateway** renders the actions it is handed (`ToolSelectionAction`) and knows nothing about what they do.
+- The **capability** exposes a term or equivalent input and knows nothing about selections.
+- The **composition layer** (`@pie-players/pie-default-tool-loaders`) names both and pairs them.
 
-**Examples:**
-- Dictionary (requires selected text)
-- Translation (requires selected text)
-- TTS from selection
+Core names no capability, so a highlighter cannot name a dictionary. A host can contribute an action for a capability PIE does not ship, and an action whose capability no toolbar hosts is absent rather than present and inert.
 
-**Why This Tier Matters:**
-- Tools focus on domain logic (definitions, translation)
-- Avoids duplicated selection handling
-- Simplifies testing with mock inputs
+`requestTool` resolves as a claim rather than a broadcast: one target answers, the toolbar at the requested placement level that currently hosts the capability. A broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is the item card's toolbar and the section's both.
 
-### Design Rationale
+### Testing
 
-**Separation of Concerns:** Tier 2 tools encapsulate selection logic once. Tier 3 tools focus on their domain without duplicating infrastructure code.
-
-**Maintainability:** Adding new Tier 3 tools is straightforward—implement the interface, receive text from orchestrator. No need to reimplement selection detection.
-
-**Testing:** Tier 1 tools test in isolation. Tier 2 tools test selection detection. Tier 3 tools test with mock text input.
+Each layer is testable without the others: a capability against its own input, a gateway against a stub action list, the request seam against stub targets. The pairing is checked end to end in a browser, because focus crossing two shadow boundaries and a real selection are what it depends on.
 
 ---
 
@@ -226,7 +198,7 @@ Registry membership therefore does *not* imply anything about three independent 
 
 Unlike eligibility, this **is** intrinsic to the capability and belongs with it. AfA 3.0 formalizes it as the resource half of a matching pair — PNP describes learner needs, [DRD](https://www.imsglobal.org/accessibility/afav3p0pd/AfAv3p0_SpecPrimer_v1p0pd.html) describes what a resource offers. QTI 3 approximates DRD in-band: the presence of a catalog card *is* the resource-side declaration. PIE does the QTI version, so "is there a matching catalog card" is our DRD check.
 
-**3. Where it renders.** Toolbar-invoked overlay, in-content transform, or its own layout region. Covered by [Tool Scope Architecture](#tool-scope-architecture-placement--scoped-ids) below and independent of the other two. Note this is also separate from the dependency tiers in [Tool Hierarchy](#tool-hierarchy) above — a capability's dependencies, its placement, its eligibility, and its content dependency are four orthogonal things.
+**3. Where it renders.** Toolbar-invoked overlay, in-content transform, or its own layout region. Covered by [Tool Scope Architecture](#tool-scope-architecture-placement--scoped-ids) below and independent of the other two. Also separate from how it is invoked, in [Tool Invocation](#tool-invocation) above — a capability's activation, its placement, its eligibility, and its content dependency are four orthogonal things.
 
 ### How The Standards Treat This
 
@@ -329,7 +301,7 @@ Host surfaces are one instance of a broader pattern: a fact only the container k
 
 ## Tool Scope Architecture: Placement + Scoped IDs
 
-In addition to the three-tier dependency hierarchy, tools are categorized by their **scope and lifecycle** within an assessment:
+Independently of how a capability is invoked, tools are categorized by their **scope and lifecycle** within an assessment:
 
 ### Item-Level Tools
 
@@ -738,7 +710,9 @@ Tool receives event and displays with data
 
 - Mounted once per section runtime
 - Activated by text selection events in content
-- Hosts action modules (highlight/underline now; dictionary/picture dictionary later)
+- Owns highlight, underline and read-aloud of the selection
+- Renders `ToolSelectionAction` entries supplied by whoever composes it, and calls `requestTool` through them. The composition layer pairs those to the dictionary and picture dictionary; the gateway names neither.
+- Latches itself down after a completed action, because the selection survives on purpose and opening a panel fires `selectionchange` — without the latch the strip returns over the panel it just opened. Escape and focus leaving do not latch; Shift+F10 clears one.
 
 Enable/disable uses canonical tool config and follows standard precedence:
 
@@ -968,10 +942,15 @@ Final Configuration:
 - Resize handle
 
 ✅ **Annotation Toolbar**
-- Text selection detection
+- Text selection detection, from the selection itself rather than pointer events
 - Highlight (4 colors) and underline
 - TTS integration
-- Dictionary/translation gateway
+- Host-supplied selection actions, paired to the dictionaries by the composition layer
+
+✅ **Dictionary and Picture Dictionary**
+- Host-supplied lookup, by endpoint or by an injected client
+- A term field alongside the selection action, which is what makes them keyboard reachable
+- No endpoint shipped: the corpus behind a dictionary is licensed per programme
 
 ✅ **ToolCoordinator**
 - Z-index management
@@ -1042,18 +1021,17 @@ CSS.highlights.set('annotation-yellow', highlight);
 - Easier testing (mock singleton instance)
 - Matches player container lifecycle (one per session)
 
-### Why Three-Tier Tool Hierarchy?
+### Why Declared Activation Rather Than A Dependency Hierarchy?
 
-**Rationale:**
-- **Tier 1:** Most tools are standalone (calculator, ruler, protractor)
-- **Tier 2:** Selection logic is complex—implement once, reuse for all text tools
-- **Tier 3:** Domain tools (translation) focus on their function without selection code duplication
+Capabilities were once described as three tiers, with a "dependent" tier that received its input from a selection gateway and could not function without one. That is retired: it made a capability's keyboard accessibility a property of the gateway, and no gateway can supply it, because a sighted keyboard-only learner cannot originate a text selection in non-editable content.
+
+**Rationale:** activation says how a capability is invoked and nothing about what it depends on. A selection is one way in, added by the composition layer; the capability keeps its own input and stays reachable when no gateway is granted.
 
 **Benefits:**
-- Clear dependency boundaries
-- Easy to add new text-based tools
-- Testable in isolation
-- Maintainable architecture
+- Keyboard reachability is a property of the capability, where it can be guaranteed
+- Selection handling stays in one place without capabilities inheriting a dependency on it
+- A host can pair its own capability to the gateway without changing either
+- Each layer is testable alone
 
 ### Why Web Components?
 
@@ -1075,7 +1053,7 @@ CSS.highlights.set('annotation-yellow', highlight);
 
 The PIE Assessment Tools & Accommodations architecture provides a modern, scalable foundation for assistive technology in online assessments. By leveraging native browser APIs and Web Components, the system achieves framework independence while maintaining excellent performance and accessibility.
 
-The three-tier tool hierarchy, singleton coordination services, and zero DOM mutation design enable a clean separation of concerns that simplifies development, testing, and maintenance.
+Declared activation, singleton coordination services, and zero DOM mutation design enable a clean separation of concerns that simplifies development, testing, and maintenance.
 
 The architecture is production-ready for core functionality, with clear paths for enhancement as needed.
 

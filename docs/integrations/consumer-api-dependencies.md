@@ -442,6 +442,15 @@ bare names, so the `exports` map alone is not enough to protect this host —
 **the `dist` filenames themselves are API here**. Renaming, splitting, or
 merging any of those four files breaks that build.
 
+`font-sizes.css` is bundled but not activated. Every rule in it is scoped under a
+`data-font-size` attribute, and no host sets that attribute anywhere in its
+source — so all three currently take only its `:root { --pie-font-scale: 1 }`
+default, and its rules match nothing. So the file's *rules* are safe to change
+while its *filename* is not — the inverse of the rest of this section, where the
+values are the fragile half. The first host to set the attribute inherits whatever
+those rules then say, with no build signal, and Host A and Host R both take patch
+releases on caret ranges.
+
 Host R additionally hard-codes the CDN path
 `@pie-players/pie-item-player@<version>/dist/pie-item-player.js`, so that
 filename is API too.

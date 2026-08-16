@@ -262,6 +262,46 @@ accessible name.
 - The adapter is the whole integration. `DAISYUI_PIE_TOKEN_MAP` is its sole source, and it corrects a slot that would land illegible because it reads resolved colours — which a stylesheet cannot do. The separate `pie-theme-daisyui` package that shipped the same table as static CSS was removed: `<pie-theme scope="document">` writes `--pie-*` as inline styles, so a stylesheet declaring them lost to it and the import did nothing.
 - A host on some other token vocabulary aliases its own names to `--pie-*` in its own stylesheet, which is what a non-DaisyUI design system needs anyway. Do that under `[data-color-scheme]` to make an accommodation reach host chrome, since `<pie-theme>` never writes `--color-*` or any other host prefix.
 
+## Font size scaling
+
+`font-sizes.css` carries four presets on `--pie-font-scale` — `normal` (1),
+`large` (1.25), `xlarge` (1.5), `xxlarge` (1.75). They are Learnosity's steps,
+which K-12 accommodation profiles are already written against, so the numbers are
+a contract: changing one changes what `large` means for every learner assigned it.
+
+A host selects a preset with `data-font-size` on any ancestor of the player, or
+on a player element itself:
+
+```html
+<html data-font-size="large">
+<div data-font-size="xlarge"><pie-section-player></pie-section-player></div>
+```
+
+A host already driving `<pie-theme>` sets the token instead and needs nothing
+from the stylesheet:
+
+```html
+<pie-theme variables='{"--pie-font-scale":"1.25"}'>
+```
+
+Text that inherits its size scales, because the rules set `font-size` on the
+content hosts — `pie-item-shell`, `pie-passage-shell`, `pie-item-player` and the
+externally loaded `pie-player` wrapper — and inheritance crosses shadow
+boundaries. Text whose own rule names `rem` or `px` does not scale: `rem`
+resolves against the document root and `px` against nothing, and no rule inside
+a subtree can change what either means. To carry those along, a host scales the
+root font size itself; that is a page-wide decision this package does not make
+for it. Browser zoom is unaffected either way, so WCAG 2.2 1.4.4 does not depend
+on this feature.
+
+The scale is applied as `calc(1rem * var(--pie-font-scale))` rather than an `em`
+factor because the content hosts nest — an `em` factor would compound, turning a
+requested 1.25 into 1.56 wherever an item shell sits inside a themed region.
+
+There is no student-facing control here. The picker is host chrome, which in the
+Renaissance context is Quiz Engine's surface; this package owns the token, the
+presets, and the rules that consume them.
+
 ## Token registry
 
 `@pie-players/pie-theme/token-registry.json` lists every `--pie-*` token with its

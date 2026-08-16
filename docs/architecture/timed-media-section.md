@@ -14,7 +14,7 @@ Four things changed underneath this note as of 2026-08-05. They are open decisio
 
 **2. `RubricBlock` is now explicitly passage-typed**, which weakens option 1 in [Video Stimulus Mapping](#video-stimulus-mapping). See that section.
 
-**3. `assessment-toolkit` grew a policy and runtime engine layer** that is a better fit for cue and playback policy than this note assumes. It now owns `SectionRuntimeEngine`, `SectionEngineCore`, engine state/transition/stage-derivation, `RuntimeRegistry`, `SectionEngineAdapter`, an instrumentation bridge, and a `ToolPolicyEngine` with `PolicySource`, `compose-decision`, and provenance tracking. This note puts cue orchestration in the layout custom element and treats the toolkit as tool/service coordination only. Cue policy and playback policy are closer in shape to composed policy decisions than to layout internals. `SectionController` still lives in `section-player`. The layer-ownership table below should be re-derived against the engine before the section PRD hardens.
+**3. `assessment-toolkit` grew a policy and runtime engine layer** that is a better fit for cue and playback policy than this note assumes. It now owns `SectionRuntimeEngine`, `SectionEngineCore`, engine state/transition/stage-derivation, `RuntimeRegistry`, `SectionEngineAdapter`, an instrumentation bridge, and a `ToolPolicyEngine` with `PolicySource`, `compose-decision`, and provenance tracking. This note puts cue orchestration in the layout custom element and treats the toolkit as tool/service coordination only. Cue policy and playback policy are closer in shape to composed policy decisions than to layout internals. `SectionController` still lives in `section-player`, and the toolkit sits beneath the standalone section-player path as well as beneath assessment-player, so policy placed in the engine is reachable whichever player mounts the section. The layer-ownership table below was re-derived against the engine on 2026-08-15.
 
 **4. Do not reuse the canonical `Stage` vocabulary for cue gating.** `players-shared/src/pie/stages.ts` is a lifecycle list — `composed`, `engine-ready`, `interactive`, `disposed` — deliberately narrowed in the M6 retro after earlier readiness-event drift was removed. Progression and cue gating are not in it and should not be added to it.
 
@@ -52,7 +52,9 @@ State](#current-state) is still the open decision: renderer dispatch in
 assessment-player, or the standalone section-player path the host already drives
 by tag. Everything the note lists as a prerequisite — the media vocabulary, the
 shared validation layer, a shipped media-rendering precedent — is satisfied. This
-decision is what a PRD has to take.
+decision is what a PRD has to take, against an asymmetry worth stating: no
+integration renders a section through assessment-player, and every one that
+renders a section at all picks the layout tag itself.
 
 **2. Media-control styling now has a palette to consume.** The [broad theming
 contract](../prds/pie-727-broad-theming-contract.md) is `Accepted`: canonical
@@ -163,19 +165,29 @@ One cross-vendor trap, recorded 2026-08-07: **Learnosity's "stimulus" is not thi
 
 ## Layer Ownership
 
+Re-derived 2026-08-15 against `assessment-toolkit`'s engine layer, and against the
+two entry paths rather than one: a host either mounts the layout tag itself, which
+is what happens today, or reaches it through assessment-player renderer dispatch,
+which does not exist. The toolkit is beneath both.
+
 ```mermaid
 flowchart TD
   hostApp["Host application"]
   assessmentPlayer["assessment-player"]
   timedSectionPlayer["timed-media section-player variant"]
-  sectionController["SectionController and toolkit"]
+  toolkit["assessment-toolkit: SectionRuntimeEngine, ToolPolicyEngine"]
+  sectionController["SectionController, in section-player"]
   videoStimulus["video-stimulus element"]
   itemPlayer["item-player"]
   childElements["normal PIE child elements"]
 
   hostApp -->|"assessment definition, persistence, policy"| assessmentPlayer
-  assessmentPlayer -->|"selects section renderer"| timedSectionPlayer
-  timedSectionPlayer -->|"section input and session updates"| sectionController
+  hostApp -->|"section input, host picks the tag"| timedSectionPlayer
+  assessmentPlayer -->|"selects section renderer, no such dispatch today"| timedSectionPlayer
+  timedSectionPlayer -->|"runtime registration, media and cue policy inputs"| toolkit
+  toolkit -->|"section input, recorded actions"| sectionController
+  sectionController -->|"controller events"| toolkit
+  toolkit -->|"composition republish"| timedSectionPlayer
   timedSectionPlayer -->|"media model and policy hooks"| videoStimulus
   timedSectionPlayer -->|"active item refs and sessions"| itemPlayer
   itemPlayer --> childElements
@@ -186,9 +198,10 @@ flowchart TD
 | Layer | Owns | Does not own |
 | --- | --- | --- |
 | Host application | Media hosting/CDN, CSP, item lookup/storage, durable attempt persistence, authorization, telemetry sinks, product workflow, backend policy. | Internal section runtime mechanics or child element behavior. |
-| `assessment-player` | Active section selection, assessment-level navigation, assessment session abstraction over section sessions. | Timed cue orchestration or media playback internals. |
-| Timed-media section-player variant | Media layout, cue activation, item reveal/selection, pause/resume policy, section-level completion view, bridge between media state and child item sessions. | Child element internals, backend storage, assessment-level routing. |
-| `SectionController` / toolkit | Aggregate section state, item-session map, persistence snapshot shape, tools/TTS/accessibility service coordination. | Direct per-item controller instantiation, product policy, durable storage. |
+| `assessment-player` | Active section selection, assessment-level navigation, assessment session abstraction over section sessions. Optional: a host supplying its own assessment shell reaches the section directly. | Timed cue orchestration or media playback internals. |
+| Timed-media section-player variant | Media layout, item reveal/selection, section-level completion view, bridge between media state and child item sessions. Cue activation and pause/resume policy sit here only if the engine does not take them — the open call in [Current State](#current-state), item 3. | Child element internals, backend storage, assessment-level routing. |
+| `assessment-toolkit` engine layer | Runtime registration and stage derivation through `SectionRuntimeEngine`/`SectionEngineCore`, composed policy decisions with provenance through `ToolPolicyEngine`, tool/TTS/accessibility service coordination, composition republish to the layout. Reached on both entry paths, so policy placed here needs no assessment-player. | Media playback internals, per-item controller instantiation, durable storage, product policy. |
+| `SectionController`, in `section-player` | Aggregate section state, the item-session map, per-item completion and formative Try/mastery rollups, the persistence snapshot shape. | Cue timing, media state, assessment-level routing, durable storage. |
 | `video-stimulus` | Media rendering and stable playback API: sources, captions, transcript, time, play/pause/seek, media events. | Cue-to-item bindings, scoring, child item sessions. |
 | `item-player` | Rendering normal item content and propagating item sessions/outcomes. | Media timeline policy or section-level aggregation policy. |
 | Child PIE elements | Their own model/session/environment, authoring surface, session-changed events, controller outcomes. | Section composition, media state, persistence. |
@@ -263,15 +276,15 @@ const section = {
     cues: [
       {
         identifier: "cue-eye-protection",
-        startTime: 42.5,
+        range: { startSeconds: 42.5 },
         itemRefs: ["q-eye-protection"],
-        policy: { activation: "pause-and-require-response" },
+        policy: { activation: "gate", releaseOn: "correct", onUnknownCorrectness: "release" },
       },
       {
         identifier: "cue-spill-response",
-        startTime: 118,
+        range: { startSeconds: 118 },
         itemRefs: ["q-spill-response"],
-        policy: { activation: "reveal", allowResumeBeforeResponse: true },
+        policy: { activation: "reveal" },
       },
     ],
     playbackPolicy: {
@@ -305,7 +318,7 @@ A cue is a timestamp or time range that activates one or more item refs and opti
 Candidate cue patterns:
 
 - `reveal`: the item becomes visible or selected when the media reaches the cue.
-- `pause-and-require-response`: playback pauses, focus moves to the item region, and playback can resume only after the required item session is complete.
+- `gate`: playback pauses, focus moves to the item region, and playback resumes only once the cue's release condition holds.
 - `metadata`: the cue emits state/events for analytics or author-visible timeline markers without gating the learner.
 - `multi-item`: one cue activates several item refs, either together or as a local item group.
 
@@ -314,12 +327,13 @@ Cue policy is section behavior. It should not be encoded inside child item model
 A gating cue names a **gate condition** over formative state rather than defining
 its own: `responded` for the response-only case, or one of the
 `FormativeCorrectness` values the [formative delivery
-contract](../prds/formative-delivery-contract.md) settles. `pause-and-require-response`
-above is the `responded` case under an older name. Whether a cue may resume is
+contract](../prds/formative-delivery-contract.md) settles. The `gate` pattern above
+was sketched as `pause-and-require-response` before that vocabulary existed, which
+is the `responded` condition under an older name. Whether a cue may resume is
 therefore a question about state that already exists, which is why formative
 delivery sequences first — see [Decisions, 2026-08-15](#decisions-2026-08-15).
 
-Enforcement is conditional on the media adapter. `pause-and-require-response`
+Enforcement is conditional on the media adapter. A `gate`
 holds only where the Media Time Source reports `canPause`; where it does not, the
 cue still fires and records state, and the gate degrades to advisory with a
 framework warning.

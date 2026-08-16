@@ -62,3 +62,20 @@ fact that would reverse this order and nothing else about the design.
 - The timed-media PRD's remaining blocking decisions (where the section flavor
   attaches, where cue and playback policy runs) are unaffected by this record and
   stay open.
+
+## Outcome, 2026-08-15
+
+The condition in **Decision** is met: formative delivery merged the same day this
+was accepted. `FormativeCorrectness` is an exported type, Try state persists in the
+section snapshot, and the per-item `env` seam a reveal needed exists — so a cue
+policy names `correct` over state that is already there, which is the whole point
+of this ordering.
+
+One thing in **Consequences** above reads differently now, and the record keeps
+both: cue and playback policy ownership was taken to ride on where the section
+flavor attaches. It does not. `assessment-toolkit` sits beneath the standalone
+section-player path as well as beneath assessment-player — the formative Try round
+trip runs controller → `SectionRuntimeEngine` → `PieAssessmentToolkit` →
+composition republish, with no assessment-player in it — so `ToolPolicyEngine` can
+own cue and playback policy whichever player mounts the section. Where the flavor
+attaches stays open and is now the timed-media PRD's only blocking decision.

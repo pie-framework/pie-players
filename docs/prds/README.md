@@ -49,6 +49,11 @@ live per-slice record is `Active`.
   section-level timed media with cue-driven item orchestration. Sequenced behind
   the formative contract, whose state its cue gate conditions name. Distinct from
   sign language despite both being video; each PRD fences the other out.
+- [`speech-to-text.md`](./speech-to-text.md) -
+  dictation as the first production accommodation: it writes the response rather
+  than re-presenting content, so it needs an element-facing insertion contract
+  that the presentation accommodations never did. No QTI/AfA term exists to map
+  to.
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).

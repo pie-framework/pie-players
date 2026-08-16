@@ -182,6 +182,59 @@ cascade requirements are intentional. Such a selector follows the normal
 cascade in a stylesheet-only integration; when it competes with a mounted
 `<pie-theme>`'s inline tokens, it needs `!important`.
 
+## SchoolCity scheme parity
+
+SchoolCity offers 15 schemes. Four are built in here — Black on White, White on
+Black, Black on Rose, Yellow on Blue — and the other eleven are host palettes a
+programme registers itself, from these values:
+
+| SchoolCity token | Value |
+| --- | --- |
+| blue | `#0028a1` |
+| red | `#bf0d00` |
+| green | `#008272` |
+| yellow | `#ffe072` |
+| light gray | `#c0c3cf` |
+| dark gray | `#9297a6` |
+| rose | `#f8d1ce` |
+
+All 15 clear 4.5:1 for ordinary text; Green on White is the tightest at 4.73:1.
+Ordinary text is not the whole cost, though, because the light base chose every
+semantic colour against white. What an overlay has to carry scales with how far
+its background sits from white:
+
+| Background | Tokens | Why |
+| --- | --- | --- |
+| white | 2 | ink and page; every base colour already holds |
+| white, with a mid-tone ink | 4 | the ink misses the tinted recessed surfaces |
+| `#000000` | 10 | inverted page; borrow the dark base theme's inks |
+| mid-tone (blue, red, green, dark gray) | ~18 | neither light nor dark inks hold, so icons, boundaries and focus rings are re-chosen too |
+
+```ts
+registerPieColorSchemes([
+  {
+    id: "sc-blue-on-white",
+    name: "Blue on White",
+    variables: { "--pie-text": "#0028a1", "--pie-background": "#ffffff" },
+  },
+]);
+```
+
+`packages/theme/tests/schoolcity-scheme-registration.test.ts` carries a validated
+palette for one scheme of each cost class and is the place to copy from.
+
+Read the receipt. Contrast diagnostics are warnings, not errors, because the
+palette is host-owned — a two-token White on Blue registers successfully and
+returns fourteen warnings, and a host that filters on `severity === "error"`
+ships cyan links on a mid-blue page. `registerPieColorSchemes` checks only the
+relationships whose tokens the overlay touches, so covering a flagged token is
+what clears its relationship.
+
+These are host palettes rather than built-ins on purpose. A built-in is a full
+48-token palette, since a two-colour scheme is a promise the whole surface has to
+keep, and which schemes a programme wants is still open on
+[PIE-472](https://illuminate.atlassian.net/browse/PIE-472).
+
 ## Fixed hues
 
 Some components paint a hue the palette does not own: a data encoding, like the

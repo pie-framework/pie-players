@@ -23,16 +23,16 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": false,
+			"preset": "none",
 			"correctness": {
-				"recommended": true,
+				"preset": "recommended",
 				"noUnusedFunctionParameters": "off",
 				"noUnusedVariables": "off",
 				"noUnusedImports": "off",
 				"noUnusedPrivateClassMembers": "off"
 			},
 			"suspicious": {
-				"recommended": true,
+				"preset": "recommended",
 				"noExplicitAny": "off",
 				"noImplicitAnyLet": "off",
 				"noAssignInExpressions": "off",

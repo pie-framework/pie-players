@@ -67,6 +67,7 @@
 	// resolves through this package's CE bundle which externalizes @pie-players/*).
 	import { approximateZoomFromWidths, computeZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/zoom-compensation';
 	import {
+		collectFocusable,
 		createFocusTrap,
 		FOCUSABLE_SELECTOR,
 		isProgrammaticFocusTarget,
@@ -1612,13 +1613,14 @@
 		// Real focusable elements inside the shell, in DOM order. The focus
 		// guards at the shell boundaries are filtered out so external entry
 		// points land on actual controls instead of bouncing right back out.
+		// Shadow-aware, matching the focus trap: a hosted tool renders into
+		// `shadow: "open"`, so a flat query returns only the shell's own chrome and an
+		// external entry point would land there instead of on the tool's first control.
 		const getShellFocusables = (): HTMLElement[] => {
 			if (!shellEl) return [];
-			return Array.from(
-				shellEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-			)
-				.filter((el) => el !== startFocusGuardEl && el !== endFocusGuardEl)
-				.filter(isProgrammaticFocusTarget);
+			return collectFocusable(shellEl).filter(
+				(el) => el !== startFocusGuardEl && el !== endFocusGuardEl
+			);
 		};
 
 		// Bridges the page's tab order into the calculator shell. The shell is

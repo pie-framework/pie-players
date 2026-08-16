@@ -6,7 +6,7 @@ Tracking: this workstream is deliberately not tracked in an issue tracker. This 
 
 ## Current State
 
-Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary and in shipped media-rendering precedent — see [Revalidation, 2026-08-09](#revalidation-2026-08-09).
+Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work and again 2026-08-15: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary, shipped media-rendering precedent and now theming — see [Revalidation, 2026-08-09](#revalidation-2026-08-09) and [Revalidation, 2026-08-15](#revalidation-2026-08-15).
 
 Four things changed underneath this note as of 2026-08-05. They are open decisions, not corrections to the direction.
 
@@ -20,7 +20,7 @@ Four things changed underneath this note as of 2026-08-05. They are open decisio
 
 Two smaller notes for whoever picks this up:
 
-- The interaction-event shared-contract PRD is now behind its own implementation. `players-shared/src/instrumentation/` ships typed events with DebugPanel, NewRelic, and Composite providers plus an event bridge. That PRD should be rewritten to align with what shipped rather than to design from scratch, which also changes its position in the shared-contracts review sequence.
+- The interaction-event shared-contract PRD is partly overtaken by shipped code, and this line overstated it until 2026-08-15: `players-shared/src/instrumentation/` ships a provider abstraction — DebugPanel, NewRelic, Console, Composite — and `players-shared/src/pie/instrumentation-event-map.ts` ships source-event → telemetry-event *name* mappings behind a bridge. Neither is the projection envelope that PRD designs; there is no source-reference shape, category or version. See [Standing Implementation](../prds/shared-contracts/interaction-event-contract.md#standing-implementation), which now records the boundary and what it costs that PRD's ownership question.
 - `video-stimulus` will not be a code sibling of the passage element. `passage` lives in `pie-elements-ng/packages/elements-react/`; `elements-svelte/` currently holds three elements. A Svelte video-stimulus shares no framework or code with `passage` — the sibling framing in this note is conceptual only.
 
 Two workstreams landed since this note was written that a video stimulus surface must consume rather than re-invent: the broad theming contract (`../prds/pie-727-broad-theming-contract.md` and the token inventory) for media control styling, and the line-reader window view plus inline TTS work for media-control focus and reading-tool coordination. Both postdate [`../prds/shared-contracts/accessibility-runtime-patterns.md`](../prds/shared-contracts/accessibility-runtime-patterns.md).
@@ -40,6 +40,85 @@ The sign-language work (PIE-880 in `pie-players`, PIE-881 in `pie-api-aws`) left
 **4. Four accessibility requirements below have moved — two settled, one settled only for the case that has a text twin, one settled as a refusal.** See [Accessibility and Toolkit Implications](#accessibility-and-toolkit-implications), where each is attributed and bounded. Two are worth naming here. The refusal: signing has no equivalent of `data-tts-suppress` and none should be added, because suppression is per content node while a signed alternate is one video per item, so cue-scoped suppression inherits that reasoning rather than the read-aloud precedent. And the half-answer: media *sizing* tokens shipped, but the signing region uses the browser's default `<video>` controls unstyled, so the media-control styling and keyboard-labelling requirements are untouched by this work rather than resolved by it.
 
 One addition, not a correction: the vocabulary now has a **producer**. The `pie-api-aws` Learnosity importer writes `accessibilityCatalogs` carrying `MediaAssetRef`-shaped media, which has already constrained the contract once — `transcript` had to join the known catalog types because the importer emits it. [QTI 3 Mapping](#qti-3-mapping) should be read with a live import path in mind rather than as a purely prospective concern.
+
+### Revalidation, 2026-08-15
+
+Nothing reversed; three things moved, and the note's central prerequisite is now
+the only thing standing between this workstream and implementation.
+
+**1. `sectionType` still has no occurrence in `packages/`,** so the additive
+section sketch below still lands cleanly and item 1 of [Current
+State](#current-state) is still the open decision: renderer dispatch in
+assessment-player, or the standalone section-player path the host already drives
+by tag. Everything the note lists as a prerequisite — the media vocabulary, the
+shared validation layer, a shipped media-rendering precedent — is satisfied. This
+decision is what a PRD has to take.
+
+**2. Media-control styling now has a palette to consume.** The [broad theming
+contract](../prds/pie-727-broad-theming-contract.md) is `Accepted`: canonical
+resolution, ten complete built-in schemes, `color-scheme` polarity stamped from
+the resolved scheme, and `--pie-fixed-hue-collapse` as the mechanism a pinned
+accent uses to resolve into a palette under an accommodation. A stimulus player's
+controls are exactly the surface item 4 of the 2026-08-09 revalidation left
+unresolved, and they now have a contract to be built against rather than a gap.
+
+**3. The `content-lead` surface is a second shipped placement precedent.** The
+audio-transcript capability (PIE-902) renders a text alternate full width, above
+the card body, in document flow, on both item and passage cards, while signing
+uses the side-docked `content-media` surface. A timed-media section's captions and
+transcript inherit both geometries rather than inventing a third.
+
+### Decisions, 2026-08-15
+
+Three decisions were taken in design review. They constrain what a PRD may
+choose; they do not close item 1 of [Current State](#current-state), which stays
+the blocking decision.
+
+**1. Formative delivery ships first.** Recorded as
+[ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) and specified by
+the [formative delivery contract](../prds/formative-delivery-contract.md). A cue's
+interesting gate condition is "answered correctly", and correctness at the section
+layer needs a per-item evaluation seam PIE did not have. Building cues first would
+force `responded` as the only expressible condition and then revise a shipped
+section slice when correctness arrived.
+
+The consequence for this note is concrete: a cue's activation policy names a
+**gate condition** over formative state rather than defining its own, and the
+vocabulary is already settled — `correct`, `partial`, `incorrect`, `unknown`, plus
+`responded` for the response-only case. `unknown` is not a defect to design
+around; it is the state of an item no loaded controller can score, and a cue
+authored to gate on `correct` must state what it does when the answer is
+`unknown` rather than treating it as wrong.
+
+**2. Media is reached through a Media Time Source port, not a chosen player.**
+The section orchestrates against an `HTMLMediaElement`-shaped interface —
+`currentTime`, `duration`, `paused`, `seekable`, `play()`, `pause()`, plus
+time/seek/end notifications — and never against a library API. That shape is
+chosen because it is the browser's own: a native `<video>` satisfies it with an
+adapter of a few lines, which is what makes the port testable and what keeps the
+[Video Player Dependency Decision](#video-player-dependency-decision) reversible
+rather than load-bearing. [`VideoStimulusHandle`](#stimulus-api-expectations)
+below is this port under an element-shaped name; a PRD should name the port
+directly so a host can supply its own media element without shipping a PIE
+element at all.
+
+The port declares its own limits, because not every media source can be
+controlled: `canPause` and `canRestrictSeeking` are capabilities of the adapter,
+not assumptions of the section.
+
+**3. Playback policy is enforced or advisory, and degrades on capability.** A
+seek restriction or a pause-on-cue is *enforced* only when the port reports the
+capability. Where it does not — a third-party embed that exposes time but not
+control — the policy degrades to *advisory*: cues still fire, state is still
+recorded, and the restriction is reported as a recoverable framework warning
+rather than silently appearing to hold. Silent degradation is the failure mode to
+avoid, because a seek lock that does not lock reads to an author as a lock that
+does.
+
+This is the same fail-soft posture as **Tool Surface Failure** in
+[`../../CONTEXT.md`](../../CONTEXT.md): a capability gap isolates to the affected
+policy and never blocks delivery. A PRD owns where the warning surfaces and
+whether an author can require enforcement and fail closed instead.
 
 ## Context
 
@@ -231,6 +310,19 @@ Candidate cue patterns:
 - `multi-item`: one cue activates several item refs, either together or as a local item group.
 
 Cue policy is section behavior. It should not be encoded inside child item models, and it should not be encoded as private behavior of the video stimulus.
+
+A gating cue names a **gate condition** over formative state rather than defining
+its own: `responded` for the response-only case, or one of the
+`FormativeCorrectness` values the [formative delivery
+contract](../prds/formative-delivery-contract.md) settles. `pause-and-require-response`
+above is the `responded` case under an older name. Whether a cue may resume is
+therefore a question about state that already exists, which is why formative
+delivery sequences first — see [Decisions, 2026-08-15](#decisions-2026-08-15).
+
+Enforcement is conditional on the media adapter. `pause-and-require-response`
+holds only where the Media Time Source reports `canPause`; where it does not, the
+cue still fires and records state, and the gate degrades to advisory with a
+framework warning.
 
 ## Worked Example
 

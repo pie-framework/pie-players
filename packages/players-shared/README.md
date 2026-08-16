@@ -19,11 +19,36 @@ Supported subpaths are declared in `package.json`:
 - `@pie-players/pie-players-shared/security`
 - `@pie-players/pie-players-shared/object`
 - `@pie-players/pie-players-shared/types`
+- `@pie-players/pie-players-shared/formative`
 - `@pie-players/pie-players-shared/pie`
 - `@pie-players/pie-players-shared/pie/tag-names`
 - `@pie-players/pie-players-shared/loaders`
 - `@pie-players/pie-players-shared/server/npm-registry`
 - `@pie-players/pie-players-shared/i18n`
+
+## Formative Delivery
+
+`@pie-players/pie-players-shared/formative` holds the policy resolution, outcome
+aggregation, Try-state reducer, item view, and mastery rollup that
+`pie-section-player` drives. It is pure — no DOM, no timers, no element registry
+— so it is testable without a browser and importable by an adapter that has no
+player.
+
+```ts
+import {
+  aggregateFormativeOutcome,
+  resolveFormativePolicy,
+  resolveFormativeItemView,
+  rollupFormativeMastery,
+} from "@pie-players/pie-players-shared/formative";
+```
+
+The authored half — `FormativeDeliveryPolicy` on `AssessmentSection` and
+`FormativeItemPolicy` on `AssessmentItemRef` — is re-exported from the package
+root and from `/types`, beside the section types it annotates.
+
+The contract is [`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md),
+including the QTI 3 mapping and why PIE says **Try** rather than "attempt".
 
 ## Browser ESM Element Contract
 

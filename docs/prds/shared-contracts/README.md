@@ -1,12 +1,12 @@
 # Shared Contracts PRDs
 
-This folder will hold the PRDs that turn
+This folder holds the PRDs that turn
 [`shared-contracts-p0.md`](../../architecture/shared-contracts-p0.md) into
 accepted implementation contracts.
 
-The architecture note is directional. These PRDs will decide exact package
-ownership, TypeScript names, exports, wire fields, migration behavior, and
-verification requirements.
+The architecture note is directional. These PRDs decide exact package ownership,
+TypeScript names, exports, wire fields, migration behavior, and verification
+requirements.
 
 Tracking: this workstream is deliberately not tracked in an issue tracker. The
 `Status:` line in each PRD plus the sequence below are the record.
@@ -20,18 +20,21 @@ Recommended review and implementation order:
 1. [`interaction-event-contract`](./interaction-event-contract.md)
    - Event projection vocabulary, source refs, typed event families,
      privacy/telemetry rules, and process/path fields.
-   - **Rescope before review (noted 2026-08-05).** This PRD now trails its own
-     implementation. `players-shared/src/instrumentation/` ships typed
-     instrumentation events with `DebugPanelInstrumentationProvider`,
-     `NewRelicInstrumentationProvider`, and
-     `CompositeInstrumentationProvider`, plus an event bridge and provider
-     resolution; `assessment-toolkit` carries an instrumentation bridge, and
+   - **Rescope before review (noted 2026-08-05, bounded 2026-08-15).** A shipped
+     instrumentation path occupies part of this PRD's ground:
+     `players-shared/src/instrumentation/` ships an `InstrumentationProvider`
+     abstraction with DebugPanel, NewRelic, Console and Composite providers plus
+     a buffered debug stream; `players-shared/src/pie/instrumentation-event-map.ts`
+     ships source-event → telemetry-event *name* mappings behind a bridge,
+     `assessment-toolkit` carries its own bridge, and
      `section-player-tools-instrumentation-debugger` consumes the stream. The
-     task is to document and align with what shipped — and to decide whether
-     the adapter-facing projection is the same contract as the instrumentation
-     stream or a separate one — not to design the vocabulary from scratch.
-   - Because it is now largely descriptive, it no longer has to gate the
-     others. Reviewing it first is still useful for vocabulary, but
+     projection envelope — version, id, source ref, category, causality, typed
+     payload families — does not exist, so this is not "typed events already
+     shipped". The task is to align with what shipped and to decide whether the
+     adapter-facing projection wraps the instrumentation stream or sits beside
+     it. See [Standing Implementation](./interaction-event-contract.md#standing-implementation).
+   - Because it is now partly descriptive, it no longer has to gate the others.
+     Reviewing it first is still useful for vocabulary, but
      `score-components-and-section-outcomes` and `media-asset-contract` can
      proceed in parallel.
 2. [`score-components-and-section-outcomes`](./score-components-and-section-outcomes.md)
@@ -39,6 +42,12 @@ Recommended review and implementation order:
      `TestAttemptSession`, `SectionControllerSessionState`, and
      `AssessmentSession`.
    - Missing section/assessment score and completion rollup projections.
+   - **Partly overtaken (2026-08-15).** The [formative delivery
+     contract](../formative-delivery-contract.md) ships an item aggregation and a
+     section mastery rollup for one purpose. It carries no provenance or
+     authority, so it narrows this PRD rather than satisfying it — but the general
+     projection now has a shipped consumer to stay expressible for. See the note
+     at the top of that file.
 3. [`media-asset-contract`](./media-asset-contract.md)
    - Stimulus media sources, captions, transcripts, poster, accessibility
      metadata, and host storage boundaries.
@@ -72,15 +81,19 @@ Recommended review and implementation order:
 
 Timed-media implementation PRDs consume the shared contracts above and live
 outside this folder. The first planned timed-media PRD is
-[`../timed-media-section-contract.md`](../timed-media-section-contract.md).
+[`../timed-media-section-contract.md`](../timed-media-section-contract.md), now
+sequenced behind [`../formative-delivery-contract.md`](../formative-delivery-contract.md)
+because its cue gate conditions name formative state — recorded as
+[ADR 0001](../../adr/0001-formative-delivery-before-timed-media.md).
 
-[`../sign-language-asl-support.md`](../sign-language-asl-support.md) also
-consumes `media-asset-contract` and `accessibility-runtime-patterns`, and is the
-nearest-term consumer of both: unlike timed media it builds on shipped
-infrastructure (`AccessibilityCatalogResolver`, `data-catalog-idref`,
-`PnpPolicySource`) rather than on machinery that does not exist yet. It does not
-need `interaction-event-contract` or `score-components-and-section-outcomes`,
-because a signed alternate representation produces no responses and no outcomes.
+[`../sign-language-asl-support.md`](../sign-language-asl-support.md) consumed
+`media-asset-contract` and `accessibility-runtime-patterns` first and has landed
+in this repo, which is why the media vocabulary was ratified against a shipped
+consumer rather than a prospective one. It needed neither
+`interaction-event-contract` nor `score-components-and-section-outcomes`, because
+a signed alternate representation produces no responses and no outcomes. The
+audio-transcript capability in [`../audio-accommodations.md`](../audio-accommodations.md)
+followed the same route for a text alternate.
 Composition authoring is a later PRD and should not be folded into the shared
 contracts, `video-stimulus`, QTI mappings, or host-specific prose.
 

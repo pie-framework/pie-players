@@ -4,6 +4,23 @@ import {
 	createPieLogger,
 	isGlobalDebugEnabled,
 } from "@pie-players/pie-players-shared";
+import {
+	aggregateFormativeOutcome,
+	isFormativeSectionEnabled,
+	normalizeFormativeSectionSlice,
+	recordFormativeTry,
+	resolveFormativePolicies,
+	retryFormativeItem,
+	revealFormativeItem,
+	hideFormativeItem,
+	rollupFormativeMastery,
+	toFormativeSectionSlice,
+	type FormativeItemState,
+	type FormativeMasteryRollup,
+	type FormativeScoredOutcome,
+	type FormativeSectionProjection,
+	type ResolvedFormativePolicy,
+} from "@pie-players/pie-players-shared/formative";
 import type {
 	SectionControllerHandle,
 	SectionSessionPersistenceConfig,
@@ -14,6 +31,9 @@ import { SectionItemNavigationService } from "./SectionItemNavigationService.js"
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	ContentLoadedEvent,
+	FormativeRevealChangedEvent,
+	FormativeTryRecordedEvent,
+	SectionMasteryChangedEvent,
 	ItemCompleteChangedEvent,
 	ItemPlayerErrorEvent,
 	ItemSelectedEvent,
@@ -64,6 +84,12 @@ interface NormalizedApplySession {
 	visitedItemIdentifiers?: string[];
 	itemSessions: TestAttemptSession["itemSessions"];
 	itemSessionCount: number;
+	/**
+	 * `null` when the incoming snapshot carried no readable formative slice —
+	 * absent, or a version this build rejects. Distinguished from an empty record
+	 * so `replace` can clear state while `merge` leaves it alone.
+	 */
+	formativeStates: Record<string, FormativeItemState> | null;
 }
 
 const logger = createPieLogger("section-controller", () =>
@@ -104,6 +130,13 @@ export class SectionController implements SectionControllerHandle {
 	private nextApplyRevision = 0;
 	private lastReplayedApplyRevision = 0;
 	private pendingApplyReplay: PendingApplyReplay | null = null;
+	// Formative delivery. Both maps are keyed by canonical item id, the same key
+	// `itemSessions` and `itemCompletionByCanonicalId` use, so one id addresses an
+	// item's responses, its completion and its Try state.
+	private formativePolicies: Record<string, ResolvedFormativePolicy> = {};
+	private formativeStates: Record<string, FormativeItemState> = {};
+	private formativeEnabled = false;
+	private lastMasterySignature = "";
 
 	private emitChange(event: SectionControllerChangeEvent): void {
 		for (const listener of Array.from(this.listeners)) {
@@ -182,6 +215,10 @@ export class SectionController implements SectionControllerHandle {
 		if (sectionIdentityChanged) {
 			this.resetLifecycleTracking();
 		}
+		// Rebuilt on every initialize, including same-cohort `updateInput`: an
+		// authoring edit or a host policy change should reach delivery, and Try
+		// state survives it because it lives in a separate map.
+		this.rebuildFormativePolicies();
 		this.bootstrapCompletionFromSessions();
 		if (sectionIdentityChanged) {
 			const sectionNavigationEvent: SectionNavigationChangeEvent = {
@@ -254,6 +291,7 @@ export class SectionController implements SectionControllerHandle {
 			itemSessionsByItemId: this.getItemSessionsByItemId(),
 			testAttemptSession: this.getResolvedTestAttemptSession(),
 			itemViewModels,
+			formative: this.getFormativeProjection(),
 		};
 	}
 
@@ -348,7 +386,201 @@ export class SectionController implements SectionControllerHandle {
 	 */
 	public getSession(): SectionControllerSessionState | null {
 		if (!this.state.testAttemptSession) return null;
-		return this.sessionService.toSessionState(this.state.testAttemptSession);
+		const base = this.sessionService.toSessionState(
+			this.state.testAttemptSession,
+		);
+		// Omitted entirely for a non-formative section, so its snapshots stay
+		// byte-identical to what this controller produced before this contract.
+		if (!this.formativeEnabled) return base;
+		return { ...base, formative: toFormativeSectionSlice(this.formativeStates) };
+	}
+
+	// ------------------------------------------------------------------
+	// Formative delivery
+	// ------------------------------------------------------------------
+
+	private rebuildFormativePolicies(): void {
+		const sectionPolicy = this.state.input?.section?.formative ?? null;
+		const items = this.state.viewModel.adapterItemRefs
+			.map((itemRef) => ({
+				identifier: itemRef.identifier || itemRef.item?.id || "",
+				policy: itemRef.formative ?? null,
+			}))
+			.filter((entry) => !!entry.identifier);
+		this.formativePolicies = resolveFormativePolicies({
+			sectionPolicy,
+			items,
+		});
+		this.formativeEnabled = isFormativeSectionEnabled(this.formativePolicies);
+	}
+
+	private computeMastery(): FormativeMasteryRollup {
+		return rollupFormativeMastery({
+			itemIdentifiers: this.getSectionItemIdentifiers(),
+			states: this.formativeStates,
+		});
+	}
+
+	public getFormativeProjection(): FormativeSectionProjection | null {
+		if (!this.formativeEnabled) return null;
+		return this.cloneForRead({
+			version: 1 as const,
+			enabled: true,
+			policies: this.formativePolicies,
+			states: this.formativeStates,
+			mastery: this.computeMastery(),
+		});
+	}
+
+	/**
+	 * Record one Try from element outcomes.
+	 *
+	 * Correctness derivation lives here rather than at the call site so one
+	 * aggregation policy applies to every caller. The reducer is a no-op when the
+	 * item cannot currently be checked, which is what makes a double submit safe
+	 * — a second click landing before the composition republishes is dropped
+	 * rather than spending a Try.
+	 */
+	public recordFormativeTry(args: {
+		itemId: string;
+		outcomes?: unknown[];
+	}): void {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		const policy = this.formativePolicies[canonicalItemId];
+		if (!policy?.enabled) return;
+		const outcome = aggregateFormativeOutcome(
+			(args.outcomes ?? []) as Array<FormativeScoredOutcome | undefined>,
+		);
+		const previous = this.formativeStates[canonicalItemId];
+		const next = recordFormativeTry({
+			state: previous,
+			itemIdentifier: canonicalItemId,
+			policy,
+			outcome,
+		});
+		if (next === previous) return;
+		this.formativeStates = { ...this.formativeStates, [canonicalItemId]: next };
+		const timestamp = Date.now();
+		const event: FormativeTryRecordedEvent = {
+			type: "formative-try-recorded",
+			itemId: args.itemId,
+			canonicalItemId,
+			tryCount: next.tryCount,
+			outcome,
+			revealed: next.revealed,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp,
+		};
+		this.emitChange(event);
+		this.emitMasteryIfChanged(timestamp);
+	}
+
+	/** Dismiss a reveal and reopen the item, withdrawing its env projection. */
+	public retryFormativeItem(args: { itemId: string }): void {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		const policy = this.formativePolicies[canonicalItemId];
+		if (!policy?.enabled) return;
+		const previous = this.formativeStates[canonicalItemId];
+		const next = retryFormativeItem({ state: previous, policy });
+		if (!next || next === previous) return;
+		this.commitFormativeReveal({
+			itemId: args.itemId,
+			canonicalItemId,
+			next,
+			source: "learner",
+		});
+	}
+
+	/**
+	 * Reveal on host authority — a teacher-driven "show the answer". Spends no
+	 * Try and ignores the Try budget.
+	 */
+	public revealFormativeItem(args: {
+		itemId: string;
+		feedback: "correctness" | "solution";
+	}): void {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		const policy = this.formativePolicies[canonicalItemId];
+		if (!policy?.enabled) return;
+		if (args.feedback !== "correctness" && args.feedback !== "solution") return;
+		const previous = this.formativeStates[canonicalItemId];
+		const next = revealFormativeItem({
+			state: previous,
+			itemIdentifier: canonicalItemId,
+			policy,
+			feedback: args.feedback,
+		});
+		if (next === previous) return;
+		this.commitFormativeReveal({
+			itemId: args.itemId,
+			canonicalItemId,
+			next,
+			source: "host",
+		});
+	}
+
+	/** Withdraw a reveal on host authority, Try budget notwithstanding. */
+	public hideFormativeItem(args: { itemId: string }): void {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		const policy = this.formativePolicies[canonicalItemId];
+		if (!policy?.enabled) return;
+		const previous = this.formativeStates[canonicalItemId];
+		const next = hideFormativeItem({ state: previous, policy });
+		if (!next || next === previous) return;
+		this.commitFormativeReveal({
+			itemId: args.itemId,
+			canonicalItemId,
+			next,
+			source: "host",
+		});
+	}
+
+	/**
+	 * Store a reveal transition and announce it. Shared by the three callers so
+	 * one event describes every reveal change a Try did not cause.
+	 */
+	private commitFormativeReveal(args: {
+		itemId: string;
+		canonicalItemId: string;
+		next: FormativeItemState;
+		source: "learner" | "host";
+	}): void {
+		this.formativeStates = {
+			...this.formativeStates,
+			[args.canonicalItemId]: args.next,
+		};
+		const event: FormativeRevealChangedEvent = {
+			type: "formative-reveal-changed",
+			itemId: args.itemId,
+			canonicalItemId: args.canonicalItemId,
+			revealed: args.next.revealed,
+			feedback: args.next.revealOverride,
+			tryCount: args.next.tryCount,
+			source: args.source,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
+	}
+
+	/**
+	 * Emit only on a rollup change, matching how
+	 * `section-items-complete-changed` gates on the aggregate rather than on
+	 * every intermediate count.
+	 */
+	private emitMasteryIfChanged(timestamp: number): void {
+		if (!this.formativeEnabled) return;
+		const mastery = this.computeMastery();
+		const signature = JSON.stringify(mastery);
+		if (signature === this.lastMasterySignature) return;
+		this.lastMasterySignature = signature;
+		const event: SectionMasteryChangedEvent = {
+			type: "section-mastery-changed",
+			mastery,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp,
+		};
+		this.emitChange(event);
 	}
 
 	private getSectionItemIdentifiers(): string[] {
@@ -539,6 +771,9 @@ export class SectionController implements SectionControllerHandle {
 		const normalized = this.normalizeApplySession(session);
 		this.applyNormalizedSessionToState(normalized, mode);
 		this.bootstrapCompletionFromSessions();
+		// Hydration restores Try state, so a subscriber that attaches after
+		// `hydrate()` still sees the rollup it is restoring into.
+		this.emitMasteryIfChanged(Date.now());
 		const applyRevision = ++this.nextApplyRevision;
 		if (!this.sectionLoadingComplete) {
 			this.pendingApplyReplay = {
@@ -742,6 +977,8 @@ export class SectionController implements SectionControllerHandle {
 		this.sectionItemsComplete = false;
 		this.completedCount = 0;
 		this.totalItems = 0;
+		this.formativeStates = {};
+		this.lastMasterySignature = "";
 	}
 
 	private toSectionContentKind(raw?: string): SectionContentKind {
@@ -929,6 +1166,10 @@ export class SectionController implements SectionControllerHandle {
 			visitedItemIdentifiers: visited,
 			itemSessions: normalizedItemSessions,
 			itemSessionCount: Object.keys(normalizedItemSessions).length,
+			formativeStates: normalizeFormativeSectionSlice({
+				slice: session.formative,
+				allowedItemIdentifiers: Array.from(allowedCanonicalIds),
+			}),
 		};
 	}
 
@@ -1003,6 +1244,18 @@ export class SectionController implements SectionControllerHandle {
 			this.state.testAttemptSession.navigationState.currentItemIndex = 0;
 			this.state.viewModel.currentItemIndex = 0;
 		}
+		if (normalized.formativeStates) {
+			this.formativeStates =
+				mode === "merge"
+					? { ...this.formativeStates, ...normalized.formativeStates }
+					: normalized.formativeStates;
+		} else if (mode === "replace") {
+			// A replace with no readable slice clears formative state, the same way
+			// it clears visited items. A rejected slice therefore restarts Tries
+			// while item sessions in the same snapshot are applied untouched.
+			this.formativeStates = {};
+		}
+		this.lastMasterySignature = "";
 	}
 
 	private cloneForRead<T>(value: T): T {

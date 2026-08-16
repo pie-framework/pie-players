@@ -20,11 +20,19 @@ Use one of these statuses at the top of each PRD:
 - `Accepted` - implemented and kept as the current contract reference.
 - `Superseded` - replaced by a newer PRD or contract document.
 
+A contract spanning repos qualifies the status on the same line — `Accepted for
+the pie-players contract` — and names what is outstanding, and where, in the
+implementation-status paragraph beneath it. An architecture note that carries a
+live per-slice record is `Active`.
+
 ## Structure
 
 - [`TEMPLATE.md`](./TEMPLATE.md) - required PRD sections and review checklist.
 - [`shared-contracts/`](./shared-contracts/) - PRDs for shared event, session,
   scoring, media, evidence, accessibility, and adapter-facing contracts.
+- [`pie-727-broad-theming-contract.md`](./pie-727-broad-theming-contract.md) -
+  the `--pie-*` token contract, colour-scheme runtime, and generated CSS
+  adapters. Per-surface slice and WCAG records live in `../architecture/`.
 - [`tts-highlight-target-resolver.md`](./tts-highlight-target-resolver.md) -
   focused implementation PRD for runtime TTS highlight target remapping.
 - [`sign-language-asl-support.md`](./sign-language-asl-support.md) -
@@ -34,9 +42,16 @@ Use one of these statuses at the top of each PRD:
   audio transcript as a policy-gated catalog card, replacing a pre-toolkit
   CSS-class gate by transforming content rather than accommodating the class;
   plus why autoplay is a content property and not a PIE feature.
+- [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
+  Try state, feedback reveal as a per-item `env` projection, and section mastery.
+  Consumes the shipped client-side scoring path rather than replacing it.
 - [`timed-media-section-contract.md`](./timed-media-section-contract.md) -
-  section-level timed media with cue-driven item orchestration. Distinct from
+  section-level timed media with cue-driven item orchestration. Sequenced behind
+  the formative contract, whose state its cue gate conditions name. Distinct from
   sign language despite both being video; each PRD fences the other out.
+
+Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
+would otherwise have to reconstruct — live in [`../adr/`](../adr/).
 
 ## Ground Rules
 

@@ -1,6 +1,7 @@
 # Sign Language (ASL) Support
 
-Status: Draft
+Status: Accepted for the `pie-players` contract, which is implemented and is the
+current reference. PIE-879 and PIE-881 land in other repos.
 
 Owner: PIE Players maintainers
 
@@ -14,7 +15,7 @@ Tracking: unlike the timed-media workstream, this one **is** tracked. Tickets be
 
 PIE-881 is the integration proof for all three. The pipeline is Learnosity source → `pie-api-aws` transform → PIE item `accessibilityCatalogs` → `pie-players` render; a story landing in isolation proves nothing until that path runs end to end.
 
-**Implementation status, 2026-08-09.** PIE-880 is implemented on `feat/PIE-880`: the card contract in `players-shared`, resolution, the per-item media region, and `signLanguage` policy gating. Decisions taken while building it are recorded in [Resolved Decisions](#resolved-decisions), and where they supersede an earlier line in this PRD, that line says so rather than being quietly rewritten. It renders end to end: the demo bundles a public-domain ASL recording and an e2e spec asserts the browser decodes and plays it. The clip is a stand-in — it does not sign the demo's prompts — because PIE does not own ASL video production; PIE-881 supplies the first authored footage.
+**Implementation status, 2026-08-15.** PIE-880 has landed on `develop`: the card contract in `players-shared`, resolution, the content-scoped media region, and `signLanguage` policy gating, extracted into `@pie-players/pie-tool-sign-language` on 2026-08-10. The import path is proved in-repo by `packages/section-player/tests/pie881-imported-asl-integration.spec.ts`, which renders the unmodified output of `mapLearnosityItemToPieItem` — synthetic source item, public-domain clip, so both fixture and spec are committable — and asserts it resolves, gates and plays; the same transform is covered against a real bank item in `pie-api-aws`, where the content can stay. Decisions taken while building it are recorded in [Resolved Decisions](#resolved-decisions), and where they supersede an earlier line in this PRD, that line says so rather than being quietly rewritten. The demo's clip is a stand-in — it does not sign the demo's prompts — because PIE does not own ASL video production; authored footage comes with PIE-881's real content.
 
 [PIE-882](https://illuminate.atlassian.net/browse/PIE-882) runs ahead of all three: it retires `@pie-element/core`, a dead `pie-elements-ng` package whose stale copy of the type model made a single canonical `accessibilityCatalogs` definition look like two competing ones. Not ASL work and not a code dependency — sequenced first so this work targets one unambiguous type home.
 
@@ -23,7 +24,7 @@ Naming: the epic currently says "Video Support (e.g. ASL)". That should be renam
 **Direction, pending a technical prototype and UX check.** These are the maintainers' current engineering direction, not yet finalized against a working prototype:
 
 - **Link video to the existing item id; do not clone a separate ASL item.** Resolves [The Import Invariant](#the-import-invariant) below toward "merge," chosen for scalability and lower technical debt over the simpler clone-based path. Pending a prototype.
-- **Default the video's own audio off.** Which audio channel this applies to — a track on the signing video itself, versus the item's own narration when both are present — needs to be confirmed precisely during prototyping rather than assumed. Related to, but not the same decision as, the [TTS-versus-signing coordination](#resolved-decisions) rule below.
+- **Default the video's own audio off** — shipped: the region renders `<video muted>`. Which audio channel that settles is still only the signing track; whether the item's own narration should also be suppressed while a signed alternate plays is untouched by this, and related to but not the same decision as the [TTS-versus-signing coordination](#resolved-decisions) rule below.
 - **Keep the framework generic, not ASL-specific.** Corroborates this PRD's existing catalog/`MediaAssetRef` reuse rather than changing it.
 - **Authoring tooling is explicitly deferred.** Ship rendering now; hold off on any UI for authoring cue/catalog data until a concrete use case exists. Reinforces the existing Non-Goal below rather than changing it.
 - **Presentation is settled for the first iteration** — fixed right-side split, resizable, no orientation options. See [Region Presentation](#region-presentation).

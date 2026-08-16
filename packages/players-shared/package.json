@@ -37,6 +37,10 @@
 			"types": "./dist/types/index.d.ts",
 			"import": "./dist/types/index.js"
 		},
+		"./formative": {
+			"types": "./dist/formative/index.d.ts",
+			"import": "./dist/formative/index.js"
+		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"

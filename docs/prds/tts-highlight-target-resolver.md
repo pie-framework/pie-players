@@ -1,8 +1,19 @@
 # TTS Highlight Target Resolver
 
-Status: Ready
+Status: Accepted
 
 Owner: PIE Players maintainers
+
+Implemented in 905080d4 (2026-06-25) and kept as the current contract reference.
+`@pie-players/pie-assessment-toolkit` owns it at
+`src/services/tts/highlight-target-resolver.ts` and exports
+`TTSHighlightContext`, `TTSHighlightTargetResolver`,
+`TTSHighlightTargetResolverRuntime` and `TTSHighlightTargetResolverProvider`
+from the package root. The interfaces in [Proposed Contract](#proposed-contract)
+shipped field for field; the ingress did not, and the three questions this PRD
+left open are answered in [Resolved Decisions](#resolved-decisions). The
+downstream `pie-qti` migration in [Migration
+Requirements](#migration-requirements) is not verifiable from this repo.
 
 Related architecture:
 
@@ -278,11 +289,35 @@ Release notes should describe this as an additive TTS highlight target resolver
 for projected or transformed content. They should not describe it as a
 QTI-specific API.
 
-## Open Questions
+## Resolved Decisions
 
-- Which existing public export path in `@pie-players/pie-assessment-toolkit`
-  should own the resolver types?
-- Does the current highlighter already support all required `Range` targets, or
-  does the implementation need a small toolkit-owned fallback painter?
-- What is the minimal validation rule for rejecting detached or out-of-scope
-  resolver targets without breaking valid projected-content use cases?
+**The package root owns the types.** `@pie-players/pie-assessment-toolkit`
+re-exports all four from `index.ts`; no subpath was added, because the narrowest
+existing public path is the root and a `services/` subpath would publish a
+directory whose other contents are internal.
+
+**Ingress is a late-bound provider callback, not a runtime context read.**
+`TTSService.setHighlightTargetResolverProvider(provider)` takes a thunk
+returning `TTSHighlightTargetResolverRuntime` — context and resolver together —
+and returns its own disposer; the service calls it per highlight, so a
+coordinator constructed before mount sees a resolver that appears later or
+changes on rerender. `assessmentToolkitRegionScopeContext`, this PRD's preferred
+ingress, would have coupled resolver lookup to region scope while the provider
+owns the context it hands over. Custom-element hosts reach the same seam through
+the `ttsHighlightTargetResolver` property on `pie-item-shell` and
+`pie-passage-shell`, forwarded through toolkit context. When the provider throws
+or the context is absent, `scopeElement` falls back to the service's current
+content element.
+
+**Element targets are painted by `HighlightCoordinator`, not by a new painter.**
+The coordinator gained element marking and cleanup over
+`ttsSentenceElementHighlights`, so `Range` and `HTMLElement` sentence targets
+share one clearing path.
+
+**Validation is scope containment.** A target is accepted when both of its
+boundary elements sit inside `context.scopeElement`, falling back to the
+service's current content element; an absent scope accepts everything. A word
+target that fails falls back to its native range. One failing target in a
+sentence set rejects the whole set back to native ranges, because a partially
+remapped sentence paints two highlights for one utterance. Resolver throws fail
+open at both call sites.

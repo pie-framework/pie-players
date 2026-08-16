@@ -21,6 +21,7 @@ import {
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
+import { demoFormativeDeliverySection } from "./demo-formative-delivery";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -584,6 +585,25 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		allowElementVersionOverrides: false,
 		section: demoPrintShowcaseSection,
+	},
+	"formative-delivery": {
+		id: "formative-delivery",
+		name: "Formative Delivery (check answer, retry, mastery)",
+		description:
+			"Check-answer delivery driven entirely by the section's `formative` policy: Try counts, feedback reveal, and per-item overrides. Four items show the four policy shapes side by side.",
+		integrationLevel: 2,
+		integrationTheme: "Formative delivery",
+		focus:
+			"Shows that PIE renders no feedback of its own — a reveal projects `mode: \"evaluate\"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.",
+		whatMakesItTick: [
+			"`section.formative` sets the default (three Tries, correctness feedback); each `assessmentItemRefs[].formative` overrides it field by field.",
+			"A check calls the item player's existing `provideScore()` and reports the outcomes; the section controller derives correctness and owns Try state.",
+			"Only the revealed item's `env` becomes `mode: \"evaluate\"` — its neighbours stay editable, which is the per-item seam the section env never had.",
+			"`fd-q2` uses `feedback: \"solution\"`, so its reveal projects `role: \"instructor\"` and the element shows the authored correct response.",
+			"`fd-q3` uses `revealOn: \"on-final-try\"`: the first two checks record a Try and reveal nothing.",
+			"`fd-q4` sets `enabled: false`, so one ordinary item sits inside a formative section with no control at all.",
+		],
+		section: demoFormativeDeliverySection,
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",

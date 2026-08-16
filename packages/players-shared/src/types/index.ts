@@ -7,6 +7,13 @@
  * INCLUDING REFERENCES TO THE DATASTORE PACKAGE INSTEAD WILL MAKE PIEONEER THROW 500
  * EVERYWHERE WITHOUT ANY FURTHER EXPLANATION
  */
+import type {
+	FormativeDeliveryPolicy,
+	FormativeItemPolicy,
+} from "../formative/types.js";
+
+export type { FormativeDeliveryPolicy, FormativeItemPolicy };
+
 export interface BaseEntity {
 	id?: string;
 	createdAt?: Date;
@@ -293,6 +300,15 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 
 	/** Item-level settings for tool requirements and customization */
 	settings?: ItemSettings;
+
+	/**
+	 * Formative delivery override for this item. Every field overrides the
+	 * section's `formative` policy independently, which is the order QTI 3 uses
+	 * for `qti-item-session-control` on an item ref versus its section.
+	 *
+	 * See `docs/prds/formative-delivery-contract.md`.
+	 */
+	formative?: FormativeItemPolicy;
 }
 
 export interface AssessmentSection
@@ -334,6 +350,17 @@ export interface AssessmentSection
 	 * delivered without an enclosing assessment.
 	 */
 	personalNeedsProfile?: PersonalNeedsProfile;
+
+	/**
+	 * Formative delivery policy for this section: how many Tries a learner gets
+	 * on each item, when feedback is revealed, and whether the behavior is on at
+	 * all. Absent or `enabled: false` delivers exactly as a section without this
+	 * field — no control, no state, no env override.
+	 *
+	 * Individual items override it through `AssessmentItemRef.formative`. See
+	 * `docs/prds/formative-delivery-contract.md`.
+	 */
+	formative?: FormativeDeliveryPolicy;
 
 	sort?: string;
 }

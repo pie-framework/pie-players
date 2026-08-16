@@ -100,16 +100,20 @@ The render/update path works like this:
 
 The exported `scorePieItem(...)` helper in
 `packages/players-shared/src/pie/scoring.ts` iterates `config.models[]` and
-returns `{ results: OutcomeResponse[] }`. It is not currently wired into
-`<pie-item-player>` or the section/assessment runtimes, and it does not produce a
-single item score. Also note that this helper uses a different call shape than
-the element controllers and server executor that pass `(model, session, env)`, so
-it should not be treated as the authoritative scoring implementation without
-additional verification.
+returns `{ results: OutcomeResponse[] }`. It does not produce a single item score.
 
-In the current player stack, a host that needs a single score should generally
-use server-side scoring or implement an explicit aggregation step over element
-outcomes.
+`<pie-item-player>` reaches it through `provideScore()`, which passes
+`outcomeArguments: "model-session-env"` so element controllers receive the
+`(model, session, env)` shape the server executor uses. The helper's default
+`"session-env"` shape remains for its own older callers; a new caller should opt
+into `"model-session-env"`.
+
+A host that needs a single score uses server-side scoring, or an explicit
+aggregation over element outcomes. Section-level formative delivery does the
+latter — see
+[`../prds/formative-delivery-contract.md`](../prds/formative-delivery-contract.md),
+which aggregates by the same policy the persisted API path uses (below) and
+records a four-valued correctness rather than a score.
 
 ## Legacy `pie-player-components`
 

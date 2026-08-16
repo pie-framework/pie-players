@@ -125,6 +125,80 @@ test.describe("assessment player smoke", () => {
 		await expect(position).toHaveText("Section 3 of 3");
 	});
 
+	/**
+	 * The defect these cover: `render()` rebuilds the whole subtree on a route change,
+	 * so the button the learner just activated was destroyed and focus fell to
+	 * `<body>`. Their next Tab restarted at the top of the document, and a screen
+	 * reader announced nothing at all about the section having changed.
+	 *
+	 * The test above this asserts focus only *before* pressing Enter, which is why it
+	 * never caught this.
+	 */
+	test("keeps focus on the navigation control across a section change", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+
+		const host = page.locator("pie-assessment-player-default");
+		const position = host.locator(".pie-assessment-player-current-position");
+		const nextButton = host.getByRole("button", { name: "Next" });
+
+		await nextButton.focus();
+		await nextButton.press("Enter");
+		await expect(position).toHaveText("Section 2 of 3");
+
+		// Not `<body>`: the learner can press Next again without Tabbing back to it.
+		await expect(nextButton).toBeFocused();
+
+		await nextButton.press("Enter");
+		await expect(position).toHaveText("Section 3 of 3");
+	});
+
+	test("moves focus off a nav control that the change disables", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+
+		const host = page.locator("pie-assessment-player-default");
+		const position = host.locator(".pie-assessment-player-current-position");
+		const backButton = host.getByRole("button", { name: "Back" });
+		const nextButton = host.getByRole("button", { name: "Next" });
+
+		await nextButton.click();
+		await expect(position).toHaveText("Section 2 of 3");
+
+		// Back to the first section disables Back, so focus cannot stay on it.
+		await backButton.focus();
+		await backButton.press("Enter");
+		await expect(position).toHaveText("Section 1 of 3");
+		await expect(backButton).toBeDisabled();
+
+		const focusLanded = await page.evaluate(() => {
+			const active = document.activeElement;
+			if (!active || active === document.body) return "BODY";
+			return active.classList.contains("pie-assessment-player-nav-btn")
+				? `nav:${active.textContent}`
+				: (active.getAttribute("role") ?? active.tagName.toLowerCase());
+		});
+		expect(focusLanded).not.toBe("BODY");
+	});
+
+	test("announces the new position in a live region", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+
+		const host = page.locator("pie-assessment-player-default");
+		// By class, not by role: the passage shell and every item shell render their own
+		// `role="status"` region, so the role alone is ambiguous here.
+		const announcer = host.locator(".pie-assessment-player-announcer");
+
+		// Silent on load. Announcing the starting position would be noise, and a live
+		// region has to be present before its text changes for the change to register.
+		await expect(announcer).toHaveText("");
+
+		await host.getByRole("button", { name: "Next" }).click();
+		await expect(announcer).toHaveText("Section 2 of 3");
+	});
+
 	test("persists section route on refresh for same attempt", async ({
 		page,
 	}) => {

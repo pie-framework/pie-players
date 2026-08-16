@@ -404,9 +404,10 @@ locale.
 5. **Parameterized PNP and language catalog cards.** `keyword-translation` and
    `glossary-on-screen` as first consumers.
 6. **Tool and accommodation locale.** TTS voice selection from the resolved
-   language rather than `navigator.language`; STT recognizer language, where
-   `PieDictationInsertDetail.lang` is already the first typed runtime locale
-   reaching an element; the `SIGN_LANGUAGE_NAMES` map.
+   language rather than `navigator.language`; STT recognizer language, where the
+   STT PRD's proposed `PieDictationInsertDetail.lang` would be the first typed
+   runtime locale reaching an element — designed, not implemented; the
+   `SIGN_LANGUAGE_NAMES` map.
 
 ## Open questions
 

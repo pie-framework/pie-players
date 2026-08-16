@@ -352,15 +352,21 @@ For release work, follow `docs/setup/publishing.md` and the release alignment
 rule in this file.
 
 Lint catches errors, not style. `biome.json` runs `preset: "none"` with only the
-`correctness` and `suspicious` presets on, and `style` holds exactly one rule:
-`useImportType` at error, because `verbatimModuleSyntax` is off and nothing else
-stops a type-only import being emitted as a runtime import. Do not add
-`complexity`, `performance`, or naming and filename conventions, and do not gate
-`biome format` — most code here is agent-written, so cosmetic uniformity costs
-review attention without buying correctness. A rule that fires only on
-false positives gets turned off rather than suppressed site by site;
+`correctness` and `suspicious` presets on and no `style` group at all. Do not add
+`style`, `complexity`, `performance`, or naming and filename conventions, and do
+not gate `biome format` — most code here is agent-written, so cosmetic uniformity
+costs review attention without buying correctness. A rule that fires only on false
+positives gets turned off rather than suppressed site by site;
 `noTemplateCurlyInString` is off because `${{…}}` is PIE math template syntax in
 content fixtures.
+
+Nothing currently stops a type-only import being emitted as a runtime import:
+`useImportType` was the last `style` rule and went with the group, and the
+tsconfigs set `isolatedModules` but not `verbatimModuleSyntax`, which does not
+cover it. Setting `verbatimModuleSyntax: true` in `tsconfig.base.json` moves the
+guard to the compiler, where it is a typecheck error rather than a style rule —
+measured at zero violations repo-wide on 2026-08-16, so it is available whenever
+the bundling risk is judged worth a hard error.
 
 ## Technology Stack
 

@@ -39,9 +39,6 @@
 				"noAssignInExpressions": "off",
 				"useIterableCallbackReturn": "off",
 				"noTemplateCurlyInString": "off"
-			},
-			"style": {
-				"useImportType": "error"
 			}
 		}
 	},

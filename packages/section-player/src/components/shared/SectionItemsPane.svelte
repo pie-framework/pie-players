@@ -58,6 +58,7 @@
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getCanonicalItemId,
+		getFormativeItemView,
 		getItemPlayerParams,
 		type HeadingLevel,
 	} from "./section-player-view-state.js";
@@ -424,12 +425,17 @@
 	</div>
 {:else}
 	{#each items as item, itemIndex (item.id || itemIndex)}
+		{@const canonicalItemId = getCanonicalItemId({ compositionModel, item })}
+		<!-- Resolved once and used twice: the card renders the control from it, and
+		     the player params project its env override. Two derivations of the same
+		     predicate could disagree about whether feedback is on screen. -->
+		{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
 		<pie-section-player-item-card
 			{item}
 			itemIndex={itemIndex}
 			itemCount={items.length}
 			isCurrent={itemIndex === currentItemIndex}
-			canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+			{canonicalItemId}
 			{baseHeadingLevel}
 			playerParams={getItemPlayerParams({
 				item,
@@ -440,7 +446,9 @@
 				playerStrategy,
 				itemIndex,
 				baseHeadingLevel,
+				formativeView,
 			})}
+			{formativeView}
 			itemToolbarTools={itemToolbarTools}
 			{toolRegistry}
 			{hostButtons}

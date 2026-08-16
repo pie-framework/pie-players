@@ -23,6 +23,7 @@ export const EMPTY_COMPOSITION: SectionCompositionModel = {
 	itemSessionsByItemId: {},
 	testAttemptSession: null,
 	itemViewModels: [],
+	formative: null,
 };
 
 export function getEntityTitle(entity: unknown): string {

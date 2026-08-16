@@ -105,7 +105,7 @@ P0 should start from the contracts already present in the repositories.
 
 Important current limits:
 
-- `pie-item-player.provideScore()` and `scorePieItem(...)` return per-element outcomes, not an accepted rolled-up item score.
+- `pie-item-player.provideScore()` and `scorePieItem(...)` return per-element outcomes, not an accepted rolled-up item score. One consumer now rolls them up for a bounded purpose: the [formative delivery contract](../prds/formative-delivery-contract.md) derives a four-valued correctness per Try, always browser-derived and carrying no provenance or authority. A general score projection must stay able to express it, including its "excluded because not auto-scorable" state.
 - Item and section completion aggregation exist today. Assessment-player exposes routing, progress, submission state, and per-section snapshots, but not an accepted assessment-completion or assessment-score rollup.
 - Section and assessment session snapshots carry responses and navigation/completion-related state, not score summaries.
 - Assessment session types currently exist in both `assessment-toolkit` and `assessment-player`; a later implementation PRD should choose or consolidate the canonical type home before adding assessment-level fields.

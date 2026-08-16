@@ -42,9 +42,16 @@ live per-slice record is `Active`.
   audio transcript as a policy-gated catalog card, replacing a pre-toolkit
   CSS-class gate by transforming content rather than accommodating the class;
   plus why autoplay is a content property and not a PIE feature.
+- [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
+  Try state, feedback reveal as a per-item `env` projection, and section mastery.
+  Consumes the shipped client-side scoring path rather than replacing it.
 - [`timed-media-section-contract.md`](./timed-media-section-contract.md) -
-  section-level timed media with cue-driven item orchestration. Distinct from
+  section-level timed media with cue-driven item orchestration. Sequenced behind
+  the formative contract, whose state its cue gate conditions name. Distinct from
   sign language despite both being video; each PRD fences the other out.
+
+Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
+would otherwise have to reconstruct — live in [`../adr/`](../adr/).
 
 ## Ground Rules
 

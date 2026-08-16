@@ -42,6 +42,12 @@ Recommended review and implementation order:
      `TestAttemptSession`, `SectionControllerSessionState`, and
      `AssessmentSession`.
    - Missing section/assessment score and completion rollup projections.
+   - **Partly overtaken (2026-08-15).** The [formative delivery
+     contract](../formative-delivery-contract.md) ships an item aggregation and a
+     section mastery rollup for one purpose. It carries no provenance or
+     authority, so it narrows this PRD rather than satisfying it — but the general
+     projection now has a shipped consumer to stay expressible for. See the note
+     at the top of that file.
 3. [`media-asset-contract`](./media-asset-contract.md)
    - Stimulus media sources, captions, transcripts, poster, accessibility
      metadata, and host storage boundaries.
@@ -75,7 +81,10 @@ Recommended review and implementation order:
 
 Timed-media implementation PRDs consume the shared contracts above and live
 outside this folder. The first planned timed-media PRD is
-[`../timed-media-section-contract.md`](../timed-media-section-contract.md).
+[`../timed-media-section-contract.md`](../timed-media-section-contract.md), now
+sequenced behind [`../formative-delivery-contract.md`](../formative-delivery-contract.md)
+because its cue gate conditions name formative state — recorded as
+[ADR 0001](../../adr/0001-formative-delivery-before-timed-media.md).
 
 [`../sign-language-asl-support.md`](../sign-language-asl-support.md) consumed
 `media-asset-contract` and `accessibility-runtime-patterns` first and has landed

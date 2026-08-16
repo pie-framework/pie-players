@@ -114,6 +114,13 @@ interface RuntimeController extends SectionControllerHandle {
 	navigateToItem?: (index: number) => unknown;
 }
 
+/** What a formative action reaching the engine has to say. */
+export interface SectionRuntimeFormativeAction {
+	itemId: string;
+	action: "check" | "retry";
+	outcomes?: unknown[];
+}
+
 /**
  * Initialize args used by the toolkit CE to resolve the coordinator-backed
  * section controller.
@@ -496,6 +503,26 @@ export class SectionRuntimeEngine {
 
 	navigateToItem(index: number): unknown {
 		return this.controller?.navigateToItem?.(index) ?? null;
+	}
+
+	/**
+	 * Route a learner's formative action to the controller.
+	 *
+	 * Canonicalized here for the same reason `updateItemSession` is: the runtime
+	 * id a card dispatches with is not necessarily the identifier the controller
+	 * keys state by.
+	 */
+	handleFormativeAction(action: SectionRuntimeFormativeAction): void {
+		if (!action?.itemId) return;
+		const canonicalId = this.getCanonicalItemId(action.itemId);
+		if (action.action === "retry") {
+			this.controller?.retryFormativeItem?.({ itemId: canonicalId });
+			return;
+		}
+		this.controller?.recordFormativeTry?.({
+			itemId: canonicalId,
+			outcomes: action.outcomes,
+		});
 	}
 
 	async persist(): Promise<void> {

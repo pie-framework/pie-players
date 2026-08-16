@@ -1,4 +1,8 @@
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import {
+	resolveFormativeItemView,
+	type FormativeItemView,
+} from "@pie-players/pie-players-shared/formative";
 import type { SectionCompositionModel } from "../../controllers/types.js";
 import {
 	getCanonicalItemIdForItem,
@@ -154,6 +158,47 @@ export function getPassagePlayerParams(args: {
 	};
 }
 
+/**
+ * The formative view for one item, or `null` when the section does not deliver
+ * formatively.
+ *
+ * Derived here rather than in a component so the card, the env projection, and
+ * any future consumer read one predicate. The projection arrives on the
+ * composition model, which the runtime republishes on every controller event, so
+ * this is recomputed from fresh state on each render pass.
+ */
+export function getFormativeItemView(args: {
+	compositionModel: SectionCompositionModel;
+	canonicalItemId: string;
+}): FormativeItemView | null {
+	const projection = args.compositionModel?.formative;
+	if (!projection?.enabled) return null;
+	const policy = projection.policies?.[args.canonicalItemId];
+	if (!policy?.enabled) return null;
+	return resolveFormativeItemView({
+		policy,
+		state: projection.states?.[args.canonicalItemId],
+	});
+}
+
+/**
+ * Project a revealed item's formative env over the section env.
+ *
+ * The section env stays section-wide and this is the only place it is narrowed,
+ * which is what keeps env resolution out of every layout. `applyPlayerParams`
+ * diffs env by signature, so the override reaches a mounted player as a property
+ * assignment rather than a remount — the item keeps its session across a reveal
+ * and across the retry that withdraws it.
+ */
+function applyFormativeEnv(
+	env: Record<string, unknown>,
+	formativeView: FormativeItemView | null | undefined,
+): Record<string, unknown> {
+	const override = formativeView?.envOverride;
+	if (!override) return env;
+	return { ...env, ...override };
+}
+
 export function getItemPlayerParams(args: {
 	item: ItemEntity;
 	compositionModel: SectionCompositionModel;
@@ -163,6 +208,7 @@ export function getItemPlayerParams(args: {
 	playerStrategy: string;
 	itemIndex?: number;
 	baseHeadingLevel?: HeadingLevel;
+	formativeView?: FormativeItemView | null;
 }): PlayerElementParams {
 	const rawItemSession = getSessionForItem(args.compositionModel, args.item);
 	const itemSession = getSessionForItemOrEmpty(
@@ -173,9 +219,10 @@ export function getItemPlayerParams(args: {
 		args.compositionModel,
 		args.item,
 	);
+	const env = applyFormativeEnv(args.resolvedPlayerEnv, args.formativeView);
 	return {
 		config: args.item.config || {},
-		env: args.resolvedPlayerEnv,
+		env,
 		session: itemSession,
 		attributes: {
 			...(args.resolvedPlayerAttributes || {}),
@@ -198,6 +245,11 @@ export function getItemPlayerParams(args: {
 					: undefined,
 			itemIndex: args.itemIndex,
 			sectionId: args.compositionModel.section?.identifier,
+			// The section env, deliberately not the formative override. This value
+			// is context for a host's `resolveBackend` callback, and which delivery
+			// backend serves an item is not a function of whether its feedback is
+			// currently on screen. Passing the override would let a reveal flip a
+			// host's backend selection mid-session.
 			env: args.resolvedPlayerEnv,
 		}),
 	};

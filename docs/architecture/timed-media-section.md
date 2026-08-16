@@ -68,6 +68,58 @@ the card body, in document flow, on both item and passage cards, while signing
 uses the side-docked `content-media` surface. A timed-media section's captions and
 transcript inherit both geometries rather than inventing a third.
 
+### Decisions, 2026-08-15
+
+Three decisions were taken in design review. They constrain what a PRD may
+choose; they do not close item 1 of [Current State](#current-state), which stays
+the blocking decision.
+
+**1. Formative delivery ships first.** Recorded as
+[ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) and specified by
+the [formative delivery contract](../prds/formative-delivery-contract.md). A cue's
+interesting gate condition is "answered correctly", and correctness at the section
+layer needs a per-item evaluation seam PIE did not have. Building cues first would
+force `responded` as the only expressible condition and then revise a shipped
+section slice when correctness arrived.
+
+The consequence for this note is concrete: a cue's activation policy names a
+**gate condition** over formative state rather than defining its own, and the
+vocabulary is already settled — `correct`, `partial`, `incorrect`, `unknown`, plus
+`responded` for the response-only case. `unknown` is not a defect to design
+around; it is the state of an item no loaded controller can score, and a cue
+authored to gate on `correct` must state what it does when the answer is
+`unknown` rather than treating it as wrong.
+
+**2. Media is reached through a Media Time Source port, not a chosen player.**
+The section orchestrates against an `HTMLMediaElement`-shaped interface —
+`currentTime`, `duration`, `paused`, `seekable`, `play()`, `pause()`, plus
+time/seek/end notifications — and never against a library API. That shape is
+chosen because it is the browser's own: a native `<video>` satisfies it with an
+adapter of a few lines, which is what makes the port testable and what keeps the
+[Video Player Dependency Decision](#video-player-dependency-decision) reversible
+rather than load-bearing. [`VideoStimulusHandle`](#stimulus-api-expectations)
+below is this port under an element-shaped name; a PRD should name the port
+directly so a host can supply its own media element without shipping a PIE
+element at all.
+
+The port declares its own limits, because not every media source can be
+controlled: `canPause` and `canRestrictSeeking` are capabilities of the adapter,
+not assumptions of the section.
+
+**3. Playback policy is enforced or advisory, and degrades on capability.** A
+seek restriction or a pause-on-cue is *enforced* only when the port reports the
+capability. Where it does not — a third-party embed that exposes time but not
+control — the policy degrades to *advisory*: cues still fire, state is still
+recorded, and the restriction is reported as a recoverable framework warning
+rather than silently appearing to hold. Silent degradation is the failure mode to
+avoid, because a seek lock that does not lock reads to an author as a lock that
+does.
+
+This is the same fail-soft posture as **Tool Surface Failure** in
+[`../../CONTEXT.md`](../../CONTEXT.md): a capability gap isolates to the affected
+policy and never blocks delivery. A PRD owns where the warning surfaces and
+whether an author can require enforcement and fail closed instead.
+
 ## Context
 
 PIE already has strong primitives for individual interactive questions, shared passages, section composition, and assessment-level routing. A video-linked assessment stretches those primitives in a useful way: one static media stimulus is paired with multiple normal PIE items, and timestamp cues control when those items appear, pause playback, gate progression, and contribute to an aggregate section outcome.
@@ -258,6 +310,19 @@ Candidate cue patterns:
 - `multi-item`: one cue activates several item refs, either together or as a local item group.
 
 Cue policy is section behavior. It should not be encoded inside child item models, and it should not be encoded as private behavior of the video stimulus.
+
+A gating cue names a **gate condition** over formative state rather than defining
+its own: `responded` for the response-only case, or one of the
+`FormativeCorrectness` values the [formative delivery
+contract](../prds/formative-delivery-contract.md) settles. `pause-and-require-response`
+above is the `responded` case under an older name. Whether a cue may resume is
+therefore a question about state that already exists, which is why formative
+delivery sequences first — see [Decisions, 2026-08-15](#decisions-2026-08-15).
+
+Enforcement is conditional on the media adapter. `pause-and-require-response`
+holds only where the Media Time Source reports `canPause`; where it does not, the
+cue still fires and records state, and the gate degrades to advisory with a
+framework warning.
 
 ## Worked Example
 

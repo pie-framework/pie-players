@@ -101,11 +101,13 @@
 	import { parseToolList } from "../services/tools-config-normalizer.js";
 	import {
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
+		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 		PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
 		type InternalContentLoadedDetail,
+		type InternalFormativeActionDetail,
 		type InternalItemSessionChangedDetail,
 		type InternalItemPlayerErrorDetail,
 		type RuntimeRegistrationDetail,
@@ -137,7 +139,8 @@
 		| typeof PIE_UNREGISTER_EVENT
 		| typeof PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
 		| typeof PIE_INTERNAL_CONTENT_LOADED_EVENT
-		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT;
+		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT
+		| typeof PIE_INTERNAL_FORMATIVE_ACTION_EVENT;
 	type HostRuntimeEventHandler = (event: Event) => void;
 
 	interface CompositionSnapshot {
@@ -145,6 +148,7 @@
 		currentItemIndex: number;
 		renderableSignature: string;
 		itemSessionSignature: string;
+		formativeSignature: string;
 	}
 
 	interface CompositionRenderableSnapshot {
@@ -581,6 +585,32 @@ const DEFAULT_ENV = {
 			});
 	}
 
+	/**
+	 * Formative Try state, folded into the revision key.
+	 *
+	 * Load-bearing: recording a Try changes neither the renderables nor the item
+	 * sessions, so without this the revision key is identical before and after
+	 * and `flushCompositionChanged` suppresses the emit — the controller holds
+	 * correct state and the card never learns that its feedback was revealed.
+	 *
+	 * Reads only the three fields that change what a card renders. The outcome's
+	 * points are deliberately excluded: a re-check that produces the same
+	 * correctness with a different partial score is the same screen.
+	 */
+	function toFormativeSignature(model: UnknownRecord): string {
+		const states = asRecord(asRecord(model.formative).states);
+		return Object.entries(states)
+			.map(([itemId, value]) => {
+				const state = asRecord(value);
+				const correctness = asRecord(state.lastOutcome).correctness ?? "";
+				// `revealOverride` too: a host raising a reveal from correctness to
+				// solution changes the projected env without changing `revealed`.
+				return `${itemId}:${state.tryCount ?? 0}:${state.revealed === true ? 1 : 0}:${String(correctness)}:${String(state.revealOverride ?? "")}`;
+			})
+			.sort()
+			.join("|");
+	}
+
 	function toCompositionSnapshot(model: unknown): CompositionSnapshot {
 		const typed = asRecord(model);
 		const renderableSignature = toRenderableSnapshots(typed)
@@ -594,12 +624,13 @@ const DEFAULT_ENV = {
 			currentItemIndex: toCurrentItemIndex(typed),
 			renderableSignature,
 			itemSessionSignature,
+			formativeSignature: toFormativeSignature(typed),
 		};
 	}
 
 	function getCompositionRevisionKey(model: unknown): string {
 		const snapshot = toCompositionSnapshot(model);
-		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}`;
+		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}|${snapshot.formativeSignature}`;
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
@@ -1440,6 +1471,23 @@ const DEFAULT_ENV = {
 						contentKind: detail.contentKind,
 						error: detail.error,
 						timestamp: Date.now(),
+					});
+				},
+			},
+			{
+				// A learner's check / retry. The card supplies the outcomes it got
+				// from `provideScore()`; the controller derives correctness, so the
+				// route carries data rather than a decision.
+				name: PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<InternalFormativeActionDetail>(event);
+					if (!detail?.itemId) return;
+					if (detail.action !== "check" && detail.action !== "retry") return;
+					sectionEngine.handleFormativeAction({
+						itemId: detail.canonicalItemId || detail.itemId,
+						action: detail.action,
+						outcomes: detail.outcomes,
 					});
 				},
 			},

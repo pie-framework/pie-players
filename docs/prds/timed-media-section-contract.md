@@ -6,6 +6,8 @@ Owner: PIE Players maintainers
 
 Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05 and 2026-08-15; see [Current State](../architecture/timed-media-section.md#current-state) in the architecture note for what moved underneath this draft. Nothing here is blocked on a ticket.
 
+Sequenced behind formative delivery, 2026-08-15. [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) records the decision and its reason: a cue's interesting gate condition is "answered correctly", which needs a per-item evaluation seam PIE did not have, so building cues first would force `responded` as the only expressible condition and then revise a shipped section slice. The [formative delivery contract](./formative-delivery-contract.md) supplies that seam — Try state, per-item feedback reveal, and the four-valued `FormativeCorrectness` this PRD's cue policy names as gate conditions. This PRD stays `Draft` until that has shipped; the two decisions below are what then move it to `Ready`.
+
 Blocking decision, as of 2026-08-15: every prerequisite this PRD inherits is satisfied — the [media asset contract](./shared-contracts/media-asset-contract.md) is `Ready` and its types are shipped, `assessment-toolkit/src/services/catalog-media.ts` owns media validation, and the [theming contract](./pie-727-broad-theming-contract.md) is `Accepted` so media controls have a palette. What is not settled is where the section flavor attaches: `sectionType`-driven renderer dispatch in assessment-player, which does not exist, or the standalone section-player path where the host picks the tag, which works today. Cue and playback policy ownership — layout custom element versus the toolkit's `ToolPolicyEngine` — rides on the same call, and the layer-ownership table below predates that engine. Taking those two decisions is what moves this PRD to `Ready`.
 
 Related architecture:
@@ -16,6 +18,8 @@ Related architecture:
 - [Interaction event contract](./shared-contracts/interaction-event-contract.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
+- [Formative delivery contract](./formative-delivery-contract.md) — prerequisite; supplies the state a cue gate condition names
+- [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing record
 - [Sign language (ASL) support](./sign-language-asl-support.md) — sibling media contract, deliberately out of scope here
 
 ## Problem
@@ -79,8 +83,16 @@ interface TimedMediaCue {
   endTime?: number;
   itemRefs: string[];
   policy: {
-    activation: "reveal" | "pause-and-require-response" | "metadata";
-    allowResumeBeforeResponse?: boolean;
+    activation: "reveal" | "gate" | "metadata";
+    /**
+     * For `activation: "gate"`, the condition over formative state that
+     * releases playback. Named from the shipped formative vocabulary rather
+     * than defined here; `"responded"` is the response-only case the earlier
+     * `pause-and-require-response` sketch meant.
+     */
+    releaseOn?: "responded" | "correct" | "partial-or-better";
+    /** What a gate does when the item cannot be auto-scored. */
+    onUnknownCorrectness?: "release" | "hold";
   };
 }
 
@@ -214,6 +226,7 @@ Playwright-backed tests must run outside the sandbox.
 ## Open Questions
 
 - Which package owns the canonical timed-media section data types, and where does cue/playback policy run — the timed-media layout custom element or the `assessment-toolkit` policy engine?
+- Where does an unenforceable playback policy report itself, and may an author require enforcement and fail closed instead of degrading to advisory? The degradation itself is decided; see [Decisions, 2026-08-15](../architecture/timed-media-section.md#decisions-2026-08-15).
 - Is media represented through rubric blocks, a new `RubricBlock.class` value plus a matching shell, or `timedMedia.media` only? `RubricBlock` is now explicitly passage-typed (`passageVId`, `passage: PassageEntity`, `content`), and there is no `item | passage | rubric` union to extend — the decision turns on whether media must be reusable shared content across sections. See [Video Stimulus Mapping](../architecture/timed-media-section.md#video-stimulus-mapping).
 - Does assessment-player gain `sectionType`-driven renderer dispatch, or does timed media target the standalone section-player path?
 - Should `timedMedia` extend the existing section persistence snapshot or be normalized as a sibling slice by assessment-player?

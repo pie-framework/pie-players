@@ -63,6 +63,27 @@ const CORPUS: Record<string, { pronunciation?: string; senses: Sense[] }> = {
 			},
 		],
 	},
+	// Words the demo passage actually contains, so the selection door has something to
+	// answer when a learner picks a word out of the text rather than typing one.
+	glucose: {
+		pronunciation: "ˈɡluːkəʊz",
+		senses: [
+			{
+				partOfSpeech: "noun",
+				definition: "A simple sugar that living things use for energy.",
+				example: "Plants store glucose made during photosynthesis.",
+			},
+		],
+	},
+	chloroplasts: {
+		senses: [
+			{
+				partOfSpeech: "noun",
+				definition:
+					"The parts of a plant cell where photosynthesis takes place.",
+			},
+		],
+	},
 };
 
 export const POST: RequestHandler = async ({ request }) => {

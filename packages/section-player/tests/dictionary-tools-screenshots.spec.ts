@@ -180,4 +180,48 @@ test.describe("dictionary tools evidence", () => {
 		await page.keyboard.type("current");
 		await shot(page, "11-keyboard-focus-in-field", shell(page, "dictionary"));
 	});
+
+	test("captures the selection door", async ({ page }) => {
+		await gotoDemo(page);
+
+		// Offsets come from walking to the text node holding the word: the passage markup
+		// carries whitespace, so offset 0 of the paragraph's first text node lands outside
+		// the rendered text and Chromium collapses the range.
+		await page
+			.locator("pie-passage-shell [data-region='content']")
+			.first()
+			.evaluate((root, target) => {
+				const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+				while (walker.nextNode()) {
+					const node = walker.currentNode as Text;
+					const index = (node.textContent ?? "").indexOf(target);
+					if (index < 0) continue;
+					const selection = window.getSelection();
+					if (!selection) throw new Error("Selection API unavailable.");
+					const range = document.createRange();
+					range.setStart(node, index);
+					range.setEnd(node, index + target.length);
+					selection.removeAllRanges();
+					selection.addRange(range);
+					return;
+				}
+				throw new Error(`Passage has no "${target}" to select.`);
+			}, "Photosynthesis");
+
+		const strip = page.locator("pie-tool-annotation-toolbar [role='toolbar']");
+		await expect(strip).toBeVisible();
+		await expect(
+			strip.locator('[data-pie-selection-action="dictionary"]'),
+		).toBeVisible();
+		await shot(page, "12-selection-strip-with-lookup");
+
+		await strip.locator('[data-pie-selection-action="dictionary"]').click();
+		const panel = page.locator("pie-tool-dictionary .pie-tool-dictionary");
+		await expect(panel.locator(".pie-tool-dictionary__word")).toContainText(
+			"photosynthesis",
+		);
+		// The whole page: the point of this one is that the learner typed nothing and the
+		// strip is gone rather than sitting over the answer.
+		await shot(page, "13-selection-opened-dictionary");
+	});
 });

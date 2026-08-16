@@ -46,6 +46,23 @@ export type {
 	CatalogOwnerSnapshot,
 } from "../services/AccessibilityCatalogResolver.js";
 
+// Handing a selection to a tool the requesting surface does not mount. A
+// registration composing a selection gateway needs both halves: the action shape
+// the gateway renders, and the request the action makes.
+export type {
+	ToolSelectionAction,
+	ToolSelectionContext,
+} from "../services/selection-action.js";
+export type {
+	ToolOpenRequest,
+	ToolRequestTarget,
+} from "../services/tool-request.js";
+// So a gateway button and the toolbar button for the same tool draw one icon.
+export {
+	resolveFallbackToolIcon,
+	TOOL_FALLBACK_ICONS,
+} from "../services/tool-icons.js";
+
 // The grant-AND-content rule, for a package that renders content capabilities
 // into its own surfaces. Data-only, so a renderer with no coordinator — print —
 // asks the same question the section player asks continuously.

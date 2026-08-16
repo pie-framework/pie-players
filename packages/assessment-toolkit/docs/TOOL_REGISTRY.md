@@ -552,6 +552,25 @@ Tool registration supports explicit activation semantics:
 
 This keeps one active annotation gateway per section runtime while still honoring canonical tool config (`policy`, `placement`, `providers`).
 
+### Selection Actions
+
+A gateway acting on the learner's selection has to hand it to a tool it does not mount, under a scoped instance id it cannot construct. Two halves make that possible, and each belongs to a different layer.
+
+`ToolSelectionAction` is what a gateway renders: an id, a label, optional icon markup, an `isAvailable` predicate asked per selection, and a `run(selection)`. The gateway knows nothing about what an action does. The pairing of an action to a capability belongs to whoever composes them — `@pie-players/pie-default-tool-loaders` for the packaged set — which is what keeps a highlighter from naming a dictionary and lets a host contribute an action for a capability PIE does not ship.
+
+The coordinator supplies the other half:
+
+```ts
+coordinator.canRequestTool("dictionary"); // gate the affordance before offering it
+coordinator.requestTool({ toolId: "dictionary", params: { term } });
+```
+
+A toolbar claims requests for its placement level through `registerToolRequestTarget`, turns the unscoped id into a scoped instance, applies `params` and shows the tool. `params` layer over whatever a host's `ToolContextResolver` returned and arrive through `getToolRenderParams`, so a tool already reading that seam receives a request with no new code.
+
+Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, so a requester needing a particular card's instance cannot express that.
+
+An action is a shortcut and never a capability's only entry point. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS toggle absent on mobile — so a sighted keyboard-only learner cannot originate one. A capability reachable only through a selection gateway is unreachable for them, which is why both dictionaries keep a toolbar button and their own term field.
+
 ## Host Surfaces
 
 Not every policy-addressable capability is a toolbar surface. A signed alternate renders as its own region beside item content; asking `decide({ level: "item" })` about it answers the wrong question, since it comes back absent because nothing placed it rather than because policy said no. That is why a host gates a `region` capability on `decideFeaturePolicy` — the placement-scoped question cannot be made to work, since placing a region capability is itself a `tools.unplaceableActivation` error.

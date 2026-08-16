@@ -16,6 +16,11 @@
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-tool-dictionary';
 	import '@pie-players/pie-tool-picture-dictionary';
+	// The selection door. The annotation strip is the gateway that offers a lookup on
+	// the learner's current selection; the composition layer pairs the two, so this
+	// page only has to make the strip available.
+	import '@pie-players/pie-tool-annotation-toolbar';
+	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity } from '@pie-players/pie-players-shared/types';
 	import type { PageData } from './$types';
@@ -29,8 +34,8 @@
 		tools: {
 			placement: {
 				section: ['dictionary', 'pictureDictionary'],
-				item: [],
-				passage: [],
+				item: ['annotationToolbar'],
+				passage: ['annotationToolbar'],
 			},
 		},
 		// The documented seam for per-tool params. A resolver returning `params.endpoint`
@@ -48,11 +53,21 @@
 	};
 
 	// A dictionary is construct-relevant on a vocabulary item, so PIE grants neither
-	// tool universally. The profile is what makes them available here.
+	// tool universally. The profile is what makes them available here, on top of the
+	// universal preset — which is where the annotation strip comes from, and binding a
+	// profile at all turns PNP enforcement on, so naming only the two accommodations
+	// would deny every universal support including that strip.
 	const assessmentEntity: AssessmentEntity = {
 		id: 'section-demos.dictionary-tools',
 		name: 'Dictionary tools assessment',
-		personalNeedsProfile: { supports: ['dictionary', 'pictureDictionary'] },
+		personalNeedsProfile: {
+			...createUniversalPersonalNeedsProfile(),
+			supports: [
+				...(createUniversalPersonalNeedsProfile().supports ?? []),
+				'dictionary',
+				'pictureDictionary',
+			],
+		},
 	} as AssessmentEntity;
 
 	const sectionId = $derived(
@@ -86,9 +101,14 @@
 				the error state is reachable.
 			</p>
 			<p>
-				The panel's own field is the keyboard route into the tool. A sighted
-				keyboard-only learner cannot originate a text selection in non-editable
-				content, so a selection-only dictionary would be unreachable for them.
+				Selecting a word in the passage also opens the annotation strip, which offers
+				a lookup on the selection — the panel opens already answered.
+			</p>
+			<p>
+				That is a shortcut, not the way in. The panel's own field is the keyboard
+				route: a sighted keyboard-only learner cannot originate a text selection in
+				non-editable content, so a selection-only dictionary would be unreachable for
+				them.
 			</p>
 		</div>
 

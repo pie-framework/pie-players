@@ -59,7 +59,10 @@ through its own fetcher, keeping that decision where it belongs.
 
 ## Two entry points, deliberately
 
-The `term` property is set by whatever selection affordance the host offers. The
+The `term` property is set by whatever selection affordance the host offers. Under
+`<pie-assessment-toolkit>` that is the annotation strip: selecting a word offers a
+lookup, and activating it opens this panel with the word already searched, through
+the coordinator's `requestTool`. The
 field is how a learner looks up a word without one, and it is the reason the tool
 is keyboard accessible rather than a convenience: a sighted keyboard-only learner
 cannot originate a text selection in non-editable content, because Chromium does

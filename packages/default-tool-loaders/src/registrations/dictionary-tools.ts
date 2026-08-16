@@ -57,6 +57,11 @@ function applyLookupParams(
 	const params = toolbarContext.getToolRenderParams?.(toolId) ?? {};
 	if (typeof params.endpoint === "string") element.endpoint = params.endpoint;
 	if (typeof params.lookup === "function") element.lookup = params.lookup;
+	// The selection door: a gateway acting on the learner's selection requests this
+	// tool with the words in `term`, and the toolbar layers that over the host's own
+	// params. The panel guards its own re-lookup, so reapplying an unchanged term on
+	// a later sync costs nothing.
+	if (typeof params.term === "string" && params.term) element.term = params.term;
 	// The reading language comes from the toolbar's own scope unless the host names one
 	// for this tool, so a service returning localised entries gets the right tag without
 	// the host having to repeat itself.

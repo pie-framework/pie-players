@@ -17,6 +17,7 @@
 			"!**/playwright-report",
 			"!**/test-results",
 			"!.claude",
+			"!tools/cli/oclif.manifest.json",
 			"!**/src/components/vendor"
 		]
 	},
@@ -36,12 +37,11 @@
 				"noExplicitAny": "off",
 				"noImplicitAnyLet": "off",
 				"noAssignInExpressions": "off",
-				"useIterableCallbackReturn": "off"
+				"useIterableCallbackReturn": "off",
+				"noTemplateCurlyInString": "off"
 			},
 			"style": {
-				"useFilenamingConvention": "off",
-				"useImportType": "warn",
-				"useNamingConvention": "off"
+				"useImportType": "error"
 			}
 		}
 	},

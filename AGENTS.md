@@ -129,7 +129,10 @@ surfaces real downstream hosts touch, and which of those break silently.
   It compares the branch against its merge-base with `origin/develop` and fails
   when a curated set of surface-defining files changed and the pad did not. It
   runs inside `verify:ci-lint-typecheck`, so it reaches the full local PR gate
-  and CI. Satisfy it by updating the pad; when the pad genuinely still reads
+  and CI. A trigger file whose change is *provably* semantically null — JSON that
+  parses identically, source with the same normal form under biome's formatter —
+  is discounted and named in the output; every case it cannot prove counts as a
+  change. Satisfy it by updating the pad; when the pad genuinely still reads
   true, record why in a commit message trailer instead:
 
   ```
@@ -347,6 +350,17 @@ bun run check:player-tool-boundaries
 
 For release work, follow `docs/setup/publishing.md` and the release alignment
 rule in this file.
+
+Lint catches errors, not style. `biome.json` runs `preset: "none"` with only the
+`correctness` and `suspicious` presets on, and `style` holds exactly one rule:
+`useImportType` at error, because `verbatimModuleSyntax` is off and nothing else
+stops a type-only import being emitted as a runtime import. Do not add
+`complexity`, `performance`, or naming and filename conventions, and do not gate
+`biome format` — most code here is agent-written, so cosmetic uniformity costs
+review attention without buying correctness. A rule that fires only on
+false positives gets turned off rather than suppressed site by site;
+`noTemplateCurlyInString` is off because `${{…}}` is PIE math template syntax in
+content fixtures.
 
 ## Technology Stack
 

@@ -16,7 +16,7 @@
 			"!**/.turbo",
 			"!**/playwright-report",
 			"!**/test-results",
-			"!**/.claude",
+			"!.claude",
 			"!**/src/components/vendor"
 		]
 	},

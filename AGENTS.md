@@ -249,6 +249,51 @@ from the current branch against its upstream, not from the refs actually being
 pushed, so it runs the gate for a `git push origin <sha>:refs/heads/other` that
 introduces nothing.
 
+### Git Worktrees
+
+A fresh worktree needs `bun install` **and** `bun run build` before any gate
+passes. Nothing hoists from the main checkout: without `node_modules` every gate
+fails on a missing binary, and without build artifacts `bun run check` fails with
+`TS2307: Cannot find module '@pie-players/pie-players-shared'` from packages that
+resolve a workspace sibling through its published `exports`.
+
+A worktree path must not contain a path segment named `node_modules`, `build`,
+`dist`, `.turbo`, `.svelte-kit`, `playwright-report`, or `test-results`. Those
+are the unanchored `!**/…` entries in `biome.json`'s `files.includes`, and biome
+matches them against the absolute path — so they also match every *ancestor* of
+the project root. A worktree under such a segment excludes itself: `biome lint .`
+reports "these paths were provided but ignored: ." and **exits 0**, so `bun run
+verify:pre-commit` passes having linted nothing.
+
+`.claude` is absent from that list because its entry is anchored (`!.claude`,
+not `!**/.claude`), which is what makes `.claude/worktrees/<name>` — where
+agent tooling creates worktrees by default — lintable. Keep it anchored. The
+rationale cannot live in `biome.json` itself: biome rejects comments in a config
+named `.json` and falls back to defaults with no error, reproducing the same
+zero-files failure.
+
+A `bun install` in a worktree rewrites the shared `.git/hooks`. `lefthook
+install` bakes an absolute path to the `node_modules` it ran from into the
+generated scripts, so the hooks every checkout shares end up pointing into a
+directory that is about to be deleted. Two things trigger it, and only one is
+ours: the `prepare` lifecycle script, and the `lefthook` npm package's own
+`postinstall`, which runs `lefthook install -f` on every install and cannot be
+configured off from here.
+
+`.lefthookrc` is what makes the rewrite harmless. It resolves `LEFTHOOK_BIN`
+from `--git-common-dir` — the main checkout, the one guaranteed to have
+`node_modules` — and the generated hook consults `LEFTHOOK_BIN` before the baked
+path, so the stale path is never reached. The protection holds only while the
+hooks carry the `rc: ./.lefthookrc` line, which means it does not survive an
+install from a branch predating `.lefthookrc` (a8ab15a0). Repair after one:
+`bun run prepare` from the main checkout, which is also what to run after
+editing `.lefthookrc` or `lefthook.yml`.
+
+`scripts/install-git-hooks.mjs` is the `prepare` entry point and skips any
+linked worktree, so `prepare` no longer contributes to the rewrite. It does not
+prevent it — lefthook's `postinstall` still fires — so treat the shared hooks as
+something any worktree install may have touched.
+
 ## Skills And Commands
 
 Canonical project skills and commands live in `.claude/skills/` and

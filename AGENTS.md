@@ -360,13 +360,16 @@ positives gets turned off rather than suppressed site by site;
 `noTemplateCurlyInString` is off because `${{…}}` is PIE math template syntax in
 content fixtures.
 
-Nothing currently stops a type-only import being emitted as a runtime import:
-`useImportType` was the last `style` rule and went with the group, and the
-tsconfigs set `isolatedModules` but not `verbatimModuleSyntax`, which does not
-cover it. Setting `verbatimModuleSyntax: true` in `tsconfig.base.json` moves the
-guard to the compiler, where it is a typecheck error rather than a style rule —
-measured at zero violations repo-wide on 2026-08-16, so it is available whenever
-the bundling risk is judged worth a hard error.
+Type-only imports are the compiler's job rather than the linter's, so
+`verbatimModuleSyntax` is set and a type-only import emitted as a runtime import
+is a typecheck error. `isolatedModules` does not cover this, which is why both are
+set.
+
+It lives in `tsconfig.json`, `tsconfig.base.json`, and the five package configs
+that extend neither — `calculator`, `calculator-desmos`, `tts`,
+`tts-client-server`, `tts-server-core`. A new tsconfig that extends neither root
+config needs it too; there is no single file that reaches everything. The demo
+apps need nothing: SvelteKit generates it into `.svelte-kit/tsconfig.json`.
 
 ## Technology Stack
 

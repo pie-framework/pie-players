@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"target": "ES2022",
 		"module": "NodeNext",
+		"verbatimModuleSyntax": true,
 		"lib": ["ES2022"],
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",

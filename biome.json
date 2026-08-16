@@ -17,31 +17,28 @@
 			"!**/playwright-report",
 			"!**/test-results",
 			"!.claude",
+			"!tools/cli/oclif.manifest.json",
 			"!**/src/components/vendor"
 		]
 	},
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": false,
+			"preset": "none",
 			"correctness": {
-				"recommended": true,
+				"preset": "recommended",
 				"noUnusedFunctionParameters": "off",
 				"noUnusedVariables": "off",
 				"noUnusedImports": "off",
 				"noUnusedPrivateClassMembers": "off"
 			},
 			"suspicious": {
-				"recommended": true,
+				"preset": "recommended",
 				"noExplicitAny": "off",
 				"noImplicitAnyLet": "off",
 				"noAssignInExpressions": "off",
-				"useIterableCallbackReturn": "off"
-			},
-			"style": {
-				"useFilenamingConvention": "off",
-				"useImportType": "warn",
-				"useNamingConvention": "off"
+				"useIterableCallbackReturn": "off",
+				"noTemplateCurlyInString": "off"
 			}
 		}
 	},

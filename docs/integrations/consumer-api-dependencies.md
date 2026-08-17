@@ -79,9 +79,23 @@ section-player layout elements; new optional `nameKey` / `descriptionKey` on
 `ToolRegistration` alongside the still-required `name` / `description`; and new
 optional `i18n` / `locale` members on the toolkit runtime context, `ToolbarContext`
 and `ToolSurfaceServices`. Nothing was renamed, retyped, or removed from those
-surfaces, and with no `locale` supplied every rendered string — including every
-tool button's accessible name — is byte-identical to before, because the graceful
-default is `en-US` rather than the browser's locale.
+surfaces, and the graceful default is `en-US` rather than the browser's locale, so
+a host that passes no `locale` keeps English. The adoption commit also held every
+English value byte-identical, so that a text change would be visible as a text
+change rather than arriving inside the refactor.
+
+That hold was released by a follow-up, and it is the only part of this work that
+changes what a host renders today: sixteen strings were reworded and all nine
+toolbar button accessible names were re-formed against WCAG 2.5.3, so English
+output is no longer byte-identical with no `locale` supplied. Both `nl-NL` values
+moved with them. **Host A** is the only affected consumer — it drives live
+delivery with the toolbar placed — and **Host R** renders the same buttons.
+Grepping all three checkouts for the retired strings returns nothing outside
+`node_modules` and build caches: no host asserts, styles or otherwise depends on
+any of them, and none selects a tool button by accessible name. The exposure is
+therefore screen-reader output only, and it improves. Assessed against the changed
+strings rather than a full re-derivation, so it does not advance the verification
+date.
 
 The one non-additive change is `@pie-players/pie-players-shared/i18n`, whose
 `SimpleI18n` gained `plural()` in place of `tn()` and lost

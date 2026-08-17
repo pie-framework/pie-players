@@ -167,14 +167,19 @@ const enUS = {
 			name: "Calculator",
 			nameBasic: "Basic Calculator",
 			nameScientific: "Scientific Calculator",
+			nameGraphing: "Graphing Calculator",
 			description: "Multi-type calculator (basic, scientific, graphing)",
 			// Announced by the inline calculator's toggle. One key per variant and
 			// state rather than "{name} opened": Dutch and German put the participle
-			// last, so the sentence has to be authored whole.
+			// last, so the sentence has to be authored whole. All three variants the
+			// provider implements are covered, not just the two the packaged toolbar
+			// registration offers — the inline element takes its type from the host.
 			openedBasic: "Basic calculator opened",
 			openedScientific: "Scientific calculator opened",
+			openedGraphing: "Graphing calculator opened",
 			closedBasic: "Basic calculator closed",
 			closedScientific: "Scientific calculator closed",
+			closedGraphing: "Graphing calculator closed",
 			toolA11y: "Calculator tool",
 			loading: "Loading calculator…",
 			providerUnavailable: "The calculator is unavailable.",
@@ -259,7 +264,7 @@ const enUS = {
 			switchToCentimetersA11y: "Switch to centimeters",
 			switchedTo: "Switched to {unit}",
 			applicationA11y:
-				"Ruler tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation, U to toggle units. Current unit: {unit}",
+				"Ruler tool. Use arrow keys to move, Shift+arrows to rotate, PageUp or PageDown for fine rotation, U to toggle units. Current unit: {unit}",
 			imageAlt: "Ruler showing {unit}",
 		},
 		protractor: {

@@ -14,6 +14,7 @@
 
 <script lang="ts">
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import type { MessageKey } from '@pie-players/pie-players-shared/i18n/types';
 	import {
 		connectToolRuntimeContext,
 		toOverlayToolId,
@@ -40,6 +41,41 @@
 
 	const isBrowser = typeof window !== 'undefined';
 
+	/**
+	 * The variants the Desmos provider implements. `calculatorType` arrives as a
+	 * custom-element attribute, so it is narrowed to this list before it can pick a
+	 * message key — a type outside it would otherwise index the table with
+	 * `undefined` and render nothing. Wider than the packaged toolbar
+	 * registration's `basic | scientific`, because the host sets this one directly.
+	 */
+	const CALCULATOR_VARIANTS = ['basic', 'scientific', 'graphing'] as const;
+	type CalculatorVariant = (typeof CALCULATOR_VARIANTS)[number];
+
+	/** Name, and the announcement for each toggle direction, per variant. */
+	const CALCULATOR_KEYS: Record<
+		CalculatorVariant,
+		{ name: MessageKey; opened: MessageKey; closed: MessageKey }
+	> = {
+		basic: {
+			name: 'tools.calculator.nameBasic',
+			opened: 'tools.calculator.openedBasic',
+			closed: 'tools.calculator.closedBasic',
+		},
+		scientific: {
+			name: 'tools.calculator.nameScientific',
+			opened: 'tools.calculator.openedScientific',
+			closed: 'tools.calculator.closedScientific',
+		},
+		graphing: {
+			name: 'tools.calculator.nameGraphing',
+			opened: 'tools.calculator.openedGraphing',
+			closed: 'tools.calculator.closedGraphing',
+		},
+	};
+
+	const isCalculatorVariant = (value: string): value is CalculatorVariant =>
+		(CALCULATOR_VARIANTS as readonly string[]).includes(value);
+
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
@@ -62,19 +98,18 @@
 	const effectiveCalculatorType = $derived(
 		supportedCalculatorTypes.has(calculatorType) ? calculatorType : 'basic',
 	);
+	const variantKeys = $derived(
+		CALCULATOR_KEYS[
+			isCalculatorVariant(effectiveCalculatorType) ? effectiveCalculatorType : 'basic'
+		],
+	);
 
 	/**
 	 * Accessible name and tooltip for the toggle, static across open and closed.
 	 * `aria-pressed` on the same button already carries the state, so a name that
 	 * swapped to "Close …" would contradict it.
 	 */
-	const calculatorName = $derived(
-		interfaceI18n.t(
-			effectiveCalculatorType === 'basic'
-				? 'tools.calculator.nameBasic'
-				: 'tools.calculator.nameScientific',
-		),
-	);
+	const calculatorName = $derived(interfaceI18n.t(variantKeys.name));
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -126,13 +161,7 @@
 		coordinator.toggleTool(effectiveTargetToolId);
 
 		statusMessage = interfaceI18n.t(
-			calculatorVisible
-				? effectiveCalculatorType === 'basic'
-					? 'tools.calculator.closedBasic'
-					: 'tools.calculator.closedScientific'
-				: effectiveCalculatorType === 'basic'
-					? 'tools.calculator.openedBasic'
-					: 'tools.calculator.openedScientific',
+			calculatorVisible ? variantKeys.closed : variantKeys.opened,
 		);
 	}
 

@@ -34,6 +34,7 @@
 		getPassagePlayerParams,
 		type HeadingLevel,
 	} from "./section-player-view-state.js";
+	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	let {
 		passages = [] as PassageEntity[],
@@ -58,14 +59,17 @@
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
 	}>();
+
+	let loadingCard = $state<HTMLDivElement | null>(null);
+	const interfaceI18n = useInterfaceI18n(() => loadingCard);
 </script>
 
 {#if !elementsLoaded}
-	<div class="pie-section-player-content-card">
+	<div class="pie-section-player-content-card" bind:this={loadingCard}>
 		<div
 			class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
 		>
-			Loading passage content...
+			{interfaceI18n.t("player.loadingPassage")}
 		</div>
 	</div>
 {:else}

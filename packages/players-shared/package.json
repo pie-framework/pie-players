@@ -61,6 +61,18 @@
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"
 		},
+		"./i18n/types": {
+			"types": "./dist/i18n/types.d.ts",
+			"import": "./dist/i18n/types.js"
+		},
+		"./i18n/provider": {
+			"types": "./dist/i18n/provider.d.ts",
+			"import": "./dist/i18n/provider.js"
+		},
+		"./i18n/catalogs": {
+			"types": "./dist/i18n/catalogs.d.ts",
+			"import": "./dist/i18n/catalogs.js"
+		},
 		"./i18n/language-tags": {
 			"types": "./dist/i18n/language-tags.d.ts",
 			"import": "./dist/i18n/language-tags.js"

@@ -10,6 +10,11 @@
 			// attribute mirrored onto `runtime.ndsIcons` (runtime wins if both
 			// are set). Defaults to unset (plain <button>s).
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale: the language the player renders its own UI in, as a
+			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
+			// (runtime wins if both are set). Unset renders `en-US`. Distinct
+			// from the authored content language, which travels on `env`.
+			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -76,7 +81,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import { mergeNdsIconsIntoRuntime } from "./shared/section-player-host-runtime.js";
+	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
@@ -120,6 +125,7 @@
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = undefined as boolean | undefined,
+		locale = "",
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
@@ -157,7 +163,9 @@
 	} = $props();
 	// Fold the `nds-icons` convenience attribute into the runtime handed to
 	// the kernel (host `runtime.ndsIcons` still wins if both are set).
-	const kernelRuntime = $derived(mergeNdsIconsIntoRuntime(runtime, ndsIcons));
+	const kernelRuntime = $derived(
+		mergeLayoutAttrsIntoRuntime(runtime, { ndsIcons, locale }),
+	);
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);

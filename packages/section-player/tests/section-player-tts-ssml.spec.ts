@@ -1143,7 +1143,7 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(passageInlineTts.first()).toBeVisible();
 			await expect(itemInlineTts.first()).toBeVisible();
 			const itemCalculatorButton = q1.getByRole("button", {
-				name: /open .* calculator/i,
+				name: /^(basic |scientific )?calculator$/i,
 			});
 			await expect(itemCalculatorButton).toBeVisible();
 			const itemPromptAnchor = q1.getByRole("radio").first();
@@ -1495,7 +1495,7 @@ test.describe("section player demo tts-ssml", () => {
 			passageRegion.getByRole("button", { name: /calculator/i }),
 		).toHaveCount(0);
 		const itemCalculatorButton = q1.getByRole("button", {
-			name: /open .* calculator/i,
+			name: /^(basic |scientific )?calculator$/i,
 		});
 		await expect(itemCalculatorButton).toBeVisible();
 
@@ -1540,18 +1540,18 @@ test.describe("section player demo tts-ssml", () => {
 		// Preferred placement keeps section-level measurement tools and the
 		// legacy toolbar-toggle highlighter off item card toolbars.
 		await expect(
-			q1.getByRole("button", { name: "Open ruler tool" }),
+			q1.getByRole("button", { name: "Ruler" }),
 		).toHaveCount(0);
 		await expect(
-			q1.getByRole("button", { name: "Open protractor tool" }),
+			q1.getByRole("button", { name: "Protractor" }),
 		).toHaveCount(0);
 		await expect(
-			q1.getByRole("button", { name: "Highlighter - Highlight text" }),
+			q1.getByRole("button", { name: "Highlight text" }),
 		).toHaveCount(0);
 
 		// Answer eliminator is item-level and should render elimination controls when toggled on.
 		const answerEliminatorButton = q1.getByRole("button", {
-			name: /answer eliminator|strike through choices/i,
+			name: /strike through/i,
 		});
 		await expect(answerEliminatorButton).toBeVisible();
 		await answerEliminatorButton.click();

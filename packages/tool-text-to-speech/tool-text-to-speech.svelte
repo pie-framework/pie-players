@@ -14,6 +14,11 @@
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
 	import { BrowserTTSProvider, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from '@pie-players/pie-assessment-toolkit';
 	import { onMount } from 'svelte';
 
 	// Props
@@ -282,14 +287,26 @@
 		coordinator?.hideTool(toolId);
 	}
 
-	// Get rate label
+	// This tool has no toolkit runtime-context read of its own, so it opens one
+	// purely for the interface locale. The graceful default covers a bare mount.
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value) => {
+			runtimeContext = value;
+		});
+	});
+
+	// Rate label. The `${rate}x` tail is a number plus a unit symbol, not prose,
+	// so it needs no catalog entry.
 	const rateLabel = $derived(
-		rate === 0.5 ? 'Slow' :
-		rate === 0.75 ? 'Slower' :
-		rate === 1.0 ? 'Normal' :
-		rate === 1.25 ? 'Faster' :
-		rate === 1.5 ? 'Fast' :
-		rate === 2.0 ? 'Very Fast' :
+		rate === 0.5 ? interfaceI18n.t('tools.textToSpeech.rate.slow') :
+		rate === 0.75 ? interfaceI18n.t('tools.textToSpeech.rate.slower') :
+		rate === 1.0 ? interfaceI18n.t('tools.textToSpeech.rate.normal') :
+		rate === 1.25 ? interfaceI18n.t('tools.textToSpeech.rate.faster') :
+		rate === 1.5 ? interfaceI18n.t('tools.textToSpeech.rate.fast') :
+		rate === 2.0 ? interfaceI18n.t('tools.textToSpeech.rate.veryFast') :
 		`${rate}x`
 	);
 </script>
@@ -301,7 +318,9 @@
 		style="left: {position.x}px; top: {position.y}px;"
 		onpointerdown={handlePointerDown}
 		role="dialog"
-		aria-label="Text-to-Speech Tool"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.textToSpeech.toolA11y')}
 		tabindex="-1"
 	>
 		<!-- Header -->
@@ -310,13 +329,13 @@
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.858 18.142a3 3 0 104.243-4.242L12 12.142 7.757 7.899a3 3 0 000 4.242z"/>
 				</svg>
-				<span class="pie-tool-text-to-speech__title">Text-to-Speech</span>
+				<span class="pie-tool-text-to-speech__title">{interfaceI18n.t('tools.textToSpeech.title')}</span>
 			</div>
 			<button
 				bind:this={closeButtonEl}
 				class="pie-tool-text-to-speech__close-button"
 				onclick={handleClose}
-				aria-label="Close"
+				aria-label={interfaceI18n.t('common.closeA11y')}
 				type="button"
 			>
 				×
@@ -334,7 +353,7 @@
 				</div>
 			{:else if !isInitialized}
 				<div class="pie-tool-text-to-speech__loading-message">
-					<span>Initializing...</span>
+					<span>{interfaceI18n.t('tools.textToSpeech.initializing')}</span>
 				</div>
 			{:else}
 				<!-- Instructions -->
@@ -347,14 +366,14 @@
 							<span>{selectedText.length} characters selected</span>
 						</div>
 					{:else}
-						<p>Select text on the page to read it aloud.</p>
+						<p>{interfaceI18n.t('tools.textToSpeech.selectText')}</p>
 					{/if}
 				</div>
 
 				<!-- Speed Control -->
 				<div class="pie-tool-text-to-speech__control-group">
 					<label for="tts-speed">
-						<span>Speed:</span>
+						<span>{interfaceI18n.t('tools.textToSpeech.speed')}</span>
 						<strong>{rateLabel}</strong>
 					</label>
 					<input
@@ -375,32 +394,34 @@
 						class="pie-tool-text-to-speech__button-primary"
 						onclick={speakSelection}
 						disabled={!hasSelection || isSpeaking}
-						aria-label="Play"
+						aria-label={interfaceI18n.t('tools.textToSpeech.play')}
 						type="button"
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
 						</svg>
-						<span>Play</span>
+						<span>{interfaceI18n.t('tools.textToSpeech.play')}</span>
 					</button>
 
 					<button
 						class="pie-tool-text-to-speech__button-secondary"
 						onclick={togglePause}
 						disabled={!isSpeaking}
-						aria-label={isPaused ? 'Resume' : 'Pause'}
+						aria-label={interfaceI18n.t(
+							isPaused ? 'tools.textToSpeech.resume' : 'tools.textToSpeech.pause',
+						)}
 						type="button"
 					>
 						{#if isPaused}
 							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
 							</svg>
-							<span>Resume</span>
+							<span>{interfaceI18n.t('tools.textToSpeech.resume')}</span>
 						{:else}
 							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 								<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
 							</svg>
-							<span>Pause</span>
+							<span>{interfaceI18n.t('tools.textToSpeech.pause')}</span>
 						{/if}
 					</button>
 
@@ -408,13 +429,13 @@
 						class="pie-tool-text-to-speech__button-secondary"
 						onclick={stopSpeaking}
 						disabled={!isSpeaking}
-						aria-label="Stop"
+						aria-label={interfaceI18n.t('tools.textToSpeech.stop')}
 						type="button"
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
 						</svg>
-						<span>Stop</span>
+						<span>{interfaceI18n.t('tools.textToSpeech.stop')}</span>
 					</button>
 				</div>
 

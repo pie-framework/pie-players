@@ -5,6 +5,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { useZoomCompensation } from "@pie-players/pie-players-shared/ui/use-zoom-compensation";
+	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	type LayoutModel = {
 		passages: unknown[];
@@ -52,6 +53,9 @@
 		contentMaxWidthWithPassagePx?: number;
 		idBase?: string;
 	}>();
+
+	let frameElement = $state<HTMLDivElement | null>(null);
+	const interfaceI18n = useInterfaceI18n(() => frameElement);
 
 	let activeTab = $state<TabKey>("passage");
 	let passageTabButton = $state<HTMLButtonElement | null>(null);
@@ -146,6 +150,7 @@
 </script>
 
 <div
+	bind:this={frameElement}
 	class="pie-section-player-tabbed-frame"
 	style={`--pie-section-player-layout-max-width: ${
 		layoutMaxWidthPx !== undefined ? `${layoutMaxWidthPx}px` : "none"
@@ -153,7 +158,7 @@
 >
 	<div class="pie-section-player-tabbed-content">
 		{#if hasPassages}
-			<div class="pie-section-player-tabs" role="tablist" aria-label="Section content tabs">
+			<div class="pie-section-player-tabs" role="tablist" aria-label={interfaceI18n.t("player.sectionTabsA11y")}>
 				<button
 					bind:this={passageTabButton}
 					id={passageTabId}
@@ -167,7 +172,7 @@
 					onclick={() => setActiveTab("passage")}
 					onkeydown={(event) => handleTabKeyDown(event, "passage")}
 				>
-					Passage
+					{interfaceI18n.t("player.passage")}
 				</button>
 				<button
 					bind:this={itemsTabButton}
@@ -182,7 +187,7 @@
 					onclick={() => setActiveTab("items")}
 					onkeydown={(event) => handleTabKeyDown(event, "items")}
 				>
-					Questions
+					{interfaceI18n.t("player.questions")}
 				</button>
 			</div>
 		{/if}

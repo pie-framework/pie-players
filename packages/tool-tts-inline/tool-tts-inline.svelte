@@ -36,6 +36,7 @@
 	// externalized by this package's Vite build, so the bundle is inlined here.
 	import '@pie-players/pie-players-shared/nds-icon-button';
 	import { useZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/use-zoom-compensation';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	let {
 		catalogId = '', // Explicit catalog ID
@@ -203,6 +204,8 @@
 	// <nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise it is a plain <button>.
 	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
 	const ttsService = $derived(runtimeContext?.ttsService as TtsServiceApi | undefined);
@@ -368,7 +371,7 @@
 	}
 
 	function handleProgrammaticControlHandoff(
-		status = 'Reading switched to another section',
+		status = interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
 		restoreFocus = false,
 	): void {
 		if (handoffInProgress) return;
@@ -440,10 +443,16 @@
 			const wasSeekControlFocused = isSeekControlFocused();
 			syncFromState(playbackState);
 			if (playbackState === 'playing') {
+				// Upgraded off the in-flight flag rather than off `statusMessage`:
+				// the announcement is rendered prose, so comparing it against the
+				// "starting" lookup drops the announcement whenever the locale
+				// changes between the two reads.
+				if (playbackStartInFlight) {
+					statusMessage = interfaceI18n.t(
+						'tools.textToSpeech.inline.started',
+					);
+				}
 				playbackStartInFlight = false;
-			}
-			if (playbackState === 'playing' && statusMessage === 'Starting reading') {
-				statusMessage = 'Reading started';
 			}
 			if (playbackState === 'error' || playbackState === 'idle') {
 				playbackStartInFlight = false;
@@ -468,7 +477,7 @@
 			}>;
 			const { ownerId = null, previousOwnerId = null } = ownerChange.detail || {};
 			if (previousOwnerId === instanceId && ownerId !== instanceId) {
-				handleProgrammaticControlHandoff('Reading switched to another section');
+				handleProgrammaticControlHandoff(interfaceI18n.t('tools.textToSpeech.inline.switchedSection'));
 			}
 		};
 		window.addEventListener(OWNER_EVENT, ownerListener);
@@ -480,7 +489,10 @@
 	$effect(() => {
 		if (!isBrowser) return;
 		const controlHandoffListener = () => {
-			handleProgrammaticControlHandoff('Reading switched to another section', true);
+			handleProgrammaticControlHandoff(
+				interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
+				true,
+			);
 		};
 		window.addEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
 		return () => {
@@ -636,7 +648,7 @@
 		resolverDisposer: (() => void) | null,
 	): void {
 		const hadPanelFocus = panelHasFocus();
-		resetLocalPlaybackUi('Unable to start reading');
+		resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.startFailed'));
 		if (isActiveOwner()) {
 			releaseActiveOwner();
 		}
@@ -677,7 +689,7 @@
 			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			playbackStartInFlight = true;
-			statusMessage = 'Starting reading';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
 			void ttsService.speak(text, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
@@ -707,12 +719,12 @@
 		}
 		if (isActiveOwner() && paused) {
 			ttsService.resume();
-			statusMessage = 'Reading resumed';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.resumed');
 			return;
 		}
 		if (isActiveOwner() && speaking && !paused) {
 			ttsService.pause();
-			statusMessage = 'Reading paused';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.pausedAnnouncement');
 			return;
 		}
 		// This guard — NOT a `disabled` attribute on the trigger — is what prevents
@@ -723,9 +735,9 @@
 		if (playActionInFlight) return;
 		playActionInFlight = true;
 		try {
-			statusMessage = 'Initializing text-to-speech';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.initializing');
 			if (!(await ensureTTSReady())) {
-				statusMessage = 'Unable to initialize text-to-speech. Try again.';
+				statusMessage = interfaceI18n.t('tools.textToSpeech.inline.initFailed');
 				return;
 			}
 			const currentState = String(ttsService.getState?.() || '');
@@ -751,7 +763,7 @@
 		const hadPanelFocus = panelHasFocus();
 		ttsService.stop();
 		releaseActiveOwner();
-		resetLocalPlaybackUi('Reading stopped');
+		resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.stopped'));
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
 		}
@@ -767,10 +779,10 @@
 		if (!ttsService || !speaking) return;
 		try {
 			await (ttsService as any).seekForward?.(1);
-			statusMessage = 'Skipped forward';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedForward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek forward failed:', error);
-			statusMessage = 'Unable to skip forward';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skipForwardFailed');
 		}
 	}
 
@@ -778,10 +790,10 @@
 		if (!ttsService || !speaking) return;
 		try {
 			await (ttsService as any).seekBackward?.(1);
-			statusMessage = 'Skipped backward';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedBackward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek backward failed:', error);
-			statusMessage = 'Unable to skip backward';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skipBackwardFailed');
 		}
 	}
 
@@ -789,14 +801,14 @@
 		const service = ttsService;
 		if (!service) return;
 		if (playbackRate === option.rate) {
-			statusMessage = `Playback speed ${option.label}`;
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.speedAnnounce', { label: option.label });
 			return;
 		}
 		const previousRequestedRate = requestedPlaybackRate;
 		const previousRequestedChoicesKey = requestedPlaybackChoicesKey;
 		requestedPlaybackRate = option.rate;
 		requestedPlaybackChoicesKey = speedChoicesKey;
-		statusMessage = `Playback speed ${option.label}`;
+		statusMessage = interfaceI18n.t('tools.textToSpeech.inline.speedAnnounce', { label: option.label });
 		const syncTarget = {
 			service,
 			choicesKey: speedChoicesKey,
@@ -811,7 +823,7 @@
 			console.error('[TTS Inline] Playback speed change failed:', error);
 			requestedPlaybackRate = previousRequestedRate;
 			requestedPlaybackChoicesKey = previousRequestedChoicesKey;
-			statusMessage = 'Unable to change playback speed';
+			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.speedChangeFailed');
 		}
 	}
 
@@ -1084,7 +1096,13 @@
 						size="small"
 						variant="tertiary"
 						icon-name={speaking && !paused ? 'pause' : 'play'}
-						button-aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+						button-aria-label={interfaceI18n.t(
+						speaking && !paused
+							? 'tools.textToSpeech.inline.pauseA11y'
+							: paused
+								? 'tools.textToSpeech.inline.resumeA11y'
+								: 'tools.textToSpeech.inline.playA11y',
+					)}
 						disabled={!ttsService}
 						onclick={handlePlayPause}
 					></nds-icon-button>
@@ -1100,7 +1118,13 @@
 					aria-expanded={controlsVisible ? 'true' : 'false'}
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
-					aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+					aria-label={interfaceI18n.t(
+						speaking && !paused
+							? 'tools.textToSpeech.inline.pauseA11y'
+							: paused
+								? 'tools.textToSpeech.inline.resumeA11y'
+								: 'tools.textToSpeech.inline.playA11y',
+					)}
 					aria-busy={startupInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
@@ -1126,7 +1150,7 @@
 					class:pie-tool-tts-inline__panel--compact={isLeftAlignedFloatingLayout && leftAlignedCompact}
 					style={isLeftAlignedFloatingLayout ? leftAlignedOverlayStyle : ''}
 					role="toolbar"
-					aria-label="Reading controls"
+					aria-label={interfaceI18n.t('tools.textToSpeech.inline.controlsA11y')}
 					tabindex="-1"
 				>
 					{#if visibleSpeedChoices.length > 0}
@@ -1142,7 +1166,7 @@
 							class="pie-tool-tts-inline__speed-group"
 							class:pie-tool-tts-inline__speed-group--stacked={leftAlignedCompact}
 							role="radiogroup"
-							aria-label="Playback speed"
+							aria-label={interfaceI18n.t('tools.textToSpeech.inline.playbackSpeedA11y')}
 						>
 							{#each visibleSpeedChoices as option (option.rate)}
 								<button
@@ -1172,7 +1196,7 @@
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekBackward}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
-						aria-label="Rewind"
+						aria-label={interfaceI18n.t('tools.textToSpeech.inline.rewindA11y')}
 						disabled={!ttsService || !speaking}
 					>
 						<i class="fa-solid fa-backward pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1186,7 +1210,7 @@
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleSeekForward}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
-						aria-label="Fast-forward"
+						aria-label={interfaceI18n.t('tools.textToSpeech.inline.fastForwardA11y')}
 						disabled={!ttsService || !speaking}
 					>
 						<i class="fa-solid fa-forward pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1205,7 +1229,7 @@
 						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--secondary"
 						onclick={handleStop}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
-						aria-label="Stop reading"
+						aria-label={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}
 						disabled={!ttsService}
 					>
 						<i class="fa-solid fa-stop pie-tool-tts-inline__icon" aria-hidden="true"></i>

@@ -11,6 +11,11 @@
 />
 
 <script lang="ts">
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
 		getSectionControllerFromCoordinator,
@@ -270,10 +275,26 @@
 		};
 	});
 
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
 <SharedFloatingPanel
-	title="Session Data"
+	title={interfaceI18n.t("debug.sessionData")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag session panel"
 	minWidth={340}
 	minHeight={260}
@@ -307,7 +328,7 @@
 
 	<div class="pie-section-player-tools-session-debugger__content">
 		<div class="pie-section-player-tools-session-debugger__section-intro">
-			<div class="pie-section-player-tools-session-debugger__heading">PIE Session Data (Persistent)</div>
+			<div class="pie-section-player-tools-session-debugger__heading">{interfaceI18n.t("debug.sessionDataPersistent")}</div>
 		</div>
 
 		{#if !controllerAvailable}
@@ -320,7 +341,7 @@
 				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
 				</svg>
-				<span class="pie-section-player-tools-session-debugger__text-xs">Section controller not available for this section yet.</span>
+				<span class="pie-section-player-tools-session-debugger__text-xs">{interfaceI18n.t("debug.sectionControllerUnavailable")}</span>
 			</div>
 		{:else}
 			{#if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
@@ -338,14 +359,14 @@
 			{/if}
 			<div class="pie-section-player-tools-session-debugger__card">
 				<div class="pie-section-player-tools-session-debugger__card-title">
-					Item Sessions Snapshot
+					{interfaceI18n.t("debug.itemSessionsSnapshot")}
 				</div>
 				<div
 					class="pie-section-player-tools-session-debugger__card-region"
 					role="textbox"
 					aria-readonly="true"
 					tabindex="0"
-					aria-label="Section session snapshot JSON"
+					aria-label={interfaceI18n.t("debug.sectionSessionJsonA11y")}
 				>
 					<pre class="pie-section-player-tools-session-debugger__card-pre">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
 				</div>

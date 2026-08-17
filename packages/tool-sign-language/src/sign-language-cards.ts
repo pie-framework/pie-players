@@ -33,6 +33,11 @@ import {
 	trimmedOrUndefined,
 } from "@pie-players/pie-assessment-toolkit";
 import type {
+	I18nProvider,
+	MessageKey,
+} from "@pie-players/pie-players-shared/i18n/types";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+import type {
 	CatalogCard,
 	CatalogCardPayload,
 	MediaAssetRef,
@@ -48,28 +53,46 @@ export const SIGN_LANGUAGE_CATALOG_TYPE = "sign-language";
 export const AMERICAN_SIGN_LANGUAGE = "ase";
 
 /**
- * Human-readable names for the sign languages PIE has a reason to name today.
+ * Catalog keys for the sign languages PIE has a reason to name today.
  *
  * Used for the region's accessible label, which must name the language ("American
- * Sign Language") rather than say "video". Unknown codes fall back to a labelled
- * code rather than a lie.
+ * Sign Language") rather than say "video". These are the language of the
+ * *adaptation*, never inferred from the item's content language.
+ *
+ * Keys rather than literals so the label follows the interface locale: a Dutch
+ * deployment showing an ASL recording should read "Amerikaanse gebarentaal".
  */
-const SIGN_LANGUAGE_NAMES: Record<string, string> = {
-	ase: "American Sign Language",
-	bfi: "British Sign Language",
-	fsl: "French Sign Language",
-	gss: "Greek Sign Language",
-	mfs: "Mexican Sign Language",
+const SIGN_LANGUAGE_NAME_KEYS: Record<string, MessageKey> = {
+	ase: "tools.signLanguage.ase",
+	bfi: "tools.signLanguage.bfi",
+	fsl: "tools.signLanguage.fsl",
+	gss: "tools.signLanguage.gss",
+	mfs: "tools.signLanguage.mfs",
 	// Signed English is not a distinct sign language; it rides the same card
 	// type tagged with a spoken-language code, so name it where it appears.
-	"eng-US": "Signed English",
-	"en-US": "Signed English",
+	"eng-US": "tools.signLanguage.signedEnglish",
+	"en-US": "tools.signLanguage.signedEnglish",
 };
 
-export function describeSignLanguage(signLang?: string): string {
+/**
+ * Name the signed language for an accessible label.
+ *
+ * `i18n` is optional, and absent resolves through `resolveInterfaceI18n` — the one
+ * implementation of the no-publisher fallback — rather than reaching for the
+ * default provider here. A caller that has a provider should pass it, so the label
+ * re-renders when the interface locale changes. An unrecognized code gets a
+ * labelled code rather than a lie.
+ */
+export function describeSignLanguage(
+	signLang?: string,
+	i18n?: I18nProvider,
+): string {
+	const messages = resolveInterfaceI18n({ i18n });
 	const code = (signLang || "").trim();
-	if (!code) return "Sign language";
-	return SIGN_LANGUAGE_NAMES[code] ?? `Sign language (${code})`;
+	if (!code) return messages.t("tools.signLanguage.generic");
+	const key = SIGN_LANGUAGE_NAME_KEYS[code];
+	if (key) return messages.t(key);
+	return messages.t("tools.signLanguage.unknown", { code });
 }
 
 /**

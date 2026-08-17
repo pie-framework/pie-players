@@ -19,6 +19,7 @@
 		CatalogOwnerContext,
 		ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
 		createToolSurfaceHost,
 		type ToolSurfaceHostSnapshot,
@@ -61,6 +62,7 @@
 				toolkitCoordinator: runtimeContext?.toolkitCoordinator ?? null,
 				ttsService: runtimeContext?.ttsService ?? null,
 				catalogResolver: runtimeContext?.catalogResolver ?? null,
+				i18n: resolveInterfaceI18n(runtimeContext),
 			},
 			scope: { kind: "content", ownerContext },
 		});

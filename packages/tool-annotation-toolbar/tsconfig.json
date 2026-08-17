@@ -10,6 +10,7 @@
 	},
 	"include": [
 		"index.ts",
+		"selection-actions.ts",
 		"selection-keyboard.ts",
 		"tool-annotation-toolbar.svelte"
 	],

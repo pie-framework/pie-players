@@ -1,13 +1,21 @@
 <script lang="ts">
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+
 	let {
 		onPointerDown,
 		handleClass = "pie-panel-resize-handle",
 		iconClass = "pie-panel-resize-icon",
+		i18n,
 	} = $props<{
 		onPointerDown?: (event: MouseEvent) => void;
 		handleClass?: string;
 		iconClass?: string;
+		/** Interface-locale provider; the English-only default covers its absence. */
+		i18n?: I18nProvider;
 	}>();
+
+	const label = $derived(resolveInterfaceI18n({ i18n }).t("toolkit.resizeWindow"));
 </script>
 
 <div
@@ -15,8 +23,8 @@
 	onmousedown={onPointerDown}
 	role="button"
 	tabindex="0"
-	title="Resize window"
-	aria-label="Resize window"
+	title={label}
+	aria-label={label}
 >
 	<svg class={iconClass} viewBox="0 0 16 16" fill="currentColor">
 		<path d="M16 16V14H14V16H16Z" />

@@ -31,23 +31,34 @@
 	import type { TtsServiceApi } from "@pie-players/pie-assessment-toolkit";
 	import type { MediaSource } from "@pie-players/pie-players-shared/types";
 	import { describeSignLanguage } from "./sign-language-cards.js";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type { ResolvedSignLanguageAlternate } from "./sign-language-content.js";
 
 	let {
 		media = null as ResolvedSignLanguageAlternate | null,
 		ttsService = null as TtsServiceApi | null,
+		i18n = undefined as I18nProvider | undefined,
 	} = $props<{
 		media?: ResolvedSignLanguageAlternate | null;
 		ttsService?: TtsServiceApi | null;
+		/**
+		 * Interface-locale provider, supplied by the host surface. Absent, the
+		 * English-only default names the language rather than leaking a key.
+		 */
+		i18n?: I18nProvider;
 	}>();
 
 	let videoElement = $state<HTMLVideoElement | null>(null);
 	const listenerId = `pie-tool-sign-language-${(instanceCounter += 1)}`;
 
-	const languageName = $derived(describeSignLanguage(media?.signLang));
+	const languageName = $derived(describeSignLanguage(media?.signLang, i18n));
 	// The label names the language rather than saying "video": "American Sign
 	// Language" tells a learner what this is; "video" does not.
-	const accessibleLabel = $derived(media?.label || `${languageName} translation`);
+	const accessibleLabel = $derived(
+		media?.label ||
+			resolveInterfaceI18n({ i18n }).t('tools.signLanguage.regionA11y', { language: languageName }),
+	);
 	const sources = $derived(
 		(media?.sources ?? []).map((source: MediaSource) => ({
 			...source,

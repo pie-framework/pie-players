@@ -13,37 +13,37 @@ type ToolSpec = {
 const SECTION_TOOL_SPECS: ToolSpec[] = [
 	{
 		id: "theme",
-		buttonAriaLabel: "Theme - Change colors and contrast",
+		buttonAriaLabel: "Theme, change colors and contrast",
 		toolHostTag: "pie-tool-theme",
 		panelRole: "dialog",
 	},
 	{
 		id: "graph",
-		buttonAriaLabel: "Graph - Graphing calculator",
+		buttonAriaLabel: "Graph, graphing calculator",
 		toolHostTag: "pie-tool-graph",
 		panelRole: "dialog",
 	},
 	{
 		id: "periodicTable",
-		buttonAriaLabel: "Periodic table - Chemistry reference",
+		buttonAriaLabel: "Periodic Table, chemistry reference",
 		toolHostTag: "pie-tool-periodic-table",
 		panelRole: "dialog",
 	},
 	{
 		id: "protractor",
-		buttonAriaLabel: "Open protractor tool",
+		buttonAriaLabel: "Protractor",
 		toolHostTag: "pie-tool-protractor",
 		panelRole: "application",
 	},
 	{
 		id: "lineReader",
-		buttonAriaLabel: "Line reader - Reading guide",
+		buttonAriaLabel: "Line Reader, reading guide",
 		toolHostTag: "pie-tool-line-reader",
 		panelRole: "group",
 	},
 	{
 		id: "ruler",
-		buttonAriaLabel: "Open ruler tool",
+		buttonAriaLabel: "Ruler",
 		toolHostTag: "pie-tool-ruler",
 		panelRole: "application",
 	},
@@ -278,10 +278,10 @@ test.describe("section toolbar tools", () => {
 			page.locator(".pie-section-player-toolbar-pane--right"),
 		).toHaveCount(0);
 		const themeButton = page.getByRole("button", {
-			name: "Theme - Change colors and contrast",
+			name: "Theme, change colors and contrast",
 		});
 		const graphButton = page.getByRole("button", {
-			name: "Graph - Graphing calculator",
+			name: "Graph, graphing calculator",
 		});
 		await expect(themeButton).toBeVisible();
 		await expect(graphButton).toBeVisible();
@@ -369,7 +369,7 @@ test.describe("section toolbar tools", () => {
 
 		const toolbar = sectionToolbar(page);
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph - Graphing calculator",
+			name: "Graph, graphing calculator",
 		});
 		await expect(graphButton).toBeVisible();
 		await graphButton.click();
@@ -398,7 +398,7 @@ test.describe("section toolbar tools", () => {
 		await gotoDemo(page);
 		const toolbar = sectionToolbar(page);
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph - Graphing calculator",
+			name: "Graph, graphing calculator",
 		});
 		await graphButton.click();
 
@@ -453,7 +453,7 @@ test.describe("section toolbar tools", () => {
 		await gotoDemo(page);
 		const toolbar = page.locator("pie-section-toolbar").first();
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph - Graphing calculator",
+			name: "Graph, graphing calculator",
 		});
 		await graphButton.click();
 
@@ -473,7 +473,7 @@ test.describe("section toolbar tools", () => {
 		await gotoDemo(page);
 		const toolbar = sectionToolbar(page);
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph - Graphing calculator",
+			name: "Graph, graphing calculator",
 		});
 		await graphButton.focus();
 		await expect(graphButton).toBeFocused();
@@ -530,7 +530,7 @@ test.describe("section toolbar tools", () => {
 
 		const q1 = page.locator("pie-section-player-item-card").first();
 		const calculatorButton = q1.getByRole("button", {
-			name: /open .* calculator/i,
+			name: /^(basic |scientific )?calculator$/i,
 		});
 		await expect(calculatorButton).toBeVisible();
 
@@ -653,7 +653,7 @@ test.describe("section toolbar tools", () => {
 
 		const q1 = page.locator("pie-section-player-item-card").first();
 		const calculatorButton = q1.getByRole("button", {
-			name: /open .* calculator/i,
+			name: /^(basic |scientific )?calculator$/i,
 		});
 		await expect(calculatorButton).toBeVisible();
 

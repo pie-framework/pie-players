@@ -15,6 +15,7 @@
 	import { tick, untrack } from 'svelte';
 	import type {
 		AssessmentToolkitRegionScopeContext,
+		AssessmentToolkitRuntimeContext,
 		AssessmentToolkitShellContext,
 		HighlightCoordinator,
 		ToolSelectionAction,
@@ -23,8 +24,10 @@
 	import {
 		connectAssessmentToolkitRegionScopeContext,
 		connectAssessmentToolkitShellContext,
+		connectToolRuntimeContext,
 		HighlightColor
 	} from '@pie-players/pie-assessment-toolkit';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import {
 		clampIndex,
@@ -63,14 +66,6 @@
 	// Storage key for sessionStorage
 	const STORAGE_KEY = 'pie-annotations';
 
-	// Available highlight colors (modern, accessible palette)
-	const HIGHLIGHT_COLORS = [
-		{ name: HighlightColor.YELLOW, hex: '#fde995', label: 'Yellow highlight' },
-		{ name: HighlightColor.PINK, hex: '#ff9fae', label: 'Pink highlight' },
-		{ name: HighlightColor.BLUE, hex: '#a7e0f6', label: 'Blue highlight' },
-		{ name: HighlightColor.GREEN, hex: '#a6e1c5', label: 'Green highlight' }
-	] as const;
-
 	// Disallowed elements - don't show toolbar when selecting these
 	const DISALLOWED_SELECTORS = [
 		'button',
@@ -86,6 +81,36 @@
 
 	// State - using Svelte 5 $state rune for reactive state
 	let contextHostElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+
+	// Available highlight colors (modern, accessible palette). `$derived` because
+	// the labels come from the catalog, so the list rebuilds when the locale moves —
+	// which is also why it has to be declared after `interfaceI18n` rather than with
+	// the other constants above.
+	const HIGHLIGHT_COLORS = $derived([
+		{
+			name: HighlightColor.YELLOW,
+			hex: '#fde995',
+			label: interfaceI18n.t('tools.annotationToolbar.highlightYellowA11y')
+		},
+		{
+			name: HighlightColor.PINK,
+			hex: '#ff9fae',
+			label: interfaceI18n.t('tools.annotationToolbar.highlightPinkA11y')
+		},
+		{
+			name: HighlightColor.BLUE,
+			hex: '#a7e0f6',
+			label: interfaceI18n.t('tools.annotationToolbar.highlightBlueA11y')
+		},
+		{
+			name: HighlightColor.GREEN,
+			hex: '#a6e1c5',
+			label: interfaceI18n.t('tools.annotationToolbar.highlightGreenA11y')
+		}
+	]);
 	let toolbarElement = $state<HTMLElement | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
@@ -837,7 +862,14 @@
 				regionScopeContext = value;
 			}
 		);
+		const cleanupRuntime = connectToolRuntimeContext(
+			contextHostElement,
+			(value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			}
+		);
 		return () => {
+			cleanupRuntime();
 			cleanupRegion();
 			cleanupShell();
 		};
@@ -853,7 +885,9 @@
 		data-pie-placement={toolbarState.toolbarPosition.below ? 'below' : 'above'}
 		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px;`}
 		role="toolbar"
-		aria-label="Text annotation toolbar"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.annotationToolbar.toolbarA11y')}
 		translate="no"
 		tabindex="-1"
 		onkeydown={handleToolbarKeyDown}
@@ -876,8 +910,8 @@
 		<button
 			class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"
 			onclick={() => handleHighlight(HighlightColor.UNDERLINE)}
-			aria-label="Underline selected text"
-			title="Underline"
+			aria-label={interfaceI18n.t('tools.annotationToolbar.underlineA11y')}
+			title={interfaceI18n.t('tools.annotationToolbar.underline')}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -900,8 +934,8 @@
 				class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"
 				onclick={handleTTSClick}
 				disabled={ttsSpeaking}
-				aria-label="Read selected text aloud"
-				title="Read Aloud"
+				aria-label={interfaceI18n.t('tools.annotationToolbar.readAloudA11y')}
+				title={interfaceI18n.t('tools.annotationToolbar.readAloud')}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -953,8 +987,8 @@
 				<button
 					class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--warning"
 					onclick={handleRemoveAnnotation}
-					aria-label="Remove this annotation"
-					title="Remove"
+					aria-label={interfaceI18n.t('tools.annotationToolbar.removeA11y')}
+					title={interfaceI18n.t('tools.annotationToolbar.remove')}
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -976,10 +1010,10 @@
 				<button
 					class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--danger"
 					onclick={handleClearAnnotations}
-					aria-label="Clear all annotations from document"
-					title="Clear All"
+					aria-label={interfaceI18n.t('tools.annotationToolbar.clearAllA11y')}
+					title={interfaceI18n.t('tools.annotationToolbar.clearAll')}
 				>
-					Clear All
+					{interfaceI18n.t('tools.annotationToolbar.clearAll')}
 				</button>
 			{/if}
 		{/if}

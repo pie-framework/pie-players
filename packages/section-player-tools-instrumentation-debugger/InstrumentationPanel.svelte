@@ -16,6 +16,11 @@
 
 <script lang="ts">
 	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+	import {
 		clearBufferedInstrumentationDebugRecords,
 		subscribeInstrumentationDebugRecords,
 		type InstrumentationDebugRecord,
@@ -122,10 +127,26 @@
 			visibleRecords[0] ||
 			null,
 	);
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
 <SharedFloatingPanel
-	title="Instrumentation"
+	title={interfaceI18n.t("debug.instrumentation")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag instrumentation panel"
 	minWidth={360}
 	minHeight={320}
@@ -170,7 +191,7 @@
 			value={selectedKind}
 			onchange={(event) =>
 				setSelectedKind((event.currentTarget as HTMLSelectElement).value)}
-			aria-label="Filter instrumentation record type"
+			aria-label={interfaceI18n.t("debug.instrumentationFilterA11y")}
 		>
 			<option value="all">all</option>
 			<option value="event">event</option>
@@ -197,7 +218,7 @@
 		<div class="pie-section-player-tools-instrumentation-debugger__list">
 			{#if visibleRecords.length === 0}
 				<div class="pie-section-player-tools-instrumentation-debugger__empty">
-					No instrumentation records yet.
+					{interfaceI18n.t("debug.noRecords")}
 				</div>
 			{:else}
 				{#each visibleRecords as record (record.panelKey)}
@@ -228,7 +249,7 @@
 			role="textbox"
 			aria-readonly="true"
 			tabindex="0"
-			aria-label="Instrumentation record details"
+			aria-label={interfaceI18n.t("debug.instrumentationDetailsA11y")}
 		>
 			{#if selectedRecord}
 				<div class="pie-section-player-tools-instrumentation-debugger__detail-meta">
@@ -253,7 +274,7 @@
 				)}</pre>
 			{:else}
 				<div class="pie-section-player-tools-instrumentation-debugger__empty">
-					Select a record to inspect details.
+					{interfaceI18n.t("debug.selectRecord")}
 				</div>
 			{/if}
 		</div>

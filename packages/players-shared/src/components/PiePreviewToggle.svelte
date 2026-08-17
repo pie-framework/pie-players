@@ -6,17 +6,28 @@
 -->
 <script lang="ts">
 	import { createPieLogger, isGlobalDebugEnabled } from '../pie/logger.js';
+	import { resolveInterfaceI18n } from '../i18n/provider.js';
+	import type { I18nProvider } from '../i18n/types.js';
 
 	const logger = createPieLogger('pie-preview-toggle', () => isGlobalDebugEnabled());
 
 	// Props using Svelte 5 runes
 	let {
 		mode = 'author' as 'author' | 'preview',
-		onModeChange
+		onModeChange,
+		i18n
 	}: {
 		mode?: 'author' | 'preview';
 		onModeChange?: (mode: 'author' | 'preview') => void;
+		/**
+		 * Interface-locale provider. Optional: this control also renders in Studio
+		 * preview and authoring harnesses, where nothing publishes one, and the
+		 * English-only default covers that.
+		 */
+		i18n?: I18nProvider;
 	} = $props();
+
+	const messages = $derived(resolveInterfaceI18n({ i18n }));
 
 	// Handle mode change
 	function handleModeChange(newMode: 'author' | 'preview') {
@@ -47,7 +58,7 @@
 			aria-controls="author-panel"
 			onclick={() => handleModeChange('author')}
 		>
-			Author
+			{messages.t('common.author')}
 		</button>
 		<button
 			type="button"
@@ -58,7 +69,7 @@
 			aria-controls="preview-panel"
 			onclick={() => handleModeChange('preview')}
 		>
-			Preview
+			{messages.t('common.preview')}
 		</button>
 	</div>
 </div>

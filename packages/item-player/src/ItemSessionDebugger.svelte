@@ -9,6 +9,7 @@
 			session: { type: "Object", attribute: "session" },
 			env: { type: "Object", attribute: "env" },
 			score: { type: "Object", attribute: "score" },
+			locale: { attribute: "locale", type: "String" },
 		},
 	}}
 />
@@ -22,7 +23,11 @@
 		makeUniqueTags,
 	} from "@pie-players/pie-players-shared";
 	import type { ConfigEntity, Env, PieModel } from "@pie-players/pie-players-shared";
-	import { createEventDispatcher, onMount } from "svelte";
+	import { createEventDispatcher, onMount, untrack } from "svelte";
+	import {
+		createPieI18n,
+		DEFAULT_LOCALE,
+	} from "@pie-players/pie-players-shared/i18n";
 
 	type ItemConfigLike = {
 		elements?: Record<string, string>;
@@ -59,6 +64,7 @@
 		session = null,
 		env = null,
 		score = null,
+		locale = "",
 	}: {
 		itemName?: string;
 		itemId?: string;
@@ -66,7 +72,44 @@
 		session?: unknown;
 		env?: unknown;
 		score?: unknown;
+		locale?: string;
 	} = $props();
+	// Interface locale for this panel's own chrome. The JSON payloads it dumps are
+	// data, not message content, and stay as authored.
+	const interfaceI18n = createPieI18n();
+	let interfaceI18nVersion = $state(0);
+	$effect(() =>
+		interfaceI18n.subscribe(() => {
+			interfaceI18nVersion += 1;
+		}),
+	);
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		untrack(() => {
+			void Promise.resolve(
+				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+			).catch(() => {});
+		});
+	});
+	const t = $derived.by(() => {
+		void interfaceI18nVersion;
+		return {
+			sessionData: interfaceI18n.t("debug.sessionData"),
+			session: interfaceI18n.t("debug.session"),
+			filteredModel: interfaceI18n.t("debug.filteredModel"),
+			environment: interfaceI18n.t("debug.environment"),
+			close: interfaceI18n.t("common.close"),
+			closePanel: interfaceI18n.t("toolkit.closePanelA11y"),
+			resizeWindow: interfaceI18n.t("toolkit.resizeWindow"),
+			dragPanel: interfaceI18n.t("debug.dragItemSessionPanelA11y"),
+			tabs: interfaceI18n.t("debug.debuggerTabsA11y"),
+			sessionJson: interfaceI18n.t("debug.sessionDataJsonA11y"),
+			environmentJson: interfaceI18n.t("debug.environmentJsonA11y"),
+			filteredModelJson: interfaceI18n.t("debug.filteredModelJsonA11y"),
+			noSessionYet: interfaceI18n.t("debug.noItemSessionYet"),
+		};
+	});
+
 
 	let isMinimized = $state(false);
 	let windowX = $state(24);
@@ -407,7 +450,7 @@
 		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
 		role="button"
 		tabindex="0"
-		aria-label="Drag item session panel"
+		aria-label={t.dragPanel}
 	>
 		<div class="pie-item-player-session-debugger__header-title">
 			<svg
@@ -424,7 +467,7 @@
 					d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 				/>
 			</svg>
-			<h3 class="pie-item-player-session-debugger__title">Session Data</h3>
+			<h3 class="pie-item-player-session-debugger__title">{t.sessionData}</h3>
 		</div>
 		<div class="pie-item-player-session-debugger__header-actions">
 			<button
@@ -462,8 +505,8 @@
 			<button
 				class="pie-item-player-session-debugger__window-button"
 				onclick={() => dispatch("close")}
-				title="Close"
-				aria-label="Close panel"
+				title={t.close}
+				aria-label={t.closePanel}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -486,7 +529,7 @@
 			style="height: {windowHeight - 50}px;"
 		>
 			<div class="pie-item-player-session-debugger__content">
-				<div class="pie-item-player-session-debugger__tabs" role="tablist" aria-label="Debugger tabs">
+				<div class="pie-item-player-session-debugger__tabs" role="tablist" aria-label={t.tabs}>
 					<button
 						class="pie-item-player-session-debugger__tab"
 						class:pie-item-player-session-debugger__tab--active={activeTab === "current"}
@@ -494,7 +537,7 @@
 						aria-selected={activeTab === "current"}
 						onclick={() => (activeTab = "current")}
 					>
-						Session
+						{t.session}
 					</button>
 					<button
 						class="pie-item-player-session-debugger__tab"
@@ -503,51 +546,51 @@
 						aria-selected={activeTab === "model"}
 						onclick={() => (activeTab = "model")}
 					>
-						Filtered Model
+						{t.filteredModel}
 					</button>
 				</div>
 
 				{#if activeTab === "current"}
 					{#if !hasSessionEntries}
 						<div class="pie-item-player-session-debugger__alert">
-							No item session data yet. Interact with the item to see updates here.
+							{t.noSessionYet}
 						</div>
 					{/if}
 
 					<div class="pie-item-player-session-debugger__card">
-						<div class="pie-item-player-session-debugger__card-title">Session Data</div>
+						<div class="pie-item-player-session-debugger__card-title">{t.sessionData}</div>
 						<div
 							class="pie-item-player-session-debugger__card-region"
 							role="textbox"
 							aria-readonly="true"
 							tabindex="0"
-							aria-label="Session data JSON"
+							aria-label={t.sessionJson}
 						>
 							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.session, null, 2)}</pre>
 						</div>
 					</div>
 
 					<div class="pie-item-player-session-debugger__card">
-						<div class="pie-item-player-session-debugger__card-title">Environment</div>
+						<div class="pie-item-player-session-debugger__card-title">{t.environment}</div>
 						<div
 							class="pie-item-player-session-debugger__card-region"
 							role="textbox"
 							aria-readonly="true"
 							tabindex="0"
-							aria-label="Environment JSON"
+							aria-label={t.environmentJson}
 						>
 							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.env, null, 2)}</pre>
 						</div>
 					</div>
 				{:else}
 					<div class="pie-item-player-session-debugger__card">
-						<div class="pie-item-player-session-debugger__card-title">Filtered Model</div>
+						<div class="pie-item-player-session-debugger__card-title">{t.filteredModel}</div>
 						<div
 							class="pie-item-player-session-debugger__card-region"
 							role="textbox"
 							aria-readonly="true"
 							tabindex="0"
-							aria-label="Filtered model JSON"
+							aria-label={t.filteredModelJson}
 						>
 							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(filteredModelSnapshot, null, 2)}</pre>
 						</div>
@@ -563,7 +606,7 @@
 			onmousedown={(event: MouseEvent) => pointerController.startResize(event)}
 			role="button"
 			tabindex="0"
-			title="Resize window"
+			title={t.resizeWindow}
 		>
 			<svg
 				class="pie-item-player-session-debugger__resize-icon"

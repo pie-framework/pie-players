@@ -263,7 +263,7 @@ test.describe("section theme and color scheme integration", () => {
 
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 		const themeTool = page.locator("pie-tool-theme").first();
@@ -337,7 +337,7 @@ test.describe("section theme and color scheme integration", () => {
 
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 		const themeTool = page.locator("pie-tool-theme").first();
@@ -494,7 +494,7 @@ test.describe("section theme and color scheme integration", () => {
 			);
 		});
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 
@@ -718,7 +718,7 @@ test.describe("section theme and color scheme integration", () => {
 	}) => {
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 
@@ -754,7 +754,7 @@ test.describe("section theme and color scheme integration", () => {
 		});
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 
@@ -788,7 +788,7 @@ test.describe("section theme and color scheme integration", () => {
 		});
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 

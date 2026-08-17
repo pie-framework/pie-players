@@ -19,6 +19,7 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
+import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 import { onMount } from 'svelte';
 
 	// Props
@@ -55,6 +56,8 @@ import { onMount } from 'svelte';
 		mouseX: 0,
 		mouseY: 0
 	});
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 
 	// Track registration state
@@ -104,17 +107,23 @@ import { onMount } from 'svelte';
 
 	function resizePane(delta: number) {
 		paneHeight = clampPaneHeight(paneHeight + delta);
-		announce(`Reading window height ${paneHeight} pixels`);
+		announce(
+			interfaceI18n.t('tools.lineReader.windowHeightAnnounce', { pixels: paneHeight }),
+		);
 	}
 
 	function resizeFrameBand(delta: number) {
 		frameBandHeight = clampFrameBandHeight(frameBandHeight + delta);
-		announce(`Frame height ${frameBandHeight} pixels`);
+		announce(
+			interfaceI18n.t('tools.lineReader.frameHeightAnnounce', {
+				pixels: frameBandHeight,
+			}),
+		);
 	}
 
 	function resizeWidth(delta: number) {
 		width = clampWidth(width + delta);
-		announce(`Width ${width} pixels`);
+		announce(interfaceI18n.t('tools.lineReader.widthAnnounce', { pixels: width }));
 	}
 
 	function closeTool() {
@@ -252,22 +261,38 @@ import { onMount } from 'svelte';
 		switch (e.key) {
 			case 'ArrowUp':
 				position.y -= MOVE_STEP;
-				announce(`Moved up to ${Math.round(position.y)}`);
+				announce(
+					interfaceI18n.t('toolkit.announce.movedUp', {
+						position: Math.round(position.y),
+					}),
+				);
 				handled = true;
 				break;
 			case 'ArrowDown':
 				position.y += MOVE_STEP;
-				announce(`Moved down to ${Math.round(position.y)}`);
+				announce(
+					interfaceI18n.t('toolkit.announce.movedDown', {
+						position: Math.round(position.y),
+					}),
+				);
 				handled = true;
 				break;
 			case 'ArrowLeft':
 				position.x -= MOVE_STEP;
-				announce(`Moved left to ${Math.round(position.x)}`);
+				announce(
+					interfaceI18n.t('toolkit.announce.movedLeft', {
+						position: Math.round(position.x),
+					}),
+				);
 				handled = true;
 				break;
 			case 'ArrowRight':
 				position.x += MOVE_STEP;
-				announce(`Moved right to ${Math.round(position.x)}`);
+				announce(
+					interfaceI18n.t('toolkit.announce.movedRight', {
+						position: Math.round(position.x),
+					}),
+				);
 				handled = true;
 				break;
 			case '+':
@@ -395,8 +420,13 @@ import { onMount } from 'svelte';
 		onkeydown={handleKeyDown}
 		role="group"
 		tabindex="0"
-		aria-label="Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameBandHeight} pixels"
-		aria-roledescription="Draggable and resizable reading guide overlay"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.lineReader.applicationA11y', {
+			paneHeight,
+			frameHeight: frameBandHeight,
+		})}
+		aria-roledescription={interfaceI18n.t('tools.lineReader.roleA11y')}
 	>
 		<!--
 			The obscuring frame, drawn as one element's border box so the bands and
@@ -413,8 +443,8 @@ import { onMount } from 'svelte';
 			type="button"
 			class="pie-tool-line-reader__button pie-tool-line-reader__close"
 			onclick={closeTool}
-			title="Close line reader"
-			aria-label="Close line reader"
+			title={interfaceI18n.t('tools.lineReader.close')}
+			aria-label={interfaceI18n.t('tools.lineReader.close')}
 		>
 			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
 				<path
@@ -431,8 +461,10 @@ import { onMount } from 'svelte';
 			type="button"
 			class="pie-tool-line-reader__resize-handle pie-tool-line-reader__resize-handle--pane"
 			onkeydown={handlePaneResizeKeyDown}
-			title="Drag to resize the reading window"
-			aria-label="Resize the reading window. Drag, or use the up and down arrow keys to change its height. Current height {paneHeight} pixels"
+			title={interfaceI18n.t('tools.lineReader.resizeWindowA11y')}
+			aria-label={interfaceI18n.t('tools.lineReader.resizeWindowFullA11y', {
+				paneHeight,
+			})}
 		>
 			<svg width="14" height="8" viewBox="0 0 14 8" aria-hidden="true" focusable="false">
 				<path
@@ -449,8 +481,11 @@ import { onMount } from 'svelte';
 			type="button"
 			class="pie-tool-line-reader__resize-handle pie-tool-line-reader__resize-handle--frame"
 			onkeydown={handleFrameResizeKeyDown}
-			title="Drag to resize the frame and window width"
-			aria-label="Resize the frame. Drag, or use the up and down arrow keys to change the frame height and the left and right arrow keys to change the width. Current frame height {frameBandHeight} pixels, width {width} pixels"
+			title={interfaceI18n.t('tools.lineReader.resizeFrameA11y')}
+			aria-label={interfaceI18n.t('tools.lineReader.resizeFrameFullA11y', {
+				frameHeight: frameBandHeight,
+				width,
+			})}
 		>
 			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
 				<path

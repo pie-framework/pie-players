@@ -184,6 +184,8 @@ export const audioTranscriptRegistration: ToolRegistration = {
 	name: "Audio Transcript",
 	description:
 		"Text of an audio prompt, read before the content it transcribes",
+	nameKey: "tools.audioTranscript.name",
+	descriptionKey: "tools.audioTranscript.description",
 
 	supportedLevels: ["item", "passage"],
 
@@ -222,7 +224,12 @@ export const audioTranscriptRegistration: ToolRegistration = {
 		applyTranscript(region, transcript);
 		return {
 			element: region,
-			ariaLabel: AUDIO_TRANSCRIPT_REGION_LABEL,
+			// `AUDIO_TRANSCRIPT_REGION_LABEL` stays the English source and the
+			// exported constant tests address; the catalog supplies the rendered
+			// label when a host published a provider.
+			ariaLabel:
+				context.services.i18n?.t("tools.audioTranscript.regionA11y") ??
+				AUDIO_TRANSCRIPT_REGION_LABEL,
 			// Reads the context it is handed, never the one captured above: on a
 			// re-resolve the host's context carries the current card, and a learner must
 			// not keep reading the previous item's transcript.

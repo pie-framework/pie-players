@@ -36,6 +36,8 @@
 	],
 	"license": "MIT",
 	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*"
 	},
@@ -44,12 +46,14 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
+		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome check EventPanel.svelte index.ts vite.config.ts package.json"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.7",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"svelte": "^5.56.8",
+		"svelte-check": "^4.7.5",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.10",
 		"vite-plugin-dts": "^5.0.3"

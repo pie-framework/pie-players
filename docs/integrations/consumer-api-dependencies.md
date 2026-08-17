@@ -16,7 +16,8 @@ lives per-machine in the gitignored `.claude/consumer-checkouts.local.json`; the
 `consumer-dependency-audit` skill reads it, and asks for anything missing.
 
 Last verified against consumer checkouts and this repo's `develop` line:
-**2026-08-13**.
+**2026-08-16**, scoped to the i18n surfaces described below; every other row
+carries its earlier verification.
 
 The canonical theming implementation updated these notes without performing a
 new full refresh and therefore did not advance that verification date. The Host
@@ -108,6 +109,41 @@ was not measured against the real vendor bundle. If that DOM carries such
 controls, the panel's internal tab cycle drops those stops — matching what the
 browser does with them anyway. One tab-through of that panel before release
 settles it.
+
+Chrome i18n adoption **was** checked against all three checkouts, and advances the
+verification date below. It reaches consumers three ways, all additive: a new
+optional `locale` attribute and prop on `pie-item-player` and the four
+section-player layout elements; new optional `nameKey` / `descriptionKey` on
+`ToolRegistration` alongside the still-required `name` / `description`; and new
+optional `i18n` / `locale` members on the toolkit runtime context, `ToolbarContext`
+and `ToolSurfaceServices`. Nothing was renamed, retyped, or removed from those
+surfaces, and the graceful default is `en-US` rather than the browser's locale, so
+a host that passes no `locale` keeps English. The adoption commit also held every
+English value byte-identical, so that a text change would be visible as a text
+change rather than arriving inside the refactor.
+
+That hold was released by a follow-up, and it is the only part of this work that
+changes what a host renders today: sixteen strings were reworded and all nine
+toolbar button accessible names were re-formed against WCAG 2.5.3, so English
+output is no longer byte-identical with no `locale` supplied. Both `nl-NL` values
+moved with them. **Host A** is the only affected consumer — it drives live
+delivery with the toolbar placed — and **Host R** renders the same buttons.
+Grepping all three checkouts for the retired strings returns nothing outside
+`node_modules` and build caches: no host asserts, styles or otherwise depends on
+any of them, and none selects a tool button by accessible name. The exposure is
+therefore screen-reader output only, and it improves. Assessed against the changed
+strings rather than a full re-derivation, so it does not advance the verification
+date.
+
+The one non-additive change is `@pie-players/pie-players-shared/i18n`, whose
+`SimpleI18n` gained `plural()` in place of `tn()` and lost
+`BUNDLED_TRANSLATIONS` / `loadTranslations` and two Svelte composables. A grep of
+all three checkouts for that specifier, for `SimpleI18n`, `I18nService`,
+`useI18nStandalone`, `ToolRegistration` and `nameKey` returns nothing outside
+build caches and a vendored third-party calculator bundle: the layer was
+published with no call sites anywhere, which is what made replacing it rather
+than versioning it the right move. No host passes `locale` to a `pie-*` element
+either.
 
 ## Consumer profiles
 
@@ -594,7 +630,12 @@ typecheck rather than at runtime.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
-- Attributes and props on the layout elements not listed above
+- Attributes and props on the layout elements not listed above, including the
+  additive `locale` attribute on `pie-item-player` and the section-player layouts
+- `@pie-players/pie-players-shared/i18n` in any form — the pre-adoption layer had
+  no call site in any checkout, so its replacement breaks nobody
+- Additive optional members on `ToolRegistration`, `ToolbarContext`,
+  `ToolSurfaceServices` and the toolkit runtime context
 - `theme="auto"` behavior, and `variables` on `pie-theme`
 - The additive `ToolRegistry.onRegistryChange` observer and recoverable
   `tool-surface` framework-warning kind; no recorded host calls or branches on

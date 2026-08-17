@@ -10,6 +10,11 @@
 			// attribute mirrored onto `runtime.ndsIcons` (runtime wins if both
 			// are set). Defaults to unset (plain <button>s).
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale: the language the player renders its own UI in, as a
+			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
+			// (runtime wins if both are set). Unset renders `en-US`. Distinct
+			// from the authored content language, which travels on `env`.
+			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -76,12 +81,13 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import { mergeNdsIconsIntoRuntime } from "./shared/section-player-host-runtime.js";
+	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	// TS language service false-positive in this workspace: Svelte component has a default export.
 	// @ts-ignore false-positive no-default-export in IDE language service for this import
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
+	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 	import { createEventDispatcher, untrack } from "svelte";
 	import type {
 		FrameworkErrorModel,
@@ -206,6 +212,7 @@
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = undefined as boolean | undefined,
+		locale = "",
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
@@ -236,7 +243,9 @@
 
 	// Fold the `nds-icons` convenience attribute into the runtime handed to
 	// the kernel (host `runtime.ndsIcons` still wins if both are set).
-	const kernelRuntime = $derived(mergeNdsIconsIntoRuntime(runtime, ndsIcons));
+	const kernelRuntime = $derived(
+		mergeLayoutAttrsIntoRuntime(runtime, { ndsIcons, locale }),
+	);
 
 	// Snapshot of the resolved prop at mount. Renders the divider in the
 	// right place on the first frame (so consumers don't see a 50% flash
@@ -264,6 +273,9 @@
 	let leftPanelWidth = $state(initialPassageWidthPercent);
 	let splitBounds = $state<SplitBounds>({ min: 20, max: 80 });
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
+	// `splitContainerElement` is inside `<pie-assessment-toolkit>`, so a context
+	// request from it reaches the published provider.
+	const interfaceI18n = useInterfaceI18n(() => splitContainerElement);
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let isStacked = $state(false);
@@ -548,7 +560,7 @@
 					<aside
 						id={passagesPaneId}
 						class="pie-section-player-passages-pane"
-						aria-label="Passages"
+						aria-label={interfaceI18n.t("player.passagesRegionA11y")}
 					>
 						<pie-section-player-passages-pane
 							passages={layoutModel.passages}
@@ -568,7 +580,7 @@
 						value={leftPanelWidth}
 						min={splitBounds.min}
 						max={splitBounds.max}
-						ariaLabel="Resize passages and items panels"
+						ariaLabel={interfaceI18n.t("player.resizePassagesAndItemsA11y")}
 						ariaControls={passagesPaneId}
 						ariaValueText={splitDividerValueText}
 						on:resize-preview={handleSplitResizePreview}
@@ -579,7 +591,7 @@
 				<main
 					id={itemsPaneId}
 					class="pie-section-player-items-pane"
-					aria-label="Items"
+					aria-label={interfaceI18n.t("player.itemsRegionA11y")}
 				>
 					<pie-section-player-items-pane
 						items={layoutModel.items}

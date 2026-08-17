@@ -12,11 +12,18 @@ describe("tool-tts-inline runtime dependency contract", () => {
 	});
 
 	test("announces reading as started only after playback enters playing state", () => {
-		expect(source).toContain("statusMessage = 'Starting reading';");
+		// Announcements go through the interface-locale catalog, so these assert the
+		// key rather than the English. The English value itself is asserted by the
+		// catalog and by `check:i18n-coverage`.
 		expect(source).toContain(
-			"playbackState === 'playing' && statusMessage === 'Starting reading'",
+			"statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');",
 		);
-		expect(source).toContain("statusMessage = 'Reading started';");
+		expect(source).toContain("tools.textToSpeech.inline.started");
+		// The upgrade is gated on the in-flight flag, never on comparing
+		// `statusMessage` against the rendered "starting" text: that comparison
+		// drops the announcement whenever the locale changes between the two reads.
+		expect(source).toContain("if (playbackStartInFlight) {");
+		expect(source).not.toMatch(/statusMessage\s*===/);
 		expect(source).toContain("let playbackStartInFlight = $state(false);");
 		expect(source).toContain(
 			"const startupInFlight = $derived(playActionInFlight || playbackStartInFlight);",
@@ -32,7 +39,7 @@ describe("tool-tts-inline runtime dependency contract", () => {
 
 	test("failed playback start releases ownership and restores toolbar focus", () => {
 		expect(source).toContain(
-			"resetLocalPlaybackUi('Unable to start reading');",
+			"resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.startFailed'));",
 		);
 		expect(source).toContain("const hadPanelFocus = panelHasFocus();");
 		expect(source).toContain("releaseActiveOwner();");

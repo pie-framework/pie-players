@@ -115,7 +115,9 @@ describe("periodic table category encoding", () => {
 			"class:pie-tool-periodic-table__element--dim={isFilteredOut(element)}",
 		);
 		// Dimming is visual, so the filtered-out state is in the accessible name too.
-		expect(source).toContain("', outside the current filter'");
+		expect(source).toContain(
+			"interfaceI18n.t('tools.periodicTable.outsideFilterA11y')",
+		);
 	});
 
 	test("a dimmed cell drops its fill rather than fading below AA", () => {

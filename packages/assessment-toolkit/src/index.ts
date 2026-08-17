@@ -126,11 +126,17 @@ export {
 // Range Serializer (for annotation persistence)
 export type { SerializedRange } from "./services/RangeSerializer.js";
 export { RangeSerializer } from "./services/RangeSerializer.js";
-// I18n Service
+// I18n Service. `I18nProvider` is the contract a component depends on; the rest
+// is for a host constructing or replacing the provider.
 export type {
 	I18nConfig,
-	PluralTranslation,
-	TranslationBundle,
+	I18nProvider,
+	InterpolationValues,
+	LocaleCode,
+	MessageCatalog,
+	MessageKeyInput,
+	PluralOptions,
+	TextDirection,
 } from "./services/I18nService.js";
 export { I18nService } from "./services/I18nService.js";
 // Tool Registry (Registry-based tool system)

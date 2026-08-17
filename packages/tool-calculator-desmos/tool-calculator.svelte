@@ -52,6 +52,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
 import { onMount } from 'svelte';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	// ============================================================================
 	// Constants
@@ -77,6 +78,8 @@ import { onMount } from 'svelte';
 
 	let contextHostElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	const effectiveToolkitCoordinator = $derived(
 		explicitToolkitCoordinator ?? runtimeContext?.toolkitCoordinator
 	);
@@ -493,13 +496,15 @@ import { onMount } from 'svelte';
 		role="region"
 		data-tool-id={toolId}
 		tabindex="-1"
-		aria-label="Calculator tool"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.calculator.toolA11y')}
 		translate="no"
 		style="width: 100%; height: 100%;"
 	>
 		<div bind:this={calculatorContainerEl} class="pie-tool-calculator__container" data-calculator-type={currentCalculatorType}></div>
 		{#if isInitializing || isSwitching || (visible && !initializationFailed && !hasMountedSurface)}
-			<div class="pie-tool-calculator__loading">Loading calculator...</div>
+			<div class="pie-tool-calculator__loading">{interfaceI18n.t('tools.calculator.loading')}</div>
 		{/if}
 		{#if initializationFailed}
 			<div class="pie-tool-calculator__loading pie-tool-calculator__loading--error">

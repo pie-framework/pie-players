@@ -5,6 +5,8 @@
  * and button/instance creation. Supports dynamic registration and override by integrators.
  */
 
+import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
@@ -71,7 +73,24 @@ export interface ToolbarContext {
 	};
 	itemId: string;
 	catalogId: string;
+	/**
+	 * Content-alternate language: which authored alternate the catalog resolver
+	 * should select. Not the interface locale — see {@link ToolbarContext.i18n}. The
+	 * two are independent by QTI 3's own statement, and conflating them is how a
+	 * Spanish passage ends up forcing Spanish widget chrome.
+	 */
 	language: string;
+	/**
+	 * Interface-locale provider for this capability's own UI strings.
+	 *
+	 * Required, and always the facade `resolveInterfaceI18n` returns: the toolbar
+	 * resolves it once from the toolkit runtime context, so a registration reads
+	 * `toolbarContext.i18n` and neither repeats the no-publisher fallback nor
+	 * misses the republish that a locale change produces. With no publisher the
+	 * facade wraps the English-only default, which is why this can be required
+	 * rather than optional.
+	 */
+	i18n: I18nProvider;
 	ui?: {
 		size?: string;
 	};
@@ -214,6 +233,50 @@ export interface ToolToolbarRenderResult {
 	subscribeActive?: (callback: (active: boolean) => void) => () => void;
 }
 
+/**
+ * A registration's display name in the interface locale.
+ *
+ * Precedence: the resolved `nameKey`, then `name`. A key that does not resolve
+ * falls back to `name` rather than rendering the key, so a catalog gap degrades
+ * to English instead of to `tools.something.name` on a toolbar button.
+ *
+ * Both display resolvers live here so the toolbars, the settings panels and the
+ * PNP debugger cannot each invent their own precedence.
+ */
+export function resolveToolRegistrationName(
+	registration: Pick<ToolRegistration, "name" | "nameKey">,
+	i18n?: I18nProvider,
+): string {
+	return resolveKeyedString(registration.name, registration.nameKey, i18n);
+}
+
+/** A registration's description in the interface locale. See the name resolver. */
+export function resolveToolRegistrationDescription(
+	registration: Pick<ToolRegistration, "description" | "descriptionKey">,
+	i18n?: I18nProvider,
+): string {
+	return resolveKeyedString(
+		registration.description,
+		registration.descriptionKey,
+		i18n,
+	);
+}
+
+function resolveKeyedString(
+	source: string,
+	key: string | undefined,
+	i18n?: I18nProvider,
+): string {
+	if (!key || !i18n) return source;
+	// A registration may be host-authored against a host catalog, so the key is
+	// not drawn from PIE's `MessageKey` union and has to be asserted.
+	const messageKey = dynamicMessageKey(key);
+	if (i18n.hasKey) return i18n.hasKey(messageKey) ? i18n.t(messageKey) : source;
+	// A provider without `hasKey` still signals a miss by returning the key.
+	const resolved = i18n.t(messageKey);
+	return resolved === key ? source : resolved;
+}
+
 export type ToolActivation = "toolbar-toggle" | "selection-gateway" | "region";
 export type ToolSingletonScope = "section";
 
@@ -229,6 +292,13 @@ export interface ToolSurfaceServices {
 	toolkitCoordinator: ToolkitCoordinatorApi | null;
 	ttsService: TtsServiceApi | null;
 	catalogResolver: AccessibilityCatalogResolverApi | null;
+	/**
+	 * Interface-locale provider for the surface's own labels — a region's
+	 * `aria-label`, a heading it emits. Required, and always the facade
+	 * `resolveInterfaceI18n` returns, which wraps the English-only default where
+	 * the host published nothing.
+	 */
+	i18n: I18nProvider;
 }
 
 /**
@@ -368,11 +438,31 @@ export interface ToolRegistration {
 	/** Unique tool identifier (e.g., 'calculator', 'textToSpeech') */
 	toolId: string;
 
-	/** Human-readable name */
+	/**
+	 * Human-readable name.
+	 *
+	 * Required, and stays required: it is part of the contract a host implements
+	 * when it contributes its own capability, and a host cannot be made to ship a
+	 * message catalog. Treat it as the English source.
+	 */
 	name: string;
 
-	/** Description of what the tool does */
+	/** Description of what the tool does. English source, like {@link name}. */
 	description: string;
+
+	/**
+	 * Message key resolving to {@link name} in the interface locale.
+	 *
+	 * Optional by design. A capability that supplies one is localizable; one that
+	 * does not renders `name` verbatim, which is what keeps a host-authored
+	 * registration working with no catalog. Resolve with
+	 * {@link resolveToolRegistrationName} rather than reading either field
+	 * directly, so precedence stays in one place.
+	 */
+	nameKey?: string;
+
+	/** Message key resolving to {@link description} in the interface locale. */
+	descriptionKey?: string;
 
 	/**
 	 * Icon identifier or SVG string. Required for the activations that render a

@@ -1,15 +1,22 @@
 <script lang="ts">
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	let {
 		minimized = false,
 		onToggle,
 		onClose,
 		buttonClass = "",
+		i18n,
 	} = $props<{
 		minimized?: boolean;
 		onToggle?: () => void;
 		onClose?: () => void;
 		buttonClass?: string;
+		/** Interface-locale provider; the English-only default covers its absence. */
+		i18n?: I18nProvider;
 	}>();
+
+	const t = $derived(resolveInterfaceI18n({ i18n }));
 
 	const resolvedButtonClass = $derived.by(
 		() => (buttonClass || "").trim() || "pie-window-controls__button",
@@ -19,8 +26,10 @@
 <button
 	class={resolvedButtonClass}
 	onclick={onToggle}
-	title={minimized ? "Maximize" : "Minimize"}
-	aria-label={minimized ? "Maximize panel" : "Minimize panel"}
+	title={t.t(minimized ? "toolkit.maximize" : "toolkit.minimize")}
+	aria-label={t.t(
+		minimized ? "toolkit.maximizePanelA11y" : "toolkit.minimizePanelA11y",
+	)}
 >
 	{#if minimized}
 		<svg
@@ -51,8 +60,8 @@
 <button
 	class={resolvedButtonClass}
 	onclick={onClose}
-	title="Close"
-	aria-label="Close panel"
+	title={t.t("common.close")}
+	aria-label={t.t("toolkit.closePanelA11y")}
 >
 	<svg
 		xmlns="http://www.w3.org/2000/svg"

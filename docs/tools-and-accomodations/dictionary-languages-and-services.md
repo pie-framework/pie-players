@@ -32,11 +32,13 @@ no credential is provisioned for PIE at all. Where PIE hosts the delivery — a 
 app, a demo — its own server holds whatever the upstream requires and mints per-request
 tokens there, so nothing reaches the browser and the panel calls a same-origin route.
 
-That distinction is worth stating because it decides who has to ask for what. A
-credential scoped to the caller is the shape to want: a platform-wide key that authorises
-every service the vendor runs is not a dictionary credential, and a host that finds itself
-being handed one should push back before wiring it. Deployment specifics — which secret,
-which issuer, which host — belong in the host's own repository, not in this one.
+The distinction decides who has to ask for what, which is the only reason it appears in a
+framework note. A credential scoped to the caller is the tidier arrangement and worth
+asking for where it is cheap to provision; a shared platform credential is a normal way for
+services inside one organisation to authenticate each other, and whether it suits a given
+deployment is for the teams that own both ends to settle. Either way the specifics — which
+secret, which issuer, which host — belong in the host's own repository rather than this
+one.
 
 ## One capability, one language at a time
 

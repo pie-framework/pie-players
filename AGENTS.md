@@ -129,7 +129,10 @@ surfaces real downstream hosts touch, and which of those break silently.
   It compares the branch against its merge-base with `origin/develop` and fails
   when a curated set of surface-defining files changed and the pad did not. It
   runs inside `verify:ci-lint-typecheck`, so it reaches the full local PR gate
-  and CI. Satisfy it by updating the pad; when the pad genuinely still reads
+  and CI. A trigger file whose change is *provably* semantically null — JSON that
+  parses identically, source with the same normal form under biome's formatter —
+  is discounted and named in the output; every case it cannot prove counts as a
+  change. Satisfy it by updating the pad; when the pad genuinely still reads
   true, record why in a commit message trailer instead:
 
   ```
@@ -347,6 +350,26 @@ bun run check:player-tool-boundaries
 
 For release work, follow `docs/setup/publishing.md` and the release alignment
 rule in this file.
+
+Lint catches errors, not style. `biome.json` runs `preset: "none"` with only the
+`correctness` and `suspicious` presets on and no `style` group at all. Do not add
+`style`, `complexity`, `performance`, or naming and filename conventions, and do
+not gate `biome format` — most code here is agent-written, so cosmetic uniformity
+costs review attention without buying correctness. A rule that fires only on false
+positives gets turned off rather than suppressed site by site;
+`noTemplateCurlyInString` is off because `${{…}}` is PIE math template syntax in
+content fixtures.
+
+Type-only imports are the compiler's job rather than the linter's, so
+`verbatimModuleSyntax` is set and a type-only import emitted as a runtime import
+is a typecheck error. `isolatedModules` does not cover this, which is why both are
+set.
+
+It lives in `tsconfig.json`, `tsconfig.base.json`, and the five package configs
+that extend neither — `calculator`, `calculator-desmos`, `tts`,
+`tts-client-server`, `tts-server-core`. A new tsconfig that extends neither root
+config needs it too; there is no single file that reaches everything. The demo
+apps need nothing: SvelteKit generates it into `.svelte-kit/tsconfig.json`.
 
 ## Technology Stack
 

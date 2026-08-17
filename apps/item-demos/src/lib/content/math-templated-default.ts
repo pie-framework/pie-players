@@ -38,7 +38,6 @@ const demo: DemoInfo = {
 					customKeys: [],
 					equationEditor: "geometry",
 					markup:
-						// biome-ignore lint/suspicious/noTemplateCurlyInString: PIE math-templated response placeholders, not JS template literals
 						"\n    <p>If the unit price of a notebook in Store A is $1.50, what is the unit price of a binder? ${{0}}</p>\n    <p>If the unit price of a binder in Store B is $2.80, what is the unit price of a notebook? ${{1}}</p>\n  ",
 					responses: {
 						"0": {

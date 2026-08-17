@@ -47,6 +47,18 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 		toolHostTag: "pie-tool-ruler",
 		panelRole: "application",
 	},
+	{
+		id: "dictionary",
+		buttonAriaLabel: "Dictionary - Look up word definitions",
+		toolHostTag: "pie-tool-dictionary",
+		panelRole: "dialog",
+	},
+	{
+		id: "pictureDictionary",
+		buttonAriaLabel: "Picture Dictionary - Look up pictures for words",
+		toolHostTag: "pie-tool-picture-dictionary",
+		panelRole: "dialog",
+	},
 ];
 
 async function gotoDemo(page: Page) {

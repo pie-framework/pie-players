@@ -31,6 +31,7 @@ import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { buildSelectionActions } from "./selection-actions.js";
 
 /**
  * Line Reader tool registration
@@ -287,6 +288,7 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			enabled?: boolean;
 			ttsService?: unknown;
 			highlightCoordinator?: unknown;
+			selectionActions?: unknown;
 		};
 		// Reads the context it is handed. These were reactive props before the
 		// gateway moved behind `renderSurface`, and a host calling
@@ -298,6 +300,10 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			element.ttsService = current.services.ttsService;
 			element.highlightCoordinator =
 				current.services.toolkitCoordinator?.highlightCoordinator ?? null;
+			// The second door onto the dictionaries. The gateway renders these and
+			// knows nothing of what they open; the pairing is composition's, which is
+			// why the list is built in `selection-actions.ts` and not here.
+			element.selectionActions = buildSelectionActions(current.services);
 		};
 		applyServices(context);
 		return { element, sync: applyServices };

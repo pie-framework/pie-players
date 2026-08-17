@@ -319,7 +319,10 @@
 		position: relative;
 		z-index: 0;
 		margin: 0;
-		font-size: 0.95rem;
+		/* Reads the scale rather than inheriting it: the card wraps the passage
+		   shell that `font-sizes.css` scales, so nothing above this rule carries
+		   the scaled size. Root-relative, so it does not compound with the shell. */
+		font-size: calc(0.95rem * var(--pie-font-scale, 1));
 		font-weight: 600;
 		/* Default to the themed body text color so titles stay legible across
 		   DaisyUI themes; --pie-header-text remains a host opt-in override. */

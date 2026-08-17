@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
@@ -15,6 +15,31 @@ const COLOR_SCHEMES_CSS = readFileSync(
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 	await expectDemoChromeReady(page);
+}
+
+/**
+ * Resolve once every CSS transition running on `locator` and its descendants has
+ * finished, so a colour read lands on the resting value rather than an
+ * interpolated `oklab()` mix. A fixed pause cannot do this: the tab ink and pill
+ * fill ease over 150ms, and an `ease` curve is still moving at 130ms while
+ * sitting close enough to the resting pair to pass most runs.
+ *
+ * `finished` rejects with an AbortError when a transition is cancelled -- a
+ * second style change landing mid-flight -- which is settled for this purpose.
+ */
+async function settleTransitions(locator: Locator) {
+	await locator.evaluate(async (element: Element) => {
+		// Transitions start on the next style recalculation, so yield two frames
+		// before collecting them or there is nothing yet to await.
+		await new Promise((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(resolve)),
+		);
+		await Promise.all(
+			element
+				.getAnimations({ subtree: true })
+				.map((animation) => animation.finished.catch(() => undefined)),
+		);
+	});
 }
 
 test.describe("section theme and color scheme integration", () => {
@@ -555,6 +580,7 @@ test.describe("section theme and color scheme integration", () => {
 		});
 		await expectDemoChromeReady(page);
 		const unselectedTab = page.getByRole("tab", { name: "Questions" });
+		const toggleTrack = page.locator(".pie-section-player-tabs").first();
 		await expect(unselectedTab).toBeVisible();
 		expect(
 			await page.evaluate(() =>
@@ -575,7 +601,7 @@ test.describe("section theme and color scheme integration", () => {
 					requestAnimationFrame(() => requestAnimationFrame(resolve)),
 				);
 			}, schemeId);
-			await page.waitForTimeout(100);
+			await settleTransitions(toggleTrack);
 
 			const measured = await unselectedTab.evaluate((tab) => {
 				const track = tab.closest<HTMLElement>(".pie-section-player-tabs");
@@ -646,6 +672,22 @@ test.describe("section theme and color scheme integration", () => {
 					),
 				};
 			});
+
+			// Chromium interpolates a colour transition in oklab, so an `oklab()`
+			// computed value here means the read landed mid-flight and the ratios
+			// below describe a frame no learner rests on: the selected pair measured
+			// 4.19:1 in flight against 5.44:1 settled under Light Gray on Dark Gray.
+			for (const [label, value] of Object.entries({
+				"unselected ink": measured.color,
+				surface: measured.surface,
+				"selected ink": measured.selectedColor,
+				"selected fill": measured.selectedFill,
+			})) {
+				expect(
+					value,
+					`${schemeId} ${label} was read while transitioning (${value})`,
+				).not.toContain("oklab(");
+			}
 
 			expect(
 				measured.text,

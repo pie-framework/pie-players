@@ -182,6 +182,59 @@ cascade requirements are intentional. Such a selector follows the normal
 cascade in a stylesheet-only integration; when it competes with a mounted
 `<pie-theme>`'s inline tokens, it needs `!important`.
 
+## SchoolCity scheme parity
+
+SchoolCity offers 15 schemes. Four are built in here — Black on White, White on
+Black, Black on Rose, Yellow on Blue — and the other eleven are host palettes a
+programme registers itself, from these values:
+
+| SchoolCity token | Value |
+| --- | --- |
+| blue | `#0028a1` |
+| red | `#bf0d00` |
+| green | `#008272` |
+| yellow | `#ffe072` |
+| light gray | `#c0c3cf` |
+| dark gray | `#9297a6` |
+| rose | `#f8d1ce` |
+
+All 15 clear 4.5:1 for ordinary text; Green on White is the tightest at 4.73:1.
+Ordinary text is not the whole cost, though, because the light base chose every
+semantic colour against white. What an overlay has to carry scales with how far
+its background sits from white:
+
+| Background | Tokens | Why |
+| --- | --- | --- |
+| white | 2 | ink and page; every base colour already holds |
+| white, with a mid-tone ink | 4 | the ink misses the tinted recessed surfaces |
+| `#000000` | 10 | inverted page; borrow the dark base theme's inks |
+| mid-tone (blue, red, green, dark gray) | ~18 | neither light nor dark inks hold, so icons, boundaries and focus rings are re-chosen too |
+
+```ts
+registerPieColorSchemes([
+  {
+    id: "sc-blue-on-white",
+    name: "Blue on White",
+    variables: { "--pie-text": "#0028a1", "--pie-background": "#ffffff" },
+  },
+]);
+```
+
+`packages/theme/tests/schoolcity-scheme-registration.test.ts` carries a validated
+palette for one scheme of each cost class and is the place to copy from.
+
+Read the receipt. Contrast diagnostics are warnings, not errors, because the
+palette is host-owned — a two-token White on Blue registers successfully and
+returns fourteen warnings, and a host that filters on `severity === "error"`
+ships cyan links on a mid-blue page. `registerPieColorSchemes` checks only the
+relationships whose tokens the overlay touches, so covering a flagged token is
+what clears its relationship.
+
+These are host palettes rather than built-ins on purpose. A built-in is a full
+48-token palette, since a two-colour scheme is a promise the whole surface has to
+keep, and which schemes a programme wants is still open on
+[PIE-472](https://illuminate.atlassian.net/browse/PIE-472).
+
 ## Fixed hues
 
 Some components paint a hue the palette does not own: a data encoding, like the
@@ -208,6 +261,57 @@ accessible name.
 - `provider="none"` (`PIE_THEME_PROVIDER_NONE`) resolves no provider at all, leaving this package's shipped defaults. It is how a host reproduces the palette it had before adopting a provider, which is the first thing to check when colours differ between two environments.
 - The adapter is the whole integration. `DAISYUI_PIE_TOKEN_MAP` is its sole source, and it corrects a slot that would land illegible because it reads resolved colours — which a stylesheet cannot do. The separate `pie-theme-daisyui` package that shipped the same table as static CSS was removed: `<pie-theme scope="document">` writes `--pie-*` as inline styles, so a stylesheet declaring them lost to it and the import did nothing.
 - A host on some other token vocabulary aliases its own names to `--pie-*` in its own stylesheet, which is what a non-DaisyUI design system needs anyway. Do that under `[data-color-scheme]` to make an accommodation reach host chrome, since `<pie-theme>` never writes `--color-*` or any other host prefix.
+
+## Font size scaling
+
+`font-sizes.css` carries four presets on `--pie-font-scale` — `normal` (1),
+`large` (1.25), `xlarge` (1.5), `xxlarge` (1.75). They are Learnosity's steps,
+which K-12 accommodation profiles are already written against, so the numbers are
+a contract: changing one changes what `large` means for every learner assigned it.
+
+A host selects a preset with `data-font-size` on any ancestor of the player, or
+on a player element itself:
+
+```html
+<html data-font-size="large">
+<div data-font-size="xlarge"><pie-section-player></pie-section-player></div>
+```
+
+A host already driving `<pie-theme>` sets the token instead and needs nothing
+from the stylesheet:
+
+```html
+<pie-theme variables='{"--pie-font-scale":"1.25"}'>
+```
+
+The content path scales completely. The rules set `font-size` on the content
+hosts — `pie-item-shell`, `pie-passage-shell`, `pie-item-player` and the
+externally loaded `pie-player` wrapper — and `font-size` inheritance crosses
+shadow boundaries, so text that inherits its size follows. Every font size in
+`components.css`, which styles item content, is relative (`em`, `%`,
+`larger`/`smaller`) and follows too. The learner-facing text that declares its
+own size and therefore cannot inherit the scale — the item and passage card
+titles, the formative status line, the tabbed layout's labels, the item player's
+build warning — reads `--pie-font-scale` directly, because a card wraps the shell
+that gets scaled rather than sitting inside it.
+
+Tool and debug chrome does not scale, deliberately: an accommodation applies to
+what the learner reads, and a calculator keypad growing with the passage is a
+layout problem rather than an accommodation.
+
+A rule elsewhere that sizes text in `rem` or `px` still will not follow — `rem`
+resolves against the document root and `px` against nothing, and no rule inside a
+subtree can change what either means — so a host adding its own content chrome
+either sizes it relatively or reads the token as these rules do. Browser zoom is
+unaffected throughout, so WCAG 2.2 1.4.4 does not depend on this feature.
+
+The scale is applied as `calc(1rem * var(--pie-font-scale))` rather than an `em`
+factor because the content hosts nest — an `em` factor would compound, turning a
+requested 1.25 into 1.56 wherever an item shell sits inside a themed region.
+
+There is no student-facing control here. The picker is host chrome, which in the
+Renaissance context is Quiz Engine's surface; this package owns the token, the
+presets, and the rules that consume them.
 
 ## Token registry
 

@@ -637,6 +637,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo1Section,
 	},
+	"dictionary-tools": {
+		id: "dictionary-tools",
+		name: "Dictionary and Picture Dictionary",
+		description:
+			"Word and picture lookup from host-supplied services, granted through the PNP rather than universally.",
+		integrationLevel: 4,
+		integrationTheme: "Host-supplied tool services",
+		focus:
+			"Shows the two entry points a lookup tool needs: a term handed in from a selection, and a field for the learner who cannot make one.",
+		whatMakesItTick: [
+			"Supplies each tool's endpoint through `runtime.toolContextResolvers`, the same per-tool params seam a real host uses; with no endpoint the panel reports itself unconfigured instead of failing silently.",
+			"Grants both tools through `personalNeedsProfile.supports`, because PIE declares no universal support id for either — a dictionary is construct-relevant on a vocabulary item.",
+			"Serves a fixed stub corpus from this app, including a reserved keyword that answers 503 so the error state is reachable.",
+		],
+		section: demo3Section,
+	},
 	"custom-tools": {
 		id: "custom-tools",
 		name: "Custom Tools (Host Registry)",

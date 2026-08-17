@@ -14,6 +14,8 @@ import {
 	type Voice,
 } from "@pie-players/tts-server-core";
 
+import { schoolCityVoices } from "./sc-voices.js";
+
 type SchoolCitySpeedRate = "slow" | "medium" | "fast";
 
 type SchoolCitySynthesizeRequest = {
@@ -850,9 +852,17 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		};
 	}
 
-	async getVoices(_options?: GetVoicesOptions): Promise<Voice[]> {
+	/**
+	 * The service's locale roster, from the table it reads itself.
+	 *
+	 * Not a network call: the service has no voice or locale endpoint to ask, so
+	 * `sc-voices.ts` transcribes the map behind `POST /` instead. Returning `[]`,
+	 * as this did, left the 29 locales reachable only by a caller that already
+	 * knew a `lang_id` to hardcode.
+	 */
+	async getVoices(options?: GetVoicesOptions): Promise<Voice[]> {
 		this.ensureInitialized();
-		return [];
+		return schoolCityVoices(options);
 	}
 
 	getCapabilities(): ServerProviderCapabilities {

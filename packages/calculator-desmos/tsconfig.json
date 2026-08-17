@@ -10,6 +10,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
 		"declaration": true,
 		"declarationMap": false,
 		"sourceMap": false,

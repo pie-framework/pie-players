@@ -98,6 +98,20 @@ export class AssessmentPlayerDefaultElement
 		| null = null;
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
+	/**
+	 * Rendered content, tracked so a re-render can replace it without clearing the
+	 * announcer below. A live region only announces changes that happen while it is
+	 * already in the document, so wiping and rebuilding it each render would make it
+	 * silent exactly when it has something to say.
+	 */
+	private containerRef: HTMLElement | null = null;
+	private announcer: HTMLElement | null = null;
+	/**
+	 * Set for the render a section change causes. `render()` discards the subtree
+	 * that holds the focused control, so without this the browser drops focus to
+	 * `<body>` and the learner's next Tab restarts at the top of the document.
+	 */
+	private restoreFocusOnRender = false;
 	private unsubscribeController?: () => void;
 	private detachInstrumentationBridge?: () => void;
 	private _sectionPlayerRuntime: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] =
@@ -225,6 +239,8 @@ export class AssessmentPlayerDefaultElement
 					ASSESSMENT_PLAYER_PUBLIC_EVENTS.routeChanged,
 					event satisfies AssessmentRouteChangedDetail,
 				);
+				// A route change is the one render that destroys the focused control.
+				this.restoreFocusOnRender = true;
 				this.render();
 			}
 			if (event.type === "assessment-session-applied") {
@@ -288,11 +304,84 @@ export class AssessmentPlayerDefaultElement
 	}
 
 	private renderEmptyState(message: string) {
-		this.innerHTML = "";
 		const root = document.createElement("div");
 		root.className = "pie-assessment-player-empty";
 		root.textContent = message;
-		this.appendChild(root);
+		this.swapContent(root);
+	}
+
+	/**
+	 * Replace the rendered content, leaving the announcer in place.
+	 */
+	private swapContent(next: HTMLElement): void {
+		this.containerRef?.remove();
+		this.containerRef = next;
+		this.appendChild(next);
+	}
+
+	/**
+	 * The polite live region, created once and never replaced.
+	 */
+	private ensureAnnouncer(): HTMLElement {
+		if (this.announcer?.isConnected) return this.announcer;
+		const announcer = document.createElement("div");
+		announcer.className = "pie-assessment-player-announcer";
+		announcer.setAttribute("role", "status");
+		announcer.setAttribute("aria-live", "polite");
+		// Atomic because the position is one message; re-reading "Section 3 of 3" whole
+		// beats announcing the digit that changed. Matches the shells' own live regions.
+		announcer.setAttribute("aria-atomic", "true");
+		// Available to assistive technology, absent from the visual layout. `clip` on a
+		// 1px box rather than `display: none`, which removes it from the a11y tree too.
+		announcer.style.cssText =
+			"position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;";
+		this.announcer = announcer;
+		this.appendChild(announcer);
+		return announcer;
+	}
+
+	/**
+	 * What focus should return to after the re-render, or `null` to leave it alone.
+	 *
+	 * Only focus this element already owns is repaired. A host that navigates
+	 * programmatically may have the learner's focus somewhere else entirely — its own
+	 * chrome, another form — and pulling focus in from outside would be a worse bug
+	 * than the one being fixed. Those cases still get the announcement.
+	 */
+	private captureFocusIntent(): "previous" | "next" | "section" | null {
+		if (typeof document === "undefined") return null;
+		const active = document.activeElement;
+		if (!active || !this.contains(active)) return null;
+		if (active.classList?.contains("pie-assessment-player-nav-btn")) {
+			return active.textContent === "Back" ? "previous" : "next";
+		}
+		return "section";
+	}
+
+	/**
+	 * Put focus back where `captureFocusIntent` asked, falling back down a chain that
+	 * ends at the section region so no branch can leave focus on `<body>`.
+	 *
+	 * A nav button that has become disabled cannot take focus — pressing Next into the
+	 * last section is exactly when that happens — so the intent degrades to the other
+	 * button and then to the region itself.
+	 */
+	private applyFocusIntent(
+		intent: "previous" | "next" | "section",
+		buttons: { previous: HTMLButtonElement | null; next: HTMLButtonElement | null },
+	): void {
+		const candidates: (HTMLElement | null)[] =
+			intent === "section"
+				? [this.sectionHost]
+				: intent === "next"
+					? [buttons.next, buttons.previous, this.sectionHost]
+					: [buttons.previous, buttons.next, this.sectionHost];
+		for (const candidate of candidates) {
+			if (!candidate) continue;
+			if (candidate instanceof HTMLButtonElement && candidate.disabled) continue;
+			candidate.focus();
+			if (document.activeElement === candidate) return;
+		}
 	}
 
 	private buildSectionPlayerTag(): string {
@@ -393,7 +482,12 @@ export class AssessmentPlayerDefaultElement
 	private render() {
 		const controller = this.controller;
 		this.attachInstrumentationBridge();
-		this.innerHTML = "";
+		// Read before the swap below discards the node that holds focus.
+		const focusIntent = this.restoreFocusOnRender
+			? this.captureFocusIntent()
+			: null;
+		this.restoreFocusOnRender = false;
+		this.ensureAnnouncer();
 		this.sectionControllerRef = null;
 		const container = document.createElement("div");
 		container.className = "pie-assessment-player-default";
@@ -450,24 +544,27 @@ export class AssessmentPlayerDefaultElement
 		container.appendChild(style);
 
 		const snapshot = this.getSnapshot();
+		const positionLabel =
+			snapshot.navigation.totalSections > 0
+				? `Section ${snapshot.navigation.currentIndex + 1} of ${snapshot.navigation.totalSections}`
+				: "No sections";
+		let prevButton: HTMLButtonElement | null = null;
+		let nextButton: HTMLButtonElement | null = null;
 		const showNavigation = coerceBooleanLike(this.showNavigation, true);
 		if (showNavigation) {
 			const nav = document.createElement("div");
 			nav.className = "pie-assessment-player-navigation";
 			const pos = document.createElement("div");
 			pos.className = "pie-assessment-player-current-position";
-			pos.textContent =
-				snapshot.navigation.totalSections > 0
-					? `Section ${snapshot.navigation.currentIndex + 1} of ${snapshot.navigation.totalSections}`
-					: "No sections";
+			pos.textContent = positionLabel;
 			const controls = document.createElement("div");
 			controls.className = "pie-assessment-player-nav-controls";
-			const prevButton = document.createElement("button");
+			prevButton = document.createElement("button");
 			prevButton.className = "pie-assessment-player-nav-btn";
 			prevButton.textContent = "Back";
 			prevButton.disabled = !snapshot.navigation.canPrevious;
 			prevButton.addEventListener("click", () => void this.navigatePrevious());
-			const nextButton = document.createElement("button");
+			nextButton = document.createElement("button");
 			nextButton.className = "pie-assessment-player-nav-btn";
 			nextButton.textContent = "Next";
 			nextButton.disabled = !snapshot.navigation.canNext;
@@ -481,6 +578,12 @@ export class AssessmentPlayerDefaultElement
 
 		const sectionHost = document.createElement("div");
 		sectionHost.className = "pie-assessment-player-section-host";
+		// Named landmark, and the focus target of last resort. `tabindex="-1"` makes it
+		// programmatically focusable without adding a tab stop, so a learner Tabbing
+		// through the section never lands on the wrapper itself.
+		sectionHost.setAttribute("role", "region");
+		sectionHost.setAttribute("aria-label", positionLabel);
+		sectionHost.tabIndex = -1;
 		this.sectionHost = sectionHost;
 
 		const currentSection = controller?.getCurrentSection() || null;
@@ -508,7 +611,27 @@ export class AssessmentPlayerDefaultElement
 		}
 
 		container.appendChild(sectionHost);
-		this.appendChild(container);
+		this.swapContent(container);
+
+		if (focusIntent) {
+			this.applyFocusIntent(focusIntent, {
+				previous: prevButton,
+				next: nextButton,
+			});
+			// The visible position indicator changes silently; a learner who is not
+			// looking at it gets the section change from here instead.
+			this.announceSectionChange(positionLabel);
+		}
+	}
+
+	/**
+	 * Announce the new position, once the live region has been in the document long
+	 * enough for the change to register as a change.
+	 */
+	private announceSectionChange(message: string): void {
+		const announcer = this.ensureAnnouncer();
+		if (announcer.textContent === message) return;
+		announcer.textContent = message;
 	}
 
 	private applyDebugFlag(): void {

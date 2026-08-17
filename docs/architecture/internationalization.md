@@ -30,7 +30,7 @@ is the standard's, and we currently model none of it.
 **Interface locale is adopted in `pie-players`.** A `locale` attribute on the item
 and section players publishes a provider on the toolkit runtime context, and every
 component that renders a string of its own resolves it from there;
-`en-US` and `nl-NL` ship complete at 401 keys, and `check:i18n-coverage` gates
+`en-US` and `nl-NL` ship complete at 402 keys, and `check:i18n-coverage` gates
 both the pre-commit and CI runs. `docs/architecture/i18n-interface-locale-adoption.md` is
 the design record. Content language and in-item alternates are untouched — the
 rest of this document still describes the gap.

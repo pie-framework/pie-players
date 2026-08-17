@@ -43,8 +43,29 @@
 	// Storage key for sessionStorage
 	const STORAGE_KEY = 'pie-annotations';
 
+	// Disallowed elements - don't show toolbar when selecting these
+	const DISALLOWED_SELECTORS = [
+		'button',
+		'input',
+		'select',
+		'textarea',
+		'[contenteditable="true"]',
+		'.pie-tool-annotation-toolbar',
+		'.pie-tool-toolbar',
+		'[role="button"]',
+		'[role="textbox"]'
+	];
+
+	// State - using Svelte 5 $state rune for reactive state
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+
 	// Available highlight colors (modern, accessible palette). `$derived` because
-	// the labels come from the catalog, so the list rebuilds when the locale moves.
+	// the labels come from the catalog, so the list rebuilds when the locale moves —
+	// which is also why it has to be declared after `interfaceI18n` rather than with
+	// the other constants above.
 	const HIGHLIGHT_COLORS = $derived([
 		{
 			name: HighlightColor.YELLOW,
@@ -67,25 +88,6 @@
 			label: interfaceI18n.t('tools.annotationToolbar.highlightGreenA11y')
 		}
 	]);
-
-	// Disallowed elements - don't show toolbar when selecting these
-	const DISALLOWED_SELECTORS = [
-		'button',
-		'input',
-		'select',
-		'textarea',
-		'[contenteditable="true"]',
-		'.pie-tool-annotation-toolbar',
-		'.pie-tool-toolbar',
-		'[role="button"]',
-		'[role="textbox"]'
-	];
-
-	// State - using Svelte 5 $state rune for reactive state
-	let contextHostElement = $state<HTMLElement | null>(null);
-	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	// Interface locale, re-derived on every context republish.
-	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let toolbarElement = $state<HTMLElement | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);

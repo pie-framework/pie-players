@@ -519,6 +519,7 @@ const enUS = {
 			unnamedVoice: "Unnamed voice",
 			apiEndpoint: "API endpoint",
 			gender: "Gender",
+			any: "Any",
 			male: "Male",
 			female: "Female",
 			neutral: "Neutral",

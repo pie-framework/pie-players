@@ -314,15 +314,28 @@ packages carrying `.svelte` files had no `check` script, so `turbo check` never 
 value exists in scope for the shorthand property* — so the files were simply never
 read.
 
-Twelve of those packages were already clean and now run `check`, taking gate
-coverage from 9 packages to 21. Seven are still uncovered because they carry
-pre-existing type debt unrelated to i18n, mostly missing ambient declarations for
-`.svg` imports and `Moveable`'s namespace-as-type: `tool-ruler` (10 errors),
-`tool-annotation-toolbar` (8), `tool-protractor` (8), `section-player-tools-tts-settings`
-(2), `tool-periodic-table` (2), `tool-tts-inline` (1), and
-`section-player-tools-pnp-debugger` (3 warnings). Clearing those is a ratchet worth
-finishing; until it is, a `.svelte` file in one of the seven has no type checking
-at all.
+All nineteen now run `check`, taking gate coverage from 9 packages to 28. Twelve
+were already clean. The other seven held 31 errors, and enabling the check is what
+made them visible:
+
+- Ten were this pass's own. `tool-annotation-toolbar` declared `interfaceI18n`
+  after the `HIGHLIGHT_COLORS` list that reads it — the same declaration-order
+  defect as `SessionDbPanel`, four labels' worth. And `TtsSettingsPanel` called
+  `debug.tts.any` twice, a key no catalog defines, so the gender filter's "Any"
+  option would have rendered its own key to a learner. That one is the exact
+  failure `MessageKey` exists to prevent, caught only because the union is closed
+  and the package is now read.
+- The rest were pre-existing and unrelated: `moveable` ships CJS with ESM-shaped
+  declarations and no `exports` map, so under `NodeNext` its default import
+  resolves to the module namespace and reads as neither constructable nor usable
+  as a type — the ruler and protractor now describe the slice of its surface they
+  use; `*.svg` imports needed `vite/client` in `types`; the periodic table's JSON
+  import needed the `type: "json"` attribute that `NodeNext` requires, which is the
+  same omission that broke every non-English locale in the layer this work
+  replaced; and `tool-tts-inline` needed a `tsconfig.svelte-check.json` mapping
+  `ui/use-zoom-compensation` to source, mirroring the alias its Vite config
+  already carries, because a `.svelte.ts` rune module cannot ship through an
+  `exports` map as compiled output.
 
 ## What this does not do
 

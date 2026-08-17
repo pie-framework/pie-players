@@ -103,7 +103,7 @@ Case button label, the lowercase announcement and the raw state token in the
 accessible name. Improving any of these strings is a separate change with its own
 entry.
 
-`en-US` and `nl-NL` are complete at 401 keys, and they are the only locales
+`en-US` and `nl-NL` are complete at 402 keys, and they are the only locales
 shipped. The pre-adoption `es`/`zh`/`ar` catalogs are deleted rather than
 re-keyed: 76 of their 142 keys named UI this codebase does not render — a
 section-builder, an assessment shell, 25 Desmos internals Desmos localizes

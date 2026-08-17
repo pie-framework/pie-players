@@ -6,7 +6,10 @@
 		"declaration": true,
 		"declarationMap": false,
 		"composite": true,
-		"moduleResolution": "NodeNext"
+		"moduleResolution": "NodeNext",
+		// `vite/client` beside the root's `@types/bun`, for the `*.svg` module
+		// declaration the protractor image is imported through.
+		"types": ["@types/bun", "vite/client"]
 	},
 	"include": ["index.ts", "tool-protractor.svelte"],
 	"exclude": ["node_modules", "dist"]

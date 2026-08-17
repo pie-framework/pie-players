@@ -11,7 +11,11 @@
 
 <script lang="ts">
 
-	import periodicTableData from './periodic-table-data.json';
+	// The import attribute is required under `module: NodeNext` and is what the
+	// pre-adoption i18n catalogs omitted, which is how every non-English locale
+	// failed to load outside a bundler. Vite inlines the JSON at build time, so the
+	// attribute costs nothing there.
+	import periodicTableData from './periodic-table-data.json' with { type: 'json' };
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,

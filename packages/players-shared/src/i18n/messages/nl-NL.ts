@@ -456,6 +456,7 @@ const nlNL = {
 			unnamedVoice: "Stem zonder naam",
 			apiEndpoint: "API-eindpunt",
 			gender: "Geslacht",
+			any: "Alle",
 			male: "Man",
 			female: "Vrouw",
 			neutral: "Neutraal",

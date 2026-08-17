@@ -19,9 +19,40 @@
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
-	import Moveable from 'moveable';
+	import MoveableModule from 'moveable';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
+
+	/**
+	 * The slice of Moveable's surface this tool uses.
+	 *
+	 * `moveable` publishes CJS with ESM-shaped declarations and no `exports` map, so
+	 * under `moduleResolution: NodeNext` TypeScript resolves the default import to
+	 * the module namespace rather than to the class: `new Moveable(...)` reads as
+	 * not constructable and `Moveable` cannot be used as a type. Vite loads the ESM
+	 * build, where the import *is* the class, so this describes runtime rather than
+	 * changing it.
+	 */
+	interface MoveableInstance {
+		bounds: {
+			left: number;
+			top: number;
+			right: number;
+			bottom: number;
+			position?: 'css' | 'client';
+		};
+		destroy(): void;
+		updateRect(): void;
+		getControlBoxElement(): HTMLElement;
+		on(
+			event: 'drag' | 'rotate',
+			handler: (payload: { target: HTMLElement; transform: string }) => void,
+		): void;
+	}
+	const MoveableCtor = MoveableModule as unknown as new (
+		container: HTMLElement,
+		options: Record<string, unknown>,
+	) => MoveableInstance;
 
 	// Props
 	let { visible = false, toolId = 'protractor' }: { visible?: boolean; toolId?: string } = $props();
@@ -38,7 +69,7 @@
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
-	let moveable: Moveable | null = null;
+	let moveable: MoveableInstance | null = null;
 
 	// Track registration state
 	let registered = $state(false);
@@ -74,7 +105,7 @@
 
 		coordinator?.bringToFront(containerEl);
 
-		moveable = new Moveable(document.body, {
+		moveable = new MoveableCtor(document.body, {
 			target: containerEl,
 			draggable: true,
 			rotatable: true,
@@ -276,7 +307,7 @@
 		bind:this={containerEl}
 		class="pie-tool-protractor"
 		data-moveablejs-tool-id={toolId}
-		onpointerdown={() => coordinator?.bringToFront(containerEl)}
+		onpointerdown={() => containerEl && coordinator?.bringToFront(containerEl)}
 		onkeydown={handleKeyDown}
 		role="application"
 		tabindex="0"

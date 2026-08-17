@@ -167,6 +167,16 @@ export type {
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
 export { ToolRegistry } from "./services/ToolRegistry.js";
+// Tool open requests, and the selection-action contract a gateway renders.
+export type {
+	ToolOpenRequest,
+	ToolRequestTarget,
+} from "./services/tool-request.js";
+export { DEFAULT_TOOL_REQUEST_LEVEL } from "./services/tool-request.js";
+export type {
+	ToolSelectionAction,
+	ToolSelectionContext,
+} from "./services/selection-action.js";
 export type {
 	AssessmentToolContext,
 	BaseToolContext,

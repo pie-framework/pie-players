@@ -235,6 +235,20 @@ const nlNL = {
 			imageAlt:
 				"Geodriehoek met een halfronde schaal van 0 tot 180 graden in beide richtingen, met streepjes elke 10 graden",
 		},
+		dictionary: {
+			name: "Woordenboek",
+			description: "Betekenis van woorden opzoeken",
+			buttonA11y: "Woordenboek, betekenis van woorden opzoeken",
+			tooltip: "Woordenboek",
+			toolA11y: "Woordenboek",
+		},
+		pictureDictionary: {
+			name: "Beeldwoordenboek",
+			description: "Afbeeldingen bij woorden opzoeken",
+			buttonA11y: "Beeldwoordenboek, afbeeldingen bij woorden opzoeken",
+			tooltip: "Beeldwoordenboek",
+			toolA11y: "Beeldwoordenboek",
+		},
 		lineReader: {
 			name: "Leeshulp",
 			description: "Leesvenster over de tekst",

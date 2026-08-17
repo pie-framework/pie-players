@@ -36,9 +36,11 @@ describe("default tool module loaders", () => {
 		]);
 		expect(Object.keys(SECTION_TOOL_MODULE_LOADERS).sort()).toEqual([
 			"calculator",
+			"dictionary",
 			"graph",
 			"lineReader",
 			"periodicTable",
+			"pictureDictionary",
 			"protractor",
 			"ruler",
 		]);

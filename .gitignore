@@ -9,6 +9,8 @@ node_modules/
 
 # local artifacts
 local-builds/
+# Screenshot evidence captured on demand for tickets and PRs, never committed.
+artifacts/
 
 # MCP servers
 .playwright-mcp/
@@ -70,6 +72,13 @@ temp/
 
 # claude plans (local planning artifacts)
 .claude/plans/
+
+# Linked worktrees, when a tool puts them inside the repo instead of beside it.
+# Tracked rather than left to .git/info/exclude, which is per-clone: without this a
+# fresh clone's first lint or check would walk every nested worktree's full source
+# tree. Anchored on purpose -- see the worktrees section of AGENTS.md for what an
+# unanchored pattern does to a worktree that sits under this path.
+.claude/worktrees/
 
 # MCP servers
 .mcp/memory.db

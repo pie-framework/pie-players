@@ -68,6 +68,8 @@ import type {
 	ToolContextResolverMap,
 	ToolRegistration,
 } from "./ToolRegistry.js";
+import { ToolRequestRegistry } from "./tool-request.js";
+import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 import {
 	ToolPolicyEngine,
 	type FeaturePolicyDecision,
@@ -582,6 +584,7 @@ export class ToolkitCoordinator {
 		ToolContextResolver
 	>();
 	private readonly toolContextResolverChangeListeners = new Set<() => void>();
+	private readonly toolRequests = new ToolRequestRegistry();
 	private readonly sectionControllers = new Map<
 		string,
 		SectionControllerHandle
@@ -2501,6 +2504,44 @@ export class ToolkitCoordinator {
 		return () => {
 			this.toolContextResolverChangeListeners.delete(listener);
 		};
+	}
+
+	/**
+	 * Claim requests for one placement level. Called by a toolbar on mount.
+	 */
+	registerToolRequestTarget(target: ToolRequestTarget): () => void {
+		return this.toolRequests.registerTarget(target);
+	}
+
+	/**
+	 * Ask the toolbar hosting a tool to open it, handing it `params`.
+	 *
+	 * Returns whether a toolbar claimed the request. A surface offering this as an
+	 * affordance should gate on {@link canRequestTool} first rather than acting on
+	 * the return value, so the learner never sees a control that does nothing.
+	 */
+	requestTool(request: ToolOpenRequest): boolean {
+		this.assertCanonicalToolId(request.toolId);
+		return this.toolRequests.request(request);
+	}
+
+	/**
+	 * Answers `false` for a tool this deployment does not carry rather than
+	 * throwing as {@link requestTool} does. A composer asks this while rendering a
+	 * surface, and a host that swapped the registry for one without the tool would
+	 * otherwise lose the whole surface to an exception over an absent action.
+	 */
+	canRequestTool(toolId: string, level?: ToolOpenRequest["level"]): boolean {
+		try {
+			this.assertCanonicalToolId(toolId);
+		} catch {
+			return false;
+		}
+		return this.toolRequests.canRequest(toolId, level);
+	}
+
+	onToolRequestTargetsChange(listener: () => void): () => void {
+		return this.toolRequests.onTargetsChange(listener);
 	}
 
 	/**

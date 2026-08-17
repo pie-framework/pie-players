@@ -72,6 +72,44 @@ is unchanged, and the fix only shows for a host that drives
 too. Hosts A and V both load `components.css`; neither styles those hooks and the
 answer eliminator is placed in neither delivery.
 
+The dictionary capabilities and the selection door onto them were checked against
+the Host A and Host V checkouts directly; Host R was not opened, so its rows stay
+prior observations and the verification date does not advance. Recorded rows are
+unchanged.
+
+Host V depends on the item player and the theme only, neither of which the change
+touches. Host A places one capability at item scope plus read-aloud when its
+profile asks; it supplies no section-level placement, and core's placement default
+is empty, so the two new capabilities cannot appear there — and it does not depend
+on the selection gateway package at all, so the gateway's new host-supplied action
+list and its post-action dismissal latch are unreachable for it. The four additive
+`ToolkitCoordinator` request methods and the three new type exports are called by
+no recorded host; Host R holds a coordinator instance rather than implementing the
+interface, so widening it is not a break there either.
+
+A review pass over the same work narrowed the coordinator surface and changed three
+defaults, none of which reaches a recorded host. The four request methods became
+optional on the coordinator interface, which only widens what a host-supplied
+coordinator may be. Request resolution now falls back off section scope to any
+level hosting the capability, which can only find a target where none was found
+before; no recorded host places either new capability, and the fallback cannot
+redirect a request that already resolved. Endpoint lookups now carry the session
+cookie instead of omitting credentials, and refuse plain `http:` picture URLs — both
+inside the two new packages, which no recorded host depends on. The shared
+term-lookup module those packages now use is a new subpath on
+`pie-players-shared`; existing entry points are untouched.
+
+One residual difference is worth a manual check rather than a claim. Focusable
+collection for a trapped floating panel now descends into open shadow roots and
+now excludes `tabindex="-1"`, which the flat selector previously matched through
+its `button` clause. Host A's one shell-hosted capability renders in light DOM, so
+the shadow half is a no-op for it; the `tabindex="-1"` half depends on the
+third-party DOM inside that panel, which this repository stubs in tests and which
+was not measured against the real vendor bundle. If that DOM carries such
+controls, the panel's internal tab cycle drops those stops — matching what the
+browser does with them anyway. One tab-through of that panel before release
+settles it.
+
 Chrome i18n adoption **was** checked against all three checkouts, and advances the
 verification date below. It reaches consumers three ways, all additive: a new
 optional `locale` attribute and prop on `pie-item-player` and the four
@@ -477,6 +515,15 @@ These bypass the package `exports` map. All four are also exported under their
 bare names, so the `exports` map alone is not enough to protect this host —
 **the `dist` filenames themselves are API here**. Renaming, splitting, or
 merging any of those four files breaks that build.
+
+`font-sizes.css` is bundled but not activated. Every rule in it is scoped under a
+`data-font-size` attribute, and no host sets that attribute anywhere in its
+source — so all three currently take only its `:root { --pie-font-scale: 1 }`
+default, and its rules match nothing. So the file's *rules* are safe to change
+while its *filename* is not — the inverse of the rest of this section, where the
+values are the fragile half. The first host to set the attribute inherits whatever
+those rules then say, with no build signal, and Host A and Host R both take patch
+releases on caret ranges.
 
 Host R additionally hard-codes the CDN path
 `@pie-players/pie-item-player@<version>/dist/pie-item-player.js`, so that

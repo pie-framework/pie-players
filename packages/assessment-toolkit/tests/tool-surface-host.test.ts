@@ -1,19 +1,21 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver.js";
+import type { FrameworkErrorModel } from "../src/services/framework-error.js";
+import type {
+	AccessibilityCatalogResolverApi,
+	ToolkitCoordinatorApi,
+} from "../src/services/interfaces.js";
 import {
-	AccessibilityCatalogResolver,
 	ToolRegistry,
-	type AccessibilityCatalogResolverApi,
-	type FrameworkErrorModel,
-	type ToolkitCoordinatorApi,
 	type ToolRegistration,
 	type ToolSurfaceRenderContext,
-} from "@pie-players/pie-assessment-toolkit";
+} from "../src/services/ToolRegistry.js";
 import {
 	createToolSurfaceHost,
 	type ToolSurfaceHostInput,
 	type ToolSurfaceHostSnapshot,
-} from "../src/components/shared/tool-surface-host.js";
+} from "../src/tools/tool-surface-host.js";
 
 beforeAll(() => {
 	GlobalRegistrator.register();
@@ -135,7 +137,7 @@ describe("Tool Surface Host", () => {
 		const anchor = document.createElement("div");
 		const snapshots: ToolSurfaceHostSnapshot[] = [];
 		const destroyed: string[] = [];
-		const host = createToolSurfaceHost((value) => snapshots.push(value));
+		const host = createToolSurfaceHost((value) => snapshots.push(value), { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 
 		const firstElement = document.createElement("div");
@@ -200,7 +202,7 @@ describe("Tool Surface Host", () => {
 			);
 		}
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 
 		secondLoad.resolve();
@@ -243,7 +245,7 @@ describe("Tool Surface Host", () => {
 			}),
 		);
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 		runtime.emitCatalogs();
@@ -267,7 +269,7 @@ describe("Tool Surface Host", () => {
 			}),
 		);
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 
@@ -290,7 +292,7 @@ describe("Tool Surface Host", () => {
 		);
 		const anchor = document.createElement("div");
 		const snapshots: ToolSurfaceHostSnapshot[] = [];
-		const host = createToolSurfaceHost((value) => snapshots.push(value));
+		const host = createToolSurfaceHost((value) => snapshots.push(value), { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 
@@ -315,7 +317,7 @@ describe("Tool Surface Host", () => {
 			}),
 		);
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 
@@ -330,7 +332,7 @@ describe("Tool Surface Host", () => {
 		registry.register(regionTool("empty", { renderSurface: () => null }));
 		const anchor = document.createElement("div");
 		const snapshots: ToolSurfaceHostSnapshot[] = [];
-		const host = createToolSurfaceHost((value) => snapshots.push(value));
+		const host = createToolSurfaceHost((value) => snapshots.push(value), { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 
@@ -367,7 +369,7 @@ describe("Tool Surface Host", () => {
 		const anchor = document.createElement("div");
 		const input = contentInput(registry, runtime.coordinator, anchor);
 		input.services = { ...input.services, catalogResolver: failingResolver };
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(input);
 		await flush();
 
@@ -396,7 +398,7 @@ describe("Tool Surface Host", () => {
 				renderSurface: () => ({ element: working }),
 			}),
 		);
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 
@@ -434,7 +436,7 @@ describe("Tool Surface Host", () => {
 			}),
 		);
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 		runtime.grants.set("working", {
@@ -476,7 +478,7 @@ describe("Tool Surface Host", () => {
 				},
 			}),
 		);
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(
 			contentInput(
 				registry,
@@ -525,7 +527,7 @@ describe("Tool Surface Host", () => {
 			}),
 		);
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 		expect(anchor.children).toHaveLength(0);
@@ -556,7 +558,7 @@ describe("Tool Surface Host", () => {
 			}),
 		);
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		await flush();
 		expect((anchor.firstElementChild as HTMLElement).dataset.tag).toBe(
@@ -612,7 +614,7 @@ describe("Tool Surface Host", () => {
 			},
 		});
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update({
 			...contentInput(registry, runtime.coordinator, anchor),
 			surface: "section-overlay",
@@ -636,7 +638,7 @@ describe("Tool Surface Host", () => {
 		registry.setToolModuleLoaders({ slow: () => load.promise });
 		registry.register(regionTool("slow"));
 		const anchor = document.createElement("div");
-		const host = createToolSurfaceHost(() => undefined);
+		const host = createToolSurfaceHost(() => undefined, { hostLabel: "test-host" });
 		host.update(contentInput(registry, runtime.coordinator, anchor));
 		expect(runtime.policyListenerCount()).toBe(1);
 		host.destroy();

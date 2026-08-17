@@ -303,6 +303,27 @@ const i18n = createPieI18n({ locale: resolvedLocale });
 8. **Carried locales** re-keyed, and the existing `es`/`zh`/`ar` directories
    removed.
 
+## svelte-check coverage
+
+Adopting this surfaced a hole in the gate rather than in the design.
+`SessionDbPanel` took an `i18n` prop it never destructured from `$props()`, which
+is a `ReferenceError` at render; `verify:ci-lint-typecheck` passed anyway, and only
+an e2e spec that clicks a button inside that panel caught it. The cause: nineteen
+packages carrying `.svelte` files had no `check` script, so `turbo check` never ran
+`svelte-check` over any tool package. `svelte-check` diagnoses exactly this — *No
+value exists in scope for the shorthand property* — so the files were simply never
+read.
+
+Twelve of those packages were already clean and now run `check`, taking gate
+coverage from 9 packages to 21. Seven are still uncovered because they carry
+pre-existing type debt unrelated to i18n, mostly missing ambient declarations for
+`.svg` imports and `Moveable`'s namespace-as-type: `tool-ruler` (10 errors),
+`tool-annotation-toolbar` (8), `tool-protractor` (8), `section-player-tools-tts-settings`
+(2), `tool-periodic-table` (2), `tool-tts-inline` (1), and
+`section-player-tools-pnp-debugger` (3 warnings). Clearing those is a ratchet worth
+finishing; until it is, a `.svelte` file in one of the seven has no type checking
+at all.
+
 ## What this does not do
 
 Content language, `Env.locale`, `lang`/`dir` on the *content* subtree, catalog

@@ -27,6 +27,7 @@ of these is a composition context in this repo:
 | Split-region width | section player | item media region | the available width is the layout's, not the capability's |
 | Theme tokens | theme package | every component | a deployment picks the palette, not the component |
 | Granted accommodations | policy engine | every capability | eligibility is per learner and per deployment |
+| Interface locale | item/section player, from its `locale` attribute | every component rendering a string of its own | the deployment picks the language the chrome speaks; a tool nested several packages deep cannot see it, and it is independent of the item's content language |
 
 They share a shape, which is why they share a mechanism.
 

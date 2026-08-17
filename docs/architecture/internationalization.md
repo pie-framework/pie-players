@@ -403,8 +403,10 @@ locale.
    language, player reflects `lang`/`dir` to the content subtree. Requires the
    matching Studio change to emit locale on the PIE content channel and
    `xml:lang` on the QTI channel, where it currently emits a hardcoded `"en"`.
-3. **Interface locale as composition context.** Publisher, resolution order, change
-   signal, graceful default. Add locale to the composition-context table.
+3. **Interface locale as composition context.** Done. The player publishes,
+   `resolveInterfaceI18n` is the only resolver, the context republish is the change
+   signal, and the English-only default covers no publisher.
+   `composition-context.md` carries the locale row.
 4. **Consolidate the i18n layer.** Done. `I18nService` is a delegating wrapper
    over `SimpleI18n` rather than a second copy of it, the catalog is re-harvested
    from call sites, and `check:i18n-coverage` runs in the pre-commit and CI gates.

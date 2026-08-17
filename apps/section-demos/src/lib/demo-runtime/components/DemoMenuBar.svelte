@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { ResponsiveDemoMenuBar } from "@pie-players/demo-ui";
+	import { LocaleSelect, ResponsiveDemoMenuBar } from "@pie-players/demo-ui";
 	import { DebugPanelToggles } from "@pie-players/pie-section-player-tools-shared";
+	import { DEMO_LOCALES, demoLocale, setDemoLocale } from '$lib/demo-locale.svelte';
 
 	interface Props {
 		roleType: 'candidate' | 'scorer';
@@ -125,6 +126,11 @@
 	{/snippet}
 
 	{#snippet secondary()}
+			<LocaleSelect
+				locales={DEMO_LOCALES}
+				value={demoLocale()}
+				onSelect={setDemoLocale}
+			/>
 			<label class="flex items-center gap-2">
 				<select
 					class="select select-sm select-bordered"

@@ -26,16 +26,19 @@ test.describe("assessment demos chrome accessibility", () => {
 			const title = document
 				.querySelector(".pie-demo-site-header__title")
 				?.getBoundingClientRect();
-			const theme = document
-				.querySelector(".pie-demo-site-header__theme")
+			// The right-hand cluster holds every header control — the locale select
+			// and the theme select — so the title has to clear all of it, not just
+			// the one that used to be there.
+			const controls = document
+				.querySelector(".pie-demo-site-header__controls")
 				?.getBoundingClientRect();
 			return {
 				titleRight: title?.right ?? Number.POSITIVE_INFINITY,
-				themeLeft: theme?.left ?? Number.NEGATIVE_INFINITY,
+				controlsLeft: controls?.left ?? Number.NEGATIVE_INFINITY,
 			};
 		});
 		expect(siteHeaderRegions.titleRight).toBeLessThanOrEqual(
-			siteHeaderRegions.themeLeft,
+			siteHeaderRegions.controlsLeft,
 		);
 		await menuButton.click();
 		await expect(splitpaneButton).toBeVisible();

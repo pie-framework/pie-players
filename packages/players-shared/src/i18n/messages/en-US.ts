@@ -91,6 +91,15 @@ const enUS = {
 		resizeQuestionAndMediaA11y: "Resize question and media panels",
 		resizePassageAndMediaA11y: "Resize passage and media panels",
 
+		/**
+		 * The assessment player's own section-to-section navigation. Its Back and
+		 * Next controls take `common.back` / `common.next`.
+		 */
+		assessment: {
+			sectionPosition: "Section {position} of {total}",
+			noSections: "No sections",
+		},
+
 		/** Formative delivery: check-answer control and its outcome announcements. */
 		formative: {
 			checkAnswer: "Check answer",

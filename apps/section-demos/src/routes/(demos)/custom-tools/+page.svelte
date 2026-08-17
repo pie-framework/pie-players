@@ -32,6 +32,7 @@
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from "$lib/demo-runtime/section-demos-default-tts";
 	import { createDemoCustomToolsIntegration } from "$lib/demo-runtime/custom-tools";
 	import type { PageData } from "./$types";
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const customTools = createDemoCustomToolsIntegration();
@@ -293,6 +294,7 @@
 			section={resolvedSectionForPlayer}
 			toolbar-position="right"
 			show-toolbar={true}
+			locale={demoLocale()}
 			toolRegistry={customTools.toolRegistry}
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}
@@ -316,6 +318,7 @@
 			section={resolvedSectionForPlayer}
 			toolbar-position="right"
 			show-toolbar={true}
+			locale={demoLocale()}
 			toolRegistry={customTools.toolRegistry}
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}

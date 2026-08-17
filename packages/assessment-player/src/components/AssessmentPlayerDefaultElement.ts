@@ -5,6 +5,11 @@ import {
 	attachInstrumentationEventBridge,
 	resolveInstrumentationProvider,
 } from "@pie-players/pie-players-shared/pie";
+import {
+	createPieI18n,
+	DEFAULT_LOCALE,
+} from "@pie-players/pie-players-shared/i18n";
+import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
 import type { Env } from "@pie-players/pie-players-shared/types";
 import { AssessmentController } from "../controller/AssessmentController.js";
 import type { AssessmentControllerHandle } from "../controller/AssessmentController.js";
@@ -76,11 +81,18 @@ export class AssessmentPlayerDefaultElement
 			"section-player-layout",
 			"player-type",
 			"debug",
+			"locale",
 		];
 	}
 
 	assessmentId = "";
 	attemptId = "";
+	/**
+	 * Interface locale for this player's own navigation chrome, as a BCP-47 tag.
+	 * Empty means the graceful default, `en-US`. Also forwarded to the section
+	 * element, which passes it on to the toolkit.
+	 */
+	locale = "";
 	assessment: AssessmentDefinition | null = null;
 	env: Env | null = null;
 	coordinator: unknown = null;
@@ -96,6 +108,14 @@ export class AssessmentPlayerDefaultElement
 	private controllerReadyResolve:
 		| ((value: AssessmentControllerHandle | null) => void)
 		| null = null;
+	/**
+	 * This player's own provider rather than a context read. Its navigation sits
+	 * beside the section host, not inside it, so there is no published toolkit
+	 * context above it to resolve from. Constructed with the English catalog
+	 * already resident, so `t` never returns a bare key.
+	 */
+	private readonly i18n: I18nServiceApi = createPieI18n();
+	private unsubscribeI18n?: () => void;
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
 	/**
@@ -145,9 +165,39 @@ export class AssessmentPlayerDefaultElement
 		if (name === "debug") {
 			this.debug = value;
 		}
+		if (name === "locale") {
+			this.locale = value || "";
+			this.applyLocale();
+		}
 		if (this.isConnected) {
 			void this.bootstrapController();
 		}
+	}
+
+	/**
+	 * Catalog loading is async, so the first paint carries whatever the provider
+	 * already holds and the subscription repaints once the requested locale
+	 * lands. That is also the change signal a later switch travels on.
+	 */
+	private applyLocale(): void {
+		if (!this.unsubscribeI18n) {
+			this.unsubscribeI18n = this.i18n.subscribe?.(() => {
+				if (this.isConnected) this.render();
+			});
+		}
+		void this.i18n.setLocale(this.locale || DEFAULT_LOCALE);
+		this.forwardLocaleToSection();
+	}
+
+	/**
+	 * The section element resolves `""` as a locale rather than falling back, so
+	 * an unset locale removes the attribute instead of writing an empty one.
+	 */
+	private forwardLocaleToSection(): void {
+		const sectionEl = this.sectionHost?.firstElementChild;
+		if (!sectionEl) return;
+		if (this.locale) sectionEl.setAttribute("locale", this.locale);
+		else sectionEl.removeAttribute("locale");
 	}
 
 	get debug(): boolean | string | null | undefined {
@@ -186,11 +236,15 @@ export class AssessmentPlayerDefaultElement
 		const playerType = this.getAttribute("player-type");
 		if (playerType) this.playerType = playerType as typeof this.playerType;
 		this.debug = this.getAttribute("debug") ?? this.debug;
+		if (!this.locale) this.locale = this.getAttribute("locale") || "";
+		this.applyLocale();
 		this.attachInstrumentationBridge();
 		void this.bootstrapController();
 	}
 
 	disconnectedCallback() {
+		this.unsubscribeI18n?.();
+		this.unsubscribeI18n = undefined;
 		this.unsubscribeController?.();
 		this.detachInstrumentationBridge?.();
 		this.detachInstrumentationBridge = undefined;
@@ -544,10 +598,15 @@ export class AssessmentPlayerDefaultElement
 		container.appendChild(style);
 
 		const snapshot = this.getSnapshot();
+		// One string for three surfaces: the visible position line, the section
+		// host's accessible name, and the live announcement on a section change.
 		const positionLabel =
 			snapshot.navigation.totalSections > 0
-				? `Section ${snapshot.navigation.currentIndex + 1} of ${snapshot.navigation.totalSections}`
-				: "No sections";
+				? this.i18n.t("player.assessment.sectionPosition", {
+						position: snapshot.navigation.currentIndex + 1,
+						total: snapshot.navigation.totalSections,
+					})
+				: this.i18n.t("player.assessment.noSections");
 		let prevButton: HTMLButtonElement | null = null;
 		let nextButton: HTMLButtonElement | null = null;
 		const showNavigation = coerceBooleanLike(this.showNavigation, true);
@@ -561,12 +620,12 @@ export class AssessmentPlayerDefaultElement
 			controls.className = "pie-assessment-player-nav-controls";
 			prevButton = document.createElement("button");
 			prevButton.className = "pie-assessment-player-nav-btn";
-			prevButton.textContent = "Back";
+			prevButton.textContent = this.i18n.t("common.back");
 			prevButton.disabled = !snapshot.navigation.canPrevious;
 			prevButton.addEventListener("click", () => void this.navigatePrevious());
 			nextButton = document.createElement("button");
 			nextButton.className = "pie-assessment-player-nav-btn";
-			nextButton.textContent = "Next";
+			nextButton.textContent = this.i18n.t("common.next");
 			nextButton.disabled = !snapshot.navigation.canNext;
 			nextButton.addEventListener("click", () => void this.navigateNext());
 			controls.appendChild(prevButton);
@@ -593,6 +652,7 @@ export class AssessmentPlayerDefaultElement
 			sectionEl.setAttribute("assessment-id", this.assessmentId);
 			sectionEl.setAttribute("section-id", currentSection.sectionIdentifier);
 			if (this.attemptId) sectionEl.setAttribute("attempt-id", this.attemptId);
+			if (this.locale) sectionEl.setAttribute("locale", this.locale);
 			if (this.debug !== undefined && this.debug !== null) {
 				const debugValue =
 					typeof this.debug === "boolean" ? String(this.debug) : this.debug;

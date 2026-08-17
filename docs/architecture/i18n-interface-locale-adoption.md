@@ -50,21 +50,28 @@ Keying a string must not change it. Fixed lockstep patch-only versioning puts a
 reworded label into a host's live delivery on their next install with no signal on
 their side, and the strings this pass touches are largely accessible names and
 live-region announcements, where a host may be asserting exact text. Every
-English value therefore reproduces the literal it replaced byte for byte,
-including its punctuation and its flaws: `Graph Tool - Draw points…` keeps the
-hyphen and the capital, `applying` keeps three ASCII dots where `common.loading`
-uses an ellipsis, and `tools.protractor.toolA11y` keeps `Current rotation
-displayed via Moveable.js`. Improving any of them is a separate change with its
-own changeset entry, so it is visible as a text change rather than arriving inside
-an i18n refactor.
+English value in the adoption commit therefore reproduces the literal it replaced
+byte for byte, including its punctuation and its flaws, so that any text change is
+visible as a text change rather than arriving inside an i18n refactor.
 
-Two consequences for the key set. Interpolation cannot be used to assemble a
-string a language inflects, so a unit name that appears both as a button label and
-inside a sentence needs one key per form — `tools.ruler` carries three forms of
-each unit, because the pre-adoption code rendered Title Case on the button,
-lowercase in the announcement, and the raw `'inches' | 'cm'` state token in the
-accessible name. And a translation is not obliged to reproduce an English flaw:
-`nl-NL` renders the protractor's help without the Moveable.js clause.
+The hold covers the refactor, not the strings. A follow-up released it:
+`.changeset/english-string-cleanup.md` records the before and after of sixteen
+reworded strings and of the nine toolbar button accessible names. `Graph Tool -
+Draw points…`, `applying`'s three ASCII dots and `tools.protractor.toolA11y`'s
+`Current rotation displayed via Moveable.js` are gone. The button names now follow
+one rule: the accessible name contains the button's visible tooltip verbatim, per
+WCAG 2.5.3 Label in Name, and encodes no action, because `aria-pressed` already
+carries the toggle state.
+
+One consequence for the key set survives both passes. Interpolation cannot be used
+to assemble a string a language inflects, so a unit name that appears both as a
+button label and inside a sentence needs one key per form: `tools.ruler` carries
+Title Case for the button and a lowercase in-sentence form for the announcement,
+the accessible name and the image alt. A third, abbreviated form existed for as
+long as the byte-identical hold did, because the pre-adoption code spliced the raw
+`'inches' | 'cm'` state token into two strings a screen reader speaks; the cleanup
+removed it. And a translation is not obliged to reproduce an English flaw: `nl-NL`
+rendered the protractor's help without the Moveable.js clause from the start.
 
 ## Decisions
 
@@ -302,6 +309,9 @@ const i18n = createPieI18n({ locale: resolvedLocale });
    `nl-NL` end-to-end check that a locale actually changes rendered chrome.
 8. **Carried locales** re-keyed, and the existing `es`/`zh`/`ar` directories
    removed.
+9. **English string cleanup**, as its own change with its own changeset entry —
+   the strings the byte-identical hold carried over unchanged, plus the toolbar
+   button naming rule.
 
 ## svelte-check coverage
 

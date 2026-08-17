@@ -33,8 +33,6 @@
 	"unpkg": "./dist/tool-dictionary.js",
 	"jsdelivr": "./dist/tool-dictionary.js",
 	"dependencies": {
-		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",

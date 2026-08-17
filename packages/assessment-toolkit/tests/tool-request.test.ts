@@ -87,6 +87,44 @@ describe("ToolRequestRegistry", () => {
 		expect(section.opened).toHaveLength(0);
 	});
 
+	// The defect this prevents: a host that places a tool at item scope only had the
+	// selection action silently disappear, because the tool was granted, hosted and
+	// visible while the request defaulted to a section level nothing had registered.
+	it("falls back off the default level when no section toolbar hosts the tool", () => {
+		const registry = new ToolRequestRegistry();
+		const item = target("item", ["dictionary"]);
+		registry.registerTarget(target("section", ["calculator"]));
+		registry.registerTarget(item);
+
+		expect(registry.canRequest("dictionary")).toBe(true);
+		expect(registry.request({ toolId: "dictionary" })).toBe(true);
+		expect(item.opened).toHaveLength(1);
+	});
+
+	it("still prefers section scope when both host the tool", () => {
+		const registry = new ToolRequestRegistry();
+		const item = target("item", ["dictionary"]);
+		const section = target("section", ["dictionary"]);
+		// Registered item-first, so the preference is the level and not the order.
+		registry.registerTarget(item);
+		registry.registerTarget(section);
+
+		registry.request({ toolId: "dictionary" });
+
+		expect(section.opened).toHaveLength(1);
+		expect(item.opened).toHaveLength(0);
+	});
+
+	it("does not fall back when the requester named a level, because it meant it", () => {
+		const registry = new ToolRequestRegistry();
+		const section = target("section", ["dictionary"]);
+		registry.registerTarget(section);
+
+		expect(registry.canRequest("dictionary", "item")).toBe(false);
+		expect(registry.request({ toolId: "dictionary", level: "item" })).toBe(false);
+		expect(section.opened).toHaveLength(0);
+	});
+
 	it("skips a target at the right level that does not host the tool", () => {
 		const registry = new ToolRequestRegistry();
 		const without = target("section", []);

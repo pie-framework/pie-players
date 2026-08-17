@@ -1,49 +1,19 @@
+/**
+ * What is this tool's own: which picture URLs are safe to render, reading a picture out
+ * of a host payload, and the service name the learner sees in an error.
+ *
+ * Term normalisation, the headword guard, request sequencing, the POST client and the
+ * panel state machine are shared with the word dictionary and tested once in
+ * `packages/players-shared/tests/term-lookup.test.ts`.
+ */
+
 import { describe, expect, test } from "bun:test";
 
 import {
 	createEndpointLookup,
-	isLookupableKeyword,
 	isRenderablePictureUrl,
-	normalizeKeyword,
 	readPictureResponse,
 } from "../lookup.js";
-
-describe("normalizing a keyword", () => {
-	test("trailing sentence punctuation goes", () => {
-		expect(normalizeKeyword("reason.")).toBe("reason");
-		expect(normalizeKeyword("“photosynthesis”")).toBe("photosynthesis");
-	});
-
-	test("internal hyphens and apostrophes stay", () => {
-		expect(normalizeKeyword("mother-in-law")).toBe("mother-in-law");
-		expect(normalizeKeyword("don't")).toBe("don't");
-	});
-
-	test("a selection spanning a line break collapses to one space", () => {
-		expect(normalizeKeyword("carbon\n  dioxide")).toBe("carbon dioxide");
-	});
-
-	test("non-Latin scripts survive", () => {
-		expect(normalizeKeyword("  光合成。 ")).toBe("光合成");
-	});
-});
-
-describe("deciding what is worth sending", () => {
-	test("a word or short phrase is", () => {
-		expect(isLookupableKeyword("apple")).toBe(true);
-		expect(isLookupableKeyword("carbon dioxide")).toBe(true);
-	});
-
-	test("a selected sentence is not", () => {
-		expect(
-			isLookupableKeyword("the process by which plants convert light to sugar"),
-		).toBe(false);
-	});
-
-	test("nothing is not", () => {
-		expect(isLookupableKeyword("")).toBe(false);
-	});
-});
 
 describe("deciding what is safe to put in src", () => {
 	test("https, protocol-relative and same-origin paths render", () => {
@@ -51,6 +21,13 @@ describe("deciding what is safe to put in src", () => {
 		expect(isRenderablePictureUrl("https://example.test/a.png?sig=x")).toBe(true);
 		expect(isRenderablePictureUrl("//example.test/a.png")).toBe(true);
 		expect(isRenderablePictureUrl("/api/pictures/a.png")).toBe(true);
+	});
+
+	test("plain http is refused, because it is mixed content wherever it matters", () => {
+		// Every real deployment is https, so the browser blocks the request and the
+		// learner gets a broken image where the definition should be.
+		expect(isRenderablePictureUrl("http://cdn.example.test/a.png")).toBe(false);
+		expect(isRenderablePictureUrl("HtTp://cdn.example.test/a.png")).toBe(false);
 	});
 
 	test("javascript: and data: are refused", () => {
@@ -78,9 +55,7 @@ describe("reading a host response", () => {
 			});
 			expect(result).toEqual({
 				status: "ok",
-				pictures: [
-					{ url: "/a.png", caption: "An apple", width: 120, height: 90 },
-				],
+				items: [{ url: "/a.png", caption: "An apple", width: 120, height: 90 }],
 			});
 		}
 	});
@@ -89,13 +64,19 @@ describe("reading a host response", () => {
 		const result = readPictureResponse({
 			pictures: [
 				{ url: "javascript:alert(1)", caption: "bad" },
+				{ url: "http://cdn.example.test/blocked.png" },
 				{ url: "/good.png" },
 			],
 		});
 		expect(result).toEqual({
 			status: "ok",
-			pictures: [
-				{ url: "/good.png", caption: undefined, width: undefined, height: undefined },
+			items: [
+				{
+					url: "/good.png",
+					caption: undefined,
+					width: undefined,
+					height: undefined,
+				},
 			],
 		});
 	});
@@ -104,7 +85,7 @@ describe("reading a host response", () => {
 		const result = readPictureResponse({
 			pictures: [{ url: "/a.png", caption: "   " }],
 		});
-		expect(result.status === "ok" && result.pictures[0].caption).toBeUndefined();
+		expect(result.status === "ok" && result.items[0].caption).toBeUndefined();
 	});
 
 	test("no pictures is empty, which is not an error", () => {
@@ -117,28 +98,31 @@ describe("reading a host response", () => {
 		).toEqual({ status: "empty" });
 	});
 
-	test("an unreadable payload is an error, which is not empty", () => {
-		expect(readPictureResponse(null).status).toBe("error");
-		expect(readPictureResponse({}).status).toBe("error");
-		expect(readPictureResponse({ pictures: "no" }).status).toBe("error");
+	test("an unreadable payload is an error naming this service", () => {
+		expect(readPictureResponse(null)).toEqual({
+			status: "error",
+			reason: "The picture dictionary returned no data.",
+		});
+		expect(readPictureResponse({ pictures: "no" })).toEqual({
+			status: "error",
+			reason: "The picture dictionary response was unreadable.",
+		});
 	});
 });
 
 describe("the endpoint lookup", () => {
-	function jsonResponse(body: unknown, status = 200): Response {
-		return new Response(JSON.stringify(body), {
-			status,
-			headers: { "content-type": "application/json" },
-		});
-	}
-
-	test("posts keyword, language and max", async () => {
+	test("posts keyword, language and max, on the assessment's own session", async () => {
 		let body: unknown = null;
+		let init: RequestInit | null = null;
 		const lookup = createEndpointLookup({
 			endpoint: "/pictures",
-			fetchImpl: (async (_url: string, init: RequestInit) => {
-				body = JSON.parse(String(init.body));
-				return jsonResponse({ pictures: [{ url: "/a.png" }] });
+			fetchImpl: (async (_url: string, got: RequestInit) => {
+				init = got;
+				body = JSON.parse(String(got.body));
+				return new Response(JSON.stringify({ pictures: [{ url: "/a.png" }] }), {
+					status: 200,
+					headers: { "content-type": "application/json" },
+				});
 			}) as unknown as typeof fetch,
 		});
 
@@ -146,39 +130,18 @@ describe("the endpoint lookup", () => {
 
 		expect(result.status).toBe("ok");
 		expect(body).toEqual({ keyword: "apple", language: "es", max: 4 });
+		expect(init?.credentials).toBe("same-origin");
 	});
 
-	test("credentials are never sent implicitly", async () => {
-		let init: RequestInit | null = null;
+	test("a failing status names the picture dictionary, not the shared machinery", async () => {
 		const lookup = createEndpointLookup({
 			endpoint: "/pictures",
-			fetchImpl: (async (_url: string, got: RequestInit) => {
-				init = got;
-				return jsonResponse({ pictures: [] });
-			}) as unknown as typeof fetch,
-		});
-		await lookup({ keyword: "x" });
-		expect(init?.credentials).toBe("omit");
-	});
-
-	test("a failing status is an error naming the status", async () => {
-		const lookup = createEndpointLookup({
-			endpoint: "/pictures",
-			fetchImpl: (async () => jsonResponse({}, 502)) as unknown as typeof fetch,
+			fetchImpl: (async () =>
+				new Response("{}", { status: 502 })) as unknown as typeof fetch,
 		});
 		expect(await lookup({ keyword: "x" })).toEqual({
 			status: "error",
 			reason: "The picture dictionary is unavailable (502).",
 		});
-	});
-
-	test("an aborted lookup is not reported as a failure", async () => {
-		const lookup = createEndpointLookup({
-			endpoint: "/pictures",
-			fetchImpl: (async () => {
-				throw new DOMException("Aborted", "AbortError");
-			}) as unknown as typeof fetch,
-		});
-		expect(await lookup({ keyword: "x" })).toEqual({ status: "empty" });
 	});
 });

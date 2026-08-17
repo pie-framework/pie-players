@@ -6,11 +6,11 @@
  * section-scoped singleton in its own shadow root, and the tool it opens is mounted
  * by a toolbar under a scoped instance id the strip cannot construct.
  *
- * Resolution is a claim, not a broadcast. Each toolbar registers as the target for
- * its placement level, and a request reaches exactly one: the target at the
- * requested level that currently hosts the tool. A broadcast would open a panel in
- * every toolbar whose scope contains the selection, which in a section player is the
- * item card's toolbar and the section's both.
+ * Resolution is a claim, not a broadcast. Each toolbar registers as the target for its
+ * placement level, and a request reaches exactly one: the first target that currently
+ * hosts the tool, preferring section scope. A broadcast would open a panel in every
+ * toolbar whose scope contains the selection, which in a section player is the item
+ * card's toolbar and the section's both.
  *
  * `params` reaches the tool through the same seam a host-registered context resolver
  * feeds, so receiving a request costs a tool nothing: whatever already reads
@@ -35,13 +35,18 @@ export interface ToolOpenRequest {
 	 */
 	params?: Record<string, unknown>;
 	/**
-	 * Placement level of the toolbar that should open the tool. Defaults to
-	 * `"section"`, the level at which a whole section shares one instance of a tool
-	 * and the level every section-scoped surface can address unambiguously.
+	 * Placement level of the toolbar that should open the tool.
 	 *
-	 * At `"item"` and `"passage"` a section holds one target per card, and the
-	 * first registered one that hosts the tool claims the request. A requester that
-	 * needs a particular card's instance cannot express that here.
+	 * Naming one is a constraint and is honoured strictly: a requester that asks for
+	 * `"item"` gets an item toolbar or nothing. Leaving it out asks for whichever
+	 * toolbar hosts the tool, preferring `"section"` — the level at which a whole
+	 * section shares one instance. A host that places a tool only at item scope would
+	 * otherwise have the affordance silently disappear, and configuring a level here
+	 * to match a placement made elsewhere is a step it has no reason to expect.
+	 *
+	 * At `"item"` and `"passage"` a section holds one target per card, and the first
+	 * registered one that hosts the tool claims the request. A requester that needs a
+	 * particular card's instance cannot express that here.
 	 */
 	level?: ToolPlacementLevel;
 }
@@ -121,26 +126,50 @@ export class ToolRequestRegistry {
 		};
 	}
 
+	/**
+	 * An explicit level is a constraint; the default is a preference.
+	 *
+	 * Falling back off `"section"` is what lets a host place a tool at item scope only
+	 * and still have a section-scoped gateway reach it. Requesting a level explicitly
+	 * does not fall back, because a requester that named one meant it.
+	 */
 	private findTarget(
 		toolId: string,
 		level?: ToolPlacementLevel,
 	): ToolRequestTarget | null {
-		const wanted = level ?? DEFAULT_TOOL_REQUEST_LEVEL;
+		const preferred = this.findTargetAtLevel(
+			toolId,
+			level ?? DEFAULT_TOOL_REQUEST_LEVEL,
+		);
+		if (preferred || level !== undefined) return preferred;
 		for (const target of this.targets) {
-			if (target.level !== wanted) continue;
-			let hosts = false;
-			try {
-				hosts = target.hostsTool(toolId) === true;
-			} catch (error) {
-				console.warn(
-					`[ToolRequestRegistry] Target at level "${target.level}" failed the host check for "${toolId}":`,
-					error,
-				);
-				continue;
-			}
-			if (hosts) return target;
+			if (target.level === DEFAULT_TOOL_REQUEST_LEVEL) continue;
+			if (this.hostsTool(target, toolId)) return target;
 		}
 		return null;
+	}
+
+	private findTargetAtLevel(
+		toolId: string,
+		level: ToolPlacementLevel,
+	): ToolRequestTarget | null {
+		for (const target of this.targets) {
+			if (target.level !== level) continue;
+			if (this.hostsTool(target, toolId)) return target;
+		}
+		return null;
+	}
+
+	private hostsTool(target: ToolRequestTarget, toolId: string): boolean {
+		try {
+			return target.hostsTool(toolId) === true;
+		} catch (error) {
+			console.warn(
+				`[ToolRequestRegistry] Target at level "${target.level}" failed the host check for "${toolId}":`,
+				error,
+			);
+			return false;
+		}
 	}
 
 	private notifyChange(): void {

@@ -6,7 +6,7 @@ Picture dictionary panel for the PIE assessment player. Registers
 ## Lookup is host-supplied
 
 PIE ships no endpoint. The symbol corpus behind a picture dictionary is licensed, so
-a host supplies both the endpoint and the credentials for it.
+a host supplies one.
 
 ```html
 <pie-tool-picture-dictionary endpoint="/api/picture-dictionary" language="en">
@@ -16,11 +16,17 @@ a host supplies both the endpoint and the credentials for it.
 ```js
 element.lookup = async ({ keyword, language, max }, signal) => ({
   status: "ok",
-  pictures: [{ url: "/symbols/apple.png", caption: "An apple" }],
+  items: [{ url: "/symbols/apple.png", caption: "An apple" }],
 });
 ```
 
 With neither, the panel says no service is configured.
+
+The endpoint is called `same-origin`, so a route already behind the assessment's own
+session answers with no further configuration. A host authorising some other way
+passes a `headers` function, read per request so a short-lived token is fetched fresh;
+one that wants no ambient credentials passes `credentials: "omit"`. Both are optional
+properties.
 
 ### Request
 
@@ -74,5 +80,11 @@ unreachable for exactly the learners most likely to need it.
 | `endpoint` | `endpoint` | string   | Enables the built-in POST lookup.              |
 | `language` | `language` | string   | BCP-47 tag sent with the request.              |
 | `lookup`   | —          | function | Host resolver; takes precedence over `endpoint`. |
+| `headers`  | —          | function | Extra request headers for `endpoint`, read per request. |
+| `credentials` | —       | string   | Overrides the `same-origin` default for `endpoint`. |
+
+A `lookup` resolves to `{ status: "ok", items }`, `{ status: "empty" }`, or
+`{ status: "error", reason }`. `empty` and `error` are separate on purpose: a learner
+must not be told their word is not real when the network is down.
 
 The panel renders its body only; floating chrome belongs to the toolbar shell.

@@ -52,8 +52,6 @@ interface SelectionActionSpec {
 	/** Resolved through the toolkit's map, so this button and the tool's toolbar
 	 *  button draw the same shape. */
 	icon: string;
-	/** The param the tool reads the selected text from. */
-	termParam: string;
 }
 
 const SELECTION_ACTION_SPECS: readonly SelectionActionSpec[] = [
@@ -62,14 +60,12 @@ const SELECTION_ACTION_SPECS: readonly SelectionActionSpec[] = [
 		label: "Look up selected text in dictionary",
 		tooltip: "Look up",
 		icon: "book-open",
-		termParam: "term",
 	},
 	{
 		toolId: "pictureDictionary",
 		label: "Show pictures for selected text",
 		tooltip: "Show pictures",
 		icon: "photo",
-		termParam: "term",
 	},
 ];
 
@@ -99,9 +95,11 @@ export function buildSelectionActions(
 			run: (selection: ToolSelectionContext) => {
 				const term = selection.text.trim();
 				if (!term) return;
+				// Both panels read the selected text from `term`. No level is named, so the
+				// request takes whichever toolbar hosts the tool, preferring section scope.
 				coordinator.requestTool({
 					toolId: spec.toolId,
-					params: { [spec.termParam]: term },
+					params: { term },
 				});
 			},
 		};

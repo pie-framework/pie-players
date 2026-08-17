@@ -26,10 +26,14 @@
 	 * dictionary would be unreachable for exactly the learners most likely to need it.
 	 */
 	import {
+		normalizeTerm,
+		termPanelStatusMessage,
+		TermLookupSession,
+		type TermPanelState
+	} from '@pie-players/pie-players-shared/tools/term-lookup';
+	import {
 		createEndpointLookup,
 		DEFAULT_MAX_PICTURES,
-		isLookupableKeyword,
-		normalizeKeyword,
 		type PictureLookup,
 		type PictureResult
 	} from './lookup.js';
@@ -40,7 +44,9 @@
 		term = '',
 		endpoint = '',
 		language = '',
-		lookup = undefined
+		lookup = undefined,
+		headers = undefined,
+		credentials = undefined
 	}: {
 		visible?: boolean;
 		toolId?: string;
@@ -49,79 +55,53 @@
 		language?: string;
 		/** Host-supplied resolver, preferred over `endpoint`. */
 		lookup?: PictureLookup;
+		/**
+		 * Extra request headers for the `endpoint` path, read per request so a
+		 * short-lived token is fetched fresh. Only for a host whose route is not
+		 * authorised by the assessment's own session, which is called `same-origin` by
+		 * default.
+		 */
+		headers?: () => Promise<Record<string, string>> | Record<string, string>;
+		/** Overrides the `same-origin` default for the `endpoint` path. */
+		credentials?: RequestCredentials;
 	} = $props();
 
-	type PanelState =
-		| { kind: 'unconfigured' }
-		| { kind: 'idle' }
-		| { kind: 'searching'; term: string }
-		| { kind: 'results'; term: string; pictures: PictureResult[] }
-		| { kind: 'empty'; term: string }
-		| { kind: 'error'; term: string; reason: string };
-
 	let query = $state('');
-	let panel = $state<PanelState>({ kind: 'idle' });
-	let inFlight: AbortController | null = null;
-	let searchedFor = '';
+	let panel = $state<TermPanelState<PictureResult>>({ kind: 'idle' });
 
 	const resolver = $derived<PictureLookup | null>(
-		lookup ?? (endpoint ? createEndpointLookup({ endpoint }) : null)
+		lookup ?? (endpoint ? createEndpointLookup({ endpoint, headers, credentials }) : null)
 	);
 
-	$effect(() => {
-		if (!resolver && panel.kind === 'idle') panel = { kind: 'unconfigured' };
-		if (resolver && panel.kind === 'unconfigured') panel = { kind: 'idle' };
+	// Request sequencing and the state transitions are shared with the word dictionary;
+	// only what a picture looks like is this tool's own.
+	const session = new TermLookupSession<PictureResult>({
+		resolver: () => resolver,
+		max: DEFAULT_MAX_PICTURES,
+		language: () => language,
+		onState: (next) => {
+			panel = next;
+		}
 	});
 
 	$effect(() => {
-		const incoming = normalizeKeyword(term);
-		if (!visible || !incoming || incoming === searchedFor) return;
+		session.syncConfigured(panel);
+	});
+
+	$effect(() => {
+		const incoming = normalizeTerm(term);
+		if (!visible || !incoming || incoming === session.searchedFor) return;
 		query = incoming;
-		void runLookup(incoming);
+		void session.run(incoming);
 	});
 
 	// No initial focus taken here on purpose: the toolbar shell focuses its own header
 	// when the panel opens, and racing that would depend on microtask ordering. The
 	// field is one Tab away.
 
-	async function runLookup(raw: string): Promise<void> {
-		const activeResolver = resolver;
-		if (!activeResolver) {
-			panel = { kind: 'unconfigured' };
-			return;
-		}
-		const keyword = normalizeKeyword(raw);
-		if (!isLookupableKeyword(keyword)) {
-			panel = {
-				kind: 'error',
-				term: keyword,
-				reason: 'Look up a single word or short phrase.'
-			};
-			return;
-		}
-		inFlight?.abort();
-		const controller = new AbortController();
-		inFlight = controller;
-		searchedFor = keyword;
-		panel = { kind: 'searching', term: keyword };
-		const result = await activeResolver(
-			{ keyword, language: language || undefined, max: DEFAULT_MAX_PICTURES },
-			controller.signal
-		);
-		if (controller !== inFlight) return;
-		inFlight = null;
-		if (result.status === 'ok') {
-			panel = { kind: 'results', term: keyword, pictures: result.pictures };
-		} else if (result.status === 'empty') {
-			panel = { kind: 'empty', term: keyword };
-		} else {
-			panel = { kind: 'error', term: keyword, reason: result.reason };
-		}
-	}
-
 	function onSubmit(event: SubmitEvent): void {
 		event.preventDefault();
-		void runLookup(query);
+		void session.run(query);
 	}
 
 	/**
@@ -134,13 +114,10 @@
 	}
 
 	const statusMessage = $derived(
-		panel.kind === 'searching'
-			? `Looking up ${panel.term}`
-			: panel.kind === 'results'
-				? `${panel.pictures.length} ${panel.pictures.length === 1 ? 'picture' : 'pictures'} for ${panel.term}`
-				: panel.kind === 'empty'
-					? `No picture for ${panel.term}`
-					: ''
+		termPanelStatusMessage(panel, {
+			countLabel: (count) => `${count} ${count === 1 ? 'picture' : 'pictures'}`,
+			emptyLabel: (word) => `No picture for ${word}`
+		})
 	);
 </script>
 
@@ -211,7 +188,7 @@
 				</p>
 			{:else}
 				<ul class="pie-tool-picture-dictionary__grid">
-					{#each panel.pictures as picture (picture.url)}
+					{#each panel.items as picture (picture.url)}
 						<li class="pie-tool-picture-dictionary__cell">
 							<img
 								class="pie-tool-picture-dictionary__image"

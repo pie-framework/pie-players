@@ -86,6 +86,18 @@ list and its post-action dismissal latch are unreachable for it. The four additi
 no recorded host; Host R holds a coordinator instance rather than implementing the
 interface, so widening it is not a break there either.
 
+A review pass over the same work narrowed the coordinator surface and changed three
+defaults, none of which reaches a recorded host. The four request methods became
+optional on the coordinator interface, which only widens what a host-supplied
+coordinator may be. Request resolution now falls back off section scope to any
+level hosting the capability, which can only find a target where none was found
+before; no recorded host places either new capability, and the fallback cannot
+redirect a request that already resolved. Endpoint lookups now carry the session
+cookie instead of omitting credentials, and refuse plain `http:` picture URLs — both
+inside the two new packages, which no recorded host depends on. The shared
+term-lookup module those packages now use is a new subpath on
+`pie-players-shared`; existing entry points are untouched.
+
 One residual difference is worth a manual check rather than a claim. Focusable
 collection for a trapped floating panel now descends into open shadow roots and
 now excludes `tabindex="-1"`, which the flat selector previously matched through

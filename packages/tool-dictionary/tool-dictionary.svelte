@@ -28,10 +28,14 @@
 	 * this tool is keyboard accessible, not a convenience.
 	 */
 	import {
+		normalizeTerm,
+		termPanelStatusMessage,
+		TermLookupSession,
+		type TermPanelState
+	} from '@pie-players/pie-players-shared/tools/term-lookup';
+	import {
 		createEndpointLookup,
 		DEFAULT_MAX_ENTRIES,
-		isLookupableTerm,
-		normalizeTerm,
 		type DictionaryEntry,
 		type DictionaryLookup
 	} from './lookup.js';
@@ -42,7 +46,9 @@
 		term = '',
 		endpoint = '',
 		language = '',
-		lookup = undefined
+		lookup = undefined,
+		headers = undefined,
+		credentials = undefined
 	}: {
 		visible?: boolean;
 		toolId?: string;
@@ -55,46 +61,53 @@
 		 * directly instead of routing through HTTP shaping this package guessed at.
 		 */
 		lookup?: DictionaryLookup;
+		/**
+		 * Extra request headers for the `endpoint` path, read per request so a
+		 * short-lived token is fetched fresh rather than captured at mount.
+		 *
+		 * Only for a host whose route is not authorised by the assessment's own session:
+		 * the endpoint is called `same-origin` by default, so a route behind that session
+		 * needs nothing here.
+		 */
+		headers?: () => Promise<Record<string, string>> | Record<string, string>;
+		/** Overrides the `same-origin` default for the `endpoint` path. */
+		credentials?: RequestCredentials;
 	} = $props();
 
-	type PanelState =
-		| { kind: 'unconfigured' }
-		| { kind: 'idle' }
-		| { kind: 'searching'; term: string }
-		| { kind: 'results'; term: string; entries: DictionaryEntry[] }
-		| { kind: 'empty'; term: string }
-		| { kind: 'error'; term: string; reason: string };
-
 	let query = $state('');
-	let panel = $state<PanelState>({ kind: 'idle' });
-	/** Cancels a lookup the learner has already superseded. */
-	let inFlight: AbortController | null = null;
-	/** The term the last search ran for, so `term` changes do not re-search on every render. */
-	let searchedFor = '';
+	let panel = $state<TermPanelState<DictionaryEntry>>({ kind: 'idle' });
 
 	const resolver = $derived<DictionaryLookup | null>(
-		lookup ?? (endpoint ? createEndpointLookup({ endpoint }) : null)
+		lookup ?? (endpoint ? createEndpointLookup({ endpoint, headers, credentials }) : null)
 	);
 
-	// A tool with nowhere to look words up says so, rather than offering a field that
-	// silently fails. The host has misconfigured it and the learner needs to know it is
-	// not their typing.
+	// Request sequencing and the state transitions are shared with the picture
+	// dictionary; only what an entry looks like is this tool's own.
+	const session = new TermLookupSession<DictionaryEntry>({
+		resolver: () => resolver,
+		max: DEFAULT_MAX_ENTRIES,
+		language: () => language,
+		onState: (next) => {
+			panel = next;
+		}
+	});
+
 	$effect(() => {
-		if (!resolver && panel.kind === 'idle') panel = { kind: 'unconfigured' };
-		if (resolver && panel.kind === 'unconfigured') panel = { kind: 'idle' };
+		session.syncConfigured(panel);
 	});
 
 	/**
 	 * A term handed in from outside opens the panel already answered.
 	 *
-	 * Guarded on `searchedFor` so re-renders do not re-issue the same lookup, and on
-	 * `visible` so a selection made while the panel is closed does not spend a request.
+	 * Guarded on the session's last search so re-renders do not re-issue the same
+	 * lookup, and on `visible` so a selection made while the panel is closed does not
+	 * spend a request.
 	 */
 	$effect(() => {
 		const incoming = normalizeTerm(term);
-		if (!visible || !incoming || incoming === searchedFor) return;
+		if (!visible || !incoming || incoming === session.searchedFor) return;
 		query = incoming;
-		void runLookup(incoming);
+		void session.run(incoming);
 	});
 
 	// No initial focus taken here on purpose. The toolbar shell focuses its own header
@@ -102,55 +115,16 @@
 	// with a focus of our own would depend on which microtask landed last. The field is
 	// one Tab away, which is what matters.
 
-	async function runLookup(raw: string): Promise<void> {
-		const activeResolver = resolver;
-		if (!activeResolver) {
-			panel = { kind: 'unconfigured' };
-			return;
-		}
-		const keyword = normalizeTerm(raw);
-		if (!isLookupableTerm(keyword)) {
-			panel = {
-				kind: 'error',
-				term: keyword,
-				reason: 'Look up a single word or short phrase.'
-			};
-			return;
-		}
-		inFlight?.abort();
-		const controller = new AbortController();
-		inFlight = controller;
-		searchedFor = keyword;
-		panel = { kind: 'searching', term: keyword };
-		const result = await activeResolver(
-			{ keyword, language: language || undefined, max: DEFAULT_MAX_ENTRIES },
-			controller.signal
-		);
-		// A superseded lookup must not overwrite the newer one's state.
-		if (controller !== inFlight) return;
-		inFlight = null;
-		if (result.status === 'ok') {
-			panel = { kind: 'results', term: keyword, entries: result.entries };
-		} else if (result.status === 'empty') {
-			panel = { kind: 'empty', term: keyword };
-		} else {
-			panel = { kind: 'error', term: keyword, reason: result.reason };
-		}
-	}
-
 	function onSubmit(event: SubmitEvent): void {
 		event.preventDefault();
-		void runLookup(query);
+		void session.run(query);
 	}
 
 	const statusMessage = $derived(
-		panel.kind === 'searching'
-			? `Looking up ${panel.term}`
-			: panel.kind === 'results'
-				? `${panel.entries.length} ${panel.entries.length === 1 ? 'entry' : 'entries'} for ${panel.term}`
-				: panel.kind === 'empty'
-					? `No dictionary entry for ${panel.term}`
-					: ''
+		termPanelStatusMessage(panel, {
+			countLabel: (count) => `${count} ${count === 1 ? 'entry' : 'entries'}`,
+			emptyLabel: (word) => `No dictionary entry for ${word}`
+		})
 	);
 </script>
 
@@ -214,7 +188,7 @@
 				<p class="pie-tool-dictionary__error" role="alert">{panel.reason}</p>
 			{:else}
 				<ul class="pie-tool-dictionary__entries">
-					{#each panel.entries as entry (entry.word + entry.senses.length)}
+					{#each panel.items as entry (entry.word + entry.senses.length)}
 						<li class="pie-tool-dictionary__entry">
 							<p class="pie-tool-dictionary__word">
 								{entry.word}

@@ -76,6 +76,10 @@
 		"./ui/content-styles": {
 			"types": "./dist/ui/content-styles.d.ts",
 			"import": "./dist/ui/content-styles.js"
+		},
+		"./tools/term-lookup": {
+			"types": "./dist/tools/term-lookup.d.ts",
+			"import": "./dist/tools/term-lookup.js"
 		}
 	},
 	"files": [

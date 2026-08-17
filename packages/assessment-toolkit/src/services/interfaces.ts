@@ -929,28 +929,36 @@ export interface ToolkitCoordinatorApi {
 	onToolContextResolverChange(listener: () => void): () => void;
 
 	/**
-	 * Claim tool-open requests for one placement level. Toolbars call this.
+	 * The tool-open request seam, optional as a group.
+	 *
+	 * `ToolkitCoordinator` implements all four. They are optional here because a host
+	 * may supply a coordinator of its own that predates the seam, and a surface that
+	 * pairs a selection action to a tool already has to check before offering a button
+	 * it cannot service. Declaring them required would make such a coordinator
+	 * structurally non-conformant while every call site guards anyway.
 	 */
-	registerToolRequestTarget(target: ToolRequestTarget): () => void;
+
+	/** Claim tool-open requests for one placement level. Toolbars call this. */
+	registerToolRequestTarget?(target: ToolRequestTarget): () => void;
 
 	/**
 	 * Ask the toolbar hosting a tool to open it with `params`, and report whether
 	 * one claimed the request. Lets a selection gateway hand the learner's
 	 * selection to a tool it neither mounts nor can name a scoped instance of.
 	 */
-	requestTool(request: ToolOpenRequest): boolean;
+	requestTool?(request: ToolOpenRequest): boolean;
 
 	/**
 	 * Whether a request for this tool would reach a toolbar. A surface asks before
 	 * offering the affordance.
 	 */
-	canRequestTool(toolId: string, level?: ToolOpenRequest["level"]): boolean;
+	canRequestTool?(toolId: string, level?: ToolOpenRequest["level"]): boolean;
 
 	/**
 	 * Subscribe to toolbar registration/removal, so a surface can re-evaluate the
 	 * actions it offers.
 	 */
-	onToolRequestTargetsChange(listener: () => void): () => void;
+	onToolRequestTargetsChange?(listener: () => void): () => void;
 }
 
 // I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

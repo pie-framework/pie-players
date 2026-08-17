@@ -39,6 +39,8 @@ type DictionaryPanelElement = HTMLElement & {
 	endpoint?: string;
 	language?: string;
 	lookup?: unknown;
+	headers?: unknown;
+	credentials?: string;
 };
 
 /**
@@ -48,6 +50,11 @@ type DictionaryPanelElement = HTMLElement & {
  * precedence: a host that already has a client should not also have to describe its
  * HTTP shape. Absent both, the panel renders its unconfigured state — PIE ships no
  * dictionary endpoint, because the corpus behind one is licensed per programme.
+ *
+ * An `endpoint` alone is the whole configuration for the common case: the panel calls
+ * it on the assessment's own session, so a route already behind that session answers
+ * without a token. `headers` and `credentials` are the seam for a host authorising some
+ * other way, and neither is required.
  */
 function applyLookupParams(
 	element: DictionaryPanelElement,
@@ -57,6 +64,9 @@ function applyLookupParams(
 	const params = toolbarContext.getToolRenderParams?.(toolId) ?? {};
 	if (typeof params.endpoint === "string") element.endpoint = params.endpoint;
 	if (typeof params.lookup === "function") element.lookup = params.lookup;
+	if (typeof params.headers === "function") element.headers = params.headers;
+	if (typeof params.credentials === "string")
+		element.credentials = params.credentials;
 	// The selection door: a gateway acting on the learner's selection requests this
 	// tool with the words in `term`, and the toolbar layers that over the host's own
 	// params. The panel guards its own re-lookup, so reapplying an unchanged term on

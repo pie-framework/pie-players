@@ -19,7 +19,7 @@ Two ways to supply one, in precedence order:
 // Your own client, preferred when you already have one
 element.lookup = async ({ keyword, language, max }, signal) => ({
   status: "ok",
-  entries: [{ word: keyword, senses: [{ definition: "…" }] }],
+  items: [{ word: keyword, senses: [{ definition: "…" }] }],
 });
 ```
 
@@ -54,8 +54,12 @@ tells a learner the word exists and nothing they asked for. Zero entries is
 reported as "no entry", distinct from a service failure — a learner must not be
 told their word is not real when the network is down.
 
-Credentials are never attached implicitly. A host needing a token supplies headers
-through its own fetcher, keeping that decision where it belongs.
+The endpoint is called `same-origin`, so a route already behind the assessment's own
+session answers with no further configuration — naming the endpoint is the whole
+setup. A host authorising some other way passes a `headers` function, read per request
+so a short-lived token is fetched fresh rather than captured at mount, and one that
+wants no ambient credentials at all passes `credentials: "omit"`. Both are properties
+rather than attributes, and both are optional.
 
 ## Two entry points, deliberately
 
@@ -79,6 +83,12 @@ toggle absent on mobile. A selection-only dictionary is unreachable for them.
 | `endpoint` | `endpoint` | string            | Enables the built-in POST lookup.            |
 | `language` | `language` | string            | BCP-47 tag sent with the request.            |
 | `lookup`   | —          | function          | Host resolver; takes precedence over `endpoint`. |
+| `headers`  | —          | function          | Extra request headers for `endpoint`, read per request. |
+| `credentials` | —       | string            | Overrides the `same-origin` default for `endpoint`. |
+
+A `lookup` resolves to `{ status: "ok", items }`, `{ status: "empty" }`, or
+`{ status: "error", reason }` — the same three states the shared term-lookup contract
+in `@pie-players/pie-players-shared/tools/term-lookup` defines for both dictionaries.
 
 The panel renders its body only. Floating chrome — title bar, drag, resize, close —
 belongs to the toolbar shell.

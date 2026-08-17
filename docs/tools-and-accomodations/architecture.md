@@ -176,7 +176,9 @@ Three layers, and the split is what keeps each of them able to change alone:
 
 Core names no capability, so a highlighter cannot name a dictionary. A host can contribute an action for a capability PIE does not ship, and an action whose capability no toolbar hosts is absent rather than present and inert.
 
-`requestTool` resolves as a claim rather than a broadcast: one target answers, the toolbar at the requested placement level that currently hosts the capability. A broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is the item card's toolbar and the section's both.
+`requestTool` resolves as a claim rather than a broadcast: one target answers, the first toolbar that currently hosts the capability. A broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is the item card's toolbar and the section's both.
+
+Resolution prefers section scope, the level at which a whole section shares one instance, and falls back to any level that hosts the capability. Naming a level in the request instead makes it a constraint, honoured strictly. The fallback is what keeps a placement decision from silently removing the affordance: a host that places a capability at item scope only would otherwise see it granted, hosted and visible with no action on the selection, and matching a level in the gateway to a placement made elsewhere is a step it has no reason to expect. At item and passage scope a section holds one target per card, and the first registered one claims the request — a requester that needs a particular card's instance cannot express that.
 
 ### Testing
 

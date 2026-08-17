@@ -1,5 +1,49 @@
 # @pie-players/pie-tool-sign-language
 
+## 0.3.67
+
+### Patch Changes
+
+- Updated dependencies [b264ab2]
+- Updated dependencies [fe9b4f0]
+- Updated dependencies [61d6aa0]
+  - @pie-players/pie-players-shared@0.3.67
+  - @pie-players/pie-assessment-toolkit@0.3.67
+
+## 0.3.66
+
+### Patch Changes
+
+- 5e6fcde: Make accessibility catalog ownership one resolver contract.
+
+  Mounted items and passages now register all entity-root, extracted, and model
+  catalogs through one owner transaction. Content surfaces observe a bound owner
+  view and give capabilities an immutable, deterministic catalog snapshot instead
+  of exposing the raw entity, resolver, and separately assembled owner context.
+  Signing and transcript capabilities now own only their card interpretation.
+
+  Capability authors should read `ToolContentDependencyContext.catalogs` and no
+  longer use the removed catalog-collection exports. Direct resolver clients,
+  including inline TTS, retain `getAlternative(...)` and
+  `catalogOwnerContextFor(...)`. Existing catalog IDs, card and payload shapes,
+  `data-catalog-idref`, scoped lookup precedence, TTS fallback behavior, and
+  section-player custom-element contracts are unchanged. Invalid optional catalog
+  data remains recoverable: it is warned about and omitted without blocking the
+  primary assessment content.
+
+- Updated dependencies [556c422]
+- Updated dependencies [2a741c6]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [1f29de7]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [5f133be]
+- Updated dependencies [9a183cf]
+  - @pie-players/pie-assessment-toolkit@0.3.66
+  - @pie-players/pie-players-shared@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

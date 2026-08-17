@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/backend-demos",
-	"version": "0.1.23",
+	"version": "0.1.25",
 	"description": "Backend integration demos for PIE players",
 	"type": "module",
 	"private": true,
@@ -12,6 +12,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*"
 	},

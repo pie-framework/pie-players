@@ -8,6 +8,23 @@ Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
 
+**Partly answered at the item and section layer, 2026-08-15.** The [formative
+delivery contract](../formative-delivery-contract.md) is `Ready` and ships an
+item-level aggregation plus a section rollup for one purpose: deciding whether a
+learner mastered an item. It settles three things this PRD had open — the
+aggregation follows the persisted API path's documented policy (single outcome
+direct, multiple averaged as normalized fractions), a not-auto-scorable item is
+`unknown` rather than zero, and the rollup excludes `unknown` from its
+denominator instead of asserting correctness it cannot know.
+
+It does not answer this PRD. `FormativeTryOutcome` carries no provenance and no
+authority — it is always browser-derived preview — there is no
+`InteractionSourceRef`, no manual or external state, and no assessment-level
+projection. Treat the formative rollup as one concrete consumer whose semantics
+the general `ScoreComponent` must be able to express, not as a replacement for
+it: a projection that cannot represent "excluded because not scorable" would be a
+regression against something already shipped.
+
 ## Problem
 
 PIE already has leaf scoring primitives, item session updates, section completion state, and assessment session snapshots. What is missing is a host-consumable projection that can explain how leaf outcomes contribute to item, section, and assessment outcomes without changing element-owned scoring or treating completion as correctness.

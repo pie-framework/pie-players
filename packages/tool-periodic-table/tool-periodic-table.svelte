@@ -98,16 +98,17 @@
 	});
 
 	/**
-	 * Filter elements by category
+	 * Whether a category filter is in force and this element falls outside it.
+	 *
+	 * The filter de-emphasises rather than hides: a periodic table read for one
+	 * category is still read against its layout, and dropping the other cells
+	 * leaves an unreadable grid of holes.
 	 */
-	let displayedElements: Element[] = $derived.by(() => {
-		if (selectedCategory === 'All') {
-			return allElements;
-		}
-		return allElements.filter(
-			(element: Element) => normalizeCategory(element.category) === selectedCategory
+	function isFilteredOut(element: Element): boolean {
+		return (
+			selectedCategory !== 'All' && normalizeCategory(element.category) !== selectedCategory
 		);
-	});
+	}
 
 	/**
 	 * Select element
@@ -219,11 +220,11 @@
 					{/if}
 
 					<!-- Periodic elements -->
-					{#each displayedElements as element (element.symbol)}
+					{#each allElements as element (element.symbol)}
 						<button
 							class="pie-tool-periodic-table__element pie-tool-periodic-table__category--{normalizeCategory(element.category).replace(' ', '-').toLowerCase()}"
 							class:pie-tool-periodic-table__element--selected={selectedElement?.symbol === element.symbol}
-							class:pie-tool-periodic-table__element--dim={selectedCategory !== 'All' && normalizeCategory(element.category) !== selectedCategory}
+							class:pie-tool-periodic-table__element--dim={isFilteredOut(element)}
 							style="grid-row: {element.ypos}; grid-column: {element.xpos};"
 							tabindex="0"
 								onclick={() => showElementDetails(element)}
@@ -234,7 +235,11 @@
 									}
 								}}
 							title={element.name}
-							aria-label="{element.name}, Symbol: {element.symbol}, Atomic number: {element.number}, Atomic mass: {element.atomic_mass.toFixed(3)}, Category: {element.category}"
+							aria-label="{element.name}, Symbol: {element.symbol}, Atomic number: {element.number}, Atomic mass: {element.atomic_mass.toFixed(3)}, Category: {element.category}{isFilteredOut(
+								element
+							)
+								? ', outside the current filter'
+								: ''}"
 						>
 							<div class="pie-tool-periodic-table__atomic-number">{element.number}</div>
 							<div class="pie-tool-periodic-table__symbol">{element.symbol}</div>
@@ -365,6 +370,10 @@
 	}
 
 	.pie-tool-periodic-table__selected-element.pie-tool-periodic-table__selected-grid {
+		/* This panel carries a category class for its label, but takes the theme
+		   surface below rather than the category fill — so its ink stays with the
+		   theme instead of the dark ink pinned for the pastel-filled cells. */
+		color: var(--pie-text, #111827);
 		align-items: center;
 		border: 2px solid var(--pie-border-dark, #000);
 		border-radius: 8px;
@@ -390,7 +399,10 @@
 	}
 
 	.pie-tool-periodic-table__element-name {
-		color: var(--pie-text, #333);
+		/* inherit, not --pie-text: this sits inside a category-filled cell, whose
+		   ink is pinned for legibility against a fixed pastel. Outside one it
+		   inherits --pie-text from the tool root anyway. */
+		color: inherit;
 		font-size: 1rem;
 		font-weight: 500;
 		overflow: hidden;
@@ -423,14 +435,16 @@
 	}
 
 	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__label {
-		color: var(--pie-text, #444);
+		/* See __element-name: inside the selected-element panel this sits on the
+		   category fill. */
+		color: inherit;
 		font-size: 0.75rem;
 		font-weight: bold;
 		margin-bottom: 2px;
 	}
 
 	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__value {
-		color: var(--pie-text, #000);
+		color: inherit;
 		font-size: 0.85rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -452,6 +466,29 @@
 		transition: transform 0.1s ease-in-out;
 	}
 
+	/*
+	 * A cell outside the active filter. It drops its category fill and takes the
+	 * panel surface with theme ink, rather than fading: an opacity low enough to
+	 * read as dimmed composites the cell text towards the page and takes it under
+	 * 4.5:1 (0.4 leaves it near 1.8:1), and these cells stay focusable and
+	 * clickable, so SC 1.4.3 applies to them. Removing the fill also survives a
+	 * collapsed palette, where the grayscale() this rule used to apply is a no-op.
+	 *
+	 * The second cue is the border style, not its colour: under a palette the
+	 * missing fill carries the state, but under a collapsed one every cell sits on
+	 * a near-uniform surface, and dashed against solid is the difference a
+	 * two-colour palette still has room for. Taking the border colour instead reads
+	 * as emphasis, since the lit cells' own edge is deliberately faint.
+	 *
+	 * Declared before :hover, :focus and --selected so those keep their boundary
+	 * on a filtered-out cell, which can still be any of the three.
+	 */
+	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--dim {
+		background-color: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border-style: dashed;
+	}
+
 	.pie-tool-periodic-table__element:hover {
 		border-color: var(--pie-primary-dark, #2c3e50);
 		transform: scale(1.03);
@@ -470,16 +507,15 @@
 		z-index: 11;
 	}
 
-	/* Dim out elements not in the selected category */
-	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--dim {
-		filter: grayscale(80%);
-		opacity: 0.4;
-	}
-
-	/* Text inside each element box */
+	/*
+	 * Text inside each element box. The secondary lines carry no opacity: size and
+	 * weight already separate them from the symbol, and fading them spent contrast
+	 * the palette cannot always afford. At 0.8 the atomic mass measured 4.12:1 under
+	 * grey-on-light-grey and 4.00:1 under purple-on-light-green, whose ink and
+	 * recessed surface only hold 6.46:1 and 5.44:1 to begin with.
+	 */
 	.pie-tool-periodic-table__atomic-number {
 		font-size: 9px;
-		opacity: 0.8;
 		text-align: left;
 	}
 
@@ -492,7 +528,6 @@
 
 	.pie-tool-periodic-table__name {
 		font-size: 8px;
-		opacity: 0.9;
 		overflow: hidden;
 		text-align: center;
 		white-space: nowrap;
@@ -500,7 +535,6 @@
 
 	.pie-tool-periodic-table__atomic-mass {
 		font-size: 9px;
-		opacity: 0.8;
 		text-align: right;
 	}
 
@@ -541,60 +575,161 @@
 		text-align: right;
 	}
 
+	/*
+	 * The category fills below are a fixed data encoding, so their ink has to be
+	 * fixed too: everything carrying one otherwise inherits --pie-text, which is
+	 * near-white under every dark theme and left the element symbol and name at
+	 * about 1.2:1 on a pastel. The tightest pairing this ink leaves is the darkest
+	 * fill in the set, #ff9e9e, at 9.0:1.
+	 *
+	 * A colour scheme takes that encoding away: --pie-fixed-hue-collapse is 100%
+	 * under every scheme, which folds each fill into --pie-background-dark and the
+	 * ink back into --pie-text — the two colours the learner asked for, plus the
+	 * scheme's own recessed surface so a cell still reads as a cell. Category then
+	 * lives where it does not depend on hue: the badge row filters by it, the
+	 * selected-element panel names it, and each cell's accessible name carries it.
+	 * The mixes are exact at both ends, so a Base Theme renders the authored
+	 * pastels byte for byte.
+	 */
+	.pie-tool-periodic-table__category--alkali-metal,
+	.pie-tool-periodic-table__category--alkaline-earth-metal,
+	.pie-tool-periodic-table__category--alkaline-earth,
+	.pie-tool-periodic-table__category--lanthanide,
+	.pie-tool-periodic-table__category--actinide,
+	.pie-tool-periodic-table__category--transition-metal,
+	.pie-tool-periodic-table__category--post-transition-metal,
+	.pie-tool-periodic-table__category--metalloid,
+	.pie-tool-periodic-table__category--diatomic-nonmetal,
+	.pie-tool-periodic-table__category--noble-gas,
+	.pie-tool-periodic-table__category--polyatomic-nonmetal,
+	.pie-tool-periodic-table__category--nonmetal,
+	.pie-tool-periodic-table__category--halogen,
+	.pie-tool-periodic-table__category--unknown {
+		color: color-mix(
+			in srgb,
+			var(--pie-text, #111827) var(--pie-fixed-hue-collapse, 0%),
+			#111827
+		);
+		/* Collapsed fills sit on the panel surface at about 1.1:1, so the cell edge
+		   has to carry the separation a pastel used to: --pie-border is corrected to
+		   3:1 against the page on every palette. */
+		border-color: color-mix(
+			in srgb,
+			var(--pie-border, #646464) var(--pie-fixed-hue-collapse, 0%),
+			color-mix(in srgb, var(--pie-border-dark, #000) 12%, transparent)
+		);
+	}
+
 	/* Category-based background colors (matching production implementation) */
 	.pie-tool-periodic-table__category--alkali-metal {
-		background-color: #ff9e9e;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#ff9e9e
+		);
 	}
 
 	.pie-tool-periodic-table__category--alkaline-earth-metal {
-		background-color: #ffdc8a;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#ffdc8a
+		);
 	}
 
 	.pie-tool-periodic-table__category--alkaline-earth {
-		background-color: #ffdc8a; /* Also handle without "-metal" suffix */
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#ffdc8a
+		); /* Also handle without "-metal" suffix */
 	}
 
 	.pie-tool-periodic-table__category--lanthanide {
-		background-color: #f9a8d4;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f9a8d4
+		);
 	}
 
 	.pie-tool-periodic-table__category--actinide {
-		background-color: #e0aaff;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#e0aaff
+		);
 	}
 
 	.pie-tool-periodic-table__category--transition-metal {
-		background-color: #a3d8f4;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#a3d8f4
+		);
 	}
 
 	.pie-tool-periodic-table__category--post-transition-metal {
-		background-color: #b4f8c8;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#b4f8c8
+		);
 	}
 
 	.pie-tool-periodic-table__category--metalloid {
-		background-color: #d9f99d;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#d9f99d
+		);
 	}
 
 	.pie-tool-periodic-table__category--diatomic-nonmetal {
-		background-color: #f5f5f5;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f5f5f5
+		);
 	}
 
 	.pie-tool-periodic-table__category--noble-gas {
-		background-color: #c4b5fd;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#c4b5fd
+		);
 	}
 
 	.pie-tool-periodic-table__category--polyatomic-nonmetal {
-		background-color: #fbcfe8;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#fbcfe8
+		);
 	}
 
 	.pie-tool-periodic-table__category--nonmetal {
-		background-color: #f0f0f0; /* Production implementation also has this */
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f0f0f0
+		); /* Production implementation also has this */
 	}
 
 	.pie-tool-periodic-table__category--halogen {
-		background-color: #8ef5d0; /* Production implementation has halogen color */
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#8ef5d0
+		); /* Production implementation has halogen color */
 	}
 
 	.pie-tool-periodic-table__category--unknown {
-		background-color: #f5f5f5;
+		background-color: color-mix(
+			in srgb,
+			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
+			#f5f5f5
+		);
 	}
 </style>

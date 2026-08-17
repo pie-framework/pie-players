@@ -1,5 +1,85 @@
 # @pie-players/pie-print-player
 
+## 0.3.67
+
+### Patch Changes
+
+- 61d6aa0: Print resolves accessibility catalogs, so an alternate representation reaches paper. `<pie-print>` takes an `accessibility` config carrying the learner's profile.
+
+  Print renders from the item model alone, so an alternate carried as a catalog card reached paper only where some element happened to render it from a legacy model field. With the transcript moved onto a card and rendered by the toolkit, print was the last consumer of `model.audioTranscript` — and braille, simplified-language and extended-description all arrive the same way.
+
+  ```js
+  player.config = {
+    item,
+    options: { role: "student" },
+    accessibility: {
+      personalNeedsProfile: { supports: ["transcript"] },
+      // district blocks and test-administration overrides, when a program has them
+      settings,
+      // this item's required/restricted supports
+      itemSettings,
+    },
+  };
+  ```
+
+  Three things worth knowing about it:
+
+  - **A print job is one learner with one profile, decided once**, so print has no coordinator and nothing to toggle. It asks the same question the section player asks continuously — given this item and this profile, which alternates are in play — through the same policy engine, the same catalog resolver, and the grant-AND-content rule now shared as `resolveContentCapabilities` in `@pie-players/pie-assessment-toolkit/tools/internal`. A second reader for the one-shot case would be two renderers disagreeing about the same card.
+  - **Policy answers that rule in three states, not two.** A host gate is not the absence of a grant: `resolvesWithoutGrant` lets a capability answer from the content when nobody was granted anything, so a host that switched the capability off has to be distinguishable from silence or the content would reopen it. The rule owns the scan across a capability's support ids, the gate-only probe of its tool id (a host gate names capabilities, and a block must not double as a grant), and denial's precedence over both a grant and the content exception — so a renderer supplies one `policyFor(featureId)` and cannot drift on any of it.
+  - **An alternate the item declares as authored presentation prints with no `accessibility` config at all.** An item family designed to be delivered with its transcript on screen is not an accommodation, and print resolves unconditionally for that reason. An accommodation card with no profile supplied still prints nothing.
+  - **Print opens the in-flow host slot and not the docked-media one.** That is a property of paper rather than a preference: a signed alternate is a video, and on paper a video is a blank rectangle. Every alternate that can be read in order reaches print by declaring the slot, with no change in print.
+
+  The capability's accessible name is rendered as a visible label above its content and pointed at with `aria-labelledby`. Paper has no accessibility tree, and an unlabelled block of prose above an item reads as part of the item.
+
+  The default capability set is `CONTENT_ALTERNATE_REGISTRATIONS` from `@pie-players/pie-default-tool-loaders` — the packaged capabilities that carry an authored alternate and render it as a region, pinned against the packaged composition in both directions so an alternate added there cannot quietly fail to reach print. A deployment composing its own set passes `accessibility.registrations`.
+
+- Updated dependencies [b264ab2]
+- Updated dependencies [73d2be4]
+- Updated dependencies [73d2be4]
+- Updated dependencies [fe9b4f0]
+- Updated dependencies [61d6aa0]
+  - @pie-players/pie-players-shared@0.3.67
+  - @pie-players/pie-theme@0.3.67
+  - @pie-players/pie-assessment-toolkit@0.3.67
+  - @pie-players/pie-default-tool-loaders@0.3.67
+
+## 0.3.66
+
+### Patch Changes
+
+- e8a6f0e: Fix the element-cell text in the periodic table, and the last two colours set
+  from JS.
+
+  The periodic table encodes element categories as fixed pastel fills, and the
+  symbol and name on them inherited `--pie-text` — near-white under every dark
+  theme, leaving the cell text at about 1.2:1 on a pastel. The fills are a data
+  encoding, so their ink is pinned to match: the tightest pairing it leaves is the
+  0.8-opacity atomic mass on the darkest fill, at 6.0:1. The selected-element panel
+  takes the theme surface rather than a category fill, so it keeps theme ink.
+
+  Under a colour scheme the fills collapse into the palette instead; see the
+  separate entry for `--pie-fixed-hue-collapse`.
+
+  The print player's "cannot load" frame drew bare `red` — 4:1 on white, and print
+  is the one surface where nobody sees the problem until it is on paper — and the
+  item player set a `#ddd` divider between stacked elements. Both now resolve
+  through the theme's families. `check:theme-tokens` gained a rule for this shape:
+  a paint set from an inline style string or a `.style.x =` assignment with a bare
+  literal now fails, which is how these two survived a stylesheet-only audit.
+
+- Updated dependencies [556c422]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [6bbfae1]
+- Updated dependencies [1e0c10f]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [e8a6f0e]
+- Updated dependencies [a4beb70]
+- Updated dependencies [1f29de7]
+  - @pie-players/pie-players-shared@0.3.66
+  - @pie-players/pie-theme@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

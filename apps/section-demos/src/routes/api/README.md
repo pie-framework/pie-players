@@ -50,6 +50,23 @@ Returns Desmos API key for calculator tool authentication.
 > never reaches the client. See
 > [`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../../../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
 
+### Dictionary And Picture Dictionary
+
+**Routes**:
+
+- `POST /api/tools/dictionary` - Look up definitions for a keyword
+- `POST /api/tools/picture-dictionary` - Look up pictures for a keyword
+- `GET /api/tools/picture-dictionary/glyph/[slug]` - Serve one generated demo picture
+
+A fixed word list and generated SVG glyphs, sized for the words in the demo passages.
+PIE ships no dictionary endpoint — the corpus behind one is licensed per programme — so
+these exist to give the packaged tools something to answer with locally, and are not a
+reference implementation of a real corpus.
+
+> **Demo only — intentionally unauthenticated.** The packaged tools call a host
+> endpoint `same-origin`, so a real deployment puts its route behind the same session
+> check as the assessment itself.
+
 ### Session Hydration Demo DB
 
 **Routes**:
@@ -64,5 +81,5 @@ These endpoints back the `session-hydrate-db` demo and are intentionally lightwe
 
 ## Notes
 
-- Translation, dictionary, and picture dictionary demo APIs have been removed.
+- The translation demo API has been removed.
 - All remaining endpoints support CORS via OPTIONS handler.

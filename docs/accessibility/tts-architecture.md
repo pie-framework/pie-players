@@ -358,7 +358,13 @@ import type {
 } from '@pie-players/pie-tts';
 
 class MyTTSImpl implements ITTSProviderImplementation {
-  async speak(text: string): Promise<void> { /* ... */ }
+  onPlaybackStart?: () => void;
+
+  async speak(text: string): Promise<void> {
+    await myEngine.speak(text, {
+      onStart: () => this.onPlaybackStart?.(),
+    });
+  }
   pause(): void { /* ... */ }
   resume(): void { /* ... */ }
   stop(): void { /* ... */ }
@@ -380,6 +386,11 @@ export class MyTTSProvider implements ITTSProvider {
   destroy(): void { /* ... */ }
 }
 ```
+
+`onPlaybackStart` is optional, but providers that expose it must call it from
+the native or media playback-start event—not when speech is merely queued. The
+toolkit uses that signal to move into playing state and begin highlighting only
+when output has actually started.
 
 ## QTI-Inspired Integration with Section Player
 

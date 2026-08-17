@@ -47,6 +47,8 @@
 	.pie-panel-resize-icon {
 		width: 100%;
 		height: 100%;
-		color: color-mix(in srgb, var(--color-base-content, #334155) 30%, transparent);
+		/* A decorative grip, exempt from 1.4.11, so the faded share stays. What
+		   changes is whose ink it fades: the scheme's, not DaisyUI's. */
+		color: color-mix(in srgb, var(--pie-text, #334155) 30%, transparent);
 	}
 </style>

@@ -1,5 +1,111 @@
 # @pie-players/pie-tool-periodic-table
 
+## 0.3.67
+
+### Patch Changes
+
+- Updated dependencies [b264ab2]
+- Updated dependencies [fe9b4f0]
+- Updated dependencies [61d6aa0]
+  - @pie-players/pie-players-shared@0.3.67
+  - @pie-players/pie-assessment-toolkit@0.3.67
+  - @pie-players/pie-context@0.3.67
+
+## 0.3.66
+
+### Patch Changes
+
+- 1e0c10f: Collapse fixed component hues into the palette under a colour scheme.
+
+  A component sometimes paints a hue the palette does not own: the periodic
+  table's element cells encode category as a fixed pastel. Pinning their ink made
+  them legible under a dark theme, but a colour scheme is a two-colour promise,
+  and a pastel field ignores it — a learner on yellow-on-blue got a pastel grid.
+
+  `--pie-fixed-hue-collapse` is the share by which such a hue folds into the
+  palette. A component mixes its own value towards `--pie-background-dark` and
+  `--pie-text` by this share, so `0%` renders the authored hue exactly and `100%`
+  removes it. Base Themes set `0%`; every built-in colour scheme sets `100%`, and
+  a registered custom scheme collapses without declaring anything, because it is a
+  palette a host chose for a learner. A scheme that wants a hue encoding kept sets
+  `0%` itself.
+
+  Both ends of the mix are exact, so a Base Theme renders the periodic table byte
+  for byte as before. Under a scheme its cells take the scheme's recessed surface
+  and ink — measured across all ten built-ins, 5.44:1 at worst and 19.26:1 at best
+  — and the cell edge takes `--pie-border`, which the palette corrects to 3:1,
+  because collapsed fills sit on the panel at about 1.1:1 and can no longer
+  separate themselves. Category then lives where it does not depend on hue: the
+  badge row filters by it, the selected-element panel names it, and each cell's
+  accessible name carries it.
+
+  Sweeping those ten also cost the cell's secondary text its opacity. Fading the
+  atomic number, name and mass spent contrast the palette cannot always afford: at
+  0.8 the atomic mass measured 4.12:1 under grey-on-light-grey and 4.00:1 under
+  purple-on-light-green, whose ink and recessed surface hold only 6.46:1 and 5.44:1
+  before anything is faded. Size and weight carry the hierarchy instead, which also
+  lifts the worst pairing under a Base Theme from 6.01:1 to 8.99:1.
+
+  `--pie-text` against `--pie-background-dark` is now a certified contrast
+  relationship, since that pair is where a collapsed hue lands. Every built-in
+  palette already clears it; a custom scheme that does not now warns.
+
+- e8a6f0e: Fix the element-cell text in the periodic table, and the last two colours set
+  from JS.
+
+  The periodic table encodes element categories as fixed pastel fills, and the
+  symbol and name on them inherited `--pie-text` — near-white under every dark
+  theme, leaving the cell text at about 1.2:1 on a pastel. The fills are a data
+  encoding, so their ink is pinned to match: the tightest pairing it leaves is the
+  0.8-opacity atomic mass on the darkest fill, at 6.0:1. The selected-element panel
+  takes the theme surface rather than a category fill, so it keeps theme ink.
+
+  Under a colour scheme the fills collapse into the palette instead; see the
+  separate entry for `--pie-fixed-hue-collapse`.
+
+  The print player's "cannot load" frame drew bare `red` — 4:1 on white, and print
+  is the one surface where nobody sees the problem until it is on paper — and the
+  item player set a `#ddd` divider between stacked elements. Both now resolve
+  through the theme's families. `check:theme-tokens` gained a rule for this shape:
+  a paint set from an inline style string or a `.style.x =` assignment with a bare
+  literal now fails, which is how these two survived a stylesheet-only audit.
+
+- 08f77f5: Make the periodic table's category filter de-emphasise instead of empty the grid.
+
+  The cell markup has always carried a `--dim` class for elements outside the
+  active filter, but the each-block iterated an already-filtered list, so the class
+  could never apply: choosing a category removed every other element and left the
+  table as its own layout with holes in it. A periodic table read for one category
+  is still read against the whole table, so the filter now renders every element
+  and marks the ones outside it.
+
+  The dim treatment is not the `grayscale(80%)`/`opacity: 0.4` the dead rule
+  declared. Fading a cell far enough to read as dimmed composites its text towards
+  the page and takes it under 4.5:1 — 0.4 leaves it near 1.8:1 — and these cells
+  stay focusable and clickable, so SC 1.4.3 applies. A filtered-out cell drops its
+  category fill to the panel surface and takes theme ink instead, which measures
+  17.7:1 under the light Base Theme and, across the ten built-in schemes, 6.21:1 at
+  worst, and it turns its border dashed. The border _style_ rather than its colour: under a colour
+  scheme every cell already shares one surface, so the fill can no longer carry the
+  state, and a stronger edge would read as emphasis when the matching cells' edge is
+  deliberately faint.
+
+  Dimming is visual, so a filtered-out cell also says so in its accessible name.
+
+- Updated dependencies [556c422]
+- Updated dependencies [2a741c6]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [2bcd9fa]
+- Updated dependencies [1f29de7]
+- Updated dependencies [5e6fcde]
+- Updated dependencies [5f133be]
+- Updated dependencies [9a183cf]
+  - @pie-players/pie-assessment-toolkit@0.3.66
+  - @pie-players/pie-players-shared@0.3.66
+  - @pie-players/pie-context@0.3.66
+
 ## 0.3.65
 
 ### Patch Changes

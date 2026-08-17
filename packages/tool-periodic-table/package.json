@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-periodic-table",
-	"version": "0.3.65",
+	"version": "0.3.67",
 	"type": "module",
 	"description": "Interactive periodic table reference tool for PIE assessment player",
 	"repository": {
@@ -43,6 +43,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
+		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check ."
 	},

@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -16,32 +16,29 @@
 			"!**/.turbo",
 			"!**/playwright-report",
 			"!**/test-results",
-			"!**/.claude",
+			"!.claude",
+			"!tools/cli/oclif.manifest.json",
 			"!**/src/components/vendor"
 		]
 	},
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": false,
+			"preset": "none",
 			"correctness": {
-				"recommended": true,
+				"preset": "recommended",
 				"noUnusedFunctionParameters": "off",
 				"noUnusedVariables": "off",
 				"noUnusedImports": "off",
 				"noUnusedPrivateClassMembers": "off"
 			},
 			"suspicious": {
-				"recommended": true,
+				"preset": "recommended",
 				"noExplicitAny": "off",
 				"noImplicitAnyLet": "off",
 				"noAssignInExpressions": "off",
-				"useIterableCallbackReturn": "off"
-			},
-			"style": {
-				"useFilenamingConvention": "off",
-				"useImportType": "warn",
-				"useNamingConvention": "off"
+				"useIterableCallbackReturn": "off",
+				"noTemplateCurlyInString": "off"
 			}
 		}
 	},

@@ -25,6 +25,10 @@ export {
 	UNIVERSAL_SUPPORTS_PRESET,
 } from "./packaged-capability-composition.js";
 
+// The authored-alternate subset, for a renderer that shows alternates and no
+// toolbar — importable without the packaged composition's tool loaders.
+export { CONTENT_ALTERNATE_REGISTRATIONS } from "./content-alternates.js";
+
 // Individual registrations, for a host composing a subset rather than the whole
 // packaged set.
 export {

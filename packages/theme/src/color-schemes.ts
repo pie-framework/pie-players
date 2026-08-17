@@ -7,6 +7,7 @@ import {
 	getDefaultColorSchemeDescriptor,
 	getSchemeParticipation,
 	listBuiltInColorSchemeDefinitions,
+	resolvePaletteColorScheme,
 } from "./theme-definitions.js";
 import {
 	normalizePieThemeVariables,
@@ -521,6 +522,11 @@ export function resolvePieTheme(
 			resolvedScheme = createBuiltInColorSchemeDescriptor(builtIn);
 			status = "built-in";
 		} else if (custom) {
+			// A custom scheme is a palette a host chose for a learner, so fixed
+			// component hues collapse into it the way they do for a built-in. The
+			// overlay is applied after, so a scheme that wants a hue encoding kept
+			// declares `--pie-fixed-hue-collapse: 0%` itself.
+			variables["--pie-fixed-hue-collapse"] = "100%";
 			Object.assign(variables, custom.variables);
 			for (const token of Object.keys(custom.variables)) {
 				contrastRelevantTokens.add(token);
@@ -552,12 +558,21 @@ export function resolvePieTheme(
 		);
 	}
 	for (const item of diagnostics) warnDiagnostic(item);
+	// Only a resolved scheme decides polarity. Without one -- including a requested
+	// scheme that turned out unavailable -- the host's theme still owns
+	// `color-scheme`, and deciding it from the base palette would take that
+	// ownership away from every host that never asked for an accommodation.
+	const colorScheme =
+		status === "built-in" || status === "custom"
+			? resolvePaletteColorScheme(variables)
+			: null;
 	return Object.freeze({
 		baseTheme,
 		requestedScheme,
 		resolvedScheme,
 		status,
 		variables: freezeVariables(variables),
+		colorScheme,
 		diagnostics: freezeDiagnostics(diagnostics),
 	});
 }

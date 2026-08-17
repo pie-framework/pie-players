@@ -37,6 +37,11 @@ import contentStyles from "@pie-players/pie-theme/components.css?raw";
 installContentStyles(contentStyles, "pie-print-player");
 auditContentStyles("pie-print-player");
 
+export {
+	ALTERNATES_CLASS,
+	CONTENT_LEAD_SURFACE,
+	mountItemAlternates,
+} from "./accessibility-alternates.js";
 export { define, status, whenDefined } from "./ce-registry.js";
 export {
 	defaultLoadResolution,
@@ -50,6 +55,10 @@ export {
 } from "./markup-processor.js";
 export { PiePrint } from "./pie-print.js";
 
+export type {
+	MountedAlternates,
+	PrintAccessibilityConfig,
+} from "./accessibility-alternates.js";
 export type {
 	Config,
 	Elements,

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-toolkit",
-	"version": "0.3.65",
+	"version": "0.3.67",
 	"type": "module",
 	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
 	"license": "MIT",
@@ -40,6 +40,10 @@
 		"./components/section-toolbar-element": {
 			"types": "./dist/components/section-toolbar-element.d.ts",
 			"import": "./dist/components/section-toolbar-element.js"
+		},
+		"./services/AccessibilityCatalogResolver": {
+			"types": "./dist/services/AccessibilityCatalogResolver.d.ts",
+			"import": "./dist/services/AccessibilityCatalogResolver.js"
 		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",

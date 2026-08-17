@@ -16,11 +16,11 @@
 	"scripts": {
 		"build": "bun run clean:outputs && turbo build --filter='!./apps/*' --filter='!./tools/*'",
 		"build:watch:section-tools": "turbo watch build --filter=@pie-players/pie-section-player --filter=@pie-players/pie-assessment-toolkit --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-*",
-		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player... --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-* --filter=@pie-players/tts-server-google --filter=@pie-players/tts-server-polly",
+		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player... --filter=@pie-players/pie-print-player... --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-* --filter=@pie-players/tts-server-google --filter=@pie-players/tts-server-polly",
 		"build:e2e:item-player": "turbo build --filter=@pie-players/pie-item-player... --filter=@pie-players/pie-section-player-tools-instrumentation-debugger",
 		"build:e2e:assessment-player": "turbo build --filter=@pie-players/pie-assessment-player... --filter=@pie-players/pie-section-player-tools-* --filter=@pie-players/pie-tool-text-to-speech --filter=@pie-players/tts-server-google --filter=@pie-players/tts-server-polly",
 		"build:e2e:players-shared": "turbo build --filter=@pie-players/pie-players-shared",
-		"build:e2e:print-player": "turbo build --filter=@pie-players/pie-players-shared",
+		"build:e2e:print-player": "turbo build --filter=@pie-players/pie-print-player...",
 		"dev": "turbo dev --filter=section-demos",
 		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*'",
 		"test:all": "bun run test",
@@ -35,7 +35,8 @@
 		"test:e2e:print-player": "bun run build:e2e:print-player && bunx playwright test --config packages/print-player/playwright.config.ts",
 		"test:e2e:item-player:multiple-choice": "export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test packages/item-player/tests/item-player-multiple-choice.spec.ts --config packages/item-player/playwright.config.ts",
 		"test:e2e:item-player:critical": "export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test packages/item-player/tests/item-player-multiple-choice.spec.ts packages/item-player/tests/item-player-ebsr.spec.ts --config packages/item-player/playwright.config.ts",
-		"test:e2e:a11y:critical": "bun run test:e2e:section-player:tts-ssml && bun run test:e2e:item-player:multiple-choice && bun run test:e2e:assessment-player",
+		"test:e2e:item-player:dictation": "export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test packages/item-player/tests/item-player-dictation.spec.ts --config packages/item-player/playwright.config.ts",
+		"test:e2e:a11y:critical": "bun run test:e2e:section-player:tts-ssml && bun run test:e2e:item-player:multiple-choice && bun run test:e2e:item-player:dictation && bun run test:e2e:assessment-player",
 		"test:e2e:all": "bun run test:e2e:section-player && bun run test:e2e:item-player && bun run test:e2e:backend-demo && bun run test:e2e:assessment-player && bun run test:e2e:players-shared && bun run test:e2e:print-player",
 		"test:esm:pie-elements-ng": "bun run build:e2e:item-player && bun ./scripts/smoke-pie-elements-ng-esm.mjs --pie-elements-ng-root ../pie-elements-ng --report ./tmp/pie-elements-ng-esm-smoke-report.json",
 		"test:local-esm-cdn": "bun run --cwd apps/local-esm-cdn test",
@@ -45,8 +46,8 @@
 		"lint:biome": "biome lint .",
 		"lint:svelte": "turbo check",
 		"lint:all": "bun run lint && bun run typecheck",
-		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
-		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run check:consumer-pad && bun run lint:all",
+		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
+		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run check:consumer-pad && bun run lint:all",
 		"verify:pre-push": "bun run verify:local-pr",
 		"verify:local-pr": "bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player && bun run test:e2e:players-shared && bun run test:e2e:print-player",
 		"format:check": "biome format .",
@@ -123,7 +124,7 @@
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",
 		"pack:local": "bun run build && bun run --cwd tools/cli build && bun ./scripts/pack-local.mjs",
 		"dev:demo": "dotenvx run -- bun scripts/serve-packages.ts",
-		"prepare": "lefthook install"
+		"prepare": "bun ./scripts/install-git-hooks.mjs"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.5",

@@ -193,7 +193,7 @@ const coordinator = new ToolkitCoordinator({
       textToSpeech: {
         settings: {
           backend: "browser",
-          defaultVoice: "en-US",
+          // Optional: an exact voiceURI or name from speechSynthesis.getVoices().
           layoutMode: "expanding-row",
         },
       },

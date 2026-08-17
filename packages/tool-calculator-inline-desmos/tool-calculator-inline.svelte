@@ -195,21 +195,48 @@
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
 	.pie-tool-calculator-inline__button:focus-visible {
-		outline: 2px solid #0066cc;
+		outline: 2px solid var(--pie-button-focus-outline, #0066cc);
 		outline-offset: 2px;
-		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
+		box-shadow: 0 0 0 4px
+			color-mix(in srgb, var(--pie-button-focus-outline, #0066cc) 20%, transparent);
 		z-index: 1;
 	}
 
+	/*
+	 * `--pie-primary` is a fill here, and white was pinned as its ink. The two do
+	 * not pair: the schemes whose primary is a pale yellow put white on it at
+	 * 1.06:1 (Yellow on Blue), 1.07:1 (White on Black) and 1.05:1 (Yellow on
+	 * Navy), so the open-state trigger lost its glyph on exactly the palettes
+	 * chosen for legibility. The ink follows the page colour once a scheme asks
+	 * for one, which pairs with that fill at 5.44:1 or better everywhere, and
+	 * stays the pinned white at 0% collapse so an unthemed host is unchanged.
+	 */
 	.pie-tool-calculator-inline__button--active {
 		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
-		color: var(--pie-tool-trigger-active-color, white);
+		color: var(
+			--pie-tool-trigger-active-color,
+			color-mix(in srgb, var(--pie-background, #ffffff) var(--pie-fixed-hue-collapse, 0%), white)
+		);
 		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 
+	/*
+	 * The deeper hover fill collapses to `--pie-primary` rather than
+	 * `--pie-primary-dark`: that darker slot pairs with the page colour at 3.56:1
+	 * under Light Gray on Dark Gray, below the 4.5:1 this glyph needs. Under a
+	 * scheme the hover therefore matches the open state, and the affordance rests
+	 * on the border, which is deliberate — a hover tell is not worth an
+	 * unreadable one.
+	 */
 	.pie-tool-calculator-inline__button--active:hover:not(:disabled) {
-		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary-dark, #1565c0));
-		color: var(--pie-tool-trigger-active-color, white);
+		background-color: var(
+			--pie-tool-trigger-active-background,
+			color-mix(in srgb, var(--pie-primary, #1565c0) var(--pie-fixed-hue-collapse, 0%), var(--pie-primary-dark, #1565c0))
+		);
+		color: var(
+			--pie-tool-trigger-active-color,
+			color-mix(in srgb, var(--pie-background, #ffffff) var(--pie-fixed-hue-collapse, 0%), white)
+		);
 		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 
@@ -253,11 +280,11 @@
 
 	.pie-tool-calculator-inline__icon {
 		fill: currentColor;
-		color: #555;
+		color: var(--pie-button-color, #555);
 	}
 
 	.pie-tool-calculator-inline__button:not(.pie-tool-calculator-inline__button--active):hover:not(:disabled) .pie-tool-calculator-inline__icon {
-		color: #667eea;
+		color: var(--pie-button-hover-color, #667eea);
 	}
 
 	.pie-tool-calculator-inline__button--active .pie-tool-calculator-inline__icon {

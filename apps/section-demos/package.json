@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/section-demos",
-	"version": "0.1.78",
+	"version": "0.1.80",
 	"description": "Progressive demos for PIE Section Player",
 	"type": "module",
 	"private": true,
@@ -14,6 +14,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
@@ -30,6 +31,8 @@
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
+		"@pie-players/pie-tool-dictionary": "workspace:*",
+		"@pie-players/pie-tool-picture-dictionary": "workspace:*",
 		"@pie-players/pie-tool-sign-language": "workspace:*",
 		"@pie-players/pie-tool-text-to-speech": "workspace:*",
 		"@pie-players/pie-tool-tts-inline": "workspace:*",

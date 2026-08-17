@@ -47,7 +47,7 @@
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import { EMPTY_COMPOSITION } from "./shared/composition.js";
-	import { createToolSurfaceHost } from "./shared/tool-surface-host.js";
+	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
 	import {
 		DEFAULT_ASSESSMENT_ID,
 		DEFAULT_ENV,
@@ -211,7 +211,9 @@
 	 */
 	const SECTION_OVERLAY_SURFACE = "section-overlay";
 	let overlayAnchor = $state<HTMLDivElement | null>(null);
-	const overlaySurfaceHost = createToolSurfaceHost(() => undefined);
+	const overlaySurfaceHost = createToolSurfaceHost(() => undefined, {
+		hostLabel: "pie-section-player"
+	});
 
 	$effect(() => {
 		const coordinator = activeToolkitCoordinator;

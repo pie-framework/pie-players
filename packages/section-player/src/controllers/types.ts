@@ -8,6 +8,14 @@ import type {
 	RubricBlock,
 } from "@pie-players/pie-players-shared";
 import type { ConfigContainerEntity } from "@pie-players/pie-players-shared/types";
+import type {
+	FormativeFeedbackReveal,
+	FormativeItemPolicy,
+	FormativeMasteryRollup,
+	FormativeSectionProjection,
+	FormativeSectionSlice,
+	FormativeTryOutcome,
+} from "@pie-players/pie-players-shared/formative";
 
 export type SectionView =
 	| "candidate"
@@ -29,6 +37,13 @@ export interface SectionContentModel {
 			id?: string;
 			identifier?: string;
 		};
+		/**
+		 * The item ref's formative override, carried through because this
+		 * projection is where the canonical identifier is decided. Resolving
+		 * policy from the raw `assessmentItemRefs` instead would mean recomputing
+		 * that identifier, and two implementations of one mapping.
+		 */
+		formative?: FormativeItemPolicy;
 	}>;
 }
 
@@ -54,6 +69,7 @@ export interface SectionSessionState {
 	currentItemIndex?: number;
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
+	formative?: FormativeSectionSlice;
 }
 
 export interface SectionViewModel extends SectionContentModel {
@@ -91,6 +107,18 @@ export interface SectionCompositionModel {
 	itemSessionsByItemId: Record<string, unknown>;
 	testAttemptSession: TestAttemptSession | null;
 	itemViewModels: SectionCanonicalItemViewModel[];
+	/**
+	 * Formative delivery projection, keyed by canonical item id. Absent reads
+	 * exactly as `null`: no item in the section delivers formatively, which is
+	 * every section authored without a `formative` policy. Optional so anything
+	 * else assembling this model — a host layout, a test double — omits the
+	 * field instead of declaring a feature it does not use.
+	 *
+	 * Layouts read it from here rather than calling the controller: the runtime
+	 * republishes the composition model on every controller event, so a recorded
+	 * Try reaches the cards through the channel that already exists.
+	 */
+	formative?: FormativeSectionProjection | null;
 }
 
 export interface SectionCanonicalItemViewModel {
@@ -187,7 +215,10 @@ interface SectionControllerEventBase {
 		| "item-complete-changed"
 		| "section-loading-complete"
 		| "section-items-complete-changed"
-		| "section-error";
+		| "section-error"
+		| "formative-try-recorded"
+		| "formative-reveal-changed"
+		| "section-mastery-changed";
 	timestamp: number;
 }
 
@@ -291,6 +322,40 @@ export interface SectionErrorEvent extends ItemScopedControllerEventBase {
 	contentKind?: SectionContentKind;
 }
 
+export interface FormativeTryRecordedEvent
+	extends ItemScopedControllerEventBase {
+	type: "formative-try-recorded";
+	itemId: string;
+	canonicalItemId: string;
+	tryCount: number;
+	outcome: FormativeTryOutcome;
+	revealed: boolean;
+}
+
+/**
+ * The reveal state changed without a Try being recorded: a learner dismissed
+ * feedback to edit again, or a host forced a reveal or withdrew one. A Try that
+ * reveals reports through `formative-try-recorded`.
+ */
+export interface FormativeRevealChangedEvent
+	extends ItemScopedControllerEventBase {
+	type: "formative-reveal-changed";
+	itemId: string;
+	canonicalItemId: string;
+	revealed: boolean;
+	/** Reveal level in force, when a host overrode the policy's. */
+	feedback?: FormativeFeedbackReveal;
+	/** Tries already spent; none of these transitions consume one. */
+	tryCount: number;
+	source: "learner" | "host";
+}
+
+export interface SectionMasteryChangedEvent
+	extends ItemScopedControllerEventBase {
+	type: "section-mastery-changed";
+	mastery: FormativeMasteryRollup;
+}
+
 export type SectionControllerChangeEvent =
 	| ItemSessionDataChangedEvent
 	| ItemSessionMetaChangedEvent
@@ -302,7 +367,10 @@ export type SectionControllerChangeEvent =
 	| ItemCompleteChangedEvent
 	| SectionLoadingCompleteEvent
 	| SectionItemsCompleteChangedEvent
-	| SectionErrorEvent;
+	| SectionErrorEvent
+	| FormativeTryRecordedEvent
+	| FormativeRevealChangedEvent
+	| SectionMasteryChangedEvent;
 
 export type SectionControllerChangeListener = (
 	event: SectionControllerChangeEvent,

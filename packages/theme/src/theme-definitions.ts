@@ -41,6 +41,7 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-correct-tertiary": "#087d38",
 	"--pie-correct-icon": "#087d38",
 	"--pie-incorrect": "#a65f00",
+	"--pie-content-emphasis": "#b00000",
 	"--pie-incorrect-secondary": "#ffebee",
 	"--pie-incorrect-icon": "#bf0d00",
 	"--pie-missing": "#d32f2f",
@@ -81,6 +82,11 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-button-hover-color": "#111827",
 	"--pie-button-active-bg": "#f3f4f6",
 	"--pie-button-focus-outline": "#3b82f6",
+	// Share by which a component's own fixed hues collapse into the palette. A
+	// Base Theme keeps them, because it is a full palette and a hue encoding
+	// still reads against it; every scheme below sets 100%, because a
+	// two-colour palette is a promise the whole surface has to keep.
+	"--pie-fixed-hue-collapse": "0%",
 };
 
 // The three component-public accessibility tokens participate in built-in
@@ -100,6 +106,7 @@ const DARK_BASE_THEME: ThemeVariables = {
 	"--pie-correct-tertiary": "#00cc00",
 	"--pie-correct-icon": "#00ff00",
 	"--pie-incorrect": "#ff3333",
+	"--pie-content-emphasis": "#ff6666",
 	"--pie-incorrect-secondary": "#330000",
 	"--pie-incorrect-icon": "#ff0000",
 	"--pie-missing": "#ff6666",
@@ -140,6 +147,7 @@ const DARK_BASE_THEME: ThemeVariables = {
 	"--pie-button-hover-color": "#ffffff",
 	"--pie-button-active-bg": "#4b5563",
 	"--pie-button-focus-outline": "#93c5fd",
+	"--pie-fixed-hue-collapse": "0%",
 };
 
 const DARK_BASE_ACCESSIBILITY_VARS: ThemeVariables = {
@@ -168,6 +176,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#008800",
 				"--pie-correct-icon": "#004400",
 				"--pie-incorrect": "#cc0000",
+				"--pie-content-emphasis": "#cc0000",
 				"--pie-incorrect-secondary": "#ffcccc",
 				"--pie-incorrect-icon": "#990000",
 				"--pie-missing": "#cc0000",
@@ -210,6 +219,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#000000",
 				"--pie-button-active-bg": "#eeeeee",
 				"--pie-button-focus-outline": "#0000cc",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -225,6 +235,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#00cc00",
 				"--pie-correct-icon": "#00ff00",
 				"--pie-incorrect": "#ff3333",
+				"--pie-content-emphasis": "#ff3333",
 				"--pie-incorrect-secondary": "#330000",
 				"--pie-incorrect-icon": "#ff0000",
 				"--pie-missing": "#ff6666",
@@ -267,6 +278,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#ffffff",
 				"--pie-button-active-bg": "#222222",
 				"--pie-button-focus-outline": "#ffff00",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -282,6 +294,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#006600",
 				"--pie-correct-icon": "#003300",
 				"--pie-incorrect": "#aa0044",
+				"--pie-content-emphasis": "#aa0044",
 				"--pie-incorrect-secondary": "#ffccdd",
 				"--pie-incorrect-icon": "#880033",
 				"--pie-missing": "#aa0044",
@@ -324,6 +337,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#3d0022",
 				"--pie-button-active-bg": "#99ddbb",
 				"--pie-button-focus-outline": "#660044",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -339,6 +353,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#00cc00",
 				"--pie-correct-icon": "#00ff00",
 				"--pie-incorrect": "#ff6666",
+				"--pie-content-emphasis": "#ff6666",
 				"--pie-incorrect-secondary": "#331111",
 				"--pie-incorrect-icon": "#ff3333",
 				"--pie-missing": "#ff6666",
@@ -381,6 +396,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#ffff00",
 				"--pie-button-active-bg": "#000044",
 				"--pie-button-focus-outline": "#ffff66",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -396,6 +412,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#007000",
 				"--pie-correct-icon": "#004400",
 				"--pie-incorrect": "#990000",
+				"--pie-content-emphasis": "#990000",
 				"--pie-incorrect-secondary": "#ffdddd",
 				"--pie-incorrect-icon": "#770000",
 				"--pie-missing": "#990000",
@@ -438,6 +455,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#000000",
 				"--pie-button-active-bg": "#ff99bb",
 				"--pie-button-focus-outline": "#880044",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -453,6 +471,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#00bb00",
 				"--pie-correct-icon": "#00ff00",
 				"--pie-incorrect": "#ff6a6a",
+				"--pie-content-emphasis": "#ff6a6a",
 				"--pie-incorrect-secondary": "#331111",
 				"--pie-incorrect-icon": "#ff0000",
 				"--pie-missing": "#ff6a6a",
@@ -495,6 +514,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#e0e0e0",
 				"--pie-button-active-bg": "#222222",
 				"--pie-button-focus-outline": "#aaaaaa",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -510,6 +530,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#1a7526",
 				"--pie-correct-icon": "#0e3f15",
 				"--pie-incorrect": "#8c1c1c",
+				"--pie-content-emphasis": "#8c1c1c",
 				"--pie-incorrect-secondary": "#eddcdc",
 				"--pie-incorrect-icon": "#6f1616",
 				"--pie-missing": "#8c1c1c",
@@ -552,6 +573,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#4a4a4a",
 				"--pie-button-active-bg": "#d0d0d0",
 				"--pie-button-focus-outline": "#3d3d3d",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -567,6 +589,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#1a7328",
 				"--pie-correct-icon": "#0e3d16",
 				"--pie-incorrect": "#8c1c1c",
+				"--pie-content-emphasis": "#8c1c1c",
 				"--pie-incorrect-secondary": "#f0dcdc",
 				"--pie-incorrect-icon": "#6f1616",
 				"--pie-missing": "#8c1c1c",
@@ -609,6 +632,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#8e2464",
 				"--pie-button-active-bg": "#a6d0b2",
 				"--pie-button-focus-outline": "#6d1a4c",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -624,6 +648,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#0f4d17",
 				"--pie-correct-icon": "#093a0f",
 				"--pie-incorrect": "#7d1414",
+				"--pie-content-emphasis": "#7d1414",
 				"--pie-incorrect-secondary": "#eccfd0",
 				"--pie-incorrect-icon": "#5c0f0f",
 				"--pie-missing": "#7d1414",
@@ -666,6 +691,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#000000",
 				"--pie-button-active-bg": "#b982c8",
 				"--pie-button-focus-outline": "#4a1259",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 		{
@@ -681,6 +707,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-correct-tertiary": "#a0dda9",
 				"--pie-correct-icon": "#a8f0b0",
 				"--pie-incorrect": "#ffbebe",
+				"--pie-content-emphasis": "#ffbebe",
 				"--pie-incorrect-secondary": "#3d1d1d",
 				"--pie-incorrect-icon": "#ffb3b3",
 				"--pie-missing": "#ffbebe",
@@ -723,6 +750,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-button-hover-color": "#ffff55",
 				"--pie-button-active-bg": "#243a63",
 				"--pie-button-focus-outline": "#ffff99",
+				"--pie-fixed-hue-collapse": "100%",
 			},
 		},
 	]);
@@ -771,6 +799,15 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			role: "ordinary text",
 		},
 		{
+			// Where a fixed hue collapses to: a component folding its own encoding
+			// into the palette lands on this surface with this ink, so the pair has
+			// to hold on its own and not only against the page.
+			foreground: "--pie-text",
+			background: "--pie-background-dark",
+			minimum: 4.5,
+			role: "recessed surface text",
+		},
+		{
 			foreground: "--pie-tertiary",
 			background: "--pie-background",
 			minimum: 4.5,
@@ -811,6 +848,17 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-background",
 			minimum: 3,
 			role: "incorrect feedback icon",
+		},
+		{
+			// The error-surface pair. `--pie-incorrect-secondary` is a tint of the
+			// page, about 1.1:1 against it in most schemes, so a banner painted with
+			// it reads as a banner only by its `--pie-incorrect` edge -- and the ink
+			// on it is the page's own, not the error hue: `--pie-incorrect` against
+			// this tint falls to 4.14:1 under Black on White.
+			foreground: "--pie-text",
+			background: "--pie-incorrect-secondary",
+			minimum: 4.5,
+			role: "incorrect feedback surface text",
 		},
 		{
 			foreground: "--pie-missing-icon",
@@ -975,6 +1023,33 @@ function resolveColor(
 	return reference
 		? resolveColor(variables, reference[1] as ThemeTokenName, seen)
 		: value;
+}
+
+/**
+ * The CSS `color-scheme` keyword a palette implies, or `null` when the token
+ * values cannot decide it.
+ *
+ * A scheme replaces every colour, but nothing in CSS infers polarity from custom
+ * properties, so UA-styled controls -- `input`, `select`, scrollbars, native form
+ * widgets -- keep whatever polarity the host's theme declared. A dark
+ * accommodation on a light host therefore renders their text in the light-mode
+ * system colour: measured at roughly 1.1:1 against `yellow-on-blue`.
+ *
+ * Decided by whether black or white contrasts better against the resolved
+ * background, which is the same test that picks a legible foreground. `null` for
+ * a background `parseOpaqueColor` rejects -- a translucent value, a `var()`
+ * reference out to a host property, the transparent light base -- because
+ * polarity then depends on the host's backdrop and is the host's to declare.
+ */
+export function resolvePaletteColorScheme(
+	variables: Readonly<ThemeVariables>,
+): "light" | "dark" | null {
+	const value = resolveColor(variables, "--pie-background");
+	const background = value ? parseOpaqueColor(value) : null;
+	if (!background) return null;
+	const againstWhite = contrastRatio({ r: 255, g: 255, b: 255 }, background);
+	const againstBlack = contrastRatio({ r: 0, g: 0, b: 0 }, background);
+	return againstWhite > againstBlack ? "dark" : "light";
 }
 
 export function diagnoseThemeContrast(

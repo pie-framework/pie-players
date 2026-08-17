@@ -741,6 +741,21 @@
           } else {
             // VIEW MODE: Listen for session-changed events from PIE elements
             const handleSessionChanged = (event: Event) => {
+              // The element's own `session-changed` ends here. It carries the PIE
+              // element contract's metadata detail (`complete`, `component`) and no
+              // `session` at all, so a host that read `detail.session` off it got
+              // `undefined` — indistinguishable from the deliberate
+              // `session: null` + `intent: "metadata-only"` signal the player emits
+              // for a metadata-only change. The player re-emits a canonical
+              // `session-changed` from its own host below, which is the one that
+              // reaches hosts; letting the raw event past this point published two
+              // events per change with different contracts under one name.
+              // Section-player's ItemShellElement already dedupes what escapes,
+              // which is the cost this avoids rather than a reason to keep it.
+              // Stop before the re-entry guard so the raw event never escapes on the
+              // early-return paths either.
+              event.stopPropagation();
+
               // CRITICAL: Prevent infinite loop
               // When we dispatch, it triggers this listener again
               // Use flag to detect and break the loop
@@ -977,10 +992,7 @@
       style="
         padding: 20px;
         margin: 20px 0;
-        border: 2px solid #d32f2f;
         border-radius: 4px;
-        background-color: #ffebee;
-        color: #c62828;
         font-family: sans-serif;
       "
     >
@@ -994,10 +1006,7 @@
       style="
         padding: 20px;
         margin: 20px 0;
-        border: 2px solid #d32f2f;
         border-radius: 4px;
-        background-color: #ffebee;
-        color: #c62828;
         font-family: sans-serif;
       "
     >
@@ -1033,5 +1042,39 @@
     max-width: 100%;
     overflow: auto;
     resize: horizontal;
+  }
+
+  /*
+   * The error banner carries a fixed red encoding, so it behaves like any other
+   * fixed hue: exact at 0% collapse, which is every Base Theme, folded into the
+   * palette at 100%, which is every scheme. Pinned, a learner on White on Black
+   * or Yellow on Navy got a pale pink box in the middle of the palette they
+   * chose.
+   *
+   * The collapsed ink is `--pie-text`, not `--pie-incorrect`: that pairs with
+   * this tint at 4.14:1 under Black on White, where the page's own ink holds at
+   * 6.18:1 or better on every scheme, now a declared relationship. The tint
+   * itself sits about 1.1:1 from the page, so the `--pie-incorrect` edge is what
+   * makes this read as a banner at all -- the same division of labour the
+   * periodic table's collapsed cells use, and that edge clears 4.53:1 against
+   * every scheme's page.
+   */
+  .pie-player-error {
+    border: 2px solid
+      color-mix(
+        in srgb,
+        var(--pie-incorrect, #d32f2f) var(--pie-fixed-hue-collapse, 0%),
+        #d32f2f
+      );
+    background-color: color-mix(
+      in srgb,
+      var(--pie-incorrect-secondary, #ffebee) var(--pie-fixed-hue-collapse, 0%),
+      #ffebee
+    );
+    color: color-mix(
+      in srgb,
+      var(--pie-text, #c62828) var(--pie-fixed-hue-collapse, 0%),
+      #c62828
+    );
   }
 </style>

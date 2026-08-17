@@ -1,16 +1,17 @@
 /**
  * The one table that says which DaisyUI slot each `--pie-*` token comes from,
- * and one renderer that turns it into variables.
+ * and one renderer that turns it into variables. Sole source: the `daisyui`
+ * provider adapter is the only thing that reads it, and a host reaches it by
+ * mounting `<pie-theme provider="daisyui">` or leaving `provider` on `auto`.
  *
- * It exists because the same 47-row table was written out four times — the
- * provider adapter here, two mappers in `@pie-players/pie-theme-daisyui`, and
- * that package's `bridge.css` — and copies drift. Two defects lived in the drift:
- * `--pie-missing` was corrected to `--color-warning` in one copy while three kept
- * it on `--color-error`, and the parity test that was supposed to catch this
- * compared only the token names, never the slot each one derived from.
- *
- * CSS cannot import a table, so `bridge.css` stays hand-written and is held to
- * this one by `tests/daisyui-mapping-parity.test.mjs` instead.
+ * It was consolidated here after the same table had been written out four
+ * times — this adapter, two mappers in a separate `pie-theme-daisyui` package, and
+ * that package's static `bridge.css` — and copies drift. Two defects lived in the
+ * drift: `--pie-missing` was corrected to `--color-warning` in one copy while three
+ * kept it on `--color-error`, and the parity test meant to catch that compared only
+ * the token names, never the slot each one derived from. The copies are gone; the
+ * package was removed once its CSS turned out to be outranked by the inline
+ * variables `<pie-theme>` writes, leaving it inert wherever it was imported.
  */
 
 import {
@@ -138,6 +139,11 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	mix("--pie-correct-secondary", "success", "base100", 20),
 	legible("--pie-correct-tertiary", "success"),
 	legible("--pie-correct-icon", "success"),
+	// Authored red emphasis inside content. Taken from the error slot through the
+	// legible correction rather than mixed from a bare red: a red-toward-ink mix
+	// falls under 4.5:1 on seven of the 35 shipped themes (2.91:1 on `aqua`),
+	// while the corrected error family clears it on all of them.
+	legible("--pie-content-emphasis", "error"),
 	legible("--pie-incorrect", "error"),
 	mix("--pie-incorrect-secondary", "error", "base100", 20),
 	legible("--pie-incorrect-icon", "error"),

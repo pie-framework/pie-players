@@ -11,9 +11,10 @@
 3. [Integration with PIE](#integration-with-pie)
 4. [TTSService Integration](#ttsservice-integration)
 5. [Section Player Integration](#section-player-integration)
-6. [PIE Element Authoring](#pie-element-authoring)
-7. [Usage Examples](#usage-examples)
-8. [Best Practices](#best-practices)
+6. [Print Player Integration](#print-player-integration)
+7. [PIE Element Authoring](#pie-element-authoring)
+8. [Usage Examples](#usage-examples)
+9. [Best Practices](#best-practices)
 
 ---
 
@@ -729,6 +730,50 @@ When you configure catalog-aware TTS through the section player runtime:
    then falls back to generated speech or visible text
 
 **You don't need to manually manage catalog lifecycle** - the section player handles it.
+
+---
+
+## Print Player Integration
+
+`<pie-print>` resolves the item's catalogs itself. A print job is one learner with
+one profile, decided once, so there is no coordinator to build and no lifecycle to
+manage: the profile goes on the config beside the item.
+
+```javascript
+import '@pie-players/pie-print-player';
+
+const player = document.querySelector('pie-print');
+player.config = {
+  // The PIE config. Catalogs written onto a model arrive with it; entity-root and
+  // extractor-generated ones are passed as `accessibilityCatalogs` /
+  // `extractedCatalogs` on the same object.
+  item: itemEntity.config,
+  options: { role: 'student' },
+  accessibility: {
+    personalNeedsProfile: student.personalNeedsProfile,
+    // Optional, and only where a program has them.
+    settings: assessment.settings,
+    itemSettings: itemRef.settings,
+  },
+};
+```
+
+Four properties of that:
+
+- **Eligibility runs the same six-level precedence delivery runs**, so a district
+  block outranks the learner's profile on paper as it does on screen.
+- **An alternate in play prints inline and unconditionally**, above the item
+  content. There is nothing to reveal on paper and no control to press.
+- **An alternate an item declares as authored presentation prints with no
+  `accessibility` at all.** An item family designed to be delivered with its
+  transcript on screen is not an accommodation. An accommodation card with no
+  profile supplied prints nothing.
+- **Video alternates do not print.** Print opens the in-flow host slot and not the
+  docked-media one, because on paper a video is a blank rectangle.
+
+The alternates land in a `.pie-print-alternates` block, each preceded by a
+`.pie-print-alternates__label` carrying the capability's name — paper has no
+accessibility tree, so the name is rendered rather than left to `aria-label`.
 
 ---
 

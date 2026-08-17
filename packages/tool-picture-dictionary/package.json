@@ -1,0 +1,63 @@
+{
+	"name": "@pie-players/pie-tool-picture-dictionary",
+	"version": "0.3.67",
+	"type": "module",
+	"description": "Picture dictionary lookup tool for PIE assessment player",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tool-picture-dictionary"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tool",
+		"dictionary",
+		"picture-dictionary",
+		"accessibility"
+	],
+	"main": "./dist/tool-picture-dictionary.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/tool-picture-dictionary.js"
+		}
+	},
+	"files": [
+		"dist",
+		"package.json"
+	],
+	"license": "MIT",
+	"unpkg": "./dist/tool-picture-dictionary.js",
+	"jsdelivr": "./dist/tool-picture-dictionary.js",
+	"dependencies": {
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test",
+		"lint": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.7",
+		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"svelte": "^5.56.8",
+		"typescript": "^5.9.3",
+		"vite": "^8.0.10",
+		"vite-plugin-dts": "^5.0.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-picture-dictionary#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": true
+}

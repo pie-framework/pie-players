@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO_PATH = "/tts-ssml?mode=candidate&layout=vertical";
@@ -8,12 +9,13 @@ const RESOURCE_DEMO_PATH =
 	"/resource-observability?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle event broadcast panel",
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator("pie-section-player-tools-event-debugger");
 	await expect(
 		panel.locator(".pie-section-player-tools-event-debugger"),
@@ -22,12 +24,13 @@ async function openEventPanel(page: import("@playwright/test").Page) {
 }
 
 async function openSessionPanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle session panel",
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator("pie-section-player-tools-session-debugger");
 	await expect(
 		panel.locator(".pie-section-player-tools-session-debugger"),
@@ -36,12 +39,13 @@ async function openSessionPanel(page: import("@playwright/test").Page) {
 }
 
 async function openInstrumentationPanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle instrumentation panel",
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator(
 		"pie-section-player-tools-instrumentation-debugger",
 	);
@@ -52,12 +56,13 @@ async function openInstrumentationPanel(page: import("@playwright/test").Page) {
 }
 
 async function openSourcePanel(page: import("@playwright/test").Page) {
+	await openDemoMenuIfCollapsed(page);
 	const toggleButton = page.getByRole("button", {
 		name: "Toggle source panel",
 	});
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
-	await toggleButton.click();
+	await toggleButton.press("Enter");
 	const panel = page.locator(".pie-section-player-tools-source-panel");
 	await expect(panel).toBeVisible();
 	return panel;
@@ -66,12 +71,13 @@ async function openSourcePanel(page: import("@playwright/test").Page) {
 async function openTTSSettingsPanel(page: import("@playwright/test").Page) {
 	const panel = page.locator(".pie-tts-dialog-backdrop");
 	if (!(await panel.isVisible())) {
+		await openDemoMenuIfCollapsed(page);
 		const toggleButton = page.getByRole("button", {
 			name: "Toggle TTS settings panel",
 		});
 		await expect(toggleButton).toBeVisible();
 		await expect(toggleButton).toBeEnabled();
-		await toggleButton.click();
+		await toggleButton.press("Enter");
 	}
 	await expect(panel).toBeVisible();
 	return panel;
@@ -140,6 +146,43 @@ async function getPanelPosition(
 	});
 }
 
+/**
+ * The scroll baseline has to survive the pane still settling. Late item
+ * hydration and image layout both change the pane's geometry, and a re-render
+ * resets scrollTop to 0, so a single programmatic write followed by an equality
+ * poll fails whenever the reset lands after the write -- which is what CI hit at
+ * both call sites of the helper below, on separate runs, each time timing out on
+ * the setup poll rather than on the behaviour under test.
+ */
+const PANE_SETTLE_TIMEOUT = 15_000;
+
+async function waitForStablePaneGeometry(
+	pane: ReturnType<import("@playwright/test").Page["locator"]>,
+	paneSelector: string,
+) {
+	let previous = { scrollHeight: -1, clientHeight: -1 };
+	await expect
+		.poll(
+			async () => {
+				const current = await pane.evaluate((node) => ({
+					scrollHeight: node.scrollHeight,
+					clientHeight: node.clientHeight,
+				}));
+				const stable =
+					current.scrollHeight === previous.scrollHeight &&
+					current.clientHeight === previous.clientHeight;
+				previous = current;
+				return stable;
+			},
+			{
+				timeout: PANE_SETTLE_TIMEOUT,
+				intervals: [100, 100, 100, 250, 250, 500],
+				message: `Pane ${paneSelector} kept resizing, so no scroll baseline could be taken`,
+			},
+		)
+		.toBe(true);
+}
+
 async function assertChoiceSelectionKeepsPaneScroll(args: {
 	page: import("@playwright/test").Page;
 	paneSelector: string;
@@ -147,6 +190,7 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 	const { page, paneSelector } = args;
 	const pane = page.locator(paneSelector);
 	await expect(pane).toBeVisible();
+	await waitForStablePaneGeometry(pane, paneSelector);
 
 	const scrollMetrics = await pane.evaluate((node) => ({
 		maxScrollTop: Math.max(0, node.scrollHeight - node.clientHeight),
@@ -158,16 +202,25 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 		`Expected pane to be scrollable (client=${scrollMetrics.clientHeight}, scroll=${scrollMetrics.scrollHeight})`,
 	).toBeGreaterThan(80);
 
-	const beforeSelectionScrollTop = await pane.evaluate((node) => {
-		const targetScrollTop = Math.max(
-			24,
-			Math.floor((node.scrollHeight - node.clientHeight) * 0.65),
-		);
-		node.scrollTop = targetScrollTop;
-		return node.scrollTop;
-	});
+	const beforeSelectionScrollTop = Math.max(
+		24,
+		Math.floor(scrollMetrics.maxScrollTop * 0.65),
+	);
 	await expect
-		.poll(async () => pane.evaluate((node) => node.scrollTop))
+		.poll(
+			async () =>
+				pane.evaluate((node, target) => {
+					// Re-applied on every attempt, so a re-render that resets the pane is
+					// corrected on the next one. A settled baseline is what the assertion
+					// below needs; landing it in a single write is not.
+					if (node.scrollTop !== target) node.scrollTop = target;
+					return node.scrollTop;
+				}, beforeSelectionScrollTop),
+			{
+				timeout: PANE_SETTLE_TIMEOUT,
+				message: `Pane ${paneSelector} never held a scroll offset of ${beforeSelectionScrollTop}`,
+			},
+		)
 		.toBe(beforeSelectionScrollTop);
 
 	await pane.evaluate((node) => {
@@ -188,12 +241,18 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 	});
 
 	await expect
-		.poll(async () => {
-			const afterSelectionScrollTop = await pane.evaluate(
-				(node) => node.scrollTop,
-			);
-			return Math.abs(afterSelectionScrollTop - beforeSelectionScrollTop);
-		})
+		.poll(
+			async () => {
+				const afterSelectionScrollTop = await pane.evaluate(
+					(node) => node.scrollTop,
+				);
+				return Math.abs(afterSelectionScrollTop - beforeSelectionScrollTop);
+			},
+			{
+				timeout: PANE_SETTLE_TIMEOUT,
+				message: `Selecting a choice moved ${paneSelector} away from ${beforeSelectionScrollTop}`,
+			},
+		)
 		.toBeLessThanOrEqual(24);
 }
 

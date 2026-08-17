@@ -1,5 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import {
+	expectDemoChromeReady,
+	openDemoMenuIfCollapsed,
+} from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const KNOWN_A11Y_BASELINE_DEBT = new Set([
@@ -26,11 +30,10 @@ function isKnownA11yBaselineDebt(violation: {
 		return (violation.nodes || []).every((node) => {
 			const html = String(node.html || "");
 			return (
-				html.includes('class="button"') &&
-				(html.includes("MuiSvgIcon") ||
-					html === '<button class="button">' ||
-					html === '<button disabled="" class="button">')
-			) || (
+				(html.includes('class="button"') &&
+					(html.includes("MuiSvgIcon") ||
+						html === '<button class="button">' ||
+						html === '<button disabled="" class="button">')) ||
 				// PIE-708 tracks the upstream editor toolbar buttons with no accessible name.
 				html.startsWith('<button class="toolbarButton"') ||
 				html.startsWith('<button disabled="" class="toolbarButton"')
@@ -42,7 +45,7 @@ function isKnownA11yBaselineDebt(violation: {
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+	await expectDemoChromeReady(page);
 }
 
 async function openSessionPanel(page: Page) {
@@ -95,6 +98,7 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 			enabled: true,
 			backend: "browser",
 			transportMode: "pie",
+			defaultVoice: undefined,
 		});
 		await coordinator?.ensureTTSReady?.(
 			coordinator?.getToolConfig?.("textToSpeech"),
@@ -220,6 +224,50 @@ async function suppressAudibleBrowserTts(
 	}, utteranceMs);
 }
 
+async function installHoldingServerAudio(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		class FakeAudio {
+			src: string;
+			volume = 1;
+			currentTime = 0;
+			playbackRate = 1;
+			paused = true;
+			onplay: ((event: Event) => void) | null = null;
+			onended: ((event: Event) => void) | null = null;
+			onerror: ((event: Event) => void) | null = null;
+			onpause: ((event: Event) => void) | null = null;
+			private endTimer: number | null = null;
+
+			constructor(src?: string) {
+				this.src = src || "";
+			}
+
+			play(): Promise<void> {
+				this.paused = false;
+				this.onplay?.(new Event("play"));
+				this.endTimer = window.setTimeout(() => {
+					this.onended?.(new Event("ended"));
+				}, 1000);
+				return Promise.resolve();
+			}
+
+			pause(): void {
+				this.paused = true;
+				if (this.endTimer !== null) {
+					window.clearTimeout(this.endTimer);
+					this.endTimer = null;
+				}
+				this.onpause?.(new Event("pause"));
+			}
+		}
+
+		Object.defineProperty(window, "Audio", {
+			configurable: true,
+			value: FakeAudio,
+		});
+	});
+}
+
 async function readBrowserTtsSpeaks(
 	page: Page,
 ): Promise<Array<{ text: string; rate: number }>> {
@@ -253,11 +301,13 @@ async function mockPollyVoicesAvailability(page: Page): Promise<void> {
 }
 
 async function mockDesmosCalculatorScript(page: Page): Promise<void> {
-	await page.route("https://www.desmos.com/api/**/calculator.js**", async (route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/javascript",
-			body: `
+	await page.route(
+		"https://www.desmos.com/api/**/calculator.js**",
+		async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/javascript",
+				body: `
 				(() => {
 					const createCalculator = (container) => {
 						const surface = document.createElement("div");
@@ -286,8 +336,9 @@ async function mockDesmosCalculatorScript(page: Page): Promise<void> {
 					};
 				})();
 			`,
-		});
-	});
+			});
+		},
+	);
 }
 
 async function selectPassageText(page: Page): Promise<void> {
@@ -313,7 +364,9 @@ async function selectPassageText(page: Page): Promise<void> {
 			range.setEnd(textNode, end);
 			selection.removeAllRanges();
 			selection.addRange(range);
-			document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+			// No synthetic `mouseup`. It was needed while the annotation toolbar was
+			// shown from pointer events only, which was the defect: a selection the
+			// learner made with anything other than a mouse never reached it.
 		});
 }
 
@@ -345,7 +398,9 @@ test.describe("section player demo tts-ssml", () => {
 			};
 		});
 
-		const firstInlineTts = firstItemShell.locator("pie-tool-tts-inline:visible");
+		const firstInlineTts = firstItemShell.locator(
+			"pie-tool-tts-inline:visible",
+		);
 		await expect(firstInlineTts).toBeVisible();
 		await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
 
@@ -659,9 +714,14 @@ test.describe("section player demo tts-ssml", () => {
 			const toolbars = Array.from(
 				document.querySelectorAll("pie-item-toolbar"),
 			) as HTMLElement[];
-			const toolbar = toolbars.find((candidate) =>
-				Boolean(candidate.shadowRoot?.querySelector("pie-tool-tts-inline[data-active='true']")),
-			) || null;
+			const toolbar =
+				toolbars.find((candidate) =>
+					Boolean(
+						candidate.shadowRoot?.querySelector(
+							"pie-tool-tts-inline[data-active='true']",
+						),
+					),
+				) || null;
 			const header = toolbar?.closest(
 				".pie-section-player-content-card-header",
 			) as HTMLElement | null;
@@ -700,10 +760,8 @@ test.describe("section player demo tts-ssml", () => {
 				found: true,
 				panelPosition: window.getComputedStyle(ttsPanel).position,
 				panelWithinCardInlineBounds:
-					panelRect.left >= cardRect.left &&
-					panelRect.right <= cardRect.right,
-				panelLeftClearOfHeading:
-					panelRect.left >= headingRect.right,
+					panelRect.left >= cardRect.left && panelRect.right <= cardRect.right,
+				panelLeftClearOfHeading: panelRect.left >= headingRect.right,
 				triggerRightAligned: triggerRect.right <= cardRect.right,
 			};
 		});
@@ -913,11 +971,19 @@ test.describe("section player demo tts-ssml", () => {
 		// The speed radios stay a single always-visible radiogroup — no toggle
 		// button, no popover menu — stacked vertically in a card below the media
 		// row. All options remain reachable.
-		const speedGroup = panel.getByRole("radiogroup", { name: "Playback speed" });
+		const speedGroup = panel.getByRole("radiogroup", {
+			name: "Playback speed",
+		});
 		await expect(speedGroup).toBeVisible();
-		await expect(speedGroup.getByRole("radio", { name: "Slow speed" })).toBeVisible();
-		await expect(speedGroup.getByRole("radio", { name: "Normal speed" })).toBeVisible();
-		await expect(speedGroup.getByRole("radio", { name: "Fast speed" })).toBeVisible();
+		await expect(
+			speedGroup.getByRole("radio", { name: "Slow speed" }),
+		).toBeVisible();
+		await expect(
+			speedGroup.getByRole("radio", { name: "Normal speed" }),
+		).toBeVisible();
+		await expect(
+			speedGroup.getByRole("radio", { name: "Fast speed" }),
+		).toBeVisible();
 		// No current-speed toggle button / popover menu in the compact layout.
 		await expect(
 			firstInlineTts.getByRole("menu", { name: "Playback speed" }),
@@ -1513,6 +1579,7 @@ test.describe("section player demo tts-ssml", () => {
 		// Switch to scorer mode and confirm evaluate-mode rendering path.
 		await page.getByRole("link", { name: "Scorer" }).click();
 		await expect(page).toHaveURL(/mode=scorer/);
+		await openDemoMenuIfCollapsed(page);
 		await expect(itemShells).toHaveCount(2);
 
 		// In scorer mode, answers are review-only and include the expected canonical correct option.
@@ -1556,6 +1623,7 @@ test.describe("section player demo tts-ssml", () => {
 	test("applies Polly backend and routes playback through server synthesis", async ({
 		page,
 	}) => {
+		await installHoldingServerAudio(page);
 		await gotoDemo(page);
 		await openSessionPanel(page);
 
@@ -1753,6 +1821,7 @@ test.describe("section player demo tts-ssml", () => {
 						},
 					] as unknown as SpeechSynthesisVoice[],
 				speak: (utterance: SpeechSynthesisUtterance) => {
+					utterance.onstart?.(new Event("start") as SpeechSynthesisEvent);
 					window.setTimeout(() => {
 						const boundary = { name: "word", charIndex: 0 } as Event;
 						utterance.onboundary?.(boundary as SpeechSynthesisEvent);
@@ -1832,7 +1901,7 @@ test.describe("section player demo tts-ssml", () => {
 		await page.goto("/tts-toggle-speed?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+		await expectDemoChromeReady(page);
 		await forceBrowserTtsRuntime(page);
 
 		const passageInlineTts = page

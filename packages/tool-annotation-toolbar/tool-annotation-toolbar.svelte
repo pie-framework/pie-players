@@ -5,16 +5,19 @@
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
 			highlightCoordinator: { type: 'Object' },
-			ttsService: { type: 'Object' }
+			ttsService: { type: 'Object' },
+			selectionActions: { type: 'Object' }
 		}
 	}}
 />
 
 <script lang="ts">
+	import { tick, untrack } from 'svelte';
 	import type {
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitShellContext,
 		HighlightCoordinator,
+		ToolSelectionAction,
 		TtsServiceApi
 	} from '@pie-players/pie-assessment-toolkit';
 	import {
@@ -22,17 +25,37 @@
 		connectAssessmentToolkitShellContext,
 		HighlightColor
 	} from '@pie-players/pie-assessment-toolkit';
+	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
+	import {
+		clampIndex,
+		isPointerGestureActive,
+		isRectOffScreen,
+		nextControlIndex,
+		requestsSelectionToolbar,
+		toolbarAnchor
+	} from './selection-keyboard.js';
+	import { usableSelectionActions } from './selection-actions.js';
 
 	interface Props {
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
 		ttsService?: TtsServiceApi | null;
+		/**
+		 * Actions on the current selection, supplied by whoever mounts this gateway.
+		 *
+		 * This strip does not know what they do — it renders the buttons and hands each
+		 * one the selection. Pairing an action to a capability is the composer's job,
+		 * which is what keeps a highlighter from naming a dictionary and lets a host
+		 * contribute an action for a capability PIE does not ship.
+		 */
+		selectionActions?: ToolSelectionAction[] | null;
 	}
 
 	let {
 		enabled = true,
 		highlightCoordinator = null,
-		ttsService = null
+		ttsService = null,
+		selectionActions = null
 	}: Props = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -70,7 +93,7 @@
 		isVisible: false,
 		selectedText: '',
 		selectedRange: null as Range | null,
-		toolbarPosition: { x: 0, y: 0 }
+		toolbarPosition: { x: 0, y: 0, below: false }
 	});
 
 	// TTS state
@@ -85,6 +108,72 @@
 
 	// Track if current selection overlaps with an existing annotation
 	let overlappingAnnotationId = $state<string | null>(null);
+
+	/**
+	 * When the in-progress pointer gesture started, or `null` between gestures.
+	 *
+	 * A timestamp rather than a boolean so the suppression cannot wedge: a release
+	 * outside the window fires no `pointerup`, and a latch stuck on would mean the
+	 * toolbar never appears again. See `isPointerGestureActive`.
+	 */
+	let pointerDownAt: number | null = null;
+	let selectionFrame: number | null = null;
+	let announcementTimer: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * Text the live region last spoke for, so extending a selection does not
+	 * re-announce on every keystroke. Shift+Arrow fires `selectionchange` per
+	 * character; announcing each one makes the strip unusable with a screen reader.
+	 */
+	let announcedForText: string | null = null;
+
+	/**
+	 * Selection text a completed action has finished with.
+	 *
+	 * An action that hands the selection elsewhere is done with the strip, but the
+	 * selection itself survives on purpose — the learner's place in the text is not
+	 * ours to clear. Without this latch the next `selectionchange` re-shows the strip
+	 * over the panel the action just opened, and opening a panel moves focus, which
+	 * fires one: measured, the strip came straight back over the definition.
+	 *
+	 * Only completed actions latch. Escape, focus leaving and an outside click do not,
+	 * because a learner who dismissed the strip may want it again — Shift+F10 is how
+	 * they ask, and that path clears the latch.
+	 */
+	let actedOnText: string | null = null;
+
+	/** Roving-tabindex cursor. The control set is conditional, so this is clamped on use. */
+	let activeControlIndex = $state(0);
+
+	/** Where focus was before it entered the strip, for Escape and dismissal. */
+	let focusReturnTarget: HTMLElement | null = null;
+
+	/**
+	 * One timer for the live region.
+	 *
+	 * Each announcement used to schedule its own clear, so two in quick succession
+	 * left the first one's timer to blank the second mid-sentence.
+	 */
+	function announce(message: string, clearAfterMs: number): void {
+		if (announcementTimer !== null) clearTimeout(announcementTimer);
+		positionAnnouncement = message;
+		announcementTimer = setTimeout(() => {
+			positionAnnouncement = '';
+			announcementTimer = null;
+		}, clearAfterMs);
+	}
+
+	/**
+	 * Actions to render for the selection currently showing.
+	 *
+	 * Availability is re-asked per selection rather than tracked: it follows policy,
+	 * which does not move while a strip is open, and `isAvailable` is a plain function
+	 * a composer supplies — nothing here can observe it changing.
+	 */
+	let availableActions = $derived.by((): ToolSelectionAction[] => {
+		void toolbarState.isVisible;
+		return usableSelectionActions(selectionActions);
+	});
 
 	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
@@ -204,10 +293,37 @@
 	}
 
 	/**
-	 * Handle selection change - show toolbar if valid selection
+	 * Coalesce a burst of `selectionchange` events into one evaluation.
+	 *
+	 * Extending a selection with Shift+Arrow fires one event per character, and a
+	 * caret moving through a paragraph fires one per keypress; evaluating each would
+	 * run `findOverlappingAnnotation` over every annotation that often.
 	 */
-	function handleSelectionChange() {
+	function scheduleSelectionEvaluation() {
+		if (!isBrowser || selectionFrame !== null) return;
+		const raf =
+			typeof requestAnimationFrame === 'function'
+				? requestAnimationFrame
+				: (callback: () => void) => setTimeout(callback, 16) as unknown as number;
+		selectionFrame = raf(() => {
+			selectionFrame = null;
+			evaluateSelection();
+		}) as unknown as number;
+	}
+
+	/**
+	 * Show the toolbar for the current selection, or hide it when there is none.
+	 *
+	 * Driven by `selectionchange` rather than `mouseup`/`touchend`. The pointer
+	 * events could not see a selection made with Shift+Arrow, so highlight,
+	 * underline and read-aloud were unreachable without a mouse — WCAG 2.2 SC 2.1.1.
+	 * Selection is a keyboard operation in every browser, so the trigger has to be
+	 * the selection itself.
+	 */
+	function evaluateSelection(options: { force?: boolean } = {}) {
 		if (!enabled || !isBrowser) return;
+		// Mid-gesture: `pointerup` will call back once the selection has settled.
+		if (isPointerGestureActive(pointerDownAt, Date.now())) return;
 
 		const sel = window.getSelection();
 		if (!sel || sel.rangeCount === 0) return hideToolbar();
@@ -220,29 +336,105 @@
 			return hideToolbar();
 		}
 
-		// Calculate position
-		const rect = range.getBoundingClientRect();
-		const x = rect.left + rect.width / 2;
-		const y = rect.top - 8;
+		// A new selection is a new question, so the latch only spans the one it was set
+		// for. `force` is the learner asking with Shift+F10, which overrides it outright.
+		if (actedOnText !== null && (options.force || actedOnText !== text)) {
+			actedOnText = null;
+		}
+		if (actedOnText === text) return;
 
 		// Check if selection overlaps with an existing annotation
 		overlappingAnnotationId = findOverlappingAnnotation(range);
 
+		const alreadyVisible = toolbarState.isVisible;
 		toolbarState.isVisible = true;
 		toolbarState.selectedText = text;
 		toolbarState.selectedRange = range.cloneRange();
-		toolbarState.toolbarPosition = { x, y };
+		repositionToSelection(range);
 
-		// Announce to screen readers
-		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		positionAnnouncement = `Annotation toolbar opened for "${textPreview}"`;
-		setTimeout(() => { positionAnnouncement = ''; }, 2000);
+		// Announce once per selection, not once per keystroke.
+		if (announcedForText !== text) {
+			announcedForText = text;
+			const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
+			announce(
+				`Annotation toolbar available for "${textPreview}". Press Shift+F10 for annotation tools.`,
+				4000
+			);
+		}
 
-		// Set justShown flag to prevent immediate hiding
-		justShown = true;
-		setTimeout(() => {
-			justShown = false;
-		}, 100);
+		if (!alreadyVisible) {
+			// Set justShown flag to prevent immediate hiding
+			justShown = true;
+			setTimeout(() => {
+				justShown = false;
+			}, 100);
+		}
+	}
+
+	/**
+	 * Track the selection's viewport rect.
+	 *
+	 * Scrolling used to hide the toolbar outright, which a keyboard user hits
+	 * constantly: extending a selection past the fold scrolls the page, so the strip
+	 * disappeared on the keystroke that created the selection it was showing. It now
+	 * follows the selection and only withdraws once that selection is off screen.
+	 */
+	function repositionToSelection(range: Range | null = toolbarState.selectedRange) {
+		if (!range) return;
+		const rect = range.getBoundingClientRect();
+		const viewport = { width: window.innerWidth || 0, height: window.innerHeight || 0 };
+		if (isRectOffScreen(rect, viewport)) {
+			// Keep the selection; only the affordance goes away.
+			toolbarState.isVisible = false;
+			return;
+		}
+		toolbarState.isVisible = true;
+		// The strip's own size is what keeps it inside the viewport, and it is only
+		// knowable once rendered. Zeroes on the first pass place it centred above, and
+		// the effect below re-runs this with a measurement.
+		toolbarState.toolbarPosition = toolbarAnchor(
+			rect,
+			viewport,
+			measureToolbar()
+		);
+	}
+
+	/**
+	 * The rendered strip's size, or zeroes before it exists.
+	 *
+	 * `offsetWidth`/`offsetHeight` rather than `getBoundingClientRect`: the strip is
+	 * unscaled, these are cheaper, and a fractional rect would feed sub-pixel values
+	 * into a clamp whose whole job is keeping an edge on screen.
+	 */
+	function measureToolbar(): { width: number; height: number } {
+		if (!toolbarElement) return { width: 0, height: 0 };
+		return {
+			width: toolbarElement.offsetWidth,
+			height: toolbarElement.offsetHeight
+		};
+	}
+
+	function handleScroll() {
+		if (!toolbarState.isVisible && !toolbarState.selectedRange) return;
+		repositionToSelection();
+	}
+
+	function handlePointerDown() {
+		pointerDownAt = Date.now();
+	}
+
+	function handlePointerUp() {
+		pointerDownAt = null;
+		scheduleSelectionEvaluation();
+	}
+
+	/**
+	 * Dismiss after a completed action, latching so the surviving selection does not
+	 * bring the strip straight back. See {@link actedOnText}.
+	 */
+	function finishAction() {
+		actedOnText = toolbarState.selectedText || null;
+		hideToolbar();
 	}
 
 	/**
@@ -253,9 +445,63 @@
 			ttsService.stop();
 			ttsSpeaking = false;
 		}
+		restoreFocus();
 		toolbarState.isVisible = false;
 		toolbarState.selectedText = '';
 		toolbarState.selectedRange = null;
+		announcedForText = null;
+		activeControlIndex = 0;
+	}
+
+	/**
+	 * Return focus to whatever had it before the strip took it.
+	 *
+	 * Only when the strip currently holds focus: dismissing on an outside click or a
+	 * new selection must not yank focus back from wherever the learner just went,
+	 * which would be a WCAG 2.2 SC 3.2.1 change of context they did not ask for.
+	 */
+	function restoreFocus() {
+		const target = focusReturnTarget;
+		focusReturnTarget = null;
+		if (!target || !stripHasFocus()) return;
+		if (typeof target.focus === 'function' && target.isConnected) {
+			target.focus({ preventScroll: true });
+		}
+	}
+
+	function stripHasFocus(): boolean {
+		if (!toolbarElement || !isBrowser) return false;
+		const root = toolbarElement.getRootNode() as Document | ShadowRoot;
+		const active = (root as DocumentOrShadowRoot).activeElement;
+		return !!active && toolbarElement.contains(active);
+	}
+
+	/** Enabled controls in DOM order. Read from the DOM because the set is conditional. */
+	function toolbarControls(): HTMLElement[] {
+		if (!toolbarElement) return [];
+		return Array.from(
+			toolbarElement.querySelectorAll<HTMLElement>('button:not([disabled])')
+		);
+	}
+
+	/**
+	 * Move focus into the strip, per the ARIA toolbar pattern's single tab stop.
+	 *
+	 * Reached with Shift+F10 or the Menu key — the platform convention for "act on
+	 * the current selection" — because the strip is a floating layer mounted at
+	 * section scope. Tabbing to it would mean traversing the remaining content
+	 * first, and its DOM position bears no relation to where the selection is.
+	 */
+	function focusStrip() {
+		const controls = toolbarControls();
+		if (!controls.length) return;
+		if (!stripHasFocus() && isBrowser) {
+			const root = toolbarElement?.getRootNode() as DocumentOrShadowRoot | undefined;
+			const active = root?.activeElement;
+			focusReturnTarget = active instanceof HTMLElement ? active : null;
+		}
+		activeControlIndex = clampIndex(activeControlIndex, controls.length);
+		controls[activeControlIndex]?.focus();
 	}
 
 	/**
@@ -271,10 +517,9 @@
 		// Announce to screen readers
 		const colorName = color === HighlightColor.UNDERLINE ? 'underlined' : `highlighted in ${color}`;
 		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		positionAnnouncement = `"${textPreview}" ${colorName}`;
-		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+		announce(`"${textPreview}" ${colorName}`, 3000);
 
-		hideToolbar();
+		finishAction();
 	}
 
 	/**
@@ -303,10 +548,9 @@
 
 		// Announce to screen readers
 		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		positionAnnouncement = `Removed annotation from "${textPreview}"`;
-		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+		announce(`Removed annotation from "${textPreview}"`, 3000);
 
-		hideToolbar();
+		finishAction();
 	}
 
 	/**
@@ -319,10 +563,48 @@
 		sessionStorage.removeItem(getStorageKey());
 
 		// Announce to screen readers
-		positionAnnouncement = `${count} annotation${count === 1 ? '' : 's'} cleared`;
-		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
 
-		hideToolbar();
+		finishAction();
+	}
+
+	/**
+	 * Hand the selection to a host-supplied action.
+	 *
+	 * The action runs before the strip goes away, so it still has a live range. The
+	 * strip then dismisses like any other completed action — leaving it up over the
+	 * panel the action just opened would obscure the answer and hold a tab stop the
+	 * learner has finished with.
+	 *
+	 * `focusReturnTarget` is deliberately left in place: an action that opens a
+	 * floating panel has its own focus management, and the restore lands first, so a
+	 * panel that never opens still leaves focus back in the content rather than on
+	 * `<body>`.
+	 */
+	/**
+	 * Sanitized icon markup, or `''` when there is none to render.
+	 *
+	 * Sanitized even though a composer authored it: this is the one place the strip
+	 * renders markup it did not write, and the sanitizer is also what turns an icon it
+	 * cannot render into an empty string — which is the signal to fall back to the
+	 * label, so a button is never blank to a sighted learner.
+	 */
+	function actionIconMarkup(action: ToolSelectionAction): string {
+		return action.iconSvg ? sanitizeSvgIcon(action.iconSvg) : '';
+	}
+
+	function handleSelectionAction(action: ToolSelectionAction) {
+		const text = toolbarState.selectedText;
+		const range = toolbarState.selectedRange;
+		try {
+			action.run({ text, range });
+		} catch (error) {
+			console.error(
+				`[AnnotationToolbar] Selection action "${action.id}" threw:`,
+				error
+			);
+		}
+		finishAction();
 	}
 
 	/**
@@ -357,7 +639,63 @@
 		if (e.key === 'Escape' && toolbarState.isVisible) {
 			e.preventDefault();
 			hideToolbar();
+			return;
 		}
+		if (!requestsSelectionToolbar(e)) return;
+		// Evaluate first: the selection may exist without the strip having been shown
+		// yet, and a keyboard user pressing the shortcut is asking for it either way.
+		// `selectionchange` evaluation is coalesced into a frame, so the shortcut can
+		// easily arrive before it has run — assistive technology that sets a selection
+		// and immediately sends the shortcut hits this every time.
+		// `force`: the learner is asking outright, which overrides a latch a completed
+		// action left behind — otherwise acting on a selection would cost them the strip
+		// for that selection entirely.
+		if (!toolbarState.isVisible) evaluateSelection({ force: true });
+		if (!toolbarState.isVisible) return;
+		e.preventDefault();
+		// After the render that the show above just scheduled: focusing in the same
+		// tick finds no controls, because the strip has not been created yet.
+		void tick().then(() => focusStrip());
+	}
+
+	/**
+	 * ARIA toolbar navigation: arrows move between controls, Home/End jump, and the
+	 * strip keeps one tab stop.
+	 *
+	 * Before this, every button was its own tab stop inside a `role="toolbar"`, so a
+	 * screen-reader user was told "toolbar" and then found that the arrow keys the
+	 * role advertises did nothing.
+	 */
+	function handleToolbarKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			hideToolbar();
+			return;
+		}
+		const controls = toolbarControls();
+		const next = nextControlIndex({
+			key: e.key,
+			activeIndex: activeControlIndex,
+			count: controls.length,
+			direction:
+				isBrowser && toolbarElement && getComputedStyle(toolbarElement).direction === 'rtl'
+					? 'rtl'
+					: 'ltr'
+		});
+		if (next === null) return;
+
+		e.preventDefault();
+		activeControlIndex = next;
+		controls[next]?.focus();
+	}
+
+	/** Dismiss once focus leaves the strip entirely, but not while it moves within it. */
+	function handleToolbarFocusOut(e: FocusEvent) {
+		const next = e.relatedTarget;
+		if (next instanceof Node && toolbarElement?.contains(next)) return;
+		// Focus has already left, so there is nothing to restore.
+		focusReturnTarget = null;
+		hideToolbar();
 	}
 
 	/**
@@ -365,10 +703,20 @@
 	 */
 	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
+		if (!toolbarElement) return;
 
-		if (toolbarElement && !toolbarElement.contains(e.target as Node)) {
-			hideToolbar();
-		}
+		// `composedPath()` rather than `contains(e.target)`: the strip lives in this
+		// component's shadow root, so a document-level listener sees the retargeted
+		// host element and `contains` reports false for the strip's own buttons —
+		// dismissing it on the very click that was activating one.
+		const path = (typeof e.composedPath === 'function' ? e.composedPath() : []).filter(
+			(node): node is EventTarget => !!node
+		);
+		if (path.includes(toolbarElement)) return;
+		if (path.length === 0 && toolbarElement.contains(e.target as Node)) return;
+
+		focusReturnTarget = null;
+		hideToolbar();
 	}
 
 	// Effect for event listeners and initialization
@@ -383,27 +731,96 @@
 		}, 2000);
 
 		const pointerEventTarget: HTMLElement | Document = effectiveScopeElement || document;
-		pointerEventTarget.addEventListener('mouseup', handleSelectionChange);
 		pointerEventTarget.addEventListener('click', handleDocumentClick);
-		pointerEventTarget.addEventListener('touchend', handleSelectionChange);
 		pointerEventTarget.addEventListener('touchstart', handleDocumentClick);
+
+		// The selection itself is the trigger, so the toolbar reaches a selection made
+		// with the keyboard, a pointer, touch, or assistive technology alike. The
+		// pointer pair only gates the show until a drag settles.
+		document.addEventListener('selectionchange', scheduleSelectionEvaluation);
+		pointerEventTarget.addEventListener('pointerdown', handlePointerDown);
+		document.addEventListener('pointerup', handlePointerUp);
+		document.addEventListener('pointercancel', handlePointerUp);
 
 		// Keyboard and scroll events
 		document.addEventListener('keydown', handleKeyDown);
-		window.addEventListener('scroll', hideToolbar, true);
+		window.addEventListener('scroll', handleScroll, true);
+		window.addEventListener('resize', handleScroll);
 
 		return () => {
 			clearTimeout(loadTimer);
+			if (announcementTimer !== null) clearTimeout(announcementTimer);
+			if (selectionFrame !== null && typeof cancelAnimationFrame === 'function') {
+				cancelAnimationFrame(selectionFrame);
+				selectionFrame = null;
+			}
 
-			pointerEventTarget.removeEventListener('mouseup', handleSelectionChange);
 			pointerEventTarget.removeEventListener('click', handleDocumentClick);
-			pointerEventTarget.removeEventListener('touchend', handleSelectionChange);
 			pointerEventTarget.removeEventListener('touchstart', handleDocumentClick);
+
+			document.removeEventListener('selectionchange', scheduleSelectionEvaluation);
+			pointerEventTarget.removeEventListener('pointerdown', handlePointerDown);
+			document.removeEventListener('pointerup', handlePointerUp);
+			document.removeEventListener('pointercancel', handlePointerUp);
 
 			// Remove keyboard and scroll events
 			document.removeEventListener('keydown', handleKeyDown);
-			window.removeEventListener('scroll', hideToolbar, true);
+			window.removeEventListener('scroll', handleScroll, true);
+			window.removeEventListener('resize', handleScroll);
 		};
+	});
+
+	/**
+	 * Re-place the strip once its size is knowable, and again whenever that size
+	 * changes.
+	 *
+	 * Placement needs a measurement and a measurement needs a render, so the first
+	 * pass positions an unmeasured strip and this corrects it. The correction lands in
+	 * the same frame, so there is no visible jump — and skipping it would leave the
+	 * clamp inert exactly when it matters, since the first pass is the one that can put
+	 * a control off screen.
+	 *
+	 * Tracks what changes the strip's width: the conditional controls, and the
+	 * host-supplied actions. `toolbarPosition` is deliberately not read — writing what
+	 * this effect reads would re-trigger it forever.
+	 */
+	$effect(() => {
+		void toolbarState.isVisible;
+		void toolbarElement;
+		void availableActions;
+		void hasOverlappingAnnotation;
+		void hasAnnotations;
+		void ttsService;
+		untrack(() => {
+			if (!toolbarState.isVisible || !toolbarElement) return;
+			repositionToSelection();
+		});
+	});
+
+	/**
+	 * Apply the roving tabindex to whatever controls are currently rendered.
+	 *
+	 * Done here rather than as a `tabindex` binding per button because the control
+	 * set is conditional — read-aloud only with a TTS service, remove only over an
+	 * existing annotation — so a static index per button drifts out of step with the
+	 * rendered order as soon as one of them is absent.
+	 */
+	$effect(() => {
+		void toolbarState.isVisible;
+		void activeControlIndex;
+		void hasOverlappingAnnotation;
+		void hasAnnotations;
+		void ttsSpeaking;
+		void availableActions;
+		untrack(() => {
+			const controls = toolbarControls();
+			if (controls.length === 0) return;
+			const active = clampIndex(activeControlIndex, controls.length);
+			if (active !== activeControlIndex) activeControlIndex = active;
+			controls.forEach((control, index) => {
+				control.tabIndex = index === active ? 0 : -1;
+			});
+		});
 	});
 
 	$effect(() => {
@@ -433,10 +850,14 @@
 	<div
 		bind:this={toolbarElement}
 		class="pie-tool-annotation-toolbar notranslate"
-		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
+		data-pie-placement={toolbarState.toolbarPosition.below ? 'below' : 'above'}
+		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px;`}
 		role="toolbar"
 		aria-label="Text annotation toolbar"
 		translate="no"
+		tabindex="-1"
+		onkeydown={handleToolbarKeyDown}
+		onfocusout={handleToolbarFocusOut}
 	>
 		<!-- Highlight Color Swatches -->
 		{#each HIGHLIGHT_COLORS as color}
@@ -495,6 +916,32 @@
 					/>
 				</svg>
 			</button>
+		{/if}
+
+		<!-- Host-supplied actions on this selection. Ordinary buttons, so the roving
+		     tabindex and the arrow-key navigation above pick them up with no special
+		     case: the control set is read from the DOM. -->
+		{#if availableActions.length > 0}
+			<div class="divider divider-horizontal mx-0 w-px"></div>
+			{#each availableActions as action (action.id)}
+				{@const iconMarkup = actionIconMarkup(action)}
+				<button
+					class="pie-tool-annotation-toolbar__button"
+					class:pie-tool-annotation-toolbar__button--icon={!!iconMarkup}
+					data-pie-selection-action={action.id}
+					onclick={() => handleSelectionAction(action)}
+					aria-label={action.label}
+					title={action.tooltip || action.label}
+				>
+					{#if iconMarkup}
+						<span class="pie-tool-annotation-toolbar__action-icon" aria-hidden="true">
+							{@html iconMarkup}
+						</span>
+					{:else}
+						{action.label}
+					{/if}
+				</button>
+			{/each}
 		{/if}
 
 		<!-- Divider before Remove/Clear -->
@@ -676,5 +1123,21 @@
 	.pie-tool-annotation-toolbar__button svg {
 		width: 18px;
 		height: 18px;
+	}
+
+	/* Composer-supplied icons carry their own viewBox but rarely their own size, so
+	   the box is set here to keep an action button the same height as the built-in
+	   ones — a strip of mismatched buttons reads as broken. */
+	.pie-tool-annotation-toolbar__action-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+	}
+
+	.pie-tool-annotation-toolbar__action-icon :global(svg) {
+		width: 100%;
+		height: 100%;
 	}
 </style>

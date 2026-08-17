@@ -296,7 +296,14 @@
 		gap: 6px;
 		background: var(--pie-background, #ffffff);
 		border-radius: var(--pie-section-player-tab-track-radius, 9999px);
-		border: 1px solid var(--pie-border-gray, #D9DADA);
+		/*
+		 * `--pie-border-gray` clears the 3:1 non-text minimum in every scheme and
+		 * is stepped to it under the DaisyUI provider. The literal only applies to
+		 * a host that mounts the player with no theme at all, where #D9DADA left
+		 * the track at 1.2:1 against the frame -- the same grey the button border
+		 * defaults to holds there instead.
+		 */
+		border: 1px solid var(--pie-border-gray, #767676);
 		padding: var(--pie-section-player-tab-track-padding, 0.25rem);
 		width: fit-content;
 		align-self: center;
@@ -315,10 +322,21 @@
 		border: none;
 		border-radius: 24px;
 		background: var(--pie-section-player-tab-background, transparent);
-		color: var(--pie-section-player-tab-color, #111827);
+		/*
+		 * The unselected tab is transparent, so its ink has to hold against the
+		 * track's own `--pie-background`. Resolving the hook through `--pie-text`
+		 * is what keeps it on the certified ordinary-text pair; a literal here
+		 * stays near-black under every scheme and disappears on the dark ones.
+		 */
+		color: var(--pie-section-player-tab-color, var(--pie-text, #111827));
 		padding: var(--pie-section-player-tab-padding-block, 0.35rem) 12px;
 		font: inherit;
-		font-size: 12px;
+		/* Was a hard `12px`, the only pixel type size in the content path: it
+		   ignored the font accommodation and the reader's own browser font size
+		   alike, leaving 12px tab labels beside body text at 175%. `0.75rem` is
+		   the same 12px at a default root, so this only diverges for a host that
+		   moves the root size — which is the point of using rem. */
+		font-size: calc(0.75rem * var(--pie-font-scale, 1));
 		font-weight: 600;
 		cursor: pointer;
 		transition: background 0.15s ease, color 0.15s ease;
@@ -330,8 +348,30 @@
 	}
 
 	.pie-section-player-tab--active {
-		background: var(--pie-section-player-tab-active-background, #1D7375);
-		color: var(--pie-section-player-tab-active-color, #ffffff);
+		/*
+		 * The selected pill carries a fixed brand hue, so it behaves like any other
+		 * fixed encoding: pinned while no scheme is asking for a palette, folded
+		 * into that palette when one is. #1D7375 does not follow a scheme at all,
+		 * and as the selection indicator it measured 1.42:1 against the track under
+		 * Yellow on Navy, 2.26:1 under Light Gray on Dark Gray and 2.80:1 under
+		 * Black on Violet, where 1.4.11 asks for 3:1.
+		 *
+		 * At 100% collapse the fill becomes --pie-primary and the ink the page
+		 * colour, which is the one pairing that holds on every scheme: 5.44:1 or
+		 * better for the text, and the same ratio separating the pill from the
+		 * track it sits on, since the track paints --pie-background. Mixing rather
+		 * than substituting is what keeps the ink out of the light Base Theme's
+		 * transparent --pie-background, where it would render invisible: that end
+		 * of the mix is the pinned white, exact at 0%.
+		 */
+		background: var(
+			--pie-section-player-tab-active-background,
+			color-mix(in srgb, var(--pie-primary, #1D7375) var(--pie-fixed-hue-collapse, 0%), #1D7375)
+		);
+		color: var(
+			--pie-section-player-tab-active-color,
+			color-mix(in srgb, var(--pie-background, #ffffff) var(--pie-fixed-hue-collapse, 0%), #ffffff)
+		);
 	}
 
 	.pie-section-player-tab:focus-visible {
@@ -349,7 +389,7 @@
 		overscroll-behavior: contain;
 		scrollbar-width: thin;
 		scrollbar-color:
-			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
+			var(--pie-scrollbar-thumb, var(--pie-border, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar {
@@ -358,18 +398,18 @@
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar-track {
-		background: var(--pie-scrollbar-track, #d1d5db);
+		background: var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 		border-radius: 999px;
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar-thumb {
-		background: var(--pie-scrollbar-thumb, #6b7280);
+		background: var(--pie-scrollbar-thumb, var(--pie-border, #6b7280));
 		border-radius: 999px;
-		border: 2px solid var(--pie-scrollbar-track, #d1d5db);
+		border: 2px solid var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar-thumb:hover {
-		background: var(--pie-scrollbar-thumb-hover, #4b5563);
+		background: var(--pie-scrollbar-thumb-hover, var(--pie-border-dark, #4b5563));
 	}
 
 	.pie-section-player-tab-panel[hidden] {

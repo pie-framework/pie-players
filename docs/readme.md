@@ -22,7 +22,9 @@ history and completed implementation plans are intentionally excluded.
 - [`architecture/architecture.md`](./architecture/architecture.md) - System-level architecture across item player, section player, and toolkit
 - [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
 - [`architecture/composition-context.md`](./architecture/composition-context.md) - How container-owned facts (heading depth, arbitration, scope) reach the descendants that need them
+- [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
 - [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
+- [`architecture/internationalization.md`](./architecture/internationalization.md) - Chrome locale, content language, and in-item language alternates as three separate concerns
 - [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
 - [`architecture/types-and-utilities-contract.md`](./architecture/types-and-utilities-contract.md) - Shared contracts and utility expectations
 
@@ -31,6 +33,7 @@ history and completed implementation plans are intentionally excluded.
 - [`item-player/overview.md`](./item-player/overview.md) - Architecture and runtime behavior
 - [`item-player/loading-strategies.md`](./item-player/loading-strategies.md) - IIFE, ESM, and preloaded loading strategies
 - [`item-player/scoring-and-rubrics.md`](./item-player/scoring-and-rubrics.md) - Item scoring, multi-element aggregation, EBSR, and rubric/manual-scoring behavior
+- [`prds/formative-delivery-contract.md`](./prds/formative-delivery-contract.md) - PRD for check-answer delivery: Try state, feedback reveal as a per-item `env` projection, and section mastery over the client-side scoring path
 - [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Migration from `@pie-framework/pie-player-components`
 - [`preloaded-player/readme.md`](./preloaded-player/readme.md) - Preloaded bundle workflow
 
@@ -48,6 +51,11 @@ history and completed implementation plans are intentionally excluded.
 - [`integrations/lti.md`](./integrations/lti.md) - Launching players from an LTI tool host after protocol validation
 - [`integrations/consumer-api-dependencies.md`](./integrations/consumer-api-dependencies.md) - Which surfaces downstream hosts actually depend on, and which break silently
 - [`integrations/consumer-api-dependencies-maintenance.md`](./integrations/consumer-api-dependencies-maintenance.md) - Harness-neutral procedure for refreshing that pad
+
+## Theming
+
+- [`theming/how-theming-works.md`](./theming/how-theming-works.md) - How `<pie-theme>` resolves tokens and writes them, why a host stylesheet cannot override them, and how a host carries an accommodation into its own chrome
+- [`../packages/theme/README.md`](../packages/theme/README.md) - Element attributes, runtime API, registered custom schemes, and the token registry
 
 ## Accessibility And TTS
 

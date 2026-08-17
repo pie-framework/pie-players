@@ -1,10 +1,13 @@
 # Audio Accommodations: Transcript And Autoplay Control
 
-Status: Draft
+Status: Accepted for the `pie-players` contract. The autoplay half remains a
+proposal, and the cross-repo sequencing below is unfinished.
 
 Owner: PIE Players maintainers
 
-Implementation status: the content half is written — [Sequencing](#sequencing) step 1, plus the additive per-program autoplay path — and is behaviourally inert by design. It sits **uncommitted** on `pie-api-aws` `feat/PIE-881-asl-video-import` as of 2026-08-08, so "written" means the code exists and its tests pass, not that it has landed. Nothing in `pie-players` or `pie-elements-ng` has changed yet, so the accommodation is still delivered by the legacy class.
+Implementation status, 2026-08-15. **The `pie-players` half has landed**: PIE-902 (60af674d) resolves transcript visibility as a capability in `@pie-players/pie-default-tool-loaders`, rendered by the toolkit into a card surface; PIE-904 (61d6aa0c) gives print the same resolution. What shipped differs from this PRD in two ways, recorded in [Rendering](#rendering-a-region-not-an-element-concern): the region is a capability-owned tool surface rather than markup in `SectionItemCard.svelte`, and the card carries a `visibility` discriminant so one shape serves both authored presentation and the accommodation.
+
+Outside this repo, unverified from here: the content half — [Sequencing](#sequencing) step 1 plus the additive per-program autoplay path — was written and behaviourally inert by design, sitting **uncommitted** on `pie-api-aws` `feat/PIE-881-asl-video-import` as of 2026-08-08. Until it lands and the affected profiles grant `transcript`, the legacy class is still what delivers the accommodation, and step 3 must not run.
 
 Related architecture:
 
@@ -47,9 +50,9 @@ That is an accommodation, and PIE has the machinery for accommodations — the m
 
 ## Package And Export Ownership
 
-- Owning package: `@pie-players/pie-assessment-toolkit` for the support id and decision API; `@pie-players/pie-section-player` for resolving and rendering the transcript region.
-- Public export path: existing. `ToolkitCoordinator.decideFeaturePolicy(featureId)` and `AccessibilityCatalogResolver.getAlternative(...)` need no additions.
-- Consuming packages or apps: section-player, PNP debugger. `pie-elements-ng` loses code rather than gaining any.
+- Owning package: `@pie-players/pie-assessment-toolkit` for the support id, the decision API and the grant-AND-content rule; `@pie-players/pie-default-tool-loaders` for the capability itself; `@pie-players/pie-section-player` and `@pie-players/pie-print-player` for rendering it into their own surfaces.
+- Public export path: `resolveContentCapabilities` on the existing `tools/internal` entry, `AccessibilityCatalogResolver` on a narrow `services/` subpath so print can reach it without bundling the toolkit root, and `accessibility` on `<pie-print>`'s config. `ToolkitCoordinator.decideFeaturePolicy(featureId)` and `AccessibilityCatalogResolver.getAlternative(...)` need no additions.
+- Consuming packages or apps: section-player, print-player, PNP debugger. `pie-elements-ng` loses code rather than gaining any.
 - Runtime environment: browser.
 - Outside this repo: the content side lands in `pie-api-aws` — the Learnosity → PIE mappers in `packages/transform/src/ly-pie/` and a backfill command in `dev/cli`. That work is independently shippable and should go first; see [Where The Transform Actually Lives](#where-the-transform-actually-lives).
 
@@ -151,9 +154,13 @@ One deployment detail: `dev/cli/oclif.manifest.json` is tracked and is what the 
 
 `pie-elements-ng` has no dependency on `@pie-players/pie-assessment-toolkit` and consumes no toolkit context anywhere — verified across the whole repo. So an element *cannot* read a policy decision today, and giving it one would create an element→toolkit coupling the architecture has deliberately avoided: elements render content, the player owns accommodations. That is the same boundary the signing region was built to respect.
 
-So the transcript renders as a **card-level region in `SectionItemCard.svelte`**, beside the existing `header`, `content`, and `media` regions — reusing the resolve-then-gate path the media region established, with two differences: the content is a string rather than media, and the region stacks **above** the item content rather than beside it, so reading order is header → transcript → audio prompt.
+So the transcript renders into a **card surface the capability fills**, not markup the card owns. `CONTENT_LEAD_SURFACE` (`"content-lead"`) is full width, above the card body, in document flow — separate from `CONTENT_MEDIA_SURFACE` because the geometry is the whole difference: docked media is watched beside the content and sized by an aspect ratio, while a text alternate is read *before* the control it belongs to. Item cards and passage cards both open it, so reading order is header → transcript → audio prompt on either.
 
-That placement satisfies the source page's "text appears before the audio player" in reading order, at item granularity rather than immediately-adjacent granularity. Whether item granularity is acceptable is an open question for the requirement's owner — it is the one thing lost by keeping accommodations out of elements, and it is worth confirming before building.
+That placement satisfies the source page's "text appears before the audio player" in reading order, at item granularity rather than immediately-adjacent granularity, which remains an open question for the requirement's owner.
+
+As shipped (PIE-902), the card's `visibility` field is the discriminant: `"always"` is authored presentation — the item family was designed to be delivered with its transcript on screen, so no profile grants it and none revokes it — and anything else, `"onGrant"` included, is the accommodation, decided against the `transcript` support id with silence meaning no. That is why the registration ships in the packaged set while signing does not: an item authored to show its transcript must show it in every player, and a deployment that forgot an import would silently deliver a designed-for reading support as nothing. The accommodation half is still policy-gated exactly as signing is, and `transcript` stays out of the universal preset.
+
+The rendered region carries a labelled accessible name and deliberately no `aria-describedby` back to the element's audio control: a description is announced as a flat string on focus, which is worse to listen to than reading order for multi-sentence text.
 
 ### Where The Audio Itself Should Live
 
@@ -165,7 +172,7 @@ The cost is that early-literacy layout moves into the player: `mc-populated-blan
 
 This PRD touches:
 
-- **PIE element runtime/controller contracts.** `pie-elements-ng` `mc-populated-blank` loses `audioTranscript` / `showVisibleTranscript` from its model, and loses the class sniff, the ancestor `MutationObserver`, and the `sr-only` transcript node. Its `Print.svelte` transcript rendering needs a replacement path, since print has no toolkit region — see Open Questions.
+- **PIE element runtime/controller contracts.** `pie-elements-ng` `mc-populated-blank` loses `audioTranscript` / `showVisibleTranscript` from its model, and loses the class sniff, the ancestor `MutationObserver`, and the `sr-only` transcript node. `Print.svelte`'s transcript rendering goes with them: the print player resolves the card itself, so an element copy would print a second transcript rather than the only one.
 - **The Learnosity → PIE transform in `pie-api-aws`.** A catalog card replaces two model fields once the bridge flips, and `getTranscriptVisibilityDefault` is deleted with them. Autoplay adds a layer rather than changing one: the legacy tag rule stays, so nothing moves until a program supplies a `byCollection` map. Fixture parity with this repo's card shape is the only thing keeping the two sides in agreement, since neither repo imports the other's types.
 - **Persisted/authored wire data.** Authored items change shape, by transform, in the backend pipeline. Items must not be half-transformed: the element stops reading the old fields in the same release the transform stops emitting them, or the transcript silently disappears for the population that needs it. The `emitLegacyTranscriptFields` flag is what makes that a scheduled flip rather than a race.
 - **Contract attributes.** Adds one `data-region="transcript"` (name to settle) on the item card. Removes PIE's dependence on `.rli-with-audio-transcript`; hosts may keep writing it, it simply stops meaning anything.
@@ -236,12 +243,12 @@ Playwright-backed tests must run outside the sandbox.
 Three steps, in this order. The order is the whole risk control: every step leaves delivery working, and no step depends on a release in another repo shipping first.
 
 1. **`pie-api-aws`, additive — written 2026-08-08, uncommitted.** The import emits the `transcript` catalog card *and*, with `emitLegacyTranscriptFields` on, keeps `audioTranscript` / `showVisibleTranscript`. The backfill command does the same for items already in PIE form. Delivery is byte-for-byte unchanged in behaviour — the element still reads the fields it always read, and the new card is inert data nothing looks at yet. Shippable on its own.
-2. **`pie-players`.** Support id in the exclusion list, owner-scope resolution generalized by catalog type, the region in `SectionItemCard.svelte`. Students granted `transcript` now get it from the card; everyone else is unaffected. Content transformed in step 1 already carries what this needs.
+2. **`pie-players` — landed 2026-08-12 (PIE-902), print 2026-08-14 (PIE-904).** The capability declares `requiresAuthoredContent`, resolves by owner scope and catalog type, and renders into the `content-lead` surface on item and passage cards. Students granted `transcript` now get it from the card; everyone else is unaffected. Content transformed in step 1 already carries what this needs, so this step was shippable before it.
 3. **`pie-api-aws` + `pie-elements-ng`, destructive.** Flip `emitLegacyTranscriptFields` off, re-run the backfill, and remove the field read, the class sniff, the ancestor `MutationObserver`, and the `sr-only` node from `mc-populated-blank`. Only now is the class dead.
 
 The one hard precondition, and it sits between steps 2 and 3: **the affected population's profiles must grant `transcript` before step 3 removes the old path.** Until then the class is what is actually delivering the accommodation. Getting that backwards is the silent-failure mode this PRD's release risk names, and it is a data question, not a code one.
 
-Print is not in any of the three steps, because there is no decided answer for it yet — see Open Questions. If step 3 lands before print has one, print loses the transcript.
+Print belongs to step 2: the print player resolves the card against the profile the same way, so the transcript survives step 3's removal of the model field. What step 3 must not leave behind is an element print build that renders its own copy, or the transcript prints twice.
 
 ## Answering The Autoplay Page's Open Item
 
@@ -283,8 +290,8 @@ So the question to settle is unchanged: **is runtime-adjustable autoplay a requi
 ## Open Questions
 
 - **Is item-granular placement acceptable for the transcript?** Keeping accommodations out of elements means the transcript renders above the item content, not immediately above the audio control inside the element's layout. Reading order is preserved; adjacency is not. Needs the requirement owner's confirmation, since the alternative is element→toolkit coupling.
-- **Should an ungranted transcript be in the accessibility tree?** Today it is: `sr-only` plus `aria-describedby`, so screen-reader users get the text whether or not the accommodation was granted. That may be intentional, but it makes the gate visual rather than informational, and for listening-comprehension items it is the construct risk the source page is written to avoid. Content and psychometrics call, not engineering.
-- **Print.** `Print.svelte` renders `model.audioTranscript` directly, and print has no toolkit region or policy context. Either the print path keeps a model field the delivery path no longer has, or print gains a way to receive the resolved card. Unresolved, and easy to miss because print is a separate build.
-- **Passages.** The source page also wants transcripts on passages, between title and body. `SectionPassageCard.svelte` would need the same region — which is the third time the item/passage card duplication has been a cost, and an argument for finally factoring the shared shape.
+- **Should an ungranted transcript be in the accessibility tree?** The shipped path answers this for itself: an ungranted transcript is not rendered at all, so the gate is informational, not visual. The question survives for the element's own copy — `mc-populated-blank` still keeps its `sr-only` node wired into `aria-describedby` until step 3 removes it — so until then the gate is still visual wherever the legacy path is what delivers. Content and psychometrics own the decision about whether that is a defect to hurry.
+- **Resolved: print receives the card, not the model field.** `@pie-players/pie-print-player` resolves accessibility catalogs itself, against a profile passed as `config.accessibility` — the same policy engine, catalog resolver and grant-AND-content rule delivery uses, asked once instead of continuously, since a print job is one learner with one profile and nothing to toggle. An alternate in play prints inline and unconditionally; there is nothing to reveal on paper. So `Print.svelte`'s `model.audioTranscript` read is removable with the delivery one, rather than being the reason the field survives. Element-side print builds that render their own copy would double it, which is the sequencing constraint step 3 inherits.
+- **Resolved: passages get it from the same surface.** `SectionPassageCard.svelte` opens `content-lead` exactly as the item card does, so the capability reaches both without knowing which card it is in. The surface is named for the relationship — an alternate is authored against a content node, and a passage owns content nodes as an item does — which is what removed the duplication this question was raised against.
 - **Is runtime-adjustable autoplay required?** See above. If not, the autoplay half is a transform, not a feature.
 - **Resolved: the card's `language` needs a format conversion, not a new source.** The transform already knows the item's language — `getLocale` and `getLanguageFromTags` yield the `locale` field, though only `map-ly-custom` actually sets it, which is sufficient today because that is the only mapper carrying transcripts — but in POSIX form, `en_US` and `es_ES`. `AccessibilityCatalogResolver` matches `card.language` with strict equality against a BCP-47 request and a default of `en-US`, so a card emitted as `es_ES` matches no request; it would surface only through the no-language-constraint fallback rung, which is resolution by accident. The transform must emit `es-ES`. Cheap, and exactly the kind of thing that works in every test written against one language.

@@ -103,6 +103,61 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
   loading.
 - `section-items-complete-changed` — aggregate completion flip.
 - `section-navigation-change` — the controller's section identity changed.
+- `formative-try-recorded` — a learner checked an answer.
+- `formative-reveal-changed` — the reveal state changed without a Try: a learner
+  dismissed feedback, or a host forced or withdrew a reveal (`source` says which).
+- `section-mastery-changed` — the mastery rollup changed. Emitted on change
+  only, like `section-items-complete-changed`.
+
+### Formative delivery
+
+Set `formative` on the section and the player renders a check-answer control per
+item, records Tries, and reveals feedback:
+
+```ts
+const section: AssessmentSection = {
+  identifier: "practice-set",
+  formative: { enabled: true, maxTries: 3, feedback: "correctness" },
+  assessmentItemRefs: [
+    { identifier: "q1", item },
+    // Overrides the section default field by field.
+    { identifier: "q2", item, formative: { maxTries: 1, feedback: "solution" } },
+    { identifier: "q3", item, formative: { enabled: false } },
+  ],
+};
+```
+
+Absent, or `enabled: false`, and delivery is unchanged: no control, no state, no
+`env` override, and `getSession()` does not carry the key.
+
+PIE renders no feedback of its own. A revealed item gets `mode: "evaluate"`
+projected over the section env — with `role: "instructor"` under
+`feedback: "solution"` — and the element draws the rest. Only that item's env
+changes; its neighbours stay editable. A retry withdraws the projection.
+
+Read the resolved state from `getFormativeProjection()`, or off
+`compositionModel.formative` in a custom layout. Drive it from a host through the
+same handle:
+
+```ts
+const controller = await host.waitForSectionController?.(5000);
+// The learner's actions, budget-respecting.
+controller?.recordFormativeTry?.({ itemId, outcomes }); // outcomes from provideScore()
+controller?.retryFormativeItem?.({ itemId });
+// Host authority: a teacher-driven "show the answer". Spends no Try, ignores the
+// Try budget, works on an item with no Try yet.
+controller?.revealFormativeItem?.({ itemId, feedback: "solution" });
+controller?.hideFormativeItem?.({ itemId });
+```
+
+`feedback` is stated rather than taken from the policy, because a reveal under
+`feedback: "none"` would project nothing. A learner retry clears it, so a forced
+solution does not upgrade every later reveal on that item.
+
+Try state persists inside `SectionControllerSessionState.formative` and hydrates
+with the rest of the snapshot. See
+[`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md)
+for the full contract, its QTI 3 mapping, and the mastery denominator rule.
 
 ## Usage
 

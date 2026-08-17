@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-shared",
-	"version": "0.3.65",
+	"version": "0.3.67",
 	"type": "module",
 	"description": "Shared UI and helpers for PIE section-player debug tools",
 	"repository": {
@@ -39,7 +39,8 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
-		"lint": "biome check PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte SessionDbPanel.svelte DebugPanelToggles.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json"
+		"test": "bun test tests",
+		"lint": "biome check PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte SessionDbPanel.svelte DebugPanelToggles.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json tests"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.7",

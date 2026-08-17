@@ -1,5 +1,178 @@
 # @pie-players/pie-players-shared
 
+## 0.3.67
+
+### Patch Changes
+
+- b264ab2: Detect a host's content stylesheet wherever it sits in the cascade, so a host
+  that confines its copy is no longer told it shipped nothing.
+
+  `components.css` carries bare `h1`-`h6`, `table` and `th` normalisation plus
+  `.text-center`'s `!important`, and the player installs it into the host document
+  unscoped. A host with its own chrome therefore has to confine its copy —
+  `@scope (.item-content) { … }` is the shape that reaches — and both detection
+  paths were blind to exactly that. `declaresContentStylesSentinel` read
+  `.style` off top-level rules only, and a grouping rule holds no declarations of
+  its own, so a confined copy presented one rule with an empty `.style` and read
+  as absent. Sentinel detection now recurses into `CSSGroupingRule.cssRules`,
+  which covers `@scope`, `@media`, `@supports` and `@layer` alike.
+
+  Both consequences were real. An opted-out host with a working scoped copy was
+  warned `No PIE content stylesheet found` on every page load, the one message
+  that is meant to fire only when authored content is genuinely unstyled. And the
+  `loaded twice` warning — the diagnostic that catches a host copy pinned to an
+  older `@pie-players/pie-theme` silently overriding newer player rules — could
+  never fire against a scoped copy, so the duplicate it exists to surface stayed
+  silent.
+
+  `contentStylesPresent` gains the sheet scan as a fallback rather than a
+  replacement. The computed sentinel on `<html>` stays authoritative for a
+  document-wide stylesheet; it cannot see a confined one, because the `:root` rule
+  that declares the sentinel can never match inside a scoping root that `<html>`
+  is not a descendant of. CSS-wide values (`unset`, `inherit`, …) are still
+  rejected at every depth, so Svelte's dev-mode custom-element reset does not read
+  as a host copy from inside a grouping rule either.
+
+  No API change, and a host doing nothing unusual is unaffected: a document-wide
+  copy is still found by the computed property on the first probe.
+
+## 0.3.66
+
+### Patch Changes
+
+- 556c422: Make Browser API playback reliable by coalescing and serializing rate updates,
+  publishing playback state and sentence highlighting from the provider's real
+  start event, and rejecting native speech that ends or stalls before starting.
+  Keep Chrome's native default voice unassigned while assigning explicitly chosen
+  non-default voices. Browser voice identifiers accept an exact voice URI or
+  documented name, while newly applied selections persist the unique URI. Server
+  fallbacks now carry only portable rate, pitch, and highlighting settings into
+  the Browser provider instead of leaking a server-specific voice. Ignore CSS-wide
+  custom-element reset declarations when checking for a duplicate PIE content
+  stylesheet.
+- 5e6fcde: Make accessibility catalog ownership one resolver contract.
+
+  Mounted items and passages now register all entity-root, extracted, and model
+  catalogs through one owner transaction. Content surfaces observe a bound owner
+  view and give capabilities an immutable, deterministic catalog snapshot instead
+  of exposing the raw entity, resolver, and separately assembled owner context.
+  Signing and transcript capabilities now own only their card interpretation.
+
+  Capability authors should read `ToolContentDependencyContext.catalogs` and no
+  longer use the removed catalog-collection exports. Direct resolver clients,
+  including inline TTS, retain `getAlternative(...)` and
+  `catalogOwnerContextFor(...)`. Existing catalog IDs, card and payload shapes,
+  `data-catalog-idref`, scoped lookup precedence, TTS fallback behavior, and
+  section-player custom-element contracts are unchanged. Invalid optional catalog
+  data remains recoverable: it is warned about and omitted without blocking the
+  primary assessment content.
+
+- 2bcd9fa: Paint the shared content stylesheet from the active theme instead of white-page
+  literals.
+
+  `components.css` is installed in the host document by every player, and its
+  authored-content classes carried the colours the content was written against: a
+  `lightgray` fill under `kds-*` table headers, `border: 1px solid black` grids and
+  fill-in boxes, a white `.pie-loading` scrim, `#dee2e6` rules on the
+  bootstrap-style `.table` family, and `color: red` emphasis. None of it could be
+  reached by swapping the theme, so a dark theme or colour scheme rendered
+  near-white header text on light grey (~1.2:1) and invisible table grids.
+
+  Ink resolves through `--pie-text`, page-coloured fills — the scrim and the
+  deliberately edgeless `.kds-verdana2t` border — through `--pie-white`, table
+  header fills through `--pie-background-dark`, and the loading ring through
+  `--pie-primary` at the 90% share the Figma indigo already was. Each keeps its
+  original literal as the no-theme last resort.
+
+  The subtle grid rules take an inline `color-mix` of `--pie-text` at 15% rather
+  than `--pie-border-light`: the DaisyUI mapping fills that token from base-200, a
+  surface, so a border taken from it disappears into the page. The mix stays inline
+  instead of being hoisted into a shared custom property, because a custom property
+  substitutes `var(--pie-text)` where it is declared, and a
+  `<pie-theme scope="self">` below `:root` would not reach it.
+
+  `.content-emphasis` moves to the new `--pie-content-emphasis` token; see the
+  separate entry for why a red mixed toward the ink was not enough.
+
+  `PieSpinner` duplicates the `.pie-loading` rules and follows the same change.
+
+- 2bcd9fa: Paint the remaining player and tool chrome from the active theme.
+
+  The floating tool shell's header fell back to `#f3f4f6` whenever the host had not
+  set `--pie-section-player-card-header-background`, which is the normal case, so
+  the shell's themed title text sat on a light grey strip — 2.3:1 under `pastel`,
+  worse under the dark themes. It now defaults through `--pie-button-active-bg`,
+  the mapping's contrast-tuned one-step-off-the-page fill, whose light value is the
+  `#f3f4f6` that was pinned; the title measures 14.7:1 under `dracula`, 16.0:1 under
+  `light` and 4.5:1 under `valentine`, and the light theme is unchanged.
+
+  The three scrolling panes defaulted `--pie-scrollbar-thumb`,
+  `--pie-scrollbar-track` and `--pie-scrollbar-thumb-hover` to greys, and nothing
+  sets those hooks, so a light scrollbar shipped on every dark theme and colour
+  scheme. Thumb and hover now default through `--pie-border` and
+  `--pie-border-dark`, which the mapping corrects to 3:1 against the surface, and
+  the track through `--pie-background-dark`.
+
+  Also routed through tokens: the Desmos calculator frame and its loading/error
+  overlay, the inline calculator's focus ring and glyph colours, the toolkit's
+  framework-error panel, the item-player build warning, the preview toggle's tabs
+  and the tool-settings hover tint, which now mixes from `currentColor` so it
+  tracks whatever header it sits on.
+
+  The embedded Desmos canvas stays white by decision: the third-party calculator
+  paints its own white UI and a themed mount would only band it. The frame around
+  it follows the theme so the shell's header and window controls read against it.
+
+- 1f29de7: Make theme resolution one observable contract instead of separate runtime and
+  stylesheet palettes.
+
+  The light and dark Base Theme defaults and the two previously under-contrast
+  built-in palettes now satisfy the named WCAG text, control-boundary, feedback,
+  focus, and annotation relationships enforced by the theme contract. Hosts keep
+  the same token names and can still override them through the normal cascade.
+
+  `@pie-players/pie-theme` now owns light and dark base themes, complete built-in
+  color schemes, custom-scheme registration, accessibility diagnostics, and
+  generated CSS from one side-effect-free TypeScript definition. The public
+  runtime interface is `resolvePieTheme`, `listPieColorSchemes`,
+  `observePieColorSchemes`, and `registerPieColorSchemes`. Registration returns a
+  generation-aware, idempotent receipt whose `unregister()` removes only the
+  definition it registered. Built-in ids are reserved, invalid custom entries are
+  rejected atomically, and valid entries from the same batch still register.
+
+  Upgrade note: `listPieColorSchemes()` now returns an immutable snapshot rather
+  than a mutable array of raw palette definitions. Raw built-in/base constants,
+  authored preview values, and the one-off get/resolve/unregister scheme helpers
+  are no longer public. Consumers should render `snapshot.schemes`, derive values
+  through `resolvePieTheme()`, observe catalog changes when mounted, and retain the
+  registration receipt when they need to unregister custom schemes.
+
+  An unknown requested scheme is no longer silently replaced. `<pie-theme>` keeps
+  the requested id in `scheme` and `data-color-scheme`, applies the safe base and
+  provider result plus explicit variables, and automatically resolves it if
+  registration arrives later. This preserves a CSS-only selector hook while
+  making registered custom schemes the managed path. CSS-only schemes use the
+  normal cascade in stylesheet-only integrations; a rule competing with a mounted
+  `<pie-theme>`'s inline tokens must deliberately use `!important`.
+
+  `@pie-players/pie-tool-theme` now follows that observable catalog and derives
+  previews from resolved tokens. If a saved scheme is unavailable, the picker
+  keeps the preference, shows a disabled unavailable option and status message,
+  and restores the scheme after late registration. The old `schemes` and
+  `schemeCatalog` inputs are removed; no recorded client-facing host depends on
+  them.
+
+  The shared focus trap now resolves and restores focus inside open shadow roots,
+  so keyboard containment and Escape restoration work for the theme picker's
+  shadow-DOM controls.
+
+  The checked-in `tokens.css` and `color-schemes.css` files remain at their exact
+  published paths and remain unlayered so host token declarations and
+  `!important` overrides keep working. They are generated explicitly and checked
+  for staleness; package builds verify them without rewriting tracked source.
+  Importing the package root still registers `<pie-theme>`, while importing
+  `@pie-players/pie-theme/theme-element` remains side-effect-free.
+
 ## 0.3.65
 
 ### Patch Changes

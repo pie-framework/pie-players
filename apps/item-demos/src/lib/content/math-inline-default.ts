@@ -24,7 +24,6 @@ const demo: DemoInfo = {
 					toolbarEditorPosition: "bottom",
 					prompt:
 						"<p><strong>B.</strong> Find the value of the expression that you wrote in part A to find how much money the band members made.</p>\n\n<p>Use the on-screen keyboard to type your answer in the box below.</p>\n",
-					// biome-ignore lint/suspicious/noTemplateCurlyInString: PIE math-inline template placeholder, not a JS template literal
 					expression: "${{response}}",
 					responses: [
 						{

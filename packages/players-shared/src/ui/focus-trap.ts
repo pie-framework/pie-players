@@ -1,7 +1,4 @@
-import {
-	FOCUSABLE_SELECTOR,
-	isProgrammaticFocusTarget,
-} from "./first-focusable.js";
+import { collectFocusable } from "./first-focusable.js";
 
 type FocusTrapOptions = {
 	initialFocus?: HTMLElement | null;
@@ -23,10 +20,13 @@ type FocusTrapOptions = {
 	onTabExit?: (direction: "forward" | "backward", event: KeyboardEvent) => void;
 };
 
+/**
+ * Shadow-aware: a trapped panel almost always hosts a custom element rendering into
+ * `shadow: "open"`, and a flat `querySelectorAll` would collect only the panel's own
+ * chrome — trapping Tab there and leaving the hosted tool's controls unreachable.
+ */
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
-	return Array.from(
-		container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-	).filter((el) => isProgrammaticFocusTarget(el));
+	return collectFocusable(container);
 }
 
 function getDeepActiveElement(root: Document | ShadowRoot): Element | null {

@@ -22,6 +22,7 @@
 	--pie-button-hover-bg: #f5f5f5;
 	--pie-button-hover-border: #000000;
 	--pie-button-hover-color: #000000;
+	--pie-content-emphasis: #cc0000;
 	--pie-correct: #006600;
 	--pie-correct-icon: #004400;
 	--pie-correct-secondary: #ccffcc;
@@ -30,6 +31,7 @@
 	--pie-disabled-secondary: #888888;
 	--pie-dropdown-background: #e0e0e0;
 	--pie-faded-primary: #ccccff;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #0066ff;
 	--pie-focus-checked-border: #0000cc;
 	--pie-focus-unchecked: #cccccc;
@@ -75,6 +77,7 @@
 	--pie-button-hover-bg: #1a1a1a;
 	--pie-button-hover-border: #ffffff;
 	--pie-button-hover-color: #ffffff;
+	--pie-content-emphasis: #ff3333;
 	--pie-correct: #00ff00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003300;
@@ -83,6 +86,7 @@
 	--pie-disabled-secondary: #777777;
 	--pie-dropdown-background: #2a2a2a;
 	--pie-faded-primary: #666600;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #ffff00;
 	--pie-focus-unchecked: #666666;
@@ -128,6 +132,7 @@
 	--pie-button-hover-bg: #aaeedd;
 	--pie-button-hover-border: #3d0022;
 	--pie-button-hover-color: #3d0022;
+	--pie-content-emphasis: #aa0044;
 	--pie-correct: #004400;
 	--pie-correct-icon: #003300;
 	--pie-correct-secondary: #aaffaa;
@@ -136,6 +141,7 @@
 	--pie-disabled-secondary: #bb8899;
 	--pie-dropdown-background: #88cc99;
 	--pie-faded-primary: #ddbbcc;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #880055;
 	--pie-focus-checked-border: #660044;
 	--pie-focus-unchecked: #aaddbb;
@@ -181,6 +187,7 @@
 	--pie-button-hover-bg: #000055;
 	--pie-button-hover-border: #ffff00;
 	--pie-button-hover-color: #ffff00;
+	--pie-content-emphasis: #ff6666;
 	--pie-correct: #00ff00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003333;
@@ -189,6 +196,7 @@
 	--pie-disabled-secondary: #aaaacc;
 	--pie-dropdown-background: #000033;
 	--pie-faded-primary: #666633;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #cccc00;
 	--pie-focus-unchecked: #333366;
@@ -234,6 +242,7 @@
 	--pie-button-hover-bg: #ffb3cc;
 	--pie-button-hover-border: #000000;
 	--pie-button-hover-color: #000000;
+	--pie-content-emphasis: #990000;
 	--pie-correct: #006600;
 	--pie-correct-icon: #004400;
 	--pie-correct-secondary: #ccffcc;
@@ -242,6 +251,7 @@
 	--pie-disabled-secondary: #888888;
 	--pie-dropdown-background: #ff88aa;
 	--pie-faded-primary: #ffccdd;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #880044;
 	--pie-focus-checked-border: #550033;
 	--pie-focus-unchecked: #ffddee;
@@ -287,6 +297,7 @@
 	--pie-button-hover-bg: #2a2a2a;
 	--pie-button-hover-border: #ffffff;
 	--pie-button-hover-color: #e0e0e0;
+	--pie-content-emphasis: #ff6a6a;
 	--pie-correct: #00cc00;
 	--pie-correct-icon: #00ff00;
 	--pie-correct-secondary: #003300;
@@ -295,6 +306,7 @@
 	--pie-disabled-secondary: #888888;
 	--pie-dropdown-background: #1a1a1a;
 	--pie-faded-primary: #555555;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #cccccc;
 	--pie-focus-checked-border: #aaaaaa;
 	--pie-focus-unchecked: #555555;
@@ -340,6 +352,7 @@
 	--pie-button-hover-bg: #dcdcdc;
 	--pie-button-hover-border: #4a4a4a;
 	--pie-button-hover-color: #4a4a4a;
+	--pie-content-emphasis: #8c1c1c;
 	--pie-correct: #145c1e;
 	--pie-correct-icon: #0e3f15;
 	--pie-correct-secondary: #dde9de;
@@ -348,6 +361,7 @@
 	--pie-disabled-secondary: #8f8f8f;
 	--pie-dropdown-background: #c4c4c4;
 	--pie-faded-primary: #dcdcdc;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #6f6f6f;
 	--pie-focus-checked-border: #3d3d3d;
 	--pie-focus-unchecked: #e0e0e0;
@@ -393,6 +407,7 @@
 	--pie-button-hover-bg: #b8dcc3;
 	--pie-button-hover-border: #8e2464;
 	--pie-button-hover-color: #8e2464;
+	--pie-content-emphasis: #8c1c1c;
 	--pie-correct: #14591f;
 	--pie-correct-icon: #0e3d16;
 	--pie-correct-secondary: #d8ecdc;
@@ -401,6 +416,7 @@
 	--pie-disabled-secondary: #7c8f83;
 	--pie-dropdown-background: #94c4a1;
 	--pie-faded-primary: #b8dcc3;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #8e2464;
 	--pie-focus-checked-border: #6d1a4c;
 	--pie-focus-unchecked: #dcefe2;
@@ -446,6 +462,7 @@
 	--pie-button-hover-bg: #c795d3;
 	--pie-button-hover-border: #000000;
 	--pie-button-hover-color: #000000;
+	--pie-content-emphasis: #7d1414;
 	--pie-correct: #0d4f16;
 	--pie-correct-icon: #093a0f;
 	--pie-correct-secondary: #e0cfe6;
@@ -454,6 +471,7 @@
 	--pie-disabled-secondary: #7a7a7a;
 	--pie-dropdown-background: #ac70bd;
 	--pie-faded-primary: #c795d3;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #4a1259;
 	--pie-focus-checked-border: #330d3f;
 	--pie-focus-unchecked: #e2cbe8;
@@ -499,6 +517,7 @@
 	--pie-button-hover-bg: #2b4576;
 	--pie-button-hover-border: #ffff55;
 	--pie-button-hover-color: #ffff55;
+	--pie-content-emphasis: #ffbebe;
 	--pie-correct: #7fe08a;
 	--pie-correct-icon: #a8f0b0;
 	--pie-correct-secondary: #1d3a24;
@@ -507,6 +526,7 @@
 	--pie-disabled-secondary: #7d88a3;
 	--pie-dropdown-background: #1d2f50;
 	--pie-faded-primary: #2b4576;
+	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #ffff55;
 	--pie-focus-checked-border: #e0e04a;
 	--pie-focus-unchecked: #243a63;

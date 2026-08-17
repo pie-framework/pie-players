@@ -42,6 +42,73 @@ helper or constructs `ToolContentDependencyContext`; those are capability
 authoring surfaces. Root `ToolkitCoordinator`, resolver, registry, runtime, and
 custom-element signatures observed below remain unchanged.
 
+The theming pass that routed the content stylesheet, the vendored NDS button
+palette and the remaining tool chrome through canonical tokens was assessed
+against the recorded rows, not against a fresh consumer-checkout refresh, and
+does not advance the verification date. It changes values behind existing token
+names; no token name, selector, `dist` filename, custom-element tag, attribute
+or prop type changed, and content-style delivery is untouched. Host A keeps
+owning the tool-shell header through
+`--pie-section-player-card-header-background`, which the change only reads as
+before. The surfaces it newly makes theme-sensitive — `--pie-text`,
+`--pie-white`, `--pie-background-dark`, `--pie-primary`, `--pie-border`,
+`--pie-border-dark`, `--pie-button-active-bg`, `--pie-button-focus-outline` —
+are not in Host A's set list, so they resolve from the active theme there. See
+the two sections below for what a host sees.
+
+Three fixes assessed against the recorded rows rather than a fresh checkout
+refresh, and none advances the verification date. `tools.policy.blocked` now
+decides feature-scoped capabilities as well as placed ones, which is additive: no
+recorded host lists a capability there, and it is what a host writes to decline
+the default-granted audio transcript without adopting the composition package —
+the alternative was constructing a registry, which only Host R does. The card
+title selector moves from `h2` to `:is(h1, h2, h3, h4, h5, h6)` at identical
+specificity, so a host rule that overrides the title still wins; the default DOM
+is unchanged, and the fix only shows for a host that drives
+`base-heading-level`, which none does today. The eliminated-choice dim moves from
+`.pie-answer-eliminator-eliminated-fallback` to
+`[data-pie-answer-eliminated="true"]`, so it reaches the CSS Highlight API path
+too. Hosts A and V both load `components.css`; neither styles those hooks and the
+answer eliminator is placed in neither delivery.
+
+The dictionary capabilities and the selection door onto them were checked against
+the Host A and Host V checkouts directly; Host R was not opened, so its rows stay
+prior observations and the verification date does not advance. Recorded rows are
+unchanged.
+
+Host V depends on the item player and the theme only, neither of which the change
+touches. Host A places one capability at item scope plus read-aloud when its
+profile asks; it supplies no section-level placement, and core's placement default
+is empty, so the two new capabilities cannot appear there — and it does not depend
+on the selection gateway package at all, so the gateway's new host-supplied action
+list and its post-action dismissal latch are unreachable for it. The four additive
+`ToolkitCoordinator` request methods and the three new type exports are called by
+no recorded host; Host R holds a coordinator instance rather than implementing the
+interface, so widening it is not a break there either.
+
+A review pass over the same work narrowed the coordinator surface and changed three
+defaults, none of which reaches a recorded host. The four request methods became
+optional on the coordinator interface, which only widens what a host-supplied
+coordinator may be. Request resolution now falls back off section scope to any
+level hosting the capability, which can only find a target where none was found
+before; no recorded host places either new capability, and the fallback cannot
+redirect a request that already resolved. Endpoint lookups now carry the session
+cookie instead of omitting credentials, and refuse plain `http:` picture URLs — both
+inside the two new packages, which no recorded host depends on. The shared
+term-lookup module those packages now use is a new subpath on
+`pie-players-shared`; existing entry points are untouched.
+
+One residual difference is worth a manual check rather than a claim. Focusable
+collection for a trapped floating panel now descends into open shadow roots and
+now excludes `tabindex="-1"`, which the flat selector previously matched through
+its `button` clause. Host A's one shell-hosted capability renders in light DOM, so
+the shadow half is a no-op for it; the `tabindex="-1"` half depends on the
+third-party DOM inside that panel, which this repository stubs in tests and which
+was not measured against the real vendor bundle. If that DOM carries such
+controls, the panel's internal tab cycle drops those stops — matching what the
+browser does with them anyway. One tab-through of that panel before release
+settles it.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |
@@ -54,9 +121,11 @@ Packages consumed:
 
 - **Host V** — `pie-item-player`, `pie-theme`.
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
-  `pie-theme-daisyui`, `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
+  `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
-  section-player debugger tools.
+  section-player debugger tools. Its `package.json` still declares
+  `pie-theme-daisyui`, which no longer exists upstream and which it never
+  imported; the range resolves to the last published version until it is dropped.
 - **Host R** — all of the above plus `pie-players-shared`,
   `pie-default-tool-loaders`, every `pie-tool-*` in the suite, all five
   `section-player-tools-*` debuggers, `tts-server-core`, `tts-server-google`,
@@ -83,7 +152,6 @@ and to fix it there in the same push.
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | |
 | `@pie-players/pie-theme/token-registry.json` | R | Previously observed; not re-derived during the focused theming update |
-| `@pie-players/pie-theme-daisyui/bridge.css` | R | |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
 | `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
@@ -375,12 +443,26 @@ specificity from outside, including with `!important`. Moving any of these
 tokens behind a cascade layer, or resolving them at build time, removes that
 lever.
 
+Authored-content classes and player chrome now read the canonical families
+rather than the literals they used to pin, so a host that sets a theme and none
+of these tokens gets theme-driven values where it previously got fixed ones.
+That is the intent — the literals were unreachable — but it is a rendering
+change without a build signal, the same class of surface as the rest of this
+section.
+
 Host R takes the opposite approach: it reads the token registry and inspects
 computed values at runtime, so it depends on token *names and metadata* staying
-addressable rather than on any particular value. It imports `tokens.css` and the
-DaisyUI `bridge.css` but **not** `color-schemes.css`, carrying its own
-`data-color-scheme` rules instead — so new upstream scheme mappings do not reach
-it until someone syncs them by hand.
+addressable rather than on any particular value. It imports `tokens.css` but
+**not** `color-schemes.css`, carrying its own `data-color-scheme` rules instead —
+so new upstream scheme mappings do not reach it until someone syncs them by hand.
+
+`--pie-fixed-hue-collapse` is one such mapping, added to the required scheme set:
+every built-in scheme sets `100%`, which collapses a component's own fixed hues
+into the palette. Host R's hand-carried scheme rules do not set it, so a
+component encoding data by hue keeps that hue under Host R's schemes even though
+it collapses under the shipped ones. Activating a scheme through `<pie-theme>`
+rather than by writing the attribute does supply it, since the resolver defaults
+it for any scheme it resolves.
 
 ## Direct `dist` path references
 
@@ -397,6 +479,15 @@ These bypass the package `exports` map. All four are also exported under their
 bare names, so the `exports` map alone is not enough to protect this host —
 **the `dist` filenames themselves are API here**. Renaming, splitting, or
 merging any of those four files breaks that build.
+
+`font-sizes.css` is bundled but not activated. Every rule in it is scoped under a
+`data-font-size` attribute, and no host sets that attribute anywhere in its
+source — so all three currently take only its `:root { --pie-font-scale: 1 }`
+default, and its rules match nothing. So the file's *rules* are safe to change
+while its *filename* is not — the inverse of the rest of this section, where the
+values are the fragile half. The first host to set the attribute inherits whatever
+those rules then say, with no build signal, and Host A and Host R both take patch
+releases on caret ranges.
 
 Host R additionally hard-codes the CDN path
 `@pie-players/pie-item-player@<version>/dist/pie-item-player.js`, so that
@@ -434,6 +525,22 @@ Consequences per host:
 
 Any further change to how content styles are delivered has to account for all
 three positions.
+
+Three rules were removed from it outright: a `#stimulus` / `#item` pair of
+50%-wide left floats, a `.lrn_feature h3` margin override and
+`.lrn_width_auto.table`. The float pair is the one to check against a host — it
+laid out two global ids as columns, so a host page carrying either id got the
+layout whether or not it wanted it, and the recorded rows show no host relying on
+that. The `lrn_` pair styled a third-party product's markup. Also gone from the
+heading reset is `font-weight: 500`, so authored headings render at the browser's
+weight; hosts V and A both load this stylesheet and will see that.
+
+Separately from delivery, the stylesheet's own colours now resolve through
+canonical tokens. For a host on the base light theme the values are the ones it
+already rendered, with one visible exception: legacy `kds-*` table headers take
+`--pie-background-dark`, so their fill lightens from `#d3d3d3` to `#ecedf1`.
+Hosts V and A both load a copy of this stylesheet and neither sets `--pie-text`
+or `--pie-white`, so both see it on upgrade.
 
 ## Change-risk quick reference
 

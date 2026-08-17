@@ -66,6 +66,11 @@ export type ThemeResolution = Readonly<{
 	resolvedScheme: PieColorSchemeDescriptor | null;
 	status: PieThemeResolutionStatus;
 	variables: Readonly<ThemeVariables>;
+	/**
+	 * The CSS `color-scheme` keyword this resolution implies, or `null` when the
+	 * host keeps ownership of it -- which is every resolution without a scheme.
+	 */
+	colorScheme: "light" | "dark" | null;
 	diagnostics: readonly PieThemeDiagnostic[];
 }>;
 

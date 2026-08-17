@@ -47,12 +47,14 @@ export {
 } from "./services/catalog-owner.js";
 export {
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
+	PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
 	PIE_REGISTER_EVENT,
 	PIE_UNREGISTER_EVENT,
 	type InternalContentLoadedDetail,
+	type InternalFormativeActionDetail,
 	type InternalItemSessionChangedDetail,
 	type InternalItemPlayerErrorDetail,
 	type ItemSessionChangedDetail,
@@ -159,6 +161,16 @@ export type {
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
 export { ToolRegistry } from "./services/ToolRegistry.js";
+// Tool open requests, and the selection-action contract a gateway renders.
+export type {
+	ToolOpenRequest,
+	ToolRequestTarget,
+} from "./services/tool-request.js";
+export { DEFAULT_TOOL_REQUEST_LEVEL } from "./services/tool-request.js";
+export type {
+	ToolSelectionAction,
+	ToolSelectionContext,
+} from "./services/selection-action.js";
 export type {
 	AssessmentToolContext,
 	BaseToolContext,
@@ -309,6 +321,7 @@ export {
 	normalizeToolList,
 	parseToolList,
 } from "./services/tools-config-normalizer.js";
+export { isHostDeniedFeature } from "./policy/core/feature-decision.js";
 export {
 	frameworkErrorFromToolConfigValidation,
 	normalizeAndValidateToolsConfig,

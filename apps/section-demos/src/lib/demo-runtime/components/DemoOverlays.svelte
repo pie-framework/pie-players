@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SourcePanel from './SourcePanel.svelte';
 	import SessionDbPanel from './SessionDbPanel.svelte';
+	import { createSectionDemoTtsSettingsStorageKey } from '$lib/demo-runtime/tts-settings-persistence';
 
 	interface Props {
 		toolkitCoordinator: any;
@@ -237,7 +238,7 @@ function debugCustomProvider(event: string, payload?: Record<string, unknown>): 
 	];
 
 	function getScopedTtsStorageKey(): string {
-		return `pie:debug-panels:v1:${panelPersistenceScope}:tts-settings`;
+		return createSectionDemoTtsSettingsStorageKey(panelPersistenceScope);
 	}
 </script>
 

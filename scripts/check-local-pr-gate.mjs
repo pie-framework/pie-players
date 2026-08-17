@@ -9,6 +9,11 @@ const requiredPreCommitCommands = [
 	"check:local-pr-gate",
 	"check:deps",
 	"check:package-metadata",
+	// Only the inventory half of `check:docs`. The rest of that script builds
+	// `apps/docs`, which is CI's job — but a new publishable package missing from
+	// the inventory is a one-line edit found by a 50ms string comparison, and the
+	// alternative is discovering it from CI after a six-minute push.
+	"check:docs:publishable-packages",
 	"check:svelte-runtime-deps",
 	"check:custom-elements",
 	"check:ce-define-safety",
@@ -24,6 +29,7 @@ const requiredCiLintTypecheckCommands = [
 	"check:local-pr-gate",
 	"check:deps",
 	"check:package-metadata",
+	"check:docs:publishable-packages",
 	"check:svelte-runtime-deps",
 	"check:custom-elements",
 	"check:ce-define-safety",

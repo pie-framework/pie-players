@@ -2,6 +2,7 @@ import type {
 	AssessmentSection,
 	PassageEntity,
 } from "@pie-players/pie-players-shared";
+import type { FormativeItemPolicy } from "@pie-players/pie-players-shared/formative";
 import type {
 	SectionContentModel,
 	SectionRenderable,
@@ -99,6 +100,7 @@ export class SectionContentService {
 		const adapterItemRefs: Array<{
 			identifier: string;
 			item: { id: string; identifier: string };
+			formative?: FormativeItemPolicy;
 		}> = [];
 		for (const [itemIndex, itemRef] of (
 			section.assessmentItemRefs || []
@@ -145,6 +147,7 @@ export class SectionContentService {
 					id: resolvedItemId,
 					identifier,
 				},
+				formative: itemRef.formative,
 			});
 			if (
 				normalizedPassage &&

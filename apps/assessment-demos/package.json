@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/assessment-demos",
-	"version": "0.1.52",
+	"version": "0.1.54",
 	"description": "Progressive demos for PIE Assessment Player",
 	"type": "module",
 	"private": true,
@@ -12,6 +12,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-assessment-player": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",

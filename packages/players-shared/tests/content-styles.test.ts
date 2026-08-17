@@ -118,6 +118,52 @@ describe("contentStylesPresent", () => {
 		expect(installedStyles()).toHaveLength(0);
 		expect(contentStylesPresent()).toBe(true);
 	});
+
+	test("detects a host copy confined to its player subtree", () => {
+		// `@scope (.item-content) { … }` is the documented remedy for the bare
+		// `h1`-`h6` / `table` / `th` rules reaching host chrome, so it is the
+		// configuration a careful host arrives at. The stylesheet's `:root` rule
+		// can never match inside it — `<html>` is not a descendant of the scoping
+		// root — so the computed property reads empty and only a sheet scan sees it.
+		document.documentElement.setAttribute("data-pie-content-styles", "host");
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent = `@scope (.item-content) {\n${CSS}\n}`;
+		document.head.append(hostStyle);
+
+		expect(
+			getComputedStyle(document.documentElement)
+				.getPropertyValue("--pie-content-styles")
+				.trim(),
+		).toBe("");
+		expect(contentStylesPresent()).toBe(true);
+	});
+
+	test("detects a host copy inside a cascade layer or media block", () => {
+		document.documentElement.setAttribute("data-pie-content-styles", "host");
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent = `@media screen {\n${CSS}\n}`;
+		document.head.append(hostStyle);
+
+		expect(contentStylesPresent()).toBe(true);
+	});
+
+	test("is not fooled by a grouping rule that carries no sentinel", () => {
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent =
+			"@scope (.item-content) { .numbered-paragraph { margin-left: 36px; } }";
+		document.head.append(hostStyle);
+
+		expect(contentStylesPresent()).toBe(false);
+	});
+
+	test("ignores a CSS-wide reset of the sentinel nested in a grouping rule", () => {
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent =
+			"@media screen { .svelte-custom-element-reset { --pie-content-styles: unset; } }";
+		document.head.append(hostStyle);
+
+		expect(contentStylesPresent()).toBe(false);
+	});
 });
 
 describe("auditContentStyles", () => {
@@ -140,6 +186,16 @@ describe("auditContentStyles", () => {
 
 	test("stays silent when the player installed the only copy", async () => {
 		installContentStyles(CSS, "pie-item-player");
+
+		expect(await captureWarnings()).toEqual([]);
+	});
+
+	test("ignores scoped CSS-wide resets of the sentinel property", async () => {
+		installContentStyles(CSS, "pie-item-player");
+		const resetStyle = document.createElement("style");
+		resetStyle.textContent =
+			".svelte-custom-element-reset { --pie-content-styles: unset; }";
+		document.head.append(resetStyle);
 
 		expect(await captureWarnings()).toEqual([]);
 	});
@@ -180,6 +236,33 @@ describe("auditContentStyles", () => {
 		expect(warnings).toHaveLength(1);
 		expect(warnings[0]).toContain("loaded twice");
 		expect(warnings[0]).toContain("Remove the host import");
+	});
+
+	test("warns when the alongside host copy is confined to a subtree", async () => {
+		// The duplicate is just as real when the host scopes its copy, and this is
+		// the shape a host reaches by following the bleed remedy. Detecting it needs
+		// the sentinel found inside the grouping rule, not only at the top level.
+		installContentStyles(CSS, "pie-item-player");
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent = `@scope (.item-content) {\n${CSS}\n}`;
+		document.head.append(hostStyle);
+
+		const warnings = await captureWarnings();
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain("loaded twice");
+	});
+
+	test("treats an opted-out host's confined copy as correct, not missing", async () => {
+		// The regression this pairs with: before grouping rules were walked, this
+		// host — opted out, stylesheet present and working, scoped so it cannot
+		// bleed — was told on every page load that it had shipped nothing.
+		document.documentElement.setAttribute("data-pie-content-styles", "host");
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent = `@scope (.item-content) {\n${CSS}\n}`;
+		document.head.append(hostStyle);
+
+		expect(installContentStyles(CSS, "pie-item-player")).toBe("opted-out");
+		expect(await captureWarnings()).toEqual([]);
 	});
 
 	test("does not count the installed copy as a duplicate of itself", async () => {

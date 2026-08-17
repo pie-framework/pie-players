@@ -595,6 +595,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	private synthesisRunId = 0;
 	private readonly telemetryReporter: TelemetryReporter | undefined;
 
+	public onPlaybackStart?: () => void;
 	public onWordBoundary?: (
 		word: string,
 		position: number,
@@ -653,7 +654,18 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 
 			// Setup event handlers
 			audio.onplay = () => {
+				if (runId !== this.synthesisRunId || this.currentAudio !== audio) {
+					return;
+				}
 				this.pausedState = false;
+				try {
+					this.onPlaybackStart?.();
+				} catch (error) {
+					console.warn(
+						"[ServerTTSProvider] playback-start callback failed:",
+						error,
+					);
+				}
 
 				// Start word highlighting
 				if (this.onWordBoundary && this.wordTimings.length > 0) {

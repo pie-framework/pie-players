@@ -46,6 +46,47 @@ export type {
 	CatalogOwnerSnapshot,
 } from "../services/AccessibilityCatalogResolver.js";
 
+// Handing a selection to a tool the requesting surface does not mount. A
+// registration composing a selection gateway needs both halves: the action shape
+// the gateway renders, and the request the action makes.
+export type {
+	ToolSelectionAction,
+	ToolSelectionContext,
+} from "../services/selection-action.js";
+export type {
+	ToolOpenRequest,
+	ToolRequestTarget,
+} from "../services/tool-request.js";
+// So a gateway button and the toolbar button for the same tool draw one icon.
+export {
+	resolveFallbackToolIcon,
+	TOOL_FALLBACK_ICONS,
+} from "../services/tool-icons.js";
+
+// The grant-AND-content rule, for a package that renders content capabilities
+// into its own surfaces. Data-only, so a renderer with no coordinator — print —
+// asks the same question the section player asks continuously.
+export type {
+	ContentCapabilityPhase,
+	ContentCapabilityPolicy,
+	ResolveContentCapabilitiesArgs,
+	ResolvedContentCapability,
+} from "./content-capability-resolution.js";
+export { resolveContentCapabilities } from "./content-capability-resolution.js";
+
+// The mount/reconcile half of the same rule, for a renderer that opens a surface.
+// Section-player and the annotation toolbar both drive surfaces through this, so
+// discovery, lazy loading, DOM reconciliation and registry observation have one
+// implementation rather than one per renderer.
+export type {
+	ToolSurfaceHost,
+	ToolSurfaceHostInput,
+	ToolSurfaceHostOptions,
+	ToolSurfaceHostSnapshot,
+	ToolSurfaceScope,
+} from "./tool-surface-host.js";
+export { createToolSurfaceHost } from "./tool-surface-host.js";
+
 // Context a registration reads to answer `isVisibleInContext`.
 export type { ToolContext, ToolLevel } from "../services/tool-context.js";
 export {

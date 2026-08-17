@@ -58,6 +58,7 @@
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getCanonicalItemId,
+		getFormativeItemView,
 		getItemPlayerParams,
 		type HeadingLevel,
 	} from "./section-player-view-state.js";
@@ -424,12 +425,17 @@
 	</div>
 {:else}
 	{#each items as item, itemIndex (item.id || itemIndex)}
+		{@const canonicalItemId = getCanonicalItemId({ compositionModel, item })}
+		<!-- Resolved once and used twice: the card renders the control from it, and
+		     the player params project its env override. Two derivations of the same
+		     predicate could disagree about whether feedback is on screen. -->
+		{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
 		<pie-section-player-item-card
 			{item}
 			itemIndex={itemIndex}
 			itemCount={items.length}
 			isCurrent={itemIndex === currentItemIndex}
-			canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+			{canonicalItemId}
 			{baseHeadingLevel}
 			playerParams={getItemPlayerParams({
 				item,
@@ -440,7 +446,9 @@
 				playerStrategy,
 				itemIndex,
 				baseHeadingLevel,
+				formativeView,
 			})}
+			{formativeView}
 			itemToolbarTools={itemToolbarTools}
 			{toolRegistry}
 			{hostButtons}
@@ -514,6 +522,21 @@
 	.pie-section-player-scroll-hint nds-icon-button,
 	.pie-section-player-scroll-hint__button {
 		pointer-events: auto;
+	}
+
+	.pie-section-player-scroll-hint nds-icon-button {
+		/* NDS palette bridge — keep in sync with the copies in tool-tts-inline
+		   and assessment-toolkit ItemToolBar (asserted by
+		   scripts/check-theme-tokens.mjs). The vendored button paints its glyph,
+		   fill, hover ring and focus ring from the NDS design-system palette,
+		   which no PIE theme sets, so this scroll-down control kept a #146eb3
+		   glyph on a #f3f5f7 pill under every theme while the fallback button
+		   beside it followed the tokens. */
+		--color-interactive-blue: var(--pie-button-color, var(--pie-text, #222));
+		--color-new-gray: var(--pie-background-dark, #f3f5f7);
+		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-black: var(--pie-text, #000000);
+		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
 
 	/* Non-NDS fallback button: a compact circular control mirroring the NDS

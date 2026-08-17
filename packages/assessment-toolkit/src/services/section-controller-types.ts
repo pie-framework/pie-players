@@ -1,3 +1,11 @@
+import type {
+	FormativeFeedbackReveal,
+	FormativeMasteryRollup,
+	FormativeSectionProjection,
+	FormativeSectionSlice,
+	FormativeTryOutcome,
+} from "@pie-players/pie-players-shared/formative";
+
 export interface SectionControllerKey {
 	assessmentId: string;
 	sectionId: string;
@@ -81,6 +89,16 @@ export interface SectionControllerSessionState {
 	currentItemIndex?: number;
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
+	/**
+	 * Formative delivery state — Try counts and reveal state per item.
+	 *
+	 * Optional, and its absence is indistinguishable from a snapshot saved
+	 * before formative delivery existed, which is what keeps existing persisted
+	 * sessions valid. A slice with an unrecognized `version` is rejected whole
+	 * and formative state starts clean; `itemSessions` in the same snapshot is
+	 * unaffected, so a formative version bump never costs a learner responses.
+	 */
+	formative?: FormativeSectionSlice;
 }
 
 type SectionControllerEventBase = {
@@ -192,6 +210,46 @@ export type SectionControllerSectionErrorEvent = SectionControllerEventBase & {
 	currentItemIndex: number;
 };
 
+export type SectionControllerFormativeTryRecordedEvent =
+	SectionControllerEventBase & {
+		type: "formative-try-recorded";
+		itemId: string;
+		canonicalItemId: string;
+		tryCount: number;
+		outcome: FormativeTryOutcome;
+		/** Whether feedback is now on screen for this item. */
+		revealed: boolean;
+		currentItemIndex: number;
+	};
+
+/**
+ * The reveal state changed without a Try being recorded: a learner dismissed
+ * feedback to edit again, or a host forced a reveal or withdrew one.
+ *
+ * A Try that reveals reports through `formative-try-recorded`, which carries its
+ * own `revealed`. This event is for every other transition.
+ */
+export type SectionControllerFormativeRevealChangedEvent =
+	SectionControllerEventBase & {
+		type: "formative-reveal-changed";
+		itemId: string;
+		canonicalItemId: string;
+		revealed: boolean;
+		/** Reveal level in force, when a host overrode the policy's. */
+		feedback?: FormativeFeedbackReveal;
+		/** Tries already spent; none of these transitions consume one. */
+		tryCount: number;
+		source: "learner" | "host";
+		currentItemIndex: number;
+	};
+
+export type SectionControllerSectionMasteryChangedEvent =
+	SectionControllerEventBase & {
+		type: "section-mastery-changed";
+		mastery: FormativeMasteryRollup;
+		currentItemIndex: number;
+	};
+
 export type SectionControllerEvent =
 	| SectionControllerItemSessionDataChangedEvent
 	| SectionControllerItemSessionMetaChangedEvent
@@ -203,7 +261,10 @@ export type SectionControllerEvent =
 	| SectionControllerItemCompleteChangedEvent
 	| SectionControllerSectionLoadingCompleteEvent
 	| SectionControllerSectionItemsCompleteChangedEvent
-	| SectionControllerSectionErrorEvent;
+	| SectionControllerSectionErrorEvent
+	| SectionControllerFormativeTryRecordedEvent
+	| SectionControllerFormativeRevealChangedEvent
+	| SectionControllerSectionMasteryChangedEvent;
 
 export type SectionControllerEventType = SectionControllerEvent["type"];
 
@@ -352,6 +413,55 @@ export interface SectionControllerHandle {
 	configureSessionPersistence?(
 		config: SectionSessionPersistenceConfig,
 	): void | Promise<void>;
+	/**
+	 * Record one Try for an item: derive correctness from the element outcomes,
+	 * increment the Try count, and reveal feedback if the item's resolved
+	 * formative policy says so.
+	 *
+	 * `outcomes` is what `pie-item-player.provideScore()` returned. The caller
+	 * does not interpret it — correctness derivation belongs to the controller so
+	 * one aggregation policy applies everywhere.
+	 *
+	 * No-op when the item's policy is disabled, when feedback is already
+	 * revealed, or when Tries are spent, which makes a double submit safe.
+	 */
+	recordFormativeTry?(args: { itemId: string; outcomes?: unknown[] }): void;
+	/**
+	 * Dismiss a revealed item's feedback and reopen it for editing. Withdrawing
+	 * the reveal is what withdraws the `mode: "evaluate"` projection.
+	 *
+	 * The learner action, so it respects the Try budget: no-op when nothing is
+	 * revealed or Tries are spent. Use `hideFormativeItem` for host authority.
+	 */
+	retryFormativeItem?(args: { itemId: string }): void;
+	/**
+	 * Reveal an item on host authority — a teacher-driven "show the answer".
+	 *
+	 * Spends no Try and ignores the Try budget and `revealOn`, none of which bound
+	 * a decision the host has already taken. Works on an item with no Try yet.
+	 *
+	 * `feedback` is stated rather than taken from the policy, because a reveal
+	 * under `feedback: "none"` would project nothing.
+	 */
+	revealFormativeItem?(args: {
+		itemId: string;
+		feedback: "correctness" | "solution";
+	}): void;
+	/**
+	 * Withdraw a reveal on host authority. Unlike `retryFormativeItem` this
+	 * ignores the Try budget, so a host that revealed a spent item can put it
+	 * back.
+	 */
+	hideFormativeItem?(args: { itemId: string }): void;
+	/**
+	 * The section's formative projection — resolved policies, per-item state, and
+	 * the mastery rollup.
+	 *
+	 * `null` when no item in the section delivers formatively. The same
+	 * projection rides on the composition model, so layouts normally read it from
+	 * there rather than calling this.
+	 */
+	getFormativeProjection?(): FormativeSectionProjection | null;
 }
 
 export interface SectionControllerFactoryDefaults {

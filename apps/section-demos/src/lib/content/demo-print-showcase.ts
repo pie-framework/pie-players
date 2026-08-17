@@ -71,6 +71,23 @@ export const demoPrintShowcaseSection: AssessmentSection = {
 						{
 							id: "print-q1",
 							element: "multiple-choice",
+							// An alternate representation, carried the way the content
+							// transform emits it: a catalog on the model that owns the audio.
+							// Whether it prints is the learner's profile's answer, which the
+							// demo's Transcript control drives.
+							accessibilityCatalogs: [
+								{
+									identifier: "print-q1-transcript",
+									cards: [
+										{
+											catalog: "transcript",
+											language: "en-US",
+											content:
+												"Which is the largest planet in our solar system? Mercury, Jupiter, Earth, or Mars.",
+										},
+									],
+								},
+							],
 							choiceMode: "radio",
 							choicePrefix: "letters",
 							promptEnabled: true,

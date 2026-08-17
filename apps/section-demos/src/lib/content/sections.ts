@@ -21,6 +21,7 @@ import {
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
+import { demoFormativeDeliverySection } from "./demo-formative-delivery";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -571,18 +572,38 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "print-showcase",
 		name: "Print Showcase (pie-print-player)",
 		description:
-			"Renders a section's stimulus + items through @pie-players/pie-print-player (non-interactive print view), loading the ng browser print bundles. Toggle Student/Instructor to reveal the answer key.",
+			"Renders a section's stimulus + items through @pie-players/pie-print-player (non-interactive print view), loading the ng browser print bundles. Toggle Student/Instructor to reveal the answer key, and Transcript granted to print question 1's audio transcript as an accommodation.",
 		integrationLevel: 3,
 		integrationTheme: "Print rendering",
 		focus:
 			"Validates that the new ng browser print bundles (dist/browser/print/index.js) render correctly through the standalone print player, since the section player itself has no print view.",
 		whatMakesItTick: [
-			"Composes each `rubricBlock` passage and `assessmentItemRef` item into a `<pie-print>` config ({ item, options: { role } }).",
+			"Composes each `rubricBlock` passage and `assessmentItemRef` item into a `<pie-print>` config ({ item, options: { role }, accessibility }).",
+			"Question 1 carries a `transcript` accessibility catalog card on its model, so `Transcript granted` is the whole difference between an accommodation reaching paper and not — resolved by the same capability and precedence the section player uses.",
 			"Uses the print player's default resolver, which loads `dist/browser/print/index.js` via the browser-esm loader (React import map injected).",
 			"Pins verified ng bundles: `passage@7.1.2-next.5`, `multiple-choice@13.2.2-next.5`, `ebsr@14.2.2-next.5`.",
 		],
 		allowElementVersionOverrides: false,
 		section: demoPrintShowcaseSection,
+	},
+	"formative-delivery": {
+		id: "formative-delivery",
+		name: "Formative Delivery (check answer, retry, mastery)",
+		description:
+			"Check-answer delivery driven entirely by the section's `formative` policy: Try counts, feedback reveal, and per-item overrides. Four items show the four policy shapes side by side.",
+		integrationLevel: 2,
+		integrationTheme: "Formative delivery",
+		focus:
+			"Shows that PIE renders no feedback of its own — a reveal projects `mode: \"evaluate\"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.",
+		whatMakesItTick: [
+			"`section.formative` sets the default (three Tries, correctness feedback); each `assessmentItemRefs[].formative` overrides it field by field.",
+			"A check calls the item player's existing `provideScore()` and reports the outcomes; the section controller derives correctness and owns Try state.",
+			"Only the revealed item's `env` becomes `mode: \"evaluate\"` — its neighbours stay editable, which is the per-item seam the section env never had.",
+			"`fd-q2` uses `feedback: \"solution\"`, so its reveal projects `role: \"instructor\"` and the element shows the authored correct response.",
+			"`fd-q3` uses `revealOn: \"on-final-try\"`: the first two checks record a Try and reveal nothing.",
+			"`fd-q4` sets `enabled: false`, so one ordinary item sits inside a formative section with no control at all.",
+		],
+		section: demoFormativeDeliverySection,
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",
@@ -615,6 +636,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Reads back `coord.getPolicyInputs().pnpEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
 		],
 		section: demo1Section,
+	},
+	"dictionary-tools": {
+		id: "dictionary-tools",
+		name: "Dictionary and Picture Dictionary",
+		description:
+			"Word and picture lookup from host-supplied services, granted through the PNP rather than universally.",
+		integrationLevel: 4,
+		integrationTheme: "Host-supplied tool services",
+		focus:
+			"Shows the two entry points a lookup tool needs: a term handed in from a selection, and a field for the learner who cannot make one.",
+		whatMakesItTick: [
+			"Supplies each tool's endpoint through `runtime.toolContextResolvers`, the same per-tool params seam a real host uses; with no endpoint the panel reports itself unconfigured instead of failing silently.",
+			"Grants both tools through `personalNeedsProfile.supports`, because PIE declares no universal support id for either — a dictionary is construct-relevant on a vocabulary item.",
+			"Serves a fixed stub corpus from this app, including a reserved keyword that answers 503 so the error state is reachable.",
+		],
+		section: demo3Section,
 	},
 	"custom-tools": {
 		id: "custom-tools",

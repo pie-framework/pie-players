@@ -10,6 +10,7 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import { workspaceDistFullReload } from "./vite-plugins/workspace-dist-full-reload";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -63,9 +64,15 @@ export default (async () => {
 	// in console.error output and the webServer log.
 	const disableErrorOverlay =
 		process.env.PLAYWRIGHT_DISABLE_VITE_OVERLAY === "1";
+	const packagesRoot = path.resolve(__dirname, "../../packages");
 
 	return defineConfig({
-		plugins: [sveltekit(), tailwindcss(), localEsmCdn].filter(Boolean),
+		plugins: [
+			workspaceDistFullReload(packagesRoot),
+			sveltekit(),
+			tailwindcss(),
+			localEsmCdn,
+		].filter(Boolean),
 		server: {
 			port: 5300,
 			open: true,

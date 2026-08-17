@@ -1,5 +1,299 @@
 # @pie-players/pie-theme
 
+## 0.3.67
+
+### Patch Changes
+
+- 73d2be4: Dim an eliminated choice on both strike paths, not only the fallback one.
+
+  The dim was declared twice, and neither copy reached the path most learners are
+  on. `components.css` carried it on `.pie-answer-eliminator-eliminated-fallback`, a
+  class the strategy adds only when `CSS.highlights` is missing. The strategy's own
+  injected rule carried it inside `::highlight(...)`, where a highlight pseudo
+  honours only colour, background, text-decoration and text-shadow — so the
+  declaration parsed and painted nothing. Every browser with the CSS Custom
+  Highlight API shipped the strike as the sole cue for elimination.
+
+  The dim now hangs off `[data-pie-answer-eliminated="true"]`, which both paths set
+  on the choice container, and the inert declaration is gone from the injected rule.
+  Redundant coding is the point: elimination has to survive a strike colour a
+  learner cannot distinguish from the text.
+
+- 73d2be4: Correct the answer-eliminator toggle's size, which the move to `em` overshot.
+
+  The toggle is specified at 28px with an 18px glyph on a 16px base, and going to
+  `em` was meant to keep those numbers while letting PNP font scaling carry them.
+  It did not: `width: 1.75em` sits on the same rule as `font-size: 1.125em`, and
+  `em` in a length resolves against the element's own font-size rather than the
+  parent's, so the box measured 31.5px — 12.5% over spec, with the comment above it
+  asserting otherwise.
+
+  The box now divides by the glyph factor, `calc(1.75em / 1.125)`: 28px at a 16px
+  base, still past SC 2.5.8's 24px minimum at the smallest base PNP offers, and
+  still scaling linearly with the surrounding text. The test pins the resolved size
+  rather than the unit, since the unit was never the thing at risk.
+
+## 0.3.66
+
+### Patch Changes
+
+- e8a6f0e: Add `--pie-content-emphasis` and take `.content-emphasis` from it.
+
+  The previous fix mixed 65% red toward `--pie-text`, on the strength of two
+  measurements. Sweeping all 35 shipped themes showed that was not enough: the mix
+  falls under SC 1.4.3's 4.5:1 on seven of them, and lands at 2.91:1 on `aqua`.
+  Lowering the red share does clear every theme, but only at 25%, where the colour
+  is no longer recognisably the red the content author chose.
+
+  The token is mapped from the DaisyUI error slot through the same `legible`
+  correction `--pie-incorrect` uses, which is the one construction that clears
+  4.5:1 against the page on all 35 — measured, not assumed. Its base-theme values
+  are a red chosen for the same bar (7.4:1 on the light page, 7.3:1 on the dark
+  one), and each built-in colour scheme mirrors the red it already declares for
+  `--pie-incorrect`.
+
+  A canonical entry rather than a package-private hook: authored content is host
+  content, so which red emphasis takes is a host decision, and the value has to
+  participate in colour schemes.
+
+- 2bcd9fa: Paint the shared content stylesheet from the active theme instead of white-page
+  literals.
+
+  `components.css` is installed in the host document by every player, and its
+  authored-content classes carried the colours the content was written against: a
+  `lightgray` fill under `kds-*` table headers, `border: 1px solid black` grids and
+  fill-in boxes, a white `.pie-loading` scrim, `#dee2e6` rules on the
+  bootstrap-style `.table` family, and `color: red` emphasis. None of it could be
+  reached by swapping the theme, so a dark theme or colour scheme rendered
+  near-white header text on light grey (~1.2:1) and invisible table grids.
+
+  Ink resolves through `--pie-text`, page-coloured fills — the scrim and the
+  deliberately edgeless `.kds-verdana2t` border — through `--pie-white`, table
+  header fills through `--pie-background-dark`, and the loading ring through
+  `--pie-primary` at the 90% share the Figma indigo already was. Each keeps its
+  original literal as the no-theme last resort.
+
+  The subtle grid rules take an inline `color-mix` of `--pie-text` at 15% rather
+  than `--pie-border-light`: the DaisyUI mapping fills that token from base-200, a
+  surface, so a border taken from it disappears into the page. The mix stays inline
+  instead of being hoisted into a shared custom property, because a custom property
+  substitutes `var(--pie-text)` where it is declared, and a
+  `<pie-theme scope="self">` below `:root` would not reach it.
+
+  `.content-emphasis` moves to the new `--pie-content-emphasis` token; see the
+  separate entry for why a red mixed toward the ink was not enough.
+
+  `PieSpinner` duplicates the `.pie-loading` rules and follows the same change.
+
+- 6bbfae1: Resolve DaisyUI's palette to PIE tokens a learner can see, from one table instead
+  of four copies.
+
+  The same 47-row slot-to-token table was written out four times: the provider
+  adapter in `@pie-players/pie-theme`, `mapDaisyThemeToPieVariables` and
+  `mapResolvedDaisyThemeToPieVariables` in `@pie-players/pie-theme-daisyui`, and that
+  package's `bridge.css`. Two defects lived in the drift between them, and the parity
+  test meant to catch drift compared only which token names each copy declared, never
+  which slot a token derived from.
+
+  `DAISYUI_PIE_TOKEN_MAP` in `pie-theme` is now the single table, and one renderer
+  serves all three JS mappers. `bridge.css` cannot import it, so the parity test now
+  holds it to the table expression by expression. Three copies of the table are gone.
+
+  ## An unanswered question was painted as a wrong one
+
+  `--pie-missing` and `--pie-incorrect` both resolved to `--color-error`, so under
+  every DaisyUI theme an unanswered question and a wrong one were the same colour.
+  `--pie-missing` now takes `--color-warning`, the mapping the rest of PIE already
+  declares: pie-elements-ng keys it to `warning`, and the assessment toolkit's
+  `.pie-warning` rule paints it.
+
+  ## Feedback marks and control boundaries were unreadable
+
+  DaisyUI's semantic slots are background colours — `--color-success` is chosen to
+  sit behind `--color-success-content` — while PIE paints `--pie-correct`,
+  `--pie-incorrect` and `--pie-missing` as `color:`. Taken verbatim, the correct mark
+  measured 1.26:1 against the page under `acid` and 1.96:1 under `light`, against SC
+  1.4.3's 4.5:1.
+
+  `--pie-border` and `--pie-button-border` have the same shape of problem against SC
+  1.4.11's 3:1. They map to `--color-base-300`, a surface tint, so a boundary painted
+  with it sits between 1.09:1 and 1.53:1 across the shipped themes. What makes that a
+  defect rather than a subtle divider is that `--pie-button-bg` resolves to
+  `--color-base-100`, the page's own colour: for a toolbar button, an answer-eliminator
+  toggle, or the inline TTS control, that border is the only thing separating the
+  control from the page behind it. `--pie-border-dark` is corrected too, since
+  `--color-neutral` collapses to 1.09:1–1.85:1 against the page in dark themes, taking
+  the graph tool's grid lines with it.
+
+  The repo already had one component routing around this: the annotation toolbar was
+  given its own contrast-checked border token because, as the note in
+  `color-schemes.css` puts it, `--pie-border` "carries a surface tint that leaves the
+  outline at ~1.1:1". Correcting the token means the next component does not need its
+  own escape hatch.
+
+  The selected button surface had the related inverse problem. DaisyUI chooses
+  `--color-base-content` against `--color-base-100`, but PIE also paints it on
+  `--pie-button-active-bg`. Under `valentine`, the direct `--color-base-300` mapping
+  left selected picker text at 4.17:1. The active background now keeps 70% of that
+  deeper tint and mixes toward `--color-base-100`, the nearest 5% step that clears
+  4.5:1 across the shipped DaisyUI themes. The public PIE token and cascade stay the
+  same; only the inaccessible provider-derived value is corrected.
+
+  The feedback and boundary corrections go through `legibleColorAgainst`: they
+  leave a slot untouched when it already clears its minimum against
+  `--color-base-100`; otherwise they use the largest 5% share that passes, mixed
+  toward `--color-base-content`. Mixing toward the theme's own text colour borrows
+  the theme's guarantee — base-content is what that theme chose to be readable on
+  that surface — so one code path lightens a mark in a dark theme and darkens it in
+  a light one. Stepping down from the top keeps as much hue as the threshold allows:
+  36 of the 84 theme/slot feedback combinations need no correction and keep their
+  exact colour.
+
+  `--pie-border-light` is deliberately left alone. It is the token the players use for
+  card edges and pane dividers, which 1.4.11 exempts, and a 3:1 outline around every
+  item card would be a visual regression rather than a fix. The `-secondary` tints are
+  untouched for the same reason: they are fills, and what has to contrast with them is
+  the text on top.
+
+  ## Measuring
+
+  Contrast is measured by painting one pixel on a canvas and reading it back. DaisyUI
+  5 resolves its palette in `oklch()`, and an oklch-to-sRGB implementation in this
+  package would be a second opinion about colours the browser has already decided.
+
+  Where the values are not measurable colours — `mapDaisyThemeToPieVariables` emits
+  `var()` references, `bridge.css` is static CSS, and a server render has no canvas —
+  the correction falls back to a fixed hue share: 30% for the 4.5:1 targets and 35%
+  for the 3:1 ones, each the largest 5% step that clears its threshold for every
+  affected slot in all 28 shipped themes. Deliberately pessimistic: a slot that needed
+  no correction still gets pulled most of the way to the text colour.
+
+- 1e0c10f: Collapse fixed component hues into the palette under a colour scheme.
+
+  A component sometimes paints a hue the palette does not own: the periodic
+  table's element cells encode category as a fixed pastel. Pinning their ink made
+  them legible under a dark theme, but a colour scheme is a two-colour promise,
+  and a pastel field ignores it — a learner on yellow-on-blue got a pastel grid.
+
+  `--pie-fixed-hue-collapse` is the share by which such a hue folds into the
+  palette. A component mixes its own value towards `--pie-background-dark` and
+  `--pie-text` by this share, so `0%` renders the authored hue exactly and `100%`
+  removes it. Base Themes set `0%`; every built-in colour scheme sets `100%`, and
+  a registered custom scheme collapses without declaring anything, because it is a
+  palette a host chose for a learner. A scheme that wants a hue encoding kept sets
+  `0%` itself.
+
+  Both ends of the mix are exact, so a Base Theme renders the periodic table byte
+  for byte as before. Under a scheme its cells take the scheme's recessed surface
+  and ink — measured across all ten built-ins, 5.44:1 at worst and 19.26:1 at best
+  — and the cell edge takes `--pie-border`, which the palette corrects to 3:1,
+  because collapsed fills sit on the panel at about 1.1:1 and can no longer
+  separate themselves. Category then lives where it does not depend on hue: the
+  badge row filters by it, the selected-element panel names it, and each cell's
+  accessible name carries it.
+
+  Sweeping those ten also cost the cell's secondary text its opacity. Fading the
+  atomic number, name and mass spent contrast the palette cannot always afford: at
+  0.8 the atomic mass measured 4.12:1 under grey-on-light-grey and 4.00:1 under
+  purple-on-light-green, whose ink and recessed surface hold only 6.46:1 and 5.44:1
+  before anything is faded. Size and weight carry the hierarchy instead, which also
+  lifts the worst pairing under a Base Theme from 6.01:1 to 8.99:1.
+
+  `--pie-text` against `--pie-background-dark` is now a certified contrast
+  relationship, since that pair is where a collapsed hue lands. Every built-in
+  palette already clears it; a custom scheme that does not now warns.
+
+- e8a6f0e: Prune the shipped content stylesheet: remove what could not be made accessible,
+  tweak what could.
+
+  Removed. A `#stimulus` / `#item` pair of 50%-wide left floats hard-coded a
+  two-column layout keyed to two global ids: it cannot reflow at a
+  320px-equivalent width (SC 1.4.10), and being id-based it applied to any element
+  in the host document carrying either id. A `.lrn_feature h3` margin override and
+  `.lrn_width_auto.table` styled a third-party product's markup that PIE does not
+  render. None of the three had a correct form here.
+
+  Tweaked. The heading reset dropped `font-weight: 500`, which flattened every
+  authored heading to lighter-than-bold and weakened the visual hierarchy that
+  mirrors the heading level. The answer-eliminator toggle moves from a fixed 28px
+  box with an 18px glyph to `1.75em` / `1.125em`: PNP font scaling raises the
+  surrounding text without touching px boxes, so the control used to stay put while
+  its context grew — the em values are the same size at the default 16px base and
+  stay past SC 2.5.8's 24px minimum for any base at or above 14px. The centred
+  `.block-quote`, `.text-block` and `.equation-block` keep their 20% gutters on a
+  wide viewport but drop them below 30rem, where they otherwise left a ~190px
+  column.
+
+  Kept deliberately: the MathJax `font-family` overrides, `.text-center`'s
+  `!important`, and the bare `table` / `th` normalisation that authored tables
+  depend on.
+
+- a4beb70: Two additions a host needs to explain a resolved theme to a person: the token registry becomes a package export, and `provider="none"` becomes a supported mode.
+
+  ## `@pie-players/pie-theme/token-registry.json`
+
+  The registry already answers "what is this token for, and who owns it" for all 84 `--pie-*` names — owner, scope, category, status, fallback policy — and `check:theme-tokens` holds it against source on every commit. It was internal, so a host wanting to show that answer had to derive grouping from token names or keep its own list, and both drift the moment a token is added here.
+
+  Exported as the JSON itself rather than a wrapper, matching how the stylesheets are exported, with `PieThemeTokenRegistryEntry` from the root entry point to type the import. `tsc` does not emit files it did not compile, so the build copies the JSON into `dist` alongside the CSS; a test pins the export entry, the copy step and `files`, because an export pointing at a file the build forgot resolves to a 404 for every consumer and nothing else would catch it.
+
+  ## `provider="none"`
+
+  `auto` lets any registered adapter that can read the target win, which on a DaisyUI page means PIE tokens follow `--color-*`. `none` resolves nothing and leaves the shipped defaults, which is how a host reproduces the palette it had before adopting a provider — the first thing to check when colours differ between two environments.
+
+  Naming an unregistered provider already landed in the same place, by accident and undocumented. The mode short-circuits ahead of both the registry lookup and the document-element retry, since that retry exists so a subtree host inherits a themed page and would otherwise put the provider's values straight back. `unregisterPieThemeProvider` cannot take it away, because it is not in the registry at all.
+
+  `PIE_THEME_PROVIDER_NONE` is exported for hosts that would otherwise hardcode the string.
+
+- 1f29de7: Make theme resolution one observable contract instead of separate runtime and
+  stylesheet palettes.
+
+  The light and dark Base Theme defaults and the two previously under-contrast
+  built-in palettes now satisfy the named WCAG text, control-boundary, feedback,
+  focus, and annotation relationships enforced by the theme contract. Hosts keep
+  the same token names and can still override them through the normal cascade.
+
+  `@pie-players/pie-theme` now owns light and dark base themes, complete built-in
+  color schemes, custom-scheme registration, accessibility diagnostics, and
+  generated CSS from one side-effect-free TypeScript definition. The public
+  runtime interface is `resolvePieTheme`, `listPieColorSchemes`,
+  `observePieColorSchemes`, and `registerPieColorSchemes`. Registration returns a
+  generation-aware, idempotent receipt whose `unregister()` removes only the
+  definition it registered. Built-in ids are reserved, invalid custom entries are
+  rejected atomically, and valid entries from the same batch still register.
+
+  Upgrade note: `listPieColorSchemes()` now returns an immutable snapshot rather
+  than a mutable array of raw palette definitions. Raw built-in/base constants,
+  authored preview values, and the one-off get/resolve/unregister scheme helpers
+  are no longer public. Consumers should render `snapshot.schemes`, derive values
+  through `resolvePieTheme()`, observe catalog changes when mounted, and retain the
+  registration receipt when they need to unregister custom schemes.
+
+  An unknown requested scheme is no longer silently replaced. `<pie-theme>` keeps
+  the requested id in `scheme` and `data-color-scheme`, applies the safe base and
+  provider result plus explicit variables, and automatically resolves it if
+  registration arrives later. This preserves a CSS-only selector hook while
+  making registered custom schemes the managed path. CSS-only schemes use the
+  normal cascade in stylesheet-only integrations; a rule competing with a mounted
+  `<pie-theme>`'s inline tokens must deliberately use `!important`.
+
+  `@pie-players/pie-tool-theme` now follows that observable catalog and derives
+  previews from resolved tokens. If a saved scheme is unavailable, the picker
+  keeps the preference, shows a disabled unavailable option and status message,
+  and restores the scheme after late registration. The old `schemes` and
+  `schemeCatalog` inputs are removed; no recorded client-facing host depends on
+  them.
+
+  The shared focus trap now resolves and restores focus inside open shadow roots,
+  so keyboard containment and Escape restoration work for the theme picker's
+  shadow-DOM controls.
+
+  The checked-in `tokens.css` and `color-schemes.css` files remain at their exact
+  published paths and remain unlayered so host token declarations and
+  `!important` overrides keep working. They are generated explicitly and checked
+  for staleness; package builds verify them without rewriting tracked source.
+  Importing the package root still registers `<pie-theme>`, while importing
+  `@pie-players/pie-theme/theme-element` remains side-effect-free.
+
 ## 0.3.65
 
 ### Patch Changes

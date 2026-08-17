@@ -67,7 +67,7 @@ describe("tool-tts-inline trigger styling contract", () => {
 			"",
 		);
 		expect(body).toContain(
-			"--color-interactive-blue:var(--pie-tts-button-color,#146eb3)",
+			"--color-interactive-blue:var(--pie-tts-button-color,var(--pie-button-color,var(--pie-text,#222)))",
 		);
 	});
 
@@ -125,36 +125,85 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("tertiary trigger glyph meets WCAG AA contrast (interactive blue on NDS new-gray)", () => {
-		// NDS `variant="tertiary"`: --color-interactive-blue (#146eb3) glyph on
-		// --color-new-gray (#f3f5f7). Guard that pairing stays AA.
-		expect(contrastRatio("#146eb3", "#f3f5f7")).toBeGreaterThanOrEqual(4.5);
+	test("tertiary trigger glyph meets WCAG AA contrast on its themed pill", () => {
+		// NDS `variant="tertiary"` paints --color-interactive-blue on
+		// --color-new-gray. Both are bridged to the PIE families below, so the
+		// pairing to guard is --pie-button-color on --pie-background-dark, at
+		// their base-light-theme values.
+		expect(contrastRatio("#374151", "#ecedf1")).toBeGreaterThanOrEqual(4.5);
+	});
+
+	test("the vendored NDS palette is bridged to the PIE token families", () => {
+		// Unbridged, the vendored button's own literals win: a #f3f5f7 pill under
+		// every theme, which a themed (light) glyph then disappears into.
+		const declarations = styleSource
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\s+/g, "");
+		expect(declarations).toContain(
+			"--color-new-gray:var(--pie-background-dark,#f3f5f7)",
+		);
+		expect(declarations).toContain(
+			"--color-primary-white:var(--pie-white,#ffffff)",
+		);
+		expect(declarations).toContain(
+			"--color-primary-black:var(--pie-text,#000000)",
+		);
+		expect(declarations).toContain(
+			"--color-focus-blue:var(--pie-button-focus-outline,#2b87ff)",
+		);
 	});
 });
 
 describe("tool-tts-inline overlay redesign contract", () => {
 	const stripped = styleSource.replace(/\s+/g, "");
+	// Comments name the literals they replaced, so guard the declarations only.
+	const declarations = styleSource
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/\s+/g, "");
 
-	test("overlay panels render as a white card with the Figma dropdown shadow", () => {
+	test("overlay panels render as a themed card with the Figma dropdown shadow", () => {
 		// Grouped rule for floating-overlay + left-aligned panels.
 		expect(stripped).toContain(
 			".pie-tool-tts-inline__panel--floating,.pie-tool-tts-inline__panel--left-aligned-inline{",
 		);
-		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
+		// --pie-white, not --pie-background: the base light theme makes the latter
+		// transparent, which a floating card cannot be.
+		expect(stripped).toContain(
+			"background:var(--pie-tts-selected-bg,var(--pie-surface,var(--pie-white,#fff)))",
+		);
 		expect(stripped).toContain(
 			"box-shadow:var(--pie-tts-menu-shadow,01px5px0rgba(0,0,0,0.3))",
+		);
+		// The black shadow disappears on a dark surface, so the card keeps a
+		// text-derived hairline that reads on either, with a hook to opt out.
+		expect(stripped).toContain(
+			"border:1pxsolidvar(--pie-tts-card-border,color-mix(insrgb,var(--pie-text,#000)15%,transparent))",
 		);
 	});
 
 	test("media + selected-speed accent flows through the settable --pie-tts-button-color", () => {
-		expect(stripped).toContain("color:var(--pie-tts-button-color,#146eb3)");
+		expect(stripped).toContain(
+			"color:var(--pie-tts-button-color,var(--pie-button-color,var(--pie-text,#222)))",
+		);
 	});
 
-	test("selected speed uses a white chip; muted text otherwise (roomy)", () => {
-		expect(stripped).toContain("background:var(--pie-tts-selected-bg,#fff)");
+	test("selected speed uses a themed chip; plain text otherwise (roomy)", () => {
+		// The chip fill is the mapping's contrast-tuned --pie-button-active-bg.
 		expect(stripped).toContain(
-			"color:var(--pie-tts-inline-muted-color,#5b6b73)",
+			"background:var(--pie-selected-button-background,var(--pie-button-active-bg,#f3f5f7))",
 		);
+		expect(stripped).toContain(
+			"color:var(--pie-tts-inline-muted-color,var(--pie-button-color,var(--pie-text,#5b6b73)))",
+		);
+	});
+
+	test("no overlay surface paints a literal colour a theme cannot reach", () => {
+		// The regression this guards: the overlay used to paint #146eb3 glyphs on a
+		// #fff card, so a DaisyUI `valentine` page showed a blue panel on a pink
+		// player. Every literal here is now a last-resort fallback behind a
+		// canonical token, never a first value.
+		expect(declarations).not.toContain("#146eb3");
+		expect(declarations).not.toContain("var(--pie-tts-selected-bg,#fff)");
 	});
 
 	test("compact stacked card carries the Figma elevation shadow", () => {
@@ -294,14 +343,18 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 
 		// Foreground fallback matches __control, NOT --plain. Both declare `color`
 		// at equal specificity and __control comes later in the sheet, so it wins
-		// and --plain's accent colour is dead. Falling back to the accent would
-		// turn the glyph blue on open. Verified in Chromium: the plain trigger
-		// computes the dark --pie-button-color, not #146eb3.
-		expect(control).toContain("color:var(--pie-button-color,var(--pie-text,#222))");
+		// and --plain's accent declaration is dead. Verified in Chromium: the plain
+		// trigger computes --pie-button-color either way.
+		expect(control).toContain(
+			"color:var(--pie-button-color,var(--pie-text,#222))",
+		);
 		expect(active).toContain("var(--pie-button-color,var(--pie-text,#222))");
-		// Guard the trap directly: the accent must not be the active fallback.
-		expect(active).not.toContain("var(--pie-tts-button-color,#146eb3)");
-		expect(plain).toContain("color:var(--pie-tts-button-color,#146eb3)");
+		// Guard the trap directly: the active fallback must not go through the
+		// host-settable accent, which would restyle the glyph on open.
+		expect(active).not.toContain("var(--pie-tts-button-color,");
+		expect(plain).toContain(
+			"color:var(--pie-tts-button-color,var(--pie-button-color,var(--pie-text,#222)))",
+		);
 	});
 
 	test("remaps the NDS trigger accent rather than painting a box it lacks", () => {
@@ -313,7 +366,9 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 			'.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"]',
 		).replace(/\s+/g, "");
 
-		expect(body).toContain("--color-interactive-blue:var(--pie-tool-trigger-active-color,");
+		expect(body).toContain(
+			"--color-interactive-blue:var(--pie-tool-trigger-active-color,",
+		);
 		expect(body).not.toContain("background:");
 		expect(body).not.toContain("border-color:");
 	});
@@ -340,17 +395,20 @@ describe("tool-tts-inline keyboard order contract", () => {
 		);
 	});
 
-	test("the trigger never disables itself while the play action is in flight", () => {
+	test("the trigger never disables itself while playback startup is in flight", () => {
 		// A disabled element cannot hold focus, so disabling the trigger mid-action
 		// blurs it and a keyboard user loses their place on every Play press.
-		// Re-entrancy is guarded in handlePlayPause; the pending state is aria-busy.
+		// Re-entrancy is guarded through initialization and native playback start;
+		// the pending state is exposed with aria-busy.
 		expect(source).not.toContain(
 			"disabled={!ttsService || playActionInFlight}",
 		);
-		expect(source).toContain("'aria-busy': playActionInFlight ? 'true' : null");
+		expect(source).not.toContain("disabled={!ttsService || startupInFlight}");
+		expect(source).toContain("'aria-busy': startupInFlight ? 'true' : null");
 		expect(source).toContain(
-			"aria-busy={playActionInFlight ? 'true' : undefined}",
+			"aria-busy={startupInFlight ? 'true' : undefined}",
 		);
+		expect(source).toContain("startupInFlight ||");
 		expect(source).toContain("if (playActionInFlight) return;");
 	});
 
@@ -405,7 +463,7 @@ describe("tool-tts-inline keyboard order contract", () => {
 			source.indexOf("ttsService.onStateChange"),
 		);
 		expect(listener.indexOf("isSeekControlFocused()")).toBeLessThan(
-			listener.indexOf("syncFromState(state as string)"),
+			listener.indexOf("syncFromState(playbackState)"),
 		);
 		expect(listener).toContain("moveFocusOffDisabledSeekControl");
 		// Focus lands on Stop, falling back to the trigger if the panel has closed.

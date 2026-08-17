@@ -235,7 +235,7 @@ const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
     providers: {
-      textToSpeech: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
+      textToSpeech: { enabled: true, backend: 'browser' },
       calculator: { enabled: true }
     },
     placement: {
@@ -418,7 +418,7 @@ tools: {
   },
   providers: {
     calculator: { authFetcher: async () => ({ apiKey: '...' }) },
-    textToSpeech: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
+    textToSpeech: { enabled: true, backend: 'browser' }
   }
 }
 ```

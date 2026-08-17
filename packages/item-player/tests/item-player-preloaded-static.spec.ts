@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_ID = "multiple-choice-radio-simple";
 const PRELOADED_DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=preloaded`;
@@ -17,6 +18,7 @@ type SessionSnapshot = {
 };
 
 async function readSessionState(page: Page): Promise<SessionSnapshot> {
+	await openDemoMenuIfCollapsed(page);
 	const panel = page.locator("pie-item-player-session-debugger");
 	const sessionTab = page.getByRole("tab", { name: "Session" });
 	if (!(await sessionTab.isVisible().catch(() => false))) {

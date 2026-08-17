@@ -43,6 +43,8 @@ const CAPABILITY_IDS = [
 	"lineReader",
 	"periodicTable",
 	"protractor",
+	"dictionary",
+	"pictureDictionary",
 	"calculator",
 	"textToSpeech",
 	"graph",
@@ -68,6 +70,9 @@ const SCOPED_TARGETS = [
 		file: path.join(TOOLKIT_SRC, "services", "defaultPersonalNeedsProfile.ts"),
 	},
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
+	{
+		file: path.join(TOOLKIT_SRC, "tools", "content-capability-resolution.ts"),
+	},
 ];
 
 /**

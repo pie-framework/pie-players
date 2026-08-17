@@ -82,9 +82,6 @@
 			"path": "./packages/tool-text-to-speech"
 		},
 		{
-			"path": "./packages/tool-toolbar"
-		},
-		{
 			"path": "./packages/tts"
 		},
 		{

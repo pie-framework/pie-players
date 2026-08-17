@@ -211,8 +211,6 @@ const nlNL = {
 			centimeters: "Centimeters",
 			inchesInSentence: "inches",
 			centimetersInSentence: "centimeters",
-			inchesAbbrev: "inch",
-			centimetersAbbrev: "cm",
 			switchToInchesA11y: "Overschakelen naar inches",
 			switchToCentimetersA11y: "Overschakelen naar centimeters",
 			switchedTo: "Overgeschakeld naar {unit}",

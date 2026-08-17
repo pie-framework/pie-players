@@ -185,29 +185,29 @@ const enUS = {
 			description: "Graphing calculator and coordinate plane",
 			buttonA11y: "Graph - Graphing calculator",
 			tooltip: "Graph",
-			toolA11y: "Graph Tool - Draw points and lines on a coordinate grid",
-			canvasA11y: "Graph canvas - Use tools to add points and draw lines",
+			toolA11y: "Graph tool — draw points and lines on a coordinate grid",
+			canvasA11y: "Graph canvas — use tools to add points and draw lines",
 			grid: "Grid:",
 			gridOpacityA11y: "Grid opacity",
 			pointA11y: "Graph point {id}",
 			modeSelector: "Selector",
 			modeSelectorHint:
-				"Selector: Click and drag points to move them or associated lines.",
+				"Selector: click and drag points to move them or associated lines.",
 			modePoint: "Point",
-			modePointHint: "Point: Click on the grid to add points.",
+			modePointHint: "Point: click on the grid to add points.",
 			modeLine: "Line",
 			modeLineHint:
-				"Line: Click a starting point, then an ending point to draw a line.",
+				"Line: click a starting point, then an ending point to draw a line.",
 			modeDelete: "Delete",
 			modeDeleteHint:
-				"Delete: Click on a point to delete it and any connected lines.",
+				"Delete: click on a point to delete it and any connected lines.",
 		},
 		periodicTable: {
 			name: "Periodic Table",
 			description: "Chemistry periodic table reference",
 			buttonA11y: "Periodic table - Chemistry reference",
 			tooltip: "Periodic Table",
-			toolA11y: "Periodic Table - Click elements to view details",
+			toolA11y: "Periodic table — select an element to view its details",
 			elementsA11y: "Periodic table elements",
 			showAllA11y: "Show all elements",
 			allElements: "All Elements",
@@ -248,18 +248,14 @@ const enUS = {
 			unitSelectionA11y: "Ruler unit selection",
 			inches: "Inches",
 			centimeters: "Centimeters",
-			// Second form of each unit name, for interpolation into a sentence.
-			// English needs it for sentence case; a language that capitalises
-			// nouns everywhere will have the two forms identical.
+			// Second form of each unit name, for interpolation into a sentence —
+			// `switchedTo`, `applicationA11y`, `imageAlt`. English needs it for
+			// sentence case; a language that capitalises nouns everywhere will have
+			// the two forms identical. Both are spelled out rather than abbreviated
+			// because every one of those three is read aloud, and a screen reader
+			// says "cm" as two letters.
 			inchesInSentence: "inches",
 			centimetersInSentence: "centimeters",
-			// Third form, for `applicationA11y` and `imageAlt`. Before this pass
-			// both interpolated the raw `'inches' | 'cm'` state token, so the
-			// inches case spelled the word and the centimetres case gave the
-			// symbol. Preserved as-is: these are an accessible name and an image
-			// alt, where English output has to stay byte-identical.
-			inchesAbbrev: "inches",
-			centimetersAbbrev: "cm",
 			switchToInchesA11y: "Switch to inches",
 			switchToCentimetersA11y: "Switch to centimeters",
 			switchedTo: "Switched to {unit}",
@@ -273,7 +269,7 @@ const enUS = {
 			buttonA11y: "Open protractor tool",
 			tooltip: "Protractor",
 			toolA11y:
-				"Protractor tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation. Current rotation displayed via Moveable.js",
+				"Protractor tool. Use arrow keys to move, Shift+arrows to rotate, and PageUp or PageDown for fine rotation.",
 			roleA11y: "Draggable and rotatable protractor measurement tool",
 			imageAlt:
 				"Protractor with 180-degree semicircular scale marked from 0 to 180 degrees in both directions, with degree markings every 10 degrees",
@@ -347,7 +343,7 @@ const enUS = {
 		textToSpeech: {
 			name: "Text to Speech",
 			description: "Read content aloud",
-			toolA11y: "Text-to-Speech Tool",
+			toolA11y: "Text-to-speech tool",
 			title: "Text-to-Speech",
 			initializing: "Initializing…",
 			initFailed: "Failed to initialize text-to-speech.",
@@ -458,7 +454,7 @@ const enUS = {
 		showSectionRequest: "Show section request",
 		showAssessmentRequest: "Show assessment request",
 		liveUpdatesUnsupported: "Live updates are not supported in this browser",
-		liveUpdatesDisconnected: "Live updates disconnected; retrying...",
+		liveUpdatesDisconnected: "Live updates disconnected; retrying…",
 		fieldType: "Type:",
 		fieldTarget: "Target:",
 		fieldItem: "Item:",
@@ -544,8 +540,8 @@ const enUS = {
 			providerNotChecked: "Provider availability has not been checked yet.",
 			webSpeechUnavailable: "Web Speech API is not available in this browser.",
 			browserNoVoices:
-				"Browser TTS is available, but no voices were returned yet.",
-			browserUnavailable: "Browser TTS is not available.",
+				"Browser text-to-speech is available, but no voices were returned yet.",
+			browserUnavailable: "Browser text-to-speech is not available.",
 			googleUnavailable:
 				"Google Cloud TTS is not available from the configured API.",
 			// No keys for the preview sample text: it is spoken by the voice under
@@ -555,7 +551,7 @@ const enUS = {
 			allVoices: "All available voices",
 			previewVoice: "Preview voice",
 			stopPreview: "Stop preview",
-			applying: "Applying...",
+			applying: "Applying…",
 			ssmlPreviewUnsupported:
 				"SSML preview is not supported in the Browser backend.",
 			pollySsmlHint:
@@ -568,7 +564,7 @@ const enUS = {
 			previewNoAudio: "Preview response did not include audio content.",
 			previewEnterText: "Enter preview text before starting playback.",
 			previewUnavailable:
-				"Cannot preview while this TTS service is unavailable.",
+				"Cannot preview while this service is unavailable.",
 			browserSynthesisUnavailable: "Browser speech synthesis is unavailable.",
 			browserSynthesisEndedEarly:
 				"Browser speech synthesis ended before audio started. Restart the browser and try again.",
@@ -578,9 +574,9 @@ const enUS = {
 			ssmlWordTrackingDisabled:
 				"Google SSML preview preserves authored SSML, so word tracking is disabled.",
 			applyUnavailable:
-				"Cannot apply settings while this TTS service is unavailable.",
+				"Cannot apply settings while this service is unavailable.",
 			coordinatorUnavailable:
-				"Toolkit coordinator is not available for TTS updates.",
+				"Toolkit coordinator is not available for text-to-speech updates.",
 		},
 	},
 };

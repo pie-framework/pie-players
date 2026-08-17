@@ -5,6 +5,7 @@
 	import { makeUniqueTags } from '@pie-players/pie-players-shared/pie';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	class AuthoringFixtureElement extends HTMLElement {
 		private _model: any = null;
@@ -436,6 +437,7 @@
 				bind:this={playerEl}
 				strategy={selectedLoaderStrategy}
 				mode="author"
+				locale={demoLocale()}
 			></pie-item-player>
 			{#if authoringContractMode}
 				<div class="mt-4 grid gap-3" data-testid="authoring-contract-harness">

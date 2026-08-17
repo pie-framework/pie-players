@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { ResponsiveDemoMenuBar } from '@pie-players/demo-ui';
+	import { LocaleSelect, ResponsiveDemoMenuBar } from '@pie-players/demo-ui';
 	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
+	import { DEMO_LOCALES, demoLocale, setDemoLocale } from '$lib/demo-locale.svelte';
 
 	interface Props {
 		demoName: string;
@@ -152,6 +153,11 @@
 	{/snippet}
 
 	{#snippet secondary()}
+		<LocaleSelect
+			locales={DEMO_LOCALES}
+			value={demoLocale()}
+			onSelect={setDemoLocale}
+		/>
 		<ThemeSelect />
 		{#if showSessionToggle}
 			<button

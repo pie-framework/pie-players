@@ -11,6 +11,7 @@
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 	import '@pie-players/pie-item-player';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 	import {
 		config as configStore,
 		env as envStore,
@@ -298,6 +299,7 @@
 					<pie-item-player
 						bind:this={playerEl}
 						strategy={selectedPlayerType}
+						locale={demoLocale()}
 					></pie-item-player>
 				{/key}
 			{:else if !$configStore || !$envStore}

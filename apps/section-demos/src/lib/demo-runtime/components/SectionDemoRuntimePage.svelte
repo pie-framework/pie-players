@@ -22,6 +22,7 @@
 	import '@pie-players/pie-tool-text-to-speech';
 	import '@pie-players/pie-tool-theme';
 	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -436,6 +437,7 @@
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
+				locale={demoLocale()}
 			></pie-section-player-vertical>
 		{:else}
 			<pie-section-player-splitpane
@@ -455,6 +457,7 @@
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
+				locale={demoLocale()}
 			></pie-section-player-splitpane>
 		{/if}
 	{/key}

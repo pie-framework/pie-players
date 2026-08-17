@@ -79,6 +79,11 @@ const nlNL = {
 		resizePassageAndMediaA11y:
 			"Panelen met tekst en media verkleinen of vergroten",
 
+		assessment: {
+			sectionPosition: "Onderdeel {position} van {total}",
+			noSections: "Geen onderdelen",
+		},
+
 		formative: {
 			checkAnswer: "Antwoord controleren",
 			tryAgain: "Opnieuw proberen",

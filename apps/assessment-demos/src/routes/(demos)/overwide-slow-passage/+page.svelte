@@ -22,6 +22,7 @@
 	import { browser } from "$app/environment";
 	import { onMount } from "svelte";
 	import "@pie-players/pie-item-player";
+	import { demoLocale } from "$lib/demo-locale.svelte";
 
 	const SYNTHETIC_TAG = "pie-slow-passage";
 	const SYNTHETIC_PACKAGE_VERSION = "1.0.0";
@@ -211,7 +212,7 @@
 	</section>
 
 	<section class="demo-frame">
-		<pie-item-player bind:this={playerEl}></pie-item-player>
+		<pie-item-player bind:this={playerEl} locale={demoLocale()}></pie-item-player>
 	</section>
 </main>
 

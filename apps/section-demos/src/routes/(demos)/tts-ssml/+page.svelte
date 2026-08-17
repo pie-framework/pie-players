@@ -59,6 +59,7 @@
 		waitForCustomElements
 	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const toolRegistry = createSectionDemoToolRegistry();
@@ -309,13 +310,9 @@ const sectionPlayerHooks = $derived.by(() =>
 	});
 
 	// Interface locale from the query string, so the toolbar demo can be visited in a
-	// second language without a second route. A deployment sets this once from its
-	// own configuration.
-	let chromeLocale = $state('');
-	$effect(() => {
-		if (!browser) return;
-		chromeLocale = new URL(window.location.href).searchParams.get('locale') ?? '';
-	});
+	// second language without a second route, and the header's switcher reaches it.
+	// A deployment sets this once from its own configuration.
+	const chromeLocale = $derived(demoLocale());
 
 	$effect(() => {
 		if (!browser) return;

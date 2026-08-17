@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { DemoSiteHeader } from "@pie-players/demo-ui";
+	import { DemoSiteHeader, LocaleSelect } from "@pie-players/demo-ui";
+	import {
+		DEMO_LOCALES,
+		demoLocale,
+		setDemoLocale,
+	} from "$lib/demo-locale.svelte";
 
 	type Props = {
 		title?: string;
@@ -12,4 +17,12 @@
 	}: Props = $props();
 </script>
 
-<DemoSiteHeader {title} {subtitle} />
+<DemoSiteHeader {title} {subtitle}>
+	{#snippet localeControl()}
+		<LocaleSelect
+			locales={DEMO_LOCALES}
+			value={demoLocale()}
+			onSelect={setDemoLocale}
+		/>
+	{/snippet}
+</DemoSiteHeader>

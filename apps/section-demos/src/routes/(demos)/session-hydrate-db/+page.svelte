@@ -57,6 +57,7 @@
 		fetchBundleWithRetry
 	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const toolRegistry = createSectionDemoToolRegistry();
@@ -597,6 +598,7 @@
 					{toolRegistry}
 					toolbar-position="right"
 					show-toolbar={true}
+					locale={demoLocale()}
 				></pie-section-player-vertical>
 			{:else}
 				<pie-section-player-splitpane
@@ -616,6 +618,7 @@
 					{toolRegistry}
 					toolbar-position="right"
 					show-toolbar={true}
+					locale={demoLocale()}
 				></pie-section-player-splitpane>
 			{/if}
 		{/key}

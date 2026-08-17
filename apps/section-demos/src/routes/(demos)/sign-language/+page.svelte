@@ -37,6 +37,7 @@
 		PersonalNeedsProfile
 	} from '@pie-players/pie-players-shared/types';
 	import type { PageData } from './$types';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -145,6 +146,7 @@
 			{attemptId}
 			section={data.section}
 			show-toolbar={true}
+			locale={demoLocale()}
 			data-testid="sign-language-player"
 			ontoolkit-ready={handleToolkitReady}
 		></pie-section-player-splitpane>

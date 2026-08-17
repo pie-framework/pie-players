@@ -5,9 +5,10 @@
 		title: string;
 		subtitle: string;
 		themeControl?: Snippet;
+		localeControl?: Snippet;
 	}
 
-	let { title, subtitle, themeControl }: Props = $props();
+	let { title, subtitle, themeControl, localeControl }: Props = $props();
 </script>
 
 <header class="pie-demo-site-header border-b border-base-200 bg-base-100/80 backdrop-blur">
@@ -33,9 +34,14 @@
 			</span>
 		</a>
 
-		{#if themeControl}
-			<div class="pie-demo-site-header__theme">
-				{@render themeControl()}
+		{#if localeControl || themeControl}
+			<div class="pie-demo-site-header__controls">
+				{#if localeControl}
+					{@render localeControl()}
+				{/if}
+				{#if themeControl}
+					{@render themeControl()}
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -93,10 +99,11 @@
 		text-transform: uppercase;
 	}
 
-	.pie-demo-site-header__theme {
+	.pie-demo-site-header__controls {
 		display: flex;
 		flex: 0 0 auto;
 		align-items: center;
+		gap: 0.5rem;
 	}
 
 	@media (max-width: 420px) {

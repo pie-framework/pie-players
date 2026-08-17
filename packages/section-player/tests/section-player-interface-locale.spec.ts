@@ -110,6 +110,53 @@ test.describe("section player interface locale", () => {
 		}
 	});
 
+	test("the demo locale switcher moves chrome on a live prop change", async ({
+		page,
+	}) => {
+		// The switcher rewrites the `locale` search param through a client-side
+		// `goto`, so the layout element's `locale` prop changes on a player that is
+		// already mounted. That is the path a host's runtime locale change takes,
+		// and the one a full reload would not exercise: the label has to move on the
+		// context republish alone.
+		const pageErrors: string[] = [];
+		page.on("pageerror", (error) => {
+			pageErrors.push(error.message);
+		});
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane", {
+			waitUntil: "networkidle",
+		});
+
+		const themeButton = page.getByRole("button", {
+			name: "Theme, change colors and contrast",
+		});
+		await expect(themeButton).toBeVisible();
+
+		// The demo menu bar collapses its controls behind a toggle below 1400px.
+		const compactToggle = page.getByRole("button", { name: "Menu" });
+		if (await compactToggle.isVisible()) await compactToggle.click();
+
+		const localeSelect = page.getByTestId("demo-locale-select");
+		await expect(localeSelect).toBeVisible();
+		await localeSelect.selectOption("nl-NL");
+
+		await expect(
+			page.getByRole("button", {
+				name: "Thema, kleuren en contrast aanpassen",
+			}),
+		).toBeVisible();
+		await expect(themeButton).toHaveCount(0);
+		// The choice is in the URL, so the demo stays linkable in that language.
+		expect(new URL(page.url()).searchParams.get("locale")).toBe("nl-NL");
+
+		// And back, which is the case a one-way `setLocale` would fail.
+		await localeSelect.selectOption("");
+		await expect(themeButton).toBeVisible();
+		expect(new URL(page.url()).searchParams.get("locale")).toBeNull();
+
+		expect(pageErrors).toEqual([]);
+	});
+
 	test("an unshipped locale renders English rather than message keys", async ({
 		page,
 	}) => {

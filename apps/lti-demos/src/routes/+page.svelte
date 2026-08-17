@@ -8,7 +8,9 @@
 		type AssessmentPlayerRuntimeHostContract,
 	} from "@pie-players/pie-assessment-player";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
+	import { LocaleSelect } from "@pie-players/demo-ui";
 	import { ltiDemoAssessment } from "$lib/content/lti-assessment";
+	import { DEMO_LOCALES, demoLocale, setDemoLocale } from "$lib/demo-locale.svelte";
 	import {
 		deleteAssessmentSessionSnapshot,
 		loadAssessmentSessionSnapshot,
@@ -366,11 +368,18 @@
 						assessment session for the same mock launch.
 					</p>
 				</div>
-				{#if snapshot}
-					<p class="lti-demo-position">
-						Section {snapshot.navigation.currentIndex + 1} / {snapshot.navigation.totalSections}
-					</p>
-				{/if}
+				<div class="lti-demo-header-controls">
+					<LocaleSelect
+						locales={DEMO_LOCALES}
+						value={demoLocale()}
+						onSelect={setDemoLocale}
+					/>
+					{#if snapshot}
+						<p class="lti-demo-position">
+							Section {snapshot.navigation.currentIndex + 1} / {snapshot.navigation.totalSections}
+						</p>
+					{/if}
+				</div>
 			</header>
 
 			<div class="lti-demo-player-shell">
@@ -381,6 +390,7 @@
 						attempt-id={launchContext.attemptId}
 						section-player-layout="splitpane"
 						show-navigation="true"
+						locale={demoLocale()}
 					></pie-assessment-player-default>
 				{/key}
 			</div>
@@ -510,6 +520,13 @@
 		gap: 1rem;
 		padding: 1rem;
 		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.lti-demo-header-controls {
+		display: flex;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 0.75rem;
 	}
 
 	.lti-demo-position {

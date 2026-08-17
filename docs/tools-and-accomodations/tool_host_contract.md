@@ -11,9 +11,15 @@ This contract defines the minimum runtime guarantees between host components
 
 ## Required Contexts
 
-- Runtime tools must consume `assessmentToolkitRuntimeContext`.
-- Shell-aware tools must also consume `assessmentToolkitShellContext`.
-- Region-aware tools must also consume `assessmentToolkitRegionScopeContext`.
+- A runtime tool consumes `assessmentToolkitRuntimeContext` when it reads
+  something from it — a coordinator, the TTS service, the catalog resolver, the
+  `ndsIcons` flag. Connecting is a pure read: no host-side registration, and
+  nothing the toolkit counts. A tool that connects and discards the value buys a
+  retry timer and nothing else, so a tool taking everything it needs through the
+  params seam does not connect.
+- Shell-aware tools must consume `assessmentToolkitShellContext`, and
+  region-aware tools `assessmentToolkitRegionScopeContext`. Both carry scope a
+  tool cannot obtain another way, so for those the requirement is unconditional.
 
 Use contract helpers exported from `@pie-players/pie-assessment-toolkit`:
 

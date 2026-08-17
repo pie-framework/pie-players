@@ -55,7 +55,7 @@
 		"@pie-players/pie-section-player": "workspace:*"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.12.1",
+		"@axe-core/playwright": "^4.13.0",
 		"@playwright/test": "^1.62.1",
 		"@biomejs/biome": "^2.5.8",
 		"typescript": "^5.9.3",

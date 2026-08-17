@@ -9,6 +9,8 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 - **Persistent Annotations**: Saved to sessionStorage and restored on page load
 - **Clear Annotations**: Remove annotations from selected text or clear all
 - **Text-to-Speech (Read Aloud)**: Read selected text aloud with word-level highlighting
+- **Selection Actions**: Host-supplied actions on the current selection; see below
+- **Viewport-Aware Placement**: Sits above the selection where it fits, flips below when it does not, and clamps so no control leaves the viewport. `data-pie-placement` on the strip reads `above` or `below`.
 - **Modern CSS Custom Highlight API**:
   - Zero DOM mutation (no `<span>` wrappers)
   - 10-50x faster than traditional approaches

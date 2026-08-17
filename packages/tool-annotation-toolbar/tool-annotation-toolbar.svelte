@@ -93,7 +93,7 @@
 		isVisible: false,
 		selectedText: '',
 		selectedRange: null as Range | null,
-		toolbarPosition: { x: 0, y: 0 }
+		toolbarPosition: { x: 0, y: 0, below: false }
 	});
 
 	// TTS state
@@ -389,7 +389,29 @@
 			return;
 		}
 		toolbarState.isVisible = true;
-		toolbarState.toolbarPosition = toolbarAnchor(rect);
+		// The strip's own size is what keeps it inside the viewport, and it is only
+		// knowable once rendered. Zeroes on the first pass place it centred above, and
+		// the effect below re-runs this with a measurement.
+		toolbarState.toolbarPosition = toolbarAnchor(
+			rect,
+			viewport,
+			measureToolbar()
+		);
+	}
+
+	/**
+	 * The rendered strip's size, or zeroes before it exists.
+	 *
+	 * `offsetWidth`/`offsetHeight` rather than `getBoundingClientRect`: the strip is
+	 * unscaled, these are cheaper, and a fractional rect would feed sub-pixel values
+	 * into a clamp whose whole job is keeping an edge on screen.
+	 */
+	function measureToolbar(): { width: number; height: number } {
+		if (!toolbarElement) return { width: 0, height: 0 };
+		return {
+			width: toolbarElement.offsetWidth,
+			height: toolbarElement.offsetHeight
+		};
 	}
 
 	function handleScroll() {
@@ -749,6 +771,33 @@
 	});
 
 	/**
+	 * Re-place the strip once its size is knowable, and again whenever that size
+	 * changes.
+	 *
+	 * Placement needs a measurement and a measurement needs a render, so the first
+	 * pass positions an unmeasured strip and this corrects it. The correction lands in
+	 * the same frame, so there is no visible jump — and skipping it would leave the
+	 * clamp inert exactly when it matters, since the first pass is the one that can put
+	 * a control off screen.
+	 *
+	 * Tracks what changes the strip's width: the conditional controls, and the
+	 * host-supplied actions. `toolbarPosition` is deliberately not read — writing what
+	 * this effect reads would re-trigger it forever.
+	 */
+	$effect(() => {
+		void toolbarState.isVisible;
+		void toolbarElement;
+		void availableActions;
+		void hasOverlappingAnnotation;
+		void hasAnnotations;
+		void ttsService;
+		untrack(() => {
+			if (!toolbarState.isVisible || !toolbarElement) return;
+			repositionToSelection();
+		});
+	});
+
+	/**
 	 * Apply the roving tabindex to whatever controls are currently rendered.
 	 *
 	 * Done here rather than as a `tabindex` binding per button because the control
@@ -801,7 +850,8 @@
 	<div
 		bind:this={toolbarElement}
 		class="pie-tool-annotation-toolbar notranslate"
-		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
+		data-pie-placement={toolbarState.toolbarPosition.below ? 'below' : 'above'}
+		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px;`}
 		role="toolbar"
 		aria-label="Text annotation toolbar"
 		translate="no"

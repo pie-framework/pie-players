@@ -278,6 +278,25 @@ const enUS = {
 			imageAlt:
 				"Protractor with 180-degree semicircular scale marked from 0 to 180 degrees in both directions, with degree markings every 10 degrees",
 		},
+		/**
+		 * The two dictionaries. `toolA11y` names the floating panel; the button
+		 * names follow the toolbar rule — the tooltip verbatim, plus a purpose
+		 * clause only where the tooltip alone does not identify the tool.
+		 */
+		dictionary: {
+			name: "Dictionary",
+			description: "Look up word definitions",
+			buttonA11y: "Dictionary, look up word definitions",
+			tooltip: "Dictionary",
+			toolA11y: "Dictionary",
+		},
+		pictureDictionary: {
+			name: "Picture Dictionary",
+			description: "Look up pictures for words",
+			buttonA11y: "Picture Dictionary, look up pictures for words",
+			tooltip: "Picture Dictionary",
+			toolA11y: "Picture Dictionary",
+		},
 		lineReader: {
 			name: "Line Reader",
 			description: "Reading guide overlay",

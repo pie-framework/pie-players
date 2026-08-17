@@ -30,6 +30,7 @@ import {
 	hasReadableText,
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 
 /** The element props these panels read for their host-supplied lookup. */
 type DictionaryPanelElement = HTMLElement & {
@@ -93,8 +94,10 @@ function renderDictionaryPanel(args: {
 	registration: ToolRegistration;
 	context: ToolContext;
 	toolbarContext: ToolbarContext;
-	ariaLabel: string;
-	shellTitle: string;
+	/** Catalog keys for the button's accessible name, its tooltip, and the shell title. */
+	buttonA11yKey: MessageKey;
+	tooltipKey: MessageKey;
+	shellTitleKey: MessageKey;
 	initialWidth: number;
 	initialHeight: number;
 	minWidth: number;
@@ -113,8 +116,8 @@ function renderDictionaryPanel(args: {
 				? registration.icon(context)
 				: registration.icon,
 		disabled: false,
-		ariaLabel: args.ariaLabel,
-		tooltip: registration.name,
+		ariaLabel: toolbarContext.i18n.t(args.buttonA11yKey),
+		tooltip: toolbarContext.i18n.t(args.tooltipKey),
 		onClick: () => toolbarContext.toggleTool(registration.toolId),
 		active: visibility.isActive(),
 	};
@@ -138,7 +141,7 @@ function renderDictionaryPanel(args: {
 				element: overlay,
 				mount: "after-buttons",
 				shell: {
-					title: args.shellTitle,
+					title: toolbarContext.i18n.t(args.shellTitleKey),
 					draggable: true,
 					resizable: true,
 					closeable: true,
@@ -173,6 +176,8 @@ export const dictionaryToolRegistration: ToolRegistration = {
 	toolId: "dictionary",
 	name: "Dictionary",
 	description: "Look up word definitions",
+	nameKey: "tools.dictionary.name",
+	descriptionKey: "tools.dictionary.description",
 	icon: "book-open",
 
 	// Text can appear at any of these; the panel itself floats at section scope.
@@ -201,8 +206,9 @@ export const dictionaryToolRegistration: ToolRegistration = {
 			registration: this,
 			context,
 			toolbarContext,
-			ariaLabel: "Dictionary - Look up word definitions",
-			shellTitle: this.name,
+			buttonA11yKey: "tools.dictionary.buttonA11y",
+			tooltipKey: "tools.dictionary.tooltip",
+			shellTitleKey: "tools.dictionary.name",
 			initialWidth: 420,
 			initialHeight: 380,
 			minWidth: 300,
@@ -221,6 +227,8 @@ export const pictureDictionaryToolRegistration: ToolRegistration = {
 	toolId: "pictureDictionary",
 	name: "Picture Dictionary",
 	description: "Look up pictures for words",
+	nameKey: "tools.pictureDictionary.name",
+	descriptionKey: "tools.pictureDictionary.description",
 	icon: "photo",
 
 	supportedLevels: ["section", "item", "passage", "rubric"],
@@ -247,8 +255,9 @@ export const pictureDictionaryToolRegistration: ToolRegistration = {
 			registration: this,
 			context,
 			toolbarContext,
-			ariaLabel: "Picture Dictionary - Look up pictures for words",
-			shellTitle: this.name,
+			buttonA11yKey: "tools.pictureDictionary.buttonA11y",
+			tooltipKey: "tools.pictureDictionary.tooltip",
+			shellTitleKey: "tools.pictureDictionary.name",
 			initialWidth: 520,
 			initialHeight: 460,
 			minWidth: 340,

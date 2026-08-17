@@ -78,6 +78,60 @@ describe("reading a host response", () => {
 		}
 	});
 
+	// A picture service that names the URL `image` and returns one signed object-storage
+	// URL per entry. Read under both names, such a response needs no host resolver; read
+	// under `url` alone, every lookup against it comes back "no picture" — a wrong answer
+	// rather than a visible failure.
+	test("a payload naming the url `image` is read as it stands", () => {
+		const result = readPictureResponse({
+			images: [
+				{
+					image:
+						"https://pictures.example.test/apple.png?X-Amz-Signature=abc",
+				},
+				{ image: "https://pictures.example.test/b.png" },
+			],
+		});
+		expect(result).toEqual({
+			status: "ok",
+			items: [
+				{
+					url: "https://pictures.example.test/apple.png?X-Amz-Signature=abc",
+					caption: undefined,
+					width: undefined,
+					height: undefined,
+				},
+				{
+					url: "https://pictures.example.test/b.png",
+					caption: undefined,
+					width: undefined,
+					height: undefined,
+				},
+			],
+		});
+	});
+
+	test("url wins when a payload carries both names", () => {
+		const result = readPictureResponse({
+			pictures: [{ url: "/chosen.png", image: "/ignored.png" }],
+		});
+		expect(result.status === "ok" && result.items[0].url).toBe("/chosen.png");
+	});
+
+	// An empty `url` is a field the host left blank, not a preference for nothing.
+	test("a blank url falls through to the alias rather than dropping the picture", () => {
+		const result = readPictureResponse({
+			pictures: [{ url: "   ", image: "/from-alias.png" }],
+		});
+		expect(result.status === "ok" && result.items[0].url).toBe("/from-alias.png");
+	});
+
+	test("an unsafe url under the image alias is dropped too", () => {
+		expect(
+			readPictureResponse({ images: [{ image: "javascript:alert(1)" }] }),
+		).toEqual({ status: "empty" });
+	});
+
 	test("a picture with an unsafe url is dropped rather than rendered", () => {
 		const result = readPictureResponse({
 			pictures: [

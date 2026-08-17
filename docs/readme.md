@@ -85,6 +85,7 @@ history and completed implementation plans are intentionally excluded.
 - [`tools-and-accomodations/tool_provider_system.md`](./tools-and-accomodations/tool_provider_system.md) - Tool provider configuration and integration patterns
 - [`tools-and-accomodations/tool_host_contract.md`](./tools-and-accomodations/tool_host_contract.md) - Host and tool runtime contract
 - [`tools-and-accomodations/safe-custom-tool-config.md`](./tools-and-accomodations/safe-custom-tool-config.md) - Safe host-side custom tool configuration patterns
+- [`tools-and-accomodations/dictionary-languages-and-services.md`](./tools-and-accomodations/dictionary-languages-and-services.md) - Which service answers a lookup, and offering more than one dictionary language
 
 ## Setup And Publishing
 

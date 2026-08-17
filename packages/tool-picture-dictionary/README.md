@@ -44,8 +44,21 @@ longer than four words is refused without a request.
 }
 ```
 
-`images` is accepted as an alias for `pictures`. Unknown extra fields are ignored.
-Signed, short-lived URLs are expected and fine.
+`images` is accepted as an alias for `pictures`, and within an entry `image` as an
+alias for `url` — `url` wins if a payload carries both. Unknown extra fields are
+ignored. Signed, short-lived URLs are expected and fine.
+
+### Pointing it at an existing service
+
+A service that already takes `{ keyword, language?, max? }` and answers
+`{ images: [{ image }] }` needs no resolver: name it in `endpoint` and the built-in
+lookup speaks it as it stands.
+
+Two things such a service decides rather than this panel. If it is cross-origin from the
+assessment, the `same-origin` default sends no credentials, so a service token goes
+through `headers` — a path a host can use directly instead of proxying. And if it
+defaults the language server-side, a non-default language has to be declared: the panel
+sends `language` only when the host sets it.
 
 A picture whose URL is not `https:`, protocol-relative, or a same-origin path is
 dropped — host data still reaches an attribute the browser acts on, and a symbol

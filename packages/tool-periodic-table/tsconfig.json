@@ -8,6 +8,10 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "tool-periodic-table.svelte"],
+	"include": [
+		"index.ts",
+		"tool-periodic-table.svelte",
+		"periodic-table-data.json"
+	],
 	"exclude": ["node_modules", "dist"]
 }

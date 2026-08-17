@@ -15,6 +15,11 @@ export type {
 	ConfigEntity,
 	ConfigResource,
 	Env,
+	// The authored half of the formative contract, beside the section types it
+	// annotates. Policy resolution, Try state and the mastery rollup live behind
+	// `@pie-players/pie-players-shared/formative`.
+	FormativeDeliveryPolicy,
+	FormativeItemPolicy,
 	ItemConfig,
 	ItemEntity,
 	ItemSession,

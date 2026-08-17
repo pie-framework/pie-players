@@ -16,7 +16,8 @@ lives per-machine in the gitignored `.claude/consumer-checkouts.local.json`; the
 `consumer-dependency-audit` skill reads it, and asks for anything missing.
 
 Last verified against consumer checkouts and this repo's `develop` line:
-**2026-08-13**.
+**2026-08-16**, scoped to the i18n surfaces described below; every other row
+carries its earlier verification.
 
 The canonical theming implementation updated these notes without performing a
 new full refresh and therefore did not advance that verification date. The Host
@@ -71,6 +72,79 @@ is unchanged, and the fix only shows for a host that drives
 too. Hosts A and V both load `components.css`; neither styles those hooks and the
 answer eliminator is placed in neither delivery.
 
+The dictionary capabilities and the selection door onto them were checked against
+the Host A and Host V checkouts directly; Host R was not opened, so its rows stay
+prior observations and the verification date does not advance. Recorded rows are
+unchanged.
+
+Host V depends on the item player and the theme only, neither of which the change
+touches. Host A places one capability at item scope plus read-aloud when its
+profile asks; it supplies no section-level placement, and core's placement default
+is empty, so the two new capabilities cannot appear there — and it does not depend
+on the selection gateway package at all, so the gateway's new host-supplied action
+list and its post-action dismissal latch are unreachable for it. The four additive
+`ToolkitCoordinator` request methods and the three new type exports are called by
+no recorded host; Host R holds a coordinator instance rather than implementing the
+interface, so widening it is not a break there either.
+
+A review pass over the same work narrowed the coordinator surface and changed three
+defaults, none of which reaches a recorded host. The four request methods became
+optional on the coordinator interface, which only widens what a host-supplied
+coordinator may be. Request resolution now falls back off section scope to any
+level hosting the capability, which can only find a target where none was found
+before; no recorded host places either new capability, and the fallback cannot
+redirect a request that already resolved. Endpoint lookups now carry the session
+cookie instead of omitting credentials, and refuse plain `http:` picture URLs — both
+inside the two new packages, which no recorded host depends on. The shared
+term-lookup module those packages now use is a new subpath on
+`pie-players-shared`; existing entry points are untouched.
+
+One residual difference is worth a manual check rather than a claim. Focusable
+collection for a trapped floating panel now descends into open shadow roots and
+now excludes `tabindex="-1"`, which the flat selector previously matched through
+its `button` clause. Host A's one shell-hosted capability renders in light DOM, so
+the shadow half is a no-op for it; the `tabindex="-1"` half depends on the
+third-party DOM inside that panel, which this repository stubs in tests and which
+was not measured against the real vendor bundle. If that DOM carries such
+controls, the panel's internal tab cycle drops those stops — matching what the
+browser does with them anyway. One tab-through of that panel before release
+settles it.
+
+Chrome i18n adoption **was** checked against all three checkouts, and advances the
+verification date below. It reaches consumers three ways, all additive: a new
+optional `locale` attribute and prop on `pie-item-player` and the four
+section-player layout elements; new optional `nameKey` / `descriptionKey` on
+`ToolRegistration` alongside the still-required `name` / `description`; and new
+optional `i18n` / `locale` members on the toolkit runtime context, `ToolbarContext`
+and `ToolSurfaceServices`. Nothing was renamed, retyped, or removed from those
+surfaces, and the graceful default is `en-US` rather than the browser's locale, so
+a host that passes no `locale` keeps English. The adoption commit also held every
+English value byte-identical, so that a text change would be visible as a text
+change rather than arriving inside the refactor.
+
+That hold was released by a follow-up, and it is the only part of this work that
+changes what a host renders today: sixteen strings were reworded and all nine
+toolbar button accessible names were re-formed against WCAG 2.5.3, so English
+output is no longer byte-identical with no `locale` supplied. Both `nl-NL` values
+moved with them. **Host A** is the only affected consumer — it drives live
+delivery with the toolbar placed — and **Host R** renders the same buttons.
+Grepping all three checkouts for the retired strings returns nothing outside
+`node_modules` and build caches: no host asserts, styles or otherwise depends on
+any of them, and none selects a tool button by accessible name. The exposure is
+therefore screen-reader output only, and it improves. Assessed against the changed
+strings rather than a full re-derivation, so it does not advance the verification
+date.
+
+The one non-additive change is `@pie-players/pie-players-shared/i18n`, whose
+`SimpleI18n` gained `plural()` in place of `tn()` and lost
+`BUNDLED_TRANSLATIONS` / `loadTranslations` and two Svelte composables. A grep of
+all three checkouts for that specifier, for `SimpleI18n`, `I18nService`,
+`useI18nStandalone`, `ToolRegistration` and `nameKey` returns nothing outside
+build caches and a vendored third-party calculator bundle: the layer was
+published with no call sites anywhere, which is what made replacing it rather
+than versioning it the right move. No host passes `locale` to a `pie-*` element
+either.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |
@@ -83,9 +157,11 @@ Packages consumed:
 
 - **Host V** — `pie-item-player`, `pie-theme`.
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
-  `pie-theme-daisyui`, `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
+  `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
-  section-player debugger tools.
+  section-player debugger tools. Its `package.json` still declares
+  `pie-theme-daisyui`, which no longer exists upstream and which it never
+  imported; the range resolves to the last published version until it is dropped.
 - **Host R** — all of the above plus `pie-players-shared`,
   `pie-default-tool-loaders`, every `pie-tool-*` in the suite, all five
   `section-player-tools-*` debuggers, `tts-server-core`, `tts-server-google`,
@@ -112,7 +188,6 @@ and to fix it there in the same push.
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | |
 | `@pie-players/pie-theme/token-registry.json` | R | Previously observed; not re-derived during the focused theming update |
-| `@pie-players/pie-theme-daisyui/bridge.css` | R | |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
 | `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
@@ -413,10 +488,9 @@ section.
 
 Host R takes the opposite approach: it reads the token registry and inspects
 computed values at runtime, so it depends on token *names and metadata* staying
-addressable rather than on any particular value. It imports `tokens.css` and the
-DaisyUI `bridge.css` but **not** `color-schemes.css`, carrying its own
-`data-color-scheme` rules instead — so new upstream scheme mappings do not reach
-it until someone syncs them by hand.
+addressable rather than on any particular value. It imports `tokens.css` but
+**not** `color-schemes.css`, carrying its own `data-color-scheme` rules instead —
+so new upstream scheme mappings do not reach it until someone syncs them by hand.
 
 `--pie-fixed-hue-collapse` is one such mapping, added to the required scheme set:
 every built-in scheme sets `100%`, which collapses a component's own fixed hues
@@ -441,6 +515,15 @@ These bypass the package `exports` map. All four are also exported under their
 bare names, so the `exports` map alone is not enough to protect this host —
 **the `dist` filenames themselves are API here**. Renaming, splitting, or
 merging any of those four files breaks that build.
+
+`font-sizes.css` is bundled but not activated. Every rule in it is scoped under a
+`data-font-size` attribute, and no host sets that attribute anywhere in its
+source — so all three currently take only its `:root { --pie-font-scale: 1 }`
+default, and its rules match nothing. So the file's *rules* are safe to change
+while its *filename* is not — the inverse of the rest of this section, where the
+values are the fragile half. The first host to set the attribute inherits whatever
+those rules then say, with no build signal, and Host A and Host R both take patch
+releases on caret ranges.
 
 Host R additionally hard-codes the CDN path
 `@pie-players/pie-item-player@<version>/dist/pie-item-player.js`, so that
@@ -547,7 +630,12 @@ typecheck rather than at runtime.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
-- Attributes and props on the layout elements not listed above
+- Attributes and props on the layout elements not listed above, including the
+  additive `locale` attribute on `pie-item-player` and the section-player layouts
+- `@pie-players/pie-players-shared/i18n` in any form — the pre-adoption layer had
+  no call site in any checkout, so its replacement breaks nobody
+- Additive optional members on `ToolRegistration`, `ToolbarContext`,
+  `ToolSurfaceServices` and the toolkit runtime context
 - `theme="auto"` behavior, and `variables` on `pie-theme`
 - The additive `ToolRegistry.onRegistryChange` observer and recoverable
   `tool-surface` framework-warning kind; no recorded host calls or branches on

@@ -1,141 +1,94 @@
-/* PIE Font Size System - Learnosity-compatible font scaling for K-12 assessments
+/* PIE font size scaling.
  *
- * Based on Learnosity's font size accommodation feature which provides 4 preset sizes:
- * - Normal (100% - default)
- * - Large (125% - 1.25x scale)
- * - Extra Large (150% - 1.5x scale)
- * - Extra Extra Large (175% - 1.75x scale)
+ * Four presets on `--pie-font-scale`, selected by `data-font-size` on any
+ * ancestor of the player — matching Learnosity's font-size accommodation
+ * (100/125/150/175%), which is the scale K-12 programs already specify against.
  *
- * All sizes meet WCAG 2.2 Level AA requirements for text sizing:
- * - Users can scale text up to 200% without assistive technology
- * - Text remains readable and functional at all scale levels
- * - No horizontal scrolling required in scaled states
+ *   <html data-font-size="large">          host owns the whole page
+ *   <div data-font-size="large">           host scopes it to a region
  *
- * Usage: Apply data-font-size attribute to document root or pie-player element
- * Example: <html data-font-size="large">
+ * A host that drives theming through `<pie-theme>` sets the token directly
+ * instead, and needs nothing from this file:
  *
- * Implementation Note: Uses CSS custom property (--pie-font-scale) to scale all
- * typography consistently. Base font sizes are defined in the PIE player components.
+ *   <pie-theme variables='{"--pie-font-scale":"1.25"}'>
+ *
+ * WHAT SCALES. Text that inherits its size scales, because the rules below set
+ * `font-size` on the content hosts and inheritance crosses shadow boundaries.
+ * Text whose own rule names `rem` or `px` does not: `rem` resolves against the
+ * document root and `px` against nothing, and no rule inside a subtree can
+ * change what either means. A host that needs those to follow as well has to
+ * scale the root font size itself, which is a page-wide decision this package
+ * does not make on its behalf. WCAG 2.2 1.4.4 is satisfied either way — browser
+ * zoom remains available and unaffected — so this is a comfort accommodation
+ * layered over that, not a substitute for it.
+ *
+ * `calc(1rem * var(--pie-font-scale))` is deliberately root-relative rather than
+ * `em`-relative: the hosts nest (an item shell inside a section player inside a
+ * themed region), and an `em` factor would compound at each level and multiply
+ * 1.25 into 1.95.
  */
 
-/* Default font size (100% - no scaling) */
+/* The unset default. Also declared by the base theme, so the token resolves
+ * whether a host loads this file, `tokens.css`, or drives `<pie-theme>`. */
 :root {
 	--pie-font-scale: 1;
 }
 
-/* Normal (100% - explicit setting) */
 [data-font-size="normal"] {
 	--pie-font-scale: 1;
 }
 
-/* Large (125%) - Learnosity "large" preset */
 [data-font-size="large"] {
 	--pie-font-scale: 1.25;
 }
 
-/* Extra Large (150%) - Learnosity "xlarge" preset */
 [data-font-size="xlarge"] {
 	--pie-font-scale: 1.5;
 }
 
-/* Extra Extra Large (175%) - Learnosity "xxlarge" preset */
 [data-font-size="xxlarge"] {
 	--pie-font-scale: 1.75;
 }
 
-/* Apply font scaling to assessment content
- * Target PIE player elements and assessment content
- * Exclude tool UIs (calculator, graph, etc.) which should remain at normal size
+/* Content hosts.
  *
- * Using !important to override PIE's inline styles and component-specific styles
+ * `pie-item-shell` and `pie-passage-shell` are this repo's section-player
+ * content hosts and `pie-item-player` its standalone one; each renders PIE
+ * elements directly into its own shadow tree. `pie-player` is the externally
+ * loaded item wrapper some hosts render items through instead, so both delivery
+ * paths are covered — targeting only the wrapper, as this file previously did,
+ * missed every item this repo renders itself.
+ *
+ * Scoped under `[data-font-size]` so the declaration only exists once a host has
+ * opted in, and so a host's own rules keep the upper hand at equal specificity.
  */
-
-/* Apply to pie-player root element */
+[data-font-size] pie-item-shell,
+[data-font-size] pie-passage-shell,
+[data-font-size] pie-item-player,
+[data-font-size] pie-player,
+pie-item-shell[data-font-size],
+pie-passage-shell[data-font-size],
+pie-item-player[data-font-size],
 pie-player[data-font-size] {
-	font-size: calc(1rem * var(--pie-font-scale)) !important;
+	font-size: calc(1rem * var(--pie-font-scale, 1));
+
+	/* Long words at 175% overflow a column that fits them at 100%. */
+	overflow-wrap: break-word;
 }
 
-/* Apply to all text elements within pie-player - using inherit to cascade from root */
-pie-player[data-font-size] *,
-pie-player[data-font-size] p,
-pie-player[data-font-size] span,
-pie-player[data-font-size] div,
-pie-player[data-font-size] li,
-pie-player[data-font-size] label,
-pie-player[data-font-size] input,
-pie-player[data-font-size] textarea,
-pie-player[data-font-size] select,
-pie-player[data-font-size] button,
-pie-player[data-font-size] h1,
-pie-player[data-font-size] h2,
-pie-player[data-font-size] h3,
-pie-player[data-font-size] h4,
-pie-player[data-font-size] h5,
-pie-player[data-font-size] h6,
-pie-player[data-font-size] td,
-pie-player[data-font-size] th,
-pie-player[data-font-size] option {
-	font-size: inherit !important;
-}
-
-/* Also apply to parent container if data-font-size is on document root */
-[data-font-size] pie-player {
-	font-size: calc(1rem * var(--pie-font-scale)) !important;
-}
-
-[data-font-size] pie-player *,
-[data-font-size] pie-player p,
-[data-font-size] pie-player span,
-[data-font-size] pie-player div,
-[data-font-size] pie-player li,
-[data-font-size] pie-player label,
-[data-font-size] pie-player input,
-[data-font-size] pie-player textarea,
-[data-font-size] pie-player select,
-[data-font-size] pie-player button,
-[data-font-size] pie-player h1,
-[data-font-size] pie-player h2,
-[data-font-size] pie-player h3,
-[data-font-size] pie-player h4,
-[data-font-size] pie-player h5,
-[data-font-size] pie-player h6,
-[data-font-size] pie-player td,
-[data-font-size] pie-player th,
-[data-font-size] pie-player option {
-	font-size: inherit !important;
-}
-
-/* Preserve normal size for tool UIs and controls */
-[data-font-size] .pie-tool-toolbar,
-[data-font-size] .pie-tool-toolbar *,
-[data-font-size] .pie-tool-calculator,
-[data-font-size] .pie-tool-calculator *,
-[data-font-size] .tool-settings-panel,
-[data-font-size] .tool-settings-panel *,
-[data-font-size] [class*="pie-tool-"],
-[data-font-size] [class*="pie-tool-"] *,
-[data-font-size] header,
-[data-font-size] header *,
-[data-font-size] footer,
-[data-font-size] footer *,
-[data-font-size] nav,
-[data-font-size] nav *,
-[data-font-size] button:not(.pie-button),
-[data-font-size] .btn,
-[data-font-size] .btn * {
-	font-size: 1rem !important;
-}
-
-/* Ensure proper line-height scaling for readability */
+/* Line height has to open up with the type or the block tightens as it grows.
+ * A ratio, so a host that sets its own line-height still wins. */
+[data-font-size="large"] pie-item-shell,
+[data-font-size="large"] pie-passage-shell,
+[data-font-size="large"] pie-item-player,
 [data-font-size="large"] pie-player,
+[data-font-size="xlarge"] pie-item-shell,
+[data-font-size="xlarge"] pie-passage-shell,
+[data-font-size="xlarge"] pie-item-player,
 [data-font-size="xlarge"] pie-player,
+[data-font-size="xxlarge"] pie-item-shell,
+[data-font-size="xxlarge"] pie-passage-shell,
+[data-font-size="xxlarge"] pie-item-player,
 [data-font-size="xxlarge"] pie-player {
 	line-height: 1.6;
-}
-
-/* Prevent layout issues with scaled text */
-[data-font-size] pie-player {
-	overflow-wrap: break-word;
-	word-wrap: break-word;
-	hyphens: auto;
 }

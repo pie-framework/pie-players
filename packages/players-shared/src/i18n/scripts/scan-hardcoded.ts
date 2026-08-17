@@ -1,16 +1,25 @@
 #!/usr/bin/env bun
 /**
- * Hardcoded String Scanner
+ * Hardcoded string scanner.
  *
- * Scans component files for hardcoded English strings that should use i18n.
- * Adapted from pie-qti's hardcoded string scanner.
+ * Finds quoted English in component source that no catalog key covers. Advisory,
+ * never gating: the pattern cannot tell a rendered label from a DOM tag name or a
+ * developer diagnostic, so its output is a lead list for the packages adoption
+ * has not reached, not a defect list.
+ *
+ * Lines that already resolve through a provider are excluded, so the count falls
+ * as adoption lands rather than staying flat.
+ *
+ * Two blind spots, both structural: the pattern only matches quoted strings, so
+ * plain text between tags is invisible; and it requires an initial capital, so a
+ * lowercase-initial label is missed. Widening either one buries the leads under
+ * CSS values and identifiers.
  *
  * Usage:
  *   bun run packages/players-shared/src/i18n/scripts/scan-hardcoded.ts
  *
  * Options:
  *   --path <dir>  - Directory to scan (default: packages/)
- *   --fix         - Attempt to auto-fix issues (not implemented yet)
  */
 
 import { readFileSync } from "fs";
@@ -29,38 +38,30 @@ interface StringMatch {
 	suggestedKey: string | null;
 }
 
-/**
- * Load all English translations
- */
-function loadEnglishTranslations(): Record<string, string> {
-	const basePath = resolve(__dirname, "../translations/en");
+const PLURAL_CATEGORIES = new Set([
+	"zero",
+	"one",
+	"two",
+	"few",
+	"many",
+	"other",
+]);
+
+/** The English catalog, flattened to `key → English value`. */
+async function loadEnglishTranslations(): Promise<Record<string, string>> {
+	const module = await import(resolve(__dirname, "../messages/en-US.ts"));
 	const translations: Record<string, string> = {};
-
-	try {
-		const common = JSON.parse(
-			readFileSync(resolve(basePath, "common.json"), "utf-8"),
-		);
-		const toolkit = JSON.parse(
-			readFileSync(resolve(basePath, "toolkit.json"), "utf-8"),
-		);
-		const tools = JSON.parse(
-			readFileSync(resolve(basePath, "tools.json"), "utf-8"),
-		);
-
-		// Flatten all translations
-		flattenObject(common, "", translations);
-		flattenObject(toolkit, "", translations);
-		flattenObject(tools, "", translations);
-	} catch (error) {
-		console.error("Error loading English translations:", error);
-		throw error;
-	}
-
+	flattenObject(module.default, "", translations);
 	return translations;
 }
 
 /**
- * Flatten nested object to dot notation
+ * Flatten a catalog to dot-notation leaves.
+ *
+ * A plural group contributes its `other` form under the group key — the form a
+ * component's English literal is most likely to match, and the key `plural()` is
+ * actually called with. A group is recognized by every one of its keys being a
+ * CLDR category, which a namespace can never satisfy.
  */
 function flattenObject(
 	obj: any,
@@ -71,9 +72,12 @@ function flattenObject(
 		const fullKey = prefix ? `${prefix}.${key}` : key;
 
 		if (typeof value === "object" && value !== null) {
-			// Check for plural form
-			if ("one" in value && "other" in value) {
-				result[fullKey] = value.one as string;
+			const keys = Object.keys(value);
+			const isPluralGroup =
+				keys.length > 0 && keys.every((k) => PLURAL_CATEGORIES.has(k));
+			if (isPluralGroup) {
+				result[fullKey] = ((value as Record<string, string>).other ??
+					(value as Record<string, string>).one) as string;
 			} else {
 				flattenObject(value, fullKey, result);
 			}
@@ -125,12 +129,15 @@ function scanFile(
 
 	// Patterns to exclude (already using i18n, CSS classes, imports, etc.)
 	const excludePatterns = [
+		// Any provider call, whatever the local is named: `i18n.t`,
+		// `interfaceI18n.t`, `chromeI18n.plural`. Without this the scan reports
+		// adopted call sites, so the count never falls as adoption lands.
+		/[A-Za-z_$][\w$]*[iI]18[nN]\s*[.?]/,
 		/i18n\./,
 		/import\s+/,
 		/from\s+['"]/,
 		/class[:=]/,
 		/className[:=]/,
-		/aria-\w+[:=]/,
 		/data-\w+[:=]/,
 		/id[:=]/,
 		/key[:=]/,
@@ -138,12 +145,14 @@ function scanFile(
 		/type[:=]/,
 		/href[:=]/,
 		/src[:=]/,
-		/alt[:=]/,
-		/title[:=]/,
-		/placeholder[:=]/,
+		// `aria-*`, `title`, `alt` and `placeholder` are deliberately NOT excluded.
+		// They carry accessible names and image alternatives — the strings a screen
+		// reader speaks — so they are the scan's whole point. Adopted lines are
+		// already filtered by the provider-call pattern above.
 		/console\./,
 		/\/\//, // Comments
 		/\/\*/, // Block comments
+		/^\s*\*/, // Block comment continuation
 	];
 
 	lines.forEach((line, index) => {
@@ -185,6 +194,7 @@ function scanFile(
 function formatResults(
 	matchesByFile: Map<string, StringMatch[]>,
 	rootDir: string,
+	filesScanned: number,
 ): string {
 	let report = "\n";
 	report += "┌─────────────────────────────────────────────────────┐\n";
@@ -217,9 +227,9 @@ function formatResults(
 			report += `           Found: "${match.string}"\n`;
 
 			if (match.suggestedKey) {
-				report += `           Use:   i18n?.t('${match.suggestedKey}') ?? '${match.suggestedKey}'\n`;
+				report += `           Use:   interfaceI18n.t('${match.suggestedKey}')\n`;
 			} else {
-				report += `           Note:  No matching translation key found. Consider adding to translations.\n`;
+				report += `           Note:  No catalog key carries this string. Add one to messages/en-US.ts if it reaches a user.\n`;
 			}
 
 			report += "\n";
@@ -231,7 +241,7 @@ function formatResults(
 	report += "════════════════════════════════════════════════════════\n";
 	report += "📊 Summary:\n";
 	report += "────────────────────────────────────────────────────────\n";
-	report += `  Total files scanned: ${fileCount}\n`;
+	report += `  Total files scanned: ${filesScanned}\n`;
 	report += `  Files with matches: ${fileCount}\n`;
 	report += `  Total hardcoded strings: ${totalMatches}\n\n`;
 	report += "⚠️  Recommendation: Replace hardcoded strings with i18n keys\n";
@@ -280,7 +290,7 @@ async function main() {
 
 	try {
 		// Load English translations for matching
-		const translations = loadEnglishTranslations();
+		const translations = await loadEnglishTranslations();
 		console.log(
 			`📖 Loaded ${Object.keys(translations).length} translation keys\n`,
 		);
@@ -299,7 +309,10 @@ async function main() {
 				!file.includes("/build/") &&
 				!file.endsWith(".spec.ts") &&
 				!file.endsWith(".test.ts") &&
-				!file.includes("/scripts/")
+				!file.includes("/scripts/") &&
+				// The catalogs are where English is supposed to live. Scanning them
+				// reports every key as a hardcoded string and swamps the real leads.
+				!file.includes("/i18n/messages/")
 			);
 		});
 
@@ -316,7 +329,7 @@ async function main() {
 		}
 
 		// Print results
-		const report = formatResults(matchesByFile, projectRoot);
+		const report = formatResults(matchesByFile, projectRoot, files.length);
 		console.log(report);
 
 		// Exit with warning if matches found

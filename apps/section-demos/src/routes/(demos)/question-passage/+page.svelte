@@ -39,6 +39,7 @@
 		fetchBundleWithRetry
 	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -379,6 +380,7 @@
 				section={resolvedSectionForPlayer}
 				toolbar-position="right"
 				show-toolbar={true}
+				locale={demoLocale()}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -397,6 +399,7 @@
 				section={resolvedSectionForPlayer}
 				toolbar-position="right"
 				show-toolbar={true}
+				locale={demoLocale()}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

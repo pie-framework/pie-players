@@ -9,6 +9,7 @@
 			session: { type: "Object", attribute: "session" },
 			env: { type: "Object", attribute: "env" },
 			score: { type: "Object", attribute: "score" },
+			locale: { attribute: "locale", type: "String" },
 		},
 	}}
 />
@@ -22,7 +23,11 @@
 		makeUniqueTags,
 	} from "@pie-players/pie-players-shared";
 	import type { ConfigEntity, Env, PieModel } from "@pie-players/pie-players-shared";
-	import { createEventDispatcher, onMount } from "svelte";
+	import { createEventDispatcher, onMount, untrack } from "svelte";
+	import {
+		createPieI18n,
+		DEFAULT_LOCALE,
+	} from "@pie-players/pie-players-shared/i18n";
 
 	type ItemConfigLike = {
 		elements?: Record<string, string>;
@@ -59,6 +64,7 @@
 		session = null,
 		env = null,
 		score = null,
+		locale = "",
 	}: {
 		itemName?: string;
 		itemId?: string;
@@ -66,7 +72,44 @@
 		session?: unknown;
 		env?: unknown;
 		score?: unknown;
+		locale?: string;
 	} = $props();
+	// Interface locale for this panel's own chrome. The JSON payloads it dumps are
+	// data, not message content, and stay as authored.
+	const interfaceI18n = createPieI18n();
+	let interfaceI18nVersion = $state(0);
+	$effect(() =>
+		interfaceI18n.subscribe(() => {
+			interfaceI18nVersion += 1;
+		}),
+	);
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		untrack(() => {
+			void Promise.resolve(
+				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+			).catch(() => {});
+		});
+	});
+	const t = $derived.by(() => {
+		void interfaceI18nVersion;
+		return {
+			sessionData: interfaceI18n.t("debug.sessionData"),
+			session: interfaceI18n.t("debug.session"),
+			filteredModel: interfaceI18n.t("debug.filteredModel"),
+			environment: interfaceI18n.t("debug.environment"),
+			close: interfaceI18n.t("common.close"),
+			closePanel: interfaceI18n.t("toolkit.closePanelA11y"),
+			resizeWindow: interfaceI18n.t("toolkit.resizeWindow"),
+			dragPanel: interfaceI18n.t("debug.dragItemSessionPanelA11y"),
+			tabs: interfaceI18n.t("debug.debuggerTabsA11y"),
+			sessionJson: interfaceI18n.t("debug.sessionDataJsonA11y"),
+			environmentJson: interfaceI18n.t("debug.environmentJsonA11y"),
+			filteredModelJson: interfaceI18n.t("debug.filteredModelJsonA11y"),
+			noSessionYet: interfaceI18n.t("debug.noItemSessionYet"),
+		};
+	});
+
 
 	let isMinimized = $state(false);
 	let windowX = $state(24);
@@ -407,7 +450,7 @@
 		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
 		role="button"
 		tabindex="0"
-		aria-label="Drag item session panel"
+		aria-label={t.dragPanel}
 	>
 		<div class="pie-item-player-session-debugger__header-title">
 			<svg
@@ -424,7 +467,7 @@
 					d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 				/>
 			</svg>
-			<h3 class="pie-item-player-session-debugger__title">Session Data</h3>
+			<h3 class="pie-item-player-session-debugger__title">{t.sessionData}</h3>
 		</div>
 		<div class="pie-item-player-session-debugger__header-actions">
 			<button
@@ -462,8 +505,8 @@
 			<button
 				class="pie-item-player-session-debugger__window-button"
 				onclick={() => dispatch("close")}
-				title="Close"
-				aria-label="Close panel"
+				title={t.close}
+				aria-label={t.closePanel}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -486,7 +529,7 @@
 			style="height: {windowHeight - 50}px;"
 		>
 			<div class="pie-item-player-session-debugger__content">
-				<div class="pie-item-player-session-debugger__tabs" role="tablist" aria-label="Debugger tabs">
+				<div class="pie-item-player-session-debugger__tabs" role="tablist" aria-label={t.tabs}>
 					<button
 						class="pie-item-player-session-debugger__tab"
 						class:pie-item-player-session-debugger__tab--active={activeTab === "current"}
@@ -494,7 +537,7 @@
 						aria-selected={activeTab === "current"}
 						onclick={() => (activeTab = "current")}
 					>
-						Session
+						{t.session}
 					</button>
 					<button
 						class="pie-item-player-session-debugger__tab"
@@ -503,51 +546,51 @@
 						aria-selected={activeTab === "model"}
 						onclick={() => (activeTab = "model")}
 					>
-						Filtered Model
+						{t.filteredModel}
 					</button>
 				</div>
 
 				{#if activeTab === "current"}
 					{#if !hasSessionEntries}
 						<div class="pie-item-player-session-debugger__alert">
-							No item session data yet. Interact with the item to see updates here.
+							{t.noSessionYet}
 						</div>
 					{/if}
 
 					<div class="pie-item-player-session-debugger__card">
-						<div class="pie-item-player-session-debugger__card-title">Session Data</div>
+						<div class="pie-item-player-session-debugger__card-title">{t.sessionData}</div>
 						<div
 							class="pie-item-player-session-debugger__card-region"
 							role="textbox"
 							aria-readonly="true"
 							tabindex="0"
-							aria-label="Session data JSON"
+							aria-label={t.sessionJson}
 						>
 							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.session, null, 2)}</pre>
 						</div>
 					</div>
 
 					<div class="pie-item-player-session-debugger__card">
-						<div class="pie-item-player-session-debugger__card-title">Environment</div>
+						<div class="pie-item-player-session-debugger__card-title">{t.environment}</div>
 						<div
 							class="pie-item-player-session-debugger__card-region"
 							role="textbox"
 							aria-readonly="true"
 							tabindex="0"
-							aria-label="Environment JSON"
+							aria-label={t.environmentJson}
 						>
 							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.env, null, 2)}</pre>
 						</div>
 					</div>
 				{:else}
 					<div class="pie-item-player-session-debugger__card">
-						<div class="pie-item-player-session-debugger__card-title">Filtered Model</div>
+						<div class="pie-item-player-session-debugger__card-title">{t.filteredModel}</div>
 						<div
 							class="pie-item-player-session-debugger__card-region"
 							role="textbox"
 							aria-readonly="true"
 							tabindex="0"
-							aria-label="Filtered model JSON"
+							aria-label={t.filteredModelJson}
 						>
 							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(filteredModelSnapshot, null, 2)}</pre>
 						</div>
@@ -563,7 +606,7 @@
 			onmousedown={(event: MouseEvent) => pointerController.startResize(event)}
 			role="button"
 			tabindex="0"
-			title="Resize window"
+			title={t.resizeWindow}
 		>
 			<svg
 				class="pie-item-player-session-debugger__resize-icon"
@@ -579,12 +622,20 @@
 </div>
 
 <style>
+	/*
+	 * This panel read DaisyUI's `--color-*` slots directly, which follows the host's
+	 * DaisyUI palette or these literals, never the PIE colour scheme -- so a tester
+	 * inspecting an item under White on Black got a light panel over a dark page.
+	 * The surface is the certified `--pie-text` on `--pie-background-dark` recessed
+	 * pair; `--pie-background`, which `--color-base-100` maps to, is transparent in
+	 * the light Base Theme by design and cannot back a floating panel.
+	 */
 	.pie-item-player-session-debugger {
 		position: fixed;
 		z-index: 9999;
-		background: var(--color-base-100, #fff);
-		color: var(--color-base-content, #1f2937);
-		border: 2px solid var(--color-base-300, #d1d5db);
+		background: var(--pie-background-dark, #ecedf1);
+		color: var(--pie-text, #1f2937);
+		border: 2px solid var(--pie-border, #8f8f8f);
 		border-radius: 8px;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 		overflow: hidden;
@@ -596,10 +647,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		background: var(--color-base-200, #f3f4f6);
+		/* The header holds the drag affordance and the window buttons, so it takes the
+		   certified button pair rather than a second recessed surface. */
+		background: var(--pie-button-bg, #f3f4f6);
+		color: var(--pie-button-color, #1f2937);
 		cursor: move;
 		user-select: none;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-item-player-session-debugger__header-title {
@@ -631,19 +685,22 @@
 		width: 1.35rem;
 		height: 1.35rem;
 		padding: 0;
-		border: 1px solid rgba(148, 163, 184, 0.7);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
 		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.65);
-		color: #334155;
+		/* Was a translucent white, a light chip on any dark palette. */
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #334155);
 		cursor: pointer;
 	}
 
 	.pie-item-player-session-debugger__window-button:hover {
-		background: rgba(241, 245, 249, 0.95);
+		background: var(--pie-button-hover-bg, #f9fafb);
+		color: var(--pie-button-hover-color, #111827);
+		border-color: var(--pie-button-hover-border, #8b919c);
 	}
 
 	.pie-item-player-session-debugger__window-button:focus-visible {
-		outline: 2px solid #3b82f6;
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 1px;
 	}
 
@@ -673,24 +730,32 @@
 	.pie-item-player-session-debugger__tab {
 		padding: 0.45rem 0.8rem;
 		border-radius: 9999px;
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-200, #f3f4f6);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		background: var(--pie-button-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.76rem;
 		font-weight: 600;
 		cursor: pointer;
 	}
 
 	.pie-item-player-session-debugger__tab--active {
-		background: var(--color-base-content, #1f2937);
-		border-color: var(--color-base-content, #1f2937);
-		color: var(--color-base-100, #fff);
+		/* Was ink-as-fill with the page colour as its label, an inversion that breaks
+		   the moment the page colour is transparent. `--pie-button-active-bg` with
+		   `--pie-button-color` is the pair the contract certifies for a selected
+		   control. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		border-color: var(--pie-button-hover-border, #8b919c);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-item-player-session-debugger__alert {
 		padding: 0.75rem 0.9rem;
 		border-radius: 0.65rem;
-		border: 1px solid color-mix(in srgb, var(--color-info) 30%, var(--color-base-300));
-		background: color-mix(in srgb, var(--color-info) 10%, var(--color-base-100));
+		/* Informational state on the edge, label on a certified pair: `--pie-tertiary`
+		   clears 4.5:1 against the page on every scheme, past the 3:1 an edge owes. */
+		border: 1px solid var(--pie-tertiary, #146eb3);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.8rem;
 		line-height: 1.4;
 	}
@@ -700,8 +765,9 @@
 		gap: 0.45rem;
 		padding: 0.8rem;
 		border-radius: 0.75rem;
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: color-mix(in srgb, var(--color-base-100) 88%, var(--color-base-200));
+		border: 1px solid var(--pie-border, #8f8f8f);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		min-height: 0;
 	}
 
@@ -717,7 +783,10 @@
 		margin: 0;
 		padding: 0.75rem;
 		border-radius: 0.55rem;
-		background: color-mix(in srgb, var(--color-base-300) 55%, var(--color-base-100));
+		/* The code block sits inside a card, so it takes the deeper certified fill of
+		   the same family rather than a mix of two base slots. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.72rem;
 		line-height: 1.45;
 		overflow: auto;
@@ -726,7 +795,7 @@
 	}
 
 	.pie-item-player-session-debugger__card-region:focus-visible {
-		outline: 2px solid #3b82f6;
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 2px;
 		border-radius: 0.55rem;
 	}
@@ -743,6 +812,8 @@
 	.pie-item-player-session-debugger__resize-icon {
 		width: 100%;
 		height: 100%;
-		color: color-mix(in srgb, var(--color-base-content) 30%, transparent);
+		/* A decorative grip, exempt from 1.4.11, so the faded share stays -- what
+		   changes is whose ink it fades. */
+		color: color-mix(in srgb, var(--pie-text, #334155) 30%, transparent);
 	}
 </style>

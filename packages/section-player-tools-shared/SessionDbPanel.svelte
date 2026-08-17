@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { onMount } from "svelte";
 	import SharedFloatingPanel from "./SharedFloatingPanel.svelte";
 
@@ -13,6 +15,8 @@
 		apiBasePath?: string;
 		onResetDb: () => void | Promise<void>;
 		onClose: () => void;
+		/** Interface-locale provider; the English-only default covers its absence. */
+		i18n?: I18nProvider;
 	}
 
 	let {
@@ -23,7 +27,13 @@
 		apiBasePath = "/api/session-demo",
 		onResetDb,
 		onClose,
+		i18n,
 	}: Props = $props();
+
+	// Interface locale. A prop rather than a context read: this panel is mounted by a
+	// host page directly, outside any toolkit, so there is no published provider to
+	// request. `resolveInterfaceI18n` covers a host that passes none.
+	const interfaceI18n = $derived(resolveInterfaceI18n({ i18n }));
 
 	let pollError = $state<string | null>(null);
 	let activeView = $state<"raw-tables" | "reconstructed" | "request-view">("raw-tables");
@@ -54,7 +64,11 @@
 	);
 
 	const viewTitle = $derived.by(() =>
-		mode === "section" ? "Show section request" : "Show assessment request",
+		interfaceI18n.t(
+			mode === "section"
+				? "debug.showSectionRequest"
+				: "debug.showAssessmentRequest",
+		),
 	);
 
 	function collectColumns(rows: Array<Record<string, unknown>>): string[] {
@@ -247,7 +261,7 @@
 
 	$effect(() => {
 		if (typeof EventSource === "undefined") {
-			pollError = "Live updates are not supported in this browser";
+			pollError = interfaceI18n.t("debug.liveUpdatesUnsupported");
 			void fetchDbStateOnce();
 			return;
 		}
@@ -265,7 +279,7 @@
 		};
 		eventSource.addEventListener("state", onState as EventListener);
 		eventSource.onerror = () => {
-			pollError = "Live updates disconnected; retrying...";
+			pollError = interfaceI18n.t("debug.liveUpdatesDisconnected");
 		};
 		return () => {
 			eventSource.removeEventListener("state", onState as EventListener);
@@ -289,7 +303,8 @@
 </script>
 
 <SharedFloatingPanel
-	title="Session DB (Server)"
+	title={interfaceI18n.t("debug.sessionDb")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag session DB panel"
 	minWidth={420}
 	minHeight={320}
@@ -335,7 +350,7 @@
 				onclick={() => (activeView = "raw-tables")}
 				aria-pressed={activeView === "raw-tables"}
 			>
-				Show raw tables
+				{interfaceI18n.t("debug.showRawTables")}
 			</button>
 			<button
 				type="button"
@@ -343,7 +358,7 @@
 				onclick={() => (activeView = "reconstructed")}
 				aria-pressed={activeView === "reconstructed"}
 			>
-				Show reconstructed snapshots
+				{interfaceI18n.t("debug.showReconstructedSnapshots")}
 			</button>
 			<button
 				type="button"
@@ -375,7 +390,7 @@
 							<tbody>
 								{#if scopedRows[tableName].length === 0}
 									<tr>
-										<td colspan={Math.max(scopedColumns[tableName].length, 1)}>No rows</td>
+										<td colspan={Math.max(scopedColumns[tableName].length, 1)}>{interfaceI18n.t("debug.noRows")}</td>
 									</tr>
 								{:else}
 									{#each scopedRows[tableName] as row}
@@ -439,9 +454,9 @@
 	}
 
 	.pie-demo-session-db-panel__button {
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-100, #fff);
-		color: var(--color-base-content);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		border-radius: 6px;
 		padding: 6px 8px;
 		font-size: 0.78rem;
@@ -449,11 +464,16 @@
 	}
 
 	.pie-demo-session-db-panel__button:hover {
-		background: color-mix(in srgb, var(--color-base-200) 65%, white);
+		background: var(--pie-button-hover-bg, #f9fafb);
+		color: var(--pie-button-hover-color, #111827);
+		border-color: var(--pie-button-hover-border, #8b919c);
 	}
 
 	.pie-demo-session-db-panel__button[aria-pressed="true"] {
-		background: color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+		/* The certified active pair, kept together: `--pie-button-active-bg` is only
+		   guaranteed against `--pie-button-color`. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 		font-weight: 600;
 	}
 
@@ -466,8 +486,12 @@
 		margin-bottom: 0.5rem;
 		padding: 0.4rem 0.45rem;
 		border-radius: 0.3rem;
-		background: color-mix(in srgb, var(--color-error) 12%, var(--color-base-100));
-		border: 1px solid color-mix(in srgb, var(--color-error) 35%, var(--color-base-300));
+		/* The error state rides the border rather than a tinted fill, so the text
+		   stays on a certified pair; `--pie-incorrect` clears 4.5:1 against the page
+		   on every scheme, well past the 3:1 a boundary owes. */
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
+		border: 1px solid var(--pie-incorrect, #a65f00);
 	}
 
 	.pie-demo-session-db-panel__tables {
@@ -487,9 +511,12 @@
 	}
 
 	.pie-demo-session-db-panel__table-wrap {
-		border: 1px solid color-mix(in srgb, var(--color-base-content) 25%, transparent);
+		border: 1px solid var(--pie-border, #8f8f8f);
 		border-radius: 0.3rem;
-		background: color-mix(in srgb, var(--color-base-200) 65%, white);
+		/* Was mixed toward white, which is what made every surface here light under a
+		   dark palette however the base slot resolved. */
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		overflow: auto;
 		max-height: 9.5rem;
 	}
@@ -504,7 +531,9 @@
 	.pie-demo-session-db-panel__table th,
 	.pie-demo-session-db-panel__table td {
 		padding: 0.25rem 0.35rem;
-		border-bottom: 1px solid color-mix(in srgb, var(--color-base-content) 14%, transparent);
+		/* Row divider, which 1.4.11 exempts -- `--pie-border-light` is the token the
+		   contract leaves uncorrected for exactly this. */
+		border-bottom: 1px solid var(--pie-border-light, #d1d1d1);
 		vertical-align: top;
 		text-align: left;
 	}
@@ -512,7 +541,8 @@
 	.pie-demo-session-db-panel__table th {
 		position: sticky;
 		top: 0;
-		background: color-mix(in srgb, var(--color-base-200) 85%, white);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		font-weight: 700;
 		font-size: 0.66rem;
 		line-height: 1.15;
@@ -536,11 +566,11 @@
 		resize: none;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		font-size: 0.75rem;
-		border: 1px solid color-mix(in srgb, var(--color-base-content) 25%, transparent);
+		border: 1px solid var(--pie-border, #8f8f8f);
 		border-radius: 0.3rem;
 		padding: 0.45rem;
-		background: color-mix(in srgb, var(--color-base-200) 65%, white);
-		color: var(--color-base-content);
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		box-sizing: border-box;
 	}
 </style>

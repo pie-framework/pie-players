@@ -9,6 +9,8 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 - **Persistent Annotations**: Saved to sessionStorage and restored on page load
 - **Clear Annotations**: Remove annotations from selected text or clear all
 - **Text-to-Speech (Read Aloud)**: Read selected text aloud with word-level highlighting
+- **Selection Actions**: Host-supplied actions on the current selection; see below
+- **Viewport-Aware Placement**: Sits above the selection where it fits, flips below when it does not, and clamps so no control leaves the viewport. `data-pie-placement` on the strip reads `above` or `below`.
 - **Modern CSS Custom Highlight API**:
   - Zero DOM mutation (no `<span>` wrappers)
   - 10-50x faster than traditional approaches
@@ -37,7 +39,26 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 
 ## Props
 
-This component doesn't take props - it automatically shows when text is selected and hides when selection is cleared or Escape is pressed.
+The strip shows itself when text is selected and hides when the selection is cleared or Escape is pressed. What it needs from its host is the services it annotates and reads with, and the actions it should offer on a selection.
+
+| Name                  | Attribute | Type                    | Notes                                                                     |
+| --------------------- | --------- | ----------------------- | ------------------------------------------------------------------------- |
+| `enabled`             | `enabled` | boolean                 | Defaults to `true`; `false` stops it reacting to selections.              |
+| `highlightCoordinator`| —         | object                  | Where annotations are recorded. Without one the highlight controls no-op. |
+| `ttsService`          | —         | object                  | Read-aloud is offered only when present.                                  |
+| `selectionActions`    | —         | `ToolSelectionAction[]` | Host-supplied actions on the current selection. See below.               |
+
+Under `<pie-assessment-toolkit>` all four are supplied by the capability's registration, so a host mounting the strip through the toolkit passes nothing.
+
+### Selection actions
+
+An action is `{ id, label, iconSvg?, tooltip?, isAvailable?, run }`. The strip renders each as an ordinary button, so the roving tabindex and arrow-key model cover them with no special case, and hands `run` the selected text and its range. `isAvailable` is asked per selection: an action whose target is not currently available is absent rather than present and inert.
+
+This strip does not know what an action does. Pairing an action to a capability belongs to whoever composes them — `@pie-players/pie-default-tool-loaders` does it for the packaged dictionaries, using the coordinator's `requestTool`. That split is what keeps a highlighter from naming a dictionary, and what lets a host offer an action for a capability PIE does not ship.
+
+Activating an action dismisses the strip and latches it down for that selection: the selection survives on purpose, and opening a panel moves focus, which fires `selectionchange` — the strip would otherwise reappear over the panel the action just opened. Escape, focus leaving and an outside click do not latch, and Shift+F10 clears one.
+
+An action is a shortcut and never a capability's only route. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on, an OS toggle absent on mobile, so a sighted keyboard-only learner cannot originate a selection at all — a capability reachable only from this strip is unreachable for them.
 
 ## Events
 

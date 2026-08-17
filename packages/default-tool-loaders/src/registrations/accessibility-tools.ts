@@ -31,6 +31,7 @@ import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { buildSelectionActions } from "./selection-actions.js";
 
 /**
  * Line Reader tool registration
@@ -42,6 +43,8 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	toolId: "lineReader",
 	name: "Line Reader",
 	description: "Reading guide overlay",
+	nameKey: "tools.lineReader.name",
+	descriptionKey: "tools.lineReader.description",
 	icon: "bars-3",
 
 	// Line reader appears where there's text to read
@@ -77,8 +80,8 @@ export const lineReaderToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Line reader - Reading guide",
-			tooltip: "Line Reader",
+			ariaLabel: toolbarContext.i18n.t("tools.lineReader.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.lineReader.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -127,6 +130,8 @@ export const themeToolRegistration: ToolRegistration = {
 	toolId: "theme",
 	name: "Theme",
 	description: "Accessible themes and contrast",
+	nameKey: "tools.theme.name",
+	descriptionKey: "tools.theme.description",
 	icon: "swatch",
 
 	// Color scheme is assessment-wide
@@ -163,8 +168,8 @@ export const themeToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Theme - Change colors and contrast",
-			tooltip: "Theme",
+			ariaLabel: toolbarContext.i18n.t("tools.theme.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.theme.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -227,6 +232,8 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	toolId: "annotationToolbar",
 	name: "Highlighter",
 	description: "Highlight and annotate text",
+	nameKey: "tools.annotationToolbar.name",
+	descriptionKey: "tools.annotationToolbar.description",
 	icon: "highlighter",
 	activation: "selection-gateway",
 	singletonScope: "section",
@@ -281,6 +288,7 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			enabled?: boolean;
 			ttsService?: unknown;
 			highlightCoordinator?: unknown;
+			selectionActions?: unknown;
 		};
 		// Reads the context it is handed. These were reactive props before the
 		// gateway moved behind `renderSurface`, and a host calling
@@ -292,6 +300,10 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			element.ttsService = current.services.ttsService;
 			element.highlightCoordinator =
 				current.services.toolkitCoordinator?.highlightCoordinator ?? null;
+			// The second door onto the dictionaries. The gateway renders these and
+			// knows nothing of what they open; the pairing is composition's, which is
+			// why the list is built in `selection-actions.ts` and not here.
+			element.selectionActions = buildSelectionActions(current.services);
 		};
 		applyServices(context);
 		return { element, sync: applyServices };
@@ -310,8 +322,12 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Annotation toolbar - Highlight text",
-			tooltip: "Highlight",
+			ariaLabel: toolbarContext.i18n.t(
+				"tools.annotationToolbar.buttonA11y",
+			),
+			tooltip: toolbarContext.i18n.t(
+				"tools.annotationToolbar.tooltip",
+			),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};

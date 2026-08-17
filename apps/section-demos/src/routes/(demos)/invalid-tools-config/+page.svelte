@@ -2,6 +2,7 @@
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import type { FrameworkErrorModel } from '@pie-players/pie-assessment-toolkit';
 	import type { PageData } from './$types';
+	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -86,6 +87,7 @@
 			section={data.section}
 			tool-config-strictness="error"
 			show-toolbar={true}
+			locale={demoLocale()}
 			data-testid="invalid-tools-player"
 		></pie-section-player-splitpane>
 	</section>

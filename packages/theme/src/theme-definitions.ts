@@ -850,6 +850,17 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			role: "incorrect feedback icon",
 		},
 		{
+			// The error-surface pair. `--pie-incorrect-secondary` is a tint of the
+			// page, about 1.1:1 against it in most schemes, so a banner painted with
+			// it reads as a banner only by its `--pie-incorrect` edge -- and the ink
+			// on it is the page's own, not the error hue: `--pie-incorrect` against
+			// this tint falls to 4.14:1 under Black on White.
+			foreground: "--pie-text",
+			background: "--pie-incorrect-secondary",
+			minimum: 4.5,
+			role: "incorrect feedback surface text",
+		},
+		{
 			foreground: "--pie-missing-icon",
 			background: "--pie-background",
 			minimum: 3,
@@ -1012,6 +1023,33 @@ function resolveColor(
 	return reference
 		? resolveColor(variables, reference[1] as ThemeTokenName, seen)
 		: value;
+}
+
+/**
+ * The CSS `color-scheme` keyword a palette implies, or `null` when the token
+ * values cannot decide it.
+ *
+ * A scheme replaces every colour, but nothing in CSS infers polarity from custom
+ * properties, so UA-styled controls -- `input`, `select`, scrollbars, native form
+ * widgets -- keep whatever polarity the host's theme declared. A dark
+ * accommodation on a light host therefore renders their text in the light-mode
+ * system colour: measured at roughly 1.1:1 against `yellow-on-blue`.
+ *
+ * Decided by whether black or white contrasts better against the resolved
+ * background, which is the same test that picks a legible foreground. `null` for
+ * a background `parseOpaqueColor` rejects -- a translucent value, a `var()`
+ * reference out to a host property, the transparent light base -- because
+ * polarity then depends on the host's backdrop and is the host's to declare.
+ */
+export function resolvePaletteColorScheme(
+	variables: Readonly<ThemeVariables>,
+): "light" | "dark" | null {
+	const value = resolveColor(variables, "--pie-background");
+	const background = value ? parseOpaqueColor(value) : null;
+	if (!background) return null;
+	const againstWhite = contrastRatio({ r: 255, g: 255, b: 255 }, background);
+	const againstBlack = contrastRatio({ r: 0, g: 0, b: 0 }, background);
+	return againstWhite > againstBlack ? "dark" : "light";
 }
 
 export function diagnoseThemeContrast(

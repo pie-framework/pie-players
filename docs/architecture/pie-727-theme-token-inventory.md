@@ -27,6 +27,10 @@ registered or explicitly classified as package-private.
 
 ## Summary
 
+Counts are the PIE-727 scan snapshot, not a live figure: the token surface has
+grown with each chrome slice, and `token-registry.json` holds 86 entries as of
+2026-08-15. `bun run check:theme-tokens` is the authority on what exists.
+
 - Token-like names found: 95.
 - Names with at least one in-repo declaration: 56.
 - Names with no in-repo declaration: 39.
@@ -41,8 +45,8 @@ registered or explicitly classified as package-private.
 - CSS adapters: `packages/theme/src/tokens.css` and
   `packages/theme/src/color-schemes.css` are checked-in generated output, not
   parallel sources of palette values.
-- DaisyUI bridge mappings: covered by
-  `packages/theme-daisyui/tests/mapping-parity.test.mjs`.
+- DaisyUI slot mappings: `DAISYUI_PIE_TOKEN_MAP` is the sole source, covered by
+  `packages/theme/tests/daisyui-mapping.test.ts`.
 
 Some regex matches are documentation placeholders rather than real token names,
 for example `--pie-button-`, `--pie-focus-`, and

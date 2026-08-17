@@ -79,6 +79,18 @@ export type RuntimeConfig = {
 	 * markup (the default). Purely visual — no engine effect.
 	 */
 	ndsIcons?: boolean;
+	/**
+	 * Interface locale: a BCP-47 tag naming the language the player renders its own
+	 * UI in. Purely presentational — no engine effect.
+	 *
+	 * Distinct from content language, which describes the authored item and
+	 * travels on `env`. QTI 3's implementation guide states the independence
+	 * directly: a candidate may choose an interface language which may or may not
+	 * also be the language of the content.
+	 *
+	 * Unset renders `en-US`. POSIX (`nl_NL`) and bare (`nl`) forms both resolve.
+	 */
+	locale?: string;
 	toolConfigStrictness?: ToolConfigStrictness;
 
 	// Canonical framework-error callback.

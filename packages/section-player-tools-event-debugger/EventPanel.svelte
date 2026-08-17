@@ -18,6 +18,11 @@
 />
 
 <script lang="ts">
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
 		getSectionControllerFromCoordinator,
@@ -479,10 +484,26 @@
 		detachControllerSubscription();
 		detachLifecycleSubscription();
 	});
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
 <SharedFloatingPanel
-	title="Controller Events"
+	title={interfaceI18n.t("debug.controllerEvents")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag event debugger panel"
 	minWidth={360}
 	minHeight={280}
@@ -520,7 +541,7 @@
 		<div
 			class="pie-section-player-tools-event-debugger__toggle-group"
 			role="group"
-			aria-label="Event level filter"
+			aria-label={interfaceI18n.t("debug.eventLevelFilterA11y")}
 		>
 			<button
 				class="pie-section-player-tools-event-debugger__toggle-button"
@@ -599,18 +620,18 @@
 			role="textbox"
 			aria-readonly="true"
 			tabindex="0"
-			aria-label="Controller event details"
+			aria-label={interfaceI18n.t("debug.controllerEventDetailsA11y")}
 		>
 			{#if selectedRecord}
 				<div class="pie-section-player-tools-event-debugger__detail-meta">
-					<div><strong>Type:</strong> {selectedRecord.type}</div>
-					<div><strong>Target:</strong> {selectedRecord.targetTag || "unknown"}</div>
-					<div><strong>Item:</strong> {selectedRecord.itemId || "n/a"}</div>
-					<div><strong>Canonical:</strong> {selectedRecord.canonicalItemId || "n/a"}</div>
-					<div><strong>Intent:</strong> {selectedRecord.intent || "n/a"}</div>
-					<div><strong>Duplicates:</strong> {selectedRecord.duplicateCount}</div>
+					<div><strong>{interfaceI18n.t("debug.fieldType")}</strong> {selectedRecord.type}</div>
+					<div><strong>{interfaceI18n.t("debug.fieldTarget")}</strong> {selectedRecord.targetTag || "unknown"}</div>
+					<div><strong>{interfaceI18n.t("debug.fieldItem")}</strong> {selectedRecord.itemId || "n/a"}</div>
+					<div><strong>{interfaceI18n.t("debug.fieldCanonical")}</strong> {selectedRecord.canonicalItemId || "n/a"}</div>
+					<div><strong>{interfaceI18n.t("debug.fieldIntent")}</strong> {selectedRecord.intent || "n/a"}</div>
+					<div><strong>{interfaceI18n.t("debug.fieldDuplicates")}</strong> {selectedRecord.duplicateCount}</div>
 					<div>
-						<strong>Semantic Repeats:</strong>
+						<strong>{interfaceI18n.t("debug.fieldSemanticRepeats")}</strong>
 						{semanticCounts.get(selectedRecord.semanticFingerprint) || selectedRecord.duplicateCount}
 					</div>
 				</div>
@@ -621,7 +642,7 @@
 				)}</pre>
 			{:else}
 				<div class="pie-section-player-tools-event-debugger__empty">
-					Select an event to inspect payload details.
+					{interfaceI18n.t("debug.selectEvent")}
 				</div>
 			{/if}
 		</div>
@@ -639,14 +660,16 @@
 		align-items: center;
 		gap: 8px;
 		padding: 10px 12px;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 		flex-wrap: wrap;
 	}
 
 	.pie-section-player-tools-event-debugger__button {
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-100, #fff);
-		color: inherit;
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		background: var(--pie-button-bg, #ffffff);
+		/* Explicit rather than inherited: `--pie-button-bg` is certified against
+		   `--pie-button-color`, not against the panel's body ink. */
+		color: var(--pie-button-color, #374151);
 		border-radius: 6px;
 		font-size: 0.78rem;
 		padding: 6px 8px;
@@ -654,26 +677,28 @@
 
 	.pie-section-player-tools-event-debugger__toggle-group {
 		display: inline-flex;
-		border: 1px solid var(--color-base-300, #d1d5db);
+		border: 1px solid var(--pie-border, #8f8f8f);
 		border-radius: 6px;
 		overflow: hidden;
 	}
 
 	.pie-section-player-tools-event-debugger__toggle-button {
 		border: none;
-		background: var(--color-base-100, #fff);
-		color: inherit;
+		background: var(--pie-button-bg, #ffffff);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.78rem;
 		padding: 6px 10px;
 		cursor: pointer;
 	}
 
 	.pie-section-player-tools-event-debugger__toggle-button + .pie-section-player-tools-event-debugger__toggle-button {
-		border-left: 1px solid var(--color-base-300, #d1d5db);
+		border-left: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-section-player-tools-event-debugger__toggle-button--active {
-		background: color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+		/* The certified active pair, kept together. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 		font-weight: 600;
 	}
 
@@ -690,7 +715,7 @@
 	}
 
 	.pie-section-player-tools-event-debugger__list {
-		border-right: 1px solid var(--color-base-300, #d1d5db);
+		border-right: 1px solid var(--pie-border, #8f8f8f);
 		overflow: auto;
 	}
 
@@ -705,12 +730,14 @@
 		text-align: left;
 		background: transparent;
 		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-base-300, #e5e7eb);
+		/* Row divider inside the list, which 1.4.11 exempts. */
+		border-bottom: 1px solid var(--pie-border-light, #d1d1d1);
 		cursor: pointer;
 	}
 
 	.pie-section-player-tools-event-debugger__row--active {
-		background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-event-debugger__row-top {
@@ -743,7 +770,7 @@
 		gap: 3px;
 		padding: 10px 12px;
 		font-size: 0.78rem;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-section-player-tools-event-debugger__pre {

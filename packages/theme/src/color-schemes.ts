@@ -7,6 +7,7 @@ import {
 	getDefaultColorSchemeDescriptor,
 	getSchemeParticipation,
 	listBuiltInColorSchemeDefinitions,
+	resolvePaletteColorScheme,
 } from "./theme-definitions.js";
 import {
 	normalizePieThemeVariables,
@@ -557,12 +558,21 @@ export function resolvePieTheme(
 		);
 	}
 	for (const item of diagnostics) warnDiagnostic(item);
+	// Only a resolved scheme decides polarity. Without one -- including a requested
+	// scheme that turned out unavailable -- the host's theme still owns
+	// `color-scheme`, and deciding it from the base palette would take that
+	// ownership away from every host that never asked for an accommodation.
+	const colorScheme =
+		status === "built-in" || status === "custom"
+			? resolvePaletteColorScheme(variables)
+			: null;
 	return Object.freeze({
 		baseTheme,
 		requestedScheme,
 		resolvedScheme,
 		status,
 		variables: freezeVariables(variables),
+		colorScheme,
 		diagnostics: freezeDiagnostics(diagnostics),
 	});
 }

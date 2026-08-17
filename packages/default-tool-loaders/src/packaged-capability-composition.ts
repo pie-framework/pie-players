@@ -24,6 +24,10 @@ import {
 import { audioTranscriptRegistration } from "./registrations/audio-transcript.js";
 import { calculatorToolRegistration } from "./registrations/calculator.js";
 import {
+	dictionaryToolRegistration,
+	pictureDictionaryToolRegistration,
+} from "./registrations/dictionary-tools.js";
+import {
 	answerEliminatorToolRegistration,
 	highlighterToolRegistration,
 } from "./registrations/interaction-tools.js";
@@ -131,6 +135,12 @@ const loadGraphModule = () =>
 	loadSideEffectModule(() => import("@pie-players/pie-tool-graph"));
 const loadPeriodicTableModule = () =>
 	loadSideEffectModule(() => import("@pie-players/pie-tool-periodic-table"));
+const loadDictionaryModule = () =>
+	loadSideEffectModule(() => import("@pie-players/pie-tool-dictionary"));
+const loadPictureDictionaryModule = () =>
+	loadSideEffectModule(
+		() => import("@pie-players/pie-tool-picture-dictionary"),
+	);
 
 const PACKAGED_CAPABILITY_DEFINITIONS = [
 	{
@@ -268,6 +278,28 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 			"chemistryReference",
 			"elementReference",
 		],
+	},
+	{
+		registration: dictionaryToolRegistration,
+		tagName: "pie-tool-dictionary",
+		loadModule: loadDictionaryModule,
+		loaderTargets: ["section"],
+		placementOrder: { item: 60, element: 100 },
+		preferredPlacementOrder: { section: 70 },
+		toolbarOrder: 120,
+		// Deliberately empty: a dictionary is a granted accommodation, and on a
+		// vocabulary item it is construct-relevant, so it is never universal.
+		universalSupportIds: [],
+	},
+	{
+		registration: pictureDictionaryToolRegistration,
+		tagName: "pie-tool-picture-dictionary",
+		loadModule: loadPictureDictionaryModule,
+		loaderTargets: ["section"],
+		placementOrder: { item: 70, element: 110 },
+		preferredPlacementOrder: { section: 80 },
+		toolbarOrder: 130,
+		universalSupportIds: [],
 	},
 	{
 		registration: audioTranscriptRegistration,
@@ -649,6 +681,8 @@ export const PACKAGED_TOOL_REGISTRATIONS = [
 	ToolRegistration,
 	ToolRegistration,
 	ToolRegistration,
+	ToolRegistration,
+	ToolRegistration,
 ];
 
 export const PACKAGED_TOOL_TAG_MAP: ToolTagMap = {
@@ -683,6 +717,8 @@ export const PACKAGED_TOOL_PLACEMENT = {
 		"annotationToolbar",
 		"graph",
 		"periodicTable",
+		"dictionary",
+		"pictureDictionary",
 	];
 	readonly passage: readonly [
 		"textToSpeech",
@@ -706,6 +742,8 @@ export const PACKAGED_TOOL_PLACEMENT = {
 		"annotationToolbar",
 		"graph",
 		"periodicTable",
+		"dictionary",
+		"pictureDictionary",
 	];
 };
 
@@ -729,6 +767,8 @@ export const PACKAGED_TOOL_ORDER = [
 	"protractor",
 	"graph",
 	"periodicTable",
+	"dictionary",
+	"pictureDictionary",
 ];
 
 export const UNIVERSAL_SUPPORTS_PRESET: readonly string[] =

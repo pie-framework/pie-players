@@ -18,6 +18,7 @@ import type {
 import type { ToolCoordinatorApi } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
@@ -90,14 +91,24 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 	return {
 		calculatorType,
 		availableTypes,
-		displayName:
-			calculatorType === "scientific"
-				? "Scientific Calculator"
-				: calculatorType === "basic"
-					? "Basic Calculator"
-					: "Calculator",
+		displayName: toolbarContext.i18n.t(
+			CALCULATOR_NAME_KEYS[calculatorType ?? "untyped"],
+		),
 	};
 }
+
+/**
+ * The calculator's displayed name, per host-declared type.
+ *
+ * `untyped` keeps the pre-adoption behaviour of naming the scientific
+ * calculator, which is what the toolbar has always announced when the host
+ * declares no type.
+ */
+const CALCULATOR_NAME_KEYS: Record<CalculatorType | "untyped", MessageKey> = {
+	basic: "tools.calculator.nameBasic",
+	scientific: "tools.calculator.nameScientific",
+	untyped: "tools.calculator.name",
+};
 
 function applyCalculatorParamsToElement(
 	element: HTMLElement,
@@ -136,6 +147,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 	toolId: "calculator",
 	name: "Calculator",
 	description: "Multi-type calculator (basic, scientific, graphing)",
+	nameKey: "tools.calculator.name",
+	descriptionKey: "tools.calculator.description",
 	icon: "calculator",
 	provider: {
 		getProviderId: (config: ToolProviderConfig | undefined) =>
@@ -220,20 +233,16 @@ export const calculatorToolRegistration: ToolRegistration = {
 		overlay.setAttribute("tool-id", fullToolId);
 		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
-		const openLabel =
-			calculatorType === null
-				? "Open scientific calculator"
-				: `Open ${displayName.toLowerCase()}`;
-		const closeLabel =
-			calculatorType === null
-				? "Close scientific calculator"
-				: `Close ${displayName.toLowerCase()}`;
+
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: displayName,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: openLabel,
+			// The name stays put across open and closed. The toolbar mirrors
+			// `active` onto the button as `aria-pressed`, so the state is already
+			// exposed; a name that also swapped to "Close …" would contradict it.
+			ariaLabel: displayName,
 			tooltip: displayName,
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: toolbarContext.isToolVisible(fullToolId),
@@ -272,10 +281,12 @@ export const calculatorToolRegistration: ToolRegistration = {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
 				button.label = displayName;
-				button.ariaLabel = active ? closeLabel : openLabel;
-				button.tooltip = active
-					? `Close ${displayName.toLowerCase()}`
-					: displayName;
+				// Static across the toggle. The previous `Close ${name.toLowerCase()}`
+				// was a hardcoded English template built by lowercasing a localized
+				// noun — "Close rekenmachine" under nl-NL — and it is the state
+				// `aria-pressed` already carries.
+				button.ariaLabel = displayName;
+				button.tooltip = displayName;
 				if (lastVisibleState !== active) {
 					overlay.visible = active;
 					lastVisibleState = active;

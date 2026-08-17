@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
@@ -15,6 +15,31 @@ const COLOR_SCHEMES_CSS = readFileSync(
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 	await expectDemoChromeReady(page);
+}
+
+/**
+ * Resolve once every CSS transition running on `locator` and its descendants has
+ * finished, so a colour read lands on the resting value rather than an
+ * interpolated `oklab()` mix. A fixed pause cannot do this: the tab ink and pill
+ * fill ease over 150ms, and an `ease` curve is still moving at 130ms while
+ * sitting close enough to the resting pair to pass most runs.
+ *
+ * `finished` rejects with an AbortError when a transition is cancelled -- a
+ * second style change landing mid-flight -- which is settled for this purpose.
+ */
+async function settleTransitions(locator: Locator) {
+	await locator.evaluate(async (element: Element) => {
+		// Transitions start on the next style recalculation, so yield two frames
+		// before collecting them or there is nothing yet to await.
+		await new Promise((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(resolve)),
+		);
+		await Promise.all(
+			element
+				.getAnimations({ subtree: true })
+				.map((animation) => animation.finished.catch(() => undefined)),
+		);
+	});
 }
 
 test.describe("section theme and color scheme integration", () => {
@@ -238,7 +263,7 @@ test.describe("section theme and color scheme integration", () => {
 
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 		const themeTool = page.locator("pie-tool-theme").first();
@@ -312,7 +337,7 @@ test.describe("section theme and color scheme integration", () => {
 
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 		const themeTool = page.locator("pie-tool-theme").first();
@@ -469,7 +494,7 @@ test.describe("section theme and color scheme integration", () => {
 			);
 		});
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 
@@ -524,12 +549,176 @@ test.describe("section theme and color scheme integration", () => {
 		).toBeGreaterThanOrEqual(4.5);
 	});
 
+	test("keeps the passage/questions toggle legible in every built-in scheme", async ({
+		page,
+	}) => {
+		// The unselected tab paints no fill of its own, so its ink is measured
+		// against whichever surface shows through: the track's background when that
+		// is opaque, and the frame behind it when the light Base Theme leaves the
+		// track transparent.
+		const schemeIds = [
+			"default",
+			"black-on-white",
+			"white-on-black",
+			"rose-on-green",
+			"yellow-on-blue",
+			"black-on-rose",
+			"light-gray-on-dark-gray",
+			"grey-on-light-grey",
+			"purple-on-light-green",
+			"black-on-violet",
+			"yellow-on-navy",
+		];
+
+		// The dedicated `/tabbed-layout/*` routes mount the player without the demo
+		// chrome, so they carry no `pie-theme` host and every token would fall back
+		// to its literal -- which would pass this loop without measuring a scheme at
+		// all. The splitpane demo collapses to the same toggle inside the chrome.
+		await page.setViewportSize({ width: 900, height: 900 });
+		await page.goto("/question-passage?mode=candidate&layout=splitpane", {
+			waitUntil: "networkidle",
+		});
+		await expectDemoChromeReady(page);
+		const unselectedTab = page.getByRole("tab", { name: "Questions" });
+		const toggleTrack = page.locator(".pie-section-player-tabs").first();
+		await expect(unselectedTab).toBeVisible();
+		expect(
+			await page.evaluate(() =>
+				getComputedStyle(document.documentElement)
+					.getPropertyValue("--pie-text")
+					.trim(),
+			),
+			"themed host required, or the loop below measures only CSS literals",
+		).not.toBe("");
+
+		for (const schemeId of schemeIds) {
+			await page.evaluate(async (id) => {
+				const host =
+					document.querySelector('pie-theme[scope="document"]') ||
+					document.querySelector("pie-theme");
+				host?.setAttribute("scheme", id);
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(resolve)),
+				);
+			}, schemeId);
+			await settleTransitions(toggleTrack);
+
+			const measured = await unselectedTab.evaluate((tab) => {
+				const track = tab.closest<HTMLElement>(".pie-section-player-tabs");
+				const frame = tab.closest<HTMLElement>(
+					".pie-section-player-tabbed-content",
+				);
+				if (!track || !frame) throw new Error("Toggle track not found");
+				const canvas = document.createElement("canvas");
+				canvas.width = 1;
+				canvas.height = 1;
+				const context = canvas.getContext("2d", { willReadFrequently: true });
+				if (!context) throw new Error("Canvas color parser unavailable");
+				const parse = (value: string) => {
+					context.clearRect(0, 0, 1, 1);
+					context.fillStyle = "rgba(1, 2, 3, 0.5)";
+					context.fillStyle = value;
+					context.fillRect(0, 0, 1, 1);
+					return [...context.getImageData(0, 0, 1, 1).data];
+				};
+				const opaque = (value: string) => parse(value)[3] === 255;
+				const luminance = (value: string) => {
+					const channels = parse(value)
+						.slice(0, 3)
+						.map((channel) => {
+							const normalized = channel / 255;
+							return normalized <= 0.04045
+								? normalized / 12.92
+								: ((normalized + 0.055) / 1.055) ** 2.4;
+						});
+					return (
+						0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+					);
+				};
+				const ratio = (foreground: string, background: string) => {
+					const a = luminance(foreground);
+					const b = luminance(background);
+					return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+				};
+				const trackStyle = getComputedStyle(track);
+				const frameStyle = getComputedStyle(frame);
+				const surface = opaque(trackStyle.backgroundColor)
+					? trackStyle.backgroundColor
+					: frameStyle.backgroundColor;
+				const tabStyle = getComputedStyle(tab);
+				const selected = track.querySelector<HTMLElement>(
+					".pie-section-player-tab--active",
+				);
+				if (!selected) throw new Error("Selected tab not found");
+				const selectedStyle = getComputedStyle(selected);
+				return {
+					color: tabStyle.color,
+					surface,
+					border: trackStyle.borderTopColor,
+					selectedColor: selectedStyle.color,
+					selectedFill: selectedStyle.backgroundColor,
+					text: ratio(tabStyle.color, surface),
+					boundary: ratio(
+						trackStyle.borderTopColor,
+						frameStyle.backgroundColor,
+					),
+					selectedText: ratio(
+						selectedStyle.color,
+						selectedStyle.backgroundColor,
+					),
+					selectedFillAgainstTrack: ratio(
+						selectedStyle.backgroundColor,
+						surface,
+					),
+				};
+			});
+
+			// Chromium interpolates a colour transition in oklab, so an `oklab()`
+			// computed value here means the read landed mid-flight and the ratios
+			// below describe a frame no learner rests on: the selected pair measured
+			// 4.19:1 in flight against 5.44:1 settled under Light Gray on Dark Gray.
+			for (const [label, value] of Object.entries({
+				"unselected ink": measured.color,
+				surface: measured.surface,
+				"selected ink": measured.selectedColor,
+				"selected fill": measured.selectedFill,
+			})) {
+				expect(
+					value,
+					`${schemeId} ${label} was read while transitioning (${value})`,
+				).not.toContain("oklab(");
+			}
+
+			expect(
+				measured.text,
+				`${schemeId} unselected tab text (${measured.color} on ${measured.surface})`,
+			).toBeGreaterThanOrEqual(4.5);
+			expect(
+				measured.boundary,
+				`${schemeId} toggle track boundary (${measured.border})`,
+			).toBeGreaterThanOrEqual(3);
+			expect(
+				measured.selectedText,
+				`${schemeId} selected tab text (${measured.selectedColor} on ${measured.selectedFill})`,
+			).toBeGreaterThanOrEqual(4.5);
+			// The pill is what marks the selection, so it owes 1.4.11's non-text
+			// minimum against the track. `default` is exempt: no scheme is asking for
+			// a palette, so the fill stays the pinned brand hue.
+			if (schemeId !== "default") {
+				expect(
+					measured.selectedFillAgainstTrack,
+					`${schemeId} selected pill against the track (${measured.selectedFill} on ${measured.surface})`,
+				).toBeGreaterThanOrEqual(3);
+			}
+		}
+	});
+
 	test("supports menu keyboard navigation and returns focus on Escape", async ({
 		page,
 	}) => {
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 
@@ -565,7 +754,7 @@ test.describe("section theme and color scheme integration", () => {
 		});
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 
@@ -599,7 +788,7 @@ test.describe("section theme and color scheme integration", () => {
 		});
 		await gotoDemo(page);
 		await page
-			.getByRole("button", { name: "Theme - Change colors and contrast" })
+			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
 			.click();
 

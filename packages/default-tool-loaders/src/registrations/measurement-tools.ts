@@ -36,6 +36,8 @@ export const rulerToolRegistration: ToolRegistration = {
 	toolId: "ruler",
 	name: "Ruler",
 	description: "On-screen ruler for measurements",
+	nameKey: "tools.ruler.name",
+	descriptionKey: "tools.ruler.description",
 	icon: "ruler",
 
 	// Ruler typically appears at section/item/element level
@@ -68,8 +70,8 @@ export const rulerToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Open ruler tool",
-			tooltip: "Ruler",
+			ariaLabel: toolbarContext.i18n.t("tools.ruler.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.ruler.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -118,6 +120,8 @@ export const protractorToolRegistration: ToolRegistration = {
 	toolId: "protractor",
 	name: "Protractor",
 	description: "On-screen protractor for angle measurements",
+	nameKey: "tools.protractor.name",
+	descriptionKey: "tools.protractor.description",
 	icon: "protractor",
 
 	// Protractor typically appears at section/item/element level
@@ -150,8 +154,8 @@ export const protractorToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Open protractor tool",
-			tooltip: "Protractor",
+			ariaLabel: toolbarContext.i18n.t("tools.protractor.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.protractor.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};

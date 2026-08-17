@@ -1,345 +1,244 @@
 #!/usr/bin/env bun
 /**
- * Translation Coverage Checker
+ * Translation coverage checker.
  *
- * Validates that all locales have complete translations compared to the reference locale (English).
- * Adapted from pie-qti's translation coverage checker for JSON-based translations.
+ * Two tiers, because they answer different questions. A **complete** locale must
+ * carry every key the English catalog defines; a missing one is a build failure.
+ * A **carried** locale is reported and never gates: its gaps resolve to English
+ * through the provider's fallback chain, which is a working state, and gating on
+ * it would only pressure someone into committing unreviewed translation.
+ *
+ * The English catalog's shape also generates `MessageKey`, so a mistyped key at a
+ * call site is already a compile error. This script answers the other half —
+ * whether a locale is missing a key it should have, carries one English no longer
+ * defines, or left a value byte-identical to English.
  *
  * Usage:
- *   bun run packages/players-shared/src/i18n/scripts/check-coverage.ts
+ *   bun run check-i18n
+ *   bun run check-i18n -- --locale nl-NL
  *
  * Exit codes:
- *   0 - All translations complete
- *   1 - Missing translations found
+ *   0 — every complete locale is at 100%
+ *   1 — a complete locale has gaps, or any locale carries a stale key
  */
 
-import { readFileSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { BUNDLED_LOCALES } from "../catalogs.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const HERE = dirname(fileURLToPath(import.meta.url));
+const MESSAGES = resolve(HERE, "../messages");
 
-interface CoverageResult {
+const REFERENCE_LOCALE = "en-US";
+
+/**
+ * Locales carried at partial coverage. Reported, never gating.
+ *
+ * Empty by design. The tier exists for a locale mid-translation — a batch lands,
+ * the tag sits here while review catches up, and the gaps resolve to English
+ * meanwhile. It is not a home for a catalog nobody is translating: the four
+ * pre-adoption locales sat at nominal 100% against a reference harvested from a
+ * design rather than from call sites, so the number certified nothing.
+ */
+const CARRIED_LOCALES: string[] = [];
+
+/**
+ * Locales that must be complete: everything the loader map ships, minus the
+ * reference and minus the carried tier.
+ *
+ * Derived rather than listed, so adding a catalog to `catalogs.ts` cannot leave
+ * it unmeasured. Moving a tag out of `CARRIED_LOCALES` is the last step of
+ * translating it; the check then keeps it complete.
+ */
+const COMPLETE_LOCALES = BUNDLED_LOCALES.filter(
+	(locale) => locale !== REFERENCE_LOCALE && !CARRIED_LOCALES.includes(locale),
+);
+
+const PLURAL_CATEGORIES = new Set([
+	"zero",
+	"one",
+	"two",
+	"few",
+	"many",
+	"other",
+]);
+
+type Node = string | { [key: string]: Node };
+
+interface Coverage {
 	locale: string;
-	coverage: number; // Percentage
-	totalKeys: number;
-	translatedKeys: number;
+	tier: "complete" | "carried";
+	total: number;
+	translated: number;
 	missing: string[];
-	extra: string[];
-	untranslated: string[];
+	stale: string[];
+	identical: string[];
+}
+
+function isPluralGroup(node: Node): boolean {
+	if (typeof node !== "object") return false;
+	const keys = Object.keys(node);
+	return keys.length > 0 && keys.every((key) => PLURAL_CATEGORIES.has(key));
 }
 
 /**
- * Extract all keys from a translation object recursively
+ * Flatten a catalog to dot-notation leaves.
+ *
+ * A plural group is one leaf, matching how `MessageKey` treats it and how
+ * `plural()` is called: the group is the key, its categories are not.
  */
-function extractKeys(obj: any, prefix = ""): Set<string> {
-	const keys = new Set<string>();
+function flatten(node: Node, prefix = "", out = new Map<string, Node>()) {
+	if (typeof node === "string") {
+		out.set(prefix, node);
+		return out;
+	}
+	if (isPluralGroup(node)) {
+		out.set(prefix, node);
+		return out;
+	}
+	for (const [key, value] of Object.entries(node)) {
+		flatten(value, prefix ? `${prefix}.${key}` : key, out);
+	}
+	return out;
+}
 
-	for (const [key, value] of Object.entries(obj)) {
-		const fullKey = prefix ? `${prefix}.${key}` : key;
+async function loadCatalog(locale: string): Promise<Node> {
+	const module = await import(`${MESSAGES}/${locale}.ts`);
+	return module.default as Node;
+}
 
-		if (typeof value === "object" && value !== null) {
-			// Check if it's a plural form (has 'one' and 'other' keys)
-			if ("one" in value && "other" in value) {
-				keys.add(fullKey);
-			} else {
-				// Recurse for nested objects
-				const nested = extractKeys(value, fullKey);
-				nested.forEach((k) => keys.add(k));
-			}
-		} else {
-			keys.add(fullKey);
+function sameValue(a: Node | undefined, b: Node | undefined): boolean {
+	return JSON.stringify(a) === JSON.stringify(b);
+}
+
+async function measure(
+	locale: string,
+	tier: Coverage["tier"],
+	reference: Map<string, Node>,
+): Promise<Coverage> {
+	const flat = flatten(await loadCatalog(locale));
+	const missing: string[] = [];
+	const identical: string[] = [];
+
+	for (const [key, referenceValue] of reference) {
+		const value = flat.get(key);
+		if (value === undefined) {
+			missing.push(key);
+			continue;
 		}
+		if (sameValue(value, referenceValue)) identical.push(key);
 	}
 
-	return keys;
-}
-
-/**
- * Load all translations for a locale
- */
-function loadLocaleTranslations(locale: string): Record<string, any> {
-	const basePath = resolve(__dirname, "../translations", locale);
-
-	try {
-		const common = JSON.parse(
-			readFileSync(join(basePath, "common.json"), "utf-8"),
-		);
-		const toolkit = JSON.parse(
-			readFileSync(join(basePath, "toolkit.json"), "utf-8"),
-		);
-		const tools = JSON.parse(
-			readFileSync(join(basePath, "tools.json"), "utf-8"),
-		);
-
-		return { ...common, ...toolkit, ...tools };
-	} catch (error) {
-		console.error(`Error loading translations for locale ${locale}:`, error);
-		throw error;
-	}
-}
-
-/**
- * Get value at a dot-notation path
- */
-function getValueAtPath(obj: any, path: string): any {
-	const keys = path.split(".");
-	let current = obj;
-
-	for (const key of keys) {
-		if (current && typeof current === "object" && key in current) {
-			current = current[key];
-		} else {
-			return undefined;
-		}
-	}
-
-	return current;
-}
-
-/**
- * Check if a value looks like English (starts with uppercase letter)
- */
-function looksLikeEnglish(value: any): boolean {
-	if (typeof value !== "string") return false;
-	return /^[A-Z]/.test(value) && value.length > 1;
-}
-
-/**
- * Check translation coverage for a locale
- */
-function checkLocale(
-	referenceKeys: Set<string>,
-	referenceTranslations: Record<string, any>,
-	targetLocale: string,
-): CoverageResult {
-	const targetTranslations = loadLocaleTranslations(targetLocale);
-	const targetKeys = extractKeys(targetTranslations);
-
-	// Missing keys (in reference but not in target)
-	const missing = Array.from(referenceKeys).filter(
-		(key) => !targetKeys.has(key),
-	);
-
-	// Extra keys (in target but not in reference)
-	const extra = Array.from(targetKeys).filter((key) => !referenceKeys.has(key));
-
-	// Potentially untranslated (same value as reference and looks like English)
-	const untranslated = Array.from(targetKeys).filter((key) => {
-		const refValue = getValueAtPath(referenceTranslations, key);
-		const targetValue = getValueAtPath(targetTranslations, key);
-
-		// For plural forms, check both 'one' and 'other'
-		if (typeof refValue === "object" && "one" in refValue) {
-			return (
-				refValue.one === targetValue.one &&
-				refValue.other === targetValue.other &&
-				looksLikeEnglish(targetValue.one)
-			);
-		}
-
-		if (typeof refValue === "string" && typeof targetValue === "string") {
-			return refValue === targetValue && looksLikeEnglish(targetValue);
-		}
-
-		return false;
-	});
-
-	const translatedKeys = referenceKeys.size - missing.length;
-	const coverage =
-		referenceKeys.size > 0 ? (translatedKeys / referenceKeys.size) * 100 : 0;
+	const stale = [...flat.keys()].filter((key) => !reference.has(key));
 
 	return {
-		locale: targetLocale,
-		coverage,
-		totalKeys: referenceKeys.size,
-		translatedKeys,
+		locale,
+		tier,
+		total: reference.size,
+		translated: reference.size - missing.length,
 		missing,
-		extra,
-		untranslated,
+		stale,
+		identical,
 	};
 }
 
-/**
- * Format coverage report
- */
-function formatReport(results: CoverageResult[]): string {
-	let report = "\n";
-	report += "┌─────────────────────────────────────────────────────┐\n";
-	report += "│      PIE Players Translation Coverage Report        │\n";
-	report += `│      Reference Locale: en (${results[0]?.totalKeys || 0} keys)                │\n`;
-	report += "└─────────────────────────────────────────────────────┘\n\n";
+function pct(coverage: Coverage): number {
+	return coverage.total === 0
+		? 100
+		: Math.round((coverage.translated / coverage.total) * 1000) / 10;
+}
 
-	for (const result of results) {
-		report += `📋 Locale: ${result.locale}\n`;
-		report += "─────────────────────────────────────────────────────\n";
+function report(coverage: Coverage, verbose: boolean): void {
+	const percentage = pct(coverage);
+	const complete = coverage.tier === "complete";
+	const mark = complete ? (percentage === 100 ? "✅" : "❌") : "ℹ️ ";
 
-		const coverageEmoji =
-			result.coverage === 100 ? "✅" : result.coverage >= 95 ? "⚠️ " : "❌";
-
-		report += `${coverageEmoji} Coverage: ${result.coverage.toFixed(1)}% `;
-		report += `(${result.translatedKeys}/${result.totalKeys} keys)\n\n`;
-
-		if (
-			result.coverage === 100 &&
-			result.extra.length === 0 &&
-			result.untranslated.length === 0
-		) {
-			report += "✅ All keys present and translated!\n\n";
-		} else {
-			if (result.missing.length > 0) {
-				report += `❌ Missing Keys (${result.missing.length}):\n`;
-				const displayCount = Math.min(result.missing.length, 15);
-				result.missing.slice(0, displayCount).forEach((key) => {
-					report += `  • ${key}\n`;
-				});
-				if (result.missing.length > displayCount) {
-					report += `  ... and ${result.missing.length - displayCount} more\n`;
-				}
-				report += "\n";
-			}
-
-			if (result.extra.length > 0) {
-				report += `⚠️  Extra Keys (${result.extra.length}) - Not in reference locale:\n`;
-				const displayCount = Math.min(result.extra.length, 10);
-				result.extra.slice(0, displayCount).forEach((key) => {
-					report += `  • ${key}\n`;
-				});
-				if (result.extra.length > displayCount) {
-					report += `  ... and ${result.extra.length - displayCount} more\n`;
-				}
-				report += "\n";
-			}
-
-			if (result.untranslated.length > 0) {
-				report += `⚠️  Potentially Untranslated (${result.untranslated.length}):\n`;
-				const displayCount = Math.min(result.untranslated.length, 10);
-				result.untranslated.slice(0, displayCount).forEach((key) => {
-					const value = getValueAtPath(
-						loadLocaleTranslations(result.locale),
-						key,
-					);
-					const displayValue =
-						typeof value === "string" ? value : JSON.stringify(value);
-					report += `  • ${key} = "${displayValue}"\n`;
-				});
-				if (result.untranslated.length > displayCount) {
-					report += `  ... and ${result.untranslated.length - displayCount} more\n`;
-				}
-				report += "\n";
-			}
-		}
-	}
-
-	// Summary
-	report += "════════════════════════════════════════════════════════\n";
-	report += "📊 Summary:\n";
-	report += "────────────────────────────────────────────────────────\n";
-
-	for (const result of results) {
-		const emoji =
-			result.coverage === 100 ? "✅" : result.coverage >= 95 ? "⚠️ " : "❌";
-		const status =
-			result.coverage === 100
-				? result.extra.length > 0 || result.untranslated.length > 0
-					? `Complete (${result.extra.length} extra, ${result.untranslated.length} untranslated)`
-					: "Complete"
-				: `Missing: ${result.missing.length}`;
-
-		report += `  ${result.locale}: ${result.coverage.toFixed(1)}% `;
-		report += `(${result.translatedKeys}/${result.totalKeys})  `;
-		report += `${emoji} ${status}\n`;
-	}
-
-	const avgCoverage =
-		results.reduce((sum, r) => sum + r.coverage, 0) / results.length;
-	report += `\nOverall: ${avgCoverage.toFixed(1)}% average coverage\n`;
-
-	const allComplete = results.every((r) => r.coverage === 100);
-	const hasIssues = results.some(
-		(r) => r.extra.length > 0 || r.untranslated.length > 0,
+	console.log(
+		`${mark} ${coverage.locale.padEnd(7)} ${String(percentage).padStart(5)}%  ` +
+			`${coverage.translated}/${coverage.total} keys` +
+			(coverage.tier === "carried" ? "  (carried — not gating)" : ""),
 	);
 
-	if (allComplete && !hasIssues) {
-		report += "✅ All translations complete!\n";
-	} else if (allComplete) {
-		report +=
-			"⚠️  All keys present, but some issues found (extra keys or untranslated)\n";
-	} else {
-		report += "❌ Some translations incomplete\n";
+	if (coverage.stale.length > 0) {
+		console.log(
+			`   ⚠️  ${coverage.stale.length} key(s) English no longer defines:`,
+		);
+		for (const key of coverage.stale) console.log(`      ${key}`);
 	}
 
-	report += "════════════════════════════════════════════════════════\n";
+	if (coverage.identical.length > 0) {
+		console.log(
+			`   ·  ${coverage.identical.length} value(s) identical to English` +
+				(verbose ? ":" : " (--verbose to list)"),
+		);
+		if (verbose)
+			for (const key of coverage.identical) console.log(`      ${key}`);
+	}
 
-	return report;
+	if (coverage.missing.length > 0 && (complete || verbose)) {
+		console.log(`   ✗  ${coverage.missing.length} missing:`);
+		for (const key of coverage.missing) console.log(`      ${key}`);
+	}
 }
 
-/**
- * Main entry point
- */
-async function main() {
-	console.log("🔍 Checking translation coverage...\n");
+async function main(): Promise<void> {
+	const args = process.argv.slice(2);
+	const verbose = args.includes("--verbose");
+	const only = args.includes("--locale")
+		? args[args.indexOf("--locale") + 1]
+		: undefined;
 
-	try {
-		// Load reference locale (English)
-		const referenceTranslations = loadLocaleTranslations("en");
-		const referenceKeys = extractKeys(referenceTranslations);
+	const reference = flatten(await loadCatalog(REFERENCE_LOCALE));
 
-		console.log(`📖 Reference locale loaded: ${referenceKeys.size} keys\n`);
+	const targets: [string, Coverage["tier"]][] = [
+		...COMPLETE_LOCALES.map((l): [string, Coverage["tier"]] => [l, "complete"]),
+		...CARRIED_LOCALES.map((l): [string, Coverage["tier"]] => [l, "carried"]),
+	].filter(([locale]) => !only || locale === only);
 
-		// Check all other locales
-		const targetLocales = ["es", "zh", "ar"];
-		const results: CoverageResult[] = [];
-
-		for (const locale of targetLocales) {
-			try {
-				const result = checkLocale(
-					referenceKeys,
-					referenceTranslations,
-					locale,
-				);
-				results.push(result);
-			} catch (error) {
-				console.error(`❌ Error checking locale ${locale}:`, error);
-				process.exit(1);
-			}
-		}
-
-		// Print report
-		const report = formatReport(results);
-		console.log(report);
-
-		// Exit with error if any locale is incomplete
-		const allComplete = results.every((r) => r.coverage === 100);
-		if (!allComplete) {
-			console.error(
-				"\n❌ Exiting with error code 1 (translations incomplete)\n",
-			);
-			process.exit(1);
-		}
-
-		// Warn if there are extra keys or untranslated strings
-		const hasIssues = results.some(
-			(r) => r.extra.length > 0 || r.untranslated.length > 0,
+	if (targets.length === 0) {
+		console.error(
+			only
+				? `Unknown locale: ${only}. Known: ${[...COMPLETE_LOCALES, ...CARRIED_LOCALES].join(", ")}`
+				: "No locales configured.",
 		);
-		if (hasIssues) {
-			console.warn(
-				"\n⚠️  Warning: Some locales have extra keys or potentially untranslated strings.\n" +
-					"    Consider reviewing and cleaning up these issues.\n",
-			);
-			// Don't exit with error for warnings, just inform
-		}
-
-		console.log("✅ Translation coverage check passed!\n");
-		process.exit(0);
-	} catch (error) {
-		console.error("\n❌ Fatal error during coverage check:", error);
 		process.exit(1);
 	}
+
+	console.log(
+		`\nTranslation coverage against ${REFERENCE_LOCALE} (${reference.size} keys)\n`,
+	);
+
+	const results: Coverage[] = [];
+	for (const [locale, tier] of targets) {
+		const coverage = await measure(locale, tier, reference);
+		results.push(coverage);
+		report(coverage, verbose);
+	}
+
+	const incomplete = results.filter(
+		(r) => r.tier === "complete" && r.missing.length > 0,
+	);
+	const withStale = results.filter((r) => r.stale.length > 0);
+
+	console.log("");
+	if (incomplete.length > 0) {
+		console.error(
+			`❌ ${incomplete.map((r) => r.locale).join(", ")} declared complete but incomplete.\n` +
+				`   Translate the keys above, or move the tag to CARRIED_LOCALES in this script.\n`,
+		);
+	}
+	if (withStale.length > 0) {
+		console.error(
+			`❌ ${withStale.map((r) => r.locale).join(", ")} carry keys English no longer defines.\n` +
+				`   Remove them; a key absent from English is unreachable.\n`,
+		);
+	}
+	if (incomplete.length > 0 || withStale.length > 0) process.exit(1);
+
+	console.log("✅ Every locale declared complete is complete.\n");
 }
 
-// Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-	main();
-}
+main().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});

@@ -18,6 +18,7 @@
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
 			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
 			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
+			autoplayAudioEnabled: { attribute: "autoplay-audio-enabled", type: "Boolean" },
 			// Both reflect: PIE elements read these off the nearest player host and
 			// re-render on a MutationObserver watching these attributes, so a prop
 			// that never reaches the attribute is honoured at first paint and inert
@@ -32,6 +33,13 @@
 				type: "Boolean",
 				reflect: true,
 			},
+			// Interface locale: the language this player renders its own UI in, as a
+			// BCP-47 tag. `type: "String"` because a host passes attributes as
+			// strings; POSIX (`nl_NL`) and bare (`nl`) forms both resolve. Unset
+			// renders `en-US` — never `navigator.language`, so a host that supplies
+			// nothing keeps exactly the chrome it has today. Distinct from the
+			// authored content's language, which the item declares.
+			locale: { attribute: "locale", type: "String" },
 			bundleHost: { attribute: "bundle-host", type: "String" },
 			bundleEndpoints: { attribute: "bundle-endpoints", type: "Object" },
 			disableBundler: { attribute: "disable-bundler", type: "Boolean" },
@@ -83,6 +91,7 @@
 		SoundHandler,
 	} from "./types.js";
 	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
+	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
 	import {
 		getDeliveryAutosaveOptions,
 		getDeliveryBackend,
@@ -131,6 +140,10 @@
 		IifeBackendConfig,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
+	import {
+		createPieI18n,
+		DEFAULT_LOCALE,
+	} from "@pie-players/pie-players-shared/i18n";
 	import { tick, untrack } from "svelte";
 	// The shared content stylesheet is NOT imported here. In this package's
 	// library build, a plain CSS import is extracted to dist/assets/*.css, which
@@ -175,7 +188,9 @@
 		externalStyleUrls = "",
 		renderStimulus = true,
 		allowedResize = false,
+		autoplayAudioEnabled = undefined as boolean | undefined,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
+		locale = "",
 		includeSrHeading = true,
 		bundleHost = "",
 		bundleEndpoints = null as Record<string, unknown> | null,
@@ -750,7 +765,11 @@
 	}
 
 	function prepareConfigEntity(configEntity: ConfigEntity): ConfigEntity {
-		const normalizedConfig = normalizePreloadedElementVersions(configEntity);
+		const versionNormalizedConfig = normalizePreloadedElementVersions(configEntity);
+		const normalizedConfig = applyAutoplayAudioOverride(
+			versionNormalizedConfig,
+			autoplayAudioEnabled,
+		);
 		return makeUniqueTags({ config: normalizedConfig }).config;
 	}
 
@@ -799,6 +818,38 @@
 	 *
 	 * This player validates and reflects; it does not rewrite markup.
 	 */
+	/**
+	 * Interface locale for this player's own UI. Owned here rather than resolved from
+	 * a context: an item player is often the outermost element on the page, with no
+	 * toolkit above it to publish one.
+	 *
+	 * The version counter is the change signal. `setLocale` resolves a dynamic
+	 * import, so a locale set at first paint lands a tick later; without a read of
+	 * the counter every label would pin the English it first rendered.
+	 */
+	const interfaceI18n = createPieI18n();
+	let interfaceI18nVersion = $state(0);
+	$effect(() =>
+		interfaceI18n.subscribe(() => {
+			interfaceI18nVersion += 1;
+		}),
+	);
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		untrack(() => {
+			// A failed catalog load must not take the player down: every key still
+			// resolves through the English fallback chain.
+			void Promise.resolve(
+				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+			).catch(() => {});
+		});
+	});
+	// Identity changes on every catalog load, which is what re-renders the labels
+	// built from it.
+	const interfaceMessages = $derived(
+		(void interfaceI18nVersion, interfaceI18n),
+	);
+
 	const resolvedBaseHeadingLevel = $derived.by(() => {
 		if (
 			typeof baseHeadingLevel === "number" &&
@@ -1126,6 +1177,7 @@
 		void loaderOptions;
 		void disableBundler;
 		void allowedResize;
+		void autoplayAudioEnabled;
 		void bundleEndpoints;
 		void reFetchBundle;
 		queueMicrotask(() => {
@@ -1882,14 +1934,11 @@
 			style="
 				padding: 20px;
 				margin: 20px;
-				border: 2px solid #d32f2f;
 				border-radius: 4px;
-				background-color: #ffebee;
-				color: #c62828;
 				font-family: sans-serif;
 			"
 		>
-			<h3 style="margin: 0 0 10px 0">Configuration Error</h3>
+			<h3 style="margin: 0 0 10px 0">{interfaceMessages.t("player.configurationError")}</h3>
 			<p style="margin: 0">{error}</p>
 		</div>
 	{:else if loading || !itemConfig}
@@ -1921,6 +1970,7 @@
 					passageContainerClass={resolvedPassageContainerClass}
 					baseHeadingLevel={resolvedBaseHeadingLevel}
 					{includeSrHeading}
+					i18n={interfaceMessages}
 					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
 					{loaderConfig}
 					mode={resolvedMode}
@@ -1971,8 +2021,38 @@
 
 	.pie-item-player-build-warning {
 		margin: 0;
-		font-size: 0.95rem;
+		/* A learner can be the one reading this, so it follows the accommodation
+		   like any other text. Stated explicitly rather than left to inherit from
+		   the scaled host, to match the other content-path rules. */
+		font-size: calc(0.95rem * var(--pie-font-scale, 1));
 		color: var(--pie-missing, #9a6700);
 		text-align: center;
+	}
+
+	/*
+	 * Fixed red encoding, folded into the palette once a scheme asks for one: exact
+	 * pinned values at 0% collapse, which is every Base Theme. The ink collapses to
+	 * `--pie-text` rather than `--pie-incorrect`, which pairs with this tint at only
+	 * 4.14:1 under Black on White; the tint is roughly 1.1:1 from the page, so the
+	 * `--pie-incorrect` edge is what marks the banner out. Kept in step with the
+	 * same rule in `players-shared`'s `PieItemPlayer`.
+	 */
+	.pie-player-error {
+		border: 2px solid
+			color-mix(
+				in srgb,
+				var(--pie-incorrect, #d32f2f) var(--pie-fixed-hue-collapse, 0%),
+				#d32f2f
+			);
+		background-color: color-mix(
+			in srgb,
+			var(--pie-incorrect-secondary, #ffebee) var(--pie-fixed-hue-collapse, 0%),
+			#ffebee
+		);
+		color: color-mix(
+			in srgb,
+			var(--pie-text, #c62828) var(--pie-fixed-hue-collapse, 0%),
+			#c62828
+		);
 	}
 </style>

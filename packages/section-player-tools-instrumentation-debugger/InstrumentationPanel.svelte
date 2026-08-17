@@ -16,6 +16,11 @@
 
 <script lang="ts">
 	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+	import {
 		clearBufferedInstrumentationDebugRecords,
 		subscribeInstrumentationDebugRecords,
 		type InstrumentationDebugRecord,
@@ -122,10 +127,26 @@
 			visibleRecords[0] ||
 			null,
 	);
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
 <SharedFloatingPanel
-	title="Instrumentation"
+	title={interfaceI18n.t("debug.instrumentation")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag instrumentation panel"
 	minWidth={360}
 	minHeight={320}
@@ -170,7 +191,7 @@
 			value={selectedKind}
 			onchange={(event) =>
 				setSelectedKind((event.currentTarget as HTMLSelectElement).value)}
-			aria-label="Filter instrumentation record type"
+			aria-label={interfaceI18n.t("debug.instrumentationFilterA11y")}
 		>
 			<option value="all">all</option>
 			<option value="event">event</option>
@@ -197,7 +218,7 @@
 		<div class="pie-section-player-tools-instrumentation-debugger__list">
 			{#if visibleRecords.length === 0}
 				<div class="pie-section-player-tools-instrumentation-debugger__empty">
-					No instrumentation records yet.
+					{interfaceI18n.t("debug.noRecords")}
 				</div>
 			{:else}
 				{#each visibleRecords as record (record.panelKey)}
@@ -228,7 +249,7 @@
 			role="textbox"
 			aria-readonly="true"
 			tabindex="0"
-			aria-label="Instrumentation record details"
+			aria-label={interfaceI18n.t("debug.instrumentationDetailsA11y")}
 		>
 			{#if selectedRecord}
 				<div class="pie-section-player-tools-instrumentation-debugger__detail-meta">
@@ -253,7 +274,7 @@
 				)}</pre>
 			{:else}
 				<div class="pie-section-player-tools-instrumentation-debugger__empty">
-					Select a record to inspect details.
+					{interfaceI18n.t("debug.selectRecord")}
 				</div>
 			{/if}
 		</div>
@@ -271,15 +292,17 @@
 		align-items: center;
 		gap: 8px;
 		padding: 10px 12px;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 		flex-wrap: wrap;
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__kind-select,
 	.pie-section-player-tools-instrumentation-debugger__button {
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-100, #fff);
-		color: inherit;
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		background: var(--pie-button-bg, #ffffff);
+		/* Explicit rather than inherited: `--pie-button-bg` is certified against
+		   `--pie-button-color`, not against the panel's body ink. */
+		color: var(--pie-button-color, #374151);
 		border-radius: 6px;
 		font-size: 0.78rem;
 		padding: 6px 8px;
@@ -293,7 +316,7 @@
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__list {
-		border-right: 1px solid var(--color-base-300, #d1d5db);
+		border-right: 1px solid var(--pie-border, #8f8f8f);
 		overflow: auto;
 	}
 
@@ -308,12 +331,14 @@
 		text-align: left;
 		background: transparent;
 		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-base-300, #e5e7eb);
+		/* Row divider inside the list, which 1.4.11 exempts. */
+		border-bottom: 1px solid var(--pie-border-light, #d1d1d1);
 		cursor: pointer;
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__row--active {
-		background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__row-top {
@@ -346,7 +371,7 @@
 		gap: 3px;
 		padding: 10px 12px;
 		font-size: 0.78rem;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-section-player-tools-instrumentation-debugger__pre {

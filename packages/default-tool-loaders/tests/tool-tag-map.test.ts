@@ -5,6 +5,7 @@ import {
 	type ToolbarContext,
 	type ToolContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
 import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map";
 
@@ -110,6 +111,7 @@ describe("createPackagedToolRegistry component overrides", () => {
 			itemId: "item-1",
 			catalogId: "item-1",
 			language: "en",
+			i18n: resolveInterfaceI18n(null),
 			toolCoordinator: null,
 			toolkitCoordinator: null,
 			ttsService: null,

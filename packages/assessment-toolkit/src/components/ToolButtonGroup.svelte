@@ -8,6 +8,8 @@
 	 * - Pass 2: Filters by tool relevance using ToolRegistry
 	 */
 
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type {
 		ToolRegistry,
 		ToolToolbarButtonDefinition,
@@ -25,6 +27,7 @@
 		onToolClick,
 		orientation = "horizontal",
 		compact = false,
+		i18n,
 		class: className = "",
 	}: {
 		/** Tool registry for filtering and button creation */
@@ -41,9 +44,18 @@
 		orientation?: "horizontal" | "vertical";
 		/** Compact mode (icon only) */
 		compact?: boolean;
+		/**
+		 * Interface-locale provider, resolved by the caller from the toolkit runtime
+		 * context. Optional: with none, the English-only default renders, which is
+		 * the no-publisher state a resolver has to work in.
+		 */
+		i18n?: I18nProvider;
 		/** Additional CSS classes */
 		class?: string;
 	} = $props();
+
+	const messages = $derived(resolveInterfaceI18n({ i18n }));
+	const toolbarLabel = $derived(messages.t("toolkit.toolsA11y"));
 
 	// Two-pass visibility model
 	// Pass 2: Filter by tool relevance
@@ -86,7 +98,7 @@
 </script>
 
 {#if buttons.length > 0}
-	<div class={containerClasses} role="toolbar" aria-label="Assessment tools">
+	<div class={containerClasses} role="toolbar" aria-label={toolbarLabel}>
 		{#each buttons as button (button.toolId)}
 			<ToolButton {button} />
 		{/each}

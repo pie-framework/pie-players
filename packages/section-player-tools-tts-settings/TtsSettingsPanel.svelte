@@ -14,6 +14,11 @@
 
 <script lang="ts">
 	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+	import {
 		formatTTSSpeedOptionsAsText,
 		normalizeTTSSpeedControlOptions,
 		parseTTSSpeedOptionsFromText,
@@ -395,7 +400,8 @@ function isRecommendedBrowserVoice(voice: DemoVoice): boolean {
 }
 
 function browserVoiceLabel(voice: DemoVoice): string {
-	const name = voice.name || voice.id || "Unnamed voice";
+	const name =
+		voice.name || voice.id || interfaceI18n.t("debug.tts.unnamedVoice");
 	const metadata = [
 		voice.languageCode || "n/a",
 		voice.localService ? "local" : "remote",
@@ -567,7 +573,7 @@ function findBrowserDemoVoice(
 			checked: true,
 			loading: false,
 			available,
-			message: result?.message || (available ? "Provider available." : "Provider unavailable."),
+			message: result?.message || (available ? interfaceI18n.t("debug.tts.providerAvailable") : interfaceI18n.t("debug.tts.providerUnavailable")),
 			detail: result?.detail || null,
 			voices: []
 		};
@@ -635,7 +641,7 @@ function findBrowserDemoVoice(
 			const result = await provider.checkAvailability?.(createProviderContext(provider.id));
 			customProviderAvailabilityById = {
 				...customProviderAvailabilityById,
-				[provider.id]: buildAvailabilityState(result || { available: true, message: "Provider available." })
+				[provider.id]: buildAvailabilityState(result || { available: true, message: interfaceI18n.t("debug.tts.providerAvailable") })
 			};
 		} catch (error) {
 			customProviderAvailabilityById = {
@@ -644,7 +650,7 @@ function findBrowserDemoVoice(
 					checked: true,
 					loading: false,
 					available: false,
-					message: "Provider availability check failed.",
+					message: interfaceI18n.t("debug.tts.providerCheckFailed"),
 					detail: error instanceof Error ? error.message : String(error),
 					voices: []
 				}
@@ -916,7 +922,7 @@ function findBrowserDemoVoice(
 		browserState = { ...browserState, checked: true, loading: true, message: null, detail: null };
 		try {
 			if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-				throw new Error("Web Speech API is not available in this browser.");
+				throw new Error(interfaceI18n.t("debug.tts.webSpeechUnavailable"));
 			}
 
 			const synth = window.speechSynthesis;
@@ -946,7 +952,7 @@ function findBrowserDemoVoice(
 				available: true,
 				message: voices.length
 					? `Browser TTS available (${voices.length} voices detected).`
-					: "Browser TTS is available, but no voices were returned yet.",
+					: interfaceI18n.t("debug.tts.browserNoVoices"),
 				detail: null,
 				voices: mappedVoices
 			};
@@ -955,7 +961,7 @@ function findBrowserDemoVoice(
 				checked: true,
 				loading: false,
 				available: false,
-				message: "Browser TTS is not available.",
+				message: interfaceI18n.t("debug.tts.browserUnavailable"),
 				detail: error instanceof Error ? error.message : String(error),
 				voices: []
 			};
@@ -1041,7 +1047,7 @@ function findBrowserDemoVoice(
 				checked: true,
 				loading: false,
 				available: false,
-				message: "AWS Polly is not available from the configured API.",
+				message: interfaceI18n.t("debug.tts.pollyUnavailable"),
 				detail: error instanceof Error ? error.message : String(error),
 				voices: []
 			};
@@ -1093,7 +1099,7 @@ function findBrowserDemoVoice(
 				checked: true,
 				loading: false,
 				available: false,
-				message: "Google Cloud TTS is not available from the configured API.",
+				message: interfaceI18n.t("debug.tts.googleUnavailable"),
 				detail: error instanceof Error ? error.message : String(error),
 				voices: []
 			};
@@ -1143,7 +1149,7 @@ function findBrowserDemoVoice(
 				checked: false,
 				loading: false,
 				available: false,
-				message: "Provider availability has not been checked yet.",
+				message: interfaceI18n.t("debug.tts.providerNotChecked"),
 				detail: null,
 				voices: []
 			}
@@ -1187,10 +1193,17 @@ function findBrowserDemoVoice(
 		return normalizeApiEndpoint(apiEndpoint || DEFAULT_API_ENDPOINT);
 	}
 
+	/**
+	 * Fallback sample when the preview box is empty.
+	 *
+	 * Deliberately not localized, and deliberately the same source the box is
+	 * prefilled from: this text is handed to a TTS voice, so its language has to
+	 * follow the voice being previewed, not the interface locale. Dutch chrome
+	 * previewing an English Polly voice must still send English, or the preview
+	 * measures the wrong thing.
+	 */
 	function getSampleText(tab: BackendTab): string {
-		if (tab === "browser") return "This is a browser voice sample.";
-		if (tab === "polly") return "This is an AWS Polly voice sample.";
-		return "This is a Google Cloud TTS voice sample.";
+		return DEFAULT_PREVIEW_TEXT[tab];
 	}
 
 	function clearPreviewTracking() {
@@ -1477,7 +1490,7 @@ function normalizePreviewSpeechMarkOffsets(
 					window.clearInterval(previewPollingTimer);
 					previewPollingTimer = null;
 				}
-				reject(new Error("Failed to play preview audio."));
+				reject(new Error(interfaceI18n.t("debug.tts.previewFailed")));
 			};
 			void audio.play().catch(reject);
 		});
@@ -1529,7 +1542,7 @@ function normalizePreviewSpeechMarkOffsets(
 		const audioBase64 = payload?.audio;
 		const contentType = payload?.contentType || "audio/mpeg";
 		if (!audioBase64 || typeof audioBase64 !== "string") {
-			throw new Error("Preview response did not include audio content.");
+			throw new Error(interfaceI18n.t("debug.tts.previewNoAudio"));
 		}
 		const byteChars = atob(audioBase64);
 		const byteNumbers = new Array(byteChars.length);
@@ -1559,7 +1572,7 @@ function normalizePreviewSpeechMarkOffsets(
 					previewPollingTimer = null;
 				}
 				URL.revokeObjectURL(objectUrl);
-				reject(new Error("Failed to play preview audio."));
+				reject(new Error(interfaceI18n.t("debug.tts.previewFailed")));
 			};
 			void audio.play().catch(reject);
 		});
@@ -1568,7 +1581,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 	async function previewBrowserVoice() {
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-			throw new Error("Browser speech synthesis is unavailable.");
+			throw new Error(interfaceI18n.t("debug.tts.browserSynthesisUnavailable"));
 		}
 		if (previewMode === "ssml") {
 			throw new Error("SSML preview is not supported in the Browser backend.");
@@ -1665,7 +1678,7 @@ function normalizePreviewSpeechMarkOffsets(
 					finish(() =>
 						reject(
 							new Error(
-								"Browser speech synthesis ended before audio started. Restart the browser and try again."
+								interfaceI18n.t("debug.tts.browserSynthesisEndedEarly")
 							)
 						)
 					);
@@ -1680,7 +1693,7 @@ function normalizePreviewSpeechMarkOffsets(
 					finish(resolve);
 					return;
 				}
-				finish(() => reject(new Error("Failed to play browser voice preview.")));
+				finish(() => reject(new Error(interfaceI18n.t("debug.tts.browserPreviewFailed"))));
 			};
 			startTimeout = window.setTimeout(() => {
 				finish(() =>
@@ -1700,7 +1713,7 @@ function normalizePreviewSpeechMarkOffsets(
 					reject(
 						error instanceof Error
 							? error
-							: new Error("Browser speech synthesis failed to queue preview audio.")
+							: new Error(interfaceI18n.t("debug.tts.browserSynthesisQueueFailed"))
 					)
 				);
 			}
@@ -1712,7 +1725,7 @@ function normalizePreviewSpeechMarkOffsets(
 		previewNote = null;
 		const activeState = getActiveState();
 		if (!activeState.available) {
-			previewError = "Cannot preview while this TTS service is unavailable.";
+			previewError = interfaceI18n.t("debug.tts.previewUnavailable");
 			return;
 		}
 		if (isPreviewing && previewBackend === activeTab) {
@@ -1723,12 +1736,12 @@ function normalizePreviewSpeechMarkOffsets(
 		const activePreviewText = typeof previewText === "string" ? previewText : "";
 		if (!activePreviewText.trim()) {
 			if (isBuiltInTab(activeTab)) {
-				previewError = "Enter preview text before starting playback.";
+				previewError = interfaceI18n.t("debug.tts.previewEnterText");
 				return;
 			}
 		}
 		if (activeTab === "browser" && previewMode === "ssml") {
-			previewError = "SSML preview is not supported in the Browser backend.";
+			previewError = interfaceI18n.t("debug.tts.ssmlPreviewUnsupported");
 			return;
 		}
 		if (isPreviewing || previewBackend || currentPreviewAudio || currentBrowserPreviewUtterance) {
@@ -1769,13 +1782,13 @@ function normalizePreviewSpeechMarkOffsets(
 			} else if (activeTab === "polly") {
 				if (previewMode === "ssml") {
 					previewNote =
-						"Some Polly neural voices reject certain SSML tags (for example emphasis). Use basic SSML tags if preview fails.";
+						interfaceI18n.t("debug.tts.pollySsmlHint");
 				}
 				await previewServerVoice("polly");
 			} else {
 				if (previewMode === "ssml") {
 					previewNote =
-						"Google SSML preview preserves authored SSML, so word tracking is disabled.";
+						interfaceI18n.t("debug.tts.ssmlWordTrackingDisabled");
 				}
 				await previewServerVoice("google");
 			}
@@ -1797,11 +1810,11 @@ function normalizePreviewSpeechMarkOffsets(
 		applyError = null;
 		const activeState = getActiveState();
 		if (!activeState.available) {
-			applyError = "Cannot apply settings while this TTS service is unavailable.";
+			applyError = interfaceI18n.t("debug.tts.applyUnavailable");
 			return;
 		}
 		if (!toolkitCoordinator?.updateToolConfig) {
-			applyError = "Toolkit coordinator is not available for TTS updates.";
+			applyError = interfaceI18n.t("debug.tts.coordinatorUnavailable");
 			return;
 		}
 
@@ -1985,9 +1998,29 @@ function normalizePreviewSpeechMarkOffsets(
 		cleanupFocusTrap = null;
 		stopPreview();
 	});
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
-<div class="pie-tts-dialog-backdrop" style="z-index: {TTS_MODAL_Z_INDEX};">
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
+<div
+	class="pie-tts-dialog-backdrop"
+	style="z-index: {TTS_MODAL_Z_INDEX};"
+	lang={interfaceI18n.getLocale()}
+	dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+>
 	<div
 		class="pie-tts-dialog"
 		bind:this={dialogEl}
@@ -1997,13 +2030,13 @@ function normalizePreviewSpeechMarkOffsets(
 		tabindex="-1"
 	>
 		<div class="pie-tts-dialog-header">
-			<h3 id="pie-tts-dialog-title" class="pie-tts-dialog-title">TTS settings</h3>
+			<h3 id="pie-tts-dialog-title" class="pie-tts-dialog-title">{interfaceI18n.t("debug.tts.title")}</h3>
 			<button
 				class="btn btn-xs btn-ghost btn-circle"
 				bind:this={closeButtonEl}
 				type="button"
 				onclick={requestClose}
-				aria-label="Close TTS settings"
+				aria-label={interfaceI18n.t("debug.tts.closeA11y")}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -2022,23 +2055,23 @@ function normalizePreviewSpeechMarkOffsets(
 
 		<div class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box">
 			<div class="pie-tts-field">
-				<label class="pie-tts-label" for="tts-layout-mode">Toolbar layout mode</label>
+				<label class="pie-tts-label" for="tts-layout-mode">{interfaceI18n.t("debug.tts.toolbarLayoutMode")}</label>
 				<select
 					id="tts-layout-mode"
 					class="select select-sm select-bordered w-full"
 					bind:value={layoutMode}
 				>
-					<option value="reserved-row">Reserved row</option>
-					<option value="expanding-row">Expanding row</option>
-					<option value="floating-overlay">Floating overlay</option>
-					<option value="left-aligned">Left-aligned controls</option>
+					<option value="reserved-row">{interfaceI18n.t("debug.tts.reservedRow")}</option>
+					<option value="expanding-row">{interfaceI18n.t("debug.tts.expandingRow")}</option>
+					<option value="floating-overlay">{interfaceI18n.t("debug.tts.floatingOverlay")}</option>
+					<option value="left-aligned">{interfaceI18n.t("debug.tts.leftAlignedControls")}</option>
 				</select>
 				<div class="text-xs opacity-75">
-					Item header row reservation: {layoutModeReservesRow ? "Enabled" : "Disabled"}
+					Item header row reservation: {layoutModeReservesRow ? interfaceI18n.t("common.enabled") : interfaceI18n.t("common.disabled")}
 				</div>
 			</div>
 			<div class="pie-tts-field">
-				<label class="pie-tts-label" for="tts-inline-speed-options">Inline speed buttons</label>
+				<label class="pie-tts-label" for="tts-inline-speed-options">{interfaceI18n.t("debug.tts.inlineSpeedButtons")}</label>
 				<input
 					id="tts-inline-speed-options"
 					class="input input-sm input-bordered w-full"
@@ -2056,12 +2089,12 @@ function normalizePreviewSpeechMarkOffsets(
 						class="btn btn-xs btn-ghost"
 						onclick={resetInlineSpeedOptionsToDefaults}
 					>
-						Reset to defaults
+						{interfaceI18n.t("debug.tts.resetToDefaults")}
 					</button>
 				</div>
 			</div>
 			<div class="pie-tts-field">
-				<label class="pie-tts-label" for="tts-math-token-highlighting">Math highlighting</label>
+				<label class="pie-tts-label" for="tts-math-token-highlighting">{interfaceI18n.t("debug.tts.mathHighlighting")}</label>
 				<div class="pie-tts-toggle-row">
 					<input
 						id="tts-math-token-highlighting"
@@ -2071,8 +2104,8 @@ function normalizePreviewSpeechMarkOffsets(
 					/>
 					<span class="text-xs opacity-75">
 						{mathTokenHighlighting
-							? "Highlighting each part of a formula as it is read, falling back to the whole formula when alignment is uncertain."
-							: "Highlighting each formula as a single block instead of breaking it into parts."}
+							? interfaceI18n.t("debug.tts.mathHighlightParts")
+							: interfaceI18n.t("debug.tts.mathHighlightBlock")}
 					</span>
 				</div>
 			</div>
@@ -2094,14 +2127,14 @@ function normalizePreviewSpeechMarkOffsets(
 		<div class="pie-tts-status">
 			{#if getActiveState().loading}
 				<span class="loading loading-spinner loading-xs"></span>
-				<span>Checking availability...</span>
+				<span>{interfaceI18n.t("debug.tts.checkingAvailability")}</span>
 			{:else if getActiveState().checked}
 				<span class={getActiveState().available ? "pie-tts-ok" : "pie-tts-error"}>
 					{getActiveState().message}
 				</span>
 			{/if}
 			<button class="btn btn-xs btn-outline" onclick={() => void checkActiveTabAvailability()}>
-				Recheck
+				{interfaceI18n.t("debug.tts.recheck")}
 			</button>
 		</div>
 
@@ -2114,23 +2147,23 @@ function normalizePreviewSpeechMarkOffsets(
 		{#if activeTab === "browser"}
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!browserState.available}>
 				<div class="pie-tts-field">
-					<label class="pie-tts-label" for="tts-browser-voice">Voice</label>
+					<label class="pie-tts-label" for="tts-browser-voice">{interfaceI18n.t("debug.tts.voice")}</label>
 					<select
 						id="tts-browser-voice"
 						class="select select-sm select-bordered w-full"
 						bind:value={browserVoice}
 						aria-describedby="tts-browser-auto-voice"
 					>
-						<option value="">Best available voice (auto)</option>
+						<option value="">{interfaceI18n.t("debug.tts.bestAvailableVoice")}</option>
 						{#if recommendedBrowserVoices.length > 0}
-							<optgroup label="Recommended voices">
+							<optgroup label={interfaceI18n.t("debug.tts.recommendedVoices")}>
 								{#each recommendedBrowserVoices as voice}
 									<option value={browserVoiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
 								{/each}
 							</optgroup>
 						{/if}
 						{#if allBrowserVoices.length > 0}
-							<optgroup label="All available voices">
+							<optgroup label={interfaceI18n.t("debug.tts.allVoices")}>
 								{#each allBrowserVoices as voice}
 									<option value={browserVoiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
 								{/each}
@@ -2157,13 +2190,13 @@ function normalizePreviewSpeechMarkOffsets(
 		{:else if activeTab === "polly"}
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!pollyState.available}>
 				<div class="pie-tts-field">
-					<label class="pie-tts-label" for="tts-polly-endpoint">API endpoint</label>
+					<label class="pie-tts-label" for="tts-polly-endpoint">{interfaceI18n.t("debug.tts.apiEndpoint")}</label>
 					<input id="tts-polly-endpoint" class="input input-sm input-bordered w-full" bind:value={pollyApiEndpoint} placeholder="/api/tts" />
 				</div>
 
 				<div class="pie-tts-grid-3">
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-language">Language</label>
+						<label class="pie-tts-label" for="tts-polly-language">{interfaceI18n.t("common.language")}</label>
 						<input
 							id="tts-polly-language"
 							class="input input-sm input-bordered w-full"
@@ -2173,37 +2206,37 @@ function normalizePreviewSpeechMarkOffsets(
 						/>
 					</div>
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-gender">Gender</label>
+						<label class="pie-tts-label" for="tts-polly-gender">{interfaceI18n.t("debug.tts.gender")}</label>
 						<select
 							id="tts-polly-gender"
 							class="select select-sm select-bordered w-full"
 							bind:value={pollyGender}
 							onchange={refreshPollyVoices}
 						>
-							<option value="">Any</option>
-							<option value="male">Male</option>
-							<option value="female">Female</option>
-							<option value="neutral">Neutral</option>
+							<option value="">{interfaceI18n.t("debug.tts.any")}</option>
+							<option value="male">{interfaceI18n.t("debug.tts.male")}</option>
+							<option value="female">{interfaceI18n.t("debug.tts.female")}</option>
+							<option value="neutral">{interfaceI18n.t("debug.tts.neutral")}</option>
 						</select>
 					</div>
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-engine">Engine</label>
+						<label class="pie-tts-label" for="tts-polly-engine">{interfaceI18n.t("debug.tts.engine")}</label>
 						<select
 							id="tts-polly-engine"
 							class="select select-sm select-bordered w-full"
 							bind:value={pollyEngine}
 							onchange={refreshPollyVoices}
 						>
-							<option value="neural">Neural</option>
-							<option value="standard">Standard</option>
+							<option value="neural">{interfaceI18n.t("debug.tts.neural")}</option>
+							<option value="standard">{interfaceI18n.t("debug.tts.standard")}</option>
 						</select>
 					</div>
 				</div>
 
 				<div class="pie-tts-field">
-					<label class="pie-tts-label" for="tts-polly-voice">Voice</label>
+					<label class="pie-tts-label" for="tts-polly-voice">{interfaceI18n.t("debug.tts.voice")}</label>
 					<select id="tts-polly-voice" class="select select-sm select-bordered w-full" bind:value={pollyVoice}>
-						<option value="">Provider default</option>
+						<option value="">{interfaceI18n.t("debug.tts.providerDefault")}</option>
 						{#each pollyState.voices as voice}
 							<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
 						{/each}
@@ -2212,7 +2245,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 				<div class="pie-tts-grid-3">
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-format">Format</label>
+						<label class="pie-tts-label" for="tts-polly-format">{interfaceI18n.t("debug.tts.format")}</label>
 						<select id="tts-polly-format" class="select select-sm select-bordered w-full" bind:value={pollyFormat}>
 							<option value="mp3">MP3</option>
 							<option value="ogg">OGG</option>
@@ -2220,7 +2253,7 @@ function normalizePreviewSpeechMarkOffsets(
 						</select>
 					</div>
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-sample-rate">Sample rate</label>
+						<label class="pie-tts-label" for="tts-polly-sample-rate">{interfaceI18n.t("debug.tts.sampleRate")}</label>
 						<select id="tts-polly-sample-rate" class="select select-sm select-bordered w-full" bind:value={pollySampleRate}>
 							<option value={8000}>8000 Hz</option>
 							<option value={16000}>16000 Hz</option>
@@ -2229,10 +2262,10 @@ function normalizePreviewSpeechMarkOffsets(
 						</select>
 					</div>
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-speech-marks">Speech marks</label>
+						<label class="pie-tts-label" for="tts-polly-speech-marks">{interfaceI18n.t("debug.tts.speechMarks")}</label>
 						<select id="tts-polly-speech-marks" class="select select-sm select-bordered w-full" bind:value={pollySpeechMarksMode}>
-							<option value="word">Word</option>
-							<option value="word+sentence">Word + sentence</option>
+							<option value="word">{interfaceI18n.t("debug.tts.word")}</option>
+							<option value="word+sentence">{interfaceI18n.t("debug.tts.wordAndSentence")}</option>
 						</select>
 					</div>
 				</div>
@@ -2240,13 +2273,13 @@ function normalizePreviewSpeechMarkOffsets(
 		{:else if activeTab === "google"}
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!googleState.available}>
 				<div class="pie-tts-field">
-					<label class="pie-tts-label" for="tts-google-endpoint">API endpoint</label>
+					<label class="pie-tts-label" for="tts-google-endpoint">{interfaceI18n.t("debug.tts.apiEndpoint")}</label>
 					<input id="tts-google-endpoint" class="input input-sm input-bordered w-full" bind:value={googleApiEndpoint} placeholder="/api/tts" />
 				</div>
 
 				<div class="pie-tts-grid-3">
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-google-language">Language</label>
+						<label class="pie-tts-label" for="tts-google-language">{interfaceI18n.t("common.language")}</label>
 						<input
 							id="tts-google-language"
 							class="input input-sm input-bordered w-full"
@@ -2256,38 +2289,38 @@ function normalizePreviewSpeechMarkOffsets(
 						/>
 					</div>
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-google-gender">Gender</label>
+						<label class="pie-tts-label" for="tts-google-gender">{interfaceI18n.t("debug.tts.gender")}</label>
 						<select
 							id="tts-google-gender"
 							class="select select-sm select-bordered w-full"
 							bind:value={googleGender}
 							onchange={refreshGoogleVoices}
 						>
-							<option value="">Any</option>
-							<option value="male">Male</option>
-							<option value="female">Female</option>
-							<option value="neutral">Neutral</option>
+							<option value="">{interfaceI18n.t("debug.tts.any")}</option>
+							<option value="male">{interfaceI18n.t("debug.tts.male")}</option>
+							<option value="female">{interfaceI18n.t("debug.tts.female")}</option>
+							<option value="neutral">{interfaceI18n.t("debug.tts.neutral")}</option>
 						</select>
 					</div>
 					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-google-voice-type">Voice type</label>
+						<label class="pie-tts-label" for="tts-google-voice-type">{interfaceI18n.t("debug.tts.voiceType")}</label>
 						<select
 							id="tts-google-voice-type"
 							class="select select-sm select-bordered w-full"
 							bind:value={googleVoiceType}
 							onchange={refreshGoogleVoices}
 						>
-							<option value="wavenet">WaveNet</option>
-							<option value="studio">Studio</option>
-							<option value="standard">Standard</option>
+							<option value="wavenet">{interfaceI18n.t("debug.tts.wavenetVoiceType")}</option>
+							<option value="studio">{interfaceI18n.t("debug.tts.studioVoiceType")}</option>
+							<option value="standard">{interfaceI18n.t("debug.tts.standard")}</option>
 						</select>
 					</div>
 				</div>
 
 				<div class="pie-tts-field">
-					<label class="pie-tts-label" for="tts-google-voice">Voice</label>
+					<label class="pie-tts-label" for="tts-google-voice">{interfaceI18n.t("debug.tts.voice")}</label>
 					<select id="tts-google-voice" class="select select-sm select-bordered w-full" bind:value={googleVoice}>
-						<option value="">Provider default</option>
+						<option value="">{interfaceI18n.t("debug.tts.providerDefault")}</option>
 						{#each googleState.voices as voice}
 							<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
 						{/each}
@@ -2322,7 +2355,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 		<div class="pie-tts-fieldset pie-tts-preview-block fieldset bg-base-200 border border-base-300 rounded-box">
 			<div class="pie-tts-preview-header">
-				<h4 class="pie-tts-preview-title">Preview</h4>
+				<h4 class="pie-tts-preview-title">{interfaceI18n.t("common.preview")}</h4>
 				<div class="join">
 					<button
 						type="button"
@@ -2331,7 +2364,7 @@ function normalizePreviewSpeechMarkOffsets(
 						aria-pressed={previewMode === "plain"}
 						onclick={() => onPreviewModeChange("plain")}
 					>
-						Plain text
+						{interfaceI18n.t("debug.tts.plainText")}
 					</button>
 					<button
 						type="button"
@@ -2344,7 +2377,7 @@ function normalizePreviewSpeechMarkOffsets(
 					</button>
 				</div>
 			</div>
-			<label class="pie-tts-label" for="tts-preview-text">Sample text</label>
+			<label class="pie-tts-label" for="tts-preview-text">{interfaceI18n.t("debug.tts.sampleText")}</label>
 			<textarea
 				id="tts-preview-text"
 				class="textarea textarea-sm textarea-bordered w-full pie-tts-preview-input"
@@ -2352,7 +2385,7 @@ function normalizePreviewSpeechMarkOffsets(
 			></textarea>
 			<div class="pie-tts-preview-row">
 				<button type="button" class="btn btn-xs btn-outline" onclick={setPreviewTextForCurrentTab}>
-					Reset sample
+					{interfaceI18n.t("debug.tts.resetSample")}
 				</button>
 				<span class="text-xs opacity-70">
 					{#if activeTab === "browser" && previewMode === "ssml"}
@@ -2387,16 +2420,16 @@ function normalizePreviewSpeechMarkOffsets(
 		{/if}
 
 		<div class="pie-tts-actions">
-			<button class="btn btn-sm btn-outline" onclick={requestClose}>Close</button>
+			<button class="btn btn-sm btn-outline" onclick={requestClose}>{interfaceI18n.t("common.close")}</button>
 			<button
 				class="btn btn-sm btn-outline"
 				disabled={!getActiveState().available || isApplying || !canPreviewActiveTab()}
 				onclick={() => void previewSelectedVoice()}
 			>
-				{isPreviewing && previewBackend === activeTab ? "Stop preview" : "Preview voice"}
+				{isPreviewing && previewBackend === activeTab ? interfaceI18n.t("debug.tts.stopPreview") : interfaceI18n.t("debug.tts.previewVoice")}
 			</button>
 			<button class="btn btn-sm btn-primary" disabled={isApplying || !getActiveState().available} onclick={() => void applySettings()}>
-				{isApplying ? "Applying..." : "Apply"}
+				{isApplying ? interfaceI18n.t("debug.tts.applying") : interfaceI18n.t("common.apply")}
 			</button>
 		</div>
 	</div>
@@ -2417,8 +2450,11 @@ function normalizePreviewSpeechMarkOffsets(
 		width: min(720px, calc(100vw - 2rem));
 		max-height: calc(100vh - 2rem);
 		overflow: auto;
-		background: var(--color-base-100);
-		border: 1px solid var(--color-base-300);
+		/* A modal surface has to be opaque, so the recessed pair rather than
+		   `--pie-background`, which the light Base Theme leaves transparent. */
+		background: var(--pie-background-dark, #ecedf1);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border, #8f8f8f);
 		border-radius: 0.75rem;
 		box-shadow: 0 24px 48px rgba(0, 0, 0, 0.22);
 		padding: 0.75rem;
@@ -2465,11 +2501,11 @@ function normalizePreviewSpeechMarkOffsets(
 	}
 
 	.pie-tts-ok {
-		color: var(--color-success);
+		color: var(--pie-correct, #208537);
 	}
 
 	.pie-tts-error {
-		color: var(--color-error);
+		color: var(--pie-incorrect, #a65f00);
 	}
 
 	.pie-tts-actions {
@@ -2578,7 +2614,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 	.pie-tts-preview-track {
 		margin-top: 0.15rem;
-		border: 1px dashed var(--color-base-300);
+		border: 1px dashed var(--pie-border, #8f8f8f);
 		border-radius: 0.5rem;
 		padding: 0.4rem 0.5rem;
 		min-height: 2.6rem;
@@ -2587,8 +2623,13 @@ function normalizePreviewSpeechMarkOffsets(
 		line-height: 1.4;
 	}
 
+	/*
+	 * The spoken-word highlight. `--pie-missing` is the warning colour in this
+	 * contract, and the share stays a mix so the ink underneath still shows through
+	 * -- the highlight marks position, it does not carry the text.
+	 */
 	.pie-tts-preview-active {
-		background: color-mix(in srgb, var(--color-warning) 40%, transparent);
+		background: color-mix(in srgb, var(--pie-missing, #d32f2f) 40%, transparent);
 		border-radius: 0.15rem;
 	}
 </style>

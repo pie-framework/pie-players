@@ -1,8 +1,18 @@
 # PIE-727 Broad Theming Contract
 
-Status: Ready
+Status: Accepted
 
 Owner: PIE Players maintainers
+
+The coordinated slice landed in 1f29de7f (2026-08-13): the side-effect-free
+canonical definition, Scheme Participation metadata, `resolvePieTheme` /
+`listPieColorSchemes` / `observePieColorSchemes` / `registerPieColorSchemes`,
+generated `tokens.css` and `color-schemes.css` behind a stale-output check, and
+`@pie-players/pie-tool-theme` observing the catalog. `token-registry.json` is a
+published subpath. Chrome slices continue against the [implementation
+slices](../architecture/pie-727-theming-implementation-slices.md) and the [WCAG
+matrix](../architecture/pie-727-theming-wcag-matrix.md), which carry the
+per-surface record; this PRD is the contract reference and does not track them.
 
 Related architecture:
 
@@ -444,7 +454,6 @@ Commands:
 
 ```sh
 bun test --dom packages/theme/tests
-bun test packages/theme-daisyui/tests/mapping-parity.test.mjs
 bun test packages/theme/tests/token-registry-contract.test.ts
 bun test packages/assessment-toolkit/tests/highlight-coordinator-tts-style.test.ts
 bun --cwd packages/theme run check:generated-css

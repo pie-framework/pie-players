@@ -11,6 +11,11 @@
 />
 
 <script lang="ts">
+	import {
+		type AssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
 		getSectionControllerFromCoordinator,
@@ -270,10 +275,26 @@
 		};
 	});
 
+	let contextAnchor = $state<HTMLDivElement | null>(null);
+	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	$effect(() => {
+		if (!contextAnchor) return;
+		return connectToolRuntimeContext(contextAnchor, (value) => {
+			chromeRuntimeContext = value;
+		});
+	});
+
 </script>
 
+<!-- Context anchor: the panel resolves the toolkit runtime context from here,
+     which is how it reaches the published interface-locale provider. -->
+<div bind:this={contextAnchor} style="display: none;" aria-hidden="true"></div>
+
 <SharedFloatingPanel
-	title="Session Data"
+	title={interfaceI18n.t("debug.sessionData")}
+	i18n={interfaceI18n}
 	ariaLabel="Drag session panel"
 	minWidth={340}
 	minHeight={260}
@@ -307,7 +328,7 @@
 
 	<div class="pie-section-player-tools-session-debugger__content">
 		<div class="pie-section-player-tools-session-debugger__section-intro">
-			<div class="pie-section-player-tools-session-debugger__heading">PIE Session Data (Persistent)</div>
+			<div class="pie-section-player-tools-session-debugger__heading">{interfaceI18n.t("debug.sessionDataPersistent")}</div>
 		</div>
 
 		{#if !controllerAvailable}
@@ -320,7 +341,7 @@
 				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
 				</svg>
-				<span class="pie-section-player-tools-session-debugger__text-xs">Section controller not available for this section yet.</span>
+				<span class="pie-section-player-tools-session-debugger__text-xs">{interfaceI18n.t("debug.sectionControllerUnavailable")}</span>
 			</div>
 		{:else}
 			{#if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
@@ -338,14 +359,14 @@
 			{/if}
 			<div class="pie-section-player-tools-session-debugger__card">
 				<div class="pie-section-player-tools-session-debugger__card-title">
-					Item Sessions Snapshot
+					{interfaceI18n.t("debug.itemSessionsSnapshot")}
 				</div>
 				<div
 					class="pie-section-player-tools-session-debugger__card-region"
 					role="textbox"
 					aria-readonly="true"
 					tabindex="0"
-					aria-label="Section session snapshot JSON"
+					aria-label={interfaceI18n.t("debug.sectionSessionJsonA11y")}
 				>
 					<pre class="pie-section-player-tools-session-debugger__card-pre">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
 				</div>
@@ -372,10 +393,12 @@
 		position: fixed;
 		z-index: 100;
 		overflow: hidden;
-		background: var(--pie-white, #fff);
+		/* The certified recessed pair, and opaque on every palette -- see the note in
+		   the PNP panel for why not `--pie-white` or `--pie-background`. */
+		background: var(--pie-background-dark, #ecedf1);
 		border-radius: 0.5rem;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-		border: 2px solid var(--pie-border-light, #d1d5db);
+		border: 2px solid var(--pie-border, #8f8f8f);
 		color: var(--pie-text, #111827);
 	}
 
@@ -444,16 +467,23 @@
 		border: 1px solid transparent;
 	}
 
+	/*
+	 * Both alerts were a pinned tint, edge and ink -- amber and sky, legible only on
+	 * a light page. The state moves to the edge so the label can sit on the certified
+	 * button pair: `--pie-missing` is the warning colour the DaisyUI provider maps
+	 * from the `warning` slot, and `--pie-tertiary` is the informational one, both
+	 * certified at 4.5:1 against the page and so past the 3:1 an edge owes.
+	 */
 	.pie-section-player-tools-session-debugger__alert--warning {
-		background: #fef3c7;
-		border-color: #f59e0b;
-		color: #92400e;
+		background: var(--pie-button-bg, #ffffff);
+		border-color: var(--pie-missing, #b45309);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-session-debugger__alert--info {
-		background: #e0f2fe;
-		border-color: #38bdf8;
-		color: #0c4a6e;
+		background: var(--pie-button-bg, #ffffff);
+		border-color: var(--pie-tertiary, #146eb3);
+		color: var(--pie-button-color, #374151);
 	}
 
 	.pie-section-player-tools-session-debugger__icon-md {
@@ -468,7 +498,7 @@
 	}
 
 	.pie-section-player-tools-session-debugger__card-region:focus-visible {
-		outline: 2px solid var(--color-primary, #2563eb);
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 2px;
 		border-radius: 0.5rem;
 	}

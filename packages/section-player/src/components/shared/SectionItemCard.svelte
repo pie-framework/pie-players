@@ -20,6 +20,10 @@
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
+			// Resolved formative delivery state for this item, or null when the
+			// section does not deliver formatively. The pane derives it; this card
+			// renders it and reports learner actions.
+			formativeView: { attribute: "formative-view", type: "Object", reflect: false },
 		},
 	}}
 />
@@ -37,8 +41,13 @@
 	import {
 		catalogOwnerContextFor,
 		connectAssessmentToolkitRuntimeContext,
+		dispatchCrossBoundaryEvent,
+		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+		type InternalFormativeActionDetail,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
+	import type { FormativeItemView } from "@pie-players/pie-players-shared/formative";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
@@ -67,6 +76,7 @@
 		itemToolbarTools,
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
+		formativeView = null as FormativeItemView | null,
 	} = $props<{
 		item: ItemEntity;
 		itemIndex?: number;
@@ -80,6 +90,7 @@
 		itemToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
+		formativeView?: FormativeItemView | null;
 	}>();
 
 	// Clamped here rather than trusted: the pane normalizes, but this card is a
@@ -89,6 +100,11 @@
 		normalizeBaseHeadingLevel(baseHeadingLevel),
 	);
 
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale. Re-derives when the toolkit republishes its context — on a
+	// locale change or once a lazily loaded catalog lands — so every label built
+	// from it re-renders instead of pinning whatever English rendered first.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
 	let contextPlayerAction = $state<
@@ -115,7 +131,14 @@
 		Number.isFinite(itemIndex) ? Math.max(0, Number(itemIndex)) + 1 : 1,
 	);
 	const totalItems = $derived(Number.isFinite(itemCount) ? Math.max(1, Number(itemCount)) : 1);
-	const defaultHeaderTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
+	// "Question 5" rather than "Question" + " " + position: a locale that puts the
+	// ordinal first ("5. Vraag") or inflects the noun cannot be assembled by
+	// concatenation, so the whole phrase is authored per locale.
+	const defaultHeaderTitle = $derived(
+		totalItems > 1
+			? interfaceI18n.t("player.questionNumbered", { position: itemPosition })
+			: interfaceI18n.t("player.question"),
+	);
 	const effectiveCardTitleFormatter = $derived(
 		(contextConnected ? contextCardTitleFormatter : null) || null,
 	);
@@ -147,7 +170,6 @@
 	// render content nodes. What differs is the owner scope of the lookup, which is
 	// what this card supplies.
 
-	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 
 	const mediaRegionId = $derived(`${headingId}-media`);
 	const leadRegionId = $derived(`${headingId}-lead`);
@@ -188,6 +210,131 @@
 		}
 		if (typeof value.cardTitleFormatter === "function") {
 			contextCardTitleFormatter = value.cardTitleFormatter;
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// Formative delivery
+	// ------------------------------------------------------------------
+	//
+	// The card owns the control because it owns the item player node, and
+	// `provideScore()` is an imperative method on that node. It reports the
+	// outcomes it gets rather than interpreting them: correctness derivation and
+	// Try state belong to the section controller, so one aggregation policy
+	// applies wherever a Try is recorded.
+
+	let playerNode = $state<HTMLElement | null>(null);
+	let checkPending = $state(false);
+	let checkFailed = $state(false);
+
+	const formativeEnabled = $derived(formativeView?.enabled === true);
+	const showFormativeControl = $derived(
+		formativeEnabled && (formativeView?.canCheck || formativeView?.canRetry),
+	);
+	const formativeButtonLabel = $derived(
+		interfaceI18n.t(
+			formativeView?.canRetry
+				? "player.formative.tryAgain"
+				: "player.formative.checkAnswer",
+		),
+	);
+
+	function describeTriesRemaining(view: FormativeItemView): string {
+		if (view.triesRemaining === "unlimited") return "";
+		if (view.triesRemaining <= 0) return "";
+		// `plural` rather than a count === 1 branch: the two-form split is English's,
+		// and a locale with a `few`/`many` category needs the catalog consulted.
+		return interfaceI18n.plural?.("player.formative.triesLeft", {
+			count: view.triesRemaining,
+		}) ?? "";
+	}
+
+	/**
+	 * Correctness in words, never colour alone (WCAG 1.4.1), and only once the
+	 * policy has actually revealed feedback — an outcome exists after a Try even
+	 * under `feedback: "none"`, and announcing it there would leak what the policy
+	 * withheld.
+	 */
+	function describeOutcome(view: FormativeItemView): string {
+		if (!view.revealed) {
+			return view.tryCount > 0
+				? interfaceI18n.t("player.formative.answerRecorded")
+				: "";
+		}
+		switch (view.lastOutcome?.correctness) {
+			case "correct":
+				return interfaceI18n.t("player.formative.correct");
+			case "partial":
+				return interfaceI18n.t("player.formative.partlyCorrect");
+			case "incorrect":
+				return interfaceI18n.t("player.formative.notCorrect");
+			case "unknown":
+				return interfaceI18n.t("player.formative.notAutoScored");
+			default:
+				return interfaceI18n.t("player.formative.answerRecorded");
+		}
+	}
+
+	const formativeStatus = $derived.by(() => {
+		if (checkFailed) return interfaceI18n.t("player.formative.checkFailed");
+		if (!formativeView?.enabled) return "";
+		const outcome = describeOutcome(formativeView);
+		if (!outcome) return "";
+		const remaining = formativeView.canRetry
+			? describeTriesRemaining(formativeView)
+			: "";
+		return remaining ? `${outcome} ${remaining}` : outcome;
+	});
+
+	function dispatchFormativeAction(
+		action: "check" | "retry",
+		outcomes?: unknown[],
+	): void {
+		const host = getHostElementFromAnchor(contextAnchor);
+		if (!host || !item?.id) return;
+		const payload: InternalFormativeActionDetail = {
+			itemId: item.id,
+			canonicalItemId: canonicalItemId || item.id,
+			action,
+			outcomes,
+		};
+		dispatchCrossBoundaryEvent(
+			host,
+			PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+			payload,
+		);
+	}
+
+	async function handleFormativeClick(): Promise<void> {
+		if (!formativeView?.enabled || checkPending) return;
+		checkFailed = false;
+		if (formativeView.canRetry) {
+			dispatchFormativeAction("retry");
+			return;
+		}
+		if (!formativeView.canCheck) return;
+		const scorer = (
+			playerNode as { provideScore?: () => Promise<false | unknown[]> } | null
+		)?.provideScore;
+		if (typeof scorer !== "function") {
+			checkFailed = true;
+			return;
+		}
+		checkPending = true;
+		try {
+			const results = await scorer.call(playerNode);
+			// `false` means the item has no models to score, which is exactly the
+			// `unknown` correctness case — the Try is real and gets recorded. A throw
+			// is an error rather than an unscorable item, so it costs no Try.
+			dispatchFormativeAction("check", Array.isArray(results) ? results : []);
+		} catch (error) {
+			checkFailed = true;
+			console.warn(
+				`[pie-section-player] provideScore() failed for item ${item?.id}:`,
+				error,
+			);
+		} finally {
+			checkPending = false;
 		}
 	}
 
@@ -255,7 +402,7 @@
 			ownerContext={catalogOwnerContext}
 			{runtimeContext}
 			{toolRegistry}
-			dividerAriaLabel="Resize question and media panels"
+			dividerAriaLabel={interfaceI18n.t("player.resizeQuestionAndMediaA11y")}
 		>
 			{#snippet content()}
 				<div
@@ -264,12 +411,44 @@
 				>
 					<svelte:element
 						this={effectiveResolvedPlayerTag}
+						bind:this={playerNode}
 						use:effectivePlayerAction={playerParams}
 					></svelte:element>
 				</div>
 			{/snippet}
 		</SectionCardMediaSplit>
-		<div data-region="footer"></div>
+		<div data-region="footer">
+			{#if formativeEnabled}
+				<div class="pie-section-player-formative">
+					<!-- Present before it has content, so the first announcement is not
+					     lost to a live region that did not yet exist (WCAG 4.1.3). -->
+					<p
+						class="pie-section-player-formative__status"
+						data-pie-formative-status
+						aria-live="polite"
+					>{formativeStatus}</p>
+					{#if showFormativeControl}
+						<!-- Removed rather than disabled once Tries are spent: a disabled
+						     control left in the tab order carries no explanation.
+
+						     Not disabled while a check is in flight either. Disabling the
+						     focused element moves focus to the document body, so a keyboard
+						     learner who pressed Enter lost their place and had to tab back
+						     to a control whose label had changed under them. `aria-busy`
+						     says the same thing without taking the element out of the tree,
+						     and re-entry is already dropped by the handler and by the
+						     reducer. -->
+						<button
+							type="button"
+							class="pie-section-player-formative__button"
+							data-pie-formative-action={formativeView?.canRetry ? "retry" : "check"}
+							aria-busy={checkPending ? "true" : undefined}
+							onclick={handleFormativeClick}
+						>{formativeButtonLabel}</button>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	</div>
 </pie-item-shell>
 
@@ -321,7 +500,10 @@
 		position: relative;
 		z-index: 0;
 		margin: 0;
-		font-size: 0.95rem;
+		/* Reads the scale rather than inheriting it: the card wraps the item shell
+		   that `font-sizes.css` scales, so nothing above this rule carries the
+		   scaled size. Root-relative, so it does not compound with the shell. */
+		font-size: calc(0.95rem * var(--pie-font-scale, 1));
 		font-weight: 600;
 		/* Default to the themed body text color so titles stay legible across
 		   DaisyUI themes; --pie-header-text remains a host opt-in override. */
@@ -337,6 +519,77 @@
 	.pie-section-player-content-card-body {
 		padding: 1rem;
 		color: var(--pie-text, #111827);
+	}
+
+	/* Formative control. Painted only from `--pie-*` chains so it follows every
+	   base theme, provider and colour scheme without a hook of its own. */
+	.pie-section-player-formative {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		padding: 0.75rem 1rem;
+		border-top: 1px solid var(--pie-border-light, #e5e7eb);
+	}
+
+	.pie-section-player-formative__status {
+		margin: 0;
+		/* Tries remaining and correctness, and the only signal carrying either —
+		   the note below is why no colour accompanies it. So it follows the font
+		   accommodation for the same reason the item body does. */
+		font-size: calc(0.9rem * var(--pie-font-scale, 1));
+		/* Correctness is carried by the text itself, so no state colour is needed
+		   and none is applied — a colour here would be the only signal at exactly
+		   the moment it must not be (WCAG 1.4.1). */
+		color: var(--pie-text, #111827);
+	}
+
+	/* Empty until a Try lands; collapse so the footer does not reserve a blank
+	   row before there is anything to announce. */
+	.pie-section-player-formative__status:empty {
+		display: none;
+	}
+
+	/* Canonical button-family chains, no component-scoped hook: this control is an
+	   ordinary button and a host that restyles ordinary buttons should get it for
+	   free. Geometry stays literal, as it does on the scroll hint — the contract
+	   certifies colour pairs, not radii. */
+	.pie-section-player-formative__button {
+		/* Comfortably past the 24x24 minimum in WCAG 2.5.8, and the padding keeps
+		   it there at the smallest supported text size. */
+		min-height: 2.25rem;
+		padding: 0.4rem 0.9rem;
+		margin-left: auto;
+		border: 1px solid var(--pie-button-border, var(--pie-border, #8f8f8f));
+		border-radius: 4px;
+		background: var(--pie-button-bg, var(--pie-white, #fff));
+		color: var(--pie-button-color, var(--pie-text, #374151));
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.pie-section-player-formative__button:hover {
+		background: var(--pie-button-hover-bg, var(--pie-background-dark, #f9fafb));
+		border-color: var(--pie-button-hover-border, var(--pie-border, #8b919c));
+		color: var(--pie-button-hover-color, var(--pie-text, #111827));
+	}
+
+	.pie-section-player-formative__button:active {
+		/* `--pie-button-color` is the only ink the contract certifies against this
+		   fill, so the pair stays together. */
+		background: var(--pie-button-active-bg, var(--pie-background-dark, #f3f4f6));
+		color: var(--pie-button-color, var(--pie-text, #374151));
+	}
+
+	.pie-section-player-formative__button:focus-visible {
+		outline: 2px solid
+			var(--pie-button-focus-outline, var(--pie-primary, #3b82f6));
+		outline-offset: 2px;
+	}
+
+	.pie-section-player-formative__button[aria-busy="true"] {
+		cursor: progress;
 	}
 
 </style>

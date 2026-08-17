@@ -18,9 +18,41 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
-	import Moveable from 'moveable';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import MoveableModule from 'moveable';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
+
+	/**
+	 * The slice of Moveable's surface this tool uses.
+	 *
+	 * `moveable` publishes CJS with ESM-shaped declarations and no `exports` map, so
+	 * under `moduleResolution: NodeNext` TypeScript resolves the default import to
+	 * the module namespace rather than to the class: `new Moveable(...)` reads as
+	 * not constructable and `Moveable` cannot be used as a type. Vite loads the ESM
+	 * build, where the import *is* the class, so this describes runtime rather than
+	 * changing it.
+	 */
+	interface MoveableInstance {
+		bounds: {
+			left: number;
+			top: number;
+			right: number;
+			bottom: number;
+			position?: 'css' | 'client';
+		};
+		destroy(): void;
+		updateRect(): void;
+		getControlBoxElement(): HTMLElement;
+		on(
+			event: 'drag' | 'rotate',
+			handler: (payload: { target: HTMLElement; transform: string }) => void,
+		): void;
+	}
+	const MoveableCtor = MoveableModule as unknown as new (
+		container: HTMLElement,
+		options: Record<string, unknown>,
+	) => MoveableInstance;
 
 	// Props
 	let { visible = false, toolId = 'protractor' }: { visible?: boolean; toolId?: string } = $props();
@@ -34,8 +66,10 @@
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
-	let moveable: Moveable | null = null;
+	let moveable: MoveableInstance | null = null;
 
 	// Track registration state
 	let registered = $state(false);
@@ -71,7 +105,7 @@
 
 		coordinator?.bringToFront(containerEl);
 
-		moveable = new Moveable(document.body, {
+		moveable = new MoveableCtor(document.body, {
 			target: containerEl,
 			draggable: true,
 			rotatable: true,
@@ -151,51 +185,59 @@
 			case 'ArrowUp':
 				if (isShift) {
 					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					y -= MOVE_STEP;
-					announce(`Moved up to ${Math.round(y)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedUp', { position: Math.round(y) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowDown':
 				if (isShift) {
 					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					y += MOVE_STEP;
-					announce(`Moved down to ${Math.round(y)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedDown', { position: Math.round(y) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowLeft':
 				if (isShift) {
 					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					x -= MOVE_STEP;
-					announce(`Moved left to ${Math.round(x)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedLeft', { position: Math.round(x) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'ArrowRight':
 				if (isShift) {
 					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(`Rotated to ${rotation} degrees`);
+					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				} else {
 					x += MOVE_STEP;
-					announce(`Moved right to ${Math.round(x)}`);
+					announce(
+						interfaceI18n.t('toolkit.announce.movedRight', { position: Math.round(x) }),
+					);
 				}
 				handled = true;
 				break;
 			case 'PageUp':
 				rotation = (rotation - FINE_ROTATE_STEP + 360) % 360;
-				announce(`Rotated to ${rotation} degrees`);
+				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				handled = true;
 				break;
 			case 'PageDown':
 				rotation = (rotation + FINE_ROTATE_STEP) % 360;
-				announce(`Rotated to ${rotation} degrees`);
+				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
 				handled = true;
 				break;
 		}
@@ -265,18 +307,20 @@
 		bind:this={containerEl}
 		class="pie-tool-protractor"
 		data-moveablejs-tool-id={toolId}
-		onpointerdown={() => coordinator?.bringToFront(containerEl)}
+		onpointerdown={() => containerEl && coordinator?.bringToFront(containerEl)}
 		onkeydown={handleKeyDown}
 		role="application"
 		tabindex="0"
-		aria-label="Protractor tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation. Current rotation displayed via Moveable.js"
-		aria-roledescription="Draggable and rotatable protractor measurement tool"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.protractor.toolA11y')}
+		aria-roledescription={interfaceI18n.t('tools.protractor.roleA11y')}
 	>
 		<div class="pie-tool-protractor__container">
 			<img
 				class="pie-tool-protractor__image"
 				src={protractorSvg}
-				alt="Protractor with 180-degree semicircular scale marked from 0 to 180 degrees in both directions, with degree markings every 10 degrees"
+				alt={interfaceI18n.t('tools.protractor.imageAlt')}
 				draggable="false"
 			/>
 		</div>

@@ -154,17 +154,24 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 }
 
 /**
- * Fold a layout element's `nds-icons` convenience attribute into the
- * `runtime` config handed to the kernel. Only injects when the attribute
- * is explicitly set, so an unset attribute never clobbers a
- * `runtime.ndsIcons` the host provided; when both are present,
- * `runtime.ndsIcons` wins (spread last). Returns the input unchanged when
- * the attribute is unset.
+ * Fold a layout element's presentation convenience attributes — `nds-icons` and
+ * `locale` — into the `runtime` config handed to the kernel.
+ *
+ * Only injects an attribute that is explicitly set, so an unset one never
+ * clobbers a value the host put on `runtime`; when both are present, `runtime`
+ * wins (spread last). Returns the input unchanged when neither is set, which
+ * keeps `kernelRuntime` referentially stable for a host that supplies neither.
  */
-export function mergeNdsIconsIntoRuntime(
+export function mergeLayoutAttrsIntoRuntime(
 	runtime: RuntimeConfig | null,
-	ndsIcons: boolean | undefined,
+	attrs: { ndsIcons?: boolean; locale?: string },
 ): RuntimeConfig | null {
-	if (ndsIcons === undefined) return runtime;
-	return { ndsIcons, ...(runtime ?? {}) };
+	const overlay: Partial<RuntimeConfig> = {};
+	if (attrs.ndsIcons !== undefined) overlay.ndsIcons = attrs.ndsIcons;
+	// An empty attribute is "unset", not "render the empty locale": Svelte
+	// serializes an absent string attribute to `""`, and treating that as a
+	// request would override a host's `runtime.locale` with nothing.
+	if (attrs.locale) overlay.locale = attrs.locale;
+	if (Object.keys(overlay).length === 0) return runtime;
+	return { ...overlay, ...(runtime ?? {}) };
 }

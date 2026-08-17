@@ -41,6 +41,8 @@ export const graphToolRegistration: ToolRegistration = {
 	toolId: "graph",
 	name: "Graph",
 	description: "Graphing calculator and coordinate plane",
+	nameKey: "tools.graph.name",
+	descriptionKey: "tools.graph.description",
 	icon: "chart-bar",
 
 	// Graph is a section-level floating tool.
@@ -75,8 +77,8 @@ export const graphToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Graph - Graphing calculator",
-			tooltip: "Graph",
+			ariaLabel: toolbarContext.i18n.t("tools.graph.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.graph.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -135,6 +137,8 @@ export const periodicTableToolRegistration: ToolRegistration = {
 	toolId: "periodicTable",
 	name: "Periodic Table",
 	description: "Chemistry periodic table reference",
+	nameKey: "tools.periodicTable.name",
+	descriptionKey: "tools.periodicTable.description",
 	icon: "beaker",
 
 	// Periodic table is a section-level floating tool.
@@ -168,8 +172,10 @@ export const periodicTableToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Periodic table - Chemistry reference",
-			tooltip: "Periodic Table",
+			ariaLabel: toolbarContext.i18n.t(
+				"tools.periodicTable.buttonA11y",
+			),
+			tooltip: toolbarContext.i18n.t("tools.periodicTable.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};

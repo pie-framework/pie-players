@@ -3,6 +3,8 @@
 	import type { Snippet } from "svelte";
 	import PanelResizeHandle from "./PanelResizeHandle.svelte";
 	import PanelWindowControls from "./PanelWindowControls.svelte";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
 		claimNextFloatingPanelZIndex,
 		computePanelSizeFromViewport,
@@ -12,7 +14,7 @@
 
 	let {
 		title,
-		ariaLabel = "Drag panel",
+		ariaLabel = undefined,
 		initialSizing,
 		minWidth = 320,
 		minHeight = 260,
@@ -26,9 +28,11 @@
 		children,
 		icon,
 		headerActions,
+		i18n,
 	}: {
 		title: string;
 		ariaLabel?: string;
+		i18n?: I18nProvider;
 		initialSizing: FloatingPanelViewportSizing;
 		minWidth?: number;
 		minHeight?: number;
@@ -43,6 +47,8 @@
 		icon?: Snippet;
 		headerActions?: Snippet;
 	} = $props();
+
+	const messages = $derived(resolveInterfaceI18n({ i18n }));
 
 	let panelX = $state(16);
 	let panelY = $state(16);
@@ -218,7 +224,7 @@
 		}}
 		role="button"
 		tabindex="0"
-		aria-label={ariaLabel}
+		aria-label={ariaLabel ?? messages.t("toolkit.dragPanelA11y")}
 	>
 		<div class="pie-shared-floating-panel__header-main">
 			<div class="pie-shared-floating-panel__header-title-wrap">
@@ -232,6 +238,7 @@
 				minimized={isMinimized}
 				onToggle={() => (isMinimized = !isMinimized)}
 				onClose={onClose}
+				{i18n}
 			/>
 		</div>
 	</header>
@@ -240,18 +247,35 @@
 		<div class={resolvedBodyClass}>
 			{@render children?.()}
 		</div>
-		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
+		<PanelResizeHandle
+			onPointerDown={(event: MouseEvent) => pointerController.startResize(event)}
+			{i18n}
+		/>
 	{/if}
 </section>
 
 <style>
+	/*
+	 * These panels read DaisyUI's own `--color-*` slots, which is backwards: the
+	 * supported direction is DaisyUI feeding `--pie-*` through pie-theme's
+	 * provider, and a panel reading the slots directly follows the host's DaisyUI
+	 * palette, or its own literals where there is none, but never the colour
+	 * scheme the tester selected. Inspecting a section under White on Black meant
+	 * a light panel over a dark page.
+	 *
+	 * The surface is `--pie-background-dark`, not the `--pie-background` that
+	 * `--color-base-100` maps to: a floating panel needs an opaque surface, and the
+	 * light Base Theme sets `--pie-background` to `rgba(255, 255, 255, 0)` so the
+	 * host's own backdrop shows through. `--pie-text` on `--pie-background-dark` is
+	 * the certified recessed-surface pair.
+	 */
 	.pie-shared-floating-panel {
 		position: fixed;
 		display: flex;
 		flex-direction: column;
-		background: var(--color-base-100, #fff);
-		color: var(--color-base-content, #1f2937);
-		border: 2px solid var(--color-base-300, #d1d5db);
+		background: var(--pie-background-dark, #ecedf1);
+		color: var(--pie-text, #1f2937);
+		border: 2px solid var(--pie-border, #8f8f8f);
 		border-radius: 8px;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 		overflow: hidden;
@@ -263,10 +287,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		background: var(--color-base-200, #f3f4f6);
+		/* The header carries the drag affordance and the window controls, so it takes
+		   the certified button pair rather than a second recessed surface. */
+		background: var(--pie-button-bg, #f3f4f6);
+		color: var(--pie-button-color, #1f2937);
 		cursor: move;
 		user-select: none;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		border-bottom: 1px solid var(--pie-border, #8f8f8f);
 	}
 
 	.pie-shared-floating-panel__header-main {

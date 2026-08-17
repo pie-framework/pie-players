@@ -13,6 +13,8 @@
 />
 
 <script lang="ts">
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import type { MessageKey } from '@pie-players/pie-players-shared/i18n/types';
 	import {
 		connectToolRuntimeContext,
 		toOverlayToolId,
@@ -39,9 +41,46 @@
 
 	const isBrowser = typeof window !== 'undefined';
 
+	/**
+	 * The variants the Desmos provider implements. `calculatorType` arrives as a
+	 * custom-element attribute, so it is narrowed to this list before it can pick a
+	 * message key — a type outside it would otherwise index the table with
+	 * `undefined` and render nothing. Wider than the packaged toolbar
+	 * registration's `basic | scientific`, because the host sets this one directly.
+	 */
+	const CALCULATOR_VARIANTS = ['basic', 'scientific', 'graphing'] as const;
+	type CalculatorVariant = (typeof CALCULATOR_VARIANTS)[number];
+
+	/** Name, and the announcement for each toggle direction, per variant. */
+	const CALCULATOR_KEYS: Record<
+		CalculatorVariant,
+		{ name: MessageKey; opened: MessageKey; closed: MessageKey }
+	> = {
+		basic: {
+			name: 'tools.calculator.nameBasic',
+			opened: 'tools.calculator.openedBasic',
+			closed: 'tools.calculator.closedBasic',
+		},
+		scientific: {
+			name: 'tools.calculator.nameScientific',
+			opened: 'tools.calculator.openedScientific',
+			closed: 'tools.calculator.closedScientific',
+		},
+		graphing: {
+			name: 'tools.calculator.nameGraphing',
+			opened: 'tools.calculator.openedGraphing',
+			closed: 'tools.calculator.closedGraphing',
+		},
+	};
+
+	const isCalculatorVariant = (value: string): value is CalculatorVariant =>
+		(CALCULATOR_VARIANTS as readonly string[]).includes(value);
+
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
@@ -59,6 +98,18 @@
 	const effectiveCalculatorType = $derived(
 		supportedCalculatorTypes.has(calculatorType) ? calculatorType : 'basic',
 	);
+	const variantKeys = $derived(
+		CALCULATOR_KEYS[
+			isCalculatorVariant(effectiveCalculatorType) ? effectiveCalculatorType : 'basic'
+		],
+	);
+
+	/**
+	 * Accessible name and tooltip for the toggle, static across open and closed.
+	 * `aria-pressed` on the same button already carries the state, so a name that
+	 * swapped to "Close …" would contradict it.
+	 */
+	const calculatorName = $derived(interfaceI18n.t(variantKeys.name));
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -109,9 +160,9 @@
 		// Toggle the calculator tool visibility
 		coordinator.toggleTool(effectiveTargetToolId);
 
-		statusMessage = calculatorVisible
-			? `${effectiveCalculatorType} calculator closed`
-			: `${effectiveCalculatorType} calculator opened`;
+		statusMessage = interfaceI18n.t(
+			calculatorVisible ? variantKeys.closed : variantKeys.opened,
+		);
 	}
 
 	// Size classes
@@ -132,9 +183,9 @@
 			class="pie-tool-calculator-inline__button {sizeClass}"
 			class:pie-tool-calculator-inline__button--active={calculatorVisible}
 			onclick={handleToggle}
-			aria-label={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			aria-label={calculatorName}
 			aria-pressed={calculatorVisible}
-			title={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			title={calculatorName}
 			data-calculator-type={effectiveCalculatorType}
 			disabled={!coordinator}
 		>
@@ -202,15 +253,41 @@
 		z-index: 1;
 	}
 
+	/*
+	 * `--pie-primary` is a fill here, and white was pinned as its ink. The two do
+	 * not pair: the schemes whose primary is a pale yellow put white on it at
+	 * 1.06:1 (Yellow on Blue), 1.07:1 (White on Black) and 1.05:1 (Yellow on
+	 * Navy), so the open-state trigger lost its glyph on exactly the palettes
+	 * chosen for legibility. The ink follows the page colour once a scheme asks
+	 * for one, which pairs with that fill at 5.44:1 or better everywhere, and
+	 * stays the pinned white at 0% collapse so an unthemed host is unchanged.
+	 */
 	.pie-tool-calculator-inline__button--active {
 		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
-		color: var(--pie-tool-trigger-active-color, white);
+		color: var(
+			--pie-tool-trigger-active-color,
+			color-mix(in srgb, var(--pie-background, #ffffff) var(--pie-fixed-hue-collapse, 0%), white)
+		);
 		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 
+	/*
+	 * The deeper hover fill collapses to `--pie-primary` rather than
+	 * `--pie-primary-dark`: that darker slot pairs with the page colour at 3.56:1
+	 * under Light Gray on Dark Gray, below the 4.5:1 this glyph needs. Under a
+	 * scheme the hover therefore matches the open state, and the affordance rests
+	 * on the border, which is deliberate — a hover tell is not worth an
+	 * unreadable one.
+	 */
 	.pie-tool-calculator-inline__button--active:hover:not(:disabled) {
-		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary-dark, #1565c0));
-		color: var(--pie-tool-trigger-active-color, white);
+		background-color: var(
+			--pie-tool-trigger-active-background,
+			color-mix(in srgb, var(--pie-primary, #1565c0) var(--pie-fixed-hue-collapse, 0%), var(--pie-primary-dark, #1565c0))
+		);
+		color: var(
+			--pie-tool-trigger-active-color,
+			color-mix(in srgb, var(--pie-background, #ffffff) var(--pie-fixed-hue-collapse, 0%), white)
+		);
 		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 

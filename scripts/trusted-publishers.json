@@ -79,10 +79,6 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
-		"@pie-players/pie-theme-daisyui": {
-			"repository": "pie-framework/pie-players",
-			"workflow": "release.yml"
-		},
 		"@pie-players/pie-tool-annotation-toolbar": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"

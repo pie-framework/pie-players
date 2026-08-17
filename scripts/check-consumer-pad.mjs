@@ -31,6 +31,9 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+
+import { isNoOpChange } from "./lib/no-op-change.mjs";
 
 const PAD_PATH = "docs/integrations/consumer-api-dependencies.md";
 const RULE_PATH = "AGENTS.md";
@@ -75,9 +78,7 @@ const TRIGGERS = [
 		match: (file) =>
 			/^packages\/theme\/src\/(tokens|color-schemes|font-sizes|components)\.css$/.test(
 				file,
-			) ||
-			file === "packages/theme/src/token-registry.json" ||
-			file === "packages/theme-daisyui/src/bridge.css",
+			) || file === "packages/theme/src/token-registry.json",
 	},
 	{
 		reason:
@@ -150,10 +151,66 @@ const changed = new Set(
 
 if (changed.size === 0) process.exit(0);
 
+/**
+ * Run a source through biome's formatter to get its normal form. Bare `biome`
+ * because the lifecycle runner puts node_modules/.bin on PATH, same as
+ * `lint:biome`. stderr is dropped: biome reports "the formatter is disabled" there
+ * for Svelte and returns the input untouched, which the caller reads as "cannot
+ * prove" via an unchanged normal form.
+ */
+const formatSource = (file, source) => {
+	try {
+		return execFileSync("biome", ["format", `--stdin-file-path=${file}`], {
+			input: source,
+			encoding: "utf8",
+			stdio: ["pipe", "pipe", "ignore"],
+		});
+	} catch {
+		return null;
+	}
+};
+
+const contentAtBase = (file) => gitOrNull(["show", `${base.sha}:${file}`]);
+
+const contentNow = (file) => {
+	try {
+		return readFileSync(file, "utf8");
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * Compares the merge base against the working tree rather than against HEAD, so a
+ * surface change is judged the same whether or not it has been committed yet --
+ * matching how `changed` is assembled above.
+ */
+const isFormattingOnly = (file) =>
+	isNoOpChange({
+		file,
+		before: contentAtBase(file),
+		after: contentNow(file),
+		formatSource,
+	});
+
 const tripped = [];
+const ignored = [];
 for (const trigger of TRIGGERS) {
-	const files = [...changed].filter(trigger.match).sort();
+	const matched = [...changed].filter(trigger.match).sort();
+	const files = [];
+	for (const file of matched) {
+		if (isFormattingOnly(file)) ignored.push(file);
+		else files.push(file);
+	}
 	if (files.length > 0) tripped.push({ reason: trigger.reason, files });
+}
+
+// Say what was discounted. A guard that silently narrows itself is indistinguishable
+// from a guard that passed.
+if (ignored.length > 0) {
+	console.log(
+		`[check-consumer-pad] Ignored ${ignored.length} formatting-only change(s) to trigger file(s): ${ignored.sort().join(", ")}`,
+	);
 }
 
 if (tripped.length === 0) process.exit(0);

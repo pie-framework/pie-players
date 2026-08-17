@@ -49,6 +49,7 @@
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
 	import SectionCardSurfaceStack from "./SectionCardSurfaceStack.svelte";
 	import { CONTENT_LEAD_SURFACE } from "./card-media-region.js";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
 	let {
 		passage,
@@ -77,6 +78,9 @@
 		normalizeBaseHeadingLevel(baseHeadingLevel),
 	);
 
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Interface locale, re-derived on every context republish. See SectionItemCard.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
 	let contextPlayerAction = $state<
@@ -103,7 +107,7 @@
 		(contextConnected ? contextCardTitleFormatter : null) || null,
 	);
 	const headerTitle = $derived.by(() => {
-		const defaultTitle = "Passage";
+		const defaultTitle = interfaceI18n.t("player.passage");
 		if (!effectiveCardTitleFormatter) return defaultTitle;
 		try {
 			const nextTitle = effectiveCardTitleFormatter({
@@ -129,7 +133,6 @@
 	// card differs only in the owner scope it looks catalogs up under, which is the
 	// same scope `<pie-passage-shell>` registered them in.
 
-	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 
 	const mediaRegionId = $derived(`${headingId}-media`);
 	const leadRegionId = $derived(`${headingId}-lead`);
@@ -229,7 +232,7 @@
 			ownerContext={catalogOwnerContext}
 			{runtimeContext}
 			{toolRegistry}
-			dividerAriaLabel="Resize passage and media panels"
+			dividerAriaLabel={interfaceI18n.t("player.resizePassageAndMediaA11y")}
 		>
 			{#snippet content()}
 				<div
@@ -316,7 +319,10 @@
 		position: relative;
 		z-index: 0;
 		margin: 0;
-		font-size: 0.95rem;
+		/* Reads the scale rather than inheriting it: the card wraps the passage
+		   shell that `font-sizes.css` scales, so nothing above this rule carries
+		   the scaled size. Root-relative, so it does not compound with the shell. */
+		font-size: calc(0.95rem * var(--pie-font-scale, 1));
 		font-weight: 600;
 		/* Default to the themed body text color so titles stay legible across
 		   DaisyUI themes; --pie-header-text remains a host opt-in override. */

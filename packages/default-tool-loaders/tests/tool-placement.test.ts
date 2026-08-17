@@ -17,6 +17,8 @@ describe("packaged tool placement", () => {
 				"annotationToolbar",
 				"graph",
 				"periodicTable",
+				"dictionary",
+				"pictureDictionary",
 			],
 			passage: [
 				"textToSpeech",
@@ -40,6 +42,8 @@ describe("packaged tool placement", () => {
 				"annotationToolbar",
 				"graph",
 				"periodicTable",
+				"dictionary",
+				"pictureDictionary",
 			]),
 		});
 	});
@@ -53,6 +57,8 @@ describe("packaged tool placement", () => {
 				"lineReader",
 				"ruler",
 				"protractor",
+				"dictionary",
+				"pictureDictionary",
 			],
 			item: [
 				"calculator",

@@ -71,13 +71,13 @@ test.describe("section demo tool visibility from item data", () => {
 		await expect(itemCards).toHaveCount(3);
 
 		const basicButton = itemCards.nth(0).getByRole("button", {
-			name: "Open basic calculator",
+			name: "Basic Calculator",
 		});
 		const scientificButton = itemCards.nth(1).getByRole("button", {
-			name: "Open scientific calculator",
+			name: "Scientific Calculator",
 		});
 		const untaggedItemCalculatorButton = itemCards.nth(2).getByRole("button", {
-			name: /open .* calculator/i,
+			name: /^(basic |scientific )?calculator$/i,
 		});
 
 		await expect(basicButton).toBeVisible();

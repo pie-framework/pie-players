@@ -13,6 +13,11 @@
 			// explicitly `true`; otherwise they use plain <button>s. Defaults
 			// to `false` (opt-in).
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale, published onto the runtime context so every tool
+			// resolves the same provider. `type: "String"` because hosts pass
+			// attribute values as strings and a BCP-47 tag is one; POSIX
+			// (`nl_NL`) and bare (`nl`) forms both resolve.
+			locale: { attribute: "locale", type: "String" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
@@ -73,6 +78,10 @@
 	} from "@pie-players/pie-players-shared/pie";
 	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
 	import {
+		createPieI18n,
+		DEFAULT_LOCALE,
+	} from "@pie-players/pie-players-shared/i18n";
+	import {
 		assessmentToolkitHostRuntimeContext,
 		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitHostRuntimeContext,
@@ -101,11 +110,13 @@
 	import { parseToolList } from "../services/tools-config-normalizer.js";
 	import {
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
+		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 		PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
 		type InternalContentLoadedDetail,
+		type InternalFormativeActionDetail,
 		type InternalItemSessionChangedDetail,
 		type InternalItemPlayerErrorDetail,
 		type RuntimeRegistrationDetail,
@@ -137,7 +148,8 @@
 		| typeof PIE_UNREGISTER_EVENT
 		| typeof PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
 		| typeof PIE_INTERNAL_CONTENT_LOADED_EVENT
-		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT;
+		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT
+		| typeof PIE_INTERNAL_FORMATIVE_ACTION_EVENT;
 	type HostRuntimeEventHandler = (event: Event) => void;
 
 	interface CompositionSnapshot {
@@ -145,6 +157,7 @@
 		currentItemIndex: number;
 		renderableSignature: string;
 		itemSessionSignature: string;
+		formativeSignature: string;
 	}
 
 	interface CompositionRenderableSnapshot {
@@ -200,6 +213,7 @@ const DEFAULT_ENV = {
 		attemptId = "",
 		env = {},
 		ndsIcons = false,
+		locale = "",
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
@@ -581,6 +595,32 @@ const DEFAULT_ENV = {
 			});
 	}
 
+	/**
+	 * Formative Try state, folded into the revision key.
+	 *
+	 * Load-bearing: recording a Try changes neither the renderables nor the item
+	 * sessions, so without this the revision key is identical before and after
+	 * and `flushCompositionChanged` suppresses the emit — the controller holds
+	 * correct state and the card never learns that its feedback was revealed.
+	 *
+	 * Reads only the three fields that change what a card renders. The outcome's
+	 * points are deliberately excluded: a re-check that produces the same
+	 * correctness with a different partial score is the same screen.
+	 */
+	function toFormativeSignature(model: UnknownRecord): string {
+		const states = asRecord(asRecord(model.formative).states);
+		return Object.entries(states)
+			.map(([itemId, value]) => {
+				const state = asRecord(value);
+				const correctness = asRecord(state.lastOutcome).correctness ?? "";
+				// `revealOverride` too: a host raising a reveal from correctness to
+				// solution changes the projected env without changing `revealed`.
+				return `${itemId}:${state.tryCount ?? 0}:${state.revealed === true ? 1 : 0}:${String(correctness)}:${String(state.revealOverride ?? "")}`;
+			})
+			.sort()
+			.join("|");
+	}
+
 	function toCompositionSnapshot(model: unknown): CompositionSnapshot {
 		const typed = asRecord(model);
 		const renderableSignature = toRenderableSnapshots(typed)
@@ -594,12 +634,13 @@ const DEFAULT_ENV = {
 			currentItemIndex: toCurrentItemIndex(typed),
 			renderableSignature,
 			itemSessionSignature,
+			formativeSignature: toFormativeSignature(typed),
 		};
 	}
 
 	function getCompositionRevisionKey(model: unknown): string {
 		const snapshot = toCompositionSnapshot(model);
-		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}`;
+		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}|${snapshot.formativeSignature}`;
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
@@ -873,6 +914,39 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// One interface-i18n provider per toolkit instance, published on the runtime
+	// context. Every capability on the page shares it, so a locale's catalog is
+	// fetched once rather than once per tool, and a host that swaps in its own
+	// `I18nProvider` reaches all of them through the same channel.
+	const interfaceI18n = createPieI18n();
+	// Bumped by the provider's own change signal, which fires once a lazily
+	// loaded catalog is resident. `runtimeContextValue` reads it, so the context
+	// re-publishes and consumers re-read strings that were still English a tick
+	// earlier. Without this the first paint would pin English forever — the same
+	// class of failure as a composition context published with no change signal.
+	let interfaceI18nVersion = $state(0);
+	$effect(() =>
+		interfaceI18n.subscribe(() => {
+			interfaceI18nVersion += 1;
+		}),
+	);
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		untrack(() => {
+			// Rejecting the promise here would take a player down over a missing
+			// locale chunk; every key still resolves through the English fallback.
+			void Promise.resolve(
+				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+			).catch((error) => {
+				reportFrameworkError({
+					kind: "i18n-locale-load",
+					source: "pie-assessment-toolkit",
+					error: error instanceof Error ? error : new Error(String(error)),
+				});
+			});
+		});
+	});
+
 	const effectiveAssessmentId = $derived(
 		assessmentId || effectiveCoordinator?.assessmentId || "",
 	);
@@ -907,6 +981,12 @@ const DEFAULT_ENV = {
 			// Opt-in: NDS icons only when explicitly enabled. Normalize to a
 			// strict boolean so `undefined`/`false` both read as off.
 			ndsIcons: ndsIcons === true,
+			// Interface locale and the provider resolving it. Both live on the
+			// context so a tool reads one value and one provider however deep it
+			// sits. Reading the version counter is what makes a completed catalog
+			// load re-publish this object; see `interfaceI18nVersion`.
+			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
+			i18n: interfaceI18n,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
 				const result = sectionEngine.updateItemSession(itemId, detail);
 				emitNormalizedSessionChanged({
@@ -1440,6 +1520,23 @@ const DEFAULT_ENV = {
 						contentKind: detail.contentKind,
 						error: detail.error,
 						timestamp: Date.now(),
+					});
+				},
+			},
+			{
+				// A learner's check / retry. The card supplies the outcomes it got
+				// from `provideScore()`; the controller derives correctness, so the
+				// route carries data rather than a decision.
+				name: PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<InternalFormativeActionDetail>(event);
+					if (!detail?.itemId) return;
+					if (detail.action !== "check" && detail.action !== "retry") return;
+					sectionEngine.handleFormativeAction({
+						itemId: detail.canonicalItemId || detail.itemId,
+						action: detail.action,
+						outcomes: detail.outcomes,
 					});
 				},
 			},

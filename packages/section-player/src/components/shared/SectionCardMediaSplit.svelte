@@ -23,6 +23,7 @@
 		CatalogOwnerContext,
 		ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import SectionCardSplitDivider from "./SectionCardSplitDivider.svelte";
 	import {
 		clampMediaRegionPercent,
@@ -35,7 +36,7 @@
 	import {
 		createToolSurfaceHost,
 		type ToolSurfaceHostSnapshot,
-	} from "./tool-surface-host.js";
+	} from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 	let {
 		regionId,
@@ -65,9 +66,12 @@
 		mountable: false,
 		occupied: false,
 	});
-	const surfaceHost = createToolSurfaceHost((next) => {
-		surfaceSnapshot = next;
-	});
+	const surfaceHost = createToolSurfaceHost(
+		(next) => {
+			surfaceSnapshot = next;
+		},
+		{ hostLabel: "pie-section-player" }
+	);
 
 	$effect(() => {
 		surfaceHost.update({
@@ -78,6 +82,7 @@
 				toolkitCoordinator: runtimeContext?.toolkitCoordinator ?? null,
 				ttsService: runtimeContext?.ttsService ?? null,
 				catalogResolver: runtimeContext?.catalogResolver ?? null,
+				i18n: resolveInterfaceI18n(runtimeContext),
 			},
 			scope: { kind: "content", ownerContext },
 		});

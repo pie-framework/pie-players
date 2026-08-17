@@ -242,7 +242,10 @@ describe("tool-tts-inline compact stacked speed contract", () => {
 describe("tool-tts-inline speed control accessibility contract", () => {
 	test("renders playback speed as a named radio group", () => {
 		expect(source).toContain('role="radiogroup"');
-		expect(source).toContain('aria-label="Playback speed"');
+		// The label is catalog-resolved; the key is the stable contract here.
+		expect(source).toContain(
+			"interfaceI18n.t('tools.textToSpeech.inline.playbackSpeedA11y')",
+		);
 		expect(source).toContain('role="radio"');
 		expect(source).toContain("aria-checked={playbackRate === option.rate}");
 	});
@@ -445,7 +448,7 @@ describe("tool-tts-inline keyboard order contract", () => {
 		// with it — Stop can still halt playback / dismiss the panel, and staying
 		// enabled is what lets it keep focus it already had.
 		expect(source).toContain(
-			'aria-label="Stop reading"\n\t\t\t\t\t\tdisabled={!ttsService}',
+			"aria-label={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}\n\t\t\t\t\t\tdisabled={!ttsService}",
 		);
 		// Rewind / fast-forward correctly go inactive with `speaking`.
 		expect(source).toContain("disabled={!ttsService || !speaking}");

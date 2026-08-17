@@ -9,6 +9,9 @@ export function applyAutoplayAudioOverride(
 	}
 	return {
 		...configEntity,
-		models: configEntity.models.map((model) => ({ ...model, autoplayAudioEnabled: override })),
+		models: configEntity.models.map((model) => ({
+			...model,
+			autoplayAudioEnabled: override,
+		})),
 	};
 }

@@ -11,7 +11,9 @@ function configWithModels(models: Record<string, unknown>[]) {
 
 describe("applyAutoplayAudioOverride", () => {
 	test("leaves config untouched when override is undefined", () => {
-		const config = configWithModels([{ id: "1", element: "mc-populated-blank", autoplayAudioEnabled: false }]);
+		const config = configWithModels([
+			{ id: "1", element: "mc-populated-blank", autoplayAudioEnabled: false },
+		]);
 		expect(applyAutoplayAudioOverride(config, undefined)).toBe(config);
 	});
 

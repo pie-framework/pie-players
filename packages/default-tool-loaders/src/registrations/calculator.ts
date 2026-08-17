@@ -76,8 +76,6 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 	calculatorType: CalculatorType | null;
 	availableTypes: CalculatorType[] | null;
 	displayName: string;
-	openLabel: string;
-	closeLabel: string;
 } {
 	const params = toolbarContext.getToolRenderParams?.("calculator") ?? {};
 	const calculatorType = normalizeCalculatorType(params.calculatorType);
@@ -90,47 +88,26 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 			? [calculatorType]
 			: null;
 
-	const i18n = toolbarContext.i18n;
-	const keys = CALCULATOR_LABEL_KEYS[calculatorType ?? "untyped"];
-
 	return {
 		calculatorType,
 		availableTypes,
-		displayName: i18n.t(keys.name),
-		openLabel: i18n.t(keys.open),
-		closeLabel: i18n.t(keys.close),
+		displayName: toolbarContext.i18n.t(
+			CALCULATOR_NAME_KEYS[calculatorType ?? "untyped"],
+		),
 	};
 }
 
 /**
- * One key per variant rather than `Open ${displayName.toLowerCase()}`.
- * Lowercasing a noun to splice it into a sentence is an English-only transform:
- * Dutch and German capitalize differently, and a language with grammatical case
- * needs the whole phrase authored, not assembled.
+ * The calculator's displayed name, per host-declared type.
  *
  * `untyped` keeps the pre-adoption behaviour of naming the scientific
  * calculator, which is what the toolbar has always announced when the host
  * declares no type.
  */
-const CALCULATOR_LABEL_KEYS: Record<
-	CalculatorType | "untyped",
-	{ name: MessageKey; open: MessageKey; close: MessageKey }
-> = {
-	basic: {
-		name: "tools.calculator.nameBasic",
-		open: "tools.calculator.openBasicA11y",
-		close: "tools.calculator.closeBasicA11y",
-	},
-	scientific: {
-		name: "tools.calculator.nameScientific",
-		open: "tools.calculator.openScientificA11y",
-		close: "tools.calculator.closeScientificA11y",
-	},
-	untyped: {
-		name: "tools.calculator.name",
-		open: "tools.calculator.openScientificA11y",
-		close: "tools.calculator.closeScientificA11y",
-	},
+const CALCULATOR_NAME_KEYS: Record<CalculatorType | "untyped", MessageKey> = {
+	basic: "tools.calculator.nameBasic",
+	scientific: "tools.calculator.nameScientific",
+	untyped: "tools.calculator.name",
 };
 
 function applyCalculatorParamsToElement(
@@ -227,13 +204,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const {
-			calculatorType,
-			availableTypes,
-			displayName,
-			openLabel,
-			closeLabel,
-		} = getCalculatorRenderParams(toolbarContext);
+		const { calculatorType, availableTypes, displayName } =
+			getCalculatorRenderParams(toolbarContext);
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -267,7 +239,10 @@ export const calculatorToolRegistration: ToolRegistration = {
 			label: displayName,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: openLabel,
+			// The name stays put across open and closed. The toolbar mirrors
+			// `active` onto the button as `aria-pressed`, so the state is already
+			// exposed; a name that also swapped to "Close …" would contradict it.
+			ariaLabel: displayName,
 			tooltip: displayName,
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: toolbarContext.isToolVisible(fullToolId),
@@ -306,10 +281,12 @@ export const calculatorToolRegistration: ToolRegistration = {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
 				button.label = displayName;
-				button.ariaLabel = active ? closeLabel : openLabel;
-				button.tooltip = active
-					? `Close ${displayName.toLowerCase()}`
-					: displayName;
+				// Static across the toggle. The previous `Close ${name.toLowerCase()}`
+				// was a hardcoded English template built by lowercasing a localized
+				// noun — "Close rekenmachine" under nl-NL — and it is the state
+				// `aria-pressed` already carries.
+				button.ariaLabel = displayName;
+				button.tooltip = displayName;
 				if (lastVisibleState !== active) {
 					overlay.visible = active;
 					lastVisibleState = active;

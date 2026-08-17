@@ -168,14 +168,13 @@ const enUS = {
 			nameBasic: "Basic Calculator",
 			nameScientific: "Scientific Calculator",
 			description: "Multi-type calculator (basic, scientific, graphing)",
-			// Three variants rather than "Open " + name.toLowerCase(): lowercasing a
-			// noun is an English-only transform, and Dutch and German both reject it.
-			openA11y: "Open scientific calculator",
-			openBasicA11y: "Open basic calculator",
-			openScientificA11y: "Open scientific calculator",
-			closeA11y: "Close scientific calculator",
-			closeBasicA11y: "Close basic calculator",
-			closeScientificA11y: "Close scientific calculator",
+			// Announced by the inline calculator's toggle. One key per variant and
+			// state rather than "{name} opened": Dutch and German put the participle
+			// last, so the sentence has to be authored whole.
+			openedBasic: "Basic calculator opened",
+			openedScientific: "Scientific calculator opened",
+			closedBasic: "Basic calculator closed",
+			closedScientific: "Scientific calculator closed",
 			toolA11y: "Calculator tool",
 			loading: "Loading calculator…",
 			providerUnavailable: "The calculator is unavailable.",
@@ -183,7 +182,7 @@ const enUS = {
 		graph: {
 			name: "Graph",
 			description: "Graphing calculator and coordinate plane",
-			buttonA11y: "Graph - Graphing calculator",
+			buttonA11y: "Graph, graphing calculator",
 			tooltip: "Graph",
 			toolA11y: "Graph tool — draw points and lines on a coordinate grid",
 			canvasA11y: "Graph canvas — use tools to add points and draw lines",
@@ -205,7 +204,7 @@ const enUS = {
 		periodicTable: {
 			name: "Periodic Table",
 			description: "Chemistry periodic table reference",
-			buttonA11y: "Periodic table - Chemistry reference",
+			buttonA11y: "Periodic Table, chemistry reference",
 			tooltip: "Periodic Table",
 			toolA11y: "Periodic table — select an element to view its details",
 			elementsA11y: "Periodic table elements",
@@ -242,7 +241,7 @@ const enUS = {
 		ruler: {
 			name: "Ruler",
 			description: "On-screen ruler for measurements",
-			buttonA11y: "Open ruler tool",
+			buttonA11y: "Ruler",
 			tooltip: "Ruler",
 			toolA11y: "Draggable and rotatable ruler measurement tool",
 			unitSelectionA11y: "Ruler unit selection",
@@ -266,7 +265,7 @@ const enUS = {
 		protractor: {
 			name: "Protractor",
 			description: "On-screen protractor for angle measurements",
-			buttonA11y: "Open protractor tool",
+			buttonA11y: "Protractor",
 			tooltip: "Protractor",
 			toolA11y:
 				"Protractor tool. Use arrow keys to move, Shift+arrows to rotate, and PageUp or PageDown for fine rotation.",
@@ -277,7 +276,7 @@ const enUS = {
 		lineReader: {
 			name: "Line Reader",
 			description: "Reading guide overlay",
-			buttonA11y: "Line reader - Reading guide",
+			buttonA11y: "Line Reader, reading guide",
 			tooltip: "Line Reader",
 			roleA11y: "Draggable and resizable reading guide overlay",
 			close: "Close line reader",
@@ -296,20 +295,23 @@ const enUS = {
 		answerEliminator: {
 			name: "Answer Eliminator",
 			description: "Strike through answer choices",
-			buttonA11y: "Answer eliminator - Strike through choices",
+			buttonA11y: "Strike Through, eliminate answer choices",
 			tooltip: "Strike Through",
 		},
 		highlighter: {
 			name: "Highlighter",
 			description: "Highlight and annotate text",
-			buttonA11y: "Highlighter - Highlight text",
+			buttonA11y: "Highlight text",
 			tooltip: "Highlight",
 		},
 		annotationToolbar: {
 			name: "Annotation",
 			description: "Highlight and annotate text",
-			buttonA11y: "Annotation toolbar - Highlight text",
-			tooltip: "Highlight",
+			buttonA11y: "Annotate, highlight and mark up text",
+			// Not "Highlight": that is `tools.highlighter.tooltip`, and two toolbar
+			// buttons carrying the same visible label is a defect rather than a style
+			// choice. This tool does more than highlight — underline, remove, clear.
+			tooltip: "Annotate",
 			toolbarA11y: "Text annotation toolbar",
 			underline: "Underline",
 			underlineA11y: "Underline selected text",
@@ -327,7 +329,7 @@ const enUS = {
 		theme: {
 			name: "Theme",
 			description: "Accessible themes and contrast",
-			buttonA11y: "Theme - Change colors and contrast",
+			buttonA11y: "Theme, change colors and contrast",
 			tooltip: "Theme",
 			selectorA11y: "Theme selector",
 			hint: "Select a theme to improve readability and reduce eye strain.",

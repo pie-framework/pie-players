@@ -63,6 +63,19 @@
 		supportedCalculatorTypes.has(calculatorType) ? calculatorType : 'basic',
 	);
 
+	/**
+	 * Accessible name and tooltip for the toggle, static across open and closed.
+	 * `aria-pressed` on the same button already carries the state, so a name that
+	 * swapped to "Close …" would contradict it.
+	 */
+	const calculatorName = $derived(
+		interfaceI18n.t(
+			effectiveCalculatorType === 'basic'
+				? 'tools.calculator.nameBasic'
+				: 'tools.calculator.nameScientific',
+		),
+	);
+
 	$effect(() => {
 		if (!containerEl) return;
 		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
@@ -112,9 +125,15 @@
 		// Toggle the calculator tool visibility
 		coordinator.toggleTool(effectiveTargetToolId);
 
-		statusMessage = calculatorVisible
-			? `${effectiveCalculatorType} calculator closed`
-			: `${effectiveCalculatorType} calculator opened`;
+		statusMessage = interfaceI18n.t(
+			calculatorVisible
+				? effectiveCalculatorType === 'basic'
+					? 'tools.calculator.closedBasic'
+					: 'tools.calculator.closedScientific'
+				: effectiveCalculatorType === 'basic'
+					? 'tools.calculator.openedBasic'
+					: 'tools.calculator.openedScientific',
+		);
 	}
 
 	// Size classes
@@ -135,13 +154,9 @@
 			class="pie-tool-calculator-inline__button {sizeClass}"
 			class:pie-tool-calculator-inline__button--active={calculatorVisible}
 			onclick={handleToggle}
-			aria-label={interfaceI18n.t(
-				`tools.calculator.${calculatorVisible ? 'close' : 'open'}${
-					effectiveCalculatorType === 'basic' ? 'Basic' : 'Scientific'
-				}A11y`,
-			)}
+			aria-label={calculatorName}
 			aria-pressed={calculatorVisible}
-			title={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			title={calculatorName}
 			data-calculator-type={effectiveCalculatorType}
 			disabled={!coordinator}
 		>

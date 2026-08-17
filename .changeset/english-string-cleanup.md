@@ -1,5 +1,9 @@
 ---
 "@pie-players/pie-players-shared": patch
+"@pie-players/pie-assessment-toolkit": patch
+"@pie-players/pie-default-tool-loaders": patch
+"@pie-players/pie-tool-annotation-toolbar": patch
+"@pie-players/pie-tool-calculator-inline-desmos": patch
 "@pie-players/pie-tool-ruler": patch
 ---
 
@@ -42,6 +46,40 @@ and "cm" for the other, in a string a screen reader speaks as two letters. The
 abbreviation pair is gone and both of those now interpolate the spelled-out
 in-sentence form, leaving two forms per unit instead of three.
 
-`nl-NL` is unaffected except for the two removed keys: a translation was never
-obliged to reproduce an English flaw, and it already rendered the protractor's help
-without the Moveable.js clause.
+## Toolbar button accessible names
+
+Every toolbar tool button is a toggle: the toolbar mirrors its active state onto
+the button as `aria-pressed`. Two of the nine names contradicted that by naming an
+action — "Open ruler tool" announced as "Open ruler tool, toggle button, pressed"
+once the ruler was open. The rest used a `Name - Description` form whose hyphen a
+screen reader renders as an unpredictable pause, and two of them collided outright:
+`tools.highlighter` and `tools.annotationToolbar` both resolved to "Highlight
+text" for different buttons.
+
+All nine now follow one rule. The name contains the button's visible tooltip
+verbatim, per WCAG 2.5.3 Label in Name, and adds a comma-separated purpose clause
+only where the tooltip alone does not identify the tool — so "Ruler" and
+"Protractor" stand alone, while "Theme" becomes "Theme, change colors and
+contrast". No name encodes an action, because the pressed state already carries it.
+`tools.answerEliminator.buttonA11y` previously did not contain its own tooltip
+("Strike Through") at all, which is the 2.5.3 failure rather than a style
+preference.
+
+`tools.annotationToolbar.tooltip` changes from "Highlight" to "Annotate": two
+toolbar buttons carrying the same *visible* label is a defect, and this tool also
+underlines, removes and clears.
+
+The calculator's name no longer swaps between "Open …" and "Close …" as it opens.
+Three unlocalized strings surfaced while making that change, all of them built by
+splicing a raw type token into an English template, and all of them rendered:
+`Close ${name.toLowerCase()}` as the toolbar button's tooltip, `Close ${type}
+calculator` as the inline calculator's tooltip, and `${type} calculator opened`
+in the inline calculator's live region. All three now resolve from the catalog,
+which gains four announcement keys and drops the six open/close keys the swap
+needed.
+
+## nl-NL
+
+Unaffected except for the removed keys and the matching Dutch for the new ones. A
+translation was never obliged to reproduce an English flaw, and it already
+rendered the protractor's help without the Moveable.js clause.

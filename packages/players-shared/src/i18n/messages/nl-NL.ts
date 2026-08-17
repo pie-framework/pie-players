@@ -135,12 +135,10 @@ const nlNL = {
 			nameBasic: "Eenvoudige rekenmachine",
 			nameScientific: "Wetenschappelijke rekenmachine",
 			description: "Rekenmachine (basis, wetenschappelijk, grafisch)",
-			openA11y: "Wetenschappelijke rekenmachine openen",
-			openBasicA11y: "Eenvoudige rekenmachine openen",
-			openScientificA11y: "Wetenschappelijke rekenmachine openen",
-			closeA11y: "Wetenschappelijke rekenmachine sluiten",
-			closeBasicA11y: "Eenvoudige rekenmachine sluiten",
-			closeScientificA11y: "Wetenschappelijke rekenmachine sluiten",
+			openedBasic: "Eenvoudige rekenmachine geopend",
+			openedScientific: "Wetenschappelijke rekenmachine geopend",
+			closedBasic: "Eenvoudige rekenmachine gesloten",
+			closedScientific: "Wetenschappelijke rekenmachine gesloten",
 			toolA11y: "Rekenmachine",
 			loading: "Rekenmachine wordt geladen…",
 			providerUnavailable: "De rekenmachine is niet beschikbaar.",
@@ -148,7 +146,7 @@ const nlNL = {
 		graph: {
 			name: "Grafiek",
 			description: "Grafische rekenmachine en assenstelsel",
-			buttonA11y: "Grafiek - Grafische rekenmachine",
+			buttonA11y: "Grafiek, grafische rekenmachine",
 			tooltip: "Grafiek",
 			toolA11y:
 				"Grafiekhulpmiddel — punten en lijnen tekenen in een assenstelsel",
@@ -172,7 +170,7 @@ const nlNL = {
 		periodicTable: {
 			name: "Periodiek systeem",
 			description: "Naslagwerk: het periodiek systeem der elementen",
-			buttonA11y: "Periodiek systeem - Naslagwerk chemie",
+			buttonA11y: "Periodiek systeem, naslagwerk chemie",
 			tooltip: "Periodiek systeem",
 			toolA11y: "Periodiek systeem — selecteer een element voor meer gegevens",
 			elementsA11y: "Elementen in het periodiek systeem",
@@ -203,7 +201,7 @@ const nlNL = {
 		ruler: {
 			name: "Lineaal",
 			description: "Lineaal op het scherm om te meten",
-			buttonA11y: "Lineaal openen",
+			buttonA11y: "Lineaal",
 			tooltip: "Lineaal",
 			toolA11y: "Verplaatsbare en draaibare lineaal",
 			unitSelectionA11y: "Maateenheid van de lineaal",
@@ -221,7 +219,7 @@ const nlNL = {
 		protractor: {
 			name: "Geodriehoek",
 			description: "Geodriehoek op het scherm om hoeken te meten",
-			buttonA11y: "Geodriehoek openen",
+			buttonA11y: "Geodriehoek",
 			tooltip: "Geodriehoek",
 			toolA11y:
 				"Geodriehoek. Verplaats met de pijltoetsen, draai met Shift+pijltoetsen, en draai nauwkeurig met PageUp of PageDown.",
@@ -232,7 +230,7 @@ const nlNL = {
 		lineReader: {
 			name: "Leeshulp",
 			description: "Leesvenster over de tekst",
-			buttonA11y: "Leeshulp - Leesvenster",
+			buttonA11y: "Leeshulp, leesvenster",
 			tooltip: "Leeshulp",
 			roleA11y: "Verplaatsbaar en verstelbaar leesvenster",
 			close: "Leeshulp sluiten",
@@ -252,20 +250,20 @@ const nlNL = {
 		answerEliminator: {
 			name: "Antwoorden wegstrepen",
 			description: "Antwoordopties doorstrepen",
-			buttonA11y: "Antwoorden wegstrepen - Antwoordopties doorstrepen",
+			buttonA11y: "Doorstrepen, antwoordopties wegstrepen",
 			tooltip: "Doorstrepen",
 		},
 		highlighter: {
 			name: "Markeerstift",
 			description: "Tekst markeren en van aantekeningen voorzien",
-			buttonA11y: "Markeerstift - Tekst markeren",
+			buttonA11y: "Tekst markeren",
 			tooltip: "Markeren",
 		},
 		annotationToolbar: {
 			name: "Aantekeningen",
 			description: "Tekst markeren en van aantekeningen voorzien",
-			buttonA11y: "Werkbalk voor aantekeningen - Tekst markeren",
-			tooltip: "Markeren",
+			buttonA11y: "Aantekenen, tekst markeren en bewerken",
+			tooltip: "Aantekenen",
 			toolbarA11y: "Werkbalk voor aantekeningen",
 			underline: "Onderstrepen",
 			underlineA11y: "Geselecteerde tekst onderstrepen",
@@ -283,7 +281,7 @@ const nlNL = {
 		theme: {
 			name: "Thema",
 			description: "Toegankelijke thema's en contrast",
-			buttonA11y: "Thema - Kleuren en contrast aanpassen",
+			buttonA11y: "Thema, kleuren en contrast aanpassen",
 			tooltip: "Thema",
 			selectorA11y: "Themakiezer",
 			hint: "Kies een thema dat prettiger leest en de ogen minder belast.",

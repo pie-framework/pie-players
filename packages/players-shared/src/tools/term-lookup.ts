@@ -143,7 +143,10 @@ export function createEndpointTermLookup<TItem>(args: {
 	const doFetch = args.fetchImpl ?? globalThis.fetch;
 	return async (request, signal) => {
 		if (typeof doFetch !== "function") {
-			return { status: "error", reason: "No fetch implementation is available." };
+			return {
+				status: "error",
+				reason: "No fetch implementation is available.",
+			};
 		}
 		let headers: Record<string, string> = {
 			"content-type": "application/json",
@@ -223,6 +226,8 @@ export class TermLookupSession<TItem> {
 	#inFlight: AbortController | null = null;
 	/** The term the last lookup ran for, so a repeat of it is not re-issued. */
 	#searchedFor = "";
+	/** Identity of the last handed-in term this session acted on. */
+	#handledRequest: string | null = null;
 
 	constructor(private readonly options: TermLookupSessionOptions<TItem>) {}
 
@@ -248,6 +253,42 @@ export class TermLookupSession<TItem> {
 		if (resolver && current.kind === "unconfigured") {
 			this.options.onState({ kind: "idle" });
 		}
+	}
+
+	/**
+	 * Run a term handed in from outside, at most once per request.
+	 *
+	 * Keyed on the request's identity, not on the term or on what was last searched.
+	 * Both of the alternatives are wrong in a way a learner meets: keying on the term
+	 * means selecting a word, typing another into the field, then selecting the first
+	 * word again does nothing, because the incoming term never changed; keying on
+	 * {@link searchedFor} means every reopen re-issues the stale selection and discards
+	 * the lookup the learner typed. An id that changes per request says what both are
+	 * guessing at.
+	 *
+	 * A request with no id falls back to the term, which is the best available identity
+	 * when the caller cannot mint one — a host assigning `term` directly, for instance.
+	 *
+	 * Returns whether it issued a lookup, so a caller can mirror the term into its own
+	 * field only when one ran.
+	 */
+	syncRequestedTerm(request: {
+		term: string;
+		requestId?: string | number;
+		visible: boolean;
+	}): boolean {
+		const incoming = normalizeTerm(request.term);
+		// Closed panels spend no request: a selection made while the panel is shut is not
+		// a question, and answering it would burn a lookup the learner never sees.
+		if (!request.visible || !incoming) return false;
+		const identity =
+			request.requestId === undefined
+				? `term:${incoming}`
+				: `id:${request.requestId}`;
+		if (identity === this.#handledRequest) return false;
+		this.#handledRequest = identity;
+		void this.run(incoming);
+		return true;
 	}
 
 	async run(raw: string): Promise<void> {
@@ -282,7 +323,11 @@ export class TermLookupSession<TItem> {
 		if (controller !== this.#inFlight) return;
 		this.#inFlight = null;
 		if (result.status === "ok") {
-			this.options.onState({ kind: "results", term: keyword, items: result.items });
+			this.options.onState({
+				kind: "results",
+				term: keyword,
+				items: result.items,
+			});
 			return;
 		}
 		if (result.status === "empty") {

@@ -779,11 +779,16 @@
 	 * here would re-derive it and re-render the tool — discarding the element whose
 	 * params were just set. The sync that reads them is triggered explicitly instead.
 	 *
-	 * Kept rather than consumed on read, so a re-render reapplies them. Reapplying a
-	 * term the panel already holds changes nothing; losing it mid-session would send
-	 * the learner back to the field.
+	 * Kept rather than consumed on read, so a re-render reapplies them; losing them
+	 * mid-session would discard whatever the request had already answered. Each request
+	 * is stamped with `toolRequestId` so reapplying is distinguishable from asking
+	 * again — a capability cannot tell those apart from the payload alone, and the two
+	 * need opposite answers.
 	 */
 	const requestedToolParams = new Map<string, Record<string, unknown>>();
+
+	/** Monotonic per toolbar; only its changing matters, never its value. */
+	let toolRequestSequence = 0;
 
 	let renderedTools = $derived.by((): ToolToolbarRenderResult[] => {
 		if (!isBrowser) return [];
@@ -1049,7 +1054,11 @@
 				if (!effectiveToolCoordinator) return;
 				if (!toolbarVisibleToolIds.includes(toolId)) return;
 				if (params && Object.keys(params).length > 0) {
-					requestedToolParams.set(toolId, { ...params });
+					toolRequestSequence += 1;
+					requestedToolParams.set(toolId, {
+						...params,
+						toolRequestId: toolRequestSequence
+					});
 				}
 				const instanceToolId = createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
 				if (!effectiveToolCoordinator.getToolState(instanceToolId)) {

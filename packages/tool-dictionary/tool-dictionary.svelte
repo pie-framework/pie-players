@@ -27,6 +27,7 @@
 	 * so a selection-only dictionary is unreachable for them. The field is the reason
 	 * this tool is keyboard accessible, not a convenience.
 	 */
+	import { untrack } from 'svelte';
 	import {
 		normalizeTerm,
 		termPanelStatusMessage,
@@ -44,6 +45,7 @@
 		visible = false,
 		toolId = 'dictionary',
 		term = '',
+		termRequestId = undefined,
 		endpoint = '',
 		language = '',
 		lookup = undefined,
@@ -53,6 +55,15 @@
 		visible?: boolean;
 		toolId?: string;
 		term?: string;
+		/**
+		 * Identity of the current `term`, changing once per time it was asked for.
+		 *
+		 * Optional: a host assigning `term` directly need not mint one, and the panel
+		 * falls back to the term itself. What it buys is a learner selecting the same
+		 * word twice — a second request for `cat` has a new id, so it re-runs, where an
+		 * unchanged `term` alone looks like a re-render.
+		 */
+		termRequestId?: string | number;
 		endpoint?: string;
 		language?: string;
 		/**
@@ -92,22 +103,28 @@
 		}
 	});
 
+	// `untrack` because the body both reads and writes `panel`: the write goes through
+	// `onState`, and a tracked read of what it writes is a self-invalidating effect.
 	$effect(() => {
-		session.syncConfigured(panel);
+		void resolver;
+		untrack(() => session.syncConfigured(panel));
 	});
 
 	/**
 	 * A term handed in from outside opens the panel already answered.
 	 *
-	 * Guarded on the session's last search so re-renders do not re-issue the same
-	 * lookup, and on `visible` so a selection made while the panel is closed does not
-	 * spend a request.
+	 * The session owns the once-per-request guard; all this effect decides is when to
+	 * mirror the term into the visible field, which is only when a lookup actually ran.
 	 */
 	$effect(() => {
 		const incoming = normalizeTerm(term);
-		if (!visible || !incoming || incoming === session.searchedFor) return;
-		query = incoming;
-		void session.run(incoming);
+		const requestId = termRequestId;
+		const isVisible = visible;
+		untrack(() => {
+			if (session.syncRequestedTerm({ term: incoming, requestId, visible: isVisible })) {
+				query = incoming;
+			}
+		});
 	});
 
 	// No initial focus taken here on purpose. The toolbar shell focuses its own header

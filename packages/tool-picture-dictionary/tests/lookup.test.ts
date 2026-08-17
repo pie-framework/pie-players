@@ -18,7 +18,9 @@ import {
 describe("deciding what is safe to put in src", () => {
 	test("https, protocol-relative and same-origin paths render", () => {
 		// Signed, short-lived URLs from object storage are the expected shape.
-		expect(isRenderablePictureUrl("https://example.test/a.png?sig=x")).toBe(true);
+		expect(isRenderablePictureUrl("https://example.test/a.png?sig=x")).toBe(
+			true,
+		);
 		expect(isRenderablePictureUrl("//example.test/a.png")).toBe(true);
 		expect(isRenderablePictureUrl("/api/pictures/a.png")).toBe(true);
 	});
@@ -40,6 +42,22 @@ describe("deciding what is safe to put in src", () => {
 
 	test("a bare relative path with no leading slash is refused", () => {
 		expect(isRenderablePictureUrl("pictures/a.png")).toBe(false);
+	});
+
+	// A leading slash is not proof of same-origin: a backslash is a path separator for
+	// special schemes and a tab is stripped outright, so both of these resolve to
+	// another host. They land on https either way, so nothing here defeats the
+	// mixed-content guard — but same-origin is what the function claims to check.
+	test("a path that resolves to another origin is refused", () => {
+		expect(isRenderablePictureUrl("/\\evil.example/a.png")).toBe(false);
+		expect(isRenderablePictureUrl("/\\\\evil.example/a.png")).toBe(false);
+		expect(isRenderablePictureUrl("/\t/evil.example/a.png")).toBe(false);
+	});
+
+	test("ordinary paths still render, including the awkward ones", () => {
+		expect(isRenderablePictureUrl("/api/pictures/a b.png")).toBe(true);
+		expect(isRenderablePictureUrl("/api/pictures/a.png?q=1&r=2")).toBe(true);
+		expect(isRenderablePictureUrl("/api/pictures/../a.png")).toBe(true);
 	});
 
 	test("empty is refused", () => {

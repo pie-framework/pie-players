@@ -54,6 +54,12 @@ export const DEFAULT_MAX_PICTURES = 4;
  * plain `http:` because it is mixed content on every https deployment — the browser
  * blocks it and the learner gets a broken image where the definition should be, which
  * is the outcome this guard exists to prevent.
+ *
+ * A leading `/` is checked by resolving rather than by prefix: `/\evil.example/x.png`
+ * looks like a path and resolves to `https://evil.example/x.png`, because a backslash
+ * is a path separator for special schemes and a tab is stripped outright. Both land on
+ * https, so neither defeats the mixed-content guard — but "same-origin" is what this
+ * function says it means, so it is what it checks.
  */
 export function isRenderablePictureUrl(value: string): boolean {
 	const trimmed = value.trim();
@@ -62,7 +68,25 @@ export function isRenderablePictureUrl(value: string): boolean {
 	// https; it is not a way to smuggle http in.
 	if (trimmed.startsWith("//")) return true;
 	if (/^https:\/\//iu.test(trimmed)) return true;
-	return trimmed.startsWith("/");
+	if (!trimmed.startsWith("/")) return false;
+	return isSameOriginPath(trimmed);
+}
+
+/**
+ * A base no real deployment can be served from, so a value that escapes the path
+ * position is visible as a change of host rather than blending into the real one.
+ *
+ * Resolved against this rather than the live document because the answer must not
+ * depend on which page the panel is embedded in, and the tests run without a DOM.
+ */
+const PATH_PROBE_BASE = "https://pie-picture-dictionary.invalid";
+
+function isSameOriginPath(value: string): boolean {
+	try {
+		return new URL(value, PATH_PROBE_BASE).origin === PATH_PROBE_BASE;
+	} catch {
+		return false;
+	}
 }
 
 function toPicture(value: unknown): PictureResult | null {

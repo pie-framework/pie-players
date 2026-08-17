@@ -73,6 +73,13 @@ cannot originate a text selection in non-editable content, because Chromium does
 not extend one with Shift+Arrow there unless caret browsing is on — an OS-level
 toggle absent on mobile. A selection-only dictionary is unreachable for them.
 
+The two entry points have to coexist within one open panel, which is what
+`termRequestId` is for. A requested term is reapplied on every sync, so the term alone
+cannot distinguish a re-render from a fresh ask: without an id, reopening the panel
+re-searches the term that opened it and discards whatever the learner typed since. A
+host setting `term` directly can leave the id unset and gets term-identity behaviour,
+which is enough to stop a re-render re-issuing.
+
 ## Properties
 
 | Name       | Attribute  | Type              | Notes                                        |
@@ -80,6 +87,7 @@ toggle absent on mobile. A selection-only dictionary is unreachable for them.
 | `visible`  | `visible`  | boolean           | Owned by the toolbar shell.                  |
 | `toolId`   | `tool-id`  | string            | Scoped tool instance id.                     |
 | `term`     | `term`     | string            | Pre-fills and searches when the panel is open. |
+| `termRequestId` | —     | string \| number  | Identity of the current `term`; optional. |
 | `endpoint` | `endpoint` | string            | Enables the built-in POST lookup.            |
 | `language` | `language` | string            | BCP-47 tag sent with the request.            |
 | `lookup`   | —          | function          | Host resolver; takes precedence over `endpoint`. |

@@ -81,30 +81,39 @@ describe("deciding what is worth sending", () => {
 describe("reading a host payload", () => {
 	test("the first key that holds an array wins, so a tool can accept more than one spelling", () => {
 		for (const key of ["pictures", "images"]) {
-			const result = readTermLookupPayload({ [key]: ["apple"] }, {
-				serviceLabel: "picture dictionary",
-				keys: ["pictures", "images"],
-				toItem: toWord,
-			});
+			const result = readTermLookupPayload(
+				{ [key]: ["apple"] },
+				{
+					serviceLabel: "picture dictionary",
+					keys: ["pictures", "images"],
+					toItem: toWord,
+				},
+			);
 			expect(result).toEqual({ status: "ok", items: ["apple"] });
 		}
 	});
 
 	test("an item the reader rejects is dropped, not fatal to the rest", () => {
-		const result = readTermLookupPayload({ entries: ["  ", "reason"] }, {
-			serviceLabel: "dictionary",
-			keys: ["entries"],
-			toItem: toWord,
-		});
+		const result = readTermLookupPayload(
+			{ entries: ["  ", "reason"] },
+			{
+				serviceLabel: "dictionary",
+				keys: ["entries"],
+				toItem: toWord,
+			},
+		);
 		expect(result).toEqual({ status: "ok", items: ["reason"] });
 	});
 
 	test("no usable items is empty, which is not an error", () => {
-		const result = readTermLookupPayload({ entries: ["  "] }, {
-			serviceLabel: "dictionary",
-			keys: ["entries"],
-			toItem: toWord,
-		});
+		const result = readTermLookupPayload(
+			{ entries: ["  "] },
+			{
+				serviceLabel: "dictionary",
+				keys: ["entries"],
+				toItem: toWord,
+			},
+		);
 		expect(result).toEqual({ status: "empty" });
 	});
 
@@ -133,9 +142,9 @@ describe("reading a host payload", () => {
 			status: "error",
 			reason: "The dictionary response was unreadable.",
 		});
-		expect(readTermLookupPayload({ entries: "not-an-array" }, args).status).toBe(
-			"error",
-		);
+		expect(
+			readTermLookupPayload({ entries: "not-an-array" }, args).status,
+		).toBe("error");
 	});
 });
 
@@ -319,7 +328,11 @@ describe("the lookup session", () => {
 		await session.run("the process by which plants convert light into sugar");
 		expect(calls).toBe(0);
 		expect(states).toEqual([
-			{ kind: "error", term: "the process by which plants convert light into sugar", reason: NOT_A_TERM_REASON },
+			{
+				kind: "error",
+				term: "the process by which plants convert light into sugar",
+				reason: NOT_A_TERM_REASON,
+			},
 		]);
 	});
 
@@ -407,15 +420,138 @@ describe("the lookup session", () => {
 	test("a resolver arriving mid-lookup does not discard results the learner is reading", () => {
 		// Only idle and unconfigured swap. A host setting `endpoint` again while entries
 		// are on screen must not wipe them.
-		const { session, states } = harness(() => makeResolver({ status: "empty" }));
+		const { session, states } = harness(() =>
+			makeResolver({ status: "empty" }),
+		);
 		session.syncConfigured({ kind: "results", term: "reason", items: ["a"] });
 		expect(states).toEqual([]);
 	});
 });
 
+// A handed-in term arrives through a params seam that is reapplied on every sync, so
+// the panel cannot tell a re-render from a fresh ask by looking at the term.
+describe("a term handed in from outside", () => {
+	function harness() {
+		const keywords: string[] = [];
+		const session = new TermLookupSession<string>({
+			resolver:
+				() =>
+				async (request): Promise<TermLookupResult<string>> => {
+					keywords.push(request.keyword);
+					return { status: "ok", items: [request.keyword] };
+				},
+			max: 6,
+			onState: () => {},
+		});
+		return { session, keywords };
+	}
+
+	test("runs once for a request, however many times it is reapplied", async () => {
+		const { session, keywords } = harness();
+		expect(
+			session.syncRequestedTerm({
+				term: "reason",
+				requestId: 1,
+				visible: true,
+			}),
+		).toBe(true);
+		expect(
+			session.syncRequestedTerm({
+				term: "reason",
+				requestId: 1,
+				visible: true,
+			}),
+		).toBe(false);
+		await Promise.resolve();
+		expect(keywords).toEqual(["reason"]);
+	});
+
+	// The defect this replaces: keyed on the last search, every reopen re-issued the
+	// stale selection and threw away what the learner had typed since.
+	test("reopening the panel does not re-issue the request that opened it", async () => {
+		const { session, keywords } = harness();
+		session.syncRequestedTerm({ term: "reason", requestId: 1, visible: true });
+		await Promise.resolve();
+		await session.run("chloroplast");
+		session.syncRequestedTerm({ term: "reason", requestId: 1, visible: false });
+		session.syncRequestedTerm({ term: "reason", requestId: 1, visible: true });
+		await Promise.resolve();
+
+		expect(keywords).toEqual(["reason", "chloroplast"]);
+	});
+
+	// The other half, and why the term alone cannot be the key: a learner who looked
+	// up one word by hand and then selects an earlier word again is asking for it.
+	test("the same word asked for again runs again", async () => {
+		const { session, keywords } = harness();
+		session.syncRequestedTerm({ term: "reason", requestId: 1, visible: true });
+		await Promise.resolve();
+		await session.run("chloroplast");
+		expect(
+			session.syncRequestedTerm({
+				term: "reason",
+				requestId: 2,
+				visible: true,
+			}),
+		).toBe(true);
+		await Promise.resolve();
+
+		expect(keywords).toEqual(["reason", "chloroplast", "reason"]);
+	});
+
+	test("a closed panel spends no request", async () => {
+		const { session, keywords } = harness();
+		expect(
+			session.syncRequestedTerm({
+				term: "reason",
+				requestId: 1,
+				visible: false,
+			}),
+		).toBe(false);
+		await Promise.resolve();
+		expect(keywords).toEqual([]);
+	});
+
+	test("an empty term is not a request", () => {
+		const { session, keywords } = harness();
+		expect(
+			session.syncRequestedTerm({ term: "   ", requestId: 1, visible: true }),
+		).toBe(false);
+		expect(keywords).toEqual([]);
+	});
+
+	// A host assigning `term` with no id gets the term as the identity — the best
+	// available, and enough to keep a re-render from re-issuing.
+	test("with no id the term is the identity", async () => {
+		const { session, keywords } = harness();
+		expect(session.syncRequestedTerm({ term: "reason", visible: true })).toBe(
+			true,
+		);
+		expect(session.syncRequestedTerm({ term: "reason", visible: true })).toBe(
+			false,
+		);
+		expect(
+			session.syncRequestedTerm({ term: "chloroplast", visible: true }),
+		).toBe(true);
+		await Promise.resolve();
+		expect(keywords).toEqual(["reason", "chloroplast"]);
+	});
+
+	test("the term is normalized before it is compared or sent", async () => {
+		const { session, keywords } = harness();
+		session.syncRequestedTerm({ term: "  reason.  ", visible: true });
+		expect(session.syncRequestedTerm({ term: "reason", visible: true })).toBe(
+			false,
+		);
+		await Promise.resolve();
+		expect(keywords).toEqual(["reason"]);
+	});
+});
+
 describe("the panel status message", () => {
 	const labels = {
-		countLabel: (count: number) => `${count} ${count === 1 ? "entry" : "entries"}`,
+		countLabel: (count: number) =>
+			`${count} ${count === 1 ? "entry" : "entries"}`,
 		emptyLabel: (term: string) => `No dictionary entry for ${term}`,
 	};
 
@@ -438,9 +574,9 @@ describe("the panel status message", () => {
 	});
 
 	test("empty announces, because nothing else tells the learner the request finished", () => {
-		expect(termPanelStatusMessage({ kind: "empty", term: "xyzzy" }, labels)).toBe(
-			"No dictionary entry for xyzzy",
-		);
+		expect(
+			termPanelStatusMessage({ kind: "empty", term: "xyzzy" }, labels),
+		).toBe("No dictionary entry for xyzzy");
 	});
 
 	test("states already rendered as visible text stay silent, so nothing is announced twice", () => {

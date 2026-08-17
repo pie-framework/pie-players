@@ -36,6 +36,7 @@ type DictionaryPanelElement = HTMLElement & {
 	visible?: boolean;
 	toolId?: string;
 	term?: string;
+	termRequestId?: string | number;
 	endpoint?: string;
 	language?: string;
 	lookup?: unknown;
@@ -69,9 +70,17 @@ function applyLookupParams(
 		element.credentials = params.credentials;
 	// The selection door: a gateway acting on the learner's selection requests this
 	// tool with the words in `term`, and the toolbar layers that over the host's own
-	// params. The panel guards its own re-lookup, so reapplying an unchanged term on
-	// a later sync costs nothing.
+	// params. The toolbar stamps every request with a neutral `toolRequestId` — core
+	// names no tool's concepts — and this layer, which knows both, hands it to the panel
+	// as the identity of its term. That is what makes reapplying an unchanged term on a
+	// later sync free while a second request for the same word still re-runs.
 	if (typeof params.term === "string" && params.term) element.term = params.term;
+	if (
+		typeof params.toolRequestId === "string" ||
+		typeof params.toolRequestId === "number"
+	) {
+		element.termRequestId = params.toolRequestId;
+	}
 	// The reading language comes from the toolbar's own scope unless the host names one
 	// for this tool, so a service returning localised entries gets the right tag without
 	// the host having to repeat itself.

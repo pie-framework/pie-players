@@ -217,6 +217,51 @@ test.describe("dictionary selection door", () => {
 	});
 });
 
+/**
+ * A requested term reaches the panel through the params seam, which is reapplied on
+ * every sync — so the panel cannot tell a re-render from a fresh ask by looking at the
+ * term. Each request carries an identity instead. Keyed on the last search rather than
+ * on that identity, reopening the panel re-issues the selection that opened it and
+ * discards the lookup the learner typed, which is what this covers; the session's own
+ * tests in `players-shared` cover the identity rule directly.
+ */
+test.describe("asking twice", () => {
+	async function openFromSelection(page: Page, word: string) {
+		await selectWord(page, word);
+		await expect(strip(page)).toBeVisible();
+		await selectionAction(page, "dictionary").click();
+	}
+
+	function headword(page: Page): Locator {
+		return dictionaryPanel(page).locator(".pie-tool-dictionary__word");
+	}
+
+	test("a typed lookup survives closing and reopening the panel", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await openFromSelection(page, "Photosynthesis");
+		await expect(headword(page)).toContainText("photosynthesis");
+
+		const panel = dictionaryPanel(page);
+		await panel.locator("input").fill("evidence");
+		await panel.locator("input").press("Enter");
+		await expect(headword(page)).toContainText("evidence");
+
+		const toggle = page
+			.locator('.item-toolbar__button[aria-label^="Dictionary"]')
+			.first();
+		await toggle.click();
+		await expect(panel).toBeHidden();
+		await toggle.click();
+		await expect(panel).toBeVisible();
+
+		// Keyed on the last search instead, reopening re-issues the selection that
+		// opened the panel and throws away the word the learner went on to type.
+		await expect(headword(page)).toContainText("evidence");
+	});
+});
+
 test.describe("selection door where no dictionary is granted", () => {
 	// The strip must not offer a lookup no toolbar can service. This demo carries the
 	// annotation strip and no dictionary, which is the ordinary case for most sections.

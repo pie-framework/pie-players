@@ -46,7 +46,10 @@ export interface ToolOpenRequest {
 	 *
 	 * At `"item"` and `"passage"` a section holds one target per card, and the first
 	 * registered one that hosts the tool claims the request. A requester that needs a
-	 * particular card's instance cannot express that here.
+	 * particular card's instance cannot express that here, and the gateway PIE ships
+	 * does not need to: the strip is a section-scoped singleton acting on passage
+	 * selections, so the selection belongs to no card, and what opens is a floating
+	 * shell rather than anything rendered inside one.
 	 */
 	level?: ToolPlacementLevel;
 }

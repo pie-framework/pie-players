@@ -49,8 +49,12 @@ Signed, short-lived URLs are expected and fine.
 
 A picture whose URL is not `https:`, protocol-relative, or a same-origin path is
 dropped — host data still reaches an attribute the browser acts on, and a symbol
-service has no reason to return `javascript:` or `data:`. If every picture is
-dropped the panel reports "no picture" rather than rendering a broken grid.
+service has no reason to return `javascript:` or `data:`. Plain `http:` is dropped
+because it is mixed content on every https deployment, which is a broken image where
+the definition should be. A leading `/` is checked by resolving rather than by prefix:
+`/\evil.example/x.png` looks like a path and resolves to another host, because a
+backslash is a path separator for special schemes. If every picture is dropped the
+panel reports "no picture" rather than rendering a broken grid.
 
 Zero pictures is reported as "no picture", distinct from a service failure.
 
@@ -77,6 +81,7 @@ unreachable for exactly the learners most likely to need it.
 | `visible`  | `visible`  | boolean  | Owned by the toolbar shell.                    |
 | `toolId`   | `tool-id`  | string   | Scoped tool instance id.                       |
 | `term`     | `term`     | string   | Pre-fills and searches when the panel is open. |
+| `termRequestId` | —     | string \| number | Identity of the current `term`; optional. |
 | `endpoint` | `endpoint` | string   | Enables the built-in POST lookup.              |
 | `language` | `language` | string   | BCP-47 tag sent with the request.              |
 | `lookup`   | —          | function | Host resolver; takes precedence over `endpoint`. |

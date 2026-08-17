@@ -43,6 +43,8 @@ const CAPABILITY_IDS = [
 	"lineReader",
 	"periodicTable",
 	"protractor",
+	"dictionary",
+	"pictureDictionary",
 	"calculator",
 	"textToSpeech",
 	"graph",

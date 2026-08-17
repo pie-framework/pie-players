@@ -17,7 +17,7 @@ async function openPnpToolsEditor(page: Page): Promise<Locator> {
 }
 
 function graphButton(page: Page): Locator {
-	return page.getByRole("button", { name: "Graph - Graphing calculator" });
+	return page.getByRole("button", { name: "Graph, graphing calculator" });
 }
 
 function firstItem(page: Page): Locator {
@@ -38,7 +38,7 @@ test.describe("PNP tools debugger", () => {
 		await expect(graphButton(page)).toBeVisible();
 
 		const calculatorButton = firstItem(page).getByRole("button", {
-			name: /open .* calculator/i,
+			name: /^(basic |scientific )?calculator$/i,
 		});
 		await expect(calculatorButton).toBeVisible();
 		await panel.getByTestId("pnp-tool-toggle-calculator-item").click();

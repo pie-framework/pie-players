@@ -116,13 +116,6 @@
 			: 'tools.ruler.centimetersInSentence';
 	}
 
-	/** The unit as the accessible name and the image alt spell it. */
-	function unitAbbrevKey(current: string) {
-		return current === 'inches'
-			? 'tools.ruler.inchesAbbrev'
-			: 'tools.ruler.centimetersAbbrev';
-	}
-
 	// Initialize Moveable.js (matching production configuration)
 	function initMoveable() {
 		if (!containerEl || !isBrowser) {
@@ -349,7 +342,7 @@
 		lang={interfaceI18n.getLocale()}
 		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 		aria-label={interfaceI18n.t('tools.ruler.applicationA11y', {
-			unit: interfaceI18n.t(unitAbbrevKey(unit)),
+			unit: interfaceI18n.t(unitNameInSentenceKey(unit)),
 		})}
 		aria-roledescription={interfaceI18n.t('tools.ruler.toolA11y')}
 	>
@@ -358,7 +351,7 @@
 				class="pie-tool-ruler__image"
 				src={currentRuler}
 				alt={interfaceI18n.t('tools.ruler.imageAlt', {
-					unit: interfaceI18n.t(unitAbbrevKey(unit)),
+					unit: interfaceI18n.t(unitNameInSentenceKey(unit)),
 				})}
 				draggable="false"
 			/>

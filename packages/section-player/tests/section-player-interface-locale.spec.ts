@@ -86,12 +86,12 @@ test.describe("section player interface locale", () => {
 
 		await expect(
 			page.getByRole("button", {
-				name: "Thema - Kleuren en contrast aanpassen",
+				name: "Thema, kleuren en contrast aanpassen",
 			}),
 		).toBeVisible();
 		// And English is gone, not merely joined.
 		await expect(
-			page.getByRole("button", { name: "Theme - Change colors and contrast" }),
+			page.getByRole("button", { name: "Theme, change colors and contrast" }),
 		).toHaveCount(0);
 
 		expect(pageErrors).toEqual([]);

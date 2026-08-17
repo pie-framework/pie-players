@@ -139,7 +139,10 @@ describe("calculator tool registration", () => {
 			| undefined;
 
 		expect(result.button?.label).toBe("Basic Calculator");
-		expect(result.button?.ariaLabel).toBe("Open basic calculator");
+		// The accessible name is the variant's own name and does not change with the
+		// open/closed state; the toolbar exposes that through `aria-pressed`.
+		expect(result.button?.ariaLabel).toBe("Basic Calculator");
+		expect(result.button?.tooltip).toBe("Basic Calculator");
 		expect(element?.calculatorType).toBe("basic");
 		expect(element?.availableTypes).toEqual(["basic"]);
 		expect(element?.getAttribute("calculator-type")).toBe("basic");

@@ -18,6 +18,7 @@
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
 			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
 			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
+			autoplayAudioEnabled: { attribute: "autoplay-audio-enabled", type: "Boolean" },
 			// Both reflect: PIE elements read these off the nearest player host and
 			// re-render on a MutationObserver watching these attributes, so a prop
 			// that never reaches the attribute is honoured at first paint and inert
@@ -83,6 +84,7 @@
 		SoundHandler,
 	} from "./types.js";
 	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
+	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
 	import {
 		getDeliveryAutosaveOptions,
 		getDeliveryBackend,
@@ -175,6 +177,7 @@
 		externalStyleUrls = "",
 		renderStimulus = true,
 		allowedResize = false,
+		autoplayAudioEnabled = undefined as boolean | undefined,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		includeSrHeading = true,
 		bundleHost = "",
@@ -750,7 +753,11 @@
 	}
 
 	function prepareConfigEntity(configEntity: ConfigEntity): ConfigEntity {
-		const normalizedConfig = normalizePreloadedElementVersions(configEntity);
+		const versionNormalizedConfig = normalizePreloadedElementVersions(configEntity);
+		const normalizedConfig = applyAutoplayAudioOverride(
+			versionNormalizedConfig,
+			autoplayAudioEnabled,
+		);
 		return makeUniqueTags({ config: normalizedConfig }).config;
 	}
 
@@ -1126,6 +1133,7 @@
 		void loaderOptions;
 		void disableBundler;
 		void allowedResize;
+		void autoplayAudioEnabled;
 		void bundleEndpoints;
 		void reFetchBundle;
 		queueMicrotask(() => {

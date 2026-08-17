@@ -14,6 +14,14 @@ export type FrameworkErrorKind =
 	| "section-controller-dispose"
 	| "tool-surface"
 	/**
+	 * A timed-media section could not deliver a policy as authored: a media time
+	 * source missing `canPause` / `canRestrictSeeking` (recoverable — cues still
+	 * fire and state is still recorded, only enforcement is lost), or authored
+	 * `timedMedia` that failed validation (not recoverable — the section delivers
+	 * as an ordinary section instead).
+	 */
+	| "timed-media"
+	/**
 	 * An interface-locale catalog failed to load. Recoverable by construction: every
 	 * key still resolves through the English fallback chain, so the player renders
 	 * — in the wrong language, which a host wants to know about.

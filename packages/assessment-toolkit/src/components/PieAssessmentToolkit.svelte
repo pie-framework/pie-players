@@ -99,6 +99,7 @@
 	import {
 		formatFrameworkErrorForConsole,
 		frameworkErrorFromUnknown,
+		toFrameworkErrorModel,
 		type FrameworkErrorModel,
 	} from "../services/framework-error.js";
 	import { FrameworkErrorBus } from "../services/framework-error-bus.js";
@@ -113,12 +114,14 @@
 		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 		PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
+		PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
 		type InternalContentLoadedDetail,
 		type InternalFormativeActionDetail,
 		type InternalItemSessionChangedDetail,
 		type InternalItemPlayerErrorDetail,
+		type InternalMediaTimeSourceDetail,
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
@@ -149,7 +152,8 @@
 		| typeof PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
 		| typeof PIE_INTERNAL_CONTENT_LOADED_EVENT
 		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT
-		| typeof PIE_INTERNAL_FORMATIVE_ACTION_EVENT;
+		| typeof PIE_INTERNAL_FORMATIVE_ACTION_EVENT
+		| typeof PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT;
 	type HostRuntimeEventHandler = (event: Event) => void;
 
 	interface CompositionSnapshot {
@@ -158,6 +162,7 @@
 		renderableSignature: string;
 		itemSessionSignature: string;
 		formativeSignature: string;
+		timedMediaSignature: string;
 	}
 
 	interface CompositionRenderableSnapshot {
@@ -469,6 +474,54 @@ const DEFAULT_ENV = {
 	}
 
 	/**
+	 * Surface the two timed-media conditions a host has to be able to see.
+	 *
+	 * A capability gap is recoverable: cues still fire and state is still recorded,
+	 * so readiness is untouched and the section delivers — it is reported because a
+	 * seek lock that does not lock reads to an author as one that does. Malformed
+	 * authored data is not recoverable: the section delivers as an ordinary section,
+	 * and the author has to learn that the cue timeline is inert.
+	 *
+	 * Every other controller event reaches hosts through the composition republish
+	 * and the coordinator's own subscriptions; nothing else is intercepted here.
+	 */
+	function reportTimedMediaDiagnostic(event: { type?: string } | null): void {
+		if (event?.type === "timed-media-policy-degraded") {
+			const degradations =
+				(event as { degradations?: Array<{ message?: string }> }).degradations || [];
+			frameworkErrorBus.reportFrameworkError(
+				toFrameworkErrorModel({
+					kind: "timed-media",
+					severity: "warning",
+					source: "pie-assessment-toolkit",
+					message:
+						"A timed-media playback policy degraded to advisory: the media time source does not report the capability it needs.",
+					details: degradations
+						.map((entry) => entry?.message)
+						.filter((message): message is string => typeof message === "string"),
+					recoverable: true,
+				}),
+			);
+			return;
+		}
+		if (event?.type !== "timed-media-invalid") return;
+		const errors = (event as { errors?: Array<{ message?: string }> }).errors || [];
+		frameworkErrorBus.reportFrameworkError(
+			toFrameworkErrorModel({
+				kind: "timed-media",
+				severity: "error",
+				source: "pie-assessment-toolkit",
+				message:
+					'This section declares sectionType: "timed-media" but its timedMedia data is not deliverable; the section renders without cue behavior.',
+				details: errors
+					.map((entry) => entry?.message)
+					.filter((message): message is string => typeof message === "string"),
+				recoverable: false,
+			}),
+		);
+	}
+
+	/**
 	 * Whether this CE should surface the bootstrap banner for `kind`.
 	 *
 	 * The banner is the visible "we could not start the toolkit" surface
@@ -621,6 +674,46 @@ const DEFAULT_ENV = {
 			.join("|");
 	}
 
+	/**
+	 * Timed-media cue state, folded into the revision key for the same reason
+	 * formative state had to be: a cue firing changes neither the renderables nor
+	 * the item sessions, so without this the key is identical before and after and
+	 * the emit is coalesced away — the controller would hold correct cue state while
+	 * the pane kept every gated item hidden.
+	 *
+	 * Media position is deliberately absent. It changes about four times a second
+	 * and nothing renders it, so including it would republish the composition on a
+	 * timer.
+	 */
+	function toTimedMediaSignature(model: UnknownRecord): string {
+		const projection = asRecord(model.timedMedia);
+		if (Object.keys(projection).length === 0) return "";
+		const gate = asRecord(projection.gate);
+		const enforcement = asRecord(projection.enforcement);
+		const revealed = Array.isArray(projection.revealedItemIds)
+			? projection.revealedItemIds.join(",")
+			: "";
+		const completed = Array.isArray(projection.completedCueIdentifiers)
+			? projection.completedCueIdentifiers.join(",")
+			: "";
+		const visited = Array.isArray(projection.visitedCueIdentifiers)
+			? projection.visitedCueIdentifiers.join(",")
+			: "";
+		return [
+			visited,
+			completed,
+			revealed,
+			String(projection.activeCueIdentifier ?? ""),
+			String(gate.cueIdentifier ?? ""),
+			gate.holding === true ? "1" : "0",
+			String(enforcement.pause ?? ""),
+			String(enforcement.seek ?? ""),
+			projection.mediaAttached === true ? "1" : "0",
+			projection.mediaCompleted === true ? "1" : "0",
+			projection.aggregateComplete === true ? "1" : "0",
+		].join(":");
+	}
+
 	function toCompositionSnapshot(model: unknown): CompositionSnapshot {
 		const typed = asRecord(model);
 		const renderableSignature = toRenderableSnapshots(typed)
@@ -635,12 +728,13 @@ const DEFAULT_ENV = {
 			renderableSignature,
 			itemSessionSignature,
 			formativeSignature: toFormativeSignature(typed),
+			timedMediaSignature: toTimedMediaSignature(typed),
 		};
 	}
 
 	function getCompositionRevisionKey(model: unknown): string {
 		const snapshot = toCompositionSnapshot(model);
-		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}|${snapshot.formativeSignature}`;
+		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}|${snapshot.formativeSignature}|${snapshot.timedMediaSignature}`;
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
@@ -1381,6 +1475,10 @@ const DEFAULT_ENV = {
 					if (cancelled) return;
 					emitCompositionChanged(nextComposition);
 				},
+				onControllerEvent: (event) => {
+					if (cancelled) return;
+					reportTimedMediaDiagnostic(event);
+				},
 			})
 			.then(() => {
 				if (cancelled) return;
@@ -1537,6 +1635,24 @@ const DEFAULT_ENV = {
 						itemId: detail.canonicalItemId || detail.itemId,
 						action: detail.action,
 						outcomes: detail.outcomes,
+					});
+				},
+			},
+			{
+				// The one route media reaches the section by. The stimulus card sends a
+				// native `<video>` adapter; a host wrapping its own player sends its own
+				// port through the same event.
+				name: PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<InternalMediaTimeSourceDetail>(event);
+					if (!detail?.renderableId) return;
+					if (detail.action !== "attach" && detail.action !== "detach") return;
+					sectionEngine.handleMediaTimeSource({
+						renderableId: detail.renderableId,
+						action: detail.action,
+						source: detail.source,
+						origin: detail.origin,
 					});
 				},
 			},

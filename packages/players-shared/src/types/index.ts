@@ -11,8 +11,10 @@ import type {
 	FormativeDeliveryPolicy,
 	FormativeItemPolicy,
 } from "../formative/types.js";
+import type { TimedMediaSectionData } from "../timed-media/types.js";
 
 export type { FormativeDeliveryPolicy, FormativeItemPolicy };
+export type { TimedMediaSectionData };
 
 export interface BaseEntity {
 	id?: string;
@@ -361,6 +363,27 @@ export interface AssessmentSection
 	 * `docs/prds/formative-delivery-contract.md`.
 	 */
 	formative?: FormativeDeliveryPolicy;
+
+	/**
+	 * The section flavor. Absent for every section authored so far, and the only
+	 * value is `"timed-media"`, which pairs with `timedMedia` below.
+	 *
+	 * A discriminator on data, not a renderer selector: the host still picks the
+	 * layout tag, as every integration that renders a section already does. See
+	 * `docs/prds/timed-media-section-contract.md#delivery-attachment`.
+	 */
+	sectionType?: "timed-media";
+
+	/**
+	 * Cue timeline and playback policy for a timed-media section. Carries no media
+	 * payload — `stimulusRef` names the `class: "stimulus"` rubric block whose
+	 * passage supplies the time source, so the media keeps a Catalog Owner and its
+	 * captions, transcript and signed alternates resolve through the
+	 * accessibility-catalog rail.
+	 *
+	 * Ignored unless `sectionType` is `"timed-media"`.
+	 */
+	timedMedia?: TimedMediaSectionData;
 
 	sort?: string;
 }

@@ -293,6 +293,7 @@
 	<div class="pie-section-player-kernel-host-content">
 		{#if passages.length > 0}
 			<pie-section-player-passages-pane
+				compositionModel={compositionModel}
 				{passages}
 				elementsLoaded={readinessDetail.allLoadingComplete}
 				{resolvedPlayerEnv}

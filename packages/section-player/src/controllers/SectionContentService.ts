@@ -70,12 +70,19 @@ export class SectionContentService {
 				instructions: [],
 				renderables: [],
 				adapterItemRefs: [],
+				stimulusRenderableIdsByRef: {},
 			};
 		}
 
 		const passageMap = new Map<string, PassageEntity>();
 		const usedPassageIds = new Set<string>();
 		const usedItemIds = new Set<string>();
+		// Authored `timedMedia.stimulusRef` names a rubric block or a passage;
+		// renderables are keyed by the normalized passage id this service assigns.
+		// Recorded here rather than re-derived, because deriving that mapping twice
+		// is two implementations of one mapping — the same reason the item ref's
+		// formative policy rides along on `adapterItemRefs`.
+		const stimulusRenderableIdsByRef: Record<string, string> = {};
 		const rubricBlocks = (section.rubricBlocks || []).filter((rb) =>
 			rb.view.includes(view),
 		);
@@ -92,6 +99,18 @@ export class SectionContentService {
 						`passage-${rubricIndex + 1}`,
 					);
 					passageMap.set(normalizedPassage.id, normalizedPassage);
+					// Both spellings resolve: the rubric block's identifier, which is
+					// what the contract's examples reference, and the authored passage
+					// id, which is what a section reusing a shared passage has to hand.
+					if (rb.identifier) {
+						stimulusRenderableIdsByRef[rb.identifier] = normalizedPassage.id;
+					}
+					const authoredPassageId =
+						typeof rb.passage.id === "string" ? rb.passage.id.trim() : "";
+					if (authoredPassageId) {
+						stimulusRenderableIdsByRef[authoredPassageId] = normalizedPassage.id;
+					}
+					stimulusRenderableIdsByRef[normalizedPassage.id] = normalizedPassage.id;
 				}
 			}
 		}
@@ -193,6 +212,7 @@ export class SectionContentService {
 			instructions,
 			renderables,
 			adapterItemRefs,
+			stimulusRenderableIdsByRef,
 		};
 	}
 }

@@ -69,6 +69,7 @@
 		{#if layoutModel.passages.length > 0 && layoutModel.paneElementsLoaded}
 			<section class="pie-section-player-passages-section" aria-label={interfaceI18n.t("player.passagesRegionA11y")}>
 				<pie-section-player-passages-pane
+					compositionModel={layoutModel.compositionModel}
 					passages={layoutModel.passages}
 					elementsLoaded={layoutModel.paneElementsLoaded}
 					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}

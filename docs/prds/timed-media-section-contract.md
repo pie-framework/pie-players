@@ -1,6 +1,6 @@
 # Timed Media Section Contract
 
-Status: Ready, 2026-08-15
+Status: Implemented, 2026-08-17. Was Ready, 2026-08-15.
 
 Owner: PIE Players maintainers
 
@@ -312,11 +312,124 @@ Playwright-backed tests must run outside the sandbox.
 - Documentation updates: section-player docs, assessment-player renderer selection docs, timed-media demos, `pie-elements-ng` `video-stimulus` PRD, and `pie-qti` adapter PRDs.
 - Release risk: high, because media playback, focus, completion, and score aggregation are user-visible and cross-package.
 
+## Implementation Record, 2026-08-17
+
+Built on branch `feat/timed-media-section-contract`. Every choice below was an
+implementation-time question this contract left open or did not foresee; each is
+recorded with the reason, because the reasons are what a later revision needs.
+
+**Cue and playback policy live in a pure module, not in the policy engine and not
+in a layout.** `@pie-players/pie-players-shared/timed-media` owns validation and the
+cue reduction; `SectionController` owns the live state and the port;
+`resolveTimedMediaProjection` is what layouts read. `ToolPolicyEngine` was the
+leading candidate in [Package And Export Ownership](#package-and-export-ownership)
+and was not taken: its decision domain is tool eligibility — a placement level and
+scope in, `visibleTools` out, several `PolicySource`s merged with provenance —
+while a cue decision is a reduction over media time and delivery state with exactly
+one authored source, so provenance buys nothing and the capability-neutral core
+gains a second unrelated domain. A layout was rejected because every layout hosting
+timed media would re-implement the reduction, untestably. Formative delivery had
+already answered the same question the same way, which is the precedent that
+settles it rather than a fresh argument.
+
+**Cue state joins the composition revision key; media position does not.** The
+first half is the failure formative delivery documented and this work hit anyway: a
+cue firing changes neither the renderables nor the item sessions, so the emit is
+coalesced away and the controller holds cue state no card sees. The second half is
+new: `timeupdate` fires about four times a second and nothing renders the clock, so
+folding position in would re-diff every mounted item player on a timer. Position is
+recorded in the session slice and surfaces only through the cue transitions it
+causes.
+
+**A cue-gated card is mounted and hidden, not mounted on the cue.** Mounting on
+activation would tear an item player down and rebuild it on every seek backwards,
+and it churns shell registration, the section's loading accounting and the preload
+warmup signature. The cost is that a pending item player lays out inside
+`display: none` until revealed, which is the cheaper failure.
+
+**`onUnknownCorrectness` is required on a correctness gate, not defaulted.** The
+contract said it must never default to treating `unknown` as incorrect; the
+implementation goes further and refuses to guess in either direction, because both
+readings are defensible and each silent choice is wrong somewhere — one traps a
+learner behind an item nothing can score, the other waves through the checkpoint the
+author wrote.
+
+**A correctness gate over a finite Try budget is a validation error.** Not
+foreseen by this contract. A gate on `correct` releases only while the learner still
+has a Try to spend, so over an item with `maxTries: 1` — the built-in default — the
+gate becomes unpassable the moment the budget runs out, and over an item that does
+not deliver formatively there is never a Try at all. Nothing the learner can do
+releases playback, and no host action does either, because a forced reveal is not a
+correct answer. Releasing on an exhausted budget was considered and rejected: it
+delivers the opposite of what the author wrote. So the section is refused with
+`gate-requires-unlimited-tries` naming the offending item refs.
+
+**A malformed `timedMedia` reports and delivers as an ordinary section.** The
+framework error is non-recoverable, so readiness latches error and the author cannot
+miss it, while the learner still gets the content with every item visible. The
+alternative — refusing to deliver — makes an authoring slip a total outage.
+
+**Playback is never auto-resumed when a gate releases.** The learner presses play.
+Resuming would start audio nobody asked for, on top of the announcement that the
+gate released, and it would fight both the reduced-motion posture and a learner
+still reading feedback.
+
+**Seeking is `seekTo(seconds)` on the port rather than a writable `currentTime`.**
+A writable property gives a source that cannot seek no way to say so, and
+`canRestrictSeeking` needs somewhere to live. This is the one place the port
+deliberately departs from the `HTMLMediaElement` shape, along with `capabilities`,
+which the element has no equivalent for.
+
+**A host-attached port outranks the stimulus card's native adapter, on attach and
+on detach.** Discovered in the browser: the card re-runs its discovery whenever its
+content re-renders, so without a precedence rule a host that wired a third-party
+player had it silently replaced by the native element mid-session — and the
+capabilities flipped back to `canPause: true` with it, which is exactly the
+"appears to enforce" failure this contract exists to prevent. The registration event
+carries an `origin`, and a `native-adapter` attach or detach is ignored while a
+host-owned source is live.
+
+**Enforcement of `allowSeekAhead: false` needs a persisted furthest position.**
+`maxPositionSeconds` joins the session slice sketch in [Contract
+Shape](#contract-shape). Deriving it would hand the learner the whole timeline back
+after a reload. A forward seek is clamped with a 0.5s tolerance, because
+`timeupdate` lags real playback by up to a quarter second and clamping at exactly the
+recorded value fights a learner nudging the scrubber where they already are.
+
+**Seeking past a gate still trips it.** A cue is reached when playback passes its
+start and stays reached, so a learner permitted to seek ahead cannot jump over a
+checkpoint. A gate that can be skipped is not a gate.
+
+**The restrictive playback defaults apply when `playbackPolicy` is absent.** A
+section that forgot the block reads as one that wanted sequencing, and the permissive
+reading would silently deliver an unsequenced video.
+
+**Fail-closed enforcement stays out.** The contract asked whether an author may
+require enforcement and fail closed instead of degrading. No: degradation is always
+advisory plus a recoverable warning. Failing closed means blocking delivery on a
+media capability probe, which contradicts the **Tool Surface Failure** posture in
+[`../../CONTEXT.md`](../../CONTEXT.md), and no author has asked for it. Recorded as
+a decision rather than an omission.
+
+**No scoring default.** `scoringPolicy` is validated and persisted; PIE derives no
+aggregate outcome from it, and a section that omits it is not silently assigned one.
+`aggregateComplete` deliberately keeps three facts separate — required cues, item
+completion, and media completion where the policy requires it.
+
+Delivered surface, tests and demo: see the changeset
+`timed-media-sections-reach-media-through-a-port`, the `timed-media` route in
+`apps/section-demos`, and `section-player-timed-media.spec.ts`.
+
 ## Open Questions
 
-- Which package owns the canonical timed-media section data types? Cue/playback policy ownership is a separate call, no longer coupled to renderer dispatch, with the `assessment-toolkit` policy engine the leading candidate over layout-custom-element internals.
-- Where does an unenforceable playback policy report itself, and may an author require enforcement and fail closed instead of degrading to advisory? The degradation itself is decided; see [Decisions, 2026-08-15](../architecture/timed-media-section.md#decisions-2026-08-15).
-- Should `timedMedia` extend the existing section persistence snapshot or be normalized as a sibling slice by assessment-player? Since delivery targets the standalone path, extending the existing snapshot the way the formative slice does is the leading answer.
-- Which scoring policy defaults, if any, should PIE provide?
-- What is the minimum timed-media MVP for cue timeline authoring, and which package owns that future PRD?
-- What print/export behavior should timed-media sections have?
+Six questions closed with the implementation above: type ownership and policy
+placement, where an unenforceable policy reports itself and whether an author may
+fail closed, whether the slice extends the existing snapshot (it does, as the
+formative slice does), and scoring defaults (none).
+
+Still open:
+
+- What is the minimum timed-media MVP for cue timeline authoring, and which package owns that future PRD? Nothing here supplies an authoring surface, and the cue timeline is the part an author cannot reasonably hand-write for long.
+- What print/export behavior should timed-media sections have? A printed timed-media section has no timeline, so the question is whether every cued item prints revealed or the section refuses to print.
+- Captions and transcripts are unexercised end to end. The demo's generated stimulus has no speech, so authoring a caption track for it would be inventing content; the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file) is the right fixture for that coverage.
+- Whether a gate should be able to name a subset of a multi-item cue's items as its release condition. Today every item a gate names must satisfy it.

@@ -99,6 +99,17 @@ const nlNL = {
 				other: "Nog {count} pogingen over.",
 			},
 		},
+
+		timedMedia: {
+			waitingForMedia: "Vragen verschijnen terwijl de media speelt.",
+			questionAvailable: "Vraag {position} is nu beschikbaar.",
+			playbackPaused:
+				"Weergave gepauzeerd. Beantwoord vraag {position} om verder te gaan.",
+			playbackAdvisory:
+				"Beantwoord vraag {position} voordat je verder gaat met de media.",
+			playbackReleased: "Antwoord geaccepteerd. Speel de media verder.",
+			mediaRegionA11y: "Mediastimulus",
+		},
 	},
 
 	toolkit: {

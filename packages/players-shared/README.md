@@ -20,6 +20,7 @@ Supported subpaths are declared in `package.json`:
 - `@pie-players/pie-players-shared/object`
 - `@pie-players/pie-players-shared/types`
 - `@pie-players/pie-players-shared/formative`
+- `@pie-players/pie-players-shared/timed-media`
 - `@pie-players/pie-players-shared/pie`
 - `@pie-players/pie-players-shared/pie/tag-names`
 - `@pie-players/pie-players-shared/loaders`
@@ -49,6 +50,39 @@ root and from `/types`, beside the section types it annotates.
 
 The contract is [`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md),
 including the QTI 3 mapping and why PIE says **Try** rather than "attempt".
+
+## Timed Media
+
+`@pie-players/pie-players-shared/timed-media` holds the timed-media section
+vocabulary, its validation, the cue reduction, the session slice, and the **Media
+Time Source** port that a section reaches media through. Pure apart from
+`createMediaElementTimeSource`, which is inert until called, so the contract stays
+importable in Node beside the rest.
+
+```ts
+import {
+  createMediaElementTimeSource,
+  normalizeTimedMediaSectionData,
+  reduceTimedMediaState,
+  resolveTimedMediaProjection,
+  type MediaTimeSource,
+} from "@pie-players/pie-players-shared/timed-media";
+```
+
+The port is shaped after `HTMLMediaElement` on purpose — a native `<video>`
+satisfies it through the adapter above — with two departures: seeking is
+`seekTo(seconds)` rather than a writable `currentTime`, and `capabilities` declares
+`canPause` / `canRestrictSeeking`, because a source that cannot control playback
+needs a way to say so. A host implementing the port directly needs no PIE element to
+deliver timed media.
+
+The authored half — `sectionType` and `timedMedia` on `AssessmentSection` — is
+re-exported from the package root and from `/types`, beside the section types it
+annotates.
+
+The contract is [`docs/prds/timed-media-section-contract.md`](../../docs/prds/timed-media-section-contract.md),
+including why cue gate conditions name the formative vocabulary and why an
+unenforceable policy degrades to advisory rather than failing closed.
 
 ## Browser ESM Element Contract
 

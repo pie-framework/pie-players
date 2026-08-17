@@ -108,6 +108,13 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
   dismissed feedback, or a host forced or withdrew a reveal (`source` says which).
 - `section-mastery-changed` — the mastery rollup changed. Emitted on change
   only, like `section-items-complete-changed`.
+- `timed-media-cue-changed` — a cue activated, a gate released, or aggregate
+  completion flipped. Not emitted for media position: `timeupdate` fires about four
+  times a second and moves nothing a layout renders.
+- `timed-media-policy-degraded` — the attached media time source cannot carry out a
+  playback policy, so it is advisory from here.
+- `timed-media-invalid` — authored `timedMedia` that cannot be delivered; the
+  section renders without cue behavior.
 
 ### Formative delivery
 
@@ -158,6 +165,80 @@ Try state persists inside `SectionControllerSessionState.formative` and hydrates
 with the rest of the snapshot. See
 [`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md)
 for the full contract, its QTI 3 mapping, and the mastery denominator rule.
+
+### Timed media
+
+Set `sectionType: "timed-media"` and a `timedMedia` block, and the section's cue
+timeline decides when its items are delivered:
+
+```ts
+const section: AssessmentSection = {
+  identifier: "water-cycle",
+  sectionType: "timed-media",
+  // A correctness gate needs unlimited Tries; see below.
+  formative: { enabled: true, maxTries: "unlimited", feedback: "correctness" },
+  rubricBlocks: [
+    {
+      identifier: "video-stimulus-1",
+      class: "stimulus",
+      view: ["candidate"],
+      // An ordinary passage. Its config mounts the media element — a PIE element,
+      // or authored `<video>` markup — and it owns the accessibility catalogs that
+      // carry captions, transcript and signed alternates.
+      passage: videoPassage,
+    },
+  ],
+  assessmentItemRefs: [{ identifier: "q1", item }, { identifier: "q2", item }],
+  timedMedia: {
+    stimulusRef: "video-stimulus-1",
+    cues: [
+      { identifier: "c1", range: { startSeconds: 4 }, itemRefs: ["q1"], policy: { activation: "reveal" } },
+      {
+        identifier: "c2",
+        range: { startSeconds: 10 },
+        itemRefs: ["q2"],
+        policy: { activation: "gate", releaseOn: "correct", onUnknownCorrectness: "release" },
+      },
+    ],
+    playbackPolicy: { allowSeekAhead: false, pauseOnRequiredCue: true, requireMediaCompletion: false },
+  },
+};
+```
+
+Absent `sectionType` and delivery is unchanged: no projection, no session slice, no
+cue behavior. An item no cue names is delivered normally; a cued item is mounted and
+hidden until its cue fires, so its session and shell registration survive a seek
+backwards.
+
+The section reaches media only through a **Media Time Source**. The stimulus card
+finds the media element its passage mounted and registers a native adapter; a host
+with its own player registers its own port instead, and that port outranks the
+card's discovery for as long as it is attached:
+
+```ts
+const controller = await host.waitForSectionController?.(5000);
+controller?.attachMediaTimeSource?.(myThirdPartyPort);
+controller?.detachMediaTimeSource?.();
+controller?.getTimedMediaProjection?.(); // cues, gate, enforcement, revealed items
+```
+
+Where the port reports `canPause: false` or `canRestrictSeeking: false`, the
+matching policy degrades to **advisory**: cues still fire, state is still recorded,
+the projection says `enforcement: "advisory"`, and a recoverable `timed-media`
+framework warning names the policy that lost its teeth. Nothing silently pretends to
+hold.
+
+Two authoring mistakes fail loudly rather than delivering inert cues: a
+`stimulusRef` that resolves to no renderable in the section, and a gate on
+correctness over an item without unlimited Tries — a learner who spent a finite
+budget could never release playback again. Both report a `timed-media` framework
+error and the section then delivers as an ordinary section with every item visible.
+
+Cue state persists inside `SectionControllerSessionState.timedMedia` and hydrates
+with the rest of the snapshot, including the furthest position reached, which is what
+`allowSeekAhead: false` clamps against across a reload. See
+[`docs/prds/timed-media-section-contract.md`](../../docs/prds/timed-media-section-contract.md)
+for the contract and the decision record.
 
 ## Usage
 

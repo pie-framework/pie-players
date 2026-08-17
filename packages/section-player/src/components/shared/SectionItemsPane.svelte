@@ -61,6 +61,7 @@
 		getCanonicalItemId,
 		getFormativeItemView,
 		getItemPlayerParams,
+		getTimedMediaItemView,
 		type HeadingLevel,
 	} from "./section-player-view-state.js";
 	import { useZoomCompensation } from "@pie-players/pie-players-shared/ui/use-zoom-compensation";
@@ -337,6 +338,121 @@
 			: -1,
 	);
 
+	// ------------------------------------------------------------------
+	// Timed media
+	// ------------------------------------------------------------------
+	//
+	// Read off the composition model the pane already receives, so cue gating works
+	// in every layout that renders this pane rather than in whichever layouts were
+	// remembered. `null` for every section that is not timed media, which is the
+	// path existing content takes.
+
+	const timedMedia = $derived(compositionModel?.timedMedia ?? null);
+	const gate = $derived(timedMedia?.gate ?? null);
+	const gateHolding = $derived(gate?.holding === true);
+
+	/** 1-based position of an item in the pane, for the announcements. */
+	function itemPositionOf(canonicalItemId: string): number {
+		const index = items.findIndex(
+			(item: ItemEntity) =>
+				getCanonicalItemId({ compositionModel, item }) === canonicalItemId,
+		);
+		return index >= 0 ? index + 1 : 1;
+	}
+
+	let timedMediaStatus = $state("");
+	let lastGateCueIdentifier: string | null = null;
+	let lastRevealedCount = 0;
+	let pendingGateFocusCue: string | null = null;
+
+	/**
+	 * Announce what the timeline just did, and send focus to a gated question.
+	 *
+	 * Focus moves only when a gate holds — that is the moment the learner's own next
+	 * action is elsewhere. A plain reveal leaves focus alone: the media is still
+	 * playing and stealing focus mid-playback is the behavior WCAG 3.2.1 rules out.
+	 */
+	$effect(() => {
+		const projection = timedMedia;
+		const currentGateCue = gateHolding ? (gate?.cueIdentifier ?? null) : null;
+		const revealedCount = projection?.revealedItemIds.length ?? 0;
+		const gateEnforced = gate?.enforcement === "enforced";
+		const gateItemId = gate?.itemRefs[0] ?? "";
+		const latestRevealedItemId =
+			projection?.revealedItemIds[revealedCount - 1] ?? "";
+		untrack(() => {
+			if (!projection) {
+				timedMediaStatus = "";
+				lastGateCueIdentifier = null;
+				lastRevealedCount = 0;
+				return;
+			}
+			if (currentGateCue && currentGateCue !== lastGateCueIdentifier) {
+				lastGateCueIdentifier = currentGateCue;
+				lastRevealedCount = revealedCount;
+				pendingGateFocusCue = currentGateCue;
+				timedMediaStatus = interfaceI18n.t(
+					gateEnforced
+						? "player.timedMedia.playbackPaused"
+						: "player.timedMedia.playbackAdvisory",
+					{ position: itemPositionOf(gateItemId) },
+				);
+				return;
+			}
+			if (!currentGateCue && lastGateCueIdentifier) {
+				lastGateCueIdentifier = null;
+				lastRevealedCount = revealedCount;
+				timedMediaStatus = interfaceI18n.t("player.timedMedia.playbackReleased");
+				return;
+			}
+			if (timedMediaStatus === "") {
+				// The first thing the region says, before any cue has fired: without it a
+				// learner facing a pane of hidden questions has nothing telling them the
+				// media is what reveals them.
+				lastRevealedCount = revealedCount;
+				timedMediaStatus =
+					revealedCount === 0
+						? interfaceI18n.t("player.timedMedia.waitingForMedia")
+						: interfaceI18n.t("player.timedMedia.questionAvailable", {
+							position: itemPositionOf(latestRevealedItemId),
+						});
+				return;
+			}
+			if (revealedCount !== lastRevealedCount) {
+				lastRevealedCount = revealedCount;
+				timedMediaStatus =
+					revealedCount === 0
+						? interfaceI18n.t("player.timedMedia.waitingForMedia")
+						: interfaceI18n.t("player.timedMedia.questionAvailable", {
+							position: itemPositionOf(latestRevealedItemId),
+						});
+			}
+		});
+	});
+
+	/**
+	 * Move focus onto the gated card once it is actually in the DOM.
+	 *
+	 * Deferred to a microtask because the card is revealed by the same composition
+	 * republish that raised the gate, so it is not yet rendered when the effect above
+	 * runs.
+	 */
+	$effect(() => {
+		const cue = gateHolding ? (gate?.cueIdentifier ?? null) : null;
+		if (!cue) return;
+		untrack(() => {
+			if (pendingGateFocusCue !== cue) return;
+			pendingGateFocusCue = null;
+			queueMicrotask(() => {
+				const root = scrollHintSentinel?.parentElement ?? null;
+				const target = root?.querySelector<HTMLElement>(
+					'[data-pie-timed-media-gate="holding"]',
+				);
+				target?.focus();
+			});
+		});
+	});
+
 	let scrollHintSentinel = $state<HTMLDivElement | null>(null);
 	let isScrollable = $state(false);
 	let scrollContainer = $state<HTMLElement | null>(null);
@@ -428,6 +544,18 @@
 
 <div bind:this={scrollHintSentinel} style="display:none" aria-hidden="true"></div>
 
+{#if timedMedia}
+	<!-- Present before it has content so the first cue announcement is not lost to
+	     a live region that did not yet exist (WCAG 4.1.3). Visible text as well as
+	     announced: a pause the learner did not ask for has to be perceivable
+	     without hearing it. -->
+	<p
+	class="pie-section-player-timed-media-status"
+	data-pie-timed-media-status
+	aria-live="polite"
+	>{timedMediaStatus}</p>
+{/if}
+
 {#if !cardsMountable}
 	<div class="pie-section-player-content-card">
 		<div
@@ -443,7 +571,13 @@
 		     the player params project its env override. Two derivations of the same
 		     predicate could disagree about whether feedback is on screen. -->
 		{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
+		<!-- Cue state for this item. A pending card stays mounted and hidden: its
+		     shell registration, its session and the section's loading accounting all
+		     survive, where mounting on the cue would tear the item player down again
+		     on every seek backwards. -->
+		{@const timedMediaView = getTimedMediaItemView({ compositionModel, canonicalItemId })}
 		<pie-section-player-item-card
+			hidden={timedMediaView?.pending === true}
 			{item}
 			itemIndex={itemIndex}
 			itemCount={items.length}
@@ -462,6 +596,7 @@
 				formativeView,
 			})}
 			{formativeView}
+			{timedMediaView}
 			itemToolbarTools={itemToolbarTools}
 			{toolRegistry}
 			{hostButtons}
@@ -581,6 +716,31 @@
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
 		background: var(--pie-background, #fff);
+	}
+
+	/* Painted only from `--pie-*` chains, so it follows every base theme and colour
+	   scheme without a hook of its own — same rule as the formative status line, and
+	   colour is never the only signal here either. */
+	.pie-section-player-timed-media-status {
+		margin: 0;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: var(--pie-section-player-card-radius, 8px);
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		font-size: calc(0.9rem * var(--pie-font-scale, 1));
+	}
+
+	.pie-section-player-timed-media-status:empty {
+		display: none;
+	}
+
+	/* The gated card takes focus, so it needs a visible focus indicator of its own;
+	   the card is not otherwise focusable. */
+	:global(pie-section-player-item-card [data-pie-timed-media-gate="holding"]:focus-visible) {
+		outline: 3px solid
+			var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		outline-offset: 2px;
 	}
 
 	.pie-section-player-content-card-body {

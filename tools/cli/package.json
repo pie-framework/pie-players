@@ -35,7 +35,7 @@
 	},
 	"dependencies": {
 		"@oclif/core": "^4.13.2",
-		"@oclif/plugin-help": "^6.2.0"
+		"@oclif/plugin-help": "^6.2.58"
 	},
 	"devDependencies": {
 		"@types/node": "^20.0.0",

@@ -49,13 +49,13 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 	},
 	{
 		id: "dictionary",
-		buttonAriaLabel: "Dictionary - Look up word definitions",
+		buttonAriaLabel: "Dictionary, look up word definitions",
 		toolHostTag: "pie-tool-dictionary",
 		panelRole: "dialog",
 	},
 	{
 		id: "pictureDictionary",
-		buttonAriaLabel: "Picture Dictionary - Look up pictures for words",
+		buttonAriaLabel: "Picture Dictionary, look up pictures for words",
 		toolHostTag: "pie-tool-picture-dictionary",
 		panelRole: "dialog",
 	},

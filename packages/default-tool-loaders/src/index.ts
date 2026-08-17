@@ -46,6 +46,15 @@ export {
 } from "./registrations/audio-transcript.js";
 export { calculatorToolRegistration } from "./registrations/calculator.js";
 export {
+	createDictionaryToolRegistration,
+	createPictureDictionaryToolRegistration,
+	dictionaryToolRegistration,
+	type DictionaryVariantOptions,
+	pictureDictionaryToolRegistration,
+	spanishDictionaryToolRegistration,
+	spanishPictureDictionaryToolRegistration,
+} from "./registrations/dictionary-tools.js";
+export {
 	answerEliminatorToolRegistration,
 	highlighterToolRegistration,
 } from "./registrations/interaction-tools.js";

@@ -26,6 +26,8 @@ import { calculatorToolRegistration } from "./registrations/calculator.js";
 import {
 	dictionaryToolRegistration,
 	pictureDictionaryToolRegistration,
+	spanishDictionaryToolRegistration,
+	spanishPictureDictionaryToolRegistration,
 } from "./registrations/dictionary-tools.js";
 import {
 	answerEliminatorToolRegistration,
@@ -299,6 +301,29 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 70, element: 110 },
 		preferredPlacementOrder: { section: 80 },
 		toolbarOrder: 130,
+		universalSupportIds: [],
+	},
+	// The Spanish variants render the same elements under their own capability ids, so a
+	// programme can grant a Spanish gloss beside the content-following dictionary or
+	// instead of it. Ordered after both, since English-content delivery is the common case.
+	{
+		registration: spanishDictionaryToolRegistration,
+		tagName: "pie-tool-dictionary",
+		loadModule: loadDictionaryModule,
+		loaderTargets: ["section"],
+		placementOrder: { item: 80, element: 120 },
+		preferredPlacementOrder: { section: 90 },
+		toolbarOrder: 140,
+		universalSupportIds: [],
+	},
+	{
+		registration: spanishPictureDictionaryToolRegistration,
+		tagName: "pie-tool-picture-dictionary",
+		loadModule: loadPictureDictionaryModule,
+		loaderTargets: ["section"],
+		placementOrder: { item: 90, element: 130 },
+		preferredPlacementOrder: { section: 100 },
+		toolbarOrder: 150,
 		universalSupportIds: [],
 	},
 	{
@@ -719,6 +744,8 @@ export const PACKAGED_TOOL_PLACEMENT = {
 		"periodicTable",
 		"dictionary",
 		"pictureDictionary",
+		"dictionarySpanish",
+		"pictureDictionarySpanish",
 	];
 	readonly passage: readonly [
 		"textToSpeech",
@@ -744,6 +771,8 @@ export const PACKAGED_TOOL_PLACEMENT = {
 		"periodicTable",
 		"dictionary",
 		"pictureDictionary",
+		"dictionarySpanish",
+		"pictureDictionarySpanish",
 	];
 };
 
@@ -769,6 +798,8 @@ export const PACKAGED_TOOL_ORDER = [
 	"periodicTable",
 	"dictionary",
 	"pictureDictionary",
+	"dictionarySpanish",
+	"pictureDictionarySpanish",
 ];
 
 export const UNIVERSAL_SUPPORTS_PRESET: readonly string[] =

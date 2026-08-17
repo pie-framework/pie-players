@@ -37,10 +37,14 @@ describe("default tool module loaders", () => {
 		expect(Object.keys(SECTION_TOOL_MODULE_LOADERS).sort()).toEqual([
 			"calculator",
 			"dictionary",
+			// A language variant loads the same module as its base capability: one element,
+			// two capability ids.
+			"dictionarySpanish",
 			"graph",
 			"lineReader",
 			"periodicTable",
 			"pictureDictionary",
+			"pictureDictionarySpanish",
 			"protractor",
 			"ruler",
 		]);

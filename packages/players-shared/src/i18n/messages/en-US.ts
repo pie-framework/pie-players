@@ -306,6 +306,25 @@ const enUS = {
 			tooltip: "Picture Dictionary",
 			toolA11y: "Picture Dictionary",
 		},
+		/**
+		 * The Spanish variants. Named in the interface locale like every other tool label —
+		 * a Dutch-speaking proctor reading a Dutch interface still sees which language the
+		 * dictionary looks words up in.
+		 */
+		dictionarySpanish: {
+			name: "Spanish Dictionary",
+			description: "Look up word definitions in Spanish",
+			buttonA11y: "Spanish Dictionary, look up word definitions in Spanish",
+			tooltip: "Spanish Dictionary",
+			toolA11y: "Spanish Dictionary",
+		},
+		pictureDictionarySpanish: {
+			name: "Spanish Picture Dictionary",
+			description: "Look up pictures for words in Spanish",
+			buttonA11y: "Spanish Picture Dictionary, look up pictures for words in Spanish",
+			tooltip: "Spanish Picture Dictionary",
+			toolA11y: "Spanish Picture Dictionary",
+		},
 		lineReader: {
 			name: "Line Reader",
 			description: "Reading guide overlay",

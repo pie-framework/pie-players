@@ -2,8 +2,9 @@
 
 A dictionary lookup crosses two boundaries this repository does not own: which service
 answers, and which language it answers in. The packaged panels
-(`pie-tool-dictionary`, `pie-tool-picture-dictionary`) settle the first and only half of
-the second, and the gap is the subject of this note.
+(`pie-tool-dictionary`, `pie-tool-picture-dictionary`) leave the first to the host and
+resolve the second through the capability, and this note records why each sits where it
+does.
 
 ## Service selection is host-side, by design
 
@@ -40,51 +41,56 @@ deployment is for the teams that own both ends to settle. Either way the specifi
 secret, which issuer, which host — belong in the host's own repository rather than this
 one.
 
-## One capability, one language at a time
+## The language belongs to the learner
 
-`toolbarContext.language` is the content-alternate language — which authored alternate
-the catalog resolver selects — and the dictionary registration passes it as the lookup
-language unless a host overrides it per tool through the render params. So a section
-authored in English offers an English dictionary, and a Spanish section a Spanish one.
+`toolbarContext.language` is the content-alternate language — which authored alternate the
+catalog resolver selects — and the base `dictionary` and `pictureDictionary` capabilities
+pass it as the lookup language. So a section authored in English offers an English
+dictionary, and a Spanish section a Spanish one, which is right for the reader who wants a
+definition in the language they are already reading.
 
-That is the wrong shape for the accommodation. SchoolCity exposes English Dictionary and
-Spanish Dictionary as two separate tools, tabbed in one modal, because the learner who
-needs a Spanish gloss is reading an English passage: the language of the definition is a
-property of the learner, not of the content. PIE cannot express that today. There is one
-`dictionary` capability, its `pnpSupportIds` are `dictionary`, `englishDictionary`,
-`glossary` and `definitions` — four names for one grant — and no support id claims a
-second language.
+It is not enough on its own. The learner who needs a Spanish gloss is reading an English
+passage: the language of a definition is a property of the learner, not of the content.
+SchoolCity exposes English Dictionary and Spanish Dictionary as two separate tools, tabbed
+in one modal, for exactly that reason. A single capability whose language follows the
+content cannot express it, and its four support ids — `dictionary`, `englishDictionary`,
+`glossary`, `definitions` — are four names for one grant.
 
 ### Capability per language
 
-Register one capability per language, each with its own PNP grant and its own render
-params naming the language. This matches how the accommodation is authorised: a PNP
-grants a Spanish dictionary to a learner, independently of whether an English one is
-granted, and a toolbar that shows two buttons is showing two granted supports.
+This is what ships. One capability per language, each with its own PNP grant, which is
+how the accommodation is authorised: a programme grants a Spanish dictionary to a learner
+independently of whether an English one is granted, and a toolbar showing two buttons is
+showing two granted supports.
 
-Three additions in this repository, all small:
+`dictionarySpanish` and `pictureDictionarySpanish` are in the packaged set, claiming
+`spanishDictionary` / `spanishPictureDictionary` and their glossary variants — no support
+id is shared with the base capabilities, so neither grant implies the other. Each renders
+the same element as the capability it varies; two capability ids, one panel
+implementation.
 
-- Export `dictionaryToolRegistration` and `pictureDictionaryToolRegistration` from
-  `@pie-players/pie-default-tool-loaders`. Every other registration is already exported
-  for exactly this purpose; these two are the omission.
-- Make the dictionary registration a factory over `toolId`, `nameKey`,
-  `descriptionKey` and `pnpSupportIds`, so a second language is a call rather than a
-  hand-cloned object that drifts.
-- Add a `spanishDictionary` support id and the catalogue keys for the second label, in
-  all declared locales, since the coverage gate requires them.
+A variant carries its corpus language rather than taking it from the host, and that
+language outranks the toolbar's content-alternate language: the learner who needs a
+Spanish gloss is reading an English passage, so a variant that followed the content would
+be indistinguishable from the base capability on exactly the content it exists for. A
+language the host names in the tool's render params still wins over both.
 
-A host then composes the extra capability through the `configureToolRegistry` hook it
-already has, and points it at the same endpoint with `language: "es"`.
+Another language is `createDictionaryToolRegistration` or
+`createPictureDictionaryToolRegistration` with a `toolId`, its own `pnpSupportIds` and a
+`lookupLanguage`, registered through the `configureToolRegistry` hook a host already has.
+Catalogue keys derive from the capability id; a host with its own catalogue passes
+`messageKeyPrefix`, and a key that does not resolve falls back to the registration's
+literal name, so a missing key is a plain label rather than a broken button.
 
-### Language selector in the panel
+### Language selector in the panel, not taken
 
-The alternative keeps one capability and adds a `languages` param naming what the host's
-service serves, a selector inside the panel, and its own interface strings. For the
-learner it is SchoolCity's tabbed modal.
+The alternative kept one capability and added a `languages` param, a selector inside the
+panel and its own interface strings — for the learner, the tabbed modal other delivery
+systems ship.
 
-The trade is in the grant, not the UI: one capability means one PNP support, so a
-programme can no longer grant Spanish without granting English, and the panel starts
-carrying knowledge of which corpora a deployment has. Take this only where a programme
+The trade was in the grant, not the UI: one capability is one PNP support, so a programme
+could no longer grant Spanish without granting English, and the panel would carry
+knowledge of which corpora a deployment has. Worth revisiting only for a programme that
 requires a single toolbar button.
 
 ## Synonyms

@@ -7,6 +7,7 @@ import {
 	nextControlIndex,
 	POINTER_GESTURE_MAX_MS,
 	requestsSelectionToolbar,
+	TOOLBAR_VIEWPORT_MARGIN,
 	toolbarAnchor,
 } from "../selection-keyboard.js";
 
@@ -199,19 +200,102 @@ describe("suppressing the show during a pointer drag", () => {
 	});
 });
 
+/**
+ * The defect these pin: the anchor was the selection's centre, and the stylesheet
+ * shifted it by half a width and a full height. Nothing clamped the result, so a
+ * selection near an edge put controls off screen where a pointer cannot reach them —
+ * observed on the leftmost highlight swatch, and worse vertically, since extending a
+ * selection past the fold scrolls it to the top of the viewport.
+ *
+ * `toolbarAnchor` now returns the top-left with no transform to undo, which is what
+ * makes clamping expressible at all.
+ */
 describe("anchoring the toolbar", () => {
+	const SIZE = { width: 240, height: 48 };
+
 	test("centres over the selection and sits above it", () => {
-		expect(toolbarAnchor(rect(300, 320, 100, 200))).toEqual({
-			x: 150,
-			y: 292,
+		expect(toolbarAnchor(rect(300, 320, 400, 500), VIEWPORT, SIZE)).toEqual({
+			// Centre 450 less half of 240.
+			x: 330,
+			// Top 300 less the 8px gap and the strip's own height.
+			y: 244,
+			below: false,
 		});
 	});
 
 	test("a collapsed rect still anchors on the caret", () => {
-		expect(toolbarAnchor(rect(300, 300, 140, 140))).toEqual({
-			x: 140,
-			y: 292,
+		expect(toolbarAnchor(rect(300, 300, 440, 440), VIEWPORT, SIZE)).toEqual({
+			x: 320,
+			y: 244,
+			below: false,
 		});
+	});
+
+	test("keeps the leading edge on screen for a selection near the left", () => {
+		const placement = toolbarAnchor(rect(300, 320, 0, 40), VIEWPORT, SIZE);
+		expect(placement.x).toBe(TOOLBAR_VIEWPORT_MARGIN);
+	});
+
+	test("keeps the trailing edge on screen for a selection near the right", () => {
+		const placement = toolbarAnchor(
+			rect(300, 320, VIEWPORT.width - 40, VIEWPORT.width),
+			VIEWPORT,
+			SIZE,
+		);
+		expect(placement.x).toBe(VIEWPORT.width - SIZE.width - TOOLBAR_VIEWPORT_MARGIN);
+	});
+
+	// The common case: extending a selection past the fold scrolls it to the top.
+	test("flips below a selection with no room above", () => {
+		const placement = toolbarAnchor(rect(2, 22, 400, 500), VIEWPORT, SIZE);
+		expect(placement.below).toBe(true);
+		expect(placement.y).toBe(30);
+	});
+
+	test("stays above when there is room, even close to the top", () => {
+		const placement = toolbarAnchor(rect(60, 80, 400, 500), VIEWPORT, SIZE);
+		expect(placement.below).toBe(false);
+		expect(placement.y).toBe(4);
+	});
+
+	// Neither side fits, so it clamps rather than flipping into a second overflow.
+	test("clamps instead of flipping when there is no room either side", () => {
+		const tall = { width: 240, height: 700 };
+		const placement = toolbarAnchor(rect(300, 320, 400, 500), { width: 1000, height: 760 }, tall);
+		expect(placement.below).toBe(false);
+		expect(placement.y).toBe(TOOLBAR_VIEWPORT_MARGIN);
+	});
+
+	test("pins a strip wider than the viewport to the leading edge", () => {
+		// Clamping the far edge first would put the start — and its first control —
+		// off screen instead.
+		const placement = toolbarAnchor(
+			rect(300, 320, 400, 500),
+			{ width: 200, height: 800 },
+			SIZE,
+		);
+		expect(placement.x).toBe(TOOLBAR_VIEWPORT_MARGIN);
+	});
+
+	test("degrades to centred-above before the strip has been measured", () => {
+		// One frame with no measurement, rather than guessing a size and moving twice.
+		expect(toolbarAnchor(rect(300, 320, 400, 500), VIEWPORT)).toEqual({
+			x: 450,
+			y: 292,
+			below: false,
+		});
+	});
+});
+
+describe("placement wiring", () => {
+	test("no CSS transform re-offsets what the anchor already decided", () => {
+		// The transform was the reason clamping could not work: the arithmetic returned
+		// a centre and the stylesheet moved it, with nothing keeping the two agreed.
+		expect(component).not.toContain("translate(-50%, -100%)");
+	});
+
+	test("the strip is measured and re-placed once it exists", () => {
+		expect(component).toContain("measureToolbar()");
 	});
 });
 

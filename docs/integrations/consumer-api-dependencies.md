@@ -71,6 +71,44 @@ is unchanged, and the fix only shows for a host that drives
 too. Hosts A and V both load `components.css`; neither styles those hooks and the
 answer eliminator is placed in neither delivery.
 
+The dictionary capabilities and the selection door onto them were checked against
+the Host A and Host V checkouts directly; Host R was not opened, so its rows stay
+prior observations and the verification date does not advance. Recorded rows are
+unchanged.
+
+Host V depends on the item player and the theme only, neither of which the change
+touches. Host A places one capability at item scope plus read-aloud when its
+profile asks; it supplies no section-level placement, and core's placement default
+is empty, so the two new capabilities cannot appear there — and it does not depend
+on the selection gateway package at all, so the gateway's new host-supplied action
+list and its post-action dismissal latch are unreachable for it. The four additive
+`ToolkitCoordinator` request methods and the three new type exports are called by
+no recorded host; Host R holds a coordinator instance rather than implementing the
+interface, so widening it is not a break there either.
+
+A review pass over the same work narrowed the coordinator surface and changed three
+defaults, none of which reaches a recorded host. The four request methods became
+optional on the coordinator interface, which only widens what a host-supplied
+coordinator may be. Request resolution now falls back off section scope to any
+level hosting the capability, which can only find a target where none was found
+before; no recorded host places either new capability, and the fallback cannot
+redirect a request that already resolved. Endpoint lookups now carry the session
+cookie instead of omitting credentials, and refuse plain `http:` picture URLs — both
+inside the two new packages, which no recorded host depends on. The shared
+term-lookup module those packages now use is a new subpath on
+`pie-players-shared`; existing entry points are untouched.
+
+One residual difference is worth a manual check rather than a claim. Focusable
+collection for a trapped floating panel now descends into open shadow roots and
+now excludes `tabindex="-1"`, which the flat selector previously matched through
+its `button` clause. Host A's one shell-hosted capability renders in light DOM, so
+the shadow half is a no-op for it; the `tabindex="-1"` half depends on the
+third-party DOM inside that panel, which this repository stubs in tests and which
+was not measured against the real vendor bundle. If that DOM carries such
+controls, the panel's internal tab cycle drops those stops — matching what the
+browser does with them anyway. One tab-through of that panel before release
+settles it.
+
 ## Consumer profiles
 
 | Label | Stack | Depth | Breakage cost |

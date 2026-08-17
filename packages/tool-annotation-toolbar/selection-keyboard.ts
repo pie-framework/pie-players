@@ -133,18 +133,77 @@ export function isPointerGestureActive(
 	return elapsed < maxMs;
 }
 
+/** Measured size of the rendered strip, for keeping it inside the viewport. */
+export interface ToolbarSize {
+	width: number;
+	height: number;
+}
+
+/** Smallest gap kept between the strip and a viewport edge. */
+export const TOOLBAR_VIEWPORT_MARGIN = 4;
+
+export interface ToolbarPlacement {
+	/** Viewport coordinates of the strip's top-left corner. */
+	x: number;
+	y: number;
+	/** Whether the strip sits below the selection because there was no room above. */
+	below: boolean;
+}
+
 /**
- * Anchor point for the strip: centred over the selection, just above it.
+ * Top-left corner for the strip: centred over the selection and above it where it
+ * fits, clamped so no part leaves the viewport.
  *
- * Returned in viewport coordinates because the strip is `position: fixed`, which is
- * also why scrolling has to recompute it rather than leaving it where it was.
+ * The top-left rather than a centre point, and therefore no CSS transform to undo
+ * it. Returning a centre meant the arithmetic had to know that the stylesheet
+ * shifted its result by half a width and a full height, and nothing enforced that
+ * agreement — so the clamping this function now does was not expressible at all. A
+ * selection near the left edge put the leftmost control off screen, where a pointer
+ * cannot reach it; a selection at the top of the viewport did the same upward, which
+ * is the common case, because extending a selection past the fold scrolls it there.
+ *
+ * Viewport coordinates because the strip is `position: fixed`, which is also why
+ * scrolling recomputes this rather than leaving the strip where it was.
+ *
+ * `size` is the measured strip. Before the first measurement a caller passes zeroes,
+ * which degrades to the old centred-above placement for one frame rather than
+ * guessing a size and moving the strip twice.
  */
 export function toolbarAnchor(
 	rect: ViewportRect,
+	viewport: ViewportSize,
+	size: ToolbarSize = { width: 0, height: 0 },
 	gap = 8,
-): { x: number; y: number } {
+): ToolbarPlacement {
+	const margin = TOOLBAR_VIEWPORT_MARGIN;
+	const centre = rect.left + (rect.right - rect.left) / 2;
+	const x = centre - size.width / 2;
+	const above = rect.top - gap - size.height;
+	// Flip only when the strip genuinely does not fit above. Below is the fallback,
+	// not the preference: above keeps the strip clear of the text being read.
+	const below = above < margin && rect.bottom + gap + size.height <= viewport.height;
+	const y = below ? rect.bottom + gap : above;
 	return {
-		x: rect.left + (rect.right - rect.left) / 2,
-		y: rect.top - gap,
+		x: clampToViewport(x, size.width, viewport.width, margin),
+		y: clampToViewport(y, size.height, viewport.height, margin),
+		below,
 	};
+}
+
+/**
+ * Keep one axis inside the viewport.
+ *
+ * A strip larger than the viewport on this axis is pinned to the leading edge
+ * instead of being pushed off the trailing one: clamping the far edge first would
+ * put its start off screen, and the start is where its first control is.
+ */
+function clampToViewport(
+	position: number,
+	extent: number,
+	available: number,
+	margin: number,
+): number {
+	const max = available - extent - margin;
+	if (max <= margin) return margin;
+	return Math.min(Math.max(position, margin), max);
 }

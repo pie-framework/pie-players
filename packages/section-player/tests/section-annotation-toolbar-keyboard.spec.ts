@@ -154,6 +154,64 @@ test.describe("annotation toolbar keyboard access", () => {
 		expect(stillSelected).toBe(selected);
 	});
 
+	/**
+	 * The defect: the anchor was the selection's centre and the stylesheet shifted it
+	 * by half a width, with nothing clamping the result — so a selection near an edge
+	 * put the leftmost swatch off screen, where a pointer cannot reach it.
+	 */
+	test("stays inside the viewport for a selection at the left edge", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		// This selection starts at the passage's own left edge, ~25px from the
+		// viewport's, and is narrower than the strip. Measured before the fix: the
+		// centred anchor placed the strip at x ≈ -109, so its first controls were off
+		// screen entirely.
+		await selectPassageText(page);
+
+		const box = await strip(page).boundingBox();
+		if (!box) throw new Error("Strip has no box.");
+		const viewport = page.viewportSize();
+		if (!viewport) throw new Error("No viewport.");
+		expect(box.x).toBeGreaterThanOrEqual(0);
+		expect(box.y).toBeGreaterThanOrEqual(0);
+		expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+		expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+
+		// And every control is inside it, which is the thing the learner needs.
+		const controls = stripButtons(page);
+		for (let index = 0; index < (await controls.count()); index += 1) {
+			const control = await controls.nth(index).boundingBox();
+			if (!control) throw new Error(`Control ${index} has no box.`);
+			expect(control.x).toBeGreaterThanOrEqual(0);
+			expect(control.x + control.width).toBeLessThanOrEqual(viewport.width);
+		}
+	});
+
+	test("flips below a selection with no room above it", async ({ page }) => {
+		await gotoDemo(page);
+		// Scroll the passage so its first line sits at the very top of the viewport,
+		// which is where extending a selection past the fold leaves it.
+		await page
+			.locator("pie-passage-shell [data-region='content'] p")
+			.first()
+			.evaluate((node) => {
+				node.scrollIntoView({ block: "start" });
+				const textNode = node.firstChild as Text;
+				const selection = window.getSelection();
+				if (!selection) throw new Error("Selection API unavailable.");
+				const range = document.createRange();
+				range.setStart(textNode, 3);
+				range.setEnd(textNode, Math.min(30, textNode.length));
+				selection.removeAllRanges();
+				selection.addRange(range);
+			});
+
+		const box = await strip(page).boundingBox();
+		if (!box) throw new Error("Strip has no box.");
+		expect(box.y).toBeGreaterThanOrEqual(0);
+	});
+
 	test("highlighting from the keyboard applies the annotation", async ({
 		page,
 	}) => {

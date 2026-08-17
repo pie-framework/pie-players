@@ -67,11 +67,13 @@
 	// resolves through this package's CE bundle which externalizes @pie-players/*).
 	import { approximateZoomFromWidths, computeZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/zoom-compensation';
 	import {
+		collectFocusable,
 		createFocusTrap,
 		FOCUSABLE_SELECTOR,
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
+	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
 	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
@@ -758,9 +760,35 @@
 				? (listener: () => void) => effectiveToolCoordinator.subscribe(listener)
 				: null,
 			getResolvedToolContext: (toolId: string) => hostResolvedToolContextById[toolId] ?? null,
-			getToolRenderParams: (toolId: string) => hostResolvedToolContextById[toolId]?.params ?? null
+			getToolRenderParams: (toolId: string) => {
+				const resolved = hostResolvedToolContextById[toolId]?.params ?? null;
+				const requested = requestedToolParams.get(toolId);
+				if (!requested) return resolved;
+				// A request's params layer over the host's rather than replacing them: one
+				// carries the term the learner selected, the other the endpoint the host
+				// configured, and dropping either leaves the tool unable to answer.
+				return { ...(resolved ?? {}), ...requested };
+			}
 		};
 	});
+
+	/**
+	 * Params from the last {@link ToolkitCoordinatorApi.requestTool} per tool id.
+	 *
+	 * A plain Map, not `$state`: `toolbarContext` is derived, and a reactive write
+	 * here would re-derive it and re-render the tool — discarding the element whose
+	 * params were just set. The sync that reads them is triggered explicitly instead.
+	 *
+	 * Kept rather than consumed on read, so a re-render reapplies them; losing them
+	 * mid-session would discard whatever the request had already answered. Each request
+	 * is stamped with `toolRequestId` so reapplying is distinguishable from asking
+	 * again — a capability cannot tell those apart from the payload alone, and the two
+	 * need opposite answers.
+	 */
+	const requestedToolParams = new Map<string, Record<string, unknown>>();
+
+	/** Monotonic per toolbar; only its changing matters, never its value. */
+	let toolRequestSequence = 0;
 
 	let renderedTools = $derived.by((): ToolToolbarRenderResult[] => {
 		if (!isBrowser) return [];
@@ -953,25 +981,7 @@
 	}
 
 	function getFallbackIconSvg(iconName: string): string | null {
-		const iconMap: Record<string, string> = {
-			calculator:
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v4h10V4H7Zm0 6v2h2v-2H7Zm4 0v2h2v-2h-2Zm4 0v2h2v-2h-2Zm-8 4v2h2v-2H7Zm4 0v2h2v-2h-2Zm4 0v2h2v-2h-2Zm-8 4v2h2v-2H7Zm4 0v2h2v-2h-2Zm4 0v2h2v-2h-2Z" fill="currentColor"/></svg>',
-			'volume-up':
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 3.23v2.06A7.002 7.002 0 0 1 19 12a7 7 0 0 1-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77Zm-2 17.75V3L7 8H3v8h4l5 5Zm4.5-9a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12Z" fill="currentColor"/></svg>',
-			swatch:
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.55-.45-1-1-1h-2.5a1.5 1.5 0 0 1 0-3H20a1 1 0 0 0 1-1 8.99 8.99 0 0 0-9-4Zm-5.5 9A1.5 1.5 0 1 1 8 13.5 1.5 1.5 0 0 1 6.5 12Zm3-4A1.5 1.5 0 1 1 11 9.5 1.5 1.5 0 0 1 9.5 8Zm5 0A1.5 1.5 0 1 1 16 9.5 1.5 1.5 0 0 1 14.5 8Z" fill="currentColor"/></svg>',
-			'chart-bar':
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4.75 5a.76.76 0 0 1 .75.75v11c0 .438.313.75.75.75h13a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-13C5 19 4 18 4 16.75v-11A.74.74 0 0 1 4.75 5ZM8 8.25a.74.74 0 0 1 .75-.75h6.5a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-6.5A.722.722 0 0 1 8 8.25Zm.75 2.25h4.5a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-4.5a.723.723 0 0 1-.75-.75.74.74 0 0 1 .75-.75Zm0 3h8.5a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-8.5a.723.723 0 0 1-.75-.75.74.74 0 0 1 .75-.75Z" fill="currentColor"/></svg>',
-			beaker:
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 21c-.85 0-1.454-.38-1.813-1.137-.358-.759-.27-1.463.263-2.113L9 11V5H8a.968.968 0 0 1-.713-.287A.968.968 0 0 1 7 4c0-.283.096-.52.287-.712A.968.968 0 0 1 8 3h8c.283 0 .52.096.712.288.192.191.288.429.288.712s-.096.52-.288.713A.968.968 0 0 1 16 5h-1v6l5.55 6.75c.533.65.62 1.354.262 2.113C20.454 20.62 19.85 21 19 21H5Zm2-3h10l-3.4-4h-3.2L7 18Zm-2 1h14l-6-7.3V5h-2v6.7L5 19Z" fill="currentColor"/></svg>',
-			protractor:
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m6.75 21-.25-2.2 2.85-7.85a3.95 3.95 0 0 0 1.75.95l-2.75 7.55L6.75 21Zm10.5 0-1.6-1.55-2.75-7.55a3.948 3.948 0 0 0 1.75-.95l2.85 7.85-.25 2.2ZM12 11a2.893 2.893 0 0 1-2.125-.875A2.893 2.893 0 0 1 9 8c0-.65.188-1.23.563-1.737A2.935 2.935 0 0 1 11 5.2V3h2v2.2c.583.2 1.063.554 1.438 1.063C14.812 6.77 15 7.35 15 8c0 .833-.292 1.542-.875 2.125A2.893 2.893 0 0 1 12 11Zm0-2c.283 0 .52-.096.713-.287A.967.967 0 0 0 13 8a.967.967 0 0 0-.287-.713A.968.968 0 0 0 12 7a.968.968 0 0 0-.713.287A.967.967 0 0 0 11 8c0 .283.096.52.287.713.192.191.43.287.713.287Z" fill="currentColor"/></svg>',
-			'bars-3':
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.85 15c.517 0 .98-.15 1.388-.45.408-.3.695-.692.862-1.175l.375-1.15c.267-.8.2-1.537-.2-2.213C8.875 9.337 8.3 9 7.55 9H4.025l.475 3.925c.083.583.346 1.075.787 1.475.442.4.963.6 1.563.6Zm10.3 0c.6 0 1.12-.2 1.563-.6.441-.4.704-.892.787-1.475L19.975 9h-3.5c-.75 0-1.325.342-1.725 1.025-.4.683-.467 1.425-.2 2.225l.35 1.125c.167.483.454.875.862 1.175.409.3.871.45 1.388.45Zm-10.3 2c-1.1 0-2.063-.363-2.887-1.088a4.198 4.198 0 0 1-1.438-2.737L2 9H1V7h6.55c.733 0 1.404.18 2.013.537A3.906 3.906 0 0 1 11 9h2.025c.35-.617.83-1.104 1.438-1.463A3.892 3.892 0 0 1 16.474 7H23v2h-1l-.525 4.175a4.198 4.198 0 0 1-1.438 2.737A4.238 4.238 0 0 1 17.15 17c-.95 0-1.804-.27-2.562-.813A4.234 4.234 0 0 1 13 14.026l-.375-1.125a21.35 21.35 0 0 1-.1-.363 4.926 4.926 0 0 1-.1-.537h-.85c-.033.2-.067.363-.1.488a21.35 21.35 0 0 1-.1.362L11 14a4.3 4.3 0 0 1-1.588 2.175A4.258 4.258 0 0 1 6.85 17Z" fill="currentColor"/></svg>',
-			ruler:
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m8.8 10.95 2.15-2.175-1.4-1.425-1.1 1.1-1.4-1.4 1.075-1.1L7 4.825 4.825 7 8.8 10.95Zm8.2 8.225L19.175 17l-1.125-1.125-1.1 1.075-1.4-1.4 1.075-1.1-1.425-1.4-2.15 2.15L17 19.175ZM7.25 21H3v-4.25l4.375-4.375L2 7l5-5 5.4 5.4 3.775-3.8c.2-.2.425-.35.675-.45a2.068 2.068 0 0 1 1.55 0c.25.1.475.25.675.45L20.4 4.95c.2.2.35.425.45.675.1.25.15.508.15.775a1.975 1.975 0 0 1-.6 1.425l-3.775 3.8L22 17l-5 5-5.375-5.375L7.25 21ZM5 19h1.4l9.8-9.775L14.775 7.8 5 17.6V19Z" fill="currentColor"/></svg>'
-		};
-		return iconMap[iconName] || null;
+		return resolveFallbackToolIcon(iconName);
 	}
 
 	function syncRenderedToolsState() {
@@ -1022,6 +1032,49 @@
 		return () => {
 			unsubs.forEach((unsub) => unsub());
 		};
+	});
+
+	/**
+	 * Claim tool-open requests for this toolbar's placement level.
+	 *
+	 * How a selection gateway reaches a tool it does not mount: the gateway names an
+	 * unscoped tool id, and the toolbar that hosts it turns that into a scoped
+	 * instance and shows it. Only `placementLevel` is read synchronously, so the
+	 * registration survives every policy change — `hostsTool` answers live from the
+	 * current visible set rather than from a set captured at registration.
+	 */
+	$effect(() => {
+		const coord = runtimeContext?.toolkitCoordinator;
+		if (typeof coord?.registerToolRequestTarget !== 'function') return;
+		const level = placementLevel;
+		return coord.registerToolRequestTarget({
+			level,
+			hostsTool: (toolId: string) => toolbarVisibleToolIds.includes(toolId),
+			open: (toolId: string, params?: Record<string, unknown>) => {
+				if (!effectiveToolCoordinator) return;
+				if (!toolbarVisibleToolIds.includes(toolId)) return;
+				if (params && Object.keys(params).length > 0) {
+					toolRequestSequence += 1;
+					requestedToolParams.set(toolId, {
+						...params,
+						toolRequestId: toolRequestSequence
+					});
+				}
+				const instanceToolId = createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+				if (!effectiveToolCoordinator.getToolState(instanceToolId)) {
+					effectiveToolCoordinator.registerTool(instanceToolId, toolId);
+				}
+				// Show, never toggle: a learner selecting a second word and asking again
+				// is asking for the tool, and a toggle would close it on them.
+				effectiveToolCoordinator.showTool(instanceToolId);
+				// Params reach the tool through its registration's `sync`, and showing an
+				// already-visible tool broadcasts no visibility change — so drive the sync
+				// here rather than relying on one. Deferred for the same reason the
+				// visibility and telemetry handlers defer: the request arrives from
+				// outside this component and must not land inside an active flush.
+				queueMicrotask(() => syncRenderedToolsState());
+			}
+		});
 	});
 
 	$effect(() => {
@@ -1612,13 +1665,14 @@
 		// Real focusable elements inside the shell, in DOM order. The focus
 		// guards at the shell boundaries are filtered out so external entry
 		// points land on actual controls instead of bouncing right back out.
+		// Shadow-aware, matching the focus trap: a hosted tool renders into
+		// `shadow: "open"`, so a flat query returns only the shell's own chrome and an
+		// external entry point would land there instead of on the tool's first control.
 		const getShellFocusables = (): HTMLElement[] => {
 			if (!shellEl) return [];
-			return Array.from(
-				shellEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-			)
-				.filter((el) => el !== startFocusGuardEl && el !== endFocusGuardEl)
-				.filter(isProgrammaticFocusTarget);
+			return collectFocusable(shellEl).filter(
+				(el) => el !== startFocusGuardEl && el !== endFocusGuardEl
+			);
 		};
 
 		// Bridges the page's tab order into the calculator shell. The shell is

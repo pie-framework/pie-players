@@ -9,6 +9,8 @@ node_modules/
 
 # local artifacts
 local-builds/
+# Screenshot evidence captured on demand for tickets and PRs, never committed.
+artifacts/
 
 # MCP servers
 .playwright-mcp/

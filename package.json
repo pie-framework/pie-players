@@ -125,7 +125,8 @@
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",
 		"pack:local": "bun run build && bun run --cwd tools/cli build && bun ./scripts/pack-local.mjs",
 		"dev:demo": "dotenvx run -- bun scripts/serve-packages.ts",
-		"prepare": "bun ./scripts/install-git-hooks.mjs"
+		"prepare": "bun ./scripts/install-git-hooks.mjs && bun ./scripts/sync-svelte-kit.mjs",
+		"sync:svelte-kit": "bun ./scripts/sync-svelte-kit.mjs"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.5",

@@ -138,6 +138,14 @@ support targets default bundler entrypoints under `dist`.
   responses on models.
 - `show-bottom-border`: `Boolean`, default `false`. Add bottom border in
   evaluate mode.
+- `autoplay-audio-enabled`: `Boolean`, default unset (each model's own
+  `autoplayAudioEnabled` value is left as-is). When set, forces
+  `autoplayAudioEnabled` onto every model in the config, overwriting whatever
+  each model declares (or adding the field if a model doesn't declare it at
+  all). To force it to `false`, set it as a JS property
+  (`player.autoplayAudioEnabled = false`) instead of using this attribute —
+  a literal `false` value passed through an HTML attribute can be misread as
+  `true` once it reaches the custom element.
 - `debug`: `String`, default `""`. Truthy values enable verbose logs;
   `"false"`, `"0"`, and `""` disable them. Also reads `window.PIE_DEBUG`.
 - `custom-class-name`: `String`, default `""`. CSS scope class applied to the

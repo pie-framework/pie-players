@@ -97,12 +97,12 @@ function readPictureUrl(value: unknown): string {
 function toPicture(value: unknown): PictureResult | null {
 	if (!value || typeof value !== "object") return null;
 	const record = value as Record<string, unknown>;
-	// `image` is what PIE's own picture-dictionary service calls the URL: it answers
-	// `{ images: [{ image }] }`, one signed object-storage URL per entry. Reading it
-	// under both names is what lets that deployed service answer this panel with no
-	// host resolver and no change on the server. A usable `url` wins if a payload carries
-	// both — an empty one is not a preference, it is an absence, so the alias still gets
-	// its turn rather than the picture being dropped over a field the host left blank.
+	// A picture service may name the URL `image` rather than `url`, answering
+	// `{ images: [{ image }] }` with one signed object-storage URL per entry. Reading both
+	// names is what lets such a service answer this panel with no host resolver and no
+	// change on the server. A usable `url` wins if a payload carries both — an empty one is
+	// not a preference, it is an absence, so the alias still gets its turn rather than the
+	// picture being dropped over a field the host left blank.
 	const url = readPictureUrl(record.url) || readPictureUrl(record.image);
 	if (!isRenderablePictureUrl(url)) return null;
 	const caption =

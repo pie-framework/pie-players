@@ -48,19 +48,17 @@ longer than four words is refused without a request.
 alias for `url` — `url` wins if a payload carries both. Unknown extra fields are
 ignored. Signed, short-lived URLs are expected and fine.
 
-### PIE's own picture-dictionary service
+### Pointing it at an existing service
 
-`POST /api/picture-dictionary` on the PIE API serves this contract as it stands. It
-takes `{ keyword, language?, max? }` and answers `{ images: [{ image }] }`, one signed
-object-storage URL per entry, so a host names the endpoint — its provisioned PIE API
-base plus `/api/picture-dictionary` — and needs no resolver of its own.
+A service that already takes `{ keyword, language?, max? }` and answers
+`{ images: [{ image }] }` needs no resolver: name it in `endpoint` and the built-in
+lookup speaks it as it stands.
 
-Two things that route decides rather than this panel. It is cross-origin from the
-assessment, so the `same-origin` default sends no credentials and its service token
-goes through `headers`; SchoolCity's client calls it that way in production today, so
-that path is exercised and a host needs no proxy of its own. And `language` defaults to
-`en-us` server-side, so a Spanish lookup has to say so; the panel sends `language` only
-when the host sets it.
+Two things such a service decides rather than this panel. If it is cross-origin from the
+assessment, the `same-origin` default sends no credentials, so a service token goes
+through `headers` — a path a host can use directly instead of proxying. And if it
+defaults the language server-side, a non-default language has to be declared: the panel
+sends `language` only when the host sets it.
 
 A picture whose URL is not `https:`, protocol-relative, or a same-origin path is
 dropped — host data still reaches an attribute the browser acts on, and a symbol

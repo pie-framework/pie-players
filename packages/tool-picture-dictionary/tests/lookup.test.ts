@@ -78,31 +78,31 @@ describe("reading a host response", () => {
 		}
 	});
 
-	// PIE's own picture-dictionary service answers `{ images: [{ image }] }` with one
-	// signed object-storage URL per entry. Read under both names, that response needs no
-	// host resolver and no change on the server; read under `url` alone, every lookup
-	// against it came back "no picture" — a wrong answer rather than a visible failure.
-	test("PIE's picture-dictionary service response is read as it stands", () => {
+	// A picture service that names the URL `image` and returns one signed object-storage
+	// URL per entry. Read under both names, such a response needs no host resolver; read
+	// under `url` alone, every lookup against it comes back "no picture" — a wrong answer
+	// rather than a visible failure.
+	test("a payload naming the url `image` is read as it stands", () => {
 		const result = readPictureResponse({
 			images: [
 				{
 					image:
-						"https://pie-api-dev-picture-dictionary.s3.amazonaws.com/apple.png?X-Amz-Signature=abc",
+						"https://pictures.example.test/apple.png?X-Amz-Signature=abc",
 				},
-				{ image: "https://pie-api-dev-picture-dictionary.s3.amazonaws.com/b.png" },
+				{ image: "https://pictures.example.test/b.png" },
 			],
 		});
 		expect(result).toEqual({
 			status: "ok",
 			items: [
 				{
-					url: "https://pie-api-dev-picture-dictionary.s3.amazonaws.com/apple.png?X-Amz-Signature=abc",
+					url: "https://pictures.example.test/apple.png?X-Amz-Signature=abc",
 					caption: undefined,
 					width: undefined,
 					height: undefined,
 				},
 				{
-					url: "https://pie-api-dev-picture-dictionary.s3.amazonaws.com/b.png",
+					url: "https://pictures.example.test/b.png",
 					caption: undefined,
 					width: undefined,
 					height: undefined,

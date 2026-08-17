@@ -12,35 +12,31 @@ The panel POSTs `{ keyword, language?, max? }` to one host-named endpoint and re
 services dispatches on `language` in its own route; nothing in the framework needs to
 know that more than one backend exists.
 
-SchoolCity is that case and is the proof. `sc-dictionary-api` fronts two backends on one
-host: `/en` reads SchoolCity's own corpus and answers
-`{ statusCode, words: [{ partOfSpeech, definition, examples, synonyms }] }`, while `/es`
-proxies Oxford and answers Oxford's
-`{ metadata, results: [{ lexicalEntries: [{ lexicalCategory, entries: [{ senses }] }] }] }`.
-Both are normalised in `pie-api-aws` — `containers/pieoneer/src/lib/server/dictionary/schoolCityDictionary.ts` —
-where the service's JWT is also minted, so the shared secret never reaches a browser and
-the panel calls a same-origin route on the assessment's own session.
+A real deployment shows why the seam sits there. One assessment vendor's dictionary
+fronts two corpora behind a single host, path-selected by language, each answering a
+different payload — one the vendor's own shape, the other an upstream dictionary API's,
+proxied verbatim. Neither is this panel's contract, so the host route normalises both. A
+reference implementation of that mapping, including how the upstream service is
+authorised, lives with the host rather than here; in Renaissance's case that is
+`pie-api-aws`, whose PIEOneer container carries it.
 
 An endpoint-per-language map on the element would move that dispatch into the package
 and buy nothing: the host already knows its corpora, and the panel would then need to
 carry a service inventory it cannot validate.
 
-### Credentials are the host's, and whose host matters
+### Credentials are the host's
 
-In SchoolCity-delivered assessment the host is SchoolCity's own application: it points the
-panel at its own route, authorised by the learner's session, and PIE holds no service
-credential at all. The `pie-api-aws` route exists for PIE-hosted contexts — pieoneer and
-the demos — and it is there that a credential question arises.
+A service credential never belongs to this package. Where the assessment host is the same
+application that owns the dictionary, the lookup rides the learner's existing session and
+no credential is provisioned for PIE at all. Where PIE hosts the delivery — a reference
+app, a demo — its own server holds whatever the upstream requires and mints per-request
+tokens there, so nothing reaches the browser and the panel calls a same-origin route.
 
-`sc-dictionary-api` validates one shared secret, and SchoolCity's platform signs service
-calls with a single key (`ServiceAuthkey`, verified elsewhere as `JWT_SHARED_SECRET`),
-which is why their client forwards a session token rather than a dictionary-specific one.
-A PIE-hosted deployment must not be given that key: it authorises every SchoolCity
-service, not a lookup. The ask is a PIE-scoped issuer and secret, which
-`sc-texttospeech-api` already provisions through an issuer-to-secret map and the
-dictionary service currently does not. Measured: a token signed with PIE's TTS secret is
-refused by both the dev and production dictionary hosts with `401 Invalid or expired
-JWT`, so the two services do not share a credential today.
+That distinction is worth stating because it decides who has to ask for what. A
+credential scoped to the caller is the shape to want: a platform-wide key that authorises
+every service the vendor runs is not a dictionary credential, and a host that finds itself
+being handed one should push back before wiring it. Deployment specifics — which secret,
+which issuer, which host — belong in the host's own repository, not in this one.
 
 ## One capability, one language at a time
 

@@ -9,11 +9,6 @@ import type {
 	BackendAuthoringSaveOptions,
 	BackendConfig,
 } from "./types.js";
-import {
-	callPieApiAuthoringLoad,
-	callPieApiAuthoringReleaseContent,
-	callPieApiAuthoringSaveContent,
-} from "./pie-api-client.js";
 
 export type SaveContentToAuthoringBackendContext = BackendAuthoringIdentity & {
 	config: unknown;
@@ -89,6 +84,7 @@ export async function loadFromAuthoringBackend(
 	if (usesCustomAuthoringClient(authoring)) {
 		throw new Error("backend.authoring.client.load is not configured.");
 	}
+	const { callPieApiAuthoringLoad } = await import("./pie-api-client.js");
 	return callPieApiAuthoringLoad(authoring, backend.auth, {
 		...resolveIdentity(authoring),
 		env,
@@ -115,6 +111,9 @@ export async function saveContentToAuthoringBackend(
 	if (usesCustomAuthoringClient(authoring)) {
 		throw new Error("backend.authoring.client.saveContent is not configured.");
 	}
+	const { callPieApiAuthoringSaveContent } = await import(
+		"./pie-api-client.js"
+	);
 	return callPieApiAuthoringSaveContent(authoring, backend.auth, saveContext);
 }
 
@@ -139,6 +138,9 @@ export async function releaseContentFromAuthoringBackend(
 			"backend.authoring.client.releaseContent is not configured.",
 		);
 	}
+	const { callPieApiAuthoringReleaseContent } = await import(
+		"./pie-api-client.js"
+	);
 	return callPieApiAuthoringReleaseContent(
 		authoring,
 		backend.auth,

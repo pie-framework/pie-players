@@ -1,9 +1,3 @@
-import {
-	callPieApiDeliveryLoad,
-	callPieApiDeliveryModel,
-	callPieApiDeliverySave,
-	callPieApiDeliveryScore,
-} from "./pie-api-client.js";
 import type {
 	BackendAutosaveConfig,
 	BackendConfig,
@@ -146,10 +140,13 @@ export async function loadFromDeliveryBackend(
 		env,
 		requestOptions: delivery.options,
 	};
-	const result =
-		typeof delivery.client?.load === "function"
-			? await delivery.client.load(context)
-			: await callPieApiDeliveryLoad(delivery, backend.auth, context);
+	let result: BackendDeliveryLoadResult;
+	if (typeof delivery.client?.load === "function") {
+		result = await delivery.client.load(context);
+	} else {
+		const { callPieApiDeliveryLoad } = await import("./pie-api-client.js");
+		result = await callPieApiDeliveryLoad(delivery, backend.auth, context);
+	}
 	return {
 		config: resolveLoadedConfig(result),
 		session: resolveLoadedSession(result),
@@ -171,6 +168,7 @@ export async function modelFromDeliveryBackend(
 			requestOptions: delivery.options,
 		});
 	}
+	const { callPieApiDeliveryModel } = await import("./pie-api-client.js");
 	return callPieApiDeliveryModel(delivery, backend.auth, {
 		...context,
 		requestOptions: delivery.options,
@@ -191,6 +189,7 @@ export async function saveToDeliveryBackend(
 			requestOptions: delivery.options,
 		});
 	}
+	const { callPieApiDeliverySave } = await import("./pie-api-client.js");
 	return callPieApiDeliverySave(delivery, backend.auth, {
 		...context,
 		requestOptions: delivery.options,
@@ -214,5 +213,6 @@ export async function scoreWithDeliveryBackend(
 	if (typeof delivery.client?.score === "function") {
 		return delivery.client.score(scoreContext);
 	}
+	const { callPieApiDeliveryScore } = await import("./pie-api-client.js");
 	return callPieApiDeliveryScore(delivery, backend.auth, scoreContext);
 }

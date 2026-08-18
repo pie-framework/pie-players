@@ -1,3 +1,14 @@
+/**
+ * The built-in `pie-api` HTTP transport: the fallback for a delivery or
+ * authoring backend that names no `client` of its own.
+ *
+ * Loaded on demand. `delivery.ts` and `authoring.ts` reach it through
+ * `await import("./pie-api-client.js")` from inside their async entry points, so
+ * a host that supplies its own client never pays for the endpoint table, the
+ * token resolution or the fetch wrapper. Keep every export awaited from an async
+ * caller; a static import anywhere pulls the whole module back into the entry.
+ */
+
 import type {
 	BackendAuthConfig,
 	BackendAuthoringConfig,

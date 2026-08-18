@@ -30,13 +30,10 @@ function isKnownA11yBaselineDebt(violation: {
 		return (violation.nodes || []).every((node) => {
 			const html = String(node.html || "");
 			return (
-				(html.includes('class="button"') &&
-					(html.includes("MuiSvgIcon") ||
-						html === '<button class="button">' ||
-						html === '<button disabled="" class="button">')) ||
-				// PIE-708 tracks the upstream editor toolbar buttons with no accessible name.
-				html.startsWith('<button class="toolbarButton"') ||
-				html.startsWith('<button disabled="" class="toolbarButton"')
+				html.includes('class="button"') &&
+				(html.includes("MuiSvgIcon") ||
+					html === '<button class="button">' ||
+					html === '<button disabled="" class="button">')
 			);
 		});
 	}

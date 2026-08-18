@@ -1,4 +1,4 @@
-import { applyPieColorScheme } from "@pie-players/pie-theme";
+import { applyPieColorScheme, DAISYUI_THEME_CATALOG } from "@pie-players/pie-theme";
 import type {
 	AssessmentEntity,
 	PersonalNeedsProfile,
@@ -13,43 +13,7 @@ export const ATTEMPT_STORAGE_KEY = "pie:section-demos:attempt-id";
 export const DAISY_THEME_STORAGE_KEY = "pie:section-demos:daisy-theme";
 export const TOOLKIT_SCHEME_STORAGE_KEY = "pie-color-scheme";
 export const DEFAULT_DAISY_THEME = "light";
-export const DAISY_DEFAULT_THEMES = [
-	"light",
-	"dark",
-	"cupcake",
-	"bumblebee",
-	"emerald",
-	"corporate",
-	"synthwave",
-	"retro",
-	"cyberpunk",
-	"valentine",
-	"halloween",
-	"garden",
-	"forest",
-	"aqua",
-	"lofi",
-	"pastel",
-	"fantasy",
-	"wireframe",
-	"black",
-	"luxury",
-	"dracula",
-	"cmyk",
-	"autumn",
-	"business",
-	"acid",
-	"lemonade",
-	"night",
-	"coffee",
-	"winter",
-	"dim",
-	"nord",
-	"sunset",
-	"caramellatte",
-	"abyss",
-	"silk",
-] as const;
+export const DAISY_DEFAULT_THEMES = DAISYUI_THEME_CATALOG;
 
 export function getUrlEnumParam<T extends string>(
 	key: string,

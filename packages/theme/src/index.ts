@@ -19,6 +19,10 @@ export {
 	type DaisySlot,
 } from "./daisyui-mapping.js";
 export {
+	DAISYUI_THEME_CATALOG,
+	type DaisyUIThemeId,
+} from "./daisyui-theme-catalog.js";
+export {
 	createCanvasColorMeasure,
 	type ColorMeasure,
 } from "./contrast.js";

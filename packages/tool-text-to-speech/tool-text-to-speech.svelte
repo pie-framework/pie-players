@@ -13,7 +13,7 @@
 <script lang="ts">
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
 	import { BrowserTTSProvider, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import { createFocusTrap, createPointerDragController } from '@pie-players/pie-players-shared';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -40,12 +40,17 @@
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let closeButtonEl = $state<HTMLButtonElement | undefined>();
-	let isDragging = $state(false);
 	let position = $state({
 		x: isBrowser ? window.innerWidth - 320 : 400,
 		y: isBrowser ? 100 : 100
 	});
-	let dragStart = $state({ x: 0, y: 0 });
+	const dragController = createPointerDragController({
+		getPosition: () => position,
+		setPosition: (next) => {
+			position = next;
+		},
+		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
+	});
 
 	// TTS state
 	let isInitialized = $state(false);
@@ -268,15 +273,7 @@
 	function startDragging(e: PointerEvent) {
 		if (!containerEl) return;
 
-		containerEl.setPointerCapture(e.pointerId);
-
-		isDragging = true;
-		dragStart = {
-			x: e.clientX - position.x,
-			y: e.clientY - position.y
-		};
-
-		coordinator?.bringToFront(containerEl);
+		dragController.startDragging(e, containerEl);
 
 		containerEl.addEventListener('pointermove', handlePointerMove);
 		containerEl.addEventListener('pointerup', handlePointerUp);
@@ -285,20 +282,17 @@
 	}
 
 	function handlePointerMove(e: PointerEvent) {
-		if (!isDragging) return;
+		if (!dragController.isDragging()) return;
 
-		position = {
-			x: e.clientX - dragStart.x,
-			y: e.clientY - dragStart.y
-		};
+		dragController.handlePointerMove(e);
 
 		e.preventDefault();
 	}
 
 	function handlePointerUp(e: PointerEvent) {
-		if (isDragging && containerEl) {
+		if (dragController.isDragging() && containerEl) {
 			containerEl.releasePointerCapture(e.pointerId);
-			isDragging = false;
+			dragController.endDragging();
 
 			containerEl.removeEventListener('pointermove', handlePointerMove);
 			containerEl.removeEventListener('pointerup', handlePointerUp);

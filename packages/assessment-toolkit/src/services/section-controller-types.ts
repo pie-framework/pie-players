@@ -2,16 +2,22 @@ import type {
 	FormativeFeedbackReveal,
 	FormativeMasteryRollup,
 	FormativeSectionProjection,
-	FormativeSectionSlice,
 	FormativeTryOutcome,
 } from "@pie-players/pie-players-shared/formative";
 import type {
 	MediaTimeSource,
 	TimedMediaDegradation,
 	TimedMediaSectionProjection,
-	TimedMediaSectionSessionSlice,
 	TimedMediaValidationError,
 } from "@pie-players/pie-players-shared/timed-media";
+import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
+
+/**
+ * Re-exported so every existing import site keeps its specifier. The shape is
+ * canonical in `@pie-players/pie-players-shared/types`, beside
+ * `AssessmentSection` and the delivery slices it carries.
+ */
+export type { SectionControllerSessionState };
 
 export interface SectionControllerKey {
 	assessmentId: string;
@@ -90,31 +96,6 @@ export interface SectionControllerRuntimeState {
 	 * subscribers observe the same sequence a live subscriber would have seen.
 	 */
 	loadedRenderables?: ReadonlyArray<SectionControllerLoadedRenderable>;
-}
-
-export interface SectionControllerSessionState {
-	currentItemIndex?: number;
-	visitedItemIdentifiers?: string[];
-	itemSessions: Record<string, unknown>;
-	/**
-	 * Formative delivery state — Try counts and reveal state per item.
-	 *
-	 * Optional, and its absence is indistinguishable from a snapshot saved
-	 * before formative delivery existed, which is what keeps existing persisted
-	 * sessions valid. A slice with an unrecognized `version` is rejected whole
-	 * and formative state starts clean; `itemSessions` in the same snapshot is
-	 * unaffected, so a formative version bump never costs a learner responses.
-	 */
-	formative?: FormativeSectionSlice;
-	/**
-	 * Timed-media delivery state — media progress, cue visits and completions.
-	 *
-	 * Same posture as `formative`: optional, absence indistinguishable from a
-	 * pre-timed-media snapshot, and an unrecognized `version` rejected whole so
-	 * cue progress restarts while item sessions in the same snapshot are applied
-	 * untouched.
-	 */
-	timedMedia?: TimedMediaSectionSessionSlice;
 }
 
 type SectionControllerEventBase = {

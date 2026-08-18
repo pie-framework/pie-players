@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
 import schemaSql from "./schema.sql?raw";
 
 export const DEMO_USER_ID = "demo-user-1";
@@ -11,11 +12,12 @@ export interface SessionDemoKey {
 	attemptId: string;
 }
 
-export interface SectionSessionSnapshot {
-	currentItemIndex?: number;
-	visitedItemIdentifiers?: string[];
-	itemSessions: Record<string, unknown>;
-}
+/**
+ * The canonical section snapshot, not a local restatement of its first three
+ * fields: the persistence round trip is what proves the `formative` and
+ * `timedMedia` slices survive, and a narrower type here would hide their loss.
+ */
+export type SectionSessionSnapshot = SectionControllerSessionState;
 
 export interface AssessmentSessionSnapshot {
 	version?: number;

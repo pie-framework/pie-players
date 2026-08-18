@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createNpmAuthEnvironment } from "./npm-auth-env.mjs";
+import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
 import {
 	DEP_SECTIONS,
 	resolveWorkspaceRange,

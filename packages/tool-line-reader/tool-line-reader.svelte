@@ -19,6 +19,7 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
+import { createPointerDragController } from '@pie-players/pie-players-shared';
 import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 import { onMount } from 'svelte';
 
@@ -37,18 +38,23 @@ import { onMount } from 'svelte';
 	/** Which dimension an in-flight pointer resize is changing. */
 	type ResizeTarget = 'pane' | 'frame';
 
-	let isDragging = $state(false);
 	let resizeTarget = $state<ResizeTarget | null>(null);
 	let position = $state({
 		x: isBrowser ? window.innerWidth / 2 : 400,
 		y: isBrowser ? window.innerHeight / 2 : 300
+	});
+	const dragController = createPointerDragController({
+		getPosition: () => position,
+		setPosition: (next) => {
+			position = next;
+		},
+		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
 	});
 	let width = $state(600);
 	/** Height of the fully transparent reading window. */
 	let paneHeight = $state(24);
 	/** Height of the obscuring frame band above and below the reading window. */
 	let frameBandHeight = $state(48);
-	let dragStart = $state({ x: 0, y: 0 });
 	let resizeStart = $state({
 		paneHeight: 0,
 		frameBandHeight: 0,
@@ -164,21 +170,12 @@ import { onMount } from 'svelte';
 	function startDragging(e: PointerEvent) {
 		if (!containerEl) return;
 
-		// Capture pointer for isolated event handling
-		containerEl.setPointerCapture(e.pointerId);
-
 		// `preventDefault` below suppresses the press's default focus, so claim it
 		// explicitly: without this, clicking the frame leaves focus wherever it was
 		// and the arrow-key move shortcuts never reach the tool.
 		containerEl.focus({ preventScroll: true });
 
-		isDragging = true;
-		dragStart = {
-			x: e.clientX - position.x,
-			y: e.clientY - position.y
-		};
-
-		coordinator?.bringToFront(containerEl);
+		dragController.startDragging(e, containerEl);
 
 		// Add pointer move/up handlers to element (not window!)
 		containerEl.addEventListener('pointermove', handlePointerMove);
@@ -218,11 +215,8 @@ import { onMount } from 'svelte';
 	}
 
 	function handlePointerMove(e: PointerEvent) {
-		if (isDragging) {
-			position = {
-				x: e.clientX - dragStart.x,
-				y: e.clientY - dragStart.y
-			};
+		if (dragController.isDragging()) {
+			dragController.handlePointerMove(e);
 			return;
 		}
 
@@ -255,7 +249,7 @@ import { onMount } from 'svelte';
 		containerEl.removeEventListener('pointermove', handlePointerMove);
 		containerEl.removeEventListener('pointerup', handlePointerUp);
 
-		isDragging = false;
+		dragController.endDragging();
 		resizeTarget = null;
 	}
 

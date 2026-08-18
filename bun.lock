@@ -807,6 +807,7 @@
       "version": "0.3.67",
       "dependencies": {
         "@pie-players/pie-tts": "workspace:*",
+        "@pie-players/tts-server-core": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.9.3",
@@ -867,6 +868,7 @@
       "dependencies": {
         "@oclif/core": "^4.13.2",
         "@oclif/plugin-help": "^6.2.58",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.2.0",

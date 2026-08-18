@@ -19,6 +19,10 @@ export {
 	type DaisySlot,
 } from "./daisyui-mapping.js";
 export {
+	DAISYUI_THEME_CATALOG,
+	type DaisyUIThemeId,
+} from "./daisyui-theme-catalog.js";
+export {
 	createCanvasColorMeasure,
 	type ColorMeasure,
 } from "./contrast.js";
@@ -56,5 +60,10 @@ export {
 	registerPieColorSchemes,
 	resolvePieTheme,
 } from "./color-schemes.js";
+export {
+	applyPieColorScheme,
+	resolvePieThemeHost,
+	type ApplyPieColorSchemeOptions,
+} from "./apply-color-scheme.js";
 
 definePieTheme();

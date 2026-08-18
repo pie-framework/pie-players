@@ -10,6 +10,10 @@
 
 import DOMPurify from "dompurify";
 
+import {
+	SANITIZER_FORBIDDEN_ATTRS,
+	SANITIZER_FORBIDDEN_TAGS,
+} from "./sanitize-forbidden-lists.js";
 import { wrapOverwideImages } from "./wrap-overwide-images.js";
 import { wrapOverwideTables } from "./wrap-overwide-tables.js";
 
@@ -55,43 +59,9 @@ const BASE_ALLOWED_ATTRS = [
 
 const BASE_URI_SAFE_ATTRS = ["pie-id"];
 
-const FORBIDDEN_TAGS = [
-	"script",
-	"iframe",
-	"object",
-	"embed",
-	"base",
-	"form",
-	"meta",
-	"link",
-	// <foreignObject> inside an <svg> is a well-known escape hatch back
-	// into HTML context; match the SVG-icon sanitizer and forbid it here
-	// so both sanitizers agree on the surface.
-	"foreignobject",
-];
+const FORBIDDEN_TAGS = SANITIZER_FORBIDDEN_TAGS;
 
-// DOMPurify already strips `on*` handlers via its default block-list;
-// these entries guarantee they stay stripped even if a consumer tweaks
-// defaults, and they cover the common SVG / math sinks.
-const FORBIDDEN_ATTRS = [
-	"onerror",
-	"onload",
-	"onclick",
-	"onmouseover",
-	"onmouseout",
-	"onmouseenter",
-	"onmouseleave",
-	"onfocus",
-	"onblur",
-	"onkeydown",
-	"onkeyup",
-	"onkeypress",
-	"onsubmit",
-	"onchange",
-	"onbeforeunload",
-	"formaction",
-	"xlink:href",
-];
+const FORBIDDEN_ATTRS = SANITIZER_FORBIDDEN_ATTRS;
 
 // Any tag that looks like a custom element (contains a hyphen) is permitted
 // provided it starts with `pie-` or is explicitly named in

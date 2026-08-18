@@ -91,6 +91,31 @@ export interface PollyProviderConfig extends TTSServerConfig {
  */
 const POLLY_SSML_TAGS = ["<amazon:", "<aws-"];
 
+/**
+ * AWS SDK exception names (`error.name`) that mean the request itself was
+ * invalid or unsupported, as opposed to a transient/provider-side failure.
+ * @see https://docs.aws.amazon.com/polly/latest/dg/API_Reference.html
+ */
+const POLLY_INVALID_REQUEST_EXCEPTIONS = new Set([
+	"InvalidSampleRateException",
+	"InvalidSsmlException",
+	"LanguageNotSupportedException",
+	"ValidationException",
+	"EngineNotSupportedException",
+	"MarksNotSupportedForFormatException",
+	"SsmlMarksNotSupportedForTextTypeException",
+	"UnsupportedPlsAlphabetException",
+	"UnsupportedPlsLanguageException",
+	"InvalidS3BucketException",
+	"InvalidS3KeyException",
+	"InvalidSnsTopicArnException",
+]);
+
+const POLLY_RATE_LIMIT_EXCEPTIONS = new Set([
+	"ThrottlingException",
+	"ServiceQuotaExceededException",
+]);
+
 export class PollyServerProvider extends BaseTTSProvider {
 	readonly providerId = "aws-polly";
 	readonly providerName = "AWS Polly";
@@ -220,12 +245,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 				},
 			};
 		} catch (error) {
-			throw new TTSError(
-				TTSErrorCode.PROVIDER_ERROR,
-				`AWS Polly synthesis failed: ${error instanceof Error ? error.message : String(error)}`,
-				{ error, request },
-				this.providerId,
-			);
+			throw this.mapPollyErrorToTTSError(error, { request });
 		}
 	}
 
@@ -236,20 +256,22 @@ export class PollyServerProvider extends BaseTTSProvider {
 		request: SynthesizeRequest,
 		voice: string,
 	): Promise<{ audio: Buffer; contentType: string }> {
-		const isSsml = this.detectSSML(request.text, POLLY_SSML_TAGS);
-
-		const textType = isSsml ? "ssml" : "text";
-
-		if (isSsml) {
+		if (this.detectSSML(request.text, POLLY_SSML_TAGS)) {
 			console.log(
 				"[PollyServerProvider] Detected SSML content, using TextType: ssml",
 			);
 		}
+		const { text, isSsml } = this.applyProsody(
+			request.text,
+			request,
+			POLLY_SSML_TAGS,
+		);
+		const textType = isSsml ? "ssml" : "text";
 
 		const command = new SynthesizeSpeechCommand({
 			Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
 			OutputFormat: this.resolveOutputFormat(request),
-			Text: request.text,
+			Text: text,
 			TextType: textType,
 			VoiceId: voice as VoiceId,
 			SampleRate: String(request.sampleRate || 24000),
@@ -288,14 +310,17 @@ export class PollyServerProvider extends BaseTTSProvider {
 		request: SynthesizeRequest,
 		voice: string,
 	): Promise<SpeechMark[]> {
-		const isSsml = this.detectSSML(request.text, POLLY_SSML_TAGS);
-
+		const { text, isSsml } = this.applyProsody(
+			request.text,
+			request,
+			POLLY_SSML_TAGS,
+		);
 		const textType = isSsml ? "ssml" : "text";
 
 		const command = new SynthesizeSpeechCommand({
 			Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
 			OutputFormat: "json",
-			Text: request.text,
+			Text: text,
 			TextType: textType,
 			VoiceId: voice as VoiceId,
 			SpeechMarkTypes: this.resolveSpeechMarkTypes(request),
@@ -403,12 +428,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 				return true;
 			});
 		} catch (error) {
-			throw new TTSError(
-				TTSErrorCode.PROVIDER_ERROR,
-				`Failed to get voices: ${error instanceof Error ? error.message : String(error)}`,
-				{ error },
-				this.providerId,
-			);
+			throw this.mapPollyErrorToTTSError(error);
 		}
 	}
 
@@ -447,6 +467,73 @@ export class PollyServerProvider extends BaseTTSProvider {
 				},
 			},
 		};
+	}
+
+	/**
+	 * Map an AWS SDK error to a TTSError, matching the granularity
+	 * GoogleCloudTTSProvider gives its own vendor errors: a bare
+	 * `PROVIDER_ERROR` for everything hides cases callers (Host A maps
+	 * `RATE_LIMIT_EXCEEDED` / `AUTHENTICATION_ERROR` / `INVALID_REQUEST` /
+	 * `TEXT_TOO_LONG` onto HTTP status codes) already know how to handle.
+	 */
+	private mapPollyErrorToTTSError(
+		error: unknown,
+		extraDetails?: Record<string, unknown>,
+	): TTSError {
+		const err = error as {
+			name?: string;
+			message?: string;
+			$metadata?: { httpStatusCode?: number };
+		};
+		const message = err?.message || String(error);
+		const statusCode = err?.$metadata?.httpStatusCode;
+		const details = { error, ...extraDetails };
+
+		if (err?.name === "TextLengthExceededException") {
+			return new TTSError(
+				TTSErrorCode.TEXT_TOO_LONG,
+				`AWS Polly text length exceeded: ${message}`,
+				details,
+				this.providerId,
+			);
+		}
+
+		if (err?.name && POLLY_INVALID_REQUEST_EXCEPTIONS.has(err.name)) {
+			return new TTSError(
+				TTSErrorCode.INVALID_REQUEST,
+				`Invalid request to AWS Polly: ${message}`,
+				details,
+				this.providerId,
+			);
+		}
+
+		if (
+			(err?.name && POLLY_RATE_LIMIT_EXCEPTIONS.has(err.name)) ||
+			statusCode === 429
+		) {
+			return new TTSError(
+				TTSErrorCode.RATE_LIMIT_EXCEEDED,
+				`AWS Polly rate limit exceeded: ${message}`,
+				details,
+				this.providerId,
+			);
+		}
+
+		if (statusCode === 401 || statusCode === 403) {
+			return new TTSError(
+				TTSErrorCode.AUTHENTICATION_ERROR,
+				`AWS Polly authentication failed: ${message}`,
+				details,
+				this.providerId,
+			);
+		}
+
+		return new TTSError(
+			TTSErrorCode.PROVIDER_ERROR,
+			`AWS Polly error: ${message}`,
+			details,
+			this.providerId,
+		);
 	}
 
 	/**

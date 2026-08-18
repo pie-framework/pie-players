@@ -1,5 +1,10 @@
 import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 import "@pie-players/pie-section-player/components/section-player-vertical-element";
+import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+import {
+	frameworkErrorFromUnknown,
+	type FrameworkErrorModel,
+} from "@pie-players/pie-assessment-toolkit";
 import {
 	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
 	attachInstrumentationEventBridge,
@@ -54,20 +59,11 @@ interface TtsServiceHandle {
 
 interface CoordinatorWithTtsService {
 	ttsService?: TtsServiceHandle;
+	reportFrameworkError?: (model: FrameworkErrorModel) => void;
 }
 
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
 const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
-
-function coerceBooleanLike(
-	value: boolean | string | null | undefined,
-	fallback = false,
-): boolean {
-	if (value == null) return fallback;
-	if (typeof value === "boolean") return value;
-	const n = value.trim().toLowerCase();
-	return n === "" || n === "true" || n === "1" || n === "yes";
-}
 
 export class AssessmentPlayerDefaultElement
 	extends HTMLElement
@@ -472,15 +468,29 @@ export class AssessmentPlayerDefaultElement
 		) {
 			return;
 		}
-		const ttsService = (this.coordinator as CoordinatorWithTtsService | null)
-			?.ttsService;
+		const coordinator = this.coordinator as CoordinatorWithTtsService | null;
+		const ttsService = coordinator?.ttsService;
 		if (!ttsService) return;
+		const reportTtsError = (error: unknown) => {
+			coordinator?.reportFrameworkError?.(
+				frameworkErrorFromUnknown({
+					kind: "tts-init",
+					source: "AssessmentPlayerDefaultElement.cleanupTtsForSectionNavigation",
+					error,
+					recoverable: true,
+				}),
+			);
+		};
 		try {
 			ttsService.stop?.();
-		} catch {}
+		} catch (error) {
+			reportTtsError(error);
+		}
 		try {
 			ttsService.requestControlHandoff?.();
-		} catch {}
+		} catch (error) {
+			reportTtsError(error);
+		}
 	}
 
 	private syncCurrentSectionSessionIntoAssessment() {

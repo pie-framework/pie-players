@@ -12,6 +12,11 @@
 
 import DOMPurify from "dompurify";
 
+import {
+	SANITIZER_FORBIDDEN_ATTRS,
+	SANITIZER_FORBIDDEN_TAGS,
+} from "./sanitize-forbidden-lists.js";
+
 interface DOMPurifyInstance {
 	sanitize: (
 		source: string,
@@ -34,32 +39,9 @@ function resolveSvgPurifier(): DOMPurifyInstance | null {
 	return svgPurifierInstance;
 }
 
-const FORBIDDEN_TAGS = [
-	"script",
-	"foreignobject",
-	"iframe",
-	"object",
-	"embed",
-	"base",
-	"form",
-];
+const FORBIDDEN_TAGS = SANITIZER_FORBIDDEN_TAGS;
 
-const FORBIDDEN_ATTRS = [
-	"onerror",
-	"onload",
-	"onclick",
-	"onmouseover",
-	"onmouseout",
-	"onmouseenter",
-	"onmouseleave",
-	"onfocus",
-	"onblur",
-	"onkeydown",
-	"onkeyup",
-	"onkeypress",
-	"formaction",
-	"xlink:href",
-];
+const FORBIDDEN_ATTRS = SANITIZER_FORBIDDEN_ATTRS;
 
 const stringCache = new Map<string, string>();
 const STRING_CACHE_MAX = 64;

@@ -42,8 +42,9 @@ export function toPackageVersionedTag(
 	const { version } = parsePackageName(packageSpec);
 
 	if (!version.trim() && options.preserveUnversionedTag) {
-		// aggregateElements historically kept unversioned package specs on their
-		// authored tag. Preserve that caller-specific behavior.
+		// pie-item contract compatibility: aggregateElements historically kept
+		// unversioned package specs on their authored tag; already-authored item
+		// content with no version pinned must keep rendering under that tag.
 		return tagName;
 	}
 

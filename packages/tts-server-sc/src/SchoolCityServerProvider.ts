@@ -4,6 +4,9 @@ import { getDomain } from "tldts";
 import {
 	BaseTTSProvider,
 	type GetVoicesOptions,
+	normalizeSpeechMarks,
+	resolveSpeedRateBucket,
+	resolveTTSErrorCodeForHttpStatus,
 	type ServerProviderCapabilities,
 	type SpeechMark,
 	type SynthesizeRequest,
@@ -388,18 +391,6 @@ const fetchAssetWithManualRedirects = async (
 	);
 };
 
-const asFiniteNumber = (value: unknown): number | null => {
-	const next = Number(value);
-	return Number.isFinite(next) ? next : null;
-};
-
-const sortSpeechMarks = (marks: SpeechMark[]): SpeechMark[] =>
-	[...marks].sort((left, right) => {
-		if (left.time !== right.time) return left.time - right.time;
-		if (left.start !== right.start) return left.start - right.start;
-		return left.end - right.end;
-	});
-
 const parseResponseBody = async (
 	response: Response,
 ): Promise<Record<string, unknown>> => {
@@ -426,10 +417,7 @@ const toSpeedRate = (
 	if (explicit === "slow" || explicit === "medium" || explicit === "fast") {
 		return explicit;
 	}
-	const rate = Number(request.rate ?? 1);
-	if (!Number.isFinite(rate) || rate <= 0.95) return "slow";
-	if (rate >= 1.5) return "fast";
-	return fallback;
+	return resolveSpeedRateBucket(request.rate, fallback);
 };
 
 const toLanguage = (request: SynthesizeRequest, fallback: string): string => {
@@ -476,122 +464,6 @@ const normalizeTextForSchoolCity = (input: string): string => {
 	return withoutOpen.replace(/<\/speak>\s*$/i, "").trim();
 };
 
-const parseWordMarksJsonl = (raw: string): SpeechMark[] => {
-	const marks: SpeechMark[] = [];
-	for (const line of raw.split(/\r?\n/)) {
-		const trimmed = line.trim();
-		if (!trimmed) continue;
-		try {
-			const parsed = JSON.parse(trimmed) as Record<string, unknown>;
-			if (parsed.type && parsed.type !== "word") continue;
-			const time = asFiniteNumber(parsed.time);
-			const start = asFiniteNumber(parsed.start);
-			const end = asFiniteNumber(parsed.end);
-			if (time === null || start === null || end === null) continue;
-			const value = typeof parsed.value === "string" ? parsed.value : "";
-			marks.push({
-				time,
-				type: "word",
-				start,
-				end,
-				value,
-			});
-		} catch {
-			// Ignore malformed JSONL rows while preserving valid marks.
-		}
-	}
-	return sortSpeechMarks(marks);
-};
-
-const normalizeMarkTimeUnits = (marks: SpeechMark[]): SpeechMark[] => {
-	if (marks.length < 2) return marks;
-	const times = marks.map((mark) => mark.time).filter((time) => time >= 0);
-	const maxTime = times.length ? Math.max(...times) : 0;
-	const deltas: number[] = [];
-	for (let index = 1; index < times.length; index += 1) {
-		const delta = times[index] - times[index - 1];
-		if (delta > 0 && Number.isFinite(delta)) deltas.push(delta);
-	}
-	const medianDelta =
-		deltas.length > 0
-			? [...deltas].sort((a, b) => a - b)[Math.floor(deltas.length / 2)]
-			: 0;
-	const shapeSuggestsSeconds =
-		(maxTime > 0 && maxTime < 100 && marks.length > 3) ||
-		(medianDelta > 0 && medianDelta < 10);
-	if (!shapeSuggestsSeconds) return marks;
-	return marks.map((mark) => ({ ...mark, time: mark.time * 1000 }));
-};
-
-const estimateOffsetShift = (
-	marks: SpeechMark[],
-	requestText: string,
-): number => {
-	if (!marks.length || !requestText.length) return 0;
-	const textLower = requestText.toLowerCase();
-	const candidates: number[] = [];
-	let cursor = 0;
-	for (const mark of marks) {
-		const token = mark.value.trim().toLowerCase();
-		if (!token) continue;
-		const found = textLower.indexOf(token, cursor);
-		if (found < 0) continue;
-		const delta = mark.start - found;
-		if (delta >= 0) candidates.push(delta);
-		cursor = found + token.length;
-		if (candidates.length >= 8) break;
-	}
-	if (candidates.length > 0) {
-		const ordered = [...candidates].sort((a, b) => a - b);
-		return ordered[Math.floor(ordered.length / 2)];
-	}
-	return Math.max(0, Math.floor(marks[0].start));
-};
-
-const rebaseOffsetsToRequestText = (
-	marks: SpeechMark[],
-	requestText: string,
-): SpeechMark[] => {
-	if (!marks.length || !requestText.length) return marks;
-	const textLength = requestText.length;
-	const maxEnd = Math.max(...marks.map((mark) => mark.end));
-	if (maxEnd <= textLength + 2) return marks;
-	const shift = estimateOffsetShift(marks, requestText);
-	if (shift <= 0) return marks;
-	return marks.map((mark) => ({
-		...mark,
-		start: mark.start - shift,
-		end: mark.end - shift,
-	}));
-};
-
-const clampMarkRanges = (
-	marks: SpeechMark[],
-	requestText: string,
-): SpeechMark[] => {
-	if (!requestText.length) return marks;
-	const textLength = requestText.length;
-	return sortSpeechMarks(
-		marks.map((mark) => {
-			const start = Math.max(0, Math.min(textLength, Math.floor(mark.start)));
-			const end = Math.max(
-				start + 1,
-				Math.min(textLength, Math.floor(mark.end)),
-			);
-			return { ...mark, start, end };
-		}),
-	);
-};
-
-const normalizeSpeechMarks = (
-	raw: string,
-	requestText: string,
-): SpeechMark[] => {
-	const parsed = parseWordMarksJsonl(raw);
-	const withTimes = normalizeMarkTimeUnits(parsed);
-	const rebased = rebaseOffsetsToRequestText(withTimes, requestText);
-	return clampMarkRanges(rebased, requestText);
-};
 
 export class SchoolCityServerProvider extends BaseTTSProvider {
 	readonly providerId = "schoolcity-tts";
@@ -705,7 +577,7 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 			)) as SchoolCitySynthesizeResponse;
 			if (!response.ok) {
 				throw new TTSError(
-					TTSErrorCode.PROVIDER_ERROR,
+					resolveTTSErrorCodeForHttpStatus(response.status),
 					typeof body.message === "string"
 						? body.message
 						: `SchoolCity synthesis failed (${response.status})`,
@@ -773,7 +645,7 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 				);
 				if (!marksResponse.ok) {
 					throw new TTSError(
-						TTSErrorCode.PROVIDER_ERROR,
+						resolveTTSErrorCodeForHttpStatus(marksResponse.status),
 						`SchoolCity marks fetch failed (${marksResponse.status})`,
 						{ word, status: marksResponse.status },
 						this.providerId,
@@ -829,7 +701,7 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		}
 		if (!audioResponse.ok) {
 			throw new TTSError(
-				TTSErrorCode.PROVIDER_ERROR,
+				resolveTTSErrorCodeForHttpStatus(audioResponse.status),
 				`Failed to fetch SchoolCity audio asset (${audioResponse.status})`,
 				{ audioContent, status: audioResponse.status },
 				this.providerId,

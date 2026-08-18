@@ -6,7 +6,9 @@
 			sectionData: { type: 'Object', attribute: 'section-data' },
 			roleType: { type: 'String', attribute: 'role-type' },
 			editable: { type: 'Boolean', attribute: 'editable' },
-			toolkitCoordinator: { type: 'Object', attribute: 'toolkit-coordinator' }
+			toolkitCoordinator: { type: 'Object', attribute: 'toolkit-coordinator' },
+			persistenceScope: { type: 'String', attribute: 'persistence-scope' },
+			persistencePanelId: { type: 'String', attribute: 'persistence-panel-id' }
 		}
 	}}
 />
@@ -36,13 +38,17 @@
 		roleType: 'candidate' | 'scorer';
 		editable?: boolean;
 		toolkitCoordinator?: any;
+		persistenceScope?: string;
+		persistencePanelId?: string;
 	}
 
 	let {
 		sectionData,
 		roleType,
 		editable = false,
-		toolkitCoordinator = null
+		toolkitCoordinator = null,
+		persistenceScope = "",
+		persistencePanelId = "pnp-debugger"
 	}: Props = $props();
 
 	let floatingTools = $state<string[]>([]);
@@ -191,6 +197,8 @@
 	ariaLabel="Drag PNP profile panel"
 	minWidth={360}
 	minHeight={260}
+	{persistenceScope}
+	{persistencePanelId}
 	initialSizing={{
 		widthRatio: 0.3,
 		heightRatio: 0.72,

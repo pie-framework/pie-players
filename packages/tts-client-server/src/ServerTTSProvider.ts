@@ -13,6 +13,10 @@ import type {
 	TTSFeature,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import {
+	normalizeSpeechMarks,
+	resolveSpeedRateBucket,
+} from "@pie-players/tts-server-core";
 
 /**
  * Configuration for ServerTTSProvider
@@ -278,6 +282,7 @@ interface TransportAdapter {
 		config: ServerTTSProviderConfig,
 		headers: Record<string, string>,
 		signal: AbortSignal,
+		text: string,
 	) => Promise<NormalizedSynthesisResult>;
 }
 
@@ -343,13 +348,6 @@ const resolveValidationMode = (
 	return mode === "custom" ? "none" : "voices";
 };
 
-const speedRateFromRate = (rate: number): "slow" | "medium" | "fast" => {
-	if (!Number.isFinite(rate)) return "medium";
-	if (rate < 1) return "slow";
-	if (rate > 1) return "fast";
-	return "medium";
-};
-
 const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
 	const providerOptions = (config.providerOptions || {}) as Record<
 		string,
@@ -358,54 +356,9 @@ const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
 	if (typeof providerOptions.speedRate === "string") {
 		return providerOptions.speedRate;
 	}
-	const rate = Number(config.rate ?? 1);
-	return speedRateFromRate(rate);
+	return resolveSpeedRateBucket(config.rate);
 };
 
-const parseJSONLSpeechMarks = (
-	raw: string,
-): NormalizedSynthesisResult["speechMarks"] => {
-	const marks: NormalizedSynthesisResult["speechMarks"] = [];
-	let fallbackIndex = 0;
-	const lines = raw
-		.split("\n")
-		.map((line) => line.trim())
-		.filter(Boolean);
-	for (const line of lines) {
-		try {
-			const parsed = JSON.parse(line) as Record<string, unknown>;
-			const type = typeof parsed.type === "string" ? parsed.type : "word";
-			const time =
-				typeof parsed.time === "number" && Number.isFinite(parsed.time)
-					? parsed.time
-					: 0;
-			const value = typeof parsed.value === "string" ? parsed.value : "";
-			const explicitStart =
-				typeof parsed.start === "number" && Number.isFinite(parsed.start)
-					? parsed.start
-					: null;
-			const explicitEnd =
-				typeof parsed.end === "number" && Number.isFinite(parsed.end)
-					? parsed.end
-					: null;
-			const start = explicitStart ?? fallbackIndex;
-			const computedEnd =
-				explicitEnd ??
-				start + Math.max(1, value.length || String(parsed.value || "").length);
-			fallbackIndex = Math.max(computedEnd + 1, fallbackIndex);
-			marks.push({
-				time,
-				type,
-				start,
-				end: computedEnd,
-				value,
-			});
-		} catch {
-			// Ignore malformed lines and keep parsing valid marks.
-		}
-	}
-	return marks;
-};
 
 const parseInlineSpeechMarks = (
 	input: CustomTransportResponse["speechMarks"],
@@ -489,7 +442,7 @@ const pieAdapter: TransportAdapter = {
 			includeSpeechMarks: true,
 		};
 	},
-	parseResponse: async (response) => {
+	parseResponse: async (response, _config, _headers, _signal, _text) => {
 		const data: SynthesizeAPIResponse = await response.json();
 		return {
 			audio: {
@@ -527,7 +480,7 @@ const customAdapter: TransportAdapter = {
 			cache,
 		};
 	},
-	parseResponse: async (response, config, headers, signal) => {
+	parseResponse: async (response, config, headers, signal, text) => {
 		const data: CustomTransportResponse = await response.json();
 		const marksHeaders: Record<string, string> = {};
 		if (config.includeAuthOnAssetFetch) {
@@ -557,7 +510,7 @@ const customAdapter: TransportAdapter = {
 				});
 				if (marksResponse.ok) {
 					const marksRaw = await marksResponse.text();
-					speechMarks = parseJSONLSpeechMarks(marksRaw);
+					speechMarks = normalizeSpeechMarks(marksRaw, text);
 				}
 			}
 		}
@@ -808,6 +761,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			this.config,
 			headers,
 			signal,
+			text,
 		);
 		if (runId !== this.synthesisRunId || signal.aborted) {
 			throw new Error("Synthesis superseded by a newer request");
@@ -1082,7 +1036,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			this.config.rate = settings.rate;
 			this.config.providerOptions = {
 				...(this.config.providerOptions || {}),
-				speedRate: speedRateFromRate(Number(settings.rate)),
+				speedRate: resolveSpeedRateBucket(settings.rate),
 			};
 		}
 		if (settings.pitch !== undefined) {

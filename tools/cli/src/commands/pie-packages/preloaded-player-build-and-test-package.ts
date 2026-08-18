@@ -7,7 +7,7 @@ import {
 	buildPreloadedPlayerStaticPackage,
 	parseElementsInput,
 } from "../../utils/pie-packages/fixed-static.js";
-import { createNpmAuthEnvironment } from "../../utils/npm-auth-env.js";
+import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
 import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
 export default class PreloadedPlayerBuildAndTestPackage extends Command {

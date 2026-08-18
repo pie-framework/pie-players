@@ -180,6 +180,64 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 		return tags.some((tag) => text.includes(tag));
 	}
 
+	/** Escape special XML characters so plain text is safe to embed in SSML. */
+	protected escapeSSML(text: string): string {
+		return text
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&apos;");
+	}
+
+	/**
+	 * Build an SSML `<prosody>` attribute string from a request's `rate` /
+	 * `pitch`, or `""` if neither differs from its default. `rate` is the
+	 * standard 0.25–4.0 speed multiplier, mapped straight to `rate` as a
+	 * percentage. `pitch` follows this repo's existing 0–2 multiplier
+	 * convention (the TTS settings UI's `normalizePitch`, matching the Web
+	 * Speech API default of 1.0), converted to SSML's relative percentage
+	 * form: a 1.2 multiplier is `pitch="+20%"`.
+	 */
+	protected buildProsodyAttrs(request: SynthesizeRequest): string {
+		const attrs: string[] = [];
+		if (typeof request.rate === "number" && request.rate !== 1) {
+			attrs.push(`rate="${Math.round(request.rate * 100)}%"`);
+		}
+		if (typeof request.pitch === "number" && request.pitch !== 1) {
+			const percent = Math.round((request.pitch - 1) * 100);
+			attrs.push(`pitch="${percent >= 0 ? "+" : ""}${percent}%"`);
+		}
+		return attrs.join(" ");
+	}
+
+	/**
+	 * Wrap plain text in an SSML `<prosody>` envelope so a request's `rate`
+	 * / `pitch` actually reaches the engine instead of being silently
+	 * dropped. Already-SSML input (per `detectSSML`) is returned unchanged:
+	 * injecting `<prosody>` into markup the caller authored themselves would
+	 * require parsing it, which no provider here does.
+	 */
+	protected applyProsody(
+		text: string,
+		request: SynthesizeRequest,
+		extraSsmlTags: string[] = [],
+	): { text: string; isSsml: boolean } {
+		if (this.detectSSML(text, extraSsmlTags)) {
+			return { text, isSsml: true };
+		}
+
+		const prosodyAttrs = this.buildProsodyAttrs(request);
+		if (!prosodyAttrs) {
+			return { text, isSsml: false };
+		}
+
+		return {
+			text: `<speak><prosody ${prosodyAttrs}>${this.escapeSSML(text)}</prosody></speak>`,
+			isSsml: true,
+		};
+	}
+
 	/**
 	 * Validate synthesis request
 	 * @throws {TTSError} If request is invalid

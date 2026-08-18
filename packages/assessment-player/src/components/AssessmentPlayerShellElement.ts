@@ -1,17 +1,4 @@
-function coerceBooleanLike(
-	value: boolean | string | null | undefined,
-	fallback = false,
-): boolean {
-	if (value == null) return fallback;
-	if (typeof value === "boolean") return value;
-	const normalized = value.trim().toLowerCase();
-	return (
-		normalized === "" ||
-		normalized === "true" ||
-		normalized === "1" ||
-		normalized === "yes"
-	);
-}
+import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 
 export class AssessmentPlayerShellElement extends HTMLElement {
 	static get observedAttributes() {

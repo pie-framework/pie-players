@@ -28,14 +28,16 @@
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import {
+		applyPieColorScheme,
 		listPieColorSchemes,
 		observePieColorSchemes,
+		resolvePieThemeHost,
 	} from '@pie-players/pie-theme';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
+	import { createFocusTrap, safeLocalStorageGet } from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
@@ -69,11 +71,7 @@
 	});
 
 	function resolveThemeHost(): HTMLElement | null {
-		const localHost = containerEl?.closest('pie-theme') as HTMLElement | null;
-		if (localHost) return localHost;
-		const scopedDocumentHost = document.querySelector('pie-theme[scope="document"]') as HTMLElement | null;
-		if (scopedDocumentHost) return scopedDocumentHost;
-		return document.querySelector('pie-theme') as HTMLElement | null;
+		return resolvePieThemeHost(containerEl);
 	}
 
 	// Interface locale, re-derived on every context republish.
@@ -104,21 +102,7 @@
 	// Apply color scheme to document
 	function applyColorScheme(schemeId: string) {
 		if (!browser) return;
-
-		const themeHost = resolveThemeHost();
-		if (themeHost) {
-			themeHost.setAttribute('scheme', schemeId || 'default');
-		} else {
-			const root = document.documentElement;
-			if (schemeId === 'default') {
-				root.removeAttribute('data-color-scheme');
-			} else {
-				root.setAttribute('data-color-scheme', schemeId);
-			}
-		}
-
-		// Save to localStorage safely
-		safeLocalStorageSet('pie-color-scheme', schemeId);
+		applyPieColorScheme(schemeId, { from: containerEl });
 	}
 
 	// Select scheme and close the tool

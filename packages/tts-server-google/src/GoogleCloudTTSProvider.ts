@@ -280,12 +280,10 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		request: SynthesizeRequest,
 		voice: string,
 	): Promise<{ audio: Buffer; contentType: string }> {
-		// Detect if text contains SSML tags
-		const isSsml = this.detectSSML(request.text);
-
-		if (isSsml && this.enableLogging) {
+		if (this.detectSSML(request.text) && this.enableLogging) {
 			console.log("[GoogleCloudTTS] Detected SSML content");
 		}
+		const { text, isSsml } = this.applyProsody(request.text, request);
 
 		// Parse voice name to extract language code
 		const languageCode = voice.split("-").slice(0, 2).join("-"); // e.g., "en-US" from "en-US-Wavenet-A"
@@ -298,7 +296,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		};
 
 		const [response] = await this.client.synthesizeSpeech({
-			input: isSsml ? { ssml: request.text } : { text: request.text },
+			input: isSsml ? { ssml: text } : { text },
 			voice: {
 				languageCode,
 				name: voice,
@@ -343,10 +341,12 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		const isUserSSML = this.detectSSML(request.text);
 
 		// If user provided SSML, we need to inject marks within the existing SSML
-		// For simplicity in v1, we'll inject marks for plain text only
+		// For simplicity in v1, we'll inject marks for plain text only. Already-SSML
+		// input skips prosody wrapping too: injecting <prosody> into markup the
+		// caller authored themselves would require parsing it.
 		const { ssml, wordMap } = isUserSSML
 			? this.extractWordsFromSSML(request.text)
-			: this.injectSSMLMarks(request.text);
+			: this.injectSSMLMarks(request.text, this.buildProsodyAttrs(request));
 
 		if (this.enableLogging) {
 			console.log(`[GoogleCloudTTS] Injected ${wordMap.length} SSML marks`);
@@ -415,7 +415,10 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	/**
 	 * Inject SSML marks before each word in plain text
 	 */
-	private injectSSMLMarks(text: string): {
+	private injectSSMLMarks(
+		text: string,
+		prosodyAttrs = "",
+	): {
 		ssml: string;
 		wordMap: Array<{
 			word: string;
@@ -444,7 +447,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		}
 
 		// Build SSML with marks
-		let ssml = "<speak>";
+		let ssml = prosodyAttrs ? `<speak><prosody ${prosodyAttrs}>` : "<speak>";
 		let lastEnd = 0;
 
 		for (const { word, start, end, markName } of words) {
@@ -456,7 +459,10 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		}
 
 		// Add remaining text
-		ssml += this.escapeSSML(text.slice(lastEnd)) + "</speak>";
+		ssml +=
+			this.escapeSSML(text.slice(lastEnd)) +
+			(prosodyAttrs ? "</prosody>" : "") +
+			"</speak>";
 
 		return { ssml, wordMap: words };
 	}
@@ -481,18 +487,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			.trim();
 
 		return this.injectSSMLMarks(plainText);
-	}
-
-	/**
-	 * Escape special XML characters for SSML
-	 */
-	private escapeSSML(text: string): string {
-		return text
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&apos;");
 	}
 
 	/**

@@ -257,7 +257,10 @@ describe("ServerTTSProvider", () => {
 		} as any);
 
 		await impl.speak("Read this text");
-		impl.updateSettings({ rate: 1.25 } as any);
+		// 1.25 sits inside the shared 0.95-1.5 "medium" tolerance band
+		// (resolveSpeedRateBucket in @pie-players/tts-server-core), so use a
+		// rate clearly above it to exercise an actual bucket change.
+		impl.updateSettings({ rate: 1.6 } as any);
 		await impl.speak("Read this text again");
 
 		const synthesisBodies = fetchMock.mock.calls

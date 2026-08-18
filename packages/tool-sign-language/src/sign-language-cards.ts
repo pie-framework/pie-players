@@ -28,6 +28,7 @@
 
 import {
 	isSafeMediaSrc,
+	isUnsupportedMediaAssetVersion,
 	normalizeMediaFragment,
 	normalizeMediaSources,
 	trimmedOrUndefined,
@@ -157,6 +158,15 @@ export function resolveSignLanguageMedia(
 	}
 
 	const media = payload.media as Partial<MediaAssetRef> | undefined;
+	if (isUnsupportedMediaAssetVersion(media?.version)) {
+		// Loud rather than silent: unlike an absent payload, a card that names a
+		// version is a card someone authored as signing media, and a learner who
+		// needs it gets nothing.
+		console.warn(
+			`[sign-language] card's media declares version ${String(media?.version)}, which this build does not render, so this card is ignored`,
+		);
+		return null;
+	}
 	const sources = normalizeMediaSources(media?.sources);
 	if (sources.length === 0) return null;
 	const poster = trimmedOrUndefined(media?.poster);

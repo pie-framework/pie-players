@@ -52,7 +52,6 @@ const UNKNOWN_CORRECTNESS: readonly TimedMediaUnknownCorrectness[] = [
 const SCORING_STRATEGIES: readonly TimedMediaScoringPolicy["strategy"][] = [
 	"sum-child-outcomes",
 	"average-child-outcomes",
-	"weighted-child-outcomes",
 	"host-defined",
 ];
 

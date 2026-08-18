@@ -108,7 +108,6 @@ const nlNL = {
 			playbackAdvisory:
 				"Beantwoord vraag {position} voordat je verder gaat met de media.",
 			playbackReleased: "Antwoord geaccepteerd. Speel de media verder.",
-			mediaRegionA11y: "Mediastimulus",
 		},
 	},
 

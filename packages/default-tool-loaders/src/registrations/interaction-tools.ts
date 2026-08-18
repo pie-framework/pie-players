@@ -98,12 +98,8 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M19,3H16.3H7.7H5A2,2 0 0,0 3,5V7.7V16.4V19A2,2 0 0,0 5,21H7.7H16.4H19A2,2 0 0,0 21,19V16.3V7.7V5A2,2 0 0,0 19,3M15.6,17L12,13.4L8.4,17L7,15.6L10.6,12L7,8.4L8.4,7L12,10.6L15.6,7L17,8.4L13.4,12L17,15.6L15.6,17Z"/></svg>',
 			disabled: false,
-			ariaLabel: toolbarContext.i18n.t(
-				"tools.answerEliminator.buttonA11y",
-			),
-			tooltip: toolbarContext.i18n.t(
-				"tools.answerEliminator.tooltip",
-			),
+			ariaLabel: toolbarContext.i18n.t("tools.answerEliminator.buttonA11y"),
+			tooltip: toolbarContext.i18n.t("tools.answerEliminator.tooltip"),
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: visibility.isActive(),
 		};
@@ -128,93 +124,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 				const globalElementId = toolbarContext.getGlobalElementId?.();
 				if (globalElementId) {
 					overlay.globalElementId = globalElementId;
-				}
-			},
-			subscribeActive: visibility.subscribeActive,
-		};
-	},
-};
-
-/**
- * Highlighter tool registration
- *
- * Allows students to highlight text in passages and questions.
- * Appears on items with readable text content.
- */
-export const highlighterToolRegistration: ToolRegistration = {
-	toolId: "highlighter",
-	name: "Highlighter",
-	description: "Highlight text",
-	nameKey: "tools.highlighter.name",
-	descriptionKey: "tools.highlighter.description",
-	icon: "highlighter",
-	activation: "toolbar-toggle",
-
-	// Highlighter appears at passage, rubric, item, and element levels
-	supportedLevels: ["passage", "rubric", "item", "element"],
-
-	// PNP support IDs
-	pnpSupportIds: ["highlighter", "textHighlight", "annotation"],
-
-	/**
-	 * Pass 2: Highlighter is relevant when readable text is available
-	 */
-	isVisibleInContext(context: ToolContext): boolean {
-		return hasReadableText(context);
-	},
-
-	renderToolbar(
-		context: ToolContext,
-		toolbarContext: ToolbarContext,
-	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(
-			this.toolId,
-			toolbarContext,
-		);
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: false,
-			ariaLabel: toolbarContext.i18n.t(
-				"tools.highlighter.buttonA11y",
-			),
-			tooltip: toolbarContext.i18n.t("tools.highlighter.tooltip"),
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: visibility.isActive(),
-		};
-		const componentOverrides =
-			(toolbarContext.componentOverrides as
-				| ToolComponentOverrides
-				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			enabled?: boolean;
-			visible?: boolean;
-			toolId?: string;
-			highlightCoordinator?: unknown;
-			ttsService?: unknown;
-		};
-		overlay.setAttribute("tool-id", visibility.fullToolId);
-		return {
-			toolId: this.toolId,
-			button,
-			elements: [{ element: overlay, mount: "after-buttons" }],
-			sync: () => {
-				syncButtonAndOverlayVisibility({
-					button,
-					overlay,
-					isActive: visibility.isActive,
-					onActiveChange: (active) => {
-						overlay.enabled = active;
-					},
-				});
-				if (toolbarContext.ttsService) {
-					overlay.ttsService = toolbarContext.ttsService;
 				}
 			},
 			subscribeActive: visibility.subscribeActive,

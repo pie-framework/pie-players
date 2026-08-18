@@ -286,6 +286,28 @@ const i18n = createPieI18n({ locale: resolvedLocale });
 // … reaches tools through AssessmentToolkitRuntimeContext
 ```
 
+### Tool windows
+
+A tool the toolbar gives a window — graph, periodic table, theme, calculator, the
+two dictionaries — mounts at `document.body`, which is what keeps it clear of the
+player's overflow and stacking contexts. It is therefore outside the published
+context's subtree, and the pull pattern above resolves nothing there: the request
+bubbles to `body` and the tool falls back to the English-only default.
+
+`ItemToolBar` closes that by hosting a second `ContextProvider` on the shell
+element, carrying the value it consumes itself and re-setting it on each
+republish. A shelled tool then resolves the same runtime context as the chrome
+around it — coordinators and services as much as `i18n`. Anything else that
+mounts a player-owned surface outside the player's DOM needs the same treatment;
+the alternative, walking a stored reference into the detached subtree, reaches one
+service rather than the context and goes stale on the next republish.
+
+The window's own chrome is imperative DOM, so it has no reactive read to
+invalidate. Its labels are re-read from the catalog on every shell update, which
+covers both a locale change under a live window and the first catalog import
+landing after the window was built. A window's title resolves through
+`ToolRegistration.nameKey`, not the raw `name` field.
+
 ## Sequencing
 
 1. **Provider and catalog infrastructure.** `i18n/types.ts`, `i18n/messages/`,

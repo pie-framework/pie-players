@@ -32,6 +32,7 @@ import {
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { buildSelectionActions } from "./selection-actions.js";
+import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 
 /**
  * Line Reader tool registration
@@ -71,52 +72,10 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(
-			this.toolId,
-			toolbarContext,
-		);
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: false,
-			ariaLabel: toolbarContext.i18n.t("tools.lineReader.buttonA11y"),
-			tooltip: toolbarContext.i18n.t("tools.lineReader.tooltip"),
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: visibility.isActive(),
-		};
-		const componentOverrides =
-			(toolbarContext.componentOverrides as
-				| ToolComponentOverrides
-				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-			toolkitCoordinator: unknown;
-		};
-		overlay.setAttribute("tool-id", visibility.fullToolId);
-		applyOverlaySurface(overlay, "frameless");
-		return {
-			toolId: this.toolId,
-			button,
-			elements: [{ element: overlay, mount: "after-buttons" }],
-			sync: () => {
-				syncButtonAndOverlayVisibility({
-					button,
-					overlay,
-					isActive: visibility.isActive,
-				});
-				if (toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
-			},
-			subscribeActive: visibility.subscribeActive,
-		};
+		return renderOverlayToolbar(this, context, toolbarContext, {
+			surface: "frameless",
+			handsOverCoordinator: true,
+		});
 	},
 };
 
@@ -159,66 +118,16 @@ export const themeToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(
-			this.toolId,
-			toolbarContext,
-		);
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: false,
-			ariaLabel: toolbarContext.i18n.t("tools.theme.buttonA11y"),
-			tooltip: toolbarContext.i18n.t("tools.theme.tooltip"),
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: visibility.isActive(),
-		};
-		const componentOverrides =
-			(toolbarContext.componentOverrides as
-				| ToolComponentOverrides
-				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-			toolkitCoordinator: unknown;
-		};
-		overlay.setAttribute("tool-id", visibility.fullToolId);
-		return {
-			toolId: this.toolId,
-			button,
-			elements: [
-				{
-					element: overlay,
-					mount: "after-buttons",
-					shell: {
-						title: this.name,
-						draggable: true,
-						resizable: false,
-						closeable: true,
-						initialWidth: 520,
-						initialHeight: 380,
-						minWidth: 420,
-						minHeight: 300,
-					},
-				},
-			],
-			sync: () => {
-				syncButtonAndOverlayVisibility({
-					button,
-					overlay,
-					isActive: visibility.isActive,
-				});
-				if (toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
+		return renderOverlayToolbar(this, context, toolbarContext, {
+			shell: {
+				resizable: false,
+				initialWidth: 520,
+				initialHeight: 380,
+				minWidth: 420,
+				minHeight: 300,
 			},
-			subscribeActive: visibility.subscribeActive,
-		};
+			handsOverCoordinator: true,
+		});
 	},
 };
 
@@ -313,54 +222,8 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(
-			this.toolId,
-			toolbarContext,
-		);
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: false,
-			ariaLabel: toolbarContext.i18n.t(
-				"tools.annotationToolbar.buttonA11y",
-			),
-			tooltip: toolbarContext.i18n.t(
-				"tools.annotationToolbar.tooltip",
-			),
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: visibility.isActive(),
-		};
-		const componentOverrides =
-			(toolbarContext.componentOverrides as
-				| ToolComponentOverrides
-				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-			toolkitCoordinator: unknown;
-		};
-		overlay.setAttribute("tool-id", visibility.fullToolId);
-		return {
-			toolId: this.toolId,
-			button,
-			elements: [{ element: overlay, mount: "after-buttons" }],
-			sync: () => {
-				syncButtonAndOverlayVisibility({
-					button,
-					overlay,
-					isActive: visibility.isActive,
-				});
-				if (toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
-			},
-			subscribeActive: visibility.subscribeActive,
-		};
+		return renderOverlayToolbar(this, context, toolbarContext, {
+			handsOverCoordinator: true,
+		});
 	},
 };

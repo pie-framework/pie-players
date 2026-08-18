@@ -1486,7 +1486,7 @@ The toolkit enforces a clear separation between ephemeral tool state and persist
     "answerEliminator": {
       "eliminatedChoices": ["choice-b", "choice-d"]
     },
-    "highlighter": {
+    "annotationToolbar": {
       "annotations": [...]
     }
   }

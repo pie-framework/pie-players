@@ -130,6 +130,44 @@ describe("sign-language card payload validation", () => {
 		).toBeNull();
 	});
 
+	test("refuses a media version this build does not render", () => {
+		// Unknown-version rejection: rendering would be a guess at which fields still
+		// mean what they did.
+		expect(
+			resolveSignLanguageMedia(
+				card({
+					payload: payload({
+						media: {
+							version: 2 as never,
+							id: "m",
+							kind: "video",
+							sources: [{ src: "https://cdn.example.com/asl.mp4" }],
+						},
+					}),
+				}),
+			),
+		).toBeNull();
+	});
+
+	test("accepts a card that omits the media version", () => {
+		// Producers predate the field; absence is not a positive claim of another
+		// version.
+		const media = resolveSignLanguageMedia(
+			card({
+				payload: payload({
+					media: {
+						id: "m",
+						kind: "video",
+						sources: [{ src: "https://cdn.example.com/asl.mp4" }],
+					} as never,
+				}),
+			}),
+		);
+		expect(media?.sources).toEqual([
+			{ src: "https://cdn.example.com/asl.mp4" },
+		]);
+	});
+
 	test("drops sources whose scheme a media element cannot fetch", () => {
 		const media = resolveSignLanguageMedia(
 			card({

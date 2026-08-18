@@ -85,6 +85,12 @@ export interface PollyProviderConfig extends TTSServerConfig {
  * - Full SSML support
  * - Parallel audio + speech marks requests
  */
+/**
+ * Polly's own SSML vocabulary, on top of the standard elements the base provider
+ * knows. `<amazon:effect>` and the `<aws-*>` family are Polly-only.
+ */
+const POLLY_SSML_TAGS = ["<amazon:", "<aws-"];
+
 export class PollyServerProvider extends BaseTTSProvider {
 	readonly providerId = "aws-polly";
 	readonly providerName = "AWS Polly";
@@ -230,15 +236,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 		request: SynthesizeRequest,
 		voice: string,
 	): Promise<{ audio: Buffer; contentType: string }> {
-		// Detect if text contains SSML tags
-		const isSsml =
-			request.text.includes("<speak") ||
-			request.text.includes("<emphasis") ||
-			request.text.includes("<break") ||
-			request.text.includes("<prosody") ||
-			request.text.includes("<phoneme") ||
-			request.text.includes("<amazon:") ||
-			request.text.includes("<aws-");
+		const isSsml = this.detectSSML(request.text, POLLY_SSML_TAGS);
 
 		const textType = isSsml ? "ssml" : "text";
 
@@ -290,15 +288,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 		request: SynthesizeRequest,
 		voice: string,
 	): Promise<SpeechMark[]> {
-		// Detect if text contains SSML tags (same logic as audio synthesis)
-		const isSsml =
-			request.text.includes("<speak") ||
-			request.text.includes("<emphasis") ||
-			request.text.includes("<break") ||
-			request.text.includes("<prosody") ||
-			request.text.includes("<phoneme") ||
-			request.text.includes("<amazon:") ||
-			request.text.includes("<aws-");
+		const isSsml = this.detectSSML(request.text, POLLY_SSML_TAGS);
 
 		const textType = isSsml ? "ssml" : "text";
 

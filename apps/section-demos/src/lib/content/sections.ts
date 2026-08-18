@@ -23,6 +23,7 @@ import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
 import { demoTimedMediaSection } from "./demo-timed-media";
+import { demoInterfaceLocaleSection } from "./demo-interface-locale";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -451,6 +452,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts.",
 		],
 		section: demo2Section,
+	},
+	"interface-locale": {
+		id: "interface-locale",
+		name: "Interface Locale (nl-NL switcher)",
+		description:
+			"The only demo that supplies a `locale`: switch the player's own chrome between English and Dutch while the authored content stays put",
+		integrationLevel: 2,
+		integrationTheme: "Interface locale",
+		focus:
+			"Shows what a host's `locale` reaches and what it deliberately does not. Toolbar names, tool windows, card headings and live-region text follow the catalog; the passage and the questions are authored content and never move.",
+		whatMakesItTick: [
+			"`locale` on the `<pie-section-player-*>` element, taken from this demo's `?locale=` param. Every other demo omits the attribute, so they render the English a host with no locale gets — which is also what makes this one worth visiting deliberately.",
+			"The catalog is a lazily imported chunk, so the first paint is English and the Dutch strings arrive a tick later; the toolbar and the open tool windows both have to follow that republish.",
+			"Tool windows mount at `document.body`, outside the player's DOM. The toolbar re-publishes the runtime context on each shell so a shelled tool — theme, graph, periodic table, calculator — resolves the same provider as the chrome around it.",
+			"Content language is a separate channel: the English passage and stems are unchanged by the switcher, and translating them would mean authoring a second item rather than adding a catalog key.",
+		],
+		section: demoInterfaceLocaleSection,
 	},
 	"two-passages": {
 		id: "two-passages",

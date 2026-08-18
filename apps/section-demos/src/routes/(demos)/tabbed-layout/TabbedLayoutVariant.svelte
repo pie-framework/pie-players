@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { demoLocale } from '$lib/demo-locale.svelte';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-tabbed-element';
 
@@ -27,10 +26,6 @@
 	};
 	const isSplitpaneVariant = $derived(variant === 'splitpane-tabbed-collapse');
 
-	// Interface locale from the query string, so the same route can be visited in a
-	// second language without a second demo. A deployment normally sets this once
-	// from its own configuration.
-	const chromeLocale = $derived(demoLocale());
 </script>
 
 <svelte:head>
@@ -77,7 +72,6 @@
 					narrow-layout-breakpoint={1500}
 					split-pane-collapse-strategy="tabbed"
 					show-toolbar={true}
-					locale={chromeLocale}
 				></pie-section-player-splitpane>
 			{:else}
 				<pie-section-player-tabbed
@@ -89,7 +83,6 @@
 					{attemptId}
 					section={data.section}
 					show-toolbar={true}
-					locale={chromeLocale}
 				></pie-section-player-tabbed>
 			{/if}
 		</div>

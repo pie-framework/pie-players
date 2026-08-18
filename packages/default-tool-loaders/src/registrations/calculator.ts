@@ -238,6 +238,11 @@ export const calculatorToolRegistration: ToolRegistration = {
 			toolId: this.toolId,
 			label: displayName,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
+			// Routes this button through <nds-icon-button> where the host enables NDS
+			// icons. Declared here because which capabilities render in the host's
+			// design system is a composition decision; the toolbar used to map it from
+			// the `calculator` toolId, which put a capability name in the generic core.
+			faIconName: "calculator",
 			disabled: false,
 			// The name stays put across open and closed. The toolbar mirrors
 			// `active` onto the button as `aria-pressed`, so the state is already
@@ -259,7 +264,9 @@ export const calculatorToolRegistration: ToolRegistration = {
 					element: overlay,
 					mount: "after-buttons",
 					shell: {
-						title: this.name,
+						// The variant name the button already carries — "Basic Calculator",
+						// not the registration's generic one.
+						title: displayName,
 						draggable: true,
 						resizable: true,
 						closeable: true,
@@ -269,6 +276,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 						minHeight: 420,
 						initialAlign: "bottom-right",
 						initialMargin: 16,
+						// Header controls in the host's design system, and the layout that
+						// goes with them.
+						ndsHeaderControls: true,
+						// A learner reads the question while using the calculator, so Tab and
+						// Shift+Tab cross between the page and the shell instead of cycling
+						// inside it.
+						pageTabOrder: true,
 						content: {
 							overflowY: "auto",
 							preserveMinHeight: true,

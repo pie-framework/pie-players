@@ -39,7 +39,7 @@
  *
  * ```svelte
  * <script lang="ts">
- *   import { usePromise } from "@pie-players/pie-players-shared/ui";
+ *   import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
  *
  *   let { items } = $props();
  *

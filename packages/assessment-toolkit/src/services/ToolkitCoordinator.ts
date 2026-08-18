@@ -52,6 +52,7 @@ import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
+	type TTSRuntimeSettings,
 	type TTSSpeedOption,
 	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
@@ -125,43 +126,24 @@ export interface ToolConfig {
 }
 
 /**
- * TTS tool configuration
+ * TTS configuration as a host writes it.
+ *
+ * The field set is `TTSRuntimeSettings`, which the runtime resolver owns: the two
+ * were declared separately and had already drifted in both directions, so a field
+ * the runtime honoured could not be named here. What this adds is the two things
+ * only a host-facing config has — a place to stash unrecognised keys, and a
+ * callback for fetching provider credentials, neither of which the resolved
+ * runtime settings carry.
+ *
+ * An intersection rather than an interface: `ToolConfig.provider` is `unknown`
+ * where the runtime settings narrow it to the three provider ids, and an interface
+ * cannot inherit a member from two parents that type it differently.
  */
-export interface TTSToolConfig extends ToolConfig {
-	backend?: "browser" | "polly" | "google" | "server";
-	provider?: "polly" | "google" | "custom";
-	serverProvider?: "polly" | "google" | "custom";
-	engine?: "standard" | "neural";
-	sampleRate?: number;
-	format?: "mp3" | "ogg" | "pcm";
-	speechMarksMode?: "word" | "word+sentence";
-	defaultVoice?: string;
-	rate?: number;
-	pitch?: number;
-	apiEndpoint?: string;
-	language?: string;
-	transportMode?: "pie" | "custom";
-	endpointMode?: "synthesizePath" | "rootPost";
-	endpointValidationMode?: "voices" | "endpoint" | "none";
-	includeAuthOnAssetFetch?: boolean;
-	validateEndpoint?: boolean;
-	cache?: boolean;
-	speedRate?: "slow" | "medium" | "fast";
-	lang_id?: string;
-	/**
-	 * Optional inline TTS speed buttons.
-	 * - Omitted/non-array: default speed buttons are shown.
-	 * - Empty array: hide speed buttons.
-	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
-	 * - Object entries can customize button text while preserving numeric rates.
-	 */
-	speedOptions?: TTSSpeedOption[];
-	layoutMode?: TTSLayoutMode;
-	/** Speech Rule Engine options for generated MathML speech. */
-	mathSpeech?: SREMathSpeechOptions;
-	settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
-	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
-}
+export type TTSToolConfig = ToolConfig &
+	TTSRuntimeSettings & {
+		settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
+		authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
+	};
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 	!!value && typeof value === "object" && !Array.isArray(value);

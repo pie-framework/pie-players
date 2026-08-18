@@ -233,9 +233,12 @@ export {
 // alongside the validators a capability package needs to read a media payload.
 export {
 	applyMediaFragment,
+	enforceMediaFragment,
 	isSafeMediaSrc,
+	isUnsupportedMediaAssetVersion,
 	normalizeMediaFragment,
 	normalizeMediaSources,
+	SUPPORTED_MEDIA_ASSET_VERSION,
 	trimmedOrUndefined,
 } from "./services/catalog-media.js";
 // Spoken catalog cards carrying recorded audio rather than a reading script
@@ -350,6 +353,10 @@ export {
 	PIE_TTS_CONTROL_HANDOFF_EVENT,
 	type TTSControlHandoffDetail,
 } from "./services/tts-control-events.js";
+export {
+	bindTtsAudioHandoff,
+	pauseTtsForMediaAudio,
+} from "./services/audio-handoff.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {

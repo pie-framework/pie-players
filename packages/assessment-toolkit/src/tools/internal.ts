@@ -41,6 +41,10 @@ export type {
 	ToolbarContext,
 } from "../services/ToolRegistry.js";
 export { ToolRegistry } from "../services/ToolRegistry.js";
+// A registration's own display name in the interface locale. A tool window's
+// title is the registration's name, so the shell needs the same `nameKey`-then-
+// `name` precedence the toolbar uses rather than the raw English field.
+export { resolveToolRegistrationName } from "../services/ToolRegistry.js";
 export type {
 	CatalogOwnerCard,
 	CatalogOwnerSnapshot,

@@ -108,12 +108,14 @@
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
+	import {
+		clampNarrowBreakpoint,
+		createNarrowLayoutWatch,
+		getShellHostElement,
+		resolveConfiguredPx,
+		resolveContentMaxWidths,
+	} from "./shared/section-player-shell-layout.svelte.js";
 
-	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
-	const NARROW_BREAKPOINT_MIN_PX = 400;
-	const NARROW_BREAKPOINT_MAX_PX = 2000;
-	const CONTENT_MAX_WIDTH_MIN_PX = 320;
-	const CONTENT_MAX_WIDTH_MAX_PX = 2200;
 	const SPLIT_PANE_MIN_REGION_MIN_PX = 160;
 	const SPLIT_PANE_MIN_REGION_MAX_PX = 1200;
 	const SPLIT_DIVIDER_TRACK_REM = 0.5;
@@ -124,17 +126,6 @@
 		min: number;
 		max: number;
 	};
-
-	function resolveConfiguredPx(
-		value: unknown,
-		min: number,
-		max: number,
-	): number | undefined {
-		if (value === undefined || value === null || value === "") return undefined;
-		const num = typeof value === "number" ? value : Number(value);
-		if (!Number.isFinite(num)) return undefined;
-		return Math.max(min, Math.min(max, num));
-	}
 
 	function clampSplitWidth(next: number, bounds: SplitBounds): number {
 		return Math.max(bounds.min, Math.min(bounds.max, next));
@@ -260,15 +251,10 @@
 		),
 	);
 
-	const clampedBreakpoint = $derived.by(() => {
-		const n = narrowLayoutBreakpoint ?? DEFAULT_NARROW_BREAKPOINT_PX;
-		const num = typeof n === "number" ? n : Number(n);
-		const value = Number.isFinite(num) ? num : DEFAULT_NARROW_BREAKPOINT_PX;
-		return Math.max(
-			NARROW_BREAKPOINT_MIN_PX,
-			Math.min(NARROW_BREAKPOINT_MAX_PX, value),
-		);
-	});
+	const clampedBreakpoint = $derived(
+		clampNarrowBreakpoint(narrowLayoutBreakpoint),
+	);
+	const narrowLayout = createNarrowLayoutWatch(() => clampedBreakpoint);
 
 	let leftPanelWidth = $state(initialPassageWidthPercent);
 	let splitBounds = $state<SplitBounds>({ min: 20, max: 80 });
@@ -278,7 +264,6 @@
 	const interfaceI18n = useInterfaceI18n(() => splitContainerElement);
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
-	let isStacked = $state(false);
 	const dispatch = createEventDispatcher();
 	const paneIdBase = $derived.by(() =>
 		`pie-section-player-splitpane-${(sectionId || attemptId || "default").replace(/[^a-zA-Z0-9_-]/g, "-")}`
@@ -286,23 +271,15 @@
 	const passagesPaneId = $derived(`${paneIdBase}-passages`);
 	const itemsPaneId = $derived(`${paneIdBase}-items`);
 	const splitDividerValueText = $derived(`${Math.round(leftPanelWidth)}% passages width`);
-	const configuredContentMaxWidthNoPassagePx = $derived.by(() =>
-		resolveConfiguredPx(
-			contentMaxWidthNoPassage,
-			CONTENT_MAX_WIDTH_MIN_PX,
-			CONTENT_MAX_WIDTH_MAX_PX,
-		)
+	const contentMaxWidths = $derived(
+		resolveContentMaxWidths(contentMaxWidthNoPassage, contentMaxWidthWithPassage),
 	);
-	const configuredContentMaxWidthWithPassagePx = $derived.by(() => {
-		const withPassage = resolveConfiguredPx(
-			contentMaxWidthWithPassage,
-			CONTENT_MAX_WIDTH_MIN_PX,
-			CONTENT_MAX_WIDTH_MAX_PX,
-		);
-		if (withPassage === undefined) return undefined;
-		if (configuredContentMaxWidthNoPassagePx === undefined) return withPassage;
-		return Math.max(configuredContentMaxWidthNoPassagePx, withPassage);
-	});
+	const configuredContentMaxWidthNoPassagePx = $derived(
+		contentMaxWidths.noPassagePx,
+	);
+	const configuredContentMaxWidthWithPassagePx = $derived(
+		contentMaxWidths.withPassagePx,
+	);
 	const configuredSplitPaneMinRegionWidthPx = $derived.by(() =>
 		resolveConfiguredPx(
 			splitPaneMinRegionWidth,
@@ -325,27 +302,8 @@
 	// top-level prop and `runtime` verbatim and the resolver picks
 	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	function getHostElement(): HTMLElement | null {
-		if (!anchor) return null;
-		const rootNode = anchor.getRootNode();
-		if (rootNode && "host" in rootNode) {
-			return (rootNode as ShadowRoot).host as HTMLElement;
-		}
-		return anchor.parentElement as HTMLElement | null;
-	}
-	const hostElement = $derived.by(() => getHostElement());
+	const hostElement = $derived.by(() => getShellHostElement(anchor));
 
-	$effect(() => {
-		const bp = clampedBreakpoint;
-		if (typeof window === "undefined") return;
-		const query: MediaQueryList = window.matchMedia(`(max-width: ${bp}px)`);
-		function update() {
-			isStacked = query.matches;
-		}
-		update();
-		query.addEventListener("change", update);
-		return () => query.removeEventListener("change", update);
-	});
 
 	$effect(() => {
 		const container = splitContainerElement;
@@ -482,7 +440,7 @@
 	{debug}
 	{baseHeadingLevel}
 	{showToolbar}
-	toolbarPosition={isStacked ? "top" : toolbarPosition}
+	toolbarPosition={narrowLayout.isNarrow ? "top" : toolbarPosition}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}
@@ -507,7 +465,7 @@
 	on:element-preload-error={forward}
 	let:layoutModel
 >
-	{#if isStacked}
+	{#if narrowLayout.isNarrow}
 		{#if normalizedCollapseStrategy === "tabbed"}
 			<SectionPlayerTabbedContent
 				{layoutModel}

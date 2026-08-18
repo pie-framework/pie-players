@@ -101,6 +101,14 @@ export const demoTimedMediaSection: AssessmentSection = {
 	>
 		<source src="${CLIP}" type="${CLIP_TYPE}" />
 	</video>
+	<p class="demo-timed-media-alt">
+		Text alternative for a video-only stimulus (WCAG 1.2.1): the clip is a silent
+		slide deck. Title — The Water Cycle, module 2. Step 1, evaporation: the sun
+		heats water in oceans and lakes, and liquid water turns into water vapour that
+		rises into the air. Step 2, condensation: higher up the air is colder, so water
+		vapour condenses onto tiny particles and forms clouds. Summary: evaporation,
+		then condensation, then precipitation.
+	</p>
 </div>`,
 					elements: {},
 					models: [],

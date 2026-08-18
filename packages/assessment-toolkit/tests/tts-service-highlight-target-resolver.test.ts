@@ -385,7 +385,7 @@ describe("TTSService highlight target resolver", () => {
 		expect(recording.wordHighlights).toContain("first");
 	});
 
-	test("clears the resolver provider when playback is stopped externally", async () => {
+	test("keeps a host-installed resolver provider across an external stop", async () => {
 		const impl = new MockTTSImpl();
 		impl.boundariesByText.set("spoken first", [
 			{ word: "spoken", position: 0, length: "spoken".length },
@@ -404,12 +404,16 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
+		// A provider is owned by whoever installed it. `stop()` used to null it, so a
+		// host that installs once — the install-before-mount case the late-bound
+		// provider exists for — got remapping for exactly one playback and then
+		// silently fell back to identity for the service's remaining life.
 		service.stop();
 		await service.speak(root.textContent || "", {
 			contentElement: root,
 		} as any);
 
-		expect(recording.wordHighlights).toContain("spoken");
-		expect(recording.wordHighlights).not.toContain("first");
+		expect(recording.wordHighlights).toContain("first");
+		expect(recording.wordHighlights).not.toContain("spoken");
 	});
 });

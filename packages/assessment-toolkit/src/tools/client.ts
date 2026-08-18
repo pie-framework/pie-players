@@ -9,8 +9,6 @@
  * they don't accidentally pull in server-side dependencies.
  */
 
-// Calculator providers (client-safe, have SSR guards)
-export { DesmosCalculatorProvider } from "./calculators/desmos-provider.js";
 // Library loader (client-safe, has SSR guards)
 export {
 	COMMON_LIBRARIES,

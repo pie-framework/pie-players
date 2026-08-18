@@ -2,6 +2,7 @@ import { svelte, vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { createHash } from "node:crypto";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
 
 const sanitizeChunkKey = (value: string) =>
@@ -54,13 +55,10 @@ const assertNoEvalRequireInOutput = {
 export default defineConfig({
 	resolve: {
 		alias: {
-			"@pie-players/pie-players-shared/ui/use-promise": resolve(
-				__dirname,
-				"../players-shared/src/ui/use-promise.svelte.ts",
-			),
-			"@pie-players/pie-players-shared/ui/use-zoom-compensation": resolve(
-				__dirname,
-				"../players-shared/src/ui/use-zoom-compensation.svelte.ts",
+			// Declared once in players-shared; see svelte-source-aliases.ts.
+			...playersSharedSvelteSourceAliases(
+				resolve(__dirname, "../players-shared"),
+				resolve,
 			),
 		},
 	},

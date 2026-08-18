@@ -29,6 +29,7 @@ import type {
 	SpokenAudioCardPayload,
 } from "@pie-players/pie-players-shared/types";
 import {
+	isUnsupportedMediaAssetVersion,
 	normalizeMediaFragment,
 	normalizeMediaSources,
 	trimmedOrUndefined,
@@ -81,6 +82,13 @@ export function resolveSpokenAudioMedia(
 	if (!media || typeof media !== "object") {
 		console.warn(
 			"[spoken-audio] card carries a `payload` with no `media`; recorded speech needs `media.sources`, so this card is ignored and read-aloud falls back to the script or generated speech",
+		);
+		return null;
+	}
+
+	if (isUnsupportedMediaAssetVersion(media.version)) {
+		console.warn(
+			`[spoken-audio] card's media declares version ${String(media.version)}, which this build does not render; the card is ignored and read-aloud falls back to the script or generated speech`,
 		);
 		return null;
 	}

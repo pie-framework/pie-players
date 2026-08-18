@@ -27,8 +27,13 @@
 	 * here is already known to be playable and already known to be one the learner
 	 * is eligible for.
 	 */
-	import { applyMediaFragment } from "@pie-players/pie-assessment-toolkit";
-	import type { TtsServiceApi } from "@pie-players/pie-assessment-toolkit";
+	import {
+		applyMediaFragment,
+		bindTtsAudioHandoff,
+		enforceMediaFragment,
+		pauseTtsForMediaAudio,
+		type TtsServiceApi,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { MediaSource } from "@pie-players/pie-players-shared/types";
 	import { describeSignLanguage } from "./sign-language-cards.js";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
@@ -70,49 +75,23 @@
 		if (videoElement && !videoElement.paused) videoElement.pause();
 	}
 
-	/**
-	 * Signing playback and TTS must not run at once, and the action the learner
-	 * just took wins: starting one pauses the other.
-	 */
+	/** One half of the audio handoff; the `$effect` below binds the other. */
 	function onPlay(): void {
-		if (!ttsService) return;
-		try {
-			if (ttsService.isPlaying()) ttsService.pause();
-		} catch {
-			// A torn-down or uninitialized TTS service must not break playback.
-		}
+		pauseTtsForMediaAudio(ttsService);
 	}
 
-	function onLoadedMetadata(): void {
-		const start = media?.fragment?.startSeconds;
-		if (!videoElement || start === undefined) return;
-		// The `#t=` hint on the source URL is honoured inconsistently, so seek
-		// explicitly. Only forward: never fight a learner who already scrubbed.
-		if (videoElement.currentTime < start) videoElement.currentTime = start;
-	}
-
-	function onTimeUpdate(): void {
-		const end = media?.fragment?.endSeconds;
-		if (!videoElement || end === undefined) return;
-		// Browsers vary on enforcing a fragment's end bound; stopping here keeps a
-		// time-sliced recording from running into the next node's translation.
-		if (videoElement.currentTime >= end) videoElement.pause();
-	}
-
+	// Hold playback to the authored slice. Stopping at the end keeps a
+	// time-sliced recording from running into the next node's translation; the
+	// shared helper owns the seek-forward-once and stop-at-end pair that recorded
+	// read-aloud audio needs identically.
 	$effect(() => {
-		if (!ttsService || typeof ttsService.onStateChange !== "function") return;
-		const onTtsState = (state: unknown) => {
-			if (state === "playing" || state === "loading") pauseSigning();
-		};
-		ttsService.onStateChange(listenerId, onTtsState as never);
-		return () => {
-			try {
-				ttsService.offStateChange(listenerId, onTtsState as never);
-			} catch {
-				// Detach errors are non-fatal; the service may already be gone.
-			}
-		};
+		if (!videoElement) return;
+		return enforceMediaFragment(videoElement, media?.fragment, pauseSigning);
 	});
+
+	$effect(() =>
+		bindTtsAudioHandoff({ ttsService, listenerId, silence: pauseSigning }),
+	);
 </script>
 
 {#if media && sources.length > 0}
@@ -134,8 +113,6 @@
 			playsinline
 			preload="metadata"
 			onplay={onPlay}
-			onloadedmetadata={onLoadedMetadata}
-			ontimeupdate={onTimeUpdate}
 		>
 			{#each sources as source (source.src)}
 				<source src={source.src} type={source.type || undefined} />

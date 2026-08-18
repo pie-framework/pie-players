@@ -23,10 +23,18 @@
  * Comments are exempt. A comment naming a capability is usually explaining why
  * the code no longer does, and gating prose would push authors toward vaguer
  * comments rather than cleaner code.
+ *
+ * Components are in scope as well as modules. `ItemToolBar.svelte` carried four
+ * `toolId === "calculator"` branches and a `calculator,textToSpeech,answerEliminator`
+ * prop default while this gate read only `.ts`, which is the gap that let them
+ * accumulate: the rule was enforced on the half of the package that happened to
+ * be modules.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+
+import { stripComments } from "./lib/strip-comments.mjs";
 
 const ROOT = process.cwd();
 const TOOLKIT_SRC = path.join(ROOT, "packages", "assessment-toolkit", "src");
@@ -54,8 +62,13 @@ const CAPABILITY_IDS = [
 
 /**
  * Element tags are the other way a file names a capability.
+ *
+ * `pie-tool-shell` and its BEM descendants are generic shell chrome — the class
+ * names the toolbar gives every hosted tool window — not a capability element, so
+ * they are excluded rather than allowlisted per-file.
  */
 const CAPABILITY_TAG_PATTERN = /pie-tool-[a-z0-9-]+/g;
+const GENERIC_TOOL_TAG_PATTERN = /^pie-tool-shell(?:[_-]|$)/;
 
 const SCOPED_TARGETS = [
 	{ dir: path.join(TOOLKIT_SRC, "policy"), label: "policy/**" },
@@ -70,6 +83,9 @@ const SCOPED_TARGETS = [
 		file: path.join(TOOLKIT_SRC, "services", "defaultPersonalNeedsProfile.ts"),
 	},
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
+	{ file: path.join(TOOLKIT_SRC, "components", "ItemToolBar.svelte") },
+	{ file: path.join(TOOLKIT_SRC, "components", "SectionToolBar.svelte") },
+	{ file: path.join(TOOLKIT_SRC, "components", "ToolButtonGroup.svelte") },
 	{
 		file: path.join(TOOLKIT_SRC, "tools", "content-capability-resolution.ts"),
 	},
@@ -108,12 +124,6 @@ function isAllowed(absPath, id) {
 	return ALLOWED.some((entry) => entry.file === absPath && entry.id === id);
 }
 
-/** Strip comments and string-free code so prose does not trip the check. */
-function stripComments(source) {
-	return source
-		.replace(/\/\*[\s\S]*?\*\//g, " ")
-		.replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
-}
 
 function collectTsFiles(dir) {
 	const out = [];
@@ -123,7 +133,8 @@ function collectTsFiles(dir) {
 			out.push(...collectTsFiles(abs));
 			continue;
 		}
-		if (abs.endsWith(".ts") && !abs.endsWith(".d.ts")) out.push(abs);
+		if (abs.endsWith(".d.ts")) continue;
+		if (abs.endsWith(".ts") || abs.endsWith(".svelte")) out.push(abs);
 	}
 	return out;
 }
@@ -155,12 +166,14 @@ function checkFile(absPath) {
 	}
 
 	for (const tag of code.match(CAPABILITY_TAG_PATTERN) ?? []) {
+		if (GENERIC_TOOL_TAG_PATTERN.test(tag)) continue;
 		violations.push(`names capability element tag "${tag}"`);
 	}
 
 	return violations.map((message) => `${relPath}: ${message}`);
 }
 
+function main() {
 const failures = resolveTargets().flatMap(checkFile);
 
 if (failures.length > 0) {
@@ -182,3 +195,6 @@ const checked = resolveTargets().length;
 console.log(
 	`[check-capability-neutrality] OK: validated ${checked} core file(s) name no capability`,
 );
+}
+
+if (import.meta.main) main();

@@ -260,6 +260,21 @@ const nlNL = {
 			tooltip: "Beeldwoordenboek",
 			toolA11y: "Beeldwoordenboek",
 		},
+		dictionarySpanish: {
+			name: "Spaans woordenboek",
+			description: "Betekenis van woorden in het Spaans opzoeken",
+			buttonA11y: "Spaans woordenboek, betekenis van woorden in het Spaans opzoeken",
+			tooltip: "Spaans woordenboek",
+			toolA11y: "Spaans woordenboek",
+		},
+		pictureDictionarySpanish: {
+			name: "Spaans beeldwoordenboek",
+			description: "Afbeeldingen bij woorden in het Spaans opzoeken",
+			buttonA11y:
+				"Spaans beeldwoordenboek, afbeeldingen bij woorden in het Spaans opzoeken",
+			tooltip: "Spaans beeldwoordenboek",
+			toolA11y: "Spaans beeldwoordenboek",
+		},
 		lineReader: {
 			name: "Leeshulp",
 			description: "Leesvenster over de tekst",

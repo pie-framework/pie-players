@@ -62,6 +62,8 @@ function applyLookupParams(
 	element: DictionaryPanelElement,
 	toolId: string,
 	toolbarContext: ToolbarContext,
+	/** A language variant's own corpus language; see {@link DictionaryVariantOptions}. */
+	lookupLanguage?: string,
 ): void {
 	const params = toolbarContext.getToolRenderParams?.(toolId) ?? {};
 	if (typeof params.endpoint === "string") element.endpoint = params.endpoint;
@@ -82,11 +84,15 @@ function applyLookupParams(
 	) {
 		element.termRequestId = params.toolRequestId;
 	}
-	// The reading language comes from the toolbar's own scope unless the host names one
-	// for this tool, so a service returning localised entries gets the right tag without
-	// the host having to repeat itself.
+	// Resolution order: what the host named for this tool, then the capability's own
+	// corpus language if it is a language variant, then the toolbar's scope. A variant
+	// exists precisely to look words up in a language the surrounding content is not in —
+	// a Spanish gloss for an English passage — so its language outranks the scope's, and a
+	// host that names one anyway still wins.
 	const language =
-		typeof params.language === "string" ? params.language : toolbarContext.language;
+		typeof params.language === "string"
+			? params.language
+			: (lookupLanguage ?? toolbarContext.language);
 	if (typeof language === "string" && language) element.language = language;
 }
 
@@ -98,6 +104,8 @@ function renderDictionaryPanel(args: {
 	buttonA11yKey: MessageKey;
 	tooltipKey: MessageKey;
 	shellTitleKey: MessageKey;
+	/** Fixed corpus language for a language variant; absent on the base capabilities. */
+	lookupLanguage?: string;
 	initialWidth: number;
 	initialHeight: number;
 	minWidth: number;
@@ -131,7 +139,7 @@ function renderDictionaryPanel(args: {
 		componentOverrides,
 	) as DictionaryPanelElement;
 	overlay.setAttribute("tool-id", visibility.fullToolId);
-	applyLookupParams(overlay, registration.toolId, toolbarContext);
+	applyLookupParams(overlay, registration.toolId, toolbarContext, args.lookupLanguage);
 
 	return {
 		toolId: registration.toolId,
@@ -161,61 +169,107 @@ function renderDictionaryPanel(args: {
 				overlay,
 				isActive: visibility.isActive,
 			});
-			applyLookupParams(overlay, registration.toolId, toolbarContext);
+			applyLookupParams(overlay, registration.toolId, toolbarContext, args.lookupLanguage);
 		},
 		subscribeActive: visibility.subscribeActive,
 	};
 }
 
 /**
+ * What distinguishes one dictionary capability from another.
+ *
+ * A dictionary's language belongs to the learner, not to the content: the learner who
+ * needs a Spanish gloss is reading an English passage. So a deployment that offers two
+ * languages at once composes two capabilities, each granted on its own through the PNP,
+ * rather than one capability that follows whatever the section was authored in. That is
+ * also how the delivery systems PIE is measured against ship it — English Dictionary and
+ * Spanish Dictionary as two entries a programme grants separately.
+ *
+ * Catalog keys are derived from `toolId` (`tools.<toolId>.name` and so on), which holds for
+ * every packaged variant. A host composing a variant against its own catalog passes
+ * `messageKeyPrefix`; a key that does not resolve falls back to `name` and `description`,
+ * so a host catalog that lacks one is a plain label rather than a broken button.
+ */
+export interface DictionaryVariantOptions {
+	/** Capability id, unique per language. Defaults to the base tool's id. */
+	toolId?: string;
+	name?: string;
+	description?: string;
+	/** Catalog prefix for this variant's strings. Defaults to `tools.<toolId>`. */
+	messageKeyPrefix?: string;
+	/** PNP ids that grant this variant. A language variant needs its own. */
+	pnpSupportIds?: string[];
+	/**
+	 * The corpus language this capability looks words up in, as a BCP-47 tag.
+	 *
+	 * Sent with every lookup, outranking the toolbar's content-alternate language and
+	 * outranked by a language the host names in this tool's render params. Absent on the
+	 * base capabilities, which follow the content.
+	 */
+	lookupLanguage?: string;
+}
+
+/**
  * Dictionary tool registration
  *
- * Word definitions from a host-supplied service.
+ * Word lookup from a host-supplied service, in one language. Call this again with another
+ * `toolId`, `pnpSupportIds` and `lookupLanguage` to offer a second language beside it.
  */
-export const dictionaryToolRegistration: ToolRegistration = {
-	toolId: "dictionary",
-	name: "Dictionary",
-	description: "Look up word definitions",
-	nameKey: "tools.dictionary.name",
-	descriptionKey: "tools.dictionary.description",
-	icon: "book-open",
+export function createDictionaryToolRegistration(
+	options: DictionaryVariantOptions = {},
+): ToolRegistration {
+	const toolId = options.toolId ?? "dictionary";
+	const prefix = options.messageKeyPrefix ?? `tools.${toolId}`;
+	return {
+		toolId,
+		name: options.name ?? "Dictionary",
+		description: options.description ?? "Look up word definitions",
+		nameKey: `${prefix}.name` as MessageKey,
+		descriptionKey: `${prefix}.description` as MessageKey,
+		icon: "book-open",
 
-	// Text can appear at any of these; the panel itself floats at section scope.
-	supportedLevels: ["section", "item", "passage", "rubric"],
+		// Text can appear at any of these; the panel itself floats at section scope.
+		supportedLevels: ["section", "item", "passage", "rubric"],
 
-	// PNP support IDs
-	// Maps to AfA PNP 3.0 / QTI 3.0 dictionary support, plus the common variants a
-	// host profile is likely to carry.
-	pnpSupportIds: [
-		"dictionary", // Canonical id
-		"englishDictionary", // Common variant
-		"glossary", // Common variant
-		"definitions", // Common variant
-	],
+		// PNP support IDs
+		// Maps to AfA PNP 3.0 / QTI 3.0 dictionary support, plus the common variants a
+		// host profile is likely to carry.
+		pnpSupportIds: options.pnpSupportIds ?? [
+			"dictionary", // Canonical id
+			"englishDictionary", // Common variant
+			"glossary", // Common variant
+			"definitions", // Common variant
+		],
 
-	/** Pass 2: a dictionary is relevant wherever there is text to look words up from. */
-	isVisibleInContext(context: ToolContext): boolean {
-		return hasReadableText(context);
-	},
+		/** Pass 2: a dictionary is relevant wherever there is text to look words up from. */
+		isVisibleInContext(context: ToolContext): boolean {
+			return hasReadableText(context);
+		},
 
-	renderToolbar(
-		context: ToolContext,
-		toolbarContext: ToolbarContext,
-	): ToolToolbarRenderResult {
-		return renderDictionaryPanel({
-			registration: this,
-			context,
-			toolbarContext,
-			buttonA11yKey: "tools.dictionary.buttonA11y",
-			tooltipKey: "tools.dictionary.tooltip",
-			shellTitleKey: "tools.dictionary.name",
-			initialWidth: 420,
-			initialHeight: 380,
-			minWidth: 300,
-			minHeight: 240,
-		});
-	},
-};
+		renderToolbar(
+			context: ToolContext,
+			toolbarContext: ToolbarContext,
+		): ToolToolbarRenderResult {
+			return renderDictionaryPanel({
+				registration: this,
+				context,
+				toolbarContext,
+				buttonA11yKey: `${prefix}.buttonA11y` as MessageKey,
+				tooltipKey: `${prefix}.tooltip` as MessageKey,
+				shellTitleKey: `${prefix}.name` as MessageKey,
+				lookupLanguage: options.lookupLanguage,
+				initialWidth: 420,
+				initialHeight: 380,
+				minWidth: 300,
+				minHeight: 240,
+			});
+		},
+	};
+}
+
+/** The content-following dictionary every deployment gets. */
+export const dictionaryToolRegistration: ToolRegistration =
+	createDictionaryToolRegistration();
 
 /**
  * Picture Dictionary tool registration
@@ -223,45 +277,78 @@ export const dictionaryToolRegistration: ToolRegistration = {
  * Symbol or picture lookup from a host-supplied service. Sized wider than the word
  * dictionary because its results are a grid rather than a column of text.
  */
-export const pictureDictionaryToolRegistration: ToolRegistration = {
-	toolId: "pictureDictionary",
-	name: "Picture Dictionary",
-	description: "Look up pictures for words",
-	nameKey: "tools.pictureDictionary.name",
-	descriptionKey: "tools.pictureDictionary.description",
-	icon: "photo",
+export function createPictureDictionaryToolRegistration(
+	options: DictionaryVariantOptions = {},
+): ToolRegistration {
+	const toolId = options.toolId ?? "pictureDictionary";
+	const prefix = options.messageKeyPrefix ?? `tools.${toolId}`;
+	return {
+		toolId,
+		name: options.name ?? "Picture Dictionary",
+		description: options.description ?? "Look up pictures for words",
+		nameKey: `${prefix}.name` as MessageKey,
+		descriptionKey: `${prefix}.description` as MessageKey,
+		icon: "photo",
 
-	supportedLevels: ["section", "item", "passage", "rubric"],
+		supportedLevels: ["section", "item", "passage", "rubric"],
 
-	// PNP support IDs
-	// AfA PNP 3.0 names an illustrated equivalent of a glossary; the variants cover
-	// what host profiles call it in practice.
-	pnpSupportIds: [
-		"pictureDictionary", // Canonical id
-		"illustratedGlossary", // Common variant
-		"symbolDictionary", // Common variant
-		"pictureSupport", // Common variant
-	],
+		// PNP support IDs
+		// AfA PNP 3.0 names an illustrated equivalent of a glossary; the variants cover
+		// what host profiles call it in practice.
+		pnpSupportIds: options.pnpSupportIds ?? [
+			"pictureDictionary", // Canonical id
+			"illustratedGlossary", // Common variant
+			"symbolDictionary", // Common variant
+			"pictureSupport", // Common variant
+		],
 
-	isVisibleInContext(context: ToolContext): boolean {
-		return hasReadableText(context);
-	},
+		isVisibleInContext(context: ToolContext): boolean {
+			return hasReadableText(context);
+		},
 
-	renderToolbar(
-		context: ToolContext,
-		toolbarContext: ToolbarContext,
-	): ToolToolbarRenderResult {
-		return renderDictionaryPanel({
-			registration: this,
-			context,
-			toolbarContext,
-			buttonA11yKey: "tools.pictureDictionary.buttonA11y",
-			tooltipKey: "tools.pictureDictionary.tooltip",
-			shellTitleKey: "tools.pictureDictionary.name",
-			initialWidth: 520,
-			initialHeight: 460,
-			minWidth: 340,
-			minHeight: 300,
-		});
-	},
-};
+		renderToolbar(
+			context: ToolContext,
+			toolbarContext: ToolbarContext,
+		): ToolToolbarRenderResult {
+			return renderDictionaryPanel({
+				registration: this,
+				context,
+				toolbarContext,
+				buttonA11yKey: `${prefix}.buttonA11y` as MessageKey,
+				tooltipKey: `${prefix}.tooltip` as MessageKey,
+				shellTitleKey: `${prefix}.name` as MessageKey,
+				lookupLanguage: options.lookupLanguage,
+				initialWidth: 520,
+				initialHeight: 460,
+				minWidth: 320,
+				minHeight: 280,
+			});
+		},
+	};
+}
+
+/** The content-following picture dictionary every deployment gets. */
+export const pictureDictionaryToolRegistration: ToolRegistration =
+	createPictureDictionaryToolRegistration();
+
+/**
+ * Spanish variants, packaged because a Spanish gloss for English content is a named
+ * accommodation rather than a hypothetical. Neither appears unless a PNP grants it.
+ */
+export const spanishDictionaryToolRegistration: ToolRegistration =
+	createDictionaryToolRegistration({
+		toolId: "dictionarySpanish",
+		name: "Spanish Dictionary",
+		description: "Look up word definitions in Spanish",
+		pnpSupportIds: ["spanishDictionary", "spanishGlossary"],
+		lookupLanguage: "es",
+	});
+
+export const spanishPictureDictionaryToolRegistration: ToolRegistration =
+	createPictureDictionaryToolRegistration({
+		toolId: "pictureDictionarySpanish",
+		name: "Spanish Picture Dictionary",
+		description: "Look up pictures for words in Spanish",
+		pnpSupportIds: ["spanishPictureDictionary", "spanishIllustratedGlossary"],
+		lookupLanguage: "es",
+	});

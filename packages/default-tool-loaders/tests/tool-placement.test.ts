@@ -19,6 +19,10 @@ describe("packaged tool placement", () => {
 				"periodicTable",
 				"dictionary",
 				"pictureDictionary",
+				// The Spanish variants place beside their base capabilities and are granted
+				// separately, so an exhaustive host offers both and the PNP decides.
+				"dictionarySpanish",
+				"pictureDictionarySpanish",
 			],
 			passage: [
 				"textToSpeech",
@@ -44,6 +48,8 @@ describe("packaged tool placement", () => {
 				"periodicTable",
 				"dictionary",
 				"pictureDictionary",
+				"dictionarySpanish",
+				"pictureDictionarySpanish",
 			]),
 		});
 	});
@@ -59,6 +65,8 @@ describe("packaged tool placement", () => {
 				"protractor",
 				"dictionary",
 				"pictureDictionary",
+				"dictionarySpanish",
+				"pictureDictionarySpanish",
 			],
 			item: [
 				"calculator",

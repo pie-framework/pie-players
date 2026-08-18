@@ -6,6 +6,7 @@ import {
 	reduceTimedMediaState,
 	resolveTimedMediaEnforcement,
 	resolveTimedMediaProjection,
+	timedMediaProjectionSignature,
 	type ResolvedTimedMediaSectionData,
 	type TimedMediaDeliveryState,
 	type TimedMediaInput,
@@ -309,6 +310,53 @@ describe("gate cues", () => {
 		expect(bothAnswered.effects.pause).toBe(false);
 	});
 
+	// The answer to "may a gate name a subset of a multi-item cue's items": no new
+	// syntax, because two cues at one timestamp already say it. The gate names the
+	// items that must be answered, a reveal beside it names the optional ones, and
+	// both activate in the same reduction.
+	test("a gate and a reveal at the same timestamp split must-answer from optional", () => {
+		const section = resolve({
+			stimulusRef: "stimulus",
+			cues: [
+				{
+					identifier: "cue-gate",
+					range: { startSeconds: 5 },
+					itemRefs: ["q1"],
+					policy: {
+						activation: "gate",
+						releaseOn: "responded",
+					},
+				},
+				{
+					identifier: "cue-optional",
+					range: { startSeconds: 5 },
+					itemRefs: ["q2"],
+					policy: { activation: "reveal" },
+				},
+			],
+		});
+		const held = run(section, [{ kind: "time", currentTimeSeconds: 6 }]);
+		// Both items are on screen, and only the gate's item holds playback.
+		expect(held.state.visitedCueIdentifiers).toEqual(["cue-gate", "cue-optional"]);
+		expect(held.state.completedCueIdentifiers).toEqual(["cue-optional"]);
+		expect(held.effects.pause).toBe(true);
+		expect(held.state.activeCueIdentifier).toBe("cue-gate");
+
+		// Answering the gate's item releases playback with the optional one still
+		// unanswered, which is the whole point of the split.
+		const released = run(
+			section,
+			[{ kind: "time", currentTimeSeconds: 6 }],
+			delivery({ respondedByItemId: { q1: true } }),
+			held.state,
+		);
+		expect(released.effects.pause).toBe(false);
+		expect(released.state.completedCueIdentifiers).toEqual([
+			"cue-gate",
+			"cue-optional",
+		]);
+	});
+
 	test("seeking past a gate still trips it", () => {
 		const seekAhead = resolve({
 			stimulusRef: "stimulus",
@@ -494,5 +542,82 @@ describe("capability degradation", () => {
 		expect(projection.mediaAttached).toBe(false);
 		expect(projection.degradations).toEqual([]);
 		expect(projection.enforcement.pause).toBe("enforced");
+	});
+
+	test("a metadata cue's items are not sequenced by the timeline", () => {
+		const data = resolve({
+			stimulusRef: "stimulus",
+			cues: [
+				{
+					identifier: "cue-marker",
+					range: { startSeconds: 5 },
+					itemRefs: ["q2"],
+					policy: { activation: "metadata" },
+				},
+				{
+					identifier: "cue-reveal",
+					range: { startSeconds: 10 },
+					itemRefs: ["q1"],
+					policy: { activation: "reveal" },
+				},
+			],
+		});
+		const { state } = run(data, [{ kind: "time", currentTimeSeconds: 6 }]);
+		const projection = resolveTimedMediaProjection({
+			data,
+			state,
+			delivery: delivery(),
+			capabilities: { canPause: true, canRestrictSeeking: true },
+		});
+		// Visited, so it recorded state; and it sequences nothing, so q2 is an ordinary
+		// item. A cue counted as sequencing but never as revealing hides its items for
+		// the whole section.
+		expect(projection.visitedCueIdentifiers).toEqual(["cue-marker"]);
+		expect(projection.sequencedItemIds).toEqual(["q1"]);
+		expect(projection.revealedItemIds).toEqual([]);
+	});
+});
+
+describe("timedMediaProjectionSignature", () => {
+	const project = (state: TimedMediaSectionSessionSlice) =>
+		resolveTimedMediaProjection({
+			data: REVEAL_SECTION,
+			state,
+			delivery: delivery(),
+			capabilities: { canPause: true, canRestrictSeeking: true },
+		});
+
+	test("holds still while only the clock moves", () => {
+		const base = createTimedMediaState();
+		const first = project({ ...base, mediaCurrentTime: 1, maxPositionSeconds: 1 });
+		const second = project({ ...base, mediaCurrentTime: 4, maxPositionSeconds: 4 });
+		expect(timedMediaProjectionSignature(second)).toBe(
+			timedMediaProjectionSignature(first),
+		);
+	});
+
+	test("moves once playback covers a bucket of new ground", () => {
+		const base = createTimedMediaState();
+		const early = project({ ...base, mediaCurrentTime: 4, maxPositionSeconds: 4 });
+		const later = project({ ...base, mediaCurrentTime: 24, maxPositionSeconds: 24 });
+		// Position renders nowhere, so this exists only so a reload has a furthest
+		// position to clamp `allowSeekAhead: false` against.
+		expect(timedMediaProjectionSignature(later)).not.toBe(
+			timedMediaProjectionSignature(early),
+		);
+	});
+
+	test("moves on cue state", () => {
+		const base = createTimedMediaState();
+		const before = project(base);
+		const after = project({ ...base, visitedCueIdentifiers: ["cue-reveal"] });
+		expect(timedMediaProjectionSignature(after)).not.toBe(
+			timedMediaProjectionSignature(before),
+		);
+	});
+
+	test("an absent projection has no signature", () => {
+		expect(timedMediaProjectionSignature(null)).toBe("");
+		expect(timedMediaProjectionSignature(undefined)).toBe("");
 	});
 });

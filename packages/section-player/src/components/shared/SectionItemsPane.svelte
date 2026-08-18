@@ -731,8 +731,15 @@
 		font-size: calc(0.9rem * var(--pie-font-scale, 1));
 	}
 
+	/* Collapsed, not removed: `display: none` takes the element out of the
+	   accessibility tree, and a live region that did not exist when its first message
+	   arrived does not announce it (WCAG 4.1.3). The region is rendered before it has
+	   content for exactly that reason. */
 	.pie-section-player-timed-media-status:empty {
-		display: none;
+		padding: 0;
+		border: 0;
+		block-size: 0;
+		overflow: hidden;
 	}
 
 	/* The gated card takes focus, so it needs a visible focus indicator of its own;

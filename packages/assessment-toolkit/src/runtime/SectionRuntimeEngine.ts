@@ -119,11 +119,15 @@ interface RuntimeController extends SectionControllerHandle {
 	navigateToItem?: (index: number) => unknown;
 	attachMediaTimeSource?: (
 		source: MediaTimeSource,
-		options?: { origin?: "native-adapter" | "host" },
+		options?: {
+			origin?: "native-adapter" | "host";
+			renderableId?: string;
+		},
 	) => void;
 	detachMediaTimeSource?: (options?: {
 		origin?: "native-adapter" | "host";
 	}) => void;
+	pauseMediaForCompetingAudio?: () => boolean;
 }
 
 /** What a media-time-source registration reaching the engine has to say. */
@@ -570,9 +574,9 @@ export class SectionRuntimeEngine {
 	 * Bind or release the section's Media Time Source.
 	 *
 	 * A pass-through, like `handleFormativeAction`: the engine routes, the
-	 * controller decides. Whether the registering renderable is the one
-	 * `stimulusRef` names is the controller's call, because the controller is what
-	 * validated `stimulusRef` in the first place.
+	 * controller decides. `renderableId` travels with the attach because whether the
+	 * registering renderable is the one `stimulusRef` names is the controller's call
+	 * — it validated `stimulusRef` in the first place.
 	 */
 	handleMediaTimeSource(action: SectionRuntimeMediaTimeSourceAction): void {
 		if (action?.action === "detach") {
@@ -584,7 +588,20 @@ export class SectionRuntimeEngine {
 		if (!action?.source) return;
 		this.controller?.attachMediaTimeSource?.(action.source, {
 			origin: action.origin ?? "host",
+			renderableId: action.renderableId,
 		});
+	}
+
+	/**
+	 * Silence media audio because something else is about to speak.
+	 *
+	 * A pass-through like `handleMediaTimeSource`, and for the same reason: which
+	 * source is authoritative and whether it reports `canPause` are the controller's
+	 * to know. Returns whether media audio is now silent, or `true` where there is
+	 * no timed-media controller to ask — nothing is playing.
+	 */
+	requestMediaPauseForCompetingAudio(): boolean {
+		return this.controller?.pauseMediaForCompetingAudio?.() ?? true;
 	}
 
 	async persist(): Promise<void> {

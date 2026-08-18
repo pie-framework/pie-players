@@ -69,11 +69,12 @@
 	let loadingCard = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => loadingCard);
 
-	// The stimulus is the section's time source, so it holds position while other
-	// passages scroll. Two consequences, both scoped to a section that has one: it
-	// renders first, and it sticks. A section without a media stimulus keeps today's
-	// authored order and no sticky rule — the addition is invisible by construction
-	// rather than by care at each call site.
+	// The stimulus is the section's time source, so it renders first. Ordering only:
+	// pinning it in place needs `scroll-padding-top` on a scroll container this
+	// component does not own, and a sticky card without that obscures a focused
+	// control in a passage scrolling under it (WCAG 2.4.11). Placement belongs to a
+	// timed-media layout — see Media Representation in the contract — and a section
+	// with no media stimulus keeps today's authored order either way.
 	const stimulusPassageId = $derived(
 		compositionModel?.timedMedia?.stimulusRenderableId ?? "",
 	);
@@ -106,11 +107,6 @@
 			{passage}
 			{baseHeadingLevel}
 			timedMediaStimulus={!!stimulusPassageId && passage.id === stimulusPassageId}
-			class={
-				!!stimulusPassageId && passage.id === stimulusPassageId
-					? "pie-section-player-passages-pane__stimulus"
-					: ""
-			}
 			playerParams={getPassagePlayerParams({
 				passage,
 				resolvedPlayerEnv,
@@ -138,16 +134,6 @@
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
-		background: var(--pie-background, #fff);
-	}
-
-	/* The media stays reachable while a second passage scrolls under it. Sticky
-	   rather than fixed so it still scrolls out of a pane too short to hold it,
-	   which keeps the whole card reachable at 400% zoom (WCAG 1.4.10). */
-	:global(pie-section-player-passage-card.pie-section-player-passages-pane__stimulus) {
-		position: sticky;
-		top: 0;
-		z-index: 1;
 		background: var(--pie-background, #fff);
 	}
 

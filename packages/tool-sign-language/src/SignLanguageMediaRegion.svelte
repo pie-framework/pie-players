@@ -29,9 +29,11 @@
 	 */
 	import {
 		applyMediaFragment,
+		bindTtsAudioHandoff,
 		enforceMediaFragment,
+		pauseTtsForMediaAudio,
+		type TtsServiceApi,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type { TtsServiceApi } from "@pie-players/pie-assessment-toolkit";
 	import type { MediaSource } from "@pie-players/pie-players-shared/types";
 	import { describeSignLanguage } from "./sign-language-cards.js";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
@@ -73,17 +75,9 @@
 		if (videoElement && !videoElement.paused) videoElement.pause();
 	}
 
-	/**
-	 * Signing playback and TTS must not run at once, and the action the learner
-	 * just took wins: starting one pauses the other.
-	 */
+	/** One half of the audio handoff; the `$effect` below binds the other. */
 	function onPlay(): void {
-		if (!ttsService) return;
-		try {
-			if (ttsService.isPlaying()) ttsService.pause();
-		} catch {
-			// A torn-down or uninitialized TTS service must not break playback.
-		}
+		pauseTtsForMediaAudio(ttsService);
 	}
 
 	// Hold playback to the authored slice. Stopping at the end keeps a
@@ -95,20 +89,9 @@
 		return enforceMediaFragment(videoElement, media?.fragment, pauseSigning);
 	});
 
-	$effect(() => {
-		if (!ttsService || typeof ttsService.onStateChange !== "function") return;
-		const onTtsState = (state: unknown) => {
-			if (state === "playing" || state === "loading") pauseSigning();
-		};
-		ttsService.onStateChange(listenerId, onTtsState as never);
-		return () => {
-			try {
-				ttsService.offStateChange(listenerId, onTtsState as never);
-			} catch {
-				// Detach errors are non-fatal; the service may already be gone.
-			}
-		};
-	});
+	$effect(() =>
+		bindTtsAudioHandoff({ ttsService, listenerId, silence: pauseSigning }),
+	);
 </script>
 
 {#if media && sources.length > 0}

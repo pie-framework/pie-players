@@ -351,6 +351,10 @@ export {
 	PIE_TTS_CONTROL_HANDOFF_EVENT,
 	type TTSControlHandoffDetail,
 } from "./services/tts-control-events.js";
+export {
+	bindTtsAudioHandoff,
+	pauseTtsForMediaAudio,
+} from "./services/audio-handoff.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {

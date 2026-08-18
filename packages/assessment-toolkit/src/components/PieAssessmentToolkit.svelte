@@ -91,11 +91,19 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import {
+		bindTtsAudioHandoff,
+		pauseTtsForMediaAudio,
+	} from "../services/audio-handoff.js";
 	import type { PnpEnforcementMode } from "../policy/engine.js";
 	import type {
 		AssessmentEntity,
 		AssessmentItemRef,
 	} from "@pie-players/pie-players-shared/types";
+	import {
+		timedMediaProjectionSignature,
+		type TimedMediaSectionProjection,
+	} from "@pie-players/pie-players-shared/timed-media";
 	import {
 		formatFrameworkErrorForConsole,
 		frameworkErrorFromUnknown,
@@ -522,6 +530,27 @@ const DEFAULT_ENV = {
 	}
 
 	/**
+	 * TTS/media handoff: whichever audio the learner started last is the one that
+	 * plays, so starting read-aloud silences media and starting media silences
+	 * read-aloud.
+	 *
+	 * Arbitrated here because this is the only layer that holds both capabilities.
+	 * The section owns the media port and no policy over speech; the TTS service
+	 * owns speech and knows nothing of a stimulus. Neither can yield to the other
+	 * on its own, which is why the overlap survived the port landing.
+	 *
+	 * Neither direction resumes what it silenced. A learner who paused media before
+	 * starting read-aloud would not expect it back, and auto-resuming into a held
+	 * gate would fight the enforcement that paused it — so the resume is the
+	 * learner's, as it already is for every other pause in this contract.
+	 */
+	function handleTimedMediaAudioStarted(event: { type?: string } | null): void {
+		if (event?.type !== "timed-media-audio-started") return;
+		if (!effectiveCoordinator) return;
+		pauseTtsForMediaAudio(effectiveCoordinator.getServiceBundle().ttsService);
+	}
+
+	/**
 	 * Whether this CE should surface the bootstrap banner for `kind`.
 	 *
 	 * The banner is the visible "we could not start the toolkit" surface
@@ -681,37 +710,15 @@ const DEFAULT_ENV = {
 	 * the emit is coalesced away — the controller would hold correct cue state while
 	 * the pane kept every gated item hidden.
 	 *
-	 * Media position is deliberately absent. It changes about four times a second
-	 * and nothing renders it, so including it would republish the composition on a
-	 * timer.
+	 * The encoding is `players-shared`'s, shared with the controller's own emit
+	 * check. Two encodings of the same question drift, and either direction fails
+	 * silently: a republish for a change the controller never announced, or an
+	 * announced change this coalesces away. Media position is absent from it, which
+	 * is what keeps a four-per-second clock from republishing the composition.
 	 */
 	function toTimedMediaSignature(model: UnknownRecord): string {
-		const projection = asRecord(model.timedMedia);
-		if (Object.keys(projection).length === 0) return "";
-		const gate = asRecord(projection.gate);
-		const enforcement = asRecord(projection.enforcement);
-		const revealed = Array.isArray(projection.revealedItemIds)
-			? projection.revealedItemIds.join(",")
-			: "";
-		const completed = Array.isArray(projection.completedCueIdentifiers)
-			? projection.completedCueIdentifiers.join(",")
-			: "";
-		const visited = Array.isArray(projection.visitedCueIdentifiers)
-			? projection.visitedCueIdentifiers.join(",")
-			: "";
-		return [
-			visited,
-			completed,
-			revealed,
-			String(projection.activeCueIdentifier ?? ""),
-			String(gate.cueIdentifier ?? ""),
-			gate.holding === true ? "1" : "0",
-			String(enforcement.pause ?? ""),
-			String(enforcement.seek ?? ""),
-			projection.mediaAttached === true ? "1" : "0",
-			projection.mediaCompleted === true ? "1" : "0",
-			projection.aggregateComplete === true ? "1" : "0",
-		].join(":");
+		const projection = model.timedMedia as TimedMediaSectionProjection | null;
+		return timedMediaProjectionSignature(projection);
 	}
 
 	function toCompositionSnapshot(model: unknown): CompositionSnapshot {
@@ -1267,6 +1274,20 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// Wiring only: the coordinator is the dependency, and the subscription's callback
+	// writes no reactive state — it asks the engine to pause a media port.
+	$effect(() => {
+		const coordinator = effectiveCoordinator;
+		if (!coordinator) return;
+		return untrack(() =>
+			bindTtsAudioHandoff({
+				ttsService: coordinator.getServiceBundle().ttsService,
+				listenerId: `timed-media-audio-handoff:${runtimeId}`,
+				silence: () => sectionEngine.requestMediaPauseForCompetingAudio(),
+			}),
+		);
+	});
+
 	$effect(() => {
 		const parentRuntimeId =
 			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
@@ -1477,6 +1498,7 @@ const DEFAULT_ENV = {
 				},
 				onControllerEvent: (event) => {
 					if (cancelled) return;
+					handleTimedMediaAudioStarted(event);
 					reportTimedMediaDiagnostic(event);
 				},
 			})

@@ -36,6 +36,17 @@ const SEEK_AHEAD_TOLERANCE_SECONDS = 0.5;
 /** Media positions are compared in seconds; a millisecond is below resolution. */
 const TIME_EPSILON_SECONDS = 1e-3;
 
+/**
+ * How much new ground playback covers before the furthest position is worth
+ * republishing for.
+ *
+ * Position renders nowhere, so this exists only to bound what a reload hands back:
+ * `allowSeekAhead: false` clamps against the persisted `maxPositionSeconds`, and a
+ * section whose next cue is minutes away would otherwise persist nothing in
+ * between.
+ */
+const POSITION_PERSIST_BUCKET_SECONDS = 10;
+
 export function createTimedMediaState(): TimedMediaSectionSessionSlice {
 	return {
 		version: TIMED_MEDIA_SLICE_VERSION,
@@ -313,6 +324,32 @@ function resolveGateView(args: {
 	return null;
 }
 
+/**
+ * Whether a cue decides when its items are delivered.
+ *
+ * A `metadata` cue does not: it records state and reveals nothing, so the items it
+ * names stay ordinary items. One predicate for both id sets below, because a cue
+ * counted as sequencing but never as revealing hides its items for the whole
+ * section.
+ */
+function cueSequencesDelivery(cue: ResolvedTimedMediaCue): boolean {
+	return cue.activation !== "metadata";
+}
+
+/** Canonical ids of every item the timeline sequences, in cue order. */
+function resolveSequencedItemIds(
+	data: ResolvedTimedMediaSectionData,
+): string[] {
+	const sequenced: string[] = [];
+	for (const cue of data.cues) {
+		if (!cueSequencesDelivery(cue)) continue;
+		for (const itemId of cue.itemRefs) {
+			if (!sequenced.includes(itemId)) sequenced.push(itemId);
+		}
+	}
+	return sequenced;
+}
+
 /** Canonical ids of items a visited cue has revealed, in cue order. */
 function resolveRevealedItemIds(
 	data: ResolvedTimedMediaSectionData,
@@ -321,7 +358,7 @@ function resolveRevealedItemIds(
 	const visited = new Set(state.visitedCueIdentifiers);
 	const revealed: string[] = [];
 	for (const cue of data.cues) {
-		if (cue.activation === "metadata") continue;
+		if (!cueSequencesDelivery(cue)) continue;
 		if (!visited.has(cue.identifier)) continue;
 		for (const itemId of cue.itemRefs) {
 			if (!revealed.includes(itemId)) revealed.push(itemId);
@@ -355,6 +392,7 @@ export function resolveTimedMediaProjection(args: {
 		enforcement: { pause: enforcement.pause, seek: enforcement.seek },
 		degradations: enforcement.degradations,
 		revealedItemIds: resolveRevealedItemIds(args.data, args.state),
+		sequencedItemIds: resolveSequencedItemIds(args.data),
 		activeCueIdentifier: args.state.activeCueIdentifier,
 		gate: resolveGateView({
 			data: args.data,
@@ -369,4 +407,41 @@ export function resolveTimedMediaProjection(args: {
 		mediaCompleted: args.state.mediaCompleted,
 		aggregateComplete: args.state.aggregateComplete === true,
 	};
+}
+
+/**
+ * The projection facts that change what a layout renders, as one string.
+ *
+ * One implementation for the two callers that have to agree: `SectionController`
+ * decides whether to emit on it, and the toolkit folds it into the composition
+ * revision key. Two encodings drift silently in either direction — the controller
+ * emits a change the toolkit coalesces away, or the toolkit republishes for a
+ * change the controller never announced.
+ *
+ * `mediaCurrentTime` is absent because it moves about four times a second and
+ * nothing renders it. `maxPositionSeconds` enters only as a coarse bucket; see
+ * `POSITION_PERSIST_BUCKET_SECONDS`.
+ */
+export function timedMediaProjectionSignature(
+	projection: TimedMediaSectionProjection | null | undefined,
+): string {
+	if (!projection) return "";
+	return [
+		(projection.visitedCueIdentifiers ?? []).join(","),
+		(projection.completedCueIdentifiers ?? []).join(","),
+		(projection.revealedItemIds ?? []).join(","),
+		projection.activeCueIdentifier ?? "",
+		projection.gate?.cueIdentifier ?? "",
+		projection.gate?.holding === true ? "1" : "0",
+		projection.enforcement?.pause ?? "",
+		projection.enforcement?.seek ?? "",
+		projection.mediaAttached === true ? "1" : "0",
+		projection.mediaCompleted === true ? "1" : "0",
+		projection.aggregateComplete === true ? "1" : "0",
+		String(
+			Math.floor(
+				(projection.maxPositionSeconds ?? 0) / POSITION_PERSIST_BUCKET_SECONDS,
+			),
+		),
+	].join(":");
 }

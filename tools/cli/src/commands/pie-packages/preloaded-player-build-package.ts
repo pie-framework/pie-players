@@ -8,7 +8,7 @@ import {
 	buildPreloadedPlayerStaticPackage,
 	parseElementsInput,
 } from "../../utils/pie-packages/fixed-static.js";
-import { createNpmAuthEnvironment } from "../../utils/npm-auth-env.js";
+import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
 
 export default class PreloadedPlayerBuildPackage extends Command {
 	static override description =

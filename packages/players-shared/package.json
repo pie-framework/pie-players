@@ -61,6 +61,10 @@
 			"types": "./dist/server/npm-registry.d.ts",
 			"import": "./dist/server/npm-registry.js"
 		},
+		"./server/npm-auth-env": {
+			"types": "./dist/server/npm-auth-env.d.ts",
+			"import": "./dist/server/npm-auth-env.js"
+		},
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"

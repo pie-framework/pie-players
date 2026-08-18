@@ -13,43 +13,30 @@ import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-
 let googleProvider: GoogleCloudTTSProviderType | null = null;
 const GOOGLE_TTS_PROVIDER_PACKAGE = "@pie-players/tts-server-google";
 
+/** Thrown when Google credentials are simply absent — expected in dev/CI, not a fault to log. */
+class GoogleTTSNotConfiguredError extends Error {}
+
 /**
  * Get or initialize the Google provider
  */
 async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	if (googleProvider) return googleProvider;
 
-	console.log("[Google TTS API] Initializing Google Cloud TTS provider...");
-
 	// Check for API key (simple method)
 	const hasApiKey = !!process.env.GOOGLE_API_KEY;
 	// Check for service account credentials (advanced method)
 	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-	console.log(
-		"[Google TTS API] GOOGLE_API_KEY:",
-		hasApiKey
-			? `set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
-			: "missing",
-	);
-	console.log(
-		"[Google TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
-		hasServiceAccount ? "set" : "missing",
-	);
-	console.log(
-		"[Google TTS API] GOOGLE_CLOUD_PROJECT:",
-		process.env.GOOGLE_CLOUD_PROJECT ? "set" : "missing",
-	);
-
 	// Require at least one authentication method
 	if (!hasApiKey && !hasServiceAccount) {
-		const errorMsg =
+		throw new GoogleTTSNotConfiguredError(
 			"Google Cloud credentials not configured. Please set either:\n" +
-			"  - GOOGLE_API_KEY (simpler, for testing)\n" +
-			"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
-		console.error(`[Google TTS API] ${errorMsg}`);
-		throw new Error(errorMsg);
+				"  - GOOGLE_API_KEY (simpler, for testing)\n" +
+				"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)",
+		);
 	}
+
+	console.log("[Google TTS API] Initializing Google Cloud TTS provider...");
 
 	const { GoogleCloudTTSProvider } = await import(
 		/* @vite-ignore */ GOOGLE_TTS_PROVIDER_PACKAGE
@@ -125,7 +112,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({ voices });
 	} catch (err) {
-		console.error("[Google TTS API] Error:", err);
+		if (!(err instanceof GoogleTTSNotConfiguredError)) {
+			console.error("[Google TTS API] Error:", err);
+		}
 
 		if (err instanceof Error) {
 			return json({ error: err.message }, { status: 500 });

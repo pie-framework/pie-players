@@ -59,6 +59,19 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 		toolHostTag: "pie-tool-picture-dictionary",
 		panelRole: "dialog",
 	},
+	{
+		id: "dictionarySpanish",
+		buttonAriaLabel: "Spanish Dictionary, look up word definitions in Spanish",
+		toolHostTag: "pie-tool-dictionary",
+		panelRole: "dialog",
+	},
+	{
+		id: "pictureDictionarySpanish",
+		buttonAriaLabel:
+			"Spanish Picture Dictionary, look up pictures for words in Spanish",
+		toolHostTag: "pie-tool-picture-dictionary",
+		panelRole: "dialog",
+	},
 ];
 
 async function gotoDemo(page: Page) {
@@ -209,8 +222,11 @@ test.describe("section toolbar tools", () => {
 		);
 
 		for (const spec of SECTION_TOOL_SPECS) {
+			// exact: true — "Dictionary, look up word definitions" is otherwise a
+			// substring match of the Spanish variant's aria-label too.
 			const button = toolbar.getByRole("button", {
 				name: spec.buttonAriaLabel,
+				exact: true,
 			});
 			await expect(button, `Missing ${spec.id} button`).toBeVisible();
 			await expect(button).toHaveAttribute("aria-pressed", "false");

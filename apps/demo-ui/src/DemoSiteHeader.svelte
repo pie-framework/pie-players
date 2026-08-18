@@ -5,10 +5,9 @@
 		title: string;
 		subtitle: string;
 		themeControl?: Snippet;
-		localeControl?: Snippet;
 	}
 
-	let { title, subtitle, themeControl, localeControl }: Props = $props();
+	let { title, subtitle, themeControl }: Props = $props();
 </script>
 
 <header class="pie-demo-site-header border-b border-base-200 bg-base-100/80 backdrop-blur">
@@ -34,14 +33,9 @@
 			</span>
 		</a>
 
-		{#if localeControl || themeControl}
+		{#if themeControl}
 			<div class="pie-demo-site-header__controls">
-				{#if localeControl}
-					{@render localeControl()}
-				{/if}
-				{#if themeControl}
-					{@render themeControl()}
-				{/if}
+				{@render themeControl()}
 			</div>
 		{/if}
 	</div>

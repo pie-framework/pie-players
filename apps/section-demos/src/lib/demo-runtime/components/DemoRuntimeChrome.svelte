@@ -39,6 +39,8 @@
 		sourcePanelJson: string;
 		toolkitCoordinator: any;
 		isSessionHydrateDbDemo?: boolean;
+		/** Render the interface-locale selector. Only the `interface-locale` demo asks for it. */
+		showLocaleSelect?: boolean;
 		dbErrorMessage?: string | null;
 		onReset: () => void;
 		onSetSplitpaneLayout: () => void;
@@ -79,6 +81,7 @@
 		sourcePanelJson,
 		toolkitCoordinator,
 		isSessionHydrateDbDemo = false,
+		showLocaleSelect = false,
 		dbErrorMessage = null,
 		onReset,
 		onSetSplitpaneLayout,
@@ -336,6 +339,7 @@
 			hasElementVersionTargets={hasElementVersionTargets}
 			hasElementVersionOverrides={hasElementVersionOverrides}
 			{isSessionHydrateDbDemo}
+			{showLocaleSelect}
 			{selectedDaisyTheme}
 			daisyThemes={[...daisyThemes]}
 			{onReset}

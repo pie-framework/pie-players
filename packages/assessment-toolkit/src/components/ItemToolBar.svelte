@@ -40,6 +40,7 @@
 -->
 <script lang="ts">
 	import {
+		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
 		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
@@ -47,6 +48,8 @@
 		connectAssessmentToolkitRuntimeContext,
 		connectAssessmentToolkitShellContext,
 	} from '../context/runtime-context-consumer.js';
+	import { ContextProvider } from '@pie-players/pie-context';
+	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
 	import { ToolRegistry } from '../services/ToolRegistry.js';
 	import type {
 		HostedToolContext,
@@ -1172,11 +1175,36 @@
 	type ShellMountedArgs = {
 		mounted: MountedToolElement;
 		active: boolean;
+		/**
+		 * The runtime context to re-publish on the shell.
+		 *
+		 * A shell lives at `document.body`, so a tool inside one is outside every
+		 * provider's subtree and its `context-request` reaches nothing. Passing the
+		 * value through the action's arguments is what makes `update` fire on a
+		 * republish, which is the shell provider's change signal.
+		 */
+		runtime: AssessmentToolkitRuntimeContext | null;
+		/** Interface locale for the shell's own chrome — title and window controls. */
+		i18n: I18nProvider;
 	};
 
 	function mountElementWithShell(node: HTMLSpanElement, args: ShellMountedArgs) {
 		let currentArgs = args;
 		let shellEl: HTMLDivElement | null = null;
+		/**
+		 * Re-publishes {@link ShellMountedArgs.runtime} for the tool inside this
+		 * shell. Without it a shelled tool resolves `getDefaultI18n()` and renders
+		 * English under a translated toolbar, and reaches no coordinator, TTS
+		 * service or catalog resolver either.
+		 */
+		let shellRuntimeProvider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
+		/**
+		 * Header controls carrying a catalog string, kept with the key that produced
+		 * it. They are built imperatively, so nothing re-reads the catalog for them:
+		 * a shell built before its locale's catalog import resolves would otherwise
+		 * hold English for the rest of the session.
+		 */
+		const localizedControlEls: Array<{ el: HTMLElement; key: MessageKeyInput }> = [];
 		let headerEl: HTMLDivElement | null = null;
 		let contentEl: HTMLDivElement | null = null;
 		let titleEl: HTMLSpanElement | null = null;
@@ -1485,6 +1513,34 @@
 				'--pie-tool-shell-zoom-comp',
 				String(currentCalculatorZoomCompensation())
 			);
+		};
+
+		/**
+		 * Re-reads every catalog string this shell renders.
+		 *
+		 * The shell's chrome is imperative DOM, so it has no reactive read to
+		 * invalidate: the labels move only when something calls this. Runs at build
+		 * and on every `update`, which covers both the locale changing under a live
+		 * shell and the first catalog import landing after the shell was built.
+		 */
+		const applyShellStrings = () => {
+			if (titleEl) {
+				titleEl.textContent =
+					currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
+			}
+			for (const { el, key } of localizedControlEls) {
+				const label = currentArgs.i18n.t(key);
+				// nds-icon-button forwards `button-aria-label` to the <button> it
+				// renders; the plain controls carry aria-label themselves.
+				if (el.tagName === 'NDS-ICON-BUTTON') {
+					el.setAttribute('button-aria-label', label);
+				} else {
+					el.setAttribute('aria-label', label);
+				}
+				// Only the controls that already had a tooltip keep one. The close
+				// button deliberately has none.
+				if (el.title) el.title = label;
+			}
 		};
 
 		const mountContent = () => {
@@ -1989,31 +2045,38 @@
 			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
 			const appendControl = (
-				label: string,
+				key: MessageKeyInput,
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
 				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
 			) => {
 				if (!controlsEl) return;
-				controlsEl.appendChild(
-					useNdsShellIcons
-						? createShellIconButton(label, iconName, onActivate, faVariant)
-						: createShellControlButton(label, glyph, onActivate)
-				);
+				const label = currentArgs.i18n.t(key);
+				const control = useNdsShellIcons
+					? createShellIconButton(label, iconName, onActivate, faVariant)
+					: createShellControlButton(label, glyph, onActivate);
+				localizedControlEls.push({ el: control, key });
+				controlsEl.appendChild(control);
 			};
 			if (shellConfig?.draggable !== false) {
-				appendControl(interfaceI18n.t('toolkit.window.moveLeftA11y'), '←', 'chevron-left', () => moveBy(-24, 0));
-				appendControl(interfaceI18n.t('toolkit.window.moveRightA11y'), '→', 'chevron-right', () => moveBy(24, 0));
-				appendControl(interfaceI18n.t('toolkit.window.moveUpA11y'), '↑', 'chevron-up', () => moveBy(0, -24));
-				appendControl(interfaceI18n.t('toolkit.window.moveDownA11y'), '↓', 'chevron-down', () => moveBy(0, 24));
+				appendControl('toolkit.window.moveLeftA11y', '←', 'chevron-left', () => moveBy(-24, 0));
+				appendControl('toolkit.window.moveRightA11y', '→', 'chevron-right', () => moveBy(24, 0));
+				appendControl('toolkit.window.moveUpA11y', '↑', 'chevron-up', () => moveBy(0, -24));
+				appendControl('toolkit.window.moveDownA11y', '↓', 'chevron-down', () => moveBy(0, 24));
 			}
 			if (shellConfig?.resizable !== false) {
-				appendControl(interfaceI18n.t('toolkit.window.shrinkA11y'), '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
-				appendControl(interfaceI18n.t('toolkit.window.growA11y'), '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
+				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
+				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
 			}
 			if (!isCalculatorShell) {
-				controlsEl.appendChild(createShellControlButton(interfaceI18n.t('toolkit.window.centerA11y'), '◎', centerShell));
+				const centerControl = createShellControlButton(
+					currentArgs.i18n.t('toolkit.window.centerA11y'),
+					'◎',
+					centerShell
+				);
+				localizedControlEls.push({ el: centerControl, key: 'toolkit.window.centerA11y' });
+				controlsEl.appendChild(centerControl);
 			}
 			// Calculator: pack controls + close into a single right-side cluster
 			// so `space-between` on the header lays out as `title … [controls x]`.
@@ -2039,14 +2102,16 @@
 			}
 
 			if (useNdsShellIcons) {
-				closeButtonEl = createShellIconButton(interfaceI18n.t('toolkit.window.closeA11y'), 'xmark', closeShell, 'fa-regular');
+				closeButtonEl = createShellIconButton(currentArgs.i18n.t('toolkit.window.closeA11y'), 'xmark', closeShell, 'fa-regular');
+				localizedControlEls.push({ el: closeButtonEl, key: 'toolkit.window.closeA11y' });
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
 			} else {
 				const closeButton = document.createElement('button');
 				closeButton.type = 'button';
 				closeButton.className = 'pie-tool-shell__close';
-				closeButton.setAttribute('aria-label', interfaceI18n.t('toolkit.window.closeA11y'));
+				closeButton.setAttribute('aria-label', currentArgs.i18n.t('toolkit.window.closeA11y'));
+				localizedControlEls.push({ el: closeButton, key: 'toolkit.window.closeA11y' });
 				const svgNs = 'http://www.w3.org/2000/svg';
 				const closeIconEl = document.createElementNS(svgNs, 'svg');
 				closeIconEl.setAttribute('xmlns', svgNs);
@@ -2280,8 +2345,17 @@
 			window.addEventListener('resize', onWindowResize);
 			document.body.appendChild(shellEl);
 
+			// Before `mountContent`, so the tool's first context request is answered
+			// rather than left to the consumer's retry loop.
+			shellRuntimeProvider = new ContextProvider(shellEl, {
+				context: assessmentToolkitRuntimeContext,
+				initialValue: currentArgs.runtime as AssessmentToolkitRuntimeContext
+			});
+			shellRuntimeProvider.connect();
+
 			centerShell();
 			applyShellStyle();
+			applyShellStrings();
 			mountContent();
 			notifyHostedResize();
 			if (currentArgs.active) {
@@ -2294,7 +2368,11 @@
 			update(nextArgs: ShellMountedArgs) {
 				currentArgs = nextArgs;
 				if (!shellEl || !contentEl || !titleEl || !closeButtonEl) return;
-				titleEl.textContent = currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
+				// The republish the tool inside this shell subscribes to.
+				shellRuntimeProvider?.setValue(
+					currentArgs.runtime as AssessmentToolkitRuntimeContext
+				);
+				applyShellStrings();
 				// nds-icon-button (calculator branch) is a custom element with
 				// inline-block default display; other shells use an inline-flex
 				// <button>. Pick the right open-state value so we
@@ -2316,6 +2394,9 @@
 			},
 			destroy() {
 				notifyHostedUnmount();
+				shellRuntimeProvider?.disconnect();
+				shellRuntimeProvider = null;
+				localizedControlEls.length = 0;
 				if (focusTrapCleanup) {
 					removeFocusTrap();
 				}
@@ -2378,7 +2459,9 @@
 							class="item-toolbar__element-host"
 							use:mountElementWithShell={{
 								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false
+								active: renderedToolActiveById[mounted.toolId] ?? false,
+								runtime: runtimeContext,
+								i18n: interfaceI18n
 							}}
 						></span>
 					{/key}
@@ -2483,7 +2566,9 @@
 							class="item-toolbar__element-host"
 							use:mountElementWithShell={{
 								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false
+								active: renderedToolActiveById[mounted.toolId] ?? false,
+								runtime: runtimeContext,
+								i18n: interfaceI18n
 							}}
 						></span>
 					{/key}
@@ -2508,7 +2593,9 @@
 								class="item-toolbar__controls-host"
 								use:mountElementWithShell={{
 									mounted,
-									active: renderedToolActiveById[mounted.toolId] ?? false
+									active: renderedToolActiveById[mounted.toolId] ?? false,
+									runtime: runtimeContext,
+									i18n: interfaceI18n
 								}}
 							></span>
 						{/key}

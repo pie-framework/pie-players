@@ -259,7 +259,9 @@ export const calculatorToolRegistration: ToolRegistration = {
 					element: overlay,
 					mount: "after-buttons",
 					shell: {
-						title: this.name,
+						// The variant name the button already carries — "Basic Calculator",
+						// not the registration's generic one.
+						title: displayName,
 						draggable: true,
 						resizable: true,
 						closeable: true,

@@ -1,10 +1,5 @@
 <script lang="ts">
-	import { DemoSiteHeader, LocaleSelect } from "@pie-players/demo-ui";
-	import {
-		DEMO_LOCALES,
-		demoLocale,
-		setDemoLocale,
-	} from "$lib/demo-locale.svelte";
+	import { DemoSiteHeader } from "@pie-players/demo-ui";
 
 	type Props = {
 		title?: string;
@@ -17,12 +12,9 @@
 	}: Props = $props();
 </script>
 
-<DemoSiteHeader {title} {subtitle}>
-	{#snippet localeControl()}
-		<LocaleSelect
-			locales={DEMO_LOCALES}
-			value={demoLocale()}
-			onSelect={setDemoLocale}
-		/>
-	{/snippet}
-</DemoSiteHeader>
+<!--
+	No locale control here. The interface locale belongs to the one demo that
+	demonstrates it, so a tag chosen there cannot follow the reader into demos
+	meant to show the English a host with no locale gets.
+-->
+<DemoSiteHeader {title} {subtitle} />

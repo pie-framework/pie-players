@@ -392,6 +392,23 @@ Resuming would start audio nobody asked for, on top of the announcement that the
 gate released, and it would fight both the reduced-motion posture and a learner
 still reading feedback.
 
+**The TTS/media handoff is arbitrated in the toolkit, on a last-action-wins rule.**
+Starting read-aloud silences media; starting media pauses read-aloud. Neither side
+can decide this alone — the section owns the port and no policy over speech, the TTS
+service owns speech and knows nothing of a stimulus — so the toolkit, the only layer
+holding both, owns the policy and the two packages expose one half each:
+`pauseMediaForCompetingAudio()` on the controller, and a `timed-media-audio-started`
+event when media audio resumes. Neither direction resumes what it silenced, for the
+reason above. A source reporting no `canPause` cannot yield, and read-aloud proceeds
+over it: withholding an accommodation to protect a policy the port already said it
+cannot keep is the worse failure, and the gap is already reported at attach.
+
+Media that carries no audio still pauses read-aloud, because no portable signal
+distinguishes a silent track from a narrated one — `HTMLMediaElement` exposes none,
+so the port cannot either. A deliberate trade: one unnecessary pause the learner
+undoes with one press, against overlapping speech, which is the accessibility
+failure.
+
 **Seeking is `seekTo(seconds)` on the port rather than a writable `currentTime`.**
 A writable property gives a source that cannot seek no way to say so, and
 `canRestrictSeeking` needs somewhere to live. This is the one place the port
@@ -467,5 +484,4 @@ Still open:
 - What print/export behavior should timed-media sections have? A printed timed-media section has no timeline, so the question is whether every cued item prints revealed or the section refuses to print.
 - Captions and transcripts are unexercised end to end. The demo's generated stimulus has no speech, so authoring a caption track for it would be inventing content; the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file) is the right fixture for that coverage.
 - Whether a gate should be able to name a subset of a multi-item cue's items as its release condition. Today every item a gate names must satisfy it.
-- Media and TTS audio can overlap. This PRD's accessibility requirements name handoff rules that prevent it; nothing coordinates the toolkit's TTS service with the port, so a learner who starts a read-aloud over playing media hears both. Deferred rather than met: the handoff is a two-way policy between two capabilities, and the port deliberately reports capability rather than owning transport.
-- No score-projection coverage. The Test Plan names tests against the shared score/outcome contract; `scoringPolicy` is validated and persisted and PIE derives no aggregate from it, so there is no projection to assert yet. The coverage arrives with the first derivation, not before.
+- No score-projection coverage, and one strategy that cannot yet be honoured. `scoringPolicy` is validated, persisted, and carried to the host unchanged for all four strategies; PIE derives no aggregate from any of them, and the type home for one — `ScoreComponent` / `OutcomeProjection` — is an open question in [score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md), which is still `Draft`. Deriving here would settle that export decision from inside a section feature. Blocking the derivation regardless: `weighted-child-outcomes` has no authorable weight anywhere in this contract — not on a cue, not on an item ref — so a host selecting it is given a strategy and no weights to apply it to. Where weights live is the first thing the score contract has to answer.

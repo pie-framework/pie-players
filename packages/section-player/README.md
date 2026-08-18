@@ -111,6 +111,9 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 - `timed-media-cue-changed` — a cue activated, a gate released, or aggregate
   completion flipped. Not emitted for media position: `timeupdate` fires about four
   times a second and moves nothing a layout renders.
+- `timed-media-audio-started` — media audio is running, so read-aloud must yield.
+  Emitted only where playback actually stood; a gate that re-paused on the same
+  `play` produced no audio.
 - `timed-media-policy-degraded` — the attached media time source cannot carry out a
   playback policy, so it is advisory from here.
 - `timed-media-invalid` — authored `timedMedia` that cannot be delivered; the
@@ -223,7 +226,16 @@ const controller = await host.waitForSectionController?.(5000);
 controller?.attachMediaTimeSource?.(myThirdPartyPort);
 controller?.detachMediaTimeSource?.();
 controller?.getTimedMediaProjection?.(); // cues, gate, enforcement, revealed items
+// One half of the read-aloud handoff; `false` means the port cannot pause, so the
+// overlap stands rather than the accommodation being withheld.
+controller?.pauseMediaForCompetingAudio?.();
 ```
+
+Read-aloud and media audio never run at once, and the action the learner just took
+wins: starting read-aloud pauses media, starting media pauses read-aloud. The section
+supplies both halves — the method above and `timed-media-audio-started` — and the
+toolkit arbitrates between them, because only the toolkit holds the TTS service and
+the section. Neither direction resumes what it silenced.
 
 Where the port reports `canPause: false` or `canRestrictSeeking: false`, the
 matching policy degrades to **advisory**: cues still fire, state is still recorded,

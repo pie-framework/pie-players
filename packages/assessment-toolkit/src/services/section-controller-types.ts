@@ -276,6 +276,19 @@ export type SectionControllerTimedMediaCueChangedEvent =
 	};
 
 /**
+ * Media audio is now running, so any other audio owner must yield.
+ *
+ * Emitted only where playback actually stood: a gate that re-paused on the same
+ * `play` produced no audio. Carries no payload — that media audio started is the
+ * whole fact, and cue state travels on `timed-media-cue-changed`.
+ */
+export type SectionControllerTimedMediaAudioStartedEvent =
+	SectionControllerEventBase & {
+		type: "timed-media-audio-started";
+		currentItemIndex: number;
+	};
+
+/**
  * A playback policy the attached media time source cannot carry out, reported so
  * the gap is visible rather than silent. Cues still fire and state is still
  * recorded; only enforcement is lost.
@@ -317,6 +330,7 @@ export type SectionControllerEvent =
 	| SectionControllerFormativeRevealChangedEvent
 	| SectionControllerSectionMasteryChangedEvent
 	| SectionControllerTimedMediaCueChangedEvent
+	| SectionControllerTimedMediaAudioStartedEvent
 	| SectionControllerTimedMediaPolicyDegradedEvent
 	| SectionControllerTimedMediaInvalidEvent;
 
@@ -557,6 +571,18 @@ export interface SectionControllerHandle {
 	detachMediaTimeSource?(options?: {
 		origin?: "native-adapter" | "host";
 	}): void;
+	/**
+	 * Silence media audio so read-aloud can speak over the same stimulus.
+	 *
+	 * One half of the TTS/media handoff. The section stops media and announces
+	 * `timed-media-audio-started` when media audio resumes; the toolkit owns the
+	 * policy, because only the toolkit holds both the TTS service and the section.
+	 *
+	 * Returns whether media audio is now silent — `false` for a playing source that
+	 * reports no `canPause`, where the overlap stands rather than read-aloud being
+	 * withheld.
+	 */
+	pauseMediaForCompetingAudio?(): boolean;
 	/**
 	 * The section's timed-media projection — cues, enforcement, revealed items and
 	 * the gate currently holding playback.

@@ -245,6 +245,7 @@ interface SectionControllerEventBase {
 		| "formative-reveal-changed"
 		| "section-mastery-changed"
 		| "timed-media-cue-changed"
+		| "timed-media-audio-started"
 		| "timed-media-policy-degraded"
 		| "timed-media-invalid";
 	timestamp: number;
@@ -410,6 +411,23 @@ export interface TimedMediaCueChangedEvent extends ItemScopedControllerEventBase
 }
 
 /**
+ * Media audio is now running, so any other audio owner must yield.
+ *
+ * The section owns no audio but the port, and no policy over read-aloud, so this
+ * announces rather than decides: the toolkit holds both capabilities and arbitrates
+ * between them. Emitted only where playback actually stood — a gate that re-paused
+ * on the same `play` produced no audio, and silencing read-aloud for it would take
+ * an accommodation away for nothing.
+ *
+ * Carries no payload. "Media audio started" is the whole fact; position and cue
+ * state travel on `timed-media-cue-changed`.
+ */
+export interface TimedMediaAudioStartedEvent
+	extends ItemScopedControllerEventBase {
+	type: "timed-media-audio-started";
+}
+
+/**
  * A playback policy the attached media time source cannot carry out. Cues still
  * fire and state is still recorded; enforcement is what degrades, and it says so
  * rather than appearing to hold.
@@ -446,6 +464,7 @@ export type SectionControllerChangeEvent =
 	| FormativeRevealChangedEvent
 	| SectionMasteryChangedEvent
 	| TimedMediaCueChangedEvent
+	| TimedMediaAudioStartedEvent
 	| TimedMediaPolicyDegradedEvent
 	| TimedMediaInvalidEvent;
 

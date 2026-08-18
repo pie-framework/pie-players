@@ -614,6 +614,70 @@ describe("SectionController timed media", () => {
 		).toBeNull();
 	});
 
+	test("media audio yields to a competing audio owner, and says so when it cannot", async () => {
+		const { controller } = await bootstrap(
+			makeSection({ cues: [revealCue(5, ["q1"])] }),
+		);
+		// Nothing attached: no media audio to overlap with, so the handoff is already
+		// satisfied.
+		expect(controller.pauseMediaForCompetingAudio()).toBe(true);
+
+		const media = fakeMediaTimeSource();
+		controller.attachMediaTimeSource(media.source);
+		media.advanceTo(1);
+		media.calls.length = 0;
+		expect(controller.pauseMediaForCompetingAudio()).toBe(true);
+		expect(media.calls).toEqual(["pause"]);
+		// Idempotent: an already-paused source is not re-paused, so read-aloud
+		// starting twice never fights a learner who pressed play in between.
+		expect(controller.pauseMediaForCompetingAudio()).toBe(true);
+		expect(media.calls).toEqual(["pause"]);
+
+		const unpausable = fakeMediaTimeSource({ canPause: false });
+		controller.attachMediaTimeSource(unpausable.source, { origin: "host" });
+		unpausable.advanceTo(1);
+		unpausable.calls.length = 0;
+		// The overlap stands rather than read-aloud being withheld — the caller is
+		// told, and no pause is attempted against a port that said it cannot.
+		expect(controller.pauseMediaForCompetingAudio()).toBe(false);
+		expect(unpausable.calls).toEqual([]);
+	});
+
+	test("media playback announces its audio so read-aloud can yield", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({ cues: [revealCue(5, ["q1"])] }),
+		);
+		const media = fakeMediaTimeSource();
+		controller.attachMediaTimeSource(media.source);
+		media.playing();
+		media.notify({ type: "play", currentTime: 1 });
+		expect(eventTypes(events)).toContain("timed-media-audio-started");
+	});
+
+	test("a gate that re-pauses on the same play announces no audio", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({
+				cues: [
+					gateCue({
+						startSeconds: 5,
+						itemRefs: ["q1"],
+						releaseOn: "responded",
+					}),
+				],
+			}),
+		);
+		const media = fakeMediaTimeSource();
+		controller.attachMediaTimeSource(media.source);
+		media.advanceTo(6);
+		// Held: the learner pressing play produced no audio, so silencing their
+		// read-aloud for it would take an accommodation away for nothing.
+		expect(media.calls).toContain("pause");
+		events.length = 0;
+		media.playing();
+		media.notify({ type: "play", currentTime: 6 });
+		expect(eventTypes(events)).not.toContain("timed-media-audio-started");
+	});
+
 	test("a correctness gate over a finite Try budget is refused, not silently released", async () => {
 		const { controller } = await bootstrap(
 			makeSection({

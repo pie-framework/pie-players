@@ -91,6 +91,10 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import {
+		bindTtsAudioHandoff,
+		pauseTtsForMediaAudio,
+	} from "../services/audio-handoff.js";
 	import type { PnpEnforcementMode } from "../policy/engine.js";
 	import type {
 		AssessmentEntity,
@@ -523,6 +527,27 @@ const DEFAULT_ENV = {
 				recoverable: false,
 			}),
 		);
+	}
+
+	/**
+	 * TTS/media handoff: whichever audio the learner started last is the one that
+	 * plays, so starting read-aloud silences media and starting media silences
+	 * read-aloud.
+	 *
+	 * Arbitrated here because this is the only layer that holds both capabilities.
+	 * The section owns the media port and no policy over speech; the TTS service
+	 * owns speech and knows nothing of a stimulus. Neither can yield to the other
+	 * on its own, which is why the overlap survived the port landing.
+	 *
+	 * Neither direction resumes what it silenced. A learner who paused media before
+	 * starting read-aloud would not expect it back, and auto-resuming into a held
+	 * gate would fight the enforcement that paused it — so the resume is the
+	 * learner's, as it already is for every other pause in this contract.
+	 */
+	function handleTimedMediaAudioStarted(event: { type?: string } | null): void {
+		if (event?.type !== "timed-media-audio-started") return;
+		if (!effectiveCoordinator) return;
+		pauseTtsForMediaAudio(effectiveCoordinator.getServiceBundle().ttsService);
 	}
 
 	/**
@@ -1249,6 +1274,20 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// Wiring only: the coordinator is the dependency, and the subscription's callback
+	// writes no reactive state — it asks the engine to pause a media port.
+	$effect(() => {
+		const coordinator = effectiveCoordinator;
+		if (!coordinator) return;
+		return untrack(() =>
+			bindTtsAudioHandoff({
+				ttsService: coordinator.getServiceBundle().ttsService,
+				listenerId: `timed-media-audio-handoff:${runtimeId}`,
+				silence: () => sectionEngine.requestMediaPauseForCompetingAudio(),
+			}),
+		);
+	});
+
 	$effect(() => {
 		const parentRuntimeId =
 			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
@@ -1459,6 +1498,7 @@ const DEFAULT_ENV = {
 				},
 				onControllerEvent: (event) => {
 					if (cancelled) return;
+					handleTimedMediaAudioStarted(event);
 					reportTimedMediaDiagnostic(event);
 				},
 			})

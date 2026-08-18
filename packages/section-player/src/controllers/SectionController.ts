@@ -49,6 +49,7 @@ import { SectionItemNavigationService } from "./SectionItemNavigationService.js"
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	ContentLoadedEvent,
+	TimedMediaAudioStartedEvent,
 	TimedMediaCueChangedEvent,
 	TimedMediaInvalidEvent,
 	TimedMediaPolicyDegradedEvent,
@@ -847,6 +848,8 @@ export class SectionController implements SectionControllerHandle {
 						kind: "time",
 						currentTimeSeconds: notification.currentTime,
 					});
+					// After the reduction, so a gate that re-paused announces nothing.
+					this.announceMediaAudioStarted();
 					return;
 				default:
 					return;
@@ -968,6 +971,50 @@ export class SectionController implements SectionControllerHandle {
 		this.timedMediaState = reduction.state;
 		this.applyTimedMediaEffects(reduction.effects);
 		this.emitTimedMediaIfChanged(reduction.effects, delivery);
+	}
+
+	/**
+	 * Silence media audio so another audio owner can speak.
+	 *
+	 * The handoff rule the contract's accessibility requirements name, reduced to
+	 * the half the section can carry out: the section owns the port, so it can stop
+	 * media audio, and it owns no read-aloud, so it decides nothing about speech.
+	 * Whoever holds both — the toolkit — calls this and yields the other way on
+	 * `timed-media-audio-started`.
+	 *
+	 * Returns whether media audio is now silent, which is `false` only for a source
+	 * that is playing and reports no `canPause`. The overlap then stands: refusing
+	 * to speak would withhold an accommodation to protect a policy the port already
+	 * said it cannot keep, so enforcement degrades here exactly as it does for a
+	 * gate — advisory, and reported at attach.
+	 *
+	 * No pause is issued for a source already paused, so calling this repeatedly
+	 * costs nothing and never fights a learner.
+	 */
+	public pauseMediaForCompetingAudio(): boolean {
+		const source = this.mediaTimeSource;
+		if (!source) return true;
+		if (source.paused) return true;
+		if (!source.capabilities.canPause) return false;
+		try {
+			source.pause();
+		} catch (error) {
+			logger.warn("media time source rejected an audio-handoff pause", error);
+			return false;
+		}
+		return true;
+	}
+
+	/** Announce media audio only where playback actually stood. */
+	private announceMediaAudioStarted(): void {
+		if (!this.timedMediaData) return;
+		if (this.mediaTimeSource?.paused !== false) return;
+		const event: TimedMediaAudioStartedEvent = {
+			type: "timed-media-audio-started",
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
 	}
 
 	/**

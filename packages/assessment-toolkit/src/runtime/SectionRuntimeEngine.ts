@@ -127,6 +127,7 @@ interface RuntimeController extends SectionControllerHandle {
 	detachMediaTimeSource?: (options?: {
 		origin?: "native-adapter" | "host";
 	}) => void;
+	pauseMediaForCompetingAudio?: () => boolean;
 }
 
 /** What a media-time-source registration reaching the engine has to say. */
@@ -589,6 +590,18 @@ export class SectionRuntimeEngine {
 			origin: action.origin ?? "host",
 			renderableId: action.renderableId,
 		});
+	}
+
+	/**
+	 * Silence media audio because something else is about to speak.
+	 *
+	 * A pass-through like `handleMediaTimeSource`, and for the same reason: which
+	 * source is authoritative and whether it reports `canPause` are the controller's
+	 * to know. Returns whether media audio is now silent, or `true` where there is
+	 * no timed-media controller to ask — nothing is playing.
+	 */
+	requestMediaPauseForCompetingAudio(): boolean {
+		return this.controller?.pauseMediaForCompetingAudio?.() ?? true;
 	}
 
 	async persist(): Promise<void> {

@@ -283,14 +283,22 @@ describe("normalizeTimedMediaSectionData", () => {
 		expect(codes(result)).toContain("invalid-scoring-policy");
 	});
 
-	test("an authored scoring strategy survives validation unchanged", () => {
+	// Every strategy the type admits, because carrying the author's intent through to
+	// the host unchanged is the whole of what PIE does with it: no aggregate is
+	// derived from any of them, so a strategy the validator silently rejected would
+	// lose intent no later stage could recover.
+	test.each([
+		"sum-child-outcomes",
+		"average-child-outcomes",
+		"weighted-child-outcomes",
+		"host-defined",
+	] as const)("the authored scoring strategy %s survives validation unchanged", (strategy) => {
 		const result = validate({
 			stimulusRef: "video-stimulus-1",
 			cues: [revealCue],
-			scoringPolicy: { strategy: "sum-child-outcomes" },
+			scoringPolicy: { strategy },
 		});
-		expect(result.data?.scoringPolicy).toEqual({
-			strategy: "sum-child-outcomes",
-		});
+		expect(codes(result)).not.toContain("invalid-scoring-policy");
+		expect(result.data?.scoringPolicy).toEqual({ strategy });
 	});
 });

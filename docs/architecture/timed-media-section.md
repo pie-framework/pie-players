@@ -28,6 +28,12 @@ Three things in this note are now settled rather than open, and one is corrected
   on its merits rather than by inertia.
 - **The 2026-08-05 objection in item 4 stands and was honoured**: nothing about cue
   gating touches the canonical `Stage` vocabulary.
+- **The shipped scoring union is narrower than the candidates below.**
+  `sum-child-outcomes`, `average-child-outcomes` and `host-defined`, validated and
+  persisted with no aggregate derived from any of them.
+  `all-required-cues-complete` is completion, which `aggregateComplete` already
+  carries separately from score, and `weighted-child-outcomes` is out until weights
+  have an authorable home — the score contract's question, not this one's.
 
 ## Current State
 

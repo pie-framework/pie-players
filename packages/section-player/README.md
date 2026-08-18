@@ -208,6 +208,11 @@ const section: AssessmentSection = {
 };
 ```
 
+Every item a gate names must satisfy its `releaseOn`. To split must-answer items from
+optional ones, author two cues at the same timestamp — a gate over the first set, a
+reveal over the second. Both activate in the same pass, the reveal completes at once,
+and only the gate holds playback.
+
 Absent `sectionType` and delivery is unchanged: no projection, no session slice, no
 cue behavior. An item no `reveal` or `gate` cue names is delivered normally —
 including one a `metadata` cue names, since metadata records state and reveals

@@ -274,6 +274,18 @@ describe("normalizeTimedMediaSectionData", () => {
 		expect(result.errors).toEqual([]);
 	});
 
+	test("a weighted strategy is refused, because no weight is authorable", () => {
+		// Weights have no home on a cue, an item ref or the section, so accepting the
+		// strategy would name a capability PIE does not have. A host with its own
+		// weights says `host-defined`.
+		const result = validate({
+			stimulusRef: "video-stimulus-1",
+			cues: [revealCue],
+			scoringPolicy: { strategy: "weighted-child-outcomes" },
+		});
+		expect(codes(result)).toContain("invalid-scoring-policy");
+	});
+
 	test("an unknown scoring strategy is reported rather than dropped", () => {
 		const result = validate({
 			stimulusRef: "video-stimulus-1",
@@ -287,12 +299,7 @@ describe("normalizeTimedMediaSectionData", () => {
 	// the host unchanged is the whole of what PIE does with it: no aggregate is
 	// derived from any of them, so a strategy the validator silently rejected would
 	// lose intent no later stage could recover.
-	test.each([
-		"sum-child-outcomes",
-		"average-child-outcomes",
-		"weighted-child-outcomes",
-		"host-defined",
-	] as const)("the authored scoring strategy %s survives validation unchanged", (strategy) => {
+	test.each(["sum-child-outcomes", "average-child-outcomes", "host-defined"] as const)("the authored scoring strategy %s survives validation unchanged", (strategy) => {
 		const result = validate({
 			stimulusRef: "video-stimulus-1",
 			cues: [revealCue],

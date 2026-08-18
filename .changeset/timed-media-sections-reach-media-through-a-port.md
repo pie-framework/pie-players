@@ -87,6 +87,13 @@ controller event in the section behind a console warning. That guard is hardenin
 around the new route, not a fix for a defect on `develop`: before this the
 subscription took no event and only republished.
 
+`scoringPolicy` accepts `sum-child-outcomes`, `average-child-outcomes` and
+`host-defined`. It is validated, persisted and carried to the host unchanged; PIE
+derives no aggregate from any of them and assigns no default, so a section that omits
+it is not silently given one. `weighted-child-outcomes` is deliberately absent: no
+weight is authorable on a cue, an item ref or the section, so the entry would name a
+capability PIE does not have. A host holding its own weights says `host-defined`.
+
 Existing content is untouched: no `sectionType` means no projection, no session
 slice and no cue behavior, and cue-gated cards are the only cards that ever carry
 `hidden`.

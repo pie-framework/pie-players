@@ -310,6 +310,53 @@ describe("gate cues", () => {
 		expect(bothAnswered.effects.pause).toBe(false);
 	});
 
+	// The answer to "may a gate name a subset of a multi-item cue's items": no new
+	// syntax, because two cues at one timestamp already say it. The gate names the
+	// items that must be answered, a reveal beside it names the optional ones, and
+	// both activate in the same reduction.
+	test("a gate and a reveal at the same timestamp split must-answer from optional", () => {
+		const section = resolve({
+			stimulusRef: "stimulus",
+			cues: [
+				{
+					identifier: "cue-gate",
+					range: { startSeconds: 5 },
+					itemRefs: ["q1"],
+					policy: {
+						activation: "gate",
+						releaseOn: "responded",
+					},
+				},
+				{
+					identifier: "cue-optional",
+					range: { startSeconds: 5 },
+					itemRefs: ["q2"],
+					policy: { activation: "reveal" },
+				},
+			],
+		});
+		const held = run(section, [{ kind: "time", currentTimeSeconds: 6 }]);
+		// Both items are on screen, and only the gate's item holds playback.
+		expect(held.state.visitedCueIdentifiers).toEqual(["cue-gate", "cue-optional"]);
+		expect(held.state.completedCueIdentifiers).toEqual(["cue-optional"]);
+		expect(held.effects.pause).toBe(true);
+		expect(held.state.activeCueIdentifier).toBe("cue-gate");
+
+		// Answering the gate's item releases playback with the optional one still
+		// unanswered, which is the whole point of the split.
+		const released = run(
+			section,
+			[{ kind: "time", currentTimeSeconds: 6 }],
+			delivery({ respondedByItemId: { q1: true } }),
+			held.state,
+		);
+		expect(released.effects.pause).toBe(false);
+		expect(released.state.completedCueIdentifiers).toEqual([
+			"cue-gate",
+			"cue-optional",
+		]);
+	});
+
 	test("seeking past a gate still trips it", () => {
 		const seekAhead = resolve({
 			stimulusRef: "stimulus",

@@ -196,7 +196,7 @@ interface TimedMediaSectionData {
       requireMediaCompletion: boolean;
     };
     scoringPolicy?: {
-      strategy: "sum-child-outcomes" | "average-child-outcomes" | "weighted-child-outcomes" | "host-defined";
+      strategy: "sum-child-outcomes" | "average-child-outcomes" | "host-defined";
     };
   };
 }
@@ -446,10 +446,30 @@ media capability probe, which contradicts the **Tool Surface Failure** posture i
 [`../../CONTEXT.md`](../../CONTEXT.md), and no author has asked for it. Recorded as
 a decision rather than an omission.
 
-**No scoring default.** `scoringPolicy` is validated and persisted; PIE derives no
-aggregate outcome from it, and a section that omits it is not silently assigned one.
-`aggregateComplete` deliberately keeps three facts separate — required cues, item
-completion, and media completion where the policy requires it.
+**No scoring default, and no weighted strategy.** `scoringPolicy` is validated and
+persisted; PIE derives no aggregate outcome from it, and a section that omits it is
+not silently assigned one. `aggregateComplete` deliberately keeps three facts
+separate — required cues, item completion, and media completion where the policy
+requires it. `weighted-child-outcomes` was dropped from the strategy union before
+release: no weight is authorable on a cue, an item ref or the section, so the entry
+named a capability PIE does not have. Where weights live is the score contract's
+question, and a host that already holds its own weights says `host-defined`.
+
+**A gate may not name a subset of its cue's items, because two cues already say
+it.** Every item a gate names must satisfy `releaseOn`. A split between must-answer
+and optional items is authored as two cues at one timestamp — a gate over the first
+set, a reveal over the second — which the reduction already delivers: every reached
+cue activates in the same pass, the reveal completes immediately, and only the gate
+holds. Rejected alternative: reusing `required: false` on the item ref, which today
+means "counts toward completion" and would silently change gate behaviour for an
+author who set it for a completion reason.
+
+**A printed timed-media section prints every cued item revealed.** Recorded for
+whoever builds section printing, which does not exist — `pie-print-player` takes a
+single PIE item config and has no section awareness, so nothing in the shipped path
+can reach this. A printed page has no timeline, and a page of items no cue can fire
+is a blank page: the same reasoning that makes a stimulus with no time source
+deliver every item.
 
 **A host-supplied port outranks a renderable's, and a renderable's only counts for
 the stimulus.** `attachMediaTimeSource` takes the `renderableId` the source was
@@ -481,7 +501,5 @@ formative slice does), and scoring defaults (none).
 Still open:
 
 - What is the minimum timed-media MVP for cue timeline authoring, and which package owns that future PRD? Nothing here supplies an authoring surface, and the cue timeline is the part an author cannot reasonably hand-write for long.
-- What print/export behavior should timed-media sections have? A printed timed-media section has no timeline, so the question is whether every cued item prints revealed or the section refuses to print.
-- Captions and transcripts are unexercised end to end. The demo's generated stimulus has no speech, so authoring a caption track for it would be inventing content; the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file) is the right fixture for that coverage.
-- Whether a gate should be able to name a subset of a multi-item cue's items as its release condition. Today every item a gate names must satisfy it.
-- No score-projection coverage, and one strategy that cannot yet be honoured. `scoringPolicy` is validated, persisted, and carried to the host unchanged for all four strategies; PIE derives no aggregate from any of them, and the type home for one — `ScoreComponent` / `OutcomeProjection` — is an open question in [score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md), which is still `Draft`. Deriving here would settle that export decision from inside a section feature. Blocking the derivation regardless: `weighted-child-outcomes` has no authorable weight anywhere in this contract — not on a cue, not on an item ref — so a host selecting it is given a strategy and no weights to apply it to. Where weights live is the first thing the score contract has to answer.
+- Captions and transcripts are unexercised end to end, and nothing in PIE handles a caption track: there is no `<track>` or `textTracks` handling in any package, so "captions remain available during cue-linked questions" rests entirely on `<track>` surviving inside the stimulus passage's markup, which the demo's `<video>` and `<source>` do but which is untested for `<track>` itself. The fixture is the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file), added as a second demo route rather than replacing the silent clip: a narrated clip *requires* captions under 1.2.2, where the silent one is satisfied by the text alternative the demo already carries, so replacing it would trade a met obligation for an unmet one. Coverage is bounded to two claims — `<track>` survives the passage markup and the browser exposes the captions control, and a gate overlay does not cover the caption region.
+- No score-projection coverage. `scoringPolicy` is validated, persisted and carried to the host unchanged for each of its three strategies; PIE derives no aggregate from any of them, so there is no projection to assert. The type home — `ScoreComponent` / `OutcomeProjection` — is an open question in [score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md), which is still `Draft`, and deriving here would settle that export decision from inside a section feature. The coverage arrives with the first derivation. Weights are that contract's to place, which is why the weighted strategy is not in this one.

@@ -87,13 +87,14 @@ export interface TimedMediaPlaybackPolicy {
  * Authored scoring intent. Accepted, validated and persisted; PIE computes no
  * aggregate outcome from it yet and supplies no default, so a section that omits
  * it is not silently assigned one.
+ *
+ * No `weighted-child-outcomes`: no weight is authorable on a cue, an item ref or
+ * the section, so the strategy would name a capability PIE does not have. Where
+ * weights live is the score contract's question, and a host that already has its
+ * own weights says `host-defined`.
  */
 export interface TimedMediaScoringPolicy {
-	strategy:
-		| "sum-child-outcomes"
-		| "average-child-outcomes"
-		| "weighted-child-outcomes"
-		| "host-defined";
+	strategy: "sum-child-outcomes" | "average-child-outcomes" | "host-defined";
 }
 
 /**

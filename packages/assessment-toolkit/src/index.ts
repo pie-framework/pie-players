@@ -235,8 +235,10 @@ export {
 	applyMediaFragment,
 	enforceMediaFragment,
 	isSafeMediaSrc,
+	isUnsupportedMediaAssetVersion,
 	normalizeMediaFragment,
 	normalizeMediaSources,
+	SUPPORTED_MEDIA_ASSET_VERSION,
 	trimmedOrUndefined,
 } from "./services/catalog-media.js";
 // Spoken catalog cards carrying recorded audio rather than a reading script

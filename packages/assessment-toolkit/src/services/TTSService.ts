@@ -478,6 +478,18 @@ export class TTSService {
 
 	/**
 	 * Set a late-bound provider for optional host TTS highlight target remapping.
+	 *
+	 * The returned disposer is the only thing that clears the registration: the
+	 * caller owns the lifetime, and a provider installed once keeps remapping
+	 * across stops, seek-restarts and later playbacks. Playback termination used to
+	 * clear it in `stop()` and on both exits of `restartFromSeekIndex`, which left a
+	 * host that installs before mount — the case a late-bound provider exists for —
+	 * remapping exactly one playback and then silently falling back to identity.
+	 *
+	 * Installing again replaces the previous provider, so a caller that reinstalls
+	 * per playback needs no disposal between them. A stale provider cannot paint
+	 * outside its scope in any case: targets are validated by containment in
+	 * `context.scopeElement` and a failing one falls back to its native range.
 	 */
 	setHighlightTargetResolverProvider(
 		provider: TTSHighlightTargetResolverProvider | null,
@@ -2691,13 +2703,11 @@ export class TTSService {
 			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
-			this.highlightTargetResolverProvider = null;
 		} catch (error) {
 			if (runId !== this.speakRunId) return;
 			this.lastError = error instanceof Error ? error.message : String(error);
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
-			this.highlightTargetResolverProvider = null;
 			throw error;
 		} finally {
 			this.clearPlaybackStartBarrier(playbackStartBarrier);
@@ -2819,7 +2829,6 @@ export class TTSService {
 		this.cancelRecordedAudio();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
-		this.highlightTargetResolverProvider = null;
 		this.setState(PlaybackState.IDLE);
 		this.currentText = null;
 

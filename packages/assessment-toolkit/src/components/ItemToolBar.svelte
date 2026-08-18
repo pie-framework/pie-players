@@ -226,16 +226,11 @@
 	};
 
 	// <nds-icon-button> renders FontAwesome glyphs via `icon-name` only (no slot).
-	// For now we only route the calculator button through the NDS button; every
-	// other tool keeps its existing custom-button rendering. Map its toolId to
-	// the FA icon name here so widening the set later is a one-line change.
-	const TOOL_FA_ICON_BY_ID: Record<string, string> = {
-		calculator: 'calculator',
-	};
-	// Resolve the FA icon-name for an <nds-icon-button>, or null when the item
-	// should keep its legacy custom-button rendering.
+	// Which items route through it is declared by whoever owns the capability —
+	// `faIconName` on the registration's button definition, or on a host-contributed
+	// button — not mapped from a toolId here: this package names no capability.
 	const resolveFaIconName = (item: ToolbarItem): string | null =>
-		TOOL_FA_ICON_BY_ID[item.id] ?? null;
+		item.faIconName || null;
 
 	// No fallback registry. This package holds no capability set to fall back to —
 	// a host that wants stock tools passes a registry built by the composition
@@ -257,7 +252,12 @@
 		itemId = '',
 		sectionId = '',
 		catalogId = '',
-		tools = 'calculator,textToSpeech,answerEliminator',
+		// No capability default: this package holds no capability set, so naming one
+		// here would be the composition layer's decision made in the generic core.
+		// Every in-repo mount passes `tools` explicitly; a standalone host with no
+		// coordinator and no `tools` renders no buttons, which is the same honest
+		// answer `fallbackToolRegistry` gives.
+		tools = '',
 		contentKind = 'assessment-item',
 		position = 'bottom' as 'top' | 'right' | 'bottom' | 'left' | 'none',
 		scopeElement = null,
@@ -474,6 +474,26 @@
 		return dedupe(normalizedExplicitTools);
 	});
 
+	// Tools a PNP/profile grant mandates (`requiredTools`, or a `supports` entry the
+	// host cannot toggle off). Pass 2 is a *relevance* heuristic — "is a calculator
+	// plausibly useful for this item" — and a heuristic must not withdraw an
+	// accommodation a learner is entitled to. The one-way veto still holds in the
+	// direction that matters: nothing here can make a tool visible that pass 1
+	// removed, because these ids come from the decision's own surviving entries.
+	const grantProtectedToolIds = $derived.by((): Set<string> => {
+		const protectedIds = new Set<string>();
+		if (!policyDecision) return protectedIds;
+		for (const entry of policyDecision.visibleTools) {
+			if (!entry.required && !entry.alwaysAvailable) continue;
+			for (const toolId of effectiveToolRegistry
+				.normalizeToolIds([entry.toolId])
+				.filter(Boolean)) {
+				protectedIds.add(toolId);
+			}
+		}
+		return protectedIds;
+	});
+
 	const contentReady = $derived.by(() => {
 		if (effectiveLevel === 'section' || effectiveLevel === 'assessment') return true;
 		const config = (effectiveItem as ItemEntity | null)?.config;
@@ -670,6 +690,10 @@
 			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
 			return Array.from(visible);
 		}
+		// A granted accommodation skips the relevance gate entirely.
+		toolOwnedToolIds
+			.filter((toolId) => grantProtectedToolIds.has(toolId))
+			.forEach((toolId) => visible.add(toolId));
 		if (toolContext) {
 			effectiveToolRegistry
 				.filterVisibleInContext(toolOwnedToolIds, toolContext)
@@ -839,6 +863,7 @@
 					label: button.label,
 					ariaLabel: button.ariaLabel || button.label,
 					icon: button.icon,
+					faIconName: button.faIconName,
 					tooltip: button.tooltip || button.label,
 					disabled: button.disabled,
 					active: activeToolState[renderedTool.toolId] ?? button.active ?? false,
@@ -973,14 +998,13 @@
 		};
 	});
 
-	// Prefetch FA + Roboto into document head as soon as we know a calculator
-	// icon will render. The shadow-root injection in `ndsIconButtonAction`
-	// clones whatever <link>s are already on the page; running this first means
-	// the prod-host's FA stylesheet is guaranteed to be present by the time the
-	// toolbar's calculator span mounts.
+	// Prefetch FA + Roboto into document head as soon as we know an NDS icon will
+	// render. The shadow-root injection in `ndsIconButtonAction` clones whatever
+	// <link>s are already on the page; running this first means the prod-host's FA
+	// stylesheet is guaranteed to be present by the time the button mounts.
 	$effect(() => {
 		if (!isBrowser) return;
-		if (toolbarItems.some((item) => item.icon === 'calculator')) {
+		if (toolbarItems.some((item) => !!resolveFaIconName(item))) {
 			ensureNdsAssets();
 		}
 	});
@@ -1216,7 +1240,16 @@
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
 		let focusGuardRedirecting = false;
-		let calculatorBridgeAttached = false;
+		let pageTabBridgeAttached = false;
+		// Both read `currentArgs`, which `update()` reassigns, so they are functions
+		// rather than captured consts.
+		const shellWantsPageTabOrder = (): boolean =>
+			currentArgs.mounted.entry.shell?.pageTabOrder === true;
+		// Whether the shell asked for design-system header chrome. Distinct from
+		// `useNdsShellIcons`: the layout below follows the shell's declaration, while
+		// only the button *element* also depends on the host's `ndsIcons` flag.
+		const shellDeclaresNdsChrome = (): boolean =>
+			currentArgs.mounted.entry.shell?.ndsHeaderControls === true;
 		let mountedContentElement: HTMLElement | null = null;
 		let dragPointerId: number | null = null;
 		let resizePointerId: number | null = null;
@@ -1646,23 +1679,22 @@
 			if (!openerEl && active && !shellEl.contains(active)) {
 				openerEl = active;
 			}
-			const isCalculatorShellTrap = currentArgs.mounted.toolId === 'calculator';
-			if (isCalculatorShellTrap && !calculatorBridgeAttached) {
-				document.addEventListener('keydown', onCalculatorBridgeKeydown, true);
-				calculatorBridgeAttached = true;
+			if (shellWantsPageTabOrder() && !pageTabBridgeAttached) {
+				document.addEventListener('keydown', onPageTabBridgeKeydown, true);
+				pageTabBridgeAttached = true;
 			}
 			focusTrapCleanup = createFocusTrap(shellEl, {
 				initialFocus: closeButtonEl,
 				onEscape: () => {
 					closeShell();
 				},
-				// Calculator shell: tab boundaries should fall through to the page so
-				// keyboard users can leave the calculator with Tab / Shift+Tab. The
-				// shell is appended to <body>, so the browser's natural tab order
-				// would skip back to the opener / forward to nothing useful — we relay
-				// to the opener button and to the first focusable in the item content.
-				wrap: !isCalculatorShellTrap,
-				onTabExit: isCalculatorShellTrap
+				// A page-tab-order shell lets tab boundaries fall through to the page so
+				// keyboard users can leave it with Tab / Shift+Tab. The shell is
+				// appended to <body>, so the browser's natural tab order would skip
+				// back to the opener / forward to nothing useful — we relay to the
+				// opener button and to the first focusable in the item content.
+				wrap: !shellWantsPageTabOrder(),
+				onTabExit: shellWantsPageTabOrder()
 					? (direction, event) => {
 							if (direction === 'backward') {
 								if (openerEl?.isConnected) {
@@ -1747,7 +1779,7 @@
 		// toolbar item. This handler intercepts both transitions and steers
 		// focus into the shell so the user-visible flow is
 		//   calculator button ↔ calculator ↔ first question focusable.
-		const onCalculatorBridgeKeydown = (event: KeyboardEvent) => {
+		const onPageTabBridgeKeydown = (event: KeyboardEvent) => {
 			if (event.key !== 'Tab') return;
 			if (!shellEl || !currentArgs.active) return;
 			const active = getDeepActiveElement();
@@ -1777,9 +1809,9 @@
 		};
 
 		const removeFocusTrap = () => {
-			if (calculatorBridgeAttached) {
-				document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
-				calculatorBridgeAttached = false;
+			if (pageTabBridgeAttached) {
+				document.removeEventListener('keydown', onPageTabBridgeKeydown, true);
+				pageTabBridgeAttached = false;
 			}
 			if (!focusTrapCleanup) return;
 			const cleanup = focusTrapCleanup;
@@ -1927,13 +1959,11 @@
 		};
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
-			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
-			// The calculator shell is the only shell that renders its header
-			// controls as <nds-icon-button>s. Gate that on the host flag so
-			// opted-out envs get the plain-<button> controls every other
-			// shell already uses. Layout decisions still key off
-			// `isCalculatorShell`; only the button *type* follows this flag.
-			const useNdsShellIcons = isCalculatorShell && useNdsIcons;
+			// A shell renders its header controls as <nds-icon-button>s only when its
+			// own config asks for them; gated on the host flag too, so an opted-out
+			// env gets the plain-<button> controls every other shell uses.
+			const useNdsShellIcons =
+				currentArgs.mounted.entry.shell?.ndsHeaderControls === true && useNdsIcons;
 
 			if (useNdsShellIcons) ensureNdsAssets();
 
@@ -1995,11 +2025,11 @@
 			// title, tighter at the close button), 8px vertical, and
 			// space-between layout pushing the controls + close cluster to the
 			// right edge. Other shells keep the compact dense layout.
-			headerEl.style.padding = isCalculatorShell ? '12px 12px 12px 28px' : '10px 12px';
-			if (isCalculatorShell) {
+			headerEl.style.padding = shellDeclaresNdsChrome() ? '12px 12px 12px 28px' : '10px 12px';
+			if (shellDeclaresNdsChrome()) {
 				headerEl.style.minHeight = '48px';
 			}
-			if (isCalculatorShell) {
+			if (shellDeclaresNdsChrome()) {
 				// Match the Passage/Question card header var so the calculator picks
 				// up the host-provided tint when set. Fallback is an off-white so
 				// the circular control buttons have a visible surface to contrast
@@ -2042,7 +2072,7 @@
 			controlsEl.className = 'pie-tool-shell__controls';
 			controlsEl.style.display = 'inline-flex';
 			controlsEl.style.alignItems = 'center';
-			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
+			controlsEl.style.gap = shellDeclaresNdsChrome() ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
 			const appendControl = (
 				key: MessageKeyInput,
@@ -2069,7 +2099,7 @@
 				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
 				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
 			}
-			if (!isCalculatorShell) {
+			if (!shellDeclaresNdsChrome()) {
 				const centerControl = createShellControlButton(
 					currentArgs.i18n.t('toolkit.window.centerA11y'),
 					'◎',
@@ -2084,7 +2114,7 @@
 			// circular buttons and between the controls group and the close.
 			// Other shells keep the single-row append flow.
 			let rightClusterEl: HTMLDivElement | null = null;
-			if (isCalculatorShell) {
+			if (shellDeclaresNdsChrome()) {
 				rightClusterEl = document.createElement('div');
 				rightClusterEl.className = 'pie-tool-shell__header-right';
 				rightClusterEl.style.display = 'inline-flex';
@@ -2228,7 +2258,7 @@
 			// focus lands on either, redirect to the opener (start) or to the first
 			// question focusable (end). This works whether or not the inner keydown
 			// bubbled.
-			if (isCalculatorShell) {
+			if (shellDeclaresNdsChrome()) {
 				const makeFocusGuard = (label: string): HTMLDivElement => {
 					const el = document.createElement('div');
 					el.tabIndex = 0;
@@ -2288,7 +2318,7 @@
 			}
 			shellEl.appendChild(headerEl);
 			shellEl.appendChild(contentEl);
-			if (isCalculatorShell && endFocusGuardEl) {
+			if (shellDeclaresNdsChrome() && endFocusGuardEl) {
 				shellEl.appendChild(endFocusGuardEl);
 			}
 
@@ -2373,12 +2403,14 @@
 					currentArgs.runtime as AssessmentToolkitRuntimeContext
 				);
 				applyShellStrings();
-				// nds-icon-button (calculator branch) is a custom element with
-				// inline-block default display; other shells use an inline-flex
-				// <button>. Pick the right open-state value so we
-				// don't clobber inline-block back to inline-flex on prop refresh.
+				// An <nds-icon-button> is a custom element with inline-block default
+				// display; a plain <button> shell control is inline-flex. Read which one
+				// was actually built rather than re-deriving it, so a prop refresh cannot
+				// clobber inline-block back to inline-flex.
 				const closeButtonOpenDisplay =
-					currentArgs.mounted.toolId === 'calculator' ? 'inline-block' : 'inline-flex';
+					closeButtonEl.tagName.toLowerCase() === 'nds-icon-button'
+						? 'inline-block'
+						: 'inline-flex';
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : closeButtonOpenDisplay;
 				applyShellStyle();
@@ -2400,9 +2432,9 @@
 				if (focusTrapCleanup) {
 					removeFocusTrap();
 				}
-				if (calculatorBridgeAttached) {
-					document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
-					calculatorBridgeAttached = false;
+				if (pageTabBridgeAttached) {
+					document.removeEventListener('keydown', onPageTabBridgeKeydown, true);
+					pageTabBridgeAttached = false;
 				}
 
 				for (const { el, handler } of resizeHandleEls) {

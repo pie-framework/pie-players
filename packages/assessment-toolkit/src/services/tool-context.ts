@@ -222,14 +222,14 @@ function normalizeModels(modelsRaw: unknown): unknown[] {
 function collectModelText(model: unknown, push: (text: string) => void): void {
 	if (!model || typeof model !== "object") return;
 	for (const value of Object.values(model as Record<string, unknown>)) {
-		if (typeof value === "string") push(stripHtml(value));
+		if (typeof value === "string") push(value);
 		if (Array.isArray(value)) {
 			for (const entry of value) {
 				if (entry && typeof entry === "object") {
 					for (const nested of Object.values(
 						entry as Record<string, unknown>,
 					)) {
-						if (typeof nested === "string") push(stripHtml(nested));
+						if (typeof nested === "string") push(nested);
 					}
 				}
 			}
@@ -246,22 +246,30 @@ function collectElementsText(
 	for (const elementMarkup of Object.values(
 		elements as Record<string, unknown>,
 	)) {
-		if (typeof elementMarkup === "string") push(stripHtml(elementMarkup));
+		if (typeof elementMarkup === "string") push(elementMarkup);
 	}
 }
 
 /**
- * The plain text a context carries, for the content heuristics below.
+ * The authored content a context carries, for the content heuristics below.
  *
  * Each level differs only in which fields it reads: an element reads its own
  * markup snippet and the one model bearing its id, an item and a passage read
  * their whole config and every model. The traversal itself is shared, so a new
- * place text can hide is added once.
+ * place content can hide is added once.
+ *
+ * `transform` decides what the caller gets. {@link extractTextContent} strips
+ * tags, which is right for prose keyword matching and wrong for structural
+ * matching: a MathML item's only math signal *is* the `<math>` tag, and stripping
+ * first left `hasMathContent`'s MathML pattern unreachable.
  */
-export function extractTextContent(context: ToolContext): string {
+function extractContent(
+	context: ToolContext,
+	transform: (value: string) => string,
+): string {
 	const textChunks: string[] = [];
 	const push = (text: string) => {
-		textChunks.push(text);
+		textChunks.push(transform(text));
 	};
 	const joined = () => textChunks.filter(Boolean).join(" ").trim();
 
@@ -270,7 +278,7 @@ export function extractTextContent(context: ToolContext): string {
 		if (!config) return "";
 
 		const elementMarkup = config.elements?.[context.elementId];
-		if (typeof elementMarkup === "string") push(stripHtml(elementMarkup));
+		if (typeof elementMarkup === "string") push(elementMarkup);
 
 		// Model data keyed by this element id: in many items the math is in
 		// `model.prompt`/labels rather than in `elements[elementId]`.
@@ -289,7 +297,7 @@ export function extractTextContent(context: ToolContext): string {
 		const config = context.item?.config as Record<string, unknown> | undefined;
 		if (!config) return "";
 
-		if (typeof config.markup === "string") push(stripHtml(config.markup));
+		if (typeof config.markup === "string") push(config.markup);
 		collectElementsText(config.elements, push);
 		for (const model of normalizeModels(config.models)) {
 			collectModelText(model, push);
@@ -306,7 +314,7 @@ export function extractTextContent(context: ToolContext): string {
 
 		for (const field of ["markup", "content", "prompt"] as const) {
 			const value = config[field];
-			if (typeof value === "string") push(stripHtml(value));
+			if (typeof value === "string") push(value);
 		}
 		collectElementsText(config.elements, push);
 		for (const model of normalizeModels(config.models)) {
@@ -321,32 +329,118 @@ export function extractTextContent(context: ToolContext): string {
 		// string — the embedded passage's markup when it has one, else its content.
 		const rubric = context.rubricBlock;
 		if (rubric.passage?.config) {
-			return stripHtml(rubric.passage.config.markup || "");
+			return transform(rubric.passage.config.markup || "");
 		}
-		return stripHtml(rubric.content || "");
+		return transform(rubric.content || "");
 	}
 
 	return "";
+}
+
+/** The plain text a context carries, tags removed. */
+export function extractTextContent(context: ToolContext): string {
+	return extractContent(context, stripHtml);
+}
+
+/**
+ * The authored markup a context carries, tags intact.
+ *
+ * For indicators that live in the markup rather than in the prose — `<math>`
+ * above all, whose whole signal is the element name.
+ */
+export function extractMarkupContent(context: ToolContext): string {
+	return extractContent(context, (value) => value);
 }
 
 /**
  * Helper to check if context contains mathematical content
  * (Basic heuristic - can be overridden by tools)
  */
-export function hasMathContent(context: ToolContext): boolean {
-	const text = extractTextContent(context);
+/**
+ * Chemical element symbols.
+ *
+ * A real set rather than `[A-Z][a-z]?`: that shape matches "It", "In", "He" and
+ * "A", which is why the science gate used to answer `true` for any prose that
+ * began a sentence.
+ */
+const ELEMENT_SYMBOLS = new Set([
+	"H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
+	"P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co",
+	"Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr",
+	"Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",
+	"Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy",
+	"Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au",
+	"Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",
+	"Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+]);
 
-	// Look for common math indicators
-	const mathIndicators = [
+/** A word that could be a formula: capitalised groups with optional counts. */
+const FORMULA_CANDIDATE = /\b[A-Z][A-Za-z]*\d*(?:[A-Z][A-Za-z]*\d*)*\b/g;
+const FORMULA_GROUP = /([A-Z][a-z]?)(\d*)/g;
+
+/**
+ * Whether the text contains something only a chemical formula looks like.
+ *
+ * A token qualifies when every one of its groups is a real element symbol *and*
+ * it either names two or more of them or carries a count — `NaCl`, `CO2`, `H2O`,
+ * `C6H12O6`. A lone symbol never qualifies: "In", "He", "As" and "At" are
+ * ordinary English words, and a single-letter "I" or "A" more so.
+ */
+function hasChemicalFormula(text: string): boolean {
+	for (const candidate of text.match(FORMULA_CANDIDATE) ?? []) {
+		FORMULA_GROUP.lastIndex = 0;
+		let groups = 0;
+		let hasCount = false;
+		let consumed = 0;
+		let valid = true;
+		let match: RegExpExecArray | null = FORMULA_GROUP.exec(candidate);
+		while (match !== null) {
+			if (match[0] === "") break;
+			if (!ELEMENT_SYMBOLS.has(match[1])) {
+				valid = false;
+				break;
+			}
+			groups += 1;
+			if (match[2]) hasCount = true;
+			consumed += match[0].length;
+			match = FORMULA_GROUP.exec(candidate);
+		}
+		// Every character has to belong to a group, or the token was only
+		// formula-shaped at its start ("Hello" -> "He" + "llo").
+		if (valid && consumed === candidate.length && (groups > 1 || hasCount)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+export function hasMathContent(context: ToolContext): boolean {
+	// Structural signals live in the markup: stripping tags first is what left the
+	// MathML pattern unable to match anything at all.
+	const markup = extractMarkupContent(context);
+	const structuralIndicators = [
 		/<math[>\s]/i, // MathML
 		/\\\[([^\]]+)\\\]/, // LaTeX display math
 		/\$\$[^$]+\$\$/, // LaTeX display math ($$...$$)
 		/\\\(/, // LaTeX inline math
-		/[+\-*/=<>≤≥∑∫√π]/, // Math symbols
-		/\d+\s*[+\-*/=]\s*\d+/, // Simple arithmetic
 	];
+	if (structuralIndicators.some((pattern) => pattern.test(markup))) return true;
 
-	return mathIndicators.some((pattern) => pattern.test(text));
+	const text = extractTextContent(context);
+	// No bare-operator pattern. `/[+\-*/=<>≤≥∑∫√π]/` matched any hyphen or slash,
+	// so "well-known" and "and/or" made every item mathematical and this predicate
+	// answered `true` for essentially all content — a gate that does not gate. An
+	// operator counts only with operands around it, or when the character has no
+	// prose reading at all.
+	const textIndicators = [
+		/[≤≥≠±×÷∑∫√∞π]/, // Symbols with no prose reading
+		/\d+\s*[+\-*/×÷=]\s*\d+/, // Simple arithmetic
+		/\d\s*[<>]\s*\d/, // Numeric comparison
+		/\b\d+\s*\/\s*\d+\b/, // Fractions
+		/\b\d+(?:\.\d+)?\s*%/, // Percentages
+		/\^\s*\d/, // Exponents
+	];
+	return textIndicators.some((pattern) => pattern.test(text));
 }
 
 /**
@@ -416,15 +510,17 @@ export function hasReadableText(context: ToolContext): boolean {
 export function hasScienceContent(context: ToolContext): boolean {
 	const text = extractTextContent(context);
 
-	// Look for common science indicators
-	const scienceIndicators = [
-		/chemistry|chemical|element|atom|molecule|compound/i,
-		/periodic\s+table/i,
-		/H₂O|CO₂|NaCl|O₂|N₂/i, // Chemical formulas
-		/\b[A-Z][a-z]?\d*\b/, // Element symbols (H, He, Li, etc.)
-		/biology|organism|cell|DNA|RNA|protein/i,
-		/physics|force|energy|velocity|acceleration/i,
-	];
+	// The element-symbol pattern used to be `/\b[A-Z][a-z]?\d*\b/`, which matches
+	// any one- or two-letter capitalised word: "It", "In", "A", "No". Every item
+	// beginning a sentence with one read as science.
+	if (hasChemicalFormula(text)) return true;
+	if (/[A-Z][a-z]?[\u2080-\u2089]/.test(text)) return true; // Subscripted: H₂O, CO₂
 
+	const scienceIndicators = [
+		/chemistry|chemical|molecule|compound|periodic\s+table/i,
+		/\bchemical\s+element\b|\belement\s+symbol\b/i,
+		/biology|organism|\bDNA\b|\bRNA\b|protein|photosynthesis|ecosystem/i,
+		/physics|\bforce\b|\benergy\b|velocity|acceleration|momentum/i,
+	];
 	return scienceIndicators.some((pattern) => pattern.test(text));
 }

@@ -27,6 +27,30 @@ import type {
 const DISALLOWED_SRC_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const ALLOWED_SRC_SCHEMES = new Set(["http:", "https:", "data:", "blob:"]);
 
+/**
+ * The only `MediaAssetRef.version` this build renders.
+ *
+ * `media-asset-contract.md` requires unknown-version rejection for runtime
+ * rendering: bumping to `2` obliges every consumer to accept both for as long as
+ * any producer emits `1`, so a card claiming a version this build does not
+ * implement must not be rendered on a guess at which fields still mean what they
+ * did.
+ */
+export const SUPPORTED_MEDIA_ASSET_VERSION = 1;
+
+/**
+ * Whether a media reference claims a version this build cannot render.
+ *
+ * An absent `version` is accepted rather than rejected — the same posture the
+ * rest of this module takes toward absent fields, and the one `media.kind` and
+ * `matchesRequestedSignLanguage` already take: only a positive claim of
+ * something else is refused. Producers predate the field, and treating its
+ * absence as a rejection would drop cards that are otherwise wholly valid.
+ */
+export function isUnsupportedMediaAssetVersion(version: unknown): boolean {
+	return version !== undefined && version !== SUPPORTED_MEDIA_ASSET_VERSION;
+}
+
 export function isSafeMediaSrc(raw: unknown): raw is string {
 	if (typeof raw !== "string") return false;
 	const src = raw.trim();

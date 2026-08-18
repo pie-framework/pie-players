@@ -30,6 +30,7 @@ import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 
 /**
  * Graph tool registration
@@ -68,62 +69,15 @@ export const graphToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(
-			this.toolId,
-			toolbarContext,
-		);
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: false,
-			ariaLabel: toolbarContext.i18n.t("tools.graph.buttonA11y"),
-			tooltip: toolbarContext.i18n.t("tools.graph.tooltip"),
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: visibility.isActive(),
-		};
-		const componentOverrides =
-			(toolbarContext.componentOverrides as
-				| ToolComponentOverrides
-				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-		};
-		overlay.setAttribute("tool-id", visibility.fullToolId);
-		return {
-			toolId: this.toolId,
-			button,
-			elements: [
-				{
-					element: overlay,
-					mount: "after-buttons",
-					shell: {
-						title: this.name,
-						draggable: true,
-						resizable: true,
-						closeable: true,
-						initialWidth: 920,
-						initialHeight: 680,
-						minWidth: 640,
-						minHeight: 500,
-					},
-				},
-			],
-			sync: () => {
-				syncButtonAndOverlayVisibility({
-					button,
-					overlay,
-					isActive: visibility.isActive,
-				});
+		return renderOverlayToolbar(this, context, toolbarContext, {
+			shell: {
+				resizable: true,
+				initialWidth: 920,
+				initialHeight: 680,
+				minWidth: 640,
+				minHeight: 500,
 			},
-			subscribeActive: visibility.subscribeActive,
-		};
+		});
 	},
 };
 
@@ -163,63 +117,14 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(
-			this.toolId,
-			toolbarContext,
-		);
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: false,
-			ariaLabel: toolbarContext.i18n.t(
-				"tools.periodicTable.buttonA11y",
-			),
-			tooltip: toolbarContext.i18n.t("tools.periodicTable.tooltip"),
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: visibility.isActive(),
-		};
-		const componentOverrides =
-			(toolbarContext.componentOverrides as
-				| ToolComponentOverrides
-				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-		};
-		overlay.setAttribute("tool-id", visibility.fullToolId);
-		return {
-			toolId: this.toolId,
-			button,
-			elements: [
-				{
-					element: overlay,
-					mount: "after-buttons",
-					shell: {
-						title: this.name,
-						draggable: true,
-						resizable: true,
-						closeable: true,
-						initialWidth: 1160,
-						initialHeight: 760,
-						minWidth: 920,
-						minHeight: 620,
-					},
-				},
-			],
-			sync: () => {
-				syncButtonAndOverlayVisibility({
-					button,
-					overlay,
-					isActive: visibility.isActive,
-				});
+		return renderOverlayToolbar(this, context, toolbarContext, {
+			shell: {
+				resizable: true,
+				initialWidth: 1160,
+				initialHeight: 760,
+				minWidth: 920,
+				minHeight: 620,
 			},
-			subscribeActive: visibility.subscribeActive,
-		};
+		});
 	},
 };

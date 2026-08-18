@@ -150,6 +150,37 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 	}
 
 	/**
+	 * The SSML elements every provider recognises.
+	 *
+	 * Vendor extensions are not here: `<amazon:*>` and `<aws-*>` mean nothing to
+	 * Google, and a provider that sniffs for tags it cannot synthesize would send
+	 * markup to an engine expecting plain text.
+	 */
+	private static readonly STANDARD_SSML_TAGS = [
+		"<speak",
+		"<prosody",
+		"<emphasis",
+		"<break",
+		"<phoneme",
+		"<say-as",
+		"<mark",
+	];
+
+	/**
+	 * Whether the text is SSML rather than plain text, which decides how it is
+	 * handed to the engine.
+	 *
+	 * A sniff rather than a parse: callers hand over authored strings that may or
+	 * may not be marked up, and the engines themselves take the distinction as a
+	 * flag. `extraTags` carries a provider's own vocabulary — Polly's
+	 * `<amazon:effect>` among them.
+	 */
+	protected detectSSML(text: string, extraTags: string[] = []): boolean {
+		const tags = [...BaseTTSProvider.STANDARD_SSML_TAGS, ...extraTags];
+		return tags.some((tag) => text.includes(tag));
+	}
+
+	/**
 	 * Validate synthesis request
 	 * @throws {TTSError} If request is invalid
 	 */

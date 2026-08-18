@@ -84,7 +84,12 @@
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
-	let registered = $state(false);
+	// The coordinator a registration was made against, and the id it used. Plain
+	// `let` rather than `$state`: this is bookkeeping the registration effect both
+	// reads and writes, and a reactive write inside a tracked effect body is what
+	// AGENTS.md's Svelte Subscription Safety rules out.
+	let registeredCoordinator: ToolCoordinatorApi | null = null;
+	let registeredToolId: string | null = null;
 	let calculatorVisible = $state(false);
 	let statusMessage = $state('');
 	const supportedCalculatorTypes = $derived(
@@ -118,11 +123,25 @@
 		});
 	});
 
-	// Register with coordinator
+	// Re-register whenever the coordinator identity or the tool id changes. The
+	// coordinator arrives through a republished runtime context, so a new instance
+	// replaces the old one mid-session; a one-shot registration would leave
+	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
 	$effect(() => {
-		if (coordinator && toolId && containerEl && !registered) {
+		if (!coordinator || !toolId || !containerEl) return;
+		if (
+			registeredCoordinator &&
+			registeredToolId &&
+			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
+		) {
+			registeredCoordinator.unregisterTool(registeredToolId);
+			registeredCoordinator = null;
+			registeredToolId = null;
+		}
+		if (!registeredCoordinator) {
 			coordinator.registerTool(toolId, 'Calculator Inline', containerEl, ZIndexLayer.TOOL);
-			registered = true;
+			registeredCoordinator = coordinator;
+			registeredToolId = toolId;
 		}
 	});
 
@@ -147,8 +166,12 @@
 	// Cleanup when component unmounts
 	$effect(() => {
 		return () => {
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
+			// Unregister from the coordinator the registration was actually made
+			// against, which is not necessarily the one currently in context.
+			if (registeredCoordinator && registeredToolId) {
+				registeredCoordinator.unregisterTool(registeredToolId);
+				registeredCoordinator = null;
+				registeredToolId = null;
 			}
 		};
 	});

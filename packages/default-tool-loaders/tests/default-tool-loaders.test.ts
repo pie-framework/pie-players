@@ -30,7 +30,6 @@ describe("default tool module loaders", () => {
 			"annotationToolbar",
 			"answerEliminator",
 			"calculator",
-			"highlighter",
 			"textToSpeech",
 			"theme",
 		]);

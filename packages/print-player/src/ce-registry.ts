@@ -7,7 +7,7 @@
  * Ported from pie-print-support/src/ce.ts
  */
 
-import { validateCustomElementTag } from "./tag-names.js";
+import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 
 interface DefinitionState {
 	inProgress?: boolean;

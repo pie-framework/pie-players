@@ -50,9 +50,12 @@ describe("packaged tool tag map", () => {
 		expect(resolveToolTag("textToSpeech", overrides)).toBe(
 			"pie-tool-text-to-speech",
 		);
-		expect(resolveToolTag("highlighter", overrides)).toBe(
+		expect(resolveToolTag("annotationToolbar", overrides)).toBe(
 			"pie-tool-annotation-toolbar",
 		);
+		// The removed `highlighter` capability mounted this same element behind a
+		// second button; nothing maps that id any more.
+		expect("highlighter" in PACKAGED_TOOL_TAG_MAP).toBe(false);
 		expect(resolveToolTag("theme", overrides)).toBe("pie-tool-theme");
 		expect("colorScheme" in PACKAGED_TOOL_TAG_MAP).toBe(false);
 	});

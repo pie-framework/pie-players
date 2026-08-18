@@ -27,7 +27,10 @@ import {
 	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
-import { toPrintHashedTag, validateCustomElementTag } from "./tag-names.js";
+import {
+	toPrintHashedTag,
+	validateCustomElementTag,
+} from "@pie-players/pie-players-shared/pie/tag-names";
 import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 
 import type {

@@ -29,10 +29,7 @@ import {
 	spanishDictionaryToolRegistration,
 	spanishPictureDictionaryToolRegistration,
 } from "./registrations/dictionary-tools.js";
-import {
-	answerEliminatorToolRegistration,
-	highlighterToolRegistration,
-} from "./registrations/interaction-tools.js";
+import { answerEliminatorToolRegistration } from "./registrations/interaction-tools.js";
 import {
 	protractorToolRegistration,
 	rulerToolRegistration,
@@ -206,15 +203,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		],
 	},
 	{
-		registration: highlighterToolRegistration,
-		tagName: "pie-tool-annotation-toolbar",
-		loadModule: loadAnnotationToolbarModule,
-		loaderTargets: ["item"],
-		placementOrder: { item: 20, passage: 20, rubric: 20, element: 60 },
-		toolbarOrder: 60,
-		universalSupportIds: ["highlighter", "textHighlight", "annotation"],
-	},
-	{
 		registration: lineReaderToolRegistration,
 		tagName: "pie-tool-line-reader",
 		loadModule: loadLineReaderModule,
@@ -255,7 +243,16 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 30, passage: 30, rubric: 30, element: 70 },
 		preferredPlacementOrder: { item: 40, passage: 20 },
 		toolbarOrder: 50,
-		universalSupportIds: ["highlighting", "annotations"],
+		// The last three came from the `highlighter` capability, which mounted this
+		// same element behind a second identically-labelled button. Kept here so a
+		// profile granted one of the older ids still gets highlighting.
+		universalSupportIds: [
+			"highlighting",
+			"annotations",
+			"highlighter",
+			"textHighlight",
+			"annotation",
+		],
 	},
 	{
 		registration: graphToolRegistration,
@@ -738,7 +735,6 @@ export const PACKAGED_TOOL_PLACEMENT = {
 	readonly section: readonly ["theme"];
 	readonly item: readonly [
 		"textToSpeech",
-		"highlighter",
 		"annotationToolbar",
 		"graph",
 		"periodicTable",
@@ -749,23 +745,16 @@ export const PACKAGED_TOOL_PLACEMENT = {
 	];
 	readonly passage: readonly [
 		"textToSpeech",
-		"highlighter",
 		"annotationToolbar",
 		"lineReader",
 	];
-	readonly rubric: readonly [
-		"textToSpeech",
-		"highlighter",
-		"annotationToolbar",
-		"lineReader",
-	];
+	readonly rubric: readonly ["textToSpeech", "annotationToolbar", "lineReader"];
 	readonly element: readonly [
 		"calculator",
 		"answerEliminator",
 		"textToSpeech",
 		"ruler",
 		"protractor",
-		"highlighter",
 		"annotationToolbar",
 		"graph",
 		"periodicTable",
@@ -790,7 +779,6 @@ export const PACKAGED_TOOL_ORDER = [
 	"textToSpeech",
 	"lineReader",
 	"annotationToolbar",
-	"highlighter",
 	"answerEliminator",
 	"ruler",
 	"protractor",

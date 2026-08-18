@@ -151,7 +151,10 @@ const renderWithParams = (
 		level: "section",
 		assessment: {} as any,
 		itemRef: { id: "i1" } as any,
-		item: { id: "i1", config: { elements: { "el-1": "<p>a word</p>" } } } as any,
+		item: {
+			id: "i1",
+			config: { elements: { "el-1": "<p>a word</p>" } },
+		} as any,
 	};
 	const toolbarContext = {
 		scope: { level: "section", scopeId: "s1" },

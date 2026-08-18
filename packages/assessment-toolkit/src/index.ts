@@ -233,6 +233,7 @@ export {
 // alongside the validators a capability package needs to read a media payload.
 export {
 	applyMediaFragment,
+	enforceMediaFragment,
 	isSafeMediaSrc,
 	normalizeMediaFragment,
 	normalizeMediaSources,

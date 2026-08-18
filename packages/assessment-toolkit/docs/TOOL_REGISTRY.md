@@ -509,8 +509,8 @@ import { DEFAULT_TOOL_PLACEMENT } from '@pie-players/pie-assessment-toolkit';
 DEFAULT_TOOL_PLACEMENT.assessment  // ["theme"]
 DEFAULT_TOOL_PLACEMENT.section     // ["theme", "textToSpeech"]
 DEFAULT_TOOL_PLACEMENT.item        // ["calculator", "textToSpeech", "answerEliminator", ...]
-DEFAULT_TOOL_PLACEMENT.passage     // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]
-DEFAULT_TOOL_PLACEMENT.rubric      // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]
+DEFAULT_TOOL_PLACEMENT.passage     // ["textToSpeech", "annotationToolbar", "lineReader"]
+DEFAULT_TOOL_PLACEMENT.rubric      // ["textToSpeech", "annotationToolbar", "lineReader"]
 DEFAULT_TOOL_PLACEMENT.element     // ["calculator", "textToSpeech", "ruler", "protractor", ...]
 ```
 

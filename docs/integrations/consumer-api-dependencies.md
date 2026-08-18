@@ -26,6 +26,13 @@ observations rather than newly verified claims. The removed mainline-divergence
 warning was checked against this repository: the token-registry change is now in
 the current line and its package export is present here.
 
+A duplication sweep checked four public surfaces — the toolkit's
+`DesmosCalculatorProvider`, the two TTS config shapes, `AuthoringValidationResult`,
+and the `highlighter` capability id — against all three checkouts on 2026-08-18,
+and recorded them below. That was a targeted lookup rather than a re-derivation, so
+it does not advance the verification date; every other row still carries its
+earlier one.
+
 The Tool Surface Host refactor likewise updated the in-repo contract notes
 without a new consumer-checkout refresh. It preserves the client-facing
 section-player tag hierarchy and CSS hooks recorded below. The additive
@@ -608,7 +615,9 @@ change it and fix Host R in the same push.
 **Host R only. Change freely; land the internally controlled host fix in the
 same push when its checkout is available.**
 
-- `pie-section-player-vertical`, and anything in `default-tool-loaders`
+- `pie-section-player-vertical`, and anything in `default-tool-loaders` — except
+  the `annotationToolbar` capability id, which Host R names in six places, in tool
+  config objects and in its own placement lists
 - Requiring an explicit registration call from a `pie-tool-*` package that
   currently self-registers on import
 - Renaming a `ToolConfigDiagnostic` code or a `TTSErrorCode` member
@@ -641,6 +650,20 @@ typecheck rather than at runtime.
   `tool-surface` framework-warning kind; no recorded host calls or branches on
   either surface
 - Tool ids outside the `calculator:` prefix
+- `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
+  that offer a Desmos calculator take the tool package as a side-effect import and
+  reach the provider through the calculator package instead; one of them serves the
+  proxy endpoint that only the calculator package's provider supports. Nothing
+  imports the toolkit's copy
+- `TTSToolConfig` and `TTSRuntimeSettings` as names, and the fields on which the
+  two differ. The one host that configures server TTS sets eleven keys, all of them
+  in the intersection of the two shapes, so folding them into one owner is
+  invisible there
+- `AuthoringValidationResult`. Only Host R calls `validateModels()`, and it
+  discards the result, so the type's precision reaches no consumer
+- The `highlighter` capability id. The one host that places annotation highlighting
+  names `annotationToolbar`; no checkout mentions `highlighter`, or the PNP support
+  ids that grant it
 
 ## Consumer-side defects worth reporting upstream
 
@@ -656,6 +679,10 @@ repo.
   that do nothing.
 - Host V's local type declaration for `pie-item-player` lists `env.mode` values
   the host never passes and omits several properties the element supports.
+- Host R declares its own local copy of the preferred tool-placement preset rather
+  than importing the packaged one, so a capability added to or removed from the
+  packaged preset never reaches it. The same forking pattern as its copied colour
+  schemes.
 
 ## Refresh procedure
 

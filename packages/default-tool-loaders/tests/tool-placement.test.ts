@@ -13,7 +13,6 @@ describe("packaged tool placement", () => {
 			section: ["theme"],
 			item: [
 				"textToSpeech",
-				"highlighter",
 				"annotationToolbar",
 				"graph",
 				"periodicTable",
@@ -24,25 +23,14 @@ describe("packaged tool placement", () => {
 				"dictionarySpanish",
 				"pictureDictionarySpanish",
 			],
-			passage: [
-				"textToSpeech",
-				"highlighter",
-				"annotationToolbar",
-				"lineReader",
-			],
-			rubric: [
-				"textToSpeech",
-				"highlighter",
-				"annotationToolbar",
-				"lineReader",
-			],
+			passage: ["textToSpeech", "annotationToolbar", "lineReader"],
+			rubric: ["textToSpeech", "annotationToolbar", "lineReader"],
 			element: expect.arrayContaining([
 				"calculator",
 				"answerEliminator",
 				"textToSpeech",
 				"ruler",
 				"protractor",
-				"highlighter",
 				"annotationToolbar",
 				"graph",
 				"periodicTable",
@@ -86,18 +74,22 @@ describe("packaged tool placement", () => {
 		expect(SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.item).not.toContain(
 			"protractor",
 		);
-		expect(SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.item).not.toContain(
-			"highlighter",
-		);
 		expect(SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.passage).not.toContain(
 			"ruler",
 		);
 		expect(SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.passage).not.toContain(
 			"protractor",
 		);
-		expect(SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.passage).not.toContain(
-			"highlighter",
-		);
+		// `highlighter` used to be excluded here by hand: it mounted the same element
+		// as `annotationToolbar` behind a second identically-labelled button, so an
+		// exhaustive host showed two. The capability is gone, so assert the stronger
+		// thing — no placement list names it at all.
+		const everyPlacedId = [
+			...Object.values(SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT).flat(),
+			...Object.values(PACKAGED_TOOL_PLACEMENT).flat(),
+		];
+		expect(everyPlacedId).not.toContain("highlighter");
+		expect(everyPlacedId).toContain("annotationToolbar");
 	});
 
 	test("validates the preferred placement with packaged tools", () => {

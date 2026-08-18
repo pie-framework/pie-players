@@ -542,18 +542,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	/**
 	 * Detect if text contains SSML markup
 	 */
-	private detectSSML(text: string): boolean {
-		return (
-			text.includes("<speak") ||
-			text.includes("<prosody") ||
-			text.includes("<emphasis") ||
-			text.includes("<break") ||
-			text.includes("<phoneme") ||
-			text.includes("<say-as") ||
-			text.includes("<mark")
-		);
-	}
-
 	/**
 	 * Get available voices from Google Cloud TTS
 	 */

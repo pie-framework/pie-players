@@ -27,7 +27,7 @@ import type {
 	CatalogLookupContext,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
-import { applyMediaFragment } from "./catalog-media.js";
+import { applyMediaFragment, enforceMediaFragment } from "./catalog-media.js";
 import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import {
 	resolveSpokenAudioMedia,
@@ -2297,7 +2297,7 @@ export class TTSService {
 			Number(this.ttsConfig.rate || 1),
 		);
 		await new Promise<void>((resolve, reject) => {
-			let endGuard: ReturnType<typeof setInterval> | undefined;
+			let disposeFragment: (() => void) | undefined;
 			let didStart = false;
 			let settled = false;
 			const markStarted = () => {
@@ -2309,7 +2309,7 @@ export class TTSService {
 				element.removeEventListener("ended", onEnded);
 				element.removeEventListener("error", onError);
 				element.removeEventListener("playing", markStarted);
-				if (endGuard !== undefined) clearInterval(endGuard);
+				disposeFragment?.();
 				if (this.activeRecordedAudio?.element === element) {
 					this.activeRecordedAudio = null;
 				}
@@ -2342,15 +2342,9 @@ export class TTSService {
 			element.addEventListener("ended", onEnded);
 			element.addEventListener("error", onError);
 			element.addEventListener("playing", markStarted);
-			// Browsers honour a Media Fragments start offset but are inconsistent
-			// about the end bound, so the end is enforced here — the same reason the
-			// signing region enforces its own.
-			const endSeconds = media.fragment?.endSeconds;
-			if (endSeconds !== undefined) {
-				endGuard = setInterval(() => {
-					if (element.currentTime >= endSeconds) onEnded();
-				}, 100);
-			}
+			// Reaching the slice's end is this clip finishing, so the chunk sequence
+			// advances rather than the element merely pausing.
+			disposeFragment = enforceMediaFragment(element, media.fragment, onEnded);
 			Promise.resolve(element.play()).then(markStarted).catch(onError);
 		}).finally(() => {
 			if (this.activeRecordedAudio?.element === element) {

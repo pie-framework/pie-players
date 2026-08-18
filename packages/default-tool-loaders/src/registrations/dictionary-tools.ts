@@ -77,7 +77,8 @@ function applyLookupParams(
 	// names no tool's concepts — and this layer, which knows both, hands it to the panel
 	// as the identity of its term. That is what makes reapplying an unchanged term on a
 	// later sync free while a second request for the same word still re-runs.
-	if (typeof params.term === "string" && params.term) element.term = params.term;
+	if (typeof params.term === "string" && params.term)
+		element.term = params.term;
 	if (
 		typeof params.toolRequestId === "string" ||
 		typeof params.toolRequestId === "number"
@@ -139,7 +140,12 @@ function renderDictionaryPanel(args: {
 		componentOverrides,
 	) as DictionaryPanelElement;
 	overlay.setAttribute("tool-id", visibility.fullToolId);
-	applyLookupParams(overlay, registration.toolId, toolbarContext, args.lookupLanguage);
+	applyLookupParams(
+		overlay,
+		registration.toolId,
+		toolbarContext,
+		args.lookupLanguage,
+	);
 
 	return {
 		toolId: registration.toolId,
@@ -169,7 +175,12 @@ function renderDictionaryPanel(args: {
 				overlay,
 				isActive: visibility.isActive,
 			});
-			applyLookupParams(overlay, registration.toolId, toolbarContext, args.lookupLanguage);
+			applyLookupParams(
+				overlay,
+				registration.toolId,
+				toolbarContext,
+				args.lookupLanguage,
+			);
 		},
 		subscribeActive: visibility.subscribeActive,
 	};

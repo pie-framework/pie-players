@@ -40,7 +40,12 @@ export type {
 	ToolWindowShellConfig,
 	ToolbarContext,
 } from "../services/ToolRegistry.js";
-export { ToolRegistry } from "../services/ToolRegistry.js";
+export {
+	ToolRegistry,
+	// A window title and a toolbar button resolve a capability's name the same
+	// way, through `nameKey` with `name` as the fallback.
+	resolveToolRegistrationName,
+} from "../services/ToolRegistry.js";
 export type {
 	CatalogOwnerCard,
 	CatalogOwnerSnapshot,

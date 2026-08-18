@@ -54,10 +54,7 @@ export {
 	spanishDictionaryToolRegistration,
 	spanishPictureDictionaryToolRegistration,
 } from "./registrations/dictionary-tools.js";
-export {
-	answerEliminatorToolRegistration,
-	highlighterToolRegistration,
-} from "./registrations/interaction-tools.js";
+export { answerEliminatorToolRegistration } from "./registrations/interaction-tools.js";
 export {
 	protractorToolRegistration,
 	rulerToolRegistration,

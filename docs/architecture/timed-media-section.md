@@ -28,6 +28,13 @@ Three things in this note are now settled rather than open, and one is corrected
   on its merits rather than by inertia.
 - **The 2026-08-05 objection in item 4 stands and was honoured**: nothing about cue
   gating touches the canonical `Stage` vocabulary.
+- **Composition authoring has an owner, and it is not this repo.** The
+  [Authoring Model](#authoring-model) table's "likely in `pie-players` or a companion
+  authoring package" is settled as `kds/composer`, which already owns item and passage
+  authoring and already assembles and previews an `AssessmentSection`. The authored
+  artifact is PIE-native `timedMedia` rather than QTI-with-cues, and the editor
+  requires the stimulus media resolvable to a playable URL. The PRD stays in
+  `pie-players`, beside the contract.
 - **The shipped scoring union is narrower than the candidates below.**
   `sum-child-outcomes`, `average-child-outcomes` and `host-defined`, validated and
   persisted with no aggregate derived from any of them.

@@ -464,6 +464,32 @@ holds. Rejected alternative: reusing `required: false` on the item ref, which to
 means "counts toward completion" and would silently change gate behaviour for an
 author who set it for a completion reason.
 
+**Composition authoring is PIE-native, needs the media resolvable, and is built in
+composer.** Three decisions for the future authoring PRD, which this one does not
+write. The authored artifact is `timedMedia` itself, not QTI-with-cues: no QTI
+representation of cue-gated delivery exists, so authoring into QTI would make the
+authoring surface the place those semantics are invented and leave the conversion
+preserving what the source never stated. QTI stays an export concern in `pie-qti`.
+The editor requires the stimulus media resolvable to a playable URL while authoring,
+because scrubbing against the real clip is the value and timestamps typed blind
+against an absent asset are the hand-writing this surface exists to replace —
+`MediaAssetRef` already carries the reference, and supplying a playable one is a
+prerequisite on the host's asset pipeline rather than work this surface does. The
+surface is built in `kds/composer`, which already owns item and passage authoring and
+already assembles and previews an `AssessmentSection`; a new `pie-players` package
+would have to grow item and passage authoring from nothing to invoke them, which
+[Authoring Model](../architecture/timed-media-section.md#authoring-model) assigns
+elsewhere. The PRD lives here, beside this contract and the shared contracts it
+depends on. Condition on the location: composer is pre-production,
+single-developer and not tracked in Jira, so that tracking gap is closed before the
+work starts rather than inherited with it.
+
+What the MVP contains is that PRD's to set. The architecture note's Authoring Model
+already enumerates the surface — cue points, cue-to-item bindings, playback and
+scoring policy, timeline preview — and asking this contract for the minimum was
+asking it to do another PRD's work, which is why the question is retired here rather
+than answered.
+
 **A printed timed-media section prints every cued item revealed.** Recorded for
 whoever builds section printing, which does not exist — `pie-print-player` takes a
 single PIE item config and has no section awareness, so nothing in the shipped path
@@ -496,10 +522,11 @@ Delivered surface, tests and demo: see the changeset
 Six questions closed with the implementation above: type ownership and policy
 placement, where an unenforceable policy reports itself and whether an author may
 fail closed, whether the slice extends the existing snapshot (it does, as the
-formative slice does), and scoring defaults (none).
+formative slice does), and scoring defaults (none). Three more closed on 2026-08-17
+and are recorded above rather than here: print behaviour, whether a gate may name a
+subset of its cue's items, and who owns composition authoring.
 
 Still open:
 
-- What is the minimum timed-media MVP for cue timeline authoring, and which package owns that future PRD? Nothing here supplies an authoring surface, and the cue timeline is the part an author cannot reasonably hand-write for long.
 - Captions and transcripts are unexercised end to end, and nothing in PIE handles a caption track: there is no `<track>` or `textTracks` handling in any package, so "captions remain available during cue-linked questions" rests entirely on `<track>` surviving inside the stimulus passage's markup, which the demo's `<video>` and `<source>` do but which is untested for `<track>` itself. The fixture is the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file), added as a second demo route rather than replacing the silent clip: a narrated clip *requires* captions under 1.2.2, where the silent one is satisfied by the text alternative the demo already carries, so replacing it would trade a met obligation for an unmet one. Coverage is bounded to two claims — `<track>` survives the passage markup and the browser exposes the captions control, and a gate overlay does not cover the caption region.
 - No score-projection coverage. `scoringPolicy` is validated, persisted and carried to the host unchanged for each of its three strategies; PIE derives no aggregate from any of them, so there is no projection to assert. The type home — `ScoreComponent` / `OutcomeProjection` — is an open question in [score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md), which is still `Draft`, and deriving here would settle that export decision from inside a section feature. The coverage arrives with the first derivation. Weights are that contract's to place, which is why the weighted strategy is not in this one.

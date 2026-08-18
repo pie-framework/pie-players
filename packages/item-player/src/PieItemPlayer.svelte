@@ -94,6 +94,7 @@
 		createBackendOrchestrator,
 	} from "./backend/orchestrator.svelte.js";
 	import { stableStringifyForKey } from "./utils/stable-stringify.js";
+	import { ITEM_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 	import {
 		BundleType,
 		assertElementPackagesAllowed,
@@ -1058,7 +1059,7 @@
 			});
 			logger.error("[pie-item-player] failed loading:", err);
 			handlePlayerEvent(
-				new CustomEvent("player-error", {
+				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, {
 					detail: {
 						code: "ITEM_PLAYER_LOAD_ERROR",
 						message,
@@ -1501,7 +1502,9 @@
 					onLoadComplete={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
 					onPlayerError={(detail: unknown) =>
-						handlePlayerEvent(new CustomEvent("player-error", { detail }))}
+						handlePlayerEvent(
+							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
+						)}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 					onElementSessionUpdate={handleElementSessionUpdate}
 					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}

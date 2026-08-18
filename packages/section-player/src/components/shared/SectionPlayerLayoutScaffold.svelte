@@ -12,7 +12,7 @@
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
-	import { coerceBooleanLike } from "./section-player-props.js";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { onDestroy } from "svelte";
 
 	let {

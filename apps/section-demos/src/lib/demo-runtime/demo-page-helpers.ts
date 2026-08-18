@@ -1,3 +1,4 @@
+import { applyPieColorScheme } from "@pie-players/pie-theme";
 import type {
 	AssessmentEntity,
 	PersonalNeedsProfile,
@@ -103,16 +104,7 @@ export function applyDaisyTheme(
 
 export function applyToolkitScheme(scheme: string): void {
 	if (typeof window === "undefined") return;
-	const nextScheme = (scheme || "default").trim() || "default";
-	const pieThemeHost =
-		(document.querySelector(
-			'pie-theme[scope="document"]',
-		) as HTMLElement | null) ||
-		(document.querySelector("pie-theme") as HTMLElement | null);
-	if (pieThemeHost && pieThemeHost.getAttribute("scheme") !== nextScheme) {
-		pieThemeHost.setAttribute("scheme", nextScheme);
-	}
-	window.localStorage.setItem(TOOLKIT_SCHEME_STORAGE_KEY, nextScheme);
+	applyPieColorScheme(scheme, { persistenceKey: TOOLKIT_SCHEME_STORAGE_KEY });
 }
 
 export function buildDemoHref(args: {

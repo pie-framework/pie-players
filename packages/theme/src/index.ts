@@ -56,5 +56,10 @@ export {
 	registerPieColorSchemes,
 	resolvePieTheme,
 } from "./color-schemes.js";
+export {
+	applyPieColorScheme,
+	resolvePieThemeHost,
+	type ApplyPieColorSchemeOptions,
+} from "./apply-color-scheme.js";
 
 definePieTheme();

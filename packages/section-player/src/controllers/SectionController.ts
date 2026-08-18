@@ -27,7 +27,9 @@ import {
 	normalizeTimedMediaSectionData,
 	normalizeTimedMediaSectionSlice,
 	reduceTimedMediaState,
+	resolveTimedMediaEnforcement,
 	resolveTimedMediaProjection,
+	timedMediaProjectionSignature,
 	toTimedMediaSectionSlice,
 	type MediaTimeSource,
 	type ResolvedTimedMediaSectionData,
@@ -116,6 +118,20 @@ interface NormalizedApplySession {
 	timedMediaState: TimedMediaSectionSessionSlice | null;
 }
 
+/**
+ * How long after the section's content has loaded the stimulus has to expose a
+ * Media Time Source before the timeline is declared inert.
+ *
+ * A clock, because "no notification ever arrives" produces no notification.
+ * Validation resolves `stimulusRef` to a renderable but cannot know whether that
+ * renderable mounts media — a passage is a PIE config and its element bundle
+ * decides when, if ever — so the second half of the contract's resolution rule is
+ * a runtime report. Measured from `section-loading-complete`, by which point every
+ * renderable has already reported its content, so this is slack rather than a
+ * budget.
+ */
+const MEDIA_ATTACH_GRACE_MS = 5000;
+
 const logger = createPieLogger("section-controller", () =>
 	isGlobalDebugEnabled(),
 );
@@ -173,6 +189,7 @@ export class SectionController implements SectionControllerHandle {
 	private lastTimedMediaSignature = "";
 	private lastTimedMediaInvalidSignature = "";
 	private reportedDegradationKeys = new Set<string>();
+	private mediaAttachWatch: ReturnType<typeof setTimeout> | null = null;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
 		for (const listener of Array.from(this.listeners)) {
@@ -301,6 +318,7 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public dispose(): void {
+		this.clearMediaAttachWatch();
 		this.detachMediaTimeSource();
 		this.listeners.clear();
 		this.resetLifecycleTracking();
@@ -658,6 +676,7 @@ export class SectionController implements SectionControllerHandle {
 
 	private rebuildTimedMedia(): void {
 		const section = this.state.input?.section ?? null;
+		this.clearMediaAttachWatch();
 		if (!section || section.sectionType !== "timed-media") {
 			this.timedMediaData = null;
 			this.lastTimedMediaInvalidSignature = "";
@@ -704,16 +723,28 @@ export class SectionController implements SectionControllerHandle {
 		this.emitChange(event);
 	}
 
-	public getTimedMediaProjection(): TimedMediaSectionProjection | null {
+	/**
+	 * The live projection, uncloned and for internal readers only.
+	 *
+	 * Resolving is cheap and runs on every `timeupdate`; deep-cloning it there was
+	 * not. `delivery` is threaded in where the caller already has it, because
+	 * assembling it walks every item in the section.
+	 */
+	private resolveTimedMediaView(
+		delivery?: TimedMediaDeliveryState,
+	): TimedMediaSectionProjection | null {
 		if (!this.timedMediaData) return null;
-		return this.cloneForRead(
-			resolveTimedMediaProjection({
-				data: this.timedMediaData,
-				state: this.timedMediaState,
-				delivery: this.getTimedMediaDeliveryState(),
-				capabilities: this.mediaTimeSource?.capabilities ?? null,
-			}),
-		);
+		return resolveTimedMediaProjection({
+			data: this.timedMediaData,
+			state: this.timedMediaState,
+			delivery: delivery ?? this.getTimedMediaDeliveryState(),
+			capabilities: this.mediaTimeSource?.capabilities ?? null,
+		});
+	}
+
+	/** The public boundary, so this is where the copy is made. */
+	public getTimedMediaProjection(): TimedMediaSectionProjection | null {
+		return this.cloneForRead(this.resolveTimedMediaView());
 	}
 
 	/**
@@ -746,11 +777,28 @@ export class SectionController implements SectionControllerHandle {
 	 */
 	public attachMediaTimeSource(
 		source: MediaTimeSource,
-		options?: { origin?: "native-adapter" | "host" },
+		options?: {
+			origin?: "native-adapter" | "host";
+			renderableId?: string;
+		},
 	): void {
 		if (!source || typeof source.subscribe !== "function") return;
 		if (this.mediaTimeSource === source) return;
 		const origin = options?.origin ?? "host";
+		// A native adapter is a renderable reporting what it found in its own subtree,
+		// so it counts only when that renderable is the one `stimulusRef` resolved to.
+		// A section may legitimately hold a second video passage, and "exactly one time
+		// source per section" is a validation rule rather than a type invariant — see
+		// Media Representation in the contract. A host attaching its own port names no
+		// renderable and is taken at its word.
+		if (
+			origin === "native-adapter" &&
+			options?.renderableId &&
+			this.timedMediaData &&
+			options.renderableId !== this.timedMediaData.stimulusRenderableId
+		) {
+			return;
+		}
 		// The stimulus card re-runs its discovery whenever its content changes, so a
 		// host that wired its own player must outrank it — otherwise the native
 		// element quietly takes over mid-session and the capabilities flip back with
@@ -766,6 +814,11 @@ export class SectionController implements SectionControllerHandle {
 		this.mediaTimeSource = source;
 		this.mediaTimeSourceOrigin = origin;
 		if (!this.timedMediaData) return;
+		// The section has its time source, so the missing-source watch has nothing left
+		// to catch. Degradation reporting starts fresh: the gaps are this source's, and
+		// a second source with the same gap has to be able to report it too.
+		this.clearMediaAttachWatch();
+		this.reportedDegradationKeys.clear();
 		this.unsubscribeMediaTimeSource = source.subscribe((notification) => {
 			switch (notification.type) {
 				case "time":
@@ -828,6 +881,55 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	/**
+	 * Watch for a stimulus that resolves but never exposes a time source.
+	 *
+	 * Armed once the section's content has loaded, and only while no source is
+	 * attached — which is already the common case, because the stimulus card
+	 * registers its adapter as soon as the media element appears in its subtree.
+	 */
+	private armMediaAttachWatch(): void {
+		if (!this.timedMediaData) return;
+		if (this.mediaTimeSource) return;
+		if (this.mediaAttachWatch !== null) return;
+		this.mediaAttachWatch = setTimeout(() => {
+			this.mediaAttachWatch = null;
+			this.reportStimulusExposesNoTimeSource();
+		}, MEDIA_ATTACH_GRACE_MS);
+		// A pending timer keeps a Node process alive, and a controller under test must
+		// not outlive its test. Browsers hand back a number with no `unref`.
+		(this.mediaAttachWatch as unknown as { unref?: () => void }).unref?.();
+	}
+
+	private clearMediaAttachWatch(): void {
+		if (this.mediaAttachWatch === null) return;
+		clearTimeout(this.mediaAttachWatch);
+		this.mediaAttachWatch = null;
+	}
+
+	/**
+	 * The stimulus resolved to a renderable that exposes no media, so no cue can
+	 * ever fire and every cued item would stay hidden for the whole session.
+	 *
+	 * Handled exactly as malformed `timedMedia` is: the timeline is dropped, the
+	 * section delivers as an ordinary section with every item visible, and the
+	 * defect is reported non-recoverably. Same outcome, same posture — refusing to
+	 * deliver would turn one authoring slip into a blank section, and leaving the
+	 * timeline in place would keep the items hidden behind cues nothing can fire.
+	 */
+	private reportStimulusExposesNoTimeSource(): void {
+		const data = this.timedMediaData;
+		if (!data || this.mediaTimeSource) return;
+		this.timedMediaData = null;
+		this.lastTimedMediaSignature = "";
+		this.reportTimedMediaInvalid([
+			{
+				code: "stimulus-exposes-no-time-source",
+				message: `timedMedia.stimulusRef "${data.stimulusRef}" resolved to renderable "${data.stimulusRenderableId}", which exposed no Media Time Source, so no cue could fire. The section delivers every item instead.`,
+			},
+		]);
+	}
+
+	/**
 	 * Move a freshly attached source up to the restored position, forward only so it
 	 * never fights a learner who has already scrubbed — the same rule the signing
 	 * region applies when it seeks a fragment on `loadedmetadata`.
@@ -852,15 +954,20 @@ export class SectionController implements SectionControllerHandle {
 	private advanceTimedMedia(input: Parameters<typeof reduceTimedMediaState>[0]["input"]): void {
 		const data = this.timedMediaData;
 		if (!data) return;
+		// Assembled once per reduction and read twice: the reduction resolves gate
+		// conditions against it, and so does the projection the emit check derives.
+		// Building it walks every item in the section, which ran twice per
+		// `timeupdate`.
+		const delivery = this.getTimedMediaDeliveryState();
 		const reduction = reduceTimedMediaState({
 			state: this.timedMediaState,
 			data,
-			delivery: this.getTimedMediaDeliveryState(),
+			delivery,
 			input,
 		});
 		this.timedMediaState = reduction.state;
 		this.applyTimedMediaEffects(reduction.effects);
-		this.emitTimedMediaIfChanged(reduction.effects);
+		this.emitTimedMediaIfChanged(reduction.effects, delivery);
 	}
 
 	/**
@@ -892,19 +999,31 @@ export class SectionController implements SectionControllerHandle {
 		}
 	}
 
-	/** Report a capability gap once per attached source. */
+	/**
+	 * Report a capability gap once per attached source.
+	 *
+	 * Enforcement rather than the whole projection: the degradation list is all this
+	 * needs, and resolving a projection to read one field of it also paid for a gate
+	 * view and two id sets.
+	 */
 	private reportTimedMediaDegradations(): void {
-		const projection = this.getTimedMediaProjection();
-		const degradations = (projection?.degradations ?? []).filter(
+		const data = this.timedMediaData;
+		if (!data) return;
+		const { degradations } = resolveTimedMediaEnforcement({
+			playbackPolicy: data.playbackPolicy,
+			capabilities: this.mediaTimeSource?.capabilities ?? null,
+			hasGate: data.cues.some((cue) => cue.activation === "gate"),
+		});
+		const unreported = degradations.filter(
 			(entry) => !this.reportedDegradationKeys.has(entry.policy),
 		);
-		if (degradations.length === 0) return;
-		for (const entry of degradations) {
+		if (unreported.length === 0) return;
+		for (const entry of unreported) {
 			this.reportedDegradationKeys.add(entry.policy);
 		}
 		const event: TimedMediaPolicyDegradedEvent = {
 			type: "timed-media-policy-degraded",
-			degradations,
+			degradations: unreported,
 			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 			timestamp: Date.now(),
 		};
@@ -914,25 +1033,18 @@ export class SectionController implements SectionControllerHandle {
 	/**
 	 * Emit on cue state, never on the clock.
 	 *
-	 * The signature deliberately omits `mediaCurrentTime`: at four `timeupdate`
-	 * events a second, folding position in would republish the composition — and
-	 * re-diff every mounted item player — for a change nothing renders.
+	 * `timedMediaProjectionSignature` is shared with the toolkit's composition
+	 * revision key rather than restated here: two encodings of "what changes what a
+	 * layout renders" drift silently, and the failure is an emit the toolkit
+	 * coalesces away or a republish this never announced.
 	 */
-	private emitTimedMediaIfChanged(effects: TimedMediaEffects): void {
-		const projection = this.getTimedMediaProjection();
+	private emitTimedMediaIfChanged(
+		effects: TimedMediaEffects,
+		delivery?: TimedMediaDeliveryState,
+	): void {
+		const projection = this.resolveTimedMediaView(delivery);
 		if (!projection) return;
-		const signature = JSON.stringify([
-			projection.visitedCueIdentifiers,
-			projection.completedCueIdentifiers,
-			projection.revealedItemIds,
-			projection.activeCueIdentifier ?? "",
-			projection.gate?.cueIdentifier ?? "",
-			projection.gate?.holding === true,
-			projection.mediaCompleted,
-			projection.aggregateComplete,
-			projection.enforcement,
-			projection.mediaAttached,
-		]);
+		const signature = timedMediaProjectionSignature(projection);
 		if (signature === this.lastTimedMediaSignature) return;
 		this.lastTimedMediaSignature = signature;
 		const event: TimedMediaCueChangedEvent = {
@@ -1471,6 +1583,7 @@ export class SectionController implements SectionControllerHandle {
 			timestamp,
 		};
 		this.emitChange(event);
+		this.armMediaAttachWatch();
 		void this.replayPendingAppliedSession();
 	}
 

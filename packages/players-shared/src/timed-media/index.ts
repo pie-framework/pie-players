@@ -28,6 +28,7 @@ export type {
 	TimedMediaGateCondition,
 	TimedMediaGateView,
 	TimedMediaInput,
+	TimedMediaItemTryBudget,
 	TimedMediaPlaybackPolicy,
 	TimedMediaReduction,
 	TimedMediaScoringPolicy,
@@ -50,6 +51,7 @@ export {
 	reduceTimedMediaState,
 	resolveTimedMediaEnforcement,
 	resolveTimedMediaProjection,
+	timedMediaProjectionSignature,
 } from "./state.js";
 
 export {

@@ -8,6 +8,7 @@ import type {
 	MediaTimeSourceNotification,
 	TimedMediaCue,
 } from "@pie-players/pie-players-shared/timed-media";
+import { getTimedMediaItemView } from "../src/components/shared/section-player-view-state";
 import { SectionController } from "../src/controllers/SectionController";
 import type { SectionControllerChangeEvent } from "../src/controllers/types";
 
@@ -500,6 +501,117 @@ describe("SectionController timed media", () => {
 			revealedItemIds: ["q1"],
 			mediaAttached: false,
 		});
+	});
+
+	test("a metadata cue names items without taking them out of delivery", async () => {
+		const { controller } = await bootstrap(
+			makeSection({
+				cues: [
+					{
+						identifier: "cue-chapter-2",
+						range: { startSeconds: 5 },
+						// An author marking which items a chapter relates to. Metadata
+						// records state and reveals nothing, so this must not decide when
+						// q2 is delivered.
+						itemRefs: ["q2"],
+						policy: { activation: "metadata" },
+					},
+					revealCue(9, ["q1"]),
+				],
+			}),
+		);
+		const projection = controller.getTimedMediaProjection();
+		expect(projection?.sequencedItemIds).toEqual(["q1"]);
+
+		const compositionModel = controller.getCompositionModel();
+		// The pane hides a pending card, so an item a metadata cue names being pending
+		// would hide it for the whole section — no cue can ever reveal it.
+		expect(
+			getTimedMediaItemView({ compositionModel, canonicalItemId: "q2" }),
+		).toMatchObject({ pending: false });
+		expect(
+			getTimedMediaItemView({ compositionModel, canonicalItemId: "q1" }),
+		).toMatchObject({ pending: true });
+	});
+
+	test("a native adapter from a renderable that is not the stimulus is ignored", async () => {
+		const { controller } = await bootstrap(
+			makeSection({ cues: [revealCue(5, ["q1"])] }),
+		);
+		const other = fakeMediaTimeSource();
+		controller.attachMediaTimeSource(other.source, {
+			origin: "native-adapter",
+			renderableId: "passage-some-other-video",
+		});
+		other.advanceTo(6);
+		// A second video passage cannot drive the timeline: exactly one time source
+		// per section is a validation rule, so the section has to enforce it.
+		expect(controller.getTimedMediaProjection()).toMatchObject({
+			mediaAttached: false,
+			revealedItemIds: [],
+		});
+
+		const stimulus = fakeMediaTimeSource();
+		controller.attachMediaTimeSource(stimulus.source, {
+			origin: "native-adapter",
+			renderableId: "passage-video",
+		});
+		stimulus.advanceTo(6);
+		expect(controller.getTimedMediaProjection()).toMatchObject({
+			mediaAttached: true,
+			revealedItemIds: ["q1"],
+		});
+	});
+
+	test("a second source with the same capability gap reports it again", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({
+				cues: [gateCue({ startSeconds: 5, itemRefs: ["q1"], releaseOn: "responded" })],
+			}),
+		);
+		const first = fakeMediaTimeSource({ canPause: false });
+		controller.attachMediaTimeSource(first.source);
+		controller.detachMediaTimeSource();
+		const second = fakeMediaTimeSource({ canPause: false });
+		controller.attachMediaTimeSource(second.source);
+		// Once per attached source, not once per section: the gap belongs to the port,
+		// and a host swapping players has to hear about the new one's.
+		expect(
+			events.filter((event) => event.type === "timed-media-policy-degraded"),
+		).toHaveLength(2);
+	});
+
+	test("a stimulus that exposes no time source reports and delivers every item", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({ cues: [revealCue(5, ["q1"])] }),
+		);
+		expect(controller.getTimedMediaProjection()).not.toBeNull();
+
+		// The watch is armed on `section-loading-complete` and fires on a timer,
+		// because "no source ever attached" produces no notification to wait for. The
+		// timer is plumbing; what is asserted here is the decision it reaches.
+		(
+			controller as unknown as {
+				reportStimulusExposesNoTimeSource(): void;
+			}
+		).reportStimulusExposesNoTimeSource();
+
+		const invalid = events.filter(
+			(event) => event.type === "timed-media-invalid",
+		);
+		expect(invalid).toHaveLength(1);
+		expect(
+			invalid[0] as { errors: Array<{ code: string }> },
+		).toMatchObject({
+			errors: [{ code: "stimulus-exposes-no-time-source" }],
+		});
+		// Delivered as an ordinary section rather than left as a pane of items no cue
+		// can reveal — the same posture malformed `timedMedia` takes.
+		expect(controller.getTimedMediaProjection()).toBeNull();
+		const compositionModel = controller.getCompositionModel();
+		expect(
+			getTimedMediaItemView({ compositionModel, canonicalItemId: "q1" }),
+		).toBeNull();
 	});
 
 	test("a correctness gate over a finite Try budget is refused, not silently released", async () => {

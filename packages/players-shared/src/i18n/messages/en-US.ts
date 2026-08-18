@@ -143,7 +143,6 @@ const enUS = {
 			playbackAdvisory:
 				"Answer question {position} before continuing with the media.",
 			playbackReleased: "Answer accepted. Continue playing the media.",
-			mediaRegionA11y: "Media stimulus",
 		},
 	},
 

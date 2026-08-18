@@ -97,6 +97,10 @@
 		AssessmentItemRef,
 	} from "@pie-players/pie-players-shared/types";
 	import {
+		timedMediaProjectionSignature,
+		type TimedMediaSectionProjection,
+	} from "@pie-players/pie-players-shared/timed-media";
+	import {
 		formatFrameworkErrorForConsole,
 		frameworkErrorFromUnknown,
 		toFrameworkErrorModel,
@@ -681,37 +685,15 @@ const DEFAULT_ENV = {
 	 * the emit is coalesced away — the controller would hold correct cue state while
 	 * the pane kept every gated item hidden.
 	 *
-	 * Media position is deliberately absent. It changes about four times a second
-	 * and nothing renders it, so including it would republish the composition on a
-	 * timer.
+	 * The encoding is `players-shared`'s, shared with the controller's own emit
+	 * check. Two encodings of the same question drift, and either direction fails
+	 * silently: a republish for a change the controller never announced, or an
+	 * announced change this coalesces away. Media position is absent from it, which
+	 * is what keeps a four-per-second clock from republishing the composition.
 	 */
 	function toTimedMediaSignature(model: UnknownRecord): string {
-		const projection = asRecord(model.timedMedia);
-		if (Object.keys(projection).length === 0) return "";
-		const gate = asRecord(projection.gate);
-		const enforcement = asRecord(projection.enforcement);
-		const revealed = Array.isArray(projection.revealedItemIds)
-			? projection.revealedItemIds.join(",")
-			: "";
-		const completed = Array.isArray(projection.completedCueIdentifiers)
-			? projection.completedCueIdentifiers.join(",")
-			: "";
-		const visited = Array.isArray(projection.visitedCueIdentifiers)
-			? projection.visitedCueIdentifiers.join(",")
-			: "";
-		return [
-			visited,
-			completed,
-			revealed,
-			String(projection.activeCueIdentifier ?? ""),
-			String(gate.cueIdentifier ?? ""),
-			gate.holding === true ? "1" : "0",
-			String(enforcement.pause ?? ""),
-			String(enforcement.seek ?? ""),
-			projection.mediaAttached === true ? "1" : "0",
-			projection.mediaCompleted === true ? "1" : "0",
-			projection.aggregateComplete === true ? "1" : "0",
-		].join(":");
+		const projection = model.timedMedia as TimedMediaSectionProjection | null;
+		return timedMediaProjectionSignature(projection);
 	}
 
 	function toCompositionSnapshot(model: unknown): CompositionSnapshot {

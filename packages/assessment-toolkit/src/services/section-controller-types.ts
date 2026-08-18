@@ -538,6 +538,13 @@ export interface SectionControllerHandle {
 			 * displaces a source a host attached explicitly.
 			 */
 			origin?: "native-adapter" | "host";
+			/**
+			 * The renderable the source was found in. Checked against the renderable
+			 * `stimulusRef` resolved to, so a second video passage's adapter cannot
+			 * drive the timeline. Omitted by a host attaching its own port, which names
+			 * no renderable and is taken at its word.
+			 */
+			renderableId?: string;
 		},
 	): void;
 	/**

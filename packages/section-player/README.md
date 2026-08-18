@@ -206,9 +206,10 @@ const section: AssessmentSection = {
 ```
 
 Absent `sectionType` and delivery is unchanged: no projection, no session slice, no
-cue behavior. An item no cue names is delivered normally; a cued item is mounted and
-hidden until its cue fires, so its session and shell registration survive a seek
-backwards.
+cue behavior. An item no `reveal` or `gate` cue names is delivered normally —
+including one a `metadata` cue names, since metadata records state and reveals
+nothing. A cued item is mounted and hidden until its cue fires, so its session and
+shell registration survive a seek backwards.
 
 The section reaches media only through a **Media Time Source**. The stimulus card
 finds the media element its passage mounted and registers a native adapter; a host
@@ -217,6 +218,8 @@ card's discovery for as long as it is attached:
 
 ```ts
 const controller = await host.waitForSectionController?.(5000);
+// No `renderableId`: a host is asserting its own port, where a renderable's adapter
+// has to name itself and is ignored unless it is the resolved stimulus.
 controller?.attachMediaTimeSource?.(myThirdPartyPort);
 controller?.detachMediaTimeSource?.();
 controller?.getTimedMediaProjection?.(); // cues, gate, enforcement, revealed items
@@ -228,11 +231,13 @@ the projection says `enforcement: "advisory"`, and a recoverable `timed-media`
 framework warning names the policy that lost its teeth. Nothing silently pretends to
 hold.
 
-Two authoring mistakes fail loudly rather than delivering inert cues: a
-`stimulusRef` that resolves to no renderable in the section, and a gate on
-correctness over an item without unlimited Tries — a learner who spent a finite
-budget could never release playback again. Both report a `timed-media` framework
-error and the section then delivers as an ordinary section with every item visible.
+Three authoring mistakes fail loudly rather than delivering inert cues: a
+`stimulusRef` that resolves to no renderable in the section; a gate on correctness
+over an item without unlimited Tries, where a learner who spent a finite budget could
+never release playback again; and a `stimulusRef` that resolves to a renderable which
+mounts no media, reported once the section's content has loaded and no time source
+has attached. Each reports a `timed-media` framework error, after which the section
+delivers as an ordinary section with every item visible.
 
 Cue state persists inside `SectionControllerSessionState.timedMedia` and hydrates
 with the rest of the snapshot, including the furthest position reached, which is what

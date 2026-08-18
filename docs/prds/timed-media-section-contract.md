@@ -369,6 +369,24 @@ framework error is non-recoverable, so readiness latches error and the author ca
 miss it, while the learner still gets the content with every item visible. The
 alternative — refusing to deliver — makes an authoring slip a total outage.
 
+**A stimulus that exposes no time source takes the same path, reported at
+runtime.** [Media Representation](#media-representation) requires the renderable
+`stimulusRef` names to expose a time source. Only the first half of that is
+statically knowable: a passage is a PIE config and its element bundle decides
+whether and when it mounts media, so validation resolves the ref and a clock reports
+the rest. The watch is armed when the section's content has loaded and fires five
+seconds later if no source has attached, at which point the timeline is dropped, the
+section delivers every item, and `stimulus-exposes-no-time-source` names the
+renderable. Reported rather than left alone because the failure is not a timeline
+that fires late — it is a pane of questions no cue can ever reveal.
+
+**A `metadata` cue's items stay ordinary items.** The cue shape carries `itemRefs`
+for every activation, and metadata records state and reveals nothing, so the items
+it names are not sequenced: the projection separates `sequencedItemIds` from
+`revealedItemIds` and a layout reads the first to decide what is pending. One
+predicate for both, because a cue counted as sequencing but never as revealing hides
+its items for the whole section.
+
 **Playback is never auto-resumed when a gate releases.** The learner presses play.
 Resuming would start audio nobody asked for, on top of the announcement that the
 gate released, and it would fight both the reduced-motion posture and a learner
@@ -416,6 +434,22 @@ aggregate outcome from it, and a section that omits it is not silently assigned 
 `aggregateComplete` deliberately keeps three facts separate — required cues, item
 completion, and media completion where the policy requires it.
 
+**A host-supplied port outranks a renderable's, and a renderable's only counts for
+the stimulus.** `attachMediaTimeSource` takes the `renderableId` the source was
+found in and ignores a `native-adapter` attach from anything but the resolved
+stimulus, because a section may legitimately hold a second video passage and
+"exactly one time source per section" is a validation rule rather than a type
+invariant. A host names no renderable and is taken at its word.
+
+**The passages pane takes the composition model, not the pinned passage id
+[Delivery Attachment](#delivery-attachment) sketched.** Its sibling pane already
+takes the whole model, and narrowing this one moves the stimulus-id derivation to
+four call sites. The pane renders the stimulus first and does not pin it: sticky
+placement needs `scroll-padding-top` on a scroll container the pane does not own, and
+without that a focused control in a passage scrolling under it is obscured (WCAG
+2.4.11). Ordering delivers the intent; pinning stays with the dedicated layout this
+contract already assigns placement to.
+
 Delivered surface, tests and demo: see the changeset
 `timed-media-sections-reach-media-through-a-port`, the `timed-media` route in
 `apps/section-demos`, and `section-player-timed-media.spec.ts`.
@@ -433,3 +467,5 @@ Still open:
 - What print/export behavior should timed-media sections have? A printed timed-media section has no timeline, so the question is whether every cued item prints revealed or the section refuses to print.
 - Captions and transcripts are unexercised end to end. The demo's generated stimulus has no speech, so authoring a caption track for it would be inventing content; the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file) is the right fixture for that coverage.
 - Whether a gate should be able to name a subset of a multi-item cue's items as its release condition. Today every item a gate names must satisfy it.
+- Media and TTS audio can overlap. This PRD's accessibility requirements name handoff rules that prevent it; nothing coordinates the toolkit's TTS service with the port, so a learner who starts a read-aloud over playing media hears both. Deferred rather than met: the handoff is a two-way policy between two capabilities, and the port deliberately reports capability rather than owning transport.
+- No score-projection coverage. The Test Plan names tests against the shared score/outcome contract; `scoringPolicy` is validated and persisted and PIE derives no aggregate from it, so there is no projection to assert yet. The coverage arrives with the first derivation, not before.

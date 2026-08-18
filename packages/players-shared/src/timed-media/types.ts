@@ -158,6 +158,12 @@ export interface TimedMediaValidationError {
 	code:
 		| "missing-stimulus-ref"
 		| "unresolved-stimulus-ref"
+		/**
+		 * Reported at runtime rather than by validation: `stimulusRef` resolved, but
+		 * the renderable it names exposed no Media Time Source, so no cue can fire.
+		 * Whether a renderable mounts media is not knowable from authored data.
+		 */
+		| "stimulus-exposes-no-time-source"
 		| "no-cues"
 		| "duplicate-cue-identifier"
 		| "invalid-cue-identifier"
@@ -357,6 +363,13 @@ export interface TimedMediaSectionProjection {
 	degradations: TimedMediaDegradation[];
 	/** Canonical ids of items whose cue has activated. Monotonic. */
 	revealedItemIds: string[];
+	/**
+	 * Canonical ids of every item the timeline sequences — named by a `reveal` or a
+	 * `gate` cue. An item outside this set is delivered normally, including one a
+	 * `metadata` cue names: metadata records state and reveals nothing, so naming an
+	 * item on one must not take that item out of delivery.
+	 */
+	sequencedItemIds: string[];
 	activeCueIdentifier?: string;
 	gate: TimedMediaGateView | null;
 	visitedCueIdentifiers: string[];

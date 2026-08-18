@@ -245,10 +245,21 @@
 			});
 		};
 
-		syncMediaElement();
-		const observer = new MutationObserver(() => syncMediaElement());
+		// The tracked body wires the observer and nothing else. `syncMediaElement`
+		// dispatches the registration event, which runs the controller's attach
+		// synchronously and writes reactive toolkit state on the way back out, so the
+		// first pass is untracked and queued: untracked so those writes are not read as
+		// this effect's dependencies, queued so the attach cannot re-enter the render
+		// pass that mounted the card (AGENTS.md, Svelte Subscription Safety).
+		let disposed = false;
+		queueMicrotask(() => {
+			if (disposed) return;
+			untrack(() => syncMediaElement());
+		});
+		const observer = new MutationObserver(() => untrack(() => syncMediaElement()));
 		observer.observe(node, { childList: true, subtree: true });
 		return () => {
+			disposed = true;
 			observer.disconnect();
 			if (!attachedMediaElement) return;
 			attachedMediaElement = null;

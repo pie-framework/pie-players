@@ -204,13 +204,13 @@ export function getTimedMediaItemView(args: {
 }): TimedMediaItemView | null {
 	const projection = args.compositionModel?.timedMedia;
 	if (!projection) return null;
-	const cued = projection.cues.some((cue) =>
-		cue.itemRefs.includes(args.canonicalItemId),
-	);
-	// An item no cue names is not sequenced by the timeline, so it is delivered
-	// normally rather than hidden forever.
+	// `sequencedItemIds`, not a scan over `cues`: an item is pending only where the
+	// timeline decides its delivery, and a `metadata` cue decides nothing. Reading
+	// every cue's `itemRefs` counted a metadata cue's items as sequenced while
+	// `revealedItemIds` never revealed them, which hid them for the whole section.
 	const pending =
-		cued && !projection.revealedItemIds.includes(args.canonicalItemId);
+		projection.sequencedItemIds.includes(args.canonicalItemId) &&
+		!projection.revealedItemIds.includes(args.canonicalItemId);
 	const gate = projection.gate;
 	const isGateTarget =
 		gate?.holding === true && gate.itemRefs.includes(args.canonicalItemId);

@@ -119,7 +119,10 @@ interface RuntimeController extends SectionControllerHandle {
 	navigateToItem?: (index: number) => unknown;
 	attachMediaTimeSource?: (
 		source: MediaTimeSource,
-		options?: { origin?: "native-adapter" | "host" },
+		options?: {
+			origin?: "native-adapter" | "host";
+			renderableId?: string;
+		},
 	) => void;
 	detachMediaTimeSource?: (options?: {
 		origin?: "native-adapter" | "host";
@@ -570,9 +573,9 @@ export class SectionRuntimeEngine {
 	 * Bind or release the section's Media Time Source.
 	 *
 	 * A pass-through, like `handleFormativeAction`: the engine routes, the
-	 * controller decides. Whether the registering renderable is the one
-	 * `stimulusRef` names is the controller's call, because the controller is what
-	 * validated `stimulusRef` in the first place.
+	 * controller decides. `renderableId` travels with the attach because whether the
+	 * registering renderable is the one `stimulusRef` names is the controller's call
+	 * — it validated `stimulusRef` in the first place.
 	 */
 	handleMediaTimeSource(action: SectionRuntimeMediaTimeSourceAction): void {
 		if (action?.action === "detach") {
@@ -584,6 +587,7 @@ export class SectionRuntimeEngine {
 		if (!action?.source) return;
 		this.controller?.attachMediaTimeSource?.(action.source, {
 			origin: action.origin ?? "host",
+			renderableId: action.renderableId,
 		});
 	}
 

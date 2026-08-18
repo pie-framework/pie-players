@@ -19,3 +19,7 @@ export {
 	type SectionControllerKeyLike,
 	type ToolkitCoordinatorWithSectionController,
 } from "./section-controller.js";
+export {
+	createSectionControllerSubscriptionManager,
+	type SectionControllerSubscriptionHandlers,
+} from "./section-controller-subscription.js";

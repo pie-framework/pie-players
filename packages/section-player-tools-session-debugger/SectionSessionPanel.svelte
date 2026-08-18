@@ -5,7 +5,9 @@
 		props: {
 			sectionId: { type: 'String', attribute: 'section-id' },
 			attemptId: { type: 'String', attribute: 'attempt-id' },
-			toolkitCoordinator: { type: 'Object', attribute: 'toolkit-coordinator' }
+			toolkitCoordinator: { type: 'Object', attribute: 'toolkit-coordinator' },
+			persistenceScope: { type: 'String', attribute: 'persistence-scope' },
+			persistencePanelId: { type: 'String', attribute: 'persistence-panel-id' }
 		}
 	}}
 />
@@ -18,10 +20,10 @@
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
-		getSectionControllerFromCoordinator,
-		isMatchingSectionControllerLifecycleEvent
+		createSectionControllerSubscriptionManager,
+		getSectionControllerFromCoordinator
 	} from '@pie-players/pie-section-player-tools-shared';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, untrack } from 'svelte';
 	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 
@@ -68,8 +70,8 @@
 		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
 		// active section cohort automatically and do not accept
 		// sectionId / attemptId arguments. The session panel keeps
-		// `sectionId` + `attemptId` in `subscriptionTarget` purely to
-		// gate same-target re-subscribe and to drive `getSectionController`.
+		// `sectionId` + `attemptId` in the shared subscription manager purely
+		// to gate same-target re-subscribe and to drive `getSectionController`.
 		subscribeItemEvents?: (args: {
 			listener: (event: { itemId?: string; timestamp?: number }) => void;
 		}) => () => void;
@@ -84,11 +86,15 @@
 	let {
 		toolkitCoordinator = null,
 		sectionId = '',
-		attemptId = undefined
+		attemptId = undefined,
+		persistenceScope = "",
+		persistencePanelId = "session-debugger"
 	}: {
 		toolkitCoordinator?: ToolkitCoordinatorLike | null;
 		sectionId: string;
 		attemptId?: string;
+		persistenceScope?: string;
+		persistencePanelId?: string;
 	} = $props();
 
 	let sessionPanelSnapshot = $state<SessionPanelSnapshot>({
@@ -105,19 +111,7 @@
 		lastChangedItemId: null,
 		itemSessions: {}
 	});
-	let unsubscribeController: (() => void) | null = null;
-	let unsubscribeLifecycle: (() => void) | null = null;
 	let controllerAvailable = $state(false);
-	let resubscribeQueued = false;
-	const subscriptionTarget: {
-		controller: SectionControllerLike | null;
-		sectionId: string;
-		attemptId?: string;
-	} = {
-		controller: null,
-		sectionId: '',
-		attemptId: undefined
-	};
 
 	function cloneSessionSnapshot<T>(value: T): T {
 		try {
@@ -174,19 +168,6 @@
 		};
 	}
 
-	function detachControllerSubscription() {
-		unsubscribeController?.();
-		unsubscribeController = null;
-		subscriptionTarget.controller = null;
-		subscriptionTarget.sectionId = '';
-		subscriptionTarget.attemptId = undefined;
-	}
-
-	function detachLifecycleSubscription() {
-		unsubscribeLifecycle?.();
-		unsubscribeLifecycle = null;
-	}
-
 	function handleControllerEvent(detail: { itemId?: string; timestamp?: number }): void {
 		refreshFromController({
 			itemId: detail?.itemId,
@@ -202,10 +183,22 @@
 		handleControllerEvent(detail);
 	}
 
-	function ensureControllerSubscription() {
-		const controller = getController() || null;
-		if (!controller) {
-			detachControllerSubscription();
+	const subscriptionManager = createSectionControllerSubscriptionManager({
+		getController,
+		subscribe: (_controller) => {
+			const unsubscribeItem = toolkitCoordinator?.subscribeItemEvents?.({
+				listener: handleItemControllerEvent
+			}) || null;
+			const unsubscribeSection = toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
+				listener: handleSectionControllerEvent
+			}) || null;
+			return () => {
+				unsubscribeItem?.();
+				unsubscribeSection?.();
+			};
+		},
+		onSubscribed: (controller) => refreshFromController(undefined, controller),
+		onControllerUnavailable: () => {
 			controllerAvailable = false;
 			sessionPanelSnapshot = {
 				currentItemIndex: null,
@@ -221,58 +214,25 @@
 				lastChangedItemId: null,
 				itemSessions: {}
 			};
-			return;
 		}
-		const nextAttemptId = attemptId || undefined;
-		const isSameTarget =
-			subscriptionTarget.controller === controller &&
-			subscriptionTarget.sectionId === sectionId &&
-			subscriptionTarget.attemptId === nextAttemptId;
-		if (isSameTarget && unsubscribeController) {
-			refreshFromController(undefined, controller);
-			return;
-		}
-		detachControllerSubscription();
-		const unsubscribeItem = toolkitCoordinator?.subscribeItemEvents?.({
-			listener: handleItemControllerEvent
-		}) || null;
-		const unsubscribeSection = toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
-			listener: handleSectionControllerEvent
-		}) || null;
-		unsubscribeController = () => {
-			unsubscribeItem?.();
-			unsubscribeSection?.();
-		};
-		subscriptionTarget.controller = controller;
-		subscriptionTarget.sectionId = sectionId;
-		subscriptionTarget.attemptId = nextAttemptId;
-		refreshFromController(undefined, controller);
-	}
+	});
 
-	function queueEnsureControllerSubscription(): void {
-		if (resubscribeQueued) return;
-		resubscribeQueued = true;
-		queueMicrotask(() => {
-			resubscribeQueued = false;
-			ensureControllerSubscription();
-		});
+	function ensureControllerSubscription(): void {
+		subscriptionManager.ensure(sectionId, attemptId);
 	}
 
 	$effect(() => {
-		if (!toolkitCoordinator || !sectionId) return;
-		ensureControllerSubscription();
-		detachLifecycleSubscription();
-		unsubscribeLifecycle = toolkitCoordinator.onSectionControllerLifecycle?.((event) => {
-			if (!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)) return;
-			queueEnsureControllerSubscription();
-			refreshFromController({
-				updatedAt: Date.now()
+		void toolkitCoordinator;
+		void sectionId;
+		void attemptId;
+		untrack(() => {
+			if (!toolkitCoordinator || !sectionId) return;
+			ensureControllerSubscription();
+			subscriptionManager.bindLifecycle(toolkitCoordinator, sectionId, attemptId, () => {
+				refreshFromController({ updatedAt: Date.now() });
 			});
-		}) || null;
-		return () => {
-			detachControllerSubscription();
-			detachLifecycleSubscription();
-		};
+		});
+		return () => subscriptionManager.detachAll();
 	});
 
 	let contextAnchor = $state<HTMLDivElement | null>(null);
@@ -298,6 +258,8 @@
 	ariaLabel="Drag session panel"
 	minWidth={340}
 	minHeight={260}
+	{persistenceScope}
+	{persistencePanelId}
 	initialSizing={{
 		widthRatio: 0.29,
 		heightRatio: 0.72,

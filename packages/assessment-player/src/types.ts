@@ -1,46 +1,35 @@
 import type {
 	AssessmentSection,
+	AssessmentSession,
+	AssessmentSectionSessionState,
+	AssessmentSessionNavigationState,
+	AssessmentSessionRealization,
 	Env,
+	SectionControllerSessionState,
 	TestPart,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import type { SectionPlayerRuntimeConfig } from "@pie-players/pie-section-player";
 
-export interface SectionSessionSnapshot {
-	currentItemIndex?: number;
-	visitedItemIdentifiers?: string[];
-	itemSessions: Record<string, unknown>;
-}
-
-export interface AssessmentSessionNavigationState {
-	currentSectionIndex: number;
-	visitedSectionIdentifiers: string[];
-	currentSectionIdentifier?: string;
-}
-
-export interface AssessmentSessionRealization {
-	seed: string;
-	sectionIdentifiers: string[];
-}
-
-export interface AssessmentSectionSessionState {
-	sectionIdentifier: string;
-	updatedAt: string;
-	session: SectionSessionSnapshot | null;
-}
-
-export interface AssessmentSession {
-	version: 1;
-	assessmentAttemptSessionIdentifier: string;
-	assessmentId: string;
-	startedAt: string;
-	updatedAt: string;
-	completedAt?: string;
-	navigationState: AssessmentSessionNavigationState;
-	realization: AssessmentSessionRealization;
-	sectionSessions: Record<string, AssessmentSectionSessionState>;
-	contextVariables?: Record<string, unknown>;
-}
+/**
+ * Re-exported so every existing import site keeps its specifier. These shapes are
+ * canonical in `@pie-players/pie-players-shared/types`.
+ *
+ * `SectionControllerSessionState` replaces a local `SectionSessionSnapshot` that
+ * declared only `currentItemIndex`, `visitedItemIdentifiers` and `itemSessions`.
+ * The runtime always carried the full snapshot — both `upsertSectionSession`
+ * implementations pass the object through by reference — so the narrow type never
+ * lost data; it made the `formative` and `timedMedia` slices unreadable from here
+ * without a cast, which is why the assessment layer could not roll up mastery it
+ * was already persisting.
+ */
+export type {
+	AssessmentSession,
+	AssessmentSectionSessionState,
+	AssessmentSessionNavigationState,
+	AssessmentSessionRealization,
+	SectionControllerSessionState,
+};
 
 export interface AssessmentSectionInstance {
 	stageIdentifier?: string;

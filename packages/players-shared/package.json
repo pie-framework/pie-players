@@ -41,6 +41,10 @@
 			"types": "./dist/formative/index.d.ts",
 			"import": "./dist/formative/index.js"
 		},
+		"./timed-media": {
+			"types": "./dist/timed-media/index.d.ts",
+			"import": "./dist/timed-media/index.js"
+		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"

@@ -16,6 +16,9 @@
 			playerStrategy: { attribute: "player-strategy", type: "String" },
 			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			// Read for one thing only: which passage, if any, is a timed-media
+			// section's stimulus. Absent or non-timed-media renders exactly as before.
+			compositionModel: { attribute: "composition-model", type: "Object", reflect: false },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
 		},
@@ -29,6 +32,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
+	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getPassagePlayerParams,
@@ -47,6 +51,7 @@
 		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
+		compositionModel = null as SectionCompositionModel | null,
 	} = $props<{
 		passages: PassageEntity[];
 		elementsLoaded: boolean;
@@ -58,10 +63,33 @@
 		passageToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
+		compositionModel?: SectionCompositionModel | null;
 	}>();
 
 	let loadingCard = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => loadingCard);
+
+	// The stimulus is the section's time source, so it holds position while other
+	// passages scroll. Two consequences, both scoped to a section that has one: it
+	// renders first, and it sticks. A section without a media stimulus keeps today's
+	// authored order and no sticky rule — the addition is invisible by construction
+	// rather than by care at each call site.
+	const stimulusPassageId = $derived(
+		compositionModel?.timedMedia?.stimulusRenderableId ?? "",
+	);
+	const orderedPassages = $derived.by(() => {
+		if (!stimulusPassageId) return passages;
+		const stimulus = passages.filter(
+			(passage: PassageEntity) => passage.id === stimulusPassageId,
+		);
+		if (stimulus.length === 0) return passages;
+		return [
+			...stimulus,
+			...passages.filter(
+				(passage: PassageEntity) => passage.id !== stimulusPassageId,
+			),
+		];
+	});
 </script>
 
 {#if !elementsLoaded}
@@ -73,10 +101,16 @@
 		</div>
 	</div>
 {:else}
-	{#each passages as passage, passageIndex (passage.id || passageIndex)}
+	{#each orderedPassages as passage, passageIndex (passage.id || passageIndex)}
 		<pie-section-player-passage-card
 			{passage}
 			{baseHeadingLevel}
+			timedMediaStimulus={!!stimulusPassageId && passage.id === stimulusPassageId}
+			class={
+				!!stimulusPassageId && passage.id === stimulusPassageId
+					? "pie-section-player-passages-pane__stimulus"
+					: ""
+			}
 			playerParams={getPassagePlayerParams({
 				passage,
 				resolvedPlayerEnv,
@@ -104,6 +138,16 @@
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
+		background: var(--pie-background, #fff);
+	}
+
+	/* The media stays reachable while a second passage scrolls under it. Sticky
+	   rather than fixed so it still scrolls out of a pane too short to hold it,
+	   which keeps the whole card reachable at 400% zoom (WCAG 1.4.10). */
+	:global(pie-section-player-passage-card.pie-section-player-passages-pane__stimulus) {
+		position: sticky;
+		top: 0;
+		z-index: 1;
 		background: var(--pie-background, #fff);
 	}
 

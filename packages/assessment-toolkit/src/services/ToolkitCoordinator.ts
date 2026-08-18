@@ -364,6 +364,9 @@ export type SectionItemEventType = Exclude<
 	| "section-loading-complete"
 	| "section-items-complete-changed"
 	| "section-error"
+	| "timed-media-cue-changed"
+	| "timed-media-policy-degraded"
+	| "timed-media-invalid"
 >;
 
 export type SectionScopedEventType = Extract<
@@ -373,6 +376,12 @@ export type SectionScopedEventType = Extract<
 	| "section-loading-complete"
 	| "section-items-complete-changed"
 	| "section-error"
+	// Timed-media state is section-scoped even where a cue names items: a cue
+	// activation is a fact about the timeline, and one event carries every item
+	// the transition revealed rather than one event per item.
+	| "timed-media-cue-changed"
+	| "timed-media-policy-degraded"
+	| "timed-media-invalid"
 >;
 
 export type SectionItemEvent = Extract<
@@ -424,6 +433,9 @@ const SECTION_SCOPED_EVENT_TYPES: readonly SectionScopedEventType[] = [
 	"section-loading-complete",
 	"section-items-complete-changed",
 	"section-error",
+	"timed-media-cue-changed",
+	"timed-media-policy-degraded",
+	"timed-media-invalid",
 ];
 
 export interface ToolkitCoordinatorHooks {

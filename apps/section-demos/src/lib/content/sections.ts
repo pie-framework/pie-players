@@ -22,6 +22,7 @@ import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodat
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
+import { demoTimedMediaSection } from "./demo-timed-media";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -604,6 +605,25 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"`fd-q4` sets `enabled: false`, so one ordinary item sits inside a formative section with no control at all.",
 		],
 		section: demoFormativeDeliverySection,
+	},
+	"timed-media": {
+		id: "timed-media",
+		name: "Timed Media (cue-driven questions over a video)",
+		description:
+			"A video stimulus whose timeline reveals and gates questions: one reveal cue, one gate cue that holds playback until the answer is correct, one metadata marker, and one item no cue names.",
+		integrationLevel: 2,
+		integrationTheme: "Timed media delivery",
+		focus:
+			"Shows that the section reaches media only through the Media Time Source port. The stimulus here is authored `<video>` markup with no PIE element in it, so the port is exercised by the exact case it exists for: a host supplying its own media element.",
+		whatMakesItTick: [
+			"The stimulus is a `class: \"stimulus\"` rubric block whose passage config mounts the media element; `timedMedia` carries only `stimulusRef`, the cues and the policy.",
+			"`cue-first-step` reveals `tm-q1` at 0:04 and playback continues; a revealed card is mounted-and-hidden until its cue fires, so its session and shell registration survive a seek backwards.",
+			"`cue-scrub-time` gates `tm-q2` at 0:10: playback pauses, focus moves to the card, and only a correct answer releases it — the condition names the formative `FormativeCorrectness` vocabulary rather than defining its own.",
+			"`onUnknownCorrectness` is stated explicitly, because an item no controller can score has to have an authored answer rather than being treated as wrong.",
+			"`allowSeekAhead: false` clamps a forward seek to the furthest position reached, which is what stops a learner scrubbing past a gate.",
+			"`tm-q3` is named by no cue, so the timeline sequences what it names and leaves everything else alone.",
+		],
+		section: demoTimedMediaSection,
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",

@@ -116,6 +116,58 @@ _Avoid_: Completion, progress, score
 - **Mastery** is a rollup over **Try Outcomes** and is independent of item completion — an item can be complete and unmastered, or mastered and still editable.
 - **Correctness** is the vocabulary a timed-media cue gate will be authored against; it is settled by formative delivery rather than by the cue contract.
 
+## Timed Media Language
+
+**Timed-Media Section**:
+A section whose shared media timeline decides when its items are delivered. Named by `sectionType: "timed-media"`, which is a discriminator on data — the runtime host still picks the layout tag.
+_Avoid_: Video section, video player
+
+**Media Stimulus**:
+The passage whose PIE config mounts the media element, named by `timedMedia.stimulusRef`. A **Catalog Owner** like any passage, which is what keeps captions, transcripts and signed alternates on the accessibility-catalog rail.
+_Avoid_: Media payload, video model — `timedMedia` carries no media of its own.
+
+**Media Time Source**:
+The `HTMLMediaElement`-shaped port through which a **Timed-Media Section** reaches media, and the only such route. A native media element satisfies it through a small adapter; a runtime host can supply its own implementation for a player PIE knows nothing about.
+_Avoid_: Video API, player handle
+
+**Media Capability**:
+What a **Media Time Source** reports it can actually do — `canPause`, `canRestrictSeeking`. Declared by the adapter, never assumed by the section.
+_Avoid_: Feature flag, player support
+
+**Cue**:
+A window on the media timeline that activates one or more of the section's item refs, spelled as a `MediaFragmentRange` beside the asset. A point cue omits `endSeconds`.
+_Avoid_: Timestamp, marker, bookmark
+
+**Cue Activation**:
+What a **Cue** does when playback reaches it: `reveal` shows its items, `gate` also holds playback, `metadata` records state and shows nothing.
+_Avoid_: Trigger, event
+
+**Gate Condition**:
+The condition over delivery state that releases a `gate` **Cue** — `responded`, or one of the **Correctness** values formative delivery settles. `responded` reads item completion rather than **Try** state.
+_Avoid_: Unlock rule, pass condition
+
+**Enforced Policy**:
+A playback policy the attached **Media Time Source** has the **Media Capability** to carry out, so it really holds.
+_Avoid_: Hard lock
+
+**Advisory Policy**:
+The same policy where the capability is missing: cues still fire and state is still recorded, the learner is asked rather than stopped, and the gap is reported as a recoverable framework warning.
+_Avoid_: Soft lock, best effort — the point is that the degradation is *stated*, not that it is lenient.
+
+**Aggregate Completion**:
+The **Timed-Media Section**'s roll-up of three separate facts: every required **Cue** complete, every item complete, and — where the policy requires it — the media played to its end.
+_Avoid_: Section complete, progress
+
+## Timed Media Relationships
+
+- A **Timed-Media Section** has exactly one **Media Stimulus**, and resolution of `stimulusRef` is validated rather than assumed: a section carrying cues with no resolvable stimulus is malformed, because the alternative is cues that silently never fire.
+- A **Cue** names item refs of its own section; a cue timeline is never reusable across sections, while a **Media Stimulus** is, through `passageVId`.
+- An item no **Cue** names is delivered normally. The timeline sequences what it names and nothing else.
+- **Cue** visits and item reveals are monotonic: seeking backwards does not withdraw a question the learner has already seen, and a released **Gate Condition** stays released so a retry cannot re-trap a learner mid-playback.
+- A **Gate Condition** over **Correctness** requires the items it names to deliver formatively with unlimited **Tries**; anything else is a checkpoint a learner could become unable to pass.
+- An **Advisory Policy** is a fact about the attached **Media Time Source**, not about the authoring. The same section is enforced on a native element and advisory behind an embed that only reports time.
+- **Aggregate Completion** is independent of **Mastery**: a section can be complete with every answer wrong.
+
 ## Tool Surface Language
 
 **Tool Surface**:

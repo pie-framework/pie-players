@@ -1,3 +1,8 @@
+import {
+	createNewAssessmentSession,
+	setCurrentSectionPosition,
+	upsertSectionSession,
+} from "@pie-players/pie-assessment-toolkit";
 import type {
 	AssessmentDefinition,
 	AssessmentDeliveryPlan,
@@ -5,7 +10,7 @@ import type {
 	AssessmentSession,
 	AssessmentSectionInstance,
 	AssessmentSessionPersistenceStrategy,
-	SectionSessionSnapshot,
+	SectionControllerSessionState,
 } from "../types.js";
 
 export interface AssessmentControllerRuntimeState {
@@ -166,13 +171,13 @@ export interface AssessmentControllerHandle {
 	getSectionAt(index: number): AssessmentSectionInstance | null;
 	/**
 	 * Return the persisted snapshot for a specific section
-	 * (`SectionSessionSnapshot`), or `null` if no snapshot has been
+	 * (`SectionControllerSessionState`), or `null` if no snapshot has been
 	 * recorded yet.
 	 *
 	 * This is the snapshot shape produced by the embedded
 	 * `SectionControllerHandle.getSession()` for that section.
 	 */
-	getSectionSession(sectionId: string): SectionSessionSnapshot | null;
+	getSectionSession(sectionId: string): SectionControllerSessionState | null;
 	/**
 	 * Persist (in-memory) a snapshot for a specific section into the
 	 * assessment session and emit `assessment-session-changed`. Used by
@@ -181,7 +186,7 @@ export interface AssessmentControllerHandle {
 	 */
 	updateSectionSession(
 		sectionId: string,
-		session: SectionSessionSnapshot | null,
+		session: SectionControllerSessionState | null,
 	): void;
 }
 
@@ -221,81 +226,6 @@ function getOrCreateAnonymousDeviceId(storage: Storage): string {
 	const created = `anon-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
 	storage.setItem(key, created);
 	return created;
-}
-
-function nowIso(): string {
-	return new Date().toISOString();
-}
-
-function createNewAssessmentSession(args: {
-	assessmentAttemptSessionIdentifier: string;
-	assessmentId: string;
-	seed: string;
-	sectionIdentifiers: string[];
-}): AssessmentSession {
-	const startedAt = nowIso();
-	const firstSection = args.sectionIdentifiers[0];
-	return {
-		version: 1,
-		assessmentAttemptSessionIdentifier: args.assessmentAttemptSessionIdentifier,
-		assessmentId: args.assessmentId,
-		startedAt,
-		updatedAt: startedAt,
-		navigationState: {
-			currentSectionIndex: 0,
-			visitedSectionIdentifiers: firstSection ? [firstSection] : [],
-			currentSectionIdentifier: firstSection,
-		},
-		realization: {
-			seed: args.seed,
-			sectionIdentifiers: args.sectionIdentifiers,
-		},
-		sectionSessions: {},
-	};
-}
-
-function upsertSectionSession(
-	session: AssessmentSession,
-	args: {
-		sectionIdentifier: string;
-		sectionSession: SectionSessionSnapshot | null;
-	},
-): AssessmentSession {
-	const updatedAt = nowIso();
-	return {
-		...session,
-		updatedAt,
-		sectionSessions: {
-			...session.sectionSessions,
-			[args.sectionIdentifier]: {
-				sectionIdentifier: args.sectionIdentifier,
-				updatedAt,
-				session: args.sectionSession,
-			},
-		},
-	};
-}
-
-function setCurrentSectionPosition(
-	session: AssessmentSession,
-	args: {
-		currentSectionIndex: number;
-		currentSectionIdentifier?: string;
-	},
-): AssessmentSession {
-	const visited = new Set(
-		session.navigationState.visitedSectionIdentifiers || [],
-	);
-	if (args.currentSectionIdentifier) visited.add(args.currentSectionIdentifier);
-	return {
-		...session,
-		navigationState: {
-			...session.navigationState,
-			currentSectionIndex: args.currentSectionIndex,
-			currentSectionIdentifier: args.currentSectionIdentifier,
-			visitedSectionIdentifiers: Array.from(visited),
-		},
-	};
 }
 
 function flattenSections(
@@ -607,14 +537,14 @@ export class AssessmentController implements AssessmentControllerHandle {
 		return this.deliveryPlan.sections[index] || null;
 	}
 
-	getSectionSession(sectionId: string): SectionSessionSnapshot | null {
+	getSectionSession(sectionId: string): SectionControllerSessionState | null {
 		const entry = this.ensureSession().sectionSessions[sectionId];
-		return (entry?.session || null) as SectionSessionSnapshot | null;
+		return entry?.session || null;
 	}
 
 	updateSectionSession(
 		sectionId: string,
-		session: SectionSessionSnapshot | null,
+		session: SectionControllerSessionState | null,
 	): void {
 		this.session = upsertSectionSession(this.ensureSession(), {
 			sectionIdentifier: sectionId,

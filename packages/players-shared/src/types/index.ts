@@ -10,9 +10,15 @@
 import type {
 	FormativeDeliveryPolicy,
 	FormativeItemPolicy,
+	FormativeSectionSlice,
 } from "../formative/types.js";
+import type {
+	TimedMediaSectionData,
+	TimedMediaSectionSessionSlice,
+} from "../timed-media/types.js";
 
 export type { FormativeDeliveryPolicy, FormativeItemPolicy };
+export type { TimedMediaSectionData };
 
 export interface BaseEntity {
 	id?: string;
@@ -362,6 +368,27 @@ export interface AssessmentSection
 	 */
 	formative?: FormativeDeliveryPolicy;
 
+	/**
+	 * The section flavor. Absent for every section authored so far, and the only
+	 * value is `"timed-media"`, which pairs with `timedMedia` below.
+	 *
+	 * A discriminator on data, not a renderer selector: the host still picks the
+	 * layout tag, as every integration that renders a section already does. See
+	 * `docs/prds/timed-media-section-contract.md#delivery-attachment`.
+	 */
+	sectionType?: "timed-media";
+
+	/**
+	 * Cue timeline and playback policy for a timed-media section. Carries no media
+	 * payload — `stimulusRef` names the `class: "stimulus"` rubric block whose
+	 * passage supplies the time source, so the media keeps a Catalog Owner and its
+	 * captions, transcript and signed alternates resolve through the
+	 * accessibility-catalog rail.
+	 *
+	 * Ignored unless `sectionType` is `"timed-media"`.
+	 */
+	timedMedia?: TimedMediaSectionData;
+
 	sort?: string;
 }
 
@@ -371,6 +398,79 @@ export interface TestPart {
 	navigationMode: "linear" | "nonlinear";
 	submissionMode: "individual" | "simultaneous";
 	sections: AssessmentSection[];
+}
+
+// ============================================================================
+// Section and assessment session state
+// ============================================================================
+
+/**
+ * The host-facing persistence snapshot for one section, returned by
+ * `SectionControllerHandle.getSession()` and accepted by `applySession()`.
+ *
+ * Canonical here rather than in a player or the toolkit: the toolkit is
+ * complementary to a player rather than an alternative to one and sits beneath
+ * both entry paths, so a shape both need belongs alongside `AssessmentSection`.
+ * The delivery slices it carries are defined in this package too, which is what
+ * previously forced them to reference this shape in prose instead of types.
+ */
+export interface SectionControllerSessionState {
+	currentItemIndex?: number;
+	visitedItemIdentifiers?: string[];
+	itemSessions: Record<string, unknown>;
+	/**
+	 * Formative delivery state — Try counts and reveal state per item.
+	 *
+	 * Optional, and its absence is indistinguishable from a snapshot saved
+	 * before formative delivery existed, which is what keeps existing persisted
+	 * sessions valid. A slice with an unrecognized `version` is rejected whole
+	 * and formative state starts clean; `itemSessions` in the same snapshot is
+	 * unaffected, so a formative version bump never costs a learner responses.
+	 */
+	formative?: FormativeSectionSlice;
+	/**
+	 * Timed-media delivery state — media progress, cue visits and completions.
+	 *
+	 * Same posture as `formative`: optional, absence indistinguishable from a
+	 * pre-timed-media snapshot, and an unrecognized `version` rejected whole so
+	 * cue progress restarts while item sessions in the same snapshot are applied
+	 * untouched.
+	 */
+	timedMedia?: TimedMediaSectionSessionSlice;
+}
+
+export interface AssessmentSessionNavigationState {
+	currentSectionIndex: number;
+	visitedSectionIdentifiers: string[];
+	currentSectionIdentifier?: string;
+}
+
+export interface AssessmentSessionRealization {
+	seed: string;
+	sectionIdentifiers: string[];
+}
+
+export interface AssessmentSectionSessionState {
+	sectionIdentifier: string;
+	updatedAt: string;
+	/**
+	 * The full section snapshot. Typing this as anything narrower drops the
+	 * delivery slices without a compiler error at the point of loss.
+	 */
+	session: SectionControllerSessionState | null;
+}
+
+export interface AssessmentSession {
+	version: 1;
+	assessmentAttemptSessionIdentifier: string;
+	assessmentId: string;
+	startedAt: string;
+	updatedAt: string;
+	completedAt?: string;
+	navigationState: AssessmentSessionNavigationState;
+	realization: AssessmentSessionRealization;
+	sectionSessions: Record<string, AssessmentSectionSessionState>;
+	contextVariables?: Record<string, unknown>;
 }
 
 // ============================================================================

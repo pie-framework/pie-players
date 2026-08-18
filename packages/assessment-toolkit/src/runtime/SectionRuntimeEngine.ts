@@ -62,6 +62,11 @@ import {
 	createInitialEngineState,
 	type SectionEngineState,
 } from "./core/engine-state.js";
+import {
+	createPieLogger,
+	isGlobalDebugEnabled,
+} from "@pie-players/pie-players-shared";
+import type { MediaTimeSource } from "@pie-players/pie-players-shared/timed-media";
 import type { RuntimeRegistrationDetail } from "./registration-events.js";
 import { RuntimeRegistry } from "./RuntimeRegistry.js";
 import { createRuntimeId } from "./runtime-id.js";
@@ -112,6 +117,21 @@ interface RuntimeController extends SectionControllerHandle {
 	) => { eventDetail?: unknown } | null;
 	subscribe?: (listener: (event: SectionControllerEvent) => void) => () => void;
 	navigateToItem?: (index: number) => unknown;
+	attachMediaTimeSource?: (
+		source: MediaTimeSource,
+		options?: { origin?: "native-adapter" | "host" },
+	) => void;
+	detachMediaTimeSource?: (options?: {
+		origin?: "native-adapter" | "host";
+	}) => void;
+}
+
+/** What a media-time-source registration reaching the engine has to say. */
+export interface SectionRuntimeMediaTimeSourceAction {
+	renderableId: string;
+	action: "attach" | "detach";
+	source?: MediaTimeSource;
+	origin?: "native-adapter" | "host";
 }
 
 /** What a formative action reaching the engine has to say. */
@@ -134,6 +154,14 @@ interface EngineInitArgs {
 	attemptId?: string;
 	createDefaultController: () => Promise<RuntimeController> | RuntimeController;
 	onCompositionChanged?: (composition: unknown) => void;
+	/**
+	 * The controller event that caused a republish, for the few events the toolkit
+	 * has to act on rather than merely propagate — a timed-media policy that cannot
+	 * be enforced becomes a framework warning, and malformed cue data becomes a
+	 * framework error. Every other event reaches hosts through the composition
+	 * republish and the coordinator's own subscriptions.
+	 */
+	onControllerEvent?: (event: SectionControllerEvent) => void;
 }
 
 /**
@@ -149,6 +177,10 @@ export interface SectionRuntimeEngineHostArgs {
 	instrumentationHook?: InstrumentationHook;
 	now?: () => string;
 }
+
+const logger = createPieLogger("section-runtime-engine", () =>
+	isGlobalDebugEnabled(),
+);
 
 export class SectionRuntimeEngine {
 	private readonly registry = new RuntimeRegistry();
@@ -339,7 +371,16 @@ export class SectionRuntimeEngine {
 		this.replayRegisteredShellsIntoController(resolved);
 		args.onCompositionChanged?.(resolved.getCompositionModel?.());
 		this.unsubscribeController =
-			resolved.subscribe?.(() => {
+			resolved.subscribe?.((event) => {
+				// Isolated deliberately: the controller's emit loop catches per
+				// listener, so a diagnostic handler that throws would take the
+				// composition republish down with it and every cue and Try would stop
+				// reaching the cards — a failure with no symptom except a warning.
+				try {
+					args.onControllerEvent?.(event);
+				} catch (error) {
+					logger.warn("onControllerEvent handler threw", error);
+				}
 				args.onCompositionChanged?.(resolved.getCompositionModel?.());
 			}) || null;
 	}
@@ -522,6 +563,27 @@ export class SectionRuntimeEngine {
 		this.controller?.recordFormativeTry?.({
 			itemId: canonicalId,
 			outcomes: action.outcomes,
+		});
+	}
+
+	/**
+	 * Bind or release the section's Media Time Source.
+	 *
+	 * A pass-through, like `handleFormativeAction`: the engine routes, the
+	 * controller decides. Whether the registering renderable is the one
+	 * `stimulusRef` names is the controller's call, because the controller is what
+	 * validated `stimulusRef` in the first place.
+	 */
+	handleMediaTimeSource(action: SectionRuntimeMediaTimeSourceAction): void {
+		if (action?.action === "detach") {
+			this.controller?.detachMediaTimeSource?.({
+				origin: action.origin ?? "host",
+			});
+			return;
+		}
+		if (!action?.source) return;
+		this.controller?.attachMediaTimeSource?.(action.source, {
+			origin: action.origin ?? "host",
 		});
 	}
 

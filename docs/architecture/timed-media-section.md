@@ -4,6 +4,31 @@ Status: Architecture proposal / pre-PRD direction. This note captures the intend
 
 Tracking: this workstream is deliberately not tracked in an issue tracker. This note and the PRDs under [`../prds/`](../prds/) are the record. The `Status:` line here and in each PRD, plus the review sequence in [`../prds/shared-contracts/README.md`](../prds/shared-contracts/README.md), carry the current state. Nothing is stalled waiting on a ticket.
 
+## Implemented, 2026-08-17
+
+The contract this note handed off is built; [`../prds/timed-media-section-contract.md`](../prds/timed-media-section-contract.md)
+carries the record, including every implementation-time decision and the reasons.
+Three things in this note are now settled rather than open, and one is corrected:
+
+- **Item 3 of [Current State](#current-state) is answered, and not in the way it
+  leaned.** Cue and playback policy live in a pure `timed-media` module in
+  `players-shared` with live state in `SectionController` — not in `ToolPolicyEngine`,
+  whose decision domain is tool eligibility, and not in a layout. The layer-ownership
+  table below reads correctly if "the engine" is replaced by "the pure module plus
+  `SectionController`"; the toolkit's role is the event route and the composition
+  revision key, exactly as it is for formative delivery.
+- **The Media Time Source port is real**, exported from
+  `@pie-players/pie-players-shared/timed-media`, and
+  [`VideoStimulusHandle`](#stimulus-api-expectations) below is superseded by it. Two
+  deliberate departures from the element shape: `seekTo(seconds)` rather than a
+  writable `currentTime`, and `capabilities`.
+- **The Video.js decision stayed unmade and got cheaper.** A native `<video>` is
+  adapted in a few lines and no player dependency was added, so
+  [Video Player Dependency Decision](#video-player-dependency-decision) is still open
+  on its merits rather than by inertia.
+- **The 2026-08-05 objection in item 4 stands and was honoured**: nothing about cue
+  gating touches the canonical `Stage` vocabulary.
+
 ## Current State
 
 Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work and again 2026-08-15: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary, shipped media-rendering precedent and now theming — see [Revalidation, 2026-08-09](#revalidation-2026-08-09) and [Revalidation, 2026-08-15](#revalidation-2026-08-15).

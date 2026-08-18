@@ -1,35 +1,23 @@
-import type { SectionControllerSessionState } from "../services/section-controller-types.js";
+import type {
+	AssessmentSession,
+	AssessmentSectionSessionState,
+	AssessmentSessionNavigationState,
+	AssessmentSessionRealization,
+	SectionControllerSessionState,
+} from "@pie-players/pie-players-shared/types";
 import type { StorageLike } from "./TestSession.js";
 
-export interface AssessmentSessionNavigationState {
-	currentSectionIndex: number;
-	visitedSectionIdentifiers: string[];
-	currentSectionIdentifier?: string;
-}
-
-export interface AssessmentSessionRealization {
-	seed: string;
-	sectionIdentifiers: string[];
-}
-
-export interface AssessmentSectionSessionState {
-	sectionIdentifier: string;
-	updatedAt: string;
-	session: SectionControllerSessionState | null;
-}
-
-export interface AssessmentSession {
-	version: 1;
-	assessmentAttemptSessionIdentifier: string;
-	assessmentId: string;
-	startedAt: string;
-	updatedAt: string;
-	completedAt?: string;
-	navigationState: AssessmentSessionNavigationState;
-	realization: AssessmentSessionRealization;
-	sectionSessions: Record<string, AssessmentSectionSessionState>;
-	contextVariables?: Record<string, unknown>;
-}
+/**
+ * Re-exported so every existing import site keeps its specifier. These shapes are
+ * canonical in `@pie-players/pie-players-shared/types`; this module owns the
+ * storage helpers over them, not the shapes.
+ */
+export type {
+	AssessmentSession,
+	AssessmentSectionSessionState,
+	AssessmentSessionNavigationState,
+	AssessmentSessionRealization,
+};
 
 const ASSESSMENT_SESSION_VERSION = 1 as const;
 const STORAGE_PREFIX = "pie:assessment-session:v1:";

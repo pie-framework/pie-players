@@ -2,9 +2,22 @@ import type {
 	FormativeFeedbackReveal,
 	FormativeMasteryRollup,
 	FormativeSectionProjection,
-	FormativeSectionSlice,
 	FormativeTryOutcome,
 } from "@pie-players/pie-players-shared/formative";
+import type {
+	MediaTimeSource,
+	TimedMediaDegradation,
+	TimedMediaSectionProjection,
+	TimedMediaValidationError,
+} from "@pie-players/pie-players-shared/timed-media";
+import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
+
+/**
+ * Re-exported so every existing import site keeps its specifier. The shape is
+ * canonical in `@pie-players/pie-players-shared/types`, beside
+ * `AssessmentSection` and the delivery slices it carries.
+ */
+export type { SectionControllerSessionState };
 
 export interface SectionControllerKey {
 	assessmentId: string;
@@ -83,22 +96,6 @@ export interface SectionControllerRuntimeState {
 	 * subscribers observe the same sequence a live subscriber would have seen.
 	 */
 	loadedRenderables?: ReadonlyArray<SectionControllerLoadedRenderable>;
-}
-
-export interface SectionControllerSessionState {
-	currentItemIndex?: number;
-	visitedItemIdentifiers?: string[];
-	itemSessions: Record<string, unknown>;
-	/**
-	 * Formative delivery state — Try counts and reveal state per item.
-	 *
-	 * Optional, and its absence is indistinguishable from a snapshot saved
-	 * before formative delivery existed, which is what keeps existing persisted
-	 * sessions valid. A slice with an unrecognized `version` is rejected whole
-	 * and formative state starts clean; `itemSessions` in the same snapshot is
-	 * unaffected, so a formative version bump never costs a learner responses.
-	 */
-	formative?: FormativeSectionSlice;
 }
 
 type SectionControllerEventBase = {
@@ -250,6 +247,60 @@ export type SectionControllerSectionMasteryChangedEvent =
 		currentItemIndex: number;
 	};
 
+/**
+ * Cue state changed: a cue activated, a gate released, or the section's
+ * aggregate completion flipped.
+ *
+ * Deliberately not emitted for media position. A `timeupdate` fires about four
+ * times a second and moves nothing a layout renders — the media element draws its
+ * own clock — so position is recorded in the session slice and reported here only
+ * through the cue transitions it caused.
+ */
+export type SectionControllerTimedMediaCueChangedEvent =
+	SectionControllerEventBase & {
+		type: "timed-media-cue-changed";
+		/** The cue that activated in this transition, where one did. */
+		activatedCueIdentifier?: string;
+		/** The gate that released in this transition, where one did. */
+		releasedCueIdentifier?: string;
+		activeCueIdentifier?: string;
+		visitedCueIdentifiers: string[];
+		completedCueIdentifiers: string[];
+		/** Canonical ids of every item a visited cue has revealed. */
+		revealedItemIds: string[];
+		/** The gate holding playback, or `null`. */
+		gateCueIdentifier: string | null;
+		mediaCompleted: boolean;
+		aggregateComplete: boolean;
+		currentItemIndex: number;
+	};
+
+/**
+ * A playback policy the attached media time source cannot carry out, reported so
+ * the gap is visible rather than silent. Cues still fire and state is still
+ * recorded; only enforcement is lost.
+ */
+export type SectionControllerTimedMediaPolicyDegradedEvent =
+	SectionControllerEventBase & {
+		type: "timed-media-policy-degraded";
+		degradations: TimedMediaDegradation[];
+		currentItemIndex: number;
+	};
+
+/**
+ * Authored `timedMedia` this section cannot deliver — an unresolvable
+ * `stimulusRef`, a cue naming an item the section does not hold, a gate on
+ * correctness with no `onUnknownCorrectness`. The section still renders, as an
+ * ordinary section with every item visible, because cues that silently never fire
+ * is the failure mode this contract exists to avoid.
+ */
+export type SectionControllerTimedMediaInvalidEvent =
+	SectionControllerEventBase & {
+		type: "timed-media-invalid";
+		errors: TimedMediaValidationError[];
+		currentItemIndex: number;
+	};
+
 export type SectionControllerEvent =
 	| SectionControllerItemSessionDataChangedEvent
 	| SectionControllerItemSessionMetaChangedEvent
@@ -264,7 +315,10 @@ export type SectionControllerEvent =
 	| SectionControllerSectionErrorEvent
 	| SectionControllerFormativeTryRecordedEvent
 	| SectionControllerFormativeRevealChangedEvent
-	| SectionControllerSectionMasteryChangedEvent;
+	| SectionControllerSectionMasteryChangedEvent
+	| SectionControllerTimedMediaCueChangedEvent
+	| SectionControllerTimedMediaPolicyDegradedEvent
+	| SectionControllerTimedMediaInvalidEvent;
 
 export type SectionControllerEventType = SectionControllerEvent["type"];
 
@@ -462,6 +516,49 @@ export interface SectionControllerHandle {
 	 * there rather than calling this.
 	 */
 	getFormativeProjection?(): FormativeSectionProjection | null;
+	/**
+	 * Bind the section's Media Time Source — the only way it reaches media.
+	 *
+	 * Called by the stimulus card once it has a media element to adapt, and
+	 * callable directly by a host that supplies its own port: a third-party embed,
+	 * a remote-controlled player, anything that can report time. That is the point
+	 * of the port. Attaching replaces any previous source.
+	 *
+	 * The port declares `canPause` / `canRestrictSeeking`; where a capability is
+	 * missing the matching policy degrades to advisory and the controller emits
+	 * `timed-media-policy-degraded` rather than appearing to enforce.
+	 *
+	 * No-op on a section that carries no valid `timedMedia`.
+	 */
+	attachMediaTimeSource?(
+		source: MediaTimeSource,
+		options?: {
+			/**
+			 * `"native-adapter"` marks the stimulus card's own discovery, which never
+			 * displaces a source a host attached explicitly.
+			 */
+			origin?: "native-adapter" | "host";
+		},
+	): void;
+	/**
+	 * Release the current source. Cue state is kept; nothing advances it.
+	 *
+	 * A `"native-adapter"` detach is ignored while a host-attached source is live:
+	 * the stimulus card tears its adapter down whenever its content re-renders, and
+	 * that must not take a host's own player with it.
+	 */
+	detachMediaTimeSource?(options?: {
+		origin?: "native-adapter" | "host";
+	}): void;
+	/**
+	 * The section's timed-media projection — cues, enforcement, revealed items and
+	 * the gate currently holding playback.
+	 *
+	 * `null` when the section is not timed media or its `timedMedia` failed
+	 * validation. The same projection rides on the composition model, so layouts
+	 * read it from there rather than calling this.
+	 */
+	getTimedMediaProjection?(): TimedMediaSectionProjection | null;
 }
 
 export interface SectionControllerFactoryDefaults {

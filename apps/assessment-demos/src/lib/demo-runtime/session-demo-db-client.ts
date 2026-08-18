@@ -1,8 +1,11 @@
-export interface SectionSessionSnapshot {
-	currentItemIndex?: number;
-	visitedItemIdentifiers?: string[];
-	itemSessions: Record<string, unknown>;
-}
+import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
+
+/**
+ * The canonical section snapshot, not a local restatement of its first three
+ * fields: a demo that round-trips a narrower shape cannot validate hydration of
+ * the `formative` or `timedMedia` slices.
+ */
+export type SectionSessionSnapshot = SectionControllerSessionState;
 
 export interface AssessmentSessionSnapshot {
 	version: 1;

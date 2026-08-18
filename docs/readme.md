@@ -23,6 +23,7 @@ history and completed implementation plans are intentionally excluded.
 - [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
 - [`architecture/composition-context.md`](./architecture/composition-context.md) - How container-owned facts (heading depth, arbitration, scope) reach the descendants that need them
 - [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
+- [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what PIE builds regardless of consumer, what it refuses, and the seam obligations that make refusing defensible
 - [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
 - [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
 - [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections

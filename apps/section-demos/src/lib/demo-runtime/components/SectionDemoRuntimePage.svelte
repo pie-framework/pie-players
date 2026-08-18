@@ -49,7 +49,21 @@
 	import { createItemDataCalculatorIntegration } from '$lib/demo-runtime/item-data-calculator-tools';
 	import type { DemoRouteData } from '$lib/content/demo-load';
 
-	let { data }: { data: DemoRouteData } = $props();
+	let {
+		data,
+		/**
+		 * Opt into the interface-locale switcher.
+		 *
+		 * One flag rather than two, because the selector and the `locale` the player
+		 * receives cannot usefully disagree: a demo showing the control has to act on
+		 * it, and a demo passing a locale with no control cannot be switched back.
+		 * Left off, this page renders the English a host that supplies no locale gets.
+		 */
+		localeSwitcher = false
+	}: { data: DemoRouteData; localeSwitcher?: boolean } = $props();
+	// Empty rather than a default tag: unset is what a host most often sends, and
+	// the players resolve it to `en-US` without consulting the browser.
+	const playerLocale = $derived(localeSwitcher ? demoLocale() : '');
 	const demoRuntimeId = untrack(() => data.demo?.id ?? 'section-demo');
 	const itemDataCalculatorEnabled = untrack(() => data.demo?.id === 'tool-visibility');
 	const itemDataCalculatorIntegration = itemDataCalculatorEnabled
@@ -398,6 +412,7 @@
 	sectionId={sessionPanelSectionId}
 	{sourcePanelJson}
 	toolkitCoordinator={coordinator}
+	showLocaleSelect={localeSwitcher}
 	onReset={() => void resetSessions()}
 	onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
 	onSetVerticalLayout={() => (layoutType = 'vertical')}
@@ -437,7 +452,7 @@
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
-				locale={demoLocale()}
+				locale={playerLocale}
 			></pie-section-player-vertical>
 		{:else}
 			<pie-section-player-splitpane
@@ -457,7 +472,7 @@
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
-				locale={demoLocale()}
+				locale={playerLocale}
 			></pie-section-player-splitpane>
 		{/if}
 	{/key}

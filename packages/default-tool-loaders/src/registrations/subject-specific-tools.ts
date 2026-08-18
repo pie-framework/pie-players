@@ -22,6 +22,7 @@ import {
 	hasMathContent,
 	hasScienceContent,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveToolRegistrationName } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
@@ -104,7 +105,7 @@ export const graphToolRegistration: ToolRegistration = {
 					element: overlay,
 					mount: "after-buttons",
 					shell: {
-						title: this.name,
+						title: resolveToolRegistrationName(this, toolbarContext.i18n),
 						draggable: true,
 						resizable: true,
 						closeable: true,
@@ -201,7 +202,7 @@ export const periodicTableToolRegistration: ToolRegistration = {
 					element: overlay,
 					mount: "after-buttons",
 					shell: {
-						title: this.name,
+						title: resolveToolRegistrationName(this, toolbarContext.i18n),
 						draggable: true,
 						resizable: true,
 						closeable: true,

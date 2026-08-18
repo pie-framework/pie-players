@@ -21,6 +21,7 @@ import type {
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveToolRegistrationName } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createToolElement,
 	resolveToolTag,
@@ -196,7 +197,7 @@ export const themeToolRegistration: ToolRegistration = {
 					element: overlay,
 					mount: "after-buttons",
 					shell: {
-						title: this.name,
+						title: resolveToolRegistrationName(this, toolbarContext.i18n),
 						draggable: true,
 						resizable: false,
 						closeable: true,

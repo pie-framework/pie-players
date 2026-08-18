@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { getAllSectionDemos } from '$lib/content/sections';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
-	import { demoLocale } from '$lib/demo-locale.svelte';
-
-	// The locale chosen here travels into the demo, so a whole recipe can be
-	// entered in a second language rather than switched once inside it.
-	const localeQuery = $derived(demoLocale() ? `?locale=${demoLocale()}` : '');
 
 	const demos = getAllSectionDemos().sort(
 		(a, b) =>
@@ -36,7 +31,7 @@
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
 		{#each demos as demo}
 			<a
-				href="/{demo.id}{localeQuery}"
+				href="/{demo.id}"
 				class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1"
 			>
 				<div class="card-body">

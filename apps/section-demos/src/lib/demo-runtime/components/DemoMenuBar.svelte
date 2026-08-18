@@ -20,6 +20,14 @@
 		hasElementVersionTargets: boolean;
 		hasElementVersionOverrides: boolean;
 		isSessionHydrateDbDemo: boolean;
+		/**
+		 * Render the interface-locale selector.
+		 *
+		 * Off everywhere but the `interface-locale` demo. A site-wide control put the
+		 * chosen tag in the URL of every demo it was carried into, so a locale picked
+		 * to look at one recipe followed the reader into all the others.
+		 */
+		showLocaleSelect?: boolean;
 		selectedDaisyTheme: string;
 		daisyThemes: string[];
 		onReset: () => void;
@@ -54,6 +62,7 @@
 		hasElementVersionTargets,
 		hasElementVersionOverrides,
 		isSessionHydrateDbDemo,
+		showLocaleSelect = false,
 		selectedDaisyTheme,
 		daisyThemes,
 		onReset,
@@ -126,11 +135,13 @@
 	{/snippet}
 
 	{#snippet secondary()}
-			<LocaleSelect
-				locales={DEMO_LOCALES}
-				value={demoLocale()}
-				onSelect={setDemoLocale}
-			/>
+			{#if showLocaleSelect}
+				<LocaleSelect
+					locales={DEMO_LOCALES}
+					value={demoLocale()}
+					onSelect={setDemoLocale}
+				/>
+			{/if}
 			<label class="flex items-center gap-2">
 				<select
 					class="select select-sm select-bordered"

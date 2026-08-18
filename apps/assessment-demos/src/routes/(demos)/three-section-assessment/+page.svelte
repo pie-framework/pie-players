@@ -23,7 +23,6 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 		type AssessmentPlayerRuntimeHostContract,
 	} from "@pie-players/pie-assessment-player";
 	import type { PageData } from "./$types";
-	import { demoLocale } from "$lib/demo-locale.svelte";
 
 	let { data }: { data: PageData } = $props();
 
@@ -370,7 +369,6 @@ let instrumentationDebuggerElement = $state<any>(null);
 			attempt-id={attemptId}
 			section-player-layout={sectionLayout}
 			show-navigation="true"
-			locale={demoLocale()}
 			onassessment-route-changed={handleRouteChange}
 		></pie-assessment-player-default>
 	</section>

@@ -34,10 +34,12 @@ it does not advance the verification date; every other row still carries its
 earlier one.
 
 Content stylesheet delivery was re-checked against all three checkouts on
-2026-08-19: the fix shipped in `0.3.62`, not `0.3.61` as previously recorded;
-Host A has since dropped its build-config `components.css` entry and its dead
-`pie-theme-daisyui` dependency, moving it out of the duplicate-load state into
-the healthy one; and Host A and Host R both now resolve `^0.3.68` rather than
+2026-08-19: the installing code shipped in the `0.3.61` tarball even though its
+changelog entry sits under `0.3.62`, so `0.3.61` is the threshold a host is
+above or below; Host A has since dropped its build-config `components.css`
+entry and its dead `pie-theme-daisyui` dependency, moving it out of the
+duplicate-load state into the healthy one; and Host A and Host R both now
+resolve `^0.3.68` rather than
 the ranges previously recorded. This was a targeted correction of that one
 surface, not a full re-derivation, so it does not advance the verification
 date either.
@@ -552,12 +554,14 @@ The most fragile shared surface, because it changed underneath the hosts.
 `@pie-players/pie-theme/components.css?raw` and installs it into
 `document.head` at import time via `installContentStyles`
 (`packages/players-shared/src/ui/content-styles.ts`). That shipped in
-**0.3.62** (`14666b3`; the theme package's own 0.3.62 changeset is unrelated —
-item-player's changelog is the one that carries this entry, item-player's
-0.3.61 was an unrelated lockstep bump). `auditContentStyles` warns once per
-page when the host also loads its own copy, or when the host opts out and
-then loads nothing. The opt-out is `data-pie-content-styles="host"` on
-`<html>`.
+the **0.3.61** tarball, under `14666b3`, and is documented under **0.3.62**.
+The two disagree because 0.3.61 was published with the changeset held back, so
+item-player's 0.3.61 changelog shows only a lockstep dependency bump while that
+release's tree already contained the installing code. Version comparisons here
+use 0.3.61 as the threshold; a host reading only the changelog will over-pin
+to 0.3.62. `auditContentStyles` warns once per page when the host also loads
+its own copy, or when the host opts out and then loads nothing. The opt-out is
+`data-pie-content-styles="host"` on `<html>`.
 
 Consequences per host:
 
@@ -566,7 +570,7 @@ Consequences per host:
   `@scope (.item-content)`. The scoping is deliberate: `components.css` carries
   bare `h1`–`h6`, `table`, `th`, `#stimulus`, `#item`, `.table`, and
   `.text-center` selectors that bleed onto a surrounding host UI if applied
-  document-globally. On upgrading past 0.3.62 that host gets a *second,
+  document-globally. On upgrading to 0.3.61 or later that host gets a *second,
   unscoped* copy installed by the player, reintroducing exactly the bleed it
   scoped around, plus the duplicate warning. It needs the opt-out attribute at
   the same time as the version bump.
@@ -576,10 +580,10 @@ Consequences per host:
 - **Host R** imports no copy of its own either, so it is also in the healthy
   configuration.
 
-Host V is the only host still in the duplicate-risk state, and only until it
-bumps past `0.3.53`. Any further change to how content styles are delivered
-has to account for it and for the opt-out attribute the other two now rely on
-implicitly by absence.
+Host V is the only host still in the duplicate-risk state, and it enters that
+state the moment it bumps to `0.3.61` or later without the opt-out. Any further
+change to how content styles are delivered has to account for it and for the
+opt-out attribute the other two now rely on implicitly by absence.
 
 Three rules were removed from it outright: a `#stimulus` / `#item` pair of
 50%-wide left floats, a `.lrn_feature h3` margin override and

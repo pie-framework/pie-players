@@ -1,5 +1,857 @@
 # @pie-players/pie-players-shared
 
+## 0.3.68
+
+### Patch Changes
+
+- 2d8ce6a: Give `pie-assessment-player-default` an interface locale.
+  
+  The adoption pass covered the item player, the section players and the toolkit,
+  and left the assessment player out: it rendered its own section-to-section
+  navigation from four English literals — "Section {n} of {total}", "No sections",
+  "Back" and "Next" — and forwarded no locale to the section element it mounts, so a
+  host that set one got translated section chrome inside an untranslated assessment
+  frame.
+  
+  It now observes a `locale` attribute, resolves its own provider, and forwards the
+  tag to the section element. Its own provider rather than a context read, because
+  the navigation sits beside the section host rather than inside it, so there is no
+  published toolkit context above it. The catalog gains
+  `player.assessment.sectionPosition` and `player.assessment.noSections`; the two
+  buttons take the `common.back` / `common.next` that already existed.
+  
+  Additive and default-English: with no `locale` the provider stays on `en-US` and
+  the four strings render exactly what they rendered before, and the section element
+  gets no `locale` attribute rather than an empty one, which it would otherwise try
+  to resolve.
+- 27284f8: Collapse six implementations that existed twice or more, with no public surface
+  changes.
+  
+  **Media fragment enforcement.** `applyMediaFragment` writes a `#t=start,end` URI
+  that browsers honour at neither bound reliably, so each consumer enforced the
+  range itself — the signing region and recorded read-aloud audio holding two copies
+  of the same seek-forward-once and stop-at-end pair, which is how one of them came
+  to enforce only the end. `enforceMediaFragment` now owns the arithmetic and each
+  consumer supplies what reaching the end means: the signing region pauses, while
+  `playRecordedAudio` treats it as the clip finishing so the chunk sequence advances.
+  The end bound is now watched on `timeupdate` as well as by poll, so it is checked
+  at least as tightly as before in both consumers.
+  
+  **Tag-name helpers.** `print-player/src/tag-names.ts` was a copy of
+  `players-shared/src/pie/tag-names.ts`, itself the exported owner, down to
+  `toPrintHashedTag` — which exists in the owner *for print* and has no other caller.
+  Both copies carried their own test file. Print now imports from
+  `@pie-players/pie-players-shared/pie/tag-names`.
+  
+  **Backend config cloning.** The assessment player carried an 85-line field-aware
+  `BackendConfig` cloner duplicating the section player's, for a type the item player
+  owns; a newly nested field would have been cloned by one copy and shared by
+  reference in the other. It only ever needed a plain deep clone, and `cloneDeep`
+  already existed at `@pie-players/pie-players-shared/object`. The section player's
+  field-aware helpers stay: its merge logic consumes the pieces individually.
+  
+  **Overwide content wrappers.** The image and table wrappers shared an identical
+  `isInsidePieCustomElement` and near-identical wrap-and-parse bodies. Both now call
+  one engine in `security/wrap-overwide.ts`, declaring only what differs — selector,
+  wrapper tag and class, markup probe, and the accessible name, which is the real
+  divergence between an `alt` and a `<caption>`.
+  
+  **Context text extraction.** `extractTextContent` ran three byte-identical
+  traversals, one per level, each redeclaring `stripHtml`, the models normalization
+  and the model walk. The traversal is now shared and each level declares only which
+  fields it reads, so a new place text can hide is added once. Verified
+  output-identical against the previous implementation across fifteen context shapes,
+  including record-form `models` and every missing-config path.
+  
+  **Toolbar rendering.** Seven packaged capabilities inlined the same
+  `renderToolbar` body, varying only in overlay surface, window geometry and whether
+  the coordinator is re-handed on sync. That is why one rule — the shell title
+  tracking the interface locale — landed in three different spellings across three
+  files. They now call `renderOverlayToolbar`, which derives the catalog keys from
+  `toolId` as all seven already did.
+  
+  **Section-player shells.** The three layout shells plus the kernel host shell each
+  carried the same clamp bounds, `resolveConfiguredPx`, host-element walk,
+  narrow-breakpoint clamp, content-max-width pair and `matchMedia` watch. All of that
+  moves to `components/shared/section-player-shell-layout.svelte.ts`. Two things stay
+  duplicated because the compiler requires it, and the module says so: the `props`
+  map inside `<svelte:options customElement>` must be a statically analyzable object
+  literal, and a component's `export function` declarations are what become
+  custom-element methods.
+  
+  **SSML detection.** Polly sniffed for SSML twice with the same seven tags inline,
+  and Google kept a private copy of the standard set. `BaseTTSProvider.detectSSML`
+  now owns the standard elements and takes a provider's own vocabulary as an
+  argument, which is the part that legitimately differs: `<amazon:effect>` and
+  `<aws-*>` mean nothing to Google, and Google's list was missing none of the
+  standard tags but Polly's was missing `<say-as>` and `<mark>` — so Polly now
+  recognises two standard elements it previously treated as plain text.
+  
+  Covered by the existing suites plus the reflow, tabbed-layout and
+  vertical-passage-layout Playwright specs, which exercise the shared narrow-layout
+  watch at 320px and across stacked-collapse strategy switches.
+- d68c01b: Add dictionary and picture dictionary tools, and make the shell's focus trap
+  shadow-aware so a hosted tool's own controls are reachable by keyboard.
+  
+  `pie-tool-dictionary` and `pie-tool-picture-dictionary` are floating panels opened from
+  the toolbar, each with a term field and a results area. Neither ships an endpoint: the
+  corpus behind a dictionary is licensed per programme, so a host supplies one through
+  `endpoint` for the built-in POST shaping, or assigns the element's `lookup` property to
+  use its own client. With neither, the panel says no service is configured rather than
+  offering a field that fails silently.
+  
+  Neither declares a universal support id. A dictionary is a granted accommodation, and on
+  a vocabulary item it is construct-relevant, so handing it to every learner by default
+  would change what the item measures.
+  
+  Both accept a `term` from whatever selection affordance a host offers, and neither
+  depends on one. A sighted keyboard-only learner cannot originate a text selection in
+  non-editable content — Chromium does not extend one with Shift+Arrow there without caret
+  browsing, an OS toggle absent on mobile — so a selection-only dictionary is unreachable
+  for them. The panel's field is the keyboard route, which is why it exists.
+  
+  That route did not work until the focus trap was fixed. `createFocusTrap` collected
+  focusables with `querySelectorAll`, which stops at a shadow boundary; every tool in this
+  repo renders into `shadow: "open"`, so the trap saw only the shell's own chrome. Tab
+  cycled those nine controls and the hosted tool's content was unreachable by keyboard
+  entirely — for the calculator, graph, periodic table and theme panels as much as for
+  these two. Collection now descends into open shadow roots, and skips `tabindex="-1"`,
+  which belongs to programmatic focus rather than the tab order.
+  
+  A lookup distinguishes "no entry for this word" from "the service did not answer",
+  because collapsing them tells a learner their word is not real when the network is down.
+  A term longer than four words is refused without a request. Picture URLs that are not
+  `https:`, protocol-relative, or same-origin are dropped rather than rendered, and a
+  picture's caption becomes its `alt` — the picture is the definition, so it is never
+  decorative.
+  
+  Covered by unit tests over the lookup and focus-collection logic, and by
+  `packages/section-player/tests/section-dictionary-tools.spec.ts`, which drives the tool
+  from the keyboard alone in a browser.
+- 3f5e968: Offer a dictionary per language: `dictionarySpanish` and `pictureDictionarySpanish` join
+  the packaged set, and the registrations become factories so a host can compose any other
+  language.
+  
+  The language of a definition belongs to the learner, not to the content. The base
+  capabilities take their lookup language from the toolbar's content-alternate language,
+  which serves the reader who wants a definition in the language they are already reading —
+  but the learner who needs a Spanish gloss is reading an English passage, and one capability
+  following the content cannot express that. It also could not be granted separately: the
+  four support ids on `dictionary` are four names for one grant.
+  
+  Each variant claims its own PNP support ids — `spanishDictionary`,
+  `spanishPictureDictionary` and their glossary spellings — and shares none with the base
+  capabilities, so a programme grants Spanish independently of English in either direction.
+  Neither variant declares a universal support, on the same grounds as the base capabilities:
+  a dictionary on a vocabulary item is construct-relevant.
+  
+  A variant carries its corpus language and that language outranks the content-alternate
+  language, since a variant that followed the content would be indistinguishable from the
+  base capability on exactly the content it exists for. A language the host names in the
+  tool's render params still wins over both, so a host serving `es-MX` specifically can say
+  so. Both variants render the same elements as the capabilities they vary: two capability
+  ids, one panel implementation, one module load.
+  
+  `createDictionaryToolRegistration` and `createPictureDictionaryToolRegistration` are
+  exported for any other language, taking a `toolId`, `pnpSupportIds`, a `lookupLanguage` and
+  optionally a `messageKeyPrefix` for a host's own catalogue; a key that does not resolve
+  falls back to the registration's literal name. `dictionaryToolRegistration` and
+  `pictureDictionaryToolRegistration` remain exported and unchanged in behaviour, and are
+  now built from those factories.
+  
+  Interface strings for both variants ship in every declared locale.
+- 67f286c: Reword sixteen English interface strings that the i18n adoption deliberately
+  carried over unchanged, and settle one naming rule for the nine toolbar tool
+  buttons.
+  
+  Adopting the interface locale held English byte-identical on purpose, so that a
+  host who opted into nothing saw exactly the chrome they already had and no text
+  change hid inside a refactor. That left a set of strings keyed but not fixed. This
+  is that follow-up, and it is a text change with nothing else in it.
+  
+  Most of them are accessible names, which is why they are worth the entry: a screen
+  reader reads them aloud, and a host may be asserting the exact string.
+  
+  - `tools.protractor.toolA11y` no longer ends "Current rotation displayed via
+    Moveable.js". A learner does not need the name of the drag library, and the
+    clause said nothing about how to use the tool. The keyboard instructions in
+    front of it are unchanged apart from `PageUp/PageDown` becoming "PageUp or
+    PageDown", which a screen reader reads as words rather than a path.
+    `tools.ruler.applicationA11y` carries the same instruction and gets the same
+    treatment.
+  - `tools.graph.toolA11y`, `tools.graph.canvasA11y` and
+    `tools.periodicTable.toolA11y` were Title Case with a hyphen standing in for a
+    break ("Graph Tool - Draw points and lines…"). Now sentence case with an em
+    dash. The periodic table's also said "Click elements", which excludes keyboard
+    and touch, and now reads "select an element to view its details".
+  - `tools.textToSpeech.toolA11y` was "Text-to-Speech Tool", now "Text-to-speech
+    tool", matching every other `toolA11y`.
+  - The four `tools.graph.mode*Hint` strings capitalised the word after the colon
+    ("Point: Click on the grid"). Now lowercase, as running text.
+  - Five `debug.tts.*` messages spelled the abbreviation "TTS" at a learner. They
+    now say "text-to-speech", or drop the word where the surrounding sentence
+    already establishes it.
+  - `debug.liveUpdatesDisconnected` and `debug.tts.applying` used three ASCII dots
+    where `common.loading` uses an ellipsis. Now consistent.
+  
+  One key pair is removed rather than reworded. `tools.ruler` carried three forms of
+  each unit name because the pre-adoption code rendered three: Title Case on the
+  button, lowercase in the announcement, and the raw `'inches' | 'cm'` state token in
+  the accessible name and the image alt — so the same tool said "inches" for one unit
+  and "cm" for the other, in a string a screen reader speaks as two letters. The
+  abbreviation pair is gone and both of those now interpolate the spelled-out
+  in-sentence form, leaving two forms per unit instead of three.
+  
+  ## Toolbar button accessible names
+  
+  Every toolbar tool button is a toggle: the toolbar mirrors its active state onto
+  the button as `aria-pressed`. Two of the nine names contradicted that by naming an
+  action — "Open ruler tool" announced as "Open ruler tool, toggle button, pressed"
+  once the ruler was open. The rest used a `Name - Description` form whose hyphen a
+  screen reader renders as an unpredictable pause, and two of them collided outright:
+  `tools.highlighter` and `tools.annotationToolbar` both resolved to "Highlight
+  text" for different buttons.
+  
+  All nine now follow one rule. The name contains the button's visible tooltip
+  verbatim, per WCAG 2.5.3 Label in Name, and adds a comma-separated purpose clause
+  only where the tooltip alone does not identify the tool — so "Ruler" and
+  "Protractor" stand alone, while "Theme" becomes "Theme, change colors and
+  contrast". No name encodes an action, because the pressed state already carries it.
+  `tools.answerEliminator.buttonA11y` previously did not contain its own tooltip
+  ("Strike Through") at all, which is the 2.5.3 failure rather than a style
+  preference.
+  
+  `tools.annotationToolbar.tooltip` changes from "Highlight" to "Annotate": two
+  toolbar buttons carrying the same *visible* label is a defect, and this tool also
+  underlines, removes and clears.
+  
+  The calculator's name no longer swaps between "Open …" and "Close …" as it opens.
+  Three unlocalized strings surfaced while making that change, all of them built by
+  splicing a raw type token into an English template, and all of them rendered:
+  `Close ${name.toLowerCase()}` as the toolbar button's tooltip, `Close ${type}
+  calculator` as the inline calculator's tooltip, and `${type} calculator opened`
+  in the inline calculator's live region. All three now resolve from the catalog,
+  which gains a name and two announcements for each of the three variants the Desmos
+  provider implements — including `graphing`, which the inline element accepts from
+  its host and which the old template rendered while the catalog had no key for it —
+  and drops the six open/close keys the swap needed.
+  
+  ## nl-NL
+  
+  The rewordings above leave it alone: a translation was never obliged to reproduce
+  an English flaw, and it already rendered the protractor's help without the
+  Moveable.js clause. The button naming rule is not an English matter, so all nine
+  Dutch `buttonA11y` values move with their English counterparts, and
+  `tools.annotationToolbar.tooltip` becomes "Aantekenen" for the same reason it
+  becomes "Annotate". Both catalogs stay complete.
+  
+  ## Downstream impact
+  
+  This is the only part of the interface-locale work that changes what a host
+  renders with no `locale` supplied. Host A is the affected consumer — it drives
+  live delivery with the toolbar placed — and Host R renders the same buttons.
+  Neither asserts, styles, nor selects on any of the retired strings, so the
+  exposure is screen-reader output only. See `docs/integrations/consumer-api-dependencies.md`.
+- 55016b5: Fold the player error banners into the palette when a colour scheme asks for one.
+  
+  The three banners — two in `players-shared`'s `PieItemPlayer`, one in
+  `pie-item-player` — were painted with a pinned `#d32f2f` edge, `#ffebee` fill and
+  `#c62828` ink. That was never a contrast failure, since fill and ink were pinned
+  together and measure about 6.2:1 wherever they render. It was a palette failure: a
+  learner on White on Black or Yellow on Navy met a pale pink box in the middle of
+  the scheme they chose in order to be able to read the screen.
+  
+  All three now use `--pie-fixed-hue-collapse`, exact at 0% for every Base Theme and
+  folded at 100% for every scheme. The collapsed ink is `--pie-text`, not
+  `--pie-incorrect`: the error hue against this tint drops to 4.14:1 under Black on
+  White, where the page's own ink holds at 6.18:1 or better on all ten schemes. That
+  pair is now a declared contrast relationship, `incorrect feedback surface text`, so
+  `assertCanonicalThemeDefinitions` keeps it true for any scheme added later rather
+  than it having been measured once.
+  
+  `--pie-incorrect-secondary` is a tint of the page, roughly 1.1:1 from it, so the
+  collapsed banner reads as a banner by its `--pie-incorrect` edge — which clears
+  4.53:1 against every scheme's page. This is the division of labour the periodic
+  table's collapsed cells already rely on.
+  
+  The colours moved out of the inline `style` attributes into each component's
+  `.pie-player-error` rule. An inline declaration outranks any stylesheet, so a host
+  could not have restyled the banner without `!important`; it now behaves like the
+  rest of the players' chrome.
+- fc71c91: Add formative delivery: Try state, feedback reveal, and section mastery.
+  
+  PIE could score an item in the browser and could not deliver a formative one. The
+  scoring half already shipped — `scorePieItem(...)` calls each element
+  controller's `outcome(model, session, env)` under `mode: "evaluate"`, and
+  `pie-item-player.provideScore()` exposes that imperatively. What was missing was
+  the delivery state around it: how many times a learner may submit one item, when
+  its feedback becomes visible, and how a section reports how much was mastered.
+  This adds exactly that and no new evaluation machinery. `provideScore()` is
+  called, not modified, and keeps its `pie-item contract compatibility` exemption
+  unchanged.
+  
+  The vocabulary is **Try** — one submitted-for-checking pass over one item —
+  deliberately not "attempt". `TestAttemptSession` is the assessment
+  administration and `TestAttemptItemSession.attemptCount` counts distinct PIE
+  session ids for an item, so a third "attempt" at the item level would be read as
+  one of those. Try maps cleanly onto QTI 3's `numAttempts`, and the policy fields
+  map onto `qti-item-session-control`: `maxTries` ↔ `max-attempts`
+  (`"unlimited"` ↔ `0`), `feedback` ↔ `show-feedback` / `show-solution`. QTI's
+  `allow-comment`, `allow-skipping` and `validate-responses` are not represented,
+  because there is no candidate-comment surface, no skip gate and no
+  response-validation step to honour them with, and declaring fields PIE ignores is
+  worse than omitting them. No conformance is claimed; the mapping exists so a
+  `pie-qti` adapter inherits the vocabulary instead of reinterpreting it.
+  
+  Authoring is one optional field. `AssessmentSection.formative` sets the section
+  default and `AssessmentItemRef.formative` overrides it field by field — the order
+  QTI 3 uses for `qti-item-session-control` on an item ref versus its section.
+  Absent, or `enabled: false`, and delivery is byte-identical to before: no
+  control, no state, no env override, and `getSession()` does not even carry the
+  key.
+  
+  Feedback reveal is a projection rather than a UI. PIE renders no feedback of its
+  own; a revealed item gets `mode: "evaluate"` over the section env — with
+  `role: "instructor"` under `feedback: "solution"`, the element convention for
+  also showing the authored correct response — and the element draws the rest.
+  `env.role` has never been an authorization boundary: it selects a rendering, the
+  host decides whether a learner may see solutions by setting the policy, and PIE
+  enforces that by not projecting the role otherwise. This is also the per-item
+  `env` seam the section runtime never had — `PieSectionPlayerBaseElement` derives
+  one section-wide env and hands the same object to every card, so revealing one
+  item while its neighbours stay editable was previously impossible. The override
+  is applied at the single point item params are built, so no layout gains an
+  env-resolution order, and because `applyPlayerParams` diffs env by signature the
+  override reaches a mounted player as a property assignment — the item keeps its
+  session across a reveal and across the retry that withdraws it. A host's
+  `resolveBackend` callback deliberately keeps seeing the section env: which
+  delivery backend serves an item is not a function of whether its feedback is on
+  screen, and passing the override would let a reveal flip a host's backend
+  selection mid-session.
+  
+  Correctness is derived, never authored, and has four values. Aggregation follows
+  the policy the persisted API scoring path already documents — one scored outcome
+  used directly, several averaged as normalized fractions — so a browser-derived
+  formative result and a server-derived score do not disagree about what a
+  multi-element item is worth. The fourth value carries the weight: an item holding
+  a rubric element, or one whose bundle exposes no `outcome`, is `"unknown"` rather
+  than `"incorrect"`, and the mastery rollup excludes it from its denominator
+  instead of reporting a false negative. An *untried* item is not excluded — nothing
+  yet says it cannot be scored — which is what keeps a section from reading as
+  mastered after one correct answer.
+  
+  Runtime ownership follows the existing shape rather than adding a layer.
+  `SectionController` owns the live state because it already owns the equivalent
+  aggregate: per-item completion keyed by canonical id, rolled up and emitted on
+  change. Try state is the same shape with a different predicate, so splitting it
+  out would put two rollups over one item set in two packages. The pure policy,
+  aggregation, reducer and rollup live in
+  `@pie-players/pie-players-shared/formative` — no DOM, no timers, no element
+  registry — so the contract is testable without a browser and an adapter can
+  import it without pulling in a player. The projection rides on
+  `SectionCompositionModel`, which the runtime republishes on every controller
+  event, so a recorded Try reaches the cards through the channel that already
+  exists; no new host-facing event channel was added. Three controller events join
+  the union. `formative-try-recorded` reports a Try; `formative-reveal-changed`
+  reports every reveal transition a Try did not cause — a learner dismissing
+  feedback, a host forcing or withdrawing a reveal — with `source` naming which; and
+  `section-mastery-changed` emits on rollup change exactly as
+  `section-items-complete-changed` does for completion.
+  
+  A host can drive it too, through the handle it already uses for
+  `getSession`/`applySession`: `revealFormativeItem({ itemId, feedback })` and
+  `hideFormativeItem({ itemId })` are host authority for a teacher-driven "show the
+  answer". They spend no Try, ignore the Try budget and `revealOn`, and work on an
+  item with no Try yet, because none of those bound a decision the host has already
+  taken; `retryFormativeItem` stays the learner action and keeps respecting the
+  budget. `feedback` is stated rather than defaulted, because a reveal under
+  `feedback: "none"` would project nothing, and a learner retry clears it so a
+  forced solution does not silently upgrade every later reveal on that item. No new
+  element surface: every layout's `getSectionController()` already returns this
+  handle, and forwarding four methods through layout → kernel → scaffold → base
+  would be passthrough for nothing.
+  
+  `FormativeTryOutcome` retains the raw per-element outcomes as `elementOutcomes`,
+  for a host rendering its own feedback instead of the element's evaluate-mode
+  rendering. Empty slots are dropped — every real entry identifies its own model,
+  and a `null` hole in a persisted array carries nothing a host could use — while
+  `totalElementCount` still counts them. A trade: these persist inside the session
+  slice, so a snapshot grows by whatever the elements put in their outcomes, and
+  some include a scoring trace.
+  
+  The learner action takes the route `pie-item-session-changed` and
+  `pie-content-loaded` already take: the item card owns the control because it owns
+  the item player node, and `provideScore()` is an imperative method on that node.
+  It reports the outcomes it got rather than interpreting them, over a new internal
+  `pie-formative-action` event, and the controller derives correctness — one
+  aggregation policy wherever a Try is recorded. The reducer is a no-op when an item
+  cannot currently be checked, so a double submit costs nothing on either side.
+  
+  One thing that republish needed, found only in a browser: the toolkit coalesces
+  composition emits behind a revision key over section id, current item,
+  renderables and item sessions. Recording a Try changes none of those, so
+  formative state joins that key. Without it the controller holds correct state and
+  the card never learns its feedback was revealed — a failure no unit test can see,
+  which is why this ships with Playwright coverage of the round trip rather than
+  three more unit tests.
+  
+  State persists through `SectionControllerSessionState.formative`, versioned and
+  hydratable. Existing snapshots stay valid: the slice is optional and its absence
+  is indistinguishable from a pre-formative save. A slice whose version this build
+  cannot read is rejected whole and formative state restarts, while item sessions in
+  the same snapshot are applied untouched — a formative version bump must never cost
+  a learner their responses.
+  
+  The control satisfies WCAG 2.2 AA: a native `<button>` in tab order, a polite live
+  region present in the DOM before it has content so the first announcement is not
+  lost (4.1.3), focus held on the control rather than moved to the feedback above it,
+  correctness carried in words and never by colour (1.4.1), the control removed
+  rather than disabled once Tries are spent so no focusable element is left without
+  an explanation, and 24×24 minimum target size (2.5.8) painted only from `--pie-*`
+  chains so it follows every base theme and colour scheme. The control is also
+  never disabled while a check is in flight — the keyboard test caught that
+  disabling the focused element drops focus to the document body, leaving a learner
+  who pressed Enter to tab back to a control whose label had changed under them.
+  `aria-busy` carries the state instead, and re-entry was already dropped by the
+  handler and by the reducer.
+  
+  Consumer impact: audited against both client-facing host checkouts, and neither is
+  exposed. One imports only `pie-item-player` and `pie-theme`, neither of which this
+  touches. The other drives `pie-section-player-splitpane` but declares every
+  `@pie-players` module as `export {}` in its own `typings.d.ts`, so it takes no
+  types at all and the widened `SectionControllerEvent` union is invisible to its
+  compile. At runtime it calls `waitForSectionController`, `getSession`, `persist` and
+  `applySession` with optional-call syntax; `getSession()` returns its base object
+  unchanged unless a section carries `formative`, so its snapshots stay
+  byte-identical. Its template binds only `(toolkit-ready)`, so the new internal
+  `pie-formative-action` event reaches no listener of its own, and its CSS targets
+  `pie-section-player-item-card` as an element with no positional or `data-region`
+  selectors — the card's DOM is unchanged when formative is off, since the footer
+  `<div>` already existed and stays empty. The composition revision key gained a
+  formative component, but for content with no `formative` policy the added
+  component is constant, so emission cardinality is unchanged.
+  
+  Every type member added is optional. `AssessmentSection`, `AssessmentItemRef`,
+  `SectionControllerSessionState`, `SectionControllerHandle` and
+  `SectionCompositionModel` gain optional members, and
+  `@pie-players/pie-players-shared/formative` is a new export path. On
+  `SectionCompositionModel.formative` absent reads exactly as `null`, so a host
+  layout, an adapter or a test double assembling that model never has to declare a
+  feature it does not use — the projection is PIE-produced and PIE-consumed, and
+  requiring the key bought nothing but a compile error for everyone else. The one
+  addition no default covers is the widened `SectionControllerEvent` union, where a
+  host switching exhaustively with no `default` gains three unhandled variants.
+  
+  Sequencing, and why this came before timed media: a cue's interesting gate
+  condition is "answered correctly", which needs the per-item evaluation seam this
+  adds. Building cues first would have forced `responded` as the only expressible
+  condition and then revised a shipped section slice when correctness arrived.
+  Recorded as `docs/adr/0001-formative-delivery-before-timed-media.md`; the contract
+  is `docs/prds/formative-delivery-contract.md`. Branching is explicitly out of
+  scope — Try state is its prerequisite, and folding it in would have swallowed a
+  contract that is otherwise three additions to the section layer.
+- 00b8a71: Localize player and tool chrome, with Dutch as the first complete locale.
+  
+  A host sets one attribute — `locale="nl-NL"` on `pie-item-player` or a
+  section-player layout element, or `runtime.locale`, which wins — and every string
+  the suite renders itself follows it: toolbar labels, tool panels, player status
+  and error text, formative controls, live-region announcements, `aria-label`s.
+  Unset, the rendered output is byte-identical to before, including every tool
+  button's accessible name. The graceful default is `en-US` and never
+  `navigator.language`: under fixed lockstep patch-only versioning a
+  rendered-string change reaches live delivery on a host's next install with no
+  build signal on their side, so a host that opts into nothing must keep exactly
+  the chrome it has.
+  
+  Interface locale is the deployment's fact and no element can know it, so it travels
+  as a composition context rather than through `model`: the toolkit publishes the
+  resolved locale and one provider on its runtime context, and every capability
+  resolves both through `connectToolRuntimeContext`. The change signal is the
+  context's own republish, which matters because a catalog is a dynamic import —
+  without a reactive read every label would pin the English that rendered a tick
+  earlier, the same silent failure `composition-context.md` records twice. A
+  component that finds no publisher falls back to an English-only default provider
+  rather than rendering raw message keys, which is what keeps tools working in
+  `print-player`, in Studio preview and in a bare harness.
+  
+  Content language is untouched and remains a separate concern on a separate
+  channel. QTI 3's implementation guide states the independence directly: a
+  candidate may choose an interface language which may or may not also be the
+  language of the content. Conflating the two is why classic PIE renders Spanish
+  widget chrome for a Spanish item.
+  
+  `@pie-players/pie-players-shared/i18n` is rebuilt around that. Catalogs are
+  TypeScript modules keyed by full BCP-47 tag, replacing JSON keyed by bare
+  language: the English catalog's shape now generates the `MessageKey` union, so a
+  mistyped key is a compile error instead of a key rendered on screen — a key
+  assembled at runtime has to be asserted through `dynamicMessageKey()`, which is
+  greppable and pairs with `hasKey()` so a miss falls back to a literal — and `tsc`
+  compiling a `.ts` catalog removes the `with { type: "json" }` import-attribute
+  hazard that already broke every non-English locale once under Node's ESM loader.
+  Requests resolve through RFC 4647 lookup and then primary-subtag widening, so
+  POSIX `nl_NL`, bare `nl` and regional `nl-BE` all reach the `nl-NL` catalog;
+  `SimpleI18n` gains `plural()` — `Intl.PluralRules` alone, so Arabic's
+  `zero`/`two`/`few`/`many` and Polish's `few`/`many` are reachable — plus
+  `withLocale()` for two players rendering different locales from one provider, and
+  it no longer writes `lang`/`dir` to `document.documentElement`, which an embedded
+  player has no business doing. Components stamp their own host instead.
+  
+  The module split is what keeps this off the wire. `i18n/types` is type-only and
+  erases; `i18n/provider` carries the 5 KB English catalog; the dynamic loader map
+  lives in `i18n/catalogs`, which players import and tools do not. Since every
+  player and tool `vite.config.ts` sets `external: []`, that boundary is the
+  difference between one locale chunk and eighteen tool bundles each carrying a
+  catalog they will never load.
+  
+  `ToolRegistration` gains optional `nameKey` and `descriptionKey` beside the
+  still-required `name` and `description`. The keys are supplied by
+  `default-tool-loaders`, which owns the packaged capability set, and a
+  host-authored registration with no keys renders its `name` verbatim.
+  
+  The English catalog does enumerate a `tools.<capability>` namespace per packaged
+  capability, so `default-tool-loaders` is not the only file naming them.
+  `check:capability-neutrality` is unaffected: what it protects is core not
+  branching on a capability id or granting behaviour from one, and a message key
+  does neither — it is inert text, resolved by whoever holds the id. Splitting the
+  catalog per capability would satisfy the letter of it and cost both the
+  single-reference coverage check and the bundle boundary that keeps locale strings
+  out of eighteen tool bundles.
+  
+  English output is byte-identical. Every English catalog value reproduces the
+  literal it replaced exactly, punctuation and inconsistencies included, because
+  fixed lockstep patch-only versioning puts a reworded string into a host's live
+  delivery on their next install with no signal on their side — and most of what
+  this change touches is accessible names and live-region announcements, where a
+  host may be asserting exact text. Where the pre-adoption code rendered the same
+  concept in two forms, the catalog carries both rather than assembling one by
+  interpolation: `tools.ruler` has three forms of each unit name, matching the Title
+  Case button label, the lowercase announcement and the raw state token in the
+  accessible name. Improving any of these strings is a separate change with its own
+  entry.
+  
+  `en-US` and `nl-NL` are complete at 402 keys, and they are the only locales
+  shipped. The pre-adoption `es`/`zh`/`ar` catalogs are deleted rather than
+  re-keyed: 76 of their 142 keys named UI this codebase does not render — a
+  section-builder, an assessment shell, 25 Desmos internals Desmos localizes
+  itself, colour-scheme names the theme registry owns — while the strings actually
+  on screen had no keys at all; the published `dist` omitted
+  `with { type: "json" }` on exactly the three dynamic locale imports, so none of
+  them could load outside a bundler in any version through `0.3.67`; and nothing
+  read them, here or in any consumer checkout. Machine-filling the gap would ship
+  strings nobody has read, to learners.
+  
+  `check:i18n-coverage` now runs in the pre-commit and CI gates: a locale declared
+  complete must stay at 100%, a locale mid-translation can be listed as carried and
+  is reported without gating, and either fails on a key English no longer defines.
+  
+  The pre-adoption i18n layer is replaced rather than versioned alongside.
+  `BUNDLED_TRANSLATIONS`, `loadTranslations`, `SimpleI18n.tn()` and two Svelte
+  composables are gone. A grep of all three consumer checkouts finds no call site
+  for any of them outside build caches — the layer was published complete and
+  unused, which is what made replacement the right move instead of a second
+  parallel implementation of the kind that produced `I18nService` as a copy of
+  `SimpleI18n`.
+- 6e1e053: Match catalog card languages by BCP-47 lookup, and fix lazy locale loading under Node.
+  
+  Catalog language matching was strict string equality, so a card the Learnosity
+  transform emits as POSIX `es_ES` matched no request for BCP-47 `es-ES`. It
+  surfaced only through the final no-language-constraint rung, and only when nothing
+  else of its type existed — with an English card also present the Spanish one was
+  unreachable. `es-MX` likewise never reached a card tagged plain `es`. This is the
+  defect the audio-accommodations PRD describes as resolution by accident, and it is
+  the shape that passes every test written against one language.
+  
+  `@pie-players/pie-players-shared/i18n/language-tags` is a new entry point carrying
+  `normalizeLanguageTag`, `languageTagsEqual`, `languageTagLookupSequence` and
+  `findBestLanguageMatch`. It holds no locale data and touches no DOM, and it is
+  deliberately not reachable through `./i18n`, whose index re-exports the loader and
+  therefore pulls the eagerly-bundled English catalog — the catalog resolver and TTS
+  voice selection both need tag matching and neither wants a message catalog.
+  
+  `AccessibilityCatalogResolver` now expands each requested tag into its RFC 4647
+  lookup sequence, one rung per truncation, preserving the existing most-specific-first
+  ordering and the rule that form is preferred within a language rung and never
+  across one. A sibling region is still never substituted: `es-ES` is not an answer
+  to an `es-MX` request, because offering the wrong locale is worse than offering
+  nothing. `getAllAlternatives` keys on the normalized tag, so two syntaxes of one
+  language collapse into the single alternate resolution can actually return rather
+  than reporting two.
+  
+  Separately, `loadTranslations` could only ever load English. The static English
+  imports carried `with { type: "json" }` and the lazy per-locale imports did not,
+  so Node's ESM loader rejected every other locale with
+  `ERR_IMPORT_ATTRIBUTE_MISSING` — which the surrounding `catch` reported as
+  "Translation files not found", sending readers to look for files that were sitting
+  in `dist` the whole time. Bundlers infer the type from the extension and so were
+  unaffected, which is why English-only use never showed it, but `players-shared` is
+  on the publish policy's `nodeSafe` list. The attributes are now present on every
+  import and the failure preserves its `cause` instead of substituting a misleading
+  message.
+  
+  `I18nService` was a near-verbatim second copy of `SimpleI18n` — same fields, same
+  lookup chain, same `selectPluralForm` — and is now a delegating wrapper that adds
+  only the toolkit's logging and `initialize()`. `detectBrowserLocale` is exported
+  from `players-shared` and has one implementation instead of two. Both public entry
+  points behave as before.
+- e94b097: Declare the players-shared modules that siblings resolve from source in one place,
+  and add the gate that keeps them declared.
+  
+  `components`, `ui/use-promise` and `ui/use-zoom-compensation` carry Svelte runes or
+  are components, and this package builds with plain `tsc`, whose config excludes
+  both — so they never reach `dist` and three sibling Vite configs each aliased the
+  source with their own copy of the path. The set of source-resolved modules was
+  whatever each build file happened to list.
+  
+  `svelte-source-aliases.ts` now holds that list, at the package root so it stays out
+  of `dist` and unpublished. These paths are deliberately still absent from the
+  `exports` map: putting them there means publishing the source and making
+  `PieItemPlayer.svelte` and the rune helpers public API, which is a consumer-facing
+  decision rather than a packaging detail.
+  
+  `check-undeclared-subpaths` is the new gate. Every cross-package `@pie-players/*`
+  import must name a subpath the owner declares, with the three source-resolved ones
+  as a visible allowlist; it also checks that a config spelling an alias out agrees
+  with the declaration, so the copies cannot drift back apart. Nothing enforced this
+  before — `check-consumer-boundaries` walks `apps/` only, which is how the three
+  tables accumulated.
+- 7c9fb28: One canonical section session snapshot
+  
+  `SectionControllerSessionState` and the four assessment-session shapes now live in
+  `@pie-players/pie-players-shared/types`, beside `AssessmentSection` and the
+  delivery slices the snapshot carries. `pie-assessment-toolkit` and
+  `pie-assessment-player` re-export them, so every existing import specifier keeps
+  working.
+  
+  This replaces five byte-identical copies of a three-field `SectionSessionSnapshot`
+  — one in `pie-assessment-player` and one in each of four demo apps — that declared
+  `currentItemIndex`, `visitedItemIdentifiers` and `itemSessions` and omitted the
+  `formative` and `timedMedia` slices. No data was lost at runtime: both
+  `upsertSectionSession` implementations pass the snapshot through by reference. The
+  cost was that the assessment layer could not read the slices it was already
+  persisting without a cast, so a cross-section mastery rollup had no typed state to
+  build on.
+- 979e643: Stop a PIE element's own `session-changed` at the item player boundary, so one
+  name carries one contract.
+  
+  A PIE element emits `session-changed` on itself with the element contract's
+  metadata detail — `complete`, `component`, and no `session` — as its signal to the
+  player. The player listens for it, resolves the session, and re-emits a canonical
+  `session-changed` from its own host. The element's event kept bubbling, so a host
+  listening on `<pie-item-player>` received two events per change under one name: the
+  canonical one carrying `detail.session`, then the element's carrying
+  `detail.session === undefined`. A host reading the last value it saw got nothing,
+  and the undefined was indistinguishable from `resolveSessionChangedForwarding`'s
+  deliberate `session: null` plus `intent: "metadata-only"` signal, which is the
+  supported way to say "metadata changed, the response did not".
+  
+  Now every `session-changed` that leaves the player is readable without guessing:
+  either it carries a session, or it declares `intent: "metadata-only"` with an
+  explicit null. `event.stopPropagation()` runs before the re-entry guard so the raw
+  event does not escape on the early-return paths either. The player's own
+  re-dispatch is a separate event object and is unaffected.
+  
+  No behavioural risk to the known consumers, all of which were checked. The quiz
+  engine player's payload handler is fed by section-player's item-event coordinator
+  (`item-session-data-changed`), not by the DOM event; its DOM handlers are
+  `@HostListener('document:session-changed')` and `document:item-session-changed`,
+  which take no argument, read no detail, and only trigger a snapshot and persist —
+  and the canonical event still reaches `document`, so they still fire.
+  knowledge-check does not reference `session-changed` at all. Inside this repo,
+  section-player's `ItemShellElement` carries fingerprint and cross-shell dedupe
+  specifically to absorb duplicate session events; it now has one fewer to discard.
+  The players-shared item renderer is never nested inside another instance — a
+  stimulus layout is one instance rendering both passage and item — so stopping
+  propagation at its root cannot hide an inner element's change from an outer player.
+  
+  Covered by `packages/item-player/tests/item-player-session-changed-contract.spec.ts`,
+  which fails without the change.
+- 1d9f2d3: One term-lookup implementation behind both dictionaries, and three defaults that no longer need a host to know about them.
+  
+  The two dictionaries shipped as near-copies: term normalisation and the headword guard were character-identical, the POST clients differed only in error strings, and each panel carried its own copy of the same state machine. That is now one module, `@pie-players/pie-players-shared/tools/term-lookup`, and each tool supplies only what a result of its own carries — an entry, or a picture. The subtle part, a superseded lookup not overwriting the newer one's state, exists once and is tested once. A lookup result is `{ status, items }` rather than `entries`/`pictures`.
+  
+  **An endpoint alone is now the whole configuration.** The client sent `credentials: "omit"` and documented `headers` as the way to authorise, but `headers` was unreachable: the element exposed no such property and the factory taking it was never exported. A host that put its dictionary route behind the assessment's own session — which the tool host contract asks for — got a 401 on every lookup and a learner-facing "the dictionary is unavailable (401)". Endpoints are called `same-origin`, so that route answers with nothing further configured; `headers` and `credentials` are now real properties for a host authorising some other way, and neither is required.
+  
+  **Plain `http:` picture URLs are refused.** The validator accepted `https?:` while its own comment said anything else with a scheme was refused, so `http://cdn.example/cat.png` reached `src` and was mixed-content-blocked on every https deployment — the broken image the guard exists to prevent. Protocol-relative and same-origin paths still pass, and "same-origin" is now checked by resolving rather than by looking for a leading slash: `/\evil.example/x.png` looks like a path and resolves to another host, because a backslash is a path separator for special schemes and a tab is stripped outright. Both still resolve to https, so neither defeated the mixed-content guard — but same-origin is what the function claims.
+  
+  **A requested term is answered once per request, not once per term.** Params reach a tool through a seam reapplied on every sync, so the term alone cannot distinguish a re-render from a fresh ask. Keyed on the panel's last search, every reopen re-issued the selection that opened it and discarded the word the learner had typed since. Requests now carry a `termRequestId`, which both dictionary panels accept as an optional property; a host assigning `term` directly can leave it unset and gets term identity, enough to stop a re-render re-issuing.
+  
+  **A tool-open request falls back off section scope.** Requests defaulted to `"section"` and resolved only there, so a host placing a capability at item scope only had the selection action silently vanish: the tool was granted, hosted and visible, with no action on the selection and nothing to say why. Resolution now prefers section scope and falls back to any level that hosts the capability. Naming a level in the request still makes it a constraint, honoured strictly.
+  
+  Both panels' effects now write their reactive state under `untrack`, matching the rule AGENTS.md sets for effect bodies that read what they write. `check:capability-neutrality` gained `dictionary` and `pictureDictionary`, so its guard covers the packaged set its own comment claims to track.
+  
+  Also: `requestTool`, `canRequestTool`, `registerToolRequestTarget` and `onToolRequestTargetsChange` are optional on `ToolkitCoordinatorApi`. They were declared required while both call sites duck-typed them away for a host coordinator predating the seam, which made such a coordinator structurally non-conformant for no benefit. Both dictionary packages dropped two declared dependencies that nothing imported.
+- 54742db: A second full-codebase review turned up more drift, duplication, and interface
+  problems than the first sweep caught, concentrated in the TTS provider stack and
+  the debugger-tool family. No public surface changes; behaviour fixes are called
+  out explicitly.
+  
+  **TTS rate and pitch.** Polly and Google both advertised `supportsRate` /
+  `supportsPitch` while never reading `request.rate` / `request.pitch` — a caller
+  asking for a different speech rate got normal-speed audio with no error.
+  `BaseTTSProvider.applyProsody` / `buildProsodyAttrs` now wrap plain-text requests
+  in an SSML `<prosody>` envelope on both providers; already-SSML input is left
+  alone. `pitch` follows this repo's existing 0-2 multiplier convention (the TTS
+  settings UI's `normalizePitch`), converted to SSML's relative percentage form.
+  
+  **SchoolCity speech-mark timing.** `tts-client-server`'s custom-transport parser
+  reimplemented SchoolCity's JSONL wire format from scratch, with none of the
+  offset/time-unit corrections `SchoolCityServerProvider` applies — reproducing the
+  mistiming bug that correction was built to fix. `normalizeSpeechMarks` moves to
+  `tts-server-core` so both share one implementation.
+  
+  **TTS error-mapping granularity.** Polly collapsed every AWS SDK error to
+  `PROVIDER_ERROR`; SchoolCity did the same for every HTTP failure. Both now map
+  to `TEXT_TOO_LONG` / `INVALID_REQUEST` / `RATE_LIMIT_EXCEEDED` /
+  `AUTHENTICATION_ERROR` where the underlying exception name or HTTP status
+  says so, matching the granularity Google already had. A documented consumer maps
+  these four `TTSErrorCode` members onto HTTP responses, so Polly's
+  `TextLengthExceededException` reaching `TEXT_TOO_LONG` is newly correct handling
+  on a path that previously always fell through to a generic error.
+  
+  **Rate-to-speedRate bucketing.** `SchoolCityServerProvider` and
+  `ServerTTSProvider` each bucketed a numeric rate into `slow`/`medium`/`fast`
+  with different thresholds, disagreeing for rate 1.1-1.49.
+  `resolveSpeedRateBucket` in `tts-server-core` is now the one implementation,
+  on the server's deliberate 0.95-1.5 tolerance band.
+  
+  **Shadow-DOM-blind theme lookup.** `tool-color-scheme`'s host lookup called
+  `closest('pie-theme')` from inside its own open shadow root, which
+  `Element.closest()` can never cross — on any page with more than one
+  independently-scoped `<pie-theme>` it silently always picked the wrong one.
+  `resolvePieThemeHost` in `pie-theme` walks out through each shadow root's host
+  to find the real ancestor. The same change adds `applyPieColorScheme` as the one
+  canonical "resolve host, set scheme, persist" sequence, replacing both
+  `tool-color-scheme`'s own copy and `apps/section-demos`' independently-drifted
+  version.
+  
+  **Debugger-panel subscription lifecycle.** `EventPanel` and `SectionSessionPanel`
+  each reimplemented the same subscribe/detach/resubscribe scaffolding;
+  `SectionSessionPanel`'s read and wrote reactive state directly inside a tracked
+  `$effect` body instead of wrapping it in `untrack()`, and its lifecycle handler
+  always resubscribed instead of distinguishing the disposed and same-target cases
+  `EventPanel` already handled. `createSectionControllerSubscriptionManager` in
+  `section-player-tools-shared` is now shared by both. The same change wires
+  `persistence-scope` / `persistence-panel-id` through for `PnpPanel` and
+  `SectionSessionPanel`, which had neither despite `SharedFloatingPanel` supporting
+  layout persistence and two sibling debuggers already exposing it.
+  
+  **Pointer-drag tracking.** `tool-line-reader` and `tool-text-to-speech` each
+  hand-rolled identical pointer-capture drag-position tracking.
+  `createPointerDragController` in `players-shared/ui` covers the shared position
+  math; `tool-line-reader`'s separate resize handling stays where it is.
+  
+  **Custom-element registration.** `pie-print` bypassed its own package's guarded
+  registry and called Lit's `@customElement` decorator directly, which throws an
+  uncaught `NotSupportedError` on double-bundling where every other player
+  no-ops. It now goes through the same guard. `defineCustomElementSafely`
+  (players-shared) and print-player's registry also shared the same
+  duplicate-define handling with different collision coverage; consolidated into
+  one implementation, which incidentally fixes a latent bug where an
+  already-registered tag not tracked locally hit a doomed wrapped-subclass retry
+  instead of short-circuiting.
+  
+  **Everything else.** `coerceBooleanLike` had three different, disagreeing
+  implementations across `section-player` and `assessment-player` for the same
+  attribute-coercion job; unified in `players-shared`. `sanitize-item-markup` and
+  `sanitize-svg-icon`'s DOMPurify forbid-lists had drifted despite a comment
+  claiming parity; now share one list. `AssessmentPlayerDefaultElement` swallowed
+  TTS teardown errors in empty catch blocks instead of reporting them through
+  `ToolkitCoordinator.reportFrameworkError`. `item-player`'s `"player-error"` event
+  now has an exported constant matching the pattern `section-player` and
+  `assessment-player` already use (no wire-value change).
+- cb11691: Deliver timed-media sections: cues that reveal and gate questions against a media
+  timeline.
+  
+  A section that sets `sectionType: "timed-media"` carries a `timedMedia` block with
+  a required `stimulusRef`, a cue timeline and a playback policy. The stimulus is a
+  passage — a `class: "stimulus"` rubric block whose PIE config mounts the media
+  element — so media keeps a Catalog Owner and its captions, transcript and signed
+  alternates resolve through the accessibility-catalog rail that already serves them.
+  `timedMedia` carries no media payload at all.
+  
+  The section reaches media only through a **Media Time Source** port shaped after
+  `HTMLMediaElement`, never through a library API. `createMediaElementTimeSource`
+  adapts a native `<video>`/`<audio>` in a few lines, and a host can register its own
+  implementation for a third-party player through the same `pie-media-time-source`
+  event the stimulus card uses — so delivering timed media needs no PIE element. The
+  port declares `canPause` and `canRestrictSeeking`; where a capability is missing the
+  matching policy degrades from enforced to **advisory** — cues still fire, state is
+  still recorded, the projection reports `enforcement: "advisory"`, and a recoverable
+  framework warning of kind `timed-media` says which policy lost its teeth. A seek
+  lock that does not lock must not read as one that does.
+  
+  Cue gate conditions name the shipped formative vocabulary rather than defining
+  their own: `responded` (which reads item completion, so it works in a section that
+  does not deliver formatively), `correct`, and `partial-or-better`. A gate on
+  correctness must state `onUnknownCorrectness`, because an item no controller can
+  score is a real state and neither answer may be assumed. Three authoring mistakes
+  are refused loudly rather than delivered silently: a `stimulusRef` that resolves to
+  nothing; a correctness gate over an item without unlimited Tries, where a learner
+  who spent a finite budget could never release playback again; and a `stimulusRef`
+  that resolves to a renderable exposing no time source, which is reported once the
+  section's content has loaded and no source has attached — whether a renderable
+  mounts media is not knowable from authored data, so that half of the rule is a
+  runtime report rather than a validation error. All three deliver the section with
+  every item visible; a cue timeline nothing can drive would otherwise leave a pane of
+  questions no cue can ever reveal.
+  
+  New public surface: `@pie-players/pie-players-shared/timed-media` (data types, the
+  port, validation, the cue reduction, the session slice and the native adapter),
+  `sectionType` / `timedMedia` on `AssessmentSection`, `timedMedia` on the section
+  composition model and on the persisted session snapshot,
+  `attachMediaTimeSource` / `detachMediaTimeSource` / `getTimedMediaProjection` on
+  `SectionControllerHandle` (`attachMediaTimeSource` takes an optional
+  `renderableId`, checked against the renderable `stimulusRef` resolved to so a
+  second video passage cannot drive the timeline), `pauseMediaForCompetingAudio` on
+  the same handle, and four controller events — `timed-media-cue-changed`,
+  `timed-media-audio-started`, `timed-media-policy-degraded`, `timed-media-invalid`.
+  A host switching exhaustively over `SectionControllerEvent["type"]` with no
+  `default` gains four variants; everything else is optional and absent reads as
+  `null`.
+  
+  Cue state joins the toolkit's composition revision key, without the clock: a cue
+  firing changes neither the renderables nor the item sessions, so the emit would be
+  coalesced away and no card would ever see it — while folding media position in
+  would republish four times a second for a change nothing renders.
+  
+  Read-aloud and media audio never overlap, on a last-action-wins rule: starting
+  read-aloud pauses the media, starting media pauses read-aloud, and neither side
+  resumes what it silenced. The section supplies the two halves it can — the
+  `pauseMediaForCompetingAudio()` method and the `timed-media-audio-started` event —
+  and the toolkit arbitrates, because only the toolkit holds both the TTS service and
+  the section. A port reporting `canPause: false` cannot yield and read-aloud proceeds
+  over it: withholding an accommodation to protect a policy the port already said it
+  cannot keep is the worse failure, and that gap is already reported at attach. Media
+  carrying no audio still pauses read-aloud, because no portable signal distinguishes
+  a silent track from a narrated one.
+  
+  That rule already existed for the signing region, and now has one statement instead
+  of two: `bindTtsAudioHandoff` and `pauseTtsForMediaAudio` are exported from
+  `@pie-players/pie-assessment-toolkit`, and `@pie-players/pie-tool-sign-language`
+  binds them in place of its own copy. Signing behavior is unchanged — the states that
+  count as speaking, the pause-not-stop rule, and the tolerance for a torn-down
+  service are the same, and now carry unit coverage neither call site had.
+  
+  Two things outside timed media change. The section content service now records how
+  a `stimulusRef` resolves to a rendered renderable, rather than leaving each caller
+  to re-derive it. And the engine's controller subscription isolates the new
+  `onControllerEvent` handler it routes events through, so a diagnostic that throws
+  cannot abort the listener before the composition republish and stop every
+  controller event in the section behind a console warning. That guard is hardening
+  around the new route, not a fix for a defect on `develop`: before this the
+  subscription took no event and only republished.
+  
+  `scoringPolicy` accepts `sum-child-outcomes`, `average-child-outcomes` and
+  `host-defined`. It is validated, persisted and carried to the host unchanged; PIE
+  derives no aggregate from any of them and assigns no default, so a section that omits
+  it is not silently given one. `weighted-child-outcomes` is deliberately absent: no
+  weight is authorable on a cue, an item ref or the section, so the entry would name a
+  capability PIE does not have. A host holding its own weights says `host-defined`.
+  
+  Existing content is untouched: no `sectionType` means no projection, no session
+  slice and no cue behavior, and cue-gated cards are the only cards that ever carry
+  `hidden`.
+
 ## 0.3.67
 
 ### Patch Changes

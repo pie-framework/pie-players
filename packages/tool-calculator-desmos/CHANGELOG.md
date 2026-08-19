@@ -1,5 +1,188 @@
 # @pie-players/pie-tool-calculator
 
+## 0.3.68
+
+### Patch Changes
+
+- 00b8a71: Localize player and tool chrome, with Dutch as the first complete locale.
+  
+  A host sets one attribute — `locale="nl-NL"` on `pie-item-player` or a
+  section-player layout element, or `runtime.locale`, which wins — and every string
+  the suite renders itself follows it: toolbar labels, tool panels, player status
+  and error text, formative controls, live-region announcements, `aria-label`s.
+  Unset, the rendered output is byte-identical to before, including every tool
+  button's accessible name. The graceful default is `en-US` and never
+  `navigator.language`: under fixed lockstep patch-only versioning a
+  rendered-string change reaches live delivery on a host's next install with no
+  build signal on their side, so a host that opts into nothing must keep exactly
+  the chrome it has.
+  
+  Interface locale is the deployment's fact and no element can know it, so it travels
+  as a composition context rather than through `model`: the toolkit publishes the
+  resolved locale and one provider on its runtime context, and every capability
+  resolves both through `connectToolRuntimeContext`. The change signal is the
+  context's own republish, which matters because a catalog is a dynamic import —
+  without a reactive read every label would pin the English that rendered a tick
+  earlier, the same silent failure `composition-context.md` records twice. A
+  component that finds no publisher falls back to an English-only default provider
+  rather than rendering raw message keys, which is what keeps tools working in
+  `print-player`, in Studio preview and in a bare harness.
+  
+  Content language is untouched and remains a separate concern on a separate
+  channel. QTI 3's implementation guide states the independence directly: a
+  candidate may choose an interface language which may or may not also be the
+  language of the content. Conflating the two is why classic PIE renders Spanish
+  widget chrome for a Spanish item.
+  
+  `@pie-players/pie-players-shared/i18n` is rebuilt around that. Catalogs are
+  TypeScript modules keyed by full BCP-47 tag, replacing JSON keyed by bare
+  language: the English catalog's shape now generates the `MessageKey` union, so a
+  mistyped key is a compile error instead of a key rendered on screen — a key
+  assembled at runtime has to be asserted through `dynamicMessageKey()`, which is
+  greppable and pairs with `hasKey()` so a miss falls back to a literal — and `tsc`
+  compiling a `.ts` catalog removes the `with { type: "json" }` import-attribute
+  hazard that already broke every non-English locale once under Node's ESM loader.
+  Requests resolve through RFC 4647 lookup and then primary-subtag widening, so
+  POSIX `nl_NL`, bare `nl` and regional `nl-BE` all reach the `nl-NL` catalog;
+  `SimpleI18n` gains `plural()` — `Intl.PluralRules` alone, so Arabic's
+  `zero`/`two`/`few`/`many` and Polish's `few`/`many` are reachable — plus
+  `withLocale()` for two players rendering different locales from one provider, and
+  it no longer writes `lang`/`dir` to `document.documentElement`, which an embedded
+  player has no business doing. Components stamp their own host instead.
+  
+  The module split is what keeps this off the wire. `i18n/types` is type-only and
+  erases; `i18n/provider` carries the 5 KB English catalog; the dynamic loader map
+  lives in `i18n/catalogs`, which players import and tools do not. Since every
+  player and tool `vite.config.ts` sets `external: []`, that boundary is the
+  difference between one locale chunk and eighteen tool bundles each carrying a
+  catalog they will never load.
+  
+  `ToolRegistration` gains optional `nameKey` and `descriptionKey` beside the
+  still-required `name` and `description`. The keys are supplied by
+  `default-tool-loaders`, which owns the packaged capability set, and a
+  host-authored registration with no keys renders its `name` verbatim.
+  
+  The English catalog does enumerate a `tools.<capability>` namespace per packaged
+  capability, so `default-tool-loaders` is not the only file naming them.
+  `check:capability-neutrality` is unaffected: what it protects is core not
+  branching on a capability id or granting behaviour from one, and a message key
+  does neither — it is inert text, resolved by whoever holds the id. Splitting the
+  catalog per capability would satisfy the letter of it and cost both the
+  single-reference coverage check and the bundle boundary that keeps locale strings
+  out of eighteen tool bundles.
+  
+  English output is byte-identical. Every English catalog value reproduces the
+  literal it replaced exactly, punctuation and inconsistencies included, because
+  fixed lockstep patch-only versioning puts a reworded string into a host's live
+  delivery on their next install with no signal on their side — and most of what
+  this change touches is accessible names and live-region announcements, where a
+  host may be asserting exact text. Where the pre-adoption code rendered the same
+  concept in two forms, the catalog carries both rather than assembling one by
+  interpolation: `tools.ruler` has three forms of each unit name, matching the Title
+  Case button label, the lowercase announcement and the raw state token in the
+  accessible name. Improving any of these strings is a separate change with its own
+  entry.
+  
+  `en-US` and `nl-NL` are complete at 402 keys, and they are the only locales
+  shipped. The pre-adoption `es`/`zh`/`ar` catalogs are deleted rather than
+  re-keyed: 76 of their 142 keys named UI this codebase does not render — a
+  section-builder, an assessment shell, 25 Desmos internals Desmos localizes
+  itself, colour-scheme names the theme registry owns — while the strings actually
+  on screen had no keys at all; the published `dist` omitted
+  `with { type: "json" }` on exactly the three dynamic locale imports, so none of
+  them could load outside a bundler in any version through `0.3.67`; and nothing
+  read them, here or in any consumer checkout. Machine-filling the gap would ship
+  strings nobody has read, to learners.
+  
+  `check:i18n-coverage` now runs in the pre-commit and CI gates: a locale declared
+  complete must stay at 100%, a locale mid-translation can be listed as carried and
+  is reported without gating, and either fails on a key English no longer defines.
+  
+  The pre-adoption i18n layer is replaced rather than versioned alongside.
+  `BUNDLED_TRANSLATIONS`, `loadTranslations`, `SimpleI18n.tn()` and two Svelte
+  composables are gone. A grep of all three consumer checkouts finds no call site
+  for any of them outside build caches — the layer was published complete and
+  unused, which is what made replacement the right move instead of a second
+  parallel implementation of the kind that produced `I18nService` as a copy of
+  `SimpleI18n`.
+- 27284f8: Remove four duplicated public surfaces. Each was audited against all three
+  consumer checkouts first; none of the removed names is consumed by any of them.
+  
+  **The toolkit's forked `DesmosCalculatorProvider` is gone** from the
+  `./tools/client` subpath. `@pie-players/pie-calculator-desmos` owns that class,
+  and the toolkit's own runtime path already instantiated *its* copy — the fork was
+  reachable only as public API. The two were not interchangeable: the canonical
+  provider takes `initialize({ apiKey, proxyEndpoint, onTelemetry })` and documents
+  `proxyEndpoint` as the way to keep the key server-side, while the fork accepted
+  only `{ apiKey }` and otherwise read `process.env.DESMOS_API_KEY` or
+  `window.PIE_DESMOS_API_KEY`. So the published subpath offered the one variant with
+  no server-side key path, and a host serving a Desmos proxy endpoint could not use
+  it. `tool-calculator-desmos`'s setup docs now point at the canonical package and at
+  `proxyEndpoint` rather than at a bare key.
+  
+  **`TTSToolConfig` is now defined in terms of `TTSRuntimeSettings`** instead of
+  redeclaring its 23 fields. They had drifted in both directions, which is how
+  `mathTokenHighlighting` came to be honoured at runtime while being unnameable on
+  the coordinator's public `ensureTTSReady` except through an index signature. It is
+  nameable now, along with `showSingleSpeedOption` — the change is additive on the
+  host-facing surface and removes nothing. It is an intersection rather than an
+  interface because `ToolConfig.provider` is `unknown` where the runtime settings
+  narrow it to the three provider ids, and an interface cannot inherit a member two
+  parents type differently.
+  
+  **`AuthoringValidationResult` is re-exported from `pie-item-player`** rather than
+  redeclared there. The local copy widened `validatedModels` to `any[]` while
+  `validateModels()` is implemented against `players-shared`'s
+  `Array<PieModel & { validation?: unknown }>`, so a consumer typing against this
+  package lost the model typing the implementation actually returns. The name still
+  exports from here; only its precision changes.
+  
+  **The `highlighter` capability is removed** from `default-tool-loaders`, along with
+  `highlighterToolRegistration`. It mounted `pie-tool-annotation-toolbar` through the
+  same loader as `annotationToolbar`, carried the same `"Highlighter"` name and
+  `highlighter` icon, and was placed at the same four levels, so an exhaustive host
+  rendered two identically-labelled buttons opening the same element. That collision
+  was already known: the placement test excluded `highlighter` from one preset by
+  hand.
+  
+  No grant is lost. `annotationToolbarRegistration.pnpSupportIds` already accepted
+  all three of the removed capability's ids, and its three `universalSupportIds`
+  (`highlighter`, `textHighlight`, `annotation`) moved onto the surviving capability,
+  so a profile granted any of them still gets highlighting. What does change is that
+  annotation highlighting is now reached only through the selection gateway, not
+  additionally through a toolbar toggle. `PACKAGED_TOOL_ORDER` and
+  `PACKAGED_TOOL_PLACEMENT` lose the id, and their hand-written tuple casts were
+  corrected to match — left alone they would have declared a capability the runtime
+  arrays no longer contain.
+- Updated dependencies [2d8ce6a]
+- Updated dependencies [27284f8]
+- Updated dependencies [e94b097]
+- Updated dependencies [67a3d7e]
+- Updated dependencies [d68c01b]
+- Updated dependencies [3f5e968]
+- Updated dependencies [27284f8]
+- Updated dependencies [67f286c]
+- Updated dependencies [55016b5]
+- Updated dependencies [fc71c91]
+- Updated dependencies [e94b097]
+- Updated dependencies [00b8a71]
+- Updated dependencies [6e1e053]
+- Updated dependencies [e94b097]
+- Updated dependencies [7c9fb28]
+- Updated dependencies [979e643]
+- Updated dependencies [1d9f2d3]
+- Updated dependencies [e94b097]
+- Updated dependencies [27284f8]
+- Updated dependencies [54742db]
+- Updated dependencies [f61c7c7]
+- Updated dependencies [0dc9c96]
+- Updated dependencies [cb11691]
+- Updated dependencies [4f0cb3f]
+- Updated dependencies [e94b097]
+  - @pie-players/pie-players-shared@0.3.68
+  - @pie-players/pie-assessment-toolkit@0.3.68
+  - @pie-players/pie-context@0.3.68
+
 ## 0.3.67
 
 ### Patch Changes

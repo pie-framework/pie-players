@@ -1,5 +1,66 @@
 # @pie-players/pie-tool-answer-eliminator
 
+## 0.3.68
+
+### Patch Changes
+
+- 27284f8: Re-register a tool with the coordinator when the coordinator instance changes,
+  so stacking and visibility keep working after a runtime-context republish.
+  
+  Six tools registered once and never again. The guard was a `$state` boolean
+  flipped inside a tracked `$effect` — `if (coordinator && toolId && !registered)`
+  — so the first coordinator to arrive won permanently. The coordinator does not
+  arrive once: it is read from the runtime context (a prop, for text-to-speech),
+  and a republish hands over a new instance. After one, the tool's z-index layer,
+  `bringToFront` and visibility-restore were all still pointing at a coordinator
+  nobody consults, and the new one had never heard of the tool — so a ruler would
+  not raise above a protractor, and a tool hidden and reshown lost its position.
+  Teardown had the mirror fault: it unregistered `toolId` from whichever
+  coordinator happened to be current, which after a swap is not the one holding
+  the registration.
+  
+  Each of the six now tracks the coordinator and id it actually registered
+  against, unregisters from that one before re-registering when either changes,
+  and unregisters from it on destroy. The bookkeeping moved from `$state` to plain
+  `let`, because a reactive write inside a tracked effect body is what AGENTS.md's
+  Svelte Subscription Safety section rules out; the effect is now idempotent and
+  compares stable identities rather than relying on a one-shot flag.
+  
+  `pie-tool-answer-eliminator` already re-registered correctly and is unchanged in
+  behaviour. Its bookkeeping moves to plain `let` for the same reason, so all
+  seven tools now carry one pattern.
+  
+  No public surface changes. A host that never republishes the runtime context
+  sees exactly what it saw before.
+- Updated dependencies [2d8ce6a]
+- Updated dependencies [27284f8]
+- Updated dependencies [e94b097]
+- Updated dependencies [67a3d7e]
+- Updated dependencies [d68c01b]
+- Updated dependencies [3f5e968]
+- Updated dependencies [27284f8]
+- Updated dependencies [67f286c]
+- Updated dependencies [55016b5]
+- Updated dependencies [fc71c91]
+- Updated dependencies [e94b097]
+- Updated dependencies [00b8a71]
+- Updated dependencies [6e1e053]
+- Updated dependencies [e94b097]
+- Updated dependencies [7c9fb28]
+- Updated dependencies [979e643]
+- Updated dependencies [1d9f2d3]
+- Updated dependencies [e94b097]
+- Updated dependencies [27284f8]
+- Updated dependencies [54742db]
+- Updated dependencies [f61c7c7]
+- Updated dependencies [0dc9c96]
+- Updated dependencies [cb11691]
+- Updated dependencies [4f0cb3f]
+- Updated dependencies [e94b097]
+  - @pie-players/pie-players-shared@0.3.68
+  - @pie-players/pie-assessment-toolkit@0.3.68
+  - @pie-players/pie-context@0.3.68
+
 ## 0.3.67
 
 ### Patch Changes

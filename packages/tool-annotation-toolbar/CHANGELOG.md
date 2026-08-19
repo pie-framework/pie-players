@@ -1,5 +1,202 @@
 # @pie-players/pie-tool-annotation-toolbar
 
+## 0.3.68
+
+### Patch Changes
+
+- 5a41616: Trigger the annotation toolbar from the selection itself, and give its
+  `role="toolbar"` the key model that role promises.
+  
+  The toolbar was shown from `mouseup` and `touchend` only. A selection that arrived
+  any other way produced nothing, so highlight, underline, remove-annotation and
+  read-aloud-selection had no keyboard route at all — WCAG 2.2 SC 2.1.1. The strip
+  also declared `role="toolbar"` while leaving every button its own tab stop, so the
+  arrow keys the role advertises did nothing and the control set cost as many tab
+  stops as it had buttons.
+  
+  `selectionchange` is now the trigger, coalesced per animation frame. Pointer
+  gestures suppress the show between `pointerdown` and release, so dragging a
+  selection no longer drags a toolbar across the text mid-gesture; the suppression is
+  a bounded timestamp rather than a latch, because a release outside the window fires
+  no `pointerup` and a latch would disable the toolbar for the rest of the attempt.
+  `pointercancel` is handled for the same reason. Scrolling repositions the strip
+  instead of dismissing it — the previous behaviour dismissed on the very keystroke
+  that scrolled a selection into view — and withdraws it only once the selection's
+  rect leaves the viewport entirely.
+  
+  The strip is now a single tab stop with a roving tabindex over whatever controls are
+  rendered, which is conditional: read-aloud is absent without a TTS service and
+  remove-annotation exists only over an existing annotation. Arrow keys are logical
+  rather than physical, so they run in reading order for `ar`. `Shift+F10` and the
+  Menu key move focus into the strip, matching the platform convention for a
+  context-sensitive affordance, because the strip is a floating layer whose DOM
+  position bears no relation to the selection. Escape returns focus where it was and
+  leaves the selection intact. Outside-click dismissal reads `composedPath()`, since a
+  document-level listener sees the retargeted host and `contains` reported false for
+  the strip's own buttons — dismissing on the click that was activating one.
+  
+  One limit this does not remove, and cannot: Chromium does not extend a selection
+  with Shift+Arrow in non-editable content unless caret browsing is on, an OS-level
+  toggle absent on mobile. Screen reader users reach the toolbar, because JAWS and
+  NVDA set a real DOM selection in browse mode and `selectionchange` observes it, and
+  pointer and touch users are unaffected. A sighted keyboard-only user still cannot
+  originate the selection. Any capability offered *only* through this strip is
+  therefore unreachable for them and needs a second entry point.
+  
+  Covered by `packages/tool-annotation-toolbar/tests/selection-keyboard.test.ts` for
+  the navigation, bounds and gesture-suppression logic, and by
+  `packages/section-player/tests/section-annotation-toolbar-keyboard.spec.ts` for the
+  browser behaviour that only a browser can settle — `selectionchange` timing, focus
+  crossing into a shadow root, and the roving tabindex. `section-player-tts-ssml.spec.ts`
+  no longer dispatches a synthetic `mouseup` to get the strip on screen; that it
+  needed one was the defect.
+- 00b8a71: Localize player and tool chrome, with Dutch as the first complete locale.
+  
+  A host sets one attribute — `locale="nl-NL"` on `pie-item-player` or a
+  section-player layout element, or `runtime.locale`, which wins — and every string
+  the suite renders itself follows it: toolbar labels, tool panels, player status
+  and error text, formative controls, live-region announcements, `aria-label`s.
+  Unset, the rendered output is byte-identical to before, including every tool
+  button's accessible name. The graceful default is `en-US` and never
+  `navigator.language`: under fixed lockstep patch-only versioning a
+  rendered-string change reaches live delivery on a host's next install with no
+  build signal on their side, so a host that opts into nothing must keep exactly
+  the chrome it has.
+  
+  Interface locale is the deployment's fact and no element can know it, so it travels
+  as a composition context rather than through `model`: the toolkit publishes the
+  resolved locale and one provider on its runtime context, and every capability
+  resolves both through `connectToolRuntimeContext`. The change signal is the
+  context's own republish, which matters because a catalog is a dynamic import —
+  without a reactive read every label would pin the English that rendered a tick
+  earlier, the same silent failure `composition-context.md` records twice. A
+  component that finds no publisher falls back to an English-only default provider
+  rather than rendering raw message keys, which is what keeps tools working in
+  `print-player`, in Studio preview and in a bare harness.
+  
+  Content language is untouched and remains a separate concern on a separate
+  channel. QTI 3's implementation guide states the independence directly: a
+  candidate may choose an interface language which may or may not also be the
+  language of the content. Conflating the two is why classic PIE renders Spanish
+  widget chrome for a Spanish item.
+  
+  `@pie-players/pie-players-shared/i18n` is rebuilt around that. Catalogs are
+  TypeScript modules keyed by full BCP-47 tag, replacing JSON keyed by bare
+  language: the English catalog's shape now generates the `MessageKey` union, so a
+  mistyped key is a compile error instead of a key rendered on screen — a key
+  assembled at runtime has to be asserted through `dynamicMessageKey()`, which is
+  greppable and pairs with `hasKey()` so a miss falls back to a literal — and `tsc`
+  compiling a `.ts` catalog removes the `with { type: "json" }` import-attribute
+  hazard that already broke every non-English locale once under Node's ESM loader.
+  Requests resolve through RFC 4647 lookup and then primary-subtag widening, so
+  POSIX `nl_NL`, bare `nl` and regional `nl-BE` all reach the `nl-NL` catalog;
+  `SimpleI18n` gains `plural()` — `Intl.PluralRules` alone, so Arabic's
+  `zero`/`two`/`few`/`many` and Polish's `few`/`many` are reachable — plus
+  `withLocale()` for two players rendering different locales from one provider, and
+  it no longer writes `lang`/`dir` to `document.documentElement`, which an embedded
+  player has no business doing. Components stamp their own host instead.
+  
+  The module split is what keeps this off the wire. `i18n/types` is type-only and
+  erases; `i18n/provider` carries the 5 KB English catalog; the dynamic loader map
+  lives in `i18n/catalogs`, which players import and tools do not. Since every
+  player and tool `vite.config.ts` sets `external: []`, that boundary is the
+  difference between one locale chunk and eighteen tool bundles each carrying a
+  catalog they will never load.
+  
+  `ToolRegistration` gains optional `nameKey` and `descriptionKey` beside the
+  still-required `name` and `description`. The keys are supplied by
+  `default-tool-loaders`, which owns the packaged capability set, and a
+  host-authored registration with no keys renders its `name` verbatim.
+  
+  The English catalog does enumerate a `tools.<capability>` namespace per packaged
+  capability, so `default-tool-loaders` is not the only file naming them.
+  `check:capability-neutrality` is unaffected: what it protects is core not
+  branching on a capability id or granting behaviour from one, and a message key
+  does neither — it is inert text, resolved by whoever holds the id. Splitting the
+  catalog per capability would satisfy the letter of it and cost both the
+  single-reference coverage check and the bundle boundary that keeps locale strings
+  out of eighteen tool bundles.
+  
+  English output is byte-identical. Every English catalog value reproduces the
+  literal it replaced exactly, punctuation and inconsistencies included, because
+  fixed lockstep patch-only versioning puts a reworded string into a host's live
+  delivery on their next install with no signal on their side — and most of what
+  this change touches is accessible names and live-region announcements, where a
+  host may be asserting exact text. Where the pre-adoption code rendered the same
+  concept in two forms, the catalog carries both rather than assembling one by
+  interpolation: `tools.ruler` has three forms of each unit name, matching the Title
+  Case button label, the lowercase announcement and the raw state token in the
+  accessible name. Improving any of these strings is a separate change with its own
+  entry.
+  
+  `en-US` and `nl-NL` are complete at 402 keys, and they are the only locales
+  shipped. The pre-adoption `es`/`zh`/`ar` catalogs are deleted rather than
+  re-keyed: 76 of their 142 keys named UI this codebase does not render — a
+  section-builder, an assessment shell, 25 Desmos internals Desmos localizes
+  itself, colour-scheme names the theme registry owns — while the strings actually
+  on screen had no keys at all; the published `dist` omitted
+  `with { type: "json" }` on exactly the three dynamic locale imports, so none of
+  them could load outside a bundler in any version through `0.3.67`; and nothing
+  read them, here or in any consumer checkout. Machine-filling the gap would ship
+  strings nobody has read, to learners.
+  
+  `check:i18n-coverage` now runs in the pre-commit and CI gates: a locale declared
+  complete must stay at 100%, a locale mid-translation can be listed as carried and
+  is reported without gating, and either fails on a key English no longer defines.
+  
+  The pre-adoption i18n layer is replaced rather than versioned alongside.
+  `BUNDLED_TRANSLATIONS`, `loadTranslations`, `SimpleI18n.tn()` and two Svelte
+  composables are gone. A grep of all three consumer checkouts finds no call site
+  for any of them outside build caches — the layer was published complete and
+  unused, which is what made replacement the right move instead of a second
+  parallel implementation of the kind that produced `I18nService` as a copy of
+  `SimpleI18n`.
+- 0dc9c96: Selecting a word now offers a dictionary lookup on the annotation strip, and the panel opens already answered.
+  
+  The mechanism is a capability-agnostic one, because a selection gateway cannot name the tool it opens. `ToolkitCoordinator` gains `requestTool` / `canRequestTool` / `registerToolRequestTarget`: a surface names an unscoped tool id, and the toolbar hosting that tool turns it into a scoped instance, applies the request's params and shows it. Resolution is a claim rather than a broadcast — a broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is the item card's and the section's both. Params layer over the host's own, so a request carrying a term leaves a configured endpoint in place, and they arrive through `getToolRenderParams`, which means a tool needs nothing new to receive one.
+  
+  The strip renders host-supplied `selectionActions` and knows nothing about what they do; the pairing to the two dictionaries lives in the composition layer, which is the only layer allowed to name capabilities. A host can contribute an action for a capability PIE does not ship. An action whose tool no toolbar hosts is absent rather than present and inert.
+  
+  Acting on a selection now latches the strip down for that selection. The selection itself survives on purpose — the learner's place in the text is not ours to clear — and opening a panel moves focus, which fires `selectionchange`: without the latch the strip came straight back over the definition it had just fetched. Escape, focus leaving and an outside click do not latch, and Shift+F10 clears one, so dismissing never costs a learner the strip for good.
+  
+  The door is a shortcut, not the way in. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on, an OS toggle absent on mobile, so a sighted keyboard-only learner cannot originate a selection at all. Both dictionaries keep their toolbar button and their own term field.
+  
+  Fixes both dictionary toolbar buttons rendering blank: `book-open` and `photo` had no entry in the toolbar's icon map, so an icon-only button drew nothing. The map moves to `services/tool-icons.ts` and is exported through `tools/internal`, so a gateway button and the toolbar button for one tool draw the same shape.
+- 2d680c8: The selection strip no longer places its own controls off screen.
+  
+  `toolbarAnchor` returned the selection's horizontal centre and the stylesheet shifted the strip by half a width and a full height. Nothing clamped the result, and nothing kept the arithmetic and the transform agreed — so clamping was not expressible at all. Measured against a passage in the split-pane layout: a selection starting 25px from the viewport edge placed a 353px strip at `x ≈ -109`, putting its first highlight swatches where no pointer can reach them. The vertical case is the more common one, because extending a selection past the fold scrolls it to the top of the viewport.
+  
+  The anchor now returns the strip's top-left, clamped inside a 4px margin on every edge, and there is no transform to undo it. It flips below the selection only when the strip genuinely does not fit above — above is the preference, since it keeps the strip clear of the text being read — and clamps rather than flipping into a second overflow when neither side fits. A strip wider than the viewport pins to the leading edge, where its first control is.
+  
+  Placement needs the rendered size, so the first pass places an unmeasured strip and an effect corrects it in the same frame; that correction is what makes the clamp active on the pass that can actually push a control off screen.
+- Updated dependencies [2d8ce6a]
+- Updated dependencies [27284f8]
+- Updated dependencies [e94b097]
+- Updated dependencies [67a3d7e]
+- Updated dependencies [d68c01b]
+- Updated dependencies [3f5e968]
+- Updated dependencies [27284f8]
+- Updated dependencies [67f286c]
+- Updated dependencies [55016b5]
+- Updated dependencies [fc71c91]
+- Updated dependencies [e94b097]
+- Updated dependencies [00b8a71]
+- Updated dependencies [6e1e053]
+- Updated dependencies [e94b097]
+- Updated dependencies [7c9fb28]
+- Updated dependencies [979e643]
+- Updated dependencies [1d9f2d3]
+- Updated dependencies [e94b097]
+- Updated dependencies [27284f8]
+- Updated dependencies [54742db]
+- Updated dependencies [f61c7c7]
+- Updated dependencies [0dc9c96]
+- Updated dependencies [cb11691]
+- Updated dependencies [4f0cb3f]
+- Updated dependencies [e94b097]
+  - @pie-players/pie-players-shared@0.3.68
+  - @pie-players/pie-assessment-toolkit@0.3.68
+
 ## 0.3.67
 
 ### Patch Changes

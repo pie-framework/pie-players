@@ -1,5 +1,288 @@
 # @pie-players/pie-theme
 
+## 0.3.68
+
+### Patch Changes
+
+- 55016b5: Fold the player error banners into the palette when a colour scheme asks for one.
+  
+  The three banners — two in `players-shared`'s `PieItemPlayer`, one in
+  `pie-item-player` — were painted with a pinned `#d32f2f` edge, `#ffebee` fill and
+  `#c62828` ink. That was never a contrast failure, since fill and ink were pinned
+  together and measure about 6.2:1 wherever they render. It was a palette failure: a
+  learner on White on Black or Yellow on Navy met a pale pink box in the middle of
+  the scheme they chose in order to be able to read the screen.
+  
+  All three now use `--pie-fixed-hue-collapse`, exact at 0% for every Base Theme and
+  folded at 100% for every scheme. The collapsed ink is `--pie-text`, not
+  `--pie-incorrect`: the error hue against this tint drops to 4.14:1 under Black on
+  White, where the page's own ink holds at 6.18:1 or better on all ten schemes. That
+  pair is now a declared contrast relationship, `incorrect feedback surface text`, so
+  `assertCanonicalThemeDefinitions` keeps it true for any scheme added later rather
+  than it having been measured once.
+  
+  `--pie-incorrect-secondary` is a tint of the page, roughly 1.1:1 from it, so the
+  collapsed banner reads as a banner by its `--pie-incorrect` edge — which clears
+  4.53:1 against every scheme's page. This is the division of labour the periodic
+  table's collapsed cells already rely on.
+  
+  The colours moved out of the inline `style` attributes into each component's
+  `.pie-player-error` rule. An inline declaration outranks any stylesheet, so a host
+  could not have restyled the banner without `!important`; it now behaves like the
+  rest of the players' chrome.
+- 89688fc: Make the font size presets scale the players that actually render items.
+  
+  `font-sizes.css` shipped, was exported, and scaled nothing this repo renders. Its
+  rules targeted only `pie-player`, the externally loaded item wrapper some hosts
+  render items through — so the section player's own content hosts
+  (`pie-item-shell`, `pie-passage-shell`) and the standalone `pie-item-player` were
+  never matched. The miss was invisible from the outside: `--pie-font-scale`
+  resolved correctly at every preset, and no rule consumed it.
+  
+  Selecting a preset was worse than not selecting one. The stylesheet forced
+  `font-size: inherit !important` onto `*`, which collapses every heading, `<small>`
+  and superscript in an item to body size — at 100% scale, before any accommodation
+  takes effect. That blanket rule is gone; text now inherits from the content host,
+  so elements keep their own relative sizing.
+  
+  No consumer was hit by that. Every rule in the file is scoped under a
+  `data-font-size` attribute and no recorded host sets it, so all three take only its
+  `:root { --pie-font-scale: 1 }` default today — which is also why changing these
+  rules is safe while renaming the file would not be. The consumer pad now records
+  that asymmetry.
+  
+  The rules are scoped under `[data-font-size]` so the declarations exist only once
+  a host opts in, and no rule uses `!important` — a host has to be able to win
+  through the normal cascade, which is why `pie-theme`'s base-theme adapter already
+  keeps its own specificity low.
+  
+  The four presets are unchanged (1 / 1.25 / 1.5 / 1.75, Learnosity's steps), and
+  so is the `data-font-size` contract. A host driving `<pie-theme>` can set
+  `--pie-font-scale` through `variables` instead and needs nothing from the
+  stylesheet.
+  
+  What scales is inherited text, because `font-size` inheritance crosses shadow
+  boundaries. What does not is text whose own rule names `rem` or `px`: `rem`
+  resolves against the document root, `px` against nothing, and no rule inside a
+  subtree can change what either means. A host that needs those to follow scales
+  the root font size itself. That is documented rather than worked around, and
+  browser zoom is unaffected either way, so WCAG 2.2 1.4.4 does not rest on this.
+  
+  The scale is applied as `calc(1rem * var(--pie-font-scale))` rather than an `em`
+  factor because the content hosts nest — an `em` factor compounds, and a requested
+  1.25 renders as 1.56 wherever an item shell sits inside a themed region.
+  
+  No student-facing control ships here. Per PIE-478's own discussion the picker is
+  host chrome; this package owns the token, the presets, and the rules that consume
+  them. Nothing claims the `fontEnlargement` or `resizeText` PNP support ids yet
+  either — a support id is claimed by a capability registration, and there is no
+  capability to hang it on until the ownership question that story raises is
+  settled.
+- c9e3404: Resolve provider variables from the theme being applied, so a theme change
+  reaches `--pie-*` on the first pass.
+  
+  `<pie-theme>` read its provider before the new theme reached the target.
+  Provider adapters resolve by reading custom properties off that target —
+  daisyUI's `--color-*`, selected by `data-theme` — so a read taken while the
+  target still carried the outgoing theme returned the outgoing palette, and those
+  values were written as the new PIE token set. Every `--pie-*` landed one
+  selection behind.
+  
+  Nothing corrected it afterwards. A host that writes only the attributes that
+  changed triggers one `attributeChangedCallback`, so the stale set stood until an
+  unrelated attribute moved, and switching again showed the theme before that one
+  rather than catching up. The visible result is an app whose own chrome repaints
+  instantly — daisyUI reads `data-theme` directly — while PIE content keeps the
+  palette of the theme the user just left.
+  
+  The same read ran on first connect, where the target may carry no `data-theme`
+  at all and the provider resolves from whatever the page happens to inherit. A
+  host that stamps its stored theme before hydration escaped that; one that leaves
+  the first stamp to the element did not.
+  
+  The incoming `data-theme` and `data-color-scheme` are now stamped on the target
+  before the read and restored immediately after. Restoring rather than leaving
+  them keeps two contracts intact: under `scope="document"` the ownership
+  arbitration decides whether this element may stamp at all, and the document
+  baseline needs the host's pre-existing value to have something to restore on
+  disconnect. Stamp and restore happen in one synchronous pass, so the transient
+  state is never painted.
+  
+  `scope="self"` gains the behaviour it should always have had: a self-scoped host
+  resolves its own theme's palette rather than the ambient one, because the probe
+  stamps `data-theme` on the element the provider's rules match. A host with no
+  provider is unaffected — under `provider="none"`, or on a page with no daisyUI
+  palette, nothing resolves either way.
+- 9d3c500: Remove `@pie-players/pie-theme-daisyui`. The DaisyUI integration is the provider
+  adapter in this package, and was already the only part of it that worked.
+  
+  The package shipped `bridge.css` — the same slot mapping as static CSS on
+  `:root, [data-theme]`, for a host wanting DaisyUI tokens without `<pie-theme>` —
+  plus three JS mappers over the same table. `<pie-theme scope="document">` writes
+  `--pie-*` as inline styles on the target, and `bridge.css` declared them in a
+  stylesheet with no `!important`, so inline won: every host that imported it also
+  mounted the element, which made the import inert. The JS mappers had no consumer
+  in this repo or in any host we read.
+  
+  Nothing is lost that a host was using. The adapter resolves the same
+  `DAISYUI_PIE_TOKEN_MAP`, and it is the side that can correct a slot which lands
+  illegible, because it reads resolved colours through a canvas measure — the
+  correction static CSS could never make. The parity test that held the two copies
+  together goes with the copy; the assertions that were about the table rather than
+  the CSS already live in `packages/theme/tests/daisyui-mapping.test.ts`.
+  
+  A host wanting the zero-`<pie-theme>` path aliases DaisyUI's variables to
+  `--pie-*` in its own stylesheet — the same twenty lines any non-DaisyUI design
+  system needs, and the only shape that also reaches host chrome under
+  `[data-color-scheme]`.
+  
+  Published versions stay on npm, so a range pointing at the package still
+  resolves; it stops receiving releases. One host still declares the dependency
+  without importing it and should drop it.
+- 5a13755: Stamp `color-scheme` from a resolved colour scheme, so native controls follow the
+  accommodation instead of the host's theme.
+  
+  A scheme replaces every colour it participates in, but nothing in CSS infers
+  polarity from custom properties. UA-styled controls — `input` and `select` text,
+  scrollbars, native form widgets — paint from `color-scheme`, which stays whatever
+  the host's theme declared, because a scheme changes `data-color-scheme` and never
+  `data-theme`. A dark accommodation on a light host therefore renders those
+  controls in the light-mode system colour: measured at roughly 1.1:1 for two
+  version pickers on a `yellow-on-blue` page, black text on `#000066`. An
+  accommodation that leaves a control unreadable has not been delivered.
+  
+  `resolvePieTheme` now reports the keyword the palette implies as
+  `ThemeResolution.colorScheme`, and `<pie-theme>` writes it to the target. Chosen
+  by whether black or white contrasts better against the resolved
+  `--pie-background`, which is the same test that picks a legible foreground
+  elsewhere in this package.
+  
+  Only a resolved scheme decides it. Without one — including a requested scheme
+  that turned out unavailable — the value is `null` and the host keeps ownership,
+  because a host's stylesheet already declared the polarity of its own themes and
+  restating that from PIE's base palette would take the decision away from every
+  host that never asked for an accommodation. `null` restores rather than removes,
+  so clearing a scheme returns the host's own declaration instead of deleting it,
+  tracked through the same document baseline that already carries `data-theme`.
+  
+  A background the resolver cannot read as an opaque colour also yields `null`: a
+  translucent value, a `var()` reference out to a host property, or the transparent
+  light base leave polarity dependent on the host's backdrop, which makes it the
+  host's call rather than a guess.
+- e0f1134: Document and prove SchoolCity colour-scheme parity as host registration.
+  
+  The SchoolCity parity report records "15 schemes against PIE's 10" as the
+  remaining delta on PIE-472, which reads as eleven missing palettes. It is not one
+  change of that size, and measuring it settled the shape: four of SchoolCity's 15
+  are already built in (Black on White, White on Black, Black on Rose, Yellow on
+  Blue), and the other eleven are registrable by a host today with no change here.
+  
+  Adds a validated worked example, one scheme per cost class, and a README section
+  carrying SchoolCity's own palette values. The cost is the finding: it scales with
+  how far the background sits from white, because every semantic colour in the light
+  base was chosen against white. A white-background scheme needs 2 tokens. Green on
+  White needs 4 — its ink is the tightest of the set at 4.73:1 and misses the tinted
+  recessed surfaces. Pure black needs 10, borrowed from the dark base theme, which
+  authored its inks against `#000000` already. A mid-tone background — blue, red,
+  green, dark gray — needs about 18, because neither the light inks nor the dark
+  ones hold against it and the icons, control boundaries and focus rings all have to
+  be re-chosen.
+  
+  All 15 clear 4.5:1 for ordinary text, so the text pair is never what blocks a
+  scheme; the other 24 enforced relationships are.
+  
+  The example also pins the trap. Contrast diagnostics are warnings rather than
+  errors, deliberately, because a registered palette is host-owned — so a two-token
+  White on Blue registers successfully and returns fourteen warnings, and a host
+  filtering on `severity === "error"` ships cyan links on a mid-blue page. A test
+  holds that behavior so it cannot quietly become an error and break a host, or
+  quietly disappear.
+  
+  No new built-in schemes. A built-in is a full 48-token palette because a
+  two-colour scheme is a promise the whole surface keeps, and which schemes a
+  programme wants is unsettled on PIE-472 — the story was deferred out of the SB v1
+  scope with its requirements still open, so eleven authored palettes would be
+  speculation with a published surface attached.
+- 54742db: A second full-codebase review turned up more drift, duplication, and interface
+  problems than the first sweep caught, concentrated in the TTS provider stack and
+  the debugger-tool family. No public surface changes; behaviour fixes are called
+  out explicitly.
+  
+  **TTS rate and pitch.** Polly and Google both advertised `supportsRate` /
+  `supportsPitch` while never reading `request.rate` / `request.pitch` — a caller
+  asking for a different speech rate got normal-speed audio with no error.
+  `BaseTTSProvider.applyProsody` / `buildProsodyAttrs` now wrap plain-text requests
+  in an SSML `<prosody>` envelope on both providers; already-SSML input is left
+  alone. `pitch` follows this repo's existing 0-2 multiplier convention (the TTS
+  settings UI's `normalizePitch`), converted to SSML's relative percentage form.
+  
+  **SchoolCity speech-mark timing.** `tts-client-server`'s custom-transport parser
+  reimplemented SchoolCity's JSONL wire format from scratch, with none of the
+  offset/time-unit corrections `SchoolCityServerProvider` applies — reproducing the
+  mistiming bug that correction was built to fix. `normalizeSpeechMarks` moves to
+  `tts-server-core` so both share one implementation.
+  
+  **TTS error-mapping granularity.** Polly collapsed every AWS SDK error to
+  `PROVIDER_ERROR`; SchoolCity did the same for every HTTP failure. Both now map
+  to `TEXT_TOO_LONG` / `INVALID_REQUEST` / `RATE_LIMIT_EXCEEDED` /
+  `AUTHENTICATION_ERROR` where the underlying exception name or HTTP status
+  says so, matching the granularity Google already had. A documented consumer maps
+  these four `TTSErrorCode` members onto HTTP responses, so Polly's
+  `TextLengthExceededException` reaching `TEXT_TOO_LONG` is newly correct handling
+  on a path that previously always fell through to a generic error.
+  
+  **Rate-to-speedRate bucketing.** `SchoolCityServerProvider` and
+  `ServerTTSProvider` each bucketed a numeric rate into `slow`/`medium`/`fast`
+  with different thresholds, disagreeing for rate 1.1-1.49.
+  `resolveSpeedRateBucket` in `tts-server-core` is now the one implementation,
+  on the server's deliberate 0.95-1.5 tolerance band.
+  
+  **Shadow-DOM-blind theme lookup.** `tool-color-scheme`'s host lookup called
+  `closest('pie-theme')` from inside its own open shadow root, which
+  `Element.closest()` can never cross — on any page with more than one
+  independently-scoped `<pie-theme>` it silently always picked the wrong one.
+  `resolvePieThemeHost` in `pie-theme` walks out through each shadow root's host
+  to find the real ancestor. The same change adds `applyPieColorScheme` as the one
+  canonical "resolve host, set scheme, persist" sequence, replacing both
+  `tool-color-scheme`'s own copy and `apps/section-demos`' independently-drifted
+  version.
+  
+  **Debugger-panel subscription lifecycle.** `EventPanel` and `SectionSessionPanel`
+  each reimplemented the same subscribe/detach/resubscribe scaffolding;
+  `SectionSessionPanel`'s read and wrote reactive state directly inside a tracked
+  `$effect` body instead of wrapping it in `untrack()`, and its lifecycle handler
+  always resubscribed instead of distinguishing the disposed and same-target cases
+  `EventPanel` already handled. `createSectionControllerSubscriptionManager` in
+  `section-player-tools-shared` is now shared by both. The same change wires
+  `persistence-scope` / `persistence-panel-id` through for `PnpPanel` and
+  `SectionSessionPanel`, which had neither despite `SharedFloatingPanel` supporting
+  layout persistence and two sibling debuggers already exposing it.
+  
+  **Pointer-drag tracking.** `tool-line-reader` and `tool-text-to-speech` each
+  hand-rolled identical pointer-capture drag-position tracking.
+  `createPointerDragController` in `players-shared/ui` covers the shared position
+  math; `tool-line-reader`'s separate resize handling stays where it is.
+  
+  **Custom-element registration.** `pie-print` bypassed its own package's guarded
+  registry and called Lit's `@customElement` decorator directly, which throws an
+  uncaught `NotSupportedError` on double-bundling where every other player
+  no-ops. It now goes through the same guard. `defineCustomElementSafely`
+  (players-shared) and print-player's registry also shared the same
+  duplicate-define handling with different collision coverage; consolidated into
+  one implementation, which incidentally fixes a latent bug where an
+  already-registered tag not tracked locally hit a doomed wrapped-subclass retry
+  instead of short-circuiting.
+  
+  **Everything else.** `coerceBooleanLike` had three different, disagreeing
+  implementations across `section-player` and `assessment-player` for the same
+  attribute-coercion job; unified in `players-shared`. `sanitize-item-markup` and
+  `sanitize-svg-icon`'s DOMPurify forbid-lists had drifted despite a comment
+  claiming parity; now share one list. `AssessmentPlayerDefaultElement` swallowed
+  TTS teardown errors in empty catch blocks instead of reporting them through
+  `ToolkitCoordinator.reportFrameworkError`. `item-player`'s `"player-error"` event
+  now has an exported constant matching the pattern `section-player` and
+  `assessment-player` already use (no wire-value change).
+
 ## 0.3.67
 
 ### Patch Changes

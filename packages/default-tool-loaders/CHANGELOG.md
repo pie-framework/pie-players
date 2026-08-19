@@ -1,5 +1,519 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.68
+
+### Patch Changes
+
+- 27284f8: Collapse six implementations that existed twice or more, with no public surface
+  changes.
+  
+  **Media fragment enforcement.** `applyMediaFragment` writes a `#t=start,end` URI
+  that browsers honour at neither bound reliably, so each consumer enforced the
+  range itself — the signing region and recorded read-aloud audio holding two copies
+  of the same seek-forward-once and stop-at-end pair, which is how one of them came
+  to enforce only the end. `enforceMediaFragment` now owns the arithmetic and each
+  consumer supplies what reaching the end means: the signing region pauses, while
+  `playRecordedAudio` treats it as the clip finishing so the chunk sequence advances.
+  The end bound is now watched on `timeupdate` as well as by poll, so it is checked
+  at least as tightly as before in both consumers.
+  
+  **Tag-name helpers.** `print-player/src/tag-names.ts` was a copy of
+  `players-shared/src/pie/tag-names.ts`, itself the exported owner, down to
+  `toPrintHashedTag` — which exists in the owner *for print* and has no other caller.
+  Both copies carried their own test file. Print now imports from
+  `@pie-players/pie-players-shared/pie/tag-names`.
+  
+  **Backend config cloning.** The assessment player carried an 85-line field-aware
+  `BackendConfig` cloner duplicating the section player's, for a type the item player
+  owns; a newly nested field would have been cloned by one copy and shared by
+  reference in the other. It only ever needed a plain deep clone, and `cloneDeep`
+  already existed at `@pie-players/pie-players-shared/object`. The section player's
+  field-aware helpers stay: its merge logic consumes the pieces individually.
+  
+  **Overwide content wrappers.** The image and table wrappers shared an identical
+  `isInsidePieCustomElement` and near-identical wrap-and-parse bodies. Both now call
+  one engine in `security/wrap-overwide.ts`, declaring only what differs — selector,
+  wrapper tag and class, markup probe, and the accessible name, which is the real
+  divergence between an `alt` and a `<caption>`.
+  
+  **Context text extraction.** `extractTextContent` ran three byte-identical
+  traversals, one per level, each redeclaring `stripHtml`, the models normalization
+  and the model walk. The traversal is now shared and each level declares only which
+  fields it reads, so a new place text can hide is added once. Verified
+  output-identical against the previous implementation across fifteen context shapes,
+  including record-form `models` and every missing-config path.
+  
+  **Toolbar rendering.** Seven packaged capabilities inlined the same
+  `renderToolbar` body, varying only in overlay surface, window geometry and whether
+  the coordinator is re-handed on sync. That is why one rule — the shell title
+  tracking the interface locale — landed in three different spellings across three
+  files. They now call `renderOverlayToolbar`, which derives the catalog keys from
+  `toolId` as all seven already did.
+  
+  **Section-player shells.** The three layout shells plus the kernel host shell each
+  carried the same clamp bounds, `resolveConfiguredPx`, host-element walk,
+  narrow-breakpoint clamp, content-max-width pair and `matchMedia` watch. All of that
+  moves to `components/shared/section-player-shell-layout.svelte.ts`. Two things stay
+  duplicated because the compiler requires it, and the module says so: the `props`
+  map inside `<svelte:options customElement>` must be a statically analyzable object
+  literal, and a component's `export function` declarations are what become
+  custom-element methods.
+  
+  **SSML detection.** Polly sniffed for SSML twice with the same seven tags inline,
+  and Google kept a private copy of the standard set. `BaseTTSProvider.detectSSML`
+  now owns the standard elements and takes a provider's own vocabulary as an
+  argument, which is the part that legitimately differs: `<amazon:effect>` and
+  `<aws-*>` mean nothing to Google, and Google's list was missing none of the
+  standard tags but Polly's was missing `<say-as>` and `<mark>` — so Polly now
+  recognises two standard elements it previously treated as plain text.
+  
+  Covered by the existing suites plus the reflow, tabbed-layout and
+  vertical-passage-layout Playwright specs, which exercise the shared narrow-layout
+  watch at 320px and across stacked-collapse strategy switches.
+- d68c01b: Add dictionary and picture dictionary tools, and make the shell's focus trap
+  shadow-aware so a hosted tool's own controls are reachable by keyboard.
+  
+  `pie-tool-dictionary` and `pie-tool-picture-dictionary` are floating panels opened from
+  the toolbar, each with a term field and a results area. Neither ships an endpoint: the
+  corpus behind a dictionary is licensed per programme, so a host supplies one through
+  `endpoint` for the built-in POST shaping, or assigns the element's `lookup` property to
+  use its own client. With neither, the panel says no service is configured rather than
+  offering a field that fails silently.
+  
+  Neither declares a universal support id. A dictionary is a granted accommodation, and on
+  a vocabulary item it is construct-relevant, so handing it to every learner by default
+  would change what the item measures.
+  
+  Both accept a `term` from whatever selection affordance a host offers, and neither
+  depends on one. A sighted keyboard-only learner cannot originate a text selection in
+  non-editable content — Chromium does not extend one with Shift+Arrow there without caret
+  browsing, an OS toggle absent on mobile — so a selection-only dictionary is unreachable
+  for them. The panel's field is the keyboard route, which is why it exists.
+  
+  That route did not work until the focus trap was fixed. `createFocusTrap` collected
+  focusables with `querySelectorAll`, which stops at a shadow boundary; every tool in this
+  repo renders into `shadow: "open"`, so the trap saw only the shell's own chrome. Tab
+  cycled those nine controls and the hosted tool's content was unreachable by keyboard
+  entirely — for the calculator, graph, periodic table and theme panels as much as for
+  these two. Collection now descends into open shadow roots, and skips `tabindex="-1"`,
+  which belongs to programmatic focus rather than the tab order.
+  
+  A lookup distinguishes "no entry for this word" from "the service did not answer",
+  because collapsing them tells a learner their word is not real when the network is down.
+  A term longer than four words is refused without a request. Picture URLs that are not
+  `https:`, protocol-relative, or same-origin are dropped rather than rendered, and a
+  picture's caption becomes its `alt` — the picture is the definition, so it is never
+  decorative.
+  
+  Covered by unit tests over the lookup and focus-collection logic, and by
+  `packages/section-player/tests/section-dictionary-tools.spec.ts`, which drives the tool
+  from the keyboard alone in a browser.
+- 3f5e968: Offer a dictionary per language: `dictionarySpanish` and `pictureDictionarySpanish` join
+  the packaged set, and the registrations become factories so a host can compose any other
+  language.
+  
+  The language of a definition belongs to the learner, not to the content. The base
+  capabilities take their lookup language from the toolbar's content-alternate language,
+  which serves the reader who wants a definition in the language they are already reading —
+  but the learner who needs a Spanish gloss is reading an English passage, and one capability
+  following the content cannot express that. It also could not be granted separately: the
+  four support ids on `dictionary` are four names for one grant.
+  
+  Each variant claims its own PNP support ids — `spanishDictionary`,
+  `spanishPictureDictionary` and their glossary spellings — and shares none with the base
+  capabilities, so a programme grants Spanish independently of English in either direction.
+  Neither variant declares a universal support, on the same grounds as the base capabilities:
+  a dictionary on a vocabulary item is construct-relevant.
+  
+  A variant carries its corpus language and that language outranks the content-alternate
+  language, since a variant that followed the content would be indistinguishable from the
+  base capability on exactly the content it exists for. A language the host names in the
+  tool's render params still wins over both, so a host serving `es-MX` specifically can say
+  so. Both variants render the same elements as the capabilities they vary: two capability
+  ids, one panel implementation, one module load.
+  
+  `createDictionaryToolRegistration` and `createPictureDictionaryToolRegistration` are
+  exported for any other language, taking a `toolId`, `pnpSupportIds`, a `lookupLanguage` and
+  optionally a `messageKeyPrefix` for a host's own catalogue; a key that does not resolve
+  falls back to the registration's literal name. `dictionaryToolRegistration` and
+  `pictureDictionaryToolRegistration` remain exported and unchanged in behaviour, and are
+  now built from those factories.
+  
+  Interface strings for both variants ship in every declared locale.
+- 67f286c: Reword sixteen English interface strings that the i18n adoption deliberately
+  carried over unchanged, and settle one naming rule for the nine toolbar tool
+  buttons.
+  
+  Adopting the interface locale held English byte-identical on purpose, so that a
+  host who opted into nothing saw exactly the chrome they already had and no text
+  change hid inside a refactor. That left a set of strings keyed but not fixed. This
+  is that follow-up, and it is a text change with nothing else in it.
+  
+  Most of them are accessible names, which is why they are worth the entry: a screen
+  reader reads them aloud, and a host may be asserting the exact string.
+  
+  - `tools.protractor.toolA11y` no longer ends "Current rotation displayed via
+    Moveable.js". A learner does not need the name of the drag library, and the
+    clause said nothing about how to use the tool. The keyboard instructions in
+    front of it are unchanged apart from `PageUp/PageDown` becoming "PageUp or
+    PageDown", which a screen reader reads as words rather than a path.
+    `tools.ruler.applicationA11y` carries the same instruction and gets the same
+    treatment.
+  - `tools.graph.toolA11y`, `tools.graph.canvasA11y` and
+    `tools.periodicTable.toolA11y` were Title Case with a hyphen standing in for a
+    break ("Graph Tool - Draw points and lines…"). Now sentence case with an em
+    dash. The periodic table's also said "Click elements", which excludes keyboard
+    and touch, and now reads "select an element to view its details".
+  - `tools.textToSpeech.toolA11y` was "Text-to-Speech Tool", now "Text-to-speech
+    tool", matching every other `toolA11y`.
+  - The four `tools.graph.mode*Hint` strings capitalised the word after the colon
+    ("Point: Click on the grid"). Now lowercase, as running text.
+  - Five `debug.tts.*` messages spelled the abbreviation "TTS" at a learner. They
+    now say "text-to-speech", or drop the word where the surrounding sentence
+    already establishes it.
+  - `debug.liveUpdatesDisconnected` and `debug.tts.applying` used three ASCII dots
+    where `common.loading` uses an ellipsis. Now consistent.
+  
+  One key pair is removed rather than reworded. `tools.ruler` carried three forms of
+  each unit name because the pre-adoption code rendered three: Title Case on the
+  button, lowercase in the announcement, and the raw `'inches' | 'cm'` state token in
+  the accessible name and the image alt — so the same tool said "inches" for one unit
+  and "cm" for the other, in a string a screen reader speaks as two letters. The
+  abbreviation pair is gone and both of those now interpolate the spelled-out
+  in-sentence form, leaving two forms per unit instead of three.
+  
+  ## Toolbar button accessible names
+  
+  Every toolbar tool button is a toggle: the toolbar mirrors its active state onto
+  the button as `aria-pressed`. Two of the nine names contradicted that by naming an
+  action — "Open ruler tool" announced as "Open ruler tool, toggle button, pressed"
+  once the ruler was open. The rest used a `Name - Description` form whose hyphen a
+  screen reader renders as an unpredictable pause, and two of them collided outright:
+  `tools.highlighter` and `tools.annotationToolbar` both resolved to "Highlight
+  text" for different buttons.
+  
+  All nine now follow one rule. The name contains the button's visible tooltip
+  verbatim, per WCAG 2.5.3 Label in Name, and adds a comma-separated purpose clause
+  only where the tooltip alone does not identify the tool — so "Ruler" and
+  "Protractor" stand alone, while "Theme" becomes "Theme, change colors and
+  contrast". No name encodes an action, because the pressed state already carries it.
+  `tools.answerEliminator.buttonA11y` previously did not contain its own tooltip
+  ("Strike Through") at all, which is the 2.5.3 failure rather than a style
+  preference.
+  
+  `tools.annotationToolbar.tooltip` changes from "Highlight" to "Annotate": two
+  toolbar buttons carrying the same *visible* label is a defect, and this tool also
+  underlines, removes and clears.
+  
+  The calculator's name no longer swaps between "Open …" and "Close …" as it opens.
+  Three unlocalized strings surfaced while making that change, all of them built by
+  splicing a raw type token into an English template, and all of them rendered:
+  `Close ${name.toLowerCase()}` as the toolbar button's tooltip, `Close ${type}
+  calculator` as the inline calculator's tooltip, and `${type} calculator opened`
+  in the inline calculator's live region. All three now resolve from the catalog,
+  which gains a name and two announcements for each of the three variants the Desmos
+  provider implements — including `graphing`, which the inline element accepts from
+  its host and which the old template rendered while the catalog had no key for it —
+  and drops the six open/close keys the swap needed.
+  
+  ## nl-NL
+  
+  The rewordings above leave it alone: a translation was never obliged to reproduce
+  an English flaw, and it already rendered the protractor's help without the
+  Moveable.js clause. The button naming rule is not an English matter, so all nine
+  Dutch `buttonA11y` values move with their English counterparts, and
+  `tools.annotationToolbar.tooltip` becomes "Aantekenen" for the same reason it
+  becomes "Annotate". Both catalogs stay complete.
+  
+  ## Downstream impact
+  
+  This is the only part of the interface-locale work that changes what a host
+  renders with no `locale` supplied. Host A is the affected consumer — it drives
+  live delivery with the toolbar placed — and Host R renders the same buttons.
+  Neither asserts, styles, nor selects on any of the retired strings, so the
+  exposure is screen-reader output only. See `docs/integrations/consumer-api-dependencies.md`.
+- 00b8a71: Localize player and tool chrome, with Dutch as the first complete locale.
+  
+  A host sets one attribute — `locale="nl-NL"` on `pie-item-player` or a
+  section-player layout element, or `runtime.locale`, which wins — and every string
+  the suite renders itself follows it: toolbar labels, tool panels, player status
+  and error text, formative controls, live-region announcements, `aria-label`s.
+  Unset, the rendered output is byte-identical to before, including every tool
+  button's accessible name. The graceful default is `en-US` and never
+  `navigator.language`: under fixed lockstep patch-only versioning a
+  rendered-string change reaches live delivery on a host's next install with no
+  build signal on their side, so a host that opts into nothing must keep exactly
+  the chrome it has.
+  
+  Interface locale is the deployment's fact and no element can know it, so it travels
+  as a composition context rather than through `model`: the toolkit publishes the
+  resolved locale and one provider on its runtime context, and every capability
+  resolves both through `connectToolRuntimeContext`. The change signal is the
+  context's own republish, which matters because a catalog is a dynamic import —
+  without a reactive read every label would pin the English that rendered a tick
+  earlier, the same silent failure `composition-context.md` records twice. A
+  component that finds no publisher falls back to an English-only default provider
+  rather than rendering raw message keys, which is what keeps tools working in
+  `print-player`, in Studio preview and in a bare harness.
+  
+  Content language is untouched and remains a separate concern on a separate
+  channel. QTI 3's implementation guide states the independence directly: a
+  candidate may choose an interface language which may or may not also be the
+  language of the content. Conflating the two is why classic PIE renders Spanish
+  widget chrome for a Spanish item.
+  
+  `@pie-players/pie-players-shared/i18n` is rebuilt around that. Catalogs are
+  TypeScript modules keyed by full BCP-47 tag, replacing JSON keyed by bare
+  language: the English catalog's shape now generates the `MessageKey` union, so a
+  mistyped key is a compile error instead of a key rendered on screen — a key
+  assembled at runtime has to be asserted through `dynamicMessageKey()`, which is
+  greppable and pairs with `hasKey()` so a miss falls back to a literal — and `tsc`
+  compiling a `.ts` catalog removes the `with { type: "json" }` import-attribute
+  hazard that already broke every non-English locale once under Node's ESM loader.
+  Requests resolve through RFC 4647 lookup and then primary-subtag widening, so
+  POSIX `nl_NL`, bare `nl` and regional `nl-BE` all reach the `nl-NL` catalog;
+  `SimpleI18n` gains `plural()` — `Intl.PluralRules` alone, so Arabic's
+  `zero`/`two`/`few`/`many` and Polish's `few`/`many` are reachable — plus
+  `withLocale()` for two players rendering different locales from one provider, and
+  it no longer writes `lang`/`dir` to `document.documentElement`, which an embedded
+  player has no business doing. Components stamp their own host instead.
+  
+  The module split is what keeps this off the wire. `i18n/types` is type-only and
+  erases; `i18n/provider` carries the 5 KB English catalog; the dynamic loader map
+  lives in `i18n/catalogs`, which players import and tools do not. Since every
+  player and tool `vite.config.ts` sets `external: []`, that boundary is the
+  difference between one locale chunk and eighteen tool bundles each carrying a
+  catalog they will never load.
+  
+  `ToolRegistration` gains optional `nameKey` and `descriptionKey` beside the
+  still-required `name` and `description`. The keys are supplied by
+  `default-tool-loaders`, which owns the packaged capability set, and a
+  host-authored registration with no keys renders its `name` verbatim.
+  
+  The English catalog does enumerate a `tools.<capability>` namespace per packaged
+  capability, so `default-tool-loaders` is not the only file naming them.
+  `check:capability-neutrality` is unaffected: what it protects is core not
+  branching on a capability id or granting behaviour from one, and a message key
+  does neither — it is inert text, resolved by whoever holds the id. Splitting the
+  catalog per capability would satisfy the letter of it and cost both the
+  single-reference coverage check and the bundle boundary that keeps locale strings
+  out of eighteen tool bundles.
+  
+  English output is byte-identical. Every English catalog value reproduces the
+  literal it replaced exactly, punctuation and inconsistencies included, because
+  fixed lockstep patch-only versioning puts a reworded string into a host's live
+  delivery on their next install with no signal on their side — and most of what
+  this change touches is accessible names and live-region announcements, where a
+  host may be asserting exact text. Where the pre-adoption code rendered the same
+  concept in two forms, the catalog carries both rather than assembling one by
+  interpolation: `tools.ruler` has three forms of each unit name, matching the Title
+  Case button label, the lowercase announcement and the raw state token in the
+  accessible name. Improving any of these strings is a separate change with its own
+  entry.
+  
+  `en-US` and `nl-NL` are complete at 402 keys, and they are the only locales
+  shipped. The pre-adoption `es`/`zh`/`ar` catalogs are deleted rather than
+  re-keyed: 76 of their 142 keys named UI this codebase does not render — a
+  section-builder, an assessment shell, 25 Desmos internals Desmos localizes
+  itself, colour-scheme names the theme registry owns — while the strings actually
+  on screen had no keys at all; the published `dist` omitted
+  `with { type: "json" }` on exactly the three dynamic locale imports, so none of
+  them could load outside a bundler in any version through `0.3.67`; and nothing
+  read them, here or in any consumer checkout. Machine-filling the gap would ship
+  strings nobody has read, to learners.
+  
+  `check:i18n-coverage` now runs in the pre-commit and CI gates: a locale declared
+  complete must stay at 100%, a locale mid-translation can be listed as carried and
+  is reported without gating, and either fails on a key English no longer defines.
+  
+  The pre-adoption i18n layer is replaced rather than versioned alongside.
+  `BUNDLED_TRANSLATIONS`, `loadTranslations`, `SimpleI18n.tn()` and two Svelte
+  composables are gone. A grep of all three consumer checkouts finds no call site
+  for any of them outside build caches — the layer was published complete and
+  unused, which is what made replacement the right move instead of a second
+  parallel implementation of the kind that produced `I18nService` as a copy of
+  `SimpleI18n`.
+- 1d9f2d3: One term-lookup implementation behind both dictionaries, and three defaults that no longer need a host to know about them.
+  
+  The two dictionaries shipped as near-copies: term normalisation and the headword guard were character-identical, the POST clients differed only in error strings, and each panel carried its own copy of the same state machine. That is now one module, `@pie-players/pie-players-shared/tools/term-lookup`, and each tool supplies only what a result of its own carries — an entry, or a picture. The subtle part, a superseded lookup not overwriting the newer one's state, exists once and is tested once. A lookup result is `{ status, items }` rather than `entries`/`pictures`.
+  
+  **An endpoint alone is now the whole configuration.** The client sent `credentials: "omit"` and documented `headers` as the way to authorise, but `headers` was unreachable: the element exposed no such property and the factory taking it was never exported. A host that put its dictionary route behind the assessment's own session — which the tool host contract asks for — got a 401 on every lookup and a learner-facing "the dictionary is unavailable (401)". Endpoints are called `same-origin`, so that route answers with nothing further configured; `headers` and `credentials` are now real properties for a host authorising some other way, and neither is required.
+  
+  **Plain `http:` picture URLs are refused.** The validator accepted `https?:` while its own comment said anything else with a scheme was refused, so `http://cdn.example/cat.png` reached `src` and was mixed-content-blocked on every https deployment — the broken image the guard exists to prevent. Protocol-relative and same-origin paths still pass, and "same-origin" is now checked by resolving rather than by looking for a leading slash: `/\evil.example/x.png` looks like a path and resolves to another host, because a backslash is a path separator for special schemes and a tab is stripped outright. Both still resolve to https, so neither defeated the mixed-content guard — but same-origin is what the function claims.
+  
+  **A requested term is answered once per request, not once per term.** Params reach a tool through a seam reapplied on every sync, so the term alone cannot distinguish a re-render from a fresh ask. Keyed on the panel's last search, every reopen re-issued the selection that opened it and discarded the word the learner had typed since. Requests now carry a `termRequestId`, which both dictionary panels accept as an optional property; a host assigning `term` directly can leave it unset and gets term identity, enough to stop a re-render re-issuing.
+  
+  **A tool-open request falls back off section scope.** Requests defaulted to `"section"` and resolved only there, so a host placing a capability at item scope only had the selection action silently vanish: the tool was granted, hosted and visible, with no action on the selection and nothing to say why. Resolution now prefers section scope and falls back to any level that hosts the capability. Naming a level in the request still makes it a constraint, honoured strictly.
+  
+  Both panels' effects now write their reactive state under `untrack`, matching the rule AGENTS.md sets for effect bodies that read what they write. `check:capability-neutrality` gained `dictionary` and `pictureDictionary`, so its guard covers the packaged set its own comment claims to track.
+  
+  Also: `requestTool`, `canRequestTool`, `registerToolRequestTarget` and `onToolRequestTargetsChange` are optional on `ToolkitCoordinatorApi`. They were declared required while both call sites duck-typed them away for a host coordinator predating the seam, which made such a coordinator structurally non-conformant for no benefit. Both dictionary packages dropped two declared dependencies that nothing imported.
+- 27284f8: Remove four duplicated public surfaces. Each was audited against all three
+  consumer checkouts first; none of the removed names is consumed by any of them.
+  
+  **The toolkit's forked `DesmosCalculatorProvider` is gone** from the
+  `./tools/client` subpath. `@pie-players/pie-calculator-desmos` owns that class,
+  and the toolkit's own runtime path already instantiated *its* copy — the fork was
+  reachable only as public API. The two were not interchangeable: the canonical
+  provider takes `initialize({ apiKey, proxyEndpoint, onTelemetry })` and documents
+  `proxyEndpoint` as the way to keep the key server-side, while the fork accepted
+  only `{ apiKey }` and otherwise read `process.env.DESMOS_API_KEY` or
+  `window.PIE_DESMOS_API_KEY`. So the published subpath offered the one variant with
+  no server-side key path, and a host serving a Desmos proxy endpoint could not use
+  it. `tool-calculator-desmos`'s setup docs now point at the canonical package and at
+  `proxyEndpoint` rather than at a bare key.
+  
+  **`TTSToolConfig` is now defined in terms of `TTSRuntimeSettings`** instead of
+  redeclaring its 23 fields. They had drifted in both directions, which is how
+  `mathTokenHighlighting` came to be honoured at runtime while being unnameable on
+  the coordinator's public `ensureTTSReady` except through an index signature. It is
+  nameable now, along with `showSingleSpeedOption` — the change is additive on the
+  host-facing surface and removes nothing. It is an intersection rather than an
+  interface because `ToolConfig.provider` is `unknown` where the runtime settings
+  narrow it to the three provider ids, and an interface cannot inherit a member two
+  parents type differently.
+  
+  **`AuthoringValidationResult` is re-exported from `pie-item-player`** rather than
+  redeclared there. The local copy widened `validatedModels` to `any[]` while
+  `validateModels()` is implemented against `players-shared`'s
+  `Array<PieModel & { validation?: unknown }>`, so a consumer typing against this
+  package lost the model typing the implementation actually returns. The name still
+  exports from here; only its precision changes.
+  
+  **The `highlighter` capability is removed** from `default-tool-loaders`, along with
+  `highlighterToolRegistration`. It mounted `pie-tool-annotation-toolbar` through the
+  same loader as `annotationToolbar`, carried the same `"Highlighter"` name and
+  `highlighter` icon, and was placed at the same four levels, so an exhaustive host
+  rendered two identically-labelled buttons opening the same element. That collision
+  was already known: the placement test excluded `highlighter` from one preset by
+  hand.
+  
+  No grant is lost. `annotationToolbarRegistration.pnpSupportIds` already accepted
+  all three of the removed capability's ids, and its three `universalSupportIds`
+  (`highlighter`, `textHighlight`, `annotation`) moved onto the surviving capability,
+  so a profile granted any of them still gets highlighting. What does change is that
+  annotation highlighting is now reached only through the selection gateway, not
+  additionally through a toolbar toggle. `PACKAGED_TOOL_ORDER` and
+  `PACKAGED_TOOL_PLACEMENT` lose the id, and their hand-written tuple casts were
+  corrected to match — left alone they would have declared a capability the runtime
+  arrays no longer contain.
+- f61c7c7: Re-publish the toolkit runtime context on each tool window, so a shelled tool
+  resolves the interface locale rather than the English-only default.
+  
+  A tool window mounts at `document.body`, which is what keeps it clear of the
+  player's overflow and stacking contexts. The consequence was that a tool inside
+  one sat outside every provider's subtree: its `context-request` bubbled to `body`
+  and reached nothing, `resolveInterfaceI18n` fell back to `getDefaultI18n()`, and
+  the tool rendered English under a translated toolbar. With `locale="nl-NL"` the
+  graph offered "Selector / Point / Line / Delete" beneath a "Grafiek" button, and
+  the same held for the theme, periodic-table and calculator panels — every tool
+  the toolbar gives a shell. The unshelled overlays, ruler and protractor and line
+  reader among them, were never affected: they mount inside the toolbar's own DOM
+  and reached the provider all along. The i18n adoption keyed all of these tools at
+  once, so the catalog and the call sites were already in place; only the delivery
+  path was missing.
+  
+  `ItemToolBar` now hosts a second `ContextProvider` on the shell element, carrying
+  the value it consumes itself and re-setting it on each republish. That restores
+  the whole runtime context to a shelled tool, not just `i18n` — the coordinators,
+  the TTS service and the catalog resolver were equally unreachable there.
+  
+  Two smaller faults on the same surface. The window's own controls — move, resize,
+  centre, close — are built imperatively, so `t()` ran once with no reactive read to
+  invalidate: a shell built before its locale's catalog import resolved kept English
+  for the rest of the session, and a locale change never reached it. Their labels
+  are now re-read from the catalog whenever the shell updates. And a window's title
+  came from `ToolRegistration.name`, the raw English field, rather than through
+  `nameKey`; graph, periodic table and theme now resolve it the way the toolbar
+  does, and the calculator's window takes the variant name its button already
+  carries. `resolveToolRegistrationName` is exported from
+  `@pie-players/pie-assessment-toolkit/tools/internal` for that.
+  
+  Default-English is unchanged: with no `locale` every one of these surfaces renders
+  exactly what it rendered before, including the shell controls' accessible names,
+  which hosts may be asserting on.
+  
+  Covered by `packages/section-player/tests/section-player-interface-locale.spec.ts`,
+  which opens the graph window under `nl-NL` and asserts the window title, the
+  header controls and the tool's own labels.
+- 0dc9c96: Selecting a word now offers a dictionary lookup on the annotation strip, and the panel opens already answered.
+  
+  The mechanism is a capability-agnostic one, because a selection gateway cannot name the tool it opens. `ToolkitCoordinator` gains `requestTool` / `canRequestTool` / `registerToolRequestTarget`: a surface names an unscoped tool id, and the toolbar hosting that tool turns it into a scoped instance, applies the request's params and shows it. Resolution is a claim rather than a broadcast — a broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is the item card's and the section's both. Params layer over the host's own, so a request carrying a term leaves a configured endpoint in place, and they arrive through `getToolRenderParams`, which means a tool needs nothing new to receive one.
+  
+  The strip renders host-supplied `selectionActions` and knows nothing about what they do; the pairing to the two dictionaries lives in the composition layer, which is the only layer allowed to name capabilities. A host can contribute an action for a capability PIE does not ship. An action whose tool no toolbar hosts is absent rather than present and inert.
+  
+  Acting on a selection now latches the strip down for that selection. The selection itself survives on purpose — the learner's place in the text is not ours to clear — and opening a panel moves focus, which fires `selectionchange`: without the latch the strip came straight back over the definition it had just fetched. Escape, focus leaving and an outside click do not latch, and Shift+F10 clears one, so dismissing never costs a learner the strip for good.
+  
+  The door is a shortcut, not the way in. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on, an OS toggle absent on mobile, so a sighted keyboard-only learner cannot originate a selection at all. Both dictionaries keep their toolbar button and their own term field.
+  
+  Fixes both dictionary toolbar buttons rendering blank: `book-open` and `photo` had no entry in the toolbar's icon map, so an icon-only button drew nothing. The map moves to `services/tool-icons.ts` and is exported through `tools/internal`, so a gateway button and the toolbar button for one tool draw the same shape.
+- e94b097: Move the calculator's toolbar and shell specifics out of the generic core into the
+  composition layer that owns them.
+  
+  `ItemToolBar` branched on `toolId === "calculator"` in four places — the keyboard
+  bridge that lets Tab cross between the page and a shell, the design-system header
+  chrome, the close button's display value — mapped the FontAwesome icon from a
+  toolId, and defaulted its `tools` prop to
+  `calculator,textToSpeech,answerEliminator`. AGENTS.md says this package names no
+  capability.
+  
+  Three declarations replace them: `faIconName` on a toolbar button definition,
+  `ndsHeaderControls` and `pageTabOrder` on a tool window's shell config. The
+  calculator registration sets all three, which is where a decision about which
+  capabilities a deployment renders in the host's design system belongs. The `tools`
+  default is now empty; every in-repo mount passes it explicitly, and no consumer
+  mounts `pie-item-toolbar` directly.
+  
+  `check-capability-neutrality` could not see any of this: it read only `.ts` from a
+  hand-listed scope. It now covers the three toolbar components too, and its
+  comment-stripping is a state-tracking scan rather than ordered regex replaces —
+  the old order let a `/*` inside a line comment (`externalizes @pie-players/*`)
+  open a phantom block comment and hide the ~700 lines that followed it from the
+  check, in `.ts` files as much as in components.
+- Updated dependencies [5a41616]
+- Updated dependencies [2d8ce6a]
+- Updated dependencies [27284f8]
+- Updated dependencies [e94b097]
+- Updated dependencies [67a3d7e]
+- Updated dependencies [d68c01b]
+- Updated dependencies [3f5e968]
+- Updated dependencies [27284f8]
+- Updated dependencies [67f286c]
+- Updated dependencies [55016b5]
+- Updated dependencies [fc71c91]
+- Updated dependencies [e94b097]
+- Updated dependencies [00b8a71]
+- Updated dependencies [6e1e053]
+- Updated dependencies [e94b097]
+- Updated dependencies [7c9fb28]
+- Updated dependencies [979e643]
+- Updated dependencies [1d9f2d3]
+- Updated dependencies [2cda539]
+- Updated dependencies [e94b097]
+- Updated dependencies [27284f8]
+- Updated dependencies [54742db]
+- Updated dependencies [f61c7c7]
+- Updated dependencies [0dc9c96]
+- Updated dependencies [2d680c8]
+- Updated dependencies [cb11691]
+- Updated dependencies [4f0cb3f]
+- Updated dependencies [e94b097]
+- Updated dependencies [27284f8]
+  - @pie-players/pie-tool-annotation-toolbar@0.3.68
+  - @pie-players/pie-players-shared@0.3.68
+  - @pie-players/pie-assessment-toolkit@0.3.68
+  - @pie-players/pie-tool-dictionary@0.3.68
+  - @pie-players/pie-tool-picture-dictionary@0.3.68
+  - @pie-players/pie-tool-ruler@0.3.68
+  - @pie-players/pie-tool-calculator-desmos@0.3.68
+  - @pie-players/pie-tool-theme@0.3.68
+  - @pie-players/pie-tool-graph@0.3.68
+  - @pie-players/pie-tool-line-reader@0.3.68
+  - @pie-players/pie-tool-periodic-table@0.3.68
+  - @pie-players/pie-tool-protractor@0.3.68
+  - @pie-players/pie-tool-tts-inline@0.3.68
+  - @pie-players/pie-tool-answer-eliminator@0.3.68
+
 ## 0.3.67
 
 ### Patch Changes

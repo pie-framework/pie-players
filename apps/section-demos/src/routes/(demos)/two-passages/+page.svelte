@@ -1,9 +1,5 @@
 <script lang="ts">
 	/*
-	 * Temporary control for previewing the card header fill against this demo's
-	 * content. Not meant to ship: delete this block, the panel markup, and the
-	 * style block below for the plain demo.
-	 *
 	 * The token is applied on the pie-section-player-splitpane element, which is
 	 * where at least one real host sets its theme tokens. The value travels as a
 	 * --demo-* custom property on <html> so the rule keeps applying to a freshly

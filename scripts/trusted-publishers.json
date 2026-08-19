@@ -95,6 +95,10 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-tool-dictionary": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-tool-graph": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
@@ -104,6 +108,10 @@
 			"workflow": "release.yml"
 		},
 		"@pie-players/pie-tool-periodic-table": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-picture-dictionary": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},

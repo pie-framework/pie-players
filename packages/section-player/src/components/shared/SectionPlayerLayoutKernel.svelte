@@ -54,7 +54,7 @@
 	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import { attachRuntimeCallbackBridge } from "./section-player-runtime-callbacks.js";
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
-	import { coerceBooleanLike } from "./section-player-props.js";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";

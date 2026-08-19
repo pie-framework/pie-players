@@ -103,23 +103,14 @@
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
+	import {
+		clampNarrowBreakpoint,
+		createNarrowLayoutWatch,
+		getShellHostElement,
+		resolveConfiguredPx,
+		resolveContentMaxWidths,
+	} from "./shared/section-player-shell-layout.svelte.js";
 
-	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
-	const NARROW_BREAKPOINT_MIN_PX = 400;
-	const NARROW_BREAKPOINT_MAX_PX = 2000;
-	const CONTENT_MAX_WIDTH_MIN_PX = 320;
-	const CONTENT_MAX_WIDTH_MAX_PX = 2200;
-
-	function resolveConfiguredPx(
-		value: unknown,
-		min: number,
-		max: number,
-	): number | undefined {
-		if (value === undefined || value === null || value === "") return undefined;
-		const num = typeof value === "number" ? value : Number(value);
-		if (!Number.isFinite(num)) return undefined;
-		return Math.max(min, Math.min(max, num));
-	}
 
 	let {
 		assessmentId,
@@ -169,7 +160,6 @@
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
-	let isNarrow = $state(false);
 	const paneIdBase = $derived.by(() =>
 		`pie-section-player-tabbed-${(sectionId || attemptId || "default").replace(/[^a-zA-Z0-9_-]/g, "-")}`
 	);
@@ -185,56 +175,24 @@
 	// top-level prop and `runtime` verbatim and the resolver picks
 	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	function getHostElement(): HTMLElement | null {
-		if (!anchor) return null;
-		const rootNode = anchor.getRootNode();
-		if (rootNode && "host" in rootNode) {
-			return (rootNode as ShadowRoot).host as HTMLElement;
-		}
-		return anchor.parentElement as HTMLElement | null;
-	}
-	const hostElement = $derived.by(() => getHostElement());
+	const hostElement = $derived.by(() => getShellHostElement(anchor));
 
-	const clampedBreakpoint = $derived.by(() => {
-		const n = narrowLayoutBreakpoint ?? DEFAULT_NARROW_BREAKPOINT_PX;
-		const num = typeof n === "number" ? n : Number(n);
-		const value = Number.isFinite(num) ? num : DEFAULT_NARROW_BREAKPOINT_PX;
-		return Math.max(
-			NARROW_BREAKPOINT_MIN_PX,
-			Math.min(NARROW_BREAKPOINT_MAX_PX, value),
-		);
-	});
-
-	$effect(() => {
-		const bp = clampedBreakpoint;
-		if (typeof window === "undefined") return;
-		const query: MediaQueryList = window.matchMedia(`(max-width: ${bp}px)`);
-		function update() {
-			isNarrow = query.matches;
-		}
-		update();
-		query.addEventListener("change", update);
-		return () => query.removeEventListener("change", update);
-	});
-
-	const effectiveToolbarPosition = $derived(isNarrow ? "top" : toolbarPosition);
-	const configuredContentMaxWidthNoPassagePx = $derived.by(() =>
-		resolveConfiguredPx(
-			contentMaxWidthNoPassage,
-			CONTENT_MAX_WIDTH_MIN_PX,
-			CONTENT_MAX_WIDTH_MAX_PX,
-		)
+	const clampedBreakpoint = $derived(
+		clampNarrowBreakpoint(narrowLayoutBreakpoint),
 	);
-	const configuredContentMaxWidthWithPassagePx = $derived.by(() => {
-		const withPassage = resolveConfiguredPx(
-			contentMaxWidthWithPassage,
-			CONTENT_MAX_WIDTH_MIN_PX,
-			CONTENT_MAX_WIDTH_MAX_PX,
-		);
-		if (withPassage === undefined) return undefined;
-		if (configuredContentMaxWidthNoPassagePx === undefined) return withPassage;
-		return Math.max(configuredContentMaxWidthNoPassagePx, withPassage);
-	});
+	const narrowLayout = createNarrowLayoutWatch(() => clampedBreakpoint);
+
+
+	const effectiveToolbarPosition = $derived(narrowLayout.isNarrow ? "top" : toolbarPosition);
+	const contentMaxWidths = $derived(
+		resolveContentMaxWidths(contentMaxWidthNoPassage, contentMaxWidthWithPassage),
+	);
+	const configuredContentMaxWidthNoPassagePx = $derived(
+		contentMaxWidths.noPassagePx,
+	);
+	const configuredContentMaxWidthWithPassagePx = $derived(
+		contentMaxWidths.withPassagePx,
+	);
 
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;

@@ -28,17 +28,17 @@
 	- Visit: https://www.desmos.com/api
 	- Contact: partnerships@desmos.com
 
-	To provide the API key, initialize the provider before using this component:
+	A host initializes the provider before using this component. The provider is
+	`DesmosCalculatorProvider`, exported from the `@pie-players/pie-calculator-desmos`
+	package — named here rather than shown as an import, because this package does
+	not depend on it and `check:deps` reads an import in a comment as a real one.
 
-		import { DesmosCalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
-
-		const provider = new DesmosCalculatorProvider();
-		await provider.initialize({
-			apiKey: 'your_desmos_api_key_here'
-		});
+	Call its `initialize` with `proxyEndpoint` in production, pointing at an endpoint
+	of yours that serves the key, so the key never reaches the browser. `apiKey` is
+	the development path.
 
 	For more information, see:
-	- packages/assessment-toolkit/src/tools/calculators/README.md
+	- packages/calculator-desmos/README.md
 	- docs/architecture.md (Calculator Provider System section)
 -->
 

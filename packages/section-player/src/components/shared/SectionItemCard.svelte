@@ -24,6 +24,9 @@
 			// section does not deliver formatively. The pane derives it; this card
 			// renders it and reports learner actions.
 			formativeView: { attribute: "formative-view", type: "Object", reflect: false },
+			// Resolved cue state for this item, or null when the section is not timed
+			// media. The pane derives it; this card renders it.
+			timedMediaView: { attribute: "timed-media-view", type: "Object", reflect: false },
 		},
 	}}
 />
@@ -48,6 +51,7 @@
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type { FormativeItemView } from "@pie-players/pie-players-shared/formative";
+	import type { TimedMediaItemView } from "./section-player-view-state.js";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
@@ -77,6 +81,7 @@
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
 		formativeView = null as FormativeItemView | null,
+		timedMediaView = null as TimedMediaItemView | null,
 	} = $props<{
 		item: ItemEntity;
 		itemIndex?: number;
@@ -91,6 +96,7 @@
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
 		formativeView?: FormativeItemView | null;
+		timedMediaView?: TimedMediaItemView | null;
 	}>();
 
 	// Clamped here rather than trusted: the pane normalizes, but this card is a
@@ -360,12 +366,19 @@
 	content-kind="assessment-item"
 	item={item}
 >
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+	<!-- `tabindex="-1"` is exactly what a programmatic focus target takes, and the
+	     pane sends focus here when a gate pauses playback. The card is never in the
+	     tab order: the value is negative, and it is absent unless this item is what
+	     the gate is waiting for. -->
 	<div
 		class="pie-section-player-content-card"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
 		data-pie-tool-overlay-boundary
 		aria-current={isCurrent ? "true" : undefined}
+		data-pie-timed-media-gate={timedMediaView?.isGateTarget ? "holding" : undefined}
+		tabindex={timedMediaView?.isGateTarget ? -1 : undefined}
 	>
 		<div
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
@@ -460,6 +473,15 @@
 	:global(pie-section-player-item-card) {
 		display: block;
 		border-radius: var(--pie-section-player-card-radius, 8px);
+	}
+
+	/* A cue-gated card stays mounted and is hidden, which keeps its shell
+	   registration, its session and the section's loading accounting intact —
+	   mounting on the cue instead would tear an item player down on every seek
+	   backwards. The rule is needed because the `display: block` above would
+	   otherwise beat the UA stylesheet's `[hidden]`. */
+	:global(pie-section-player-item-card[hidden]) {
+		display: none;
 	}
 
 	.pie-section-player-content-card {

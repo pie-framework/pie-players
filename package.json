@@ -46,8 +46,8 @@
 		"lint:biome": "biome lint .",
 		"lint:svelte": "turbo check",
 		"lint:all": "bun run lint && bun run typecheck",
-		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:i18n-coverage && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
-		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:i18n-coverage && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run check:consumer-pad && bun run lint:all",
+		"verify:pre-commit": "bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:i18n-coverage && bun run check:source-exports && bun run check:undeclared-subpaths && bun run check:consumer-boundaries && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run lint:biome && bun run check",
+		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:i18n-coverage && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:undeclared-subpaths && bun run check:consumer-boundaries && bun run check:consumer-pad && bun run lint:all",
 		"verify:pre-push": "bun run verify:local-pr",
 		"verify:local-pr": "bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player && bun run test:e2e:players-shared && bun run test:e2e:print-player",
 		"format:check": "biome format .",
@@ -111,7 +111,7 @@
 		"check:engine-core-purity": "bun ./scripts/check-engine-core-purity.mjs",
 		"check:speech-composition-purity": "bun ./scripts/check-speech-composition-purity.mjs",
 		"restore:workspace-ranges": "node ./scripts/restore-workspace-ranges.mjs",
-		"verify:publish": "bun run build && bun run check:changeset-patch-only && bun run check:fixed-versioning && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity:real && bun run check:deps && bun run check:consumer-boundaries && bun run check:ce-consumer-contract && bun run check:node-consumer-imports && bun run check:bundle-safety && bun run check:math-rendering-version && bun run check:engine-core-purity && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:scripts",
+		"verify:publish": "bun run build && bun run check:changeset-patch-only && bun run check:fixed-versioning && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity:real && bun run check:deps && bun run check:undeclared-subpaths && bun run check:consumer-boundaries && bun run check:ce-consumer-contract && bun run check:node-consumer-imports && bun run check:bundle-safety && bun run check:math-rendering-version && bun run check:engine-core-purity && bun run check:speech-composition-purity && bun run check:capability-neutrality && bun run check:scripts",
 		"check:npm-auth": "dotenvx run -f .env -- node ./scripts/check-npm-auth.mjs",
 		"check:provenance": "bun ./scripts/check-provenance.mjs",
 		"check:trusted-publishers": "bun ./scripts/check-trusted-publishers.mjs",
@@ -125,17 +125,19 @@
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",
 		"pack:local": "bun run build && bun run --cwd tools/cli build && bun ./scripts/pack-local.mjs",
 		"dev:demo": "dotenvx run -- bun scripts/serve-packages.ts",
-		"prepare": "bun ./scripts/install-git-hooks.mjs"
+		"prepare": "bun ./scripts/install-git-hooks.mjs && bun ./scripts/sync-svelte-kit.mjs",
+		"sync:svelte-kit": "bun ./scripts/sync-svelte-kit.mjs",
+		"check:undeclared-subpaths": "bun ./scripts/check-undeclared-subpaths.mjs"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.5",
-		"@axe-core/playwright": "^4.12.1",
-		"@biomejs/biome": "^2.5.7",
-		"@changesets/cli": "^2.31.1",
+		"@axe-core/playwright": "^4.13.0",
+		"@biomejs/biome": "^2.5.8",
+		"@changesets/cli": "^3.0.0",
 		"@dotenvx/dotenvx": "^2.19.1",
 		"@playwright/test": "^1.62.1",
 		"@types/bun": "^1.3.14",
-		"esbuild": "^0.28.1",
+		"esbuild": "^0.28.2",
 		"glob": "^13.0.6",
 		"lefthook": "^2.1.10",
 		"playwright": "^1.62.1",
@@ -160,7 +162,7 @@
 		"minimatch": "^3.0.5 || ^5.1.6 || ^9.0.5 || ^10.2.5",
 		"happy-dom": "^20.9.0",
 		"cookie": ">=0.7.0",
-		"vite": "8.0.16",
+		"vite": "8.2.1",
 		"markdown-it": "^14.3.0",
 		"linkify-it": "^5.0.2",
 		"lodash": "^4.18.1"
@@ -178,7 +180,7 @@
 		"minimatch": "^3.0.5 || ^5.1.6 || ^9.0.5 || ^10.2.5",
 		"happy-dom": "^20.9.0",
 		"cookie": ">=0.7.0",
-		"vite": "8.0.16",
+		"vite": "8.2.1",
 		"markdown-it": "^14.3.0",
 		"linkify-it": "^5.0.2",
 		"lodash": "^4.18.1"
@@ -187,6 +189,6 @@
 		"@sveltejs/kit": "^2.70.1",
 		"svelte": "^5.56.8",
 		"svelte-check": "^4.7.5",
-		"vite": "8.0.16"
+		"vite": "8.2.1"
 	}
 }

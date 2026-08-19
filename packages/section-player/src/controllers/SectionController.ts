@@ -15,12 +15,30 @@ import {
 	hideFormativeItem,
 	rollupFormativeMastery,
 	toFormativeSectionSlice,
+	type FormativeCorrectness,
 	type FormativeItemState,
 	type FormativeMasteryRollup,
 	type FormativeScoredOutcome,
 	type FormativeSectionProjection,
 	type ResolvedFormativePolicy,
 } from "@pie-players/pie-players-shared/formative";
+import {
+	createTimedMediaState,
+	normalizeTimedMediaSectionData,
+	normalizeTimedMediaSectionSlice,
+	reduceTimedMediaState,
+	resolveTimedMediaEnforcement,
+	resolveTimedMediaProjection,
+	timedMediaProjectionSignature,
+	toTimedMediaSectionSlice,
+	type MediaTimeSource,
+	type ResolvedTimedMediaSectionData,
+	type TimedMediaEffects,
+	type TimedMediaDeliveryState,
+	type TimedMediaSectionProjection,
+	type TimedMediaSectionSessionSlice,
+	type TimedMediaValidationError,
+} from "@pie-players/pie-players-shared/timed-media";
 import type {
 	SectionControllerHandle,
 	SectionSessionPersistenceConfig,
@@ -31,6 +49,10 @@ import { SectionItemNavigationService } from "./SectionItemNavigationService.js"
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	ContentLoadedEvent,
+	TimedMediaAudioStartedEvent,
+	TimedMediaCueChangedEvent,
+	TimedMediaInvalidEvent,
+	TimedMediaPolicyDegradedEvent,
 	FormativeRevealChangedEvent,
 	FormativeTryRecordedEvent,
 	SectionMasteryChangedEvent,
@@ -90,7 +112,26 @@ interface NormalizedApplySession {
 	 * so `replace` can clear state while `merge` leaves it alone.
 	 */
 	formativeStates: Record<string, FormativeItemState> | null;
+	/**
+	 * `null` when the snapshot carried no readable timed-media slice. Same
+	 * replace-clears / merge-leaves-alone distinction as `formativeStates`.
+	 */
+	timedMediaState: TimedMediaSectionSessionSlice | null;
 }
+
+/**
+ * How long after the section's content has loaded the stimulus has to expose a
+ * Media Time Source before the timeline is declared inert.
+ *
+ * A clock, because "no notification ever arrives" produces no notification.
+ * Validation resolves `stimulusRef` to a renderable but cannot know whether that
+ * renderable mounts media — a passage is a PIE config and its element bundle
+ * decides when, if ever — so the second half of the contract's resolution rule is
+ * a runtime report. Measured from `section-loading-complete`, by which point every
+ * renderable has already reported its content, so this is slack rather than a
+ * budget.
+ */
+const MEDIA_ATTACH_GRACE_MS = 5000;
 
 const logger = createPieLogger("section-controller", () =>
 	isGlobalDebugEnabled(),
@@ -112,6 +153,7 @@ export class SectionController implements SectionControllerHandle {
 			instructions: [],
 			renderables: [],
 			adapterItemRefs: [],
+			stimulusRenderableIdsByRef: {},
 			currentItemIndex: 0,
 			isPageMode: false,
 		},
@@ -137,6 +179,18 @@ export class SectionController implements SectionControllerHandle {
 	private formativeStates: Record<string, FormativeItemState> = {};
 	private formativeEnabled = false;
 	private lastMasterySignature = "";
+	// Timed media. `timedMediaData` is null for a section that is not timed media
+	// and for one whose authored `timedMedia` failed validation — both deliver as
+	// an ordinary section, and the second reports why.
+	private timedMediaData: ResolvedTimedMediaSectionData | null = null;
+	private timedMediaState: TimedMediaSectionSessionSlice = createTimedMediaState();
+	private mediaTimeSource: MediaTimeSource | null = null;
+	private mediaTimeSourceOrigin: "native-adapter" | "host" = "native-adapter";
+	private unsubscribeMediaTimeSource: (() => void) | null = null;
+	private lastTimedMediaSignature = "";
+	private lastTimedMediaInvalidSignature = "";
+	private reportedDegradationKeys = new Set<string>();
+	private mediaAttachWatch: ReturnType<typeof setTimeout> | null = null;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
 		for (const listener of Array.from(this.listeners)) {
@@ -219,6 +273,7 @@ export class SectionController implements SectionControllerHandle {
 		// authoring edit or a host policy change should reach delivery, and Try
 		// state survives it because it lives in a separate map.
 		this.rebuildFormativePolicies();
+		this.rebuildTimedMedia();
 		this.bootstrapCompletionFromSessions();
 		if (sectionIdentityChanged) {
 			const sectionNavigationEvent: SectionNavigationChangeEvent = {
@@ -264,6 +319,8 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public dispose(): void {
+		this.clearMediaAttachWatch();
+		this.detachMediaTimeSource();
 		this.listeners.clear();
 		this.resetLifecycleTracking();
 		this.pendingApplyReplay = null;
@@ -292,6 +349,7 @@ export class SectionController implements SectionControllerHandle {
 			testAttemptSession: this.getResolvedTestAttemptSession(),
 			itemViewModels,
 			formative: this.getFormativeProjection(),
+			timedMedia: this.getTimedMediaProjection(),
 		};
 	}
 
@@ -389,10 +447,17 @@ export class SectionController implements SectionControllerHandle {
 		const base = this.sessionService.toSessionState(
 			this.state.testAttemptSession,
 		);
-		// Omitted entirely for a non-formative section, so its snapshots stay
-		// byte-identical to what this controller produced before this contract.
-		if (!this.formativeEnabled) return base;
-		return { ...base, formative: toFormativeSectionSlice(this.formativeStates) };
+		// Each slice is omitted entirely where its feature is off, so a section that
+		// uses neither produces snapshots byte-identical to what this controller
+		// produced before either contract.
+		const withFormative = this.formativeEnabled
+			? { ...base, formative: toFormativeSectionSlice(this.formativeStates) }
+			: base;
+		if (!this.timedMediaData) return withFormative;
+		return {
+			...withFormative,
+			timedMedia: toTimedMediaSectionSlice(this.timedMediaState),
+		};
 	}
 
 	// ------------------------------------------------------------------
@@ -473,6 +538,9 @@ export class SectionController implements SectionControllerHandle {
 		};
 		this.emitChange(event);
 		this.emitMasteryIfChanged(timestamp);
+		// A Try is one of the two things a cue gate reads, so a recorded Try is a
+		// gate-release candidate.
+		this.notifyTimedMediaDeliveryChanged();
 	}
 
 	/** Dismiss a reveal and reopen the item, withdrawing its env projection. */
@@ -561,6 +629,10 @@ export class SectionController implements SectionControllerHandle {
 			timestamp: Date.now(),
 		};
 		this.emitChange(event);
+		// A host reveal or a learner retry does not change correctness, but a
+		// released gate stays released, so this only ever re-checks — it cannot
+		// re-trap a learner.
+		this.notifyTimedMediaDeliveryChanged();
 	}
 
 	/**
@@ -591,6 +663,458 @@ export class SectionController implements SectionControllerHandle {
 		return this.state.viewModel.items
 			.map((item) => item.id)
 			.filter((id): id is string => typeof id === "string" && !!id);
+	}
+
+	// ------------------------------------------------------------------
+	// Timed media
+	// ------------------------------------------------------------------
+	//
+	// Cue policy itself is a pure reduction in
+	// `@pie-players/pie-players-shared/timed-media`. What lives here is the live
+	// state and the port: the same split formative delivery uses, and for the same
+	// reason — one rollup over one item set belongs in one place, and a section
+	// that already owns item sessions and completion is that place.
+
+	private rebuildTimedMedia(): void {
+		const section = this.state.input?.section ?? null;
+		this.clearMediaAttachWatch();
+		if (!section || section.sectionType !== "timed-media") {
+			this.timedMediaData = null;
+			this.lastTimedMediaInvalidSignature = "";
+			return;
+		}
+		const result = normalizeTimedMediaSectionData({
+			timedMedia: section.timedMedia,
+			itemIdentifiers: this.getSectionItemIdentifiers(),
+			resolveStimulusRenderableId: (stimulusRef) =>
+				this.state.viewModel.stimulusRenderableIdsByRef?.[stimulusRef],
+			// Resolved formative policies are already rebuilt at this point in
+			// `initialize`, which is what lets validation refuse a correctness gate
+			// that a learner could never pass.
+			resolveItemTryBudget: (itemIdentifier) => {
+				const policy = this.formativePolicies[itemIdentifier];
+				if (!policy?.enabled) return "not-formative";
+				return policy.maxTries === "unlimited" ? "unlimited" : "finite";
+			},
+		});
+		this.timedMediaData = result.data;
+		if (result.data) {
+			this.lastTimedMediaInvalidSignature = "";
+			return;
+		}
+		this.reportTimedMediaInvalid(result.errors);
+	}
+
+	/**
+	 * Report malformed authored data once per distinct failure.
+	 *
+	 * `initialize` runs again on every same-cohort `updateInput`, and a PnP toggle
+	 * must not re-report a section's authoring defect each time.
+	 */
+	private reportTimedMediaInvalid(errors: TimedMediaValidationError[]): void {
+		const signature = JSON.stringify(errors);
+		if (signature === this.lastTimedMediaInvalidSignature) return;
+		this.lastTimedMediaInvalidSignature = signature;
+		const event: TimedMediaInvalidEvent = {
+			type: "timed-media-invalid",
+			errors,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
+	}
+
+	/**
+	 * The live projection, uncloned and for internal readers only.
+	 *
+	 * Resolving is cheap and runs on every `timeupdate`; deep-cloning it there was
+	 * not. `delivery` is threaded in where the caller already has it, because
+	 * assembling it walks every item in the section.
+	 */
+	private resolveTimedMediaView(
+		delivery?: TimedMediaDeliveryState,
+	): TimedMediaSectionProjection | null {
+		if (!this.timedMediaData) return null;
+		return resolveTimedMediaProjection({
+			data: this.timedMediaData,
+			state: this.timedMediaState,
+			delivery: delivery ?? this.getTimedMediaDeliveryState(),
+			capabilities: this.mediaTimeSource?.capabilities ?? null,
+		});
+	}
+
+	/** The public boundary, so this is where the copy is made. */
+	public getTimedMediaProjection(): TimedMediaSectionProjection | null {
+		return this.cloneForRead(this.resolveTimedMediaView());
+	}
+
+	/**
+	 * The delivery state cue gates read, assembled from state this controller
+	 * already keeps: completion answers `"responded"`, and the last Try's
+	 * correctness answers the correctness conditions. A gate on `"responded"`
+	 * therefore works in a section that does not deliver formatively at all.
+	 */
+	private getTimedMediaDeliveryState(): TimedMediaDeliveryState {
+		const respondedByItemId: Record<string, boolean> = {};
+		for (const [itemId, complete] of this.itemCompletionByCanonicalId) {
+			respondedByItemId[itemId] = complete === true;
+		}
+		const correctnessByItemId: Record<string, FormativeCorrectness> = {};
+		for (const [itemId, state] of Object.entries(this.formativeStates)) {
+			const correctness = state.lastOutcome?.correctness;
+			if (correctness) correctnessByItemId[itemId] = correctness;
+		}
+		return {
+			respondedByItemId,
+			correctnessByItemId,
+			itemsComplete: this.sectionItemsComplete,
+		};
+	}
+
+	/**
+	 * Bind the Media Time Source. Called by the stimulus card with a native adapter,
+	 * and directly by a host supplying its own port — which is what lets a host
+	 * deliver timed media without shipping a PIE element.
+	 */
+	public attachMediaTimeSource(
+		source: MediaTimeSource,
+		options?: {
+			origin?: "native-adapter" | "host";
+			renderableId?: string;
+		},
+	): void {
+		if (!source || typeof source.subscribe !== "function") return;
+		if (this.mediaTimeSource === source) return;
+		const origin = options?.origin ?? "host";
+		// A native adapter is a renderable reporting what it found in its own subtree,
+		// so it counts only when that renderable is the one `stimulusRef` resolved to.
+		// A section may legitimately hold a second video passage, and "exactly one time
+		// source per section" is a validation rule rather than a type invariant — see
+		// Media Representation in the contract. A host attaching its own port names no
+		// renderable and is taken at its word.
+		if (
+			origin === "native-adapter" &&
+			options?.renderableId &&
+			this.timedMediaData &&
+			options.renderableId !== this.timedMediaData.stimulusRenderableId
+		) {
+			return;
+		}
+		// The stimulus card re-runs its discovery whenever its content changes, so a
+		// host that wired its own player must outrank it — otherwise the native
+		// element quietly takes over mid-session and the capabilities flip back with
+		// it, which is the "appears to enforce" failure this contract refuses.
+		if (
+			origin === "native-adapter" &&
+			this.mediaTimeSource &&
+			this.mediaTimeSourceOrigin === "host"
+		) {
+			return;
+		}
+		this.detachMediaTimeSource();
+		this.mediaTimeSource = source;
+		this.mediaTimeSourceOrigin = origin;
+		if (!this.timedMediaData) return;
+		// The section has its time source, so the missing-source watch has nothing left
+		// to catch. Degradation reporting starts fresh: the gaps are this source's, and
+		// a second source with the same gap has to be able to report it too.
+		this.clearMediaAttachWatch();
+		this.reportedDegradationKeys.clear();
+		this.unsubscribeMediaTimeSource = source.subscribe((notification) => {
+			switch (notification.type) {
+				case "time":
+					this.advanceTimedMedia({
+						kind: "time",
+						currentTimeSeconds: notification.currentTime,
+					});
+					return;
+				case "seek":
+					this.advanceTimedMedia({
+						kind: "seek",
+						currentTimeSeconds: notification.currentTime,
+					});
+					return;
+				case "ended":
+					this.advanceTimedMedia({
+						kind: "ended",
+						currentTimeSeconds: notification.currentTime,
+					});
+					return;
+				case "play":
+					// A learner pressing play under a held gate is the moment enforcement
+					// is actually tested; re-deriving from the current position produces
+					// the pause effect again.
+					this.advanceTimedMedia({
+						kind: "time",
+						currentTimeSeconds: notification.currentTime,
+					});
+					// After the reduction, so a gate that re-paused announces nothing.
+					this.announceMediaAudioStarted();
+					return;
+				default:
+					return;
+			}
+		});
+		this.reportTimedMediaDegradations();
+		// A restored session may be ahead of a freshly mounted element.
+		this.syncMediaPositionFromState();
+		this.advanceTimedMedia({
+			kind: "time",
+			currentTimeSeconds: source.currentTime,
+		});
+	}
+
+	public detachMediaTimeSource(options?: {
+		origin?: "native-adapter" | "host";
+	}): void {
+		// The card tears its adapter down whenever the stimulus re-renders. Letting
+		// that clear a host-attached port would hand the section straight back to the
+		// native element on the next discovery pass, which is the same silent takeover
+		// the attach guard refuses.
+		if (
+			options?.origin === "native-adapter" &&
+			this.mediaTimeSource &&
+			this.mediaTimeSourceOrigin === "host"
+		) {
+			return;
+		}
+		this.unsubscribeMediaTimeSource?.();
+		this.unsubscribeMediaTimeSource = null;
+		this.mediaTimeSource = null;
+	}
+
+	/**
+	 * Watch for a stimulus that resolves but never exposes a time source.
+	 *
+	 * Armed once the section's content has loaded, and only while no source is
+	 * attached — which is already the common case, because the stimulus card
+	 * registers its adapter as soon as the media element appears in its subtree.
+	 */
+	private armMediaAttachWatch(): void {
+		if (!this.timedMediaData) return;
+		if (this.mediaTimeSource) return;
+		if (this.mediaAttachWatch !== null) return;
+		this.mediaAttachWatch = setTimeout(() => {
+			this.mediaAttachWatch = null;
+			this.reportStimulusExposesNoTimeSource();
+		}, MEDIA_ATTACH_GRACE_MS);
+		// A pending timer keeps a Node process alive, and a controller under test must
+		// not outlive its test. Browsers hand back a number with no `unref`.
+		(this.mediaAttachWatch as unknown as { unref?: () => void }).unref?.();
+	}
+
+	private clearMediaAttachWatch(): void {
+		if (this.mediaAttachWatch === null) return;
+		clearTimeout(this.mediaAttachWatch);
+		this.mediaAttachWatch = null;
+	}
+
+	/**
+	 * The stimulus resolved to a renderable that exposes no media, so no cue can
+	 * ever fire and every cued item would stay hidden for the whole session.
+	 *
+	 * Handled exactly as malformed `timedMedia` is: the timeline is dropped, the
+	 * section delivers as an ordinary section with every item visible, and the
+	 * defect is reported non-recoverably. Same outcome, same posture — refusing to
+	 * deliver would turn one authoring slip into a blank section, and leaving the
+	 * timeline in place would keep the items hidden behind cues nothing can fire.
+	 */
+	private reportStimulusExposesNoTimeSource(): void {
+		const data = this.timedMediaData;
+		if (!data || this.mediaTimeSource) return;
+		this.timedMediaData = null;
+		this.lastTimedMediaSignature = "";
+		this.reportTimedMediaInvalid([
+			{
+				code: "stimulus-exposes-no-time-source",
+				message: `timedMedia.stimulusRef "${data.stimulusRef}" resolved to renderable "${data.stimulusRenderableId}", which exposed no Media Time Source, so no cue could fire. The section delivers every item instead.`,
+			},
+		]);
+	}
+
+	/**
+	 * Move a freshly attached source up to the restored position, forward only so it
+	 * never fights a learner who has already scrubbed — the same rule the signing
+	 * region applies when it seeks a fragment on `loadedmetadata`.
+	 */
+	private syncMediaPositionFromState(): void {
+		const source = this.mediaTimeSource;
+		if (!source) return;
+		const target = this.timedMediaState.mediaCurrentTime;
+		if (!(target > 0)) return;
+		if (source.currentTime >= target - 0.5) return;
+		try {
+			source.seekTo(target);
+		} catch (error) {
+			logger.warn("media time source rejected a resume seek", error);
+		}
+	}
+
+	/**
+	 * One step of the cue reduction: fold the input into cue state, drive the port
+	 * with whatever the reduction asked for, and emit only when cue state moved.
+	 */
+	private advanceTimedMedia(input: Parameters<typeof reduceTimedMediaState>[0]["input"]): void {
+		const data = this.timedMediaData;
+		if (!data) return;
+		// Assembled once per reduction and read twice: the reduction resolves gate
+		// conditions against it, and so does the projection the emit check derives.
+		// Building it walks every item in the section, which ran twice per
+		// `timeupdate`.
+		const delivery = this.getTimedMediaDeliveryState();
+		const reduction = reduceTimedMediaState({
+			state: this.timedMediaState,
+			data,
+			delivery,
+			input,
+		});
+		this.timedMediaState = reduction.state;
+		this.applyTimedMediaEffects(reduction.effects);
+		this.emitTimedMediaIfChanged(reduction.effects, delivery);
+	}
+
+	/**
+	 * Silence media audio so another audio owner can speak.
+	 *
+	 * The handoff rule the contract's accessibility requirements name, reduced to
+	 * the half the section can carry out: the section owns the port, so it can stop
+	 * media audio, and it owns no read-aloud, so it decides nothing about speech.
+	 * Whoever holds both — the toolkit — calls this and yields the other way on
+	 * `timed-media-audio-started`.
+	 *
+	 * Returns whether media audio is now silent, which is `false` only for a source
+	 * that is playing and reports no `canPause`. The overlap then stands: refusing
+	 * to speak would withhold an accommodation to protect a policy the port already
+	 * said it cannot keep, so enforcement degrades here exactly as it does for a
+	 * gate — advisory, and reported at attach.
+	 *
+	 * No pause is issued for a source already paused, so calling this repeatedly
+	 * costs nothing and never fights a learner.
+	 */
+	public pauseMediaForCompetingAudio(): boolean {
+		const source = this.mediaTimeSource;
+		if (!source) return true;
+		if (source.paused) return true;
+		if (!source.capabilities.canPause) return false;
+		try {
+			source.pause();
+		} catch (error) {
+			logger.warn("media time source rejected an audio-handoff pause", error);
+			return false;
+		}
+		return true;
+	}
+
+	/** Announce media audio only where playback actually stood. */
+	private announceMediaAudioStarted(): void {
+		if (!this.timedMediaData) return;
+		if (this.mediaTimeSource?.paused !== false) return;
+		const event: TimedMediaAudioStartedEvent = {
+			type: "timed-media-audio-started",
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
+	}
+
+	/**
+	 * Carry out an effect only where the port reports the capability for it.
+	 *
+	 * Skipping silently is the failure this contract names: the skip is already
+	 * reported once per attach by `reportTimedMediaDegradations`, and the projection
+	 * carries `enforcement: "advisory"` for as long as the gap lasts.
+	 */
+	private applyTimedMediaEffects(effects: TimedMediaEffects): void {
+		const source = this.mediaTimeSource;
+		if (!source) return;
+		if (
+			effects.seekToSeconds !== undefined &&
+			source.capabilities.canRestrictSeeking
+		) {
+			try {
+				source.seekTo(effects.seekToSeconds);
+			} catch (error) {
+				logger.warn("media time source rejected a seek clamp", error);
+			}
+		}
+		if (effects.pause && source.capabilities.canPause && !source.paused) {
+			try {
+				source.pause();
+			} catch (error) {
+				logger.warn("media time source rejected a pause", error);
+			}
+		}
+	}
+
+	/**
+	 * Report a capability gap once per attached source.
+	 *
+	 * Enforcement rather than the whole projection: the degradation list is all this
+	 * needs, and resolving a projection to read one field of it also paid for a gate
+	 * view and two id sets.
+	 */
+	private reportTimedMediaDegradations(): void {
+		const data = this.timedMediaData;
+		if (!data) return;
+		const { degradations } = resolveTimedMediaEnforcement({
+			playbackPolicy: data.playbackPolicy,
+			capabilities: this.mediaTimeSource?.capabilities ?? null,
+			hasGate: data.cues.some((cue) => cue.activation === "gate"),
+		});
+		const unreported = degradations.filter(
+			(entry) => !this.reportedDegradationKeys.has(entry.policy),
+		);
+		if (unreported.length === 0) return;
+		for (const entry of unreported) {
+			this.reportedDegradationKeys.add(entry.policy);
+		}
+		const event: TimedMediaPolicyDegradedEvent = {
+			type: "timed-media-policy-degraded",
+			degradations: unreported,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
+	}
+
+	/**
+	 * Emit on cue state, never on the clock.
+	 *
+	 * `timedMediaProjectionSignature` is shared with the toolkit's composition
+	 * revision key rather than restated here: two encodings of "what changes what a
+	 * layout renders" drift silently, and the failure is an emit the toolkit
+	 * coalesces away or a republish this never announced.
+	 */
+	private emitTimedMediaIfChanged(
+		effects: TimedMediaEffects,
+		delivery?: TimedMediaDeliveryState,
+	): void {
+		const projection = this.resolveTimedMediaView(delivery);
+		if (!projection) return;
+		const signature = timedMediaProjectionSignature(projection);
+		if (signature === this.lastTimedMediaSignature) return;
+		this.lastTimedMediaSignature = signature;
+		const event: TimedMediaCueChangedEvent = {
+			type: "timed-media-cue-changed",
+			activatedCueIdentifier: effects.activatedCueIdentifier,
+			releasedCueIdentifier: effects.releasedCueIdentifier,
+			activeCueIdentifier: projection.activeCueIdentifier,
+			visitedCueIdentifiers: projection.visitedCueIdentifiers,
+			completedCueIdentifiers: projection.completedCueIdentifiers,
+			revealedItemIds: projection.revealedItemIds,
+			gateCueIdentifier: projection.gate?.cueIdentifier ?? null,
+			mediaCompleted: projection.mediaCompleted,
+			aggregateComplete: projection.aggregateComplete,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
+	}
+
+	/** Re-evaluate gates after the state a gate condition reads has changed. */
+	private notifyTimedMediaDeliveryChanged(): void {
+		if (!this.timedMediaData) return;
+		this.advanceTimedMedia({ kind: "delivery-changed" });
 	}
 
 	/**
@@ -774,6 +1298,10 @@ export class SectionController implements SectionControllerHandle {
 		// Hydration restores Try state, so a subscriber that attaches after
 		// `hydrate()` still sees the rollup it is restoring into.
 		this.emitMasteryIfChanged(Date.now());
+		// Same for cue state, and an already-attached source is moved up to the
+		// restored position rather than left at zero.
+		this.syncMediaPositionFromState();
+		this.notifyTimedMediaDeliveryChanged();
 		const applyRevision = ++this.nextApplyRevision;
 		if (!this.sectionLoadingComplete) {
 			this.pendingApplyReplay = {
@@ -979,6 +1507,9 @@ export class SectionController implements SectionControllerHandle {
 		this.totalItems = 0;
 		this.formativeStates = {};
 		this.lastMasterySignature = "";
+		this.timedMediaState = createTimedMediaState();
+		this.lastTimedMediaSignature = "";
+		this.reportedDegradationKeys.clear();
 	}
 
 	private toSectionContentKind(raw?: string): SectionContentKind {
@@ -1013,6 +1544,7 @@ export class SectionController implements SectionControllerHandle {
 			}
 		}
 		this.emitSectionItemsCompleteIfChanged(Date.now());
+		this.notifyTimedMediaDeliveryChanged();
 	}
 
 	private updateItemCompleteState(args: {
@@ -1039,6 +1571,9 @@ export class SectionController implements SectionControllerHandle {
 		};
 		this.emitChange(event);
 		this.emitSectionItemsCompleteIfChanged(args.timestamp);
+		// Completion answers the `"responded"` gate condition and feeds aggregate
+		// completion, so both are re-derived here.
+		this.notifyTimedMediaDeliveryChanged();
 	}
 
 	private emitSectionItemsCompleteIfChanged(timestamp: number): void {
@@ -1095,6 +1630,7 @@ export class SectionController implements SectionControllerHandle {
 			timestamp,
 		};
 		this.emitChange(event);
+		this.armMediaAttachWatch();
 		void this.replayPendingAppliedSession();
 	}
 
@@ -1169,6 +1705,10 @@ export class SectionController implements SectionControllerHandle {
 			formativeStates: normalizeFormativeSectionSlice({
 				slice: session.formative,
 				allowedItemIdentifiers: Array.from(allowedCanonicalIds),
+			}),
+			timedMediaState: normalizeTimedMediaSectionSlice({
+				slice: session.timedMedia,
+				data: this.timedMediaData,
 			}),
 		};
 	}
@@ -1255,7 +1795,16 @@ export class SectionController implements SectionControllerHandle {
 			// while item sessions in the same snapshot are applied untouched.
 			this.formativeStates = {};
 		}
+		if (normalized.timedMediaState) {
+			// No merge case: cue state is section-scoped, so there are no per-key
+			// entries to overlay. A merge that carried a slice would have to decide
+			// between two whole timelines, and the incoming one is the more recent.
+			this.timedMediaState = normalized.timedMediaState;
+		} else if (mode === "replace" && this.timedMediaData) {
+			this.timedMediaState = createTimedMediaState();
+		}
 		this.lastMasterySignature = "";
+		this.lastTimedMediaSignature = "";
 	}
 
 	private cloneForRead<T>(value: T): T {

@@ -18,7 +18,7 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { coerceBooleanLike } from "./shared/section-player-props.js";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 
 	const DEFAULT_COLLAPSED_BREAKPOINT_PX = 1100;

@@ -50,6 +50,7 @@ export {
 	PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
+	PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
 	PIE_REGISTER_EVENT,
 	PIE_UNREGISTER_EVENT,
@@ -57,6 +58,7 @@ export {
 	type InternalFormativeActionDetail,
 	type InternalItemSessionChangedDetail,
 	type InternalItemPlayerErrorDetail,
+	type InternalMediaTimeSourceDetail,
 	type ItemSessionChangedDetail,
 	type RuntimeRegistrationDetail,
 	type RuntimeRegistrationKind,
@@ -231,9 +233,12 @@ export {
 // alongside the validators a capability package needs to read a media payload.
 export {
 	applyMediaFragment,
+	enforceMediaFragment,
 	isSafeMediaSrc,
+	isUnsupportedMediaAssetVersion,
 	normalizeMediaFragment,
 	normalizeMediaSources,
+	SUPPORTED_MEDIA_ASSET_VERSION,
 	trimmedOrUndefined,
 } from "./services/catalog-media.js";
 // Spoken catalog cards carrying recorded audio rather than a reading script
@@ -348,6 +353,10 @@ export {
 	PIE_TTS_CONTROL_HANDOFF_EVENT,
 	type TTSControlHandoffDetail,
 } from "./services/tts-control-events.js";
+export {
+	bindTtsAudioHandoff,
+	pauseTtsForMediaAudio,
+} from "./services/audio-handoff.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {

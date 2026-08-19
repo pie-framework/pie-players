@@ -26,11 +26,10 @@ import { calculatorToolRegistration } from "./registrations/calculator.js";
 import {
 	dictionaryToolRegistration,
 	pictureDictionaryToolRegistration,
+	spanishDictionaryToolRegistration,
+	spanishPictureDictionaryToolRegistration,
 } from "./registrations/dictionary-tools.js";
-import {
-	answerEliminatorToolRegistration,
-	highlighterToolRegistration,
-} from "./registrations/interaction-tools.js";
+import { answerEliminatorToolRegistration } from "./registrations/interaction-tools.js";
 import {
 	protractorToolRegistration,
 	rulerToolRegistration,
@@ -204,15 +203,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		],
 	},
 	{
-		registration: highlighterToolRegistration,
-		tagName: "pie-tool-annotation-toolbar",
-		loadModule: loadAnnotationToolbarModule,
-		loaderTargets: ["item"],
-		placementOrder: { item: 20, passage: 20, rubric: 20, element: 60 },
-		toolbarOrder: 60,
-		universalSupportIds: ["highlighter", "textHighlight", "annotation"],
-	},
-	{
 		registration: lineReaderToolRegistration,
 		tagName: "pie-tool-line-reader",
 		loadModule: loadLineReaderModule,
@@ -253,7 +243,16 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 30, passage: 30, rubric: 30, element: 70 },
 		preferredPlacementOrder: { item: 40, passage: 20 },
 		toolbarOrder: 50,
-		universalSupportIds: ["highlighting", "annotations"],
+		// The last three came from the `highlighter` capability, which mounted this
+		// same element behind a second identically-labelled button. Kept here so a
+		// profile granted one of the older ids still gets highlighting.
+		universalSupportIds: [
+			"highlighting",
+			"annotations",
+			"highlighter",
+			"textHighlight",
+			"annotation",
+		],
 	},
 	{
 		registration: graphToolRegistration,
@@ -299,6 +298,29 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 70, element: 110 },
 		preferredPlacementOrder: { section: 80 },
 		toolbarOrder: 130,
+		universalSupportIds: [],
+	},
+	// The Spanish variants render the same elements under their own capability ids, so a
+	// programme can grant a Spanish gloss beside the content-following dictionary or
+	// instead of it. Ordered after both, since English-content delivery is the common case.
+	{
+		registration: spanishDictionaryToolRegistration,
+		tagName: "pie-tool-dictionary",
+		loadModule: loadDictionaryModule,
+		loaderTargets: ["section"],
+		placementOrder: { item: 80, element: 120 },
+		preferredPlacementOrder: { section: 90 },
+		toolbarOrder: 140,
+		universalSupportIds: [],
+	},
+	{
+		registration: spanishPictureDictionaryToolRegistration,
+		tagName: "pie-tool-picture-dictionary",
+		loadModule: loadPictureDictionaryModule,
+		loaderTargets: ["section"],
+		placementOrder: { item: 90, element: 130 },
+		preferredPlacementOrder: { section: 100 },
+		toolbarOrder: 150,
 		universalSupportIds: [],
 	},
 	{
@@ -713,37 +735,33 @@ export const PACKAGED_TOOL_PLACEMENT = {
 	readonly section: readonly ["theme"];
 	readonly item: readonly [
 		"textToSpeech",
-		"highlighter",
 		"annotationToolbar",
 		"graph",
 		"periodicTable",
 		"dictionary",
 		"pictureDictionary",
+		"dictionarySpanish",
+		"pictureDictionarySpanish",
 	];
 	readonly passage: readonly [
 		"textToSpeech",
-		"highlighter",
 		"annotationToolbar",
 		"lineReader",
 	];
-	readonly rubric: readonly [
-		"textToSpeech",
-		"highlighter",
-		"annotationToolbar",
-		"lineReader",
-	];
+	readonly rubric: readonly ["textToSpeech", "annotationToolbar", "lineReader"];
 	readonly element: readonly [
 		"calculator",
 		"answerEliminator",
 		"textToSpeech",
 		"ruler",
 		"protractor",
-		"highlighter",
 		"annotationToolbar",
 		"graph",
 		"periodicTable",
 		"dictionary",
 		"pictureDictionary",
+		"dictionarySpanish",
+		"pictureDictionarySpanish",
 	];
 };
 
@@ -761,7 +779,6 @@ export const PACKAGED_TOOL_ORDER = [
 	"textToSpeech",
 	"lineReader",
 	"annotationToolbar",
-	"highlighter",
 	"answerEliminator",
 	"ruler",
 	"protractor",
@@ -769,6 +786,8 @@ export const PACKAGED_TOOL_ORDER = [
 	"periodicTable",
 	"dictionary",
 	"pictureDictionary",
+	"dictionarySpanish",
+	"pictureDictionarySpanish",
 ];
 
 export const UNIVERSAL_SUPPORTS_PRESET: readonly string[] =

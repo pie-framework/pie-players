@@ -19,6 +19,7 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
+import { createPointerDragController } from '@pie-players/pie-players-shared';
 import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 import { onMount } from 'svelte';
 
@@ -37,18 +38,23 @@ import { onMount } from 'svelte';
 	/** Which dimension an in-flight pointer resize is changing. */
 	type ResizeTarget = 'pane' | 'frame';
 
-	let isDragging = $state(false);
 	let resizeTarget = $state<ResizeTarget | null>(null);
 	let position = $state({
 		x: isBrowser ? window.innerWidth / 2 : 400,
 		y: isBrowser ? window.innerHeight / 2 : 300
+	});
+	const dragController = createPointerDragController({
+		getPosition: () => position,
+		setPosition: (next) => {
+			position = next;
+		},
+		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
 	});
 	let width = $state(600);
 	/** Height of the fully transparent reading window. */
 	let paneHeight = $state(24);
 	/** Height of the obscuring frame band above and below the reading window. */
 	let frameBandHeight = $state(48);
-	let dragStart = $state({ x: 0, y: 0 });
 	let resizeStart = $state({
 		paneHeight: 0,
 		frameBandHeight: 0,
@@ -60,8 +66,12 @@ import { onMount } from 'svelte';
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 
-	// Track registration state
-	let registered = $state(false);
+	// The coordinator a registration was made against, and the id it used. Plain
+	// `let` rather than `$state`: this is bookkeeping the registration effect both
+	// reads and writes, and a reactive write inside a tracked effect body is what
+	// AGENTS.md's Svelte Subscription Safety rules out.
+	let registeredCoordinator: ToolCoordinatorApi | null = null;
+	let registeredToolId: string | null = null;
 
 	// Geometry constants
 	const FRAME_SIDE_WIDTH = 12; // pixels of obscuring frame left and right of the pane
@@ -160,21 +170,12 @@ import { onMount } from 'svelte';
 	function startDragging(e: PointerEvent) {
 		if (!containerEl) return;
 
-		// Capture pointer for isolated event handling
-		containerEl.setPointerCapture(e.pointerId);
-
 		// `preventDefault` below suppresses the press's default focus, so claim it
 		// explicitly: without this, clicking the frame leaves focus wherever it was
 		// and the arrow-key move shortcuts never reach the tool.
 		containerEl.focus({ preventScroll: true });
 
-		isDragging = true;
-		dragStart = {
-			x: e.clientX - position.x,
-			y: e.clientY - position.y
-		};
-
-		coordinator?.bringToFront(containerEl);
+		dragController.startDragging(e, containerEl);
 
 		// Add pointer move/up handlers to element (not window!)
 		containerEl.addEventListener('pointermove', handlePointerMove);
@@ -214,11 +215,8 @@ import { onMount } from 'svelte';
 	}
 
 	function handlePointerMove(e: PointerEvent) {
-		if (isDragging) {
-			position = {
-				x: e.clientX - dragStart.x,
-				y: e.clientY - dragStart.y
-			};
+		if (dragController.isDragging()) {
+			dragController.handlePointerMove(e);
 			return;
 		}
 
@@ -251,7 +249,7 @@ import { onMount } from 'svelte';
 		containerEl.removeEventListener('pointermove', handlePointerMove);
 		containerEl.removeEventListener('pointerup', handlePointerUp);
 
-		isDragging = false;
+		dragController.endDragging();
 		resizeTarget = null;
 	}
 
@@ -373,18 +371,36 @@ import { onMount } from 'svelte';
 		}
 	}
 
-	// Register with coordinator when it becomes available
+	// Re-register whenever the coordinator identity or the tool id changes. The
+	// coordinator arrives through a republished runtime context, so a new instance
+	// replaces the old one mid-session; a one-shot registration would leave
+	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
 	$effect(() => {
-		if (coordinator && toolId && !registered) {
+		if (!coordinator || !toolId) return;
+		if (
+			registeredCoordinator &&
+			registeredToolId &&
+			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
+		) {
+			registeredCoordinator.unregisterTool(registeredToolId);
+			registeredCoordinator = null;
+			registeredToolId = null;
+		}
+		if (!registeredCoordinator) {
 			coordinator.registerTool(toolId, 'Line Reader', undefined, ZIndexLayer.TOOL);
-			registered = true;
+			registeredCoordinator = coordinator;
+			registeredToolId = toolId;
 		}
 	});
 
 	onMount(() => {
 		return () => {
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
+			// Unregister from the coordinator the registration was actually made
+			// against, which is not necessarily the one currently in context.
+			if (registeredCoordinator && registeredToolId) {
+				registeredCoordinator.unregisterTool(registeredToolId);
+				registeredCoordinator = null;
+				registeredToolId = null;
 			}
 		};
 	});

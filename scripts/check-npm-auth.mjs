@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { createNpmAuthEnvironment } from "./npm-auth-env.mjs";
+import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
 
 const REGISTRY = "https://registry.npmjs.org/";
 const SCOPE = "pie-players";

@@ -138,7 +138,11 @@ export {
 } from "./types.js";
 // Tag naming helpers
 export {
+	attemptCustomElementDefine,
 	defineCustomElementSafely,
+	type AttemptCustomElementDefineOptions,
+	type SafeDefineAttempt,
+	type SafeDefineOutcome,
 	type SafeDefineResult,
 	type SafeDefineStatus,
 } from "./custom-element-define.js";

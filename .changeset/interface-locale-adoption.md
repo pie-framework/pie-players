@@ -13,7 +13,7 @@
 "@pie-players/pie-tool-annotation-toolbar": patch
 "@pie-players/pie-tool-calculator-desmos": patch
 "@pie-players/pie-tool-calculator-inline-desmos": patch
-"@pie-players/pie-tool-color-scheme": patch
+"@pie-players/pie-tool-theme": patch
 "@pie-players/pie-tool-graph": patch
 "@pie-players/pie-tool-line-reader": patch
 "@pie-players/pie-tool-periodic-table": patch

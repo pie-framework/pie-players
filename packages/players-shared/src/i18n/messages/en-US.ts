@@ -122,6 +122,28 @@ const enUS = {
 				other: "{count} tries left.",
 			},
 		},
+
+		/**
+		 * Timed media: what the learner is told as the timeline reveals questions and
+		 * a gate holds playback. Announced through a polite live region and shown as
+		 * visible text, because a pause the learner did not ask for has to be
+		 * perceivable without hearing it (WCAG 1.1.1, 4.1.3).
+		 */
+		timedMedia: {
+			waitingForMedia: "Questions will appear as the media plays.",
+			questionAvailable: "Question {position} is now available.",
+			/** Playback really is stopped: the media source reported it can pause. */
+			playbackPaused:
+				"Playback paused. Answer question {position} to continue.",
+			/**
+			 * The same gate where the source cannot pause. Worded as a request rather
+			 * than a statement, because claiming playback stopped when it did not is
+			 * exactly the silent degradation this contract refuses.
+			 */
+			playbackAdvisory:
+				"Answer question {position} before continuing with the media.",
+			playbackReleased: "Answer accepted. Continue playing the media.",
+		},
 	},
 
 	/** Toolbar and tool-shell chrome owned by the assessment toolkit. */
@@ -305,6 +327,25 @@ const enUS = {
 			buttonA11y: "Picture Dictionary, look up pictures for words",
 			tooltip: "Picture Dictionary",
 			toolA11y: "Picture Dictionary",
+		},
+		/**
+		 * The Spanish variants. Named in the interface locale like every other tool label —
+		 * a Dutch-speaking proctor reading a Dutch interface still sees which language the
+		 * dictionary looks words up in.
+		 */
+		dictionarySpanish: {
+			name: "Spanish Dictionary",
+			description: "Look up word definitions in Spanish",
+			buttonA11y: "Spanish Dictionary, look up word definitions in Spanish",
+			tooltip: "Spanish Dictionary",
+			toolA11y: "Spanish Dictionary",
+		},
+		pictureDictionarySpanish: {
+			name: "Spanish Picture Dictionary",
+			description: "Look up pictures for words in Spanish",
+			buttonA11y: "Spanish Picture Dictionary, look up pictures for words in Spanish",
+			tooltip: "Spanish Picture Dictionary",
+			toolA11y: "Spanish Picture Dictionary",
 		},
 		lineReader: {
 			name: "Line Reader",

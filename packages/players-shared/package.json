@@ -41,6 +41,10 @@
 			"types": "./dist/formative/index.d.ts",
 			"import": "./dist/formative/index.js"
 		},
+		"./timed-media": {
+			"types": "./dist/timed-media/index.d.ts",
+			"import": "./dist/timed-media/index.js"
+		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"
@@ -56,6 +60,10 @@
 		"./server/npm-registry": {
 			"types": "./dist/server/npm-registry.d.ts",
 			"import": "./dist/server/npm-registry.js"
+		},
+		"./server/npm-auth-env": {
+			"types": "./dist/server/npm-auth-env.d.ts",
+			"import": "./dist/server/npm-auth-env.js"
 		},
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
@@ -113,11 +121,11 @@
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.7",
+		"@biomejs/biome": "^2.5.8",
 		"@happy-dom/global-registrator": "^20.11.1",
 		"@playwright/test": "^1.62.1",
 		"@types/semver": "^7.8.0",
-		"esbuild": "^0.28.1",
+		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
 		"svelte": "^5.56.8",
 		"typescript": "^5.9.3"

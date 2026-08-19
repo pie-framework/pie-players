@@ -25,8 +25,8 @@
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
+		createSectionControllerSubscriptionManager,
 		getSectionControllerFromCoordinator,
-		isMatchingSectionControllerLifecycleEvent,
 	} from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, onDestroy, untrack } from "svelte";
 
@@ -50,8 +50,8 @@
 		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
 		// active section cohort automatically and do not accept
 		// sectionId / attemptId arguments. The debugger keeps `sectionId`
-		// + `attemptId` in `subscriptions` purely to gate same-target
-		// re-subscribe — it does not pass them to the coordinator.
+		// + `attemptId` in the shared subscription manager purely to gate
+		// same-target re-subscribe — it does not pass them to the coordinator.
 		subscribeItemEvents?: (args: {
 			listener: (event: ControllerEvent) => void;
 		}) => () => void;
@@ -123,18 +123,6 @@
 	let controllerAvailable = $state(false);
 
 	let nextRecordId = 1;
-	let resubscribeQueued = false;
-	const subscriptions: {
-		controller: (() => void) | null;
-		lifecycle: (() => void) | null;
-		activeSectionId: string;
-		activeAttemptId?: string;
-	} = {
-		controller: null,
-		lifecycle: null,
-		activeSectionId: "",
-		activeAttemptId: undefined,
-	};
 
 	function safeClone<T>(value: T): T {
 		try {
@@ -352,59 +340,31 @@
 		}
 	}
 
-	function detachControllerSubscription() {
-		subscriptions.controller?.();
-		subscriptions.controller = null;
-		subscriptions.activeSectionId = "";
-		subscriptions.activeAttemptId = undefined;
-	}
+	const subscriptionManager = createSectionControllerSubscriptionManager({
+		getController,
+		subscribe: (_controller) => {
+			const unsubscribeItem =
+				toolkitCoordinator?.subscribeItemEvents?.({
+					listener: handleItemControllerEvent,
+				}) || null;
+			const unsubscribeSection =
+				toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
+					listener: handleSectionControllerEvent,
+				}) || null;
+			return () => {
+				unsubscribeItem?.();
+				unsubscribeSection?.();
+			};
+		},
+		onSubscribed: (controller) => seedFromRuntimeState(controller),
+		onControllerUnavailable: () => {
+			controllerAvailable = false;
+		},
+	});
 
-	function detachLifecycleSubscription() {
-		subscriptions.lifecycle?.();
-		subscriptions.lifecycle = null;
-	}
-
-	function ensureControllerSubscription() {
-		const controller = getController();
-		controllerAvailable = Boolean(controller);
-		if (!controller) {
-			detachControllerSubscription();
-			return;
-		}
-
-		const nextAttemptId = attemptId || undefined;
-		const isSameTarget =
-			subscriptions.activeSectionId === sectionId &&
-			subscriptions.activeAttemptId === nextAttemptId;
-		if (isSameTarget && subscriptions.controller) {
-			return;
-		}
-
-		detachControllerSubscription();
-		const unsubscribeItem =
-			toolkitCoordinator?.subscribeItemEvents?.({
-				listener: handleItemControllerEvent,
-			}) || null;
-		const unsubscribeSection =
-			toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
-				listener: handleSectionControllerEvent,
-			}) || null;
-		subscriptions.controller = () => {
-			unsubscribeItem?.();
-			unsubscribeSection?.();
-		};
-		subscriptions.activeSectionId = sectionId;
-		subscriptions.activeAttemptId = nextAttemptId;
-		seedFromRuntimeState(controller);
-	}
-
-	function queueEnsureControllerSubscription(): void {
-		if (resubscribeQueued) return;
-		resubscribeQueued = true;
-		queueMicrotask(() => {
-			resubscribeQueued = false;
-			ensureControllerSubscription();
-		});
+	function ensureControllerSubscription(): void {
+		controllerAvailable = Boolean(getController());
+		subscriptionManager.ensure(sectionId, attemptId);
 	}
 
 	function clearRecords() {
@@ -441,37 +401,9 @@
 		void attemptId;
 		untrack(() => {
 			ensureControllerSubscription();
-			detachLifecycleSubscription();
-			subscriptions.lifecycle = toolkitCoordinator?.onSectionControllerLifecycle?.(
-				(event: {
-					type?: "ready" | "disposed";
-					key?: { sectionId?: string; attemptId?: string };
-				}) => {
-					if (
-						!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)
-					)
-						return;
-					if (event?.type === "disposed") {
-						detachControllerSubscription();
-						queueEnsureControllerSubscription();
-						return;
-					}
-					const nextAttemptId = attemptId || undefined;
-					if (
-						subscriptions.controller &&
-						subscriptions.activeSectionId === sectionId &&
-						subscriptions.activeAttemptId === nextAttemptId
-					) {
-						return;
-					}
-					queueEnsureControllerSubscription();
-				},
-			) || null;
+			subscriptionManager.bindLifecycle(toolkitCoordinator, sectionId, attemptId);
 		});
-		return () => {
-			detachControllerSubscription();
-			detachLifecycleSubscription();
-		};
+		return () => subscriptionManager.detachAll();
 	});
 
 	$effect(() => {
@@ -481,8 +413,7 @@
 	});
 
 	onDestroy(() => {
-		detachControllerSubscription();
-		detachLifecycleSubscription();
+		subscriptionManager.detachAll();
 	});
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);

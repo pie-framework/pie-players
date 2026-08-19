@@ -14,6 +14,10 @@
 			playerAction: { type: "Object", reflect: false },
 			playerParams: { attribute: "player-params", type: "Object", reflect: false },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			// This passage is a timed-media section's stimulus: the card adapts the
+			// media element its config mounted and registers it as the section's Media
+			// Time Source. Absent for every other passage.
+			timedMediaStimulus: { attribute: "timed-media-stimulus", type: "Boolean" },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
 		},
@@ -33,7 +37,14 @@
 	import {
 		catalogOwnerContextFor,
 		connectAssessmentToolkitRuntimeContext,
+		dispatchCrossBoundaryEvent,
+		PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
+		type InternalMediaTimeSourceDetail,
 	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		createMediaElementTimeSource,
+		findMediaElement,
+	} from "@pie-players/pie-players-shared/timed-media";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
@@ -60,6 +71,7 @@
 		passageToolbarTools,
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
+		timedMediaStimulus = false,
 	} = $props<{
 		passage: PassageEntity;
 		baseHeadingLevel?: number;
@@ -69,6 +81,7 @@
 		passageToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
+		timedMediaStimulus?: boolean;
 	}>();
 
 	// Clamped here rather than trusted: the pane normalizes, but this card is a
@@ -175,6 +188,89 @@
 		}
 	}
 
+	// ------------------------------------------------------------------
+	// Timed-media stimulus
+	// ------------------------------------------------------------------
+	//
+	// The card owns the node the passage config rendered into, so it is the only
+	// place that can find the media element and adapt it — the same reason the item
+	// card owns the formative control, which needs `provideScore()` on its player.
+	//
+	// What is registered is a port, not the element: a host that wraps a third-party
+	// player dispatches the same event with its own implementation and needs no PIE
+	// element at all.
+
+	let contentNode = $state<HTMLDivElement | null>(null);
+	let attachedMediaElement: HTMLMediaElement | null = null;
+
+	function dispatchMediaTimeSource(detail: InternalMediaTimeSourceDetail): void {
+		const host = getHostElementFromAnchor(contextAnchor);
+		if (!host) return;
+		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT, detail);
+	}
+
+	/**
+	 * Watch for the media element the passage config mounts.
+	 *
+	 * A `MutationObserver` rather than a one-shot query: the passage renders through
+	 * the item player, so its markup — and any PIE element inside it — arrives after
+	 * this card mounts, and how much later depends on the element bundle.
+	 */
+	$effect(() => {
+		if (!timedMediaStimulus) return;
+		const node = contentNode;
+		const passageId = passage?.id;
+		if (!node || !passageId) return;
+
+		const syncMediaElement = () => {
+			const element = findMediaElement(node);
+			if (element === attachedMediaElement) return;
+			if (attachedMediaElement && !element) {
+				attachedMediaElement = null;
+				dispatchMediaTimeSource({
+					renderableId: passageId,
+					action: "detach",
+					origin: "native-adapter",
+				});
+				return;
+			}
+			if (!element) return;
+			attachedMediaElement = element;
+			dispatchMediaTimeSource({
+				renderableId: passageId,
+				action: "attach",
+				source: createMediaElementTimeSource(element),
+				// Discovery, not host intent: a port a host attached deliberately wins.
+				origin: "native-adapter",
+			});
+		};
+
+		// The tracked body wires the observer and nothing else. `syncMediaElement`
+		// dispatches the registration event, which runs the controller's attach
+		// synchronously and writes reactive toolkit state on the way back out, so the
+		// first pass is untracked and queued: untracked so those writes are not read as
+		// this effect's dependencies, queued so the attach cannot re-enter the render
+		// pass that mounted the card (AGENTS.md, Svelte Subscription Safety).
+		let disposed = false;
+		queueMicrotask(() => {
+			if (disposed) return;
+			untrack(() => syncMediaElement());
+		});
+		const observer = new MutationObserver(() => untrack(() => syncMediaElement()));
+		observer.observe(node, { childList: true, subtree: true });
+		return () => {
+			disposed = true;
+			observer.disconnect();
+			if (!attachedMediaElement) return;
+			attachedMediaElement = null;
+			dispatchMediaTimeSource({
+				renderableId: passageId,
+				action: "detach",
+				origin: "native-adapter",
+			});
+		};
+	});
+
 	onMount(() => {
 		const host = getHostElementFromAnchor(contextAnchor);
 		if (!host) return;
@@ -236,6 +332,7 @@
 		>
 			{#snippet content()}
 				<div
+					bind:this={contentNode}
 					class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
 					data-region="content"
 				>

@@ -108,6 +108,16 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
   dismissed feedback, or a host forced or withdrew a reveal (`source` says which).
 - `section-mastery-changed` — the mastery rollup changed. Emitted on change
   only, like `section-items-complete-changed`.
+- `timed-media-cue-changed` — a cue activated, a gate released, or aggregate
+  completion flipped. Not emitted for media position: `timeupdate` fires about four
+  times a second and moves nothing a layout renders.
+- `timed-media-audio-started` — media audio is running, so read-aloud must yield.
+  Emitted only where playback actually stood; a gate that re-paused on the same
+  `play` produced no audio.
+- `timed-media-policy-degraded` — the attached media time source cannot carry out a
+  playback policy, so it is advisory from here.
+- `timed-media-invalid` — authored `timedMedia` that cannot be delivered; the
+  section renders without cue behavior.
 
 ### Formative delivery
 
@@ -158,6 +168,99 @@ Try state persists inside `SectionControllerSessionState.formative` and hydrates
 with the rest of the snapshot. See
 [`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md)
 for the full contract, its QTI 3 mapping, and the mastery denominator rule.
+
+### Timed media
+
+Set `sectionType: "timed-media"` and a `timedMedia` block, and the section's cue
+timeline decides when its items are delivered:
+
+```ts
+const section: AssessmentSection = {
+  identifier: "water-cycle",
+  sectionType: "timed-media",
+  // A correctness gate needs unlimited Tries; see below.
+  formative: { enabled: true, maxTries: "unlimited", feedback: "correctness" },
+  rubricBlocks: [
+    {
+      identifier: "video-stimulus-1",
+      class: "stimulus",
+      view: ["candidate"],
+      // An ordinary passage. Its config mounts the media element — a PIE element,
+      // or authored `<video>` markup — and it owns the accessibility catalogs that
+      // carry captions, transcript and signed alternates.
+      passage: videoPassage,
+    },
+  ],
+  assessmentItemRefs: [{ identifier: "q1", item }, { identifier: "q2", item }],
+  timedMedia: {
+    stimulusRef: "video-stimulus-1",
+    cues: [
+      { identifier: "c1", range: { startSeconds: 4 }, itemRefs: ["q1"], policy: { activation: "reveal" } },
+      {
+        identifier: "c2",
+        range: { startSeconds: 10 },
+        itemRefs: ["q2"],
+        policy: { activation: "gate", releaseOn: "correct", onUnknownCorrectness: "release" },
+      },
+    ],
+    playbackPolicy: { allowSeekAhead: false, pauseOnRequiredCue: true, requireMediaCompletion: false },
+  },
+};
+```
+
+Every item a gate names must satisfy its `releaseOn`. To split must-answer items from
+optional ones, author two cues at the same timestamp — a gate over the first set, a
+reveal over the second. Both activate in the same pass, the reveal completes at once,
+and only the gate holds playback.
+
+Absent `sectionType` and delivery is unchanged: no projection, no session slice, no
+cue behavior. An item no `reveal` or `gate` cue names is delivered normally —
+including one a `metadata` cue names, since metadata records state and reveals
+nothing. A cued item is mounted and hidden until its cue fires, so its session and
+shell registration survive a seek backwards.
+
+The section reaches media only through a **Media Time Source**. The stimulus card
+finds the media element its passage mounted and registers a native adapter; a host
+with its own player registers its own port instead, and that port outranks the
+card's discovery for as long as it is attached:
+
+```ts
+const controller = await host.waitForSectionController?.(5000);
+// No `renderableId`: a host is asserting its own port, where a renderable's adapter
+// has to name itself and is ignored unless it is the resolved stimulus.
+controller?.attachMediaTimeSource?.(myThirdPartyPort);
+controller?.detachMediaTimeSource?.();
+controller?.getTimedMediaProjection?.(); // cues, gate, enforcement, revealed items
+// One half of the read-aloud handoff; `false` means the port cannot pause, so the
+// overlap stands rather than the accommodation being withheld.
+controller?.pauseMediaForCompetingAudio?.();
+```
+
+Read-aloud and media audio never run at once, and the action the learner just took
+wins: starting read-aloud pauses media, starting media pauses read-aloud. The section
+supplies both halves — the method above and `timed-media-audio-started` — and the
+toolkit arbitrates between them, because only the toolkit holds the TTS service and
+the section. Neither direction resumes what it silenced.
+
+Where the port reports `canPause: false` or `canRestrictSeeking: false`, the
+matching policy degrades to **advisory**: cues still fire, state is still recorded,
+the projection says `enforcement: "advisory"`, and a recoverable `timed-media`
+framework warning names the policy that lost its teeth. Nothing silently pretends to
+hold.
+
+Three authoring mistakes fail loudly rather than delivering inert cues: a
+`stimulusRef` that resolves to no renderable in the section; a gate on correctness
+over an item without unlimited Tries, where a learner who spent a finite budget could
+never release playback again; and a `stimulusRef` that resolves to a renderable which
+mounts no media, reported once the section's content has loaded and no time source
+has attached. Each reports a `timed-media` framework error, after which the section
+delivers as an ordinary section with every item visible.
+
+Cue state persists inside `SectionControllerSessionState.timedMedia` and hydrates
+with the rest of the snapshot, including the furthest position reached, which is what
+`allowSeekAhead: false` clamps against across a reload. See
+[`docs/prds/timed-media-section-contract.md`](../../docs/prds/timed-media-section-contract.md)
+for the contract and the decision record.
 
 ## Usage
 

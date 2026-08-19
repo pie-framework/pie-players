@@ -23,6 +23,7 @@ history and completed implementation plans are intentionally excluded.
 - [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
 - [`architecture/composition-context.md`](./architecture/composition-context.md) - How container-owned facts (heading depth, arbitration, scope) reach the descendants that need them
 - [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
+- [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what PIE builds regardless of consumer, what it refuses, and the seam obligations that make refusing defensible
 - [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
 - [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
 - [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
@@ -85,6 +86,7 @@ history and completed implementation plans are intentionally excluded.
 - [`tools-and-accomodations/tool_provider_system.md`](./tools-and-accomodations/tool_provider_system.md) - Tool provider configuration and integration patterns
 - [`tools-and-accomodations/tool_host_contract.md`](./tools-and-accomodations/tool_host_contract.md) - Host and tool runtime contract
 - [`tools-and-accomodations/safe-custom-tool-config.md`](./tools-and-accomodations/safe-custom-tool-config.md) - Safe host-side custom tool configuration patterns
+- [`tools-and-accomodations/dictionary-languages-and-services.md`](./tools-and-accomodations/dictionary-languages-and-services.md) - Which service answers a lookup, and offering more than one dictionary language
 
 ## Setup And Publishing
 

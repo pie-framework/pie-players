@@ -53,6 +53,17 @@ export interface ToolToolbarButtonDefinition {
 	 * `assertToolRegistrationShape` enforces that.
 	 */
 	icon?: string;
+	/**
+	 * FontAwesome icon name, opting this button into `<nds-icon-button>` rendering
+	 * where the host enables NDS icons (`ndsIcons`). Absent means the toolbar keeps
+	 * its own button rendering, which is what every capability got before the NDS
+	 * button existed.
+	 *
+	 * A declaration rather than a toolId lookup in the toolbar: which capabilities
+	 * a deployment renders through the host's design system is a composition-layer
+	 * decision, and the generic core names no capability.
+	 */
+	faIconName?: string;
 	ariaLabel: string;
 	tooltip?: string;
 	onClick: () => void;
@@ -198,6 +209,23 @@ export interface ToolWindowShellConfig {
 	initialMargin?: number;
 	content?: ToolWindowShellContentConfig;
 	actions?: ToolWindowShellAction[];
+	/**
+	 * Render the shell's own header controls as `<nds-icon-button>`s where the host
+	 * enables NDS icons. Shells without this keep the plain `<button>` controls, and
+	 * an opted-out host gets those either way.
+	 */
+	ndsHeaderControls?: boolean;
+	/**
+	 * Let Tab and Shift+Tab cross between the page and this shell rather than
+	 * cycling inside it.
+	 *
+	 * The shell is appended to `<body>`, so it sits outside the document order its
+	 * opener lives in. A shell a learner works *alongside* — reading the question
+	 * while using the tool — needs Tab from the opener to enter it and Shift+Tab
+	 * from the first question control to reach its end. A shell a learner works
+	 * *inside* wants the default trap, which keeps focus captured until dismissed.
+	 */
+	pageTabOrder?: boolean;
 }
 
 export interface HostedToolContext {

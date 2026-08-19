@@ -16,15 +16,21 @@ import type {
 	BackendSaveContentOptions,
 	BackendScoreOptions,
 } from "./backend/types.js";
-import type { ElementPackagePolicy } from "@pie-players/pie-players-shared";
+import type {
+	AuthoringValidationResult,
+	ElementPackagePolicy,
+} from "@pie-players/pie-players-shared";
 
 export type { DeleteDone, ImageHandler, SoundHandler };
 export type * from "./backend/types.js";
 
-export type AuthoringValidationResult = {
-	hasErrors: boolean;
-	validatedModels: any[];
-};
+/**
+ * Re-exported, not redeclared: `players-shared` owns this and types
+ * `validateModels`' implementation with it. The local copy widened
+ * `validatedModels` to `any[]`, so a consumer typing against this package lost the
+ * model typing the implementation actually returns.
+ */
+export type { AuthoringValidationResult };
 
 /** Optional loader settings; unknown host extensions remain supported. */
 export interface PieItemPlayerLoaderOptions extends Record<string, unknown> {

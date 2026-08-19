@@ -25,7 +25,6 @@
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import type { PageData } from './$types';
-	import { demoLocale } from '$lib/demo-locale.svelte';
 
 	const FIXTURE_TAG = 'metadata-session-fixture';
 	const FIXTURE_VERSIONED_TAG = 'metadata-session-fixture--version-1-0-0';
@@ -227,7 +226,6 @@
 			section={resolvedSectionForPlayer}
 			{toolRegistry}
 			show-toolbar={false}
-			locale={demoLocale()}
 		></pie-section-player-vertical>
 	{:else}
 		<pie-section-player-splitpane
@@ -245,7 +243,6 @@
 			section={resolvedSectionForPlayer}
 			{toolRegistry}
 			show-toolbar={false}
-			locale={demoLocale()}
 		></pie-section-player-splitpane>
 	{/if}
 </div>

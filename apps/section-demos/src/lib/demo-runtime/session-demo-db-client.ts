@@ -1,3 +1,5 @@
+import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
+
 export interface SessionDemoSeedPayload {
 	assessmentId: string;
 	attemptId: string;
@@ -11,11 +13,12 @@ export interface SessionDemoSeedPayload {
 	}>;
 }
 
-export interface SectionSessionSnapshot {
-	currentItemIndex?: number;
-	visitedItemIdentifiers?: string[];
-	itemSessions: Record<string, unknown>;
-}
+/**
+ * The canonical section snapshot, not a local restatement of its first three
+ * fields: a demo that round-trips a narrower shape cannot validate hydration of
+ * the `formative` or `timedMedia` slices it exists to demonstrate.
+ */
+export type SectionSessionSnapshot = SectionControllerSessionState;
 
 export const SESSION_DEMO_SECTION_IDS = [
 	"session-persistence-page-one",

@@ -40,6 +40,7 @@
 -->
 <script lang="ts">
 	import {
+		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
 		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
@@ -47,6 +48,8 @@
 		connectAssessmentToolkitRuntimeContext,
 		connectAssessmentToolkitShellContext,
 	} from '../context/runtime-context-consumer.js';
+	import { ContextProvider } from '@pie-players/pie-context';
+	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
 	import { ToolRegistry } from '../services/ToolRegistry.js';
 	import type {
 		HostedToolContext,
@@ -223,16 +226,11 @@
 	};
 
 	// <nds-icon-button> renders FontAwesome glyphs via `icon-name` only (no slot).
-	// For now we only route the calculator button through the NDS button; every
-	// other tool keeps its existing custom-button rendering. Map its toolId to
-	// the FA icon name here so widening the set later is a one-line change.
-	const TOOL_FA_ICON_BY_ID: Record<string, string> = {
-		calculator: 'calculator',
-	};
-	// Resolve the FA icon-name for an <nds-icon-button>, or null when the item
-	// should keep its legacy custom-button rendering.
+	// Which items route through it is declared by whoever owns the capability —
+	// `faIconName` on the registration's button definition, or on a host-contributed
+	// button — not mapped from a toolId here: this package names no capability.
 	const resolveFaIconName = (item: ToolbarItem): string | null =>
-		TOOL_FA_ICON_BY_ID[item.id] ?? null;
+		item.faIconName || null;
 
 	// No fallback registry. This package holds no capability set to fall back to —
 	// a host that wants stock tools passes a registry built by the composition
@@ -254,7 +252,12 @@
 		itemId = '',
 		sectionId = '',
 		catalogId = '',
-		tools = 'calculator,textToSpeech,answerEliminator',
+		// No capability default: this package holds no capability set, so naming one
+		// here would be the composition layer's decision made in the generic core.
+		// Every in-repo mount passes `tools` explicitly; a standalone host with no
+		// coordinator and no `tools` renders no buttons, which is the same honest
+		// answer `fallbackToolRegistry` gives.
+		tools = '',
 		contentKind = 'assessment-item',
 		position = 'bottom' as 'top' | 'right' | 'bottom' | 'left' | 'none',
 		scopeElement = null,
@@ -471,6 +474,26 @@
 		return dedupe(normalizedExplicitTools);
 	});
 
+	// Tools a PNP/profile grant mandates (`requiredTools`, or a `supports` entry the
+	// host cannot toggle off). Pass 2 is a *relevance* heuristic — "is a calculator
+	// plausibly useful for this item" — and a heuristic must not withdraw an
+	// accommodation a learner is entitled to. The one-way veto still holds in the
+	// direction that matters: nothing here can make a tool visible that pass 1
+	// removed, because these ids come from the decision's own surviving entries.
+	const grantProtectedToolIds = $derived.by((): Set<string> => {
+		const protectedIds = new Set<string>();
+		if (!policyDecision) return protectedIds;
+		for (const entry of policyDecision.visibleTools) {
+			if (!entry.required && !entry.alwaysAvailable) continue;
+			for (const toolId of effectiveToolRegistry
+				.normalizeToolIds([entry.toolId])
+				.filter(Boolean)) {
+				protectedIds.add(toolId);
+			}
+		}
+		return protectedIds;
+	});
+
 	const contentReady = $derived.by(() => {
 		if (effectiveLevel === 'section' || effectiveLevel === 'assessment') return true;
 		const config = (effectiveItem as ItemEntity | null)?.config;
@@ -667,6 +690,10 @@
 			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
 			return Array.from(visible);
 		}
+		// A granted accommodation skips the relevance gate entirely.
+		toolOwnedToolIds
+			.filter((toolId) => grantProtectedToolIds.has(toolId))
+			.forEach((toolId) => visible.add(toolId));
 		if (toolContext) {
 			effectiveToolRegistry
 				.filterVisibleInContext(toolOwnedToolIds, toolContext)
@@ -836,6 +863,7 @@
 					label: button.label,
 					ariaLabel: button.ariaLabel || button.label,
 					icon: button.icon,
+					faIconName: button.faIconName,
 					tooltip: button.tooltip || button.label,
 					disabled: button.disabled,
 					active: activeToolState[renderedTool.toolId] ?? button.active ?? false,
@@ -970,14 +998,13 @@
 		};
 	});
 
-	// Prefetch FA + Roboto into document head as soon as we know a calculator
-	// icon will render. The shadow-root injection in `ndsIconButtonAction`
-	// clones whatever <link>s are already on the page; running this first means
-	// the prod-host's FA stylesheet is guaranteed to be present by the time the
-	// toolbar's calculator span mounts.
+	// Prefetch FA + Roboto into document head as soon as we know an NDS icon will
+	// render. The shadow-root injection in `ndsIconButtonAction` clones whatever
+	// <link>s are already on the page; running this first means the prod-host's FA
+	// stylesheet is guaranteed to be present by the time the button mounts.
 	$effect(() => {
 		if (!isBrowser) return;
-		if (toolbarItems.some((item) => item.icon === 'calculator')) {
+		if (toolbarItems.some((item) => !!resolveFaIconName(item))) {
 			ensureNdsAssets();
 		}
 	});
@@ -1172,11 +1199,36 @@
 	type ShellMountedArgs = {
 		mounted: MountedToolElement;
 		active: boolean;
+		/**
+		 * The runtime context to re-publish on the shell.
+		 *
+		 * A shell lives at `document.body`, so a tool inside one is outside every
+		 * provider's subtree and its `context-request` reaches nothing. Passing the
+		 * value through the action's arguments is what makes `update` fire on a
+		 * republish, which is the shell provider's change signal.
+		 */
+		runtime: AssessmentToolkitRuntimeContext | null;
+		/** Interface locale for the shell's own chrome — title and window controls. */
+		i18n: I18nProvider;
 	};
 
 	function mountElementWithShell(node: HTMLSpanElement, args: ShellMountedArgs) {
 		let currentArgs = args;
 		let shellEl: HTMLDivElement | null = null;
+		/**
+		 * Re-publishes {@link ShellMountedArgs.runtime} for the tool inside this
+		 * shell. Without it a shelled tool resolves `getDefaultI18n()` and renders
+		 * English under a translated toolbar, and reaches no coordinator, TTS
+		 * service or catalog resolver either.
+		 */
+		let shellRuntimeProvider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
+		/**
+		 * Header controls carrying a catalog string, kept with the key that produced
+		 * it. They are built imperatively, so nothing re-reads the catalog for them:
+		 * a shell built before its locale's catalog import resolves would otherwise
+		 * hold English for the rest of the session.
+		 */
+		const localizedControlEls: Array<{ el: HTMLElement; key: MessageKeyInput }> = [];
 		let headerEl: HTMLDivElement | null = null;
 		let contentEl: HTMLDivElement | null = null;
 		let titleEl: HTMLSpanElement | null = null;
@@ -1188,7 +1240,16 @@
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
 		let focusGuardRedirecting = false;
-		let calculatorBridgeAttached = false;
+		let pageTabBridgeAttached = false;
+		// Both read `currentArgs`, which `update()` reassigns, so they are functions
+		// rather than captured consts.
+		const shellWantsPageTabOrder = (): boolean =>
+			currentArgs.mounted.entry.shell?.pageTabOrder === true;
+		// Whether the shell asked for design-system header chrome. Distinct from
+		// `useNdsShellIcons`: the layout below follows the shell's declaration, while
+		// only the button *element* also depends on the host's `ndsIcons` flag.
+		const shellDeclaresNdsChrome = (): boolean =>
+			currentArgs.mounted.entry.shell?.ndsHeaderControls === true;
 		let mountedContentElement: HTMLElement | null = null;
 		let dragPointerId: number | null = null;
 		let resizePointerId: number | null = null;
@@ -1487,6 +1548,34 @@
 			);
 		};
 
+		/**
+		 * Re-reads every catalog string this shell renders.
+		 *
+		 * The shell's chrome is imperative DOM, so it has no reactive read to
+		 * invalidate: the labels move only when something calls this. Runs at build
+		 * and on every `update`, which covers both the locale changing under a live
+		 * shell and the first catalog import landing after the shell was built.
+		 */
+		const applyShellStrings = () => {
+			if (titleEl) {
+				titleEl.textContent =
+					currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
+			}
+			for (const { el, key } of localizedControlEls) {
+				const label = currentArgs.i18n.t(key);
+				// nds-icon-button forwards `button-aria-label` to the <button> it
+				// renders; the plain controls carry aria-label themselves.
+				if (el.tagName === 'NDS-ICON-BUTTON') {
+					el.setAttribute('button-aria-label', label);
+				} else {
+					el.setAttribute('aria-label', label);
+				}
+				// Only the controls that already had a tooltip keep one. The close
+				// button deliberately has none.
+				if (el.title) el.title = label;
+			}
+		};
+
 		const mountContent = () => {
 			if (!contentEl) return;
 			const element = currentArgs.mounted.entry.element;
@@ -1590,23 +1679,22 @@
 			if (!openerEl && active && !shellEl.contains(active)) {
 				openerEl = active;
 			}
-			const isCalculatorShellTrap = currentArgs.mounted.toolId === 'calculator';
-			if (isCalculatorShellTrap && !calculatorBridgeAttached) {
-				document.addEventListener('keydown', onCalculatorBridgeKeydown, true);
-				calculatorBridgeAttached = true;
+			if (shellWantsPageTabOrder() && !pageTabBridgeAttached) {
+				document.addEventListener('keydown', onPageTabBridgeKeydown, true);
+				pageTabBridgeAttached = true;
 			}
 			focusTrapCleanup = createFocusTrap(shellEl, {
 				initialFocus: closeButtonEl,
 				onEscape: () => {
 					closeShell();
 				},
-				// Calculator shell: tab boundaries should fall through to the page so
-				// keyboard users can leave the calculator with Tab / Shift+Tab. The
-				// shell is appended to <body>, so the browser's natural tab order
-				// would skip back to the opener / forward to nothing useful — we relay
-				// to the opener button and to the first focusable in the item content.
-				wrap: !isCalculatorShellTrap,
-				onTabExit: isCalculatorShellTrap
+				// A page-tab-order shell lets tab boundaries fall through to the page so
+				// keyboard users can leave it with Tab / Shift+Tab. The shell is
+				// appended to <body>, so the browser's natural tab order would skip
+				// back to the opener / forward to nothing useful — we relay to the
+				// opener button and to the first focusable in the item content.
+				wrap: !shellWantsPageTabOrder(),
+				onTabExit: shellWantsPageTabOrder()
 					? (direction, event) => {
 							if (direction === 'backward') {
 								if (openerEl?.isConnected) {
@@ -1691,7 +1779,7 @@
 		// toolbar item. This handler intercepts both transitions and steers
 		// focus into the shell so the user-visible flow is
 		//   calculator button ↔ calculator ↔ first question focusable.
-		const onCalculatorBridgeKeydown = (event: KeyboardEvent) => {
+		const onPageTabBridgeKeydown = (event: KeyboardEvent) => {
 			if (event.key !== 'Tab') return;
 			if (!shellEl || !currentArgs.active) return;
 			const active = getDeepActiveElement();
@@ -1721,9 +1809,9 @@
 		};
 
 		const removeFocusTrap = () => {
-			if (calculatorBridgeAttached) {
-				document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
-				calculatorBridgeAttached = false;
+			if (pageTabBridgeAttached) {
+				document.removeEventListener('keydown', onPageTabBridgeKeydown, true);
+				pageTabBridgeAttached = false;
 			}
 			if (!focusTrapCleanup) return;
 			const cleanup = focusTrapCleanup;
@@ -1871,13 +1959,11 @@
 		};
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
-			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
-			// The calculator shell is the only shell that renders its header
-			// controls as <nds-icon-button>s. Gate that on the host flag so
-			// opted-out envs get the plain-<button> controls every other
-			// shell already uses. Layout decisions still key off
-			// `isCalculatorShell`; only the button *type* follows this flag.
-			const useNdsShellIcons = isCalculatorShell && useNdsIcons;
+			// A shell renders its header controls as <nds-icon-button>s only when its
+			// own config asks for them; gated on the host flag too, so an opted-out
+			// env gets the plain-<button> controls every other shell uses.
+			const useNdsShellIcons =
+				currentArgs.mounted.entry.shell?.ndsHeaderControls === true && useNdsIcons;
 
 			if (useNdsShellIcons) ensureNdsAssets();
 
@@ -1939,11 +2025,11 @@
 			// title, tighter at the close button), 8px vertical, and
 			// space-between layout pushing the controls + close cluster to the
 			// right edge. Other shells keep the compact dense layout.
-			headerEl.style.padding = isCalculatorShell ? '12px 12px 12px 28px' : '10px 12px';
-			if (isCalculatorShell) {
+			headerEl.style.padding = shellDeclaresNdsChrome() ? '12px 12px 12px 28px' : '10px 12px';
+			if (shellDeclaresNdsChrome()) {
 				headerEl.style.minHeight = '48px';
 			}
-			if (isCalculatorShell) {
+			if (shellDeclaresNdsChrome()) {
 				// Match the Passage/Question card header var so the calculator picks
 				// up the host-provided tint when set. Fallback is an off-white so
 				// the circular control buttons have a visible surface to contrast
@@ -1986,34 +2072,41 @@
 			controlsEl.className = 'pie-tool-shell__controls';
 			controlsEl.style.display = 'inline-flex';
 			controlsEl.style.alignItems = 'center';
-			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
+			controlsEl.style.gap = shellDeclaresNdsChrome() ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
 			const appendControl = (
-				label: string,
+				key: MessageKeyInput,
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
 				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
 			) => {
 				if (!controlsEl) return;
-				controlsEl.appendChild(
-					useNdsShellIcons
-						? createShellIconButton(label, iconName, onActivate, faVariant)
-						: createShellControlButton(label, glyph, onActivate)
-				);
+				const label = currentArgs.i18n.t(key);
+				const control = useNdsShellIcons
+					? createShellIconButton(label, iconName, onActivate, faVariant)
+					: createShellControlButton(label, glyph, onActivate);
+				localizedControlEls.push({ el: control, key });
+				controlsEl.appendChild(control);
 			};
 			if (shellConfig?.draggable !== false) {
-				appendControl(interfaceI18n.t('toolkit.window.moveLeftA11y'), '←', 'chevron-left', () => moveBy(-24, 0));
-				appendControl(interfaceI18n.t('toolkit.window.moveRightA11y'), '→', 'chevron-right', () => moveBy(24, 0));
-				appendControl(interfaceI18n.t('toolkit.window.moveUpA11y'), '↑', 'chevron-up', () => moveBy(0, -24));
-				appendControl(interfaceI18n.t('toolkit.window.moveDownA11y'), '↓', 'chevron-down', () => moveBy(0, 24));
+				appendControl('toolkit.window.moveLeftA11y', '←', 'chevron-left', () => moveBy(-24, 0));
+				appendControl('toolkit.window.moveRightA11y', '→', 'chevron-right', () => moveBy(24, 0));
+				appendControl('toolkit.window.moveUpA11y', '↑', 'chevron-up', () => moveBy(0, -24));
+				appendControl('toolkit.window.moveDownA11y', '↓', 'chevron-down', () => moveBy(0, 24));
 			}
 			if (shellConfig?.resizable !== false) {
-				appendControl(interfaceI18n.t('toolkit.window.shrinkA11y'), '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
-				appendControl(interfaceI18n.t('toolkit.window.growA11y'), '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
+				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
+				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
 			}
-			if (!isCalculatorShell) {
-				controlsEl.appendChild(createShellControlButton(interfaceI18n.t('toolkit.window.centerA11y'), '◎', centerShell));
+			if (!shellDeclaresNdsChrome()) {
+				const centerControl = createShellControlButton(
+					currentArgs.i18n.t('toolkit.window.centerA11y'),
+					'◎',
+					centerShell
+				);
+				localizedControlEls.push({ el: centerControl, key: 'toolkit.window.centerA11y' });
+				controlsEl.appendChild(centerControl);
 			}
 			// Calculator: pack controls + close into a single right-side cluster
 			// so `space-between` on the header lays out as `title … [controls x]`.
@@ -2021,7 +2114,7 @@
 			// circular buttons and between the controls group and the close.
 			// Other shells keep the single-row append flow.
 			let rightClusterEl: HTMLDivElement | null = null;
-			if (isCalculatorShell) {
+			if (shellDeclaresNdsChrome()) {
 				rightClusterEl = document.createElement('div');
 				rightClusterEl.className = 'pie-tool-shell__header-right';
 				rightClusterEl.style.display = 'inline-flex';
@@ -2039,14 +2132,16 @@
 			}
 
 			if (useNdsShellIcons) {
-				closeButtonEl = createShellIconButton(interfaceI18n.t('toolkit.window.closeA11y'), 'xmark', closeShell, 'fa-regular');
+				closeButtonEl = createShellIconButton(currentArgs.i18n.t('toolkit.window.closeA11y'), 'xmark', closeShell, 'fa-regular');
+				localizedControlEls.push({ el: closeButtonEl, key: 'toolkit.window.closeA11y' });
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
 			} else {
 				const closeButton = document.createElement('button');
 				closeButton.type = 'button';
 				closeButton.className = 'pie-tool-shell__close';
-				closeButton.setAttribute('aria-label', interfaceI18n.t('toolkit.window.closeA11y'));
+				closeButton.setAttribute('aria-label', currentArgs.i18n.t('toolkit.window.closeA11y'));
+				localizedControlEls.push({ el: closeButton, key: 'toolkit.window.closeA11y' });
 				const svgNs = 'http://www.w3.org/2000/svg';
 				const closeIconEl = document.createElementNS(svgNs, 'svg');
 				closeIconEl.setAttribute('xmlns', svgNs);
@@ -2163,7 +2258,7 @@
 			// focus lands on either, redirect to the opener (start) or to the first
 			// question focusable (end). This works whether or not the inner keydown
 			// bubbled.
-			if (isCalculatorShell) {
+			if (shellDeclaresNdsChrome()) {
 				const makeFocusGuard = (label: string): HTMLDivElement => {
 					const el = document.createElement('div');
 					el.tabIndex = 0;
@@ -2223,7 +2318,7 @@
 			}
 			shellEl.appendChild(headerEl);
 			shellEl.appendChild(contentEl);
-			if (isCalculatorShell && endFocusGuardEl) {
+			if (shellDeclaresNdsChrome() && endFocusGuardEl) {
 				shellEl.appendChild(endFocusGuardEl);
 			}
 
@@ -2280,8 +2375,17 @@
 			window.addEventListener('resize', onWindowResize);
 			document.body.appendChild(shellEl);
 
+			// Before `mountContent`, so the tool's first context request is answered
+			// rather than left to the consumer's retry loop.
+			shellRuntimeProvider = new ContextProvider(shellEl, {
+				context: assessmentToolkitRuntimeContext,
+				initialValue: currentArgs.runtime as AssessmentToolkitRuntimeContext
+			});
+			shellRuntimeProvider.connect();
+
 			centerShell();
 			applyShellStyle();
+			applyShellStrings();
 			mountContent();
 			notifyHostedResize();
 			if (currentArgs.active) {
@@ -2294,13 +2398,19 @@
 			update(nextArgs: ShellMountedArgs) {
 				currentArgs = nextArgs;
 				if (!shellEl || !contentEl || !titleEl || !closeButtonEl) return;
-				titleEl.textContent = currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
-				// nds-icon-button (calculator branch) is a custom element with
-				// inline-block default display; other shells use an inline-flex
-				// <button>. Pick the right open-state value so we
-				// don't clobber inline-block back to inline-flex on prop refresh.
+				// The republish the tool inside this shell subscribes to.
+				shellRuntimeProvider?.setValue(
+					currentArgs.runtime as AssessmentToolkitRuntimeContext
+				);
+				applyShellStrings();
+				// An <nds-icon-button> is a custom element with inline-block default
+				// display; a plain <button> shell control is inline-flex. Read which one
+				// was actually built rather than re-deriving it, so a prop refresh cannot
+				// clobber inline-block back to inline-flex.
 				const closeButtonOpenDisplay =
-					currentArgs.mounted.toolId === 'calculator' ? 'inline-block' : 'inline-flex';
+					closeButtonEl.tagName.toLowerCase() === 'nds-icon-button'
+						? 'inline-block'
+						: 'inline-flex';
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : closeButtonOpenDisplay;
 				applyShellStyle();
@@ -2316,12 +2426,15 @@
 			},
 			destroy() {
 				notifyHostedUnmount();
+				shellRuntimeProvider?.disconnect();
+				shellRuntimeProvider = null;
+				localizedControlEls.length = 0;
 				if (focusTrapCleanup) {
 					removeFocusTrap();
 				}
-				if (calculatorBridgeAttached) {
-					document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
-					calculatorBridgeAttached = false;
+				if (pageTabBridgeAttached) {
+					document.removeEventListener('keydown', onPageTabBridgeKeydown, true);
+					pageTabBridgeAttached = false;
 				}
 
 				for (const { el, handler } of resizeHandleEls) {
@@ -2378,7 +2491,9 @@
 							class="item-toolbar__element-host"
 							use:mountElementWithShell={{
 								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false
+								active: renderedToolActiveById[mounted.toolId] ?? false,
+								runtime: runtimeContext,
+								i18n: interfaceI18n
 							}}
 						></span>
 					{/key}
@@ -2483,7 +2598,9 @@
 							class="item-toolbar__element-host"
 							use:mountElementWithShell={{
 								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false
+								active: renderedToolActiveById[mounted.toolId] ?? false,
+								runtime: runtimeContext,
+								i18n: interfaceI18n
 							}}
 						></span>
 					{/key}
@@ -2508,7 +2625,9 @@
 								class="item-toolbar__controls-host"
 								use:mountElementWithShell={{
 									mounted,
-									active: renderedToolActiveById[mounted.toolId] ?? false
+									active: renderedToolActiveById[mounted.toolId] ?? false,
+									runtime: runtimeContext,
+									i18n: interfaceI18n
 								}}
 							></span>
 						{/key}
@@ -2541,6 +2660,21 @@
 		   doesn't keep growing past 200% while the buttons themselves freeze. */
 		gap: calc(0.5rem * var(--pie-toolbar-zoom-comp, 1));
 		min-height: var(--pie-toolbar-tools-row-height);
+	}
+
+	/* A granted section tool must stay reachable even when there isn't room for
+	   every button: scroll the row rather than clipping items past the edge,
+	   which left them impossible to focus, tab to, or click. `min-width: 0`
+	   beats the flex default (`auto`, i.e. never shrink below content), which
+	   would otherwise keep the row at full content width and make overflow-x
+	   moot. Scoped to section level: an item's own toolbar hosts far fewer
+	   tools and, for the inline TTS tool's "expanding row" layout, relies on
+	   this row growing freely to host its reading-controls panel — capping its
+	   width here clips that panel instead. */
+	.item-toolbar[data-level="section"] .item-toolbar__tools-row {
+		overflow-x: auto;
+		max-width: 100%;
+		min-width: 0;
 	}
 
 	.item-toolbar__controls-row {

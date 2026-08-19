@@ -1,3 +1,4 @@
+import { applyPieColorScheme, DAISYUI_THEME_CATALOG } from "@pie-players/pie-theme";
 import type {
 	AssessmentEntity,
 	PersonalNeedsProfile,
@@ -12,43 +13,7 @@ export const ATTEMPT_STORAGE_KEY = "pie:section-demos:attempt-id";
 export const DAISY_THEME_STORAGE_KEY = "pie:section-demos:daisy-theme";
 export const TOOLKIT_SCHEME_STORAGE_KEY = "pie-color-scheme";
 export const DEFAULT_DAISY_THEME = "light";
-export const DAISY_DEFAULT_THEMES = [
-	"light",
-	"dark",
-	"cupcake",
-	"bumblebee",
-	"emerald",
-	"corporate",
-	"synthwave",
-	"retro",
-	"cyberpunk",
-	"valentine",
-	"halloween",
-	"garden",
-	"forest",
-	"aqua",
-	"lofi",
-	"pastel",
-	"fantasy",
-	"wireframe",
-	"black",
-	"luxury",
-	"dracula",
-	"cmyk",
-	"autumn",
-	"business",
-	"acid",
-	"lemonade",
-	"night",
-	"coffee",
-	"winter",
-	"dim",
-	"nord",
-	"sunset",
-	"caramellatte",
-	"abyss",
-	"silk",
-] as const;
+export const DAISY_DEFAULT_THEMES = DAISYUI_THEME_CATALOG;
 
 export function getUrlEnumParam<T extends string>(
 	key: string,
@@ -103,16 +68,7 @@ export function applyDaisyTheme(
 
 export function applyToolkitScheme(scheme: string): void {
 	if (typeof window === "undefined") return;
-	const nextScheme = (scheme || "default").trim() || "default";
-	const pieThemeHost =
-		(document.querySelector(
-			'pie-theme[scope="document"]',
-		) as HTMLElement | null) ||
-		(document.querySelector("pie-theme") as HTMLElement | null);
-	if (pieThemeHost && pieThemeHost.getAttribute("scheme") !== nextScheme) {
-		pieThemeHost.setAttribute("scheme", nextScheme);
-	}
-	window.localStorage.setItem(TOOLKIT_SCHEME_STORAGE_KEY, nextScheme);
+	applyPieColorScheme(scheme, { persistenceKey: TOOLKIT_SCHEME_STORAGE_KEY });
 }
 
 export function buildDemoHref(args: {

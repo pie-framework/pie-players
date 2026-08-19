@@ -4,6 +4,44 @@ Status: Architecture proposal / pre-PRD direction. This note captures the intend
 
 Tracking: this workstream is deliberately not tracked in an issue tracker. This note and the PRDs under [`../prds/`](../prds/) are the record. The `Status:` line here and in each PRD, plus the review sequence in [`../prds/shared-contracts/README.md`](../prds/shared-contracts/README.md), carry the current state. Nothing is stalled waiting on a ticket.
 
+## Implemented, 2026-08-17
+
+The contract this note handed off is built; [`../prds/timed-media-section-contract.md`](../prds/timed-media-section-contract.md)
+carries the record, including every implementation-time decision and the reasons.
+Three things in this note are now settled rather than open, and one is corrected:
+
+- **Item 3 of [Current State](#current-state) is answered, and not in the way it
+  leaned.** Cue and playback policy live in a pure `timed-media` module in
+  `players-shared` with live state in `SectionController` — not in `ToolPolicyEngine`,
+  whose decision domain is tool eligibility, and not in a layout. The layer-ownership
+  table below reads correctly if "the engine" is replaced by "the pure module plus
+  `SectionController`"; the toolkit's role is the event route and the composition
+  revision key, exactly as it is for formative delivery.
+- **The Media Time Source port is real**, exported from
+  `@pie-players/pie-players-shared/timed-media`, and
+  [`VideoStimulusHandle`](#stimulus-api-expectations) below is superseded by it. Two
+  deliberate departures from the element shape: `seekTo(seconds)` rather than a
+  writable `currentTime`, and `capabilities`.
+- **The Video.js decision stayed unmade and got cheaper.** A native `<video>` is
+  adapted in a few lines and no player dependency was added, so
+  [Video Player Dependency Decision](#video-player-dependency-decision) is still open
+  on its merits rather than by inertia.
+- **The 2026-08-05 objection in item 4 stands and was honoured**: nothing about cue
+  gating touches the canonical `Stage` vocabulary.
+- **Composition authoring has an owner, and it is not this repo.** The
+  [Authoring Model](#authoring-model) table's "likely in `pie-players` or a companion
+  authoring package" is settled as `kds/composer`, which already owns item and passage
+  authoring and already assembles and previews an `AssessmentSection`. The authored
+  artifact is PIE-native `timedMedia` rather than QTI-with-cues, and the editor
+  requires the stimulus media resolvable to a playable URL. The PRD stays in
+  `pie-players`, beside the contract.
+- **The shipped scoring union is narrower than the candidates below.**
+  `sum-child-outcomes`, `average-child-outcomes` and `host-defined`, validated and
+  persisted with no aggregate derived from any of them.
+  `all-required-cues-complete` is completion, which `aggregateComplete` already
+  carries separately from score, and `weighted-child-outcomes` is out until weights
+  have an authorable home — the score contract's question, not this one's.
+
 ## Current State
 
 Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work and again 2026-08-15: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary, shipped media-rendering precedent and now theming — see [Revalidation, 2026-08-09](#revalidation-2026-08-09) and [Revalidation, 2026-08-15](#revalidation-2026-08-15).
@@ -512,7 +550,7 @@ Timed-media delivery must satisfy WCAG 2.2 AA expectations and work with section
 
 Four of these moved as of 2026-08-09, from the signing and recorded-audio work rather than from this workstream. Two are settled, two only partly — each is bounded below, and the bounds matter more than the answers. Adopt them rather than re-deciding them, and do not read the partial ones as done:
 
-- **TTS versus media playback.** The action the learner just took wins: starting one pauses the other. Settled in [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md) and implemented bidirectionally between the signing region and `TTSService` — the region pauses its video when TTS reports `playing` or `loading`, and pauses TTS on its own `play`. Recorded audio needs no such coordination because it *is* `TTSService` playing a file instead of synthesizing, which is why there are two media paths but only one coordination seam. A timed-media stimulus is in the signing region's position, not recorded audio's: it plays media the TTS service does not own, so it needs the same seam.
+- **TTS versus media playback.** The action the learner just took wins: starting one pauses the other. Settled in [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md) and implemented bidirectionally between the signing region and `TTSService` — the region pauses its video when TTS reports `playing` or `loading`, and pauses TTS on its own `play`. Recorded audio needs no such coordination because it *is* `TTSService` playing a file instead of synthesizing, which is why there are two media paths but only one coordination seam. A timed-media stimulus is in the signing region's position, not recorded audio's: it plays media the TTS service does not own, so it needs the same seam — and as of 2026-08-17 shares it rather than restating it. `bindTtsAudioHandoff` and `pauseTtsForMediaAudio` in `assessment-toolkit` are the one statement of the rule; the signing region binds them against its own element, and `PieAssessmentToolkit` binds them on behalf of a stimulus it reaches through the Media Time Source port. Which states count as speaking is the part that would otherwise drift between two surfaces that share nothing else.
 - **Media region styling.** Three `--pie-section-player-item-media-*` tokens (aspect ratio, min-height, max-height) are registered in `packages/theme/src/token-registry.json` and owned by `@pie-players/pie-tool-sign-language`, which sizes its own content, so `check:theme-tokens` holds them to the same registry rule as every other token. They keep the `pie-section-player` prefix because hosts already set them by those names — a capability's tokens named for the host surface they are set on, which is the pattern a timed-media stimulus inherits rather than the naming to copy. The region stacks and its divider withdraws below a 560px card width. A timed-media stimulus is a different scale and needs its own tokens, but the naming pattern and the registration path already exist. Note these size the region, not media *controls* — the controls are the browser's default `<video>` chrome and are unstyled, so the control-styling requirement above is genuinely still open.
 - **Playback failure — and a trade this note inherits.** Recorded audio that will not play degrades to the docked node's `content` card, because QTI/APIP keep the reading script beside the recording and the script is a real text twin. There is no signing equivalent: a signing card does not use `content` at all, so a signing clip that fails has nothing to fall back to. A stimulus is in signing's position rather than audio's, and this note owes that case an answer. The trade underneath it is the part to carry forward: the audio path plays only the *first* source and keeps the rest unread, because an `<audio>` element fed alternative `<source>` children reports failure through a path too unreliable to detect, and a dependable fallback was judged worth more than encoding negotiation. A stimulus with several encodings wants that negotiation, so it cannot simply copy the audio path — it needs failure detection that survives `<source>` fallback, which is one of the concrete things a wrapped player buys over a bare element.
 - **Suppression.** There is no signing equivalent of `data-tts-suppress`, deliberately: suppression is per content node, a signed alternate is one video per item, and the only available rule would withhold a deaf candidate's whole translation over one word. Read-aloud suppression itself did ship, as `data-tts-suppress` on the content element, mapping QTI's `data-qti-suppress-tts`. If cue-scoped suppression comes up here, the signing reasoning is the closer precedent.

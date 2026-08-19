@@ -38,7 +38,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@pie-players/pie-tts": "workspace:*"
+		"@pie-players/pie-tts": "workspace:*",
+		"@pie-players/tts-server-core": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",

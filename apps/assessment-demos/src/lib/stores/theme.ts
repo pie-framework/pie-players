@@ -1,49 +1,13 @@
+import { DAISYUI_THEME_CATALOG } from "@pie-players/pie-theme";
 import { writable } from "svelte/store";
 
 // Keep this storage key in sync with the pre-paint inline script in app.html.
 export const THEME_STORAGE_KEY = "pie:assessment-demos:theme";
 export const DEFAULT_THEME = "light";
 
-// Mirrors the theme catalog offered in apps/section-demos so the demo hosts
-// present the same set of DaisyUI themes. The <pie-theme> wrapper maps any of
-// these ids onto the --pie-* token contract that PIE content reads.
-export const DAISY_THEMES = [
-	"light",
-	"dark",
-	"cupcake",
-	"bumblebee",
-	"emerald",
-	"corporate",
-	"synthwave",
-	"retro",
-	"cyberpunk",
-	"valentine",
-	"halloween",
-	"garden",
-	"forest",
-	"aqua",
-	"lofi",
-	"pastel",
-	"fantasy",
-	"wireframe",
-	"black",
-	"luxury",
-	"dracula",
-	"cmyk",
-	"autumn",
-	"business",
-	"acid",
-	"lemonade",
-	"night",
-	"coffee",
-	"winter",
-	"dim",
-	"nord",
-	"sunset",
-	"caramellatte",
-	"abyss",
-	"silk",
-] as const;
+// The <pie-theme> wrapper maps any of these ids onto the --pie-* token
+// contract that PIE content reads.
+export const DAISY_THEMES = DAISYUI_THEME_CATALOG;
 
 export type DaisyTheme = (typeof DAISY_THEMES)[number];
 

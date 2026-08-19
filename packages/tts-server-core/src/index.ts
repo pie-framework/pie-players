@@ -24,6 +24,8 @@ export type {
 
 export { BaseTTSProvider } from "./provider.js";
 
+export { resolveTTSErrorCodeForHttpStatus } from "./http-error-mapping.js";
+
 // Export speech marks utilities
 export {
 	adjustSpeechMarksForRate,
@@ -32,8 +34,13 @@ export {
 	getSpeechMarkAtTime,
 	getSpeechMarksStats,
 	mergeSpeechMarks,
+	normalizeSpeechMarks,
 	validateSpeechMarks,
 } from "./speech-marks.js";
+export {
+	resolveSpeedRateBucket,
+	type SpeedRateBucket,
+} from "./speed-rate.js";
 // Export types
 export type {
 	GetVoicesOptions,

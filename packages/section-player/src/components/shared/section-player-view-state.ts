@@ -182,6 +182,46 @@ export function getFormativeItemView(args: {
 }
 
 /**
+ * What a card needs to know about the cue timeline, or `null` when the section is
+ * not timed media.
+ *
+ * Derived here rather than in a component for the same reason the formative view
+ * is: two derivations of one predicate can disagree about whether an item is on
+ * screen.
+ */
+export interface TimedMediaItemView {
+	/** Awaiting its cue. Kept mounted; see `SectionItemsPane`. */
+	pending: boolean;
+	/** This item is what a currently held gate is waiting for. */
+	isGateTarget: boolean;
+	/** The gate is enforced rather than advisory — playback is really stopped. */
+	gateEnforced: boolean;
+}
+
+export function getTimedMediaItemView(args: {
+	compositionModel: SectionCompositionModel;
+	canonicalItemId: string;
+}): TimedMediaItemView | null {
+	const projection = args.compositionModel?.timedMedia;
+	if (!projection) return null;
+	// `sequencedItemIds`, not a scan over `cues`: an item is pending only where the
+	// timeline decides its delivery, and a `metadata` cue decides nothing. Reading
+	// every cue's `itemRefs` counted a metadata cue's items as sequenced while
+	// `revealedItemIds` never revealed them, which hid them for the whole section.
+	const pending =
+		projection.sequencedItemIds.includes(args.canonicalItemId) &&
+		!projection.revealedItemIds.includes(args.canonicalItemId);
+	const gate = projection.gate;
+	const isGateTarget =
+		gate?.holding === true && gate.itemRefs.includes(args.canonicalItemId);
+	return {
+		pending,
+		isGateTarget,
+		gateEnforced: isGateTarget && gate?.enforcement === "enforced",
+	};
+}
+
+/**
  * Project a revealed item's formative env over the section env.
  *
  * The section env stays section-wide and this is the only place it is narrowed,

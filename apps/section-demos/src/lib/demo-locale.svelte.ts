@@ -3,13 +3,19 @@ import { page } from "$app/state";
 import { BUNDLED_LOCALES } from "@pie-players/pie-players-shared/i18n";
 
 /**
- * Interface locale for the demo chrome, held in the `locale` search param.
+ * Interface locale for the `interface-locale` demo, held in the `locale` search
+ * param.
  *
- * The param rather than a store: a demo is then linkable in a second language,
- * which the e2e suite already relies on, and a reload cannot lose the choice.
- * Empty means the demo passes the players nothing, which resolves to `en-US` —
- * not the browser's language — and seeing that is part of what the switcher is
- * for.
+ * That one demo, not the app: a site-wide switcher wrote the chosen tag into
+ * every link it was carried through, so a locale picked to look at one recipe
+ * followed the reader into the rest — including the demos whose whole point is
+ * the English a host that supplies nothing gets. `SectionDemoRuntimePage` reads
+ * this only under its `localeSwitcher` prop.
+ *
+ * The param rather than a store: the demo is then linkable in a second language,
+ * which the e2e suite relies on, and a reload cannot lose the choice. Empty means
+ * the player is passed nothing, which resolves to `en-US` — not the browser's
+ * language — and seeing that is part of what the switcher is for.
  *
  * Reactive by construction: `page` is rune-backed, so a template or a `$derived`
  * that calls this re-runs when the URL changes.

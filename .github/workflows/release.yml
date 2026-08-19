@@ -296,14 +296,24 @@ jobs:
       - name: Create Release Pull Request or Publish to NPM
         if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_changesets == 'true' || steps.detect.outputs.has_version_bumps == 'true' || steps.temp_changeset.outputs.created == 'true'
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          publish: bun run release
-          version: bun run version
-          title: 'chore(release): version packages [skip-heavy-ci]'
-          commit: 'chore(release): version packages'
+          # v2 renamed every input this step passes and no longer reads a custom
+          # token from the GITHUB_TOKEN environment variable — it must arrive
+          # through the github-token input or the push and PR calls go
+          # unauthenticated.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          publish-script: bun run release
+          version-script: bun run version
+          pr-title: 'chore(release): version packages [skip-heavy-ci]'
+          commit-message: 'chore(release): version packages'
+          # v2 pushes the release commit and tags through the GitHub API by
+          # default. The Git CLI path is what this workflow has always used, and
+          # it is what the checkout's credentials and the LEFTHOOK=0 escape below
+          # are set up for; an API push also re-attributes the release commit to
+          # the token's owner. Keep the existing mechanism.
+          push-with-git-cli: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # These must come from the resolved auth mode, NOT straight from secrets.NPM_TOKEN.
           # Reading the secret directly here would hand changesets a token even on an OIDC
           # run, defeating the whole auth-mode resolution above: npm would attempt token
@@ -321,12 +331,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # changesets/action outputs `publishedPackages` as a JSON string; parse it before indexing.
-          tag_name: v${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
-          release_name: Release v${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+          tag_name: v${{ fromJson(steps.changesets.outputs.published-packages)[0].version }}
+          release_name: Release v${{ fromJson(steps.changesets.outputs.published-packages)[0].version }}
           body: |
             ## Changes
 
-            ${{ steps.changesets.outputs.publishedPackages }}
+            ${{ steps.changesets.outputs.published-packages }}
 
             See CHANGELOG.md files in each package for detailed changes.
           draft: false
@@ -337,12 +347,12 @@ jobs:
         run: |
           echo "### 📦 Published Packages" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo '${{ steps.changesets.outputs.publishedPackages }}' | jq -r '.[] | "- \(.name)@\(.version)"' >> $GITHUB_STEP_SUMMARY
+          echo '${{ steps.changesets.outputs.published-packages }}' | jq -r '.[] | "- \(.name)@\(.version)"' >> $GITHUB_STEP_SUMMARY
 
       - name: Verify published dependency closure
         if: steps.changesets.outputs.published == 'true'
         env:
-          PUBLISHED_PACKAGES_JSON: ${{ steps.changesets.outputs.publishedPackages }}
+          PUBLISHED_PACKAGES_JSON: ${{ steps.changesets.outputs.published-packages }}
         run: bun ./scripts/check-published-closure.mjs
 
       # Attestations are the only external signal that a release actually went out via the
@@ -352,7 +362,7 @@ jobs:
       - name: Verify provenance attestations
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: ${{ steps.npm_auth.outputs.mode != 'oidc' }}
-        run: bun ./scripts/check-provenance.mjs "${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}"
+        run: bun ./scripts/check-provenance.mjs "${{ fromJson(steps.changesets.outputs.published-packages)[0].version }}"
 
       # A release commit exists only on master: changesets/action bumps the manifests and deletes
       # the consumed changesets there, and nothing carries that back. develop therefore keeps
@@ -369,7 +379,7 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+          VERSION: ${{ fromJson(steps.changesets.outputs.published-packages)[0].version }}
         run: |
           set -euo pipefail
           git fetch --quiet origin develop master
@@ -434,11 +444,11 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Version:*\nv${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}"
+                      "text": "*Version:*\nv${{ fromJson(steps.changesets.outputs.published-packages)[0].version }}"
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Package:*\n${{ fromJson(steps.changesets.outputs.publishedPackages)[0].name }}"
+                      "text": "*Package:*\n${{ fromJson(steps.changesets.outputs.published-packages)[0].name }}"
                     },
                     {
                       "type": "mrkdwn",
@@ -467,7 +477,7 @@ jobs:
             }
 
       - name: Notify Slack on Release PR Created/Updated
-        if: steps.changesets.outputs.hasChangesets == 'true' && steps.changesets.outputs.published != 'true'
+        if: steps.changesets.outputs.has-changesets == 'true' && steps.changesets.outputs.published != 'true'
         continue-on-error: true
         uses: slackapi/slack-github-action@v4.0.0
         with:
@@ -501,7 +511,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Release PR:*\n${{ steps.changesets.outputs.pullRequestUrl || 'Created/updated by changesets action' }}"
+                      "text": "*Release PR:*\n${{ steps.changesets.outputs.pr-number && format('<{0}/{1}/pull/{2}|#{2}>', github.server_url, github.repository, steps.changesets.outputs.pr-number) || 'Created/updated by changesets action' }}"
                     }
                   ]
                 }

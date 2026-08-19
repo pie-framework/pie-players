@@ -20,6 +20,10 @@ export type {
 	// `@pie-players/pie-players-shared/formative`.
 	FormativeDeliveryPolicy,
 	FormativeItemPolicy,
+	// The authored half of the timed-media contract, for the same reason. Cue
+	// policy, the reduction and the Media Time Source port live behind
+	// `@pie-players/pie-players-shared/timed-media`.
+	TimedMediaSectionData,
 	ItemConfig,
 	ItemEntity,
 	ItemSession,
@@ -35,7 +39,9 @@ export type {
 	TestPart,
 } from "./types/index.js";
 export { editorPostFix } from "./types/index.js";
+export * from "./ui/attribute-coercion.js";
 export * from "./ui/content-styles.js";
+export * from "./ui/pointer-drag.js";
 export * from "./ui/focus-trap.js";
 export * from "./ui/first-focusable.js";
 export * from "./ui/debug-panel-persistence.js";

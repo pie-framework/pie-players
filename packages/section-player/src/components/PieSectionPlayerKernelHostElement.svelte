@@ -68,6 +68,7 @@
 	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
+	import { getShellHostElement } from "./shared/section-player-shell-layout.svelte.js";
 
 	let {
 		assessmentId,
@@ -127,15 +128,7 @@
 		}),
 	);
 
-	function getHostElement(): HTMLElement | null {
-		if (!anchor) return null;
-		const rootNode = anchor.getRootNode();
-		if (rootNode && "host" in rootNode) {
-			return (rootNode as ShadowRoot).host as HTMLElement;
-		}
-		return anchor.parentElement as HTMLElement | null;
-	}
-	const hostElement = $derived.by(() => getHostElement());
+	const hostElement = $derived.by(() => getShellHostElement(anchor));
 
 	export function getSnapshot(): SectionPlayerSnapshot {
 		return {
@@ -293,6 +286,7 @@
 	<div class="pie-section-player-kernel-host-content">
 		{#if passages.length > 0}
 			<pie-section-player-passages-pane
+				compositionModel={compositionModel}
 				{passages}
 				elementsLoaded={readinessDetail.allLoadingComplete}
 				{resolvedPlayerEnv}

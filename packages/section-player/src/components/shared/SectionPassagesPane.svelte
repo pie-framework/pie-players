@@ -16,6 +16,9 @@
 			playerStrategy: { attribute: "player-strategy", type: "String" },
 			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			// Read for one thing only: which passage, if any, is a timed-media
+			// section's stimulus. Absent or non-timed-media renders exactly as before.
+			compositionModel: { attribute: "composition-model", type: "Object", reflect: false },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
 		},
@@ -29,6 +32,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
+	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getPassagePlayerParams,
@@ -47,6 +51,7 @@
 		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
+		compositionModel = null as SectionCompositionModel | null,
 	} = $props<{
 		passages: PassageEntity[];
 		elementsLoaded: boolean;
@@ -58,10 +63,34 @@
 		passageToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
+		compositionModel?: SectionCompositionModel | null;
 	}>();
 
 	let loadingCard = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => loadingCard);
+
+	// The stimulus is the section's time source, so it renders first. Ordering only:
+	// pinning it in place needs `scroll-padding-top` on a scroll container this
+	// component does not own, and a sticky card without that obscures a focused
+	// control in a passage scrolling under it (WCAG 2.4.11). Placement belongs to a
+	// timed-media layout — see Media Representation in the contract — and a section
+	// with no media stimulus keeps today's authored order either way.
+	const stimulusPassageId = $derived(
+		compositionModel?.timedMedia?.stimulusRenderableId ?? "",
+	);
+	const orderedPassages = $derived.by(() => {
+		if (!stimulusPassageId) return passages;
+		const stimulus = passages.filter(
+			(passage: PassageEntity) => passage.id === stimulusPassageId,
+		);
+		if (stimulus.length === 0) return passages;
+		return [
+			...stimulus,
+			...passages.filter(
+				(passage: PassageEntity) => passage.id !== stimulusPassageId,
+			),
+		];
+	});
 </script>
 
 {#if !elementsLoaded}
@@ -73,10 +102,11 @@
 		</div>
 	</div>
 {:else}
-	{#each passages as passage, passageIndex (passage.id || passageIndex)}
+	{#each orderedPassages as passage, passageIndex (passage.id || passageIndex)}
 		<pie-section-player-passage-card
 			{passage}
 			{baseHeadingLevel}
+			timedMediaStimulus={!!stimulusPassageId && passage.id === stimulusPassageId}
 			playerParams={getPassagePlayerParams({
 				passage,
 				resolvedPlayerEnv,

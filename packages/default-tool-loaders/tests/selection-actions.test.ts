@@ -4,9 +4,7 @@ import { buildSelectionActions } from "../src/registrations/selection-actions.js
 
 type Requested = { toolId: string; params?: Record<string, unknown> };
 
-function services(
-	coordinator: unknown,
-): ToolSurfaceServices {
+function services(coordinator: unknown): ToolSurfaceServices {
 	return {
 		toolkitCoordinator: coordinator,
 		ttsService: null,
@@ -30,10 +28,7 @@ function requestCapable(hosted: string[]) {
 
 describe("buildSelectionActions", () => {
 	it("offers the dictionaries, in the order the toolbar shows them", () => {
-		const { coordinator } = requestCapable([
-			"dictionary",
-			"pictureDictionary",
-		]);
+		const { coordinator } = requestCapable(["dictionary", "pictureDictionary"]);
 		const actions = buildSelectionActions(services(coordinator));
 		expect(actions.map((action) => action.id)).toEqual([
 			"dictionary",

@@ -35,10 +35,11 @@
 	},
 	"dependencies": {
 		"@oclif/core": "^4.13.2",
-		"@oclif/plugin-help": "^6.2.0"
+		"@oclif/plugin-help": "^6.2.58",
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0",
+		"@types/node": "^26.2.0",
 		"oclif": "^4.0.0",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.9.3"

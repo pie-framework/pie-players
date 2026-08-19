@@ -27,6 +27,30 @@ import type {
 const DISALLOWED_SRC_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const ALLOWED_SRC_SCHEMES = new Set(["http:", "https:", "data:", "blob:"]);
 
+/**
+ * The only `MediaAssetRef.version` this build renders.
+ *
+ * `media-asset-contract.md` requires unknown-version rejection for runtime
+ * rendering: bumping to `2` obliges every consumer to accept both for as long as
+ * any producer emits `1`, so a card claiming a version this build does not
+ * implement must not be rendered on a guess at which fields still mean what they
+ * did.
+ */
+export const SUPPORTED_MEDIA_ASSET_VERSION = 1;
+
+/**
+ * Whether a media reference claims a version this build cannot render.
+ *
+ * An absent `version` is accepted rather than rejected — the same posture the
+ * rest of this module takes toward absent fields, and the one `media.kind` and
+ * `matchesRequestedSignLanguage` already take: only a positive claim of
+ * something else is refused. Producers predate the field, and treating its
+ * absence as a rejection would drop cards that are otherwise wholly valid.
+ */
+export function isUnsupportedMediaAssetVersion(version: unknown): boolean {
+	return version !== undefined && version !== SUPPORTED_MEDIA_ASSET_VERSION;
+}
+
 export function isSafeMediaSrc(raw: unknown): raw is string {
 	if (typeof raw !== "string") return false;
 	const src = raw.trim();
@@ -85,10 +109,79 @@ export function trimmedOrUndefined(value: unknown): string | undefined {
 
 /**
  * Apply a fragment range to a source URL as a Media Fragments URI, so one
- * recording can serve several content nodes. Browsers honour the start offset;
- * the end offset is enforced by the caller, because support for the end bound is
- * inconsistent.
+ * recording can serve several content nodes.
+ *
+ * The URI is a hint only: browsers honour both bounds inconsistently, so the
+ * caller enforces the range itself — seek forward to the start once metadata is
+ * available, and stop at the end. `SignLanguageMediaRegion` and
+ * `TTSService.playRecordedAudio` are the two shipped consumers that do so.
  */
+/**
+ * How often the end bound is re-checked while a slice is playing. `timeupdate`
+ * alone fires about four times a second, which is loose enough to leak a sliver
+ * of the next node's recording.
+ */
+const END_CHECK_INTERVAL_MS = 100;
+
+/** `HTMLMediaElement.HAVE_METADATA`, which not every DOM implementation exposes. */
+const HAVE_METADATA = 1;
+
+/**
+ * Hold a media element to one fragment's range, and return the disposer.
+ *
+ * The `#t=` URI `applyMediaFragment` writes is a hint browsers honour at neither
+ * bound reliably, so every consumer that means "play only this slice" enforces it
+ * here instead of reimplementing the pair. Both shipped consumers do —
+ * `SignLanguageMediaRegion` pausing at the end, `TTSService.playRecordedAudio`
+ * ending the clip so the chunk sequence advances — which is why the end action is
+ * the caller's and only the arithmetic is shared.
+ *
+ * The start seek is forward only: a browser that did honour the URI has already
+ * positioned past the start, and seeking back would replay audio the learner has
+ * heard. `onReachedEnd` may fire more than once and must tolerate it; polling
+ * stops while the element is paused, so an element left sitting past its end bound
+ * goes quiet rather than being told repeatedly.
+ */
+export function enforceMediaFragment(
+	element: HTMLMediaElement,
+	fragment: MediaFragmentRange | undefined,
+	onReachedEnd: () => void,
+): () => void {
+	if (!fragment) return () => {};
+	const { startSeconds, endSeconds } = fragment;
+
+	let seekToStart: (() => void) | undefined;
+	if (startSeconds > 0) {
+		seekToStart = () => {
+			if (element.currentTime < startSeconds) {
+				element.currentTime = startSeconds;
+			}
+		};
+		// Seeking before metadata is available only sets the default start
+		// position, so wait for it unless it already landed.
+		if (element.readyState >= HAVE_METADATA) seekToStart();
+		else element.addEventListener("loadedmetadata", seekToStart);
+	}
+
+	let checkEnd: (() => void) | undefined;
+	let endPoll: ReturnType<typeof setInterval> | undefined;
+	if (endSeconds !== undefined) {
+		checkEnd = () => {
+			if (element.currentTime >= endSeconds) onReachedEnd();
+		};
+		element.addEventListener("timeupdate", checkEnd);
+		endPoll = setInterval(() => {
+			if (!element.paused) checkEnd?.();
+		}, END_CHECK_INTERVAL_MS);
+	}
+
+	return () => {
+		if (seekToStart) element.removeEventListener("loadedmetadata", seekToStart);
+		if (checkEnd) element.removeEventListener("timeupdate", checkEnd);
+		if (endPoll !== undefined) clearInterval(endPoll);
+	};
+}
+
 export function applyMediaFragment(
 	src: string,
 	fragment?: MediaFragmentRange,

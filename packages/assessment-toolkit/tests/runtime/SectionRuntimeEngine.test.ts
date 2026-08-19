@@ -336,5 +336,10 @@ describe("SectionRuntimeEngine facade — getEffectiveRuntime parity", () => {
 
 		// And the FSM state is still the initial idle snapshot.
 		expect(engine.getState().phase).toBe("idle");
+
+		// An audio-handoff request with no controller to ask reports media audio
+		// silent, because there is none: read-aloud must not be held back waiting for
+		// a section that never had a media port.
+		expect(engine.requestMediaPauseForCompetingAudio()).toBe(true);
 	});
 });

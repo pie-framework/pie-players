@@ -1,0 +1,11 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "section-demos",
+			"runtimeExecutable": "bun",
+			"runtimeArgs": ["run", "dev:section"],
+			"port": 5300
+		}
+	]
+}

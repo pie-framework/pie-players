@@ -197,210 +197,250 @@ export function isElementContext(
 	return context.level === "element";
 }
 
+const stripHtml = (value: string): string =>
+	value.replace(/<[^>]*>/g, " ").trim();
+
 /**
- * Helper to extract text content from an item or element for analysis
+ * A config's `models` as a list, whether it was authored as an array or as a
+ * record keyed by element id. Both forms are in the wild.
  */
-export function extractTextContent(context: ToolContext): string {
+function normalizeModels(modelsRaw: unknown): unknown[] {
+	if (Array.isArray(modelsRaw)) return modelsRaw;
+	if (modelsRaw && typeof modelsRaw === "object") {
+		return Object.values(modelsRaw as Record<string, unknown>);
+	}
+	return [];
+}
+
+/**
+ * Push every string a model carries, one level into its arrays of objects.
+ *
+ * The depth is deliberate rather than a full walk: math and prose live in a
+ * model's own fields (`prompt`, `label`) and in its choice/row arrays, which is
+ * one level down. Recursing further would pull in ids, keys and config flags.
+ */
+function collectModelText(model: unknown, push: (text: string) => void): void {
+	if (!model || typeof model !== "object") return;
+	for (const value of Object.values(model as Record<string, unknown>)) {
+		if (typeof value === "string") push(value);
+		if (Array.isArray(value)) {
+			for (const entry of value) {
+				if (entry && typeof entry === "object") {
+					for (const nested of Object.values(
+						entry as Record<string, unknown>,
+					)) {
+						if (typeof nested === "string") push(nested);
+					}
+				}
+			}
+		}
+	}
+}
+
+/** Push the markup of every element snippet in a config's `elements` map. */
+function collectElementsText(
+	elements: unknown,
+	push: (text: string) => void,
+): void {
+	if (!elements || typeof elements !== "object") return;
+	for (const elementMarkup of Object.values(
+		elements as Record<string, unknown>,
+	)) {
+		if (typeof elementMarkup === "string") push(elementMarkup);
+	}
+}
+
+/**
+ * The authored content a context carries, for the content heuristics below.
+ *
+ * Each level differs only in which fields it reads: an element reads its own
+ * markup snippet and the one model bearing its id, an item and a passage read
+ * their whole config and every model. The traversal itself is shared, so a new
+ * place content can hide is added once.
+ *
+ * `transform` decides what the caller gets. {@link extractTextContent} strips
+ * tags, which is right for prose keyword matching and wrong for structural
+ * matching: a MathML item's only math signal *is* the `<math>` tag, and stripping
+ * first left `hasMathContent`'s MathML pattern unreachable.
+ */
+function extractContent(
+	context: ToolContext,
+	transform: (value: string) => string,
+): string {
+	const textChunks: string[] = [];
+	const push = (text: string) => {
+		textChunks.push(transform(text));
+	};
+	const joined = () => textChunks.filter(Boolean).join(" ").trim();
+
 	if (isElementContext(context)) {
 		const config = context.item.config;
 		if (!config) return "";
-		const textChunks: string[] = [];
-		const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").trim();
 
-		// Try to find element markup by element id.
 		const elementMarkup = config.elements?.[context.elementId];
-		if (elementMarkup) {
-			if (typeof elementMarkup === "string") {
-				textChunks.push(stripHtml(elementMarkup));
-			}
-		}
+		if (typeof elementMarkup === "string") push(elementMarkup);
 
-		// Also inspect model data keyed by this element id.
-		// In many items, math appears in model.prompt/labels rather than elements[elementId].
-		const modelsRaw = config.models;
-		const models = Array.isArray(modelsRaw)
-			? modelsRaw
-			: modelsRaw && typeof modelsRaw === "object"
-				? Object.values(modelsRaw as Record<string, unknown>)
-				: [];
-		const model = models.find(
-			(m: any) => m && typeof m === "object" && m.id === context.elementId,
-		) as Record<string, unknown> | undefined;
-		if (model) {
-			for (const value of Object.values(model)) {
-				if (typeof value === "string") {
-					textChunks.push(stripHtml(value));
-				}
-				if (Array.isArray(value)) {
-					for (const entry of value) {
-						if (entry && typeof entry === "object") {
-							for (const nested of Object.values(
-								entry as Record<string, unknown>,
-							)) {
-								if (typeof nested === "string") {
-									textChunks.push(stripHtml(nested));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+		// Model data keyed by this element id: in many items the math is in
+		// `model.prompt`/labels rather than in `elements[elementId]`.
+		const model = normalizeModels(config.models).find(
+			(candidate) =>
+				!!candidate &&
+				typeof candidate === "object" &&
+				(candidate as Record<string, unknown>).id === context.elementId,
+		);
+		collectModelText(model, push);
 
-		return textChunks.filter(Boolean).join(" ").trim();
+		return joined();
 	}
 
 	if (isItemContext(context)) {
-		const item = context.item;
-		if (!item?.config) return "";
+		const config = context.item?.config as Record<string, unknown> | undefined;
+		if (!config) return "";
 
-		const config = item.config as Record<string, unknown>;
-		const textChunks: string[] = [];
-		const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").trim();
-
-		// Primary item markup
-		if (typeof config.markup === "string") {
-			textChunks.push(stripHtml(config.markup));
+		if (typeof config.markup === "string") push(config.markup);
+		collectElementsText(config.elements, push);
+		for (const model of normalizeModels(config.models)) {
+			collectModelText(model, push);
 		}
 
-		// Element markup snippets
-		const elements = config.elements as Record<string, unknown> | undefined;
-		if (elements && typeof elements === "object") {
-			for (const elementMarkup of Object.values(elements)) {
-				if (typeof elementMarkup === "string") {
-					textChunks.push(stripHtml(elementMarkup));
-				}
-			}
-		}
-
-		// Model-level text (prompts, labels, etc.)
-		const modelsRaw = config.models;
-		const models = Array.isArray(modelsRaw)
-			? modelsRaw
-			: modelsRaw && typeof modelsRaw === "object"
-				? Object.values(modelsRaw as Record<string, unknown>)
-				: [];
-		for (const model of models) {
-			if (!model || typeof model !== "object") continue;
-			for (const value of Object.values(model as Record<string, unknown>)) {
-				if (typeof value === "string") {
-					textChunks.push(stripHtml(value));
-				}
-				if (Array.isArray(value)) {
-					for (const entry of value) {
-						if (entry && typeof entry === "object") {
-							for (const nested of Object.values(
-								entry as Record<string, unknown>,
-							)) {
-								if (typeof nested === "string") {
-									textChunks.push(stripHtml(nested));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return textChunks.filter(Boolean).join(" ").trim();
+		return joined();
 	}
 
 	if (isPassageContext(context)) {
-		const passage = context.passage;
-		if (!passage?.config) return "";
+		const config = context.passage?.config as
+			| Record<string, unknown>
+			| undefined;
+		if (!config) return "";
 
-		const config = passage.config as Record<string, unknown>;
-		const textChunks: string[] = [];
-		const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").trim();
-
-		// Primary passage markup/content
-		if (typeof config.markup === "string") {
-			textChunks.push(stripHtml(config.markup));
+		for (const field of ["markup", "content", "prompt"] as const) {
+			const value = config[field];
+			if (typeof value === "string") push(value);
 		}
-		if (typeof config.content === "string") {
-			textChunks.push(stripHtml(config.content));
-		}
-		if (typeof config.prompt === "string") {
-			textChunks.push(stripHtml(config.prompt));
+		collectElementsText(config.elements, push);
+		for (const model of normalizeModels(config.models)) {
+			collectModelText(model, push);
 		}
 
-		// Element markup snippets
-		const elements = config.elements as Record<string, unknown> | undefined;
-		if (elements && typeof elements === "object") {
-			for (const elementMarkup of Object.values(elements)) {
-				if (typeof elementMarkup === "string") {
-					textChunks.push(stripHtml(elementMarkup));
-				}
-			}
-		}
-
-		// Model-level text (prompts, labels, etc.)
-		const modelsRaw = config.models;
-		const models = Array.isArray(modelsRaw)
-			? modelsRaw
-			: modelsRaw && typeof modelsRaw === "object"
-				? Object.values(modelsRaw as Record<string, unknown>)
-				: [];
-		for (const model of models) {
-			if (!model || typeof model !== "object") continue;
-			for (const value of Object.values(model as Record<string, unknown>)) {
-				if (typeof value === "string") {
-					textChunks.push(stripHtml(value));
-				}
-				if (Array.isArray(value)) {
-					for (const entry of value) {
-						if (entry && typeof entry === "object") {
-							for (const nested of Object.values(
-								entry as Record<string, unknown>,
-							)) {
-								if (typeof nested === "string") {
-									textChunks.push(stripHtml(nested));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return textChunks.filter(Boolean).join(" ").trim();
+		return joined();
 	}
 
 	if (isRubricContext(context)) {
+		// No model walk: a rubric block is authored prose, so its text is one
+		// string — the embedded passage's markup when it has one, else its content.
 		const rubric = context.rubricBlock;
-
-		// If rubric has embedded passage, extract from passage config
 		if (rubric.passage?.config) {
-			const markup = rubric.passage.config.markup || "";
-			return markup.replace(/<[^>]*>/g, " ").trim();
+			return transform(rubric.passage.config.markup || "");
 		}
-
-		// Otherwise, use simple content string
-		const content = rubric.content || "";
-		return content.replace(/<[^>]*>/g, " ").trim();
+		return transform(rubric.content || "");
 	}
 
 	return "";
+}
+
+/** The plain text a context carries, tags removed. */
+export function extractTextContent(context: ToolContext): string {
+	return extractContent(context, stripHtml);
+}
+
+/**
+ * The authored markup a context carries, tags intact.
+ *
+ * For indicators that live in the markup rather than in the prose — `<math>`
+ * above all, whose whole signal is the element name.
+ */
+export function extractMarkupContent(context: ToolContext): string {
+	return extractContent(context, (value) => value);
 }
 
 /**
  * Helper to check if context contains mathematical content
  * (Basic heuristic - can be overridden by tools)
  */
-export function hasMathContent(context: ToolContext): boolean {
-	const text = extractTextContent(context);
+/**
+ * Chemical element symbols.
+ *
+ * A real set rather than `[A-Z][a-z]?`: that shape matches "It", "In", "He" and
+ * "A", which is why the science gate used to answer `true` for any prose that
+ * began a sentence.
+ */
+const ELEMENT_SYMBOLS = new Set([
+	"H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
+	"P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co",
+	"Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr",
+	"Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I",
+	"Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy",
+	"Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au",
+	"Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U",
+	"Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+]);
 
-	// Look for common math indicators
-	const mathIndicators = [
+/** A word that could be a formula: capitalised groups with optional counts. */
+const FORMULA_CANDIDATE = /\b[A-Z][A-Za-z]*\d*(?:[A-Z][A-Za-z]*\d*)*\b/g;
+const FORMULA_GROUP = /([A-Z][a-z]?)(\d*)/g;
+
+/**
+ * Whether the text contains something only a chemical formula looks like.
+ *
+ * A token qualifies when every one of its groups is a real element symbol *and*
+ * it either names two or more of them or carries a count — `NaCl`, `CO2`, `H2O`,
+ * `C6H12O6`. A lone symbol never qualifies: "In", "He", "As" and "At" are
+ * ordinary English words, and a single-letter "I" or "A" more so.
+ */
+function hasChemicalFormula(text: string): boolean {
+	for (const candidate of text.match(FORMULA_CANDIDATE) ?? []) {
+		FORMULA_GROUP.lastIndex = 0;
+		let groups = 0;
+		let hasCount = false;
+		let consumed = 0;
+		let valid = true;
+		let match: RegExpExecArray | null = FORMULA_GROUP.exec(candidate);
+		while (match !== null) {
+			if (match[0] === "") break;
+			if (!ELEMENT_SYMBOLS.has(match[1])) {
+				valid = false;
+				break;
+			}
+			groups += 1;
+			if (match[2]) hasCount = true;
+			consumed += match[0].length;
+			match = FORMULA_GROUP.exec(candidate);
+		}
+		// Every character has to belong to a group, or the token was only
+		// formula-shaped at its start ("Hello" -> "He" + "llo").
+		if (valid && consumed === candidate.length && (groups > 1 || hasCount)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+export function hasMathContent(context: ToolContext): boolean {
+	// Structural signals live in the markup: stripping tags first is what left the
+	// MathML pattern unable to match anything at all.
+	const markup = extractMarkupContent(context);
+	const structuralIndicators = [
 		/<math[>\s]/i, // MathML
 		/\\\[([^\]]+)\\\]/, // LaTeX display math
 		/\$\$[^$]+\$\$/, // LaTeX display math ($$...$$)
 		/\\\(/, // LaTeX inline math
-		/[+\-*/=<>≤≥∑∫√π]/, // Math symbols
-		/\d+\s*[+\-*/=]\s*\d+/, // Simple arithmetic
 	];
+	if (structuralIndicators.some((pattern) => pattern.test(markup))) return true;
 
-	return mathIndicators.some((pattern) => pattern.test(text));
+	const text = extractTextContent(context);
+	// No bare-operator pattern. `/[+\-*/=<>≤≥∑∫√π]/` matched any hyphen or slash,
+	// so "well-known" and "and/or" made every item mathematical and this predicate
+	// answered `true` for essentially all content — a gate that does not gate. An
+	// operator counts only with operands around it, or when the character has no
+	// prose reading at all.
+	const textIndicators = [
+		/[≤≥≠±×÷∑∫√∞π]/, // Symbols with no prose reading
+		/\d+\s*[+\-*/×÷=]\s*\d+/, // Simple arithmetic
+		/\d\s*[<>]\s*\d/, // Numeric comparison
+		/\b\d+\s*\/\s*\d+\b/, // Fractions
+		/\b\d+(?:\.\d+)?\s*%/, // Percentages
+		/\^\s*\d/, // Exponents
+	];
+	return textIndicators.some((pattern) => pattern.test(text));
 }
 
 /**
@@ -470,15 +510,17 @@ export function hasReadableText(context: ToolContext): boolean {
 export function hasScienceContent(context: ToolContext): boolean {
 	const text = extractTextContent(context);
 
-	// Look for common science indicators
-	const scienceIndicators = [
-		/chemistry|chemical|element|atom|molecule|compound/i,
-		/periodic\s+table/i,
-		/H₂O|CO₂|NaCl|O₂|N₂/i, // Chemical formulas
-		/\b[A-Z][a-z]?\d*\b/, // Element symbols (H, He, Li, etc.)
-		/biology|organism|cell|DNA|RNA|protein/i,
-		/physics|force|energy|velocity|acceleration/i,
-	];
+	// The element-symbol pattern used to be `/\b[A-Z][a-z]?\d*\b/`, which matches
+	// any one- or two-letter capitalised word: "It", "In", "A", "No". Every item
+	// beginning a sentence with one read as science.
+	if (hasChemicalFormula(text)) return true;
+	if (/[A-Z][a-z]?[\u2080-\u2089]/.test(text)) return true; // Subscripted: H₂O, CO₂
 
+	const scienceIndicators = [
+		/chemistry|chemical|molecule|compound|periodic\s+table/i,
+		/\bchemical\s+element\b|\belement\s+symbol\b/i,
+		/biology|organism|\bDNA\b|\bRNA\b|protein|photosynthesis|ecosystem/i,
+		/physics|\bforce\b|\benergy\b|velocity|acceleration|momentum/i,
+	];
 	return scienceIndicators.some((pattern) => pattern.test(text));
 }

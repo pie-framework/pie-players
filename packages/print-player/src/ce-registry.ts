@@ -7,7 +7,8 @@
  * Ported from pie-print-support/src/ce.ts
  */
 
-import { validateCustomElementTag } from "./tag-names.js";
+import { attemptCustomElementDefine } from "@pie-players/pie-players-shared/pie";
+import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 
 interface DefinitionState {
 	inProgress?: boolean;
@@ -41,26 +42,22 @@ export const define = (name: string, def: CustomElementConstructor): void => {
 
 	definitions.set(validName, { inProgress: true });
 
-	try {
-		customElements.define(validName, def);
-	} catch (e) {
-		/**
-		 * It can be the case that different tags will use the same CustomElement.
-		 * We don't want to process all the markup so we wrap the definition in an anonymous class.
-		 */
-		if (e && (e as DOMException).code === DOMException.NOT_SUPPORTED_ERR) {
-			try {
-				customElements.define(validName, class extends def {});
-			} catch (wrappedError) {
-				console.error("[ce-registry] Wrapped class failed", wrappedError);
-				definitions.set(validName, {
-					inProgress: false,
-					error: wrappedError as Error,
-				});
-			}
-		} else {
-			definitions.set(validName, { inProgress: false, error: e as Error });
-		}
+	// Different print element tags can resolve to the same already-loaded
+	// custom-element class; `allowWrappedFallback` retries under a distinct
+	// wrapper subclass instead of failing the whole markup pass.
+	const attempt = attemptCustomElementDefine(validName, def, "print element tag", {
+		allowWrappedFallback: true,
+	});
+
+	if (attempt.outcome === "wrapped-error") {
+		console.error("[ce-registry] Wrapped class failed", attempt.error);
+	}
+	if (attempt.outcome === "error" || attempt.outcome === "wrapped-error") {
+		definitions.set(validName, {
+			inProgress: false,
+			error: attempt.error as Error,
+		});
+		return;
 	}
 
 	customElements

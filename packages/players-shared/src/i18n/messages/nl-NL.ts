@@ -99,6 +99,16 @@ const nlNL = {
 				other: "Nog {count} pogingen over.",
 			},
 		},
+
+		timedMedia: {
+			waitingForMedia: "Vragen verschijnen terwijl de media speelt.",
+			questionAvailable: "Vraag {position} is nu beschikbaar.",
+			playbackPaused:
+				"Weergave gepauzeerd. Beantwoord vraag {position} om verder te gaan.",
+			playbackAdvisory:
+				"Beantwoord vraag {position} voordat je verder gaat met de media.",
+			playbackReleased: "Antwoord geaccepteerd. Speel de media verder.",
+		},
 	},
 
 	toolkit: {
@@ -248,6 +258,21 @@ const nlNL = {
 			buttonA11y: "Beeldwoordenboek, afbeeldingen bij woorden opzoeken",
 			tooltip: "Beeldwoordenboek",
 			toolA11y: "Beeldwoordenboek",
+		},
+		dictionarySpanish: {
+			name: "Spaans woordenboek",
+			description: "Betekenis van woorden in het Spaans opzoeken",
+			buttonA11y: "Spaans woordenboek, betekenis van woorden in het Spaans opzoeken",
+			tooltip: "Spaans woordenboek",
+			toolA11y: "Spaans woordenboek",
+		},
+		pictureDictionarySpanish: {
+			name: "Spaans beeldwoordenboek",
+			description: "Afbeeldingen bij woorden in het Spaans opzoeken",
+			buttonA11y:
+				"Spaans beeldwoordenboek, afbeeldingen bij woorden in het Spaans opzoeken",
+			tooltip: "Spaans beeldwoordenboek",
+			toolA11y: "Spaans beeldwoordenboek",
 		},
 		lineReader: {
 			name: "Leeshulp",

@@ -22,21 +22,17 @@
  *   PIE element paints into its own light DOM (e.g. a `pie-passage`'s
  *   model-driven content) get the same scrollable affordance even though
  *   they never appeared in the authored markup string.
+ *
+ * The wrapping itself lives in `./wrap-overwide.js`, shared with the table
+ * wrapper: only the four values below and the accessible name differ.
  */
 
-const SCROLL_WRAPPER_CLASS = "pie-image-scroll";
-const PIE_CUSTOM_ELEMENT_TAG_REGEX = /^pie-/i;
-
-function isInsidePieCustomElement(image: Element, root: Element): boolean {
-	let ancestor: Element | null = image.parentElement;
-	while (ancestor && ancestor !== root) {
-		if (PIE_CUSTOM_ELEMENT_TAG_REGEX.test(ancestor.tagName)) {
-			return true;
-		}
-		ancestor = ancestor.parentElement;
-	}
-	return false;
-}
+import {
+	type OverwideWrapSpec,
+	type WrapOverwideOptions,
+	wrapOverwideInElement,
+	wrapOverwideMarkup,
+} from "./wrap-overwide.js";
 
 function buildAriaLabel(image: Element): string {
 	const alt = image.getAttribute("alt");
@@ -44,16 +40,15 @@ function buildAriaLabel(image: Element): string {
 	return trimmed ? `Scrollable image: ${trimmed}` : "Scrollable image";
 }
 
-export interface WrapOverwideImagesInElementOptions {
-	/**
-	 * When `true`, images whose nearest `pie-*` ancestor is *strictly between*
-	 * the image and `root` are left alone. Used by the string pipeline so the
-	 * authored-markup pass doesn't restructure a PIE element's own template.
-	 * Defaults to `false` so the live-DOM pass *does* wrap element-rendered
-	 * images.
-	 */
-	skipPieDescendants?: boolean;
-}
+const IMAGE_SPEC: OverwideWrapSpec = {
+	selector: "img",
+	wrapperTag: "span",
+	wrapperClass: "pie-image-scroll",
+	markupProbe: /<img\b/i,
+	buildAriaLabel,
+};
+
+export type WrapOverwideImagesInElementOptions = WrapOverwideOptions;
 
 /**
  * Wrap every unwrapped `<img>` descendant of `root` with the shared
@@ -64,37 +59,7 @@ export function wrapOverwideImagesInElement(
 	root: Element,
 	options: WrapOverwideImagesInElementOptions = {},
 ): number {
-	const { skipPieDescendants = false } = options;
-	const images = Array.from(root.querySelectorAll("img"));
-	if (images.length === 0) return 0;
-
-	const ownerDocument = root.ownerDocument;
-	if (!ownerDocument) return 0;
-
-	let wrapped = 0;
-	for (const image of images) {
-		const parent = image.parentElement;
-		if (!parent) continue;
-
-		// Idempotency — already wrapped.
-		if (parent.classList && parent.classList.contains(SCROLL_WRAPPER_CLASS)) {
-			continue;
-		}
-
-		// Authored-markup pass: leave PIE custom-element internals alone.
-		if (skipPieDescendants && isInsidePieCustomElement(image, root)) continue;
-
-		const wrapper = ownerDocument.createElement("span");
-		wrapper.className = SCROLL_WRAPPER_CLASS;
-		wrapper.setAttribute("tabindex", "0");
-		wrapper.setAttribute("role", "region");
-		wrapper.setAttribute("aria-label", buildAriaLabel(image));
-
-		parent.insertBefore(wrapper, image);
-		wrapper.appendChild(image);
-		wrapped += 1;
-	}
-	return wrapped;
+	return wrapOverwideInElement(root, IMAGE_SPEC, options);
 }
 
 /**
@@ -112,29 +77,5 @@ export function wrapOverwideImagesInElement(
  *   to wrap element-rendered images.
  */
 export function wrapOverwideImages(markup: string): string {
-	if (!markup) return "";
-
-	// Fast path: avoid the DOM round-trip entirely when the markup carries no
-	// images. Keeps the sanitize pipeline cheap for the common case.
-	if (!/<img\b/i.test(markup)) return markup;
-
-	if (typeof window === "undefined" || !window.document) return markup;
-
-	const ParserCtor =
-		typeof DOMParser !== "undefined"
-			? DOMParser
-			: (window as unknown as { DOMParser?: typeof DOMParser }).DOMParser;
-	if (!ParserCtor) return markup;
-
-	const doc = new ParserCtor().parseFromString(
-		`<!DOCTYPE html><html><body>${markup}</body></html>`,
-		"text/html",
-	);
-	const body = doc.body;
-	if (!body) return markup;
-
-	const wrapped = wrapOverwideImagesInElement(body, {
-		skipPieDescendants: true,
-	});
-	return wrapped > 0 ? body.innerHTML : markup;
+	return wrapOverwideMarkup(markup, IMAGE_SPEC);
 }

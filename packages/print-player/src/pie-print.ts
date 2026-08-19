@@ -11,7 +11,7 @@
  */
 
 import { html, LitElement, type PropertyValues } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import type { ItemMarkupSanitizer } from "@pie-players/pie-players-shared/security";
@@ -27,7 +27,10 @@ import {
 	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
-import { toPrintHashedTag, validateCustomElementTag } from "./tag-names.js";
+import {
+	toPrintHashedTag,
+	validateCustomElementTag,
+} from "@pie-players/pie-players-shared/pie/tag-names";
 import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 
 import type {
@@ -80,7 +83,6 @@ const defaultMissingElement: MissingElFn = (
  * </script>
  * ```
  */
-@customElement("pie-print")
 export class PiePrint extends LitElement {
 	// No `static styles` here: `createRenderRoot()` below returns `this` for
 	// light-DOM rendering, which skips Lit's `adoptStyles` call, so static
@@ -307,6 +309,12 @@ export class PiePrint extends LitElement {
     `;
 	}
 }
+
+// Use this package's own guarded registry (also used for every dynamically
+// resolved print element) instead of Lit's `@customElement` decorator, which
+// calls `customElements.define` unconditionally and throws an uncaught
+// `NotSupportedError` on double-bundling.
+define("pie-print", PiePrint);
 
 declare global {
 	interface HTMLElementTagNameMap {

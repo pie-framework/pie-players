@@ -73,6 +73,43 @@ describe("resolveSpokenAudioMedia", () => {
 		expect(warnings[0]).toContain('kind "video"');
 	});
 
+	test("refuses a media version this build does not render", () => {
+		// The contract requires unknown-version rejection rather than rendering on a
+		// guess at which fields still mean what they did.
+		const { value, warnings } = silently(() =>
+			resolveSpokenAudioMedia({
+				payload: payload({
+					media: {
+						version: 2,
+						id: "prompt-audio",
+						kind: "audio",
+						sources: [{ src: "/audio/prompt.mp3" }],
+					},
+				}),
+			}),
+		);
+		expect(value).toBeNull();
+		expect(warnings[0]).toContain("version 2");
+	});
+
+	test("accepts a recording that omits the version", () => {
+		// Producers predate the field; absence is not a positive claim of another
+		// version, so it resolves rather than being dropped.
+		const { value, warnings } = silently(() =>
+			resolveSpokenAudioMedia({
+				payload: payload({
+					media: {
+						id: "prompt-audio",
+						kind: "audio",
+						sources: [{ src: "/audio/prompt.mp3" }],
+					},
+				}),
+			}),
+		);
+		expect(value?.sources).toEqual([{ src: "/audio/prompt.mp3" }]);
+		expect(warnings).toEqual([]);
+	});
+
 	test("reports a payload whose sources yield no usable URL", () => {
 		const { value, warnings } = silently(() =>
 			resolveSpokenAudioMedia({

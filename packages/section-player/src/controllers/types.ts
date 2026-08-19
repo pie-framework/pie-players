@@ -16,6 +16,12 @@ import type {
 	FormativeSectionSlice,
 	FormativeTryOutcome,
 } from "@pie-players/pie-players-shared/formative";
+import type {
+	TimedMediaDegradation,
+	TimedMediaSectionProjection,
+	TimedMediaSectionSessionSlice,
+	TimedMediaValidationError,
+} from "@pie-players/pie-players-shared/timed-media";
 
 export type SectionView =
 	| "candidate"
@@ -45,6 +51,16 @@ export interface SectionContentModel {
 		 */
 		formative?: FormativeItemPolicy;
 	}>;
+	/**
+	 * How an authored `timedMedia.stimulusRef` resolves to a renderable.
+	 *
+	 * Keyed by every spelling a section may reference the stimulus under — the
+	 * rubric block identifier, the authored passage id, and the normalized id —
+	 * mapping to the normalized passage id the renderables carry. Empty for a
+	 * section with no stimulus rubric block, which is what makes an unresolvable
+	 * `stimulusRef` detectable rather than silently cue-less.
+	 */
+	stimulusRenderableIdsByRef: Record<string, string>;
 }
 
 export type SectionRenderableFlavor = "item" | "passage" | "rubric";
@@ -70,6 +86,7 @@ export interface SectionSessionState {
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
 	formative?: FormativeSectionSlice;
+	timedMedia?: TimedMediaSectionSessionSlice;
 }
 
 export interface SectionViewModel extends SectionContentModel {
@@ -119,6 +136,14 @@ export interface SectionCompositionModel {
 	 * Try reaches the cards through the channel that already exists.
 	 */
 	formative?: FormativeSectionProjection | null;
+	/**
+	 * Timed-media projection: cues, enforcement, which items a cue has revealed,
+	 * and the gate holding playback. `null` for every section that is not timed
+	 * media, and for one whose `timedMedia` failed validation — a layout that reads
+	 * `null` renders exactly as it does today, which is what keeps the addition
+	 * invisible to existing content.
+	 */
+	timedMedia?: TimedMediaSectionProjection | null;
 }
 
 export interface SectionCanonicalItemViewModel {
@@ -218,7 +243,11 @@ interface SectionControllerEventBase {
 		| "section-error"
 		| "formative-try-recorded"
 		| "formative-reveal-changed"
-		| "section-mastery-changed";
+		| "section-mastery-changed"
+		| "timed-media-cue-changed"
+		| "timed-media-audio-started"
+		| "timed-media-policy-degraded"
+		| "timed-media-invalid";
 	timestamp: number;
 }
 
@@ -356,6 +385,69 @@ export interface SectionMasteryChangedEvent
 	mastery: FormativeMasteryRollup;
 }
 
+/**
+ * Cue state changed: a cue activated, a gate released, or aggregate completion
+ * flipped.
+ *
+ * Media position is deliberately not an event. `timeupdate` fires about four
+ * times a second and changes nothing a layout renders — the media element draws
+ * its own clock — so position lives in the session slice and surfaces here only
+ * through the cue transitions it caused. Emitting per tick would republish the
+ * composition four times a second for no visible change.
+ */
+export interface TimedMediaCueChangedEvent extends ItemScopedControllerEventBase {
+	type: "timed-media-cue-changed";
+	/** The cue that activated in this transition, where one did. */
+	activatedCueIdentifier?: string;
+	/** The gate that released in this transition, where one did. */
+	releasedCueIdentifier?: string;
+	activeCueIdentifier?: string;
+	visitedCueIdentifiers: string[];
+	completedCueIdentifiers: string[];
+	revealedItemIds: string[];
+	gateCueIdentifier: string | null;
+	mediaCompleted: boolean;
+	aggregateComplete: boolean;
+}
+
+/**
+ * Media audio is now running, so any other audio owner must yield.
+ *
+ * The section owns no audio but the port, and no policy over read-aloud, so this
+ * announces rather than decides: the toolkit holds both capabilities and arbitrates
+ * between them. Emitted only where playback actually stood — a gate that re-paused
+ * on the same `play` produced no audio, and silencing read-aloud for it would take
+ * an accommodation away for nothing.
+ *
+ * Carries no payload. "Media audio started" is the whole fact; position and cue
+ * state travel on `timed-media-cue-changed`.
+ */
+export interface TimedMediaAudioStartedEvent
+	extends ItemScopedControllerEventBase {
+	type: "timed-media-audio-started";
+}
+
+/**
+ * A playback policy the attached media time source cannot carry out. Cues still
+ * fire and state is still recorded; enforcement is what degrades, and it says so
+ * rather than appearing to hold.
+ */
+export interface TimedMediaPolicyDegradedEvent
+	extends ItemScopedControllerEventBase {
+	type: "timed-media-policy-degraded";
+	degradations: TimedMediaDegradation[];
+}
+
+/**
+ * Authored `timedMedia` this section cannot deliver. The section still renders as
+ * an ordinary section with every item visible; cues that silently never fire is
+ * the outcome this reports instead of producing.
+ */
+export interface TimedMediaInvalidEvent extends ItemScopedControllerEventBase {
+	type: "timed-media-invalid";
+	errors: TimedMediaValidationError[];
+}
+
 export type SectionControllerChangeEvent =
 	| ItemSessionDataChangedEvent
 	| ItemSessionMetaChangedEvent
@@ -370,7 +462,11 @@ export type SectionControllerChangeEvent =
 	| SectionErrorEvent
 	| FormativeTryRecordedEvent
 	| FormativeRevealChangedEvent
-	| SectionMasteryChangedEvent;
+	| SectionMasteryChangedEvent
+	| TimedMediaCueChangedEvent
+	| TimedMediaAudioStartedEvent
+	| TimedMediaPolicyDegradedEvent
+	| TimedMediaInvalidEvent;
 
 export type SectionControllerChangeListener = (
 	event: SectionControllerChangeEvent,

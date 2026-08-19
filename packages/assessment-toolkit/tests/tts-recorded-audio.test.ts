@@ -317,6 +317,42 @@ describe("recorded audio as a spoken alternate", () => {
 		await speaking;
 	});
 
+	test("seeks to the fragment start once metadata lands", async () => {
+		const { service } = await newService([
+			audioCard({ startSeconds: 4, endSeconds: 9 }),
+		]);
+		captureAudioElements();
+		const speaking = speakItem(service, itemRoot());
+
+		const element = await nextAudioElement();
+		// A browser that ignored `#t=` leaves playback at 0, and a recording sliced
+		// across several docked nodes would then speak the wrong one.
+		expect(element.currentTime).toBe(0);
+		element.dispatchEvent(new Event("loadedmetadata"));
+		expect(element.currentTime).toBe(4);
+
+		element.dispatchEvent(new Event("ended"));
+		await speaking;
+	});
+
+	test("leaves a start offset the browser already honoured", async () => {
+		const { service } = await newService([
+			audioCard({ startSeconds: 4, endSeconds: 9 }),
+		]);
+		captureAudioElements();
+		const speaking = speakItem(service, itemRoot());
+
+		const element = await nextAudioElement();
+		// Forward only: this browser did honour `#t=`, so seeking back to the start
+		// would undo it and replay audio the learner has already heard.
+		element.currentTime = 6;
+		element.dispatchEvent(new Event("loadedmetadata"));
+		expect(element.currentTime).toBe(6);
+
+		element.dispatchEvent(new Event("ended"));
+		await speaking;
+	});
+
 	test("suppression beats a recording, as it beats a script", async () => {
 		const { impl, service } = await newService([audioCard()]);
 		captureAudioElements();

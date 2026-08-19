@@ -38,6 +38,7 @@ const cardTokens = [
 	"--pie-section-player-card-radius",
 	"--pie-section-player-card-header-radius",
 	"--pie-section-player-card-header-background",
+	"--pie-section-player-card-header-background-dark",
 ] as const;
 
 /*
@@ -81,6 +82,37 @@ describe("section-player card theme token docs", () => {
 			"--pie-passage-header-background: var(--pie-section-player-card-header-background)",
 		);
 		expect(readme).toContain("--pie-passage-header-background");
+	});
+
+	/*
+	 * A host that sets only the light hook must keep getting it under a dark
+	 * theme, so the dark rule has to fall back rather than reset to transparent.
+	 */
+	test("the dark header fill falls back to the light hook on both cards", () => {
+		for (const source of [itemCardSource, passageCardSource]) {
+			expect(source).toContain(
+				`background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background, transparent)
+		);`,
+			);
+		}
+	});
+
+	test("the dark rule keys off the theme package's dark selectors", () => {
+		for (const source of [itemCardSource, passageCardSource]) {
+			expect(source).toContain('[data-theme="dark"]');
+			expect(source).toContain('pie-theme[theme="dark"]');
+		}
+	});
+
+	test("the passage bridge carries the dark hook to a hosted passage-player", () => {
+		expect(passageCardSource).toContain(
+			`--pie-passage-header-background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background)
+		);`,
+		);
 	});
 });
 

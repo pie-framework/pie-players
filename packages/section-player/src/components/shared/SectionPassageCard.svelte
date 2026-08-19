@@ -362,6 +362,15 @@
 		--pie-passage-header-background: var(--pie-section-player-card-header-background);
 	}
 
+	/* Same bridge under a dark theme, so the hosted element follows the dark hook. */
+	:global([data-theme="dark"] pie-section-player-passage-card),
+	:global(pie-theme[theme="dark"] pie-section-player-passage-card) {
+		--pie-passage-header-background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background)
+		);
+	}
+
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: var(--pie-section-player-card-radius, 8px);
@@ -406,6 +415,21 @@
 		border-top-right-radius: var(
 			--pie-section-player-card-header-radius,
 			calc(var(--pie-section-player-card-radius, 8px) - 1px)
+		);
+	}
+
+	/*
+	 * Dark themes get their own opt-in fill: a host's light-theme brand tint
+	 * surviving into a dark theme is the failure this avoids. Unset, it falls
+	 * back to the single light hook, so a host that sets only that one is
+	 * unaffected. Keyed off the selectors the theme package writes its dark
+	 * tokens under — see renderTokensCss in packages/theme/src/theme-css.ts.
+	 */
+	:global([data-theme="dark"]) .pie-section-player-content-card-header,
+	:global(pie-theme[theme="dark"]) .pie-section-player-content-card-header {
+		background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background, transparent)
 		);
 	}
 

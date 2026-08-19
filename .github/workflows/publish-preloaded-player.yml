@@ -89,6 +89,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # tools/cli imports @pie-players/pie-players-shared subpaths that resolve to its
+      # dist output (e.g. ./server/npm-auth-env), so that package must be built before
+      # the CLI's own tsc build can resolve them.
+      - name: Build packages
+        run: bun run build
+
       - name: Build CLI
         run: bun run --cwd tools/cli build
 

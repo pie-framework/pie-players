@@ -11,25 +11,53 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const TOKEN = '--pie-section-player-card-header-background';
+	type HeaderFill = {
+		id: 'light' | 'dark';
+		token: string;
+		attribute: string;
+		variable: string;
+		hint: string;
+	};
 
-	let enabled = $state(false);
-	let color = $state('#c9e5e6');
+	const fills: HeaderFill[] = [
+		{
+			id: 'light',
+			token: '--pie-section-player-card-header-background',
+			attribute: 'demoCardHeader',
+			variable: '--demo-card-header',
+			hint: 'both themes, unless the dark hook below is set'
+		},
+		{
+			id: 'dark',
+			token: '--pie-section-player-card-header-background-dark',
+			attribute: 'demoCardHeaderDark',
+			variable: '--demo-card-header-dark',
+			hint: 'dark theme only — switch the theme in the toolbar to see it'
+		}
+	];
+
+	let enabled = $state({ light: false, dark: false });
+	let colors = $state({ light: '#c9e5e6', dark: '#1f4a4d' });
 	let panelOpen = $state(true);
 
 	$effect(() => {
 		const root = document.documentElement;
-		root.style.setProperty('--demo-card-header', color);
-		if (enabled) {
-			root.dataset.demoCardHeader = 'on';
-		} else {
-			delete root.dataset.demoCardHeader;
+
+		for (const fill of fills) {
+			root.style.setProperty(fill.variable, colors[fill.id]);
+			if (enabled[fill.id]) {
+				root.dataset[fill.attribute] = 'on';
+			} else {
+				delete root.dataset[fill.attribute];
+			}
 		}
 
 		return () => {
 			untrack(() => {
-				root.style.removeProperty('--demo-card-header');
-				delete root.dataset.demoCardHeader;
+				for (const fill of fills) {
+					root.style.removeProperty(fill.variable);
+					delete root.dataset[fill.attribute];
+				}
 			});
 		};
 	});
@@ -44,13 +72,20 @@
 			<button type="button" onclick={() => (panelOpen = false)}>Hide</button>
 		</div>
 
-		<div class="pie-token-demo-row">
-			<label>
-				<input type="checkbox" bind:checked={enabled} />
-				<code>{TOKEN}</code>
-			</label>
-			<input type="color" aria-label={`Color for ${TOKEN}`} bind:value={color} />
-		</div>
+		{#each fills as fill (fill.id)}
+			<div class="pie-token-demo-row">
+				<label>
+					<input type="checkbox" bind:checked={enabled[fill.id]} />
+					<code>{fill.token}</code>
+				</label>
+				<input
+					type="color"
+					aria-label={`Color for ${fill.token}`}
+					bind:value={colors[fill.id]}
+				/>
+				<p>{fill.hint}</p>
+			</div>
+		{/each}
 	</aside>
 {:else}
 	<button class="pie-token-demo-panel-reopen" type="button" onclick={() => (panelOpen = true)}>
@@ -61,6 +96,10 @@
 <style>
 	:global(html[data-demo-card-header] pie-section-player-splitpane) {
 		--pie-section-player-card-header-background: var(--demo-card-header);
+	}
+
+	:global(html[data-demo-card-header-dark] pie-section-player-splitpane) {
+		--pie-section-player-card-header-background-dark: var(--demo-card-header-dark);
 	}
 
 	.pie-token-demo-panel {
@@ -96,12 +135,18 @@
 	}
 
 	.pie-token-demo-row {
-		display: flex;
+		display: grid;
+		grid-template-columns: 1fr auto;
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
+		gap: 0.15rem 0.5rem;
 		padding-top: 0.6rem;
 		border-top: 1px solid rgba(0, 0, 0, 0.08);
+	}
+
+	.pie-token-demo-row p {
+		grid-column: 1 / -1;
+		margin: 0;
+		color: #4d5665;
 	}
 
 	.pie-token-demo-row label {

@@ -10,7 +10,16 @@ const itemCardSource = await Bun.file(
 	new URL("../src/components/shared/SectionItemCard.svelte", import.meta.url),
 ).text();
 const passageCardSource = await Bun.file(
-	new URL("../src/components/shared/SectionPassageCard.svelte", import.meta.url),
+	new URL(
+		"../src/components/shared/SectionPassageCard.svelte",
+		import.meta.url,
+	),
+).text();
+const splitPaneSource = await Bun.file(
+	new URL(
+		"../src/components/PieSectionPlayerSplitPaneElement.svelte",
+		import.meta.url,
+	),
 ).text();
 const readme = await Bun.file(new URL("../README.md", import.meta.url)).text();
 
@@ -30,6 +39,19 @@ const cardTokens = [
 	"--pie-section-player-card-header-radius",
 	"--pie-section-player-card-header-background",
 ] as const;
+
+/*
+ * The pane background lives in a grouped selector covering the items pane too,
+ * so a passage-header hook there repaints a pane that holds no passage header.
+ * It intentionally has no pane-specific hook: the backdrop stays with the theme.
+ * Comments are stripped first — one of them names the token being ruled out.
+ */
+const paneRule =
+	splitPaneSource
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.match(
+			/\.pie-section-player-passages-pane,\s*\.pie-section-player-items-pane\s*\{[\s\S]*?\}/,
+		)?.[0] ?? "";
 
 describe("section-player tab theme token docs", () => {
 	test("README documents the actual tab tokens consumed by tabbed layout", () => {
@@ -59,5 +81,18 @@ describe("section-player card theme token docs", () => {
 			"--pie-passage-header-background: var(--pie-section-player-card-header-background)",
 		);
 		expect(readme).toContain("--pie-passage-header-background");
+	});
+});
+
+describe("section-player pane backdrop theme token docs", () => {
+	test("the pane backdrop reads the canonical surface token, documented in the README", () => {
+		expect(paneRule).toContain(
+			"background: var(--pie-background-dark, #ecedf1);",
+		);
+		expect(readme).toContain("### Split-pane backdrop");
+	});
+
+	test("the pane backdrop is not driven by the passage header hook", () => {
+		expect(paneRule).not.toContain("--pie-passage-header-background");
 	});
 });

@@ -714,8 +714,7 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPassageCard.svelte",
-			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte"
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
 		],
 		"documentedIn": [
 			"packages/section-player/README.md"

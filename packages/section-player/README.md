@@ -436,6 +436,16 @@ When both max-width attributes are set, the with-passage cap resolves to the gre
 of the two configured values (after clamp), so with-passage mode never ends up narrower
 than no-passage mode.
 
+### Split-pane backdrop
+
+The split-pane layout paints a backdrop behind each scrollable pane, under the
+passage and item cards. It reads the canonical `--pie-background-dark`, so it
+follows the active theme and color scheme, and there is no pane-specific hook:
+the backdrop is meant to stay with the theme rather than be styled per pane.
+The rule covers the items pane as well as the passage pane, so it is not driven
+from a passage-header hook. Card fills stay independent via
+`--pie-section-player-card-header-background`.
+
 ### Content-card tool surfaces
 
 Item and passage cards offer two content-scoped host surfaces:

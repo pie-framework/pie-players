@@ -2662,6 +2662,21 @@
 		min-height: var(--pie-toolbar-tools-row-height);
 	}
 
+	/* A granted section tool must stay reachable even when there isn't room for
+	   every button: scroll the row rather than clipping items past the edge,
+	   which left them impossible to focus, tab to, or click. `min-width: 0`
+	   beats the flex default (`auto`, i.e. never shrink below content), which
+	   would otherwise keep the row at full content width and make overflow-x
+	   moot. Scoped to section level: an item's own toolbar hosts far fewer
+	   tools and, for the inline TTS tool's "expanding row" layout, relies on
+	   this row growing freely to host its reading-controls panel — capping its
+	   width here clips that panel instead. */
+	.item-toolbar[data-level="section"] .item-toolbar__tools-row {
+		overflow-x: auto;
+		max-width: 100%;
+		min-width: 0;
+	}
+
 	.item-toolbar__controls-row {
 		display: flex;
 		align-items: center;

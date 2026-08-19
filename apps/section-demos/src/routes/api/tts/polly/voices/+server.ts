@@ -15,6 +15,9 @@ const SUPPORTED_ENGINES: PollyEngine[] = ["neural", "standard"];
 // Keep one singleton per engine so switching is cheap.
 const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
 
+/** Thrown when AWS credentials are simply absent — expected in dev/CI, not a fault to log. */
+class PollyNotConfiguredError extends Error {}
+
 /**
  * Get or initialize the Polly provider
  */
@@ -25,33 +28,17 @@ async function getPollyProvider(
 	if (existing) return existing;
 
 	{
-		console.log("[Polly API] Initializing AWS Polly provider...");
-		console.log(
-			"[Polly API] AWS_REGION:",
-			process.env.AWS_REGION ? "set" : "missing",
-		);
-		console.log(
-			"[Polly API] AWS_ACCESS_KEY_ID:",
-			process.env.AWS_ACCESS_KEY_ID
-				? `set (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)`
-				: "missing",
-		);
-		console.log(
-			"[Polly API] AWS_SECRET_ACCESS_KEY:",
-			process.env.AWS_SECRET_ACCESS_KEY ? "set (hidden)" : "missing",
-		);
-
 		if (
 			!process.env.AWS_REGION ||
 			!process.env.AWS_ACCESS_KEY_ID ||
 			!process.env.AWS_SECRET_ACCESS_KEY
 		) {
-			const errorMsg =
-				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file.";
-			console.error(`[Polly API] ${errorMsg}`);
-			throw new Error(errorMsg);
+			throw new PollyNotConfiguredError(
+				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file.",
+			);
 		}
 
+		console.log("[Polly API] Initializing AWS Polly provider...");
 		const provider = new PollyServerProvider();
 
 		// Build credentials object
@@ -119,7 +106,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({ voices });
 	} catch (err) {
-		console.error("[Polly API] Error:", err);
+		if (!(err instanceof PollyNotConfiguredError)) {
+			console.error("[Polly API] Error:", err);
+		}
 
 		if (err instanceof Error) {
 			return json({ error: err.message }, { status: 500 });

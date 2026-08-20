@@ -33,6 +33,17 @@ and recorded them below. That was a targeted lookup rather than a re-derivation,
 it does not advance the verification date; every other row still carries its
 earlier one.
 
+Content stylesheet delivery was re-checked against all three checkouts on
+2026-08-19: the installing code shipped in the `0.3.61` tarball even though its
+changelog entry sits under `0.3.62`, so `0.3.61` is the threshold a host is
+above or below; Host A has since dropped its build-config `components.css`
+entry and its dead `pie-theme-daisyui` dependency, moving it out of the
+duplicate-load state into the healthy one; and Host A and Host R both now
+resolve `^0.3.68` rather than
+the ranges previously recorded. This was a targeted correction of that one
+surface, not a full re-derivation, so it does not advance the verification
+date either.
+
 The Tool Surface Host refactor likewise updated the in-repo contract notes
 without a new consumer-checkout refresh. It preserves the client-facing
 section-player tag hierarchy and CSS hooks recorded below. The additive
@@ -166,9 +177,7 @@ Packages consumed:
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
-  section-player debugger tools. Its `package.json` still declares
-  `pie-theme-daisyui`, which no longer exists upstream and which it never
-  imported; the range resolves to the last published version until it is dropped.
+  section-player debugger tools.
 - **Host R** — all of the above plus `pie-players-shared`,
   `pie-default-tool-loaders`, every `pie-tool-*` in the suite, all five
   `section-player-tools-*` debuggers, `tts-server-core`, `tts-server-google`,
@@ -177,9 +186,9 @@ Packages consumed:
 
 Host V pins an exact patch (`0.3.53` at last read), so it upgrades
 deliberately. Host A and Host R both use caret ranges on the `0.3.x` line
-(`^0.3.59` and `^0.3.65`), so **every published patch reaches them on their
-next install** — a lockstep patch that changes behavior lands in live delivery
-without a code change on their side.
+(both `^0.3.68` at last read), so **every published patch reaches them on
+their next install** — a lockstep patch that changes behavior lands in live
+delivery without a code change on their side.
 
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
@@ -509,19 +518,20 @@ it for any scheme it resolves.
 
 ## Direct `dist` path references
 
-Host A lists four stylesheets in its build config by literal path:
+Host A lists three stylesheets in its build config by literal path:
 
 ```
 node_modules/@pie-players/pie-theme/dist/tokens.css
 node_modules/@pie-players/pie-theme/dist/color-schemes.css
 node_modules/@pie-players/pie-theme/dist/font-sizes.css
-node_modules/@pie-players/pie-theme/dist/components.css
 ```
 
-These bypass the package `exports` map. All four are also exported under their
+These bypass the package `exports` map. All three are also exported under their
 bare names, so the `exports` map alone is not enough to protect this host —
 **the `dist` filenames themselves are API here**. Renaming, splitting, or
-merging any of those four files breaks that build.
+merging any of those three files breaks that build. `components.css` was a
+fourth entry here until Host A dropped it in favor of letting `pie-item-player`
+install that stylesheet itself; see Content stylesheet delivery below.
 
 `font-sizes.css` is bundled but not activated. Every rule in it is scoped under a
 `data-font-size` attribute, and no host sets that attribute anywhere in its
@@ -544,7 +554,12 @@ The most fragile shared surface, because it changed underneath the hosts.
 `@pie-players/pie-theme/components.css?raw` and installs it into
 `document.head` at import time via `installContentStyles`
 (`packages/players-shared/src/ui/content-styles.ts`). That shipped in
-**0.3.61**. `auditContentStyles` warns once per page when the host also loads
+the **0.3.61** tarball, under `14666b3`, and is documented under **0.3.62**.
+The two disagree because 0.3.61 was published with the changeset held back, so
+item-player's 0.3.61 changelog shows only a lockstep dependency bump while that
+release's tree already contained the installing code. Version comparisons here
+use 0.3.61 as the threshold; a host reading only the changelog will over-pin
+to 0.3.62. `auditContentStyles` warns once per page when the host also loads
 its own copy, or when the host opts out and then loads nothing. The opt-out is
 `data-pie-content-styles="host"` on `<html>`.
 
@@ -555,19 +570,20 @@ Consequences per host:
   `@scope (.item-content)`. The scoping is deliberate: `components.css` carries
   bare `h1`–`h6`, `table`, `th`, `#stimulus`, `#item`, `.table`, and
   `.text-center` selectors that bleed onto a surrounding host UI if applied
-  document-globally. On upgrading past 0.3.61 that host gets a *second,
+  document-globally. On upgrading to 0.3.61 or later that host gets a *second,
   unscoped* copy installed by the player, reintroducing exactly the bleed it
   scoped around, plus the duplicate warning. It needs the opt-out attribute at
   the same time as the version bump.
-- **Host A** already loads `components.css` document-globally through its build
-  config and resolves a caret range that includes 0.3.61+, so it is in the
-  duplicate state now: the player installs a copy and the host's copy loads
-  later, winning ties at equal specificity.
-- **Host R** imports no copy of its own, so it is the one host in the healthy
-  configuration and the one that will not surface a regression here.
+- **Host A** dropped its build-config `components.css` entry and now cedes
+  ownership to the player entirely: no opt-out attribute, no stylesheet import
+  of its own, so it is in the healthy configuration.
+- **Host R** imports no copy of its own either, so it is also in the healthy
+  configuration.
 
-Any further change to how content styles are delivered has to account for all
-three positions.
+Host V is the only host still in the duplicate-risk state, and it enters that
+state the moment it bumps to `0.3.61` or later without the opt-out. Any further
+change to how content styles are delivered has to account for it and for the
+opt-out attribute the other two now rely on implicitly by absence.
 
 Three rules were removed from it outright: a `#stimulus` / `#item` pair of
 50%-wide left floats, a `.lrn_feature h3` margin override and
@@ -597,7 +613,8 @@ change it and fix Host R in the same push.
   `pie-section-player-passage-card`, or moving a card out from under the
   splitpane element
 - Renaming or dropping any `--pie-*` token listed above
-- Renaming any of the four `pie-theme/dist/*.css` files
+- Renaming any of the three `pie-theme/dist/*.css` files Host A lists by
+  literal path
 - Changing `bubbles` / `composed` defaults on cross-boundary events
 - Reshaping `content-loaded` or `item-session-data-changed` payloads, or their
   emission cardinality
@@ -609,8 +626,9 @@ change it and fix Host R in the same push.
 - Moving `definePieTheme()` between the `pie-theme` index and `theme-element`
 - Layering generated theme CSS, resolving Host A's tokens at build time, or
   otherwise preventing its outside `!important` declarations from winning
-- Changing how content styles are delivered, without accounting for all three
-  host positions above
+- Changing how content styles are delivered, without accounting for Host V's
+  pinned-version workaround and the opt-out attribute Host A and Host R now
+  rely on implicitly by not setting it
 
 **Host R only. Change freely; land the internally controlled host fix in the
 same push when its checkout is available.**

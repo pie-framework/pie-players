@@ -714,8 +714,7 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPassageCard.svelte",
-			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte"
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
 		],
 		"documentedIn": [
 			"packages/section-player/README.md"
@@ -843,6 +842,22 @@
 			"packages/section-player/README.md"
 		],
 		"fallbackPolicy": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+	},
+	{
+		"name": "--pie-section-player-card-header-background-dark",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
 	},
 	{
 		"name": "--pie-section-player-card-header-radius",

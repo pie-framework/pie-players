@@ -623,15 +623,15 @@
 		   descendant content (sticky headers, floating toolbars, etc.). */
 		margin: 0.5rem;
 		box-sizing: border-box;
-		/* --pie-passage-header-background is owned by the hosted passage-player
-		   custom element and is often unset, so the fallback has to be a theme
-		   token rather than a literal — otherwise the panes stay light gray
-		   under dark themes and color schemes. --pie-background-dark resolves
-		   to #ecedf1 in the default light theme, matching the previous fill. */
-		background: var(
-			--pie-passage-header-background,
-			var(--pie-background-dark, #ecedf1)
-		);
+		/* Backdrop for the scroll surround behind the cards. Deliberately the
+		   canonical surface token and not --pie-passage-header-background: that
+		   is a passage header hook, and this rule also covers the items pane,
+		   which holds no passage header, so a host coloring its hosted
+		   passage-player's header used to repaint both pane backdrops. There is
+		   no pane-specific hook on purpose — the backdrop is meant to stay with
+		   the theme, which is what tracks dark themes and color schemes.
+		   --pie-background-dark resolves to #ecedf1 in the default light theme. */
+		background: var(--pie-background-dark, #ecedf1);
 		scrollbar-width: thin;
 		scrollbar-color:
 			var(--pie-scrollbar-thumb, var(--pie-border, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));

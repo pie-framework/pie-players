@@ -60,6 +60,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-secondary-dark": "required",
 	"--pie-secondary-light": "required",
 	"--pie-section-player-card-header-background": "optional",
+	"--pie-section-player-card-header-background-dark": "optional",
 	"--pie-section-player-card-header-radius": "excluded",
 	"--pie-section-player-card-radius": "excluded",
 	"--pie-section-player-item-media-aspect-ratio": "excluded",

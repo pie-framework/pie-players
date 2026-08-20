@@ -515,6 +515,21 @@
 		);
 	}
 
+	/*
+	 * Dark themes get their own opt-in fill: a host's light-theme brand tint
+	 * surviving into a dark theme is the failure this avoids. Unset, it falls
+	 * back to the single light hook, so a host that sets only that one is
+	 * unaffected. Keyed off the selectors the theme package writes its dark
+	 * tokens under — see renderTokensCss in packages/theme/src/theme-css.ts.
+	 */
+	:global([data-theme="dark"]) .pie-section-player-content-card-header,
+	:global(pie-theme[theme="dark"]) .pie-section-player-content-card-header {
+		background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background, transparent)
+		);
+	}
+
 	/* Any heading level, not `h2`: the card renders at `base-heading-level`, so
 	   the tag is composition context rather than a fixed choice, and a host that
 	   nests the player deeper got an unstyled title. */

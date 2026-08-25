@@ -43,7 +43,7 @@
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	},
 	"sideEffects": false,
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-server-polly#readme",

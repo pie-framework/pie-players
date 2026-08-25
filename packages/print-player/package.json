@@ -31,7 +31,7 @@
 		"lit": "^3.3.3"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^20.11.1",
+		"@happy-dom/global-registrator": "^20.11.6",
 		"@playwright/test": "^1.62.1",
 		"@types/node": "^26.2.0",
 		"esbuild": "^0.28.2",

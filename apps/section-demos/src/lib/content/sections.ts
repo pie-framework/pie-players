@@ -23,6 +23,7 @@ import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
 import { demoTimedMediaSection } from "./demo-timed-media";
+import { demoTimedMediaVideoStimulusSection } from "./demo-timed-media-video-stimulus";
 import { demoInterfaceLocaleSection } from "./demo-interface-locale";
 
 export interface SectionDemoInfo {
@@ -642,6 +643,18 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"`tm-q3` is named by no cue, so the timeline sequences what it names and leaves everything else alone.",
 		],
 		section: demoTimedMediaSection,
+		sections: [
+			{
+				id: "native-video",
+				name: "Host-supplied native video",
+				section: demoTimedMediaSection,
+			},
+			{
+				id: "video-stimulus-package",
+				name: "Packaged video stimulus",
+				section: demoTimedMediaVideoStimulusSection,
+			},
+		],
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",

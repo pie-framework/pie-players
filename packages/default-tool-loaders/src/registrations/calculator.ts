@@ -182,11 +182,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
+	// A type is not a feature id: `calculatorType` arrives through the host's
+	// render params, so `basicCalculator` / `scientificCalculator` granted the
+	// same untyped calculator these two do and only looked like they selected a
+	// variant.
 	pnpSupportIds: [
 		"calculator", // QTI 3.0 standard (cognitive.calculator)
 		"graphingCalculator", // QTI 3.0 standard (assessment.graphingCalculator)
-		"basicCalculator", // Common variant
-		"scientificCalculator", // Common variant
 	],
 
 	/**

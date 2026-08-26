@@ -87,6 +87,14 @@ export interface PnpPolicyResult {
 	 * support id).
 	 */
 	decisions: PnpPolicyDecisionEvent[];
+	/**
+	 * Support ids named by a profile, district policy or item that no
+	 * registration claims. Nothing resolves them, so they are silently inert —
+	 * the engine turns each into a `tool-policy.unknownSupportId` diagnostic so a
+	 * host sending its own label instead of an AfA/QTI feature id learns of it
+	 * rather than seeing a tool quietly fail to appear.
+	 */
+	unmappedSupportIds: Set<string>;
 	/** Configuration sources the engine should attach to its provenance. */
 	sources: {
 		assessment?: { id: string; name: string; config?: unknown };
@@ -174,6 +182,7 @@ export class PnpPolicySource {
 			mandatedToolIds: new Set(),
 			perToolFlags: new Map(),
 			decisions: [],
+			unmappedSupportIds: new Set(),
 			sources: {},
 		};
 
@@ -217,7 +226,7 @@ export class PnpPolicySource {
 	): void {
 		// 1. District block (absolute veto)
 		if (ctx.districtPolicy?.blockedTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.blockedToolIds.add(toolId);
 			out.decisions.push({
 				precedence: 1,
@@ -233,7 +242,7 @@ export class PnpPolicySource {
 
 		// 2. Test administration override
 		if (ctx.testAdmin?.toolOverrides?.[supportId] === false) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.blockedToolIds.add(toolId);
 			out.decisions.push({
 				precedence: 2,
@@ -249,7 +258,7 @@ export class PnpPolicySource {
 
 		// 3. Item restriction (per-item block)
 		if (ctx.itemSettings?.restrictedTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.blockedToolIds.add(toolId);
 			out.decisions.push({
 				precedence: 3,
@@ -265,7 +274,7 @@ export class PnpPolicySource {
 
 		// 4. Item requirement (forces enable)
 		if (ctx.itemSettings?.requiredTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.mandatedToolIds.add(toolId);
 			out.perToolFlags.set(toolId, {
 				required: true,
@@ -288,7 +297,7 @@ export class PnpPolicySource {
 
 		// 5. District requirement
 		if (ctx.districtPolicy?.requiredTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.mandatedToolIds.add(toolId);
 			out.perToolFlags.set(toolId, {
 				required: true,
@@ -311,7 +320,7 @@ export class PnpPolicySource {
 
 		// 6. PNP prohibitions and supports (student needs)
 		if (ctx.pnp?.prohibitedSupports?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.blockedToolIds.add(toolId);
 			out.decisions.push({
 				precedence: 6,
@@ -326,7 +335,7 @@ export class PnpPolicySource {
 		}
 
 		if (ctx.pnp?.supports?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId);
+			const toolId = this.mapSupportToToolId(supportId, out);
 			out.perToolFlags.set(toolId, {
 				required: false,
 				alwaysAvailable: true,
@@ -351,7 +360,7 @@ export class PnpPolicySource {
 		// the same way as every other branch — PR 5's debugger surfaces
 		// index provenance trails by tool id and would otherwise show
 		// orphaned support-id entries here (M8 PR 1 R3 S1).
-		const toolId = this.mapSupportToToolId(supportId);
+		const toolId = this.mapSupportToToolId(supportId, out);
 		out.decisions.push({
 			precedence: 6,
 			rule: "pnp-support",
@@ -389,9 +398,21 @@ export class PnpPolicySource {
 	 *
 	 * `tests/policy/PnpPolicySource.test.ts` locks this mapping behavior.
 	 */
-	private mapSupportToToolId(supportId: string): string {
+	private mapSupportToToolId(
+		supportId: string,
+		out: PnpPolicyResult,
+	): string {
 		const toolIds = this.toolRegistry.getToolsByPNPSupport(supportId);
-		if (toolIds.size === 0) return supportId;
+		if (toolIds.size === 0) {
+			// An empty registry means there is nothing to check the id against, not
+			// that the id is wrong — reporting it there would fire on every support
+			// id for a host that supplies no registry, which
+			// `tool-config-validation` already warns about once.
+			if (this.toolRegistry.getAllTools().length > 0) {
+				out.unmappedSupportIds.add(supportId);
+			}
+			return supportId;
+		}
 		return Array.from(toolIds)[0];
 	}
 

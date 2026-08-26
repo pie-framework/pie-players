@@ -31,6 +31,7 @@ import type { PolicySource } from "../../src/policy/core/PolicySource.js";
 import type { ToolPolicyDecisionRequest } from "../../src/policy/core/decision-types.js";
 import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
+import { createTestToolRegistry } from "../fixtures/test-tool-registry.js";
 import {
 	normalizeToolsConfig,
 	type CanonicalToolsConfig,
@@ -659,5 +660,99 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		// The provenance trail still tells the full story.
 		const trail = decision.provenance.features.get("calculator");
 		expect(trail?.finalState).toBe("blocked");
+	});
+});
+
+describe("composeDecision — unknown PNP support id", () => {
+	// A host naming a capability in its own vocabulary rather than with an AfA
+	// 3.0 / QTI 3.0 feature id used to get silence: `mapSupportToToolId` returns
+	// an unclaimed id verbatim, it matches nothing in placement, and the
+	// capability is simply absent. Reported so the host learns the id was the
+	// problem instead of concluding the toolkit is unwired.
+	test("a support id no registration claims produces a diagnostic", () => {
+		const assessment: AssessmentEntity = {
+			id: "asm-1",
+			personalNeedsProfile: { supports: ["responseMasking"] },
+		} as AssessmentEntity;
+
+		const decision = composeDecision({
+			request: baseRequest,
+			tools: tools({
+				placement: { section: [], item: ["answerEliminator"], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(createTestToolRegistry()),
+				assessment,
+				enforcement: "on",
+			},
+			customSources: [],
+			contextId: "test",
+		});
+
+		const unknown = decision.diagnostics.filter(
+			(d) => d.code === "tool-policy.unknownSupportId",
+		);
+		expect(unknown).toHaveLength(1);
+		expect(unknown[0].toolId).toBe("responseMasking");
+		expect(unknown[0].message).toContain("responseMasking");
+	});
+
+	test("the standard id for the same capability produces none", () => {
+		const assessment: AssessmentEntity = {
+			id: "asm-1",
+			personalNeedsProfile: { supports: ["answerEliminator"] },
+		} as AssessmentEntity;
+
+		const decision = composeDecision({
+			request: baseRequest,
+			tools: tools({
+				placement: { section: [], item: ["answerEliminator"], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(createTestToolRegistry()),
+				assessment,
+				enforcement: "on",
+			},
+			customSources: [],
+			contextId: "test",
+		});
+
+		expect(
+			decision.diagnostics.filter(
+				(d) => d.code === "tool-policy.unknownSupportId",
+			),
+		).toEqual([]);
+		expect(decision.visibleTools.map((e) => e.toolId)).toEqual([
+			"answerEliminator",
+		]);
+	});
+
+	// The guard that keeps the diagnostic honest: with nothing registered there
+	// is no vocabulary to check against, so every id would be reported.
+	test("an empty registry reports nothing", () => {
+		const assessment: AssessmentEntity = {
+			id: "asm-1",
+			personalNeedsProfile: { supports: ["responseMasking"] },
+		} as AssessmentEntity;
+
+		const decision = composeDecision({
+			request: baseRequest,
+			tools: tools({
+				placement: { section: [], item: ["answerEliminator"], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(new ToolRegistry()),
+				assessment,
+				enforcement: "on",
+			},
+			customSources: [],
+			contextId: "test",
+		});
+
+		expect(
+			decision.diagnostics.filter(
+				(d) => d.code === "tool-policy.unknownSupportId",
+			),
+		).toEqual([]);
 	});
 });

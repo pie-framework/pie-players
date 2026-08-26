@@ -53,8 +53,7 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	pnpSupportIds: [
 		"answerMasking", // QTI 3.0 standard (assessment.answerMasking)
 		"answerEliminator", // QTI 3.0 standard (assessment.answerEliminator)
-		"strikethrough", // Common variant
-		"choiceMasking", // Common variant
+		"strikethrough", // QTI 3.0 standard (assessment.strikethrough)
 	],
 
 	/**

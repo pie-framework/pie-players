@@ -18,3 +18,4 @@ Numbering is sequential from `0001`. The filename is
 ## Records
 
 - [`0001-formative-delivery-before-timed-media.md`](./0001-formative-delivery-before-timed-media.md) — formative delivery ships before timed media, so cue policy composes with Try state instead of inventing a weaker gate
+- [`0002-provider-contracts-are-not-parameterized-by-config.md`](./0002-provider-contracts-are-not-parameterized-by-config.md) — a config type parameter in argument position is neutralized by method bivariance, so provider contracts take none and adapters narrow in their own class signature

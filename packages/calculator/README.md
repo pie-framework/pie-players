@@ -17,14 +17,14 @@ This package provides the foundational interfaces and types for building calcula
 - **`CalculatorProvider`** - Stateless factory for creating calculator implementations
 - **`Calculator`** - Actual calculator instance interface
 - **`CalculatorProviderCapabilities`** - Feature support description
-- **`CalculatorProviderConfig`** - Provider configuration
+- **`CalculatorProviderConfig`** - Provider-neutral per-instance configuration that adapters extend
+- **`CalculatorProviderInit`** - Provider-level credentials and instrumentation
 
 ### Types
 
 - **`CalculatorType`** - Union type of supported calculator types
 - **`CalculatorState`** - State for persistence
 - **`CalculationHistoryEntry`** - History entry format
-- **`DesmosCalculatorConfig`** - Desmos-specific configuration
 
 ## Installation
 
@@ -44,14 +44,24 @@ import type {
   Calculator,
   CalculatorType,
   CalculatorProviderCapabilities,
-  CalculatorProviderConfig
+  CalculatorProviderConfig,
+  CalculatorProviderInit,
+  CalculatorState
 } from '@pie-players/pie-calculator';
+
+interface MyCalculatorProviderConfig extends CalculatorProviderConfig {
+  precision?: number;
+}
 
 class MyCalculatorImpl implements Calculator {
   readonly provider: CalculatorProvider;
   readonly type: CalculatorType;
 
-  constructor(provider: CalculatorProvider, type: CalculatorType, container: HTMLElement) {
+  constructor(
+    provider: CalculatorProvider,
+    type: CalculatorType,
+    container: HTMLElement
+  ) {
     this.provider = provider;
     this.type = type;
     // Initialize calculator in container
@@ -71,14 +81,14 @@ export class MyCalculatorProvider implements CalculatorProvider {
   readonly supportedTypes: CalculatorType[] = ['basic', 'scientific'];
   readonly version = '1.0.0';
 
-  async initialize(): Promise<void> {
-    // Load libraries, etc.
+  async initialize(config?: CalculatorProviderInit): Promise<void> {
+    // Load libraries, authenticate with config?.apiKey or config?.proxyEndpoint
   }
 
   async createCalculator(
     type: CalculatorType,
     container: HTMLElement,
-    config?: CalculatorProviderConfig
+    config?: MyCalculatorProviderConfig
   ): Promise<Calculator> {
     return new MyCalculatorImpl(this, type, container);
   }

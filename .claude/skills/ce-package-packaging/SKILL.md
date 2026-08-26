@@ -59,6 +59,17 @@ Rules:
 - Custom-element declarations must be framework-neutral and typecheck in an
   isolated consumer without Svelte or other workspace dependencies installed.
 - Runtime and declaration named exports must match exactly.
+- The root type entry must describe what the root runtime entry provides. For a
+  bundled tool package, `import` resolves to the built bundle, which exports the
+  component and nothing named — so a *value* re-exported from `index.ts` type-checks
+  and is then `undefined` at run time, while a *type* re-export is fine, having no
+  runtime counterpart. Route values through their own subpath instead.
+- `insertTypesEntry` in a package's `vite-plugin-dts` config derives the types entry
+  from the **bundle** entry. Where that entry is a `.svelte` component it overwrites
+  the `index.d.ts` emitted from `index.ts`, silently publishing `export {}` in place
+  of the type exports the entrypoint declares. Drop it where `index.ts` re-exports
+  types; keep it where `index.ts` exports nothing, so the advertised
+  `dist/index.d.ts` still exists.
 - Contract and policy-only subpaths must stay inert when imported.
 - Do **not** add a top-level `*.svelte` export. Cross-package
   `?customElement` imports are rejected by

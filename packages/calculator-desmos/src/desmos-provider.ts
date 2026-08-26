@@ -23,10 +23,54 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
-	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
+
+/**
+ * Desmos API options applied when a calculator instance is created.
+ */
+export interface DesmosCalculatorConfig {
+	apiKey?: string;
+	proxyEndpoint?: string;
+	border?: boolean;
+	degreeMode?: boolean | "degree" | "radian";
+	decimalToFraction?: boolean;
+	links?: boolean;
+	settingsMenu?: boolean;
+	expressions?: boolean;
+	zoomButtons?: boolean;
+	expressionsTopbar?: boolean;
+	notes?: boolean;
+	folders?: boolean;
+	images?: boolean;
+	qwertyKeyboard?: boolean;
+	restrictedFunctions?: boolean;
+	plotSingleVariableImplicitEquations?: boolean;
+	distributions?: boolean;
+	plotImplicits?: boolean;
+	plotInequalities?: boolean;
+	geometryComputationFunctions?: boolean;
+	sliders?: boolean;
+	tables?: boolean;
+	expressionsCollapsed?: boolean;
+	administerSecretFolders?: boolean;
+	lockViewport?: boolean;
+	functionDefinition?: boolean;
+	brailleExpressionDownload?: boolean;
+	keypad?: boolean;
+	graphpaper?: boolean;
+	additionalFunctions?: string[];
+}
+
+/**
+ * Per-instance configuration accepted by the Desmos calculator provider.
+ */
+export interface DesmosCalculatorProviderConfig
+	extends CalculatorProviderConfig {
+	desmos?: DesmosCalculatorConfig;
+}
 
 declare global {
 	interface Window {
@@ -109,14 +153,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 * Initialize Desmos library
 	 * @param config Configuration with API key (development) or proxy endpoint (production)
 	 */
-	async initialize(config?: {
-		apiKey?: string;
-		proxyEndpoint?: string;
-		onTelemetry?: (
-			eventName: string,
-			payload?: Record<string, unknown>,
-		) => void | Promise<void>;
-	}): Promise<void> {
+	async initialize(config?: CalculatorProviderInit): Promise<void> {
 		if (this.initialized) return;
 		this.onTelemetry = config?.onTelemetry;
 
@@ -236,7 +273,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 	): Promise<Calculator> {
 		if (!this.initialized) {
 			await this.initialize();
@@ -294,7 +331,7 @@ class DesmosCalculator implements Calculator {
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 		apiKey?: string,
 	) {
 		this.provider = provider;
@@ -310,7 +347,7 @@ class DesmosCalculator implements Calculator {
 	}
 
 	private _initializeCalculator(
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 		apiKey?: string,
 	): void {
 		// Merge Desmos-specific config with defaults

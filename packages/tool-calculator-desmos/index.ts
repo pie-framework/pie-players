@@ -13,4 +13,4 @@
  */
 
 // Export TypeScript types (if any)
-export type { CalculatorType } from "@pie-players/pie-assessment-toolkit/tools/client";
+export type { CalculatorType } from "@pie-players/pie-calculator";

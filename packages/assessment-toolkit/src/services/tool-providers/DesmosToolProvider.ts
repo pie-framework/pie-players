@@ -79,18 +79,7 @@ export class DesmosToolProvider
 	readonly version = "1.12";
 	readonly requiresAuth = true;
 
-	private desmosProvider:
-		| (CalculatorProvider & {
-				initialize(config: {
-					apiKey?: string;
-					proxyEndpoint?: string;
-					onTelemetry?: (
-						eventName: string,
-						payload?: Record<string, unknown>,
-					) => void | Promise<void>;
-				}): Promise<void>;
-		  })
-		| null = null;
+	private desmosProvider: CalculatorProvider | null = null;
 	private config: DesmosToolProviderConfig | null = null;
 
 	private async emitTelemetry(
@@ -129,18 +118,7 @@ export class DesmosToolProvider
 		});
 		const desmosModule = await (async () => {
 			try {
-				const loaded = (await import("@pie-players/pie-calculator-desmos")) as {
-					DesmosCalculatorProvider: new () => CalculatorProvider & {
-						initialize(config: {
-							apiKey?: string;
-							proxyEndpoint?: string;
-							onTelemetry?: (
-								eventName: string,
-								payload?: Record<string, unknown>,
-							) => void | Promise<void>;
-						}): Promise<void>;
-					};
-				};
+				const loaded = await import("@pie-players/pie-calculator-desmos");
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "calculator",
 					operation: "desmos-provider-module-import",

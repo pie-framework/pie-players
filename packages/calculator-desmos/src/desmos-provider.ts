@@ -23,6 +23,7 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
@@ -80,9 +81,7 @@ declare global {
 /**
  * Desmos Calculator Provider Implementation
  */
-export class DesmosCalculatorProvider
-	implements CalculatorProvider<DesmosCalculatorProviderConfig>
-{
+export class DesmosCalculatorProvider implements CalculatorProvider {
 	readonly providerId = "desmos";
 	readonly providerName = "Desmos";
 	readonly supportedTypes: CalculatorType[] = [
@@ -154,14 +153,7 @@ export class DesmosCalculatorProvider
 	 * Initialize Desmos library
 	 * @param config Configuration with API key (development) or proxy endpoint (production)
 	 */
-	async initialize(config?: {
-		apiKey?: string;
-		proxyEndpoint?: string;
-		onTelemetry?: (
-			eventName: string,
-			payload?: Record<string, unknown>,
-		) => void | Promise<void>;
-	}): Promise<void> {
+	async initialize(config?: CalculatorProviderInit): Promise<void> {
 		if (this.initialized) return;
 		this.onTelemetry = config?.onTelemetry;
 
@@ -328,7 +320,7 @@ export class DesmosCalculatorProvider
  * Desmos Calculator Instance
  */
 class DesmosCalculator implements Calculator {
-	readonly provider: CalculatorProvider<DesmosCalculatorProviderConfig>;
+	readonly provider: CalculatorProvider;
 	readonly type: CalculatorType;
 
 	private Desmos: any;
@@ -336,7 +328,7 @@ class DesmosCalculator implements Calculator {
 	private container: HTMLElement;
 
 	constructor(
-		provider: CalculatorProvider<DesmosCalculatorProviderConfig>,
+		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
 		config?: DesmosCalculatorProviderConfig,

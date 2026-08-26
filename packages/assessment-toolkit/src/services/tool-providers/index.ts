@@ -20,10 +20,7 @@ export type { ToolProviderConfig } from "./ToolProviderRegistry.js";
 
 // Concrete providers
 export { DesmosToolProvider } from "./DesmosToolProvider.js";
-export type {
-	DesmosCalculatorProviderApi,
-	DesmosToolProviderConfig,
-} from "./DesmosToolProvider.js";
+export type { DesmosToolProviderConfig } from "./DesmosToolProvider.js";
 
 export { TTSToolProvider } from "./TTSToolProvider.js";
 export type {

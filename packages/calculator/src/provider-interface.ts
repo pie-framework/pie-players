@@ -13,6 +13,26 @@
 export type CalculatorType = "basic" | "scientific" | "graphing";
 
 /**
+ * Provider-level initialization: credentials and instrumentation.
+ *
+ * Distinct from `CalculatorProviderConfig`, which configures one calculator
+ * instance. A hosted calculator vendor needs a key, or a server endpoint that
+ * mints one — never both in production, since `apiKey` puts the key in the
+ * browser.
+ */
+export interface CalculatorProviderInit {
+	/** Vendor API key. Development only — it reaches the browser. */
+	apiKey?: string;
+	/** Host endpoint that serves the vendor credential. Production. */
+	proxyEndpoint?: string;
+	/** Instrumentation callback for library-load and auth events. */
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
+}
+
+/**
  * Calculator provider configuration
  */
 export interface CalculatorProviderConfig {
@@ -60,15 +80,15 @@ export interface CalculatorState {
  * Providers are stateless factories that create calculator implementations.
  * They describe capabilities and create configured instances.
  *
- * `TConfig` lets an adapter declare the per-instance configuration it accepts —
- * see `DesmosCalculatorProviderConfig` in `@pie-players/pie-calculator-desmos`.
- * It types `createCalculator`'s argument for callers holding the concrete
- * provider type; it is not an assignability constraint, since a provider
- * narrowing that parameter still satisfies `CalculatorProvider`.
+ * Not parameterized by its configuration type, matching `ITTSProvider` in
+ * `@pie-players/pie-tts`. An adapter extends `CalculatorProviderConfig` and
+ * narrows `createCalculator`'s argument in its own class signature — see
+ * `DesmosCalculatorProviderConfig` in `@pie-players/pie-calculator-desmos` —
+ * which is what gives a caller holding the concrete provider the precise type.
+ * A type parameter here would add one, since a provider narrowing that argument
+ * satisfies this interface either way.
  */
-export interface CalculatorProvider<
-	TConfig extends CalculatorProviderConfig = CalculatorProviderConfig,
-> {
+export interface CalculatorProvider {
 	/**
 	 * Unique identifier for this provider
 	 */
@@ -90,9 +110,9 @@ export interface CalculatorProvider<
 	readonly version: string;
 
 	/**
-	 * Initialize the provider (load libraries, etc.)
+	 * Initialize the provider: load the vendor library and authenticate.
 	 */
-	initialize(): Promise<void>;
+	initialize(config?: CalculatorProviderInit): Promise<void>;
 
 	/**
 	 * Create a calculator instance
@@ -100,7 +120,7 @@ export interface CalculatorProvider<
 	createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: TConfig,
+		config?: CalculatorProviderConfig,
 	): Promise<Calculator>;
 
 	/**

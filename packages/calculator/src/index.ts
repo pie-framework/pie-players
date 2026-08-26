@@ -11,6 +11,7 @@ export type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
 } from "./provider-interface.js";

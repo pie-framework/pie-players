@@ -100,8 +100,18 @@ const TRIGGERS = [
 	},
 	{
 		reason:
-			"a tool package's published type entry, or the lookup contract a host implements behind it",
-		match: (file) => /^packages\/tool-[^/]+\/(index|lookup)\.ts$/.test(file),
+			"a tool package's published type entry, the lookup contract a host implements behind it, or the dts config that decides whether either reaches a tarball",
+		match: (file) =>
+			/^packages\/tool-[^/]+\/(index|lookup)\.ts$/.test(file) ||
+			/^packages\/tool-[^/]+\/vite\.config\.ts$/.test(file),
+	},
+	{
+		reason:
+			"published type surface of a provider adapter package: the owner of a vendor's configuration types",
+		match: (file) =>
+			/^packages\/(calculator-desmos|tts-client-server|tts-server-[a-z]+)\/(src\/)?index\.ts$/.test(
+				file,
+			),
 	},
 ];
 

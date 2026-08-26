@@ -18,35 +18,6 @@ import type {
 } from "./ToolProviderApi.js";
 
 /**
- * Auth and telemetry options the Desmos adapter accepts on `initialize`, on top
- * of the no-argument `CalculatorProvider.initialize()` the contract declares.
- */
-interface DesmosProviderAuthConfig {
-	apiKey?: string;
-	proxyEndpoint?: string;
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
-}
-
-/**
- * What this provider needs from the Desmos adapter, expressed against the
- * `pie-calculator` contract rather than imported from
- * `@pie-players/pie-calculator-desmos`.
- *
- * That package is an *optional* peer. Declaration emit preserves both `implements`
- * clauses and public return types, so a top-level type import from it would land
- * in this package's published `.d.ts` and make the optional peer required for any
- * consumer type-checking without `skipLibCheck` — the same TS2307 failure mode
- * `scripts/check-deps.mjs` records for this package's peers. The adapter still
- * owns its configuration types; this shape only describes the one call made here.
- */
-export type DesmosCalculatorProviderApi = CalculatorProvider & {
-	initialize(config?: DesmosProviderAuthConfig): Promise<void>;
-};
-
-/**
  * Desmos tool provider configuration
  *
  * Auth and telemetry only. Per-calculator Desmos options are owned by the
@@ -100,7 +71,7 @@ export interface DesmosToolProviderConfig {
  * ```
  */
 export class DesmosToolProvider
-	implements ToolProviderApi<DesmosToolProviderConfig, DesmosCalculatorProviderApi>
+	implements ToolProviderApi<DesmosToolProviderConfig, CalculatorProvider>
 {
 	readonly providerId = "desmos-calculator";
 	readonly providerName = "Desmos Calculator";
@@ -108,7 +79,7 @@ export class DesmosToolProvider
 	readonly version = "1.12";
 	readonly requiresAuth = true;
 
-	private desmosProvider: DesmosCalculatorProviderApi | null = null;
+	private desmosProvider: CalculatorProvider | null = null;
 	private config: DesmosToolProviderConfig | null = null;
 
 	private async emitTelemetry(
@@ -205,7 +176,7 @@ export class DesmosToolProvider
 	 */
 	async createInstance(
 		config?: Partial<DesmosToolProviderConfig>,
-	): Promise<DesmosCalculatorProviderApi> {
+	): Promise<CalculatorProvider> {
 		if (!this.desmosProvider) {
 			throw new Error(
 				"[DesmosToolProvider] Provider not initialized. Call initialize() first.",

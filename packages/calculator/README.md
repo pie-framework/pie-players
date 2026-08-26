@@ -14,11 +14,11 @@ This package provides the foundational interfaces and types for building calcula
 
 ### Interfaces
 
-- **`CalculatorProvider<TConfig>`** - Stateless factory for creating calculator
-  implementations; `TConfig` is the per-instance configuration the adapter accepts
+- **`CalculatorProvider`** - Stateless factory for creating calculator implementations
 - **`Calculator`** - Actual calculator instance interface
 - **`CalculatorProviderCapabilities`** - Feature support description
-- **`CalculatorProviderConfig`** - Provider-neutral base configuration that adapters can extend
+- **`CalculatorProviderConfig`** - Provider-neutral per-instance configuration that adapters extend
+- **`CalculatorProviderInit`** - Provider-level credentials and instrumentation
 
 ### Types
 
@@ -45,6 +45,7 @@ import type {
   CalculatorType,
   CalculatorProviderCapabilities,
   CalculatorProviderConfig,
+  CalculatorProviderInit,
   CalculatorState
 } from '@pie-players/pie-calculator';
 
@@ -53,11 +54,11 @@ interface MyCalculatorProviderConfig extends CalculatorProviderConfig {
 }
 
 class MyCalculatorImpl implements Calculator {
-  readonly provider: CalculatorProvider<MyCalculatorProviderConfig>;
+  readonly provider: CalculatorProvider;
   readonly type: CalculatorType;
 
   constructor(
-    provider: CalculatorProvider<MyCalculatorProviderConfig>,
+    provider: CalculatorProvider,
     type: CalculatorType,
     container: HTMLElement
   ) {
@@ -74,15 +75,14 @@ class MyCalculatorImpl implements Calculator {
   destroy(): void { /* ... */ }
 }
 
-export class MyCalculatorProvider
-  implements CalculatorProvider<MyCalculatorProviderConfig> {
+export class MyCalculatorProvider implements CalculatorProvider {
   readonly providerId = 'my-calculator';
   readonly providerName = 'My Calculator';
   readonly supportedTypes: CalculatorType[] = ['basic', 'scientific'];
   readonly version = '1.0.0';
 
-  async initialize(): Promise<void> {
-    // Load libraries, etc.
+  async initialize(config?: CalculatorProviderInit): Promise<void> {
+    // Load libraries, authenticate with config?.apiKey or config?.proxyEndpoint
   }
 
   async createCalculator(

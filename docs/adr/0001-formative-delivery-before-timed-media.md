@@ -7,10 +7,11 @@ Owner: PIE Players maintainers
 ## Decision
 
 Formative delivery — Try state, feedback reveal, mastery rollup — is built and
-released before timed media. The [formative delivery
-contract](../prds/formative-delivery-contract.md) is `Ready`; the [timed media
-section contract](../prds/timed-media-section-contract.md) stays `Draft` until
-Try state has shipped.
+released before timed media. At decision time, the [formative delivery
+contract](../prds/formative-delivery-contract.md) was `Ready` and the [timed media
+section contract](../prds/timed-media-section-contract.md) remained `Draft` until
+Try state shipped. Both contracts are now `Accepted`; the outcome below records
+when the sequencing condition was met.
 
 ## Constraint
 

@@ -1,8 +1,10 @@
 # Documentation Index
 
-This folder contains the active documentation set for `pie-players`. The focus
-is on current public APIs, runtime boundaries, and integration patterns. Design
-history and completed implementation plans are intentionally excluded.
+This folder contains the maintained documentation set for `pie-players`. The
+focus is on current public APIs, runtime boundaries, integration patterns, and
+contract decisions. Completed implementation plans are excluded unless they are
+accepted PRDs or ADRs retained as current contract and decision references; see
+[`prds/README.md`](./prds/README.md#retention-and-cleanup).
 
 ## Start Here
 

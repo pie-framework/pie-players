@@ -1,6 +1,6 @@
 # Timed Media Section Contract
 
-Status: Implemented, 2026-08-17. Was Ready, 2026-08-15.
+Status: Accepted, 2026-08-17.
 
 Owner: PIE Players maintainers
 
@@ -8,7 +8,7 @@ Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line i
 
 Sequenced behind formative delivery, 2026-08-15. [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) records the decision and its reason: a cue's interesting gate condition is "answered correctly", which needs a per-item evaluation seam PIE did not have, so building cues first would force `responded` as the only expressible condition and then revise a shipped section slice. The [formative delivery contract](./formative-delivery-contract.md) supplies that seam — Try state, per-item feedback reveal, and the four-valued `FormativeCorrectness` this PRD's cue policy names as gate conditions. That work merged on 2026-08-15 and releases with the next publish, so `FormativeCorrectness` is a real exported type and the per-item `env` seam exists: a cue policy can name `correct` rather than settling for `responded`.
 
-Every prerequisite this PRD inherits is satisfied: the [media asset contract](./shared-contracts/media-asset-contract.md) is `Ready` and its types are shipped, `assessment-toolkit/src/services/catalog-media.ts` owns media validation, and the [theming contract](./pie-727-broad-theming-contract.md) is `Accepted` so media controls have a palette. `Ready` means the contract is settled enough to implement against; the questions left in [Open Questions](#open-questions) are implementation-time choices, not contract gates.
+Every prerequisite this PRD inherits is satisfied: the [media asset contract](./shared-contracts/media-asset-contract.md) is `Accepted` and its types are shipped, `assessment-toolkit/src/services/catalog-media.ts` owns media validation, and the [theming contract](./pie-727-broad-theming-contract.md) is `Accepted` so media controls have a palette. The questions left in [Open Questions](#open-questions) were implementation-time choices, not contract gates.
 
 Cue and playback policy ownership does not ride on it, contrary to the earlier reading here. `assessment-toolkit` sits beneath the standalone path as well as beneath assessment-player: formative delivery's Try round trip runs controller → `SectionRuntimeEngine` → `PieAssessmentToolkit` → composition republish, with no assessment-player in it. So `ToolPolicyEngine` can own cue and playback policy whichever player mounts the section, and that choice can be taken on its own merits. The architecture note's layer-ownership table was re-derived against the engine on 2026-08-15.
 
@@ -56,7 +56,7 @@ The specific piece both need is a time range within an asset: Media Fragments fo
 
 Updated 2026-08-08: signing moved first, so the vocabulary now exists in code — `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef` and `MediaFragmentRange` in `@pie-players/pie-players-shared/types`. That changes this prerequisite rather than removing it. Cue ranges should reuse `MediaFragmentRange` in the same position it holds for signing (beside the asset, not inside it — a range describes a *use* of an asset, not the asset), and anything this contract needs that the shipped types lack should extend them. What must not happen is a second media vocabulary growing beside the first because this side found the first one inconvenient.
 
-**Satisfied 2026-08-09.** `media-asset-contract` is `Ready`, ratified against this workstream's proposed shapes before the release that first publishes the types. Cue ranges fit `MediaFragmentRange` in both forms — a point cue omits `endSeconds`, a ranged cue carries it — and nothing a stimulus needs is missing from `MediaAssetRef`, so `video-stimulus` inherits the vocabulary rather than extending it. The `cues[].startTime` name in the architecture note becomes `startSeconds` to match.
+**Satisfied 2026-08-09.** `media-asset-contract` is `Accepted`, ratified against this workstream's proposed shapes before the release that first published the types. Cue ranges fit `MediaFragmentRange` in both forms — a point cue omits `endSeconds`, a ranged cue carries it — and nothing a stimulus needs is missing from `MediaAssetRef`, so `video-stimulus` inherits the vocabulary rather than extending it. The `cues[].startTime` name in the architecture note becomes `startSeconds` to match.
 
 What this leaves for this PRD is narrower than a media contract and must not be skipped as though the ratification covered it: **cue-range semantics**. `MediaFragmentRange` deliberately carries no playback meaning. The two shipped consumers read it as "play only this slice," with the player enforcing both bounds itself — a Media Fragments URI is written but honoured inconsistently at both ends, so the region seeks explicitly once metadata loads and pauses on `timeupdate`. A cue range means "the window during which this cue is active," which is not a slice to play and does not imply seeking. This PRD states that meaning for cues; it does not add a discriminant to the range type or fork it.
 

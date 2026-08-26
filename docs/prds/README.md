@@ -20,6 +20,24 @@ Use one of these statuses at the top of each PRD:
 - `Accepted` - implemented and kept as the current contract reference.
 - `Superseded` - replaced by a newer PRD or contract document.
 
+## Retention And Cleanup
+
+Do not delete a PRD merely because its implementation is complete. An `Accepted`
+PRD is part of the current contract documentation: it records ownership,
+boundaries, rejected alternatives, compatibility decisions, and acceptance
+criteria that are not recoverable cheaply from code alone.
+
+Delete a PRD only when it was abandoned before it governed shipped behavior and
+has no decision-history value. Mark it `Superseded` when a newer document owns
+the contract, link to the replacement at the top, and remove it only in a later
+cleanup if no current document or code comment refers to it. Keep implementation
+journals concise: once a contract is accepted, prefer current behavior and the
+reasons for non-obvious decisions over branch chronology or stale rollout prose.
+
+The live development backlog is the set of `Draft`, `Ready`, and `Active`
+documents, not every file in this directory. `Accepted` and `Superseded`
+documents are reference/history and should not be presented as planned work.
+
 A contract spanning repos qualifies the status on the same line — `Accepted for
 the pie-players contract` — and names what is outstanding, and where, in the
 implementation-status paragraph beneath it. An architecture note that carries a
@@ -43,12 +61,13 @@ live per-slice record is `Active`.
   CSS-class gate by transforming content rather than accommodating the class;
   plus why autoplay is a content property and not a PIE feature.
 - [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
-  Try state, feedback reveal as a per-item `env` projection, and section mastery.
-  Consumes the shipped client-side scoring path rather than replacing it.
+  accepted contract for Try state, feedback reveal as a per-item `env`
+  projection, and section mastery. Consumes the shipped client-side scoring path
+  rather than replacing it.
 - [`timed-media-section-contract.md`](./timed-media-section-contract.md) -
-  section-level timed media with cue-driven item orchestration. Sequenced behind
-  the formative contract, whose state its cue gate conditions name. Distinct from
-  sign language despite both being video; each PRD fences the other out.
+  accepted contract for section-level timed media with cue-driven item
+  orchestration. It consumes formative state for cue gate conditions and remains
+  distinct from sign language despite both using video.
 - [`speech-to-text.md`](./speech-to-text.md) -
   dictation as the first production accommodation: it writes the response rather
   than re-presenting content, so it needs an element-facing insertion contract

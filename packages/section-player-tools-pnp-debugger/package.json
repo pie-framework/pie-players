@@ -50,7 +50,7 @@
 		"lint": "biome check PnpPanel.svelte derive-panel-data.ts index.ts vite.config.ts package.json tests"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.8",
+		"@biomejs/biome": "^2.5.10",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"svelte": "^5.56.10",
 		"svelte-check": "^4.7.5",

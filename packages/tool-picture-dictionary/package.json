@@ -45,7 +45,7 @@
 		"lint": "biome check ."
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.8",
+		"@biomejs/biome": "^2.5.10",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"svelte": "^5.56.10",
 		"typescript": "^5.9.3",

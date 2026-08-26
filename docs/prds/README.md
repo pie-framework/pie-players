@@ -68,6 +68,10 @@ live per-slice record is `Active`.
   accepted contract for section-level timed media with cue-driven item
   orchestration. It consumes formative state for cue gate conditions and remains
   distinct from sign language despite both using video.
+- [`assessment-authoritative-submission.md`](./assessment-authoritative-submission.md) -
+  draft contract for a host-supplied terminal assessment operation with
+  idempotency, typed receipts, retry semantics, and observable controller state;
+  ordinary assessment snapshots remain on the existing persistence strategy.
 - [`speech-to-text.md`](./speech-to-text.md) -
   dictation as the first production accommodation: it writes the response rather
   than re-presenting content, so it needs an element-facing insertion contract

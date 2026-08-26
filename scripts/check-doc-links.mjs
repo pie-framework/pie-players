@@ -7,6 +7,8 @@ const ROOT = process.cwd();
 const SKIP_DIRS = new Set([
 	".git",
 	".svelte-kit",
+	".turbo",
+	"build",
 	"dist",
 	"node_modules",
 	"coverage",

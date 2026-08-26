@@ -282,7 +282,7 @@ export class DesmosCalculatorProvider
 		type: CalculatorType,
 		container: HTMLElement,
 		config?: DesmosCalculatorProviderConfig,
-	): Promise<Calculator<DesmosCalculatorProviderConfig>> {
+	): Promise<Calculator> {
 		if (!this.initialized) {
 			await this.initialize();
 		}
@@ -327,9 +327,7 @@ export class DesmosCalculatorProvider
 /**
  * Desmos Calculator Instance
  */
-class DesmosCalculator
-	implements Calculator<DesmosCalculatorProviderConfig>
-{
+class DesmosCalculator implements Calculator {
 	readonly provider: CalculatorProvider<DesmosCalculatorProviderConfig>;
 	readonly type: CalculatorType;
 

@@ -6,18 +6,14 @@
 		"declaration": true,
 		"declarationMap": false,
 		"composite": true,
-		"moduleResolution": "NodeNext",
-		"baseUrl": ".",
-		"paths": {
-			"@pie-players/pie-assessment-toolkit": [
-				"../assessment-toolkit/dist/index.d.ts"
-			],
-			"@pie-players/pie-calculator": ["../calculator/dist/index.d.ts"],
-			"@pie-players/pie-calculator-desmos": [
-				"../calculator-desmos/dist/index.d.ts"
-			]
-		}
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "tool-calculator.svelte"],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"index.ts",
+		"tool-calculator.svelte"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

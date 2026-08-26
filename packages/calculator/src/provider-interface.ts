@@ -12,7 +12,6 @@
  */
 export type CalculatorType = "basic" | "scientific" | "graphing";
 
-
 /**
  * Calculator provider configuration
  */
@@ -60,6 +59,12 @@ export interface CalculatorState {
  *
  * Providers are stateless factories that create calculator implementations.
  * They describe capabilities and create configured instances.
+ *
+ * `TConfig` lets an adapter declare the per-instance configuration it accepts —
+ * see `DesmosCalculatorProviderConfig` in `@pie-players/pie-calculator-desmos`.
+ * It types `createCalculator`'s argument for callers holding the concrete
+ * provider type; it is not an assignability constraint, since a provider
+ * narrowing that parameter still satisfies `CalculatorProvider`.
  */
 export interface CalculatorProvider<
 	TConfig extends CalculatorProviderConfig = CalculatorProviderConfig,
@@ -92,11 +97,11 @@ export interface CalculatorProvider<
 	/**
 	 * Create a calculator instance
 	 */
-	createCalculator: (
+	createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
 		config?: TConfig,
-	) => Promise<Calculator<TConfig>>;
+	): Promise<Calculator>;
 
 	/**
 	 * Check if a calculator type is supported
@@ -120,13 +125,11 @@ export interface CalculatorProvider<
  * The actual calculator implementation that handles calculations.
  * Created by CalculatorProvider.createCalculator()
  */
-export interface Calculator<
-	TConfig extends CalculatorProviderConfig = CalculatorProviderConfig,
-> {
+export interface Calculator {
 	/**
 	 * The provider that created this calculator
 	 */
-	readonly provider: CalculatorProvider<TConfig>;
+	readonly provider: CalculatorProvider;
 
 	/**
 	 * The calculator type

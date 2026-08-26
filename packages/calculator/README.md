@@ -14,7 +14,8 @@ This package provides the foundational interfaces and types for building calcula
 
 ### Interfaces
 
-- **`CalculatorProvider`** - Stateless factory for creating calculator implementations
+- **`CalculatorProvider<TConfig>`** - Stateless factory for creating calculator
+  implementations; `TConfig` is the per-instance configuration the adapter accepts
 - **`Calculator`** - Actual calculator instance interface
 - **`CalculatorProviderCapabilities`** - Feature support description
 - **`CalculatorProviderConfig`** - Provider-neutral base configuration that adapters can extend
@@ -51,7 +52,7 @@ interface MyCalculatorProviderConfig extends CalculatorProviderConfig {
   precision?: number;
 }
 
-class MyCalculatorImpl implements Calculator<MyCalculatorProviderConfig> {
+class MyCalculatorImpl implements Calculator {
   readonly provider: CalculatorProvider<MyCalculatorProviderConfig>;
   readonly type: CalculatorType;
 
@@ -88,7 +89,7 @@ export class MyCalculatorProvider
     type: CalculatorType,
     container: HTMLElement,
     config?: MyCalculatorProviderConfig
-  ): Promise<Calculator<MyCalculatorProviderConfig>> {
+  ): Promise<Calculator> {
     return new MyCalculatorImpl(this, type, container);
   }
 

@@ -29,7 +29,8 @@
 	- Contact: partnerships@desmos.com
 
 	A host initializes the provider before using this component. The provider is
-	`DesmosCalculatorProvider`, exported from its calculator adapter package.
+	`DesmosCalculatorProvider`, exported from
+	`@pie-players/pie-calculator-desmos`.
 
 	Call its `initialize` with `proxyEndpoint` in production, pointing at an endpoint
 	of yours that serves the key, so the key never reaches the browser. `apiKey` is
@@ -52,8 +53,6 @@
 	import type { DesmosCalculatorProviderConfig } from '@pie-players/pie-calculator-desmos';
 import { onMount } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
-
-	type CalculatorSurface = Pick<Calculator, 'destroy' | 'focus' | 'resize'>;
 
 	// ============================================================================
 	// Constants
@@ -100,7 +99,7 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
-	let calculatorInstance = $state<CalculatorSurface | null>(null);
+	let calculatorInstance = $state<Calculator | null>(null);
 	let currentCalculatorType = $state<CalculatorType>('basic');
 	let isInitializing = $state(false);
 	let isSwitching = $state(false);
@@ -160,7 +159,7 @@ import { onMount } from 'svelte';
 		);
 	}
 
-	function scheduleResizeNudges(instance: CalculatorSurface | null): void {
+	function scheduleResizeNudges(instance: Calculator | null): void {
 		if (!instance) return;
 		const nudges = [60, 250, 1000, 2500];
 		for (const delay of nudges) {
@@ -176,7 +175,7 @@ import { onMount } from 'svelte';
 
 	async function ensureCalculatorSurface(
 		container: HTMLDivElement | null | undefined,
-		instance: CalculatorSurface | null,
+		instance: Calculator | null,
 		timeoutMs = 8000,
 	): Promise<boolean> {
 		if (!container) return false;

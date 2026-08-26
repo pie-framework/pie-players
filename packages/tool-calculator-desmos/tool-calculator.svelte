@@ -29,9 +29,7 @@
 	- Contact: partnerships@desmos.com
 
 	A host initializes the provider before using this component. The provider is
-	`DesmosCalculatorProvider`, exported from the `@pie-players/pie-calculator-desmos`
-	package — named here rather than shown as an import, because this package does
-	not depend on it and `check:deps` reads an import in a comment as a real one.
+	`DesmosCalculatorProvider`, exported from its calculator adapter package.
 
 	Call its `initialize` with `proxyEndpoint` in production, pointing at an endpoint
 	of yours that serves the key, so the key never reaches the browser. `apiKey` is
@@ -50,9 +48,12 @@
 	import type {
 		AssessmentToolkitRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit';
-	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
+	import type { Calculator, CalculatorType } from '@pie-players/pie-calculator';
+	import type { DesmosCalculatorProviderConfig } from '@pie-players/pie-calculator-desmos';
 import { onMount } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+
+	type CalculatorSurface = Pick<Calculator, 'destroy' | 'focus' | 'resize'>;
 
 	// ============================================================================
 	// Constants
@@ -99,7 +100,7 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
-	let calculatorInstance = $state<Calculator | null>(null);
+	let calculatorInstance = $state<CalculatorSurface | null>(null);
 	let currentCalculatorType = $state<CalculatorType>('basic');
 	let isInitializing = $state(false);
 	let isSwitching = $state(false);
@@ -159,7 +160,7 @@ import { onMount } from 'svelte';
 		);
 	}
 
-	function scheduleResizeNudges(instance: Calculator | null): void {
+	function scheduleResizeNudges(instance: CalculatorSurface | null): void {
 		if (!instance) return;
 		const nudges = [60, 250, 1000, 2500];
 		for (const delay of nudges) {
@@ -175,7 +176,7 @@ import { onMount } from 'svelte';
 
 	async function ensureCalculatorSurface(
 		container: HTMLDivElement | null | undefined,
-		instance: Calculator | null,
+		instance: CalculatorSurface | null,
 		timeoutMs = 8000,
 	): Promise<boolean> {
 		if (!container) return false;
@@ -250,7 +251,7 @@ import { onMount } from 'svelte';
 	// Configuration Management
 	// ============================================================================
 
-	function getInitialConfig(type: CalculatorType): CalculatorProviderConfig {
+	function getInitialConfig(type: CalculatorType): DesmosCalculatorProviderConfig {
 		// Desmos config
 		const isGraphing = type === 'graphing';
 		return {
@@ -268,7 +269,7 @@ import { onMount } from 'svelte';
 		};
 	}
 
-	let calculatorConfig = $state<CalculatorProviderConfig>(
+	let calculatorConfig = $state<DesmosCalculatorProviderConfig>(
 		getInitialConfig('basic')
 	);
 

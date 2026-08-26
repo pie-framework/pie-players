@@ -13,5 +13,4 @@ export type {
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	DesmosCalculatorConfig,
 } from "./provider-interface.js";

@@ -25,8 +25,51 @@ import type {
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
+
+/**
+ * Desmos API options applied when a calculator instance is created.
+ */
+export interface DesmosCalculatorConfig {
+	apiKey?: string;
+	proxyEndpoint?: string;
+	border?: boolean;
+	degreeMode?: boolean | "degree" | "radian";
+	decimalToFraction?: boolean;
+	links?: boolean;
+	settingsMenu?: boolean;
+	expressions?: boolean;
+	zoomButtons?: boolean;
+	expressionsTopbar?: boolean;
+	notes?: boolean;
+	folders?: boolean;
+	images?: boolean;
+	qwertyKeyboard?: boolean;
+	restrictedFunctions?: boolean;
+	plotSingleVariableImplicitEquations?: boolean;
+	distributions?: boolean;
+	plotImplicits?: boolean;
+	plotInequalities?: boolean;
+	geometryComputationFunctions?: boolean;
+	sliders?: boolean;
+	tables?: boolean;
+	expressionsCollapsed?: boolean;
+	administerSecretFolders?: boolean;
+	lockViewport?: boolean;
+	functionDefinition?: boolean;
+	brailleExpressionDownload?: boolean;
+	keypad?: boolean;
+	graphpaper?: boolean;
+	additionalFunctions?: string[];
+}
+
+/**
+ * Per-instance configuration accepted by the Desmos calculator provider.
+ */
+export interface DesmosCalculatorProviderConfig
+	extends CalculatorProviderConfig {
+	desmos?: DesmosCalculatorConfig;
+}
 
 declare global {
 	interface Window {
@@ -37,7 +80,9 @@ declare global {
 /**
  * Desmos Calculator Provider Implementation
  */
-export class DesmosCalculatorProvider implements CalculatorProvider {
+export class DesmosCalculatorProvider
+	implements CalculatorProvider<DesmosCalculatorProviderConfig>
+{
 	readonly providerId = "desmos";
 	readonly providerName = "Desmos";
 	readonly supportedTypes: CalculatorType[] = [
@@ -236,8 +281,8 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
-	): Promise<Calculator> {
+		config?: DesmosCalculatorProviderConfig,
+	): Promise<Calculator<DesmosCalculatorProviderConfig>> {
 		if (!this.initialized) {
 			await this.initialize();
 		}
@@ -282,8 +327,10 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 /**
  * Desmos Calculator Instance
  */
-class DesmosCalculator implements Calculator {
-	readonly provider: CalculatorProvider;
+class DesmosCalculator
+	implements Calculator<DesmosCalculatorProviderConfig>
+{
+	readonly provider: CalculatorProvider<DesmosCalculatorProviderConfig>;
 	readonly type: CalculatorType;
 
 	private Desmos: any;
@@ -291,10 +338,10 @@ class DesmosCalculator implements Calculator {
 	private container: HTMLElement;
 
 	constructor(
-		provider: CalculatorProvider,
+		provider: CalculatorProvider<DesmosCalculatorProviderConfig>,
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 		apiKey?: string,
 	) {
 		this.provider = provider;
@@ -310,7 +357,7 @@ class DesmosCalculator implements Calculator {
 	}
 
 	private _initializeCalculator(
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 		apiKey?: string,
 	): void {
 		// Merge Desmos-specific config with defaults

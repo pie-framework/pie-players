@@ -11,7 +11,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { CalculatorProvider } from "@pie-players/pie-calculator";
+import type { DesmosCalculatorProvider } from "@pie-players/pie-calculator-desmos";
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
@@ -71,7 +71,7 @@ export interface DesmosToolProviderConfig {
  * ```
  */
 export class DesmosToolProvider
-	implements ToolProviderApi<DesmosToolProviderConfig, CalculatorProvider>
+	implements ToolProviderApi<DesmosToolProviderConfig, DesmosCalculatorProvider>
 {
 	readonly providerId = "desmos-calculator";
 	readonly providerName = "Desmos Calculator";
@@ -79,18 +79,7 @@ export class DesmosToolProvider
 	readonly version = "1.12";
 	readonly requiresAuth = true;
 
-	private desmosProvider:
-		| (CalculatorProvider & {
-				initialize(config: {
-					apiKey?: string;
-					proxyEndpoint?: string;
-					onTelemetry?: (
-						eventName: string,
-						payload?: Record<string, unknown>,
-					) => void | Promise<void>;
-				}): Promise<void>;
-		  })
-		| null = null;
+	private desmosProvider: DesmosCalculatorProvider | null = null;
 	private config: DesmosToolProviderConfig | null = null;
 
 	private async emitTelemetry(
@@ -129,18 +118,7 @@ export class DesmosToolProvider
 		});
 		const desmosModule = await (async () => {
 			try {
-				const loaded = (await import("@pie-players/pie-calculator-desmos")) as {
-					DesmosCalculatorProvider: new () => CalculatorProvider & {
-						initialize(config: {
-							apiKey?: string;
-							proxyEndpoint?: string;
-							onTelemetry?: (
-								eventName: string,
-								payload?: Record<string, unknown>,
-							) => void | Promise<void>;
-						}): Promise<void>;
-					};
-				};
+				const loaded = await import("@pie-players/pie-calculator-desmos");
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "calculator",
 					operation: "desmos-provider-module-import",
@@ -198,7 +176,7 @@ export class DesmosToolProvider
 	 */
 	async createInstance(
 		config?: Partial<DesmosToolProviderConfig>,
-	): Promise<CalculatorProvider> {
+	): Promise<DesmosCalculatorProvider> {
 		if (!this.desmosProvider) {
 			throw new Error(
 				"[DesmosToolProvider] Provider not initialized. Call initialize() first.",

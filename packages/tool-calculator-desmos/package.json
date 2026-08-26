@@ -42,6 +42,8 @@
 	"jsdelivr": "./dist/pie-tool-calculator.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator": "workspace:*",
+		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},

@@ -17,14 +17,13 @@ This package provides the foundational interfaces and types for building calcula
 - **`CalculatorProvider`** - Stateless factory for creating calculator implementations
 - **`Calculator`** - Actual calculator instance interface
 - **`CalculatorProviderCapabilities`** - Feature support description
-- **`CalculatorProviderConfig`** - Provider configuration
+- **`CalculatorProviderConfig`** - Provider-neutral base configuration that adapters can extend
 
 ### Types
 
 - **`CalculatorType`** - Union type of supported calculator types
 - **`CalculatorState`** - State for persistence
 - **`CalculationHistoryEntry`** - History entry format
-- **`DesmosCalculatorConfig`** - Desmos-specific configuration
 
 ## Installation
 
@@ -44,14 +43,23 @@ import type {
   Calculator,
   CalculatorType,
   CalculatorProviderCapabilities,
-  CalculatorProviderConfig
+  CalculatorProviderConfig,
+  CalculatorState
 } from '@pie-players/pie-calculator';
 
-class MyCalculatorImpl implements Calculator {
-  readonly provider: CalculatorProvider;
+interface MyCalculatorProviderConfig extends CalculatorProviderConfig {
+  precision?: number;
+}
+
+class MyCalculatorImpl implements Calculator<MyCalculatorProviderConfig> {
+  readonly provider: CalculatorProvider<MyCalculatorProviderConfig>;
   readonly type: CalculatorType;
 
-  constructor(provider: CalculatorProvider, type: CalculatorType, container: HTMLElement) {
+  constructor(
+    provider: CalculatorProvider<MyCalculatorProviderConfig>,
+    type: CalculatorType,
+    container: HTMLElement
+  ) {
     this.provider = provider;
     this.type = type;
     // Initialize calculator in container
@@ -65,7 +73,8 @@ class MyCalculatorImpl implements Calculator {
   destroy(): void { /* ... */ }
 }
 
-export class MyCalculatorProvider implements CalculatorProvider {
+export class MyCalculatorProvider
+  implements CalculatorProvider<MyCalculatorProviderConfig> {
   readonly providerId = 'my-calculator';
   readonly providerName = 'My Calculator';
   readonly supportedTypes: CalculatorType[] = ['basic', 'scientific'];
@@ -78,8 +87,8 @@ export class MyCalculatorProvider implements CalculatorProvider {
   async createCalculator(
     type: CalculatorType,
     container: HTMLElement,
-    config?: CalculatorProviderConfig
-  ): Promise<Calculator> {
+    config?: MyCalculatorProviderConfig
+  ): Promise<Calculator<MyCalculatorProviderConfig>> {
     return new MyCalculatorImpl(this, type, container);
   }
 

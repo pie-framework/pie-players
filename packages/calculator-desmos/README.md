@@ -176,6 +176,18 @@ export default async function handler(req, res) {
 
 ## Usage
 
+Import the provider and its owner-defined per-instance configuration from this package:
+
+```typescript
+import {
+  DesmosCalculatorProvider,
+  type DesmosCalculatorConfig,
+  type DesmosCalculatorProviderConfig,
+} from '@pie-players/pie-calculator-desmos';
+```
+
+`DesmosCalculatorProviderConfig` extends the provider-neutral calculator configuration and keeps Desmos API options under its `desmos` field. `DesmosCalculatorConfig` is the type of that nested field.
+
 ### Basic Calculator
 
 ```typescript
@@ -239,7 +251,7 @@ const calculator = await provider.createCalculator(
 
 ## Configuration Options
 
-See the `DesmosCalculatorConfig` interface in `@pie-players/pie-calculator` for all available options.
+See the `DesmosCalculatorConfig` interface exported by `@pie-players/pie-calculator-desmos` for all available options.
 
 Common options:
 

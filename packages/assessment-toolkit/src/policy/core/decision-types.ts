@@ -69,7 +69,8 @@ export interface ToolPolicyDecisionRequest {
  */
 export type ToolPolicyDiagnosticCode =
 	| "tool-policy.requiredToolBlocked"
-	| "tool-policy.placementMissing";
+	| "tool-policy.placementMissing"
+	| "tool-policy.unknownSupportId";
 
 /**
  * Which host gate removed a profile-mandated tool. Surfaced inside

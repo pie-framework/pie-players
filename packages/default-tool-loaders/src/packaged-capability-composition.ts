@@ -150,12 +150,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 10 },
 		preferredPlacementOrder: { item: 10 },
 		toolbarOrder: 20,
-		universalSupportIds: [
-			"calculator",
-			"graphingCalculator",
-			"basicCalculator",
-			"scientificCalculator",
-		],
+		universalSupportIds: ["calculator", "graphingCalculator"],
 	},
 	{
 		registration: ttsToolRegistration,
@@ -165,7 +160,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 10, passage: 10, rubric: 10, element: 30 },
 		preferredPlacementOrder: { item: 20, passage: 10 },
 		toolbarOrder: 30,
-		universalSupportIds: ["textToSpeech", "readAloud", "tts", "speechOutput"],
+		universalSupportIds: ["textToSpeech", "readAloud"],
 	},
 	{
 		registration: rulerToolRegistration,
@@ -175,7 +170,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 40 },
 		preferredPlacementOrder: { section: 50 },
 		toolbarOrder: 80,
-		universalSupportIds: ["ruler", "measurement"],
+		universalSupportIds: ["ruler"],
 	},
 	{
 		registration: protractorToolRegistration,
@@ -185,7 +180,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 50 },
 		preferredPlacementOrder: { section: 60 },
 		toolbarOrder: 90,
-		universalSupportIds: ["protractor", "angleMeasurement"],
+		universalSupportIds: ["protractor"],
 	},
 	{
 		registration: answerEliminatorToolRegistration,
@@ -195,12 +190,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 20 },
 		preferredPlacementOrder: { item: 30 },
 		toolbarOrder: 70,
-		universalSupportIds: [
-			"answerMasking",
-			"answerEliminator",
-			"strikethrough",
-			"choiceMasking",
-		],
+		universalSupportIds: ["answerMasking", "answerEliminator", "strikethrough"],
 	},
 	{
 		registration: lineReaderToolRegistration,
@@ -210,13 +200,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { passage: 40, rubric: 40 },
 		preferredPlacementOrder: { section: 40 },
 		toolbarOrder: 40,
-		universalSupportIds: [
-			"readingMask",
-			"readingGuide",
-			"readingRuler",
-			"lineReader",
-			"trackingGuide",
-		],
+		universalSupportIds: ["readingMask", "readingGuide", "readingRuler"],
 	},
 	{
 		registration: themeToolRegistration,
@@ -231,8 +215,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 			"colorContrast",
 			"invertColors",
 			"theme",
-			"highContrast",
-			"customColors",
 		],
 	},
 	{
@@ -246,13 +228,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		// The last three came from the `highlighter` capability, which mounted this
 		// same element behind a second identically-labelled button. Kept here so a
 		// profile granted one of the older ids still gets highlighting.
-		universalSupportIds: [
-			"highlighting",
-			"annotations",
-			"highlighter",
-			"textHighlight",
-			"annotation",
-		],
+		universalSupportIds: ["highlighting", "annotations"],
 	},
 	{
 		registration: graphToolRegistration,
@@ -262,7 +238,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 40, element: 80 },
 		preferredPlacementOrder: { section: 20 },
 		toolbarOrder: 100,
-		universalSupportIds: ["graph", "coordinatePlane", "graphingTool"],
+		universalSupportIds: ["graph"],
 	},
 	{
 		registration: periodicTableToolRegistration,
@@ -272,11 +248,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 50, element: 90 },
 		preferredPlacementOrder: { section: 30 },
 		toolbarOrder: 110,
-		universalSupportIds: [
-			"periodicTable",
-			"chemistryReference",
-			"elementReference",
-		],
+		universalSupportIds: ["periodicTable"],
 	},
 	{
 		registration: dictionaryToolRegistration,

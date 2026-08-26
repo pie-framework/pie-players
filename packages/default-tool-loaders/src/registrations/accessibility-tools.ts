@@ -57,8 +57,6 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		"readingMask", // QTI 3.0 standard (reading.readingMask)
 		"readingGuide", // QTI 3.0 standard (reading.readingGuide)
 		"readingRuler", // QTI 3.0 standard (reading.readingRuler)
-		"lineReader", // Common variant
-		"trackingGuide", // Common variant
 	],
 
 	/**
@@ -102,9 +100,7 @@ export const themeToolRegistration: ToolRegistration = {
 		"highContrastDisplay", // QTI 3.0 standard (visual.highContrastDisplay)
 		"colorContrast", // QTI 3.0 standard (visual.colorContrast)
 		"invertColors", // QTI 3.0 standard (visual.invertColors)
-		"theme", // Canonical id
-		"highContrast", // Common variant
-		"customColors", // Common variant
+		"theme", // Canonical id, and this registration's toolId
 	],
 
 	/**
@@ -165,9 +161,6 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	pnpSupportIds: [
 		"highlighting", // QTI 3.0 standard (cognitive.highlighting / reading.wordHighlighting)
 		"annotations", // QTI 3.0 standard (cognitive.annotations)
-		"highlighter", // Common variant
-		"textHighlight", // Common variant
-		"annotation", // Common variant
 	],
 
 	/**

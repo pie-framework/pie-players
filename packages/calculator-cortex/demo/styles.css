@@ -88,17 +88,45 @@ nav a:focus-visible {
 	outline-offset: 2px;
 }
 
+/*
+ * A *definite* height, and one close to what ships. The tool shell gives the
+ * calculator `height: 100%` against a definite flex box sized 380x372 (see
+ * `default-tool-loaders/src/registrations/calculator.ts`), whereas this container
+ * used `min-height` with `height: auto` — so `height: 100%` inside it resolved
+ * against an indefinite parent and the demo exercised a different layout contract
+ * from production. Anything that depends on filling the panel was verified here by
+ * nothing. The resize handle is deliberate: the panel is resizable in the shell too.
+ */
 .pie-cortex-demo-calculator {
-	min-height: 28rem;
+	width: 100%;
+	max-width: 30rem;
+	height: min(70vh, 34rem);
+	resize: both;
+	overflow: auto;
 	border: 1px solid #cbd5e1;
 	border-radius: 0.5rem;
-	overflow: hidden;
 	background: #fff;
 	box-shadow: 0 0.5rem 1.5rem rgb(15 23 42 / 8%);
 }
 
 body[data-mode="graphing"] .pie-cortex-demo-calculator {
-	min-height: 52rem;
+	max-width: 60rem;
+	height: min(80vh, 40rem);
+}
+
+/*
+ * The shipped tool panel, minus the shell's 48px header — the box the calculator
+ * actually gets. See `default-tool-loaders/src/registrations/calculator.ts`.
+ */
+.pie-cortex-demo-calculator--shell {
+	width: 380px;
+	height: 512px;
+	max-width: none;
+}
+
+body[data-mode="graphing"] .pie-cortex-demo-calculator--shell {
+	width: 720px;
+	height: 572px;
 }
 
 @media (max-width: 30rem) {

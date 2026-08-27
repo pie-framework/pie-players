@@ -31,7 +31,11 @@ calculator directly through `CortexCalculatorProvider`; it does not load an
 assessment player, toolkit coordinator, or tool wrapper.
 
 The demo controls switch interface language, theme, and text direction by
-destroying and recreating only that calculator instance.
+destroying and recreating only that calculator instance. **Panel size** does not
+recreate anything — it resizes the container to the box the tool shell actually
+gives the calculator, which is what the layout responds to. Check every change at
+that size: the package's size-dependent rules are container queries, so a fluid
+demo at 1280px never reaches the branch that ships.
 
 ## Localization
 
@@ -62,16 +66,69 @@ Message templates retain their named placeholders, such as `{index}`,
 derives `ltr` or `rtl` from the locale; a host may explicitly set `"ltr"` or
 `"rtl"` when its language policy requires it.
 
+## Keypad
+
+Basic and scientific render a display and a keypad; graphing puts the keypad in its
+expression rail. The keypad is this package's own — real `<button>` elements with
+localized accessible names, one tab stop with arrow-key movement inside it, and PIE
+tokens throughout.
+
+It is deliberately not MathLive's virtual keyboard, which is switched off entirely
+(`mathVirtualKeyboardPolicy = "manual"`) rather than merely hidden. MathLive's is a
+viewport-fixed singleton whose keycaps are `div[tabindex="-1"]` with no `role` and
+whose toggle is a `div[role="button"]` with no `tabindex`, so it contains no
+focusable elements at all and cannot be opened or operated by keyboard or switch
+access; under `"auto"` it also auto-shows on any touch-capable device, dropping
+itself across the bottom of the assessment rather than inside the tool panel. Its
+`container` setter throws inside an iframe, which is how assessments are commonly
+delivered.
+
+Keys are gated on `settings.allowedFunctions`, so a host that narrows the set gets a
+keypad that cannot offer a key the validator would reject. Basic omits the constants
+outright, matching `validateSymbol`. Scientific and graphing put their function keys
+on a second layer rather than in extra rows, because the shipped panel leaves about
+210px for the keypad and eight rows in that space puts keys below the 24px minimum
+target size.
+
+Layouts live as data in `src/keypad-layouts.ts`. Adding a key needs a message key in
+both catalogs — `as const satisfies CortexCalculatorMessages` makes that a
+compile-time obligation. Where a key's visible label is a word, its accessible name
+must contain that word (WCAG 2.5.3, and what voice control speaks): `keySine` is
+`"sin, sine"`, not `"sine of"`.
+
 ## Theming
 
 `theme: "light" | "dark" | "auto"` supplies accessible package defaults.
-`"auto"` follows `prefers-color-scheme`. The calculator consumes the canonical
-PIE tokens for surfaces, text, buttons, focus, primary actions, and errors,
-including `--pie-background`, `--pie-background-dark`, `--pie-text`,
-`--pie-border`, `--pie-button-bg`, `--pie-button-color`,
-`--pie-button-border`, `--pie-button-focus-outline`, `--pie-primary`,
-`--pie-white`, `--pie-incorrect`, `--pie-incorrect-secondary`, and
-`--pie-content-emphasis`.
+`"auto"` follows `prefers-color-scheme`.
+
+Those defaults are **fallbacks**, not declarations. Every colour resolves as
+`var(--pie-x, var(--cortex-x))`, so a host's tokens reach the tool and the
+package's own values apply only where the host has none. This matters beyond
+looks: `@pie-players/pie-theme` publishes ten `[data-color-scheme]` PNP palettes
+and marks every token used here as `required`, and declaring `--pie-*` on the
+calculator element — as this package once did — wins over anything an ancestor
+sets, so a learner's colour-scheme accommodation stopped at the calculator's edge.
+`tests/calculator-cortex-style-contract.test.ts` fails if such a declaration
+returns.
+
+Consumed: `--pie-text`, `--pie-white`, `--pie-background-dark`, `--pie-border`,
+`--pie-border-gray`, `--pie-blue-grey-300`, `--pie-button-bg`,
+`--pie-button-color`, `--pie-button-hover-bg`, `--pie-button-active-bg`,
+`--pie-button-focus-outline`, `--pie-primary`, `--pie-primary-dark`,
+`--pie-incorrect`, `--pie-incorrect-secondary`, and `--pie-content-emphasis`.
+
+`--pie-background` is deliberately **not** among them. The canonical light theme
+publishes it as `rgba(255, 255, 255, 0)`, and a transparent calculator over
+whatever the host painted would take every contrast guarantee out of this
+package's hands. Surfaces take `--pie-white` for the card and
+`--pie-background-dark` for the recessed keypad plane, both opaque in the base
+themes and in all ten schemes. A host wanting different surfaces has package
+hooks: `--pie-calculator-surface` and `--pie-calculator-surface-raised`.
+
+`--pie-font-scale` is **not** consumed, matching the recorded decision in
+`section-player/tests/content-text-follows-font-scale.test.ts`: the font
+accommodation applies to what the learner reads, and a keypad growing with the
+passage is a layout problem rather than an accommodation.
 
 Graph colors have package-owned hooks because no canonical series palette
 exists: `--pie-calculator-series-1`, `--pie-calculator-series-2`,
@@ -79,3 +136,11 @@ exists: `--pie-calculator-series-1`, `--pie-calculator-series-2`,
 `--pie-calculator-series-5`, and `--pie-calculator-series-6`. Each series also
 has a solid, dashed, or dotted line style; hosts overriding colors must retain
 3:1 contrast against the graph surface and keep the palette distinguishable.
+
+The plot's axes, tick labels and grid are themed from the resolved tokens and
+re-applied when `theme: "auto"` follows the OS across a change. They have to be:
+JSXGraph initialised with bare `axis: true` / `grid: true` uses its light defaults
+in every theme, which put black tick labels on a dark plot at 1.43:1. The plot div
+is `aria-hidden`, so axe never sees inside it — the contrast is asserted directly
+in `e2e/calculator-cortex.spec.ts` instead, tick labels at 4.5:1 as text and axes
+at 3:1 as a graphical object.

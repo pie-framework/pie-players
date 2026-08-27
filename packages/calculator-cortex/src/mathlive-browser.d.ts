@@ -22,6 +22,13 @@ declare module "mathlive" {
 		smartFence: boolean;
 		popoverPolicy: "auto" | "off";
 		environmentPopoverPolicy: "auto" | "off" | "on";
+		// This declaration shadows the one mathlive re-exports through `export *`,
+		// so anything the package calls has to be named here. `executeCommand` is
+		// how the keypad writes into the field: it goes through MathLive's own edit
+		// pipeline, which fires `input` and lets `MathFieldInput`'s existing handler
+		// stay the single writer to the controller.
+		executeCommand(command: string | [string, ...unknown[]]): boolean;
+		insert(latex: string, options?: Record<string, unknown>): boolean;
 	}
 }
 

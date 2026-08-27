@@ -336,10 +336,23 @@ export const calculatorToolRegistration: ToolRegistration = {
 						draggable: true,
 						resizable: true,
 						closeable: true,
-						initialWidth: 380,
-						initialHeight: 420,
+						/*
+						 * Sized to hold a display and a keypad. 420px of height was chosen
+						 * when the Cortex calculator was a text field and three buttons; a
+						 * keypad needs about 210px of that on its own, and at 420 the keys
+						 * fell past the content box, which the shell clips rather than
+						 * scrolls sideways. Graphing additionally needs the width its rail
+						 * and plot both want — below that the calculator stacks them, which
+						 * works but leaves the plot small.
+						 *
+						 * `minWidth` stays 380: the keypad is five columns at ~66px, which is
+						 * exactly what fits there, and the shell's own reflow contract
+						 * (`applyContentMinWidth`) pans below that rather than reflowing.
+						 */
+						initialWidth: calculatorType === "graphing" ? 720 : 380,
+						initialHeight: calculatorType === "graphing" ? 620 : 560,
 						minWidth: 380,
-						minHeight: 420,
+						minHeight: 480,
 						initialAlign: "bottom-right",
 						initialMargin: 16,
 						// Header controls in the host's design system, and the layout that

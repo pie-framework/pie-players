@@ -285,7 +285,14 @@
 		height: 100%;
 		min-width: 100%;
 		min-height: 100%;
-		background: white;
+		/*
+		 * `--pie-white`, not the literal. The token inverts by design (#ffffff light,
+		 * #000000 dark, redefined per colour scheme), so a hardcoded white showed
+		 * through as a white plate behind a dark calculator the moment a provider's own
+		 * surface stopped being opaque — and under a PNP colour scheme it was simply
+		 * the wrong colour.
+		 */
+		background: var(--pie-white, white);
 		overflow: hidden;
 	}
 

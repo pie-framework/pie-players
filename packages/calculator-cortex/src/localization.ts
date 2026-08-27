@@ -25,6 +25,40 @@ const EN_US_MESSAGES = {
 	virtualKeyboardBasic: "Basic",
 	virtualKeyboardScientific: "Scientific",
 	virtualKeyboardGraphing: "Graphing",
+	keypad: "Keypad",
+	keypadLayer: "Keypad layer",
+	angleModeDegreesShort: "DEG",
+	angleModeRadiansShort: "RAD",
+	angleModeChanged: "Angle mode {mode}. Previous result cleared.",
+	inserted: "{key}",
+	keySine: "sin, sine",
+	keyCosine: "cos, cosine",
+	keyTangent: "tan, tangent",
+	keyInverseSine: "sin, inverse sine",
+	keyInverseCosine: "cos, inverse cosine",
+	keyInverseTangent: "tan, inverse tangent",
+	keyNaturalLog: "ln, natural logarithm",
+	keyCommonLog: "log, common logarithm",
+	keySquareRoot: "Square root",
+	keyNthRoot: "Nth root",
+	keyPower: "To the power of",
+	keySquared: "Squared",
+	keyCubed: "Cubed",
+	keyExponential: "e to the power of",
+	keyAbsoluteValue: "Absolute value",
+	keyFactorial: "Factorial",
+	keyPi: "Pi",
+	keyEuler: "e, Euler's number",
+	keyPercent: "Percent",
+	keyOpenParenthesis: "Open parenthesis",
+	keyCloseParenthesis: "Close parenthesis",
+	keyDecimalSeparator: "Decimal separator",
+	keyDigit: "{digit}",
+	keyAdd: "Plus",
+	keySubtract: "Minus",
+	keyMultiply: "Times",
+	keyDivide: "Divided by",
+	keyVariableX: "x, variable x",
 	graphExpressions: "Graph expressions",
 	graphExpressionLabel: "Graph expression {index}, {lineStyle} line",
 	seriesDescription: "Series {index}: {lineStyle} line",
@@ -39,8 +73,7 @@ const EN_US_MESSAGES = {
 	resetView: "Reset view",
 	updatingGraph: "Updating graph",
 	graphSummary: "Graph summary",
-	viewportSummary:
-		"Viewport x from {xMin} to {xMax}, y from {yMin} to {yMax}.",
+	viewportSummary: "Viewport x from {xMin} to {xMax}, y from {yMin} to {yMax}.",
 	seriesSummary: "Series {index}, {lineStyle}: {expression}",
 	keyboardGraphTrace: "Keyboard graph trace",
 	keyboardTrace: "Keyboard trace",
@@ -80,6 +113,41 @@ const NL_NL_MESSAGES = {
 	virtualKeyboardBasic: "Eenvoudig",
 	virtualKeyboardScientific: "Wetenschappelijk",
 	virtualKeyboardGraphing: "Grafisch",
+	keypad: "Toetsenblok",
+	keypadLayer: "Laag van het toetsenblok",
+	// "GRAD" would read as gradians, so degrees keeps its own abbreviation.
+	angleModeDegreesShort: "GR",
+	angleModeRadiansShort: "RAD",
+	angleModeChanged: "Hoekeenheid {mode}. Vorig resultaat gewist.",
+	inserted: "{key}",
+	keySine: "sin, sinus",
+	keyCosine: "cos, cosinus",
+	keyTangent: "tan, tangens",
+	keyInverseSine: "sin, arcsinus",
+	keyInverseCosine: "cos, arccosinus",
+	keyInverseTangent: "tan, arctangens",
+	keyNaturalLog: "ln, natuurlijke logaritme",
+	keyCommonLog: "log, logaritme met grondtal tien",
+	keySquareRoot: "Vierkantswortel",
+	keyNthRoot: "N-de wortel",
+	keyPower: "Tot de macht",
+	keySquared: "Kwadraat",
+	keyCubed: "Derde macht",
+	keyExponential: "e tot de macht",
+	keyAbsoluteValue: "Absolute waarde",
+	keyFactorial: "Faculteit",
+	keyPi: "Pi",
+	keyEuler: "e, getal van Euler",
+	keyPercent: "Procent",
+	keyOpenParenthesis: "Haakje openen",
+	keyCloseParenthesis: "Haakje sluiten",
+	keyDecimalSeparator: "Decimaalteken",
+	keyDigit: "{digit}",
+	keyAdd: "Plus",
+	keySubtract: "Min",
+	keyMultiply: "Maal",
+	keyDivide: "Gedeeld door",
+	keyVariableX: "x, variabele x",
 	graphExpressions: "Grafiekuitdrukkingen",
 	graphExpressionLabel: "Grafiekuitdrukking {index}, {lineStyle} lijn",
 	seriesDescription: "Reeks {index}: {lineStyle} lijn",
@@ -94,8 +162,7 @@ const NL_NL_MESSAGES = {
 	resetView: "Weergave herstellen",
 	updatingGraph: "Grafiek wordt bijgewerkt",
 	graphSummary: "Samenvatting van de grafiek",
-	viewportSummary:
-		"Weergave x van {xMin} tot {xMax}, y van {yMin} tot {yMax}.",
+	viewportSummary: "Weergave x van {xMin} tot {xMax}, y van {yMin} tot {yMax}.",
 	seriesSummary: "Reeks {index}, {lineStyle}: {expression}",
 	keyboardGraphTrace: "Grafiek volgen met het toetsenbord",
 	keyboardTrace: "Volgen met het toetsenbord",
@@ -114,7 +181,8 @@ const NL_NL_MESSAGES = {
 	errorExpressionTooComplex:
 		"Vereenvoudig de uitdrukking en probeer het opnieuw.",
 	errorEvaluationTimeout: "De berekening duurde te lang en is gestopt.",
-	errorInvalidState: "De opgeslagen rekenmachinestatus kon niet worden hersteld.",
+	errorInvalidState:
+		"De opgeslagen rekenmachinestatus kon niet worden hersteld.",
 	errorWorkerUnavailable: "De rekenmachine is tijdelijk niet beschikbaar.",
 } as const satisfies CortexCalculatorMessages;
 
@@ -125,7 +193,10 @@ const ERROR_MESSAGE_KEYS = {
 	"evaluation-timeout": "errorEvaluationTimeout",
 	"invalid-state": "errorInvalidState",
 	"worker-unavailable": "errorWorkerUnavailable",
-} as const satisfies Record<CortexCalculatorErrorCode, CortexCalculatorMessageKey>;
+} as const satisfies Record<
+	CortexCalculatorErrorCode,
+	CortexCalculatorMessageKey
+>;
 
 const LINE_STYLE_KEYS = {
 	solid: "lineStyleSolid",
@@ -207,7 +278,8 @@ export function createCortexLocalization(
 	direction: CortexTextDirection | "auto" = "auto",
 ): CortexCalculatorLocalization {
 	const messages = Object.freeze({ ...baseMessages(locale), ...overrides });
-	const resolvedDirection = direction === "auto" ? localeDirection(locale) : direction;
+	const resolvedDirection =
+		direction === "auto" ? localeDirection(locale) : direction;
 	let numberFormatter: Intl.NumberFormat | null = null;
 	let formatterDigits = 0;
 

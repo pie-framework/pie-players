@@ -24,7 +24,10 @@ type WorkerRequestBody = WithoutWorkerEnvelope<WorkerRequest>;
 let nextInstanceId = 0;
 
 function createInstanceId(): string {
-	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+	if (
+		typeof crypto !== "undefined" &&
+		typeof crypto.randomUUID === "function"
+	) {
 		return crypto.randomUUID();
 	}
 	nextInstanceId += 1;
@@ -39,7 +42,18 @@ export class EvaluationClient {
 	private generation = 0;
 	private destroyed = false;
 
-	constructor(private readonly settings: ResolvedCortexSettings) {}
+	constructor(private settings: ResolvedCortexSettings) {}
+
+	/*
+	 * Settings travel with every request and the worker is stateless — it reads
+	 * `request.settings` per message — so a settings change needs no new worker.
+	 * The client only used to be replaced because it captured them in its
+	 * constructor, which made an angle-mode switch terminate the worker and throw
+	 * away a warm Compute Engine for nothing.
+	 */
+	updateSettings(settings: ResolvedCortexSettings): void {
+		this.settings = settings;
+	}
 
 	private workerSettings(): WorkerEvaluationSettings {
 		return {
@@ -68,10 +82,13 @@ export class EvaluationClient {
 			);
 		}
 		try {
-			const worker = new Worker(new URL("./evaluation-worker.ts", import.meta.url), {
-				type: "module",
-				name: "pie-calculator-cortex",
-			});
+			const worker = new Worker(
+				new URL("./evaluation-worker.ts", import.meta.url),
+				{
+					type: "module",
+					name: "pie-calculator-cortex",
+				},
+			);
 			worker.addEventListener("message", this.handleMessage);
 			worker.addEventListener("error", this.handleWorkerError);
 			this.worker = worker;
@@ -85,7 +102,9 @@ export class EvaluationClient {
 		}
 	}
 
-	private readonly handleMessage = (event: MessageEvent<WorkerResponse>): void => {
+	private readonly handleMessage = (
+		event: MessageEvent<WorkerResponse>,
+	): void => {
 		const response = event.data;
 		if (
 			response.protocolVersion !== CORTEX_WORKER_PROTOCOL_VERSION ||

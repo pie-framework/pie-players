@@ -99,17 +99,19 @@ export class CortexCalculatorController {
 	) {
 		this.currentAngleMode = settings.angleMode;
 		this.mainEngine.precision = settings.calculationPrecision;
-		this.mainEngine.angularUnit = settings.angleMode === "degree" ? "deg" : "rad";
+		this.mainEngine.angularUnit =
+			settings.angleMode === "degree" ? "deg" : "rad";
 		this.mainEngine.iterationLimit = 10_000;
 		this.mainEngine.recursionLimit = 64;
 		this.mainEngine.maxCollectionSize = 1_200;
 		this.evaluationClient = new EvaluationClient(this.effectiveSettings());
-		this.graph = settings.type === "graphing"
-			? {
-					viewport: { ...settings.graph.viewport },
-					expressions: [createExpression(0)],
-				}
-			: null;
+		this.graph =
+			settings.type === "graphing"
+				? {
+						viewport: { ...settings.graph.viewport },
+						expressions: [createExpression(0)],
+					}
+				: null;
 	}
 
 	private effectiveSettings(): ResolvedCortexSettings {
@@ -188,10 +190,17 @@ export class CortexCalculatorController {
 	}
 
 	addGraphExpression(): void {
-		if (!this.graph || this.graph.expressions.length >= CORTEX_GRAPH_EXPRESSION_LIMIT) return;
-		const used = new Set(this.graph.expressions.map((entry) => entry.colorIndex));
+		if (
+			!this.graph ||
+			this.graph.expressions.length >= CORTEX_GRAPH_EXPRESSION_LIMIT
+		)
+			return;
+		const used = new Set(
+			this.graph.expressions.map((entry) => entry.colorIndex),
+		);
 		let colorIndex = 0;
-		while (used.has(colorIndex) && colorIndex < CORTEX_GRAPH_EXPRESSION_LIMIT) colorIndex += 1;
+		while (used.has(colorIndex) && colorIndex < CORTEX_GRAPH_EXPRESSION_LIMIT)
+			colorIndex += 1;
 		this.graph.expressions.push(createExpression(colorIndex));
 		this.publish();
 	}
@@ -201,7 +210,8 @@ export class CortexCalculatorController {
 		const index = this.graph.expressions.findIndex((entry) => entry.id === id);
 		if (index < 0) return;
 		this.graph.expressions.splice(index, 1);
-		if (this.graph.expressions.length === 0) this.graph.expressions.push(createExpression(0));
+		if (this.graph.expressions.length === 0)
+			this.graph.expressions.push(createExpression(0));
 		this.inputLatex = this.graph.expressions[0]?.latex ?? "";
 		this.series = this.series.filter((entry) => entry.id !== id);
 		this.publish();
@@ -218,8 +228,10 @@ export class CortexCalculatorController {
 		if (mode === this.currentAngleMode) return;
 		this.currentAngleMode = mode;
 		this.mainEngine.angularUnit = mode === "degree" ? "deg" : "rad";
-		this.evaluationClient.destroy();
-		this.evaluationClient = new EvaluationClient(this.effectiveSettings());
+		this.evaluationClient.updateSettings(this.effectiveSettings());
+		// The displayed answer was computed under the previous unit, so it is void.
+		// `angleModeChanged` is what the view announces, since silently blanking the
+		// result leaves a screen-reader user with no idea it went.
 		this.result = "";
 		this.errorCode = null;
 		this.operationGeneration += 1;
@@ -270,7 +282,13 @@ export class CortexCalculatorController {
 				"invalid-expression",
 				"The calculation could not be completed.",
 			);
-			if (generation === this.operationGeneration) this.errorCode = cortexError.code;
+			if (generation === this.operationGeneration) {
+				this.errorCode = cortexError.code;
+				// Without this the previous answer stays on screen next to a
+				// `role="alert"` contradicting it, and the unchanged `role="status"`
+				// never re-announces — so AT keeps reporting the stale result as current.
+				this.result = "";
+			}
 			void this.telemetry("pie-tool-operation-error", {
 				operation: "evaluate",
 				duration: Date.now() - startedAt,
@@ -285,7 +303,10 @@ export class CortexCalculatorController {
 		}
 	}
 
-	async sampleGraph(viewport: CortexGraphViewport, pixelWidth: number): Promise<void> {
+	async sampleGraph(
+		viewport: CortexGraphViewport,
+		pixelWidth: number,
+	): Promise<void> {
 		if (!this.graph || this.destroyed) return;
 		const expressions = this.graph.expressions
 			.filter((entry) => !entry.hidden && entry.latex.trim())
@@ -308,7 +329,11 @@ export class CortexCalculatorController {
 					this.effectiveSettings(),
 				);
 			}
-			const series = await this.evaluationClient.sample(expressions, viewport, pixelWidth);
+			const series = await this.evaluationClient.sample(
+				expressions,
+				viewport,
+				pixelWidth,
+			);
 			if (generation !== this.operationGeneration || this.destroyed) return;
 			this.series = series;
 		} catch (error) {
@@ -317,7 +342,8 @@ export class CortexCalculatorController {
 				"invalid-expression",
 				"The graph could not be updated.",
 			);
-			if (generation === this.operationGeneration) this.errorCode = cortexError.code;
+			if (generation === this.operationGeneration)
+				this.errorCode = cortexError.code;
 		} finally {
 			if (generation === this.operationGeneration) {
 				this.graphUpdating = false;
@@ -373,9 +399,9 @@ export class CortexCalculatorController {
 		this.inputLatex = decoded.state.inputLatex;
 		this.history = decoded.history;
 		this.currentAngleMode = decoded.state.angleMode;
-		this.mainEngine.angularUnit = this.currentAngleMode === "degree" ? "deg" : "rad";
-		this.evaluationClient.destroy();
-		this.evaluationClient = new EvaluationClient(this.effectiveSettings());
+		this.mainEngine.angularUnit =
+			this.currentAngleMode === "degree" ? "deg" : "rad";
+		this.evaluationClient.updateSettings(this.effectiveSettings());
 		this.graph = decoded.state.graph ? cloneGraph(decoded.state.graph) : null;
 		this.series = [];
 		this.result = "";

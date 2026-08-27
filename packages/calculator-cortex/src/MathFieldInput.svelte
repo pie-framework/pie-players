@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { MathfieldElement } from 'mathlive';
 	import mathLiveFonts from 'mathlive/fonts.css?inline';
+	import mathLiveStatic from 'mathlive/static.css?inline';
 	import { onMount } from 'svelte';
 	import type { CalculatorType } from '@pie-players/pie-calculator';
 	import {
@@ -16,8 +17,10 @@
 		localization,
 		restrictedMode,
 		focusRequest = 0,
+		ownKeypad = false,
 		onInput,
 		onCommit,
+		onFieldReady,
 	}: {
 		value: string;
 		label: string;
@@ -25,8 +28,15 @@
 		localization: CortexCalculatorLocalization;
 		restrictedMode: boolean;
 		focusRequest?: number;
+		/**
+		 * The package renders its own keypad for this field, so MathLive's virtual
+		 * keyboard is switched off entirely rather than merely hidden — otherwise both
+		 * exist and MathLive's auto-shows itself on any touch-capable device.
+		 */
+		ownKeypad?: boolean;
 		onInput: (value: string) => void;
 		onCommit?: () => void;
+		onFieldReady?: (field: MathfieldElement | null) => void;
 	} = $props();
 
 	let host = $state<HTMLDivElement | null>(null);
@@ -39,11 +49,20 @@
 	MathfieldElement.soundsDirectory = null;
 	MathfieldElement.computeEngine = null;
 
-	function ensureMathLiveFonts(): void {
+	/**
+	 * The fonts, and MathLive's static stylesheet.
+	 *
+	 * The static sheet is what positions `convertLatexToMarkup` output — the keypad's
+	 * math key faces and the tape's typeset expressions. Without it every superscript
+	 * renders on the baseline, so `sin^{-1}` reads as "sin-1" and `x^2` as "x2". The
+	 * `<math-field>` itself styles its own shadow tree and needs neither, but both are
+	 * document-level and bundled, so no request leaves the page.
+	 */
+	function ensureMathLiveStyles(): void {
 		if (document.head.querySelector('style[data-pie-mathlive-fonts]')) return;
 		const style = document.createElement('style');
 		style.dataset.pieMathliveFonts = 'true';
-		style.textContent = mathLiveFonts;
+		style.textContent = `${mathLiveFonts}\n${mathLiveStatic}`;
 		document.head.append(style);
 	}
 
@@ -58,12 +77,12 @@
 
 	onMount(() => {
 		if (!host) return;
-		ensureMathLiveFonts();
+		ensureMathLiveStyles();
 		const mathfield = new MathfieldElement();
 		mathfield.value = value;
 		mathfield.className = 'pie-cortex-mathfield';
 		host.append(mathfield);
-		configureMathfield(mathfield, label, restrictedMode);
+		configureMathfield(mathfield, label, restrictedMode, ownKeypad);
 		// MathLive routes keyboard interaction through its shadow keyboard sink.
 		// Leaving the host itself contenteditable/focusable creates two nested
 		// controls in the accessibility tree, so expose only the named sink.
@@ -86,12 +105,16 @@
 			}, 50);
 		};
 		const handleFocus = () => {
-			releaseKeyboard?.();
+			// Idempotent: this fires on every focus, and with the keypad it fires
+			// whenever focus returns from a key. Releasing and re-acquiring the global
+			// lease each time would rebuild MathLive's singleton per keypress.
+			if (releaseKeyboard) return;
 			releaseKeyboard = acquireMathLiveKeyboard(
 				keyboardOwner,
 				type,
 				localization,
 				MathfieldElement,
+				ownKeypad,
 			);
 		};
 		const blockClipboard = (event: Event) => {
@@ -105,8 +128,10 @@
 		mathfield.addEventListener('paste', blockClipboard);
 		mathfield.addEventListener('contextmenu', blockClipboard);
 		field = mathfield;
+		onFieldReady?.(mathfield);
 
 		return () => {
+			onFieldReady?.(null);
 			if (commitTimer) clearTimeout(commitTimer);
 			commitTimer = null;
 			releaseKeyboard?.();
@@ -133,20 +158,48 @@
 		width: 100%;
 	}
 
+	/*
+	 * The `<math-field>` is constructed in JS, so Svelte's scoping never reaches it
+	 * and these rules have to be `:global`. What is reachable from outside the
+	 * element is its exposed parts plus its documented custom properties — `--hue`
+	 * is the only supported way to bring MathLive's own chrome near PIE primary.
+	 */
 	:global(.pie-cortex-mathfield) {
 		box-sizing: border-box;
 		width: 100%;
 		min-height: 3rem;
-		padding: 0.55rem 0.7rem;
-		border: 1px solid var(--pie-button-border, var(--pie-border, #64748b));
-		border-radius: 0.35rem;
-		background: var(--pie-button-bg, var(--pie-background, #fff));
-		color: var(--pie-button-color, var(--pie-text, #0f172a));
-		font-size: 1.2rem;
+		/*
+		 * Shared with the tape rows, so history and the active line sit on one left
+		 * edge. A tape whose prior rows are two pixels off the live one is the most
+		 * visible alignment failure this layout can have.
+		 */
+		padding: 0.55rem var(--cortex-tape-inset, 0.75rem);
+		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
+		border-radius: var(--cortex-radius-key, 0.25rem);
+		background: var(--pie-button-bg, var(--cortex-button-bg));
+		color: var(--pie-button-color, var(--cortex-button-color));
+		font-size: 1.375rem;
 	}
 
 	:global(.pie-cortex-mathfield:focus-within) {
-		outline: 3px solid var(--pie-button-focus-outline, #2563eb);
+		outline: 3px solid var(--pie-button-focus-outline, var(--cortex-focus-outline));
 		outline-offset: 2px;
+	}
+
+	/*
+	 * `menuItems = []` does not remove the ☰ button: MathLive re-applies
+	 * `menuToggle.style.display` on every render, so an inline style of ours is
+	 * clobbered on the next keystroke. The part selector is the only stable route.
+	 * It also leaves a `div[role="button"]` with no `tabindex` in the tree, which is
+	 * a named control no keyboard user can reach — so it goes entirely.
+	 */
+	:global(.pie-cortex-mathfield::part(menu-toggle)) {
+		display: none;
+	}
+
+	/* Where this package renders its own keypad, MathLive's toggle would open a
+	   second one, docked to the viewport rather than to the tool panel. */
+	:global(.pie-cortex-mathfield[data-pie-own-keypad]::part(virtual-keyboard-toggle)) {
+		display: none;
 	}
 </style>

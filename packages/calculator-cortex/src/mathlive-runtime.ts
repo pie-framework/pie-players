@@ -1,7 +1,4 @@
-import type {
-	MathfieldElement,
-	VirtualKeyboardLayout,
-} from "mathlive";
+import type { MathfieldElement, VirtualKeyboardLayout } from "mathlive";
 import type { CalculatorType } from "@pie-players/pie-calculator";
 import type { CortexCalculatorLocalization } from "./localization.js";
 
@@ -14,7 +11,7 @@ interface MathfieldConstructor {
 
 interface KeyboardLease {
 	owner: symbol;
-	baseLayouts: readonly (string | VirtualKeyboardLayout)[];
+	baseLayouts: readonly (string | VirtualKeyboardLayout)[] | null;
 	baseEditToolbar: "none" | "default";
 	baseLocale: string;
 	baseDecimalSeparator: "." | ",";
@@ -93,14 +90,30 @@ export function acquireMathLiveKeyboard(
 	type: CalculatorType,
 	localization: CortexCalculatorLocalization,
 	mathfieldConstructor: MathfieldConstructor,
+	ownKeypad = false,
 ): () => void {
-	if (typeof window === "undefined" || !window.mathVirtualKeyboard) return () => {};
+	// Locale and decimal separator are static properties of the element class, so
+	// they still have to be set even when this package supplies its own keypad and
+	// wants nothing to do with MathLive's global keyboard.
+	if (ownKeypad) {
+		mathfieldConstructor.locale = localization.locale;
+		mathfieldConstructor.decimalSeparator = decimalSeparator(
+			localization.locale,
+		);
+		return () => {};
+	}
+	if (typeof window === "undefined" || !window.mathVirtualKeyboard)
+		return () => {};
 	const leaseGlobal = globalThis as LeaseGlobal;
 	const keyboard = window.mathVirtualKeyboard;
 	const existing = leaseGlobal[LEASE_KEY];
 	const lease: KeyboardLease = existing ?? {
 		owner,
-		baseLayouts: keyboard.layouts,
+		// Inside an iframe MathLive installs `VirtualKeyboardProxy`, whose `layouts`
+		// getter returns `[]`. Capturing that and restoring it on release would set
+		// the top-level keyboard's layouts to empty and break every other mathfield
+		// on the page, so an empty read is treated as "nothing to restore".
+		baseLayouts: keyboard.layouts.length > 0 ? keyboard.layouts : null,
 		baseEditToolbar: keyboard.editToolbar,
 		baseLocale: mathfieldConstructor.locale,
 		baseDecimalSeparator: mathfieldConstructor.decimalSeparator,
@@ -115,7 +128,7 @@ export function acquireMathLiveKeyboard(
 	return () => {
 		const current = leaseGlobal[LEASE_KEY];
 		if (!current || current.owner !== owner) return;
-		keyboard.layouts = current.baseLayouts;
+		if (current.baseLayouts) keyboard.layouts = current.baseLayouts;
 		keyboard.editToolbar = current.baseEditToolbar;
 		mathfieldConstructor.locale = current.baseLocale;
 		mathfieldConstructor.decimalSeparator = current.baseDecimalSeparator;
@@ -127,9 +140,19 @@ export function configureMathfield(
 	mathfield: MathfieldElement,
 	label: string,
 	restrictedMode: boolean,
+	ownKeypad = false,
 ): void {
 	mathfield.setAttribute("aria-label", label);
-	mathfield.mathVirtualKeyboardPolicy = "auto";
+	/*
+	 * `"manual"` where this package renders its own keypad. Under `"auto"` MathLive
+	 * registers a global focusin handler whenever `isTouchCapable()` — every
+	 * touchscreen Chromebook and tablet — and shows its viewport-fixed keyboard
+	 * shortly after the field gains focus. The tool wrapper focuses the calculator
+	 * on open, so `"auto"` means opening the calculator on a tablet drops a grey
+	 * keyboard across the bottom of the assessment, over the result and any error.
+	 */
+	mathfield.mathVirtualKeyboardPolicy = ownKeypad ? "manual" : "auto";
+	if (ownKeypad) mathfield.setAttribute("data-pie-own-keypad", "true");
 	mathfield.menuItems = [];
 	mathfield.smartMode = false;
 	mathfield.smartFence = true;

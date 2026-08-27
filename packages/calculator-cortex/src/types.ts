@@ -56,6 +56,45 @@ export interface CortexCalculatorMessages {
 	virtualKeyboardBasic: string;
 	virtualKeyboardScientific: string;
 	virtualKeyboardGraphing: string;
+	keypad: string;
+	keypadLayer: string;
+	angleModeDegreesShort: string;
+	angleModeRadiansShort: string;
+	angleModeChanged: string;
+	inserted: string;
+	/*
+	 * Keys whose visible label is a word carry that word inside their accessible
+	 * name — WCAG 2.5.3 Label in Name, and the thing voice control speaks. Keys
+	 * whose label is a glyph are named freely, since a glyph is not a text label.
+	 */
+	keySine: string;
+	keyCosine: string;
+	keyTangent: string;
+	keyInverseSine: string;
+	keyInverseCosine: string;
+	keyInverseTangent: string;
+	keyNaturalLog: string;
+	keyCommonLog: string;
+	keySquareRoot: string;
+	keyNthRoot: string;
+	keyPower: string;
+	keySquared: string;
+	keyCubed: string;
+	keyExponential: string;
+	keyAbsoluteValue: string;
+	keyFactorial: string;
+	keyPi: string;
+	keyEuler: string;
+	keyPercent: string;
+	keyOpenParenthesis: string;
+	keyCloseParenthesis: string;
+	keyDecimalSeparator: string;
+	keyDigit: string;
+	keyAdd: string;
+	keySubtract: string;
+	keyMultiply: string;
+	keyDivide: string;
+	keyVariableX: string;
 	graphExpressions: string;
 	graphExpressionLabel: string;
 	seriesDescription: string;
@@ -92,7 +131,8 @@ export interface CortexCalculatorMessages {
 }
 
 export type CortexCalculatorMessageKey = keyof CortexCalculatorMessages;
-export type CortexCalculatorMessageOverrides = Partial<CortexCalculatorMessages>;
+export type CortexCalculatorMessageOverrides =
+	Partial<CortexCalculatorMessages>;
 
 export interface CortexCalculatorSettings extends Record<string, unknown> {
 	angleMode?: CortexAngleMode;

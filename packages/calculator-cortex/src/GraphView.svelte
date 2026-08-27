@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import Keypad from './Keypad.svelte';
 	import MathFieldInput from './MathFieldInput.svelte';
 	import type {
 		CortexCalculatorController,
 		CortexCalculatorSnapshot,
 	} from './calculator-controller.js';
+	import type { KeypadKey, KeypadLayer } from './keypad-layouts.js';
 	import type {
 		CortexGraphExpressionState,
 		CortexGraphViewport,
@@ -14,14 +16,20 @@
 	let {
 		controller,
 		snapshot,
+		layers,
 	}: {
 		controller: CortexCalculatorController;
 		snapshot: CortexCalculatorSnapshot;
+		layers: readonly KeypadLayer[];
 	} = $props();
 
 	interface JsxCurve {
 		dataX: number[];
 		dataY: number[];
+		setAttribute(attributes: Record<string, unknown>): void;
+	}
+
+	interface JsxAxis {
 		setAttribute(attributes: Record<string, unknown>): void;
 	}
 
@@ -33,6 +41,8 @@
 		resizeContainer(width: number, height: number, preserveCss?: boolean, preserveBounds?: boolean): void;
 		removeObject(object: unknown): void;
 		on(event: string, handler: () => void): void;
+		defaultAxes?: { x?: JsxAxis; y?: JsxAxis };
+		grids?: JsxAxis[];
 	}
 
 	interface JsxGraphModule {
@@ -64,6 +74,7 @@
 
 	let graphElement = $state<HTMLDivElement | null>(null);
 	let addButton = $state<HTMLButtonElement | null>(null);
+	let expressionPanel = $state<HTMLElement | null>(null);
 	let board: JsxBoard | null = null;
 	let graphModule: JsxGraphModule | null = null;
 	let resizeObserver: ResizeObserver | null = null;
@@ -72,8 +83,16 @@
 	let previousSize = '';
 	let selectedTraceId = $state('');
 	let traceIndex = $state(0);
+	let activeField = $state<import('mathlive').MathfieldElement | null>(null);
+	let announcement = $state('');
+	let selectedLayerId = $state('');
 	const curves = new Map<string, JsxCurve>();
 
+	const activeLayerId = $derived(
+		layers.some((layer) => layer.id === selectedLayerId)
+			? selectedLayerId
+			: (layers[0]?.id ?? ''),
+	);
 	const graph = $derived(snapshot.graph);
 	const expressions = $derived(graph?.expressions ?? []);
 	const expressionSampleKey = $derived(
@@ -81,8 +100,16 @@
 			.map((expression) => `${expression.id}:${expression.hidden}:${expression.latex}`)
 			.join('|'),
 	);
+	// Fall back to the first series so the `<select>` always has a selected option.
+	// It used to start at '' while the readout traced series 1 regardless, so the
+	// combobox reported `selectedIndex: -1` — no value for AT, and visibly empty.
+	const effectiveTraceId = $derived(
+		snapshot.series.some((entry) => entry.id === selectedTraceId)
+			? selectedTraceId
+			: (snapshot.series[0]?.id ?? ''),
+	);
 	const selectedSeries = $derived(
-		snapshot.series.find((entry) => entry.id === selectedTraceId) ?? snapshot.series[0],
+		snapshot.series.find((entry) => entry.id === effectiveTraceId),
 	);
 	const tracePoints = $derived(
 		selectedSeries
@@ -92,6 +119,63 @@
 			: [],
 	);
 	const tracePoint = $derived(tracePoints[Math.min(traceIndex, Math.max(0, tracePoints.length - 1))]);
+
+	function resolveToken(property: string, fallbackProperty: string, fallback: string): string {
+		const calculator = graphElement?.closest<HTMLElement>('.pie-cortex-calculator');
+		if (!calculator) return fallback;
+		const styles = getComputedStyle(calculator);
+		return (
+			styles.getPropertyValue(property).trim() ||
+			styles.getPropertyValue(fallbackProperty).trim() ||
+			fallback
+		);
+	}
+
+	/**
+	 * Axis, tick-label and grid colours for the board.
+	 *
+	 * JSXGraph was previously initialised with bare `axis: true` / `grid: true`, so
+	 * it used its light-mode defaults in every theme: tick labels came out
+	 * `fill: rgb(0, 0, 0)` on a `#1f2937` plot — 1.43:1, a 1.4.3 failure for text —
+	 * and axes `#666666` at about 2.2:1, below 1.4.11's 3:1. Tick labels are text and
+	 * take the 4.5:1 bar, so both take `--pie-text`; the grid is a subtle guide and
+	 * takes the blue-grey step, since the axes and labels carry the information.
+	 */
+	function boardTheme(): {
+		ink: string;
+		grid: string;
+	} {
+		return {
+			ink: resolveToken('--pie-text', '--cortex-text', '#0f172a'),
+			grid: resolveToken('--pie-blue-grey-300', '--cortex-grid', '#c0c3cf'),
+		};
+	}
+
+	function axisAttributes(ink: string): Record<string, unknown> {
+		return {
+			strokeColor: ink,
+			strokeOpacity: 1,
+			highlightStrokeColor: ink,
+			ticks: {
+				strokeColor: ink,
+				majorHeight: 8,
+				label: { strokeColor: ink, cssStyle: `fill: ${ink}; color: ${ink};` },
+			},
+			label: { strokeColor: ink },
+		};
+	}
+
+	function applyBoardTheme(): void {
+		if (!board) return;
+		const { ink, grid } = boardTheme();
+		const attributes = axisAttributes(ink);
+		board.defaultAxes?.x?.setAttribute(attributes);
+		board.defaultAxes?.y?.setAttribute(attributes);
+		for (const line of board.grids ?? []) {
+			line.setAttribute({ strokeColor: grid, strokeOpacity: 1 });
+		}
+		board.fullUpdate();
+	}
 
 	function viewportFromBoard(): CortexGraphViewport | null {
 		if (!board) return null;
@@ -123,6 +207,10 @@
 		if (!board || !graphElement) return false;
 		const width = graphElement.clientWidth;
 		const height = graphElement.clientHeight;
+		// The plot is now flex-sized rather than fixed, so it can be measured at 0
+		// before first layout. Resizing to a zero box gives JSXGraph a degenerate
+		// bounding box and it renders no SVG at all.
+		if (width <= 0 || height <= 0) return false;
 		const size = `${width}:${height}`;
 		if (size === previousSize) return false;
 		previousSize = size;
@@ -165,14 +253,8 @@
 		const fallback = DEFAULT_COLORS[colorIndex] ?? DEFAULT_COLORS[0] ?? '#075985';
 		const property = COLOR_PROPERTIES[colorIndex] ?? COLOR_PROPERTIES[0];
 		const defaultProperty = DEFAULT_COLOR_PROPERTIES[colorIndex] ?? DEFAULT_COLOR_PROPERTIES[0];
-		const calculator = graphElement?.closest<HTMLElement>('.pie-cortex-calculator');
-		if (!calculator || !property) return fallback;
-		const styles = getComputedStyle(calculator);
-		return (
-			styles.getPropertyValue(property).trim() ||
-			(defaultProperty ? styles.getPropertyValue(defaultProperty).trim() : '') ||
-			fallback
-		);
+		if (!property || !defaultProperty) return fallback;
+		return resolveToken(property, defaultProperty, fallback);
 	}
 
 	$effect(() => {
@@ -226,16 +308,34 @@
 		traceIndex = Math.min(tracePoints.length - 1, Math.max(0, traceIndex + direction));
 	}
 
+	function insertKey(key: KeypadKey): void {
+		const target = activeField ?? expressionPanel?.querySelector('math-field');
+		if (!target) return;
+		const field = target as import('mathlive').MathfieldElement;
+		field.executeCommand(['insert', key.latex]);
+		field.focus();
+		announcement = i18n.t(key.nameKey, key.nameValues ?? {});
+	}
+
 	onMount(() => {
 		let cancelled = false;
+		let schemeQuery: MediaQueryList | null = null;
+		const onSchemeChange = () => applyBoardTheme();
 		void import('jsxgraph').then((module) => {
 			if (cancelled || !graphElement || !graph) return;
 			graphModule = module.default as unknown as JsxGraphModule;
 			const viewport = graph.viewport;
+			const { ink, grid } = boardTheme();
 			board = graphModule.JSXGraph.initBoard(graphElement, {
 				boundingbox: [viewport.xMin, viewport.yMax, viewport.xMax, viewport.yMin],
 				axis: controller.settings.graph.showAxes,
-				grid: controller.settings.graph.showGrid,
+				defaultAxes: {
+					x: axisAttributes(ink),
+					y: axisAttributes(ink),
+				},
+				grid: controller.settings.graph.showGrid
+					? { strokeColor: grid, strokeOpacity: 1 }
+					: false,
 				showNavigation: false,
 				showCopyright: false,
 				pan: { enabled: true },
@@ -245,16 +345,25 @@
 			previousBounds = board.getBoundingBox().join(':');
 			previousSize = `${graphElement.clientWidth}:${graphElement.clientHeight}`;
 			board.on('update', boardUpdated);
+			applyBoardTheme();
 			resizeObserver = new ResizeObserver(() => {
 				if (resizeBoard()) requestSample();
 			});
 			resizeObserver.observe(graphElement);
 			updateCurves(snapshot.series);
 			requestSample(0);
+			// `theme: 'auto'` follows the OS, which can flip while the tool is open, and
+			// the board's colours are baked in at init. Nothing else re-applies them.
+			if (controller.settings.theme === 'auto' && typeof window !== 'undefined') {
+				schemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+				schemeQuery.addEventListener('change', onSchemeChange);
+			}
 		});
 
 		return () => {
 			cancelled = true;
+			schemeQuery?.removeEventListener('change', onSchemeChange);
+			schemeQuery = null;
 			if (sampleTimer) clearTimeout(sampleTimer);
 			sampleTimer = null;
 			resizeObserver?.disconnect();
@@ -268,258 +377,585 @@
 </script>
 
 <div class="pie-cortex-graph-layout">
-	<section class="pie-cortex-expression-panel" aria-label={i18n.t('graphExpressions')}>
-		{#each expressions as expression, index (expression.id)}
-			<div class="pie-cortex-expression-row">
-				<span
-					class="pie-cortex-series-swatch pie-cortex-series-swatch--{expression.lineStyle} pie-cortex-series-swatch--color-{expression.colorIndex + 1}"
-					aria-hidden="true"
-				></span>
-				<div class="pie-cortex-expression-input">
-					<MathFieldInput
-						value={expression.latex}
-						label={graphExpressionLabel(expression, index)}
-						type="graphing"
-						localization={i18n}
-						restrictedMode={controller.settings.restrictedMode}
-						onInput={(latex) => updateExpression(expression.id, latex)}
-					/>
-					<span class="pie-cortex-series-description">
-						{i18n.t('seriesDescription', {
+	<section
+		class="pie-cortex-expression-panel"
+		aria-label={i18n.t('graphExpressions')}
+		bind:this={expressionPanel}
+		onfocusin={(event) => {
+			// `focusin` is composed, so a focus inside MathLive's shadow root retargets
+			// to the host element — which is what the keypad needs to write into.
+			const host = (event.target as Element | null)?.closest?.('math-field');
+			if (host) activeField = host as import('mathlive').MathfieldElement;
+		}}
+	>
+		<div class="pie-cortex-expression-list">
+			{#each expressions as expression, index (expression.id)}
+				<div class="pie-cortex-expression-row">
+					<!--
+						The colour chip is the show/hide control, so the legend and the toggle
+						are one affordance instead of a decorative dash plus two text buttons.
+						Its name is static and `aria-pressed` carries the state: the previous
+						pairing flipped the name between "Show…"/"Hide…" *and* set
+						`aria-pressed`, so AT announced "Show expression 1, toggle button,
+						pressed" — the name asserting the action the state denies.
+					-->
+					<button
+						type="button"
+						class="pie-cortex-series-chip pie-cortex-series-chip--{expression.lineStyle} pie-cortex-series-chip--color-{expression.colorIndex + 1}"
+						class:pie-cortex-series-chip--hidden={expression.hidden}
+						aria-pressed={!expression.hidden}
+						aria-label={i18n.t('seriesDescription', {
 							index: index + 1,
 							lineStyle: i18n.lineStyle(expression.lineStyle),
 						})}
-					</span>
+						onclick={() => {
+							controller.toggleGraphExpression(expression.id);
+							requestSample(0);
+						}}
+					>
+						<span class="pie-cortex-series-chip__rule" aria-hidden="true"></span>
+					</button>
+
+					<div class="pie-cortex-expression-input">
+						<MathFieldInput
+							value={expression.latex}
+							label={graphExpressionLabel(expression, index)}
+							type="graphing"
+							localization={i18n}
+							restrictedMode={controller.settings.restrictedMode}
+							focusRequest={index === 0 ? snapshot.focusRequest : 0}
+							ownKeypad={true}
+							onInput={(latex) => updateExpression(expression.id, latex)}
+							onFieldReady={(instance) => {
+								if (instance && index === 0 && !activeField) activeField = instance;
+							}}
+						/>
+						<!--
+							Kept visible. It is the only non-colour cue telling a sighted
+							colour-blind learner which line style belongs to which row, and it is
+							the *visible* half of the pair — the field's `aria-label` duplicates
+							it, not the reverse. A `title` tooltip would not substitute: it is
+							unavailable to keyboard-only and touch users.
+						-->
+						<span class="pie-cortex-series-description">
+							{i18n.t('seriesDescription', {
+								index: index + 1,
+								lineStyle: i18n.lineStyle(expression.lineStyle),
+							})}
+						</span>
+					</div>
+
+					<button
+						type="button"
+						class="pie-cortex-icon-button"
+						aria-label={i18n.t('removeExpression', { index: index + 1 })}
+						onclick={() => removeExpression(expression.id)}
+					>
+						<span aria-hidden="true">✕</span>
+					</button>
 				</div>
-				<button
-					type="button"
-					class="pie-cortex-icon-button"
-					aria-pressed={expression.hidden}
-					aria-label={i18n.t(expression.hidden ? 'showExpression' : 'hideExpression', { index: index + 1 })}
-					onclick={() => {
-						controller.toggleGraphExpression(expression.id);
-						requestSample(0);
-					}}
-				>{expression.hidden ? i18n.t('show') : i18n.t('hide')}</button
-				>
-				<button
-					type="button"
-					class="pie-cortex-icon-button"
-					aria-label={i18n.t('removeExpression', { index: index + 1 })}
-					onclick={() => removeExpression(expression.id)}
-				>{i18n.t('remove')}</button
-				>
+			{/each}
+		</div>
+
+		<div class="pie-cortex-expression-actions">
+			<button
+				bind:this={addButton}
+				type="button"
+				class="pie-cortex-action-button"
+				disabled={expressions.length >= 6}
+				onclick={() => controller.addGraphExpression()}
+			>{i18n.t('addExpression')}</button>
+			<button
+				type="button"
+				class="pie-cortex-action-button"
+				onclick={() => controller.clear()}
+			>{i18n.t('clear')}</button>
+		</div>
+
+		{#if layers.length > 1}
+			<div class="pie-cortex-keypad__layers" role="group" aria-label={i18n.t('keypadLayer')}>
+				{#each layers as layer (layer.id)}
+					<button
+						type="button"
+						class="pie-cortex-layer-tab"
+						class:pie-cortex-layer-tab--active={layer.id === activeLayerId}
+						aria-pressed={layer.id === activeLayerId}
+						onclick={() => (selectedLayerId = layer.id)}
+					>{i18n.t(layer.labelKey)}</button>
+				{/each}
 			</div>
-		{/each}
-		<button
-			bind:this={addButton}
-			type="button"
-			class="pie-cortex-action-button"
-			disabled={expressions.length >= 6}
-			onclick={() => controller.addGraphExpression()}
-		>{i18n.t('addExpression')}</button
-		>
+		{/if}
+		<Keypad
+			{layers}
+			{activeLayerId}
+			localization={i18n}
+			onInsert={insertKey}
+			onCommit={() => requestSample(0)}
+		/>
 	</section>
 
 	<section class="pie-cortex-graph-panel" aria-label={i18n.t('graph')}>
 		<div class="pie-cortex-graph-controls">
 			<button type="button" class="pie-cortex-action-button" onclick={resetViewport}>{i18n.t('resetView')}</button>
-			<span role="status" aria-live="polite">{snapshot.graphUpdating ? i18n.t('updatingGraph') : ''}</span>
+			<!-- Always mounted with empty text, so the region exists before it speaks. -->
+			<span class="pie-cortex-graph-status" role="status" aria-live="polite"
+				>{snapshot.graphUpdating ? i18n.t('updatingGraph') : ''}</span
+			>
 		</div>
 		<div class="pie-cortex-jsxgraph" bind:this={graphElement} aria-hidden="true"></div>
-		<div class="pie-cortex-graph-summary">
-			<h3>{i18n.t('graphSummary')}</h3>
-			{#if graph}
-				<p>
-					{i18n.t('viewportSummary', {
-						xMin: i18n.formatNumber(graph.viewport.xMin, 4),
-						xMax: i18n.formatNumber(graph.viewport.xMax, 4),
-						yMin: i18n.formatNumber(graph.viewport.yMin, 4),
-						yMax: i18n.formatNumber(graph.viewport.yMax, 4),
-					})}
-				</p>
-				<ul>
-					{#each expressions.filter((expression) => !expression.hidden && expression.latex.trim()) as expression, index}
-						<li>{i18n.t('seriesSummary', {
-							index: index + 1,
-							lineStyle: i18n.lineStyle(expression.lineStyle),
-							expression: expression.latex,
-						})}</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
 
-		<div class="pie-cortex-trace" aria-label={i18n.t('keyboardGraphTrace')}>
-			<h3>{i18n.t('keyboardTrace')}</h3>
-			<label>
-				{i18n.t('series')}
-				<select bind:value={selectedTraceId} onchange={() => (traceIndex = 0)}>
-					{#each snapshot.series as entry, index}
-						<option value={entry.id}>{i18n.t('seriesOption', { index: index + 1 })}</option>
-					{/each}
-				</select>
-			</label>
-			<div class="pie-cortex-trace-controls">
-				<button type="button" class="pie-cortex-action-button" disabled={!tracePoint} onclick={() => moveTrace(-1)}>
-					{i18n.t('previousPoint')}
-				</button>
-				<button type="button" class="pie-cortex-action-button" disabled={!tracePoint} onclick={() => moveTrace(1)}>
-					{i18n.t('nextPoint')}
-				</button>
-			</div>
-			<p role="status" aria-live="polite" aria-atomic="true">
-				{#if tracePoint}
-					{i18n.t('tracePoint', {
-						x: i18n.formatNumber(tracePoint.x),
-						y: i18n.formatNumber(tracePoint.y),
-					})}
-				{:else}
-					{i18n.t('noSampledPoint')}
+		<!--
+			One compact strip rather than two bordered panels. Every string stays
+			rendered, visible and unconditionally in the accessibility tree: the plot
+			itself is `aria-hidden`, so this text *is* the graph for AT, and PIE's own
+			read-aloud excludes `.pie-sr-only` content, so hiding it would drop it from
+			the TTS accommodation as well. Only the chrome was compacted, never the
+			controls or their targets.
+		-->
+		<div class="pie-cortex-graph-readout">
+			<div class="pie-cortex-graph-summary">
+				<h3>{i18n.t('graphSummary')}</h3>
+				{#if graph}
+					<p>
+						{i18n.t('viewportSummary', {
+							xMin: i18n.formatNumber(graph.viewport.xMin, 4),
+							xMax: i18n.formatNumber(graph.viewport.xMax, 4),
+							yMin: i18n.formatNumber(graph.viewport.yMin, 4),
+							yMax: i18n.formatNumber(graph.viewport.yMax, 4),
+						})}
+					</p>
+					<ul>
+						{#each expressions.filter((expression) => !expression.hidden && expression.latex.trim()) as expression, index}
+							<li>{i18n.t('seriesSummary', {
+								index: index + 1,
+								lineStyle: i18n.lineStyle(expression.lineStyle),
+								expression: expression.latex,
+							})}</li>
+						{/each}
+					</ul>
 				{/if}
-			</p>
+			</div>
+
+			<div class="pie-cortex-trace" aria-label={i18n.t('keyboardGraphTrace')}>
+				<h3>{i18n.t('keyboardTrace')}</h3>
+				<label class="pie-cortex-trace__series">
+					{i18n.t('series')}
+					<select
+						value={effectiveTraceId}
+						onchange={(event) => {
+							selectedTraceId = (event.currentTarget as HTMLSelectElement).value;
+							traceIndex = 0;
+						}}
+					>
+						{#each snapshot.series as entry, index (entry.id)}
+							<option value={entry.id}>{i18n.t('seriesOption', { index: index + 1 })}</option>
+						{/each}
+					</select>
+				</label>
+				<div class="pie-cortex-trace-controls">
+					<button type="button" class="pie-cortex-action-button" disabled={!tracePoint} onclick={() => moveTrace(-1)}>
+						{i18n.t('previousPoint')}
+					</button>
+					<button type="button" class="pie-cortex-action-button" disabled={!tracePoint} onclick={() => moveTrace(1)}>
+						{i18n.t('nextPoint')}
+					</button>
+				</div>
+				<p class="pie-cortex-trace__readout" role="status" aria-live="polite" aria-atomic="true">
+					{#if tracePoint}
+						{i18n.t('tracePoint', {
+							x: i18n.formatNumber(tracePoint.x),
+							y: i18n.formatNumber(tracePoint.y),
+						})}
+					{:else}
+						{i18n.t('noSampledPoint')}
+					{/if}
+				</p>
+			</div>
 		</div>
 	</section>
 </div>
 
+<p class="pie-cortex-sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
+
 <style>
 	.pie-cortex-graph-layout {
-		display: grid;
-		grid-template-columns: minmax(16rem, 2fr) minmax(18rem, 3fr);
-		gap: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: var(--cortex-space-2, 0.5rem);
+		flex: 1 1 auto;
 		min-width: 0;
+		min-height: 0;
+	}
+
+	/*
+	 * Stacked by default, two columns only when this calculator — not the window —
+	 * is wide enough to hold both. The previous `@media (max-width: 48rem)` measured
+	 * the viewport, so inside the shipped 380px tool panel on a 1280px page it never
+	 * fired: the grid stayed at its 34rem floor in a 333px box and the shell clipped
+	 * the right 229px, most of the plot, with `overflow-x: hidden`.
+	 */
+	@container pie-cortex-calculator (min-width: 42rem) {
+		.pie-cortex-graph-layout {
+			display: grid;
+			/* `minmax(0, 1fr)`, or the plot's own min-content width blocks shrinking. */
+			grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr);
+			/*
+			 * And the row too. An `auto` row is content-sized, so the graph panel would
+			 * grow to whatever the plot and the readout want and push the whole
+			 * calculator past its panel — which the tool shell clips.
+			 */
+			grid-template-rows: minmax(0, 1fr);
+			gap: var(--cortex-space-3, 0.75rem);
+		}
 	}
 
 	.pie-cortex-expression-panel,
 	.pie-cortex-graph-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 0.65rem;
+		gap: var(--cortex-space-2, 0.5rem);
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.pie-cortex-graph-panel {
+		flex: 1 1 auto;
+	}
+
+	.pie-cortex-expression-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cortex-space-2, 0.5rem);
 		min-width: 0;
 	}
 
 	.pie-cortex-expression-row {
 		display: grid;
-		grid-template-columns: 1rem minmax(0, 1fr) auto auto;
-		align-items: center;
-		gap: 0.45rem;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		/*
+		 * `start`, not `center`. The input cell holds the field *and* its caption, so
+		 * centring aligned the chip on the pair rather than on the field — which is
+		 * what made the old swatch look like a stray dash floating above the line.
+		 */
+		align-items: start;
+		gap: var(--cortex-space-2, 0.5rem);
 	}
 
 	.pie-cortex-expression-input {
 		min-width: 0;
 	}
 
-	.pie-cortex-series-swatch {
-		display: block;
-		width: 1rem;
-		border-top-width: 3px;
-		border-top-style: solid;
+	.pie-cortex-series-chip {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		/*
+		 * 2.75rem, not the 20px a colour dot would suggest. This is the show/hide
+		 * control now, and 2.5.8 sets 24px as the floor while the rest of this tool
+		 * holds 44px — trading a 44px toggle down to 20px is exactly the regression a
+		 * switch-access learner pays for.
+		 */
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		padding: 0;
+		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
+		border-radius: 50%;
+		background: var(--pie-button-bg, var(--cortex-button-bg));
+		cursor: pointer;
+		transition: background-color 0.12s ease, opacity 0.12s ease;
 	}
 
-	.pie-cortex-series-swatch--dashed {
+	.pie-cortex-series-chip__rule {
+		display: block;
+		width: 1.25rem;
+		border-top-width: 3px;
+		border-top-style: solid;
+		border-top-color: currentcolor;
+	}
+
+	.pie-cortex-series-chip--dashed .pie-cortex-series-chip__rule {
 		border-top-style: dashed;
 	}
 
-	.pie-cortex-series-swatch--dotted {
+	.pie-cortex-series-chip--dotted .pie-cortex-series-chip__rule {
 		border-top-style: dotted;
 	}
 
-	.pie-cortex-series-swatch--color-1 {
-		border-top-color: var(--pie-calculator-series-1, var(--cortex-default-series-1, #075985));
+	/*
+	 * Hidden series: the chip empties out rather than only fading, so the state is
+	 * carried by more than colour and survives a fixed-hue palette.
+	 */
+	.pie-cortex-series-chip--hidden {
+		background: var(--pie-background-dark, var(--cortex-surface-raised));
 	}
 
-	.pie-cortex-series-swatch--color-2 {
-		border-top-color: var(--pie-calculator-series-2, var(--cortex-default-series-2, #9f1239));
+	.pie-cortex-series-chip--hidden .pie-cortex-series-chip__rule {
+		border-top-style: dotted;
+		opacity: 0.5;
 	}
 
-	.pie-cortex-series-swatch--color-3 {
-		border-top-color: var(--pie-calculator-series-3, var(--cortex-default-series-3, #166534));
+	.pie-cortex-series-chip--color-1 {
+		color: var(--pie-calculator-series-1, var(--cortex-default-series-1, #075985));
 	}
 
-	.pie-cortex-series-swatch--color-4 {
-		border-top-color: var(--pie-calculator-series-4, var(--cortex-default-series-4, #6b21a8));
+	.pie-cortex-series-chip--color-2 {
+		color: var(--pie-calculator-series-2, var(--cortex-default-series-2, #9f1239));
 	}
 
-	.pie-cortex-series-swatch--color-5 {
-		border-top-color: var(--pie-calculator-series-5, var(--cortex-default-series-5, #9a3412));
+	.pie-cortex-series-chip--color-3 {
+		color: var(--pie-calculator-series-3, var(--cortex-default-series-3, #166534));
 	}
 
-	.pie-cortex-series-swatch--color-6 {
-		border-top-color: var(--pie-calculator-series-6, var(--cortex-default-series-6, #334155));
+	.pie-cortex-series-chip--color-4 {
+		color: var(--pie-calculator-series-4, var(--cortex-default-series-4, #6b21a8));
+	}
+
+	.pie-cortex-series-chip--color-5 {
+		color: var(--pie-calculator-series-5, var(--cortex-default-series-5, #9a3412));
+	}
+
+	.pie-cortex-series-chip--color-6 {
+		color: var(--pie-calculator-series-6, var(--cortex-default-series-6, #334155));
 	}
 
 	.pie-cortex-series-description {
 		display: block;
 		margin-top: 0.2rem;
-		font-size: 0.8rem;
+		padding-inline: var(--cortex-tape-inset, 0.75rem);
+		font-size: 0.75rem;
 	}
 
-	.pie-cortex-icon-button,
-	.pie-cortex-action-button,
-	select {
-		min-height: 2.75rem;
-		padding: 0.45rem 0.7rem;
-		border: 1px solid var(--pie-button-border, var(--pie-border, #64748b));
-		border-radius: 0.35rem;
-		background: var(--pie-button-bg, var(--pie-background, #fff));
-		color: var(--pie-button-color, var(--pie-text, #0f172a));
+	.pie-cortex-keypad__layers {
+		display: flex;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.pie-cortex-layer-tab {
+		min-height: 2.25rem;
+		padding-inline: 0.6rem;
+		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
+		border-radius: 1rem;
+		background: var(--pie-button-bg, var(--cortex-button-bg));
+		color: var(--pie-button-color, var(--cortex-button-color));
 		font: inherit;
+		font-size: 0.8125rem;
+		font-weight: 600;
 		cursor: pointer;
+		transition: background-color 0.12s ease;
 	}
 
-	.pie-cortex-icon-button:focus-visible,
-	.pie-cortex-action-button:focus-visible,
-	select:focus-visible {
-		outline: 3px solid var(--pie-button-focus-outline, #2563eb);
-		outline-offset: 2px;
+	.pie-cortex-layer-tab--active {
+		border-color: var(--pie-primary, var(--cortex-primary));
+		background: var(--pie-primary, var(--cortex-primary));
+		color: var(--pie-white, var(--cortex-on-primary));
 	}
 
-	.pie-cortex-jsxgraph {
-		width: 100%;
-		height: min(26rem, 55vh);
-		min-height: 18rem;
-		border: 1px solid var(--pie-border, #64748b);
-		background: var(--pie-background-dark, var(--pie-background, #fff));
-		touch-action: none;
+	.pie-cortex-layer-tab:hover {
+		background: var(--pie-button-hover-bg, var(--cortex-button-hover-bg));
 	}
 
+	.pie-cortex-expression-actions,
 	.pie-cortex-graph-controls,
 	.pie-cortex-trace-controls {
 		display: flex;
 		align-items: center;
-		gap: 0.65rem;
+		gap: var(--cortex-space-1, 0.375rem);
 		flex-wrap: wrap;
+		min-width: 0;
+	}
+
+	.pie-cortex-icon-button,
+	.pie-cortex-action-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 2.75rem;
+		padding: 0.45rem 0.7rem;
+		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
+		border-radius: var(--cortex-radius-key, 0.25rem);
+		background: var(--pie-button-bg, var(--cortex-button-bg));
+		color: var(--pie-button-color, var(--cortex-button-color));
+		font: inherit;
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: background-color 0.12s ease, border-color 0.12s ease;
+	}
+
+	.pie-cortex-icon-button {
+		min-width: 2.75rem;
+		padding: 0.45rem;
+	}
+
+	.pie-cortex-icon-button:hover,
+	.pie-cortex-action-button:hover,
+	.pie-cortex-series-chip:hover {
+		background: var(--pie-button-hover-bg, var(--cortex-button-hover-bg));
+	}
+
+	.pie-cortex-icon-button:active,
+	.pie-cortex-action-button:active {
+		background: var(--pie-button-active-bg, var(--cortex-button-active-bg));
+	}
+
+	.pie-cortex-icon-button:focus-visible,
+	.pie-cortex-action-button:focus-visible,
+	.pie-cortex-layer-tab:focus-visible,
+	.pie-cortex-series-chip:focus-visible,
+	select:focus-visible {
+		position: relative;
+		z-index: 1;
+		outline: 3px solid var(--pie-button-focus-outline, var(--cortex-focus-outline));
+		outline-offset: 2px;
+	}
+
+	.pie-cortex-action-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.65;
+	}
+
+	.pie-cortex-jsxgraph {
+		width: 100%;
+		/*
+		 * Grows in both axes instead of being pinned to `min(26rem, 55vh)`, which was
+		 * the largest single contributor to the 1032px of content this view used to
+		 * stack into a 372px panel. The floor stays: a zero-height board renders no
+		 * SVG, and `resizeBoard` guards the same case.
+		 */
+		flex: 1 1 auto;
+		min-height: 14rem;
+		border: 1px solid var(--pie-border, var(--cortex-border));
+		border-radius: var(--cortex-radius-key, 0.25rem);
+		background: var(
+			--pie-calculator-surface-raised,
+			var(--pie-background-dark, var(--cortex-surface-raised))
+		);
+		/*
+		 * `pan-y`, not `none`. The board is taller than a short panel, and blocking
+		 * every touch gesture over it meant a touch user could not scroll past the
+		 * plot to reach the trace controls below it.
+		 */
+		touch-action: pan-y;
+	}
+
+	.pie-cortex-graph-status {
+		font-size: 0.8125rem;
+	}
+
+	.pie-cortex-graph-readout {
+		display: flex;
+		flex-direction: column;
+		/* Never squeezed: the plot yields height, the readout keeps its text. */
+		flex: 0 0 auto;
+		gap: var(--cortex-space-2, 0.5rem);
+		min-width: 0;
+		padding: var(--cortex-space-2, 0.5rem);
+		border-radius: var(--cortex-radius-key, 0.25rem);
+		background: var(
+			--pie-calculator-surface-raised,
+			var(--pie-background-dark, var(--cortex-surface-raised))
+		);
+		font-size: 0.8125rem;
+	}
+
+	@container pie-cortex-calculator (min-width: 34rem) {
+		.pie-cortex-graph-readout {
+			flex-direction: row;
+			flex-wrap: wrap;
+		}
+
+		.pie-cortex-graph-summary,
+		.pie-cortex-trace {
+			flex: 1 1 14rem;
+			min-width: 0;
+		}
 	}
 
 	.pie-cortex-graph-summary,
 	.pie-cortex-trace {
-		padding: 0.75rem;
-		border: 1px solid var(--pie-border, #94a3b8);
-		border-radius: 0.35rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.pie-cortex-trace__series {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
+
+	.pie-cortex-trace__readout {
+		font-variant-numeric: tabular-nums;
+		/* Wraps rather than truncates: these are the coordinates being read. */
+		overflow-wrap: anywhere;
+	}
+
+	select {
+		min-height: 2.25rem;
+		padding: 0.2rem 0.4rem;
+		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
+		border-radius: var(--cortex-radius-key, 0.25rem);
+		background: var(--pie-button-bg, var(--cortex-button-bg));
+		color: var(--pie-button-color, var(--cortex-button-color));
+		font: inherit;
+		font-size: 0.8125rem;
+		cursor: pointer;
 	}
 
 	h3,
-	p {
-		margin: 0 0 0.5rem;
+	p,
+	ul {
+		margin: 0;
 	}
 
-	@media (max-width: 48rem) {
-		.pie-cortex-graph-layout {
-			grid-template-columns: minmax(0, 1fr);
+	ul {
+		padding-inline-start: 1.1rem;
+	}
+
+	h3 {
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+	}
+
+	.pie-cortex-sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	@media (forced-colors: active) {
+		.pie-cortex-icon-button,
+		.pie-cortex-action-button,
+		.pie-cortex-layer-tab,
+		.pie-cortex-series-chip,
+		select {
+			border-color: ButtonBorder;
+			background: ButtonFace;
+			color: ButtonText;
+			forced-color-adjust: none;
 		}
 
-		.pie-cortex-expression-row {
-			grid-template-columns: 1rem minmax(0, 1fr);
-		}
-
-		.pie-cortex-icon-button {
-			grid-column: 2;
+		.pie-cortex-jsxgraph {
+			border-color: CanvasText;
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		* {
-			scroll-behavior: auto !important;
+		.pie-cortex-icon-button,
+		.pie-cortex-action-button,
+		.pie-cortex-layer-tab,
+		.pie-cortex-series-chip {
+			transition: none;
 		}
 	}
 </style>

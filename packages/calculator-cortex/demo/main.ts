@@ -29,7 +29,8 @@ function requiredElement<ElementType extends Element>(
 	selector: string,
 ): ElementType {
 	const element = document.querySelector<ElementType>(selector);
-	if (!element) throw new Error(`The calculator demo element ${selector} is missing.`);
+	if (!element)
+		throw new Error(`The calculator demo element ${selector} is missing.`);
 	return element;
 }
 
@@ -37,6 +38,7 @@ const container = requiredElement<HTMLElement>("#calculator");
 const localeControl = requiredElement<HTMLSelectElement>("#locale");
 const themeControl = requiredElement<HTMLSelectElement>("#theme");
 const directionControl = requiredElement<HTMLSelectElement>("#direction");
+const panelControl = requiredElement<HTMLSelectElement>("#panel");
 
 const mode = calculatorMode();
 document
@@ -78,10 +80,27 @@ async function mountCalculator(): Promise<void> {
 	window.__cortexReady = true;
 }
 
+/*
+ * The shipped tool panel is 380x372 for every calculator type. Sizing the demo
+ * container to it is what makes the demo exercise the layout that actually ships:
+ * the package's rules are container queries, and a fluid 1280px demo would never
+ * reach the narrow branch.
+ */
+function applyPanelSize(): void {
+	container.classList.toggle(
+		"pie-cortex-demo-calculator--shell",
+		panelControl.value === "shell",
+	);
+	calculator?.resize?.();
+}
+
+panelControl.addEventListener("change", applyPanelSize);
+
 for (const control of [localeControl, themeControl, directionControl]) {
 	control.addEventListener("change", () => void mountCalculator());
 }
 
+applyPanelSize();
 await mountCalculator();
 
 window.addEventListener(

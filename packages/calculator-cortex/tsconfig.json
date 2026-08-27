@@ -1,0 +1,15 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": ".",
+		"declaration": true,
+		"declarationMap": false,
+		"composite": true,
+		"moduleResolution": "NodeNext",
+		"customConditions": ["browser"]
+	},
+	"include": ["src/**/*", "svelte-shims.d.ts"],
+	"exclude": ["node_modules", "dist", "tests"],
+	"references": [{ "path": "../calculator" }]
+}

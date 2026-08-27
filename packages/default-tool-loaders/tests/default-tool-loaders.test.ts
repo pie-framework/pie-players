@@ -63,7 +63,7 @@ describe("default tool module loaders", () => {
 		expect(loaderSource).not.toContain("@pie-players/pie-tool-text-to-speech");
 	});
 
-	test("selects a GeoGebra calculator loader while keeping Desmos as default", () => {
+	test("selects packaged calculator loaders while keeping Desmos as default", () => {
 		const defaultLoaderSource =
 			createDefaultToolModuleLoaders().calculator.toString();
 		const geogebraLoaderSource = createDefaultToolModuleLoaders({
@@ -71,9 +71,17 @@ describe("default tool module loaders", () => {
 				provider: { id: "calculator-geogebra" },
 			},
 		}).calculator.toString();
+		const cortexLoaderSource = createDefaultToolModuleLoaders({
+			calculatorProviderConfig: {
+				provider: { id: "calculator-cortex" },
+			},
+		}).calculator.toString();
 
-		expect(defaultLoaderSource).toContain("pie-tool-calculator-desmos");
+		expect(defaultLoaderSource).toContain(
+			"pie-tool-calculator-shared/calculator-element",
+		);
 		expect(geogebraLoaderSource).toContain("pie-tool-calculator-geogebra");
+		expect(cortexLoaderSource).toContain("pie-tool-calculator-cortex");
 	});
 
 	test("registers default loaders with host overrides", () => {

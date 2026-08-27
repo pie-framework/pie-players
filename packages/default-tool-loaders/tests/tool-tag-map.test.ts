@@ -107,6 +107,11 @@ describe("createPackagedToolRegistry component overrides", () => {
 				provider: { id: "calculator-geogebra" },
 			},
 		});
+		const cortexRegistry = createPackagedToolRegistry({
+			calculatorProviderConfig: {
+				provider: { id: "calculator-cortex" },
+			},
+		});
 		const toolbarContext: ToolbarContext = {
 			scope: { level: "item", scopeId: "item-1", itemId: "item-1" },
 			itemId: "item-1",
@@ -134,6 +139,7 @@ describe("createPackagedToolRegistry component overrides", () => {
 
 		expect(renderTag(defaultRegistry)).toBe("pie-tool-calculator");
 		expect(renderTag(geogebraRegistry)).toBe("pie-tool-calculator-geogebra");
+		expect(renderTag(cortexRegistry)).toBe("pie-tool-calculator-cortex");
 	});
 
 	test("applies custom tool tag map during toolbar render", () => {

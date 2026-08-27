@@ -147,6 +147,12 @@ Any `/api/...` route referenced by a toolkit provider must be:
   terms; commercial deployment requires a separate agreement. A custom
   `provider.init.scriptUrl` is not permission to mirror or self-host GeoGebra —
   use it only when the deployment's agreement grants that right.
+- **Calculator (Cortex).** The `calculator-cortex` provider bundles MathLive,
+  Cortex Compute Engine, JSXGraph, fonts, and its evaluation worker. It requires
+  no key, service endpoint, CDN, or runtime network request. The package notices
+  record the exact open-source license choices. Learner expressions are parsed
+  and evaluated in the worker and reach JSXGraph only as sampled numeric arrays;
+  the integration does not compile or execute learner-authored JavaScript.
 - **Server-backed TTS.** Follow the security section of
   [`packages/tts-server-polly/examples/INTEGRATION-GUIDE.md#security-considerations`](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md#security-considerations)
   — JWT or session-cookie check in a SvelteKit `handle` hook on

@@ -90,11 +90,15 @@
 		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"peerDependencies": {
+		"@pie-players/pie-calculator-cortex": "workspace:*",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"peerDependenciesMeta": {
+		"@pie-players/pie-calculator-cortex": {
+			"optional": true
+		},
 		"@pie-players/pie-calculator-desmos": {
 			"optional": true
 		},
@@ -108,6 +112,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.10",
 		"@happy-dom/global-registrator": "^20.11.6",
+		"@pie-players/pie-calculator-cortex": "workspace:*",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",

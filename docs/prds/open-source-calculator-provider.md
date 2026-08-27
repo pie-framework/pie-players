@@ -1,6 +1,6 @@
 # Open-Source Calculator Provider
 
-Status: Draft
+Status: Implemented
 
 Owner: `@pie-players/pie-calculator-cortex`
 

@@ -37,7 +37,7 @@ const withFakeDocument = <T>(fn: () => T): T => {
 };
 
 describe("calculator tool registration", () => {
-	test("keeps Desmos as the no-config default and selects GeoGebra explicitly", () => {
+	test("keeps Desmos as the default and selects packaged providers explicitly", () => {
 		expect(resolveCalculatorProviderId(undefined)).toBe(
 			DEFAULT_CALCULATOR_PROVIDER_ID,
 		);
@@ -61,6 +61,12 @@ describe("calculator tool registration", () => {
 			calculatorToolRegistration.provider?.createProvider(geogebraConfig)
 				.providerId,
 		).toBe("geogebra-calculator");
+
+		const cortexConfig = { provider: { id: "calculator-cortex" } };
+		expect(resolveCalculatorProviderId(cortexConfig)).toBe("calculator-cortex");
+		expect(
+			calculatorToolRegistration.provider?.createProvider(cortexConfig).providerId,
+		).toBe("cortex-calculator");
 	});
 
 	test("rejects unknown calculator implementations", () => {

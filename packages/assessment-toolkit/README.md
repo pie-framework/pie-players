@@ -607,6 +607,19 @@ providers: {
 }
 ```
 
+Select the bundled open-source implementation in the same way. It uses no API
+key or runtime network request and supports basic, scientific, and focused
+graphing modes:
+
+```typescript
+providers: {
+  calculator: {
+    provider: { id: 'calculator-cortex' },
+    settings: { angleMode: 'degree', evaluationTimeLimitMs: 1000 }
+  }
+}
+```
+
 ### Minimal Server-Backed TTS Config
 
 For Polly/Google server-backed TTS, the provider config supports a minimal form.
@@ -868,7 +881,7 @@ export interface ToolkitCoordinatorConfig {
       calculator?: {
         enabled?: boolean;
         provider?: {
-          id?: 'calculator-desmos' | 'calculator-geogebra';
+          id?: 'calculator-desmos' | 'calculator-geogebra' | 'calculator-cortex';
           init?: Record<string, unknown>;
           runtime?: {
             authFetcher?: () => Promise<Record<string, unknown>>;

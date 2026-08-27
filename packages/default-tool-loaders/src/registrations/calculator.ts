@@ -22,12 +22,16 @@ import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { CortexToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { GeoGebraToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
 
 type CalculatorType = "basic" | "scientific" | "graphing";
-export type CalculatorProviderId = "calculator-desmos" | "calculator-geogebra";
+export type CalculatorProviderId =
+	| "calculator-desmos"
+	| "calculator-geogebra"
+	| "calculator-cortex";
 export const DEFAULT_CALCULATOR_PROVIDER_ID: CalculatorProviderId =
 	"calculator-desmos";
 
@@ -40,19 +44,25 @@ export function resolveCalculatorProviderId(
 	}
 	if (
 		configured === "calculator-desmos" ||
-		configured === "calculator-geogebra"
+		configured === "calculator-geogebra" ||
+		configured === "calculator-cortex"
 	) {
 		return configured;
 	}
 	throw new Error(
-		`Unsupported calculator provider "${String(configured)}". Expected "calculator-desmos" or "calculator-geogebra".`,
+		`Unsupported calculator provider "${String(configured)}". Expected "calculator-desmos", "calculator-geogebra", or "calculator-cortex".`,
 	);
 }
 
 function createCalculatorToolProvider(config: ToolProviderConfig | undefined) {
-	return resolveCalculatorProviderId(config) === "calculator-geogebra"
-		? new GeoGebraToolProvider()
-		: new DesmosToolProvider();
+	switch (resolveCalculatorProviderId(config)) {
+		case "calculator-cortex":
+			return new CortexToolProvider();
+		case "calculator-geogebra":
+			return new GeoGebraToolProvider();
+		default:
+			return new DesmosToolProvider();
+	}
 }
 
 function getCalculatorInstanceConfig(
@@ -196,7 +206,7 @@ function applyCalculatorParamsToElement(
  * Calculator tool registration
  *
  * Supports:
- * - Basic, scientific, and graphing calculators through Desmos or GeoGebra
+ * - Basic, scientific, and graphing calculators through Desmos, GeoGebra, or Cortex
  * - Context-aware visibility (shows only when math content is detected)
  * - Item level only
  */

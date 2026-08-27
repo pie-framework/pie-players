@@ -137,6 +137,18 @@ auth-fetcher runtime key alone. The runtime shape
 `{ restrictedMode, desmos: { … } }` is unchanged, so the delivered calculator is
 untouched.
 
+The open-source Cortex calculator is additive and was assessed against the
+recorded calculator rows rather than a fresh consumer-checkout refresh, so it
+does not advance the verification date. It adds three packages, the
+`calculator-cortex` selection id, `CortexToolProvider`, and two provider-specific
+custom-element tags. No recorded host names that id or imports those packages.
+The existing generic `pie-tool-calculator` tag, `calculator` tool id, attributes,
+properties, provider-neutral calculator contracts, and no-config Desmos default
+remain unchanged. Ownership of the generic tag's registration moves from the
+Desmos-named package to the shared calculator package; the Desmos package keeps a
+compatibility entry that imports that same guarded registration, so the runtime
+surface observed by Host A and Host R does not change.
+
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a
 `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so

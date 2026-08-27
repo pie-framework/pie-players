@@ -28,6 +28,9 @@
 			"path": "../calculator-desmos"
 		},
 		{
+			"path": "../calculator-cortex"
+		},
+		{
 			"path": "../calculator-geogebra"
 		},
 		{

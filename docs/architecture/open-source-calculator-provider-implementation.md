@@ -1,6 +1,6 @@
 # Open-Source Calculator Provider Implementation Specification
 
-Status: Draft
+Status: Implemented
 
 Related PRD:
 [`../prds/open-source-calculator-provider.md`](../prds/open-source-calculator-provider.md)

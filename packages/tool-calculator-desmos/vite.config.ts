@@ -5,12 +5,7 @@ import dts from "vite-plugin-dts";
 
 export default defineConfig({
 	plugins: [
-		svelte({
-			compilerOptions: {
-				customElement: true,
-			},
-			emitCss: false,
-		}),
+		svelte({ emitCss: false }),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
@@ -23,7 +18,7 @@ export default defineConfig({
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "tool-calculator.svelte"),
+			entry: resolve(__dirname, "index.ts"),
 			name: "PieToolCalculator",
 			fileName: () => "pie-tool-calculator.js",
 			formats: ["es"],
@@ -37,6 +32,7 @@ export default defineConfig({
 			external: [
 				"@pie-players/tts-client-server",
 				"@pie-players/pie-assessment-toolkit",
+				"@pie-players/pie-tool-calculator-shared/calculator-element",
 			],
 			output: {
 				format: "es",

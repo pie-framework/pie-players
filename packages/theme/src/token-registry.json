@@ -1234,12 +1234,14 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-inline-geogebra/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
 	},
@@ -1251,12 +1253,14 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-inline-geogebra/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Component trigger active/open border hook; falls back through existing semantic tokens."
 	},
@@ -1268,12 +1272,14 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-inline-geogebra/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
 	},

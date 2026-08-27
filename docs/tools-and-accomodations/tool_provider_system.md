@@ -318,6 +318,34 @@ Typical examples:
 
 Those endpoint names are host-owned. The tool system only requires that the configured provider runtime functions return the data the provider expects.
 
+For Desmos, an `authFetcher` returning `{ apiKey }` keeps the application key
+out of source and static bundles; it does not hide the key from the browser's
+required `calculator.js` request. Calculator composition has no implicit
+endpoint and no script-proxy/self-hosting path. Use a key and Trial/Commercial
+tier licensed for the application, and proxy or self-host Desmos only when a
+partner agreement grants that right.
+
+The calculator capability defaults to `calculator-desmos` when no provider id
+is configured. The adapter preserves the historical unkeyed request in that
+case so existing clients are not broken; this compatibility behavior does not
+grant or imply a Desmos license. Select the separate GeoGebra suite explicitly:
+
+```ts
+calculator: {
+  provider: {
+    id: "calculator-geogebra",
+    init: { appletTimeoutMs: 20_000 },
+  },
+  settings: { showResetIcon: true },
+  restrictedMode: true,
+}
+```
+
+Both implementations use the same generic provider and custom-element
+configuration seam. `provider.init` configures provider loading,
+`provider.runtime` carries host functions, and `settings` is passed to the
+selected vendor adapter. GeoGebra maps `basic` to its scientific embedded app.
+
 For the production security contract these endpoints must meet
 (authentication, rate-limiting, secret boundaries, `assetOrigins`), see
 [`./tool_host_contract.md#backend-endpoints-for-tool-providers`](./tool_host_contract.md#backend-endpoints-for-tool-providers).

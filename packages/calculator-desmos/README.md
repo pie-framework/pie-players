@@ -1,178 +1,84 @@
 # @pie-players/pie-calculator-desmos
 
-Desmos calculator provider for PIE Players - Premium graphing, scientific, and basic calculators.
+PIE's provider adapter for the Desmos Graphing, Scientific, and Four Function
+Calculator APIs.
 
-## Features
-
-- ✅ Beautiful, intuitive graphing calculators
-- ✅ Interactive expression lists
-- ✅ Scientific and basic calculator modes
-- ✅ State persistence and export
-- ⚠️ Requires Desmos API key from [desmos.com/api](https://www.desmos.com/api)
-- ⚠️ Requires internet connection
+This package contains only PIE-authored adapter code. It does not bundle,
+redistribute, cache, or self-host Desmos's `calculator.js` or other Desmos
+assets. Unless the host has already loaded a build, the provider loads the
+stable v1.12 script directly from `www.desmos.com`.
 
 ## Installation
 
 ```bash
-npm install @pie-players/pie-calculator-desmos
+bun add @pie-players/pie-calculator-desmos
 ```
 
-## How Desmos API Keys Work
+## Desmos license and API key
 
-According to Desmos documentation, the API key should be included when loading the Desmos calculator library:
+Desmos is separately licensed and is not covered by this package's MIT license.
+Obtain a key for the application at [Desmos My API](https://www.desmos.com/my-api)
+and follow the [Desmos API Terms](https://www.desmos.com/api-terms):
 
-```html
-<script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=YOUR_KEY"></script>
-```
+- the free Trial Tier is limited to personal non-commercial use or a 90-day
+  internal evaluation for prospective commercial use;
+- production use by end users and internal business use require the Commercial
+  Tier unless a separate written agreement applies;
+- the key identifies the licensed application and must not be committed to the
+  repository or shared between unrelated applications; and
+- self-hosting is a Desmos partner option, not a general substitute for loading
+  the official CDN script.
 
-However, **this approach exposes your API key in client-side HTML**, which is a security risk for production applications.
+Desmos's documented browser integration requires the key in the
+`calculator.js` URL. A browser user can therefore observe it in the network
+request. Fetching the key at runtime keeps it out of source and static bundles,
+but does not make it a server-only secret.
 
-## Security Best Practices
+For backwards compatibility, calling `initialize()` with no key still loads the
+historical unkeyed v1.12 URL when `window.Desmos` is absent. Existing clients
+therefore continue to work without new configuration. That technical fallback
+does not grant or imply a Desmos license; the deploying host remains responsible
+for obtaining the rights required for its application.
 
-### ⚠️ Important Security Considerations
+## Provider loading
 
-While Desmos's documentation shows the API key embedded in the script URL (client-side), this is **NOT SECURE for production** because:
-
-1. Anyone can view your HTML source and see the API key
-2. The key can be copied and used by others
-3. You cannot rotate keys without redeploying your entire application
-4. You have no control over who uses your key
-
-### Our Recommended Patterns
-
-This package supports three configuration patterns:
-
-#### 1. Development Mode (Direct API Key) - Testing Only
-
-Use the demo key or your own key for local development:
-
-```html
-<!-- Load Desmos with demo key -->
-<script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=REDACTED_API_KEY"></script>
-```
+Pass the application key when the licensed deployment should load Desmos from
+its official CDN:
 
 ```typescript
-import { DesmosCalculatorProvider } from '@pie-players/pie-calculator-desmos';
+import { DesmosCalculatorProvider } from "@pie-players/pie-calculator-desmos";
 
-const provider = new DesmosCalculatorProvider();
-await provider.initialize(); // Uses the globally loaded Desmos
-```
-
-⚠️ Only use your real API key like this during development!
-
-#### 2. Production Mode (Server-Side Proxy) - ✅ RECOMMENDED
-
-For production, use a server-side proxy to keep your API key secure:
-
-```typescript
 const provider = new DesmosCalculatorProvider();
 await provider.initialize({
-  proxyEndpoint: '/api/desmos/script-url' // Server returns the script URL with key
+  apiKey: runtimeConfig.desmosApiKey,
 });
 ```
 
-Your server endpoint returns a signed or time-limited URL.
+The provider loads:
 
-#### 3. Pre-loaded Library (Client-Side)
-
-If you must use client-side loading in production (not recommended), at least load the library yourself and don't pass the key through our package:
-
-```html
-<script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=YOUR_KEY"></script>
+```text
+https://www.desmos.com/api/v1.12/calculator.js?apiKey=<application-key>
 ```
 
+A host may fetch the key from an authenticated, same-origin endpoint before
+calling `initialize()`. That endpoint should be limited to authorized users,
+rate-limited as appropriate, and returned with `Cache-Control: private,
+no-store`. The key still reaches those users' browsers as required by the
+Desmos API.
+
+If a Desmos agreement permits the host to preload or self-host the API, load
+that build first and initialize without a key:
+
 ```typescript
+if (!window.Desmos) throw new Error("Authorized Desmos API build was not loaded");
+
 const provider = new DesmosCalculatorProvider();
-await provider.initialize(); // No key needed, uses window.Desmos
+await provider.initialize();
 ```
 
-**Note**: This still exposes your key in HTML, but at least it's not in your JavaScript bundle.
-
-## Server-Side Proxy Implementation
-
-### Understanding the Challenge
-
-Desmos requires the API key in the script URL when loading the library. To keep your key secure while still working within Desmos's architecture, you need a server-side proxy.
-
-### Option A: Proxy the Desmos Script (Most Secure)
-
-Create a server endpoint that proxies the Desmos calculator script with your API key:
-
-#### Express.js Example
-
-```javascript
-// server.js
-app.get('/api/desmos/calculator.js', requireAuth, async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // Fetch Desmos script with your API key server-side
-  const desmosUrl = `https://www.desmos.com/api/v1.11/calculator.js?apiKey=${process.env.DESMOS_API_KEY}`;
-  const response = await fetch(desmosUrl);
-  const script = await response.text();
-
-  res.setHeader('Content-Type', 'application/javascript');
-  res.send(script);
-});
-```
-
-Then load from your proxy in the client:
-
-```html
-<script src="/api/desmos/calculator.js"></script>
-```
-
-### Option B: Return Signed/Time-Limited URL
-
-Create temporary, authenticated URLs that expire:
-
-#### Next.js API Route Example
-
-```typescript
-// pages/api/desmos/script-url.ts
-import { getServerSession } from 'next-auth';
-import { sign } from 'jsonwebtoken';
-
-export default async function handler(req, res) {
-  const session = await getServerSession(req, res);
-
-  if (!session) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // Create a time-limited token
-  const token = sign(
-    { userId: session.user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: '1h' }
-  );
-
-  // Return URL with your API key (only valid for this session)
-  res.json({
-    scriptUrl: `https://www.desmos.com/api/v1.11/calculator.js?apiKey=${process.env.DESMOS_API_KEY}`,
-    expiresAt: Date.now() + 3600000
-  });
-}
-```
-
-### Advantages of Server-Side Proxy
-
-1. **Security**: API key never exposed to client in retrievable form
-2. **Authentication**: Control who can access Desmos
-3. **Rate Limiting**: Implement usage limits server-side
-4. **Usage Tracking**: Monitor calculator usage for billing
-5. **Key Rotation**: Change keys without redeploying client code
-6. **Compliance**: Meets security requirements for sensitive data
-
-### Reality Check
-
-**Important**: Even with a proxy, if the client loads the Desmos script, a determined user could still inspect network traffic and find the API key embedded in the script content. For true security:
-
-1. Consider if Desmos calculators are necessary for your use case
-2. Use provider-driven fallback strategies when a licensed graphing calculator is not required
-3. Contact Desmos at <partnerships@desmos.com> to discuss enterprise security options
-4. Implement rate limiting and usage monitoring to detect key misuse
+This package deliberately has no script-proxy or self-hosting option. Do not
+copy or proxy `calculator.js` unless the application's Desmos agreement grants
+that right.
 
 ## Usage
 
@@ -188,68 +94,64 @@ import {
 
 `DesmosCalculatorProviderConfig` extends the provider-neutral calculator configuration and keeps Desmos API options under its `desmos` field. `DesmosCalculatorConfig` is the type of that nested field.
 
-### Basic Calculator
+The provider also accepts the same options through the provider-neutral
+`settings` object used by the packaged toolkit composition. When both forms are
+present, `settings` wins.
+
+### Basic calculator
 
 ```typescript
-const provider = new DesmosCalculatorProvider();
-await provider.initialize({ proxyEndpoint: '/api/desmos/token' });
-
 const calculator = await provider.createCalculator(
-  'basic',
-  document.getElementById('calculator-container')
+  "basic",
+  document.getElementById("calculator-container")!,
 );
 ```
 
-### Scientific Calculator
+### Scientific calculator
 
 ```typescript
 const calculator = await provider.createCalculator(
-  'scientific',
-  document.getElementById('calculator-container'),
+  "scientific",
+  document.getElementById("calculator-container")!,
   {
-    desmos: {
+    settings: {
       degreeMode: true,
-      functionDefinition: true
-    }
-  }
+      functionDefinition: true,
+    },
+  },
 );
 ```
 
-### Graphing Calculator
+### Graphing calculator
 
 ```typescript
 const calculator = await provider.createCalculator(
-  'graphing',
-  document.getElementById('calculator-container'),
+  "graphing",
+  document.getElementById("calculator-container")!,
   {
-    desmos: {
+    settings: {
       expressions: true,
       settingsMenu: true,
       zoomButtons: true,
-      plotInequalities: true
-    }
-  }
+      plotInequalities: true,
+    },
+  },
 );
 ```
 
-### Restricted/Test Mode
-
-For assessments, you can restrict calculator features:
+### Restricted/test mode
 
 ```typescript
-const calculator = await provider.createCalculator(
-  'graphing',
-  container,
-  {
-    restrictedMode: true, // Disables settings, zoom, expressions topbar
-    desmos: {
-      restrictedFunctions: true // Additional Desmos restrictions
-    }
-  }
-);
+const calculator = await provider.createCalculator("graphing", container, {
+  restrictedMode: true,
+  settings: {
+    restrictedFunctions: true,
+  },
+});
 ```
 
-## Configuration Options
+Assessment restrictions and the Desmos API tier are separate concerns. A
+restricted calculator still requires a key licensed for the application.
 
 See the `DesmosCalculatorConfig` interface exported by `@pie-players/pie-calculator-desmos` for all available options.
 
@@ -262,36 +164,21 @@ Common options:
 - `border`: Show calculator border
 - `links`: Enable links to Desmos.com
 
-## State Management
+## State management
 
 Save and restore calculator state:
 
 ```typescript
-// Export state
 const state = calculator.exportState();
-localStorage.setItem('calculator-state', JSON.stringify(state));
+localStorage.setItem("calculator-state", JSON.stringify(state));
 
-// Import state
-const savedState = JSON.parse(localStorage.getItem('calculator-state'));
+const savedState = JSON.parse(localStorage.getItem("calculator-state")!);
 calculator.importState(savedState);
 ```
 
-## Loading Desmos API
-
-The Desmos API must be loaded before initializing the provider. You can load it from CDN:
-
-```html
-<script src="https://www.desmos.com/api/v1.10/calculator.js?apiKey=REDACTED_API_KEY"></script>
-```
-
-Or load it dynamically in your application.
-
-## License
-
-This package is MIT licensed. The Desmos API requires a separate API key from Desmos.
-
 ## Links
 
-- [Desmos API Documentation](https://www.desmos.com/api)
-- [Get Desmos API Key](https://www.desmos.com/api)
+- [Desmos API v1.12 documentation](https://www.desmos.com/api/v1.12/docs/index.html)
+- [Desmos API Terms](https://www.desmos.com/api-terms)
+- [Desmos My API](https://www.desmos.com/my-api)
 - [PIE Calculator Base Package](https://www.npmjs.com/package/@pie-players/pie-calculator)

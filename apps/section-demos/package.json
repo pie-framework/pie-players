@@ -16,6 +16,7 @@
 	"dependencies": {
 		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
@@ -31,6 +32,7 @@
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
+		"@pie-players/pie-tool-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-tool-dictionary": "workspace:*",
 		"@pie-players/pie-tool-picture-dictionary": "workspace:*",
 		"@pie-players/pie-tool-sign-language": "workspace:*",

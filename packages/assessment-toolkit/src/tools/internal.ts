@@ -145,6 +145,7 @@ export type { ToolConfigDiagnostic } from "../services/tool-config-validation.js
 // toolkit's own `TTSService` and provider registry also depend on.
 export {
 	DesmosToolProvider,
+	GeoGebraToolProvider,
 	TTSToolProvider,
 } from "../services/tool-providers/index.js";
 

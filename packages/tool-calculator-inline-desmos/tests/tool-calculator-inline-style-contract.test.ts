@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 const source = await Bun.file(
-	new URL("../tool-calculator-inline.svelte", import.meta.url),
+	new URL(
+		"../../tool-calculator-shared/CalculatorInlineTool.svelte",
+		import.meta.url,
+	),
 ).text();
 
 const cssRuleBody = (selector: string): string => {

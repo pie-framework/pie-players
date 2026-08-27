@@ -4,18 +4,11 @@
  *
  * Supports: Basic, Scientific, and Graphing calculators
  * Based on Desmos API v1.12+
- * Requires: Desmos API key (obtain from https://www.desmos.com/api)
+ * Requires: A Desmos API key when this provider loads the API from desmos.com
  *
- * SECURITY BEST PRACTICE:
- * - Development: Pass apiKey directly for local testing
- * - Production: Use proxyEndpoint to keep API key server-side
- *
- * Example server-side proxy (Express.js):
- * ```
- * app.get('/api/desmos/token', requireAuth, (req, res) => {
- *   res.json({ apiKey: process.env.DESMOS_API_KEY });
- * });
- * ```
+ * Desmos's documented browser integration places the key in the calculator.js
+ * URL. A runtime credential endpoint can keep the key out of source and static
+ * bundles, but cannot keep it secret from a browser that loads the API.
  */
 
 import type {
@@ -31,8 +24,10 @@ import type {
 /**
  * Desmos API options applied when a calculator instance is created.
  */
-export interface DesmosCalculatorConfig {
+export interface DesmosCalculatorConfig extends Record<string, unknown> {
+	/** @deprecated Supply credentials to `initialize()` instead. */
 	apiKey?: string;
+	/** @deprecated Supply credentials to `initialize()` instead. */
 	proxyEndpoint?: string;
 	border?: boolean;
 	degreeMode?: boolean | "degree" | "radian";
@@ -61,7 +56,7 @@ export interface DesmosCalculatorConfig {
 	brailleExpressionDownload?: boolean;
 	keypad?: boolean;
 	graphpaper?: boolean;
-	additionalFunctions?: string[];
+	additionalFunctions?: string | string[];
 }
 
 /**
@@ -93,8 +88,6 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 
 	private initialized = false;
 	private apiKey?: string;
-	private proxyEndpoint?: string;
-	private isDevelopment = false;
 	private onTelemetry:
 		| ((
 				eventName: string,
@@ -114,25 +107,17 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	}
 
 	/**
-	 * Get the configured API key
-	 * @internal Used internally by calculator instances
-	 */
-	getApiKey(): string | undefined {
-		return this.apiKey;
-	}
-
-	/**
 	 * Dynamically load the Desmos calculator library
 	 * @private
 	 */
-	private async loadDesmosScript(): Promise<void> {
+	private async loadDesmosScript(apiKey?: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const script = document.createElement("script");
-			// Include API key in script URL if available
-			const scriptUrl = this.apiKey
-				? `https://www.desmos.com/api/v1.12/calculator.js?apiKey=${this.apiKey}`
-				: "https://www.desmos.com/api/v1.12/calculator.js";
-			script.src = scriptUrl;
+			const scriptUrl = new URL(
+				"https://www.desmos.com/api/v1.12/calculator.js",
+			);
+			if (apiKey) scriptUrl.searchParams.set("apiKey", apiKey);
+			script.src = scriptUrl.toString();
 			script.async = true;
 			script.onload = () => {
 				if (window.Desmos) {
@@ -149,11 +134,8 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		});
 	}
 
-	/**
-	 * Initialize Desmos library
-	 * @param config Configuration with API key (development) or proxy endpoint (production)
-	 */
-	async initialize(config?: CalculatorProviderInit): Promise<void> {
+	/** Initialize Desmos with provider-level credentials and instrumentation. */
+	async initialize(config: CalculatorProviderInit = {}): Promise<void> {
 		if (this.initialized) return;
 		this.onTelemetry = config?.onTelemetry;
 
@@ -164,16 +146,9 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			);
 		}
 
-		// Determine if we're in development mode
-		this.isDevelopment =
-			process.env.NODE_ENV === "development" ||
-			typeof process === "undefined" ||
-			!process.env.NODE_ENV;
-
-		// Configure API access pattern
-		if (config?.proxyEndpoint) {
-			// Production pattern: server-side proxy
-			this.proxyEndpoint = config.proxyEndpoint;
+		this.apiKey = config.apiKey?.trim() || undefined;
+		const proxyEndpoint = config.proxyEndpoint?.trim();
+		if (proxyEndpoint) {
 			const authStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-backend-call-start", {
 				toolId: "calculator",
@@ -181,21 +156,21 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 				operation: "proxy-auth-fetch",
 			});
 			try {
-				const response = await fetch(config.proxyEndpoint);
+				const response = await fetch(proxyEndpoint);
 				if (!response.ok) {
-					throw new Error(`Proxy endpoint returned ${response.status}`);
+					throw new Error(`Runtime endpoint returned ${response.status}`);
 				}
-				const data = await response.json();
-				this.apiKey = data.apiKey;
+				const body = (await response.json()) as { apiKey?: unknown };
+				if (typeof body.apiKey !== "string" || !body.apiKey.trim()) {
+					throw new Error("Runtime endpoint did not return a non-empty apiKey");
+				}
+				this.apiKey = body.apiKey.trim();
 				await this.emitTelemetry("pie-tool-backend-call-success", {
 					toolId: "calculator",
 					backend: "desmos",
 					operation: "proxy-auth-fetch",
 					duration: Date.now() - authStartedAt,
 				});
-				console.log(
-					"[DesmosProvider] Initialized with server-side proxy (SECURE)",
-				);
 			} catch (error) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
 					toolId: "calculator",
@@ -206,36 +181,19 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 					message: error instanceof Error ? error.message : String(error),
 				});
 				throw new Error(
-					`[DesmosProvider] Failed to fetch API key from proxy: ${error}`,
+					`[DesmosProvider] Failed to fetch API key from runtime endpoint: ${error instanceof Error ? error.message : String(error)}`,
+					{ cause: error },
 				);
 			}
-		} else if (config?.apiKey) {
-			// Development pattern: direct API key
-			this.apiKey = config.apiKey;
-
-			// Security warning in production
-			if (!this.isDevelopment) {
-				console.error(
-					"⚠️ [DesmosProvider] SECURITY WARNING: API key exposed in client-side code!\n" +
-						"This is insecure for production. Use proxyEndpoint instead.\n" +
-						"See: https://pie-players.dev/docs/calculator-desmos#security",
-				);
-			} else {
-				console.log(
-					"[DesmosProvider] Initialized with direct API key (DEVELOPMENT MODE)",
-				);
-			}
-		} else {
-			// No API key provided
-			console.warn(
-				"[DesmosProvider] No API key or proxy endpoint provided.\n" +
-					"Production usage requires authentication. Obtain API key from https://www.desmos.com/api\n" +
-					"Recommended: Use proxyEndpoint for production, apiKey for development only.",
-			);
 		}
 
 		// Load Desmos API if not already loaded
 		if (!window.Desmos) {
+			if (!this.apiKey) {
+				console.warn(
+					"[DesmosProvider] Loading the legacy unkeyed Desmos URL for compatibility. Configure an application API key for licensed deployments.",
+				);
+			}
 			console.log("[DesmosProvider] Loading Desmos API library...");
 			const libraryLoadStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-library-load-start", {
@@ -244,7 +202,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 				operation: "desmos-script-load",
 			});
 			try {
-				await this.loadDesmosScript();
+				await this.loadDesmosScript(this.apiKey);
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "calculator",
 					backend: "desmos",
@@ -283,7 +241,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			throw new Error(`Desmos does not support calculator type: ${type}`);
 		}
 
-		return new DesmosCalculator(this, type, container, config, this.apiKey);
+		return new DesmosCalculator(this, type, container, config);
 	}
 
 	/**
@@ -298,6 +256,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 */
 	destroy(): void {
 		this.initialized = false;
+		this.apiKey = undefined;
 		this.onTelemetry = undefined;
 	}
 
@@ -332,7 +291,6 @@ class DesmosCalculator implements Calculator {
 		type: CalculatorType,
 		container: HTMLElement,
 		config?: DesmosCalculatorProviderConfig,
-		apiKey?: string,
 	) {
 		this.provider = provider;
 		this.type = type;
@@ -343,18 +301,32 @@ class DesmosCalculator implements Calculator {
 			throw new Error("Desmos API not available");
 		}
 
-		this._initializeCalculator(config, apiKey);
+		this._initializeCalculator(config);
 	}
 
-	private _initializeCalculator(
-		config?: DesmosCalculatorProviderConfig,
-		apiKey?: string,
-	): void {
-		// Merge Desmos-specific config with defaults
-		const desmosConfig: DesmosCalculatorConfig = {
-			...(config?.desmos || {}),
-			apiKey: apiKey || config?.desmos?.apiKey,
+	private _initializeCalculator(config?: DesmosCalculatorProviderConfig): void {
+		const legacySettings: DesmosCalculatorConfig = {
+			...(config?.desmos ?? {}),
 		};
+		delete legacySettings.apiKey;
+		delete legacySettings.proxyEndpoint;
+
+		// Existing `desmos` options remain supported, while provider-neutral
+		// `settings` are the canonical surface and take precedence when both exist.
+		const isGraphing = this.type === "graphing";
+		const desmosConfig: DesmosCalculatorConfig = {
+			degreeMode: true,
+			settingsMenu: isGraphing,
+			qwertyKeyboard: false,
+			notes: isGraphing,
+			folders: isGraphing,
+			sliders: isGraphing,
+			tables: isGraphing,
+			...legacySettings,
+			...(config?.settings || {}),
+		};
+		delete desmosConfig.apiKey;
+		delete desmosConfig.proxyEndpoint;
 
 		// Apply restricted mode if specified
 		if (config?.restrictedMode) {

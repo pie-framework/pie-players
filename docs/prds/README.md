@@ -77,7 +77,6 @@ live per-slice record is `Active`.
   than re-presenting content, so it needs an element-facing insertion contract
   that the presentation accommodations never did. No QTI/AfA term exists to map
   to.
-
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).
 

@@ -1,0 +1,19 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": ".",
+		"declaration": true,
+		"declarationMap": false,
+		"composite": true,
+		"moduleResolution": "NodeNext"
+	},
+	"include": [
+		"index.ts",
+		"CalculatorTool.svelte",
+		"CalculatorInlineTool.svelte",
+		"calculator-config-key.ts",
+		"svelte-shims.d.ts"
+	],
+	"exclude": ["node_modules", "dist", "tests"]
+}

@@ -35,7 +35,6 @@ export default defineConfig({
 		sourcemap: false,
 		rollupOptions: {
 			external: [
-				"@pie-players/pie-calculator-desmos",
 				"@pie-players/tts-client-server",
 				"@pie-players/pie-assessment-toolkit",
 			],

@@ -417,7 +417,11 @@ tools: {
     rubric: []
   },
   providers: {
-    calculator: { authFetcher: async () => ({ apiKey: '...' }) },
+    calculator: {
+      provider: {
+        runtime: { authFetcher: async () => ({ apiKey: '...' }) }
+      }
+    },
     textToSpeech: { enabled: true, backend: 'browser' }
   }
 }
@@ -478,7 +482,9 @@ tools: {
   providers: {
     calculator: {
       enabled: true,
-      authFetcher: async () => { /* ... */ }
+      provider: {
+        runtime: { authFetcher: async () => { /* ... */ } }
+      }
     }
   }
 }
@@ -536,9 +542,13 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       calculator: {
         enabled: true,
-        authFetcher: async () => {
-          const response = await fetch('/api/tools/desmos/auth');
-          return response.json();
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const response = await fetch('/api/tools/desmos/auth');
+              return response.json();
+            }
+          }
         }
       },
       textToSpeech: { enabled: true, backend: 'browser' }
@@ -565,14 +575,37 @@ const coordinator = new ToolkitCoordinator({
       passage: ['textToSpeech']
     },
     providers: {
-      calculator: { enabled: true },
+      calculator: {
+        enabled: true,
+        provider: {
+          runtime: { authFetcher: fetchLicensedDesmosApiKey }
+        }
+      },
       textToSpeech: { enabled: true, backend: 'browser' }
     }
   }
 });
 ```
 
-The ToolkitCoordinator handles all internal complexity (service initialization, provider management, state coordination). The only special configuration is `authFetcher` for Desmos calculator (optional - falls back to local calculator if not provided).
+The ToolkitCoordinator handles service initialization, provider management, and
+state coordination. With no calculator provider configuration, the existing
+Desmos implementation remains the default and preserves its legacy unkeyed load.
+That fallback is for client compatibility; it does not grant a Desmos license.
+Licensed deployments can supply `provider.init.apiKey` or
+`provider.runtime.authFetcher`. Runtime key delivery avoids committing the key
+but does not hide it from the browser's Desmos script request.
+
+Select the separate GeoGebra implementation explicitly without changing the
+calculator capability, placement, or item policy:
+
+```typescript
+providers: {
+  calculator: {
+    provider: { id: 'calculator-geogebra' },
+    settings: { showResetIcon: true }
+  }
+}
+```
 
 ### Minimal Server-Backed TTS Config
 
@@ -834,7 +867,15 @@ export interface ToolkitCoordinatorConfig {
       };
       calculator?: {
         enabled?: boolean;
-        authFetcher?: () => Promise<Record<string, unknown>>;
+        provider?: {
+          id?: 'calculator-desmos' | 'calculator-geogebra';
+          init?: Record<string, unknown>;
+          runtime?: {
+            authFetcher?: () => Promise<Record<string, unknown>>;
+          };
+        };
+        settings?: Record<string, unknown>;
+        restrictedMode?: boolean;
       };
     };
   };

@@ -4,7 +4,9 @@ Inline calculator toggle button for PIE assessment player question headers.
 
 ## Overview
 
-This package provides a calculator button component that can be embedded in question headers. When clicked, it toggles the visibility of a full calculator tool instance (`@pie-players/pie-tool-calculator-desmos`).
+This package provides the existing `<pie-tool-calculator-inline>` compatibility
+element. It wraps the provider-neutral inline surface from
+`@pie-players/pie-tool-calculator-shared` and toggles a calculator tool instance.
 
 ## Features
 

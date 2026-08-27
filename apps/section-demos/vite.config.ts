@@ -111,9 +111,17 @@ export default (async () => {
 					__dirname,
 					"../../packages/calculator-desmos/dist/index.js",
 				),
+				"@pie-players/pie-calculator-geogebra": resolve(
+					__dirname,
+					"../../packages/calculator-geogebra/dist/index.js",
+				),
 				"@pie-players/pie-tool-calculator-desmos": resolve(
 					__dirname,
 					"../../packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
+				),
+				"@pie-players/pie-tool-calculator-geogebra": resolve(
+					__dirname,
+					"../../packages/tool-calculator-geogebra/dist/pie-tool-calculator-geogebra.js",
 				),
 				"@pie-players/pie-tool-text-to-speech": resolve(
 					__dirname,

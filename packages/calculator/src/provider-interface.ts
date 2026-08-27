@@ -33,10 +33,13 @@ export interface CalculatorProviderInit {
 }
 
 /**
- * Calculator provider configuration
+ * Provider-neutral calculator configuration.
+ *
+ * Adapters own the shape and interpretation of `settings`; the generic
+ * calculator seam deliberately does not name an implementation.
  */
 export interface CalculatorProviderConfig {
-	settings?: Record<string, any>;
+	settings?: Record<string, unknown>;
 	restrictedMode?: boolean; // Quick toggle for restricted/test mode (affects multiple options)
 	locale?: string;
 	theme?: "light" | "dark" | "auto";

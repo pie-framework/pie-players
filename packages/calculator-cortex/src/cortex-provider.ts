@@ -2,7 +2,6 @@ import type {
 	Calculator,
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
-	CalculatorProviderInit,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
 import { CortexCalculatorError } from "./errors.js";
@@ -27,7 +26,7 @@ export class CortexCalculatorProvider implements CalculatorProvider {
 		this.onTelemetry = config.onTelemetry;
 	}
 
-	async initialize(config: CalculatorProviderInit = {}): Promise<void> {
+	async initialize(config: CortexCalculatorProviderInit = {}): Promise<void> {
 		if (this.initialized) return;
 		if (this.destroyed) {
 			throw new CortexCalculatorError(

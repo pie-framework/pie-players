@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { CalculatorType } from "@pie-players/pie-calculator";
 import {
 	DesmosCalculatorProvider,
-	type DesmosCalculatorConfig,
 	type DesmosCalculatorProviderConfig,
+	type DesmosCalculatorSettings,
 } from "../src/index.js";
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -60,13 +60,13 @@ function installScriptLoadingBrowser(): {
 interface CapturedConstructorCall {
 	type: CalculatorType;
 	container: HTMLElement;
-	config: DesmosCalculatorConfig;
+	config: DesmosCalculatorSettings;
 }
 
 function installDesmosStub(): CapturedConstructorCall[] {
 	const calls: CapturedConstructorCall[] = [];
 	const capture = (type: CalculatorType) =>
-		(container: HTMLElement, config: DesmosCalculatorConfig) => {
+		(container: HTMLElement, config: DesmosCalculatorSettings) => {
 			calls.push({ type, container, config });
 			return { destroy: () => {}, setBlank: () => {} };
 		};
@@ -148,11 +148,7 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 		const container = {} as HTMLElement;
 		const config: DesmosCalculatorProviderConfig = {
 			theme: "light",
-			desmos: {
-				degreeMode: false,
-				settingsMenu: true,
-			},
-			settings: { degreeMode: true },
+			settings: { degreeMode: true, settingsMenu: true },
 		};
 
 		for (const type of ["basic", "scientific", "graphing"] as const) {
@@ -180,7 +176,7 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 
 		await provider.createCalculator("graphing", {} as HTMLElement, {
 			restrictedMode: true,
-			desmos: {
+			settings: {
 				expressionsTopbar: true,
 				settingsMenu: true,
 				zoomButtons: true,
@@ -204,10 +200,6 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 		await provider.initialize();
 
 		await provider.createCalculator("graphing", {} as HTMLElement, {
-			desmos: {
-				apiKey: "legacy-instance-key",
-				proxyEndpoint: "/legacy-runtime-key",
-			},
 			settings: {
 				apiKey: "settings-instance-key",
 				proxyEndpoint: "/settings-runtime-key",

@@ -21,14 +21,8 @@ import type {
 	CalculatorType,
 } from "@pie-players/pie-calculator";
 
-/**
- * Desmos API options applied when a calculator instance is created.
- */
-export interface DesmosCalculatorConfig extends Record<string, unknown> {
-	/** @deprecated Supply credentials to `initialize()` instead. */
-	apiKey?: string;
-	/** @deprecated Supply credentials to `initialize()` instead. */
-	proxyEndpoint?: string;
+/** Desmos API options accepted through `CalculatorProviderConfig.settings`. */
+export interface DesmosCalculatorSettings extends Record<string, unknown> {
 	border?: boolean;
 	degreeMode?: boolean | "degree" | "radian";
 	decimalToFraction?: boolean;
@@ -61,10 +55,14 @@ export interface DesmosCalculatorConfig extends Record<string, unknown> {
 
 /**
  * Per-instance configuration accepted by the Desmos calculator provider.
+ *
+ * Identical to the provider-neutral shape apart from naming what `settings`
+ * holds, which the neutral seam deliberately leaves as `Record<string,
+ * unknown>`.
  */
 export interface DesmosCalculatorProviderConfig
-	extends CalculatorProviderConfig {
-	desmos?: DesmosCalculatorConfig;
+	extends Omit<CalculatorProviderConfig, "settings"> {
+	settings?: DesmosCalculatorSettings;
 }
 
 declare global {
@@ -276,6 +274,20 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 }
 
 /**
+ * Credentials are provider-level (`initialize()`), never per-instance options.
+ *
+ * `DesmosCalculatorSettings` carries an index signature, so `settings` still
+ * *accepts* both names from a caller that has not moved them yet. Desmos treats
+ * an unknown option as an error, and a key there reaches nothing that would use
+ * it, so both are dropped before `settings` reaches the vendor constructor.
+ */
+const CREDENTIAL_KEYS = ["apiKey", "proxyEndpoint"] as const;
+
+function stripCredentialKeys(config: Record<string, unknown>): void {
+	for (const key of CREDENTIAL_KEYS) delete config[key];
+}
+
+/**
  * Desmos Calculator Instance
  */
 class DesmosCalculator implements Calculator {
@@ -305,16 +317,8 @@ class DesmosCalculator implements Calculator {
 	}
 
 	private _initializeCalculator(config?: DesmosCalculatorProviderConfig): void {
-		const legacySettings: DesmosCalculatorConfig = {
-			...(config?.desmos ?? {}),
-		};
-		delete legacySettings.apiKey;
-		delete legacySettings.proxyEndpoint;
-
-		// Existing `desmos` options remain supported, while provider-neutral
-		// `settings` are the canonical surface and take precedence when both exist.
 		const isGraphing = this.type === "graphing";
-		const desmosConfig: DesmosCalculatorConfig = {
+		const desmosConfig: DesmosCalculatorSettings = {
 			degreeMode: true,
 			settingsMenu: isGraphing,
 			qwertyKeyboard: false,
@@ -322,11 +326,9 @@ class DesmosCalculator implements Calculator {
 			folders: isGraphing,
 			sliders: isGraphing,
 			tables: isGraphing,
-			...legacySettings,
 			...(config?.settings || {}),
 		};
-		delete desmosConfig.apiKey;
-		delete desmosConfig.proxyEndpoint;
+		stripCredentialKeys(desmosConfig);
 
 		// Apply restricted mode if specified
 		if (config?.restrictedMode) {

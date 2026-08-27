@@ -6,6 +6,6 @@
 
 export { DesmosCalculatorProvider } from "./desmos-provider.js";
 export type {
-	DesmosCalculatorConfig,
 	DesmosCalculatorProviderConfig,
+	DesmosCalculatorSettings,
 } from "./desmos-provider.js";

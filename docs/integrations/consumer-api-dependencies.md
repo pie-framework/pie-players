@@ -133,9 +133,17 @@ its `initialize` gained an optional `CalculatorProviderInit`, matching
 `ITTSProvider` in `pie-tts`. No checkout imports any
 calculator type: both hosts that show a calculator declare their own
 `CalculatorType` union, and the one offering Desmos configures it through the
-auth-fetcher runtime key alone. The runtime shape
-`{ restrictedMode, desmos: { … } }` is unchanged, so the delivered calculator is
-untouched.
+auth-fetcher runtime key alone.
+
+The `desmos` option bag and the `apiKey`/`proxyEndpoint` fields on
+`DesmosCalculatorSettings` (then `DesmosCalculatorConfig`) have since been
+deleted, re-checked against all three
+checkouts on 2026-08-27 as a targeted lookup. Vendor options are `settings` only,
+and `DesmosCalculatorProviderConfig` is now `CalculatorProviderConfig` with
+`settings` narrowed to `DesmosCalculatorSettings`. No checkout passes `desmos`,
+names either type, or sets a credential in a config bag: the two hosts offering
+Desmos both configure it through `provider.runtime.authFetcher` and nothing else,
+so all three removals are source breaks with no source to break.
 
 The open-source Cortex calculator is additive and was assessed against the
 recorded calculator rows rather than a fresh consumer-checkout refresh, so it
@@ -975,6 +983,23 @@ over a CDN with no typecheck at all.
   `CalculatorProviderConfig`. Both are now on the Desmos adapter package. No
   checkout imports a calculator type at all, so the move is a source break with no
   source to break
+- The `desmos` option bag itself, deleted on 2026-08-27, the deprecated
+  `apiKey`/`proxyEndpoint` fields on the settings type deleted with it, and that
+  type renamed `DesmosCalculatorConfig` -> `DesmosCalculatorSettings` to match the
+  Cortex and GeoGebra adapters. Both hosts offering Desmos configure it through
+  `provider.runtime.authFetcher` alone, so neither passed a config bag at all. The
+  settings type keeps an index signature, so `settings` still accepts the two
+  credential names from a stale caller and still drops them before the vendor
+  constructor
+- `GeoGebraCalculatorProviderConfig` as the name of GeoGebra's `initialize()`
+  argument, renamed `GeoGebraCalculatorProviderInit` on 2026-08-27; the old name
+  now types `createCalculator`'s argument, as it does on the other two adapters.
+  No checkout offers GeoGebra
+- `COMMON_LIBRARIES`, `libraryLoader` and `LibraryLoaderImpl` on the toolkit's
+  `./tools/client` subpath, with `LibraryConfig`, `RetryConfig`, `LoaderStats` and
+  `LibraryLoader` from its `types`. Deleted on 2026-08-27: no checkout names any of
+  the eight, nothing in this repository used them either, and each provider loads
+  its own vendor script
 - `Calculator` and `CalculatorProvider` as interfaces to implement, and the
   additive optional argument on `CalculatorProvider.initialize`. Every implementor
   is a package in this repository

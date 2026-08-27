@@ -3,6 +3,7 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
@@ -50,15 +51,18 @@ declare global {
 	}
 }
 
-export interface GeoGebraCalculatorProviderConfig {
+/**
+ * GeoGebra's `initialize()` argument.
+ *
+ * Narrowed to `onTelemetry`: GeoGebra's embed takes no credential, so `apiKey`
+ * and `proxyEndpoint` would name a parameter this adapter cannot honour.
+ */
+export interface GeoGebraCalculatorProviderInit
+	extends Pick<CalculatorProviderInit, "onTelemetry"> {
 	/** Override only when the deployment's GeoGebra license permits that source. */
 	scriptUrl?: string;
 	/** Maximum time to wait for `appletOnLoad` after injection. */
 	appletTimeoutMs?: number;
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
 }
 
 /** GeoGebra app parameters accepted through `CalculatorProviderConfig.settings`. */
@@ -87,6 +91,15 @@ export interface GeoGebraCalculatorSettings extends Record<string, unknown> {
 	preventFocus?: boolean;
 }
 
+/**
+ * GeoGebra's `createCalculator()` argument: the provider-neutral shape with
+ * `settings` naming what it holds.
+ */
+export interface GeoGebraCalculatorProviderConfig
+	extends Omit<CalculatorProviderConfig, "settings"> {
+	settings?: GeoGebraCalculatorSettings;
+}
+
 export class GeoGebraCalculatorProvider implements CalculatorProvider {
 	readonly providerId = "geogebra";
 	readonly providerName = "GeoGebra";
@@ -99,7 +112,7 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 
 	private initialized = false;
 	private appletTimeoutMs = DEFAULT_APPLET_TIMEOUT_MS;
-	private onTelemetry: GeoGebraCalculatorProviderConfig["onTelemetry"];
+	private onTelemetry: GeoGebraCalculatorProviderInit["onTelemetry"];
 
 	private async emitTelemetry(
 		eventName: string,
@@ -135,9 +148,7 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 		});
 	}
 
-	async initialize(
-		config: GeoGebraCalculatorProviderConfig = {},
-	): Promise<void> {
+	async initialize(config: GeoGebraCalculatorProviderInit = {}): Promise<void> {
 		if (this.initialized) return;
 		if (typeof window === "undefined") {
 			throw new Error(
@@ -186,7 +197,7 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: GeoGebraCalculatorProviderConfig,
 	): Promise<Calculator> {
 		if (!this.initialized) await this.initialize();
 		if (!this.supportsType(type)) {
@@ -243,16 +254,16 @@ class GeoGebraCalculator implements Calculator {
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config: CalculatorProviderConfig | undefined,
+		config: GeoGebraCalculatorProviderConfig | undefined,
 		timeoutMs: number,
 	): Promise<GeoGebraCalculator> {
 		const Constructor = window.GGBApplet;
 		if (!Constructor) throw new Error("GeoGebra API not available");
 
 		const calculator = new GeoGebraCalculator(provider, type, container);
-		const settings = {
+		const settings: GeoGebraCalculatorSettings = {
 			...(config?.settings || {}),
-		} as GeoGebraCalculatorSettings;
+		};
 		delete settings.appName;
 		delete settings.id;
 		delete settings.appletOnLoad;

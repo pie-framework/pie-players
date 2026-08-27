@@ -87,16 +87,17 @@ Import the provider and its owner-defined per-instance configuration from this p
 ```typescript
 import {
   DesmosCalculatorProvider,
-  type DesmosCalculatorConfig,
+  type DesmosCalculatorSettings,
   type DesmosCalculatorProviderConfig,
 } from '@pie-players/pie-calculator-desmos';
 ```
 
-`DesmosCalculatorProviderConfig` extends the provider-neutral calculator configuration and keeps Desmos API options under its `desmos` field. `DesmosCalculatorConfig` is the type of that nested field.
-
-The provider also accepts the same options through the provider-neutral
-`settings` object used by the packaged toolkit composition. When both forms are
-present, `settings` wins.
+`initialize()` takes the shared `CalculatorProviderInit` whole: Desmos is the one
+adapter needing a credential, so it declares no narrower init type of its own.
+`createCalculator()` takes `DesmosCalculatorProviderConfig`, which is the
+provider-neutral configuration with `settings` typed as
+`DesmosCalculatorSettings`. That is what the packaged toolkit composition
+passes.
 
 ### Basic calculator
 
@@ -153,7 +154,7 @@ const calculator = await provider.createCalculator("graphing", container, {
 Assessment restrictions and the Desmos API tier are separate concerns. A
 restricted calculator still requires a key licensed for the application.
 
-See the `DesmosCalculatorConfig` interface exported by `@pie-players/pie-calculator-desmos` for all available options.
+See the `DesmosCalculatorSettings` interface exported by `@pie-players/pie-calculator-desmos` for all available options.
 
 Common options:
 

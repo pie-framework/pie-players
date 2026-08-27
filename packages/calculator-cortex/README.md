@@ -23,6 +23,11 @@ const calculator = await provider.createCalculator(
 The package bundles all runtime code and required assets. It does not require
 an API key, CDN, or network connection.
 
+`initialize()` takes `CortexCalculatorProviderInit`, narrowed to `onTelemetry`
+for that reason -- there is no credential to supply. `createCalculator()` takes
+`CortexCalculatorProviderConfig`, which is the provider-neutral configuration
+with `settings` typed as `CortexCalculatorSettings`.
+
 ## Isolated demos
 
 Run `bun run --cwd packages/calculator-cortex demo`, then open the basic,

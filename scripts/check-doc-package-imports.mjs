@@ -10,6 +10,8 @@ const TOOLS_DIR = path.join(ROOT, "tools");
 const SKIP_DIRS = new Set([
 	".git",
 	".svelte-kit",
+	".turbo",
+	"build",
 	"dist",
 	"node_modules",
 	"coverage",

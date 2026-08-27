@@ -1,19 +1,11 @@
 /** Desmos calculator adapter for the generic tool-provider registry. */
 
-import type { CalculatorToolProviderInitConfig } from "./LazyCalculatorToolProvider.js";
+import type { CalculatorProviderInit } from "@pie-players/pie-calculator";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
 import type { ToolProviderCapabilities } from "./ToolProviderApi.js";
 
-export interface DesmosToolProviderConfig
-	extends CalculatorToolProviderInitConfig {
-	/** Desmos API key licensed for this application. */
-	apiKey?: string;
-	/**
-	 * Runtime endpoint returning `{ apiKey: string }`. The browser still receives
-	 * the key in the Desmos script URL; this only keeps it out of static assets.
-	 */
-	proxyEndpoint?: string;
-}
+/** Provider initialization is the provider-neutral calculator contract. */
+export type DesmosToolProviderConfig = CalculatorProviderInit;
 
 export class DesmosToolProvider extends LazyCalculatorToolProvider<DesmosToolProviderConfig> {
 	readonly providerId = "desmos-calculator";

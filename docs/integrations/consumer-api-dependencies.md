@@ -122,6 +122,37 @@ inside the two new packages, which no recorded host depends on. The shared
 term-lookup module those packages now use is a new subpath on
 `pie-players-shared`; existing entry points are untouched.
 
+Desmos calculator configuration ownership moved to the adapter package, checked
+against all three checkouts as a targeted lookup rather than a re-derivation, so
+it does not advance the verification date. `DesmosCalculatorConfig` left
+`@pie-players/pie-calculator` and the toolkit's `./tools/client` subpath, the
+`desmos` field left the base `CalculatorProviderConfig`, and all of it now lives
+on `@pie-players/pie-calculator-desmos` alongside a new
+`DesmosCalculatorProviderConfig`. `CalculatorProvider` stays un-parameterized and
+its `initialize` gained an optional `CalculatorProviderInit`, matching
+`ITTSProvider` in `pie-tts`. No checkout imports any
+calculator type: both hosts that show a calculator declare their own
+`CalculatorType` union, and the one offering Desmos configures it through the
+auth-fetcher runtime key alone. The runtime shape
+`{ restrictedMode, desmos: { … } }` is unchanged, so the delivered calculator is
+untouched.
+
+Each tool package's root type entry now describes what its root runtime entry
+provides. `insertTypesEntry` derives that entry from the bundle entry — a
+`.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so
+every package whose bundle entry is a component published a root entry that
+ignored its own `index.ts`. Where `index.ts` re-exported types they now ship:
+`pie-tool-dictionary`, `pie-tool-picture-dictionary` and
+`pie-tool-calculator-desmos`. The dictionary pair carries the host-served lookup
+contract recorded above, which is why one host declares that shape locally and
+another declares a narrower `CalculatorType` than PIE defines. Additive there: no
+name changed and nothing could have imported these before, since they were never
+in a published tarball. Where `index.ts` re-exported a *value* the re-export came
+out instead — `pie-tool-answer-eliminator` named `AdapterRegistry` at its root,
+which the bundle does not export, so shipping that type would have type-checked
+and then been undefined at run time. Its `./adapters/adapter-registry` subpath is
+unchanged and no consumer reaches either route.
+
 One residual difference is worth a manual check rather than a claim. Focusable
 collection for a trapped floating panel now descends into open shadow roots and
 now excludes `tabindex="-1"`, which the flat selector previously matched through
@@ -896,15 +927,19 @@ re-derived rather than remembered.
 - The five debugger and settings panel CE prop sets, and the duck-typed
   `customProviders` entry shape
 - `providerOptions` on the TTS provider config
-- The dictionary lookup wire contract — but note it breaks a host-served
-  *endpoint*, so nothing on either side type-checks it
+- The dictionary lookup wire contract. It breaks a host-served *endpoint*, so no
+  typecheck spans the boundary; the shape is now importable, though —
+  `DictionaryLookupRequest` / `DictionaryLookupResult` reach consumers from
+  `pie-tool-dictionary` as of the declaration-emit fix below, and their picture
+  equivalents from `pie-tool-picture-dictionary`
 
 The coordinator constructor and `createToolsConfig` are pinned with `satisfies`
 in Host R, so signature changes there surface as type errors on its next
 typecheck rather than at runtime. The rest of this list does not: `env`,
-`runtime.coordinator`, the CE prop sets, `customProviders` and the dictionary
-contract are all untyped at the boundary, and the `pie-item-player` properties
-arrive over a CDN with no typecheck at all.
+`runtime.coordinator`, the CE prop sets and `customProviders` are all untyped at
+the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
+span even now that its shape ships, and the `pie-item-player` properties arrive
+over a CDN with no typecheck at all.
 
 **Nobody. No coordination needed.**
 
@@ -921,6 +956,13 @@ arrive over a CDN with no typecheck at all.
   `tool-surface` framework-warning kind; no recorded host calls or branches on
   either surface
 - Tool ids outside the `calculator:` prefix
+- `DesmosCalculatorConfig` under its old owners, and the `desmos` field on the base
+  `CalculatorProviderConfig`. Both are now on the Desmos adapter package. No
+  checkout imports a calculator type at all, so the move is a source break with no
+  source to break
+- `Calculator` and `CalculatorProvider` as interfaces to implement, and the
+  additive optional argument on `CalculatorProvider.initialize`. Every implementor
+  is a package in this repository
 - `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
   that offer a Desmos calculator take the tool package as a side-effect import and
   reach the provider through the calculator package instead; one of them serves the
@@ -963,6 +1005,12 @@ repo.
   that do nothing.
 - Host V's local type declaration for `pie-item-player` lists `env.mode` values
   the host never passes and omits several properties the element supports.
+- Host A declares a local two-member `CalculatorType` where PIE defines three. Its
+  content tags name only those two, so `graphing` is unreachable through its
+  resolver rather than merely missing from the type.
+- Host R declares the dictionary response shape locally rather than importing it.
+  Both forks existed because the packaged types were declared but never shipped;
+  the declaration-emit fix gives each an import to replace it.
 - Host R declares its own local copy of the preferred tool-placement preset rather
   than importing the packaged `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, so a
   capability added to or removed from the packaged preset never reaches it. The

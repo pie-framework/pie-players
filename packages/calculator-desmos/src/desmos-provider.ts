@@ -16,39 +16,19 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
-	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
 
-declare global {
-	interface Window {
-		Desmos?: any;
-	}
-}
-
-export interface DesmosCalculatorProviderConfig {
-	/**
-	 * API key licensed for the application loading Desmos from desmos.com.
-	 * Recommended for licensed deployments; the adapter retains its historical
-	 * unkeyed URL when omitted so existing clients continue to initialize.
-	 */
+/**
+ * Desmos API options applied when a calculator instance is created.
+ */
+export interface DesmosCalculatorConfig extends Record<string, unknown> {
+	/** @deprecated Supply credentials to `initialize()` instead. */
 	apiKey?: string;
-	/**
-	 * Runtime endpoint returning `{ apiKey: string }`.
-	 *
-	 * This can keep a licensed key out of source and static bundles, but it does
-	 * not make the key secret: the browser still places it in Desmos's script URL.
-	 */
+	/** @deprecated Supply credentials to `initialize()` instead. */
 	proxyEndpoint?: string;
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
-}
-
-/** Desmos constructor options accepted through `CalculatorProviderConfig.settings`. */
-export interface DesmosCalculatorSettings extends Record<string, unknown> {
 	border?: boolean;
 	degreeMode?: boolean | "degree" | "radian";
 	decimalToFraction?: boolean;
@@ -77,6 +57,20 @@ export interface DesmosCalculatorSettings extends Record<string, unknown> {
 	keypad?: boolean;
 	graphpaper?: boolean;
 	additionalFunctions?: string | string[];
+}
+
+/**
+ * Per-instance configuration accepted by the Desmos calculator provider.
+ */
+export interface DesmosCalculatorProviderConfig
+	extends CalculatorProviderConfig {
+	desmos?: DesmosCalculatorConfig;
+}
+
+declare global {
+	interface Window {
+		Desmos?: any;
+	}
 }
 
 /**
@@ -140,11 +134,8 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		});
 	}
 
-	/**
-	 * Initialize Desmos library
-	 * @param config Configuration with the application's Desmos API key
-	 */
-	async initialize(config: DesmosCalculatorProviderConfig = {}): Promise<void> {
+	/** Initialize Desmos with provider-level credentials and instrumentation. */
+	async initialize(config: CalculatorProviderInit = {}): Promise<void> {
 		if (this.initialized) return;
 		this.onTelemetry = config?.onTelemetry;
 
@@ -240,7 +231,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 	): Promise<Calculator> {
 		if (!this.initialized) {
 			await this.initialize();
@@ -299,7 +290,7 @@ class DesmosCalculator implements Calculator {
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 	) {
 		this.provider = provider;
 		this.type = type;
@@ -313,7 +304,7 @@ class DesmosCalculator implements Calculator {
 		this._initializeCalculator(config);
 	}
 
-	private _initializeCalculator(config?: CalculatorProviderConfig): void {
+	private _initializeCalculator(config?: DesmosCalculatorProviderConfig): void {
 		const legacySettings: DesmosCalculatorConfig = {
 			...(config?.desmos ?? {}),
 		};
@@ -323,7 +314,7 @@ class DesmosCalculator implements Calculator {
 		// Existing `desmos` options remain supported, while provider-neutral
 		// `settings` are the canonical surface and take precedence when both exist.
 		const isGraphing = this.type === "graphing";
-		const desmosConfig: DesmosCalculatorSettings = {
+		const desmosConfig: DesmosCalculatorConfig = {
 			degreeMode: true,
 			settingsMenu: isGraphing,
 			qwertyKeyboard: false,
@@ -334,6 +325,8 @@ class DesmosCalculator implements Calculator {
 			...legacySettings,
 			...(config?.settings || {}),
 		};
+		delete desmosConfig.apiKey;
+		delete desmosConfig.proxyEndpoint;
 
 		// Apply restricted mode if specified
 		if (config?.restrictedMode) {

@@ -49,6 +49,23 @@ describe("check-pack-integrity rule functions", () => {
 		]);
 	});
 
+	test("flags a build-config declaration that reached dist", () => {
+		const violations = collectPackedFileSurfaceViolations(
+			new Set([
+				"dist/index.js",
+				"dist/index.d.ts",
+				"dist/vite.config.d.ts",
+				"dist/playwright.config.d.ts",
+			]),
+			{},
+		);
+
+		expect(violations).toEqual([
+			"packed file is a build-config declaration: dist/playwright.config.d.ts — narrow the dts plugin's include/exclude so it stops emitting one",
+			"packed file is a build-config declaration: dist/vite.config.d.ts — narrow the dts plugin's include/exclude so it stops emitting one",
+		]);
+	});
+
 	test("flags missing and unstable declared export targets", () => {
 		const violations = collectExportTargetViolations(
 			new Set(["dist/index.js", "dist/chunk-a1b2c3d4.js"]),

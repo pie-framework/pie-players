@@ -1,7 +1,7 @@
 # @pie-players/pie-calculator
 
-Provider-neutral calculator contracts for PIE Players. This package has no
-runtime dependencies and contains no UI or vendor implementation code.
+Provider-neutral calculator contracts for PIE Players. This package has no UI
+or vendor implementation code.
 
 ## Installation
 
@@ -17,7 +17,9 @@ The package exports:
   calculator adapter;
 - `Calculator`, the lifecycle, value, state, resize, and focus contract for one
   mounted calculator;
-- `CalculatorProviderConfig`, whose `settings` object is interpreted only by the
+- `CalculatorProviderInit`, the provider-level credential and instrumentation
+  surface;
+- `CalculatorProviderConfig`, whose `settings` object is interpreted by the
   selected implementation; and
 - `CalculatorType`, with `basic`, `scientific`, and `graphing` modes.
 
@@ -30,8 +32,13 @@ import type {
   CalculatorProvider,
   CalculatorProviderCapabilities,
   CalculatorProviderConfig,
+  CalculatorProviderInit,
   CalculatorType,
 } from "@pie-players/pie-calculator";
+
+interface MyCalculatorProviderConfig extends CalculatorProviderConfig {
+  precision?: number;
+}
 
 export class MyCalculatorProvider implements CalculatorProvider {
   readonly providerId = "my-calculator";
@@ -39,12 +46,14 @@ export class MyCalculatorProvider implements CalculatorProvider {
   readonly supportedTypes: CalculatorType[] = ["basic", "scientific"];
   readonly version = "1";
 
-  async initialize(): Promise<void> {}
+  async initialize(config?: CalculatorProviderInit): Promise<void> {
+    // Load libraries and initialize provider-level services.
+  }
 
   async createCalculator(
     type: CalculatorType,
     container: HTMLElement,
-    config?: CalculatorProviderConfig,
+    config?: MyCalculatorProviderConfig,
   ): Promise<Calculator> {
     return createMyCalculator({ provider: this, type, container, config });
   }
@@ -73,7 +82,7 @@ export class MyCalculatorProvider implements CalculatorProvider {
 - `@pie-players/pie-calculator-geogebra`
 
 Each implementation and its underlying calculator product has its own package
-and licensing boundary. No vendor library is bundled by this interface package.
+and licensing boundary. No vendor library is bundled by this contract package.
 
 ## License
 

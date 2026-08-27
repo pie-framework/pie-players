@@ -82,6 +82,22 @@ that right.
 
 ## Usage
 
+Import the provider and its owner-defined per-instance configuration from this package:
+
+```typescript
+import {
+  DesmosCalculatorProvider,
+  type DesmosCalculatorConfig,
+  type DesmosCalculatorProviderConfig,
+} from '@pie-players/pie-calculator-desmos';
+```
+
+`DesmosCalculatorProviderConfig` extends the provider-neutral calculator configuration and keeps Desmos API options under its `desmos` field. `DesmosCalculatorConfig` is the type of that nested field.
+
+The provider also accepts the same options through the provider-neutral
+`settings` object used by the packaged toolkit composition. When both forms are
+present, `settings` wins.
+
 ### Basic calculator
 
 ```typescript
@@ -137,7 +153,20 @@ const calculator = await provider.createCalculator("graphing", container, {
 Assessment restrictions and the Desmos API tier are separate concerns. A
 restricted calculator still requires a key licensed for the application.
 
+See the `DesmosCalculatorConfig` interface exported by `@pie-players/pie-calculator-desmos` for all available options.
+
+Common options:
+
+- `expressions`: Show/hide expression list (graphing)
+- `settingsMenu`: Show/hide settings menu
+- `zoomButtons`: Show/hide zoom controls
+- `degreeMode`: Use degrees instead of radians
+- `border`: Show calculator border
+- `links`: Enable links to Desmos.com
+
 ## State management
+
+Save and restore calculator state:
 
 ```typescript
 const state = calculator.exportState();

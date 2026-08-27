@@ -351,7 +351,7 @@ export const spanishDictionaryToolRegistration: ToolRegistration =
 		toolId: "dictionarySpanish",
 		name: "Spanish Dictionary",
 		description: "Look up word definitions in Spanish",
-		pnpSupportIds: ["spanishDictionary", "spanishGlossary"],
+		pnpSupportIds: ["spanishDictionary"],
 		lookupLanguage: "es",
 	});
 
@@ -360,6 +360,6 @@ export const spanishPictureDictionaryToolRegistration: ToolRegistration =
 		toolId: "pictureDictionarySpanish",
 		name: "Spanish Picture Dictionary",
 		description: "Look up pictures for words in Spanish",
-		pnpSupportIds: ["spanishPictureDictionary", "spanishIllustratedGlossary"],
+		pnpSupportIds: ["spanishPictureDictionary"],
 		lookupLanguage: "es",
 	});

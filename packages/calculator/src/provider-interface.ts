@@ -13,63 +13,36 @@
 export type CalculatorType = "basic" | "scientific" | "graphing";
 
 /**
- * Legacy Desmos constructor options.
+ * Provider-level initialization: credentials and instrumentation.
  *
- * @deprecated Prefer `CalculatorProviderConfig.settings` for new integrations.
- * This public type and the `desmos` field below remain supported so existing
- * clients can upgrade without rewriting authored calculator configuration.
- *
- * `apiKey` and `proxyEndpoint` are provider-initialization values, not
- * calculator constructor options. A browser that loads Desmos receives the API
- * key in the calculator script URL even when it obtains the value at runtime.
+ * Distinct from `CalculatorProviderConfig`, which configures one calculator
+ * instance. A hosted calculator vendor needs a key, or a server endpoint that
+ * mints one — never both in production, since `apiKey` puts the key in the
+ * browser.
  */
-export interface DesmosCalculatorConfig {
+export interface CalculatorProviderInit {
+	/** Vendor API key. Development only — it reaches the browser. */
 	apiKey?: string;
+	/** Host endpoint that serves the vendor credential. Production. */
 	proxyEndpoint?: string;
-	border?: boolean;
-	degreeMode?: boolean | "degree" | "radian";
-	decimalToFraction?: boolean;
-	links?: boolean;
-	settingsMenu?: boolean;
-	expressions?: boolean;
-	zoomButtons?: boolean;
-	expressionsTopbar?: boolean;
-	notes?: boolean;
-	folders?: boolean;
-	images?: boolean;
-	qwertyKeyboard?: boolean;
-	restrictedFunctions?: boolean;
-	plotSingleVariableImplicitEquations?: boolean;
-	distributions?: boolean;
-	plotImplicits?: boolean;
-	plotInequalities?: boolean;
-	geometryComputationFunctions?: boolean;
-	sliders?: boolean;
-	tables?: boolean;
-	expressionsCollapsed?: boolean;
-	administerSecretFolders?: boolean;
-	lockViewport?: boolean;
-	functionDefinition?: boolean;
-	brailleExpressionDownload?: boolean;
-	keypad?: boolean;
-	graphpaper?: boolean;
-	additionalFunctions?: string[];
+	/** Instrumentation callback for library-load and auth events. */
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
 }
 
 /**
  * Provider-neutral calculator configuration.
  *
  * Adapters own the shape and interpretation of `settings`; the generic
- * calculator seam deliberately does not otherwise name an implementation.
- * The deprecated `desmos` field is retained only as an existing public contract.
+ * calculator seam deliberately does not name an implementation.
  */
 export interface CalculatorProviderConfig {
 	settings?: Record<string, unknown>;
 	restrictedMode?: boolean; // Quick toggle for restricted/test mode (affects multiple options)
 	locale?: string;
 	theme?: "light" | "dark" | "auto";
-	/** @deprecated Prefer `settings`. */
-	desmos?: DesmosCalculatorConfig;
 }
 
 /**
@@ -109,6 +82,14 @@ export interface CalculatorState {
  *
  * Providers are stateless factories that create calculator implementations.
  * They describe capabilities and create configured instances.
+ *
+ * Not parameterized by its configuration type, matching `ITTSProvider` in
+ * `@pie-players/pie-tts`. An adapter extends `CalculatorProviderConfig` and
+ * narrows `createCalculator`'s argument in its own class signature — see
+ * `DesmosCalculatorProviderConfig` in `@pie-players/pie-calculator-desmos` —
+ * which is what gives a caller holding the concrete provider the precise type.
+ * A type parameter here would add one, since a provider narrowing that argument
+ * satisfies this interface either way.
  */
 export interface CalculatorProvider {
 	/**
@@ -132,9 +113,9 @@ export interface CalculatorProvider {
 	readonly version: string;
 
 	/**
-	 * Initialize the provider (load libraries, etc.)
+	 * Initialize the provider: load the vendor library and authenticate.
 	 */
-	initialize(): Promise<void>;
+	initialize(config?: CalculatorProviderInit): Promise<void>;
 
 	/**
 	 * Create a calculator instance

@@ -1,15 +1,16 @@
-import type { CalculatorProvider } from "@pie-players/pie-calculator";
+import type {
+	CalculatorProvider,
+	CalculatorProviderInit,
+} from "@pie-players/pie-calculator";
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
 } from "./ToolProviderApi.js";
 
-export interface CalculatorToolProviderInitConfig {
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
-}
+export type CalculatorToolProviderInitConfig = Pick<
+	CalculatorProviderInit,
+	"onTelemetry"
+>;
 
 type InitializableCalculatorProvider<TConfig> = CalculatorProvider & {
 	initialize(config: TConfig): Promise<void>;

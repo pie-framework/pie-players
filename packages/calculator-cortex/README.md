@@ -18,3 +18,10 @@ const calculator = await provider.createCalculator(
 
 The package bundles all runtime code and required assets. It does not require
 an API key, CDN, or network connection.
+
+## Isolated demos
+
+Run `bun run --cwd packages/calculator-cortex demo`, then open the basic,
+scientific, or graphing page from the mode navigation. Each page mounts one
+calculator directly through `CortexCalculatorProvider`; it does not load an
+assessment player, toolkit coordinator, or tool wrapper.

@@ -10,7 +10,7 @@ export default defineConfig({
 		headless: true,
 	},
 	webServer: {
-		command: "bunx vite tests/browser --host 127.0.0.1 --port 5617 --strictPort",
+		command: "bunx vite demo --host 127.0.0.1 --port 5617 --strictPort",
 		url: "http://127.0.0.1:5617",
 		reuseExistingServer: false,
 		timeout: 30_000,

@@ -1,0 +1,80 @@
+:root {
+	font-family: system-ui, sans-serif;
+	color: #0f172a;
+	background: #f8fafc;
+}
+
+body {
+	box-sizing: border-box;
+	max-width: 76rem;
+	margin: 0 auto;
+	padding: 1rem;
+}
+
+.pie-cortex-demo-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+	margin-bottom: 1rem;
+}
+
+h1 {
+	margin: 0;
+	font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+nav {
+	display: flex;
+	gap: 0.4rem;
+	flex-wrap: wrap;
+}
+
+nav a {
+	min-height: 2.75rem;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 0.8rem;
+	border: 1px solid #64748b;
+	border-radius: 0.35rem;
+	color: #0f172a;
+	background: #fff;
+	font-weight: 650;
+	text-decoration: none;
+}
+
+nav a[aria-current="page"] {
+	border-color: #1d4ed8;
+	color: #fff;
+	background: #1d4ed8;
+}
+
+nav a:focus-visible {
+	outline: 3px solid #2563eb;
+	outline-offset: 2px;
+}
+
+.pie-cortex-demo-calculator {
+	min-height: 28rem;
+	border: 1px solid #cbd5e1;
+	border-radius: 0.5rem;
+	overflow: hidden;
+	background: #fff;
+	box-shadow: 0 0.5rem 1.5rem rgb(15 23 42 / 8%);
+}
+
+body[data-mode="graphing"] .pie-cortex-demo-calculator {
+	min-height: 52rem;
+}
+
+@media (max-width: 30rem) {
+	body {
+		padding: 0.65rem;
+	}
+
+	nav a {
+		flex: 1 1 auto;
+		justify-content: center;
+	}
+}

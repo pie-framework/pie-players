@@ -18,9 +18,10 @@
 	],
 	"scripts": {
 		"build": "vite build",
+		"demo": "bun run build && bunx vite demo",
 		"test": "bun test tests",
 		"test:e2e": "bun run build && bunx playwright test --config playwright.config.ts",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.demo.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"lint": "biome check ."
 	},

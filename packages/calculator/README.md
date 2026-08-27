@@ -1,86 +1,52 @@
 # @pie-players/pie-calculator
 
-Calculator provider interfaces and types for PIE Assessment Toolkit - Pure TypeScript with no UI dependencies.
-
-## Purpose
-
-This package provides the foundational interfaces and types for building calculator providers in the PIE ecosystem. It has **zero dependencies** and no UI framework requirements, making it suitable for:
-
-- Implementing custom calculator providers
-- Type-safe calculator integration
-- Framework-agnostic calculator solutions
-
-## What's Included
-
-### Interfaces
-
-- **`CalculatorProvider`** - Stateless factory for creating calculator implementations
-- **`Calculator`** - Actual calculator instance interface
-- **`CalculatorProviderCapabilities`** - Feature support description
-- **`CalculatorProviderConfig`** - Provider configuration
-
-### Types
-
-- **`CalculatorType`** - Union type of supported calculator types
-- **`CalculatorState`** - State for persistence
-- **`CalculationHistoryEntry`** - History entry format
-- **`DesmosCalculatorConfig`** - Desmos-specific configuration
+Provider-neutral calculator contracts for PIE Players. This package has no
+runtime dependencies and contains no UI or vendor implementation code.
 
 ## Installation
 
 ```bash
-npm install @pie-players/pie-calculator
-# or
 bun add @pie-players/pie-calculator
 ```
 
-## Usage
+## Contract
 
-### Implementing a Custom Calculator Provider
+The package exports:
 
-```typescript
+- `CalculatorProvider`, the factory and capability contract implemented by a
+  calculator adapter;
+- `Calculator`, the lifecycle, value, state, resize, and focus contract for one
+  mounted calculator;
+- `CalculatorProviderConfig`, whose `settings` object is interpreted only by the
+  selected implementation; and
+- `CalculatorType`, with `basic`, `scientific`, and `graphing` modes.
+
+Provider-specific settings belong to the provider package. Generic code passes
+them through without importing or naming Desmos, GeoGebra, or another vendor.
+
+```ts
 import type {
-  CalculatorProvider,
   Calculator,
-  CalculatorType,
+  CalculatorProvider,
   CalculatorProviderCapabilities,
-  CalculatorProviderConfig
-} from '@pie-players/pie-calculator';
-
-class MyCalculatorImpl implements Calculator {
-  readonly provider: CalculatorProvider;
-  readonly type: CalculatorType;
-
-  constructor(provider: CalculatorProvider, type: CalculatorType, container: HTMLElement) {
-    this.provider = provider;
-    this.type = type;
-    // Initialize calculator in container
-  }
-
-  getValue(): string { return '0'; }
-  setValue(value: string): void { /* ... */ }
-  clear(): void { /* ... */ }
-  exportState(): CalculatorState { /* ... */ }
-  importState(state: CalculatorState): void { /* ... */ }
-  destroy(): void { /* ... */ }
-}
+  CalculatorProviderConfig,
+  CalculatorType,
+} from "@pie-players/pie-calculator";
 
 export class MyCalculatorProvider implements CalculatorProvider {
-  readonly providerId = 'my-calculator';
-  readonly providerName = 'My Calculator';
-  readonly supportedTypes: CalculatorType[] = ['basic', 'scientific'];
-  readonly version = '1.0.0';
+  readonly providerId = "my-calculator";
+  readonly providerName = "My Calculator";
+  readonly supportedTypes: CalculatorType[] = ["basic", "scientific"];
+  readonly version = "1";
 
-  async initialize(): Promise<void> {
-    // Load libraries, etc.
-  }
+  async initialize(): Promise<void> {}
 
   async createCalculator(
     type: CalculatorType,
     container: HTMLElement,
-    config?: CalculatorProviderConfig
+    config?: CalculatorProviderConfig,
   ): Promise<Calculator> {
-    return new MyCalculatorImpl(this, type, container);
+    return createMyCalculator({ provider: this, type, container, config });
   }
 
   supportsType(type: CalculatorType): boolean {
@@ -93,42 +59,22 @@ export class MyCalculatorProvider implements CalculatorProvider {
       supportsGraphing: false,
       supportsExpressions: true,
       canExport: true,
-      maxPrecision: 15,
-      inputMethods: ['keyboard', 'mouse', 'touch'],
+      inputMethods: ["keyboard", "mouse", "touch"],
     };
   }
 
-  destroy(): void {
-    // Cleanup
-  }
+  destroy(): void {}
 }
 ```
 
-## Official Implementations
+## Implementations
 
-- **Desmos** (`@pie-players/pie-calculator-desmos`) - Requires API key, graphing support
+- `@pie-players/pie-calculator-desmos`
+- `@pie-players/pie-calculator-geogebra`
 
-## Calculator Types
-
-Supported calculator types:
-
-- `"basic"` - Four-function calculator (add, subtract, multiply, divide)
-- `"scientific"` - Scientific calculator with trigonometry, logarithms, etc.
-- `"graphing"` - Graphing calculator with coordinate plane
-
-## Design Philosophy
-
-This core package intentionally:
-- ✅ Has **zero runtime dependencies**
-- ✅ Contains **only TypeScript interfaces and types**
-- ✅ Is **framework-agnostic** (no React, Svelte, Vue, etc.)
-- ✅ Supports **pluggable architecture**
-- ✅ Enables **type-safe calculator implementations**
+Each implementation and its underlying calculator product has its own package
+and licensing boundary. No vendor library is bundled by this interface package.
 
 ## License
 
-MIT
-
-## Related Packages
-
-- [@pie-players/pie-calculator-desmos](../calculator-desmos) - Desmos graphing calculator provider
+PIE-authored code in this package is MIT licensed.

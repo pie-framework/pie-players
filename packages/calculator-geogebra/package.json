@@ -1,0 +1,56 @@
+{
+	"name": "@pie-players/pie-calculator-geogebra",
+	"version": "0.3.68",
+	"description": "GeoGebra calculator provider adapter for PIE assessment tools",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc",
+		"test": "bun test tests",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [
+		"pie",
+		"calculator",
+		"geogebra",
+		"graphing",
+		"scientific",
+		"math",
+		"accessibility"
+	],
+	"author": "PIE Framework",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/calculator-geogebra"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@pie-players/pie-calculator": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	},
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/calculator-geogebra#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

@@ -7,6 +7,7 @@ import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
+import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
@@ -614,13 +615,13 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		integrationLevel: 2,
 		integrationTheme: "Formative delivery",
 		focus:
-			"Shows that PIE renders no feedback of its own — a reveal projects `mode: \"evaluate\"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.",
+			'Shows that PIE renders no feedback of its own — a reveal projects `mode: "evaluate"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.',
 		whatMakesItTick: [
 			"`section.formative` sets the default (three Tries, correctness feedback); each `assessmentItemRefs[].formative` overrides it field by field.",
 			"A check calls the item player's existing `provideScore()` and reports the outcomes; the section controller derives correctness and owns Try state.",
-			"Only the revealed item's `env` becomes `mode: \"evaluate\"` — its neighbours stay editable, which is the per-item seam the section env never had.",
-			"`fd-q2` uses `feedback: \"solution\"`, so its reveal projects `role: \"instructor\"` and the element shows the authored correct response.",
-			"`fd-q3` uses `revealOn: \"on-final-try\"`: the first two checks record a Try and reveal nothing.",
+			'Only the revealed item\'s `env` becomes `mode: "evaluate"` — its neighbours stay editable, which is the per-item seam the section env never had.',
+			'`fd-q2` uses `feedback: "solution"`, so its reveal projects `role: "instructor"` and the element shows the authored correct response.',
+			'`fd-q3` uses `revealOn: "on-final-try"`: the first two checks record a Try and reveal nothing.',
 			"`fd-q4` sets `enabled: false`, so one ordinary item sits inside a formative section with no control at all.",
 		],
 		section: demoFormativeDeliverySection,
@@ -635,7 +636,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows that the section reaches media only through the Media Time Source port. The stimulus here is authored `<video>` markup with no PIE element in it, so the port is exercised by the exact case it exists for: a host supplying its own media element.",
 		whatMakesItTick: [
-			"The stimulus is a `class: \"stimulus\"` rubric block whose passage config mounts the media element; `timedMedia` carries only `stimulusRef`, the cues and the policy.",
+			'The stimulus is a `class: "stimulus"` rubric block whose passage config mounts the media element; `timedMedia` carries only `stimulusRef`, the cues and the policy.',
 			"`cue-first-step` reveals `tm-q1` at 0:04 and playback continues; a revealed card is mounted-and-hidden until its cue fires, so its session and shell registration survive a seek backwards.",
 			"`cue-scrub-time` gates `tm-q2` at 0:10: playback pauses, focus moves to the card, and only a correct answer releases it — the condition names the formative `FormativeCorrectness` vocabulary rather than defining its own.",
 			"`onUnknownCorrectness` is stated explicitly, because an item no controller can score has to have an authored answer rather than being treated as wrong.",
@@ -736,6 +737,24 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The same registry is passed to `createToolsConfig`, `ToolkitCoordinator`, and the section-player element.",
 		],
 		section: demo8ToolVisibilitySection,
+	},
+	"calculator-geogebra": {
+		id: "calculator-geogebra",
+		name: "GeoGebra Calculator Suite",
+		description:
+			"The calculator capability explicitly composed with GeoGebra while the unconfigured default remains Desmos",
+		integrationLevel: 4,
+		integrationTheme: "Alternative tool-provider composition",
+		focus:
+			"Exercises the same calculator registration, toolbar, policy, and item-data configuration through the separate GeoGebra provider suite.",
+		whatMakesItTick: [
+			"Selects `calculator-geogebra` through the generic provider configuration seam; no generic calculator code imports a GeoGebra implementation.",
+			"Maps the basic calculator request to GeoGebra's scientific app because GeoGebra has no equivalent four-function embed.",
+			"Exercises basic, scientific, and graphing requests on separate assessment items through the same toolkit context resolver.",
+			"Keeps the existing `calculator` capability and generic custom-element contract, so hosts switch implementation without changing item policy.",
+			"Loads GeoGebra from its official deployment script and displays the required GeoGebra attribution inside the tool surface.",
+		],
+		section: demoGeoGebraCalculatorSection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",

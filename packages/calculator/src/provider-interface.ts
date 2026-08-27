@@ -13,64 +13,16 @@
 export type CalculatorType = "basic" | "scientific" | "graphing";
 
 /**
- * Desmos-specific calculator configuration options
- * Based on production implementation patterns and Desmos API documentation
- */
-export interface DesmosCalculatorConfig {
-	// API Configuration
-	// SECURITY WARNING: Never expose API keys in client-side code in production!
-	// For development: Use apiKey directly
-	// For production: Use proxyEndpoint to handle API key server-side
-	apiKey?: string; // Desmos API key (DEVELOPMENT ONLY - obtain from https://www.desmos.com/api)
-	proxyEndpoint?: string; // Server endpoint that handles Desmos API authentication (PRODUCTION RECOMMENDED)
-
-	// Common options for all calculator types
-	border?: boolean; // Show border around calculator (default: false)
-	degreeMode?: boolean | "degree" | "radian"; // Angle mode: true = degrees, false = radians
-	decimalToFraction?: boolean; // Enable decimal to fraction conversion
-	links?: boolean; // Enable links to external Desmos resources
-
-	// Graphing Calculator specific options
-	settingsMenu?: boolean; // Show settings menu
-	expressions?: boolean; // Enable expression list/editor
-	zoomButtons?: boolean; // Show zoom buttons
-	expressionsTopbar?: boolean; // Show expressions topbar
-	notes?: boolean; // Enable notes
-	folders?: boolean; // Enable folders for organizing expressions
-	images?: boolean; // Enable image uploads
-	qwertyKeyboard?: boolean; // Use QWERTY keyboard layout
-	restrictedFunctions?: boolean; // Restrict certain functions (test mode)
-	plotSingleVariableImplicitEquations?: boolean; // Enable plotting implicit equations
-	distributions?: boolean; // Enable statistical distributions
-	plotImplicits?: boolean; // Enable implicit equation plotting
-	plotInequalities?: boolean; // Enable inequality plotting
-	geometryComputationFunctions?: boolean; // Enable geometry computation functions
-	sliders?: boolean; // Enable sliders for parameters
-	tables?: boolean; // Enable data tables feature
-	expressionsCollapsed?: boolean; // Start with expressions collapsed
-	administerSecretFolders?: boolean; // Enable secret folders
-	lockViewport?: boolean; // Lock viewport (disable panning/zooming)
-
-	// Scientific Calculator specific options
-	functionDefinition?: boolean; // Enable function definition
-	brailleExpressionDownload?: boolean; // Enable braille expression download
-
-	// Basic (Four-Function) Calculator specific options
-	keypad?: boolean; // Show on-screen keypad
-	graphpaper?: boolean; // Show graph paper background
-	additionalFunctions?: string[]; // Additional functions (e.g., ['sqrt', 'percent'])
-}
-
-/**
- * Calculator provider configuration
+ * Provider-neutral calculator configuration.
+ *
+ * Adapters own the shape and interpretation of `settings`; the generic
+ * calculator seam deliberately does not name an implementation.
  */
 export interface CalculatorProviderConfig {
-	settings?: Record<string, any>;
+	settings?: Record<string, unknown>;
 	restrictedMode?: boolean; // Quick toggle for restricted/test mode (affects multiple options)
 	locale?: string;
 	theme?: "light" | "dark" | "auto";
-	// Desmos-specific configuration
-	desmos?: DesmosCalculatorConfig;
 }
 
 /**

@@ -1,42 +1,65 @@
-# Calculator Providers
+# Calculator providers
 
-Calculator providers for PIE assessment tools.
+The toolkit registers calculator providers behind the provider-neutral
+`@pie-players/pie-calculator` contract. Desmos remains the no-configuration
+default; GeoGebra is an explicit alternative.
 
-## Available Provider
+## Toolkit configuration
 
-### Desmos Provider (Requires License)
+```ts
+const desmosTools = {
+  providers: {
+    calculator: {
+      provider: {
+        id: "calculator-desmos",
+        runtime: {
+          authFetcher: async () => ({ apiKey: "application-key" }),
+        },
+      },
+      settings: { degreeMode: true },
+    },
+  },
+};
 
-Best for graphing and production calculator experiences.
-
-```typescript
-import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit";
-
-const provider = new DesmosToolProvider();
-
-await provider.initialize({
-  apiKey: "your_desmos_api_key_here",
-});
-
-const calculator = await provider.createCalculator("graphing", container, {
-  theme: "light",
-  restrictedMode: false,
-});
+const geoGebraTools = {
+  providers: {
+    calculator: {
+      provider: {
+        id: "calculator-geogebra",
+        init: { appletTimeoutMs: 20_000 },
+      },
+      settings: { showResetIcon: true },
+      restrictedMode: true,
+    },
+  },
+};
 ```
 
-Notes:
-- Production usage requires a Desmos API key.
-- Development/testing can run without a key in fallback mode.
+Omitting `provider.id` selects `calculator-desmos` for compatibility. GeoGebra
+maps a `basic` calculator request to its scientific app because its embed API
+does not provide a separate four-function app.
 
-## Provider Comparison
+Provider initialization belongs under `provider.init`; runtime-only functions
+such as a credential fetcher belong under `provider.runtime`; per-calculator
+vendor options belong in `settings`. The same shape is used by both suites.
 
-| Feature | Desmos |
-|---------|--------|
-| Basic calculator | Yes |
-| Scientific calculator | Yes |
-| Graphing calculator | Yes |
-| License | Proprietary |
-| Status | Production |
+## Direct adapters
 
-## Provider Interface
+The toolkit exports `DesmosToolProvider` and `GeoGebraToolProvider`. Their
+underlying calculator adapters are published separately:
 
-All providers implement the same `CalculatorProvider` contract from `@pie-players/pie-calculator`, so consumers can swap providers without changing calling patterns.
+- `@pie-players/pie-calculator-desmos`
+- `@pie-players/pie-calculator-geogebra`
+
+## Licensing
+
+PIE packages contain only PIE-authored adapters and are MIT licensed. They do
+not bundle Desmos or GeoGebra application code.
+
+- Desmos is separately licensed. The adapter preserves its legacy unkeyed URL
+  for backwards compatibility, but that does not grant or imply a license.
+- GeoGebra's full application/web services are separately licensed and require
+  attribution; commercial use requires an agreement with GeoGebra.
+
+Review the current vendor terms for every application and demo before enabling a
+provider.

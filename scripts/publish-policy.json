@@ -6,6 +6,10 @@
 	"requireExportsOrMainTypes": true,
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
+	"svelteRuntimeDependencyRange": "^5.56.10",
+	"allowedSvelteRuntimeDependencies": {
+		"@pie-players/pie-tool-calculator-shared": "Provider-neutral Svelte components externalize the runtime so vendor custom-element wrappers compile against one shared Svelte instance."
+	},
 	"workspaceRoots": ["packages"],
 	"forbiddenPublicExports": {
 		"@pie-players/pie-players-shared": [

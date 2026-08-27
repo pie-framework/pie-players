@@ -2,11 +2,7 @@
  * Desmos Calculator Tool Provider
  *
  * Provides Desmos calculators (basic, scientific, graphing)
- * with authentication and proxy support.
- *
- * SECURITY BEST PRACTICE:
- * - Development: Pass apiKey directly for local testing
- * - Production: Use proxyEndpoint or authFetcher to keep API key server-side
+ * through the separately licensed Desmos browser API.
  *
  * Part of PIE Assessment Toolkit.
  */
@@ -27,21 +23,15 @@ import type {
  */
 export interface DesmosToolProviderConfig {
 	/**
-	 * Desmos API key (DEVELOPMENT ONLY)
-	 * Never expose in production client code!
+	 * Desmos API key licensed for this application.
 	 *
-	 * Obtain from: https://www.desmos.com/api
+	 * Desmos requires this key in the browser's calculator.js URL. Supplying it
+	 * through an authFetcher keeps it out of static source and bundles, but does
+	 * not make it secret from the browser.
+	 *
+	 * Obtain from: https://www.desmos.com/my-api
 	 */
 	apiKey?: string;
-
-	/**
-	 * Server proxy endpoint (PRODUCTION RECOMMENDED)
-	 * Backend handles API key securely
-	 *
-	 * @example '/api/desmos/token'
-	 * @example 'https://api.myapp.com/tools/desmos/auth'
-	 */
-	proxyEndpoint?: string;
 
 	/**
 	 * Optional telemetry callback for tool/backend instrumentation.
@@ -63,8 +53,7 @@ export interface DesmosToolProviderConfig {
  * const provider = new DesmosToolProvider();
  *
  * await provider.initialize({
- *   apiKey: 'your-api-key', // Development only
- *   proxyEndpoint: '/api/desmos/token', // Production
+ *   apiKey: 'your-application-api-key',
  * });
  *
  * const calculatorProvider = await provider.createInstance();
@@ -83,7 +72,6 @@ export class DesmosToolProvider
 		| (CalculatorProvider & {
 				initialize(config: {
 					apiKey?: string;
-					proxyEndpoint?: string;
 					onTelemetry?: (
 						eventName: string,
 						payload?: Record<string, unknown>,
@@ -109,10 +97,11 @@ export class DesmosToolProvider
 	 *
 	 * Loads the Desmos API library and authenticates with provided credentials.
 	 *
-	 * @param config Configuration with API key or proxy endpoint
+	 * @param config Configuration with an application key, or no key for the
+	 * backwards-compatible unkeyed load/preloaded API path
 	 * @throws Error if initialization fails
 	 */
-	async initialize(config: DesmosToolProviderConfig): Promise<void> {
+	async initialize(config: DesmosToolProviderConfig = {}): Promise<void> {
 		if (this.desmosProvider) {
 			console.warn(
 				"[DesmosToolProvider] Already initialized, skipping reinitialization",
@@ -133,7 +122,6 @@ export class DesmosToolProvider
 					DesmosCalculatorProvider: new () => CalculatorProvider & {
 						initialize(config: {
 							apiKey?: string;
-							proxyEndpoint?: string;
 							onTelemetry?: (
 								eventName: string,
 								payload?: Record<string, unknown>,
@@ -162,27 +150,25 @@ export class DesmosToolProvider
 		})();
 		this.desmosProvider = new desmosModule.DesmosCalculatorProvider();
 
-		// Initialize with API key or proxy
+		// Preserve the unkeyed path for existing hosts while allowing licensed
+		// deployments to supply the application key through provider init/runtime.
 		try {
 			await this.desmosProvider.initialize({
 				apiKey: config.apiKey,
-				proxyEndpoint: config.proxyEndpoint,
 				onTelemetry: config.onTelemetry,
 			});
 
 			console.log(
-				`[DesmosToolProvider] Initialized successfully ${
-					config.proxyEndpoint
-						? "(using proxy)"
-						: config.apiKey
-							? "(direct API key)"
-							: "(no auth)"
-				}`,
+				`[DesmosToolProvider] Initialized successfully ${config.apiKey ? "(API key supplied)" : "(compatibility path)"}`,
 			);
 		} catch (error) {
 			console.error("[DesmosToolProvider] Initialization failed:", error);
+			this.desmosProvider.destroy();
+			this.desmosProvider = null;
+			this.config = null;
 			throw new Error(
-				"Failed to initialize Desmos calculator provider. Check API key or proxy endpoint.",
+				"Failed to initialize Desmos calculator provider. Check the application key, preloaded API, or network access.",
+				{ cause: error },
 			);
 		}
 	}

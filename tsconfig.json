@@ -61,6 +61,15 @@
 			"path": "./packages/tool-calculator-desmos"
 		},
 		{
+			"path": "./packages/tool-calculator-geogebra"
+		},
+		{
+			"path": "./packages/tool-calculator-inline-geogebra"
+		},
+		{
+			"path": "./packages/tool-calculator-shared"
+		},
+		{
 			"path": "./packages/tool-color-scheme"
 		},
 		{
@@ -98,6 +107,9 @@
 		},
 		{
 			"path": "./packages/calculator-desmos"
+		},
+		{
+			"path": "./packages/calculator-geogebra"
 		}
 	],
 	"exclude": ["node_modules", "dist", "build"]

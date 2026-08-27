@@ -40,7 +40,7 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
+	import { createSectionDemoToolRegistryForCalculator } from '$lib/demo-runtime/default-tool-registry';
 	import {
 		buildBundleKey,
 		collectElementPackages,
@@ -59,17 +59,41 @@
 		 * it, and a demo passing a locale with no control cannot be switched back.
 		 * Left off, this page renders the English a host that supplies no locale gets.
 		 */
-		localeSwitcher = false
-	}: { data: DemoRouteData; localeSwitcher?: boolean } = $props();
+		localeSwitcher = false,
+		/**
+		 * Select the calculator implementation for provider-composition demos.
+		 * Leaving this unset deliberately exercises the backwards-compatible
+		 * Desmos default.
+		 */
+		calculatorProvider = 'desmos'
+	}: {
+		data: DemoRouteData;
+		localeSwitcher?: boolean;
+		calculatorProvider?: 'desmos' | 'geogebra';
+	} = $props();
 	// Empty rather than a default tag: unset is what a host most often sends, and
 	// the players resolve it to `en-US` without consulting the browser.
 	const playerLocale = $derived(localeSwitcher ? demoLocale() : '');
 	const demoRuntimeId = untrack(() => data.demo?.id ?? 'section-demo');
-	const itemDataCalculatorEnabled = untrack(() => data.demo?.id === 'tool-visibility');
+	const itemDataCalculatorEnabled = untrack(
+		() => data.demo?.id === 'tool-visibility' || data.demo?.id === 'calculator-geogebra',
+	);
 	const itemDataCalculatorIntegration = itemDataCalculatorEnabled
 		? createItemDataCalculatorIntegration(untrack(() => data.section))
 		: null;
-	const toolRegistry = createSectionDemoToolRegistry();
+	const calculatorProviderAtInit = untrack(() => calculatorProvider);
+	const toolRegistry = createSectionDemoToolRegistryForCalculator(calculatorProviderAtInit);
+	const calculatorToolProvider =
+		calculatorProviderAtInit === 'geogebra'
+			? {
+					provider: { id: 'calculator-geogebra' },
+				}
+			: {
+					provider: {
+						id: 'calculator-desmos',
+						runtime: { authFetcher: fetchDesmosAuthConfig },
+					},
+				};
 
 	// Level 3: explicit host-managed coordinator initialization.
 	const toolsConfigResult = createToolsConfig({
@@ -79,9 +103,7 @@
 		tools: {
 			providers: {
 				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
-				calculator: {
-					authFetcher: fetchDesmosAuthConfig
-				},
+				calculator: calculatorToolProvider,
 				annotationToolbar: {
 					enabled: true
 				}

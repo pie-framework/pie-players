@@ -193,6 +193,7 @@
       "dependencies": {
         "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-default-tool-loaders": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -208,6 +209,7 @@
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
         "@pie-players/pie-tool-calculator-desmos": "workspace:*",
+        "@pie-players/pie-tool-calculator-geogebra": "workspace:*",
         "@pie-players/pie-tool-dictionary": "workspace:*",
         "@pie-players/pie-tool-picture-dictionary": "workspace:*",
         "@pie-players/pie-tool-sign-language": "workspace:*",
@@ -266,16 +268,19 @@
         "@biomejs/biome": "^2.5.10",
         "@happy-dom/global-registrator": "^20.11.6",
         "@pie-players/pie-calculator-desmos": "workspace:*",
+        "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
         "svelte": "^5.56.10",
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
         "@pie-players/pie-calculator-desmos": "workspace:*",
+        "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
       },
       "optionalPeers": [
         "@pie-players/pie-calculator-desmos",
+        "@pie-players/pie-calculator-geogebra",
         "@pie-players/tts-client-server",
       ],
     },
@@ -288,6 +293,16 @@
     },
     "packages/calculator-desmos": {
       "name": "@pie-players/pie-calculator-desmos",
+      "version": "0.3.68",
+      "dependencies": {
+        "@pie-players/pie-calculator": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/calculator-geogebra": {
+      "name": "@pie-players/pie-calculator-geogebra",
       "version": "0.3.68",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
@@ -573,6 +588,24 @@
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
+        "@sveltejs/vite-plugin-svelte": "^7.3.0",
+        "svelte": "^5.56.10",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.2.1",
+        "vite-plugin-dts": "^5.0.3",
+      },
+    },
+    "packages/tool-calculator-geogebra": {
+      "name": "@pie-players/pie-tool-calculator-geogebra",
+      "version": "0.3.68",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.10",
@@ -591,6 +624,43 @@
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
+        "@sveltejs/vite-plugin-svelte": "^7.3.0",
+        "svelte": "^5.56.10",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.2.1",
+        "vite-plugin-dts": "^5.0.3",
+      },
+    },
+    "packages/tool-calculator-inline-geogebra": {
+      "name": "@pie-players/pie-tool-calculator-inline-geogebra",
+      "version": "0.3.68",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
+        "@sveltejs/vite-plugin-svelte": "^7.3.0",
+        "svelte": "^5.56.10",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.2.1",
+        "vite-plugin-dts": "^5.0.3",
+      },
+    },
+    "packages/tool-calculator-shared": {
+      "name": "@pie-players/pie-tool-calculator-shared",
+      "version": "0.3.68",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "svelte": "^5.56.10",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.10",
@@ -1238,6 +1308,8 @@
 
     "@pie-players/pie-calculator-desmos": ["@pie-players/pie-calculator-desmos@workspace:packages/calculator-desmos"],
 
+    "@pie-players/pie-calculator-geogebra": ["@pie-players/pie-calculator-geogebra@workspace:packages/calculator-geogebra"],
+
     "@pie-players/pie-context": ["@pie-players/pie-context@workspace:packages/pie-context"],
 
     "@pie-players/pie-default-tool-loaders": ["@pie-players/pie-default-tool-loaders@workspace:packages/default-tool-loaders"],
@@ -1274,7 +1346,13 @@
 
     "@pie-players/pie-tool-calculator-desmos": ["@pie-players/pie-tool-calculator-desmos@workspace:packages/tool-calculator-desmos"],
 
+    "@pie-players/pie-tool-calculator-geogebra": ["@pie-players/pie-tool-calculator-geogebra@workspace:packages/tool-calculator-geogebra"],
+
     "@pie-players/pie-tool-calculator-inline-desmos": ["@pie-players/pie-tool-calculator-inline-desmos@workspace:packages/tool-calculator-inline-desmos"],
+
+    "@pie-players/pie-tool-calculator-inline-geogebra": ["@pie-players/pie-tool-calculator-inline-geogebra@workspace:packages/tool-calculator-inline-geogebra"],
+
+    "@pie-players/pie-tool-calculator-shared": ["@pie-players/pie-tool-calculator-shared@workspace:packages/tool-calculator-shared"],
 
     "@pie-players/pie-tool-dictionary": ["@pie-players/pie-tool-dictionary@workspace:packages/tool-dictionary"],
 

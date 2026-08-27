@@ -1,5 +1,6 @@
 import type { CalculatorType } from "@pie-players/pie-calculator";
 import type { CortexCalculatorLocalization } from "./localization.js";
+import { mathfieldDecimalSeparator } from "./mathlive-runtime.js";
 import type { ResolvedCortexSettings } from "./settings.js";
 import type { CortexCalculatorMessageKey, CortexFunctionId } from "./types.js";
 
@@ -384,18 +385,6 @@ function prune(
 }
 
 /**
- * Which decimal separator the numeric layer offers, matching the one MathLive is
- * configured with so typed and tapped input agree.
- */
-export function keypadDecimalSeparator(locale: string): "." | "," {
-	try {
-		return new Intl.NumberFormat(locale).format(1.1).includes(",") ? "," : ".";
-	} catch {
-		return ".";
-	}
-}
-
-/**
  * The layers for one calculator, already filtered to what the host permits.
  *
  * Scientific stacks its functions in a *second layer* rather than extra rows.
@@ -409,7 +398,9 @@ export function keypadLayers(
 	localization: CortexCalculatorLocalization,
 ): readonly KeypadLayer[] {
 	const { type, allowedFunctions } = settings;
-	const separator = keypadDecimalSeparator(localization.locale);
+	// The same resolver the mathfield class is configured with, so a tapped key and
+	// a typed character produce the same separator rather than two.
+	const separator = mathfieldDecimalSeparator(localization.locale);
 	const numericRows = prune(
 		[...NUMERIC_ROWS, numericBottomRow(separator)],
 		type,

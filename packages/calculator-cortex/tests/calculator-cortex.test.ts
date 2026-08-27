@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ComputeEngine } from "@cortex-js/compute-engine";
 import type { CalculatorState } from "@pie-players/pie-calculator";
-import {
-	CortexCalculatorError,
-	CortexCalculatorProvider,
-} from "../src/index.js";
+import { CortexCalculatorProvider } from "../src/index.js";
 import { evaluateLatex, sampleLatex } from "../src/evaluation-engine.js";
 import { validateExpression } from "../src/function-policy.js";
 import { localeDirection } from "../src/localization.js";
@@ -12,6 +9,7 @@ import { resolveCortexSettings } from "../src/settings.js";
 import { decodeCortexState, encodeCortexState } from "../src/state-codec.js";
 import type { CortexOuterCalculatorState } from "../src/types.js";
 import type { WorkerEvaluationSettings } from "../src/worker-protocol.js";
+import { expectCortexCode } from "./support/cortex-errors.js";
 
 const workerSettings: WorkerEvaluationSettings = {
 	angleMode: "degree",
@@ -35,16 +33,6 @@ const workerSettings: WorkerEvaluationSettings = {
 		"factorial",
 	],
 };
-
-function expectCortexCode(operation: () => unknown, code: string): void {
-	try {
-		operation();
-		throw new Error("Expected operation to throw");
-	} catch (error) {
-		expect(error).toBeInstanceOf(CortexCalculatorError);
-		expect((error as CortexCalculatorError).code).toBe(code);
-	}
-}
 
 describe("Cortex calculator settings and policy", () => {
 	test("applies bounded defaults and makes restricted mode monotonic", () => {
@@ -116,11 +104,8 @@ describe("Cortex calculator settings and policy", () => {
 			"unsupported-expression",
 		);
 		expect(
-			validateExpression(
-				engine,
-				"2^3",
-				resolveCortexSettings("scientific"),
-			).nodeCount,
+			validateExpression(engine, "2^3", resolveCortexSettings("scientific"))
+				.nodeCount,
 		).toBeGreaterThan(1);
 	});
 });
@@ -128,11 +113,15 @@ describe("Cortex calculator settings and policy", () => {
 describe("Cortex evaluation", () => {
 	test("evaluates arithmetic, degree trigonometry, factorial, and percent", () => {
 		expect(evaluateLatex("basic", "2+2", workerSettings).formatted).toBe("4");
-		expect(evaluateLatex("scientific", "\\sin(30)", workerSettings).formatted).toBe(
+		expect(
+			evaluateLatex("scientific", "\\sin(30)", workerSettings).formatted,
+		).toBe("0.5");
+		expect(evaluateLatex("scientific", "5!", workerSettings).formatted).toBe(
+			"120",
+		);
+		expect(evaluateLatex("basic", "50\\%", workerSettings).formatted).toBe(
 			"0.5",
 		);
-		expect(evaluateLatex("scientific", "5!", workerSettings).formatted).toBe("120");
-		expect(evaluateLatex("basic", "50\\%", workerSettings).formatted).toBe("0.5");
 	});
 
 	test("samples numeric point arrays without compiling learner functions", () => {
@@ -193,7 +182,8 @@ describe("Cortex state", () => {
 				id: `series-${index + 1}`,
 				latex: `y=x^${index + 1}`,
 				colorIndex: index,
-				lineStyle: (["solid", "dashed", "dotted"] as const)[index % 3] ?? "solid",
+				lineStyle:
+					(["solid", "dashed", "dotted"] as const)[index % 3] ?? "solid",
 				hidden: index === 5,
 			})),
 		};
@@ -221,30 +211,29 @@ describe("Cortex state", () => {
 	test("rejects unknown versions, excessive graph rows, and hostile input", () => {
 		const settings = resolveCortexSettings("graphing");
 		const createState = () =>
-			encodeCortexState(
-				"graphing",
-				"y=x",
-				[],
-				settings,
-				"degree",
-				{
-					viewport: { xMin: -10, xMax: 10, yMin: -10, yMax: 10 },
-					expressions: [
-						{
-							id: "series-1",
-							latex: "y=x",
-							colorIndex: 0,
-							lineStyle: "solid",
-							hidden: false,
-						},
-					],
-				},
-			) as CortexOuterCalculatorState;
+			encodeCortexState("graphing", "y=x", [], settings, "degree", {
+				viewport: { xMin: -10, xMax: 10, yMin: -10, yMax: 10 },
+				expressions: [
+					{
+						id: "series-1",
+						latex: "y=x",
+						colorIndex: 0,
+						lineStyle: "solid",
+						hidden: false,
+					},
+				],
+			}) as CortexOuterCalculatorState;
 
 		const unknownVersion = createState();
 		(unknownVersion.providerState as { version: number }).version = 2;
 		expectCortexCode(
-			() => decodeCortexState(unknownVersion, "graphing", new ComputeEngine(), settings),
+			() =>
+				decodeCortexState(
+					unknownVersion,
+					"graphing",
+					new ComputeEngine(),
+					settings,
+				),
 			"invalid-state",
 		);
 
@@ -259,7 +248,13 @@ describe("Cortex state", () => {
 			hidden: false,
 		}));
 		expectCortexCode(
-			() => decodeCortexState(tooManyRows, "graphing", new ComputeEngine(), settings),
+			() =>
+				decodeCortexState(
+					tooManyRows,
+					"graphing",
+					new ComputeEngine(),
+					settings,
+				),
 			"invalid-state",
 		);
 
@@ -267,7 +262,8 @@ describe("Cortex state", () => {
 		hostile.value = "\\href{https://example.invalid}{x}";
 		hostile.providerState.inputLatex = hostile.value;
 		expectCortexCode(
-			() => decodeCortexState(hostile, "graphing", new ComputeEngine(), settings),
+			() =>
+				decodeCortexState(hostile, "graphing", new ComputeEngine(), settings),
 			"unsupported-expression",
 		);
 	});

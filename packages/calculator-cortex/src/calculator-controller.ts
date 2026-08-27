@@ -86,6 +86,7 @@ export class CortexCalculatorController {
 	private result = "";
 	private errorCode: CortexCalculatorErrorCode | null = null;
 	private busy = false;
+	private inFlightEvaluations = 0;
 	private graphUpdating = false;
 	private history: CalculationHistoryEntry[] = [];
 	private graph: CortexGraphState | null;
@@ -174,6 +175,17 @@ export class CortexCalculatorController {
 		this.inputLatex = latex;
 		if (this.graph?.expressions[0]) this.graph.expressions[0].latex = latex;
 		this.errorCode = null;
+		/*
+		 * The answer belonged to the expression that was there. The result line sits
+		 * inside the active line, directly under the mathfield, so leaving it stands
+		 * a stale number beside fresh input as though it answered it — the same
+		 * hazard the error branch of `evaluate` already guards against.
+		 *
+		 * It also restores the result announcement for a repeated answer: the view
+		 * announces on a *change* of result, so computing `2+2` twice announced only
+		 * the first.
+		 */
+		this.result = "";
 		this.operationGeneration += 1;
 		this.publish();
 	}
@@ -185,6 +197,8 @@ export class CortexCalculatorController {
 		expression.latex = latex;
 		if (this.graph?.expressions[0]?.id === id) this.inputLatex = latex;
 		this.errorCode = null;
+		// As in `setValue`: the answer was to the expression that was there.
+		this.result = "";
 		this.operationGeneration += 1;
 		this.publish();
 	}
@@ -248,6 +262,7 @@ export class CortexCalculatorController {
 		}
 		this.inputLatex = latex;
 		const generation = ++this.operationGeneration;
+		this.inFlightEvaluations += 1;
 		this.busy = true;
 		this.errorCode = null;
 		this.publish();
@@ -296,8 +311,19 @@ export class CortexCalculatorController {
 			});
 			throw cortexError;
 		} finally {
-			if (generation === this.operationGeneration) {
-				this.busy = false;
+			this.inFlightEvaluations -= 1;
+			/*
+			 * `busy` belongs to the set of in-flight calculations, not to the newest
+			 * one. Clearing it only on a generation match left it set forever once a
+			 * keystroke superseded a calculation, and the view announces `calculating`
+			 * on the transition into busy — so every later calculation stopped
+			 * announcing that it had started.
+			 */
+			if (this.inFlightEvaluations === 0) this.busy = false;
+			if (
+				generation === this.operationGeneration ||
+				this.inFlightEvaluations === 0
+			) {
 				this.publish();
 			}
 		}

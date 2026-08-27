@@ -86,6 +86,16 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 
 	private initialized = false;
 	private apiKey?: string;
+	/*
+	 * Every calculator this provider handed out and that has not destroyed itself.
+	 *
+	 * `destroy()` is a host's one call to release the provider, and without this it
+	 * released only the provider's own fields: every calculator it created stayed
+	 * mounted, with its vendor instance alive and its container populated. A host
+	 * that swaps providers, or tears a section down without walking its calculators
+	 * first, leaked all of them.
+	 */
+	private readonly instances = new Set<Calculator>();
 	private onTelemetry:
 		| ((
 				eventName: string,
@@ -119,7 +129,6 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			script.async = true;
 			script.onload = () => {
 				if (window.Desmos) {
-					console.log("[DesmosProvider] Desmos API loaded successfully");
 					resolve();
 				} else {
 					reject(new Error("Desmos API loaded but window.Desmos is undefined"));
@@ -192,7 +201,6 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 					"[DesmosProvider] Loading the legacy unkeyed Desmos URL for compatibility. Configure an application API key for licensed deployments.",
 				);
 			}
-			console.log("[DesmosProvider] Loading Desmos API library...");
 			const libraryLoadStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-library-load-start", {
 				toolId: "calculator",
@@ -239,7 +247,11 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			throw new Error(`Desmos does not support calculator type: ${type}`);
 		}
 
-		return new DesmosCalculator(this, type, container, config);
+		const calculator = new DesmosCalculator(this, type, container, config, () =>
+			this.instances.delete(calculator),
+		);
+		this.instances.add(calculator);
+		return calculator;
 	}
 
 	/**
@@ -253,6 +265,9 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 * Cleanup
 	 */
 	destroy(): void {
+		// A copy: each `destroy()` calls back to remove itself from the set.
+		for (const instance of [...this.instances]) instance.destroy();
+		this.instances.clear();
 		this.initialized = false;
 		this.apiKey = undefined;
 		this.onTelemetry = undefined;
@@ -298,11 +313,14 @@ class DesmosCalculator implements Calculator {
 	private calculator: any;
 	private container: HTMLElement;
 
+	private destroyed = false;
+
 	constructor(
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: DesmosCalculatorProviderConfig,
+		config: DesmosCalculatorProviderConfig | undefined,
+		private readonly onDestroy: () => void,
 	) {
 		this.provider = provider;
 		this.type = type;
@@ -364,8 +382,6 @@ class DesmosCalculator implements Calculator {
 			default:
 				throw new Error(`Unsupported calculator type: ${this.type}`);
 		}
-
-		console.log(`[DesmosCalculator] Created ${this.type} calculator`);
 	}
 
 	getValue(): string {
@@ -470,10 +486,12 @@ class DesmosCalculator implements Calculator {
 	}
 
 	destroy(): void {
+		if (this.destroyed) return;
+		this.destroyed = true;
 		if (this.calculator && this.calculator.destroy) {
 			this.calculator.destroy();
 		}
 		this.container.replaceChildren();
-		console.log("[DesmosCalculator] destroyed");
+		this.onDestroy();
 	}
 }

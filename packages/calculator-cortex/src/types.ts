@@ -106,6 +106,13 @@ export interface CortexCalculatorMessages {
 	remove: string;
 	addExpression: string;
 	graph: string;
+	viewportControls: string;
+	zoomIn: string;
+	zoomOut: string;
+	panLeft: string;
+	panRight: string;
+	panUp: string;
+	panDown: string;
 	resetView: string;
 	updatingGraph: string;
 	graphSummary: string;

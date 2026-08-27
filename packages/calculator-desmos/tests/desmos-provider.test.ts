@@ -61,14 +61,27 @@ interface CapturedConstructorCall {
 	type: CalculatorType;
 	container: HTMLElement;
 	config: DesmosCalculatorSettings;
+	destroyed: boolean;
 }
 
 function installDesmosStub(): CapturedConstructorCall[] {
 	const calls: CapturedConstructorCall[] = [];
-	const capture = (type: CalculatorType) =>
+	const capture =
+		(type: CalculatorType) =>
 		(container: HTMLElement, config: DesmosCalculatorSettings) => {
-			calls.push({ type, container, config });
-			return { destroy: () => {}, setBlank: () => {} };
+			const call: CapturedConstructorCall = {
+				type,
+				container,
+				config,
+				destroyed: false,
+			};
+			calls.push(call);
+			return {
+				destroy: () => {
+					call.destroyed = true;
+				},
+				setBlank: () => {},
+			};
 		};
 
 	setGlobal("window", {
@@ -208,5 +221,70 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 
 		expect(calls[0]?.config).not.toHaveProperty("apiKey");
 		expect(calls[0]?.config).not.toHaveProperty("proxyEndpoint");
+	});
+});
+
+function mountedContainer(): HTMLElement {
+	let cleared = 0;
+	return {
+		replaceChildren: () => {
+			cleared += 1;
+		},
+		get clearedCount() {
+			return cleared;
+		},
+	} as unknown as HTMLElement;
+}
+
+describe("DesmosCalculatorProvider teardown", () => {
+	test("destroys every calculator it handed out", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+		const containers = [mountedContainer(), mountedContainer()];
+		await provider.createCalculator("graphing", containers[0] as HTMLElement);
+		await provider.createCalculator("scientific", containers[1] as HTMLElement);
+
+		// A host's one call to release the provider. Without instance tracking both
+		// calculators stayed mounted with their vendor instances running.
+		provider.destroy();
+		expect(calls.map((call) => call.destroyed)).toEqual([true, true]);
+		for (const container of containers) {
+			expect(
+				(container as unknown as { clearedCount: number }).clearedCount,
+			).toBe(1);
+		}
+	});
+
+	test("destroys a calculator once, however many times it is asked", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+		const container = mountedContainer();
+		const calculator = await provider.createCalculator(
+			"basic",
+			container as HTMLElement,
+		);
+
+		calculator.destroy();
+		calculator.destroy();
+		provider.destroy();
+		expect(calls).toHaveLength(1);
+		expect(
+			(container as unknown as { clearedCount: number }).clearedCount,
+		).toBe(1);
+	});
+
+	test("does not reach a calculator that already destroyed itself", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+		const calculator = await provider.createCalculator(
+			"graphing",
+			mountedContainer(),
+		);
+		calculator.destroy();
+		expect(() => provider.destroy()).not.toThrow();
+		expect(calls[0]?.destroyed).toBe(true);
 	});
 });

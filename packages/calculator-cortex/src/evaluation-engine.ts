@@ -10,10 +10,7 @@ import {
 	CORTEX_GRAPH_SAMPLE_LIMIT,
 	type ResolvedCortexSettings,
 } from "./settings.js";
-import type {
-	CortexFunctionId,
-	CortexGraphViewport,
-} from "./types.js";
+import type { CortexFunctionId, CortexGraphViewport } from "./types.js";
 import type {
 	EvaluationResult,
 	SampledSeries,
@@ -55,15 +52,18 @@ export function workerSettingsToResolved(
 	};
 }
 
-function realNumber(expression: Expression): number {
-	if (expression.im !== 0) {
-		throw new CortexCalculatorError(
-			"invalid-expression",
-			"The result is not a finite real number.",
-		);
-	}
+/** The finite real this expression holds, or `null` if it holds no such value. */
+function finiteReal(expression: Expression): number | null {
+	// `im` is NaN for an unevaluated symbolic form, which this comparison rejects
+	// along with a genuinely imaginary result.
+	if (expression.im !== 0) return null;
 	const result = expression.re;
-	if (!Number.isFinite(result)) {
+	return Number.isFinite(result) ? result : null;
+}
+
+function realNumber(expression: Expression): number {
+	const result = finiteReal(expression);
+	if (result === null) {
 		throw new CortexCalculatorError(
 			"invalid-expression",
 			"The result is not a finite real number.",
@@ -72,11 +72,42 @@ function realNumber(expression: Expression): number {
 	return result;
 }
 
+/**
+ * The exact value where the Compute Engine has one, the numeric approximation
+ * otherwise.
+ *
+ * `.N()` alone converts degrees to radians and returns what floating point can
+ * represent of the result, so `cos(90°)` came out as `6.123233996e-17` and
+ * `sin(30°)` as `0.5000000000000008` — the second only looked right because the
+ * default display precision is 10 digits, and showed as `0.500000000001` at the
+ * supported maximum of 12. `.evaluate()` returns `0` and `1/2` for those, which is
+ * what a learner comparing against any handheld expects.
+ *
+ * It has no exact form for most expressions — `sqrt(2)`, and `sin(Pi)` in degree
+ * mode, come back unevaluated — so the numeric path stays as the fallback rather
+ * than as a second attempt at the same thing.
+ */
+function exactOrNumeric(expression: Expression): number {
+	const exact = finiteReal(expression.evaluate());
+	return exact ?? realNumber(expression.N());
+}
+
+/** `1.234567890e+13` -> `1.23456789e+13`, `1.000e+13` -> `1e+13`. */
+function trimExponential(exponential: string): string {
+	const [mantissa = "", exponent = ""] = exponential.split("e");
+	if (!mantissa.includes(".")) return exponential;
+	const trimmed = mantissa.replace(/0+$/, "").replace(/\.$/, "");
+	return `${trimmed}e${exponent}`;
+}
+
 function formatNumber(value: number, precision: number): string {
 	if (Object.is(value, -0)) return "0";
 	const absolute = Math.abs(value);
 	if (absolute !== 0 && (absolute >= 1e12 || absolute < 1e-9)) {
-		return value.toExponential(Math.max(0, precision - 1)).replace(/\.0+e/, "e");
+		// Trailing zeros are digits the result does not have. Only an all-zero
+		// mantissa was trimmed before, so `1e+13` and `1.234567890e+13` were both
+		// reachable from the same formatter.
+		return trimExponential(value.toExponential(Math.max(0, precision - 1)));
 	}
 	return Number(value.toPrecision(precision)).toString();
 }
@@ -116,8 +147,7 @@ export function evaluateLatex(
 	const resolved = workerSettingsToResolved(type, settings);
 	return withEvaluationLimit(engine, settings.evaluationTimeLimitMs, () => {
 		const validated = validateExpression(engine, latex, resolved);
-		const numeric = validated.expression.N();
-		const numericValue = realNumber(numeric);
+		const numericValue = exactOrNumeric(validated.expression);
 		return {
 			formatted: formatNumber(numericValue, settings.displayPrecision),
 			numericValue,
@@ -136,7 +166,8 @@ function sampleExpression(
 	const yRange = viewport.yMax - viewport.yMin;
 	let previous: number | undefined;
 	for (let index = 0; index < pointCount; index += 1) {
-		const xValue = viewport.xMin + (index / Math.max(1, pointCount - 1)) * xRange;
+		const xValue =
+			viewport.xMin + (index / Math.max(1, pointCount - 1)) * xRange;
 		let yValue = Number.NaN;
 		try {
 			yValue = realNumber(expression.subs({ x: xValue }).N());
@@ -175,10 +206,17 @@ export function sampleLatex(
 		return withEvaluationLimit(engine, settings.evaluationTimeLimitMs, () =>
 			expressions.map(({ id, latex }) => {
 				const validated = validateExpression(engine, latex, resolved);
-				return { id, ...sampleExpression(validated.expression, viewport, pointCount) };
+				return {
+					id,
+					...sampleExpression(validated.expression, viewport, pointCount),
+				};
 			}),
 		);
 	} catch (error) {
-		throw asCortexError(error, "invalid-expression", "The graph could not be sampled.");
+		throw asCortexError(
+			error,
+			"invalid-expression",
+			"The graph could not be sampled.",
+		);
 	}
 }

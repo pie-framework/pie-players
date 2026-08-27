@@ -3,9 +3,8 @@
 	import mathLiveFonts from 'mathlive/fonts.css?inline';
 	import mathLiveStatic from 'mathlive/static.css?inline';
 	import { onMount } from 'svelte';
-	import type { CalculatorType } from '@pie-players/pie-calculator';
 	import {
-		acquireMathLiveKeyboard,
+		acquireMathfieldSettings,
 		configureMathfield,
 	} from './mathlive-runtime.js';
 	import type { CortexCalculatorLocalization } from './localization.js';
@@ -13,27 +12,18 @@
 	let {
 		value,
 		label,
-		type,
 		localization,
 		restrictedMode,
 		focusRequest = 0,
-		ownKeypad = false,
 		onInput,
 		onCommit,
 		onFieldReady,
 	}: {
 		value: string;
 		label: string;
-		type: CalculatorType;
 		localization: CortexCalculatorLocalization;
 		restrictedMode: boolean;
 		focusRequest?: number;
-		/**
-		 * The package renders its own keypad for this field, so MathLive's virtual
-		 * keyboard is switched off entirely rather than merely hidden — otherwise both
-		 * exist and MathLive's auto-shows itself on any touch-capable device.
-		 */
-		ownKeypad?: boolean;
 		onInput: (value: string) => void;
 		onCommit?: () => void;
 		onFieldReady?: (field: MathfieldElement | null) => void;
@@ -41,8 +31,8 @@
 
 	let host = $state<HTMLDivElement | null>(null);
 	let field = $state<MathfieldElement | null>(null);
-	const keyboardOwner = Symbol('pie-cortex-mathfield');
-	let releaseKeyboard: (() => void) | null = null;
+	const settingsOwner = Symbol('pie-cortex-mathfield');
+	let releaseSettings: (() => void) | null = null;
 	let commitTimer: ReturnType<typeof setTimeout> | null = null;
 
 	MathfieldElement.fontsDirectory = null;
@@ -82,7 +72,7 @@
 		mathfield.value = value;
 		mathfield.className = 'pie-cortex-mathfield';
 		host.append(mathfield);
-		configureMathfield(mathfield, label, restrictedMode, ownKeypad);
+		configureMathfield(mathfield, label, restrictedMode);
 		// MathLive routes keyboard interaction through its shadow keyboard sink.
 		// Leaving the host itself contenteditable/focusable creates two nested
 		// controls in the accessibility tree, so expose only the named sink.
@@ -105,16 +95,14 @@
 			}, 50);
 		};
 		const handleFocus = () => {
-			// Idempotent: this fires on every focus, and with the keypad it fires
-			// whenever focus returns from a key. Releasing and re-acquiring the global
-			// lease each time would rebuild MathLive's singleton per keypress.
-			if (releaseKeyboard) return;
-			releaseKeyboard = acquireMathLiveKeyboard(
-				keyboardOwner,
-				type,
+			// This fires on every focus, and with the keypad it fires whenever focus
+			// returns from a key. Acquiring once is what keeps the captured base
+			// settings the page's own rather than this calculator's.
+			if (releaseSettings) return;
+			releaseSettings = acquireMathfieldSettings(
+				settingsOwner,
 				localization,
 				MathfieldElement,
-				ownKeypad,
 			);
 		};
 		const blockClipboard = (event: Event) => {
@@ -134,8 +122,8 @@
 			onFieldReady?.(null);
 			if (commitTimer) clearTimeout(commitTimer);
 			commitTimer = null;
-			releaseKeyboard?.();
-			releaseKeyboard = null;
+			releaseSettings?.();
+			releaseSettings = null;
 			mathfield.removeEventListener('input', handleInput);
 			mathfield.removeEventListener('change', handleChange);
 			mathfield.removeEventListener('focus', handleFocus);

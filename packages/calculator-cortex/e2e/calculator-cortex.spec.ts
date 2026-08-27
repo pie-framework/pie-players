@@ -400,3 +400,295 @@ test("has no serious or critical automated accessibility violations", async ({
 			).toEqual([]);
 		}
 });
+
+test("traces a plotted series from the keyboard and clamps at its ends", async ({
+	page,
+}) => {
+	/*
+	 * The plot is `aria-hidden`, so this readout is the graph for a keyboard-only or
+	 * screen-reader learner. It was asserted to be *rendered* and never to move:
+	 * `moveTrace` clamping to the wrong bound, or the series selector losing its
+	 * points, would leave the accommodation present and inert.
+	 */
+	await page.goto("/graphing.html");
+	await page.waitForFunction(() => window.__cortexReady === true);
+
+	const readout = page.locator(".pie-cortex-trace__readout");
+	const point = /x\s*(-?[\d.,]+),\s*y\s*(-?[\d.,]+)/;
+	await expect(readout).toHaveText(point);
+
+	const coordinates = async (): Promise<[number, number]> => {
+		const matched = (await readout.textContent())?.match(point);
+		if (!matched?.[1] || !matched[2]) {
+			throw new Error(`The trace readout is not a coordinate: ${matched}`);
+		}
+		return [
+			Number(matched[1].replace(/,/g, "")),
+			Number(matched[2].replace(/,/g, "")),
+		];
+	};
+
+	const first = await coordinates();
+	// Already at the first sampled point: there is nowhere earlier to go, and the
+	// control must hold rather than wrap to the far end of the series.
+	await page.getByRole("button", { name: "Previous point" }).click();
+	expect(await coordinates()).toEqual(first);
+
+	await page.getByRole("button", { name: "Next point" }).click();
+	const second = await coordinates();
+	expect(second[0]).toBeGreaterThan(first[0]);
+	// y=x^2 over a symmetric viewport: moving right from the left edge descends.
+	expect(second[1]).toBeLessThan(first[1]);
+
+	// Selecting the series resets the trace to its first point.
+	await page
+		.locator(".pie-cortex-trace__series select")
+		.selectOption({ index: 0 });
+	expect(await coordinates()).toEqual(first);
+});
+
+test("keeps graphing-mode telemetry free of expressions and coordinates", async ({
+	page,
+}) => {
+	/*
+	 * The graphing mode is where a payload can carry a learner's coordinates, and
+	 * the only privacy assertion ran against basic mode. Values are checked as well
+	 * as key names: a coordinate smuggled into a `detail` string passes a key scan.
+	 */
+	await page.goto("/graphing.html");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	await expect(page.locator(".pie-cortex-trace__readout")).toHaveText(
+		/x\s*-?[\d.,]+/,
+	);
+
+	await page.evaluate(async () => {
+		window.__cortexCalculator?.setValue("y=3x^2+1");
+		await window.__cortexCalculator?.evaluate?.("7\\times6").catch(() => {});
+		await window.__cortexCalculator?.evaluate?.("1\\div0").catch(() => {});
+	});
+
+	const telemetry = await page.evaluate(() => window.__cortexTelemetry ?? []);
+	expect(telemetry.length).toBeGreaterThan(0);
+	expect(
+		telemetry.some((entry) => entry.eventName === "pie-tool-operation-error"),
+	).toBe(true);
+
+	const strings = (value: unknown): string[] => {
+		if (typeof value === "string") return [value];
+		if (Array.isArray(value)) return value.flatMap(strings);
+		if (value && typeof value === "object") {
+			return Object.values(value).flatMap(strings);
+		}
+		return [];
+	};
+
+	for (const entry of telemetry) {
+		expect(entry.payload).toMatchObject({ backend: "cortex" });
+		for (const privateKey of [
+			"expression",
+			"latex",
+			"result",
+			"state",
+			"history",
+			"coordinates",
+			"series",
+			"viewport",
+		]) {
+			expect(Object.keys(entry.payload ?? {})).not.toContain(privateKey);
+		}
+		for (const text of strings(entry.payload)) {
+			expect(text).not.toContain("3x^2");
+			expect(text).not.toContain("7\\times6");
+			expect(text).not.toBe("42");
+		}
+	}
+});
+
+test("computes a parenthesised expression pressed on the shipped keypad", async ({
+	page,
+}) => {
+	/*
+	 * `(` and `)` shipped as keys while the expression policy refused every
+	 * parenthesised expression, and nothing caught it: the suites reached `2+2`,
+	 * `3+4`, `\sin(30)`, `5!` and `50\%`, none of which groups. This presses the two
+	 * keys and reads the answer, so the keypad, the mathfield, the policy and the
+	 * worker are proved on one path.
+	 */
+	await page.goto("/");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	await page.evaluate(() => window.__cortexCalculator?.clear());
+
+	for (const name of [
+		"Open parenthesis",
+		"2",
+		"Plus",
+		"3",
+		"Close parenthesis",
+		"Times",
+		"4",
+	]) {
+		await page.getByRole("button", { name, exact: true }).click();
+	}
+	await expect
+		.poll(() => page.evaluate(() => window.__cortexCalculator?.getValue()))
+		.toBe("(2+3)\\times4");
+
+	await page.getByRole("button", { name: "Calculate", exact: true }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(() => window.__cortexCalculator?.getHistory?.()[0]?.result),
+		)
+		.toBe("20");
+	await expect(page.locator(".pie-cortex-result")).toHaveText("20");
+});
+
+test("pans, zooms and resets the graph viewport from the keyboard alone", async ({
+	page,
+}) => {
+	/*
+	 * JSXGraph moves its own viewport only from pointer bindings — drag, wheel,
+	 * pinch — so before these controls a keyboard-only or switch-access learner
+	 * could read the default window and nothing outside it: the trace moves within
+	 * the sampled window and cannot leave it. Every control here is driven by Enter
+	 * on a focused button rather than by a click, because that is the claim.
+	 */
+	await page.goto("/graphing.html");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	// The board loads asynchronously and every control no-ops until it exists, so
+	// wait for it to have rendered before pressing anything.
+	await expect(
+		page.locator(".pie-cortex-jsxgraph text").first(),
+	).toBeAttached();
+
+	const summary = page.getByText(/Viewport x from/);
+	const bounds = async (): Promise<[number, number, number, number]> => {
+		const text = await summary.textContent();
+		const matched = text?.match(
+			/x from (-?[\d.,]+) to (-?[\d.,]+), y from (-?[\d.,]+) to (-?[\d.,]+)/,
+		);
+		if (!matched) throw new Error(`No viewport summary: ${text}`);
+		return matched
+			.slice(1, 5)
+			.map((value) => Number(value.replace(/,/g, ""))) as [
+			number,
+			number,
+			number,
+			number,
+		];
+	};
+	const pressWithKeyboard = async (name: string): Promise<void> => {
+		const button = page.getByRole("button", { name, exact: true });
+		await button.focus();
+		await expect(button).toBeFocused();
+		await page.keyboard.press("Enter");
+	};
+	const settled = async (
+		read: (box: [number, number, number, number]) => number,
+		expected: (value: number) => boolean,
+		label: string,
+	): Promise<void> => {
+		await expect
+			.poll(async () => expected(read(await bounds())), { message: label })
+			.toBe(true);
+	};
+
+	/*
+	 * `__cortexReady` is set before the board's own first sample lands, and a board
+	 * still settling its container size samples again. Pressing into that window
+	 * read a viewport a pending sample then overwrote, which made this test flaky
+	 * in a full run and pass alone. Two identical reads is the readiness signal.
+	 */
+	const stableBounds = async (): Promise<[number, number, number, number]> => {
+		let previous = (await bounds()).join(":");
+		for (let attempt = 0; attempt < 20; attempt += 1) {
+			await page.waitForTimeout(150);
+			const current = await bounds();
+			if (current.join(":") === previous) return current;
+			previous = current.join(":");
+		}
+		throw new Error("The graph viewport never settled.");
+	};
+
+	const [defaultXMin, defaultXMax, defaultYMin] = await stableBounds();
+	const defaultSpan = defaultXMax - defaultXMin;
+
+	await pressWithKeyboard("Zoom in");
+	await settled(
+		([xMin, xMax]) => xMax - xMin,
+		(span) => span < defaultSpan,
+		"zoom in narrows the x span",
+	);
+
+	const [zoomedXMin] = await stableBounds();
+	await pressWithKeyboard("Pan right");
+	await settled(
+		([xMin]) => xMin,
+		(xMin) => xMin > zoomedXMin,
+		"pan right raises xMin",
+	);
+
+	await pressWithKeyboard("Pan left");
+	await settled(
+		([xMin]) => xMin,
+		(xMin) => Math.abs(xMin - zoomedXMin) < 1e-6,
+		"pan left returns xMin",
+	);
+
+	// The window moves, not the plot: "up" shows higher y values. JSXGraph's own
+	// arrow methods name the opposite, which is why the mapping is crossed.
+	const [, , panYMin] = await stableBounds();
+	await pressWithKeyboard("Pan up");
+	await settled(
+		([, , yMin]) => yMin,
+		(yMin) => yMin > panYMin,
+		"pan up raises yMin",
+	);
+
+	await pressWithKeyboard("Zoom out");
+	await pressWithKeyboard("Reset view");
+	await settled(
+		([xMin, xMax]) => xMax - xMin,
+		(span) => Math.abs(span - defaultSpan) < 1e-6,
+		"reset restores the default span",
+	);
+	const [resetXMin, , resetYMin] = await stableBounds();
+	expect(resetXMin).toBeCloseTo(defaultXMin, 6);
+	expect(resetYMin).toBeCloseTo(defaultYMin, 6);
+});
+
+test("crosses a traced series in a bounded number of presses", async ({
+	page,
+}) => {
+	/*
+	 * The sampler takes one point per pixel, up to 1,200, so a one-point step made
+	 * the trace resolution-dependent: traversing the plot cost as many presses as it
+	 * was wide. The traversal is a fixed number of stops instead.
+	 */
+	await page.goto("/graphing.html");
+	await page.waitForFunction(() => window.__cortexReady === true);
+
+	const readout = page.locator(".pie-cortex-trace__readout");
+	const point = /x\s*(-?[\d.,]+)/;
+	await expect(readout).toHaveText(point);
+	const xOf = async (): Promise<number> => {
+		const matched = (await readout.textContent())?.match(point);
+		if (!matched?.[1])
+			throw new Error("The trace readout is not a coordinate.");
+		return Number(matched[1].replace(/,/g, ""));
+	};
+
+	const start = await xOf();
+	const next = page.getByRole("button", { name: "Next point", exact: true });
+	let presses = 0;
+	let current = start;
+	while (presses < 60) {
+		await next.click();
+		presses += 1;
+		const moved = await xOf();
+		if (moved === current) break;
+		current = moved;
+	}
+	expect(presses).toBeLessThan(60);
+	// It reached the far end of the series, not merely a few points along it.
+	expect(current).toBeGreaterThan(start + 15);
+});

@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { GeoGebraCalculatorProvider } from "../src/geogebra-provider.js";
 
+interface GeoGebraAppletApi {
+	getEditorState: () => { content: string };
+	getBase64: () => string;
+	setBase64: (value: string) => void;
+	newConstruction: () => void;
+	remove: () => void;
+}
+
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 const originalDocument = Object.getOwnPropertyDescriptor(
 	globalThis,
@@ -156,5 +164,62 @@ describe("GeoGebraCalculatorProvider", () => {
 		expect(parameters.showToolBar).toBe(false);
 		expect(parameters).not.toHaveProperty("restrictedMode");
 		expect(parameters).not.toHaveProperty("theme");
+	});
+});
+
+describe("GeoGebraCalculatorProvider teardown", () => {
+	function installApplets(): { removed: number } {
+		const state = { removed: 0 };
+		setGlobal("window", {
+			GGBApplet: class {
+				constructor(
+					private readonly parameters: {
+						appletOnLoad: (value: GeoGebraAppletApi) => void;
+					},
+				) {}
+
+				inject() {
+					this.parameters.appletOnLoad({
+						getEditorState: () => ({ content: "" }),
+						getBase64: () => "",
+						setBase64: () => {},
+						newConstruction: () => {},
+						remove: () => {
+							state.removed += 1;
+						},
+					});
+				}
+			},
+		});
+		setGlobal("document", {});
+		return state;
+	}
+
+	test("removes every applet it handed out", async () => {
+		const state = installApplets();
+		const provider = new GeoGebraCalculatorProvider();
+		await provider.initialize();
+		await provider.createCalculator("graphing", fakeContainer());
+		await provider.createCalculator("scientific", fakeContainer());
+
+		// Without instance tracking both applets kept running after the host
+		// released the provider.
+		provider.destroy();
+		expect(state.removed).toBe(2);
+	});
+
+	test("removes an applet once, however many times it is asked", async () => {
+		const state = installApplets();
+		const provider = new GeoGebraCalculatorProvider();
+		await provider.initialize();
+		const calculator = await provider.createCalculator(
+			"basic",
+			fakeContainer(),
+		);
+
+		calculator.destroy();
+		calculator.destroy();
+		provider.destroy();
+		expect(state.removed).toBe(1);
 	});
 });

@@ -1003,6 +1003,22 @@ over a CDN with no typecheck at all.
 - `Calculator` and `CalculatorProvider` as interfaces to implement, and the
   additive optional argument on `CalculatorProvider.initialize`. Every implementor
   is a package in this repository
+- `CalculatorProvider.destroy()` leaving the calculators it created mounted. The
+  Desmos and GeoGebra adapters destroy them as of 2026-08-27, matching Cortex.
+  This pad records no host constructing a calculator provider directly — both
+  hosts that offer Desmos reach it through the tool package — and the toolkit's
+  own teardown destroys the tool component first, so the added call lands on
+  calculators that are already gone. Each calculator is destroyed at most once, so
+  either order is safe
+- Message-override keys on `CortexCalculatorMessages`. Six viewport controls and
+  their group label were added on 2026-08-27; `CortexCalculatorMessageOverrides`
+  is a partial, so an override object that omits them still type-checks
+- The exact text of a Cortex answer. Exactly-representable trigonometry now
+  answers `0` and `0.5` where the numeric path answered `6.123233996e-17` and
+  `0.5000000000000008`, and an exponential mantissa no longer carries trailing
+  zeros. No consumer reads a calculator answer: it is rendered inside the tool and
+  reaches a host only through `exportState`, whose provider state carries the
+  expression rather than the formatted result
 - `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
   that offer a Desmos calculator take the tool package as a side-effect import and
   reach the provider through the calculator package instead; one of them serves the

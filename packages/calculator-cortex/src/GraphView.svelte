@@ -8,6 +8,7 @@
 	} from './calculator-controller.js';
 	import type { KeypadKey, KeypadLayer } from './keypad-layouts.js';
 	import type {
+		CortexCalculatorMessageKey,
 		CortexGraphExpressionState,
 		CortexGraphViewport,
 	} from './types.js';
@@ -37,7 +38,22 @@
 		create(type: string, parameters: unknown[], attributes?: Record<string, unknown>): unknown;
 		fullUpdate(): void;
 		getBoundingBox(): [number, number, number, number];
-		setBoundingBox(bounds: [number, number, number, number], keepAspectRatio?: boolean): void;
+		/*
+		 * JSXGraph's own navigation, the methods its navigation bar calls.
+		 *
+		 * `setBoundingBox` is deliberately not used: on its own it recomputes the
+		 * units and moves the origin but never calls `applyZoom`, and its default
+		 * third argument resets `zoomX`/`zoomY` to 1 — so the next update recomputed
+		 * the old box and the call had no observable effect. `Reset view` was built
+		 * on it and silently did nothing.
+		 */
+		zoomIn(): void;
+		zoomOut(): void;
+		zoom100(): void;
+		clickLeftArrow(): void;
+		clickRightArrow(): void;
+		clickUpArrow(): void;
+		clickDownArrow(): void;
 		resizeContainer(width: number, height: number, preserveCss?: boolean, preserveBounds?: boolean): void;
 		removeObject(object: unknown): void;
 		on(event: string, handler: () => void): void;
@@ -293,19 +309,65 @@
 		requestSample(180);
 	}
 
-	function resetViewport(): void {
+	/*
+	 * Keyboard-operable pan, zoom and reset.
+	 *
+	 * JSXGraph's pointer bindings — drag, wheel, pinch — are the only way it moves
+	 * the viewport on its own, so before these buttons a keyboard-only or
+	 * switch-access learner could read the default window and nothing outside it:
+	 * the trace moves within the sampled window and cannot leave it.
+	 *
+	 * The board's own navigation methods do the moving. They are what its
+	 * navigation bar calls (hidden here by `showNavigation: false`), so the step
+	 * sizes, the zoom limits and the commit are the library's rather than ours.
+	 */
+	function navigateBoard(move: (board: JsxBoard) => void): void {
 		if (!board) return;
-		const viewport = controller.settings.graph.viewport;
-		board.setBoundingBox(
-			[viewport.xMin, viewport.yMax, viewport.xMax, viewport.yMin],
-			false,
-		);
+		move(board);
 		requestSample(0);
 	}
 
+	function resetViewport(): void {
+		navigateBoard((board) => board.zoom100());
+	}
+
+	const VIEWPORT_KEYS = [
+		{ id: 'pan-left', glyph: '\u2190', nameKey: 'panLeft', move: (board: JsxBoard) => board.clickLeftArrow() },
+		{ id: 'pan-right', glyph: '\u2192', nameKey: 'panRight', move: (board: JsxBoard) => board.clickRightArrow() },
+		/*
+		 * Crossed on purpose. JSXGraph's arrow methods name the direction the
+		 * *content* moves, so `clickUpArrow` shifts the plot up and the visible y
+		 * window down. A learner pressing "Pan up" means the window.
+		 */
+		{ id: 'pan-up', glyph: '\u2191', nameKey: 'panUp', move: (board: JsxBoard) => board.clickDownArrow() },
+		{ id: 'pan-down', glyph: '\u2193', nameKey: 'panDown', move: (board: JsxBoard) => board.clickUpArrow() },
+		{ id: 'zoom-out', glyph: '\u2212', nameKey: 'zoomOut', move: (board: JsxBoard) => board.zoomOut() },
+		{ id: 'zoom-in', glyph: '+', nameKey: 'zoomIn', move: (board: JsxBoard) => board.zoomIn() },
+	] as const satisfies readonly {
+		id: string;
+		glyph: string;
+		nameKey: CortexCalculatorMessageKey;
+		move: (board: JsxBoard) => void;
+	}[];
+
+	/*
+	 * How many presses cross the whole series.
+	 *
+	 * A step of one sampled point made the control resolution-dependent and
+	 * effectively unusable: the sampler takes one point per pixel, up to 1,200, so
+	 * traversing a 600px plot cost 600 presses. A fixed number of stops keeps the
+	 * traversal the same length whatever the plot is sampled at, and the readout
+	 * still reports the exact sampled coordinate.
+	 */
+	const TRACE_STOPS = 40;
+
 	function moveTrace(direction: -1 | 1): void {
 		if (tracePoints.length === 0) return;
-		traceIndex = Math.min(tracePoints.length - 1, Math.max(0, traceIndex + direction));
+		const step = Math.max(1, Math.round(tracePoints.length / TRACE_STOPS));
+		traceIndex = Math.min(
+			tracePoints.length - 1,
+			Math.max(0, traceIndex + direction * step),
+		);
 	}
 
 	function insertKey(key: KeypadKey): void {
@@ -420,12 +482,10 @@
 						<MathFieldInput
 							value={expression.latex}
 							label={graphExpressionLabel(expression, index)}
-							type="graphing"
 							localization={i18n}
 							restrictedMode={controller.settings.restrictedMode}
 							focusRequest={index === 0 ? snapshot.focusRequest : 0}
-							ownKeypad={true}
-							onInput={(latex) => updateExpression(expression.id, latex)}
+									onInput={(latex) => updateExpression(expression.id, latex)}
 							onFieldReady={(instance) => {
 								if (instance && index === 0 && !activeField) activeField = instance;
 							}}
@@ -496,6 +556,21 @@
 
 	<section class="pie-cortex-graph-panel" aria-label={i18n.t('graph')}>
 		<div class="pie-cortex-graph-controls">
+			<!--
+				Real buttons with text accessible names and `aria-hidden` glyph faces:
+				the glyph is the label a sighted learner reads, the name is what AT and
+				voice control speak, and neither depends on the pointer.
+			-->
+			<div class="pie-cortex-viewport-controls" role="group" aria-label={i18n.t('viewportControls')}>
+				{#each VIEWPORT_KEYS as key (key.id)}
+					<button
+						type="button"
+						class="pie-cortex-action-button pie-cortex-viewport-button"
+						aria-label={i18n.t(key.nameKey)}
+						onclick={() => navigateBoard(key.move)}
+					><span aria-hidden="true">{key.glyph}</span></button>
+				{/each}
+			</div>
 			<button type="button" class="pie-cortex-action-button" onclick={resetViewport}>{i18n.t('resetView')}</button>
 			<!-- Always mounted with empty text, so the region exists before it speaks. -->
 			<span class="pie-cortex-graph-status" role="status" aria-live="polite"
@@ -785,6 +860,30 @@
 	.pie-cortex-icon-button {
 		min-width: 2.75rem;
 		padding: 0.45rem;
+	}
+
+	.pie-cortex-viewport-controls {
+		display: flex;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	/*
+	 * 2rem, where every other control in this package is 2.75rem.
+	 *
+	 * The shipped tool panel is 380x372 and the plot below has a height floor, so a
+	 * second row of chrome pushes the calculator past the panel and the shell clips
+	 * it. Six 2.75rem controls plus `Reset view` do not fit one row at 380px; at
+	 * 2rem they do. That is 32px, comfortably past the 24px minimum target size of
+	 * WCAG 2.5.8 at Level AA — 2.75rem is the Level AAA figure this package prefers
+	 * where the space exists, and these are the one place it does not.
+	 */
+	.pie-cortex-viewport-button {
+		min-width: 2rem;
+		min-height: 2rem;
+		padding: 0.2rem;
+		font-size: 0.9375rem;
+		line-height: 1;
 	}
 
 	.pie-cortex-icon-button:hover,

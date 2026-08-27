@@ -203,11 +203,9 @@
 				<MathFieldInput
 					value={snapshot.inputLatex}
 					label={i18n.t('expressionLabel', { calculator: typeLabel })}
-					type={controller.settings.type}
 					localization={i18n}
 					restrictedMode={controller.settings.restrictedMode}
 					focusRequest={snapshot.focusRequest}
-					ownKeypad={true}
 					onInput={(value) => controller.setValue(value)}
 					onCommit={evaluate}
 					onFieldReady={(instance) => (field = instance)}

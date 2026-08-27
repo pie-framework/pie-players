@@ -47,6 +47,16 @@
 			: (flatKeys[0]?.id ?? ''),
 	);
 
+	/**
+	 * The grid column for a key: the one its position implies, or the one it asks
+	 * for. Column 4 is the bare gutter, so key columns 4 and 5 skip over it -- that
+	 * skip is what keeps all five keys exactly the same width.
+	 */
+	function gridColumn(key: KeypadKey, columnIndex: number): string {
+		const column = key.column ?? columnIndex + 1;
+		return String(column <= 3 ? column : column + 1);
+	}
+
 	function keyName(key: KeypadKey): string {
 		return localization.t(key.nameKey, key.nameValues ?? {});
 	}
@@ -138,7 +148,7 @@
 					class="pie-cortex-key pie-cortex-key--{key.role}"
 					data-key-id={key.id}
 					data-column={columnIndex + 1}
-					style:grid-column={columnIndex < 3 ? `${columnIndex + 1}` : `${columnIndex + 2}`}
+					style:grid-column={gridColumn(key, columnIndex)}
 					aria-label={keyName(key)}
 					tabindex={key.id === rovingKeyId ? 0 : -1}
 					onkeydown={(event) => onKeydown(event, rowIndex, columnIndex)}

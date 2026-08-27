@@ -41,8 +41,12 @@ export interface KeypadKey {
 	readonly requires?: readonly CortexFunctionId[];
 	/** Basic mode rejects constants outright (`validateSymbol`). */
 	readonly scientificOnly?: boolean;
-	/** Column span, for the commit key. */
-	readonly span?: number;
+	/**
+	 * Grid column to place the key in, 1-based over the five key columns, instead
+	 * of the position its index implies. The commit key uses it to hold the same
+	 * corner on a short row as it does on a full one.
+	 */
+	readonly column?: number;
 }
 
 export interface KeypadLayer {
@@ -50,6 +54,9 @@ export interface KeypadLayer {
 	readonly labelKey: CortexCalculatorMessageKey;
 	readonly rows: readonly (readonly KeypadKey[])[];
 }
+
+/** Key columns per row; the grid has a bare gutter between the third and fourth. */
+const KEY_COLUMNS = 5;
 
 const digit = (value: string): KeypadKey => ({
 	id: `digit-${value}`,
@@ -161,17 +168,31 @@ function numericBottomRow(decimalSeparator: string): readonly KeypadKey[] {
 			nameKey: "keyPercent",
 			role: "operator",
 		},
-		{
-			id: "commit",
-			latex: "",
-			visualLabel: "=",
-			labelKind: "glyph",
-			// The commit key keeps the `calculate` name the e2e suite resolves it by,
-			// in both catalogs, so nothing depends on a new string for a known button.
-			nameKey: "calculate",
-			role: "commit",
-		},
+		commitKey(),
 	];
+}
+
+/**
+ * The key that evaluates the buffer.
+ *
+ * Every layer carries one. It was on the numeric layer alone, and a learner who
+ * built an expression from the scientific keys had to switch layers back to reach
+ * a key they could see -- Enter works, but a pointer or switch-access user has no
+ * Enter. `column` pins it to the fifth key column so it does not move when the
+ * layer does.
+ */
+function commitKey(column?: number): KeypadKey {
+	return {
+		id: "commit",
+		latex: "",
+		visualLabel: "=",
+		labelKind: "glyph",
+		// The commit key keeps the `calculate` name the e2e suite resolves it by,
+		// in both catalogs, so nothing depends on a new string for a known button.
+		nameKey: "calculate",
+		role: "commit",
+		column,
+	};
 }
 
 const SCIENTIFIC_ROWS: readonly (readonly KeypadKey[])[] = [
@@ -316,6 +337,48 @@ const SCIENTIFIC_ROWS: readonly (readonly KeypadKey[])[] = [
 			scientificOnly: true,
 		},
 	],
+	/*
+	 * A fourth row, which is the budget the sizing note on `keypadLayers` sets, and
+	 * a fifth on the graphing layer -- measured against the shipped panel there.
+	 */
+	[
+		{
+			id: "log-base-n",
+			/*
+			 * One placeholder, like every other function key. A two-slot template is
+			 * unusable here: `ArrowRight` leaves the subscript rather than crossing to
+			 * the next placeholder, and MathLive's `moveToNextPlaceholder` is bound to
+			 * Tab, which this keypad deliberately spends on being a single tab stop.
+			 * The base fills, `ArrowRight` exits, and the argument follows --
+			 * `\\log_{2}8` is `["Lb", 8]` and answers 3, parentheses optional.
+			 */
+			latex: "\\log_{#0}",
+			visualLabel: "\\log_{\\square}",
+			labelKind: "math",
+			nameKey: "keyLogBaseN",
+			role: "function",
+			requires: ["log-base-n"],
+		},
+		{
+			/*
+			 * A stacked fraction, which is how a fraction is written everywhere outside
+			 * a calculator. `\\div` is still on the numeric layer and both parse to
+			 * `Divide`, so this needs no capability of its own -- but `100\\div10\\div2`
+			 * is ambiguous to read back and this is not.
+			 *
+			 * `#@` takes the expression already typed as the numerator, the same idiom
+			 * `nth-root` uses for its radicand, so pressing this after `12` gives
+			 * `\\frac{12}{...}` with the cursor in the denominator and no placeholder
+			 * navigation needed.
+			 */
+			id: "fraction",
+			latex: "\\frac{#@}{#0}",
+			visualLabel: "\\frac{\\square}{\\square}",
+			labelKind: "math",
+			nameKey: "keyFraction",
+			role: "function",
+		},
+	],
 ];
 
 const GRAPH_ROW: readonly KeypadKey[] = [
@@ -385,13 +448,36 @@ function prune(
 }
 
 /**
+ * Put a commit key in the layer's last free slot.
+ *
+ * Applied after pruning, never before: the commit key requires no capability, so a
+ * layer that carried it as data would survive a host revoking every function on
+ * it and render as a lone `=`.
+ */
+function withCommit(
+	rows: readonly (readonly KeypadKey[])[],
+): readonly (readonly KeypadKey[])[] {
+	const copied = rows.map((row) => [...row]);
+	const last = copied[copied.length - 1];
+	if (last && last.length < KEY_COLUMNS) last.push(commitKey(KEY_COLUMNS));
+	else copied.push([commitKey(KEY_COLUMNS)]);
+	return copied;
+}
+
+/**
  * The layers for one calculator, already filtered to what the host permits.
  *
- * Scientific stacks its functions in a *second layer* rather than extra rows.
- * The shipped tool panel is 380x372 (see `registrations/calculator.ts`), which
- * leaves roughly 200px for the keypad — eight rows in that space puts keys near
- * 20px, below the 24px minimum target size of WCAG 2.5.8. Four rows per layer
- * keeps keys at 44px.
+ * Scientific stacks its functions in a *second layer* rather than extra rows. The
+ * shipped panel is 380x560 for basic and scientific and 720x620 for graphing, with
+ * a 480px floor (see `registrations/calculator.ts`). Keys never shrink: the 2.75rem
+ * `min-height` in `Keypad.svelte` is what holds the 44px of WCAG 2.5.5, not the row
+ * count, so a row costs 50px of panel height rather than target size and the
+ * panel's content box scrolls once the rows outgrow it. Eight rows in one layer
+ * would put the keypad 250px past the floor, which is a scroll to reach `sin`.
+ *
+ * Four rows is the budget; the graphing layer spends five because it carries the
+ * five graph keys as well. Both fit the shipped panel with no scroll in either
+ * axis, and the e2e suite measures every layer rather than the one that opens.
  */
 export function keypadLayers(
 	settings: ResolvedCortexSettings,
@@ -422,7 +508,11 @@ export function keypadLayers(
 		if (graphRows.length === 0) return [numeric];
 		return [
 			numeric,
-			{ id: "graph", labelKey: "virtualKeyboardGraphing", rows: graphRows },
+			{
+				id: "graph",
+				labelKey: "virtualKeyboardGraphing",
+				rows: withCommit(graphRows),
+			},
 		];
 	}
 
@@ -433,7 +523,7 @@ export function keypadLayers(
 		{
 			id: "scientific",
 			labelKey: "virtualKeyboardScientific",
-			rows: scientificRows,
+			rows: withCommit(scientificRows),
 		},
 	];
 }

@@ -92,7 +92,7 @@
 			// A new result, or the start of one, is the newest thing to say.
 			if (value.busy && !snapshot.busy) announcement = i18n.t('calculating');
 			else if (value.result && value.result !== snapshot.result) {
-				announcement = i18n.t('result', { result: value.result });
+				announcement = i18n.t('result', { result: i18n.formatResult(value.result) });
 			}
 			snapshot = value;
 		}),
@@ -188,7 +188,7 @@
 							<span class="pie-cortex-tape__expression" dir="ltr"
 								>{@html convertLatexToMarkup(entry.expression)}</span
 							>
-							<span class="pie-cortex-tape__result" dir="ltr">{entry.result}</span>
+							<span class="pie-cortex-tape__result" dir="ltr">{i18n.formatResult(entry.result)}</span>
 						</button>
 					{/each}
 					<button
@@ -218,7 +218,7 @@
 					is live so nothing is announced twice.
 				-->
 				<p class="pie-cortex-result" aria-hidden="true">
-					{#if snapshot.result}{snapshot.result}{/if}
+					{#if snapshot.result}{i18n.formatResult(snapshot.result)}{/if}
 				</p>
 			</div>
 

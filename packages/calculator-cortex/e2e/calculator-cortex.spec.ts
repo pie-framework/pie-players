@@ -349,18 +349,48 @@ test("fills its panel at the shipped tool size without clipping", async ({
 		await page.waitForFunction(() => window.__cortexReady === true);
 		await page.locator("#panel").selectOption("shell");
 		await page.waitForTimeout(400);
-		const box = await page.locator("#calculator").evaluate((element) => ({
-			clientWidth: element.clientWidth,
-			scrollWidth: element.scrollWidth,
-			clientHeight: element.clientHeight,
-			scrollHeight: element.scrollHeight,
-		}));
-		expect(box.scrollWidth, `${path} scrolls sideways`).toBeLessThanOrEqual(
-			box.clientWidth,
+
+		/*
+		 * Every layer, not just the one that opens. The function layers are taller
+		 * than the numeric one — scientific by a row, graphing by two, since it
+		 * carries the five graph keys as well — and a layer that is never shown is
+		 * never measured. A row costs 50px, so this is the check that says whether
+		 * the row budget still fits the panel.
+		 */
+		const tabs = page.getByRole("group", { name: "Keypad layer" });
+		const layerNames = (await tabs.count())
+			? await tabs.getByRole("button").allTextContents()
+			: [""];
+		// Named, so a selector that stops matching degrades to a failure rather than
+		// to measuring the opening layer three times.
+		expect(layerNames, `${path} layer tabs`).toEqual(
+			path === "/"
+				? [""]
+				: path === "/scientific.html"
+					? ["Basic", "Scientific"]
+					: ["Basic", "Graphing"],
 		);
-		expect(box.scrollHeight, `${path} overflows its panel`).toBeLessThanOrEqual(
-			box.clientHeight + 1,
-		);
+		for (const layerName of layerNames) {
+			if (layerName) {
+				await tabs
+					.getByRole("button", { name: layerName, exact: true })
+					.click();
+				await page.waitForTimeout(200);
+			}
+			const where = `${path} ${layerName || "numeric"}`;
+			const box = await page.locator("#calculator").evaluate((element) => ({
+				clientWidth: element.clientWidth,
+				scrollWidth: element.scrollWidth,
+				clientHeight: element.clientHeight,
+				scrollHeight: element.scrollHeight,
+			}));
+			expect(box.scrollWidth, `${where} scrolls sideways`).toBeLessThanOrEqual(
+				box.clientWidth,
+			);
+			expect(box.scrollHeight, `${where} overflows its panel`).toBeLessThanOrEqual(
+				box.clientHeight + 1,
+			);
+		}
 	}
 });
 
@@ -654,6 +684,221 @@ test("pans, zooms and resets the graph viewport from the keyboard alone", async 
 	const [resetXMin, , resetYMin] = await stableBounds();
 	expect(resetXMin).toBeCloseTo(defaultXMin, 6);
 	expect(resetYMin).toBeCloseTo(defaultYMin, 6);
+});
+
+/*
+ * Typing sequences, and only the answer asserted.
+ *
+ * The sequences are derived from mathquill's `test/unit/typing.test.js`, which
+ * covers what a mathematical editor does to raw keystrokes: `/` opens a
+ * fraction over what precedes it, `^` opens a superscript the next character
+ * lands inside, function names auto-recognize, and an unmatched `(` closes
+ * itself. Those behaviours belong to MathLive here and are not this package's to
+ * assert -- so nothing below inspects the intermediate LaTeX.
+ *
+ * What is ours is the seam: whatever the editor builds from an ordinary typing
+ * sequence has to survive `validateExpression` and come back as the right
+ * answer. The unit scenarios feed that policy hand-written LaTeX; only a real
+ * mathfield produces the LaTeX a learner's keystrokes actually generate, and the
+ * two have already disagreed -- `2x`, `(4+5)` and the inverse-trig keys all
+ * validated as typed strings long before they were reachable from the keypad.
+ */
+const TYPED: ReadonlyArray<{
+	readonly path: string;
+	readonly keys: readonly string[];
+	readonly answer: string;
+	readonly why: string;
+}> = [
+	{ path: "/", keys: ["1/2"], answer: "0.5", why: "`/` builds a fraction" },
+	{
+		path: "/",
+		/*
+		 * The `ArrowRight`s are the point. A fraction keeps the cursor in its
+		 * denominator, so typing straight through gives `3/(4+1/4)` and answers
+		 * 0.7058823529 -- which is what this test asserted until it was run.
+		 */
+		keys: ["3/4", "ArrowRight", "+1/4", "ArrowRight"],
+		answer: "1",
+		why: "two fractions, each exited before the next operator",
+	},
+	{
+		path: "/",
+		keys: ["(2+3"],
+		answer: "5",
+		why: "an unclosed parenthesis, which the editor closes",
+	},
+	{ path: "/", keys: ["2(3+4"], answer: "14", why: "a coefficient on a group" },
+	{
+		path: "/",
+		keys: ["-5+3"],
+		answer: "-2",
+		why: "a leading sign, for which there is no dedicated key",
+	},
+	{
+		path: "/",
+		keys: [".5+.25"],
+		answer: "0.75",
+		why: "a bare leading decimal point",
+	},
+	// Scientific, because basic mode holds no `power` capability -- `2^3` typed
+	// into the basic calculator is refused, and correctly so.
+	{
+		path: "/scientific.html",
+		keys: ["2^3"],
+		answer: "8",
+		why: "`^` builds a superscript",
+	},
+	{
+		path: "/scientific.html",
+		keys: ["2^3", "ArrowRight", "+1"],
+		answer: "9",
+		why: "an exponent exited before the next operator",
+	},
+	{
+		path: "/scientific.html",
+		keys: ["sin30"],
+		answer: "0.5",
+		/*
+		 * The function name auto-recognizes and the argument follows with no
+		 * delimiter, which is the shape that made `InvisibleOperator` necessary.
+		 */
+		why: "a function name and an implicit argument",
+	},
+	{
+		path: "/scientific.html",
+		keys: ["sqrt", "Enter", "16"],
+		answer: "4",
+		why: "a radical opened by its command name",
+	},
+];
+
+for (const entry of TYPED) {
+	test(`answers a sequence typed as ${entry.keys.join(" ")}`, async ({
+		page,
+	}) => {
+		await page.goto(entry.path);
+		await page.waitForFunction(() => window.__cortexReady === true);
+		const before = await page.evaluate(
+			() => window.__cortexCalculator?.getHistory?.().length ?? 0,
+		);
+		await page.evaluate(() => window.__cortexCalculator?.clear());
+		await page.locator("math-field").locator('[part="keyboard-sink"]').focus();
+		for (const chunk of entry.keys) {
+			if (/^[A-Z]/.test(chunk)) await page.keyboard.press(chunk);
+			else await page.keyboard.type(chunk);
+		}
+		await page.keyboard.press("Enter");
+		/*
+		 * `clear()` empties the input, not the history, and each demo seeds one
+		 * calculation -- so asserting on `getHistory()[0]` alone passes on the
+		 * seeded entry whenever the typed expression is refused and never commits.
+		 * That is how three of these tests first "failed" against correct code.
+		 */
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => window.__cortexCalculator?.getHistory?.().length ?? 0,
+				),
+			)
+			.toBe(before + 1);
+		expect(
+			await page.evaluate(
+				() => window.__cortexCalculator?.getHistory?.()[0]?.result,
+			),
+		).toBe(entry.answer);
+	});
+}
+
+test("computes a base-n logarithm and a fraction from the scientific layer", async ({
+	page,
+}) => {
+	/*
+	 * Both keys insert a template with one placeholder, because a second one would
+	 * be unreachable: `ArrowRight` leaves a subscript rather than crossing to the
+	 * next placeholder, and MathLive binds `moveToNextPlaceholder` to Tab, which
+	 * this keypad spends on being a single tab stop. That constraint is invisible
+	 * in the layout table and only a real mathfield shows it, so it is asserted
+	 * here — the first two-slot templates written for these keys produced
+	 * `\\log_28(\\placeholder{})` and lost the argument entirely.
+	 */
+	await page.goto("/scientific.html");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	await page.getByRole("button", { name: "Scientific", exact: true }).click();
+
+	await page.evaluate(() => window.__cortexCalculator?.clear());
+	await page
+		.getByRole("button", { name: "Logarithm with a chosen base", exact: true })
+		.click();
+	await page.keyboard.type("2");
+	await page.keyboard.press("ArrowRight");
+	await page.keyboard.type("8");
+	await expect
+		.poll(() => page.evaluate(() => window.__cortexCalculator?.getValue()))
+		.toBe("\\log_28");
+	/*
+	 * The Calculate key, pressed while the scientific layer is showing. It used to
+	 * sit on the numeric layer alone, so a learner who built an expression from
+	 * these keys had to switch layers back to reach a key they could see; Enter
+	 * worked, but a pointer or switch-access user has no Enter. Every layer now
+	 * carries one, in the same corner.
+	 */
+	await expect(
+		page.getByRole("button", { name: "Calculate", exact: true }),
+	).toBeVisible();
+	await page.getByRole("button", { name: "Calculate", exact: true }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(() => window.__cortexCalculator?.getHistory?.()[0]?.result),
+		)
+		.toBe("3");
+
+	/*
+	 * `#@` takes what is already typed as the numerator. The scientific layer is
+	 * already showing from the top of this test — switching layers here instead
+	 * would leave focus on the toggle and swallow the digit typed after the key.
+	 */
+	await page.evaluate(() => window.__cortexCalculator?.clear());
+	await page.locator("math-field").locator('[part="keyboard-sink"]').focus();
+	await page.keyboard.type("12");
+	await page.getByRole("button", { name: "Fraction", exact: true }).click();
+	await page.keyboard.type("4");
+	await expect
+		.poll(() => page.evaluate(() => window.__cortexCalculator?.getValue()))
+		.toBe("\\frac{12}{4}");
+	await page.keyboard.press("Enter");
+	await expect
+		.poll(() =>
+			page.evaluate(() => window.__cortexCalculator?.getHistory?.()[0]?.result),
+		)
+		.toBe("3");
+});
+
+test("enters a negative number from the keypad without a sign key", async ({
+	page,
+}) => {
+	/*
+	 * Why this package ships no `(-)` key. A handheld separates the sign from the
+	 * subtraction operator because there they are different operations; in a
+	 * mathfield `-` is contextual, so pressing Minus on an empty expression negates
+	 * and the same key subtracts mid-expression. Pinned rather than assumed — the
+	 * keypad diff against Perseus flagged the missing key, and this is the evidence
+	 * it is not needed.
+	 */
+	await page.goto("/");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	await page.evaluate(() => window.__cortexCalculator?.clear());
+	for (const name of ["Minus", "5", "Plus", "3"]) {
+		await page.getByRole("button", { name, exact: true }).click();
+	}
+	await expect
+		.poll(() => page.evaluate(() => window.__cortexCalculator?.getValue()))
+		.toBe("-5+3");
+	await page.getByRole("button", { name: "Calculate", exact: true }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(() => window.__cortexCalculator?.getHistory?.()[0]?.result),
+		)
+		.toBe("-2");
 });
 
 test("crosses a traced series in a bounded number of presses", async ({

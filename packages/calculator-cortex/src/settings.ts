@@ -37,6 +37,7 @@ const SCIENTIFIC_FUNCTIONS = [
 	"exponential",
 	"natural-log",
 	"common-log",
+	"log-base-n",
 	"sine",
 	"cosine",
 	"tangent",

@@ -57,6 +57,13 @@ const KEY_EXPRESSIONS: Readonly<Record<string, KeyCase>> = {
 	tangent: { latex: "\\tan(45)", expects: "1" },
 	"natural-log": { latex: "\\ln(1)", expects: "0" },
 	"common-log": { latex: "\\log(100)", expects: "2" },
+	/*
+	 * `\\log_{2}8`, not `\\log_{2}(8)`: the key inserts `\\log_{#0}` and the argument
+	 * follows the subscript, which is what a learner produces and what the fragment
+	 * check below therefore has to see.
+	 */
+	"log-base-n": { latex: "\\log_{2}8", expects: "3" },
+	fraction: { latex: "\\frac{12}{4}", expects: "3" },
 	"inverse-sine": { latex: "\\sin^{-1}(1)", expects: "90" },
 	"inverse-cosine": { latex: "\\cos^{-1}(1)", expects: "0" },
 	"inverse-tangent": { latex: "\\tan^{-1}(1)", expects: "45" },
@@ -207,5 +214,62 @@ describe("keypad pruning tracks the policy that would refuse the key", () => {
 		const basic = new Set(keysFor("basic").map((key) => key.id));
 		expect(basic.has("pi")).toBe(false);
 		expect(basic.has("euler")).toBe(false);
+	});
+});
+
+describe("the keypad's structure holds the panel's budget", () => {
+	test("every layer carries a commit key in the keypad's bottom corner", () => {
+		for (const type of MODES) {
+			for (const layer of keypadLayers(
+				resolveCortexSettings(type),
+				localization,
+			)) {
+				const where = `${type}:${layer.id}`;
+				// Exactly one, in key column 5, so switching layers does not move it.
+				const columns = layer.rows.flatMap((row) =>
+					row.flatMap((key, index) =>
+						key.role === "commit" ? [key.column ?? index + 1] : [],
+					),
+				);
+				expect(columns, where).toEqual([5]);
+				expect(layer.rows.at(-1)?.at(-1)?.role, where).toBe("commit");
+			}
+		}
+	});
+
+	test("the row budget is four, and only the graphing layer spends five", () => {
+		const rows = MODES.flatMap((type) =>
+			keypadLayers(resolveCortexSettings(type), localization).map(
+				(layer) => `${type}:${layer.id}=${layer.rows.length}`,
+			),
+		);
+		/*
+		 * Pinned rather than bounded. A row costs 50px of a panel whose floor is
+		 * 480px, so a row anywhere is a deliberate decision -- the graphing layer's
+		 * fifth is, because it carries the five graph keys as well. Whether the rows
+		 * still fit is measured in the e2e suite, which switches to every layer.
+		 */
+		expect(rows).toEqual([
+			"basic:numeric=4",
+			"scientific:numeric=4",
+			"scientific:scientific=4",
+			"graphing:numeric=4",
+			"graphing:graph=5",
+		]);
+	});
+
+	test("a narrowed layer keeps its commit key without gaining a row", () => {
+		const layers = keypadLayers(
+			resolveCortexSettings("scientific", {
+				settings: { allowedFunctions: ["square-root"] },
+			}),
+			localization,
+		);
+		const scientific = layers.find((layer) => layer.id === "scientific");
+		expect(scientific?.rows.length).toBe(2);
+		expect(scientific?.rows.at(-1)?.map((key) => key.id)).toEqual([
+			"fraction",
+			"commit",
+		]);
 	});
 });

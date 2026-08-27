@@ -14,6 +14,7 @@ export type CortexFunctionId =
 	| "exponential"
 	| "natural-log"
 	| "common-log"
+	| "log-base-n"
 	| "sine"
 	| "cosine"
 	| "tangent"
@@ -75,6 +76,8 @@ export interface CortexCalculatorMessages {
 	keyInverseTangent: string;
 	keyNaturalLog: string;
 	keyCommonLog: string;
+	keyLogBaseN: string;
+	keyFraction: string;
 	keySquareRoot: string;
 	keyNthRoot: string;
 	keyPower: string;

@@ -130,6 +130,7 @@ export type CortexFunctionId =
   | "exponential"
   | "natural-log"
   | "common-log"
+  | "log-base-n"
   | "sine"
   | "cosine"
   | "tangent"
@@ -255,15 +256,21 @@ allowlist for the selected calculator type; it cannot grant functions that the
 type does not support.
 
 `CalculatorProviderConfig.locale` configures visible labels, MathLive locale,
-the virtual keyboard's decimal separator, locale-aware graph numbers, and the
-default writing direction. The package ships complete English and Dutch
+the keypad's and MathLive's decimal separator, locale-aware graph numbers, the
+decimal separator in a displayed answer and in the history tape, and the default
+writing direction. One resolver serves all of them, so a tapped key, a typed
+character and an answer read back agree: an `nl-NL` calculator whose keypad
+writes `1,5` answers `1,5`. The package ships complete English and Dutch
 catalogs, selects them by primary language, and falls back to English for other
 locales. `settings.messages` is a typed partial override for every visible
 label, accessible name, status, and recoverable error; omitted keys retain the
 selected catalog value. `settings.direction` may override automatic `ltr`/`rtl`
-resolution for host policy. Validation and serialized state use a
-locale-independent canonical numeric representation, so changing locale does
-not reinterpret persisted calculations.
+resolution for host policy. Validation, serialized state, `getResult` and the
+history entries a host reads use a locale-independent canonical numeric
+representation, so changing locale does not reinterpret persisted calculations;
+the locale separator is applied at the display boundary only, and as a separator
+swap rather than a reformat, so a host's `displayPrecision` and the exponential
+form of a large or small answer survive it.
 
 ### Expression capability
 
@@ -277,6 +284,21 @@ Scientific mode adds powers and roots, exponential and logarithmic functions,
 trigonometric and inverse-trigonometric functions, absolute value, factorial,
 the constants `pi` and `e`, and scientific notation. Trigonometric input and
 results honor the configured angle mode.
+
+Logarithms carry three capabilities, not two. `natural-log` is base e and
+`common-log` is base 10; `log-base-n` is every other base, and it is separate
+because it could not otherwise be declined. The Compute Engine parses
+`\log_{3}(9)` as `["Log", 9, 3]`, the same operator that carries base 10, so an
+arbitrary base was admitted by `common-log` and a host granting log base 10 had
+no way to refuse it. Base 2 is spelled differently again -- `\log_{2}(8)` is
+`["Lb", 8]` -- and was refused outright while every other base answered. All
+three are in the default scientific and graphing sets, matching the reference
+implementations; basic mode has none of them.
+
+The factorial is the Gamma continuation off the integers: `2.5!` answers
+`3.32335097`, where a handheld raises a domain error. Desmos answers the same,
+and Desmos is the reference. It remains a domain error at the negative integers,
+where Gamma has poles.
 
 Graphing mode has the scientific capability set plus the single independent
 variable `x`. It accepts explicit single-variable functions entered as `f(x)`

@@ -1011,14 +1011,25 @@ over a CDN with no typecheck at all.
   calculators that are already gone. Each calculator is destroyed at most once, so
   either order is safe
 - Message-override keys on `CortexCalculatorMessages`. Six viewport controls and
-  their group label were added on 2026-08-27; `CortexCalculatorMessageOverrides`
-  is a partial, so an override object that omits them still type-checks
+  their group label were added on 2026-08-27, and two keypad keys later the same
+  day; `CortexCalculatorMessageOverrides` is a partial, so an override object that
+  omits them still type-checks
+- Members of `CortexFunctionId`. `log-base-n` was added on 2026-08-27 and is in the
+  default scientific and graphing sets, so a host that passes no
+  `allowedFunctions` gains the capability and one that passes an explicit list
+  keeps exactly what it named. A host narrowing the set is unaffected: the union
+  only widens, and an unrecognized member would have been rejected before the
+  addition rather than after
 - The exact text of a Cortex answer. Exactly-representable trigonometry now
   answers `0` and `0.5` where the numeric path answered `6.123233996e-17` and
   `0.5000000000000008`, and an exponential mantissa no longer carries trailing
-  zeros. No consumer reads a calculator answer: it is rendered inside the tool and
-  reaches a host only through `exportState`, whose provider state carries the
-  expression rather than the formatted result
+  zeros. A *displayed* answer also takes the locale's decimal separator as of
+  2026-08-27, so a comma-separator locale reads `1,5`. No consumer reads a
+  calculator answer: it is rendered inside the tool and reaches a host only through
+  `exportState`, whose provider state carries the expression rather than the
+  formatted result — and the separator is applied at the display boundary only, so
+  the exported state, the history entries and `getResult` stay `.`-separated and a
+  state saved under one locale is not reinterpreted under another
 - `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
   that offer a Desmos calculator take the tool package as a side-effect import and
   reach the provider through the calculator package instead; one of them serves the

@@ -20,6 +20,7 @@
 		"build": "vite build",
 		"demo": "bun run build && bunx vite demo",
 		"test": "bun test tests",
+		"test:corpus": "bun scripts/build-expression-corpus.mjs --full --out .corpus/gsm8k-arithmetic.json && CORTEX_CORPUS=.corpus/gsm8k-arithmetic.json bun test tests/calculator-cortex-corpus.test.ts",
 		"test:e2e": "bun run build && bunx playwright test --config playwright.config.ts",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.demo.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json",

@@ -1,5 +1,8 @@
 import type { MathfieldElement } from "mathlive";
-import type { CortexCalculatorLocalization } from "./localization.js";
+import {
+	type CortexCalculatorLocalization,
+	localeDecimalSeparator,
+} from "./localization.js";
 
 /*
  * `MathfieldElement.locale` and `.decimalSeparator` are static properties of the
@@ -40,15 +43,6 @@ type LeaseGlobal = typeof globalThis & {
 	[LEASE_KEY]?: SettingsLease;
 };
 
-function decimalSeparator(locale: string): "." | "," {
-	try {
-		const formatted = new Intl.NumberFormat(locale).format(1.1);
-		return formatted.includes(",") ? "," : ".";
-	} catch {
-		return ".";
-	}
-}
-
 /**
  * Point the mathfield class at this calculator's locale, and return the release
  * that puts the page's own setting back.
@@ -70,7 +64,7 @@ export function acquireMathfieldSettings(
 	lease.owner = owner;
 	leaseGlobal[LEASE_KEY] = lease;
 	mathfieldConstructor.locale = localization.locale;
-	mathfieldConstructor.decimalSeparator = decimalSeparator(localization.locale);
+	mathfieldConstructor.decimalSeparator = localeDecimalSeparator(localization.locale);
 
 	return () => {
 		const current = leaseGlobal[LEASE_KEY];
@@ -82,7 +76,7 @@ export function acquireMathfieldSettings(
 }
 
 /** Which decimal separator a locale writes, exposed for the keypad's own key. */
-export { decimalSeparator as mathfieldDecimalSeparator };
+export { localeDecimalSeparator as mathfieldDecimalSeparator };
 
 export function configureMathfield(
 	mathfield: MathfieldElement,

@@ -47,7 +47,16 @@ demo at 1280px never reaches the branch that ships.
 The package ships complete English (`en-US`) and Dutch (`nl-NL`) interface
 catalogs. Locale matching is by primary language, so `nl`, `nl-NL`, and
 `nl-BE` select Dutch. Other locales fall back to English while still configuring
-MathLive, decimal input, locale-aware graph numbers, and writing direction.
+MathLive, decimal input, locale-aware graph numbers, the decimal separator in a
+displayed answer, and writing direction.
+
+One resolver serves the mathfield, the keypad's separator key and the displayed
+answer, so an `nl-NL` calculator whose keypad writes `1,5` answers `1,5`. The
+locale reaches the display only: `getResult`, the history entries a host reads and
+the serialized state stay `.`-separated, so state saved under one locale is not
+reinterpreted under another. It is a separator swap rather than a reformat, which
+is what keeps `displayPrecision` and an exponential answer like `2.432902008e+18`
+intact.
 
 Every package-owned visible string, accessible name, status, and recoverable
 error can be replaced with typed per-instance messages:
@@ -91,9 +100,22 @@ delivered.
 Keys are gated on `settings.allowedFunctions`, so a host that narrows the set gets a
 keypad that cannot offer a key the validator would reject. Basic omits the constants
 outright, matching `validateSymbol`. Scientific and graphing put their function keys
-on a second layer rather than in extra rows, because the shipped panel leaves about
-210px for the keypad and eight rows in that space puts keys below the 24px minimum
-target size.
+on a second layer rather than in extra rows: keys hold 44px from a `min-height` and
+never shrink, so a row costs 50px of panel height, and eight rows in one layer puts
+the keypad past the panel's 480px floor. Four rows is the budget; the graphing layer
+spends five because it carries the graph keys too. The e2e suite switches to every
+layer and measures it against the shipped panel.
+
+The commit key is on every layer, in the same corner. On the numeric layer alone it
+was unreachable from the function keys — Enter still committed, but a pointer or
+switch-access user has no Enter.
+
+Every key inserts a template with at most one placeholder. A second is
+unreachable: `ArrowRight` leaves a subscript or a fraction rather than crossing to
+the next placeholder, and MathLive binds `moveToNextPlaceholder` to Tab, which this
+keypad spends on being a single tab stop. `nth-root` and `fraction` therefore use
+`#@` to take the expression already typed as their second operand, and `log-base-n`
+fills its base and lets the argument follow the subscript.
 
 Layouts live as data in `src/keypad-layouts.ts`. Adding a key needs a message key in
 both catalogs — `as const satisfies CortexCalculatorMessages` makes that a
@@ -149,3 +171,44 @@ in every theme, which put black tick labels on a dark plot at 1.43:1. The plot d
 is `aria-hidden`, so axe never sees inside it — the contrast is asserted directly
 in `e2e/calculator-cortex.spec.ts` instead, tick labels at 4.5:1 as text and axes
 at 3:1 as a graphical object.
+
+## Coverage
+
+Feature coverage rests on three suites with different jobs.
+
+`tests/calculator-cortex-keypad-coverage.test.ts` is the self-maintaining one:
+every shipped keypad key must map to an expression proven to validate and
+evaluate. A key with no entry fails, and an entry naming a retired key fails.
+Implicit multiplication, parenthesised groups and the inverse-trigonometric keys
+were all refused by the expression policy until this test reached them.
+
+`tests/calculator-cortex-scenarios.test.ts` pins values, traced from the PRD's
+capability spec: precedence, boundary values, display thresholds, the domain
+edges of every function, and the refusals each mode owes. Its LaTeX entry shapes
+are derived from the public corner-case corpora in `mathquill` and Doenet's
+`math-expressions`, which test their own parsers — the shapes carry over, the
+expectations do not.
+
+`tests/calculator-cortex-corpus.test.ts` covers volume, and asserts properties
+rather than values, because a fixture of individual expectations at corpus size
+fails in ways nobody can act on. The corpus is GSM8K's inline calculator
+annotations — `<<48/2=24>>`, expression/result pairs authored to be executed by a
+calculator — over `0-9 + - * / . ( )` alone, which is exactly basic mode's
+capability set. Four properties hold: every outcome is a declared error code or an
+answer, never an undeclared throw; every answer matches its authored result
+numerically, since the annotations carry their author's currency formatting;
+capability sets nest, so what basic accepts scientific and graphing accept
+identically; and a displayed answer re-entered answers itself. Only the second
+uses the labels — the rest would hold against any corpus.
+
+300 entries are committed under `tests/fixtures/`, chosen by a deterministic
+stride so regenerating produces no diff. For the full 10770:
+
+```bash
+bun run test:corpus
+```
+
+Playwright covers what no unit test can reach: what MathLive builds from real
+keystrokes. Those tests assert only the answer, because turning `/` into a
+fraction is MathLive's behaviour, while the LaTeX it hands to `validateExpression`
+is this package's seam — and the two have disagreed, `2x` and `(4+5)` among them.

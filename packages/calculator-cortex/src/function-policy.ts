@@ -9,6 +9,29 @@ import {
 } from "./settings.js";
 import type { CortexFunctionId } from "./types.js";
 
+/**
+ * The capability a logarithm needs, or `null` when the operator is not one.
+ *
+ * Base 10 and base e are `common-log` and `natural-log`. Every other base is
+ * `log-base-n`, which exists because it could not otherwise be declined: the
+ * Compute Engine parses `\\log_{3}(9)` as `["Log", 9, 3]`, so an arbitrary base
+ * rode in on the same `Log` that carries base 10 from the beginning, and a host
+ * granting log base 10 had no way to refuse it. Base 2 is spelled differently
+ * again -- `\\log_{2}(8)` is `["Lb", 8]` -- and was refused outright while every
+ * other base answered.
+ */
+function logarithmCapability(
+	operator: string,
+	value: readonly unknown[],
+): CortexFunctionId | null {
+	if (operator === "Lb") return "log-base-n";
+	// `["Log", x]` is base 10; a second operand is the base.
+	if (operator === "Log") {
+		return value.length > 2 ? "log-base-n" : "common-log";
+	}
+	return null;
+}
+
 const BASE_OPERATORS = new Set([
 	"Number",
 	"Integer",
@@ -291,7 +314,8 @@ export function validateExpression(
 				settings,
 			);
 		} else if (!BASE_OPERATORS.has(operator)) {
-			const functionId = FUNCTION_OPERATORS[operator];
+			const functionId =
+				logarithmCapability(operator, value) ?? FUNCTION_OPERATORS[operator];
 			if (!functionId) {
 				throw new CortexCalculatorError(
 					"unsupported-expression",

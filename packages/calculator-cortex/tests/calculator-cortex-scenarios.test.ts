@@ -123,6 +123,21 @@ const BASIC_ANSWERS: readonly Answer[] = [
 	{ latex: "12345678901234", expects: "1.23456789e+13" },
 	{ latex: "999999999999\\times10", expects: "1e+13" },
 	{ latex: "0.000000001\\div10", expects: "1e-10" },
+	/*
+	 * Entry shapes MathLive emits that nothing above produces. Derived from the
+	 * LaTeX corner-case corpora in mathquill's `test/unit/latex.test.js` and
+	 * Doenet's `math-expressions` `spec/quick_latex-to-ast.spec.js` -- both of which
+	 * test their own parsers, so only the shapes carry over, not the expectations.
+	 */
+	{ latex: ".5+.25", expects: "0.75", why: "a leading decimal point" },
+	{ latex: "1.+2.", expects: "3", why: "a trailing decimal point" },
+	{ latex: "2\\cdot3", expects: "6", why: "the other multiplication sign" },
+	{
+		latex: "\\left(4+5\\right)\\times2",
+		expects: "18",
+		why: "sized delimiters, which is what the keypad's parentheses produce",
+	},
+	{ latex: "2\\ +\\ 2", expects: "4", why: "explicit LaTeX spacing" },
 ];
 
 const BASIC_REFUSALS: readonly Refusal[] = [
@@ -222,6 +237,16 @@ const SCIENTIFIC_ANSWERS: readonly Answer[] = [
 	{ latex: "1!", expects: "1" },
 	{ latex: "5!", expects: "120" },
 	{ latex: "20!", expects: "2.432902008e+18", why: "past a double's integers" },
+	{
+		latex: "2.5!",
+		expects: "3.32335097",
+		/*
+		 * The Gamma continuation, not a domain error. A handheld refuses a
+		 * non-integer factorial; Desmos answers 3.32335097, the Compute Engine
+		 * answers the same, and Desmos is the reference this calculator follows.
+		 */
+		why: "the factorial is Gamma(x+1) off the integers",
+	},
 	// Constants, and the implicit multiplication a learner writes beside them.
 	{ latex: "\\pi", expects: "3.141592654" },
 	{ latex: "e", expects: "2.718281828" },
@@ -251,6 +276,52 @@ const SCIENTIFIC_ANSWERS: readonly Answer[] = [
 		expects: "9",
 		why: "calculator forensics",
 	},
+	/*
+	 * Logarithms of a base other than 10 or e. The Compute Engine parses
+	 * `\\log_{3}(9)` as `["Log", 9, 3]` -- admitted by `Log` from the start -- but
+	 * special-cases base 2 into its own `Lb` operator, which was refused until it
+	 * joined the map. Every base is now the one capability, `common-log`.
+	 */
+	{ latex: "\\log_{2}(8)", expects: "3" },
+	{ latex: "\\log_{2}(1024)", expects: "10" },
+	{ latex: "\\log_{3}(9)", expects: "2" },
+	/*
+	 * What the `log-base-n` key actually produces: `\\log_{#0}` with the argument
+	 * typed after the subscript, parentheses optional.
+	 */
+	{ latex: "\\log_{2}8", expects: "3" },
+	{ latex: "\\log_{3}9", expects: "2" },
+	/* And what the `fraction` key produces, which `#@` fills from what precedes it. */
+	{ latex: "\\frac{12}{4}", expects: "3" },
+	{ latex: "\\frac34", expects: "0.75" },
+	/*
+	 * Grouping and precedence shapes from the corpora named in `BASIC_ANSWERS`.
+	 */
+	{
+		latex: "-2^{2}",
+		expects: "-4",
+		why: "the exponent binds tighter than the negation",
+	},
+	{ latex: "{2^{3}}^{2}", expects: "64", why: "a braced power, not 2^(3^2)" },
+	{
+		latex: "\\frac{1}{2}\\pi",
+		expects: "1.570796327",
+		why: "implicit multiplication after a typeset fraction",
+	},
+	{ latex: "\\pi\\pi", expects: "9.869604401", why: "two constants, no sign" },
+	{
+		latex: "|\\sin(|{-1}|)|",
+		expects: "0.01745240644",
+		why: "nested absolute-value bars",
+	},
+	/*
+	 * An exponent whose placeholder is still empty answers the base, because the
+	 * Compute Engine parses `2^{}` as `2`. An empty radical does not: `\\sqrt{}`
+	 * parses as `["Sqrt", ["Error", "missing"]]` and is refused below. Both states
+	 * are reachable mid-entry, and the asymmetry is the parser's, not this
+	 * package's policy -- pinned so a change in either direction is deliberate.
+	 */
+	{ latex: "2^{}", expects: "2", why: "an exponent not yet filled in" },
 ];
 
 const SCIENTIFIC_REFUSALS: readonly Refusal[] = [
@@ -310,6 +381,38 @@ const SCIENTIFIC_REFUSALS: readonly Refusal[] = [
 		why: "a LaTeX command that reaches outside mathematics",
 	},
 	{ latex: "   ", code: "invalid-expression", why: "an empty edit buffer" },
+	{
+		latex: "\\sqrt{}",
+		code: "invalid-expression",
+		why: "an empty radical, unlike the empty exponent that answers its base",
+	},
+	{
+		latex: "3!!",
+		code: "unsupported-expression",
+		why: "the double factorial is its own operator, not the factorial twice",
+	},
+	{
+		latex: "2_3",
+		code: "unsupported-expression",
+		why: "a subscripted numeral is a radix, not a product",
+	},
+	{
+		latex: "e^{i\\pi}",
+		code: "unsupported-expression",
+		why: "this calculator answers real numbers",
+	},
+	/*
+	 * What typing `log_2` into the mathfield actually produces. MathLive nests the
+	 * subscript rather than filling it, so a base-2 logarithm is unreachable from
+	 * the keyboard even though `\\log_{2}(8)` now answers 3 -- and unreachable from
+	 * the keypad, which ships no base-n log key. The capability is therefore
+	 * currently exercised only by host-seeded or imported state.
+	 */
+	{
+		latex: "\\log_{_2}(8)",
+		code: "unsupported-expression",
+		why: "a subscript MathLive nested instead of filling",
+	},
 ];
 
 /* --------------------------------------------------------------- graphing ---- */
@@ -606,6 +709,74 @@ describe("what a host can narrow", () => {
 				workerSettings("scientific", withoutTrig),
 			).formatted,
 		).toBe("0.5");
+	});
+
+	test("a host can grant log base 10 without granting every base", () => {
+		/*
+		 * The reason `log-base-n` exists. The Compute Engine parses `\\log_{3}(9)` as
+		 * `["Log", 9, 3]`, so before the split an arbitrary base rode in on the same
+		 * `Log` that carries base 10 and a host granting `common-log` had no way to
+		 * decline it. Base 2 is spelled differently again -- `["Lb", 8]` -- and was
+		 * refused outright while every other base answered.
+		 */
+		const scientific = [
+			...resolveCortexSettings("scientific").allowedFunctions,
+		];
+		const withoutBaseN = {
+			allowedFunctions: scientific.filter((entry) => entry !== "log-base-n"),
+		};
+		const withoutCommon = {
+			allowedFunctions: scientific.filter((entry) => entry !== "common-log"),
+		};
+
+		// Revoking base-n leaves base 10 and base e untouched.
+		expect(
+			evaluateLatex(
+				"scientific",
+				"\\log(100)",
+				workerSettings("scientific", withoutBaseN),
+			).formatted,
+		).toBe("2");
+		expect(
+			evaluateLatex(
+				"scientific",
+				"\\ln(e)",
+				workerSettings("scientific", withoutBaseN),
+			).formatted,
+		).toBe("1");
+		for (const latex of ["\\log_{2}8", "\\log_{3}9"]) {
+			expect(() =>
+				evaluateLatex(
+					"scientific",
+					latex,
+					workerSettings("scientific", withoutBaseN),
+				),
+			).toThrow();
+		}
+
+		// And revoking base 10 does not take base-n with it.
+		expect(
+			evaluateLatex(
+				"scientific",
+				"\\log_{3}9",
+				workerSettings("scientific", withoutCommon),
+			).formatted,
+		).toBe("2");
+		expect(() =>
+			evaluateLatex(
+				"scientific",
+				"\\log(100)",
+				workerSettings("scientific", withoutCommon),
+			),
+		).toThrow();
+	});
+
+	test("basic mode has no logarithms at all", () => {
+		for (const latex of ["\\log(100)", "\\ln(e)", "\\log_{2}8"]) {
+			expect(() =>
+				evaluateLatex("basic", latex, workerSettings("basic")),
+			).toThrow();
+		}
 	});
 
 	test("an angle mode a host sets is the one every answer uses", () => {

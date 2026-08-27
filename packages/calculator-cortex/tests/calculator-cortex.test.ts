@@ -5,6 +5,7 @@ import { CortexCalculatorProvider } from "../src/index.js";
 import { evaluateLatex, sampleLatex } from "../src/evaluation-engine.js";
 import { validateExpression } from "../src/function-policy.js";
 import { localeDirection } from "../src/localization.js";
+import { mathfieldDecimalSeparator } from "../src/mathlive-runtime.js";
 import { resolveCortexSettings } from "../src/settings.js";
 import { decodeCortexState, encodeCortexState } from "../src/state-codec.js";
 import type { CortexOuterCalculatorState } from "../src/types.js";
@@ -74,6 +75,25 @@ describe("Cortex calculator settings and policy", () => {
 		expect(customRtl.localization.t("clear")).toBe("Clear");
 		expect(customRtl.localization.direction).toBe("rtl");
 		expect(localeDirection("fa_IR")).toBe("rtl");
+	});
+
+	test("punctuates a displayed result for the locale without reformatting it", () => {
+		const dutch = resolveCortexSettings("basic", { locale: "nl-BE" }).localization;
+		const english = resolveCortexSettings("basic").localization;
+
+		expect(dutch.formatResult("1.5")).toBe("1,5");
+		expect(english.formatResult("1.5")).toBe("1.5");
+		// The keypad's separator key and the mathfield both take the same resolver,
+		// so what a learner taps, types and reads back agree.
+		expect(dutch.formatResult("1.5")).toContain(
+			mathfieldDecimalSeparator("nl-BE"),
+		);
+		// A separator swap, not a reformat: the exponent and every significant digit
+		// survive, where Intl.NumberFormat would re-round and expand both.
+		expect(dutch.formatResult("2.432902008e+18")).toBe("2,432902008e+18");
+		expect(dutch.formatResult("1.5e-9")).toBe("1,5e-9");
+		expect(dutch.formatResult("-0.125")).toBe("-0,125");
+		expect(dutch.formatResult("120")).toBe("120");
 	});
 
 	test("validates localization and theme settings at the package seam", () => {

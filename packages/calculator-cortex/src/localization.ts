@@ -39,6 +39,8 @@ const EN_US_MESSAGES = {
 	keyInverseTangent: "tan, inverse tangent",
 	keyNaturalLog: "ln, natural logarithm",
 	keyCommonLog: "log, common logarithm",
+	keyLogBaseN: "Logarithm with a chosen base",
+	keyFraction: "Fraction",
 	keySquareRoot: "Square root",
 	keyNthRoot: "Nth root",
 	keyPower: "To the power of",
@@ -135,6 +137,8 @@ const NL_NL_MESSAGES = {
 	keyInverseTangent: "tan, arctangens",
 	keyNaturalLog: "ln, natuurlijke logaritme",
 	keyCommonLog: "log, logaritme met grondtal tien",
+	keyLogBaseN: "Logaritme met gekozen grondtal",
+	keyFraction: "Breuk",
 	keySquareRoot: "Vierkantswortel",
 	keyNthRoot: "N-de wortel",
 	keyPower: "Tot de macht",
@@ -244,6 +248,21 @@ function primaryLanguage(locale: string): string {
 	}
 }
 
+/**
+ * The decimal separator this locale writes, `.` or `,`.
+ *
+ * One resolver for the whole package: the mathfield class is configured with it,
+ * the keypad's separator key is labelled with it, and a displayed result is
+ * punctuated with it, so a tapped key, a typed character and an answer all agree.
+ */
+export function localeDecimalSeparator(locale: string): "." | "," {
+	try {
+		return new Intl.NumberFormat(locale).format(1.1).includes(",") ? "," : ".";
+	} catch {
+		return ".";
+	}
+}
+
 export function localeDirection(locale: string): CortexTextDirection {
 	try {
 		const textInfo = (
@@ -282,6 +301,18 @@ export interface CortexCalculatorLocalization {
 		values?: Readonly<Record<string, string | number>>,
 	): string;
 	formatNumber(value: number, maximumSignificantDigits?: number): string;
+	/**
+	 * Punctuate an already-formatted result for this locale.
+	 *
+	 * A separator swap, not a reformat. `formatted` carries the host's
+	 * `displayPrecision` and, past the exponential thresholds, an exponent
+	 * (`2.432902008e+18`); handing that to `Intl.NumberFormat` would re-round it to
+	 * `maximumSignificantDigits` and expand the exponent into nineteen digits. The
+	 * model value keeps `.` -- `getResult`, the history entries and the serialized
+	 * state are read back by hosts and across locales, so only the display is
+	 * punctuated.
+	 */
+	formatResult(text: string): string;
 	errorMessage(code: CortexCalculatorErrorCode): string;
 	lineStyle(style: CortexGraphLineStyle): string;
 }
@@ -294,6 +325,7 @@ export function createCortexLocalization(
 	const messages = Object.freeze({ ...baseMessages(locale), ...overrides });
 	const resolvedDirection =
 		direction === "auto" ? localeDirection(locale) : direction;
+	const separator = localeDecimalSeparator(locale);
 	let numberFormatter: Intl.NumberFormat | null = null;
 	let formatterDigits = 0;
 
@@ -320,6 +352,9 @@ export function createCortexLocalization(
 			} catch {
 				return value.toPrecision(maximumSignificantDigits);
 			}
+		},
+		formatResult(text: string): string {
+			return separator === "." ? text : text.replace(".", separator);
 		},
 		errorMessage(code: CortexCalculatorErrorCode): string {
 			return t(ERROR_MESSAGE_KEYS[code]);

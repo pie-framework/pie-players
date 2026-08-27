@@ -16,6 +16,28 @@
 			</nav>
 		</header>
 		<main>
+			<form class="pie-cortex-demo-settings" aria-label="Calculator demo settings">
+				<label>Interface language
+					<select id="locale">
+						<option value="en-US">English</option>
+						<option value="nl-NL">Nederlands</option>
+					</select>
+				</label>
+				<label>Theme
+					<select id="theme">
+						<option value="auto">System</option>
+						<option value="light">Light</option>
+						<option value="dark">Dark</option>
+					</select>
+				</label>
+				<label>Text direction
+					<select id="direction">
+						<option value="auto">From language</option>
+						<option value="ltr">Left to right</option>
+						<option value="rtl">Right to left</option>
+					</select>
+				</label>
+			</form>
 			<div id="calculator" class="pie-cortex-demo-calculator"></div>
 		</main>
 		<script type="module" src="/main.ts"></script>

@@ -152,10 +152,13 @@ function resolveCortexSettings(
 It applies defaults, rejects invalid known values, ignores unknown values, and
 intersects `allowedFunctions` with the fixed mode policy. `restrictedMode` is
 applied last so no setting can re-enable clipboard or disallowed menu actions.
-Locale resolution also maps the generic locale to MathLive labels and virtual
-keyboard decimal-separator behavior while retaining locale-independent
-canonical numbers. The rest of the module consumes only immutable
-`ResolvedCortexSettings`.
+Locale resolution creates one immutable package-owned localization module used
+by every view. It selects the English or Dutch catalog by primary language,
+merges typed per-instance message overrides, derives or applies writing
+direction, configures locale-aware graph-number formatting, and maps the generic
+locale to MathLive labels and virtual-keyboard decimal-separator behavior while
+retaining locale-independent canonical numbers. The rest of the implementation
+consumes only immutable `ResolvedCortexSettings`.
 
 ### `function-policy.ts`
 
@@ -391,6 +394,18 @@ It provides:
   intervention is necessary; the same message is not announced twice.
 - Visible focus, target sizes, reflow, contrast, reduced-motion behavior, and
   light/dark theme support through `--pie-*` tokens.
+- Package-owned message lookup for every visible label, accessible name, status,
+  and recoverable error; no UI component carries English literals.
+- `lang`/`dir` on the calculator region and logical CSS properties for RTL.
+
+The theme interface uses canonical semantic tokens for all ordinary surfaces,
+text, controls, focus, primary actions, and error feedback. The only
+calculator-specific public tokens are the six graph-series colors, because PIE
+has no canonical data-series palette. The renderer resolves those values from
+computed styles before giving JSXGraph numeric series attributes, keeping the
+DOM swatch and plotted curve in sync. `theme: "auto"` follows
+`prefers-color-scheme`; explicit light and dark modes install accessible local
+defaults.
 
 Graph series use a fixed pair of color and line style. DOM order, accessible
 summary order, expression-row order, and trace-selector order remain identical.

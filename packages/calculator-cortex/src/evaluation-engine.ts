@@ -5,6 +5,7 @@ import {
 } from "@cortex-js/compute-engine";
 import { CortexCalculatorError, asCortexError } from "./errors.js";
 import { validateExpression } from "./function-policy.js";
+import { createCortexLocalization } from "./localization.js";
 import {
 	CORTEX_GRAPH_SAMPLE_LIMIT,
 	type ResolvedCortexSettings,
@@ -45,6 +46,7 @@ export function workerSettingsToResolved(
 		restrictedMode: true,
 		locale: "en-US",
 		theme: "auto",
+		localization: createCortexLocalization("en-US"),
 		graph: {
 			viewport: { xMin: -10, xMax: 10, yMin: -10, yMax: 10 },
 			showAxes: true,

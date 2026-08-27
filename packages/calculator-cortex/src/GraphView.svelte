@@ -42,8 +42,25 @@
 		};
 	}
 
-	const COLORS = ['#075985', '#9f1239', '#166534', '#6b21a8', '#9a3412', '#334155'];
+	const DEFAULT_COLORS = ['#075985', '#9f1239', '#166534', '#6b21a8', '#9a3412', '#334155'];
+	const COLOR_PROPERTIES = [
+		'--pie-calculator-series-1',
+		'--pie-calculator-series-2',
+		'--pie-calculator-series-3',
+		'--pie-calculator-series-4',
+		'--pie-calculator-series-5',
+		'--pie-calculator-series-6',
+	];
+	const DEFAULT_COLOR_PROPERTIES = [
+		'--cortex-default-series-1',
+		'--cortex-default-series-2',
+		'--cortex-default-series-3',
+		'--cortex-default-series-4',
+		'--cortex-default-series-5',
+		'--cortex-default-series-6',
+	];
 	const DASHES = { solid: 0, dashed: 2, dotted: 1 } as const;
+	const i18n = $derived(controller.settings.localization);
 
 	let graphElement = $state<HTMLDivElement | null>(null);
 	let addButton = $state<HTMLButtonElement | null>(null);
@@ -125,7 +142,7 @@
 			const expression = expressions.find((candidate) => candidate.id === entry.id);
 			if (!expression) continue;
 			const attributes = {
-				strokeColor: COLORS[expression.colorIndex] ?? COLORS[0],
+				strokeColor: seriesColor(expression.colorIndex),
 				strokeWidth: 3,
 				dash: DASHES[expression.lineStyle],
 				fixed: true,
@@ -142,6 +159,20 @@
 			}
 		}
 		board.fullUpdate();
+	}
+
+	function seriesColor(colorIndex: number): string {
+		const fallback = DEFAULT_COLORS[colorIndex] ?? DEFAULT_COLORS[0] ?? '#075985';
+		const property = COLOR_PROPERTIES[colorIndex] ?? COLOR_PROPERTIES[0];
+		const defaultProperty = DEFAULT_COLOR_PROPERTIES[colorIndex] ?? DEFAULT_COLOR_PROPERTIES[0];
+		const calculator = graphElement?.closest<HTMLElement>('.pie-cortex-calculator');
+		if (!calculator || !property) return fallback;
+		const styles = getComputedStyle(calculator);
+		return (
+			styles.getPropertyValue(property).trim() ||
+			(defaultProperty ? styles.getPropertyValue(defaultProperty).trim() : '') ||
+			fallback
+		);
 	}
 
 	$effect(() => {
@@ -163,7 +194,10 @@
 	});
 
 	function graphExpressionLabel(expression: CortexGraphExpressionState, index: number): string {
-		return `Graph expression ${index + 1}, ${expression.lineStyle} line`;
+		return i18n.t('graphExpressionLabel', {
+			index: index + 1,
+			lineStyle: i18n.lineStyle(expression.lineStyle),
+		});
 	}
 
 	function removeExpression(id: string): void {
@@ -234,12 +268,11 @@
 </script>
 
 <div class="pie-cortex-graph-layout">
-	<section class="pie-cortex-expression-panel" aria-label="Graph expressions">
+	<section class="pie-cortex-expression-panel" aria-label={i18n.t('graphExpressions')}>
 		{#each expressions as expression, index (expression.id)}
 			<div class="pie-cortex-expression-row">
 				<span
-					class="pie-cortex-series-swatch pie-cortex-series-swatch--{expression.lineStyle}"
-					style:border-top-color={COLORS[expression.colorIndex]}
+					class="pie-cortex-series-swatch pie-cortex-series-swatch--{expression.lineStyle} pie-cortex-series-swatch--color-{expression.colorIndex + 1}"
 					aria-hidden="true"
 				></span>
 				<div class="pie-cortex-expression-input">
@@ -247,31 +280,34 @@
 						value={expression.latex}
 						label={graphExpressionLabel(expression, index)}
 						type="graphing"
-						locale={controller.settings.locale}
+						localization={i18n}
 						restrictedMode={controller.settings.restrictedMode}
 						onInput={(latex) => updateExpression(expression.id, latex)}
 					/>
 					<span class="pie-cortex-series-description">
-						Series {index + 1}: {expression.lineStyle} line
+						{i18n.t('seriesDescription', {
+							index: index + 1,
+							lineStyle: i18n.lineStyle(expression.lineStyle),
+						})}
 					</span>
 				</div>
 				<button
 					type="button"
 					class="pie-cortex-icon-button"
 					aria-pressed={expression.hidden}
-					aria-label={expression.hidden ? `Show expression ${index + 1}` : `Hide expression ${index + 1}`}
+					aria-label={i18n.t(expression.hidden ? 'showExpression' : 'hideExpression', { index: index + 1 })}
 					onclick={() => {
 						controller.toggleGraphExpression(expression.id);
 						requestSample(0);
 					}}
-				>{expression.hidden ? 'Show' : 'Hide'}</button
+				>{expression.hidden ? i18n.t('show') : i18n.t('hide')}</button
 				>
 				<button
 					type="button"
 					class="pie-cortex-icon-button"
-					aria-label={`Remove expression ${index + 1}`}
+					aria-label={i18n.t('removeExpression', { index: index + 1 })}
 					onclick={() => removeExpression(expression.id)}
-				>Remove</button
+				>{i18n.t('remove')}</button
 				>
 			</div>
 		{/each}
@@ -281,54 +317,65 @@
 			class="pie-cortex-action-button"
 			disabled={expressions.length >= 6}
 			onclick={() => controller.addGraphExpression()}
-		>Add expression</button
+		>{i18n.t('addExpression')}</button
 		>
 	</section>
 
-	<section class="pie-cortex-graph-panel" aria-label="Graph">
+	<section class="pie-cortex-graph-panel" aria-label={i18n.t('graph')}>
 		<div class="pie-cortex-graph-controls">
-			<button type="button" class="pie-cortex-action-button" onclick={resetViewport}>Reset view</button>
-			<span role="status" aria-live="polite">{snapshot.graphUpdating ? 'Updating graph' : ''}</span>
+			<button type="button" class="pie-cortex-action-button" onclick={resetViewport}>{i18n.t('resetView')}</button>
+			<span role="status" aria-live="polite">{snapshot.graphUpdating ? i18n.t('updatingGraph') : ''}</span>
 		</div>
 		<div class="pie-cortex-jsxgraph" bind:this={graphElement} aria-hidden="true"></div>
 		<div class="pie-cortex-graph-summary">
-			<h3>Graph summary</h3>
+			<h3>{i18n.t('graphSummary')}</h3>
 			{#if graph}
 				<p>
-					Viewport x from {graph.viewport.xMin.toPrecision(4)} to {graph.viewport.xMax.toPrecision(4)},
-					y from {graph.viewport.yMin.toPrecision(4)} to {graph.viewport.yMax.toPrecision(4)}.
+					{i18n.t('viewportSummary', {
+						xMin: i18n.formatNumber(graph.viewport.xMin, 4),
+						xMax: i18n.formatNumber(graph.viewport.xMax, 4),
+						yMin: i18n.formatNumber(graph.viewport.yMin, 4),
+						yMax: i18n.formatNumber(graph.viewport.yMax, 4),
+					})}
 				</p>
 				<ul>
 					{#each expressions.filter((expression) => !expression.hidden && expression.latex.trim()) as expression, index}
-						<li>Series {index + 1}, {expression.lineStyle}: {expression.latex}</li>
+						<li>{i18n.t('seriesSummary', {
+							index: index + 1,
+							lineStyle: i18n.lineStyle(expression.lineStyle),
+							expression: expression.latex,
+						})}</li>
 					{/each}
 				</ul>
 			{/if}
 		</div>
 
-		<div class="pie-cortex-trace" aria-label="Keyboard graph trace">
-			<h3>Keyboard trace</h3>
+		<div class="pie-cortex-trace" aria-label={i18n.t('keyboardGraphTrace')}>
+			<h3>{i18n.t('keyboardTrace')}</h3>
 			<label>
-				Series
+				{i18n.t('series')}
 				<select bind:value={selectedTraceId} onchange={() => (traceIndex = 0)}>
 					{#each snapshot.series as entry, index}
-						<option value={entry.id}>Series {index + 1}</option>
+						<option value={entry.id}>{i18n.t('seriesOption', { index: index + 1 })}</option>
 					{/each}
 				</select>
 			</label>
 			<div class="pie-cortex-trace-controls">
 				<button type="button" class="pie-cortex-action-button" disabled={!tracePoint} onclick={() => moveTrace(-1)}>
-					Previous point
+					{i18n.t('previousPoint')}
 				</button>
 				<button type="button" class="pie-cortex-action-button" disabled={!tracePoint} onclick={() => moveTrace(1)}>
-					Next point
+					{i18n.t('nextPoint')}
 				</button>
 			</div>
 			<p role="status" aria-live="polite" aria-atomic="true">
 				{#if tracePoint}
-					x {tracePoint.x.toPrecision(6)}, y {tracePoint.y.toPrecision(6)}
+					{i18n.t('tracePoint', {
+						x: i18n.formatNumber(tracePoint.x),
+						y: i18n.formatNumber(tracePoint.y),
+					})}
 				{:else}
-					No sampled graph point is available.
+					{i18n.t('noSampledPoint')}
 				{/if}
 			</p>
 		</div>
@@ -377,6 +424,30 @@
 		border-top-style: dotted;
 	}
 
+	.pie-cortex-series-swatch--color-1 {
+		border-top-color: var(--pie-calculator-series-1, var(--cortex-default-series-1, #075985));
+	}
+
+	.pie-cortex-series-swatch--color-2 {
+		border-top-color: var(--pie-calculator-series-2, var(--cortex-default-series-2, #9f1239));
+	}
+
+	.pie-cortex-series-swatch--color-3 {
+		border-top-color: var(--pie-calculator-series-3, var(--cortex-default-series-3, #166534));
+	}
+
+	.pie-cortex-series-swatch--color-4 {
+		border-top-color: var(--pie-calculator-series-4, var(--cortex-default-series-4, #6b21a8));
+	}
+
+	.pie-cortex-series-swatch--color-5 {
+		border-top-color: var(--pie-calculator-series-5, var(--cortex-default-series-5, #9a3412));
+	}
+
+	.pie-cortex-series-swatch--color-6 {
+		border-top-color: var(--pie-calculator-series-6, var(--cortex-default-series-6, #334155));
+	}
+
 	.pie-cortex-series-description {
 		display: block;
 		margin-top: 0.2rem;
@@ -388,10 +459,10 @@
 	select {
 		min-height: 2.75rem;
 		padding: 0.45rem 0.7rem;
-		border: 1px solid var(--pie-border, #64748b);
+		border: 1px solid var(--pie-button-border, var(--pie-border, #64748b));
 		border-radius: 0.35rem;
-		background: var(--pie-background, #fff);
-		color: var(--pie-text, #0f172a);
+		background: var(--pie-button-bg, var(--pie-background, #fff));
+		color: var(--pie-button-color, var(--pie-text, #0f172a));
 		font: inherit;
 		cursor: pointer;
 	}
@@ -408,7 +479,7 @@
 		height: min(26rem, 55vh);
 		min-height: 18rem;
 		border: 1px solid var(--pie-border, #64748b);
-		background: var(--pie-background, #fff);
+		background: var(--pie-background-dark, var(--pie-background, #fff));
 		touch-action: none;
 	}
 

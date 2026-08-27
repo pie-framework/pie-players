@@ -141,7 +141,10 @@ The open-source Cortex calculator is additive and was assessed against the
 recorded calculator rows rather than a fresh consumer-checkout refresh, so it
 does not advance the verification date. It adds three packages, the
 `calculator-cortex` selection id, `CortexToolProvider`, and two provider-specific
-custom-element tags. No recorded host names that id or imports those packages.
+custom-element tags. Its concrete provider configuration additionally exposes
+package-owned message overrides, direction control, and six graph-series theme
+hooks; these are additive surfaces on the same new package. No recorded host
+names that id or imports those packages.
 The existing generic `pie-tool-calculator` tag, `calculator` tool id, attributes,
 properties, provider-neutral calculator contracts, and no-config Desmos default
 remain unchanged. Ownership of the generic tag's registration moves from the

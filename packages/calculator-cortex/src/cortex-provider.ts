@@ -2,13 +2,15 @@ import type {
 	Calculator,
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
-	CalculatorProviderConfig,
 	CalculatorProviderInit,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
 import { CortexCalculatorError } from "./errors.js";
 import { resolveCortexSettings } from "./settings.js";
-import type { CortexCalculatorProviderConfig } from "./types.js";
+import type {
+	CortexCalculatorProviderConfig,
+	CortexCalculatorProviderInit,
+} from "./types.js";
 
 export class CortexCalculatorProvider implements CalculatorProvider {
 	readonly providerId = "cortex";
@@ -19,9 +21,9 @@ export class CortexCalculatorProvider implements CalculatorProvider {
 	private initialized = false;
 	private destroyed = false;
 	private readonly instances = new Set<Calculator>();
-	private onTelemetry: CortexCalculatorProviderConfig["onTelemetry"];
+	private onTelemetry: CortexCalculatorProviderInit["onTelemetry"];
 
-	constructor(config: CortexCalculatorProviderConfig = {}) {
+	constructor(config: CortexCalculatorProviderInit = {}) {
 		this.onTelemetry = config.onTelemetry;
 	}
 
@@ -55,7 +57,7 @@ export class CortexCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config: CalculatorProviderConfig = {},
+		config: CortexCalculatorProviderConfig = {},
 	): Promise<Calculator> {
 		if (!this.initialized) await this.initialize();
 		if (!this.supportsType(type)) {

@@ -86,8 +86,12 @@ or network connection is required.
 The package root owns and exports:
 
 - `CortexCalculatorProvider`
+- `CortexCalculatorProviderInit`
 - `CortexCalculatorProviderConfig`
 - `CortexCalculatorSettings`
+- `CortexCalculatorMessages`, `CortexCalculatorMessageKey`, and
+  `CortexCalculatorMessageOverrides`
+- `CortexTextDirection`
 - `CortexAngleMode`
 - `CortexCalculatorError`
 - `CortexCalculatorErrorCode`
@@ -156,14 +160,21 @@ export interface CortexCalculatorSettings extends Record<string, unknown> {
   evaluationTimeLimitMs?: number;
   allowedFunctions?: readonly CortexFunctionId[];
   allowClipboard?: boolean;
+  messages?: CortexCalculatorMessageOverrides;
+  direction?: "ltr" | "rtl" | "auto";
   graph?: CortexGraphSettings;
 }
 
-export interface CortexCalculatorProviderConfig {
+export interface CortexCalculatorProviderInit {
   onTelemetry?: (
     eventName: string,
     payload?: Record<string, unknown>,
   ) => void | Promise<void>;
+}
+
+export interface CortexCalculatorProviderConfig
+  extends Omit<CalculatorProviderConfig, "settings"> {
+  settings?: CortexCalculatorSettings;
 }
 
 export type CortexCalculatorErrorCode =
@@ -185,13 +196,13 @@ export class CortexCalculatorProvider implements CalculatorProvider {
   readonly supportedTypes: CalculatorType[];
   readonly version: string;
 
-  constructor(config?: CortexCalculatorProviderConfig);
+  constructor(config?: CortexCalculatorProviderInit);
 
   initialize(): Promise<void>;
   createCalculator(
     type: CalculatorType,
     container: HTMLElement,
-    config?: CalculatorProviderConfig,
+    config?: CortexCalculatorProviderConfig,
   ): Promise<Calculator>;
   supportsType(type: CalculatorType): boolean;
   destroy(): void;
@@ -244,9 +255,15 @@ allowlist for the selected calculator type; it cannot grant functions that the
 type does not support.
 
 `CalculatorProviderConfig.locale` configures visible labels, MathLive locale,
-and the virtual keyboard's decimal separator. Validation and serialized state
-use a locale-independent canonical numeric representation, so changing locale
-does not reinterpret persisted calculations.
+the virtual keyboard's decimal separator, locale-aware graph numbers, and the
+default writing direction. The package ships complete English and Dutch
+catalogs, selects them by primary language, and falls back to English for other
+locales. `settings.messages` is a typed partial override for every visible
+label, accessible name, status, and recoverable error; omitted keys retain the
+selected catalog value. `settings.direction` may override automatic `ltr`/`rtl`
+resolution for host policy. Validation and serialized state use a
+locale-independent canonical numeric representation, so changing locale does
+not reinterpret persisted calculations.
 
 ### Expression capability
 
@@ -415,6 +432,8 @@ The implementation must meet WCAG 2.2 Level AA and provide:
 - Predictable focus on mount, mode changes, clear, error recovery, and graph
   expression changes.
 - Live-region result and error announcements that avoid duplicate speech.
+- Package-owned localization for every visible label, accessible name, status,
+  and recoverable error, with `lang` and `dir` on the calculator region.
 - Graph series distinguished by line style as well as color, with contrast
   checked against PIE light and dark themes.
 - A textual graph summary and keyboard trace alternative for information that
@@ -423,6 +442,12 @@ The implementation must meet WCAG 2.2 Level AA and provide:
 - No required animation; any optional transition honors reduced-motion
   preferences.
 - Usable layouts at 200% browser zoom and 320 CSS-pixel width.
+
+`theme: "auto"` follows the user's color-scheme preference. Light and dark
+defaults use canonical PIE semantic tokens. Hosts may override the six
+`--pie-calculator-series-*` graph colors; line style remains the redundant
+non-color cue and custom colors retain the host's contrast obligation. RTL uses
+the same DOM and logical CSS properties rather than a separate layout.
 
 Automated axe coverage is required, but it does not replace manual keyboard and
 screen-reader evidence for MathLive input, the virtual keyboard, result

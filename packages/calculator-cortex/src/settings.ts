@@ -1,10 +1,16 @@
 import type {
-	CalculatorProviderConfig,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
 import { CortexCalculatorError } from "./errors.js";
+import {
+	cortexEnglishMessages,
+	createCortexLocalization,
+	type CortexCalculatorLocalization,
+} from "./localization.js";
 import type {
 	CortexAngleMode,
+	CortexCalculatorProviderConfig,
+	CortexCalculatorMessageOverrides,
 	CortexCalculatorSettings,
 	CortexFunctionId,
 	CortexGraphViewport,
@@ -53,6 +59,7 @@ export interface ResolvedCortexSettings {
 	readonly restrictedMode: boolean;
 	readonly locale: string;
 	readonly theme: "light" | "dark" | "auto";
+	readonly localization: CortexCalculatorLocalization;
 	readonly graph: {
 		readonly viewport: CortexGraphViewport;
 		readonly showAxes: boolean;
@@ -115,9 +122,25 @@ function booleanOrDefault(value: unknown, fallback: boolean, label: string): boo
 	return value;
 }
 
+function resolveMessageOverrides(value: unknown): CortexCalculatorMessageOverrides {
+	if (value === undefined) return {};
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		fail("messages must be an object.");
+	}
+	const overrides: Record<string, string> = {};
+	for (const [key, message] of Object.entries(value)) {
+		if (!Object.hasOwn(cortexEnglishMessages, key)) continue;
+		if (typeof message !== "string") {
+			fail(`messages.${key} must be a string.`);
+		}
+		overrides[key] = message;
+	}
+	return overrides as CortexCalculatorMessageOverrides;
+}
+
 export function resolveCortexSettings(
 	type: CalculatorType,
-	config: CalculatorProviderConfig = {},
+	config: CortexCalculatorProviderConfig = {},
 ): ResolvedCortexSettings {
 	const settings = (config.settings ?? {}) as CortexCalculatorSettings;
 	const angleMode = settings.angleMode ?? "degree";
@@ -133,6 +156,18 @@ export function resolveCortexSettings(
 		? config.locale.trim()
 		: "en-US";
 	const theme = config.theme ?? "auto";
+	if (theme !== "light" && theme !== "dark" && theme !== "auto") {
+		fail('theme must be "light", "dark", or "auto".');
+	}
+	const direction = settings.direction ?? "auto";
+	if (direction !== "ltr" && direction !== "rtl" && direction !== "auto") {
+		fail('direction must be "ltr", "rtl", or "auto".');
+	}
+	const localization = createCortexLocalization(
+		locale,
+		resolveMessageOverrides(settings.messages),
+		direction,
+	);
 
 	return Object.freeze({
 		type,
@@ -165,6 +200,7 @@ export function resolveCortexSettings(
 		restrictedMode,
 		locale,
 		theme,
+		localization,
 		graph: Object.freeze({
 			viewport: resolveViewport(graph?.viewport),
 			showAxes: booleanOrDefault(graph?.showAxes, true, "graph.showAxes"),

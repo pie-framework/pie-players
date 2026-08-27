@@ -361,6 +361,96 @@
 		"fallbackPolicy": "Canonical ordinary button hover foreground token."
 	},
 	{
+		"name": "--pie-calculator-series-1",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 1 colour. The line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-2",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 2 colour. The dashed line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-3",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 3 colour. The dotted line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-4",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 4 colour. The line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-5",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 5 colour. The dashed line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-6",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 6 colour. The dotted line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
 		"name": "--pie-content-styles",
 		"owner": "@pie-players/pie-theme",
 		"scope": "package-private",

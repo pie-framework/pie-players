@@ -4,7 +4,11 @@ import type {
 	CalculatorState,
 } from "@pie-players/pie-calculator";
 import { EvaluationClient } from "./evaluation-client.js";
-import { CortexCalculatorError, asCortexError } from "./errors.js";
+import {
+	CortexCalculatorError,
+	asCortexError,
+	type CortexCalculatorErrorCode,
+} from "./errors.js";
 import { inspectEditBuffer, validateExpression } from "./function-policy.js";
 import {
 	CORTEX_GRAPH_EXPRESSION_LIMIT,
@@ -24,7 +28,7 @@ import type { SampledSeries } from "./worker-protocol.js";
 export interface CortexCalculatorSnapshot {
 	readonly inputLatex: string;
 	readonly result: string;
-	readonly error: string;
+	readonly errorCode: CortexCalculatorErrorCode | null;
 	readonly busy: boolean;
 	readonly graphUpdating: boolean;
 	readonly history: readonly CalculationHistoryEntry[];
@@ -80,7 +84,7 @@ export class CortexCalculatorController {
 	private currentAngleMode: CortexAngleMode;
 	private inputLatex = "";
 	private result = "";
-	private error = "";
+	private errorCode: CortexCalculatorErrorCode | null = null;
 	private busy = false;
 	private graphUpdating = false;
 	private history: CalculationHistoryEntry[] = [];
@@ -116,7 +120,7 @@ export class CortexCalculatorController {
 		return {
 			inputLatex: this.inputLatex,
 			result: this.result,
-			error: this.error,
+			errorCode: this.errorCode,
 			busy: this.busy,
 			graphUpdating: this.graphUpdating,
 			history: this.history.map((entry) => ({ ...entry })),
@@ -167,7 +171,7 @@ export class CortexCalculatorController {
 		inspectEditBuffer(latex);
 		this.inputLatex = latex;
 		if (this.graph?.expressions[0]) this.graph.expressions[0].latex = latex;
-		this.error = "";
+		this.errorCode = null;
 		this.operationGeneration += 1;
 		this.publish();
 	}
@@ -178,7 +182,7 @@ export class CortexCalculatorController {
 		if (!expression) return;
 		expression.latex = latex;
 		if (this.graph?.expressions[0]?.id === id) this.inputLatex = latex;
-		this.error = "";
+		this.errorCode = null;
 		this.operationGeneration += 1;
 		this.publish();
 	}
@@ -217,7 +221,7 @@ export class CortexCalculatorController {
 		this.evaluationClient.destroy();
 		this.evaluationClient = new EvaluationClient(this.effectiveSettings());
 		this.result = "";
-		this.error = "";
+		this.errorCode = null;
 		this.operationGeneration += 1;
 		this.publish();
 	}
@@ -230,15 +234,15 @@ export class CortexCalculatorController {
 				{ recoverable: false },
 			);
 		}
-		validateExpression(this.mainEngine, latex, this.effectiveSettings());
 		this.inputLatex = latex;
 		const generation = ++this.operationGeneration;
 		this.busy = true;
-		this.error = "";
+		this.errorCode = null;
 		this.publish();
 		const startedAt = Date.now();
 		void this.telemetry("pie-tool-operation-start", { operation: "evaluate" });
 		try {
+			validateExpression(this.mainEngine, latex, this.effectiveSettings());
 			const evaluation = await this.evaluationClient.evaluate(latex);
 			if (generation !== this.operationGeneration || this.destroyed) {
 				throw new CortexCalculatorError(
@@ -266,7 +270,7 @@ export class CortexCalculatorController {
 				"invalid-expression",
 				"The calculation could not be completed.",
 			);
-			if (generation === this.operationGeneration) this.error = cortexError.message;
+			if (generation === this.operationGeneration) this.errorCode = cortexError.code;
 			void this.telemetry("pie-tool-operation-error", {
 				operation: "evaluate",
 				duration: Date.now() - startedAt,
@@ -286,9 +290,6 @@ export class CortexCalculatorController {
 		const expressions = this.graph.expressions
 			.filter((entry) => !entry.hidden && entry.latex.trim())
 			.map(({ id, latex }) => ({ id, latex }));
-		for (const expression of expressions) {
-			validateExpression(this.mainEngine, expression.latex, this.effectiveSettings());
-		}
 		this.graph.viewport = { ...viewport };
 		if (expressions.length === 0) {
 			this.series = [];
@@ -297,9 +298,16 @@ export class CortexCalculatorController {
 		}
 		const generation = ++this.operationGeneration;
 		this.graphUpdating = true;
-		this.error = "";
+		this.errorCode = null;
 		this.publish();
 		try {
+			for (const expression of expressions) {
+				validateExpression(
+					this.mainEngine,
+					expression.latex,
+					this.effectiveSettings(),
+				);
+			}
 			const series = await this.evaluationClient.sample(expressions, viewport, pixelWidth);
 			if (generation !== this.operationGeneration || this.destroyed) return;
 			this.series = series;
@@ -309,7 +317,7 @@ export class CortexCalculatorController {
 				"invalid-expression",
 				"The graph could not be updated.",
 			);
-			if (generation === this.operationGeneration) this.error = cortexError.message;
+			if (generation === this.operationGeneration) this.errorCode = cortexError.code;
 		} finally {
 			if (generation === this.operationGeneration) {
 				this.graphUpdating = false;
@@ -322,7 +330,7 @@ export class CortexCalculatorController {
 		this.operationGeneration += 1;
 		this.inputLatex = "";
 		this.result = "";
-		this.error = "";
+		this.errorCode = null;
 		this.series = [];
 		if (this.graph) {
 			this.graph = {
@@ -371,7 +379,7 @@ export class CortexCalculatorController {
 		this.graph = decoded.state.graph ? cloneGraph(decoded.state.graph) : null;
 		this.series = [];
 		this.result = "";
-		this.error = "";
+		this.errorCode = null;
 		this.publish();
 	}
 

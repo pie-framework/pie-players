@@ -7,12 +7,13 @@
 		acquireMathLiveKeyboard,
 		configureMathfield,
 	} from './mathlive-runtime.js';
+	import type { CortexCalculatorLocalization } from './localization.js';
 
 	let {
 		value,
 		label,
 		type,
-		locale,
+		localization,
 		restrictedMode,
 		focusRequest = 0,
 		onInput,
@@ -21,7 +22,7 @@
 		value: string;
 		label: string;
 		type: CalculatorType;
-		locale: string;
+		localization: CortexCalculatorLocalization;
 		restrictedMode: boolean;
 		focusRequest?: number;
 		onInput: (value: string) => void;
@@ -89,7 +90,7 @@
 			releaseKeyboard = acquireMathLiveKeyboard(
 				keyboardOwner,
 				type,
-				locale,
+				localization,
 				MathfieldElement,
 			);
 		};
@@ -137,10 +138,10 @@
 		width: 100%;
 		min-height: 3rem;
 		padding: 0.55rem 0.7rem;
-		border: 1px solid var(--pie-border, #64748b);
+		border: 1px solid var(--pie-button-border, var(--pie-border, #64748b));
 		border-radius: 0.35rem;
-		background: var(--pie-background, #fff);
-		color: var(--pie-text, #0f172a);
+		background: var(--pie-button-bg, var(--pie-background, #fff));
+		color: var(--pie-button-color, var(--pie-text, #0f172a));
 		font-size: 1.2rem;
 	}
 

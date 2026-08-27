@@ -6,13 +6,14 @@
 
 	let { controller }: { controller: CortexCalculatorController } = $props();
 	let snapshot = $state(untrack(() => controller.getSnapshot()));
+	const i18n = $derived(controller.settings.localization);
 
 	const typeLabel = $derived(
 		controller.settings.type === 'basic'
-			? 'Basic calculator'
+			? i18n.t('basicCalculator')
 			: controller.settings.type === 'scientific'
-				? 'Scientific calculator'
-				: 'Graphing calculator',
+				? i18n.t('scientificCalculator')
+				: i18n.t('graphingCalculator'),
 	);
 
 	async function evaluate(): Promise<void> {
@@ -35,13 +36,15 @@
 	class="pie-cortex-calculator"
 	data-pie-calculator-type={controller.settings.type}
 	data-pie-theme={controller.settings.theme}
+	lang={i18n.locale}
+	dir={i18n.direction}
 	aria-label={typeLabel}
 >
 	<header class="pie-cortex-calculator__heading">
 		<h2>{typeLabel}</h2>
 		{#if controller.settings.type !== 'basic'}
 			<label class="pie-cortex-angle-mode">
-				Angle mode
+				{i18n.t('angleMode')}
 				<select
 					value={snapshot.angleMode}
 					onchange={(event) =>
@@ -49,8 +52,8 @@
 							(event.currentTarget as HTMLSelectElement).value as 'degree' | 'radian',
 						)}
 				>
-					<option value="degree">Degrees</option>
-					<option value="radian">Radians</option>
+					<option value="degree">{i18n.t('degrees')}</option>
+					<option value="radian">{i18n.t('radians')}</option>
 				</select>
 			</label>
 		{/if}
@@ -62,9 +65,9 @@
 		<div class="pie-cortex-calculator__input">
 			<MathFieldInput
 				value={snapshot.inputLatex}
-				label={`${typeLabel} expression`}
+				label={i18n.t('expressionLabel', { calculator: typeLabel })}
 				type={controller.settings.type}
-				locale={controller.settings.locale}
+				localization={i18n}
 				restrictedMode={controller.settings.restrictedMode}
 				focusRequest={snapshot.focusRequest}
 				onInput={(value) => controller.setValue(value)}
@@ -80,27 +83,27 @@
 				class="pie-cortex-primary-button"
 				disabled={snapshot.busy}
 				onclick={evaluate}
-			>{snapshot.busy ? 'Calculating' : 'Calculate'}</button
+			>{snapshot.busy ? i18n.t('calculating') : i18n.t('calculate')}</button
 			>
-			<button type="button" class="pie-cortex-action-button" onclick={backspace}>Backspace</button>
+			<button type="button" class="pie-cortex-action-button" onclick={backspace}>{i18n.t('backspace')}</button>
 		{/if}
 		<button type="button" class="pie-cortex-action-button" onclick={() => controller.clear()}>
-			Clear
+			{i18n.t('clear')}
 		</button>
 	</div>
 
 	<div class="pie-cortex-calculator__feedback">
 		<p class="pie-cortex-result" role="status" aria-live="polite" aria-atomic="true">
-			{#if snapshot.result}Result: {snapshot.result}{/if}
+			{#if snapshot.result}{i18n.t('result', { result: snapshot.result })}{/if}
 		</p>
-		{#if snapshot.error}
-			<p class="pie-cortex-error" role="alert">{snapshot.error}</p>
+		{#if snapshot.errorCode}
+			<p class="pie-cortex-error" role="alert">{i18n.errorMessage(snapshot.errorCode)}</p>
 		{/if}
 	</div>
 
 	{#if controller.settings.historyLimit > 0 && snapshot.history.length > 0}
 		<details class="pie-cortex-history">
-			<summary>Calculation history</summary>
+			<summary>{i18n.t('calculationHistory')}</summary>
 			<ol>
 				{#each snapshot.history as entry}
 					<li>
@@ -120,7 +123,7 @@
 				{/each}
 			</ol>
 			<button type="button" class="pie-cortex-action-button" onclick={() => controller.clearHistory()}>
-				Clear history
+				{i18n.t('clearHistory')}
 			</button>
 		</details>
 	{/if}
@@ -141,11 +144,75 @@
 		font-family: var(--pie-font-family, system-ui, sans-serif);
 	}
 
+	.pie-cortex-calculator[data-pie-theme='light'] {
+		color-scheme: light;
+		--pie-background: #fff;
+		--pie-background-dark: #f8fafc;
+		--pie-text: #0f172a;
+		--pie-border: #64748b;
+		--pie-button-bg: #fff;
+		--pie-button-color: #0f172a;
+		--pie-button-border: #64748b;
+		--pie-primary: #1d4ed8;
+		--pie-white: #fff;
+		--pie-button-focus-outline: #2563eb;
+		--pie-incorrect: #b91c1c;
+		--pie-incorrect-secondary: #fef2f2;
+		--pie-content-emphasis: #7f1d1d;
+		--cortex-default-series-1: #075985;
+		--cortex-default-series-2: #9f1239;
+		--cortex-default-series-3: #166534;
+		--cortex-default-series-4: #6b21a8;
+		--cortex-default-series-5: #9a3412;
+		--cortex-default-series-6: #334155;
+	}
+
 	.pie-cortex-calculator[data-pie-theme='dark'] {
+		color-scheme: dark;
 		--pie-background: #111827;
+		--pie-background-dark: #1f2937;
 		--pie-text: #f8fafc;
 		--pie-border: #cbd5e1;
+		--pie-button-bg: #1f2937;
+		--pie-button-color: #f8fafc;
+		--pie-button-border: #94a3b8;
+		--pie-primary: #ffff00;
+		--pie-white: #000;
 		--pie-button-focus-outline: #93c5fd;
+		--pie-incorrect: #ff6666;
+		--pie-incorrect-secondary: #330000;
+		--pie-content-emphasis: #ff9999;
+		--cortex-default-series-1: #7dd3fc;
+		--cortex-default-series-2: #fda4af;
+		--cortex-default-series-3: #86efac;
+		--cortex-default-series-4: #d8b4fe;
+		--cortex-default-series-5: #fdba74;
+		--cortex-default-series-6: #cbd5e1;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.pie-cortex-calculator[data-pie-theme='auto'] {
+			color-scheme: dark;
+			--pie-background: #111827;
+			--pie-background-dark: #1f2937;
+			--pie-text: #f8fafc;
+			--pie-border: #cbd5e1;
+			--pie-button-bg: #1f2937;
+			--pie-button-color: #f8fafc;
+			--pie-button-border: #94a3b8;
+			--pie-primary: #ffff00;
+			--pie-white: #000;
+			--pie-button-focus-outline: #93c5fd;
+			--pie-incorrect: #ff6666;
+			--pie-incorrect-secondary: #330000;
+			--pie-content-emphasis: #ff9999;
+			--cortex-default-series-1: #7dd3fc;
+			--cortex-default-series-2: #fda4af;
+			--cortex-default-series-3: #86efac;
+			--cortex-default-series-4: #d8b4fe;
+			--cortex-default-series-5: #fdba74;
+			--cortex-default-series-6: #cbd5e1;
+		}
 	}
 
 	.pie-cortex-calculator__heading,
@@ -176,18 +243,18 @@
 	summary {
 		min-height: 2.75rem;
 		padding: 0.5rem 0.8rem;
-		border: 1px solid var(--pie-border, #64748b);
+		border: 1px solid var(--pie-button-border, var(--pie-border, #64748b));
 		border-radius: 0.35rem;
-		background: var(--pie-background, #fff);
-		color: var(--pie-text, #0f172a);
+		background: var(--pie-button-bg, var(--pie-background, #fff));
+		color: var(--pie-button-color, var(--pie-text, #0f172a));
 		font: inherit;
 		cursor: pointer;
 	}
 
 	.pie-cortex-primary-button {
-		border-color: #1d4ed8;
-		background: #1d4ed8;
-		color: #fff;
+		border-color: var(--pie-primary, #1d4ed8);
+		background: var(--pie-primary, #1d4ed8);
+		color: var(--pie-white, #fff);
 		font-weight: 700;
 	}
 
@@ -218,21 +285,21 @@
 	.pie-cortex-error {
 		margin-top: 0.35rem;
 		padding: 0.6rem;
-		border-left: 4px solid #b91c1c;
-		background: #fef2f2;
-		color: #7f1d1d;
+		border-inline-start: 4px solid var(--pie-incorrect, #b91c1c);
+		background: var(--pie-incorrect-secondary, #fef2f2);
+		color: var(--pie-content-emphasis, #7f1d1d);
 	}
 
 	.pie-cortex-history ol {
 		margin: 0.5rem 0;
-		padding-left: 1.5rem;
+		padding-inline-start: 1.5rem;
 	}
 
 	.pie-cortex-history-button {
 		display: flex;
 		gap: 0.35rem;
 		width: 100%;
-		text-align: left;
+		text-align: start;
 	}
 
 	@media (max-width: 20rem) {

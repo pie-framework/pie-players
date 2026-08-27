@@ -7,6 +7,7 @@ import {
 } from "../src/index.js";
 import { evaluateLatex, sampleLatex } from "../src/evaluation-engine.js";
 import { validateExpression } from "../src/function-policy.js";
+import { localeDirection } from "../src/localization.js";
 import { resolveCortexSettings } from "../src/settings.js";
 import { decodeCortexState, encodeCortexState } from "../src/state-codec.js";
 import type { CortexOuterCalculatorState } from "../src/types.js";
@@ -65,6 +66,45 @@ describe("Cortex calculator settings and policy", () => {
 				resolveCortexSettings("basic", {
 					settings: { evaluationTimeLimitMs: 99 },
 				}),
+			"invalid-state",
+		);
+	});
+
+	test("resolves built-in locale messages, typed overrides, and writing direction", () => {
+		const dutch = resolveCortexSettings("basic", { locale: "nl-BE" });
+		expect(dutch.localization.t("calculate")).toBe("Bereken");
+		expect(dutch.localization.formatNumber(1.5)).toBe("1,5");
+		expect(dutch.localization.direction).toBe("ltr");
+
+		const customRtl = resolveCortexSettings("basic", {
+			locale: "ar-EG",
+			settings: {
+				messages: { calculate: "احسب" },
+			},
+		});
+		expect(customRtl.localization.t("calculate")).toBe("احسب");
+		expect(customRtl.localization.t("clear")).toBe("Clear");
+		expect(customRtl.localization.direction).toBe("rtl");
+		expect(localeDirection("fa_IR")).toBe("rtl");
+	});
+
+	test("validates localization and theme settings at the package seam", () => {
+		expectCortexCode(
+			() =>
+				resolveCortexSettings("basic", {
+					settings: { messages: { clear: 42 } as never },
+				}),
+			"invalid-state",
+		);
+		expectCortexCode(
+			() =>
+				resolveCortexSettings("basic", {
+					settings: { direction: "sideways" as never },
+				}),
+			"invalid-state",
+		);
+		expectCortexCode(
+			() => resolveCortexSettings("basic", { theme: "sepia" as never }),
 			"invalid-state",
 		);
 	});

@@ -25,12 +25,7 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["svelte", "@pie-players/pie-assessment-toolkit"],
-			output: {
-				globals: {
-					svelte: "Svelte",
-				},
-			},
+			external: ["@pie-players/pie-assessment-toolkit"],
 		},
 	},
 });

@@ -14,17 +14,28 @@ import "@pie-players/pie-tool-calculator-geogebra";
 ></pie-tool-calculator-geogebra>
 ```
 
-Toolkit-managed applications normally keep the existing generic
-`<pie-tool-calculator>` tag and select GeoGebra through provider configuration:
+Toolkit-managed applications select GeoGebra through provider configuration and
+let `@pie-players/pie-default-tool-loaders` select this package's tag and loader:
 
 ```ts
-tools: {
-  providers: {
-    calculator: {
-      provider: { id: "calculator-geogebra" }
-    }
-  }
-}
+import {
+  createDefaultToolModuleLoaders,
+  createPackagedToolRegistry,
+} from "@pie-players/pie-default-tool-loaders";
+
+const calculatorProviderConfig = {
+  provider: { id: "calculator-geogebra" },
+};
+const toolRegistry = createPackagedToolRegistry({
+  calculatorProviderConfig,
+  toolModuleLoaders: createDefaultToolModuleLoaders({
+    calculatorProviderConfig,
+  }),
+});
+
+const tools = {
+  providers: { calculator: calculatorProviderConfig },
+};
 ```
 
 No calculator configuration continues to select Desmos. GeoGebra usage remains

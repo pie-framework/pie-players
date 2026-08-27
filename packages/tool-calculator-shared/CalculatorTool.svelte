@@ -10,6 +10,7 @@
 	} from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { onMount, untrack } from 'svelte';
+	import { createCalculatorConfigKey } from './calculator-config-key.js';
 
 	let {
 		visible = false,
@@ -55,9 +56,10 @@
 			? calculatorType
 			: (availableTypes[0] ?? 'basic'),
 	);
+	const calculatorConfigKey = $derived(createCalculatorConfigKey(calculatorConfig));
 
 	let activeMountKey: string | null = null;
-	let activeConfig: CalculatorProviderConfig | null = null;
+	let currentMountElement: HTMLDivElement | null = null;
 	let mountGeneration = 0;
 	let reconcileQueued = false;
 	let resizeObserver: ResizeObserver | null = null;
@@ -83,23 +85,26 @@
 	function destroyCalculator(): void {
 		mountGeneration += 1;
 		clearResizeWork();
+		const instance = calculatorInstance;
+		const mountElement = currentMountElement;
+		calculatorInstance = null;
+		currentMountElement = null;
 		try {
-			calculatorInstance?.destroy();
+			instance?.destroy();
 		} catch (error) {
 			console.warn('[CalculatorTool] calculator cleanup failed:', error);
 		}
-		calculatorInstance = null;
+		mountElement?.remove();
 		activeMountKey = null;
-		activeConfig = null;
 		isInitializing = false;
 		hasMountedSurface = false;
 	}
 
 	function focusCalculator(): void {
 		requestAnimationFrame(() => {
-			if (!visible || !calculatorInstance || !calculatorContainerElement?.isConnected) return;
+			if (!visible || !calculatorInstance || !currentMountElement?.isConnected) return;
 			const activeElement = document.activeElement;
-			if (activeElement instanceof Node && calculatorContainerElement.contains(activeElement)) return;
+			if (activeElement instanceof Node && currentMountElement.contains(activeElement)) return;
 			calculatorInstance.focus?.();
 		});
 	}
@@ -124,7 +129,7 @@
 	async function initializeCalculator(
 		generation: number,
 		mountKey: string,
-		container: HTMLDivElement,
+		mountElement: HTMLDivElement,
 	): Promise<void> {
 		isInitializing = true;
 		initializationError = null;
@@ -134,33 +139,41 @@
 			if (!registry) throw new Error('Calculator provider registry is unavailable');
 			const toolProvider = await registry.getProvider(providerId);
 			const calculatorProvider = await toolProvider.createInstance();
-			if (generation !== mountGeneration || !visible || !container.isConnected) return;
+			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
+				mountElement.remove();
+				return;
+			}
 
 			const instance = await calculatorProvider.createCalculator(
 				effectiveCalculatorType,
-				container,
+				mountElement,
 				calculatorConfig,
 			);
-			if (generation !== mountGeneration || !visible || !container.isConnected) {
+			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
 				instance.destroy();
+				mountElement.remove();
 				return;
 			}
 
 			calculatorInstance = instance;
 			activeMountKey = mountKey;
-			activeConfig = calculatorConfig;
-			hasMountedSurface = container.childElementCount > 0;
-			startResizeTracking(instance, container);
+			hasMountedSurface = mountElement.childElementCount > 0;
+			startResizeTracking(instance, mountElement);
 			requestAnimationFrame(() => {
 				if (generation !== mountGeneration) return;
 				instance.resize?.();
-				hasMountedSurface = container.childElementCount > 0;
+				hasMountedSurface = mountElement.childElementCount > 0;
 				focusCalculator();
 			});
 		} catch (error) {
-			if (generation !== mountGeneration) return;
+			if (generation !== mountGeneration) {
+				mountElement.remove();
+				return;
+			}
 			initializationError = error instanceof Error ? error.message : String(error);
 			calculatorInstance = null;
+			if (currentMountElement === mountElement) currentMountElement = null;
+			mountElement.remove();
 			hasMountedSurface = false;
 		} finally {
 			if (generation === mountGeneration) isInitializing = false;
@@ -172,24 +185,27 @@
 		const container = calculatorContainerElement;
 		const coordinator = toolkitCoordinator;
 		if (!visible || !container || !container.isConnected || !coordinator) {
-			if (calculatorInstance || isInitializing) destroyCalculator();
+			if (calculatorInstance || isInitializing || currentMountElement) destroyCalculator();
 			initializationError = null;
 			return;
 		}
 
-		const mountKey = `${providerId}:${effectiveCalculatorType}`;
+		const mountKey = `${providerId}:${effectiveCalculatorType}:${calculatorConfigKey}`;
 		if (
 			calculatorInstance &&
-			activeMountKey === mountKey &&
-			activeConfig === calculatorConfig
+			activeMountKey === mountKey
 		) {
 			focusCalculator();
 			return;
 		}
 
-		if (calculatorInstance || isInitializing) destroyCalculator();
+		if (calculatorInstance || isInitializing || currentMountElement) destroyCalculator();
+		const mountElement = document.createElement('div');
+		mountElement.className = 'pie-tool-calculator__mount';
+		container.replaceChildren(mountElement);
+		currentMountElement = mountElement;
 		const generation = ++mountGeneration;
-		void initializeCalculator(generation, mountKey, container);
+		void initializeCalculator(generation, mountKey, mountElement);
 	}
 
 	function queueReconcile(): void {
@@ -203,6 +219,7 @@
 		void providerId;
 		void effectiveCalculatorType;
 		void calculatorConfig;
+		void calculatorConfigKey;
 		void calculatorContainerElement;
 		void toolkitCoordinator;
 		untrack(queueReconcile);
@@ -272,6 +289,13 @@
 		overflow: hidden;
 	}
 
+	:global(.pie-tool-calculator__mount) {
+		width: 100%;
+		height: 100%;
+		min-width: 100%;
+		min-height: 100%;
+	}
+
 	.pie-tool-calculator__loading {
 		position: absolute;
 		inset: 0;
@@ -300,7 +324,7 @@
 		word-break: break-word;
 	}
 
-	:global(.pie-tool-calculator__container > *) {
+	:global(.pie-tool-calculator__mount > *) {
 		width: 100% !important;
 		height: 100% !important;
 	}

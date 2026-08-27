@@ -100,6 +100,42 @@ describe("packaged tool tag map", () => {
 });
 
 describe("createPackagedToolRegistry component overrides", () => {
+	test("selects the provider-specific packaged calculator tag", () => {
+		const defaultRegistry = createPackagedToolRegistry();
+		const geogebraRegistry = createPackagedToolRegistry({
+			calculatorProviderConfig: {
+				provider: { id: "calculator-geogebra" },
+			},
+		});
+		const toolbarContext: ToolbarContext = {
+			scope: { level: "item", scopeId: "item-1", itemId: "item-1" },
+			itemId: "item-1",
+			catalogId: "item-1",
+			language: "en",
+			i18n: resolveInterfaceI18n(null),
+			toolCoordinator: null,
+			toolkitCoordinator: null,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderTag = (
+			registry: ReturnType<typeof createPackagedToolRegistry>,
+		) =>
+			withFakeDocument(() =>
+				registry
+					.renderForToolbar("calculator", itemContext, toolbarContext)
+					?.elements?.find((entry) => entry.mount === "after-buttons")
+					?.element?.tagName.toLowerCase(),
+			);
+
+		expect(renderTag(defaultRegistry)).toBe("pie-tool-calculator");
+		expect(renderTag(geogebraRegistry)).toBe("pie-tool-calculator-geogebra");
+	});
+
 	test("applies custom tool tag map during toolbar render", () => {
 		const registry = createPackagedToolRegistry({
 			toolTagMap: { calculator: "custom-calculator" },

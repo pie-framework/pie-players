@@ -86,6 +86,43 @@ describe("DesmosCalculatorProvider loading contract", () => {
 		expect(url.searchParams.get("apiKey")).toBe("licensed key/?");
 	});
 
+	test("retains runtime endpoint initialization without describing the browser key as secret", async () => {
+		let loadedSrc = "";
+		const browserWindow: { Desmos?: Record<string, unknown> } = {};
+		setGlobal("window", browserWindow);
+		setGlobal("document", {
+			createElement: () => ({
+				src: "",
+				async: false,
+				onload: null as null | (() => void),
+				onerror: null as null | (() => void),
+			}),
+			head: {
+				appendChild: (script: { src: string; onload: null | (() => void) }) => {
+					loadedSrc = script.src;
+					browserWindow.Desmos = {};
+					script.onload?.();
+				},
+			},
+		});
+		const previousFetch = globalThis.fetch;
+		globalThis.fetch = (async () =>
+			new Response(JSON.stringify({ apiKey: "runtime licensed key" }), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			})) as typeof fetch;
+		try {
+			const provider = new DesmosCalculatorProvider();
+			await provider.initialize({ proxyEndpoint: "/runtime/desmos-key" });
+
+			expect(new URL(loadedSrc).searchParams.get("apiKey")).toBe(
+				"runtime licensed key",
+			);
+		} finally {
+			globalThis.fetch = previousFetch;
+		}
+	});
+
 	test("accepts an authorized API build preloaded by the host", async () => {
 		setGlobal("window", { Desmos: {} });
 		let createdScript = false;
@@ -129,10 +166,22 @@ describe("DesmosCalculatorProvider loading contract", () => {
 				querySelector: () => null,
 				replaceChildren: () => {},
 			} as unknown as HTMLElement,
-			{ settings: { degreeMode: true } },
+			{
+				desmos: {
+					apiKey: "legacy-instance-key",
+					proxyEndpoint: "/legacy-runtime-key",
+					degreeMode: false,
+					zoomButtons: true,
+				},
+				settings: { degreeMode: true },
+			},
 		);
 
-		expect(calculatorOptions).toMatchObject({ degreeMode: true });
+		expect(calculatorOptions).toMatchObject({
+			degreeMode: true,
+			zoomButtons: true,
+		});
 		expect(calculatorOptions).not.toHaveProperty("apiKey");
+		expect(calculatorOptions).not.toHaveProperty("proxyEndpoint");
 	});
 });

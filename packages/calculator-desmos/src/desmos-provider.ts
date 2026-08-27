@@ -18,6 +18,7 @@ import type {
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
+	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
 
 declare global {
@@ -33,6 +34,13 @@ export interface DesmosCalculatorProviderConfig {
 	 * unkeyed URL when omitted so existing clients continue to initialize.
 	 */
 	apiKey?: string;
+	/**
+	 * Runtime endpoint returning `{ apiKey: string }`.
+	 *
+	 * This can keep a licensed key out of source and static bundles, but it does
+	 * not make the key secret: the browser still places it in Desmos's script URL.
+	 */
+	proxyEndpoint?: string;
 	onTelemetry?: (
 		eventName: string,
 		payload?: Record<string, unknown>,
@@ -148,6 +156,45 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		}
 
 		this.apiKey = config.apiKey?.trim() || undefined;
+		const proxyEndpoint = config.proxyEndpoint?.trim();
+		if (proxyEndpoint) {
+			const authStartedAt = Date.now();
+			await this.emitTelemetry("pie-tool-backend-call-start", {
+				toolId: "calculator",
+				backend: "desmos",
+				operation: "proxy-auth-fetch",
+			});
+			try {
+				const response = await fetch(proxyEndpoint);
+				if (!response.ok) {
+					throw new Error(`Runtime endpoint returned ${response.status}`);
+				}
+				const body = (await response.json()) as { apiKey?: unknown };
+				if (typeof body.apiKey !== "string" || !body.apiKey.trim()) {
+					throw new Error("Runtime endpoint did not return a non-empty apiKey");
+				}
+				this.apiKey = body.apiKey.trim();
+				await this.emitTelemetry("pie-tool-backend-call-success", {
+					toolId: "calculator",
+					backend: "desmos",
+					operation: "proxy-auth-fetch",
+					duration: Date.now() - authStartedAt,
+				});
+			} catch (error) {
+				await this.emitTelemetry("pie-tool-backend-call-error", {
+					toolId: "calculator",
+					backend: "desmos",
+					operation: "proxy-auth-fetch",
+					duration: Date.now() - authStartedAt,
+					errorType: "CalculatorProxyAuthError",
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw new Error(
+					`[DesmosProvider] Failed to fetch API key from runtime endpoint: ${error instanceof Error ? error.message : String(error)}`,
+					{ cause: error },
+				);
+			}
+		}
 
 		// Load Desmos API if not already loaded
 		if (!window.Desmos) {
@@ -267,7 +314,14 @@ class DesmosCalculator implements Calculator {
 	}
 
 	private _initializeCalculator(config?: CalculatorProviderConfig): void {
-		// Merge Desmos-specific config with defaults
+		const legacySettings: DesmosCalculatorConfig = {
+			...(config?.desmos ?? {}),
+		};
+		delete legacySettings.apiKey;
+		delete legacySettings.proxyEndpoint;
+
+		// Existing `desmos` options remain supported, while provider-neutral
+		// `settings` are the canonical surface and take precedence when both exist.
 		const isGraphing = this.type === "graphing";
 		const desmosConfig: DesmosCalculatorSettings = {
 			degreeMode: true,
@@ -277,6 +331,7 @@ class DesmosCalculator implements Calculator {
 			folders: isGraphing,
 			sliders: isGraphing,
 			tables: isGraphing,
+			...legacySettings,
 			...(config?.settings || {}),
 		};
 

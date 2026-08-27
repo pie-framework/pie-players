@@ -9,3 +9,4 @@ export type {
 	DesmosCalculatorProviderConfig,
 	DesmosCalculatorSettings,
 } from "./desmos-provider.js";
+export type { DesmosCalculatorConfig } from "@pie-players/pie-calculator";

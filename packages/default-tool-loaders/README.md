@@ -17,7 +17,7 @@ and how does the program tier them":
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
 | `PACKAGED_TOOL_PLACEMENT`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, `PACKAGED_TOOL_ORDER` | Where they appear and in what order |
 | `UNIVERSAL_SUPPORTS_PRESET`, `createUniversalPersonalNeedsProfile` | Which of their support ids the program grants to everyone |
-| `DEFAULT_TOOL_MODULE_LOADERS`, `registerSectionToolModuleLoaders` | When each one's bundle loads |
+| `DEFAULT_TOOL_MODULE_LOADERS`, `createDefaultToolModuleLoaders`, `registerSectionToolModuleLoaders` | When each one's bundle loads |
 
 The individual registrations are exported too, so a host can compose its own set
 rather than take the packaged one whole.
@@ -50,6 +50,37 @@ import {
 const registry = createPackagedToolRegistry({
 	toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 });
+```
+
+Desmos remains the calculator delivery when no provider is configured. To use
+GeoGebra, pass the same calculator configuration to both the toolkit and the
+packaged composition. The composition then owns the matching element tag and
+module loader; hosts do not hand-maintain a second vendor map.
+
+```ts
+import {
+	createDefaultToolModuleLoaders,
+	createPackagedToolRegistry,
+} from "@pie-players/pie-default-tool-loaders";
+
+const calculatorProviderConfig = {
+	provider: {
+		id: "calculator-geogebra",
+		init: { appletTimeoutMs: 20_000 },
+	},
+	settings: { showResetIcon: true },
+};
+
+const registry = createPackagedToolRegistry({
+	calculatorProviderConfig,
+	toolModuleLoaders: createDefaultToolModuleLoaders({
+		calculatorProviderConfig,
+	}),
+});
+
+const tools = {
+	providers: { calculator: calculatorProviderConfig },
+};
 ```
 
 `createDefaultToolRegistry()` in the toolkit is the other end of that choice: it

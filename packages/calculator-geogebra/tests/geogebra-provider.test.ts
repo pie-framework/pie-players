@@ -136,13 +136,24 @@ describe("GeoGebraCalculatorProvider", () => {
 		await provider.createCalculator("scientific", fakeContainer(), {
 			restrictedMode: true,
 			theme: "dark",
-			settings: { showResetIcon: true },
+			settings: {
+				showResetIcon: true,
+				showMenuBar: true,
+				showToolBar: true,
+				enableFileFeatures: true,
+				enableCAS: true,
+				enableRightClick: true,
+			},
 		});
 
 		expect(parameters.appName).toBe("scientific");
 		expect(parameters.showAlgebraInput).toBe(true);
 		expect(parameters.showResetIcon).toBe(true);
 		expect(parameters.enableCAS).toBe(false);
+		expect(parameters.enableFileFeatures).toBe(false);
+		expect(parameters.enableRightClick).toBe(false);
+		expect(parameters.showMenuBar).toBe(false);
+		expect(parameters.showToolBar).toBe(false);
 		expect(parameters).not.toHaveProperty("restrictedMode");
 		expect(parameters).not.toHaveProperty("theme");
 	});

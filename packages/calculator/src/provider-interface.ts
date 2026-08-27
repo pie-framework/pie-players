@@ -13,16 +13,63 @@
 export type CalculatorType = "basic" | "scientific" | "graphing";
 
 /**
+ * Legacy Desmos constructor options.
+ *
+ * @deprecated Prefer `CalculatorProviderConfig.settings` for new integrations.
+ * This public type and the `desmos` field below remain supported so existing
+ * clients can upgrade without rewriting authored calculator configuration.
+ *
+ * `apiKey` and `proxyEndpoint` are provider-initialization values, not
+ * calculator constructor options. A browser that loads Desmos receives the API
+ * key in the calculator script URL even when it obtains the value at runtime.
+ */
+export interface DesmosCalculatorConfig {
+	apiKey?: string;
+	proxyEndpoint?: string;
+	border?: boolean;
+	degreeMode?: boolean | "degree" | "radian";
+	decimalToFraction?: boolean;
+	links?: boolean;
+	settingsMenu?: boolean;
+	expressions?: boolean;
+	zoomButtons?: boolean;
+	expressionsTopbar?: boolean;
+	notes?: boolean;
+	folders?: boolean;
+	images?: boolean;
+	qwertyKeyboard?: boolean;
+	restrictedFunctions?: boolean;
+	plotSingleVariableImplicitEquations?: boolean;
+	distributions?: boolean;
+	plotImplicits?: boolean;
+	plotInequalities?: boolean;
+	geometryComputationFunctions?: boolean;
+	sliders?: boolean;
+	tables?: boolean;
+	expressionsCollapsed?: boolean;
+	administerSecretFolders?: boolean;
+	lockViewport?: boolean;
+	functionDefinition?: boolean;
+	brailleExpressionDownload?: boolean;
+	keypad?: boolean;
+	graphpaper?: boolean;
+	additionalFunctions?: string[];
+}
+
+/**
  * Provider-neutral calculator configuration.
  *
  * Adapters own the shape and interpretation of `settings`; the generic
- * calculator seam deliberately does not name an implementation.
+ * calculator seam deliberately does not otherwise name an implementation.
+ * The deprecated `desmos` field is retained only as an existing public contract.
  */
 export interface CalculatorProviderConfig {
 	settings?: Record<string, unknown>;
 	restrictedMode?: boolean; // Quick toggle for restricted/test mode (affects multiple options)
 	locale?: string;
 	theme?: "light" | "dark" | "auto";
+	/** @deprecated Prefer `settings`. */
+	desmos?: DesmosCalculatorConfig;
 }
 
 /**

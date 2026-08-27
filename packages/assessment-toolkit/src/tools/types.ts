@@ -11,6 +11,7 @@ export type {
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
+	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
 
 export type ToolId = string;

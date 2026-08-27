@@ -39,9 +39,37 @@ Omitting `provider.id` selects `calculator-desmos` for compatibility. GeoGebra
 maps a `basic` calculator request to its scientific app because its embed API
 does not provide a separate four-function app.
 
+The packaged custom-element tag and lazy loader are selected by the composition
+package from that same config:
+
+```ts
+import {
+  createDefaultToolModuleLoaders,
+  createPackagedToolRegistry,
+} from "@pie-players/pie-default-tool-loaders";
+
+const calculatorProviderConfig = geoGebraTools.providers.calculator;
+const toolRegistry = createPackagedToolRegistry({
+  calculatorProviderConfig,
+  toolModuleLoaders: createDefaultToolModuleLoaders({
+    calculatorProviderConfig,
+  }),
+});
+```
+
+No calculator provider config continues to select the existing Desmos tag and
+bundle. A host-supplied `toolTagMap.calculator` or calculator module loader still
+takes precedence over the packaged selection.
+
 Provider initialization belongs under `provider.init`; runtime-only functions
 such as a credential fetcher belong under `provider.runtime`; per-calculator
 vendor options belong in `settings`. The same shape is used by both suites.
+
+Existing Desmos clients may continue to use the deprecated
+`CalculatorProviderConfig.desmos` option bag and the provider's
+`proxyEndpoint`. New code should use `settings` and `provider.init` or
+`provider.runtime`. A runtime endpoint keeps a key out of static source, but the
+browser still receives it in Desmos's calculator script URL.
 
 ## Direct adapters
 

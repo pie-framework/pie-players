@@ -303,12 +303,18 @@ class GeoGebraCalculator implements Calculator {
 				// the input row is the calculator's primary interaction surface.
 				showAlgebraInput: true,
 				showZoomButtons: appName === "graphing",
-				enableFileFeatures: !isRestricted,
-				enableCAS: !isRestricted,
-				enable3d: false,
-				enableRightClick: !isRestricted,
-				preventFocus: true,
 				...settings,
+				enable3d: false,
+				preventFocus: true,
+				...(isRestricted
+					? {
+							showMenuBar: false,
+							showToolBar: false,
+							enableFileFeatures: false,
+							enableCAS: false,
+							enableRightClick: false,
+						}
+					: {}),
 				appName,
 				width,
 				height,

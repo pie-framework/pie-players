@@ -21,7 +21,9 @@ Move calculator lifecycle and UI into a provider-neutral shared package, keep
 vendor settings in their implementation packages, and select implementations
 through the same `provider.init`, `provider.runtime`, and `settings` schema.
 Desmos remains the no-configuration default and preserves its unkeyed legacy
-load for existing clients.
+load, `desmos` option bag, and runtime `proxyEndpoint` initialization for
+existing clients. The packaged composition selects the GeoGebra element and
+lazy bundle from the same provider config used by the toolkit.
 
 Document that PIE bundles only MIT-licensed adapter code, not either vendor
 application. Clarify the separate Desmos and GeoGebra license obligations,

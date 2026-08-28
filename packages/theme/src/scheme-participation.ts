@@ -99,6 +99,11 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-tool-trigger-active-color": "optional",
 	"--pie-toolbar-tools-row-height": "excluded",
 	"--pie-tts-controls-row-height": "excluded",
+	"--pie-tts-line-highlight": "excluded",
+	"--pie-tts-sentence-highlight": "excluded",
+	"--pie-tts-word-highlight": "excluded",
+	"--pie-tts-word-shadow": "excluded",
+	"--pie-tts-word-underline": "excluded",
 	"--pie-white": "required",
 } as const satisfies Readonly<
 	Record<ThemeTokenName, PieThemeSchemeParticipation>

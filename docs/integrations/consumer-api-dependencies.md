@@ -711,7 +711,9 @@ splitpane element, several with `!important`:
 All of the above resolve to real tokens in this repo. Two do not and are inert
 on the host side: `--pie-tts-word-color` and `--pie-tts-word-hightlight` (a
 typo the host keeps "for compatibility"). Renaming or dropping any of the live
-ones changes that delivery's appearance with no build signal.
+ones changes that delivery's appearance with no build signal, except the five
+`--pie-tts-*` highlight tokens: those are registry entries, so a rename in
+`HighlightCoordinator.ts` trips `check:theme-tokens`.
 
 Host A also relies on being able to *win* against player styles at equal
 specificity from outside, including with `!important`. Moving any of these

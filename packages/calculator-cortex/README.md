@@ -191,6 +191,8 @@ package's hands. Surfaces take `--pie-white` for the card and
 `--pie-background-dark` for the recessed keypad plane, both opaque in the base
 themes and in all ten schemes. A host wanting different surfaces has package
 hooks: `--pie-calculator-surface` and `--pie-calculator-surface-raised`.
+Both are package-private rather than registered host tokens: read as
+`var(--x, fallback)` and so overridable, with no compatibility guarantee.
 
 `--pie-font-scale` is **not** consumed, matching the recorded decision in
 `section-player/tests/content-text-follows-font-scale.test.ts`: the font

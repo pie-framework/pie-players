@@ -248,6 +248,10 @@ applies when no theme is loaded:
 --pie-tts-card-border         /* card hairline; `transparent` for shadow-only */
 ```
 
+None of the seven is a registered host token. Each is read as
+`var(--x, fallback)`, so a host declaration wins without `!important`, and each
+carries no compatibility guarantee — the panel's internals may move it.
+
 The card carries a hairline mixed from `--pie-text` because its shadow is black
 and disappears once the surface goes dark. It is deliberately not derived from
 `--pie-border`: a host that wants borderless controls sets that to transparent,

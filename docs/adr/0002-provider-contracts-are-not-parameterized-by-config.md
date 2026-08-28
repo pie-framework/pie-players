@@ -45,15 +45,24 @@ mirror of the adapter's `initialize`.
 ## Trade-off
 
 A deliberate trade: a caller holding only the base interface types the config
-argument as `CalculatorProviderConfig` and cannot see `desmos`. Code that needs the
-vendor fields imports the adapter's type by name — which is where that type is
-owned — so the loss falls on callers that had no business writing vendor config.
+argument as `CalculatorProviderConfig`, whose `settings` is `Record<string,
+unknown>`, and gets no vendor field names. Code that needs them imports the
+adapter's type by name — which is where that type is owned — so the loss falls on
+callers that had no business writing vendor config.
 
 ## Consequences
 
 - An adapter package owns and exports its vendor configuration types.
-  `pie-calculator-desmos` exports `DesmosCalculatorConfig` and
+  `pie-calculator-desmos` exports `DesmosCalculatorSettings` and
   `DesmosCalculatorProviderConfig`; the contract package exports neither.
+- Those names follow one convention across every adapter, so a host reading one
+  knows where to look in the others. `<Vendor>CalculatorSettings` is the vendor
+  option shape; `<Vendor>CalculatorProviderConfig` is `CalculatorProviderConfig`
+  with `settings` narrowed to it and types `createCalculator`;
+  `<Vendor>CalculatorProviderInit` exists only where the adapter narrows or
+  extends `CalculatorProviderInit`, which is what makes "this vendor takes no
+  credential" a type rather than a README claim. Desmos takes that interface
+  whole and declares no alias.
 - A tool provider in `assessment-toolkit` is typed by the contract-package
   interface, never by an adapter type. `DesmosToolProvider` is
   `ToolProviderApi<DesmosToolProviderConfig, CalculatorProvider>`, matching

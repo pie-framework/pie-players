@@ -40,7 +40,10 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { createSectionDemoToolRegistryForCalculator } from '$lib/demo-runtime/default-tool-registry';
+	import {
+		createSectionDemoToolRegistryForCalculator,
+		type SectionDemoCalculatorProvider
+	} from '$lib/demo-runtime/default-tool-registry';
 	import {
 		buildBundleKey,
 		collectElementPackages,
@@ -65,35 +68,60 @@
 		 * Leaving this unset deliberately exercises the backwards-compatible
 		 * Desmos default.
 		 */
-		calculatorProvider = 'desmos'
+		calculatorProvider = 'desmos',
+		/**
+		 * Per-instance calculator configuration this demo asks for on top of the
+		 * provider selection: `restrictedMode` and the vendor-neutral `settings` bag
+		 * every adapter fills.
+		 *
+		 * Passed by the route rather than keyed by provider here, because Desmos is
+		 * what every other demo gets by default — a lockdown keyed on `'desmos'` would
+		 * silently reconfigure the calculator in a dozen demos that are about
+		 * something else.
+		 */
+		calculatorConfig
 	}: {
 		data: DemoRouteData;
 		localeSwitcher?: boolean;
-		calculatorProvider?: 'desmos' | 'geogebra';
+		calculatorProvider?: SectionDemoCalculatorProvider;
+		calculatorConfig?: {
+			restrictedMode?: boolean;
+			settings?: Record<string, unknown>;
+		};
 	} = $props();
 	// Empty rather than a default tag: unset is what a host most often sends, and
 	// the players resolve it to `en-US` without consulting the browser.
 	const playerLocale = $derived(localeSwitcher ? demoLocale() : '');
 	const demoRuntimeId = untrack(() => data.demo?.id ?? 'section-demo');
 	const itemDataCalculatorEnabled = untrack(
-		() => data.demo?.id === 'tool-visibility' || data.demo?.id === 'calculator-geogebra',
+		() =>
+			data.demo?.id === 'tool-visibility' ||
+			data.demo?.id === 'calculator-desmos' ||
+			data.demo?.id === 'calculator-geogebra' ||
+			data.demo?.id === 'calculator-cortex',
 	);
 	const itemDataCalculatorIntegration = itemDataCalculatorEnabled
 		? createItemDataCalculatorIntegration(untrack(() => data.section))
 		: null;
 	const calculatorProviderAtInit = untrack(() => calculatorProvider);
 	const toolRegistry = createSectionDemoToolRegistryForCalculator(calculatorProviderAtInit);
-	const calculatorToolProvider =
-		calculatorProviderAtInit === 'geogebra'
-			? {
-					provider: { id: 'calculator-geogebra' },
-				}
-			: {
-					provider: {
-						id: 'calculator-desmos',
-						runtime: { authFetcher: fetchDesmosAuthConfig },
-					},
-				};
+	/*
+	 * The provider selection, plus whatever configuration the route asked for. The
+	 * two are separate seams: `provider.id` picks the adapter, and `restrictedMode`
+	 * and `settings` sit beside it as vendor-neutral fields the adapter reads.
+	 */
+	const calculatorToolProvider = {
+		provider:
+			calculatorProviderAtInit === 'cortex'
+				? { id: 'calculator-cortex' }
+				: calculatorProviderAtInit === 'geogebra'
+					? { id: 'calculator-geogebra' }
+					: {
+							id: 'calculator-desmos',
+							runtime: { authFetcher: fetchDesmosAuthConfig }
+						},
+		...untrack(() => calculatorConfig)
+	};
 
 	// Level 3: explicit host-managed coordinator initialization.
 	const toolsConfigResult = createToolsConfig({

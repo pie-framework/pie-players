@@ -61,7 +61,13 @@
 			"path": "./packages/tool-calculator-desmos"
 		},
 		{
+			"path": "./packages/tool-calculator-cortex"
+		},
+		{
 			"path": "./packages/tool-calculator-geogebra"
+		},
+		{
+			"path": "./packages/tool-calculator-inline-cortex"
 		},
 		{
 			"path": "./packages/tool-calculator-inline-geogebra"
@@ -107,6 +113,9 @@
 		},
 		{
 			"path": "./packages/calculator-desmos"
+		},
+		{
+			"path": "./packages/calculator-cortex"
 		},
 		{
 			"path": "./packages/calculator-geogebra"

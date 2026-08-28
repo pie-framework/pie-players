@@ -21,14 +21,8 @@ import type {
 	CalculatorType,
 } from "@pie-players/pie-calculator";
 
-/**
- * Desmos API options applied when a calculator instance is created.
- */
-export interface DesmosCalculatorConfig extends Record<string, unknown> {
-	/** @deprecated Supply credentials to `initialize()` instead. */
-	apiKey?: string;
-	/** @deprecated Supply credentials to `initialize()` instead. */
-	proxyEndpoint?: string;
+/** Desmos API options accepted through `CalculatorProviderConfig.settings`. */
+export interface DesmosCalculatorSettings extends Record<string, unknown> {
 	border?: boolean;
 	degreeMode?: boolean | "degree" | "radian";
 	decimalToFraction?: boolean;
@@ -61,10 +55,14 @@ export interface DesmosCalculatorConfig extends Record<string, unknown> {
 
 /**
  * Per-instance configuration accepted by the Desmos calculator provider.
+ *
+ * Identical to the provider-neutral shape apart from naming what `settings`
+ * holds, which the neutral seam deliberately leaves as `Record<string,
+ * unknown>`.
  */
 export interface DesmosCalculatorProviderConfig
-	extends CalculatorProviderConfig {
-	desmos?: DesmosCalculatorConfig;
+	extends Omit<CalculatorProviderConfig, "settings"> {
+	settings?: DesmosCalculatorSettings;
 }
 
 declare global {
@@ -88,6 +86,16 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 
 	private initialized = false;
 	private apiKey?: string;
+	/*
+	 * Every calculator this provider handed out and that has not destroyed itself.
+	 *
+	 * `destroy()` is a host's one call to release the provider, and without this it
+	 * released only the provider's own fields: every calculator it created stayed
+	 * mounted, with its vendor instance alive and its container populated. A host
+	 * that swaps providers, or tears a section down without walking its calculators
+	 * first, leaked all of them.
+	 */
+	private readonly instances = new Set<Calculator>();
 	private onTelemetry:
 		| ((
 				eventName: string,
@@ -121,7 +129,6 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			script.async = true;
 			script.onload = () => {
 				if (window.Desmos) {
-					console.log("[DesmosProvider] Desmos API loaded successfully");
 					resolve();
 				} else {
 					reject(new Error("Desmos API loaded but window.Desmos is undefined"));
@@ -194,7 +201,6 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 					"[DesmosProvider] Loading the legacy unkeyed Desmos URL for compatibility. Configure an application API key for licensed deployments.",
 				);
 			}
-			console.log("[DesmosProvider] Loading Desmos API library...");
 			const libraryLoadStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-library-load-start", {
 				toolId: "calculator",
@@ -241,7 +247,11 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			throw new Error(`Desmos does not support calculator type: ${type}`);
 		}
 
-		return new DesmosCalculator(this, type, container, config);
+		const calculator = new DesmosCalculator(this, type, container, config, () =>
+			this.instances.delete(calculator),
+		);
+		this.instances.add(calculator);
+		return calculator;
 	}
 
 	/**
@@ -255,6 +265,9 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 * Cleanup
 	 */
 	destroy(): void {
+		// A copy: each `destroy()` calls back to remove itself from the set.
+		for (const instance of [...this.instances]) instance.destroy();
+		this.instances.clear();
 		this.initialized = false;
 		this.apiKey = undefined;
 		this.onTelemetry = undefined;
@@ -276,6 +289,20 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 }
 
 /**
+ * Credentials are provider-level (`initialize()`), never per-instance options.
+ *
+ * `DesmosCalculatorSettings` carries an index signature, so `settings` still
+ * *accepts* both names from a caller that has not moved them yet. Desmos treats
+ * an unknown option as an error, and a key there reaches nothing that would use
+ * it, so both are dropped before `settings` reaches the vendor constructor.
+ */
+const CREDENTIAL_KEYS = ["apiKey", "proxyEndpoint"] as const;
+
+function stripCredentialKeys(config: Record<string, unknown>): void {
+	for (const key of CREDENTIAL_KEYS) delete config[key];
+}
+
+/**
  * Desmos Calculator Instance
  */
 class DesmosCalculator implements Calculator {
@@ -286,11 +313,14 @@ class DesmosCalculator implements Calculator {
 	private calculator: any;
 	private container: HTMLElement;
 
+	private destroyed = false;
+
 	constructor(
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: DesmosCalculatorProviderConfig,
+		config: DesmosCalculatorProviderConfig | undefined,
+		private readonly onDestroy: () => void,
 	) {
 		this.provider = provider;
 		this.type = type;
@@ -305,16 +335,8 @@ class DesmosCalculator implements Calculator {
 	}
 
 	private _initializeCalculator(config?: DesmosCalculatorProviderConfig): void {
-		const legacySettings: DesmosCalculatorConfig = {
-			...(config?.desmos ?? {}),
-		};
-		delete legacySettings.apiKey;
-		delete legacySettings.proxyEndpoint;
-
-		// Existing `desmos` options remain supported, while provider-neutral
-		// `settings` are the canonical surface and take precedence when both exist.
 		const isGraphing = this.type === "graphing";
-		const desmosConfig: DesmosCalculatorConfig = {
+		const desmosConfig: DesmosCalculatorSettings = {
 			degreeMode: true,
 			settingsMenu: isGraphing,
 			qwertyKeyboard: false,
@@ -322,19 +344,30 @@ class DesmosCalculator implements Calculator {
 			folders: isGraphing,
 			sliders: isGraphing,
 			tables: isGraphing,
-			...legacySettings,
 			...(config?.settings || {}),
 		};
-		delete desmosConfig.apiKey;
-		delete desmosConfig.proxyEndpoint;
+		stripCredentialKeys(desmosConfig);
 
-		// Apply restricted mode if specified
+		/*
+		 * Restricted mode is monotonic: it lands after the host's own `settings` and a
+		 * host cannot relax it, which is the same contract the Cortex adapter states
+		 * for its own flag. It suppresses chrome a learner has no use for mid-item and
+		 * routes out of the tool.
+		 *
+		 * `expressions: false` is deliberately not among them. It removes the whole
+		 * expression list, which on a `GraphingCalculator` is the only way to enter a
+		 * function, so a restricted graphing calculator was graph paper with nothing to
+		 * plot on it — the call this package's own README documents. Basic and
+		 * scientific never noticed: `expressions` is a graphing option their
+		 * constructors ignore. A host that does want the list gone passes
+		 * `settings: { expressions: false }` and sets the flags below itself, since
+		 * those are honoured whenever `restrictedMode` is not what overrides them.
+		 */
 		if (config?.restrictedMode) {
 			Object.assign(desmosConfig, {
 				expressionsTopbar: false,
 				settingsMenu: false,
 				zoomButtons: false,
-				expressions: false,
 				links: false,
 			});
 		}
@@ -362,8 +395,6 @@ class DesmosCalculator implements Calculator {
 			default:
 				throw new Error(`Unsupported calculator type: ${this.type}`);
 		}
-
-		console.log(`[DesmosCalculator] Created ${this.type} calculator`);
 	}
 
 	getValue(): string {
@@ -468,10 +499,12 @@ class DesmosCalculator implements Calculator {
 	}
 
 	destroy(): void {
+		if (this.destroyed) return;
+		this.destroyed = true;
 		if (this.calculator && this.calculator.destroy) {
 			this.calculator.destroy();
 		}
 		this.container.replaceChildren();
-		console.log("[DesmosCalculator] destroyed");
+		this.onDestroy();
 	}
 }

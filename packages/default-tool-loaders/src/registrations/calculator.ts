@@ -22,12 +22,16 @@ import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { CortexToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { GeoGebraToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
 
 type CalculatorType = "basic" | "scientific" | "graphing";
-export type CalculatorProviderId = "calculator-desmos" | "calculator-geogebra";
+export type CalculatorProviderId =
+	| "calculator-desmos"
+	| "calculator-geogebra"
+	| "calculator-cortex";
 export const DEFAULT_CALCULATOR_PROVIDER_ID: CalculatorProviderId =
 	"calculator-desmos";
 
@@ -40,19 +44,25 @@ export function resolveCalculatorProviderId(
 	}
 	if (
 		configured === "calculator-desmos" ||
-		configured === "calculator-geogebra"
+		configured === "calculator-geogebra" ||
+		configured === "calculator-cortex"
 	) {
 		return configured;
 	}
 	throw new Error(
-		`Unsupported calculator provider "${String(configured)}". Expected "calculator-desmos" or "calculator-geogebra".`,
+		`Unsupported calculator provider "${String(configured)}". Expected "calculator-desmos", "calculator-geogebra", or "calculator-cortex".`,
 	);
 }
 
 function createCalculatorToolProvider(config: ToolProviderConfig | undefined) {
-	return resolveCalculatorProviderId(config) === "calculator-geogebra"
-		? new GeoGebraToolProvider()
-		: new DesmosToolProvider();
+	switch (resolveCalculatorProviderId(config)) {
+		case "calculator-cortex":
+			return new CortexToolProvider();
+		case "calculator-geogebra":
+			return new GeoGebraToolProvider();
+		default:
+			return new DesmosToolProvider();
+	}
 }
 
 function getCalculatorInstanceConfig(
@@ -196,7 +206,7 @@ function applyCalculatorParamsToElement(
  * Calculator tool registration
  *
  * Supports:
- * - Basic, scientific, and graphing calculators through Desmos or GeoGebra
+ * - Basic, scientific, and graphing calculators through Desmos, GeoGebra, or Cortex
  * - Context-aware visibility (shows only when math content is detected)
  * - Item level only
  */
@@ -326,11 +336,50 @@ export const calculatorToolRegistration: ToolRegistration = {
 						draggable: true,
 						resizable: true,
 						closeable: true,
-						initialWidth: 380,
-						initialHeight: 420,
+						/*
+						 * Sized per type from what each layout measures, rather than one
+						 * size for all three. A shell subtracts ~74px of header from the
+						 * height it is given, and the numbers below are the content each
+						 * type needs plus room for its history tape:
+						 *
+						 * - basic: strip, display, edit row and a four-row keypad measure
+						 *   398px. 560 left ~90px of blank above the entry line, which is
+						 *   the gap that made the panel look mis-sized.
+						 * - scientific: the same plus a keypad layer tab row.
+						 * - graphing: the expression rail beside the plot, whose column
+						 *   wants 486px on its own — viewport controls, a 14rem board floor
+						 *   and the readout that *is* the graph for assistive technology,
+						 *   since the board itself is `aria-hidden`. At 620 that column was
+						 *   12px short and the readout's last line was cut off.
+						 *
+						 * The minimums stay shared across types and providers. This
+						 * registration serves Desmos, GeoGebra and Cortex alike, so a
+						 * graphing-only floor would move the resize limit under two vendors
+						 * whose layouts were never measured for it. Cortex below 42rem
+						 * stacks the rail above the plot and needs 701px there, which no
+						 * spacing tier closes — it scrolls its own content instead of
+						 * clipping it, which is the contract every size below the opening
+						 * one already relies on.
+						 */
+						initialWidth: calculatorType === "graphing" ? 720 : 380,
+						initialHeight:
+							calculatorType === "graphing"
+								? 660
+								: calculatorType === "basic"
+									? 500
+									: 560,
 						minWidth: 380,
-						minHeight: 420,
-						initialAlign: "bottom-right",
+						minHeight: 480,
+						/*
+						 * `bottom-right` put a 560-620px-tall shell over the items
+						 * column it shares the viewport with — tall enough, at
+						 * ordinary viewport heights, to sit on top of a sibling
+						 * item's own toolbar row and block its button from mouse
+						 * and touch input. `bottom-left` keeps the same footprint
+						 * over the passage column instead, which carries no
+						 * per-item controls to collide with.
+						 */
+						initialAlign: "bottom-left",
 						initialMargin: 16,
 						// Header controls in the host's design system, and the layout that
 						// goes with them.

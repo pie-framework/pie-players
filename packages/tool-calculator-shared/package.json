@@ -25,6 +25,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
+		},
+		"./calculator-element": {
+			"types": "./dist/calculator-element.d.ts",
+			"import": "./dist/calculator-element.js"
 		}
 	},
 	"files": [
@@ -39,6 +43,8 @@
 		"lint": "biome check ."
 	},
 	"license": "MIT",
+	"unpkg": "./dist/index.js",
+	"jsdelivr": "./dist/index.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
@@ -60,5 +66,7 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"sideEffects": false
+	"sideEffects": [
+		"./dist/calculator-element.js"
+	]
 }

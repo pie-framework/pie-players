@@ -19,6 +19,13 @@ export type CalculatorType = "basic" | "scientific" | "graphing";
  * instance. A hosted calculator vendor needs a key, or a server endpoint that
  * mints one — never both in production, since `apiKey` puts the key in the
  * browser.
+ *
+ * Naming across adapters, so a host reading one knows where to look in the
+ * others: `<Vendor>CalculatorSettings` is the vendor option shape,
+ * `<Vendor>CalculatorProviderConfig` is `CalculatorProviderConfig` with
+ * `settings` narrowed to it, and `<Vendor>CalculatorProviderInit` appears only
+ * where the adapter narrows or extends this interface — Cortex and GeoGebra take
+ * no credential, Desmos takes this type whole and declares no alias for it.
  */
 export interface CalculatorProviderInit {
 	/** Vendor API key. Development only — it reaches the browser. */
@@ -36,7 +43,9 @@ export interface CalculatorProviderInit {
  * Provider-neutral calculator configuration.
  *
  * Adapters own the shape and interpretation of `settings`; the generic
- * calculator seam deliberately does not name an implementation.
+ * calculator seam deliberately does not name an implementation. An adapter
+ * narrows `settings` in its own `<Vendor>CalculatorProviderConfig`, which is the
+ * only reason a caller ever gets vendor option names.
  */
 export interface CalculatorProviderConfig {
 	settings?: Record<string, unknown>;

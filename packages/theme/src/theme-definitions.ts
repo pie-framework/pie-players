@@ -441,7 +441,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#ffddee",
 				"--pie-focus-unchecked-border": "#000000",
 				"--pie-blue-grey-100": "#ffeef5",
-				"--pie-blue-grey-300": "#ffccdd",
+				"--pie-blue-grey-300": "#ffb3cc",
 				"--pie-blue-grey-600": "#cc6688",
 				"--pie-blue-grey-900": "#000000",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",

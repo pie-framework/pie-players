@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Graphing calculator · Cortex calculator demos</title>
+		<link rel="stylesheet" href="/styles.css" />
+	</head>
+	<body data-mode="graphing">
+		<header class="pie-cortex-demo-heading">
+			<h1>Graphing calculator</h1>
+			<nav aria-label="Calculator modes">
+				<a href="/" data-mode-link="basic">Basic</a>
+				<a href="/scientific.html" data-mode-link="scientific">Scientific</a>
+				<a href="/graphing.html" data-mode-link="graphing">Graphing</a>
+			</nav>
+		</header>
+		<main>
+			<form class="pie-cortex-demo-settings" aria-label="Calculator demo settings">
+				<label>Interface language
+					<select id="locale">
+						<option value="en-US">English</option>
+						<option value="nl-NL">Nederlands</option>
+					</select>
+				</label>
+				<label>Theme
+					<select id="theme">
+						<option value="auto">System</option>
+						<option value="light">Light</option>
+						<option value="dark">Dark</option>
+					</select>
+				</label>
+				<label>Text direction
+					<select id="direction">
+						<option value="auto">From language</option>
+						<option value="ltr">Left to right</option>
+						<option value="rtl">Right to left</option>
+					</select>
+				</label>
+				<label>Panel size
+					<select id="panel">
+						<option value="fluid">Fluid</option>
+						<option value="shell">Shipped tool panel</option>
+						<option value="floor">Panel minimum</option>
+					</select>
+				</label>
+			</form>
+			<div id="calculator" class="pie-cortex-demo-calculator"></div>
+		</main>
+		<script type="module" src="/main.ts"></script>
+	</body>
+</html>

@@ -8,6 +8,8 @@ import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
+import { demoCortexCalculatorSection } from "./demo-cortex-calculators";
+import { demoDesmosCalculatorSection } from "./demo-desmos-calculators";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
@@ -738,6 +740,25 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo8ToolVisibilitySection,
 	},
+	"calculator-desmos": {
+		id: "calculator-desmos",
+		name: "Desmos Calculator Suite",
+		description:
+			"The default calculator provider, named explicitly and locked down the way an assessment host configures it",
+		integrationLevel: 4,
+		integrationTheme: "Alternative tool-provider composition",
+		focus:
+			"Exercises the calculator registration, toolbar, policy, and item-data configuration through the Desmos provider, and shows the credential and lockdown configuration a host passes it.",
+		whatMakesItTick: [
+			"Names `calculator-desmos` explicitly, which is what `DEFAULT_CALCULATOR_PROVIDER_ID` resolves to for a host that configures no provider at all.",
+			"Supplies the API key through `provider.runtime.authFetcher`, fetched by the host at open time rather than carried in item content.",
+			"Configures Desmos' own settings under the vendor-neutral `settings` field, whose type ships from `@pie-players/pie-calculator-desmos` rather than from the generic calculator contract.",
+			"Sets the vendor-neutral `restrictedMode` and goes further with Desmos' own `restrictedFunctions` and chrome flags, which the neutral field does not reach.",
+			"Exercises basic, scientific, and graphing requests on separate assessment items through the same toolkit context resolver.",
+			"Opens each type at the panel size its layout measures -- 720x660 for graphing, 380 wide for the others -- and scrolls rather than clipping when a learner resizes below it.",
+		],
+		section: demoDesmosCalculatorSection,
+	},
 	"calculator-geogebra": {
 		id: "calculator-geogebra",
 		name: "GeoGebra Calculator Suite",
@@ -755,6 +776,25 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Loads GeoGebra from its official deployment script and displays the required GeoGebra attribution inside the tool surface.",
 		],
 		section: demoGeoGebraCalculatorSection,
+	},
+	"calculator-cortex": {
+		id: "calculator-cortex",
+		name: "Open-Source Calculator Suite",
+		description:
+			"The calculator capability composed with the in-repository Cortex provider, configured rather than defaulted",
+		integrationLevel: 4,
+		integrationTheme: "Alternative tool-provider composition",
+		focus:
+			"Exercises the same calculator registration, toolbar, policy, and item-data configuration through the open-source provider, and shows the per-instance settings a host passes it.",
+		whatMakesItTick: [
+			"Selects `calculator-cortex` through the generic provider configuration seam; no generic calculator code imports a Cortex implementation.",
+			"Needs no vendor key and makes no network request -- the provider is a package in this repository and evaluates in a worker, so the demo works offline.",
+			"Narrows `settings.allowedFunctions` to drop factorial and log-base-n, so the scientific keypad omits both keys rather than offering a key the validator would refuse.",
+			"Sets `restrictedMode: true`, which is monotonic: it disables clipboard actions and cannot be relaxed by `settings.allowClipboard`.",
+			"Passes `settings.angleMode: 'radian'` and `settings.historyLimit`, the same per-instance shape every adapter fills through the vendor-neutral `settings` field.",
+			"Serves basic, scientific, and graphing from one provider; graphing plots in JSXGraph and traces from the keyboard.",
+		],
+		section: demoCortexCalculatorSection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",

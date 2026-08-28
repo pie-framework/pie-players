@@ -53,7 +53,8 @@ const registry = createPackagedToolRegistry({
 ```
 
 Desmos remains the calculator delivery when no provider is configured. To use
-GeoGebra, pass the same calculator configuration to both the toolkit and the
+GeoGebra or the fully bundled open-source Cortex implementation, pass the same
+calculator configuration to both the toolkit and the
 packaged composition. The composition then owns the matching element tag and
 module loader; hosts do not hand-maintain a second vendor map.
 
@@ -82,6 +83,11 @@ const tools = {
 	providers: { calculator: calculatorProviderConfig },
 };
 ```
+
+For an offline-capable calculator with no API key or runtime CDN, use
+`provider.id: "calculator-cortex"`. Its `settings` accept angle mode, precision,
+history, evaluation limit, allowed functions, clipboard policy, and graph
+viewport options documented by `@pie-players/pie-calculator-cortex`.
 
 `createDefaultToolRegistry()` in the toolkit is the other end of that choice: it
 builds an empty registry, and a host composing its own set registers into it.

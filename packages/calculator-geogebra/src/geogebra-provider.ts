@@ -3,6 +3,7 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
@@ -50,15 +51,18 @@ declare global {
 	}
 }
 
-export interface GeoGebraCalculatorProviderConfig {
+/**
+ * GeoGebra's `initialize()` argument.
+ *
+ * Narrowed to `onTelemetry`: GeoGebra's embed takes no credential, so `apiKey`
+ * and `proxyEndpoint` would name a parameter this adapter cannot honour.
+ */
+export interface GeoGebraCalculatorProviderInit
+	extends Pick<CalculatorProviderInit, "onTelemetry"> {
 	/** Override only when the deployment's GeoGebra license permits that source. */
 	scriptUrl?: string;
 	/** Maximum time to wait for `appletOnLoad` after injection. */
 	appletTimeoutMs?: number;
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
 }
 
 /** GeoGebra app parameters accepted through `CalculatorProviderConfig.settings`. */
@@ -87,6 +91,15 @@ export interface GeoGebraCalculatorSettings extends Record<string, unknown> {
 	preventFocus?: boolean;
 }
 
+/**
+ * GeoGebra's `createCalculator()` argument: the provider-neutral shape with
+ * `settings` naming what it holds.
+ */
+export interface GeoGebraCalculatorProviderConfig
+	extends Omit<CalculatorProviderConfig, "settings"> {
+	settings?: GeoGebraCalculatorSettings;
+}
+
 export class GeoGebraCalculatorProvider implements CalculatorProvider {
 	readonly providerId = "geogebra";
 	readonly providerName = "GeoGebra";
@@ -99,7 +112,15 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 
 	private initialized = false;
 	private appletTimeoutMs = DEFAULT_APPLET_TIMEOUT_MS;
-	private onTelemetry: GeoGebraCalculatorProviderConfig["onTelemetry"];
+	/*
+	 * Every calculator this provider handed out and that has not destroyed itself.
+	 *
+	 * `destroy()` is a host's one call to release the provider, and without this it
+	 * released only the provider's own fields: every applet it created kept running
+	 * with its container populated and, where the id was generated here, renamed.
+	 */
+	private readonly instances = new Set<Calculator>();
+	private onTelemetry: GeoGebraCalculatorProviderInit["onTelemetry"];
 
 	private async emitTelemetry(
 		eventName: string,
@@ -135,9 +156,7 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 		});
 	}
 
-	async initialize(
-		config: GeoGebraCalculatorProviderConfig = {},
-	): Promise<void> {
+	async initialize(config: GeoGebraCalculatorProviderInit = {}): Promise<void> {
 		if (this.initialized) return;
 		if (typeof window === "undefined") {
 			throw new Error(
@@ -186,19 +205,22 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: GeoGebraCalculatorProviderConfig,
 	): Promise<Calculator> {
 		if (!this.initialized) await this.initialize();
 		if (!this.supportsType(type)) {
 			throw new Error(`GeoGebra does not support calculator type: ${type}`);
 		}
-		return GeoGebraCalculator.create(
+		const calculator = await GeoGebraCalculator.create(
 			this,
 			type,
 			container,
 			config,
 			this.appletTimeoutMs,
+			() => this.instances.delete(calculator),
 		);
+		this.instances.add(calculator);
+		return calculator;
 	}
 
 	supportsType(type: CalculatorType): boolean {
@@ -206,6 +228,9 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 	}
 
 	destroy(): void {
+		// A copy: each `destroy()` calls back to remove itself from the set.
+		for (const instance of [...this.instances]) instance.destroy();
+		this.instances.clear();
 		this.initialized = false;
 		this.appletTimeoutMs = DEFAULT_APPLET_TIMEOUT_MS;
 		this.onTelemetry = undefined;
@@ -230,10 +255,13 @@ class GeoGebraCalculator implements Calculator {
 	private applet: GeoGebraAppletEmbed | null = null;
 	private generatedContainerId: string | null = null;
 
+	private destroyed = false;
+
 	private constructor(
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		private readonly container: HTMLElement,
+		private readonly onDestroy: () => void,
 	) {
 		this.provider = provider;
 		this.type = type;
@@ -243,16 +271,22 @@ class GeoGebraCalculator implements Calculator {
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config: CalculatorProviderConfig | undefined,
+		config: GeoGebraCalculatorProviderConfig | undefined,
 		timeoutMs: number,
+		onDestroy: () => void,
 	): Promise<GeoGebraCalculator> {
 		const Constructor = window.GGBApplet;
 		if (!Constructor) throw new Error("GeoGebra API not available");
 
-		const calculator = new GeoGebraCalculator(provider, type, container);
-		const settings = {
+		const calculator = new GeoGebraCalculator(
+			provider,
+			type,
+			container,
+			onDestroy,
+		);
+		const settings: GeoGebraCalculatorSettings = {
 			...(config?.settings || {}),
-		} as GeoGebraCalculatorSettings;
+		};
 		delete settings.appName;
 		delete settings.id;
 		delete settings.appletOnLoad;
@@ -412,6 +446,8 @@ class GeoGebraCalculator implements Calculator {
 	}
 
 	destroy(): void {
+		if (this.destroyed) return;
+		this.destroyed = true;
 		this.api?.remove?.();
 		this.api = null;
 		this.applet = null;
@@ -423,5 +459,6 @@ class GeoGebraCalculator implements Calculator {
 			this.container.id = "";
 		}
 		this.generatedContainerId = null;
+		this.onDestroy();
 	}
 }

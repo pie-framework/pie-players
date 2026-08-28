@@ -41,6 +41,13 @@ A licensed self-hosted deployment may provide its own loader URL:
 await provider.initialize({ scriptUrl: "/licensed-geogebra/deployggb.js" });
 ```
 
+`initialize()` takes `GeoGebraCalculatorProviderInit` -- `scriptUrl`,
+`appletTimeoutMs`, and `onTelemetry` from the shared `CalculatorProviderInit`.
+The embed takes no credential, so `apiKey` and `proxyEndpoint` are deliberately
+absent. `createCalculator()` takes `GeoGebraCalculatorProviderConfig`, which is
+the provider-neutral configuration with `settings` typed as
+`GeoGebraCalculatorSettings`.
+
 The adapter uses GeoGebra's documented `appletOnLoad` API object, Base64 state
 methods, resize methods, and `remove()` cleanup.
 

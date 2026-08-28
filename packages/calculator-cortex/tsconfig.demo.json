@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"composite": false,
+		"declaration": false,
+		"noEmit": true,
+		"paths": {
+			"@pie-players/pie-calculator-cortex": ["./src/index.ts"]
+		}
+	},
+	"include": ["demo/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

@@ -12,6 +12,8 @@
 		"index.ts",
 		"CalculatorTool.svelte",
 		"CalculatorInlineTool.svelte",
+		"CalculatorElement.svelte",
+		"calculator-element.ts",
 		"calculator-config-key.ts",
 		"svelte-shims.d.ts"
 	],

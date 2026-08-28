@@ -133,9 +133,32 @@ its `initialize` gained an optional `CalculatorProviderInit`, matching
 `ITTSProvider` in `pie-tts`. No checkout imports any
 calculator type: both hosts that show a calculator declare their own
 `CalculatorType` union, and the one offering Desmos configures it through the
-auth-fetcher runtime key alone. The runtime shape
-`{ restrictedMode, desmos: { … } }` is unchanged, so the delivered calculator is
-untouched.
+auth-fetcher runtime key alone.
+
+The `desmos` option bag and the `apiKey`/`proxyEndpoint` fields on
+`DesmosCalculatorSettings` (then `DesmosCalculatorConfig`) have since been
+deleted, re-checked against all three
+checkouts on 2026-08-27 as a targeted lookup. Vendor options are `settings` only,
+and `DesmosCalculatorProviderConfig` is now `CalculatorProviderConfig` with
+`settings` narrowed to `DesmosCalculatorSettings`. No checkout passes `desmos`,
+names either type, or sets a credential in a config bag: the two hosts offering
+Desmos both configure it through `provider.runtime.authFetcher` and nothing else,
+so all three removals are source breaks with no source to break.
+
+The open-source Cortex calculator is additive and was assessed against the
+recorded calculator rows rather than a fresh consumer-checkout refresh, so it
+does not advance the verification date. It adds three packages, the
+`calculator-cortex` selection id, `CortexToolProvider`, and two provider-specific
+custom-element tags. Its concrete provider configuration additionally exposes
+package-owned message overrides, direction control, and six graph-series theme
+hooks; these are additive surfaces on the same new package. No recorded host
+names that id or imports those packages.
+The existing generic `pie-tool-calculator` tag, `calculator` tool id, attributes,
+properties, provider-neutral calculator contracts, and no-config Desmos default
+remain unchanged. Ownership of the generic tag's registration moves from the
+Desmos-named package to the shared calculator package; the Desmos package keeps a
+compatibility entry that imports that same guarded registration, so the runtime
+surface observed by Host A and Host R does not change.
 
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a
@@ -960,9 +983,53 @@ over a CDN with no typecheck at all.
   `CalculatorProviderConfig`. Both are now on the Desmos adapter package. No
   checkout imports a calculator type at all, so the move is a source break with no
   source to break
+- The `desmos` option bag itself, deleted on 2026-08-27, the deprecated
+  `apiKey`/`proxyEndpoint` fields on the settings type deleted with it, and that
+  type renamed `DesmosCalculatorConfig` -> `DesmosCalculatorSettings` to match the
+  Cortex and GeoGebra adapters. Both hosts offering Desmos configure it through
+  `provider.runtime.authFetcher` alone, so neither passed a config bag at all. The
+  settings type keeps an index signature, so `settings` still accepts the two
+  credential names from a stale caller and still drops them before the vendor
+  constructor
+- `GeoGebraCalculatorProviderConfig` as the name of GeoGebra's `initialize()`
+  argument, renamed `GeoGebraCalculatorProviderInit` on 2026-08-27; the old name
+  now types `createCalculator`'s argument, as it does on the other two adapters.
+  No checkout offers GeoGebra
+- `COMMON_LIBRARIES`, `libraryLoader` and `LibraryLoaderImpl` on the toolkit's
+  `./tools/client` subpath, with `LibraryConfig`, `RetryConfig`, `LoaderStats` and
+  `LibraryLoader` from its `types`. Deleted on 2026-08-27: no checkout names any of
+  the eight, nothing in this repository used them either, and each provider loads
+  its own vendor script
 - `Calculator` and `CalculatorProvider` as interfaces to implement, and the
   additive optional argument on `CalculatorProvider.initialize`. Every implementor
   is a package in this repository
+- `CalculatorProvider.destroy()` leaving the calculators it created mounted. The
+  Desmos and GeoGebra adapters destroy them as of 2026-08-27, matching Cortex.
+  This pad records no host constructing a calculator provider directly — both
+  hosts that offer Desmos reach it through the tool package — and the toolkit's
+  own teardown destroys the tool component first, so the added call lands on
+  calculators that are already gone. Each calculator is destroyed at most once, so
+  either order is safe
+- Message-override keys on `CortexCalculatorMessages`. Six viewport controls and
+  their group label were added on 2026-08-27, and two keypad keys later the same
+  day; `CortexCalculatorMessageOverrides` is a partial, so an override object that
+  omits them still type-checks
+- Members of `CortexFunctionId`. `log-base-n` was added on 2026-08-27 and is in the
+  default scientific and graphing sets, so a host that passes no
+  `allowedFunctions` gains the capability and one that passes an explicit list
+  keeps exactly what it named. A host narrowing the set is unaffected: the union
+  only widens, and an unrecognized member would have been rejected before the
+  addition rather than after
+- The exact text of a Cortex answer. Exactly-representable trigonometry now
+  answers `0` and `0.5` where the numeric path answered `6.123233996e-17` and
+  `0.5000000000000008`, and an exponential mantissa no longer carries trailing
+  zeros. A *displayed* answer also takes the locale's decimal separator as of
+  2026-08-27, so a comma-separator locale reads `1,5`. No consumer reads a
+  calculator answer: it is rendered inside the tool and reaches a host only through
+  `exportState`, whose provider state carries the expression rather than the
+  formatted result — and the separator is applied at the display boundary only, so
+  the exported state, the history entries and `getResult` stay `.`-separated and a
+  state saved under one locale is not reinterpreted under another
 - `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
   that offer a Desmos calculator take the tool package as a side-effect import and
   reach the provider through the calculator package instead; one of them serves the

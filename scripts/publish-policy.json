@@ -10,6 +10,12 @@
 	"allowedSvelteRuntimeDependencies": {
 		"@pie-players/pie-tool-calculator-shared": "Provider-neutral Svelte components externalize the runtime so vendor custom-element wrappers compile against one shared Svelte instance."
 	},
+	"allowedUndeclaredRuntimeImports": {
+		"@pie-players/pie-calculator-cortex": [
+			"https://esm.run/@cortex-js/compute-engine",
+			"canvas.js"
+		]
+	},
 	"workspaceRoots": ["packages"],
 	"forbiddenPublicExports": {
 		"@pie-players/pie-players-shared": [
@@ -27,6 +33,7 @@
 			"@pie-players/pie-players-shared",
 			"@pie-players/pie-context",
 			"@pie-players/pie-calculator",
+			"@pie-players/pie-calculator-cortex",
 			"@pie-players/pie-calculator-desmos",
 			"@pie-players/pie-tts",
 			"@pie-players/tts-client-server",

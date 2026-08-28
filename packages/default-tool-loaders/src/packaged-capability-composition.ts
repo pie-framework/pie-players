@@ -134,12 +134,18 @@ function loadCalculatorElement(
 const loadDesmosCalculatorModule = () =>
 	loadCalculatorElement(
 		"pie-tool-calculator",
-		() => import("@pie-players/pie-tool-calculator-desmos"),
+		() =>
+			import("@pie-players/pie-tool-calculator-shared/calculator-element"),
 	);
 const loadGeoGebraCalculatorModule = () =>
 	loadCalculatorElement(
 		"pie-tool-calculator-geogebra",
 		() => import("@pie-players/pie-tool-calculator-geogebra"),
+	);
+const loadCortexCalculatorModule = () =>
+	loadCalculatorElement(
+		"pie-tool-calculator-cortex",
+		() => import("@pie-players/pie-tool-calculator-cortex"),
 	);
 
 const CALCULATOR_DELIVERY: Record<
@@ -153,6 +159,10 @@ const CALCULATOR_DELIVERY: Record<
 	"calculator-geogebra": {
 		tagName: "pie-tool-calculator-geogebra",
 		loadModule: loadGeoGebraCalculatorModule,
+	},
+	"calculator-cortex": {
+		tagName: "pie-tool-calculator-cortex",
+		loadModule: loadCortexCalculatorModule,
 	},
 };
 

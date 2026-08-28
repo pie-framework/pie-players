@@ -208,6 +208,7 @@
         "@pie-players/pie-theme": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
+        "@pie-players/pie-tool-calculator-cortex": "workspace:*",
         "@pie-players/pie-tool-calculator-desmos": "workspace:*",
         "@pie-players/pie-tool-calculator-geogebra": "workspace:*",
         "@pie-players/pie-tool-dictionary": "workspace:*",
@@ -267,6 +268,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.10",
         "@happy-dom/global-registrator": "^20.11.6",
+        "@pie-players/pie-calculator-cortex": "workspace:*",
         "@pie-players/pie-calculator-desmos": "workspace:*",
         "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
@@ -274,11 +276,13 @@
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
+        "@pie-players/pie-calculator-cortex": "workspace:*",
         "@pie-players/pie-calculator-desmos": "workspace:*",
         "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
       },
       "optionalPeers": [
+        "@pie-players/pie-calculator-cortex",
         "@pie-players/pie-calculator-desmos",
         "@pie-players/pie-calculator-geogebra",
         "@pie-players/tts-client-server",
@@ -289,6 +293,27 @@
       "version": "0.3.68",
       "devDependencies": {
         "typescript": "^5.9.3",
+      },
+    },
+    "packages/calculator-cortex": {
+      "name": "@pie-players/pie-calculator-cortex",
+      "version": "0.3.68",
+      "dependencies": {
+        "@cortex-js/compute-engine": "0.119.0",
+        "@pie-players/pie-calculator": "workspace:*",
+        "jsxgraph": "1.13.2",
+        "mathlive": "0.110.0",
+      },
+      "devDependencies": {
+        "@axe-core/playwright": "^4.13.0",
+        "@biomejs/biome": "^2.5.10",
+        "@playwright/test": "^1.62.1",
+        "@sveltejs/vite-plugin-svelte": "^7.3.0",
+        "svelte": "^5.56.10",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.2.1",
+        "vite-plugin-dts": "^5.0.3",
       },
     },
     "packages/calculator-desmos": {
@@ -319,8 +344,10 @@
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
+        "@pie-players/pie-tool-calculator-cortex": "workspace:*",
         "@pie-players/pie-tool-calculator-desmos": "workspace:*",
         "@pie-players/pie-tool-calculator-geogebra": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
         "@pie-players/pie-tool-dictionary": "workspace:*",
         "@pie-players/pie-tool-graph": "workspace:*",
         "@pie-players/pie-tool-line-reader": "workspace:*",
@@ -582,6 +609,23 @@
         "vite-plugin-dts": "^5.0.3",
       },
     },
+    "packages/tool-calculator-cortex": {
+      "name": "@pie-players/pie-tool-calculator-cortex",
+      "version": "0.3.68",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
+        "@sveltejs/vite-plugin-svelte": "^7.3.0",
+        "svelte": "^5.56.10",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.2.1",
+        "vite-plugin-dts": "^5.0.3",
+      },
+    },
     "packages/tool-calculator-desmos": {
       "name": "@pie-players/pie-tool-calculator-desmos",
       "version": "0.3.68",
@@ -594,6 +638,7 @@
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.10",
+        "@pie-players/pie-calculator-desmos": "workspace:*",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
@@ -611,7 +656,24 @@
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.10",
-        "@pie-players/pie-calculator-desmos": "workspace:*",
+        "@sveltejs/vite-plugin-svelte": "^7.3.0",
+        "svelte": "^5.56.10",
+        "svelte-check": "^4.7.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.2.1",
+        "vite-plugin-dts": "^5.0.3",
+      },
+    },
+    "packages/tool-calculator-inline-cortex": {
+      "name": "@pie-players/pie-tool-calculator-inline-cortex",
+      "version": "0.3.68",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-calculator-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
@@ -977,6 +1039,8 @@
 
     "@arethetypeswrong/core": ["@arethetypeswrong/core@0.18.5", "", { "dependencies": { "@andrewbranch/untar.js": "^1.0.3", "@loaderkit/resolve": "^1.0.2", "cjs-module-lexer": "^1.2.3", "fflate": "^0.8.3", "lru-cache": "^11.0.1", "semver": "^7.5.4", "typescript": "5.6.1-rc", "validate-npm-package-name": "^5.0.0" } }, "sha512-9ytjzGwxjm9Uz7I9avfbt5vlQt6uk9uRRESzJjqrznl6WKvI6dwYTo+vJ3U02Wrq/mR3iql/PzhvHhKdJIAjDQ=="],
 
+    "@arnog/colors": ["@arnog/colors@0.5.0", "", {}, "sha512-NB7yqrO7qvInsqJdqz6C6mDU+2oiKmbBbk3czMS0E7KkGxLRy538tEHCsB5TKqmaxxXpi6/U120TnGl8NsDePg=="],
+
     "@aws-crypto/crc32": ["@aws-crypto/crc32@5.2.0", "", { "dependencies": { "@aws-crypto/util": "^5.2.0", "@aws-sdk/types": "^3.222.0", "tslib": "^2.6.2" } }, "sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg=="],
 
     "@aws-crypto/crc32c": ["@aws-crypto/crc32c@5.2.0", "", { "dependencies": { "@aws-crypto/util": "^5.2.0", "@aws-sdk/types": "^3.222.0", "tslib": "^2.6.2" } }, "sha512-+iWb8qaHLYKrNvGRbiYRHSdKRWhto5XlZUEBwDjYNf+ly5SVYG6zEoYIdxvf5R3zyeP16w4PLBn3rH1xc74Rag=="],
@@ -1132,6 +1196,8 @@
     "@clack/prompts": ["@clack/prompts@1.7.0", "", { "dependencies": { "@clack/core": "1.4.3", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-y7/yvZ2TPAnR9+jnc00klvNNLkJiXFFrQA/hlLCcxA9a2A4zQIOimyFQ9XfwYKiGD1fb5GY8vbKIIgO8d5Tb2A=="],
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
+
+    "@cortex-js/compute-engine": ["@cortex-js/compute-engine@0.119.0", "", { "dependencies": { "@arnog/colors": "^0.5.0", "complex-esm": "^2.1.1-esm1" }, "bin": { "epsil": "dist/esm-min/cli/epsil.js" } }, "sha512-J9fj/DAOQ9Ibsn8+iuAbxH5Nz0nvHskjORL6/3yBWiAsM2nvoT3qep/RQ4pXSYokVl49EIYX3lkVnw+iY9j+9w=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
@@ -1309,6 +1375,8 @@
 
     "@pie-players/pie-calculator": ["@pie-players/pie-calculator@workspace:packages/calculator"],
 
+    "@pie-players/pie-calculator-cortex": ["@pie-players/pie-calculator-cortex@workspace:packages/calculator-cortex"],
+
     "@pie-players/pie-calculator-desmos": ["@pie-players/pie-calculator-desmos@workspace:packages/calculator-desmos"],
 
     "@pie-players/pie-calculator-geogebra": ["@pie-players/pie-calculator-geogebra@workspace:packages/calculator-geogebra"],
@@ -1347,9 +1415,13 @@
 
     "@pie-players/pie-tool-answer-eliminator": ["@pie-players/pie-tool-answer-eliminator@workspace:packages/tool-answer-eliminator"],
 
+    "@pie-players/pie-tool-calculator-cortex": ["@pie-players/pie-tool-calculator-cortex@workspace:packages/tool-calculator-cortex"],
+
     "@pie-players/pie-tool-calculator-desmos": ["@pie-players/pie-tool-calculator-desmos@workspace:packages/tool-calculator-desmos"],
 
     "@pie-players/pie-tool-calculator-geogebra": ["@pie-players/pie-tool-calculator-geogebra@workspace:packages/tool-calculator-geogebra"],
+
+    "@pie-players/pie-tool-calculator-inline-cortex": ["@pie-players/pie-tool-calculator-inline-cortex@workspace:packages/tool-calculator-inline-cortex"],
 
     "@pie-players/pie-tool-calculator-inline-desmos": ["@pie-players/pie-tool-calculator-inline-desmos@workspace:packages/tool-calculator-inline-desmos"],
 
@@ -1901,6 +1973,8 @@
 
     "compare-versions": ["compare-versions@6.1.1", "", {}, "sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg=="],
 
+    "complex-esm": ["complex-esm@2.1.1-esm1", "", {}, "sha512-IShBEWHILB9s7MnfyevqNGxV0A1cfcSnewL/4uPFiSxkcQL4Mm3FxJ0pXMtCXuWLjYz3lRRyk6OfkeDZcjD6nw=="],
+
     "confbox": ["confbox@0.2.4", "", {}, "sha512-ysOGlgTFbN2/Y6Cg3Iye8YKulHw+R2fNXHrgSmXISQdMnomY6eNDprVdW9R5xBguEqI954+S6709UyiO7B+6OQ=="],
 
     "config-chain": ["config-chain@1.1.13", "", { "dependencies": { "ini": "^1.3.4", "proto-list": "~1.2.1" } }, "sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ=="],
@@ -1938,6 +2012,8 @@
     "de-indent": ["de-indent@1.0.2", "", {}, "sha512-e/1zu3xH5MQryN2zdVaF0OrdNLUbvWxzMbi+iNA6Bky7l1RoP8a2fIbRocyHclXt/arDrrR6lL3TqFD9pMQTsg=="],
 
     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
+
+    "decimal.js": ["decimal.js@10.6.0", "", {}, "sha512-YpgQiITW3JXGntzdUmyUR1V812Hn8T1YVXhCu+wO3OpS4eU9l4YdD3qjyiKdV6mvV29zapkMeD390UVEf2lkUg=="],
 
     "decompress-response": ["decompress-response@6.0.0", "", { "dependencies": { "mimic-response": "^3.1.0" } }, "sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ=="],
 
@@ -2165,6 +2241,8 @@
 
     "jsonfile": ["jsonfile@4.0.0", "", { "optionalDependencies": { "graceful-fs": "^4.1.6" } }, "sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg=="],
 
+    "jsxgraph": ["jsxgraph@1.13.2", "", { "dependencies": { "jsxgraph": "^1.12.0" } }, "sha512-ExK6tjf2pRO1/npGeH1z/eSZTHuy1SFX4NUTKO7vwlqn0gnCe4eAa2VsmddDqZTKwoTxoUd0qcwvmBEz5S+NLA=="],
+
     "jwa": ["jwa@2.0.1", "", { "dependencies": { "buffer-equal-constant-time": "^1.0.1", "ecdsa-sig-formatter": "1.0.11", "safe-buffer": "^5.0.1" } }, "sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg=="],
 
     "jws": ["jws@4.0.1", "", { "dependencies": { "jwa": "^2.0.1", "safe-buffer": "^5.0.1" } }, "sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA=="],
@@ -2264,6 +2342,8 @@
     "marked": ["marked@9.1.6", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-jcByLnIFkd5gSXZmjNvS1TlmRhCXZjIzHYlaGkPlLIekG55JDR2Z4va9tZwCiP+/RDERiNhMOFu01xd6O5ct1Q=="],
 
     "marked-terminal": ["marked-terminal@7.3.0", "", { "dependencies": { "ansi-escapes": "^7.0.0", "ansi-regex": "^6.1.0", "chalk": "^5.4.1", "cli-highlight": "^2.1.11", "cli-table3": "^0.6.5", "node-emoji": "^2.2.0", "supports-hyperlinks": "^3.1.0" }, "peerDependencies": { "marked": ">=1 <16" } }, "sha512-t4rBvPsHc57uE/2nJOLmMbZCQ4tgAccAED3ngXQqW6g+TxA488JzJ+FK3lQkzBQOI1mRV/r/Kq+1ZlJ4D0owQw=="],
+
+    "mathlive": ["mathlive@0.110.0", "", { "dependencies": { "@cortex-js/compute-engine": "0.58.0" } }, "sha512-UOpJsQ6h1eeN0xZULGTl1MwUB/lZLCDuzKeHvKEh7Zra8U/rtgDNrssj5PZdJtBTIV48AfEhtv6rv47AeMOxJA=="],
 
     "mdurl": ["mdurl@2.0.0", "", {}, "sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w=="],
 
@@ -3012,6 +3092,8 @@
     "marked-terminal/ansi-escapes": ["ansi-escapes@7.3.0", "", { "dependencies": { "environment": "^1.0.0" } }, "sha512-BvU8nYgGQBxcmMuEeUEmNTvrMVjJNSH7RgW24vXexN4Ven6qCvy4TntnvlnwnMLTVlcRQQdbRY8NKnaIoeWDNg=="],
 
     "marked-terminal/chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
+
+    "mathlive/@cortex-js/compute-engine": ["@cortex-js/compute-engine@0.58.0", "", { "dependencies": { "@arnog/colors": "^0.5.0", "complex-esm": "^2.1.1-esm1", "decimal.js": "^10.6.0" } }, "sha512-N0+vXjVZfKwJS7ZIGvq41mojI55m5TrdDXveAXzNjzjZ9iNiNrdEzXL2EmrcP+9GCWCwTonrEeZWAIG78f3INg=="],
 
     "mlly/pkg-types": ["pkg-types@1.3.1", "", { "dependencies": { "confbox": "^0.1.8", "mlly": "^1.7.4", "pathe": "^2.0.1" } }, "sha512-/Jm5M4RvtBFVkKWRu2BLUTNP8/M2a+UwuAX+ae4770q1qVGtfjG+WTCupoZixokjmHiry8uI+dlY8KXYV5HVVQ=="],
 

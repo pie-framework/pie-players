@@ -65,10 +65,11 @@ Provider initialization belongs under `provider.init`; runtime-only functions
 such as a credential fetcher belong under `provider.runtime`; per-calculator
 vendor options belong in `settings`. The same shape is used by both suites.
 
-Existing Desmos clients may continue to use the deprecated
-`CalculatorProviderConfig.desmos` option bag and the provider's
-`proxyEndpoint`. New code should use `settings` and `provider.init` or
-`provider.runtime`. A runtime endpoint keeps a key out of static source, but the
+Vendor options go in `settings` for every provider; Desmos's former `desmos`
+option bag is gone. Credentials are provider-level and belong in `provider.init`
+or `provider.runtime` -- `apiKey` and `proxyEndpoint` placed in `settings` never
+reached the vendor and are dropped. `proxyEndpoint` on `initialize()` is the
+canonical production path: it keeps a key out of static source, though the
 browser still receives it in Desmos's calculator script URL.
 
 ## Direct adapters

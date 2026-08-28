@@ -173,7 +173,12 @@ const validateRuntimeImportClosure = (dir, pkg) => {
 			const packageName = toPackageName(specifier);
 			if (packageName === pkg.name) continue;
 			if (declaredRuntimePackages.has(packageName)) continue;
-			if (allowedUndeclaredImports.has(packageName)) continue;
+			if (
+				allowedUndeclaredImports.has(specifier) ||
+				allowedUndeclaredImports.has(packageName)
+			) {
+				continue;
+			}
 			failures.push(
 				`${path.relative(ROOT, jsFile)} imports "${specifier}" but "${packageName}" is not declared in dependencies/peerDependencies/optionalDependencies`,
 			);

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { CalculatorType } from "@pie-players/pie-calculator";
 import {
 	DesmosCalculatorProvider,
-	type DesmosCalculatorConfig,
 	type DesmosCalculatorProviderConfig,
+	type DesmosCalculatorSettings,
 } from "../src/index.js";
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -60,15 +60,28 @@ function installScriptLoadingBrowser(): {
 interface CapturedConstructorCall {
 	type: CalculatorType;
 	container: HTMLElement;
-	config: DesmosCalculatorConfig;
+	config: DesmosCalculatorSettings;
+	destroyed: boolean;
 }
 
 function installDesmosStub(): CapturedConstructorCall[] {
 	const calls: CapturedConstructorCall[] = [];
-	const capture = (type: CalculatorType) =>
-		(container: HTMLElement, config: DesmosCalculatorConfig) => {
-			calls.push({ type, container, config });
-			return { destroy: () => {}, setBlank: () => {} };
+	const capture =
+		(type: CalculatorType) =>
+		(container: HTMLElement, config: DesmosCalculatorSettings) => {
+			const call: CapturedConstructorCall = {
+				type,
+				container,
+				config,
+				destroyed: false,
+			};
+			calls.push(call);
+			return {
+				destroy: () => {
+					call.destroyed = true;
+				},
+				setBlank: () => {},
+			};
 		};
 
 	setGlobal("window", {
@@ -148,11 +161,7 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 		const container = {} as HTMLElement;
 		const config: DesmosCalculatorProviderConfig = {
 			theme: "light",
-			desmos: {
-				degreeMode: false,
-				settingsMenu: true,
-			},
-			settings: { degreeMode: true },
+			settings: { degreeMode: true, settingsMenu: true },
 		};
 
 		for (const type of ["basic", "scientific", "graphing"] as const) {
@@ -180,11 +189,10 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 
 		await provider.createCalculator("graphing", {} as HTMLElement, {
 			restrictedMode: true,
-			desmos: {
+			settings: {
 				expressionsTopbar: true,
 				settingsMenu: true,
 				zoomButtons: true,
-				expressions: true,
 				links: true,
 			},
 		});
@@ -193,9 +201,38 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 			expressionsTopbar: false,
 			settingsMenu: false,
 			zoomButtons: false,
-			expressions: false,
 			links: false,
 		});
+	});
+
+	test("restricted mode leaves a graphing calculator something to plot with", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+
+		await provider.createCalculator("graphing", {} as HTMLElement, {
+			restrictedMode: true,
+		});
+
+		/*
+		 * The expression list is a graphing calculator's only input. Suppressing it
+		 * left graph paper with no way to enter a function — and no way for a host to
+		 * get it back, since restricted mode lands after `settings`.
+		 */
+		expect(calls[0]?.config).not.toHaveProperty("expressions");
+	});
+
+	test("a host can still hide the expression list on purpose", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+
+		await provider.createCalculator("graphing", {} as HTMLElement, {
+			restrictedMode: true,
+			settings: { expressions: false },
+		});
+
+		expect(calls[0]?.config.expressions).toBe(false);
 	});
 
 	test("never passes provider credentials as constructor options", async () => {
@@ -204,10 +241,6 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 		await provider.initialize();
 
 		await provider.createCalculator("graphing", {} as HTMLElement, {
-			desmos: {
-				apiKey: "legacy-instance-key",
-				proxyEndpoint: "/legacy-runtime-key",
-			},
 			settings: {
 				apiKey: "settings-instance-key",
 				proxyEndpoint: "/settings-runtime-key",
@@ -216,5 +249,70 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 
 		expect(calls[0]?.config).not.toHaveProperty("apiKey");
 		expect(calls[0]?.config).not.toHaveProperty("proxyEndpoint");
+	});
+});
+
+function mountedContainer(): HTMLElement {
+	let cleared = 0;
+	return {
+		replaceChildren: () => {
+			cleared += 1;
+		},
+		get clearedCount() {
+			return cleared;
+		},
+	} as unknown as HTMLElement;
+}
+
+describe("DesmosCalculatorProvider teardown", () => {
+	test("destroys every calculator it handed out", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+		const containers = [mountedContainer(), mountedContainer()];
+		await provider.createCalculator("graphing", containers[0] as HTMLElement);
+		await provider.createCalculator("scientific", containers[1] as HTMLElement);
+
+		// A host's one call to release the provider. Without instance tracking both
+		// calculators stayed mounted with their vendor instances running.
+		provider.destroy();
+		expect(calls.map((call) => call.destroyed)).toEqual([true, true]);
+		for (const container of containers) {
+			expect(
+				(container as unknown as { clearedCount: number }).clearedCount,
+			).toBe(1);
+		}
+	});
+
+	test("destroys a calculator once, however many times it is asked", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+		const container = mountedContainer();
+		const calculator = await provider.createCalculator(
+			"basic",
+			container as HTMLElement,
+		);
+
+		calculator.destroy();
+		calculator.destroy();
+		provider.destroy();
+		expect(calls).toHaveLength(1);
+		expect(
+			(container as unknown as { clearedCount: number }).clearedCount,
+		).toBe(1);
+	});
+
+	test("does not reach a calculator that already destroyed itself", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+		const calculator = await provider.createCalculator(
+			"graphing",
+			mountedContainer(),
+		);
+		calculator.destroy();
+		expect(() => provider.destroy()).not.toThrow();
+		expect(calls[0]?.destroyed).toBe(true);
 	});
 });

@@ -1,6 +1,5 @@
 <svelte:options
 	customElement={{
-		tag: 'pie-tool-calculator',
 		shadow: 'none',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
@@ -14,13 +13,18 @@
 	}}
 />
 
+<script module lang="ts">
+	/** Registration metadata consumed by the package's guarded CE entry. */
+	export const registration = { tag: 'pie-tool-calculator' } as const;
+</script>
+
 <script lang="ts">
 	import type { AssessmentToolkitRuntimeContext } from '@pie-players/pie-assessment-toolkit';
 	import type {
 		CalculatorProviderConfig,
 		CalculatorType,
 	} from '@pie-players/pie-assessment-toolkit/tools/client';
-	import { CalculatorTool } from '@pie-players/pie-tool-calculator-shared';
+	import CalculatorTool from './CalculatorTool.svelte';
 
 	let {
 		visible = false,

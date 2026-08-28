@@ -70,6 +70,8 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-calculator-button-size",
 	"--pie-calculator-button-size-lg",
 	"--pie-calculator-button-size-sm",
+	"--pie-calculator-surface",
+	"--pie-calculator-surface-raised",
 	"--pie-elements-ng-root",
 	"--pie-font-family",
 	"--pie-header-text",

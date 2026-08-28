@@ -193,7 +193,6 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 				expressionsTopbar: true,
 				settingsMenu: true,
 				zoomButtons: true,
-				expressions: true,
 				links: true,
 			},
 		});
@@ -202,9 +201,38 @@ describe("DesmosCalculatorProvider instance configuration", () => {
 			expressionsTopbar: false,
 			settingsMenu: false,
 			zoomButtons: false,
-			expressions: false,
 			links: false,
 		});
+	});
+
+	test("restricted mode leaves a graphing calculator something to plot with", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+
+		await provider.createCalculator("graphing", {} as HTMLElement, {
+			restrictedMode: true,
+		});
+
+		/*
+		 * The expression list is a graphing calculator's only input. Suppressing it
+		 * left graph paper with no way to enter a function — and no way for a host to
+		 * get it back, since restricted mode lands after `settings`.
+		 */
+		expect(calls[0]?.config).not.toHaveProperty("expressions");
+	});
+
+	test("a host can still hide the expression list on purpose", async () => {
+		const calls = installDesmosStub();
+		const provider = new DesmosCalculatorProvider();
+		await provider.initialize();
+
+		await provider.createCalculator("graphing", {} as HTMLElement, {
+			restrictedMode: true,
+			settings: { expressions: false },
+		});
+
+		expect(calls[0]?.config.expressions).toBe(false);
 	});
 
 	test("never passes provider credentials as constructor options", async () => {

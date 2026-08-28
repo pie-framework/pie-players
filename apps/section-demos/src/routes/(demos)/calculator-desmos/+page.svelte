@@ -15,22 +15,20 @@
 	 * unconfigured Desmos default, which is the path a host that configures nothing
 	 * is on.
 	 *
-	 * `restrictedMode` is deliberately not set. The Desmos adapter maps it to
-	 * `expressions: false` for every type, which on a graphing calculator removes the
-	 * expression list — graph paper with no way to enter a function. The fields below
-	 * are the same lockdown expressed in Desmos' own terms, and they leave the
-	 * calculator usable.
+	 * `restrictedMode` is the vendor-neutral half and is monotonic: it suppresses the
+	 * expression topbar, settings menu, zoom buttons and links, and `settings` cannot
+	 * relax it. The Desmos-specific fields below go further than it does.
 	 */
 	const calculatorConfig = {
+		restrictedMode: true,
 		settings: {
 			degreeMode: 'radian',
 			// Desmos' own function allowlist, the counterpart to Cortex's
 			// `allowedFunctions`: it refuses what Desmos classes as unrestricted rather
 			// than hiding keys from a keypad it does not gate.
 			restrictedFunctions: true,
-			// Chrome a learner has no use for mid-item, and which routes out of the tool.
-			settingsMenu: false,
-			links: false,
+			// Chrome `restrictedMode` does not reach, and which a learner has no use for
+			// mid-item.
 			notes: false,
 			folders: false,
 			images: false,

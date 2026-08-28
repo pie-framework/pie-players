@@ -93,7 +93,8 @@ export const demoDesmosCalculatorSection: AssessmentSection = {
               the generic calculator contract — a host that switches providers
               changes that block and nothing else. Alongside it,
               <code>restrictedMode</code> is the one lockdown field every provider
-              reads; the open-source suite demo sets it.
+              reads, and it is monotonic — <code>settings</code> cannot relax what it
+              turns off.
             </p>
             <p>
               <code>runtime.authFetcher</code> is where the API key comes from: the

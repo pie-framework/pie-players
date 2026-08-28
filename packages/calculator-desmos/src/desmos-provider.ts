@@ -348,13 +348,26 @@ class DesmosCalculator implements Calculator {
 		};
 		stripCredentialKeys(desmosConfig);
 
-		// Apply restricted mode if specified
+		/*
+		 * Restricted mode is monotonic: it lands after the host's own `settings` and a
+		 * host cannot relax it, which is the same contract the Cortex adapter states
+		 * for its own flag. It suppresses chrome a learner has no use for mid-item and
+		 * routes out of the tool.
+		 *
+		 * `expressions: false` is deliberately not among them. It removes the whole
+		 * expression list, which on a `GraphingCalculator` is the only way to enter a
+		 * function, so a restricted graphing calculator was graph paper with nothing to
+		 * plot on it — the call this package's own README documents. Basic and
+		 * scientific never noticed: `expressions` is a graphing option their
+		 * constructors ignore. A host that does want the list gone passes
+		 * `settings: { expressions: false }` and sets the flags below itself, since
+		 * those are honoured whenever `restrictedMode` is not what overrides them.
+		 */
 		if (config?.restrictedMode) {
 			Object.assign(desmosConfig, {
 				expressionsTopbar: false,
 				settingsMenu: false,
 				zoomButtons: false,
-				expressions: false,
 				links: false,
 			});
 		}

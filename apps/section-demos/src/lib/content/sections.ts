@@ -753,7 +753,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Names `calculator-desmos` explicitly, which is what `DEFAULT_CALCULATOR_PROVIDER_ID` resolves to for a host that configures no provider at all.",
 			"Supplies the API key through `provider.runtime.authFetcher`, fetched by the host at open time rather than carried in item content.",
 			"Configures Desmos' own settings under the vendor-neutral `settings` field, whose type ships from `@pie-players/pie-calculator-desmos` rather than from the generic calculator contract.",
-			"Locks down through Desmos' own `restrictedFunctions` and chrome flags rather than the vendor-neutral `restrictedMode`, which this adapter maps to `expressions: false` for every type and would leave a graphing calculator with no expression list.",
+			"Sets the vendor-neutral `restrictedMode` and goes further with Desmos' own `restrictedFunctions` and chrome flags, which the neutral field does not reach.",
 			"Exercises basic, scientific, and graphing requests on separate assessment items through the same toolkit context resolver.",
 			"Opens each type at the panel size its layout measures -- 720x660 for graphing, 380 wide for the others -- and scrolls rather than clipping when a learner resizes below it.",
 		],

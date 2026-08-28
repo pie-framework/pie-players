@@ -151,6 +151,13 @@ const calculator = await provider.createCalculator("graphing", container, {
 });
 ```
 
+`restrictedMode` is monotonic: it suppresses the expression topbar, the settings
+menu, the zoom buttons and links, it lands after `settings`, and a host cannot
+relax it. It deliberately leaves the expression list alone — that list is a
+`GraphingCalculator`'s only input, and hiding it left graph paper with nothing to
+plot on. A host that wants it gone passes `settings: { expressions: false }` and
+sets the rest itself.
+
 Assessment restrictions and the Desmos API tier are separate concerns. A
 restricted calculator still requires a key licensed for the application.
 

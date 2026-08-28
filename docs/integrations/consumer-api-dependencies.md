@@ -21,6 +21,13 @@ against `origin/develop` at `@pie-players` 0.3.68. Host V and Host A rows carry
 **2026-08-16**, scoped to the i18n surfaces described below, and their earlier
 verification before that.
 
+The **theme-token rows carry 2026-08-28** for all three hosts, re-derived from
+each checkout when the light Base Theme's `--pie-background` became opaque. That
+sweep covered the `--pie-*` surface only — which names each host declares, which
+it reads, and which resolve here — so every other row keeps the date above. It
+found the Host A token set one entry shorter than recorded and no new name in any
+host.
+
 The Host R refresh replaced rows that had passed from unverified to wrong. Its
 theme fork is gone: it declares no `--pie-*` value, imports `tokens.css`, and
 drives one document-scoped `<pie-theme>` whose resolver supplies every scheme
@@ -708,10 +715,21 @@ splitpane element, several with `!important`:
 `--pie-button-bg`, `--pie-button-background-color`, `--pie-button-color`,
 `--pie-button-border`, `--pie-border`.
 
-All of the above resolve to real tokens in this repo. Two do not and are inert
-on the host side: `--pie-tts-word-color` and `--pie-tts-word-hightlight` (a
-typo the host keeps "for compatibility"). Renaming or dropping any of the live
-ones changes that delivery's appearance with no build signal.
+All thirteen resolve to real tokens in this repo, and thirteen is now the whole
+set: the two inert names this pad recorded, `--pie-tts-word-color` and the
+`--pie-tts-word-hightlight` typo, are gone from that host. Renaming or dropping
+any of the thirteen changes that delivery's appearance with no build signal.
+
+Three of them — `--pie-background`, `--pie-button-bg`,
+`--pie-button-background-color` — sit on the splitpane element in one rule that
+host wrote to restyle the TTS and calculator triggers. The shared inline
+calculator trigger no longer reads `--pie-background`: its resting fill resolves
+`--pie-button-background-color` then `--pie-button-bg` then `--pie-white`, and
+its hover fill `--pie-button-hover-background-color` then `--pie-button-hover-bg`
+then `--pie-secondary-background`. That host sets both button names in the same
+rule, so its rendered trigger is unchanged and its `--pie-background` declaration
+is now redundant for this control. A host that styled the trigger through
+`--pie-background` alone loses that lever and sets `--pie-button-bg` instead.
 
 Host A also relies on being able to *win* against player styles at equal
 specificity from outside, including with `!important`. Moving any of these
@@ -725,9 +743,19 @@ That is the intent — the literals were unreachable — but it is a rendering
 change without a build signal, the same class of surface as the rest of this
 section.
 
-Host R takes the opposite approach: it sets no `@pie-players` token value
-anywhere, and instead reads the token registry and inspects computed values at
-runtime. It depends on token *names and metadata* staying addressable rather than
+Host V sets exactly one, and this pad had not recorded it:
+`--pie-passage-header-background`, passed as a one-entry JSON object through the
+`variables` attribute on a `<pie-theme theme="light" scope="self">` that wraps
+its item player. It is always present — the host's own prop only chooses between
+a pale tint and white — so that header never falls back to the canonical surface
+tokens there. The token is `component-public` and `optional` for schemes here, so
+its own bridge to `--pie-section-player-card-header-background` is the surface to
+hold still. Renaming it changes that delivery's passage headers with no build
+signal, and dropping the `variables` pass-through on `pie-theme` removes the only
+way that host themes anything.
+
+Host R takes a third approach: it sets no `@pie-players` token value anywhere,
+and instead reads the token registry and inspects computed values at runtime. It depends on token *names and metadata* staying addressable rather than
 on any particular value. (Three `--pie-*`-shaped declarations do survive in it,
 against a legacy selector and matching no token this repository defines; see the
 consumer-side defects below.)
@@ -753,12 +781,15 @@ host's own palette slots, so an active scheme owns the host's chrome and not onl
 the item pane. All eleven exist here and all ten built-in schemes set every one
 of them. This inverts the usual direction of exposure: the token *values* are
 what that host consumes, and a change to any of the eleven repaints an entire
-host UI rather than a player region. The gate on the attribute was load-bearing for the host while the base light
-theme shipped `--pie-background` as `rgba(255,255,255,0)`, since aliasing a host
-background slot to a transparent value stripped the chrome of a background on
-every unschemed page. PIE-940 made that value opaque white, so the gate now only
-scopes the aliasing to a resolved scheme. The host's gate is still correct and
-needs no change.
+host UI rather than a player region.
+
+The gate on the attribute no longer carries the weight it did. It was
+load-bearing while the light Base Theme published `--pie-background` as
+`rgba(255,255,255,0)`, because aliasing a host background slot to a transparent
+value stripped the chrome of a background on every unschemed page; that value is
+opaque white now, so the gate only scopes the aliasing to a resolved scheme. The
+host's gate stays correct and needs no change, and the comment in that host
+explaining the gate by the transparency is stale.
 
 The runtime inspector adds two further dependencies. From `token-registry.json`
 it reads six of the nine entry fields — `name`, `owner`, `scope`, `status`,
@@ -772,6 +803,14 @@ pin names: `--pie-text`, `--pie-background`, `--pie-secondary-background`,
 `--pie-button-bg`, `--pie-button-hover-color`, `--pie-button-hover-bg`,
 `--pie-button-border`, `--pie-button-focus-outline`, and the four
 `--pie-section-player-tab-*` tokens. Renaming one drops a contrast row silently.
+
+That inspector also composites a translucent token against the page backdrop
+before measuring, a path it took specifically because `--pie-background` was
+translucent. Every base theme and every scheme now publishes it opaque, so the
+compositing path stays correct and stops being reached for that token, and the
+rows pairing against it report a measured ratio where they previously reported an
+unmeasurable one. Its own comment naming `--pie-background` as the reason for the
+backdrop is stale.
 
 ## Direct `dist` path references
 
@@ -898,7 +937,11 @@ change it and fix Host R in the same push.
 - Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`, or
   `pie-section-player-passage-card`, or moving a card out from under the
   splitpane element
-- Renaming or dropping any `--pie-*` token listed above
+- Renaming or dropping any `--pie-*` token listed above, including
+  `--pie-passage-header-background` and its bridge to
+  `--pie-section-player-card-header-background`
+- Dropping the `variables` attribute on `pie-theme`, which is Host V's only
+  theming lever
 - Renaming any of the three `pie-theme/dist/*.css` files Host A lists by
   literal path
 - Changing `bubbles` / `composed` defaults on cross-boundary events

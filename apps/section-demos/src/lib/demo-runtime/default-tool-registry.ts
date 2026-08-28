@@ -8,13 +8,26 @@ export function createSectionDemoToolRegistry(): ToolRegistry {
 	return createSectionDemoToolRegistryForCalculator();
 }
 
+export type SectionDemoCalculatorProvider = "desmos" | "geogebra" | "cortex";
+
+const CALCULATOR_PROVIDER_IDS: Record<
+	SectionDemoCalculatorProvider,
+	string | undefined
+> = {
+	// Undefined rather than `calculator-desmos`: passing nothing is what exercises
+	// `DEFAULT_CALCULATOR_PROVIDER_ID`, which is the path most hosts are on.
+	desmos: undefined,
+	geogebra: "calculator-geogebra",
+	cortex: "calculator-cortex",
+};
+
 export function createSectionDemoToolRegistryForCalculator(
-	calculatorProvider: "desmos" | "geogebra" = "desmos",
+	calculatorProvider: SectionDemoCalculatorProvider = "desmos",
 ): ToolRegistry {
-	const calculatorProviderConfig =
-		calculatorProvider === "geogebra"
-			? { provider: { id: "calculator-geogebra" } }
-			: undefined;
+	const providerId = CALCULATOR_PROVIDER_IDS[calculatorProvider];
+	const calculatorProviderConfig = providerId
+		? { provider: { id: providerId } }
+		: undefined;
 	return createPackagedToolRegistry({
 		calculatorProviderConfig,
 		toolModuleLoaders: createDefaultToolModuleLoaders({

@@ -208,6 +208,7 @@
         "@pie-players/pie-theme": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
+        "@pie-players/pie-tool-calculator-cortex": "workspace:*",
         "@pie-players/pie-tool-calculator-desmos": "workspace:*",
         "@pie-players/pie-tool-calculator-geogebra": "workspace:*",
         "@pie-players/pie-tool-dictionary": "workspace:*",

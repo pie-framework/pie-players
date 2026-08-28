@@ -115,18 +115,44 @@ body[data-mode="graphing"] .pie-cortex-demo-calculator {
 }
 
 /*
- * The shipped tool panel, minus the shell's 48px header — the box the calculator
- * actually gets. See `default-tool-loaders/src/registrations/calculator.ts`.
+ * The shipped tool panel, minus the shell's ~73px header — the box the calculator
+ * actually gets, per type. See `default-tool-loaders/src/registrations/calculator.ts`
+ * for the panel sizes these are derived from; measured against the running app, not
+ * assumed. `--floor` is the same box at the panel's resizable minimum, which is the
+ * smallest size a learner can reach without shrinking the viewport itself.
+ *
+ * They were one size for all three types, and 40px larger than any of them, which is
+ * why the panel-fit test passed while the shipped graphing panel clipped its plot.
  */
-.pie-cortex-demo-calculator--shell {
-	width: 380px;
-	height: 512px;
+.pie-cortex-demo-calculator--shell,
+.pie-cortex-demo-calculator--floor {
 	max-width: none;
+}
+
+body[data-mode="basic"] .pie-cortex-demo-calculator--shell {
+	width: 380px;
+	height: 427px;
+}
+
+body[data-mode="scientific"] .pie-cortex-demo-calculator--shell {
+	width: 380px;
+	height: 487px;
 }
 
 body[data-mode="graphing"] .pie-cortex-demo-calculator--shell {
 	width: 720px;
-	height: 572px;
+	height: 587px;
+}
+
+body[data-mode="basic"] .pie-cortex-demo-calculator--floor,
+body[data-mode="scientific"] .pie-cortex-demo-calculator--floor {
+	width: 380px;
+	height: 407px;
+}
+
+body[data-mode="graphing"] .pie-cortex-demo-calculator--floor {
+	width: 700px;
+	height: 487px;
 }
 
 @media (max-width: 30rem) {

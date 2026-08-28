@@ -38,9 +38,10 @@ assessment player, toolkit coordinator, or tool wrapper.
 The demo controls switch interface language, theme, and text direction by
 destroying and recreating only that calculator instance. **Panel size** does not
 recreate anything — it resizes the container to the box the tool shell actually
-gives the calculator, which is what the layout responds to. Check every change at
-that size: the package's size-dependent rules are container queries, so a fluid
-demo at 1280px never reaches the branch that ships.
+gives the calculator. Check every change at both sizes it offers: *Shipped tool
+panel* is what the panel opens at for that type, *Panel minimum* is its configured
+resize floor, and the package's size-dependent rules are container queries on width
+and density tiers on height, so a fluid demo at 1280px reaches neither.
 
 ## Localization
 
@@ -100,11 +101,11 @@ delivered.
 Keys are gated on `settings.allowedFunctions`, so a host that narrows the set gets a
 keypad that cannot offer a key the validator would reject. Basic omits the constants
 outright, matching `validateSymbol`. Scientific and graphing put their function keys
-on a second layer rather than in extra rows: keys hold 44px from a `min-height` and
-never shrink, so a row costs 50px of panel height, and eight rows in one layer puts
-the keypad past the panel's 480px floor. Four rows is the budget; the graphing layer
-spends five because it carries the graph keys too. The e2e suite switches to every
-layer and measures it against the shipped panel.
+on a second layer rather than in extra rows: a row costs about 50px of panel height
+at every size that ships, and eight rows in one layer puts the keypad past the
+panel's 480px floor. Four rows is the budget; the graphing layer spends five because
+it carries the graph keys too. The e2e suite switches to every layer and measures it
+at both the size the panel opens at and its resize floor.
 
 The commit key is on every layer, in the same corner. On the numeric layer alone it
 was unreachable from the function keys — Enter still committed, but a pointer or
@@ -122,6 +123,44 @@ both catalogs — `as const satisfies CortexCalculatorMessages` makes that a
 compile-time obligation. Where a key's visible label is a word, its accessible name
 must contain that word (WCAG 2.5.3, and what voice control speaks): `keySine` is
 `"sin, sine"`, not `"sine of"`.
+
+## Fitting the panel
+
+The panel is two surfaces with no card between them: a screen and a console, each
+running to its edges. The screen holds the tape, the live expression and the answer,
+with the angle mode pinned above its scroller so history passes behind it; the
+console is the keypad's recessed plane, carrying the layer tabs and the backspace and
+clear icons above the grid. Nothing sits on bare card, and the type's name is not drawn — the
+tool shell's header already carries it, and a second copy cost 46px of a 500px panel.
+It stays as visually-hidden text for the document outline. `--cortex-tape-inset` and
+the keypad's inline padding are one value, so the mathfield's text and the first key
+column share a left edge.
+
+A tool panel is resizable, so the height available is a runtime fact and every fixed
+size in the tool answers to it. `CalculatorView.svelte` measures its own box with a
+`ResizeObserver` and stamps `data-pie-density` — `comfortable` at 400px of content
+and up, `compact` to 320, `tight` below — and the metrics live as tokens that each
+tier re-declares in one place: key and control target sizes, the display's floor,
+the result's type size and the board's floor. A `ResizeObserver` rather than a
+`container-type: size` query, which carries `contain: layout` and would make the
+calculator the containing block for every fixed-position descendant, MathLive's
+popovers among them.
+
+Keys hold the 44px of WCAG 2.5.5 at every size a panel opens at, which is what the
+tiers are measured against: basic needs 398px of content and scientific 385px, and
+both open at more. Below that, keys give up height before the keypad gives up rows —
+a row scrolled out of the panel costs a pointer or switch-access learner the key
+entirely — and the smallest tier is 28px, clear of 2.5.8's 24px floor at Level AA.
+
+Nothing is ever clipped. The calculator root scrolls its own content as the floor
+case; it cannot be left to the tool shell, because the wrapper pins the calculator to
+`height: 100% !important` inside an `overflow: hidden` box, so the shell's
+`overflow-y: auto` never sees anything to scroll. Above that floor the graphing view
+places the pressure deliberately: stacked, the two panels hold their content and the
+calculator takes one scroll; side by side they scroll in their own columns instead,
+so a readout does not push the plot off the panel. Flex shrinking is what makes this
+load-bearing — an item shrunk below its content paints outside its box rather than
+clipping, which is how keypad rows were drawn over the graph controls.
 
 ## Theming
 

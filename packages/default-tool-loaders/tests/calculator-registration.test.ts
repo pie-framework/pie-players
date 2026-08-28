@@ -204,6 +204,66 @@ describe("calculator tool registration", () => {
 		expect(element?.getAttribute("provider-id")).toBe("calculator-desmos");
 	});
 
+	test("declares a panel size per calculator type, and one before the type resolves", () => {
+		/*
+		 * The sizes, and the fact that they differ, because the toolbar builds a shell
+		 * from the first render and `getToolRenderParams` is empty until the resolved
+		 * tool context arrives. Every graphing calculator therefore opened at the
+		 * untyped size until the shell learned to adopt a declared size that changed —
+		 * a 380px panel for a layout that needs 700, with the plot column clipped.
+		 * These assertions are the precondition that made that bug possible, so a
+		 * change to either half has to face the other.
+		 */
+		const context = {
+			level: "item",
+			assessment: {},
+			itemRef: { id: "i1" },
+			item: { id: "i1", config: {} },
+		} as ToolContext;
+		const shellFor = (params: Record<string, unknown>) => {
+			const toolbarContext = {
+				scope: { level: "item", scopeId: "i1" },
+				i18n: resolveInterfaceI18n(null),
+				toolCoordinator: null,
+				toolkitCoordinator: null,
+				toggleTool: () => {},
+				isToolVisible: () => false,
+				subscribeVisibility: null,
+				getToolRenderParams: () => params,
+				componentOverrides: { toolTagMap: PACKAGED_TOOL_TAG_MAP },
+			} as unknown as ToolbarContext;
+			const result = withFakeDocument(() =>
+				calculatorToolRegistration.renderToolbar(context, toolbarContext),
+			);
+			return result.elements?.[0]?.shell;
+		};
+
+		const untyped = shellFor({});
+		const basic = shellFor({ calculatorType: "basic" });
+		const scientific = shellFor({ calculatorType: "scientific" });
+		const graphing = shellFor({ calculatorType: "graphing" });
+
+		expect([untyped?.initialWidth, untyped?.initialHeight]).toEqual([380, 560]);
+		expect([basic?.initialWidth, basic?.initialHeight]).toEqual([380, 500]);
+		expect([scientific?.initialWidth, scientific?.initialHeight]).toEqual([
+			380, 560,
+		]);
+		expect([graphing?.initialWidth, graphing?.initialHeight]).toEqual([720, 660]);
+
+		// What the toolbar has to notice: the shell it built before the type resolved
+		// is not the shell this type asks for.
+		expect(graphing?.initialWidth).not.toBe(untyped?.initialWidth);
+
+		/*
+		 * A graphing panel does not offer a size its two-column layout cannot hold.
+		 * The calculator switches to a stacked layout below 42rem, and stacked it
+		 * measures 701px of content against the 486px a 560px panel gives it — no
+		 * spacing tier closes a gap that size, so the minimum stays above the switch.
+		 */
+		expect(graphing?.minWidth).toBeGreaterThanOrEqual(672);
+		expect(graphing?.minHeight).toBeGreaterThan(basic?.minHeight ?? 0);
+	});
+
 	test("forwards provider-neutral and implementation settings to the surface", () => {
 		const context = {
 			level: "item",

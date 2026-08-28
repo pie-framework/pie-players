@@ -1490,6 +1490,25 @@ test.describe("section player demo tts-ssml", () => {
 		expect(ttsRuntimeSnapshot.toolConfig).toBeTruthy();
 		expect(ttsRuntimeSnapshot.serviceConfig).toBeTruthy();
 
+		/*
+		 * The session panel comes down first. The calculator shell opens bottom-left,
+		 * over the passage column — deliberately, because bottom-right sat on a
+		 * sibling item's own toolbar row and blocked its button — and this demo parks
+		 * its session debugger in that same column, where its drag header covers the
+		 * shell's close button. A debug panel over a learner tool is a demo artefact,
+		 * not a product state; `openSessionPanel` brings it back for the assertions
+		 * further down, which is why the helper tolerates either state.
+		 */
+		const sessionDebugger = page.locator(
+			"pie-section-player-tools-session-debugger",
+		);
+		await sessionDebugger
+			.getByRole("button", { name: "Close panel" })
+			.click();
+		await expect(
+			sessionDebugger.getByRole("heading", { name: "Session Data" }),
+		).toBeHidden();
+
 		// Calculator is available in items, not in passage.
 		await expect(
 			passageRegion.getByRole("button", { name: /calculator/i }),

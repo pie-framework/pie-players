@@ -169,9 +169,14 @@
 		font-size: 1.375rem;
 	}
 
+	/*
+	 * Inset. The field spans the screen's full width, so a ring offset outward drew a
+	 * box around the whole panel rather than around a control; inside its own border
+	 * the same 3px reads as the field being live.
+	 */
 	:global(.pie-cortex-mathfield:focus-within) {
 		outline: 3px solid var(--pie-button-focus-outline, var(--cortex-focus-outline));
-		outline-offset: 2px;
+		outline-offset: -3px;
 	}
 
 	/*

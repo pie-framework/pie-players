@@ -81,15 +81,24 @@ async function mountCalculator(): Promise<void> {
 }
 
 /*
- * The shipped tool panel is 380x372 for every calculator type. Sizing the demo
- * container to it is what makes the demo exercise the layout that actually ships:
- * the package's rules are container queries, and a fluid 1280px demo would never
- * reach the narrow branch.
+ * Sizing the demo container to the box the tool panel actually gives this
+ * calculator is what makes the demo exercise the layout that ships: the package's
+ * width rules are container queries and its height rules are density tiers measured
+ * from the element's own box, so a fluid 1280px demo reaches neither.
+ *
+ * Three sizes, because the panel is resizable: `shell` is what it opens at and
+ * `floor` is its configured minimum, which is where the compact density tier and
+ * the graphing view's in-column scrolling first appear. The per-type boxes are in
+ * `styles.css`.
  */
 function applyPanelSize(): void {
 	container.classList.toggle(
 		"pie-cortex-demo-calculator--shell",
 		panelControl.value === "shell",
+	);
+	container.classList.toggle(
+		"pie-cortex-demo-calculator--floor",
+		panelControl.value === "floor",
 	);
 	calculator?.resize?.();
 }

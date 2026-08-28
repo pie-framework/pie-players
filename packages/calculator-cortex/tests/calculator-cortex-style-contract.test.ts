@@ -70,7 +70,13 @@ describe("host theming reaches the calculator", () => {
 				(name) =>
 					// Spacing, radii and the tape inset are geometry, not palette: there is
 					// no canonical PIE token for them and no accommodation rides on them.
-					!/^--cortex-(space|radius|tape)-/.test(name ?? ""),
+					!/^--cortex-(space|radius|tape)-/.test(name ?? "") &&
+					// The density tiers' metrics, for the same reason. A target size and a
+					// type size are this package's own decision about fitting the panel it
+					// was given -- PIE publishes no token for either, and the one that
+					// would ride on an accommodation, `--pie-font-scale`, is deliberately
+					// not consumed here (see the README's theming section).
+					!/(-min-height|-font-size)$/.test(name ?? ""),
 			);
 		expect(offenders).toEqual([]);
 	});

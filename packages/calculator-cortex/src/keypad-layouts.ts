@@ -468,16 +468,18 @@ function withCommit(
  * The layers for one calculator, already filtered to what the host permits.
  *
  * Scientific stacks its functions in a *second layer* rather than extra rows. The
- * shipped panel is 380x560 for basic and scientific and 720x620 for graphing, with
- * a 480px floor (see `registrations/calculator.ts`). Keys never shrink: the 2.75rem
- * `min-height` in `Keypad.svelte` is what holds the 44px of WCAG 2.5.5, not the row
- * count, so a row costs 50px of panel height rather than target size and the
- * panel's content box scrolls once the rows outgrow it. Eight rows in one layer
- * would put the keypad 250px past the floor, which is a scroll to reach `sin`.
+ * shipped panels are 380x500 basic, 380x560 scientific and 720x660 graphing, with a
+ * 480px floor for the first two (see `registrations/calculator.ts`). Row count is a
+ * layout budget rather than a target-size one: keys hold 44px from a token whose
+ * value the density tiers in `CalculatorView.svelte` step down only in a panel too
+ * short for it, so an extra row costs panel height at every size that ships. Eight
+ * rows in one layer would put the keypad 250px past the floor, which is a scroll to
+ * reach `sin`.
  *
  * Four rows is the budget; the graphing layer spends five because it carries the
- * five graph keys as well. Both fit the shipped panel with no scroll in either
- * axis, and the e2e suite measures every layer rather than the one that opens.
+ * five graph keys as well. Both fit the shipped panels with no scroll in either
+ * axis, and the e2e suite measures every layer at both the size the panel opens at
+ * and its resizable minimum.
  */
 export function keypadLayers(
 	settings: ResolvedCortexSettings,

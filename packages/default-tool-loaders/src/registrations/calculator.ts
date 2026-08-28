@@ -337,23 +337,48 @@ export const calculatorToolRegistration: ToolRegistration = {
 						resizable: true,
 						closeable: true,
 						/*
-						 * Sized to hold a display and a keypad. 420px of height was chosen
-						 * when the Cortex calculator was a text field and three buttons; a
-						 * keypad needs about 210px of that on its own, and at 420 the keys
-						 * fell past the content box, which the shell clips rather than
-						 * scrolls sideways. Graphing additionally needs the width its rail
-						 * and plot both want — below that the calculator stacks them, which
-						 * works but leaves the plot small.
+						 * Sized per type from what each layout measures, rather than one
+						 * size for all three. A shell subtracts ~74px of header from the
+						 * height it is given, and the numbers below are the content each
+						 * type needs plus room for its history tape:
 						 *
-						 * `minWidth` stays 380: the keypad is five columns at ~66px, which is
-						 * exactly what fits there, and the shell's own reflow contract
-						 * (`applyContentMinWidth`) pans below that rather than reflowing.
+						 * - basic: strip, display, edit row and a four-row keypad measure
+						 *   398px. 560 left ~90px of blank above the entry line, which is
+						 *   the gap that made the panel look mis-sized.
+						 * - scientific: the same plus a keypad layer tab row.
+						 * - graphing: the expression rail beside the plot, whose column
+						 *   wants 486px on its own — viewport controls, a 14rem board floor
+						 *   and the readout that *is* the graph for assistive technology,
+						 *   since the board itself is `aria-hidden`. At 620 that column was
+						 *   12px short and the readout's last line was cut off.
+						 *
+						 * Both graphing minimums are raised to what its two-column layout
+						 * needs. Below 42rem the calculator stacks the rail above the plot,
+						 * and stacked it measures 701px — no spacing tier closes a 300px
+						 * gap, so the panel does not offer a size the layout cannot hold.
+						 * A viewport too small for the minimum still shrinks the shell
+						 * (WCAG 1.4.10), and the calculator scrolls its own content there
+						 * rather than clipping it.
 						 */
 						initialWidth: calculatorType === "graphing" ? 720 : 380,
-						initialHeight: calculatorType === "graphing" ? 620 : 560,
-						minWidth: 380,
-						minHeight: 480,
-						initialAlign: "bottom-right",
+						initialHeight:
+							calculatorType === "graphing"
+								? 660
+								: calculatorType === "basic"
+									? 500
+									: 560,
+						minWidth: calculatorType === "graphing" ? 700 : 380,
+						minHeight: calculatorType === "graphing" ? 560 : 480,
+						/*
+						 * `bottom-right` put a 560-620px-tall shell over the items
+						 * column it shares the viewport with — tall enough, at
+						 * ordinary viewport heights, to sit on top of a sibling
+						 * item's own toolbar row and block its button from mouse
+						 * and touch input. `bottom-left` keeps the same footprint
+						 * over the passage column instead, which carries no
+						 * per-item controls to collide with.
+						 */
+						initialAlign: "bottom-left",
 						initialMargin: 16,
 						// Header controls in the host's design system, and the layout that
 						// goes with them.

@@ -334,64 +334,181 @@ test("keeps the keypad to a single tab stop and writes through the mathfield", a
 	}
 });
 
-test("fills its panel at the shipped tool size without clipping", async ({
+test("fits every shipped panel size without clipping anything", async ({
 	page,
 }) => {
 	/*
-	 * The shipped panel is 380px wide inside a viewport that is far wider, so the
-	 * package's size-dependent rules are container queries. When they were viewport
-	 * media queries the graphing grid stayed at its 34rem floor inside a 333px box
-	 * and the shell — which sets `overflow-x: hidden` — clipped the right 229px,
-	 * most of the plot.
+	 * Every node, not the root, and both panel sizes rather than one.
+	 *
+	 * This test used to compare `#calculator`'s scrollHeight against its clientHeight
+	 * and stop there. It passed while the shipped graphing panel cut 12px off the
+	 * readout and the whole plot column off a narrow one: a flex item shrunk below
+	 * its content does not clip, it paints outside its box, so the surplus never
+	 * reached the root's scrollHeight and the keypad was simply drawn over the graph
+	 * controls. The demo's `shell` size was also one figure for all three types and
+	 * larger than any of them, so the size measured was not a size that ships.
+	 *
+	 * The invariant is that nothing is unreachable: a node may overflow only where it
+	 * or an ancestor can scroll to the rest, the calculator never scrolls sideways,
+	 * and every target stays at 24px (WCAG 2.5.8) whatever the tier does to key
+	 * heights.
 	 */
 	for (const path of ["/", "/scientific.html", "/graphing.html"]) {
 		await page.goto(path);
 		await page.waitForFunction(() => window.__cortexReady === true);
-		await page.locator("#panel").selectOption("shell");
-		await page.waitForTimeout(400);
 
-		/*
-		 * Every layer, not just the one that opens. The function layers are taller
-		 * than the numeric one — scientific by a row, graphing by two, since it
-		 * carries the five graph keys as well — and a layer that is never shown is
-		 * never measured. A row costs 50px, so this is the check that says whether
-		 * the row budget still fits the panel.
-		 */
-		const tabs = page.getByRole("group", { name: "Keypad layer" });
-		const layerNames = (await tabs.count())
-			? await tabs.getByRole("button").allTextContents()
-			: [""];
-		// Named, so a selector that stops matching degrades to a failure rather than
-		// to measuring the opening layer three times.
-		expect(layerNames, `${path} layer tabs`).toEqual(
-			path === "/"
-				? [""]
-				: path === "/scientific.html"
-					? ["Basic", "Scientific"]
-					: ["Basic", "Graphing"],
-		);
-		for (const layerName of layerNames) {
-			if (layerName) {
-				await tabs
-					.getByRole("button", { name: layerName, exact: true })
-					.click();
-				await page.waitForTimeout(200);
+		for (const panel of ["shell", "floor"]) {
+			await page.locator("#panel").selectOption(panel);
+			await page.waitForTimeout(500);
+
+			/*
+			 * Every layer, not just the one that opens. The function layers are taller
+			 * than the numeric one, and a layer that is never shown is never measured.
+			 */
+			const tabs = page.getByRole("group", { name: "Keypad layer" });
+			const layerNames = (await tabs.count())
+				? await tabs.getByRole("button").allTextContents()
+				: [""];
+			// Named, so a selector that stops matching degrades to a failure rather than
+			// to measuring the opening layer three times.
+			expect(layerNames, `${path} layer tabs`).toEqual(
+				path === "/"
+					? [""]
+					: path === "/scientific.html"
+						? ["Basic", "Scientific"]
+						: ["Basic", "Graphing"],
+			);
+
+			for (const layerName of layerNames) {
+				if (layerName) {
+					await tabs
+						.getByRole("button", { name: layerName, exact: true })
+						.click();
+					await page.waitForTimeout(250);
+				}
+				const where = `${path} ${panel} ${layerName || "numeric"}`;
+				const report = await page.locator("#calculator").evaluate((root) => {
+					const calculator = root.querySelector(
+						".pie-cortex-calculator",
+					) as HTMLElement;
+					const scrolls = (element: Element, axis: "x" | "y"): boolean => {
+						const overflow = getComputedStyle(element)[
+							axis === "y" ? "overflowY" : "overflowX"
+						];
+						return overflow === "auto" || overflow === "scroll";
+					};
+					const reachable = (element: Element, axis: "x" | "y"): boolean => {
+						for (
+							let node: Element | null = element;
+							node;
+							node = node === calculator ? null : node.parentElement
+						) {
+							if (scrolls(node, axis)) return true;
+						}
+						return false;
+					};
+					const clipped: string[] = [];
+					const walk = (element: Element): void => {
+						const className =
+							typeof element.className === "string" ? element.className : "";
+						const label =
+							className.replace(/svelte-\w+/g, "").trim() ||
+							element.tagName.toLowerCase();
+						/*
+						 * Visually-hidden text is clipped by design — a 1x1 box with
+						 * `overflow: hidden` is the mechanism — and is reached by a screen
+						 * reader rather than by scrolling.
+						 */
+						if (className.includes("pie-cortex-sr-only")) return;
+						if (
+							element.scrollHeight > element.clientHeight + 1 &&
+							!reachable(element, "y")
+						) {
+							clipped.push(
+								`${label} +${element.scrollHeight - element.clientHeight}px`,
+							);
+						}
+						if (
+							element.scrollWidth > element.clientWidth + 1 &&
+							!reachable(element, "x")
+						) {
+							clipped.push(
+								`${label} sideways +${element.scrollWidth - element.clientWidth}px`,
+							);
+						}
+						for (const child of element.children) walk(child);
+					};
+					walk(calculator);
+					const targets = [
+						...calculator.querySelectorAll("button, select, [role=button]"),
+					]
+						.map((element) => element.getBoundingClientRect())
+						.filter((box) => box.width > 0)
+						.map((box) => Math.round(Math.min(box.width, box.height)));
+					return {
+						clipped,
+						smallestTarget: Math.min(...targets),
+						rootScrollsSideways: calculator.scrollWidth > calculator.clientWidth + 1,
+					};
+				});
+
+				expect(report.clipped, `${where} clips content`).toEqual([]);
+				expect(
+					report.rootScrollsSideways,
+					`${where} scrolls sideways`,
+				).toBe(false);
+				// 2.5.8 at Level AA. The density tiers trade 2.5.5's 44px for fitting a
+				// panel a learner has shrunk; they never trade past this.
+				expect(
+					report.smallestTarget,
+					`${where} smallest target`,
+				).toBeGreaterThanOrEqual(24);
 			}
-			const where = `${path} ${layerName || "numeric"}`;
-			const box = await page.locator("#calculator").evaluate((element) => ({
-				clientWidth: element.clientWidth,
-				scrollWidth: element.scrollWidth,
-				clientHeight: element.clientHeight,
-				scrollHeight: element.scrollHeight,
-			}));
-			expect(box.scrollWidth, `${where} scrolls sideways`).toBeLessThanOrEqual(
-				box.clientWidth,
-			);
-			expect(box.scrollHeight, `${where} overflows its panel`).toBeLessThanOrEqual(
-				box.clientHeight + 1,
-			);
 		}
 	}
+});
+
+test("steps key size down instead of clipping a panel it cannot fill", async ({
+	page,
+}) => {
+	/*
+	 * The tiers themselves, rather than their consequence. A panel at the size it
+	 * opens at keeps the 44px of WCAG 2.5.5; below what that fits, keys give up
+	 * height so the keypad keeps its rows, and the attribute says which tier is in
+	 * force so a failure names the cause rather than a pixel count.
+	 */
+	await page.goto("/scientific.html");
+	await page.waitForFunction(() => window.__cortexReady === true);
+
+	const measure = async () =>
+		await page.locator("#calculator").evaluate((root) => {
+			const calculator = root.querySelector(
+				".pie-cortex-calculator",
+			) as HTMLElement;
+			const key = calculator.querySelector(".pie-cortex-key") as HTMLElement;
+			return {
+				density: calculator.dataset.pieDensity,
+				keyHeight: Math.round(key.getBoundingClientRect().height),
+			};
+		});
+
+	await page.locator("#panel").selectOption("shell");
+	await page.waitForTimeout(400);
+	expect(await measure()).toEqual({ density: "comfortable", keyHeight: 44 });
+
+	// Smaller than any panel this tool opens at, which a learner reaches by dragging
+	// a corner or by zooming to 400%.
+	await page.locator("#calculator").evaluate((root) => {
+		root.classList.remove("pie-cortex-demo-calculator--shell");
+		(root as HTMLElement).style.width = "380px";
+		(root as HTMLElement).style.height = "340px";
+		(root as HTMLElement).style.maxWidth = "none";
+	});
+	await page.waitForTimeout(400);
+	const compact = await measure();
+	expect(compact.density).toBe("compact");
+	expect(compact.keyHeight).toBeLessThan(44);
+	expect(compact.keyHeight).toBeGreaterThanOrEqual(24);
 });
 
 test("has no serious or critical automated accessibility violations", async ({

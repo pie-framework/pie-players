@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { convertLatexToMarkup } from 'mathlive';
+	import type { Snippet } from 'svelte';
 	import type { CortexCalculatorLocalization } from './localization.js';
 	import type { KeypadKey, KeypadLayer } from './keypad-layouts.js';
 
@@ -8,6 +9,7 @@
 		localization,
 		activeLayerId = '',
 		bleed = false,
+		head,
 		onInsert,
 		onCommit,
 	}: {
@@ -20,12 +22,18 @@
 		 */
 		bleed?: boolean;
 		/**
-		 * Which layer to show. Owned by the parent because the layer tabs render in
-		 * the utility strip rather than in a band above the grid — a band of their own
-		 * cost 44px of a 372px panel, which is height the keys need. Empty means
-		 * "whichever layer comes first".
+		 * Which layer to show. Owned by the parent, which hands the tabs down through
+		 * `head` — they render on this plane, above the grid, but the parent is what
+		 * knows the layer set. Empty means "whichever layer comes first".
 		 */
 		activeLayerId?: string;
+		/**
+		 * The instrument's own controls — layer tabs, backspace, clear — rendered on
+		 * this plane above the grid rather than on the card above it. Both reference
+		 * calculators put them here, and on the card they read as a form's buttons
+		 * that happen to sit near a keypad instead of as part of one.
+		 */
+		head?: Snippet;
 		onInsert: (key: KeypadKey) => void;
 		onCommit: () => void;
 	} = $props();
@@ -123,6 +131,7 @@
 </script>
 
 <div class="pie-cortex-keypad" class:pie-cortex-keypad--bleed={bleed}>
+	{@render head?.()}
 	<!--
 		`dir="ltr"` is not redundant. The root carries the interface direction, and a
 		CSS grid in RTL flows columns right to left, so [7][8][9] would render as
@@ -180,6 +189,13 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--cortex-space-2, 0.5rem);
+		/*
+		 * Never shrinks. As a shrinkable flex item its rows were painted outside its
+		 * box — flex shrinking does not clip — so in a short panel the bottom rows
+		 * overlapped whatever followed the keypad instead of pushing the calculator
+		 * into its own scroll.
+		 */
+		flex: 0 0 auto;
 		min-width: 0;
 		/*
 		 * Inline padding equals the calculator root's, so the outermost key columns
@@ -204,19 +220,15 @@
 	}
 
 	/*
-	 * Bled to the panel's edges, so the recessed plane reads as the instrument's base
-	 * rather than as a floating card. The negative margins cancel the calculator
-	 * root's own padding on three sides.
-	 *
-	 * Top corners only: the tool shell clips its content box to
-	 * `border-radius: 0 0 12px 12px`, so a keypad reaching the panel's bottom edge is
-	 * already rounded there, and rounding it again gives a visible double curve.
+	 * Flush to the panel's edges, so the plane reads as the instrument's base rather
+	 * than as a floating card: no radius and one rule along the top, which is the
+	 * screen's only boundary. The calculator root drops its own padding for these
+	 * types, so there is nothing left to cancel with negative margins.
 	 */
 	.pie-cortex-keypad--bleed {
-		margin: 0 calc(-1 * var(--cortex-space-3, 0.75rem)) calc(-1 * var(--cortex-space-3, 0.75rem));
 		border: none;
 		border-top: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
-		border-radius: var(--cortex-radius-surface, 0.5rem) var(--cortex-radius-surface, 0.5rem) 0 0;
+		border-radius: 0;
 	}
 
 	.pie-cortex-keypad__grid {
@@ -245,8 +257,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		/* min-height, never height: a fixed box clips under 1.4.12 text spacing. */
-		min-height: 2.75rem;
+		/*
+		 * min-height, never height: a fixed box clips under 1.4.12 text spacing. The
+		 * value is a token because the panel is resizable — see the density tiers in
+		 * `CalculatorView.svelte`. 2.75rem is 2.5.5's 44px and is what every shipped
+		 * panel size gets; the tiers below it stay clear of 2.5.8's 24px floor.
+		 */
+		min-height: var(--cortex-key-min-height, 2.75rem);
 		padding: 0.25rem;
 		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
 		border-radius: var(--cortex-radius-key, 0.25rem);

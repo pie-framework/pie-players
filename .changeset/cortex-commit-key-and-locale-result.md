@@ -33,10 +33,11 @@ Gamma continuation off the integers, which is what Desmos answers and what the
 Compute Engine computes, unlike a handheld's domain error. Still a domain error
 at the negative integers, where Gamma has poles.
 
-The keypad's sizing note cited a 380x372 panel; the registration ships 380x560
-and 720x620 with a 480px floor. Corrected, along with the reasoning: keys hold
-44px from a `min-height` and never shrink, so a row costs 50px of panel height
-rather than target size. Four rows is the budget and the graphing layer spends
-five, carrying the graph keys as well. The e2e panel-fit test measured only the
-layer that opens, so neither function layer was ever checked against the panel;
-it now switches to each layer, and both fit with no scroll in either axis.
+The keypad's sizing note cited a 380x372 panel, which no calculator type ships.
+Corrected, along with the reasoning: row count is a layout budget rather than a
+target-size one, so a row costs panel height. Four rows is the budget and the
+graphing layer spends five, carrying the graph keys as well. The e2e panel-fit
+test measured only the layer that opens, so neither function layer had been
+checked against the panel; it now switches to each. The panel sizes themselves,
+and what happens when a layout does not fit one, are the subject of
+`calculator-panel-fit-and-density`.

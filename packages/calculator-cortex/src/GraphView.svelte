@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import Keypad from './Keypad.svelte';
 	import MathFieldInput from './MathFieldInput.svelte';
 	import type {
@@ -18,10 +19,17 @@
 		controller,
 		snapshot,
 		layers,
+		angleMode,
 	}: {
 		controller: CortexCalculatorController;
 		snapshot: CortexCalculatorSnapshot;
 		layers: readonly KeypadLayer[];
+		/*
+		 * Declared by the view that owns the setting and rendered here, so the control
+		 * sits in the rail it belongs to instead of in a row of its own above the
+		 * layout. A row cost 46px of a 660px panel and carried one control.
+		 */
+		angleMode?: Snippet;
 	} = $props();
 
 	interface JsxCurve {
@@ -97,6 +105,7 @@
 	let sampleTimer: ReturnType<typeof setTimeout> | null = null;
 	let previousBounds = '';
 	let previousSize = '';
+	let resizeFrame = 0;
 	let selectedTraceId = $state('');
 	let traceIndex = $state(0);
 	let activeField = $state<import('mathlive').MathfieldElement | null>(null);
@@ -408,8 +417,19 @@
 			previousSize = `${graphElement.clientWidth}:${graphElement.clientHeight}`;
 			board.on('update', boardUpdated);
 			applyBoardTheme();
+			/*
+			 * Deferred a frame. `resizeBoard` writes the board's own size, and writing
+			 * layout while resize notifications are being delivered is what raises
+			 * "ResizeObserver loop completed with undelivered notifications" — an
+			 * unhandled error on every host page that opens a graphing calculator, even
+			 * though the `previousSize` guard means it converges.
+			 */
 			resizeObserver = new ResizeObserver(() => {
-				if (resizeBoard()) requestSample();
+				if (resizeFrame) return;
+				resizeFrame = requestAnimationFrame(() => {
+					resizeFrame = 0;
+					if (resizeBoard()) requestSample();
+				});
 			});
 			resizeObserver.observe(graphElement);
 			updateCurves(snapshot.series);
@@ -428,6 +448,8 @@
 			schemeQuery = null;
 			if (sampleTimer) clearTimeout(sampleTimer);
 			sampleTimer = null;
+			if (resizeFrame) cancelAnimationFrame(resizeFrame);
+			resizeFrame = 0;
 			resizeObserver?.disconnect();
 			resizeObserver = null;
 			if (board && graphModule) graphModule.JSXGraph.freeBoard(board);
@@ -450,6 +472,10 @@
 			if (host) activeField = host as import('mathlive').MathfieldElement;
 		}}
 	>
+		{#if angleMode}
+			<div class="pie-cortex-expression-panel__head">{@render angleMode()}</div>
+		{/if}
+
 		<div class="pie-cortex-expression-list">
 			{#each expressions as expression, index (expression.id)}
 				<div class="pie-cortex-expression-row">
@@ -532,22 +558,25 @@
 			>{i18n.t('clear')}</button>
 		</div>
 
-		{#if layers.length > 1}
-			<div class="pie-cortex-keypad__layers" role="group" aria-label={i18n.t('keypadLayer')}>
-				{#each layers as layer (layer.id)}
-					<button
-						type="button"
-						class="pie-cortex-layer-tab"
-						class:pie-cortex-layer-tab--active={layer.id === activeLayerId}
-						aria-pressed={layer.id === activeLayerId}
-						onclick={() => (selectedLayerId = layer.id)}
-					>{i18n.t(layer.labelKey)}</button>
-				{/each}
-			</div>
-		{/if}
+		{#snippet layerTabs()}
+			{#if layers.length > 1}
+				<div class="pie-cortex-keypad__layers" role="group" aria-label={i18n.t('keypadLayer')}>
+					{#each layers as layer (layer.id)}
+						<button
+							type="button"
+							class="pie-cortex-layer-tab"
+							class:pie-cortex-layer-tab--active={layer.id === activeLayerId}
+							aria-pressed={layer.id === activeLayerId}
+							onclick={() => (selectedLayerId = layer.id)}
+						>{i18n.t(layer.labelKey)}</button>
+					{/each}
+				</div>
+			{/if}
+		{/snippet}
 		<Keypad
 			{layers}
 			{activeLayerId}
+			head={layerTabs}
 			localization={i18n}
 			onInsert={insertKey}
 			onCommit={() => requestSample(0)}
@@ -659,7 +688,7 @@
 		gap: var(--cortex-space-2, 0.5rem);
 		flex: 1 1 auto;
 		min-width: 0;
-		min-height: 0;
+		min-height: min-content;
 	}
 
 	/*
@@ -682,6 +711,7 @@
 			grid-template-rows: minmax(0, 1fr);
 			gap: var(--cortex-space-3, 0.75rem);
 		}
+
 	}
 
 	.pie-cortex-expression-panel,
@@ -690,18 +720,82 @@
 		flex-direction: column;
 		gap: var(--cortex-space-2, 0.5rem);
 		min-width: 0;
-		min-height: 0;
+		/*
+		 * `min-content`, not 0, while the two are stacked. At 0 both panels shrank
+		 * below what they hold and painted their content outside their boxes — flex
+		 * shrinking does not clip — so the rail's keypad was drawn over the plot's
+		 * viewport controls. Holding their content instead makes the surplus overflow
+		 * the calculator, which scrolls: one scroll over the whole tool, rather than
+		 * two 150px windows in a panel that is already short.
+		 */
+		min-height: min-content;
 	}
 
 	.pie-cortex-graph-panel {
 		flex: 1 1 auto;
+		/*
+		 * Its own container, so the readout below can ask how wide *it* is. Asking the
+		 * calculator produced the wrong answer in the two-column layout: at 720px the
+		 * calculator is past the row threshold while this column is 332px, so the
+		 * readout took a row layout its two 14rem halves immediately wrapped out of,
+		 * costing 100px of height the plot needed.
+		 */
+		container-type: inline-size;
+		container-name: pie-cortex-graph-panel;
 	}
 
+	/*
+	 * Side by side, each column scrolls in place rather than the calculator scrolling
+	 * as a whole: the columns are independent here, and a plot pushed off the panel by
+	 * the readout underneath it is worse than a readout that scrolls. The plot keeps
+	 * its floor either way, and the readout stays reachable — it is what assistive
+	 * technology reads instead of the board, which is `aria-hidden`.
+	 *
+	 * After the rule it overrides, not inside the block above it: a container query
+	 * contributes no specificity, so between two 0-1-0 selectors source order decides.
+	 */
+	@container pie-cortex-calculator (min-width: 42rem) {
+		.pie-cortex-graph-layout,
+		.pie-cortex-expression-panel,
+		.pie-cortex-graph-panel {
+			min-height: 0;
+		}
+
+		.pie-cortex-expression-panel,
+		.pie-cortex-graph-panel {
+			overflow-y: auto;
+		}
+	}
+
+	.pie-cortex-expression-panel__head {
+		display: flex;
+		align-items: center;
+		flex: 0 0 auto;
+		gap: var(--cortex-space-2, 0.5rem);
+		min-width: 0;
+	}
+
+	/*
+	 * The rail's screen: the same pane the keypad calculators give their display, and
+	 * it takes the column's slack for the same reason. Sized to its rows it left
+	 * ~140px of bare card between the keypad and the bottom of a 720x660 panel, which
+	 * read as the layout having failed rather than as room for the next expression.
+	 */
 	.pie-cortex-expression-list {
 		display: flex;
 		flex-direction: column;
 		gap: var(--cortex-space-2, 0.5rem);
+		flex: 1 1 auto;
 		min-width: 0;
+		min-height: 0;
+		padding: var(--cortex-space-2, 0.5rem);
+		border-radius: var(--cortex-radius-surface, 0.5rem);
+		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
+		background: var(
+			--pie-calculator-surface-raised,
+			var(--pie-background-dark, var(--cortex-surface-raised))
+		);
+		overflow-y: auto;
 	}
 
 	.pie-cortex-expression-row {
@@ -730,8 +824,8 @@
 		 * holds 44px — trading a 44px toggle down to 20px is exactly the regression a
 		 * switch-access learner pays for.
 		 */
-		min-width: 2.75rem;
-		min-height: 2.75rem;
+		min-width: var(--cortex-control-min-height, 2.75rem);
+		min-height: var(--cortex-control-min-height, 2.75rem);
 		padding: 0;
 		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
 		border-radius: 50%;
@@ -806,12 +900,13 @@
 		min-width: 0;
 	}
 
+	/* A tab strip on the keypad's plane. Same treatment as the keypad calculators'. */
 	.pie-cortex-layer-tab {
 		min-height: 2.25rem;
 		padding-inline: 0.6rem;
-		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
-		border-radius: 1rem;
-		background: var(--pie-button-bg, var(--cortex-button-bg));
+		border: 1px solid transparent;
+		border-radius: var(--cortex-radius-key, 0.25rem);
+		background: none;
 		color: var(--pie-button-color, var(--cortex-button-color));
 		font: inherit;
 		font-size: 0.8125rem;
@@ -845,7 +940,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 2.75rem;
+		min-height: var(--cortex-control-min-height, 2.75rem);
 		padding: 0.45rem 0.7rem;
 		border: 1px solid var(--pie-border-gray, var(--cortex-border-gray));
 		border-radius: var(--cortex-radius-key, 0.25rem);
@@ -858,7 +953,7 @@
 	}
 
 	.pie-cortex-icon-button {
-		min-width: 2.75rem;
+		min-width: var(--cortex-control-min-height, 2.75rem);
 		padding: 0.45rem;
 	}
 
@@ -916,13 +1011,20 @@
 	.pie-cortex-jsxgraph {
 		width: 100%;
 		/*
+		 * Explicit, because only the calculator root sets it and this element carries a
+		 * border: at `content-box` its `width: 100%` plus 2px of border overflowed the
+		 * column by exactly that, which is a horizontal scrollbar across the plot as
+		 * soon as the column became a scroll container.
+		 */
+		box-sizing: border-box;
+		/*
 		 * Grows in both axes instead of being pinned to `min(26rem, 55vh)`, which was
 		 * the largest single contributor to the 1032px of content this view used to
 		 * stack into a 372px panel. The floor stays: a zero-height board renders no
 		 * SVG, and `resizeBoard` guards the same case.
 		 */
 		flex: 1 1 auto;
-		min-height: 14rem;
+		min-height: var(--cortex-plot-min-height, 14rem);
 		border: 1px solid var(--pie-border, var(--cortex-border));
 		border-radius: var(--cortex-radius-key, 0.25rem);
 		background: var(
@@ -944,8 +1046,15 @@
 	.pie-cortex-graph-readout {
 		display: flex;
 		flex-direction: column;
-		/* Never squeezed: the plot yields height, the readout keeps its text. */
-		flex: 0 0 auto;
+		/*
+		 * The plot yields height first, and this keeps its text — the plot is
+		 * `aria-hidden`, so this block *is* the graph for assistive technology and for
+		 * read-aloud, and it is never hidden or truncated. Past the plot's floor it
+		 * scrolls in place rather than pushing the whole calculator into a scroll,
+		 * which would take the viewport controls off the panel with it.
+		 */
+		flex: 0 1 auto;
+		overflow-y: auto;
 		gap: var(--cortex-space-2, 0.5rem);
 		min-width: 0;
 		padding: var(--cortex-space-2, 0.5rem);
@@ -957,7 +1066,7 @@
 		font-size: 0.8125rem;
 	}
 
-	@container pie-cortex-calculator (min-width: 34rem) {
+	@container pie-cortex-graph-panel (min-width: 30rem) {
 		.pie-cortex-graph-readout {
 			flex-direction: row;
 			flex-wrap: wrap;

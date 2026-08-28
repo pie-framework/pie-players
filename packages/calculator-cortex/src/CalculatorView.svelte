@@ -2,9 +2,11 @@
 	import { convertLatexToMarkup, type MathfieldElement } from 'mathlive';
 	import { onMount, untrack } from 'svelte';
 	import GraphView from './GraphView.svelte';
+	import Icon from './Icon.svelte';
 	import Keypad from './Keypad.svelte';
 	import MathFieldInput from './MathFieldInput.svelte';
 	import type { CortexCalculatorController } from './calculator-controller.js';
+	import { BACKSPACE_ICON, CLEAR_ICON } from './icons.js';
 	import { keypadLayers, type KeypadKey } from './keypad-layouts.js';
 
 	let { controller }: { controller: CortexCalculatorController } = $props();
@@ -329,14 +331,14 @@
 				aria-label={i18n.t('backspace')}
 				title={i18n.t('backspace')}
 				onclick={backspace}
-			><span aria-hidden="true">⌫</span></button>
+			><Icon paths={BACKSPACE_ICON} /></button>
 			<button
 				type="button"
 				class="pie-cortex-action-button pie-cortex-icon-button"
 				aria-label={i18n.t('clear')}
 				title={i18n.t('clear')}
 				onclick={() => controller.clear()}
-			><span aria-hidden="true">✕</span></button>
+			><Icon paths={CLEAR_ICON} /></button>
 		</div>
 		{/snippet}
 
@@ -859,9 +861,8 @@
 		justify-content: center;
 		min-width: 2.25rem;
 		padding: 0.35rem;
-		font-size: 1.125rem;
-		line-height: 1;
 	}
+
 
 	.pie-cortex-action-button {
 		min-height: 2.25rem;

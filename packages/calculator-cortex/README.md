@@ -130,7 +130,8 @@ The panel is two surfaces with no card between them: a screen and a console, eac
 running to its edges. The screen holds the tape, the live expression and the answer,
 with the angle mode pinned above its scroller so history passes behind it; the
 console is the keypad's recessed plane, carrying the layer tabs and the backspace and
-clear icons above the grid. Nothing sits on bare card, and the type's name is not drawn — the
+clear icons above the grid — inline SVG in `currentColor`, because `⌫` is the face a
+backspace button wants and the code point least likely to be in a host's font stack. Nothing sits on bare card, and the type's name is not drawn — the
 tool shell's header already carries it, and a second copy cost 46px of a 500px panel.
 It stays as visually-hidden text for the document outline. `--cortex-tape-inset` and
 the keypad's inline padding are one value, so the mathfield's text and the first key

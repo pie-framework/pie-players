@@ -77,10 +77,15 @@ and keypad meet on one rule with no gutters, and the insets that remain are the
 ones inside each surface — `--cortex-tape-inset` and the keypad's inline padding
 are the same value, so the mathfield's text and the first key column share a left
 edge. The mathfield's focus ring is inset now: at full screen width an offset ring
-drew a box around the whole panel instead of around a control. Backspace and clear are glyph
-faces with text accessible names and `title` on both: as two wide labelled buttons
+drew a box around the whole panel instead of around a control. Backspace and clear are icon
+buttons with text accessible names and `title` on both: as two wide labelled buttons
 they were the widest thing on the plane, and neither reference calculator spends a
-bordered button on either.
+bordered button on either. The faces are inline SVG stroked in `currentColor` rather
+than font characters, since `⌫` (U+232B) is the code point least likely to be in a
+host's font stack and a missing glyph renders as a notdef box — a control with no
+legible face. The graphing view's remove-expression button takes the same clear
+icon; the viewport arrows and math signs stay as text, being code points every
+fallback font carries.
 
 In the graphing view the same treatment. The angle mode is declared by the view
 that owns the setting and rendered in the expression rail, the layer tabs sit on

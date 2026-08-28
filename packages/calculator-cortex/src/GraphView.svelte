@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import type { Snippet } from 'svelte';
+	import Icon from './Icon.svelte';
+	import { CLEAR_ICON } from './icons.js';
 	import Keypad from './Keypad.svelte';
 	import MathFieldInput from './MathFieldInput.svelte';
 	import type {
@@ -537,7 +539,7 @@
 						aria-label={i18n.t('removeExpression', { index: index + 1 })}
 						onclick={() => removeExpression(expression.id)}
 					>
-						<span aria-hidden="true">✕</span>
+						<Icon paths={CLEAR_ICON} />
 					</button>
 				</div>
 			{/each}
@@ -953,9 +955,13 @@
 	}
 
 	.pie-cortex-icon-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		min-width: var(--cortex-control-min-height, 2.75rem);
 		padding: 0.45rem;
 	}
+
 
 	.pie-cortex-viewport-controls {
 		display: flex;

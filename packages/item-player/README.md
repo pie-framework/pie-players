@@ -69,7 +69,10 @@ import "@pie-players/pie-theme/components.css"; // now your responsibility
 
 The player then installs nothing. If no content stylesheet turns out to be
 present, it logs a one-time `console.warn` naming the missing import, rather than
-silently rendering unstyled content. Declare `@pie-players/pie-theme` in your own
+silently rendering unstyled content. Presence is detected through
+`--pie-content-styles`, a sentinel `components.css` declares; it carries no
+themeable value, so do not consume it for styling or depend on anything beyond it
+being non-empty. Declare `@pie-players/pie-theme` in your own
 `package.json` if you go this route: it is a dependency of this package, so the
 file is already on disk, but importing a subpath from a transitive dependency
 breaks on a dedupe change or a move to pnpm / Yarn PnP.

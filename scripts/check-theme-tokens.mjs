@@ -292,7 +292,20 @@ function checkRegistryPaths(root, registry, failures) {
 			}
 		}
 
-		if (entry.scope !== "component-public" && entry.scope !== "legacy") {
+		/*
+		 * Scopes whose `documentedIn` names a per-token passage, so the path can be
+		 * checked for the name literally. `canonical-semantic` is excluded on
+		 * purpose: those point at the theme README, which documents the canonical
+		 * set as a system and tells readers to get per-token facts from this
+		 * registry rather than from a list that drifts. Four `package-private`
+		 * entries claimed a doc that did not name them, unnoticed because this
+		 * guard skipped the scope.
+		 */
+		const documentedPerToken =
+			entry.scope === "component-public" ||
+			entry.scope === "legacy" ||
+			entry.scope === "package-private";
+		if (!documentedPerToken) {
 			continue;
 		}
 

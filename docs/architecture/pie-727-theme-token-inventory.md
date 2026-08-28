@@ -107,10 +107,52 @@ Built-ins must define every required token with an explicit value. Registered
 custom schemes are partial, but may name only required or optional tokens.
 Other one-off values belong in `<pie-theme>.variables` or deliberate host CSS.
 
+## Registry admission
+
+A `--pie-*` name earns a `token-registry.json` entry when a host sets it, or when
+package documentation tells a host to set it. Every other name stays in the
+`PACKAGE_PRIVATE_SOURCE_TOKENS` allowlist in `scripts/check-theme-tokens.mjs`.
+
+Existing in source is not the test. Applied on 2026-08-02 it published seventeen
+entries covering zoom compensations, panel shadows and button sizing, sixteen of
+which were withdrawn the next day (#153, #162) and have been allowlisted since.
+The five TTS reading-highlight tokens registered on 2026-08-28 pass the rule: the
+Angular delivery declares all five. The nine remaining geometry handoffs fail it
+and stay allowlisted, because registering them would buy symmetry and no signal.
+
+Two corollaries follow from the entry being a promise:
+
+- The README that names a token says which side of the line it falls on.
+  `tool-line-reader/README.md` states the contract for
+  `--pie-tool-line-reader-outline-color`; `calculator-cortex/README.md` and
+  `tool-tts-inline/README.md` carry the same statement over their package hooks.
+- Documenting a token to hosts while leaving it unregistered is the same defect
+  read from the other end. Register it or withdraw the offer.
+
+## Token stability
+
+Names and values are stable by default, and the record holds: between 2026-07-07
+and 2026-08-28 no registered name was renamed or dropped, and two commits changed
+a value a host renders — `1f29de7f` repaired six base-theme colours and six
+scheme values against WCAG, and `16926137` moved one scheme's
+`--pie-blue-grey-300`.
+
+A rendered value changes on a measured accessibility failure or a host-visible
+defect, named in the changeset along with the relationship it repairs.
+`theme-definition-contract.test.ts` asserts `diagnoseThemeContrast` returns empty
+for both base themes and all ten schemes, so a palette edit that is not repairing
+a diagnosed failure is changing certified output.
+
+A registered name is not renamed or dropped. Reclassifying one is a contract
+change on the same footing: `component-public` to `package-private` withdraws a
+promise a host may already hold, so it takes the consumer-pad check that a rename
+would.
+
 ## Follow-Up Inventory Rules
 
-- New public `--pie-*` variables require a token registry entry, owning package
-  README docs, package-local tests, and a patch changeset.
+- A `--pie-*` variable that passes **Registry admission** above requires a token
+  registry entry, owning package README docs, package-local tests, and a patch
+  changeset. One that fails it requires an allowlist line and nothing else.
 - Preserve existing names when the consumer pad records a client-facing
   dependency. Do not add compatibility paths for unobserved legacy interfaces.
 - Ambiguous tokens should be classified as `legacy`, `unsupported`, or

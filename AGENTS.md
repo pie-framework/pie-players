@@ -191,6 +191,32 @@ surfaces real downstream hosts touch, and which of those break silently.
   normalizing the override. `PIE_CONSUMER_PAD_OVERRIDE="<reason>"` exists for a
   one-off local run and is not a substitute for the trailer.
 
+### Theme Token Admission and Stability
+
+`docs/architecture/pie-727-theme-token-inventory.md` carries the full rule under
+**Registry admission** and **Token stability**. The binding parts:
+
+- A `--pie-*` name earns a `token-registry.json` entry when a host sets it, or
+  when package documentation tells a host to set it. Every other name gets an
+  allowlist line in `scripts/check-theme-tokens.mjs` and nothing else. Existing
+  in source is not the test — applying it that way published seventeen entries on
+  2026-08-02 and withdrew sixteen the next day.
+- A README that names a token states which side of that line it falls on.
+  Offering a token to hosts while leaving it unregistered is the same defect from
+  the other end: register it or withdraw the offer.
+- Registered names are not renamed or dropped, and reclassifying one narrows a
+  promise a host may hold, so it takes the same consumer-pad check as a rename.
+- A rendered value changes on a diagnosed accessibility failure or a
+  host-visible defect, named in the changeset with the relationship it repairs.
+  `packages/theme/tests/theme-definition-contract.test.ts` asserts every base
+  theme and all ten schemes come back contrast-clean, so a palette edit that
+  repairs no diagnosed failure is changing certified output.
+- Prefer an existing canonical token or `--pie-button-*` chain over a new hook.
+  Where a component needs one, match the nearest in-framework precedent — its
+  fallback shape, its scope, and its scheme participation — rather than inventing
+  a parallel convention; divergence between two components solving the same
+  problem is itself the defect.
+
 ### Legacy Compatibility Boundaries
 
 - Do not add legacy/backward-compatibility shims outside the `pie-item` client

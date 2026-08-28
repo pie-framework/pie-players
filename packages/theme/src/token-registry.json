@@ -857,6 +857,57 @@
 		"fallbackPolicy": "Canonical lighter primary action token used for low-emphasis action surfaces."
 	},
 	{
+		"name": "--pie-scrollbar-thumb",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar thumb on the three scrolling panes. Package-private: no theme or scheme sets it, so the fallback chain is the contract rather than the name. Falls back through --pie-border-gray, a boundary token hosts do not repoint to restyle button chrome; it defaulted through --pie-border until a host set that to transparent and every pane's thumb went invisible."
+	},
+	{
+		"name": "--pie-scrollbar-thumb-hover",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar thumb hover on the three scrolling panes. Package-private: the fallback chain is the contract rather than the name. Falls back through --pie-border-dark."
+	},
+	{
+		"name": "--pie-scrollbar-track",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar track on the three scrolling panes. Package-private: the fallback chain is the contract rather than the name. Falls back through --pie-background-dark, the surface one step off the page."
+	},
+	{
 		"name": "--pie-secondary",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

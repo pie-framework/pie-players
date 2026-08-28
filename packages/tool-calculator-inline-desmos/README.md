@@ -156,13 +156,20 @@ The component uses CSS custom properties for theming:
 
 ```css
 --pie-border: Border color (default: #ccc)
---pie-background: Background color (default: white)
+--pie-button-background-color: Button fill, ahead of --pie-button-bg
+--pie-button-bg: Button fill (default: theme button surface)
 --pie-text: Text color (default: #333)
---pie-secondary-background: Hover background (default: #f5f5f5)
+--pie-button-hover-background-color: Hover fill, ahead of --pie-button-hover-bg
+--pie-button-hover-bg: Hover fill (default: theme hover surface)
 --pie-tool-trigger-active-background: Active/open button background
 --pie-tool-trigger-active-color: Active/open button foreground
 --pie-tool-trigger-active-border-color: Active/open button border
 ```
+
+The trigger fills itself from the button tokens. `--pie-background` is the page
+token and the base light theme ships it transparent, so a host that sets it does
+not change this button; set `--pie-button-bg`, or `--pie-button-background-color`
+for this control alone.
 
 Hosts should prefer the `--pie-tool-trigger-active-*` variables when styling the
 calculator button's active/open state instead of overriding broad semantic tokens

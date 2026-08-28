@@ -753,11 +753,12 @@ host's own palette slots, so an active scheme owns the host's chrome and not onl
 the item pane. All eleven exist here and all ten built-in schemes set every one
 of them. This inverts the usual direction of exposure: the token *values* are
 what that host consumes, and a change to any of the eleven repaints an entire
-host UI rather than a player region. The gate on the attribute is load-bearing
-for the host, because the base light theme ships `--pie-background` as
-`rgba(255,255,255,0)` — deliberately, so PIE content reveals its host surface —
-and aliasing a host background slot to a transparent value would strip the chrome
-of a background on every unschemed page.
+host UI rather than a player region. The gate on the attribute was load-bearing for the host while the base light
+theme shipped `--pie-background` as `rgba(255,255,255,0)`, since aliasing a host
+background slot to a transparent value stripped the chrome of a background on
+every unschemed page. PIE-940 made that value opaque white, so the gate now only
+scopes the aliasing to a resolved scheme. The host's gate is still correct and
+needs no change.
 
 The runtime inspector adds two further dependencies. From `token-registry.json`
 it reads six of the nine entry fields — `name`, `owner`, `scope`, `status`,

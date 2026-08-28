@@ -83,11 +83,11 @@ describe("host theming reaches the calculator", () => {
 
 	test("surfaces never resolve through --pie-background", () => {
 		/*
-		 * The canonical light theme publishes `--pie-background: rgba(255,255,255,0)`.
-		 * A surface that resolved through it would be transparent over whatever the
-		 * host painted, and every text-contrast guarantee in this package would stop
-		 * being the package's to make. `--pie-white` and `--pie-background-dark` are
-		 * opaque in both base themes and in all ten schemes.
+		 * `--pie-background` is the page token, which a host may point at its own
+		 * backdrop or at a translucent value. A surface resolving through it would
+		 * stop every text-contrast guarantee in this package from being the
+		 * package's to make. `--pie-white` and `--pie-background-dark` are surface
+		 * roles and opaque in both base themes and in all ten schemes.
 		 */
 		const surfaceRules = [
 			...allStyles.matchAll(/(?:^|\n)\s*background(?:-color)?:\s*([^;]+);/g),

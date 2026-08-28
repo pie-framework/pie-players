@@ -199,14 +199,17 @@
 		padding: 0.25rem;
 		border: 1px solid var(--pie-border, #ccc);
 		border-radius: 4px;
-		background-color: var(--pie-background, white);
+		/* Button fills resolve through the button tokens, which every base theme
+		   and colour scheme sets opaque. The base light theme ships
+		   --pie-background transparent so PIE content reveals the host page. */
+		background-color: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #fff)));
 		color: var(--pie-text, #333);
 		cursor: pointer;
 		transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 	}
 
 	.pie-tool-calculator-inline__button:hover:not(:disabled) {
-		background-color: var(--pie-secondary-background, #f5f5f5);
+		background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f5f5f5)));
 		transform: translateY(-1px);
 		box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
 	}

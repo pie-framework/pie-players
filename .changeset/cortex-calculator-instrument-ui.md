@@ -33,8 +33,8 @@ Host theming now reaches the tool. Every colour resolves as
 element, where it overrode whatever an ancestor set — which silently defeated all
 ten `[data-color-scheme]` PNP palettes for every token except the six series
 colours that already used this pattern. Surfaces deliberately avoid
-`--pie-background`, published as `rgba(255, 255, 255, 0)` in the canonical light
-theme, and take `--pie-white` and `--pie-background-dark` with
+`--pie-background`, which is the page token a host may point at its own backdrop,
+and take `--pie-white` and `--pie-background-dark` with
 `--pie-calculator-surface{,-raised}` as host hooks. Controls gain hover and active
 states, which the package had none of.
 

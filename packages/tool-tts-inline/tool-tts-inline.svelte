@@ -1551,10 +1551,10 @@
 		height: calc(3rem * var(--pie-tts-zoom-comp, 1)); /* Figma: 48px */
 		justify-content: center;
 		gap: calc(0.375rem * var(--pie-tts-zoom-comp, 1));
-		/* --pie-white, not --pie-background: the base light theme sets
-		   --pie-background to rgba(255,255,255,0) so page content shows through,
-		   and a floating card cannot be transparent. --pie-white is the theme's
-		   opaque page surface (DaisyUI base-100; #000 under the dark theme). */
+		/* --pie-white is the surface role every built-in sets to its page colour
+		   (DaisyUI base-100; #000 under the dark theme). --pie-background is the
+		   page token, which a host may point at its own backdrop, and a floating
+		   card needs a surface it owns. */
 		background: var(--pie-tts-selected-bg, var(--pie-surface, var(--pie-white, #fff)));
 		/* The Figma card is shadow-only, but the shadow is black: once the card
 		   takes a dark theme's surface it has no visible edge left. A hairline

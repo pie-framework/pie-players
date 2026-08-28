@@ -410,11 +410,12 @@
 	 * ten `[data-color-scheme]` PNP palettes `@pie-players/pie-theme` publishes, for
 	 * every token except the six series colours that already used this pattern.
 	 *
-	 * Surfaces deliberately do *not* consume `--pie-background`: the canonical light
-	 * theme publishes it as `rgba(255, 255, 255, 0)`, and a transparent calculator
-	 * over the tool wrapper's own fill loses every contrast guarantee the package
-	 * makes. `--pie-white` and `--pie-background-dark` are opaque in the base themes
-	 * and in all ten schemes, so those carry the card and the recessed plane.
+	 * Surfaces deliberately do *not* consume `--pie-background`: that is the page
+	 * token, which a host may set to its own backdrop or to a translucent value,
+	 * and a calculator resolving its fill through it loses every contrast guarantee
+	 * the package makes. `--pie-white` and `--pie-background-dark` are surface roles
+	 * and opaque in the base themes and in all ten schemes, so those carry the card
+	 * and the recessed plane.
 	 */
 	/*
 	 * `auto` is listed alongside `light` because the dark values below live in a

@@ -5,7 +5,7 @@
 :where(pie-theme[theme="light"]) {
 	--pie-annotation-underline: #4221d5;
 	--pie-annotation-underline-dark: #9c89ec;
-	--pie-background: rgba(255, 255, 255, 0);
+	--pie-background: #ffffff;
 	--pie-background-dark: #ecedf1;
 	--pie-black: #000000;
 	--pie-blue-grey-100: #f3f5f7;

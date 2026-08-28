@@ -255,13 +255,14 @@ describe("calculator tool registration", () => {
 		expect(graphing?.initialWidth).not.toBe(untyped?.initialWidth);
 
 		/*
-		 * A graphing panel does not offer a size its two-column layout cannot hold.
-		 * The calculator switches to a stacked layout below 42rem, and stacked it
-		 * measures 701px of content against the 486px a 560px panel gives it — no
-		 * spacing tier closes a gap that size, so the minimum stays above the switch.
+		 * The opening size varies by type; the resize floor does not. This
+		 * registration serves three vendors, so a per-type floor would move the limit
+		 * under two whose layouts were never measured for it — below the floor a
+		 * calculator scrolls its own content, which is the contract already.
 		 */
-		expect(graphing?.minWidth).toBeGreaterThanOrEqual(672);
-		expect(graphing?.minHeight).toBeGreaterThan(basic?.minHeight ?? 0);
+		for (const shell of [untyped, basic, scientific, graphing]) {
+			expect([shell?.minWidth, shell?.minHeight]).toEqual([380, 480]);
+		}
 	});
 
 	test("forwards provider-neutral and implementation settings to the surface", () => {

@@ -144,15 +144,14 @@ body[data-mode="graphing"] .pie-cortex-demo-calculator--shell {
 	height: 587px;
 }
 
-body[data-mode="basic"] .pie-cortex-demo-calculator--floor,
-body[data-mode="scientific"] .pie-cortex-demo-calculator--floor {
+/*
+ * One floor for all three, because the registration's `minWidth`/`minHeight` are
+ * shared: 380x480 minus the header. Graphing reaches it too, where it stacks the
+ * rail above the plot and scrolls what does not fit.
+ */
+.pie-cortex-demo-calculator--floor {
 	width: 380px;
 	height: 407px;
-}
-
-body[data-mode="graphing"] .pie-cortex-demo-calculator--floor {
-	width: 700px;
-	height: 487px;
 }
 
 @media (max-width: 30rem) {

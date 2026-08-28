@@ -23,10 +23,12 @@ snap it back.
 
 Panel sizes are now per type, measured rather than assumed — 380x500 basic,
 380x560 scientific, 720x660 graphing. Basic asked for 560 and needed 398px of
-content, and the ~90px of blank above the entry line was that gap. Graphing's
-minimums are raised to what its two-column layout holds: below 42rem the
-calculator stacks the rail above the plot, and stacked it measures 701px of
-content, which no spacing tier closes.
+content, and the ~90px of blank above the entry line was that gap. The resize floor stays shared at
+380x480: this registration serves Desmos, GeoGebra and Cortex alike, so a
+graphing-only floor would move the limit under two vendors whose layouts were
+never measured for it. Cortex below 42rem stacks the rail above the plot and needs
+701px there, which no spacing tier closes — it scrolls its own content instead,
+which is the contract every size below the opening one already relies on.
 
 In the Cortex calculator itself, every fixed size is now a token, and the
 calculator measures its own box and re-declares them in three tiers. Keys keep

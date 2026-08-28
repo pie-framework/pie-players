@@ -352,13 +352,14 @@ export const calculatorToolRegistration: ToolRegistration = {
 						 *   since the board itself is `aria-hidden`. At 620 that column was
 						 *   12px short and the readout's last line was cut off.
 						 *
-						 * Both graphing minimums are raised to what its two-column layout
-						 * needs. Below 42rem the calculator stacks the rail above the plot,
-						 * and stacked it measures 701px — no spacing tier closes a 300px
-						 * gap, so the panel does not offer a size the layout cannot hold.
-						 * A viewport too small for the minimum still shrinks the shell
-						 * (WCAG 1.4.10), and the calculator scrolls its own content there
-						 * rather than clipping it.
+						 * The minimums stay shared across types and providers. This
+						 * registration serves Desmos, GeoGebra and Cortex alike, so a
+						 * graphing-only floor would move the resize limit under two vendors
+						 * whose layouts were never measured for it. Cortex below 42rem
+						 * stacks the rail above the plot and needs 701px there, which no
+						 * spacing tier closes — it scrolls its own content instead of
+						 * clipping it, which is the contract every size below the opening
+						 * one already relies on.
 						 */
 						initialWidth: calculatorType === "graphing" ? 720 : 380,
 						initialHeight:
@@ -367,8 +368,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 								: calculatorType === "basic"
 									? 500
 									: 560,
-						minWidth: calculatorType === "graphing" ? 700 : 380,
-						minHeight: calculatorType === "graphing" ? 560 : 480,
+						minWidth: 380,
+						minHeight: 480,
 						/*
 						 * `bottom-right` put a 560-620px-tall shell over the items
 						 * column it shares the viewport with — tall enough, at

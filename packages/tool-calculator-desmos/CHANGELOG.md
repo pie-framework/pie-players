@@ -1,5 +1,61 @@
 # @pie-players/pie-tool-calculator
 
+## 0.3.69
+
+### Patch Changes
+
+- 8bb668b: Add a separately packaged GeoGebra calculator suite with provider, full tool,
+  inline trigger, tests, documentation, and a section-player demo. Basic requests
+  map to GeoGebra Scientific, while scientific and graphing use their matching
+  embedded apps.
+  
+  Move calculator lifecycle and UI into a provider-neutral shared package, keep
+  vendor settings in their implementation packages, and select implementations
+  through the same `provider.init`, `provider.runtime`, and `settings` schema.
+  Desmos remains the no-configuration default and preserves its unkeyed legacy
+  load and runtime `proxyEndpoint` initialization for existing clients. The
+  packaged composition selects the GeoGebra element and lazy bundle from the same
+  provider config used by the toolkit.
+  
+  Document that PIE bundles only MIT-licensed adapter code, not either vendor
+  application. Clarify the separate Desmos and GeoGebra license obligations,
+  runtime credential boundary, attribution, and self-hosting restrictions.
+- 787ad8f: Add a fully bundled open-source calculator provider using MathLive, Cortex
+  Compute Engine, and JSXGraph, with basic, scientific, and graphing modes,
+  worker-isolated evaluation, accessible graph exploration, direct custom-element
+  wrappers, package-owned isolated mode demos, typed English/Dutch localization
+  with host message overrides and RTL support, canonical theme-token consumption,
+  themeable graph series, and opt-in default-tool-loader composition.
+  
+  Move registration of the generic `pie-tool-calculator` element into the shared,
+  provider-neutral package while retaining the Desmos compatibility entry and
+  Desmos as the default provider.
+- 3544e9d: Move Desmos per-instance configuration to the Desmos adapter package, and align the calculator contract with the TTS one. `@pie-players/pie-calculator` no longer exports the Desmos settings type or accepts `desmos` on `CalculatorProviderConfig`; import `DesmosCalculatorSettings` and `DesmosCalculatorProviderConfig` from `@pie-players/pie-calculator-desmos` instead.
+  
+  `CalculatorProvider` and `Calculator` stay un-parameterized, matching `ITTSProvider` in `@pie-players/pie-tts`. An adapter extends `CalculatorProviderConfig` and narrows `createCalculator`'s argument in its own class signature, which is what gives a caller holding the concrete provider the precise type; a type parameter on the interface would add nothing, since a provider narrowing that argument satisfies it either way. `CalculatorProvider.initialize` now takes an optional `CalculatorProviderInit` — vendor credentials and an instrumentation callback — so a provider that authenticates is describable by the contract rather than by a structural mirror. `DesmosToolProvider` is typed by `CalculatorProvider` from the contract package, the way `TTSToolProvider` is typed by `ITTSProvider`, and reaches `@pie-players/pie-calculator-desmos` only inside a method body: that package is an optional peer, and a top-level type import from it would reach the toolkit's published declarations and make the optional peer required for anyone type-checking without `skipLibCheck`.
+  
+  The runtime shape is `{ restrictedMode, settings: { … } }`, one vendor-neutral field for every adapter, so an adapter can own typed configuration without leaking provider knowledge into the generic package. The consumer dependency pad records no documented host importing any calculator type, so the listed hosts are unaffected.
+- e66efff: Make each tool package's root type entry describe what its root runtime entry actually provides. `insertTypesEntry` derives that entry from the bundle entry — a `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so any package whose bundle entry is a component published a root entry that ignored its own `index.ts`.
+  
+  Where `index.ts` re-exported *types*, they now ship: `@pie-players/pie-tool-dictionary` exports `DictionaryEntry`, `DictionaryLookup`, `DictionaryLookupRequest`, `DictionaryLookupResult` and `DictionarySense`; `@pie-players/pie-tool-picture-dictionary` exports `PictureLookup`, `PictureLookupRequest`, `PictureLookupResult` and `PictureResult`; `@pie-players/pie-tool-calculator-desmos` exports `CalculatorType`. Additive — no name changed, and nothing could import these before because they were never in a published tarball. A host supplying a dictionary or picture-dictionary endpoint can now type its response against the shape the tool reads, instead of declaring that shape itself.
+  
+  Where `index.ts` re-exported a *value*, the re-export was removed instead. `@pie-players/pie-tool-answer-eliminator` re-exported `AdapterRegistry` from its root, but the root runtime entry is the built bundle, which exports the component and nothing named — so shipping that type export would have type-checked and then been `undefined` at run time. `AdapterRegistry` is reached through the `./adapters/adapter-registry` subpath, which its README now shows.
+- Updated dependencies [ced07e0]
+- Updated dependencies [3017425]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [f24e425]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-tool-calculator-shared@0.3.69
+  - @pie-players/pie-calculator@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-geogebra",
-	"version": "0.3.68",
+	"version": "0.3.69",
 	"type": "module",
 	"description": "GeoGebra calculator custom element for PIE assessment players",
 	"repository": {

@@ -1,5 +1,41 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 0.3.69
+
+### Patch Changes
+
+- 8bb668b: Add a separately packaged GeoGebra calculator suite with provider, full tool,
+  inline trigger, tests, documentation, and a section-player demo. Basic requests
+  map to GeoGebra Scientific, while scientific and graphing use their matching
+  embedded apps.
+  
+  Move calculator lifecycle and UI into a provider-neutral shared package, keep
+  vendor settings in their implementation packages, and select implementations
+  through the same `provider.init`, `provider.runtime`, and `settings` schema.
+  Desmos remains the no-configuration default and preserves its unkeyed legacy
+  load and runtime `proxyEndpoint` initialization for existing clients. The
+  packaged composition selects the GeoGebra element and lazy bundle from the same
+  provider config used by the toolkit.
+  
+  Document that PIE bundles only MIT-licensed adapter code, not either vendor
+  application. Clarify the separate Desmos and GeoGebra license obligations,
+  runtime credential boundary, attribution, and self-hosting restrictions.
+- b0223d6: Stop publishing `dist/vite.config.d.ts`. Nine packages emitted a declaration for their own Vite config because the dts pass ran over an unbounded TypeScript glob, and every one of them ships `dist`, so the file reached the tarball. No `exports` entry ever pointed at it, so nothing could import it — this is tarball contents, not API. `check:pack-integrity` now rejects a packed build-config declaration, so a new package cannot reintroduce one.
+- Updated dependencies [ced07e0]
+- Updated dependencies [3017425]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [f24e425]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-tool-calculator-shared@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

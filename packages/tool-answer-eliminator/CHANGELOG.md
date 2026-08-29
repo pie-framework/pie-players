@@ -1,5 +1,27 @@
 # @pie-players/pie-tool-answer-eliminator
 
+## 0.3.69
+
+### Patch Changes
+
+- e66efff: Make each tool package's root type entry describe what its root runtime entry actually provides. `insertTypesEntry` derives that entry from the bundle entry — a `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so any package whose bundle entry is a component published a root entry that ignored its own `index.ts`.
+  
+  Where `index.ts` re-exported *types*, they now ship: `@pie-players/pie-tool-dictionary` exports `DictionaryEntry`, `DictionaryLookup`, `DictionaryLookupRequest`, `DictionaryLookupResult` and `DictionarySense`; `@pie-players/pie-tool-picture-dictionary` exports `PictureLookup`, `PictureLookupRequest`, `PictureLookupResult` and `PictureResult`; `@pie-players/pie-tool-calculator-desmos` exports `CalculatorType`. Additive — no name changed, and nothing could import these before because they were never in a published tarball. A host supplying a dictionary or picture-dictionary endpoint can now type its response against the shape the tool reads, instead of declaring that shape itself.
+  
+  Where `index.ts` re-exported a *value*, the re-export was removed instead. `@pie-players/pie-tool-answer-eliminator` re-exported `AdapterRegistry` from its root, but the root runtime entry is the built bundle, which exports the component and nothing named — so shipping that type export would have type-checked and then been `undefined` at run time. `AdapterRegistry` is reached through the `./adapters/adapter-registry` subpath, which its README now shows.
+- b0223d6: Stop publishing `dist/vite.config.d.ts`. Nine packages emitted a declaration for their own Vite config because the dts pass ran over an unbounded TypeScript glob, and every one of them ships `dist`, so the file reached the tarball. No `exports` entry ever pointed at it, so nothing could import it — this is tarball contents, not API. `check:pack-integrity` now rejects a packed build-config declaration, so a new package cannot reintroduce one.
+- Updated dependencies [ced07e0]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

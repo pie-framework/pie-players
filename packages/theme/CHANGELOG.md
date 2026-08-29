@@ -1,5 +1,37 @@
 # @pie-players/pie-theme
 
+## 0.3.69
+
+### Patch Changes
+
+- 01eb0f9: Add `--pie-section-player-card-header-background-dark`, a card header fill applied under dark themes. A host whose brand tint is legible on a light card gets a near-white title on that same tint once a dark theme is active; this is the hook for giving the dark theme its own fill. It falls back to `--pie-section-player-card-header-background` when unset, so a host that sets only the light hook is unaffected. The passage card bridges the dark value to `--pie-passage-header-background` as well, so a hosted passage-player follows. Dark is detected with the same selectors the theme package writes its dark tokens under: `[data-theme="dark"]` on an ancestor, or `pie-theme[theme="dark"]`.
+- 8bb668b: Add a separately packaged GeoGebra calculator suite with provider, full tool,
+  inline trigger, tests, documentation, and a section-player demo. Basic requests
+  map to GeoGebra Scientific, while scientific and graphing use their matching
+  embedded apps.
+  
+  Move calculator lifecycle and UI into a provider-neutral shared package, keep
+  vendor settings in their implementation packages, and select implementations
+  through the same `provider.init`, `provider.runtime`, and `settings` schema.
+  Desmos remains the no-configuration default and preserves its unkeyed legacy
+  load and runtime `proxyEndpoint` initialization for existing clients. The
+  packaged composition selects the GeoGebra element and lazy bundle from the same
+  provider config used by the toolkit.
+  
+  Document that PIE bundles only MIT-licensed adapter code, not either vendor
+  application. Clarify the separate Desmos and GeoGebra license obligations,
+  runtime credential boundary, attribution, and self-hosting restrictions.
+- 3deb7a2: Stop driving the split-pane pane backdrop from `--pie-passage-header-background` and read the canonical `--pie-background-dark` directly. The pane rule is a grouped selector covering the items pane as well, so a host that set the passage header hook to color a hosted passage-player's header also repainted both pane backdrops — including a pane that holds no passage header. `--pie-background-dark` is what the panes already resolved to whenever the hook was unset, so appearance is unchanged. The backdrop deliberately gets no pane-specific hook: it stays with the theme. `--pie-passage-header-background` keeps its documented job, the passage card bridging it to `--pie-section-player-card-header-background`.
+- 3017425: Publish the light Base Theme's `--pie-background` as opaque `#ffffff`.
+  
+  It shipped as `rgba(255, 255, 255, 0)` from the first commit so PIE content revealed whatever surface the host painted behind it. The cost outgrew the capability: components across `pie-players`, `pie-lib` and `pie-elements` read the token as an opaque surface fill, which produced see-through dropdown menus and bleeding passage headings (PIE-940, PIE-853), and the token registry itself describes it as a page *or component surface* background that component hooks may fall back through. Two declared contrast relationships, the annotation underline and the annotation toolbar boundary, were permanently `contrast-unmeasurable` because their effective contrast depended on a backdrop the theme could not see; both are certified now, and `parseOpaqueColor` no longer special-cases the value.
+  
+  `--pie-background` remains the page token. A host that wants its own surface to show through PIE content sets the token itself, which is the same override any other palette change uses. Hosts already setting it opaque, or painting an opaque surface behind PIE content, see no change — the value they resolve is unchanged in the dark base theme and in all ten colour schemes, which set it explicitly.
+  
+  The change reaches the element repos with no edit there. `pie-lib` resolves `color.background()` to `var(--pie-background, …)` and every use of its own transparent default is that fallback rather than a literal, so roughly 150 call sites across `pie-lib` and `pie-elements` follow the theme, the inline-dropdown menu among them. `pie-lib`'s default still applies wherever PIE elements render with no `<pie-theme>` mounted.
+  
+  Surfaces should still resolve through a surface role — `--pie-white`, `--pie-background-dark`, `--pie-dropdown-background`, `--pie-secondary-background` — rather than through the page token, since a host may point `--pie-background` anywhere. Component comments and docs that justified avoiding it by its transparency now state that role reason instead.
+
 ## 0.3.68
 
 ### Patch Changes

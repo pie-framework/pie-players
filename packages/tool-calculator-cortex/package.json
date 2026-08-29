@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-cortex",
-	"version": "0.3.68",
+	"version": "0.3.69",
 	"type": "module",
 	"description": "Open-source Cortex calculator custom element for PIE assessment players",
 	"repository": {

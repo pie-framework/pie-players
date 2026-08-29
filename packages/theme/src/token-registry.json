@@ -863,6 +863,57 @@
 		"fallbackPolicy": "Canonical lighter primary action token used for low-emphasis action surfaces."
 	},
 	{
+		"name": "--pie-scrollbar-thumb",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar thumb on the three scrolling panes. Package-private: no theme or scheme sets it, so the fallback chain is the contract rather than the name. Falls back through --pie-border-gray, a boundary token hosts do not repoint to restyle button chrome; it defaulted through --pie-border until a host set that to transparent and every pane's thumb went invisible."
+	},
+	{
+		"name": "--pie-scrollbar-thumb-hover",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar thumb hover on the three scrolling panes. Package-private: the fallback chain is the contract rather than the name. Falls back through --pie-border-dark."
+	},
+	{
+		"name": "--pie-scrollbar-track",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar track on the three scrolling panes. Package-private: the fallback chain is the contract rather than the name. Falls back through --pie-background-dark, the surface one step off the page."
+	},
+	{
 		"name": "--pie-secondary",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",
@@ -1409,6 +1460,81 @@
 			"docs/architecture/pie-727-theme-token-inventory.md"
 		],
 		"fallbackPolicy": "Package-private toolbar-to-inline-TTS row height handoff used to reserve reading controls space."
+	},
+	{
+		"name": "--pie-tts-line-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Line-granularity reading highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back through --pie-tts-sentence-highlight, then --pie-missing at 38%."
+	},
+	{
+		"name": "--pie-tts-sentence-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Sentence-granularity reading highlight, and the fallback for --pie-tts-line-highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-missing at 38%."
+	},
+	{
+		"name": "--pie-tts-word-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Current-word reading highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-missing at 68%."
+	},
+	{
+		"name": "--pie-tts-word-shadow",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Text shadow carrying the current word over a saturated highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-text at 35%."
+	},
+	{
+		"name": "--pie-tts-word-underline",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Underline on the current word, the non-colour cue for schemes where the highlight hue washes out. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-text at 70%."
 	},
 	{
 		"name": "--pie-white",

@@ -1080,6 +1080,24 @@ const id = highlightCoordinator.addAnnotation(range, 'yellow');
 highlightCoordinator.removeAnnotation(id);
 ```
 
+Reading highlights resolve through five `component-public` tokens registered in
+`packages/theme/src/token-registry.json`:
+
+| Custom property | Default | Description |
+| --- | --- | --- |
+| `--pie-tts-word-highlight` | `--pie-missing` at 68% | Fill behind the current word |
+| `--pie-tts-sentence-highlight` | `--pie-missing` at 38% | Fill behind the current sentence |
+| `--pie-tts-line-highlight` | `--pie-tts-sentence-highlight` | Fill behind the current line |
+| `--pie-tts-word-underline` | `--pie-text` at 70% | Underline marking the current word |
+| `--pie-tts-word-shadow` | `--pie-text` at 35% | Shadow carrying the word over its fill |
+
+The coordinator derives all five from the active theme's accent, text and
+background — opacities clamped to a legible band, and the underline colour picked
+by background luminance so the cue survives a dark scheme — then writes them
+inline on the document element. Inline styles outrank any author selector, so a
+host override takes `!important` and owns the contrast the derivation was
+maintaining, across every scheme it ships.
+
 ### AccessibilityCatalogResolver
 
 ```typescript

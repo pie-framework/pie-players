@@ -718,7 +718,9 @@ splitpane element, several with `!important`:
 All thirteen resolve to real tokens in this repo, and thirteen is now the whole
 set: the two inert names this pad recorded, `--pie-tts-word-color` and the
 `--pie-tts-word-hightlight` typo, are gone from that host. Renaming or dropping
-any of the thirteen changes that delivery's appearance with no build signal.
+any of the thirteen changes that delivery's appearance with no build signal,
+except the five `--pie-tts-*` highlight tokens: those are registry entries, so a
+rename in `HighlightCoordinator.ts` trips `check:theme-tokens`.
 
 Three of them — `--pie-background`, `--pie-button-bg`,
 `--pie-button-background-color` — sit on the splitpane element in one rule that

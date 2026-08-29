@@ -60,8 +60,6 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-annotation-green-highlight",
 	"--pie-annotation-orange-highlight",
 	"--pie-annotation-pink-highlight",
-	"--pie-annotation-underline",
-	"--pie-annotation-underline-dark",
 	"--pie-annotation-yellow-highlight",
 	"--pie-answer-eliminator-image-strike-casing-color",
 	"--pie-answer-eliminator-strike-paint",
@@ -72,13 +70,9 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-calculator-button-size-sm",
 	"--pie-calculator-surface",
 	"--pie-calculator-surface-raised",
-	"--pie-elements-ng-root",
 	"--pie-font-family",
 	"--pie-header-text",
 	"--pie-loading-accent",
-	"--pie-scrollbar-thumb",
-	"--pie-scrollbar-thumb-hover",
-	"--pie-scrollbar-track",
 	"--pie-section-player-focus-outline",
 	"--pie-selected-button-background",
 	"--pie-selected-button-border",
@@ -94,14 +88,8 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-tts-card-border",
 	"--pie-tts-inline-muted-color",
 	"--pie-tts-left-aligned-panel-width",
-	"--pie-tts-line-highlight",
 	"--pie-tts-menu-shadow",
 	"--pie-tts-selected-bg",
-	"--pie-tts-sentence-highlight",
-	"--pie-tts-trigger-shadow",
-	"--pie-tts-word-highlight",
-	"--pie-tts-word-shadow",
-	"--pie-tts-word-underline",
 	"--pie-tts-zoom-comp",
 ]);
 
@@ -295,7 +283,20 @@ function checkRegistryPaths(root, registry, failures) {
 			}
 		}
 
-		if (entry.scope !== "component-public" && entry.scope !== "legacy") {
+		/*
+		 * Scopes whose `documentedIn` names a per-token passage, so the path can be
+		 * checked for the name literally. `canonical-semantic` is excluded on
+		 * purpose: those point at the theme README, which documents the canonical
+		 * set as a system and tells readers to get per-token facts from this
+		 * registry rather than from a list that drifts. Four `package-private`
+		 * entries claimed a doc that did not name them, unnoticed because this
+		 * guard skipped the scope.
+		 */
+		const documentedPerToken =
+			entry.scope === "component-public" ||
+			entry.scope === "legacy" ||
+			entry.scope === "package-private";
+		if (!documentedPerToken) {
 			continue;
 		}
 

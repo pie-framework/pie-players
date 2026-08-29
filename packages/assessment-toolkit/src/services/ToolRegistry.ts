@@ -598,6 +598,27 @@ export interface ToolRegistration {
 	isVisibleInContext?(context: ToolContext): boolean;
 
 	/**
+	 * Whether this tool can act on this content at all — a capability question,
+	 * not a relevance heuristic. Answering `false` withdraws the tool even where
+	 * a PNP grant would otherwise keep it, which {@link
+	 * ToolRegistration.isVisibleInContext} deliberately cannot do.
+	 *
+	 * The two gates answer different questions, and most tools declare only the
+	 * first. A calculator is *applicable* to every item — a learner granted one
+	 * keeps it on an item that does not look mathematical — while its relevance
+	 * is a guess about usefulness. An answer eliminator on an item with no choice
+	 * interaction has nothing to strike through, so no grant can make it work.
+	 *
+	 * Declare this only where the tool's own controls provably do nothing:
+	 * withdrawing a granted accommodation on a false negative is the more
+	 * expensive failure. Omitting it means "applicable".
+	 *
+	 * @param context - The item or element context the tool would act on
+	 * @returns false to withdraw the tool from this context
+	 */
+	isApplicableToContent?(context: ToolContext): boolean;
+
+	/**
 	 * Toolbar render contract. Required for `toolbar-toggle` and
 	 * `selection-gateway`; a region capability renders through
 	 * {@link ToolRegistration.renderSurface} instead.
@@ -827,6 +848,14 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 	) {
 		throw new Error(
 			`Invalid tool registration "${registration.toolId}": "isVisibleInContext" must be a function when present.`,
+		);
+	}
+	if (
+		registration.isApplicableToContent !== undefined &&
+		typeof registration.isApplicableToContent !== "function"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "isApplicableToContent" must be a function when present.`,
 		);
 	}
 	if (registration.requiresAuthoredContent !== undefined) {
@@ -1157,6 +1186,40 @@ export class ToolRegistry {
 		}
 
 		return visible;
+	}
+
+	/**
+	 * Whether a tool can act on any of the contexts it would be placed against.
+	 * Unlike the relevance pass this is a veto: a `false` here removes the tool
+	 * from a toolbar even when a grant protects it, so a tool answers `false`
+	 * only where its controls provably do nothing.
+	 *
+	 * A tool that declares no applicability gate is applicable. So is one
+	 * evaluated against no contexts — content that has not resolved yet cannot
+	 * establish that a tool is useless.
+	 *
+	 * @param toolId - Tool to ask
+	 * @param contexts - Every context the tool could act on at this placement
+	 */
+	isApplicableToAnyContext(
+		toolId: string,
+		contexts: readonly ToolContext[],
+	): boolean {
+		const tool = this.get(toolId);
+		if (!tool?.isApplicableToContent) return true;
+		if (contexts.length === 0) return true;
+		return contexts.some((context) => {
+			try {
+				return tool.isApplicableToContent?.(context) ?? true;
+			} catch (error) {
+				console.error(
+					`Error evaluating applicability for tool '${toolId}':`,
+					error,
+				);
+				// A gate that throws has not established that the tool is useless.
+				return true;
+			}
+		});
 	}
 
 	/**

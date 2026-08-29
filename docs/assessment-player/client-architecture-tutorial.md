@@ -306,9 +306,13 @@ const coordinator = new ToolkitCoordinator({
         serverProvider: 'polly',
       },
       calculator: {
-        authFetcher: async () => {
-          const r = await fetch('/api/tools/desmos/auth');
-          return r.json();
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const r = await fetch('/api/tools/desmos/auth');
+              return r.json();
+            },
+          },
         },
       },
     },
@@ -317,6 +321,12 @@ const coordinator = new ToolkitCoordinator({
 
 playerEl.coordinator = coordinator;
 ```
+
+This `authFetcher` keeps the Desmos key out of the static application bundle,
+but it cannot keep the key secret from the browser because Desmos's documented
+integration includes it in the `calculator.js` URL. Use a key whose Trial or
+Commercial Tier covers the demo or deployment; see the current
+[Desmos API Terms](https://www.desmos.com/api-terms).
 
 The same coordinator instance is reused across section transitions. When the user navigates from section 1 to section 2, the assessment player unmounts the old section player and mounts a new one with the same coordinator — TTS playback state, tool state, and highlight layers reset per-section, but the coordinator's configuration and service instances persist.
 

@@ -12,5 +12,7 @@
  *   // <pie-tool-calculator visible="true" tool-id="calc"></pie-tool-calculator>
  */
 
+import "@pie-players/pie-tool-calculator-shared/calculator-element";
+
 // Export TypeScript types (if any)
-export type { CalculatorType } from "@pie-players/pie-assessment-toolkit/tools/client";
+export type { CalculatorType } from "@pie-players/pie-calculator";

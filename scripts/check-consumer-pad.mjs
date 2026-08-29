@@ -87,6 +87,32 @@ const TRIGGERS = [
 			file === "packages/players-shared/src/types/index.ts" ||
 			file === "packages/players-shared/src/ui/content-styles.ts",
 	},
+	{
+		reason:
+			"published type surface of a contract package or a tool export barrel: a name added to or removed from what consumers can import",
+		match: (file) =>
+			/^packages\/(calculator|tts)\/src\/(index|provider-interface)\.ts$/.test(
+				file,
+			) ||
+			/^packages\/assessment-toolkit\/src\/tools\/(client|internal|types)\.ts$/.test(
+				file,
+			),
+	},
+	{
+		reason:
+			"a tool package's published type entry, the lookup contract a host implements behind it, or the dts config that decides whether either reaches a tarball",
+		match: (file) =>
+			/^packages\/tool-[^/]+\/(index|lookup)\.ts$/.test(file) ||
+			/^packages\/tool-[^/]+\/vite\.config\.ts$/.test(file),
+	},
+	{
+		reason:
+			"published type surface of a provider adapter package: the owner of a vendor's configuration types",
+		match: (file) =>
+			/^packages\/(calculator-desmos|tts-client-server|tts-server-[a-z]+)\/(src\/)?index\.ts$/.test(
+				file,
+			),
+	},
 ];
 
 const fail = (lines) => {

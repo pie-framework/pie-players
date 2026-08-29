@@ -1,8 +1,10 @@
 # Documentation Index
 
-This folder contains the active documentation set for `pie-players`. The focus
-is on current public APIs, runtime boundaries, and integration patterns. Design
-history and completed implementation plans are intentionally excluded.
+This folder contains the maintained documentation set for `pie-players`. The
+focus is on current public APIs, runtime boundaries, integration patterns, and
+contract decisions. Completed implementation plans are excluded unless they are
+accepted PRDs or ADRs retained as current contract and decision references; see
+[`prds/README.md`](./prds/README.md#retention-and-cleanup).
 
 ## Start Here
 
@@ -91,6 +93,7 @@ history and completed implementation plans are intentionally excluded.
 ## Setup And Publishing
 
 - [`development/demo-workspace-resolution.md`](./development/demo-workspace-resolution.md) - How demo apps resolve `@pie-players/*` (`dist/` and Vite aliases)
+- [`development/calculator-external-test-corpora.md`](./development/calculator-external-test-corpora.md) - Calculator test data that CI does not ship: the on-demand GSM8K corpus, and the open-source suites mined for cases
 - [`setup/environment-setup.md`](./setup/environment-setup.md) - Local environment setup
 - [`setup/demo_system.md`](./setup/demo_system.md) - Canonical root demo commands and run orchestration
 - [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow

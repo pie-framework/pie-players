@@ -29,6 +29,31 @@ Critical requirements:
 
 ## Canonical Rules
 
+### Design Principles
+
+These govern how a new surface is shaped, and they outrank convenience.
+
+- **Internal consistency first.** Before designing an interface, find where this
+  framework already solves the same problem, and match it. Two packages solving
+  one problem two ways is a defect even when both work — the calculator contract
+  carried a type parameter for vendor config while `pie-tts` did the same job with
+  plain interface extension, and the parameter was the thing that had to go. When
+  no precedent exists, the shape you choose becomes one, so choose it as a
+  precedent.
+- **Tight, non-leaky interfaces.** A contract package exposes what a consumer
+  needs to call and nothing about who implements it. Provider knowledge belongs in
+  the adapter that owns it: `pie-calculator` names no vendor, `pie-calculator-desmos`
+  owns every Desmos type. A consumer of a contract must never have to reach past it
+  to a concrete implementation, and a contract's published declarations must not
+  drag an implementation's package in behind them.
+- **Lean and focused.** Prefer the smaller surface. Delete a parameter, an export,
+  or an abstraction that constrains nothing rather than documenting why it is
+  harmless — an unenforced generic, a re-export nothing can import, a mirror type
+  nothing checks. Abstraction earns its place by a need that exists now.
+- **A published entry describes what it delivers.** Type entries, `exports` maps
+  and declarations are promises to a consumer; a promise the runtime cannot keep is
+  a defect even where nothing has called it yet.
+
 ### PIE Element Versioning And Tag/ID Contract
 
 Versioned `pie-*--version-*` tag names are authored content contracts. They are
@@ -94,6 +119,28 @@ registered under its own distinct tag.
   `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
   `bun run check:custom-elements`.
 
+### Decision Records
+
+`docs/adr/` holds one file per decision that is hard to reverse or surprising
+without its context. `docs/adr/README.md` sets the bar and the numbering; records
+are append-only, so a superseded one keeps its number and gains a `Superseded by`
+line rather than being edited into agreement.
+
+Two rules from those records bind new code directly, both from ADR 0002:
+
+- A public interface takes no type parameter that appears only in argument
+  position. TypeScript compares method parameters bivariantly, so such a parameter
+  constrains no implementor while every implementor and annotation site has to
+  carry it. An adapter extends the contract's config interface and narrows the
+  argument in its own class signature — that is where a caller's precision
+  actually comes from. A parameter in return position is checked and stays.
+- An optional peer dependency stays out of published declarations. Declaration
+  emit preserves `implements` clauses and public return types, so a top-level
+  `import type` from an optional peer reaches the published `.d.ts` and makes that
+  peer required for any consumer type-checking without `skipLibCheck`. Type the
+  public surface with the contract package's own interface and confine the peer to
+  a method body.
+
 ### Downstream Consumer Impact
 
 `docs/integrations/consumer-api-dependencies.md` records which `@pie-players`
@@ -143,6 +190,32 @@ surfaces real downstream hosts touch, and which of those break silently.
   `scripts/check-consumer-pad.mjs` is too wide — narrow it there rather than
   normalizing the override. `PIE_CONSUMER_PAD_OVERRIDE="<reason>"` exists for a
   one-off local run and is not a substitute for the trailer.
+
+### Theme Token Admission and Stability
+
+`docs/architecture/pie-727-theme-token-inventory.md` carries the full rule under
+**Registry admission** and **Token stability**. The binding parts:
+
+- A `--pie-*` name earns a `token-registry.json` entry when a host sets it, or
+  when package documentation tells a host to set it. Every other name gets an
+  allowlist line in `scripts/check-theme-tokens.mjs` and nothing else. Existing
+  in source is not the test — applying it that way published seventeen entries on
+  2026-08-02 and withdrew sixteen the next day.
+- A README that names a token states which side of that line it falls on.
+  Offering a token to hosts while leaving it unregistered is the same defect from
+  the other end: register it or withdraw the offer.
+- Registered names are not renamed or dropped, and reclassifying one narrows a
+  promise a host may hold, so it takes the same consumer-pad check as a rename.
+- A rendered value changes on a diagnosed accessibility failure or a
+  host-visible defect, named in the changeset with the relationship it repairs.
+  `packages/theme/tests/theme-definition-contract.test.ts` asserts every base
+  theme and all ten schemes come back contrast-clean, so a palette edit that
+  repairs no diagnosed failure is changing certified output.
+- Prefer an existing canonical token or `--pie-button-*` chain over a new hook.
+  Where a component needs one, match the nearest in-framework precedent — its
+  fallback shape, its scope, and its scheme participation — rather than inventing
+  a parallel convention; divergence between two components solving the same
+  problem is itself the defect.
 
 ### Legacy Compatibility Boundaries
 

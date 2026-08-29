@@ -115,8 +115,6 @@ export const ttsToolRegistration: ToolRegistration = {
 	pnpSupportIds: [
 		"textToSpeech", // QTI 3.0 standard (auditory.textToSpeech)
 		"readAloud", // QTI 3.0 standard (auditory.readAloud)
-		"tts", // Common abbreviation
-		"speechOutput", // Common variant
 	],
 
 	/**

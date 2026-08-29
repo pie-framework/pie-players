@@ -17,6 +17,7 @@
 	],
 	"scripts": {
 		"build": "tsc",
+		"test": "bun test tests",
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": [

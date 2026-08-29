@@ -21,6 +21,10 @@ export type { ToolProviderConfig } from "./ToolProviderRegistry.js";
 // Concrete providers
 export { DesmosToolProvider } from "./DesmosToolProvider.js";
 export type { DesmosToolProviderConfig } from "./DesmosToolProvider.js";
+export { CortexToolProvider } from "./CortexToolProvider.js";
+export type { CortexToolProviderConfig } from "./CortexToolProvider.js";
+export { GeoGebraToolProvider } from "./GeoGebraToolProvider.js";
+export type { GeoGebraToolProviderConfig } from "./GeoGebraToolProvider.js";
 
 export { TTSToolProvider } from "./TTSToolProvider.js";
 export type {

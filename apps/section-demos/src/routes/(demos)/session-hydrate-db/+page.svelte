@@ -98,7 +98,10 @@
 				providers: {
 					textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
 					calculator: {
-						authFetcher: fetchDesmosAuthConfig
+						provider: {
+							id: 'calculator-desmos',
+							runtime: { authFetcher: fetchDesmosAuthConfig }
+						}
 					},
 					annotationToolbar: {
 						enabled: true

@@ -415,6 +415,15 @@ Passage and item cards share a common header row
 - When a header fill is provided, header top corners default just inside the
   card radius. Hosts/themes can override them independently via
   `--pie-section-player-card-header-radius`.
+- Under a dark theme the header takes
+  `--pie-section-player-card-header-background-dark` instead, falling back to
+  `--pie-section-player-card-header-background` when it is unset. That is the
+  hook for a host whose brand tint is legible on a light card but not on a dark
+  one. "Dark theme" here means the selectors the theme package writes its dark
+  tokens under: `[data-theme="dark"]` on an ancestor, or
+  `pie-theme[theme="dark"]`. Note the `-dark` suffix means *under a dark theme*
+  here, unlike canonical tokens such as `--pie-background-dark`, where it means
+  a darker shade.
 - `pie-section-player-passage-card` also bridges
   `--pie-passage-header-background` to `--pie-section-player-card-header-background`,
   so a hosted passage-player custom element (defined outside this package)
@@ -428,6 +437,7 @@ pie-section-player-passage-card,
 pie-section-player-item-card {
   --pie-section-player-card-radius: 8px;
   --pie-section-player-card-header-background: #c9e5e6;
+  --pie-section-player-card-header-background-dark: #1f4a4d;
   --pie-section-player-card-header-radius: 7px;
 }
 ```
@@ -435,6 +445,16 @@ pie-section-player-item-card {
 When both max-width attributes are set, the with-passage cap resolves to the greater
 of the two configured values (after clamp), so with-passage mode never ends up narrower
 than no-passage mode.
+
+### Split-pane backdrop
+
+The split-pane layout paints a backdrop behind each scrollable pane, under the
+passage and item cards. It reads the canonical `--pie-background-dark`, so it
+follows the active theme and color scheme, and there is no pane-specific hook:
+the backdrop is meant to stay with the theme rather than be styled per pane.
+The rule covers the items pane as well as the passage pane, so it is not driven
+from a passage-header hook. Card fills stay independent via
+`--pie-section-player-card-header-background`.
 
 ### Content-card tool surfaces
 

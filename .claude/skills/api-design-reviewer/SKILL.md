@@ -27,6 +27,21 @@ Review only public or cross-package surfaces. Skip purely internal refactors unl
   that policy or contract-only subpaths remain inert when imported.
 - Verify emitted events are named, typed, cancelable/bubbling/composed only when the contract needs it, and documented from the consumer perspective.
 - Keep TypeScript exports usable without importing package internals.
+- Reject a type parameter that appears only in argument position on a public
+  interface: method bivariance neutralizes it, so it constrains no implementor while
+  every implementor and annotation site must carry it. An adapter extends the base
+  config interface and narrows the argument in its own class signature instead. A
+  parameter in return position is load-bearing and stays. See
+  [ADR 0002](../../../docs/adr/0002-provider-contracts-are-not-parameterized-by-config.md).
+- Keep an optional peer dependency out of published declarations. Declaration emit
+  preserves `implements` clauses and public return types, so a top-level
+  `import type` from an optional peer makes that peer required for any consumer
+  type-checking without `skipLibCheck`. Type the public surface with the contract
+  package's own interface and confine the peer to a method body.
+- Check that a package's root type entry describes what its root runtime entry
+  provides. A bundled custom-element package resolves `import` to the bundle, so a
+  *value* re-exported from `index.ts` type-checks and is then `undefined` at run
+  time; a *type* re-export is fine, having no runtime counterpart.
 - Treat element package registries as executable-content trust boundaries when
   attacker-influenced config can reach them; prefer opt-in, host-controlled policy.
 - Avoid compatibility shims unless they preserve the external `pie-item` client contract and include the required inline comment plus tests.

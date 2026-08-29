@@ -1,0 +1,1208 @@
+{
+	"source": "https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/train.jsonl",
+	"license": "MIT (openai/grade-school-math)",
+	"annotations": 23716,
+	"distinct": 10770,
+	"entries": [
+		{
+			"latex": "(-17)+43",
+			"expects": "26"
+		},
+		{
+			"latex": "(2\\div 5)\\times 1000",
+			"expects": "400"
+		},
+		{
+			"latex": "+7",
+			"expects": "7"
+		},
+		{
+			"latex": ".36\\times 100",
+			"expects": "36.00"
+		},
+		{
+			"latex": "0.10\\times 80",
+			"expects": "8.00"
+		},
+		{
+			"latex": "0.5\\times 53",
+			"expects": "26.5"
+		},
+		{
+			"latex": "1\\times 1",
+			"expects": "1"
+		},
+		{
+			"latex": "1\\times 90",
+			"expects": "90"
+		},
+		{
+			"latex": "1+3+5+7+9+11+13",
+			"expects": "49"
+		},
+		{
+			"latex": "1.5\\times 100",
+			"expects": "150"
+		},
+		{
+			"latex": "1.50\\times 100",
+			"expects": "150"
+		},
+		{
+			"latex": "1\\div 2\\times 30",
+			"expects": "15"
+		},
+		{
+			"latex": "1\\div 3\\times 9",
+			"expects": "3"
+		},
+		{
+			"latex": "1\\div 7\\times 343",
+			"expects": "49"
+		},
+		{
+			"latex": "10\\times 1095",
+			"expects": "10950"
+		},
+		{
+			"latex": "10\\times 42",
+			"expects": "420"
+		},
+		{
+			"latex": "10+13+17",
+			"expects": "40"
+		},
+		{
+			"latex": "10+24",
+			"expects": "34"
+		},
+		{
+			"latex": "10+6+4+4",
+			"expects": "24"
+		},
+		{
+			"latex": "10\\div .10",
+			"expects": "100"
+		},
+		{
+			"latex": "100\\times .40",
+			"expects": "40"
+		},
+		{
+			"latex": "100\\times 2.4",
+			"expects": "240"
+		},
+		{
+			"latex": "100+1050",
+			"expects": "1150"
+		},
+		{
+			"latex": "100+50+25+5",
+			"expects": "180"
+		},
+		{
+			"latex": "100-35",
+			"expects": "65"
+		},
+		{
+			"latex": "100-85",
+			"expects": "15"
+		},
+		{
+			"latex": "1000\\times 1.2",
+			"expects": "1200"
+		},
+		{
+			"latex": "1000+375",
+			"expects": "1375"
+		},
+		{
+			"latex": "1000\\div 100",
+			"expects": "10"
+		},
+		{
+			"latex": "10000\\div 1000",
+			"expects": "10"
+		},
+		{
+			"latex": "102+107+110",
+			"expects": "319"
+		},
+		{
+			"latex": "105\\times 95",
+			"expects": "9975"
+		},
+		{
+			"latex": "108+180",
+			"expects": "288"
+		},
+		{
+			"latex": "11\\times 30",
+			"expects": "330"
+		},
+		{
+			"latex": "11-4",
+			"expects": "7"
+		},
+		{
+			"latex": "110-80",
+			"expects": "30"
+		},
+		{
+			"latex": "112\\div .5",
+			"expects": "224"
+		},
+		{
+			"latex": "117-115",
+			"expects": "2"
+		},
+		{
+			"latex": "12\\times 2-15",
+			"expects": "9"
+		},
+		{
+			"latex": "12\\times 7",
+			"expects": "84"
+		},
+		{
+			"latex": "12+2+2",
+			"expects": "16.00"
+		},
+		{
+			"latex": "12+4+60",
+			"expects": "76"
+		},
+		{
+			"latex": "12-6",
+			"expects": "6"
+		},
+		{
+			"latex": "120\\times .6",
+			"expects": "72"
+		},
+		{
+			"latex": "120+12",
+			"expects": "132"
+		},
+		{
+			"latex": "120+600",
+			"expects": "720"
+		},
+		{
+			"latex": "120-80",
+			"expects": "40"
+		},
+		{
+			"latex": "1200+120",
+			"expects": "1320.00"
+		},
+		{
+			"latex": "1200\\div 100",
+			"expects": "12"
+		},
+		{
+			"latex": "120000+38000",
+			"expects": "158000"
+		},
+		{
+			"latex": "125+150+200+90",
+			"expects": "565.00"
+		},
+		{
+			"latex": "126+122",
+			"expects": "248"
+		},
+		{
+			"latex": "13\\times 10",
+			"expects": "130"
+		},
+		{
+			"latex": "13+8+18+12",
+			"expects": "51"
+		},
+		{
+			"latex": "130\\div 2",
+			"expects": "65"
+		},
+		{
+			"latex": "1344\\times 12",
+			"expects": "16128"
+		},
+		{
+			"latex": "139-75",
+			"expects": "64"
+		},
+		{
+			"latex": "14+12",
+			"expects": "26"
+		},
+		{
+			"latex": "14-11",
+			"expects": "3"
+		},
+		{
+			"latex": "140+37",
+			"expects": "177"
+		},
+		{
+			"latex": "1400-1000",
+			"expects": "400"
+		},
+		{
+			"latex": "144-6",
+			"expects": "138"
+		},
+		{
+			"latex": "1460\\div 2",
+			"expects": "730"
+		},
+		{
+			"latex": "15\\times 18",
+			"expects": "270"
+		},
+		{
+			"latex": "15+13+8",
+			"expects": "36"
+		},
+		{
+			"latex": "15+36",
+			"expects": "51"
+		},
+		{
+			"latex": "15-9",
+			"expects": "6"
+		},
+		{
+			"latex": "150\\times 100",
+			"expects": "15000"
+		},
+		{
+			"latex": "150+200+120+56",
+			"expects": "526"
+		},
+		{
+			"latex": "150-140",
+			"expects": "10"
+		},
+		{
+			"latex": "1500\\times 2",
+			"expects": "3000"
+		},
+		{
+			"latex": "1500\\div 75",
+			"expects": "20"
+		},
+		{
+			"latex": "155250\\div 1000",
+			"expects": "155.25"
+		},
+		{
+			"latex": "16\\times 16",
+			"expects": "256"
+		},
+		{
+			"latex": "16+20",
+			"expects": "36"
+		},
+		{
+			"latex": "16-4-4",
+			"expects": "8"
+		},
+		{
+			"latex": "160+230",
+			"expects": "390"
+		},
+		{
+			"latex": "1600+1400",
+			"expects": "3000"
+		},
+		{
+			"latex": "162000-12000",
+			"expects": "150000"
+		},
+		{
+			"latex": "1680\\div 40",
+			"expects": "42"
+		},
+		{
+			"latex": "17.5",
+			"expects": "17.5"
+		},
+		{
+			"latex": "175\\times 3",
+			"expects": "525"
+		},
+		{
+			"latex": "18\\times 5",
+			"expects": "90"
+		},
+		{
+			"latex": "18+4",
+			"expects": "22"
+		},
+		{
+			"latex": "18\\div 120",
+			"expects": ".15"
+		},
+		{
+			"latex": "180-(40+40)",
+			"expects": "100"
+		},
+		{
+			"latex": "1800",
+			"expects": "1800"
+		},
+		{
+			"latex": "1800000-180000",
+			"expects": "1620000"
+		},
+		{
+			"latex": "19+13",
+			"expects": "32"
+		},
+		{
+			"latex": "192\\times 3",
+			"expects": "576"
+		},
+		{
+			"latex": "196+168",
+			"expects": "364"
+		},
+		{
+			"latex": "2\\times 1+5\\times 12",
+			"expects": "62"
+		},
+		{
+			"latex": "2\\times 150",
+			"expects": "300"
+		},
+		{
+			"latex": "2\\times 24",
+			"expects": "48"
+		},
+		{
+			"latex": "2\\times 4\\times 50\\times .01",
+			"expects": "4"
+		},
+		{
+			"latex": "2\\times 7.5",
+			"expects": "15"
+		},
+		{
+			"latex": "2+2+12",
+			"expects": "16"
+		},
+		{
+			"latex": "2+6",
+			"expects": "8"
+		},
+		{
+			"latex": "2.5\\times 3",
+			"expects": "7.5"
+		},
+		{
+			"latex": "2\\div 100\\times 25",
+			"expects": "0.5"
+		},
+		{
+			"latex": "2\\div 5\\times 45",
+			"expects": "18"
+		},
+		{
+			"latex": "20\\times .50",
+			"expects": "10"
+		},
+		{
+			"latex": "20\\times 20",
+			"expects": "400"
+		},
+		{
+			"latex": "20\\times 900",
+			"expects": "18000"
+		},
+		{
+			"latex": "20+24+8",
+			"expects": "52"
+		},
+		{
+			"latex": "20+5",
+			"expects": "25"
+		},
+		{
+			"latex": "20-3",
+			"expects": "17"
+		},
+		{
+			"latex": "20\\div 100\\times 75",
+			"expects": "15"
+		},
+		{
+			"latex": "200\\times 1\\div 4",
+			"expects": "50"
+		},
+		{
+			"latex": "200+100+100",
+			"expects": "400"
+		},
+		{
+			"latex": "200+75",
+			"expects": "275"
+		},
+		{
+			"latex": "200\\div 10",
+			"expects": "20"
+		},
+		{
+			"latex": "2000+1400",
+			"expects": "3400"
+		},
+		{
+			"latex": "20000\\times .8",
+			"expects": "16000"
+		},
+		{
+			"latex": "2021-1976",
+			"expects": "45"
+		},
+		{
+			"latex": "21+15",
+			"expects": "36"
+		},
+		{
+			"latex": "21-8",
+			"expects": "13"
+		},
+		{
+			"latex": "210\\div 7",
+			"expects": "30"
+		},
+		{
+			"latex": "216\\div 8",
+			"expects": "27"
+		},
+		{
+			"latex": "22+4",
+			"expects": "26"
+		},
+		{
+			"latex": "220\\times 2",
+			"expects": "440"
+		},
+		{
+			"latex": "224+56",
+			"expects": "280"
+		},
+		{
+			"latex": "23+19",
+			"expects": "42"
+		},
+		{
+			"latex": "2355-629",
+			"expects": "1726"
+		},
+		{
+			"latex": "24\\times 5\\div 8",
+			"expects": "15"
+		},
+		{
+			"latex": "24+4",
+			"expects": "28"
+		},
+		{
+			"latex": "24-3-6",
+			"expects": "15"
+		},
+		{
+			"latex": "240\\times 3",
+			"expects": "720"
+		},
+		{
+			"latex": "240-170",
+			"expects": "70"
+		},
+		{
+			"latex": "2400+300",
+			"expects": "2700"
+		},
+		{
+			"latex": "245-49",
+			"expects": "196"
+		},
+		{
+			"latex": "25\\times 31",
+			"expects": "775"
+		},
+		{
+			"latex": "25+45+35",
+			"expects": "105"
+		},
+		{
+			"latex": "25.50+35.00+27.00+8.50+24.00",
+			"expects": "120.00"
+		},
+		{
+			"latex": "250+200",
+			"expects": "450"
+		},
+		{
+			"latex": "250\\div 5",
+			"expects": "50"
+		},
+		{
+			"latex": "250000\\div 2",
+			"expects": "125000"
+		},
+		{
+			"latex": "26\\times 3",
+			"expects": "78"
+		},
+		{
+			"latex": "26\\div 13",
+			"expects": "2"
+		},
+		{
+			"latex": "27\\times 6",
+			"expects": "162"
+		},
+		{
+			"latex": "270\\times 4",
+			"expects": "1080"
+		},
+		{
+			"latex": "2776-2250",
+			"expects": "526"
+		},
+		{
+			"latex": "28+42",
+			"expects": "70"
+		},
+		{
+			"latex": "280+288",
+			"expects": "568"
+		},
+		{
+			"latex": "287\\times 2",
+			"expects": "574"
+		},
+		{
+			"latex": "295-50-62-73-70",
+			"expects": "40"
+		},
+		{
+			"latex": "3\\times 128",
+			"expects": "384"
+		},
+		{
+			"latex": "3\\times 23",
+			"expects": "69"
+		},
+		{
+			"latex": "3\\times 500",
+			"expects": "1500"
+		},
+		{
+			"latex": "3+11",
+			"expects": "14"
+		},
+		{
+			"latex": "3+4",
+			"expects": "7"
+		},
+		{
+			"latex": "3.00\\div .50",
+			"expects": "6"
+		},
+		{
+			"latex": "3\\div 4\\times 100",
+			"expects": "75"
+		},
+		{
+			"latex": "3\\div 5\\times 20000",
+			"expects": "12000"
+		},
+		{
+			"latex": "30\\times .10",
+			"expects": "3.00"
+		},
+		{
+			"latex": "30\\times 2400",
+			"expects": "72000"
+		},
+		{
+			"latex": "30+12+8",
+			"expects": "50"
+		},
+		{
+			"latex": "30+25+38",
+			"expects": "93"
+		},
+		{
+			"latex": "30+60+6",
+			"expects": "96"
+		},
+		{
+			"latex": "30-27",
+			"expects": "3"
+		},
+		{
+			"latex": "30\\div 3\\times 2",
+			"expects": "20"
+		},
+		{
+			"latex": "300\\times 5",
+			"expects": "1500"
+		},
+		{
+			"latex": "300-120",
+			"expects": "180"
+		},
+		{
+			"latex": "300\\div 3",
+			"expects": "100"
+		},
+		{
+			"latex": "3000-2225",
+			"expects": "775"
+		},
+		{
+			"latex": "30000-4000",
+			"expects": "26000"
+		},
+		{
+			"latex": "312\\div 12",
+			"expects": "26"
+		},
+		{
+			"latex": "32+224",
+			"expects": "256"
+		},
+		{
+			"latex": "32\\div 16",
+			"expects": "2"
+		},
+		{
+			"latex": "32000+60000",
+			"expects": "92000"
+		},
+		{
+			"latex": "330+33",
+			"expects": "363"
+		},
+		{
+			"latex": "34+20+123+64+23",
+			"expects": "264"
+		},
+		{
+			"latex": "342-330",
+			"expects": "12"
+		},
+		{
+			"latex": "35+16",
+			"expects": "51"
+		},
+		{
+			"latex": "35-24",
+			"expects": "11.00"
+		},
+		{
+			"latex": "350-230",
+			"expects": "120"
+		},
+		{
+			"latex": "36\\times 1\\div 4",
+			"expects": "9"
+		},
+		{
+			"latex": "36+4",
+			"expects": "40"
+		},
+		{
+			"latex": "36-4",
+			"expects": "32"
+		},
+		{
+			"latex": "360-100",
+			"expects": "260.00"
+		},
+		{
+			"latex": "3600\\div 300",
+			"expects": "12"
+		},
+		{
+			"latex": "37-12-4",
+			"expects": "21"
+		},
+		{
+			"latex": "38\\times 2",
+			"expects": "76"
+		},
+		{
+			"latex": "39+40",
+			"expects": "79"
+		},
+		{
+			"latex": "4\\times 10",
+			"expects": "40"
+		},
+		{
+			"latex": "4\\times 28",
+			"expects": "112"
+		},
+		{
+			"latex": "4\\times 56",
+			"expects": "224"
+		},
+		{
+			"latex": "4+12+2.5+4+15.50",
+			"expects": "38.00"
+		},
+		{
+			"latex": "4+5\\times 8",
+			"expects": "44"
+		},
+		{
+			"latex": "4.5\\times 18",
+			"expects": "81"
+		},
+		{
+			"latex": "4\\div 8",
+			"expects": "0.5"
+		},
+		{
+			"latex": "40\\times 10.5",
+			"expects": "420"
+		},
+		{
+			"latex": "40+10+10+10",
+			"expects": "70"
+		},
+		{
+			"latex": "40+50+65+36+82+72+26",
+			"expects": "371"
+		},
+		{
+			"latex": "40-3-3-5-2",
+			"expects": "27"
+		},
+		{
+			"latex": "40\\div 100\\times 300",
+			"expects": "120"
+		},
+		{
+			"latex": "400\\times 110",
+			"expects": "44000"
+		},
+		{
+			"latex": "400+520",
+			"expects": "920"
+		},
+		{
+			"latex": "400\\div 10",
+			"expects": "40"
+		},
+		{
+			"latex": "4000\\div 2",
+			"expects": "2000"
+		},
+		{
+			"latex": "41\\times 2",
+			"expects": "82"
+		},
+		{
+			"latex": "42+56",
+			"expects": "98"
+		},
+		{
+			"latex": "420+273",
+			"expects": "693"
+		},
+		{
+			"latex": "43+12",
+			"expects": "55"
+		},
+		{
+			"latex": "440+10",
+			"expects": "450"
+		},
+		{
+			"latex": "45+11+10",
+			"expects": "66.00"
+		},
+		{
+			"latex": "45+9",
+			"expects": "54"
+		},
+		{
+			"latex": "450\\times 100\\times 6",
+			"expects": "270000"
+		},
+		{
+			"latex": "4500\\times 5",
+			"expects": "22500"
+		},
+		{
+			"latex": "46-15",
+			"expects": "31"
+		},
+		{
+			"latex": "476-150",
+			"expects": "326"
+		},
+		{
+			"latex": "48+36+12",
+			"expects": "96"
+		},
+		{
+			"latex": "48\\div 3",
+			"expects": "16"
+		},
+		{
+			"latex": "480\\div 48",
+			"expects": "10"
+		},
+		{
+			"latex": "49-8",
+			"expects": "41"
+		},
+		{
+			"latex": "5\\times 16",
+			"expects": "80"
+		},
+		{
+			"latex": "5\\times 42",
+			"expects": "210"
+		},
+		{
+			"latex": "5+11+33+66",
+			"expects": "115"
+		},
+		{
+			"latex": "5+30",
+			"expects": "35"
+		},
+		{
+			"latex": "5-0.5",
+			"expects": "4.5"
+		},
+		{
+			"latex": "50\\times (20\\div 100)",
+			"expects": "10"
+		},
+		{
+			"latex": "50\\times 2",
+			"expects": "100"
+		},
+		{
+			"latex": "50+100+80",
+			"expects": "230"
+		},
+		{
+			"latex": "50+60",
+			"expects": "110"
+		},
+		{
+			"latex": "50-26",
+			"expects": "24"
+		},
+		{
+			"latex": "50\\div 100\\times 6",
+			"expects": "3"
+		},
+		{
+			"latex": "500\\times 500",
+			"expects": "250000"
+		},
+		{
+			"latex": "500-185",
+			"expects": "315"
+		},
+		{
+			"latex": "5000\\times .2",
+			"expects": "1000"
+		},
+		{
+			"latex": "50000+100000",
+			"expects": "150000"
+		},
+		{
+			"latex": "51840\\times 1.15",
+			"expects": "59616"
+		},
+		{
+			"latex": "52\\div 13",
+			"expects": "4"
+		},
+		{
+			"latex": "54\\times 2",
+			"expects": "108"
+		},
+		{
+			"latex": "540+135",
+			"expects": "675"
+		},
+		{
+			"latex": "55+56",
+			"expects": "111"
+		},
+		{
+			"latex": "56\\times 4",
+			"expects": "224"
+		},
+		{
+			"latex": "560+780",
+			"expects": "1340"
+		},
+		{
+			"latex": "5760-3420",
+			"expects": "2340"
+		},
+		{
+			"latex": "6\\times .25",
+			"expects": "1.5"
+		},
+		{
+			"latex": "6\\times 24",
+			"expects": "144"
+		},
+		{
+			"latex": "6+10",
+			"expects": "16"
+		},
+		{
+			"latex": "6+22",
+			"expects": "28"
+		},
+		{
+			"latex": "6+6",
+			"expects": "12"
+		},
+		{
+			"latex": "6.5\\div .25",
+			"expects": "26"
+		},
+		{
+			"latex": "60\\times 1.5",
+			"expects": "90"
+		},
+		{
+			"latex": "60\\times 7",
+			"expects": "420"
+		},
+		{
+			"latex": "60+32",
+			"expects": "92"
+		},
+		{
+			"latex": "60-10",
+			"expects": "50"
+		},
+		{
+			"latex": "60-57",
+			"expects": "3"
+		},
+		{
+			"latex": "60\\div 3",
+			"expects": "20"
+		},
+		{
+			"latex": "600+2400",
+			"expects": "3000"
+		},
+		{
+			"latex": "600-548",
+			"expects": "52"
+		},
+		{
+			"latex": "6000-2700",
+			"expects": "3300"
+		},
+		{
+			"latex": "61.25+7.22",
+			"expects": "68.47"
+		},
+		{
+			"latex": "63-27",
+			"expects": "36"
+		},
+		{
+			"latex": "64+44",
+			"expects": "108"
+		},
+		{
+			"latex": "65+10",
+			"expects": "75"
+		},
+		{
+			"latex": "66\\times 5",
+			"expects": "330"
+		},
+		{
+			"latex": "672\\div 4",
+			"expects": "168"
+		},
+		{
+			"latex": "69+37",
+			"expects": "106"
+		},
+		{
+			"latex": "7\\times 2000",
+			"expects": "14000"
+		},
+		{
+			"latex": "7+10+15",
+			"expects": "32"
+		},
+		{
+			"latex": "7+5-3",
+			"expects": "9"
+		},
+		{
+			"latex": "7\\div 11\\times 44\\times 11\\div 4",
+			"expects": "77"
+		},
+		{
+			"latex": "70+50+3",
+			"expects": "123"
+		},
+		{
+			"latex": "70\\div 100\\times 150",
+			"expects": "105"
+		},
+		{
+			"latex": "7000-400",
+			"expects": "6600"
+		},
+		{
+			"latex": "72+144+108",
+			"expects": "324"
+		},
+		{
+			"latex": "72\\div 0.75",
+			"expects": "96"
+		},
+		{
+			"latex": "73-63",
+			"expects": "10"
+		},
+		{
+			"latex": "75\\times 30",
+			"expects": "2250"
+		},
+		{
+			"latex": "75-34",
+			"expects": "41"
+		},
+		{
+			"latex": "750-400-100",
+			"expects": "250"
+		},
+		{
+			"latex": "78",
+			"expects": "78"
+		},
+		{
+			"latex": "8\\times 10",
+			"expects": "80"
+		},
+		{
+			"latex": "8\\times 35",
+			"expects": "280"
+		},
+		{
+			"latex": "8+12+16",
+			"expects": "36"
+		},
+		{
+			"latex": "8+40",
+			"expects": "48"
+		},
+		{
+			"latex": "8.5+9.5",
+			"expects": "18"
+		},
+		{
+			"latex": "80\\times 1.05",
+			"expects": "84"
+		},
+		{
+			"latex": "80+104",
+			"expects": "184"
+		},
+		{
+			"latex": "80-(1\\div 2)\\times 80",
+			"expects": "40"
+		},
+		{
+			"latex": "80-8",
+			"expects": "72"
+		},
+		{
+			"latex": "800+1080+360+600",
+			"expects": "2840"
+		},
+		{
+			"latex": "800\\div 5",
+			"expects": "160"
+		},
+		{
+			"latex": "81+41",
+			"expects": "122"
+		},
+		{
+			"latex": "84\\times 6",
+			"expects": "504"
+		},
+		{
+			"latex": "85\\times .05",
+			"expects": "4.25"
+		},
+		{
+			"latex": "86+172",
+			"expects": "258"
+		},
+		{
+			"latex": "9\\times 11",
+			"expects": "99"
+		},
+		{
+			"latex": "9+15",
+			"expects": "24"
+		},
+		{
+			"latex": "9-1",
+			"expects": "8"
+		},
+		{
+			"latex": "90\\times 60",
+			"expects": "5400"
+		},
+		{
+			"latex": "90+80",
+			"expects": "170"
+		},
+		{
+			"latex": "90-75",
+			"expects": "15.00"
+		},
+		{
+			"latex": "900-42",
+			"expects": "858"
+		},
+		{
+			"latex": "92+6+3",
+			"expects": "101"
+		},
+		{
+			"latex": "95-10",
+			"expects": "85"
+		},
+		{
+			"latex": "96-4",
+			"expects": "92"
+		},
+		{
+			"latex": "975\\times 3",
+			"expects": "2925"
+		}
+	]
+}

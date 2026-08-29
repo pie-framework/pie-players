@@ -218,10 +218,13 @@
 		"status": "active",
 		"schemeParticipation": "excluded",
 		"definedIn": [
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
-			"packages/tool-tts-inline/README.md"
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Compatibility alias retained for TTS inline button backgrounds; implementations must fall back through canonical --pie-button-bg before broad surface tokens."
 	},
@@ -308,10 +311,13 @@
 		"status": "active",
 		"schemeParticipation": "excluded",
 		"definedIn": [
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
-			"packages/tool-tts-inline/README.md"
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Compatibility alias retained for TTS inline button hover backgrounds; implementations must fall back through canonical --pie-button-hover-bg before broad surface tokens."
 	},
@@ -359,6 +365,96 @@
 			"packages/theme/README.md"
 		],
 		"fallbackPolicy": "Canonical ordinary button hover foreground token."
+	},
+	{
+		"name": "--pie-calculator-series-1",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 1 colour. The line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-2",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 2 colour. The dashed line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-3",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 3 colour. The dotted line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-4",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 4 colour. The line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-5",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 5 colour. The dashed line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
+	},
+	{
+		"name": "--pie-calculator-series-6",
+		"owner": "@pie-players/pie-calculator-cortex",
+		"scope": "component-public",
+		"category": "data-visualization",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/calculator-cortex/src/GraphView.svelte"
+		],
+		"documentedIn": [
+			"packages/calculator-cortex/README.md"
+		],
+		"fallbackPolicy": "Graph series 6 colour. The dotted line style remains a redundant non-colour cue; hosts overriding the colour must preserve 3:1 contrast against the graph surface and keep it distinguishable from the other series colours."
 	},
 	{
 		"name": "--pie-content-styles",
@@ -714,8 +810,7 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/section-player/src/components/shared/SectionPassageCard.svelte",
-			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte"
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
 		],
 		"documentedIn": [
 			"packages/section-player/README.md"
@@ -766,6 +861,57 @@
 			"packages/theme/README.md"
 		],
 		"fallbackPolicy": "Canonical lighter primary action token used for low-emphasis action surfaces."
+	},
+	{
+		"name": "--pie-scrollbar-thumb",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar thumb on the three scrolling panes. Package-private: no theme or scheme sets it, so the fallback chain is the contract rather than the name. Falls back through --pie-border-gray, a boundary token hosts do not repoint to restyle button chrome; it defaulted through --pie-border until a host set that to transparent and every pane's thumb went invisible."
+	},
+	{
+		"name": "--pie-scrollbar-thumb-hover",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar thumb hover on the three scrolling panes. Package-private: the fallback chain is the contract rather than the name. Falls back through --pie-border-dark."
+	},
+	{
+		"name": "--pie-scrollbar-track",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "package-private",
+		"category": "scrollbar",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte",
+			"packages/section-player/src/components/shared/SectionPlayerVerticalContent.svelte"
+		],
+		"documentedIn": [
+			"docs/architecture/pie-727-theme-token-inventory.md"
+		],
+		"fallbackPolicy": "Scrollbar track on the three scrolling panes. Package-private: the fallback chain is the contract rather than the name. Falls back through --pie-background-dark, the surface one step off the page."
 	},
 	{
 		"name": "--pie-secondary",
@@ -843,6 +989,22 @@
 			"packages/section-player/README.md"
 		],
 		"fallbackPolicy": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+	},
+	{
+		"name": "--pie-section-player-card-header-background-dark",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
 	},
 	{
 		"name": "--pie-section-player-card-header-radius",
@@ -1219,12 +1381,14 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-inline-geogebra/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
 	},
@@ -1236,12 +1400,14 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-inline-geogebra/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Component trigger active/open border hook; falls back through existing semantic tokens."
 	},
@@ -1253,12 +1419,14 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/tool-calculator-inline-desmos/tool-calculator-inline.svelte",
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",
-			"packages/tool-calculator-inline-desmos/README.md"
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-inline-geogebra/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
 	},
@@ -1292,6 +1460,81 @@
 			"docs/architecture/pie-727-theme-token-inventory.md"
 		],
 		"fallbackPolicy": "Package-private toolbar-to-inline-TTS row height handoff used to reserve reading controls space."
+	},
+	{
+		"name": "--pie-tts-line-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Line-granularity reading highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back through --pie-tts-sentence-highlight, then --pie-missing at 38%."
+	},
+	{
+		"name": "--pie-tts-sentence-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Sentence-granularity reading highlight, and the fallback for --pie-tts-line-highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-missing at 38%."
+	},
+	{
+		"name": "--pie-tts-word-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Current-word reading highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-missing at 68%."
+	},
+	{
+		"name": "--pie-tts-word-shadow",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Text shadow carrying the current word over a saturated highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-text at 35%."
+	},
+	{
+		"name": "--pie-tts-word-underline",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "tts-highlight",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts"
+		],
+		"documentedIn": [
+			"packages/assessment-toolkit/README.md"
+		],
+		"fallbackPolicy": "Underline on the current word, the non-colour cue for schemes where the highlight hue washes out. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-text at 70%."
 	},
 	{
 		"name": "--pie-white",

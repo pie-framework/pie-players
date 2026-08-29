@@ -2,6 +2,7 @@
 // of one internal definition set; hosts keep the existing API while additions
 // cannot drift between registration, tag, loader, placement and policy lists.
 export type {
+	PackagedCalculatorCompositionOptions,
 	PackagedToolRegistryOptions,
 	RegisterDefaultToolModuleLoadersOptions,
 	RegisterPackagedToolsOptions,
@@ -10,6 +11,8 @@ export type {
 } from "./packaged-capability-composition.js";
 export {
 	createPackagedToolRegistry,
+	createDefaultToolModuleLoaders,
+	createSectionToolModuleLoaders,
 	createUniversalPersonalNeedsProfile,
 	DEFAULT_TOOL_MODULE_LOADERS,
 	ITEM_TOOL_MODULE_LOADERS,

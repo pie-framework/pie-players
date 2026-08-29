@@ -401,7 +401,7 @@ This keeps PIE useful as a toolkit without making the built-in assessment-player
 
 ## Future PRDs
 
-Detailed PRDs should live in [`../prds/shared-contracts/`](../prds/shared-contracts/). Two of the six have moved since this split was recommended, as of 2026-08-15: `media-asset-contract` is `Ready` with its types shipped and two consumers, and `interaction-event-contract` is partly overtaken by a shipped instrumentation path that carries event naming and provider dispatch but no projection envelope — see its [Standing Implementation](../prds/shared-contracts/interaction-event-contract.md#standing-implementation). The other four remain `Draft` as written here. Recommended PRD split:
+Detailed PRDs should live in [`../prds/shared-contracts/`](../prds/shared-contracts/). Two of the six have moved since this split was recommended: `media-asset-contract` is `Accepted` with its types shipped and two consumers, and `interaction-event-contract` is partly overtaken by a shipped instrumentation path that carries event naming and provider dispatch but no projection envelope — see its [Standing Implementation](../prds/shared-contracts/interaction-event-contract.md#standing-implementation). The other four remain `Draft` as written here. Recommended PRD split:
 
 1. `interaction-event-contract`
    - Event projection vocabulary, source refs, typed event families, privacy/telemetry rules, process/path fields.

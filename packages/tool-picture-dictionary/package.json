@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-picture-dictionary",
-	"version": "0.3.70",
+	"version": "0.3.69",
 	"type": "module",
 	"description": "Picture dictionary lookup tool for PIE assessment player",
 	"repository": {

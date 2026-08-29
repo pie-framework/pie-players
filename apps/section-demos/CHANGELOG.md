@@ -1,40 +1,5 @@
 # @pie-players/section-demos
 
-## 0.1.83
-
-### Patch Changes
-
-- Updated dependencies
-  - @pie-players/pie-assessment-toolkit@0.3.70
-  - @pie-players/pie-calculator-geogebra@0.3.70
-  - @pie-players/pie-context@0.3.70
-  - @pie-players/pie-default-tool-loaders@0.3.70
-  - @pie-players/pie-players-shared@0.3.70
-  - @pie-players/pie-print-player@0.3.70
-  - @pie-players/pie-section-player@0.3.70
-  - @pie-players/pie-section-player-tools-event-debugger@0.3.70
-  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.70
-  - @pie-players/pie-section-player-tools-pnp-debugger@0.3.70
-  - @pie-players/pie-section-player-tools-session-debugger@0.3.70
-  - @pie-players/pie-section-player-tools-shared@0.3.70
-  - @pie-players/pie-section-player-tools-tts-settings@0.3.70
-  - @pie-players/pie-theme@0.3.70
-  - @pie-players/pie-tool-annotation-toolbar@0.3.70
-  - @pie-players/pie-tool-answer-eliminator@0.3.70
-  - @pie-players/pie-tool-calculator-cortex@0.3.70
-  - @pie-players/pie-tool-calculator-desmos@0.3.70
-  - @pie-players/pie-tool-calculator-geogebra@0.3.70
-  - @pie-players/pie-tool-dictionary@0.3.70
-  - @pie-players/pie-tool-picture-dictionary@0.3.70
-  - @pie-players/pie-tool-sign-language@0.3.70
-  - @pie-players/pie-tool-text-to-speech@0.3.70
-  - @pie-players/pie-tool-tts-inline@0.3.70
-  - @pie-players/tts-client-server@0.3.70
-  - @pie-players/tts-server-core@0.3.70
-  - @pie-players/tts-server-google@0.3.70
-  - @pie-players/tts-server-polly@0.3.70
-  - @pie-players/tts-server-sc@0.3.70
-
 ## 0.1.82
 
 ### Patch Changes

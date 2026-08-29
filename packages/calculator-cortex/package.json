@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-calculator-cortex",
-	"version": "0.3.70",
+	"version": "0.3.69",
 	"description": "Fully bundled open-source calculator provider for PIE assessment tools",
 	"type": "module",
 	"main": "./dist/index.js",

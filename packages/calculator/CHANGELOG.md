@@ -1,11 +1,5 @@
 # @pie-players/pie-calculator
 
-## 0.3.70
-
-### Patch Changes
-
-- Temporary release changeset: patch all publishable packages to keep lockstep versions.
-
 ## 0.3.69
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-calculator-geogebra",
-	"version": "0.3.70",
+	"version": "0.3.69",
 	"description": "GeoGebra calculator provider adapter for PIE assessment tools",
 	"type": "module",
 	"main": "./dist/index.js",

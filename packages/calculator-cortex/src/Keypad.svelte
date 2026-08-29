@@ -208,10 +208,10 @@
 		/*
 		 * A recessed plane, one step off the card. This is what makes a block of keys
 		 * read as an instrument rather than as a row of form buttons — the device both
-		 * Desmos and GeoGebra use. It takes --pie-background-dark rather than
-		 * --pie-background because the latter is `rgba(255,255,255,0)` in the canonical
-		 * light theme, and a transparent plane would show the host's own surface
-		 * through the keypad.
+		 * Desmos and GeoGebra use. It takes --pie-background-dark, the recessed
+		 * surface role. --pie-background is the page token, which a host may point at
+		 * its own backdrop, and a plane resolving through it would show the host's
+		 * surface through the keypad.
 		 */
 		background: var(
 			--pie-calculator-surface-raised,

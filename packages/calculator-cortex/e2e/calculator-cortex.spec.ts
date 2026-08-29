@@ -26,8 +26,8 @@ function contrastRatio(foreground: string, background: string): number {
 		// Alpha is rejected rather than dropped. `.slice(0, 3)` used to discard it,
 		// which would have scored a transparent surface against whatever the first
 		// three channels happened to be — certifying an illegible pairing as passing.
-		// The canonical light theme publishes `--pie-background` as
-		// `rgba(255, 255, 255, 0)`, so this is a reachable case, not a hypothetical.
+		// Reachable rather than hypothetical: a host or a registered custom scheme
+		// may set any surface token to a translucent value.
 		if (channels.length > 3 && channels[3] !== 1) {
 			throw new Error(
 				`Expected an opaque color, received ${value}. A translucent surface has no fixed contrast.`,

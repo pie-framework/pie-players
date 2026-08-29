@@ -45,10 +45,15 @@ describe("canonical theme definitions", () => {
 		]);
 	});
 
-	test("composites the transparent default Base Theme onto a visible swatch", () => {
-		expect(getBaseThemeVariables("light")["--pie-background"]).toBe(
-			"rgba(255, 255, 255, 0)",
-		);
+	test("the default Base Theme publishes an opaque page surface", () => {
+		/*
+		 * Was `rgba(255, 255, 255, 0)`, so PIE content revealed the host's page.
+		 * Components read the token as an opaque surface and rendered see-through
+		 * menus and bleeding text (PIE-940), and two declared relationships could
+		 * not be certified at all. Opacity is now the contract; a host that wants
+		 * its own surface to show through sets the token itself.
+		 */
+		expect(getBaseThemeVariables("light")["--pie-background"]).toBe("#ffffff");
 		expect(getDefaultColorSchemeDescriptor().preview).toEqual({
 			bg: "#ffffff",
 			text: "black",
@@ -58,12 +63,9 @@ describe("canonical theme definitions", () => {
 
 	test("all named semantic WCAG relationships pass", () => {
 		for (const baseTheme of ["light", "dark"] as const) {
-			const baseVariables = getBaseThemeVariables(baseTheme);
 			expect(
 				diagnoseThemeContrast(
-					baseTheme === "light"
-						? { ...baseVariables, "--pie-background": "#ffffff" }
-						: baseVariables,
+					getBaseThemeVariables(baseTheme),
 					`${baseTheme}-base`,
 				),
 			).toEqual([]);
@@ -73,12 +75,22 @@ describe("canonical theme definitions", () => {
 		}
 	});
 
-	test("does not certify contrast against the transparent light backdrop", () => {
-		expect(
-			diagnoseThemeContrast(getBaseThemeVariables("light"), "light-base"),
-		).toContainEqual(
-			expect.objectContaining({ code: "contrast-unmeasurable" }),
-		);
+	test("every relationship against the page surface is measurable", () => {
+		/*
+		 * The transparent light base left the annotation underline and the
+		 * annotation toolbar boundary permanently `contrast-unmeasurable`, since
+		 * their effective contrast depended on the host's backdrop. Both are
+		 * certifiable now, so no relationship in either base theme may come back
+		 * unmeasurable.
+		 */
+		for (const baseTheme of ["light", "dark"] as const) {
+			expect(
+				diagnoseThemeContrast(
+					getBaseThemeVariables(baseTheme),
+					`${baseTheme}-base`,
+				).filter((diagnostic) => diagnostic.code === "contrast-unmeasurable"),
+			).toEqual([]);
+		}
 	});
 
 	test("pins intentional palette corrections", () => {

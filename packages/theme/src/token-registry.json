@@ -218,10 +218,13 @@
 		"status": "active",
 		"schemeParticipation": "excluded",
 		"definedIn": [
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
-			"packages/tool-tts-inline/README.md"
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Compatibility alias retained for TTS inline button backgrounds; implementations must fall back through canonical --pie-button-bg before broad surface tokens."
 	},
@@ -308,10 +311,13 @@
 		"status": "active",
 		"schemeParticipation": "excluded",
 		"definedIn": [
+			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
-			"packages/tool-tts-inline/README.md"
+			"packages/tool-tts-inline/README.md",
+			"packages/tool-calculator-inline-desmos/README.md",
+			"packages/tool-calculator-shared/README.md"
 		],
 		"fallbackPolicy": "Compatibility alias retained for TTS inline button hover backgrounds; implementations must fall back through canonical --pie-button-hover-bg before broad surface tokens."
 	},

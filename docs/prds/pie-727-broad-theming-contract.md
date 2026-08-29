@@ -408,8 +408,12 @@ Built-in validation names semantic relationships explicitly instead of inferring
 them from token names. Ordinary text relationships require `4.5:1`; focus,
 control boundary, and other non-text relationships require `3:1`. Required
 contrast-role values are opaque authored colors rather than unresolved `var()`
-or transparency, except the externally observed transparent light base
-`--pie-background`. Component aliases may still reference canonical tokens.
+or transparency, with no exceptions. The light base `--pie-background` held one
+until PIE-940: it shipped as `rgba(255, 255, 255, 0)` so PIE content revealed the
+host's page, which left the annotation underline and the annotation toolbar
+boundary permanently uncertifiable and invited components to read the token as an
+opaque fill. A host that wants its own surface to show through sets the token
+itself. Component aliases may still reference canonical tokens.
 
 The theme picker must expose an unavailable requested scheme without silently
 changing the learner's preference: a disabled unavailable option identifies the

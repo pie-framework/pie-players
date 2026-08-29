@@ -184,9 +184,9 @@ Consumed: `--pie-text`, `--pie-white`, `--pie-background-dark`, `--pie-border`,
 `--pie-button-focus-outline`, `--pie-primary`, `--pie-primary-dark`,
 `--pie-incorrect`, `--pie-incorrect-secondary`, and `--pie-content-emphasis`.
 
-`--pie-background` is deliberately **not** among them. The canonical light theme
-publishes it as `rgba(255, 255, 255, 0)`, and a transparent calculator over
-whatever the host painted would take every contrast guarantee out of this
+`--pie-background` is deliberately **not** among them. It is the page token, which
+a host may point at its own backdrop or at a translucent value, and a calculator
+resolving its fill through it would take every contrast guarantee out of this
 package's hands. Surfaces take `--pie-white` for the card and
 `--pie-background-dark` for the recessed keypad plane, both opaque in the base
 themes and in all ten schemes. A host wanting different surfaces has package

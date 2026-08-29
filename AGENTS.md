@@ -141,6 +141,14 @@ Two rules from those records bind new code directly, both from ADR 0002:
   public surface with the contract package's own interface and confine the peer to
   a method body.
 
+### Domain Language
+
+The root `CONTEXT.md` is the shared vocabulary for PIE Players and its runtime
+hosts: one tight definition per term, the aliases to avoid, the relationships,
+and the ambiguities that were resolved rather than missed. Use its terms in code,
+docs and PRDs. `docs/architecture/domain-language.md` carries the format and the
+admission rule — a term lands when it has been resolved and is worth preserving.
+
 ### Downstream Consumer Impact
 
 `docs/integrations/consumer-api-dependencies.md` records which `@pie-players`
@@ -389,20 +397,12 @@ Skills:
 - `consumer-dependency-audit` — trigger coverage and Claude-side mechanics for
   `docs/integrations/consumer-api-dependencies-maintenance.md`, which owns the
   procedure.
-- `grill-with-docs` — opt-in design grilling with terminology/ADR capture.
-- `loop-review-agents` — opt-in repeated three-agent review loop with consensus
-  thresholds and churn control.
-- `prd-author` — draft or update PIE Players PRDs under `docs/prds/`.
 - `releases-and-changesets` — lockstep release and changeset workflow.
 
 Commands:
 
 - `consumer-dependency-audit` — invoke the `consumer-dependency-audit` skill,
   optionally scoped to one consumer label or one surface.
-- `grill-with-docs` — invoke the `grill-with-docs` skill with optional plan
-  context.
-- `loop-review-agents` — invoke the `loop-review-agents` skill with optional
-  review target context.
 
 ## High-Value Checks
 

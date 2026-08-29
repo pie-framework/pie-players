@@ -36,7 +36,13 @@
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
     e.g. "show calculator only when math content is present". Lives
     at the toolbar boundary by design (engine doesn't import tool
-    registry render context).
+    registry render context). A PNP-granted tool skips this gate: a
+    heuristic must not withdraw an accommodation.
+  - Pass 3: tool-owned isApplicableToContent(context) — capability veto,
+    e.g. "an answer eliminator has no choices to strike through here".
+    Outranks a grant, because a control that provably does nothing
+    delivers no accommodation. Tools declare it only where that is
+    provable; a host that resolves visibility itself is exempt.
 -->
 <script lang="ts">
 	import {
@@ -704,6 +710,21 @@
 			effectiveToolRegistry
 				.filterVisibleInContext(toolOwnedToolIds, context)
 				.forEach((tool) => visible.add(tool.toolId));
+		}
+
+		// Pass 3: applicability, the one gate a grant does not survive. Relevance
+		// asks whether a tool is plausibly useful and must never withdraw an
+		// accommodation; this asks whether the tool can act on this content at all,
+		// and a control that provably does nothing serves no learner. Only a tool
+		// that declares the gate can be removed here, and a host that resolved a
+		// tool's visibility itself keeps that answer — it may own an adapter this
+		// content works with.
+		const candidateContexts = toolContext ? [toolContext, ...elementContexts] : elementContexts;
+		for (const toolId of Array.from(visible)) {
+			if (hostResolvedToolIds.has(toolId)) continue;
+			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts)) {
+				visible.delete(toolId);
+			}
 		}
 
 		return Array.from(visible);

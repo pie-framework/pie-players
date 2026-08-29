@@ -63,6 +63,18 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		return hasChoiceInteraction(context);
 	},
 
+	/**
+	 * Pass 3: the same question, asked as a capability. Elimination controls are
+	 * rendered per choice, so an item with no choice interaction gives this tool
+	 * nothing to act on — `placement-ordering`, `categorize` and
+	 * `drag-in-the-blank` included, whose `choices` hold draggables the
+	 * eliminator cannot reach. Answering the relevance gate alone left the button
+	 * on those items for any learner whose profile grants answer masking.
+	 */
+	isApplicableToContent(context: ToolContext): boolean {
+		return hasChoiceInteraction(context);
+	},
+
 	renderToolbar(
 		context: ToolContext,
 		toolbarContext: ToolbarContext,

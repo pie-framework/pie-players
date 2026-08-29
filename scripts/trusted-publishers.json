@@ -19,7 +19,15 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-calculator-cortex": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-calculator-desmos": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-calculator-geogebra": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
@@ -87,11 +95,31 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-tool-calculator-cortex": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-tool-calculator-desmos": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-tool-calculator-geogebra": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-calculator-inline-cortex": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-tool-calculator-inline-desmos": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-calculator-inline-geogebra": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-calculator-shared": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},

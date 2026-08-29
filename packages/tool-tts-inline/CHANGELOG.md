@@ -1,5 +1,22 @@
 # @pie-players/pie-tool-tts-inline
 
+## 0.3.69
+
+### Patch Changes
+
+- b0223d6: Stop publishing `dist/vite.config.d.ts`. Nine packages emitted a declaration for their own Vite config because the dts pass ran over an unbounded TypeScript glob, and every one of them ships `dist`, so the file reached the tarball. No `exports` entry ever pointed at it, so nothing could import it — this is tarball contents, not API. `check:pack-integrity` now rejects a packed build-config declaration, so a new package cannot reintroduce one.
+- Updated dependencies [ced07e0]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

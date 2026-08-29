@@ -1,5 +1,33 @@
 # @pie-players/pie-section-player
 
+## 0.3.69
+
+### Patch Changes
+
+- 01eb0f9: Add `--pie-section-player-card-header-background-dark`, a card header fill applied under dark themes. A host whose brand tint is legible on a light card gets a near-white title on that same tint once a dark theme is active; this is the hook for giving the dark theme its own fill. It falls back to `--pie-section-player-card-header-background` when unset, so a host that sets only the light hook is unaffected. The passage card bridges the dark value to `--pie-passage-header-background` as well, so a hosted passage-player follows. Dark is detected with the same selectors the theme package writes its dark tokens under: `[data-theme="dark"]` on an ancestor, or `pie-theme[theme="dark"]`.
+- 7ca30ab: Source the pane scrollbar thumb from `--pie-border-gray`, so a host that clears the generic boundary token keeps a visible scrollbar.
+  
+  The three scrolling panes — split-pane passages and items, tabbed content, vertical content — defaulted `--pie-scrollbar-thumb` through `--pie-border`. A host that wants borderless tool chrome on its player subtree sets `--pie-border: transparent` alongside `--pie-button-border: transparent`, which is a supported thing to do with a canonical token, and got a transparent thumb on every pane: scrollbars present, invisible, in both regions. Before the thumb defaulted through a canonical token it fell back to a literal `#6b7280`, so the host's override was inert and the breakage arrived with the theme-tracking change.
+  
+  `--pie-border-gray` is in the same boundary family, carries the same DaisyUI 3:1-against-surface correction, and is not one of the chrome knobs a host repoints to restyle buttons. Track and hover keep `--pie-background-dark` and `--pie-border-dark`. A host that wants different scrollbar chrome still sets `--pie-scrollbar-thumb` / `-track` / `-thumb-hover` directly. Those three stay package-private and unregistered, so the fallback chain is the contract rather than the token names.
+  
+  The durable shape is `pie-theme` owning `--pie-scrollbar-*` as registered tokens rather than every pane defaulting through a boundary token; the three hooks are unregistered today, so any canonical token behind them stays reachable by a host override.
+- 3deb7a2: Stop driving the split-pane pane backdrop from `--pie-passage-header-background` and read the canonical `--pie-background-dark` directly. The pane rule is a grouped selector covering the items pane as well, so a host that set the passage header hook to color a hosted passage-player's header also repainted both pane backdrops — including a pane that holds no passage header. `--pie-background-dark` is what the panes already resolved to whenever the hook was unset, so appearance is unchanged. The backdrop deliberately gets no pane-specific hook: it stays with the theme. `--pie-passage-header-background` keeps its documented job, the passage card bridging it to `--pie-section-player-card-header-background`.
+- Updated dependencies [ced07e0]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [f24e425]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-default-tool-loaders@0.3.69
+  - @pie-players/pie-item-player@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

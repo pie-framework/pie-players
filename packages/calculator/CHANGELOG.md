@@ -1,5 +1,62 @@
 # @pie-players/pie-calculator
 
+## 0.3.69
+
+### Patch Changes
+
+- cb99eae: Give the three calculator adapters one naming and narrowing convention.
+  `<Vendor>CalculatorSettings` is the vendor option shape,
+  `<Vendor>CalculatorProviderConfig` is `CalculatorProviderConfig` with `settings`
+  narrowed to it, and `<Vendor>CalculatorProviderInit` exists only where the
+  adapter narrows `CalculatorProviderInit`. Cortex already had all three and is the
+  model; the rule is stated on the two contract interfaces so a host reading one
+  adapter knows where to look in the others.
+  
+  GeoGebra's `GeoGebraCalculatorProviderConfig` typed its `initialize()` argument
+  while the identically-suffixed Desmos type typed `createCalculator()` -- the same
+  name for opposite lifecycles in sibling packages a host picks between. It is now
+  `GeoGebraCalculatorProviderInit`, extends `Pick<CalculatorProviderInit,
+  "onTelemetry">` rather than redeclaring that callback, and the freed name types
+  `createCalculator()`'s argument as it does elsewhere. GeoGebra's embed takes no
+  credential, so the narrowing is what says `apiKey` and `proxyEndpoint` cannot be
+  honoured there, and narrowing `createCalculator` removed an
+  `as GeoGebraCalculatorSettings` cast.
+  
+  Desmos's `DesmosCalculatorConfig` is renamed `DesmosCalculatorSettings`, since it
+  is the settings shape and the other two adapters already said so. It takes
+  `CalculatorProviderInit` whole -- Desmos is the one adapter that needs a
+  credential -- so it declares no init alias, and the contract records that as the
+  rule rather than an omission.
+  
+  Cortex exported `CortexCalculatorProviderInit` but typed `initialize()` with the
+  un-narrowed contract type, so `initialize({ apiKey })` compiled against a local
+  engine that has nothing to authenticate. The signature now uses the narrowed
+  type.
+  
+  No consumer breaks: verified against all three consumer checkouts on 2026-08-27,
+  none of which imports any calculator type, and no checkout offers GeoGebra.
+- 8bb668b: Add a separately packaged GeoGebra calculator suite with provider, full tool,
+  inline trigger, tests, documentation, and a section-player demo. Basic requests
+  map to GeoGebra Scientific, while scientific and graphing use their matching
+  embedded apps.
+  
+  Move calculator lifecycle and UI into a provider-neutral shared package, keep
+  vendor settings in their implementation packages, and select implementations
+  through the same `provider.init`, `provider.runtime`, and `settings` schema.
+  Desmos remains the no-configuration default and preserves its unkeyed legacy
+  load and runtime `proxyEndpoint` initialization for existing clients. The
+  packaged composition selects the GeoGebra element and lazy bundle from the same
+  provider config used by the toolkit.
+  
+  Document that PIE bundles only MIT-licensed adapter code, not either vendor
+  application. Clarify the separate Desmos and GeoGebra license obligations,
+  runtime credential boundary, attribution, and self-hosting restrictions.
+- 3544e9d: Move Desmos per-instance configuration to the Desmos adapter package, and align the calculator contract with the TTS one. `@pie-players/pie-calculator` no longer exports the Desmos settings type or accepts `desmos` on `CalculatorProviderConfig`; import `DesmosCalculatorSettings` and `DesmosCalculatorProviderConfig` from `@pie-players/pie-calculator-desmos` instead.
+  
+  `CalculatorProvider` and `Calculator` stay un-parameterized, matching `ITTSProvider` in `@pie-players/pie-tts`. An adapter extends `CalculatorProviderConfig` and narrows `createCalculator`'s argument in its own class signature, which is what gives a caller holding the concrete provider the precise type; a type parameter on the interface would add nothing, since a provider narrowing that argument satisfies it either way. `CalculatorProvider.initialize` now takes an optional `CalculatorProviderInit` — vendor credentials and an instrumentation callback — so a provider that authenticates is describable by the contract rather than by a structural mirror. `DesmosToolProvider` is typed by `CalculatorProvider` from the contract package, the way `TTSToolProvider` is typed by `ITTSProvider`, and reaches `@pie-players/pie-calculator-desmos` only inside a method body: that package is an optional peer, and a top-level type import from it would reach the toolkit's published declarations and make the optional peer required for anyone type-checking without `skipLibCheck`.
+  
+  The runtime shape is `{ restrictedMode, settings: { … } }`, one vendor-neutral field for every adapter, so an adapter can own typed configuration without leaking provider knowledge into the generic package. The consumer dependency pad records no documented host importing any calculator type, so the listed hosts are unaffected.
+
 ## 0.3.68
 
 ## 0.3.67

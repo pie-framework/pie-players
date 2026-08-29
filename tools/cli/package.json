@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-cli",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"private": true,
 	"description": "CLI tools for pie-players",
 	"type": "module",

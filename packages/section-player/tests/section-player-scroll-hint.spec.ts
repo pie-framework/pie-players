@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const ROUTE = "/three-questions?mode=candidate&layout=splitpane";
+const VERTICAL_ROUTE = "/three-questions?mode=candidate&layout=vertical";
 const HINT = ".pie-section-player-scroll-hint";
 
 /**
@@ -79,6 +80,71 @@ test.describe("section player scroll hint", () => {
 
 		const hint = page.locator(HINT).first();
 		await expect(hint).toHaveCSS("visibility", "visible", { timeout: 30_000 });
+	});
+
+	// The vertical layout wraps the pane in an `overflow: visible` <section> and
+	// scrolls one level further up, so the hint has to resolve the scrolling
+	// ancestor rather than the pane's parent. Taking the parent reported content
+	// below the fold permanently and clicked to no effect.
+	test("tracks the real scroller in the vertical layout", async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 500 });
+		await page.goto(VERTICAL_ROUTE, { waitUntil: "networkidle" });
+
+		const scroller = page.locator(".pie-section-player-vertical-content");
+		await expect(scroller).toBeVisible();
+
+		const hint = page.locator(HINT).first();
+		await expect(hint).toHaveCSS("visibility", "visible");
+
+		await page.getByRole("button", { name: "Scroll down" }).first().click();
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					() =>
+						(
+							document.querySelector(
+								".pie-section-player-vertical-content",
+							) as HTMLElement
+						).scrollTop,
+				),
+			)
+			.toBeGreaterThan(0);
+
+		await page.evaluate(() => {
+			const el = document.querySelector(
+				".pie-section-player-vertical-content",
+			) as HTMLElement;
+			el.scrollTop = el.scrollHeight;
+		});
+		await expect(hint).toHaveCSS("visibility", "hidden");
+	});
+
+	// The defect in its plainest form: the vertical layout's <section> reported a
+	// 16px overflow of the hint's own sticky box, so the hint claimed content
+	// below the fold on a section that fits its viewport whole.
+	test("stays hidden in the vertical layout when content fits", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 700 });
+		await page.goto("/single-question?mode=candidate&layout=vertical", {
+			waitUntil: "networkidle",
+		});
+
+		await expect(
+			page.locator("pie-section-player-item-card").first(),
+		).toBeVisible();
+		await expect
+			.poll(async () =>
+				page.evaluate(() => {
+					const el = document.querySelector(
+						".pie-section-player-vertical-content",
+					) as HTMLElement;
+					return el.scrollHeight <= el.clientHeight + 1;
+				}),
+			)
+			.toBe(true);
+
+		await expect(page.locator(HINT).first()).toHaveCSS("visibility", "hidden");
 	});
 
 	test("clicking the hint scrolls the items pane down", async ({ page }) => {

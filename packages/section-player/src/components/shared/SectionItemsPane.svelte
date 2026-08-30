@@ -504,44 +504,89 @@
 	// fully readable; the chevron alone still signals "more below the fold".
 	const suppressScrollHintGradient = $derived(scrollHintZoom.zoom >= 3);
 
-	onMount(() => {
-		// In light-DOM custom elements the sentinel's parentElement is the CE
-		// itself, and its parentElement is the scroll container wrapping it.
-		const container = scrollHintSentinel?.parentElement?.parentElement;
-		if (!container) return;
+	/**
+	 * Nearest ancestor the learner can actually scroll.
+	 *
+	 * PIE-549 took the pane element's parent as the scroll container. That is the
+	 * scrolling box in the split-pane and tabbed layouts, and an `overflow:
+	 * visible` `<section>` in the vertical layout, where the real scroller is one
+	 * level further up — so the hint measured a non-scrolling element, reported
+	 * content below the fold permanently (the sticky hint's own box overflows the
+	 * section by 16px, which is what made the measurement true), and clicked to no
+	 * effect.
+	 *
+	 * `auto`, `scroll` and `overlay` only: `hidden` has a scrollport the learner
+	 * cannot reach, and hinting at content below the fold of a region nobody can
+	 * scroll is the defect above in another form.
+	 *
+	 * Bounded at `<body>`: every layout in this package supplies its own scrolling
+	 * pane, and falling through to the host document's scroller would hint at a
+	 * region this pane does not own.
+	 */
+	const findScrollableAncestor = (
+		start: HTMLElement | null,
+	): HTMLElement | null => {
+		for (let el = start; el && el !== document.body; el = el.parentElement) {
+			const { overflowY } = getComputedStyle(el);
+			if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay")
+				return el;
+		}
+		return null;
+	};
 
-		scrollContainer = container as HTMLElement;
+	onMount(() => {
+		// In light-DOM custom elements the sentinel's parentElement is the CE itself,
+		// and the scrolling ancestor sits above that.
+		const host = scrollHintSentinel?.parentElement ?? null;
+		if (!host) return;
+
+		let container: HTMLElement | null = null;
+		let pendingHandle: ReturnType<typeof setTimeout> | null = null;
+		let resizeObserver: ResizeObserver | null = null;
+		let detachScroll: (() => void) | null = null;
 
 		// Reading scrollHeight/scrollTop/clientHeight flushes layout for the whole
-		// card subtree, live PIE elements included, so all three signals below
-		// coalesce into one deferred read.
-		//
-		// The coalescing is what makes `characterData` affordable. Typing a
-		// 200-character answer into a hosted rich-text element produced 200
-		// mutation batches, 199 of them characterData-only, against exactly one
-		// change in the container's scrollHeight. `characterData` stays observed
-		// because that one change is a real content growth: soft-wrapping a line
-		// inside an existing text node emits no childList record, and the hint
-		// would sit stale while the learner types past the fold.
-		//
-		// `subtree` carries two loads: the container's only child is this custom
-		// element with the item cards as its grandchildren, and the cards mount
-		// after this hook runs, so childList records are what first arm the hint.
-		let pendingHandle: ReturnType<typeof setTimeout> | null = null;
-
+		// card subtree, live PIE elements included, so every signal below coalesces
+		// into one deferred read.
 		const readScrollable = () => {
+			const target = container;
+			if (!target) return;
 			// One read of each metric, so the two comparisons below cannot see two
 			// different layouts.
-			const scrollHeight = container.scrollHeight;
-			const clientHeight = container.clientHeight;
-			const atBottom = scrollHeight - container.scrollTop <= clientHeight + 1;
+			const scrollHeight = target.scrollHeight;
+			const clientHeight = target.clientHeight;
+			const atBottom = scrollHeight - target.scrollTop <= clientHeight + 1;
 			const next = scrollHeight > clientHeight && !atBottom;
 			if (next !== isScrollable) isScrollable = next;
 		};
 
+		// Computed style is what identifies the scrolling ancestor, and at `onMount`
+		// the ancestors above this CE have none: `getComputedStyle` returns an empty
+		// declaration for every element between the pane and
+		// `pie-section-player-base`, so `overflowY` reads `""` rather than `"auto"`.
+		// One task later it resolves. So the container is bound on the first deferred
+		// pass, and any later pass retries until it is found — the cards mount after
+		// this hook runs, so mutation records keep arriving either way.
+		const bindContainer = () => {
+			const found = findScrollableAncestor(host.parentElement);
+			if (!found) return;
+			container = found;
+			scrollContainer = found;
+			resizeObserver = new ResizeObserver(scheduleRead);
+			resizeObserver.observe(found);
+			found.addEventListener("scroll", scheduleRead, { passive: true });
+			detachScroll = () => found.removeEventListener("scroll", scheduleRead);
+		};
+
+		const pass = () => {
+			pendingHandle = null;
+			if (!container) bindContainer();
+			readScrollable();
+		};
+
 		// One read per batch, deferred so batches arriving in separate tasks collapse
-		// into a single read. Keeping an already-pending read rather than re-arming
-		// it means a continuous mutation stream cannot starve it.
+		// into a single read. Keeping an already-pending read rather than re-arming it
+		// means a continuous mutation stream cannot starve it.
 		//
 		// A timer rather than requestAnimationFrame, matching the post-render wrap
 		// pass in `players-shared`'s PieItemPlayer: a document with no compositor
@@ -553,35 +598,39 @@
 		// headless and CI contexts the e2e suites run in.
 		const scheduleRead = () => {
 			if (pendingHandle !== null) return;
-			pendingHandle = setTimeout(() => {
-				pendingHandle = null;
-				readScrollable();
-			}, 0);
+			pendingHandle = setTimeout(pass, 0);
 		};
 
-		// Read whatever is already laid out; the observers below carry it from there.
-		readScrollable();
-
-		const resizeObserver = new ResizeObserver(scheduleRead);
-		resizeObserver.observe(container);
-
+		// Observed on the pane element rather than the scroll container: the cards are
+		// its children, so it sees every content change the hint reacts to, and it
+		// needs no computed style to identify. In the split-pane and tabbed layouts
+		// the container's only child is this element, so the record stream is the
+		// same one.
+		//
+		// `characterData` is what makes the coalescing mandatory. Typing a
+		// 200-character answer into a hosted rich-text element produced 200 mutation
+		// batches, 199 of them characterData-only, against exactly one change in the
+		// container's scrollHeight. It stays observed because that one change is a
+		// real content growth: soft-wrapping a line inside an existing text node
+		// emits no childList record, and the hint would sit stale while the learner
+		// types past the fold.
 		const mutationObserver = new MutationObserver(scheduleRead);
-		mutationObserver.observe(container, {
+		mutationObserver.observe(host, {
 			childList: true,
 			subtree: true,
 			characterData: true,
 		});
 
-		container.addEventListener("scroll", scheduleRead, { passive: true });
+		scheduleRead();
 
 		return () => {
 			if (pendingHandle !== null) {
 				clearTimeout(pendingHandle);
 				pendingHandle = null;
 			}
-			resizeObserver.disconnect();
 			mutationObserver.disconnect();
-			container.removeEventListener("scroll", scheduleRead);
+			resizeObserver?.disconnect();
+			detachScroll?.();
 		};
 	});
 </script>

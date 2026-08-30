@@ -38,6 +38,7 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*"
 	},

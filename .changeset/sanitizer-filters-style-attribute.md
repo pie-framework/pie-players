@@ -24,11 +24,19 @@ before the check.
 leave its containing block. Absolute is load-bearing for accessibility —
 MathJax's `mjx-assistive-mml` carries `position: absolute; width: 1px;
 height: 1px; overflow: hidden` to expose MathML to a screen reader while hiding
-it visually — and an authored absolute overlay is still possible where no
-ancestor between the node and the viewport is positioned. Closing that means
-making the player's container a containing block, which re-anchors every
-absolutely positioned node a PIE element renders, so it is a separate change
-with its own visual review.
+it visually.
+
+An authored absolute overlay therefore remains possible. Measured in Chromium: a
+containing block on the player's container (`position: relative` or
+`contain: layout`) moves the overlay's origin onto the item, which protects host
+chrome laid out above it, while the box still extends a full viewport beyond the
+container — a partial mitigation rather than a fix. Only paint containment
+contains, and it clips, which would cut off the `overflow-x: auto` reflow
+wrappers this same sanitizer inserts for WCAG 1.4.10. What stays reachable is
+visual disruption by whoever authors the item's content, with no channel behind
+it: `<script>`, `<form>` and `<style>` are forbidden and `url()` is filtered
+here, so an overlay can cover but cannot transmit or execute. That follows from
+the deliberate light-DOM choice and is documented rather than filtered.
 
 Behaviour change for consumers: an authored `background-image: url(…)` or
 `position: fixed` in a `style` attribute is removed. Background images belong in

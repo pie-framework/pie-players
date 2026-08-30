@@ -5,6 +5,8 @@ import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
+import { encodeElementPackageSpecs } from "@pie-players/pie-players-shared/pie";
+
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
@@ -122,7 +124,12 @@ async function fetchBundle(
 	pitsBaseUrl: string,
 	overwriteBundle: boolean,
 ): Promise<string> {
-	const elementString = elements.join("+");
+	// Per-spec encoding, joined with the literal `+` the route uses as its
+	// package separator. A raw join lets a malformed spec restructure the URL:
+	// `?` moves `overwrite=true` inside an earlier query, `#` truncates the
+	// path, and either misroutes the fetch into a confusing HTTP error or a
+	// bundle built from the wrong element list.
+	const elementString = encodeElementPackageSpecs(elements);
 	const overwriteParam = overwriteBundle ? "?overwrite=true" : "";
 	const bundleUrl = `${pitsBaseUrl}/bundles/${elementString}/player.js${overwriteParam}`;
 

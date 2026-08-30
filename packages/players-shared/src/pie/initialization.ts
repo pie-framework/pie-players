@@ -6,6 +6,7 @@
  */
 
 import { BUILDER_BUNDLE_URL } from "../config/profile.js";
+import { DEFAULT_IIFE_BUNDLE_RETRY_CONFIG } from "../loader-config.js";
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
 import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
@@ -39,6 +40,14 @@ import {
 const logger = createPieLogger("pie-initialization", () =>
 	isGlobalDebugEnabled(),
 );
+
+/**
+ * Deadline for `loadPieModule`'s bundle `<script>` load when the caller
+ * sets no `loadTimeoutMs`. Shared with the `ElementLoader` primitive's
+ * `DEFAULT_LOAD_TIMEOUT_MS` so a bundle gets the same budget whichever
+ * path a host loads it through.
+ */
+const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 
 // Default options for loading PIE elements
 const defaultOptions: LoadPieElementsOptions = {
@@ -538,7 +547,14 @@ export const initializePiesFromLoadedBundle = (
 };
 
 /**
- * Load a PIE bundle from a URL and initialize elements
+ * Load a PIE bundle from a URL and initialize elements.
+ *
+ * Rejects — rather than hanging or throwing on the window — for every way
+ * the load can fail: the `error` event (404, blocked request, CSP refusal),
+ * the `loadTimeoutMs` deadline (a stalled request that never fires either
+ * event), a bundle whose script ran without populating `window.pie`, and a
+ * throw out of registration. Every rejection names the bundle URL and drops
+ * the injected `<script>`.
  */
 export const loadPieModule = async (
 	config: ConfigEntity,
@@ -557,43 +573,102 @@ export const loadPieModule = async (
 	const registry = pieRegistry();
 	const options = mergeObjectsIgnoringNullUndefined(defaultOptions, opts);
 	const url = opts.bundleUrl || getPieElementBundlesUrl(config, options);
+	const loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
 	const script = document.createElement("script");
 	script.src = url;
 	script.defer = true;
-	script.onerror = () => {
-		throw new Error(`failed to load script: ${url}`);
-	};
 
-	const loadPromise = new Promise<void>((loadResolve) => {
-		script.addEventListener("load", () => {
-			logger.debug("[loadPieModule] Script loaded from:", url);
-			if (isPieAvailable(window)) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	// Removing a `<script>` does not abort a request already in flight, so a
+	// late `load` can still fire after the deadline rejected. Each handler
+	// checks this so registration never runs for a load the caller has
+	// already been told failed.
+	let settled = false;
+
+	try {
+		await new Promise<void>((resolve, reject) => {
+			const succeed = () => {
+				settled = true;
+				resolve();
+			};
+			const fail = (error: Error) => {
+				settled = true;
+				reject(error);
+			};
+
+			script.addEventListener("load", () => {
+				if (settled) return;
+				logger.debug("[loadPieModule] Script loaded from:", url);
+
+				if (!isPieAvailable(window)) {
+					// Deliberately a rejection, not a resolve. The script executed
+					// and registered nothing, so the URL did not serve a PIE IIFE
+					// bundle; resolving would report a successful load to a caller
+					// that then waits on elements which never arrive.
+					// `initializePiesFromLoadedBundle` tolerates the same missing
+					// global because there the host's own loader owns registration.
+					// Here this function owns it, so there is no other party to
+					// wait for. Matches the IIFE `ElementLoader` adapter, which
+					// fails with `cause: "window.pie.default missing after bundle
+					// load"`.
+					fail(
+						new Error(
+							`PIE bundle loaded but window.pie is absent; is ${url} a proper PIE IIFE module?`,
+						),
+					);
+					return;
+				}
+
 				logger.debug("[loadPieModule] window.pie available");
 				const elementModule = window.pie.default;
 
-				// Use shared registration logic (returns array of promises)
-				const registrationPromises = registerPieElementsFromBundle(
-					elementModule,
-					config,
-					session,
-					registry,
-					options,
-				);
+				try {
+					// Use shared registration logic (returns array of promises)
+					const registrationPromises = registerPieElementsFromBundle(
+						elementModule,
+						config,
+						session,
+						registry,
+						options,
+					);
 
-				// Wait for all element definitions to complete
-				Promise.all(registrationPromises).then(() => loadResolve());
-			} else {
-				logger.error(
-					"[loadPieModule] pie var not found; is %s a proper PIE IIFE module?",
-					url,
-				);
-				loadResolve();
+					// Wait for all element definitions to complete
+					Promise.all(registrationPromises).then(succeed, fail);
+				} catch (error) {
+					// `registerPieElementsFromBundle` throws synchronously for a
+					// package missing from the bundle and for a client-player
+					// bundle with no controller. Inside a DOM event handler that
+					// throw reaches the window instead of the caller.
+					fail(error instanceof Error ? error : new Error(String(error)));
+				}
+			});
+
+			script.addEventListener("error", () => {
+				if (settled) return;
+				fail(new Error(`failed to load PIE bundle script: ${url}`));
+			});
+
+			if (loadTimeoutMs > 0) {
+				timer = setTimeout(() => {
+					if (settled) return;
+					fail(
+						new Error(
+							`PIE bundle script load timed out after ${loadTimeoutMs}ms: ${url}`,
+						),
+					);
+				}, loadTimeoutMs);
 			}
-		});
-	});
 
-	document.head.appendChild(script);
-	await loadPromise;
+			document.head.appendChild(script);
+		});
+	} catch (error) {
+		// Drop the injected node so a retry starts from a clean head.
+		script.remove();
+		throw error;
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+
 	return { session };
 };
 

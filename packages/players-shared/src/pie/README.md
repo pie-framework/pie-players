@@ -203,9 +203,17 @@ import { loadPieModule } from './initialization';
 
 await loadPieModule(config, session, {
   bundleType: BundleType.player,
-  env: { mode: 'gather', role: 'student' }
+  env: { mode: 'gather', role: 'student' },
+  // Optional. Deadline for the bundle `<script>` load; defaults to
+  // DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs. 0 disables it.
+  loadTimeoutMs: 120000
 });
 ```
+
+The returned promise rejects, naming the bundle URL, when the script fails to
+load, when the deadline elapses, when the script runs without populating
+`window.pie`, or when element registration throws. Handle it — an unhandled
+rejection is the only signal a host gets that its elements will never arrive.
 
 ### Load PIE Bundle from String
 

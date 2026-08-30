@@ -91,7 +91,7 @@
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome check .",
-		"test": "bun test '.test.ts'"
+		"test": "bun test"
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",

@@ -116,7 +116,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
 		"check": "tsc -p tsconfig.json --noEmit",
-		"test": "bun test '.test.ts'",
+		"test": "bun test",
 		"check-i18n": "bun run src/i18n/scripts/check-coverage.ts",
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},

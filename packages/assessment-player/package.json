@@ -44,7 +44,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"test": "bun test '.test.ts'",
+		"test": "bun test",
 		"typecheck": "tsc --noEmit",
 		"check": "tsc --noEmit",
 		"lint": "biome check ."

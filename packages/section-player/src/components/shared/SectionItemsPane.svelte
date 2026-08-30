@@ -512,32 +512,76 @@
 
 		scrollContainer = container as HTMLElement;
 
-		const updateScrollable = () => {
-			const atBottom =
-				container.scrollHeight - container.scrollTop <=
-				container.clientHeight + 1;
-			isScrollable =
-				container.scrollHeight > container.clientHeight && !atBottom;
+		// Reading scrollHeight/scrollTop/clientHeight flushes layout for the whole
+		// card subtree, live PIE elements included, so all three signals below
+		// coalesce into one deferred read.
+		//
+		// The coalescing is what makes `characterData` affordable. Typing a
+		// 200-character answer into a hosted rich-text element produced 200
+		// mutation batches, 199 of them characterData-only, against exactly one
+		// change in the container's scrollHeight. `characterData` stays observed
+		// because that one change is a real content growth: soft-wrapping a line
+		// inside an existing text node emits no childList record, and the hint
+		// would sit stale while the learner types past the fold.
+		//
+		// `subtree` carries two loads: the container's only child is this custom
+		// element with the item cards as its grandchildren, and the cards mount
+		// after this hook runs, so childList records are what first arm the hint.
+		let pendingHandle: ReturnType<typeof setTimeout> | null = null;
+
+		const readScrollable = () => {
+			// One read of each metric, so the two comparisons below cannot see two
+			// different layouts.
+			const scrollHeight = container.scrollHeight;
+			const clientHeight = container.clientHeight;
+			const atBottom = scrollHeight - container.scrollTop <= clientHeight + 1;
+			const next = scrollHeight > clientHeight && !atBottom;
+			if (next !== isScrollable) isScrollable = next;
 		};
 
-		updateScrollable();
+		// One read per batch, deferred so batches arriving in separate tasks collapse
+		// into a single read. Keeping an already-pending read rather than re-arming
+		// it means a continuous mutation stream cannot starve it.
+		//
+		// A timer rather than requestAnimationFrame, matching the post-render wrap
+		// pass in `players-shared`'s PieItemPlayer: a document with no compositor
+		// never runs the frame callback, which is the PIE-885 failure recorded in
+		// assessment-toolkit's composition-emit-scheduler and regression-tested by
+		// `section-player-non-painting-document.spec.ts`. A hint that arms late in a
+		// hidden tab costs nothing; one that never arms is the below-the-fold
+		// discoverability regression PIE-549 exists to prevent, in exactly the
+		// headless and CI contexts the e2e suites run in.
+		const scheduleRead = () => {
+			if (pendingHandle !== null) return;
+			pendingHandle = setTimeout(() => {
+				pendingHandle = null;
+				readScrollable();
+			}, 0);
+		};
 
-		const resizeObserver = new ResizeObserver(updateScrollable);
+		// Read whatever is already laid out; the observers below carry it from there.
+		readScrollable();
+
+		const resizeObserver = new ResizeObserver(scheduleRead);
 		resizeObserver.observe(container);
 
-		const mutationObserver = new MutationObserver(updateScrollable);
+		const mutationObserver = new MutationObserver(scheduleRead);
 		mutationObserver.observe(container, {
 			childList: true,
 			subtree: true,
 			characterData: true,
 		});
 
-		container.addEventListener("scroll", updateScrollable, { passive: true });
+		container.addEventListener("scroll", scheduleRead, { passive: true });
 
 		return () => {
+			if (pendingHandle !== null) {
+				clearTimeout(pendingHandle);
+				pendingHandle = null;
+			}
 			resizeObserver.disconnect();
 			mutationObserver.disconnect();
-			container.removeEventListener("scroll", updateScrollable);
+			container.removeEventListener("scroll", scheduleRead);
 		};
 	});
 </script>

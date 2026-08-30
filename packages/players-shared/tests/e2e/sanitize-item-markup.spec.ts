@@ -42,27 +42,43 @@ const PACKAGE_ROOT = path.resolve(
 	"../..",
 );
 const ENTRY = path.join(PACKAGE_ROOT, "dist/security/sanitize-item-markup.js");
+// `sanitizeSvgIcon` shares `SANITIZER_FORBIDDEN_TAGS` with the markup
+// sanitizer, so a change to that list has to be asserted against both
+// consumers. Bundled separately because each module is its own entrypoint.
+const ICON_ENTRY = path.join(PACKAGE_ROOT, "dist/security/sanitize-svg-icon.js");
 
 let bundledCode: string;
+let bundledIconCode: string;
 
-test.beforeAll(async () => {
-	if (!existsSync(ENTRY)) {
+async function bundleForBrowser(
+	entry: string,
+	globalName: string,
+): Promise<string> {
+	if (!existsSync(entry)) {
 		throw new Error(
-			`[sanitize-item-markup.spec] ${ENTRY} does not exist. Run "bun run build:e2e:players-shared" (or "bun run build") before this suite.`,
+			`[sanitize-item-markup.spec] ${entry} does not exist. Run "bun run build:e2e:players-shared" (or "bun run build") before this suite.`,
 		);
 	}
 
 	const result = await esbuild.build({
-		entryPoints: [ENTRY],
+		entryPoints: [entry],
 		bundle: true,
 		platform: "browser",
 		format: "iife",
-		globalName: "PieSanitizerUnderTest",
+		globalName,
 		target: "es2020",
 		write: false,
 	});
 
-	bundledCode = result.outputFiles[0].text;
+	return result.outputFiles[0].text;
+}
+
+test.beforeAll(async () => {
+	bundledCode = await bundleForBrowser(ENTRY, "PieSanitizerUnderTest");
+	bundledIconCode = await bundleForBrowser(
+		ICON_ENTRY,
+		"PieIconSanitizerUnderTest",
+	);
 });
 
 async function loadSanitizer(page: Page) {
@@ -208,6 +224,94 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 		});
 		expect(out).toContain("<my-widget");
 		expect(out).not.toContain("<script");
+	});
+
+	test.describe("<style> elements", () => {
+		// A <style> element is a document-global stylesheet and the item player
+		// renders in light DOM, so authored CSS that survives here restyles the
+		// host page, not just the item. The SVG case is the one that regressed:
+		// DOMPurify's defaults drop a top-level HTML <style> on their own, but
+		// its SVG profile keeps one, and an SVG <style>'s rules are just as
+		// document-global. Both are asserted so neither half can quietly come
+		// back.
+		test("strips a top-level HTML <style> and its CSS text", async ({
+			page,
+		}) => {
+			const out = await sanitizeInPage(
+				page,
+				"<style>body{display:none}</style><p>keep me</p>",
+			);
+			expect(out).not.toContain("<style");
+			expect(out).not.toContain("display:none");
+			expect(out).toContain("<p>keep me</p>");
+		});
+
+		test("strips a <style> nested in an <svg> and its CSS text", async ({
+			page,
+		}) => {
+			const out = await sanitizeInPage(
+				page,
+				'<svg width="0" height="0"><style>#host-chrome{display:none}</style><circle r="5"></circle></svg><p>keep me</p>',
+			);
+			expect(out).not.toContain("<style");
+			expect(out).not.toContain("host-chrome");
+			expect(out).not.toContain("display:none");
+			expect(out).toContain("<p>keep me</p>");
+			// Forbidding the tag must not take the rest of the drawing with it.
+			expect(out).toContain("<svg");
+			expect(out).toContain("<circle");
+		});
+
+		test("authored CSS cannot reach an element outside the player", async ({
+			page,
+		}) => {
+			// The end-to-end statement of the defect: sanitize, inject into a
+			// light-DOM container, and assert host chrome elsewhere in the
+			// document is untouched.
+			const hostChromeDisplay = await page.evaluate(() => {
+				const api = (
+					window as unknown as {
+						PieSanitizerUnderTest: {
+							sanitizeItemMarkup: (m: string, o?: object) => string;
+						};
+					}
+				).PieSanitizerUnderTest;
+
+				const chrome = document.createElement("div");
+				chrome.id = "host-chrome";
+				chrome.textContent = "submit bar";
+				document.body.appendChild(chrome);
+
+				const item = document.createElement("div");
+				document.body.appendChild(item);
+				item.innerHTML = api.sanitizeItemMarkup(
+					'<svg width="0" height="0"><style>#host-chrome{display:none !important}</style></svg>',
+				);
+
+				return getComputedStyle(chrome).display;
+			});
+			expect(hostChromeDisplay).not.toBe("none");
+		});
+
+		test("sanitizeSvgIcon strips a <style> from an icon", async ({ page }) => {
+			await page.setContent("<!doctype html><html><body></body></html>");
+			await page.addScriptTag({ content: bundledIconCode });
+			const out = await page.evaluate(() => {
+				const api = (
+					window as unknown as {
+						PieIconSanitizerUnderTest: {
+							sanitizeSvgIcon: (icon: unknown) => string;
+						};
+					}
+				).PieIconSanitizerUnderTest;
+				return api.sanitizeSvgIcon(
+					'<svg viewBox="0 0 16 16"><style>:root{--pie-text:red}</style><path d="M0 0h16v16H0z"></path></svg>',
+				);
+			});
+			expect(out).not.toContain("<style");
+			expect(out).not.toContain("--pie-text");
+			expect(out).toContain("<path");
+		});
 	});
 
 	test.describe("wrapOverwideContent", () => {

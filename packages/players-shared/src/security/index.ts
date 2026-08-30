@@ -19,11 +19,13 @@ export {
 	sanitizeSvgIcon,
 } from "./sanitize-svg-icon.js";
 export {
+	isOverwideImageWrapMutation,
 	wrapOverwideImages,
 	wrapOverwideImagesInElement,
 } from "./wrap-overwide-images.js";
 export { wrapModelRichContent } from "./wrap-model-rich-content.js";
 export {
+	isOverwideTableWrapMutation,
 	wrapOverwideTables,
 	wrapOverwideTablesInElement,
 } from "./wrap-overwide-tables.js";

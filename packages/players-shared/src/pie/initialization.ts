@@ -7,17 +7,15 @@
 
 import { BUILDER_BUNDLE_URL } from "../config/profile.js";
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
-import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
-import type { ConfigEntity, Env, PieModel } from "../types/index.js";
+import type { ConfigEntity } from "../types/index.js";
 import { editorPostFix } from "../types/index.js";
+import { initializePieElement } from "./initialize-element.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { initializeMathRendering } from "./math-rendering.js";
 import { pieRegistry } from "./registry.js";
-import { findPieController } from "./scoring.js";
 import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import type {
-	EventListeners,
 	LoadPieElementsOptions,
 	PieElement,
 	PieRegistry,
@@ -30,7 +28,6 @@ import {
 } from "./types.js";
 import { updatePieElement } from "./updates.js";
 import {
-	findOrAddSession,
 	getPackageWithoutVersion,
 	getPieElementBundlesUrl,
 } from "./utils.js";
@@ -45,107 +42,6 @@ const defaultOptions: LoadPieElementsOptions = {
 	buildServiceBase: BUILDER_BUNDLE_URL,
 	bundleType: BundleType.player, // Default to player.js (no controllers, server-processed models)
 	env: { mode: "gather", role: "student" },
-};
-
-// Add this to your window types
-declare global {
-	interface Window {
-		_pieElementObserver?: MutationObserver;
-		_pieCurrentContext?: {
-			config: ConfigEntity;
-			session: any[];
-			env?: Env;
-			container?: Element | Document;
-		};
-	}
-}
-
-/**
- * Helper function to initialize a PIE element
- */
-const initializePieElement = (
-	element: PieElement,
-	options: {
-		config: ConfigEntity;
-		session: any[];
-		env?: Env;
-		eventListeners?: EventListeners;
-	},
-): void => {
-	const { config, session, env, eventListeners } = options;
-	if ((element as any).__pieInitialized) {
-		return;
-	}
-	const tagName = element.tagName.toLowerCase();
-
-	logger.debug(`[initializePieElement] Initializing ${tagName}#${element.id}`);
-
-	// Find model for this element
-	let model = config?.models?.find((m) => m.id === element.id) as PieModel;
-	if (!model) {
-		// Only warn if this element is from a client-player.js bundle (where models are expected)
-		// player.js bundles use server-processed models, so missing models are expected there
-		const registry = pieRegistry();
-		const registryEntry = registry[tagName];
-
-		if (registryEntry && registryEntry.bundleType === BundleType.clientPlayer) {
-			logger.warn(
-				`[initializePieElement] Model not found for PIE element ${tagName}#${element.id} (client-player.js bundle)`,
-			);
-		}
-		return;
-	}
-
-	// Set session (with element property for updateSession callback)
-	const elementSession = findOrAddSession(session, model.id, model.element);
-	element.session = elementSession;
-	(element as any).__pieInitialized = true;
-	logger.debug(
-		`[initializePieElement] Session set for ${tagName}#${element.id}:`,
-		elementSession,
-	);
-
-	// Set model - use controller if available (client-player.js), or use server-processed model (player.js)
-	const controller = findPieController(tagName);
-
-	if (!env) {
-		logger.error(
-			`[initializePieElement] ❌ FATAL: No env provided for ${tagName}`,
-		);
-		throw new Error(
-			`No env provided for ${tagName}. PIE elements require an env object with mode and role.`,
-		);
-	}
-
-	if (!controller) {
-		// No controller available - using server-processed model (player.js bundle)
-		logger.debug(
-			`[initializePieElement] ℹ️ No controller for ${tagName}, using server-processed model`,
-		);
-		logger.debug(`[initializePieElement] Model already processed by server:`, {
-			id: model.id,
-			element: model.element,
-			hasCorrectResponse: "correctResponse" in model,
-			mode: env.mode,
-			role: env.role,
-		});
-
-		// Set model directly - server already processed it
-		element.model = wrapModelRichContent(model);
-	} else {
-		// Controller available - run client-side processing (client-player.js bundle)
-		// Note: updatePieElementWithRef handles controller invocation
-		logger.debug(
-			`[initializePieElement] Controller found for ${tagName}, will invoke model() function`,
-		);
-	}
-
-	// Add event listeners
-	if (eventListeners) {
-		Object.entries(eventListeners).forEach(([evt, fn]) => {
-			element.addEventListener(evt as any, fn);
-		});
-	}
 };
 
 const getEditorElementTagName = (elementTagName: string, pkg: string): string =>
@@ -175,7 +71,10 @@ const updateRegisteredElement = (
 /**
  * Shared element registration logic
  * Extracted from initializePiesFromLoadedBundle and loadPieModule to eliminate ~200 lines of duplication
- * Also fixes MutationObserver memory leak by storing latest config/session in window context
+ *
+ * Binds the elements already present in `options.container`. Elements that
+ * arrive later are bound by the container owner's observer — see
+ * `element-observer.ts`.
  *
  * `elementModule` may be `null`. In that case we cannot register *new*
  * tags (no element constructor source), but we can still update tags
@@ -194,13 +93,6 @@ const registerPieElementsFromBundle = (
 	options: LoadPieElementsOptions,
 ): Promise<void>[] => {
 	const promises: Promise<void>[] = [];
-	const isNodeWithinContainer = (
-		node: Node,
-		container?: Element | Document,
-	): boolean => {
-		if (!container || container === document) return true;
-		return node instanceof Node && container.contains(node);
-	};
 
 	if (elementModule) {
 		logger.debug(
@@ -216,16 +108,6 @@ const registerPieElementsFromBundle = (
 		"[registerPieElementsFromBundle] config.elements:",
 		config.elements,
 	);
-
-	// Store latest config/session in window so MutationObserver can access current values
-	if (typeof window !== "undefined") {
-		window._pieCurrentContext = {
-			config,
-			session,
-			env: options.env,
-			container: options.container,
-		};
-	}
 
 	Object.entries(config.elements).forEach(([elName, pkg]) => {
 		const elementTagName = validateCustomElementTag(
@@ -386,65 +268,6 @@ const registerPieElementsFromBundle = (
 					}),
 				);
 
-				// Setup MutationObserver that uses current context (only once)
-				if (!window._pieElementObserver) {
-					window._pieElementObserver = new MutationObserver((mutations) => {
-						// Use current context from window instead of stale closure
-						const context = window._pieCurrentContext;
-						if (!context) {
-							logger.warn("[MutationObserver] No current context available");
-							return;
-						}
-
-						mutations.forEach((mutation) => {
-							if (mutation.type === "childList") {
-								mutation.addedNodes.forEach((node) => {
-									if (node.nodeType === Node.ELEMENT_NODE) {
-										if (!isNodeWithinContainer(node, context.container)) {
-											return;
-										}
-										const tagName = (node as Element).tagName.toLowerCase();
-										if (registry[tagName]) {
-											initializePieElement(node as PieElement, {
-												config: context.config,
-												session: context.session,
-												env: context.env,
-												eventListeners: options.eventListeners?.[tagName],
-											});
-										}
-
-										// Check children of added nodes
-										(node as Element)
-											.querySelectorAll("*")
-											.forEach((childNode) => {
-												if (
-													!isNodeWithinContainer(childNode, context.container)
-												) {
-													return;
-												}
-												const childTagName = childNode.tagName.toLowerCase();
-												if (registry[childTagName]) {
-													initializePieElement(childNode as PieElement, {
-														config: context.config,
-														session: context.session,
-														env: context.env,
-														eventListeners:
-															options.eventListeners?.[childTagName],
-													});
-												}
-											});
-									}
-								});
-							}
-						});
-					});
-
-					window._pieElementObserver.observe(document.body, {
-						childList: true,
-						subtree: true,
-					});
-				}
-
 				// Handle editor elements if needed
 				if (options.bundleType === BundleType.editor) {
 					if (isCustomElementConstructor(elementData.Configure)) {
@@ -509,6 +332,10 @@ const registerPieElementsFromBundle = (
  * (bundle not loaded by *anyone*) still surface — every unregistered tag
  * gets its own warning, and `updatePieElements` later reports any tag
  * that never resolves.
+ *
+ * Binds the elements present in `opts.container` now. Elements that arrive
+ * later are the container owner's concern: a player with a lifecycle calls
+ * `observePieElements` and releases it on teardown.
  */
 export const initializePiesFromLoadedBundle = (
 	config: ConfigEntity,

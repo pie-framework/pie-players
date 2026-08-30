@@ -31,6 +31,7 @@
   } from "../pie/authoring.js";
   import { transformMarkupForAuthoring } from "../pie/authoring-tag.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
+  import { observePieElements } from "../pie/element-observer.js";
   import {
     canPopulateCorrectResponses,
     getCorrectResponseEnv,
@@ -992,6 +993,46 @@
     observer.observe(root, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
+    };
+  });
+
+  // Bind PIE elements that land in this player's subtree after initialization:
+  // host markup appended into the container, or an element that paints nested
+  // PIE tags of its own. Scoped to this player's root, so a mutation elsewhere
+  // on the host page costs nothing, and released with the effect, so nothing
+  // observes the page once the player unmounts.
+  //
+  // The context is read when an element arrives, so a late element binds
+  // against the config, session and env this player holds then — not the empty
+  // session the STEP 1 registration passes, and not a session array a parent has
+  // since recomputed. `session` and `env` stay out of the tracked body for the
+  // same reason: a parent recomputes both on render, and re-registering on each
+  // would open a window with nothing observing.
+  $effect(() => {
+    if (!rootElement || mode === "author" || !itemConfig) return;
+    const container = rootElement;
+    const withPassage = Boolean(passageConfig);
+    const releases = untrack(() => {
+      const acquired = [
+        observePieElements(container, () => ({
+          config: itemConfig,
+          session,
+          env,
+        })),
+      ];
+      if (withPassage) {
+        acquired.push(
+          observePieElements(container, () => ({
+            config: passageConfig as ConfigEntity,
+            session,
+            env,
+          }))
+        );
+      }
+      return acquired;
+    });
+    return () => {
+      for (const release of releases) release();
     };
   });
 

@@ -10,6 +10,10 @@
 			"types": "./src/index.ts",
 			"svelte": "./src/index.ts",
 			"default": "./src/index.ts"
+		},
+		"./server": {
+			"types": "./src/server/tts-error-response.ts",
+			"default": "./src/server/tts-error-response.ts"
 		}
 	},
 	"scripts": {

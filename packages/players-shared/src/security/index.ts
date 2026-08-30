@@ -18,6 +18,7 @@ export {
 	resetSvgSanitizerForTesting,
 	sanitizeSvgIcon,
 } from "./sanitize-svg-icon.js";
+export { sanitizeStyleAttribute } from "./sanitize-style-attribute.js";
 export {
 	wrapOverwideImages,
 	wrapOverwideImagesInElement,

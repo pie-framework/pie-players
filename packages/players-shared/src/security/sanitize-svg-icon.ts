@@ -16,12 +16,17 @@ import {
 	SANITIZER_FORBIDDEN_ATTRS,
 	SANITIZER_FORBIDDEN_TAGS,
 } from "./sanitize-forbidden-lists.js";
+import { installStyleAttributeHook } from "./sanitize-style-attribute.js";
 
 interface DOMPurifyInstance {
 	sanitize: (
 		source: string,
 		config?: Record<string, unknown>,
 	) => string | Node | DocumentFragment;
+	addHook?: (
+		entryPoint: string,
+		hook: (node: unknown, data?: unknown) => void,
+	) => void;
 }
 
 let svgPurifierInstance: DOMPurifyInstance | null = null;
@@ -36,6 +41,7 @@ function resolveSvgPurifier(): DOMPurifyInstance | null {
 		typeof factory === "function"
 			? factory(window as Window & typeof globalThis)
 			: (DOMPurify as unknown as DOMPurifyInstance);
+	installStyleAttributeHook(svgPurifierInstance);
 	return svgPurifierInstance;
 }
 

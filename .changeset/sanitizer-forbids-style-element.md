@@ -23,7 +23,5 @@ attributes, `class`, and the theme tokens is unaffected, and hosts that
 deliberately trust their content can still opt out of sanitization entirely with
 `trust-markup` or supply their own sanitizer via `sanitizeMarkup`.
 
-Inline `style` attributes remain permitted, and DOMPurify treats them as
-URI-safe, so their `url()` values and positioning declarations are not
-inspected. Confining those needs a CSS-value policy and is not part of this
-change.
+Inline `style` attributes are handled separately, by the declaration filter in
+the companion changeset.

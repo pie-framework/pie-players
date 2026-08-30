@@ -614,6 +614,17 @@
 		// real content growth: soft-wrapping a line inside an existing text node
 		// emits no childList record, and the hint would sit stale while the learner
 		// types past the fold.
+		//
+		// Mutation records plus a timer are the only signals here that do not depend
+		// on the document rendering, which is why the cost of a layout read per
+		// batch is accepted rather than designed away. An IntersectionObserver on an
+		// end-of-content sentinel expresses this predicate with no layout read at
+		// all — measured at two callbacks against 106 reads for the same typing
+		// session — but intersection observations, resize observations and scroll
+		// events are all delivered from the same "update the rendering" steps as the
+		// frame callback PIE-885 is about. Moving content-growth detection onto one
+		// of them would make the below-the-fold hint depend on the compositor that
+		// twice took composition delivery down with it.
 		const mutationObserver = new MutationObserver(scheduleRead);
 		mutationObserver.observe(host, {
 			childList: true,

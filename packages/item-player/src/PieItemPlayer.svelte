@@ -114,6 +114,8 @@
 		normalizeItemPlayerStrategy,
 		parsePackageName,
 		resolveInstrumentationProvider,
+		attachInstrumentationEventBridge,
+		ITEM_INSTRUMENTATION_EVENT_MAP,
 		scorePieItem,
 		updatePieElements,
 	} from "@pie-players/pie-players-shared";
@@ -1187,6 +1189,28 @@
 		}
 	});
 
+	// Same wiring the section, toolkit and assessment players already have. The
+	// item player previously resolved an instrumentation provider only to hand it
+	// to the loader, so nothing it emitted itself reached telemetry.
+	$effect(() => {
+		if (!hostElement) return;
+		const localHost = hostElement;
+		return attachInstrumentationEventBridge({
+			host: localHost,
+			instrumentationProvider: resolvedInstrumentationProvider,
+			component: "pie-item-player",
+			eventMap: ITEM_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "item",
+			},
+			// `handlePlayerEvent` re-dispatches from the host element, so a mapped
+			// event targeted anywhere else came from a nested player rather than
+			// this one.
+			shouldTrackEvent: (event: Event) => event.target === localHost,
+			debug: debugEnabled,
+		});
+	});
+
 	$effect(() => {
 		const cfg = itemConfig;
 		if (showBottomBorder && env.mode === "evaluate" && cfg?.elements) {
@@ -1510,6 +1534,10 @@
 					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}
 					onModelLoaded={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("model-loaded", { detail }))}
+					onCorrectResponsesPopulated={(detail: unknown) =>
+						handlePlayerEvent(
+							new CustomEvent("correct-responses-populated", { detail }),
+						)}
 				/>
 			{/key}
 		</div>

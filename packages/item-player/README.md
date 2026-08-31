@@ -224,6 +224,28 @@ These are set via JavaScript, not HTML attributes.
   persists successfully.
 - `backend-score-complete`: emitted after server-backed `score()` completes.
 - `backend-error`: emitted when backend load/save/score fails.
+- `correct-responses-populated`:
+  `{ itemId?, mode?, role?, bundleType?, populatedCount, elements }`. Emitted
+  when correct responses were written into the session. `elements` holds the
+  `config.models[].element` names (for example
+  `multiple-choice--version-latest`), not rendered tag names. The detail carries
+  counts and those names only, never session entries.
+
+  This exists so a host can **detect** a population it did not ask for.
+  Prevention is not available here: `add-correct-response`, `env` and `mode` are
+  public attributes, so any page script can set them, and a legitimate preview
+  (`mode="view"`, `role="student"`, controllers client-side) is indistinguishable
+  from a tampered delivery from inside the player. The event firing at all is the
+  signal, because population needs a controller with
+  `createCorrectResponseSession` in the browser, which only a
+  `client-player.js` bundle provides. `hosted="true"` — which selects the
+  `player.js` bundle and leaves controllers to the host — is the actual boundary
+  for proctored delivery. See [Loading strategies](../../docs/item-player/loading-strategies.md).
+
+  Also forwarded to a configured instrumentation provider as
+  `pie-item-correct-responses-populated`. It is the only item-player event on
+  that bridge: `session-changed` carries learner responses, and forwarding those
+  to telemetry by default is a host's decision rather than this package's.
 
 ## Backend delivery
 

@@ -67,6 +67,7 @@
     env = { mode: "gather", role: "student" } as Env,
     session = [] as any[],
     addCorrectResponse = false,
+    onCorrectResponsesPopulated,
     allowedResize = false,
     customClassName = "",
     passageContainerClass = "",
@@ -101,6 +102,26 @@
     env?: Env;
     session?: any[];
     addCorrectResponse?: boolean;
+    /**
+     * Called when correct responses were actually written into the session.
+     *
+     * Firing at all carries the security signal: population requires a
+     * controller with `createCorrectResponseSession` in the browser, which only
+     * a `client-player.js` bundle provides. A host that did not ask for correct
+     * responses in this context can treat the call as tampering — `role` and
+     * `mode` are client-mutable attributes, so they are not a boundary, and
+     * `hosted=true` / `player.js` is what keeps the answer key server-side.
+     *
+     * The detail deliberately carries no session data. See the emit site.
+     */
+    onCorrectResponsesPopulated?: (detail: {
+      itemId?: string;
+      mode?: string;
+      role?: string;
+      bundleType?: string;
+      populatedCount: number;
+      elements: string[];
+    }) => void;
     allowedResize?: boolean;
     customClassName?: string;
     passageContainerClass?: string;
@@ -526,6 +547,31 @@
       for (const sessionEntry of newSession) {
         dispatch("session-changed", sessionEntry);
       }
+
+      // Report that correct responses reached the session, so a host can detect
+      // a population it never asked for. Prevention is not available at this
+      // layer: `addCorrectResponse`, `env` and `mode` are all public attributes
+      // on `<pie-item-player>`, so any page script can set them, and a
+      // legitimate preview (`mode: "view"`, `role: "student"`, controllers
+      // client-side) is indistinguishable from a tampered delivery from in
+      // here. `hosted=true` / `player.js` is the boundary; this is the signal.
+      //
+      // The detail carries counts and `config.models[].element` names, never
+      // the session entries: those hold the correct answers, and this payload
+      // is forwarded to a host's telemetry provider by the instrumentation
+      // bridge.
+      //
+      // Called directly rather than through `dispatch()`: that helper's DOM
+      // branch dispatches on `window`, and the custom element already owns DOM
+      // emission for every public event via `handlePlayerEvent`.
+      onCorrectResponsesPopulated?.({
+        itemId: itemConfig.id,
+        mode: env?.mode,
+        role: env?.role,
+        bundleType,
+        populatedCount: newSession.length,
+        elements: newSession.map((entry: any) => String(entry.element ?? "")),
+      });
     } else {
       logger.debug(
         "[PieItemPlayer] No correct responses returned (likely wrong env). Will retry if env/addCorrectResponse changes."

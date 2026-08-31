@@ -129,3 +129,61 @@ export function wrapOverwideMarkup(
 	});
 	return wrapped > 0 ? body.innerHTML : markup;
 }
+
+function isElement(node: Node): node is Element {
+	return node.nodeType === 1;
+}
+
+/** A `spec` wrapper holding nothing but the nodes `spec` wraps. */
+function isWrapperFor(node: Node, spec: OverwideWrapSpec): boolean {
+	if (!isElement(node)) return false;
+	if (!node.classList?.contains(spec.wrapperClass)) return false;
+	for (const child of Array.from(node.children)) {
+		if (!child.matches(spec.selector)) return false;
+	}
+	return true;
+}
+
+/** A node `spec` wraps, currently held by a `spec` wrapper. */
+function isWrappedBy(node: Node, spec: OverwideWrapSpec): boolean {
+	if (!isElement(node)) return false;
+	const parent = node.parentElement;
+	if (!parent?.classList?.contains(spec.wrapperClass)) return false;
+	return node.matches(spec.selector);
+}
+
+function everyNodeIsWrapOutput(
+	nodes: NodeList,
+	spec: OverwideWrapSpec,
+): boolean {
+	for (const node of Array.from(nodes)) {
+		if (!isWrapperFor(node, spec) && !isWrappedBy(node, spec)) return false;
+	}
+	return true;
+}
+
+/**
+ * True when `record` mentions nothing but this module's own live-DOM output for
+ * `spec`: a wrapper landing beside the node it wraps, or that node moving inside
+ * it.
+ *
+ * An observer-driven caller re-runs {@link wrapOverwideInElement} on every
+ * mutation tick, and the wrap itself inserts elements — so without this test the
+ * pass retriggers the observer that scheduled it, converging only because the
+ * wrap is idempotent. Ignoring the pass's own records is what removes the
+ * retrigger; a PIE element that re-renders over its own subtree and drops the
+ * wrapper is the case where absorbing it instead becomes a sustained loop.
+ *
+ * Conservative in the safe direction: anything it cannot account for reads as
+ * foreign, which costs one extra pass and never a missed wrap.
+ */
+export function isOverwideWrapMutation(
+	record: MutationRecord,
+	spec: OverwideWrapSpec,
+): boolean {
+	if (record.type !== "childList") return false;
+	return (
+		everyNodeIsWrapOutput(record.addedNodes, spec) &&
+		everyNodeIsWrapOutput(record.removedNodes, spec)
+	);
+}

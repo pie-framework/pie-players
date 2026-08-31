@@ -28,6 +28,7 @@
  */
 
 import {
+	isOverwideWrapMutation,
 	type OverwideWrapSpec,
 	type WrapOverwideOptions,
 	wrapOverwideInElement,
@@ -78,4 +79,14 @@ export function wrapOverwideImagesInElement(
  */
 export function wrapOverwideImages(markup: string): string {
 	return wrapOverwideMarkup(markup, IMAGE_SPEC);
+}
+
+/**
+ * True when `record` mentions nothing but the output of
+ * {@link wrapOverwideImagesInElement} — a `pie-image-scroll` wrapper, or an
+ * `<img>` moving inside one. An observer-driven caller ignores such a record so
+ * its own wrap does not schedule a second pass.
+ */
+export function isOverwideImageWrapMutation(record: MutationRecord): boolean {
+	return isOverwideWrapMutation(record, IMAGE_SPEC);
 }

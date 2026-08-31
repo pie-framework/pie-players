@@ -14,6 +14,8 @@
   import {
     buildAuthoringAllowList,
     createDefaultItemMarkupSanitizer,
+    isOverwideImageWrapMutation,
+    isOverwideTableWrapMutation,
     wrapOverwideImagesInElement,
     wrapOverwideTablesInElement,
     type ItemMarkupSanitizer,
@@ -973,25 +975,80 @@
 
   // Run a post-render pass over the player's live subtree using the same
   // per-element wrappers as the string pipeline (so the produced
-  // pie-image-scroll / pie-table-scroll markup is byte-identical) and
-  // re-run on every mutation tick so element-painted content is wrapped as
-  // soon as it lands. The wrap is idempotent.
+  // pie-image-scroll / pie-table-scroll markup is byte-identical), re-run when
+  // element-painted content lands.
+  //
+  // Each pass is a querySelectorAll over the whole item subtree, so a PIE
+  // element that re-renders on every keystroke must not buy one per mutation
+  // batch: batches coalesce into a single deferred pass, and the observer
+  // ignores the records the wrap's own insertions queue. Without that second
+  // part the pass retriggers the observer that scheduled it, and converges only
+  // because the wrap is idempotent — an element that re-renders over its own
+  // subtree and drops the wrapper would loop.
   $effect(() => {
     if (!rootElement) return;
     const root = rootElement;
-    const tickWrap = () => {
-      logger.debug("[PieItemPlayer] Running post-render wrap pass");
-      wrapOverwideImagesInElement(root);
-      wrapOverwideTablesInElement(root);
+
+    // A pass that wrapped nothing mutated nothing, so it queued no records of
+    // its own and the next batch needs no filtering.
+    let selfMutationsPending = false;
+
+    const runWrapPass = () => {
+      const wrapped =
+        wrapOverwideImagesInElement(root) + wrapOverwideTablesInElement(root);
+      selfMutationsPending = wrapped > 0;
+      logger.debug("[PieItemPlayer] Post-render wrap pass wrapped", wrapped);
     };
-    tickWrap();
+
+    runWrapPass();
     if (typeof MutationObserver === "undefined") return;
-    const observer = new MutationObserver(() => {
-      tickWrap();
+
+    let pendingHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = () => {
+      // One pass per batch, deferred so batches arriving in separate tasks
+      // collapse into a single scan. Keeping an already-pending pass rather than
+      // re-arming it means a continuous mutation stream cannot starve it.
+      //
+      // A timer rather than requestAnimationFrame: a document with no
+      // compositor never runs the frame callback, which is the PIE-885 failure
+      // recorded in assessment-toolkit's composition-emit-scheduler. A wrap that
+      // lands late in a hidden tab costs nothing; one that never lands is a
+      // WCAG 1.4.10 regression in exactly the headless and CI contexts the
+      // e2e suites run in.
+      if (pendingHandle !== null) return;
+      pendingHandle = setTimeout(() => {
+        pendingHandle = null;
+        runWrapPass();
+      }, 0);
+    };
+
+    const observer = new MutationObserver((records) => {
+      if (selfMutationsPending) {
+        selfMutationsPending = false;
+        if (
+          records.every(
+            (record) =>
+              isOverwideImageWrapMutation(record) ||
+              isOverwideTableWrapMutation(record)
+          )
+        ) {
+          return;
+        }
+      }
+      schedule();
     });
     observer.observe(root, { childList: true, subtree: true });
+    // The initial pass ran before the observer was armed, so its records were
+    // never queued here and there is nothing to filter out of the first batch.
+    selfMutationsPending = false;
+
     return () => {
       observer.disconnect();
+      if (pendingHandle !== null) {
+        clearTimeout(pendingHandle);
+        pendingHandle = null;
+      }
     };
   });
 

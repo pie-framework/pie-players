@@ -12,10 +12,15 @@ test("every position write is clamped to the containing block", () => {
 	}
 });
 
-test("containment is derived from the containing block, not the viewport", () => {
-	expect(source).toInclude("containerEl.offsetParent");
-	// A viewport-derived seed places the panel outside any positioned ancestor;
+test("containment is derived from the containing block", () => {
+	// Either route to the containing block satisfies this: reading `offsetParent`
+	// here, or delegating to players-shared. What fails it is deriving containment
+	// from the viewport, which places the panel outside any positioned ancestor --
 	// window dimensions are only the initial-containing-block fallback.
+	const readsContainingBlock =
+		source.includes("containerEl.offsetParent") ||
+		source.includes("resolveContainingBlockRect(");
+	expect(readsContainingBlock).toBe(true);
 	expect(source).not.toInclude("window.innerWidth / 2");
 });
 

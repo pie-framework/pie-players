@@ -313,9 +313,33 @@ This applies to:
 - Any `bun run test:e2e:*` script.
 - `bunx playwright ...` / `bun playwright ...`.
 - Playwright helper scripts, screenshot capture, or ad-hoc DOM verification.
-- `bun run test` / `bun test` in packages whose tests include Playwright specs.
 - `bun run verify:local-pr`, because it runs the full local lint/typecheck gate
   plus the critical Playwright e2e suites.
+
+`bun test` does not, and the two runners have to be kept out of each other's
+files in both directions. Bun discovers `*.spec.ts` and `*.test.ts`; Playwright's
+default `testMatch` discovers both as well.
+
+- **Bun must not load Playwright specs.** A `bunfig.toml` carrying
+  `pathIgnorePatterns = ["**/*.spec.ts"]` keeps them out, where
+  `@playwright/test`'s `test()` would otherwise throw on the missing worker
+  fixtures. Bun reads that file from the current working directory only — no
+  walking up to the workspace root, and no `extends` — so the root has one and so
+  does every package holding Playwright specs. A new package that adds a spec
+  needs its own copy; the rationale stays in the root file, and the duplicated
+  content is the one glob.
+- **Playwright must not load bun tests.** Every `playwright.config.ts` sets
+  `testMatch: /.*\.spec\.ts/`. This one is not cosmetic: a `*.test.ts` inside
+  `testDir` imports `bun:test`, Playwright's Node loader rejects the `bun:`
+  protocol, and discovery collapses to **zero tests for the entire config** — the
+  suite reports nothing rather than failing loudly. `item-player` ran that way
+  until 2026-08-30. Scoping `testDir` to a spec-only directory hides the hazard
+  without removing it, so set `testMatch` there too.
+
+Where two configs share one `testDir`, the narrower one owns its files by
+`testMatch` and the broader one excludes them by `testIgnore` —
+`packages/item-player`'s backend-demo specs need the `backend-demos` server and
+belong to `playwright.backend.config.ts`, so the main config ignores them.
 
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.

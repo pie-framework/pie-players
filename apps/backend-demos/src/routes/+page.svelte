@@ -2,6 +2,7 @@
 	import { goto } from "$app/navigation";
 	import { page } from "$app/stores";
 	import { onMount, tick } from "svelte";
+	import { pieElementContextsWithin } from "@pie-players/pie-players-shared";
 	import "@pie-players/pie-item-player";
 	import BackendStatePanel from "$lib/components/BackendStatePanel.svelte";
 	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
@@ -330,11 +331,13 @@
 		}
 	}
 
+	// The player registers its item config and, when there is one, its passage
+	// config against its own root inside <pie-item-player>. Walk every one: a
+	// passage element belongs to the second.
 	function repairEmptyPieElements(resetRendered = false) {
 		if (!playerEl || typeof window === "undefined") return;
-		const context = (window as any)._pieCurrentContext;
-		const models = context?.config?.models;
-		if (!Array.isArray(models)) return;
+		const contexts = pieElementContextsWithin(playerEl);
+		if (contexts.length === 0) return;
 		const loadedSessionEntries =
 			clientSessionSnapshot &&
 			typeof clientSessionSnapshot === "object" &&
@@ -342,44 +345,48 @@
 				? (clientSessionSnapshot as { data: unknown[] }).data
 				: null;
 
-		for (const model of models) {
-			if (
-				!model ||
-				typeof model !== "object" ||
-				typeof model.id !== "string" ||
-				typeof model.element !== "string" ||
-				!customElements.get(model.element)
-			) {
-				continue;
-			}
-			const current = findRenderedPieElement(playerEl, model.element, model.id);
-			const elementSession =
-				sessionForModel(loadedSessionEntries, model) ??
-				sessionForModel(context?.session, model) ?? {
-					id: model.id,
-					element: model.element,
-				};
-			if (!current) continue;
-			const hasRenderedContent = Boolean(current.textContent?.trim() || current._root);
-			if (hasRenderedContent) {
-				if (resetRendered) {
-					syncRenderedChoiceInputs(current, elementSession);
+		for (const context of contexts) {
+			const models = context.config?.models;
+			if (!Array.isArray(models)) continue;
+			for (const model of models) {
+				if (
+					!model ||
+					typeof model !== "object" ||
+					typeof model.id !== "string" ||
+					typeof model.element !== "string" ||
+					!customElements.get(model.element)
+				) {
+					continue;
 				}
-				continue;
-			}
-			if (resetRendered) continue;
+				const current = findRenderedPieElement(playerEl, model.element, model.id);
+				const elementSession =
+					sessionForModel(loadedSessionEntries, model) ??
+					sessionForModel(context.session, model) ?? {
+						id: model.id,
+						element: model.element,
+					};
+				if (!current) continue;
+				const hasRenderedContent = Boolean(current.textContent?.trim() || current._root);
+				if (hasRenderedContent) {
+					if (resetRendered) {
+						syncRenderedChoiceInputs(current, elementSession);
+					}
+					continue;
+				}
+				if (resetRendered) continue;
 
-			const replacement = document.createElement(model.element) as HTMLElement & {
-				model?: unknown;
-				session?: unknown;
-			};
-			for (const attribute of Array.from(current.attributes)) {
-				replacement.setAttribute(attribute.name, attribute.value);
+				const replacement = document.createElement(model.element) as HTMLElement & {
+					model?: unknown;
+					session?: unknown;
+				};
+				for (const attribute of Array.from(current.attributes)) {
+					replacement.setAttribute(attribute.name, attribute.value);
+				}
+				replacement.id = model.id;
+				current.replaceWith(replacement);
+				replacement.model = model;
+				replacement.session = elementSession;
 			}
-			replacement.id = model.id;
-			current.replaceWith(replacement);
-			replacement.model = model;
-			replacement.session = elementSession;
 		}
 	}
 
@@ -432,9 +439,10 @@
 		while (performance.now() - startedAt < timeoutMs) {
 			await tick();
 			await waitForAnimationFrame();
-			const context = (window as any)._pieCurrentContext;
-			const models = context?.config?.models;
-			if (!Array.isArray(models)) return;
+			const models = pieElementContextsWithin(playerEl).flatMap((context) =>
+				Array.isArray(context.config?.models) ? context.config.models : [],
+			);
+			if (models.length === 0) return;
 			const ready = models.every((model) => {
 				if (
 					!model ||

@@ -1,0 +1,4 @@
+# Keep Playwright specs out of bun's test discovery. Rationale, and why this
+# cannot be inherited from the workspace root, in the root bunfig.toml.
+[test]
+pathIgnorePatterns = ["**/*.spec.ts"]

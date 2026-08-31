@@ -28,6 +28,18 @@ export {
 	loadPieModule,
 	loadPieModuleFromString,
 } from "./initialization.js";
+// Late-arrival element binding. The owner of a container observes it and
+// releases the observer on teardown; a host reads `pieElementContextsWithin` to
+// recover the config and session a mounted player registered for a container it
+// owns.
+export {
+	observePieElements,
+	pieElementContextsWithin,
+} from "./element-observer.js";
+export type {
+	PieElementContext,
+	PieElementContextSource,
+} from "./element-observer.js";
 export {
 	createAuthoringAssetEventManager,
 	initializeAuthoringConfigures,

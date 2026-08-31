@@ -47,14 +47,14 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@cortex-js/compute-engine": "0.119.0",
+		"@cortex-js/compute-engine": "0.120.0",
 		"@pie-players/pie-calculator": "workspace:*",
 		"jsxgraph": "1.13.2",
 		"mathlive": "0.110.0"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.10",
+		"@biomejs/biome": "^2.5.11",
 		"@playwright/test": "^1.62.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.56.10",

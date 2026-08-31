@@ -485,6 +485,15 @@
 	}
 
 	.pie-section-player-content-card {
+		/*
+		 * Containing block for frameless tool overlays. The toolkit appends them to
+		 * this element (see `resolveOverlayMountParent` in the assessment toolkit),
+		 * so the card's box is the frame a line reader or a ruler positions and
+		 * clamps against. Without it those overlays resolve against whichever
+		 * ancestor happens to be positioned, and a tool placed on this card can open
+		 * outside it.
+		 */
+		position: relative;
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: var(--pie-section-player-card-radius, 8px);
 		background: var(--pie-background, #fff);

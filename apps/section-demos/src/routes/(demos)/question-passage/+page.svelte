@@ -52,8 +52,8 @@
 		},
 		placement: {
 			section: ['theme', 'graph', 'lineReader'],
-			item: ['textToSpeech', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
+			item: ['textToSpeech', 'annotationToolbar', 'lineReader'],
+			passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
 		}
 	};
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([

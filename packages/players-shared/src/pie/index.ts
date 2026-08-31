@@ -69,6 +69,7 @@ export type {
 } from "./stage-tracker.js";
 export {
 	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
+	ITEM_INSTRUMENTATION_EVENT_MAP,
 	SECTION_INSTRUMENTATION_EVENT_MAP,
 	TOOLKIT_INSTRUMENTATION_EVENT_MAP,
 } from "./instrumentation-event-map.js";

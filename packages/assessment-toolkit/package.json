@@ -117,7 +117,7 @@
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"svelte": "^5.56.10",
-		"typescript": "^5.9.3"
+		"typescript": "^7.0.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",
 	"bugs": {

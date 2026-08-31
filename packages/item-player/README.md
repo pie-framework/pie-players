@@ -156,11 +156,15 @@ support targets default bundler entrypoints under `dist`.
 - `container-class`: `String`, default `""`. Extra class on the inner item
   container.
 - `external-style-urls`: `String`, default `""`. Comma-separated CSS URLs
-  loaded and scoped to the player. URLs must be `http:` or `https:`.
-- `allowed-style-origins`: `String`, default `""`. Optional comma-separated
-  origin allow-list. When set, `external-style-urls` and
-  `itemConfig.resources.stylesheets[*].url` are rejected if their origin is not
-  on the list.
+  loaded and scoped to the player. URLs must be `http:` or `https:`, and
+  same-origin unless their origin is named in `allowed-style-origins`.
+- `allowed-style-origins`: `String`, default `""`. Comma-separated origin
+  allow-list for `external-style-urls` and
+  `itemConfig.resources.stylesheets[*].url`. Unset, only same-origin
+  stylesheets load. Naming an origin opts into cross-origin CSS, which the
+  player cannot scope to the item: a cross-origin sheet is applied by the
+  browser from a `<link>` in `<head>` rather than fetched and rewritten, so its
+  rules reach the whole page.
 - `loader-config`: `Object`, default package config. Loader instrumentation
   config.
 - `configuration`: `Object`, default `{}`. Authoring configuration settings.

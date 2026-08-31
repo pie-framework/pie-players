@@ -382,14 +382,21 @@ sanitizer powered by [DOMPurify](https://github.com/cure53/DOMPurify). The
 sanitizer:
 
 - Strips `<script>`, `<iframe>`, `<object>`, `<embed>`, `<base>`, `<form>`,
-  `<meta>`, `<link>`, and any event-handler attributes (`onerror`,
-  `onload`, ...).
+  `<meta>`, `<link>`, `<foreignObject>`, `<style>`, and any event-handler
+  attributes (`onerror`, `onload`, ...).
 - Rejects unknown URL protocols (`javascript:`, `data:` unless explicitly
   marked safe).
+- Filters `style` attributes per declaration, dropping URL-fetching functions
+  (`url()`, `image-set()`, `src()`) and `position: fixed`.
 - Preserves the PIE custom-element contract: any tag matching `pie-*` and
   the attribute families `data-*`, `aria-*`, `pie-*`, `model-*`,
   `session-*`, `config-*`, `context-*` pass through unchanged. Third-party
   custom elements must be registered via the `sanitizeMarkup` property.
+
+The limits this sanitizer deliberately accepts — chiefly authored
+`position: absolute` overlays, which light DOM does not contain — and the host
+obligations that go with them are in
+[`docs/security/readme.md`](../../docs/security/readme.md).
 
 ### Opt out (trusted content)
 

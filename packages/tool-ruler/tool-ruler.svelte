@@ -337,10 +337,11 @@
 		}
 	});
 
-	// Auto-focus when tool becomes visible
+	// Auto-focus when tool becomes visible. `preventScroll` so revealing the
+	// tool cannot scroll the pane it sits in.
 	$effect(() => {
 		if (visible && containerEl) {
-			setTimeout(() => containerEl?.focus(), 100);
+			setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
 		}
 	});
 </script>

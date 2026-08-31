@@ -8,13 +8,14 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
+import {
+	mapTtsFailure,
+	TtsNotConfiguredError,
+} from "@pie-players/demo-ui/server";
 
 // Use singleton
 let googleProvider: GoogleCloudTTSProviderType | null = null;
 const GOOGLE_TTS_PROVIDER_PACKAGE = "@pie-players/tts-server-google";
-
-/** Thrown when Google credentials are simply absent — expected in dev/CI, not a fault to log. */
-class GoogleTTSNotConfiguredError extends Error {}
 
 /**
  * Get or initialize the Google provider
@@ -29,7 +30,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 
 	// Require at least one authentication method
 	if (!hasApiKey && !hasServiceAccount) {
-		throw new GoogleTTSNotConfiguredError(
+		throw new TtsNotConfiguredError(
 			"Google Cloud credentials not configured. Please set either:\n" +
 				"  - GOOGLE_API_KEY (simpler, for testing)\n" +
 				"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)",
@@ -112,14 +113,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({ voices });
 	} catch (err) {
-		if (!(err instanceof GoogleTTSNotConfiguredError)) {
-			console.error("[Google TTS API] Error:", err);
-		}
+		const { status, message, logAsFault } = mapTtsFailure(err);
+		if (logAsFault) console.error("[Google TTS API] Error:", err);
 
-		if (err instanceof Error) {
-			return json({ error: err.message }, { status: 500 });
-		}
-
-		return json({ error: "Internal server error" }, { status: 500 });
+		return json({ error: message }, { status });
 	}
 };

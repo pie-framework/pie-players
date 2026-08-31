@@ -156,11 +156,15 @@ support targets default bundler entrypoints under `dist`.
 - `container-class`: `String`, default `""`. Extra class on the inner item
   container.
 - `external-style-urls`: `String`, default `""`. Comma-separated CSS URLs
-  loaded and scoped to the player. URLs must be `http:` or `https:`.
-- `allowed-style-origins`: `String`, default `""`. Optional comma-separated
-  origin allow-list. When set, `external-style-urls` and
-  `itemConfig.resources.stylesheets[*].url` are rejected if their origin is not
-  on the list.
+  loaded and scoped to the player. URLs must be `http:` or `https:`, and
+  same-origin unless their origin is named in `allowed-style-origins`.
+- `allowed-style-origins`: `String`, default `""`. Comma-separated origin
+  allow-list for `external-style-urls` and
+  `itemConfig.resources.stylesheets[*].url`. Unset, only same-origin
+  stylesheets load. Naming an origin opts into cross-origin CSS, which the
+  player cannot scope to the item: a cross-origin sheet is applied by the
+  browser from a `<link>` in `<head>` rather than fetched and rewritten, so its
+  rules reach the whole page.
 - `loader-config`: `Object`, default package config. Loader instrumentation
   config.
 - `configuration`: `Object`, default `{}`. Authoring configuration settings.
@@ -220,6 +224,28 @@ These are set via JavaScript, not HTML attributes.
   persists successfully.
 - `backend-score-complete`: emitted after server-backed `score()` completes.
 - `backend-error`: emitted when backend load/save/score fails.
+- `correct-responses-populated`:
+  `{ itemId?, mode?, role?, bundleType?, populatedCount, elements }`. Emitted
+  when correct responses were written into the session. `elements` holds the
+  `config.models[].element` names (for example
+  `multiple-choice--version-latest`), not rendered tag names. The detail carries
+  counts and those names only, never session entries.
+
+  This exists so a host can **detect** a population it did not ask for.
+  Prevention is not available here: `add-correct-response`, `env` and `mode` are
+  public attributes, so any page script can set them, and a legitimate preview
+  (`mode="view"`, `role="student"`, controllers client-side) is indistinguishable
+  from a tampered delivery from inside the player. The event firing at all is the
+  signal, because population needs a controller with
+  `createCorrectResponseSession` in the browser, which only a
+  `client-player.js` bundle provides. `hosted="true"` — which selects the
+  `player.js` bundle and leaves controllers to the host — is the actual boundary
+  for proctored delivery. See [Loading strategies](../../docs/item-player/loading-strategies.md).
+
+  Also forwarded to a configured instrumentation provider as
+  `pie-item-correct-responses-populated`. It is the only item-player event on
+  that bridge: `session-changed` carries learner responses, and forwarding those
+  to telemetry by default is a host's decision rather than this package's.
 
 ## Backend delivery
 
@@ -356,14 +382,21 @@ sanitizer powered by [DOMPurify](https://github.com/cure53/DOMPurify). The
 sanitizer:
 
 - Strips `<script>`, `<iframe>`, `<object>`, `<embed>`, `<base>`, `<form>`,
-  `<meta>`, `<link>`, and any event-handler attributes (`onerror`,
-  `onload`, ...).
+  `<meta>`, `<link>`, `<foreignObject>`, `<style>`, and any event-handler
+  attributes (`onerror`, `onload`, ...).
 - Rejects unknown URL protocols (`javascript:`, `data:` unless explicitly
   marked safe).
+- Filters `style` attributes per declaration, dropping URL-fetching functions
+  (`url()`, `image-set()`, `src()`) and `position: fixed`.
 - Preserves the PIE custom-element contract: any tag matching `pie-*` and
   the attribute families `data-*`, `aria-*`, `pie-*`, `model-*`,
   `session-*`, `config-*`, `context-*` pass through unchanged. Third-party
   custom elements must be registered via the `sanitizeMarkup` property.
+
+The limits this sanitizer deliberately accepts — chiefly authored
+`position: absolute` overlays, which light DOM does not contain — and the host
+obligations that go with them are in
+[`docs/security/readme.md`](../../docs/security/readme.md).
 
 ### Opt out (trusted content)
 

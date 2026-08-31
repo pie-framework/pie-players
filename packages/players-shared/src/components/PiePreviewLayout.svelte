@@ -41,6 +41,7 @@
 		onPlayerError,
 		onSessionChanged,
 		onModelUpdated,
+		onModelLoaded,
 		baseHeadingLevel = undefined,
 		includeSrHeading = true,
 	}: {
@@ -67,6 +68,7 @@
 		onPlayerError?: (detail?: any) => void;
 		onSessionChanged?: (detail?: any) => void;
 		onModelUpdated?: (detail?: any) => void;
+		onModelLoaded?: (detail?: any) => void;
 		/**
 		 * The level of the first heading the item emits.
 		 * Passed through to `PieItemPlayer` unchanged — see that component for full docs.
@@ -133,6 +135,7 @@
 				{onPlayerError}
 				{onSessionChanged}
 				{onModelUpdated}
+				{onModelLoaded}
 				{baseHeadingLevel}
 				{includeSrHeading}
 			/>

@@ -178,8 +178,21 @@ export async function generateHashedCacheKey(
 }
 
 /**
- * In-memory cache implementation
- * Simple LRU cache for development/testing
+ * In-memory LRU cache, for development and testing only
+ *
+ * Bounded to `maxSize` entries. A `get` hit moves its entry to the end of the
+ * insertion order, so a key that keeps being read outlives insertions of newer
+ * keys; eviction takes the entry at the front, which is the least recently used
+ * one. Expiry is checked on every read, and an expired entry is dropped ahead of
+ * a live one when the cache is at capacity.
+ *
+ * A production host supplies its own `ITTSCache` over shared storage — Redis is
+ * the pattern sketched in
+ * `packages/tts-server-polly/examples/sveltekit/synthesize-server.ts`. This
+ * class holds audio buffers in one process's heap, so it is lost on restart and
+ * every replica of a scaled deployment synthesizes the same passage into its own
+ * copy. Its eviction scan is `O(maxSize)` on an insertion at capacity, which the
+ * default of 100 makes free and a large `maxSize` does not.
  */
 export class MemoryCache implements ITTSCache {
 	private cache = new Map<
@@ -209,6 +222,11 @@ export class MemoryCache implements ITTSCache {
 			return null;
 		}
 
+		// Mark as most recently used. A Map iterates in insertion order, so
+		// re-inserting moves the key to the end, where eviction looks last.
+		this.cache.delete(key);
+		this.cache.set(key, entry);
+
 		this.hits++;
 
 		// Update metadata to mark as served from cache
@@ -223,19 +241,40 @@ export class MemoryCache implements ITTSCache {
 		value: SynthesizeResponse,
 		ttl = 86400,
 	): Promise<void> {
-		// Enforce max size (simple LRU)
-		if (this.cache.size >= this.maxSize) {
-			// Delete oldest entry (first key)
-			const firstKey = this.cache.keys().next().value;
-			if (firstKey) {
-				this.cache.delete(firstKey);
-			}
-		}
+		// Overwriting a key re-inserts it at the end of the order rather than
+		// updating it in place, and frees its slot so no live entry is evicted.
+		this.cache.delete(key);
+		this.evictToFitOneMore();
 
 		this.cache.set(key, {
 			value,
 			expires: Date.now() + ttl * 1000,
 		});
+	}
+
+	/**
+	 * Drop entries until one more insertion fits within `maxSize`.
+	 *
+	 * Expired entries go first: they can never be served, so evicting a live
+	 * entry while one of them holds a slot spends a cache hit on nothing. The
+	 * loop covers a cache that is already over capacity, which a single eviction
+	 * per insertion would leave over by the same margin forever.
+	 */
+	private evictToFitOneMore(): void {
+		if (this.cache.size < this.maxSize) return;
+
+		const now = Date.now();
+		for (const [key, entry] of this.cache) {
+			if (now > entry.expires) {
+				this.cache.delete(key);
+			}
+		}
+
+		while (this.cache.size >= this.maxSize) {
+			const lruKey = this.cache.keys().next().value;
+			if (lruKey === undefined) return;
+			this.cache.delete(lruKey);
+		}
 	}
 
 	async has(key: string): Promise<boolean> {

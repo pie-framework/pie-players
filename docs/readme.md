@@ -56,6 +56,10 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 - [`integrations/consumer-api-dependencies.md`](./integrations/consumer-api-dependencies.md) - Which surfaces downstream hosts actually depend on, and which break silently
 - [`integrations/consumer-api-dependencies-maintenance.md`](./integrations/consumer-api-dependencies-maintenance.md) - Harness-neutral procedure for refreshing that pad
 
+## Security
+
+- [`security/readme.md`](./security/readme.md) - Trust boundary for authored content, what the sanitizers guarantee, the limits they accept, and the host obligations PIE cannot enforce (CSP, `allowed-style-origins`, delivery integrity)
+
 ## Theming
 
 - [`theming/how-theming-works.md`](./theming/how-theming-works.md) - How `<pie-theme>` resolves tokens and writes them, why a host stylesheet cannot override them, and how a host carries an accommodation into its own chrome

@@ -172,6 +172,7 @@ export {
 } from "./overrides.js";
 // Utils
 export {
+	encodeElementPackageSpecs,
 	findOrAddSession,
 	getPackageWithoutVersion,
 	getPieElementBundlesUrl,

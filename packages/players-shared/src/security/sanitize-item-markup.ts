@@ -14,6 +14,7 @@ import {
 	SANITIZER_FORBIDDEN_ATTRS,
 	SANITIZER_FORBIDDEN_TAGS,
 } from "./sanitize-forbidden-lists.js";
+import { installStyleAttributeHook } from "./sanitize-style-attribute.js";
 import { wrapOverwideImages } from "./wrap-overwide-images.js";
 import { wrapOverwideTables } from "./wrap-overwide-tables.js";
 
@@ -80,6 +81,10 @@ interface DOMPurifyInstance {
 		source: string,
 		config?: Record<string, unknown>,
 	) => string | Node | DocumentFragment;
+	addHook?: (
+		entryPoint: string,
+		hook: (node: unknown, data?: unknown) => void,
+	) => void;
 }
 
 let purifierInstance: DOMPurifyInstance | null = null;
@@ -96,6 +101,9 @@ function resolvePurifier(): DOMPurifyInstance | null {
 		typeof factory === "function"
 			? factory(window as Window & typeof globalThis)
 			: (DOMPurify as unknown as DOMPurifyInstance);
+	// `style` is URI-safe to DOMPurify, so nothing inside it is inspected
+	// without this. See sanitize-style-attribute.ts.
+	installStyleAttributeHook(purifierInstance);
 	return purifierInstance;
 }
 

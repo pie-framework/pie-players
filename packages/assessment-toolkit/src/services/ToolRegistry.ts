@@ -150,6 +150,20 @@ export interface ResolvedToolContext {
 export interface ToolRenderElement {
 	element: HTMLElement | null;
 	mount: "before-buttons" | "after-buttons" | "controls-row";
+	/**
+	 * Which box the element is appended to. `mount` places it among the toolbar's
+	 * own regions; this chooses the box it is positioned against.
+	 *
+	 * `"toolbar"` (the default) leaves it in the toolbar, whose element is the
+	 * containing block for anything absolutely positioned inside it.
+	 * `"content-boundary"` appends it to the nearest element the host marked with
+	 * `data-pie-tool-overlay-boundary` — the content a tool was placed on. An
+	 * element that draws its own surface over that content and computes its own
+	 * coordinates needs the content's box as its frame, and the toolbar's box is a
+	 * header-sized one. When the host declares no boundary the element stays in
+	 * the toolbar.
+	 */
+	container?: "toolbar" | "content-boundary";
 	layoutHints?: {
 		controlsRow?: {
 			reserveSpace?: boolean;

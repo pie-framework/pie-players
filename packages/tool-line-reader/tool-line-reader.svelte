@@ -19,7 +19,12 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
-import { createPointerDragController } from '@pie-players/pie-players-shared';
+import {
+	clampPointWithinBlock,
+	createPointerDragController,
+	DEFAULT_CONTAINMENT_GUTTER,
+	resolveContainingBlockRect
+} from '@pie-players/pie-players-shared';
 import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 import { onMount, untrack } from 'svelte';
 
@@ -88,7 +93,7 @@ import { onMount, untrack } from 'svelte';
 	const MIN_WIDTH = 200; // pixels
 	const MAX_WIDTH = 2000; // pixels
 	// Kept clear of the containing block's edges so the frame's controls stay reachable.
-	const CONTAINMENT_GUTTER = 4; // pixels
+	const CONTAINMENT_GUTTER = DEFAULT_CONTAINMENT_GUTTER;
 
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
@@ -124,21 +129,9 @@ import { onMount, untrack } from 'svelte';
 		return Math.max(MIN_WIDTH, Math.min(Math.max(MIN_WIDTH, upper), value));
 	}
 
-	/**
-	 * Size of the box the panel is positioned against: its containing block, or the
-	 * viewport when that is the initial containing block. `offsetParent` is the
-	 * containing block as the browser resolved it, which is what the panel's
-	 * `left`/`top` are relative to, so it stays correct wherever a host mounts the
-	 * tool.
-	 */
+	/** The box the panel's `left`/`top` are relative to. */
 	function containingBlockRect(): DOMRect | undefined {
-		if (!isBrowser || !containerEl) return undefined;
-		const parent = containerEl.offsetParent;
-		if (parent instanceof HTMLElement) {
-			const rect = parent.getBoundingClientRect();
-			if (rect.width > 0 && rect.height > 0) return rect;
-		}
-		return new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+		return resolveContainingBlockRect(containerEl);
 	}
 
 	function containingBlockSize(): { width: number; height: number } | undefined {
@@ -174,25 +167,18 @@ import { onMount, untrack } from 'svelte';
 
 	/**
 	 * Keeps the panel inside its containing block. `position` is the centre point --
-	 * the root is drawn with `translate(-50%, -50%)` -- so the travel available on
-	 * each axis is the block's extent inset by half the panel plus the gutter. A
-	 * panel larger than its block centres on that axis instead of clamping to an
-	 * inverted range.
+	 * the root is drawn with `translate(-50%, -50%)` -- and the panel's extent moves
+	 * with its own resize controls, so both are read at call time.
 	 */
 	function clampToContainingBlock(next: { x: number; y: number }) {
 		const block = containingBlockSize();
 		if (!block) return next;
-		const clampAxis = (value: number, extent: number, size: number) => {
-			const half = size / 2;
-			const min = half + CONTAINMENT_GUTTER;
-			const max = extent - half - CONTAINMENT_GUTTER;
-			if (max < min) return extent / 2;
-			return Math.max(min, Math.min(max, value));
-		};
-		return {
-			x: clampAxis(next.x, block.width, width),
-			y: clampAxis(next.y, block.height, totalHeight)
-		};
+		return clampPointWithinBlock(
+			next,
+			{ width, height: totalHeight },
+			block,
+			CONTAINMENT_GUTTER
+		);
 	}
 
 	/** Re-applies containment after a resize changed the panel's own extent. */

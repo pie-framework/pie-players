@@ -66,3 +66,28 @@ export function clampOffsetWithinBlock(
 		y: clampAxis(offset.y, box.height, block.height),
 	};
 }
+
+/**
+ * Clamps an absolute centre point, in containing-block coordinates, so the box
+ * it positions stays inside that block.
+ *
+ * The same invariant as `clampOffsetWithinBlock` in the coordinate system an
+ * overlay uses when it writes `left`/`top` instead of translating: the two are
+ * conjugate by a translation of half the block, including the degenerate case
+ * where a box exceeds its block and centres on the offending axis.
+ */
+export function clampPointWithinBlock(
+	point: Point,
+	box: Size,
+	block: Size,
+	gutter: number = DEFAULT_CONTAINMENT_GUTTER,
+): Point {
+	const centre = { x: block.width / 2, y: block.height / 2 };
+	const offset = clampOffsetWithinBlock(
+		{ x: point.x - centre.x, y: point.y - centre.y },
+		box,
+		block,
+		gutter,
+	);
+	return { x: centre.x + offset.x, y: centre.y + offset.y };
+}

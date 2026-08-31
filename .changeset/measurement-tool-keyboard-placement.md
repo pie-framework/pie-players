@@ -1,5 +1,6 @@
 ---
 "@pie-players/pie-players-shared": patch
+"@pie-players/pie-tool-line-reader": patch
 "@pie-players/pie-tool-protractor": patch
 "@pie-players/pie-tool-ruler": patch
 ---
@@ -25,3 +26,9 @@ Moveable bounds a pointer drag, but a keyboard move writes `style.transform`
 directly and was bounded by nothing. `clampOffsetWithinBlock` and
 `resolveContainingBlockRect` in `@pie-players/pie-players-shared` are that
 clamp, shared rather than written twice.
+
+The line reader adopts the same helpers. It arrived at the same containing-block
+resolution independently and clamps an absolute centre point where the
+measurement tools clamp a translate offset; `clampPointWithinBlock` is that
+clamp in point coordinates, conjugate to the offset one by a translation of half
+the block. Behaviour is unchanged.

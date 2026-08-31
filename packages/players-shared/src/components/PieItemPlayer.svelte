@@ -295,9 +295,26 @@
     dispatch("player-error", normalizedDetail);
   }
 
-  // Dispatch events (will add more as needed)
+  /**
+   * Hand an event to the owning component through its callback prop.
+   *
+   * Callbacks only: this component renders inside a custom element that owns DOM
+   * emission for every public event (`handlePlayerEvent` in
+   * `packages/item-player/src/PieItemPlayer.svelte` re-dispatches from the host
+   * element, bubbling and composed). A DOM dispatch here used to sit alongside
+   * the callback, and it targeted the wrong thing: the call was a bare
+   * `dispatchEvent(event)` with no local binding, which resolves to
+   * `window.dispatchEvent`. Every event this component emitted therefore fired
+   * on `window` — including `session-changed`, whose detail carries the
+   * learner's responses — where any script on the host page could read it with
+   * no way to attribute it to a player instance.
+   *
+   * Every caller here uses one of the five types below, so the callback is the
+   * complete route. A new event type needs a callback prop and a
+   * `handlePlayerEvent` wiring in the custom element, not a dispatch from this
+   * component.
+   */
   const dispatch = (type: string, detail?: any) => {
-    // Call callback prop if provided (Svelte 5 pattern)
     if (type === "load-complete" && typeof onLoadComplete === "function") {
       onLoadComplete(detail);
     } else if (type === "player-error" && typeof onPlayerError === "function") {
@@ -309,14 +326,6 @@
     } else if (type === "model-loaded" && typeof onModelLoaded === "function") {
       onModelLoaded(detail);
     }
-
-    // Also dispatch a DOM event so hosts can listen outside Svelte.
-    const event = new CustomEvent(type, {
-      detail,
-      bubbles: true,
-      composed: true, // Allow events to cross shadow DOM boundaries
-    });
-    dispatchEvent(event);
   };
 
   const requiredHandlerNames = [

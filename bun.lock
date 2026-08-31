@@ -299,7 +299,7 @@
       "name": "@pie-players/pie-calculator-cortex",
       "version": "0.3.69",
       "dependencies": {
-        "@cortex-js/compute-engine": "0.119.0",
+        "@cortex-js/compute-engine": "0.120.0",
         "@pie-players/pie-calculator": "workspace:*",
         "jsxgraph": "1.13.2",
         "mathlive": "0.110.0",
@@ -1198,7 +1198,7 @@
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
 
-    "@cortex-js/compute-engine": ["@cortex-js/compute-engine@0.119.0", "", { "dependencies": { "@arnog/colors": "^0.5.0", "complex-esm": "^2.1.1-esm1" }, "bin": { "epsil": "dist/esm-min/cli/epsil.js" } }, "sha512-J9fj/DAOQ9Ibsn8+iuAbxH5Nz0nvHskjORL6/3yBWiAsM2nvoT3qep/RQ4pXSYokVl49EIYX3lkVnw+iY9j+9w=="],
+    "@cortex-js/compute-engine": ["@cortex-js/compute-engine@0.120.0", "", { "dependencies": { "@arnog/colors": "^0.5.0", "complex-esm": "^2.1.1-esm1" }, "bin": { "epsil": "dist/esm-min/cli/epsil.js" } }, "sha512-CVFRjHdPU5MYl1lu+hNldT/KavKl2OYA+kKBBtlCPM0/D5vhfGEJQwwCdwDwcZFOF/w65uS+4lxl1qnDGcmmjA=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 

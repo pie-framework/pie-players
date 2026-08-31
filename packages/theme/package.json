@@ -46,7 +46,7 @@
 		"test": "bun test --dom tests"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.10",
+		"@biomejs/biome": "^2.5.11",
 		"@happy-dom/global-registrator": "^20.11.6",
 		"typescript": "^5.9.3"
 	},

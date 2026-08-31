@@ -37,9 +37,7 @@ async function getPollyProvider(
 		);
 		console.log(
 			"[TTS API] AWS_ACCESS_KEY_ID:",
-			process.env.AWS_ACCESS_KEY_ID
-				? `✓ Set (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)`
-				: "✗ Missing",
+			process.env.AWS_ACCESS_KEY_ID ? "✓ Set" : "✗ Missing",
 		);
 		console.log(
 			"[TTS API] AWS_SECRET_ACCESS_KEY:",
@@ -101,12 +99,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	// Check for service account credentials (advanced method)
 	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-	console.log(
-		"[TTS API] GOOGLE_API_KEY:",
-		hasApiKey
-			? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
-			: "✗ Missing",
-	);
+	console.log("[TTS API] GOOGLE_API_KEY:", hasApiKey ? "✓ Set" : "✗ Missing");
 	console.log(
 		"[TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
 		hasServiceAccount ? "✓ Set" : "✗ Missing",

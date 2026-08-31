@@ -69,7 +69,9 @@ under CSS values and identifiers, so it is a lead list, never a gate.
 `{ lng: language }` where `language` is a model prop the controller copies off
 the authored item. Catalogs are `en`/`es` only, both eagerly imported, and marked
 `@auto-generated` from upstream `pie-lib` — edits are overwritten by the sync, so
-keys cannot be added there. `packages/elements-svelte/*` has no i18n at all.
+keys cannot be added there. PIE production already holds content those two
+catalogs cannot serve: 467 `fr` and 97 `de` items, from publishers other than
+Studio. `packages/elements-svelte/*` has no i18n at all.
 Classic `pie-elements` is the same design through `@pie-lib/translator`.
 
 The consequence of keying on `model.language` is that interface locale is a side
@@ -282,12 +284,33 @@ must be `type: "String"`, given that hosts already pass `show-toolbar` as both
 the literal `"false"` and boolean `true` and both must keep working.
 
 Separately, and cheaply: the player should reflect the resolved content language
-to `lang`, and direction to `dir`, on the content subtree. Chrome adoption stamps
-both on the chrome subtree; nothing writes either for *content* in either repo,
-which is why `:lang()`, hyphenation and screen-reader pronunciation cannot work
-and why an RTL content language has no rendering at all. This
-is the highest-leverage slice per unit of effort in the whole document, and it is
-blocked only on the item payload carrying a language at all.
+to `lang`, and direction to `dir`, on the content subtree. Chrome adoption
+stamps both on the chrome subtree. For *content*, `dir` is written nowhere in
+either repo, which is why an RTL content language has no rendering at all, and
+`lang` is written only by six elements onto their own host —
+`explicit-constructed-response`, `extended-text-entry`, `inline-dropdown`,
+`math-inline`, `multiple-choice`, `passage`, the same six in `pie-elements-ng`
+and in classic `pie-elements`. Each computes
+`language ? language.slice(0, 2) : 'en'` off `model.language`, so an absent
+model language stamps `lang="en"` instead of leaving the attribute off. So
+`:lang()` and hyphenation have nothing to key on outside those six elements, and
+inside them they key on a language the content is not in; the same is true of
+screen-reader pronunciation and every other consumer of the attribute.
+
+That default constrains the slice. `lang` inherits and the nearest ancestor
+wins, so a content wrapper carrying the resolved language is overridden inside
+those six subtrees, and Studio content is precisely the case that triggers it:
+PIE production holds 48,168 Studio-origin `es_ES` items whose stored element
+models carry no `language` at all. Reflecting on the wrapper is necessary and
+insufficient. The element default has to become "stamp `lang` only when
+`model.language` is present", or `env.locale` has to reach `model.language` at
+the controller boundary. `passage` in that list is the sharpest case: it is the
+English-chrome-over-Spanish-passage scenario this document already calls
+coherent-but-wrong, and it currently asserts `lang="en"` over Spanish prose.
+
+With the element default handled, this is the highest-leverage slice per unit of
+effort in the whole document, and it is blocked only on the item payload
+carrying a language at all.
 
 ### In-item alternates keep the catalog rail, and PNP gains parameters
 
@@ -325,6 +348,16 @@ calibrated, selected at form assembly, no runtime swap. Needs the content-langua
 declaration on the payload and a family identifier that survives export —
 Studio's self-FK exists but publishes only a UUID, on one side, on a channel the
 player does not read.
+
+The link is derivable rather than authored, within measured limits. Studio
+production carries two locale values, `en_US` and `es_ES`; `item.translation` is
+set on the Spanish row and points at the English item's internal UUID, and is
+null on the English row, so the English-to-Spanish direction has to be built by
+inversion. PIE already carries the same fact as `k12_languageEquivalent` on
+45,411 of the 48,168 Studio-origin `es_ES` items, leaving roughly 6% of Spanish
+items with no link to invert. The `E`/`S` public-ID convention is real and not a
+substitute: `S257943` pairs with `E257943`, while `E257926` exists with no
+`S257926`, so the numbering carries no pairing that can be computed.
 
 **Whole-body catalog alternate.** A single `language-translation` card docked at
 the item-body level, resolved at runtime against the learner's profile. QTI
@@ -400,9 +433,15 @@ locale.
    alternate resolution can actually return. TTS voice selection still reads
    `navigator.language` and is slice 6.
 2. **Content language end to end.** `Env.locale`, item payload carries its
-   language, player reflects `lang`/`dir` to the content subtree. Requires the
-   matching Studio change to emit locale on the PIE content channel and
-   `xml:lang` on the QTI channel, where it currently emits a hardcoded `"en"`.
+   language, player reflects `lang`/`dir` to the content subtree, and the six
+   elements that stamp `lang` off `model.language` stop defaulting it to `'en'`.
+   Requires the matching Studio change to emit locale on the PIE content channel
+   and to add `xml:lang` on the QTI channel. Studio publishes no content
+   language on either channel today: the hardcoded `"en"` in its QTI output is
+   LOM `metametadata/language` in `imsmanifest.xml`, once per package, declaring
+   the language of the metadata record, and the PIE payload carries locale only
+   under `searchMetaData.k12_locales`, which no player reads.
+
 3. **Interface locale as composition context.** Done. The player publishes,
    `resolveInterfaceI18n` is the only resolver, the context republish is the change
    signal, and the English-only default covers no publisher.
@@ -415,10 +454,13 @@ locale.
 5. **Parameterized PNP and language catalog cards.** `keyword-translation` and
    `glossary-on-screen` as first consumers.
 6. **Tool and accommodation locale.** TTS voice selection from the resolved
-   language rather than `navigator.language`; STT recognizer language, where the
-   STT PRD's proposed `PieDictationInsertDetail.lang` would be the first typed
-   runtime locale reaching an element — designed, not implemented; the
-   `SIGN_LANGUAGE_NAMES` map.
+   language rather than `navigator.language` — which needs a data decision
+   alongside the tag decision, since Studio stores `es_ES` for content written
+   for US Spanish speakers, and normalizing to `es-ES` preserves the wrong
+   region faithfully enough to select a Castilian voice; STT recognizer
+   language, where the STT PRD's proposed `PieDictationInsertDetail.lang` would
+   be the first typed runtime locale reaching an element — designed, not
+   implemented; the `SIGN_LANGUAGE_NAMES` map.
 
 ## Open questions
 
@@ -436,10 +478,6 @@ locale.
   constraints on treating a translation as the same item, and current
   web-component i18n patterns including `@lit/localize`, ICU MessageFormat and
   `lang`/`dir` inheritance through shadow DOM.
-- Whether `item.translation` is populated consistently in Studio production data,
-  or whether the `E`/`S` numeric convention is what people actually depend on.
-  Determines whether a delivery-side family identifier must be authored
-  explicitly rather than derived. Requires a database query; unresolved here.
 
 ## References
 

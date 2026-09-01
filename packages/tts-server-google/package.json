@@ -39,7 +39,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@google-cloud/text-to-speech": "^6.4.0",
+		"@google-cloud/text-to-speech": "^7.0.0",
 		"@pie-players/tts-server-core": "workspace:*"
 	},
 	"devDependencies": {

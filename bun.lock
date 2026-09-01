@@ -52,7 +52,7 @@
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.4.0",
-        "daisyui": "^5.7.16",
+        "daisyui": "^5.7.22",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
         "tailwindcss": "^4.2.2",
@@ -76,7 +76,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/bun": "^1.4.0",
         "@types/node": "^26.4.0",
-        "daisyui": "^5.7.16",
+        "daisyui": "^5.7.22",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
         "tailwindcss": "^4.2.2",
@@ -106,7 +106,7 @@
         "@tailwindcss/typography": "^0.5.20",
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.4.0",
-        "daisyui": "^5.7.16",
+        "daisyui": "^5.7.22",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
         "tailwindcss": "^4.2.2",
@@ -138,7 +138,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/bun": "^1.4.0",
         "@types/node": "^26.4.0",
-        "daisyui": "^5.7.16",
+        "daisyui": "^5.7.22",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
         "tailwindcss": "^4.2.2",
@@ -230,7 +230,7 @@
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.4.0",
-        "daisyui": "^5.7.16",
+        "daisyui": "^5.7.22",
         "svelte": "^5.56.10",
         "svelte-check": "^4.7.5",
         "tailwindcss": "^4.2.2",
@@ -2006,7 +2006,7 @@
 
     "cssesc": ["cssesc@3.0.0", "", { "bin": { "cssesc": "bin/cssesc" } }, "sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg=="],
 
-    "daisyui": ["daisyui@5.7.16", "", {}, "sha512-V9CJxvrWIXTDuP/0tpijjWaKaKJNYo2IrULJfTWs3/DjW9rPqswk1n8NCLQRLrTutmlG2Ech7nkJDpCnF+6Dzw=="],
+    "daisyui": ["daisyui@5.7.22", "", {}, "sha512-pYii+2NCN0+OIL6Lpuc054LK0QJeNv+GRK9UzN1GRmjdYhYO6WFl0QLoj5oPcitPD7o+okiiI0SKFkn641TxmA=="],
 
     "data-uri-to-buffer": ["data-uri-to-buffer@4.0.1", "", {}, "sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A=="],
 

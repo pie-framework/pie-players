@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-inline-cortex",
-	"version": "0.3.69",
+	"version": "0.3.70",
 	"type": "module",
 	"description": "Inline open-source calculator toggle for PIE assessment players",
 	"repository": {

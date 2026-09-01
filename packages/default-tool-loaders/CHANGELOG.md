@@ -1,5 +1,69 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.70
+
+### Patch Changes
+
+- 599c657: Position frameless tool overlays against the content they are placed on.
+  
+  A frameless overlay was appended next to the toolbar buttons, so whichever
+  element happened to be positioned became its containing block. At `passage` and
+  `item` placement that is `pie-item-toolbar`, a header-sized box, and the line
+  reader's opening position — derived from the viewport — put the panel outside
+  the card. Auto-focus then scrolled the pane across to reveal it, taking the
+  passage off screen. At `section` placement no positioned ancestor exists, so the
+  same coordinates resolved against the initial containing block and looked right.
+  
+  `ToolRenderElement` gains `container`. A registration declaring
+  `container: 'content-boundary'` has its element appended to the nearest
+  `data-pie-tool-overlay-boundary` element — the box a host already marks as the
+  content a tool belongs to — and the section player's item and passage cards make
+  themselves the containing block for what lands there. The composition layer sets
+  it for frameless overlays, so the toolbar honours a declaration rather than
+  inferring intent from a tool's surface. A host declaring no boundary keeps the
+  previous in-toolbar mount, so section-level placement is unchanged.
+  
+  The line reader derives its opening position from that containing block instead
+  of the viewport, centring on the part of it currently on screen — the midpoint
+  of a card several screens tall is not visible. Position and width are clamped to
+  the containing block on open, on drag, on keyboard movement, on resize and on
+  window resize, and it focuses with `preventScroll` so revealing it cannot scroll
+  an ancestor pane.
+  
+  Ruler and protractor position by percentage, so they now self-centre in the card
+  they are placed on rather than in whatever box was positioned above it.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [599c657]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [1fad14d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [e3169f8]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/pie-assessment-toolkit@0.3.70
+  - @pie-players/pie-tool-line-reader@0.3.70
+  - @pie-players/pie-tool-protractor@0.3.70
+  - @pie-players/pie-tool-ruler@0.3.70
+  - @pie-players/pie-tool-annotation-toolbar@0.3.70
+  - @pie-players/pie-tool-answer-eliminator@0.3.70
+  - @pie-players/pie-tool-calculator-desmos@0.3.70
+  - @pie-players/pie-tool-calculator-shared@0.3.70
+  - @pie-players/pie-tool-theme@0.3.70
+  - @pie-players/pie-tool-dictionary@0.3.70
+  - @pie-players/pie-tool-graph@0.3.70
+  - @pie-players/pie-tool-periodic-table@0.3.70
+  - @pie-players/pie-tool-picture-dictionary@0.3.70
+  - @pie-players/pie-tool-tts-inline@0.3.70
+  - @pie-players/pie-tool-calculator-cortex@0.3.70
+  - @pie-players/pie-tool-calculator-geogebra@0.3.70
+
 ## 0.3.69
 
 ### Patch Changes

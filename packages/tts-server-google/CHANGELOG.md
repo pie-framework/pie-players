@@ -1,5 +1,12 @@
 # @pie-players/tts-server-google
 
+## 0.3.70
+
+### Patch Changes
+
+- Updated dependencies [40c24ac]
+  - @pie-players/tts-server-core@0.3.70
+
 ## 0.3.69
 
 ### Patch Changes

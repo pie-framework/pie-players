@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-calculator-cortex
 
+## 0.3.70
+
+### Patch Changes
+
+- Updated dependencies [599c657]
+- Updated dependencies [e3169f8]
+  - @pie-players/pie-assessment-toolkit@0.3.70
+  - @pie-players/pie-tool-calculator-shared@0.3.70
+
 ## 0.3.69
 
 ### Patch Changes

@@ -1,5 +1,343 @@
 # @pie-players/pie-players-shared
 
+## 0.3.70
+
+### Patch Changes
+
+- e8ab025: Encode element package specs per segment when building build-service bundle
+  URLs.
+  
+  `getPieElementBundlesUrl` and the IIFE adapter's `buildBundleUrl` both ran the
+  `+`-joined package list through `encodeURI`, which leaves `/`, `?`, `#` and `%`
+  unescaped. `config.elements` is authored content, so a spec carrying any of
+  those rewrote the request path on the host's own build service: `#` truncated
+  the URL at a fragment, `?` turned the remainder into a query string (in
+  `buildBundleUrl`, also displacing the real `elements=` parameter), and `/`
+  plus a `..` segment left the `/bundles/` route entirely.
+  
+  Each spec is now encoded individually and the encoded specs are joined with a
+  literal `+`, which the legacy IIFE bundle route uses as its package separator.
+  `/` and `@` stay literal because a scoped spec
+  (`@pie-element/multiple-choice@9.9.1`) spans path segments in that route;
+  everything outside the RFC 3986 unreserved set plus those two is escaped, and a
+  spec containing a `.` or `..` segment has all its slashes escaped so the URL
+  parser cannot resolve the path upward.
+  
+  No change for any spec that is a valid npm package name and version — those
+  round-trip byte-for-byte.
+  
+  `encodeElementPackageSpecs` is exported from
+  `@pie-players/pie-players-shared/pie` so the preloaded-player CLI builds the
+  same route the same way.
+- 9868ee1: External stylesheet loading now defaults to same-origin.
+  
+  `validateExternalStyleUrl` enforced its origin allow-list only when a host
+  supplied one, and `allowed-style-origins` is unset by default, so any `http(s)`
+  origin was accepted. The reachable input is authored —
+  `itemConfig.resources.stylesheets[*].url`, alongside the `external-style-urls`
+  attribute — so an item could name any origin and pull CSS from it on every
+  render.
+  
+  The asymmetry made it worse than an open allow-list sounds. Same-origin CSS is
+  fetched and rewritten by `scopeStylesheetCss`, confined to
+  `.pie-item-player.<scope>`. Cross-origin CSS cannot be fetched and rewritten
+  without CORS, so the player injects it as a `<link>` in `<head>` and the browser
+  applies it page-wide. The untrusted case was getting the weaker treatment.
+  
+  With no allow-list configured, only same-origin URLs now pass; a cross-origin
+  URL is rejected with `reason: "disallowed-origin"` and a message naming
+  `allowed-style-origins`. Naming an origin there is unchanged and is now the
+  explicit opt-in to unscoped, page-wide CSS. A call supplying neither an
+  allow-list nor a usable `baseUrl` is also rejected, since there is no origin to
+  compare against.
+  
+  Behaviour change for consumers: a cross-origin `external-style-urls` entry or
+  `resources.stylesheets[*].url` stops loading until its origin is added to
+  `allowed-style-origins`. The failure is logged by the player rather than silent.
+  No consumer recorded in `docs/integrations/consumer-api-dependencies.md` uses
+  either surface.
+- e3169f8: Keep item-player styles and custom math renderers authoritative.
+  
+  Same-origin external styles now receive a private scope per default player
+  instance. Concurrent requests for one stylesheet share only the in-flight
+  fetch; style nodes are materialized per scope and released with their player.
+  Explicit custom classes and opted-in cross-origin link loading keep their
+  existing behavior.
+  
+  Default math initialization no longer overwrites a custom renderer installed
+  while its dynamic import is in flight.
+- b544a28: `pie-item-player` now reports when correct responses are populated.
+  
+  `add-correct-response`, `env` and `mode` are public attributes on
+  `<pie-item-player>`, so any page script can set them, and `populateCorrectResponses`
+  escalates internally to `role: "instructor"` to generate the answers. With the
+  default `hosted={false}`, the player loads a `client-player.js` bundle, so the
+  controllers and the answer key are in the browser. A learner can therefore reveal
+  correct answers from the console.
+  
+  No gate is added, because none is available at this layer. A legitimate preview
+  (`mode="view"`, `role="student"`, controllers client-side — a shape real hosts
+  ship) is indistinguishable from a tampered delivery from inside the player, so
+  any check strict enough to stop the second breaks the first. In-page code has
+  full authority over in-page state; the boundary is `hosted="true"` /
+  `player.js`, which keeps the controllers and the answer key server-side.
+  
+  What is available is detection. The player now emits
+  `correct-responses-populated` whenever correct responses actually reach the
+  session, carrying `itemId`, `mode`, `role`, `bundleType`, `populatedCount` and
+  the `config.models[].element` names — never session entries, since those hold the
+  answers and this payload reaches a host's telemetry provider. A host that did not request correct
+  responses in that context can treat the event as tampering and act server-side.
+  
+  The item player also gains the instrumentation bridge the section, toolkit and
+  assessment players already have; it previously resolved an instrumentation
+  provider only to pass it to the loader, so nothing it emitted itself reached
+  telemetry. `ITEM_INSTRUMENTATION_EVENT_MAP` maps this one event to
+  `pie-item-correct-responses-populated`. The item player's other events stay off
+  the bridge deliberately: `session-changed` carries learner responses, and
+  forwarding response data to telemetry by default is a host's decision.
+  
+  Additive. No existing event, attribute or default changes.
+- 8b4e0e4: The shared item renderer no longer dispatches its events on `window`.
+  
+  `dispatch()` in `players-shared`'s `PieItemPlayer` fired a DOM event alongside
+  each callback, and the call was a bare `dispatchEvent(event)` with no local
+  binding — which resolves to `window.dispatchEvent`. Every public event the
+  renderer emitted therefore fired on `window`: `load-complete`, `player-error`,
+  `model-updated`, `model-loaded`, and `session-changed`, whose detail carries the
+  learner's responses. Any script sharing the host page — an analytics tag, a
+  browser extension content script — could read every item's responses off
+  `window`, with no way to attribute them to a player instance and no host opt-in.
+  
+  `<pie-item-player>` already owned DOM emission for all five events through
+  `handlePlayerEvent`, which dispatches from the host element with
+  `bubbles: true, composed: true`. The window dispatch was duplicate reach rather
+  than the only route, so it is removed and the callback props are the whole path.
+  
+  Host-facing behaviour is unchanged for element-level and `document`-level
+  listeners, which is every route recorded in
+  `docs/integrations/consumer-api-dependencies.md` and every listener in this
+  repository. A host that listened on `window` for these five names stops
+  receiving them and should listen on the `<pie-item-player>` element or at
+  `document` instead.
+  
+  `PiePreviewLayout` gains the `onModelLoaded` pass-through it was missing. It
+  already forwarded the other four callbacks, so `model-loaded` had been reaching
+  its consumers only through the window dispatch; without this it would have been
+  dropped.
+- ab1b1a9: Make `loadPieModule` reject on every failure instead of leaving its promise
+  pending for the life of the page.
+  
+  `script.onerror` threw. A throw inside a DOM event handler does not propagate to
+  the surrounding async function — it becomes an uncaught error on the window —
+  and the promise the function awaited had no reject parameter and no `error`
+  listener at all. A 404, a blocked request, or a CSP refusal therefore left
+  `await loadPieModule(...)` pending forever, and so did a request that simply
+  stalled, because nothing bounded the wait. Two further paths never settled for
+  the same reason: `registerPieElementsFromBundle` throws synchronously for a
+  package missing from the bundle and for a client-player bundle with no
+  controller, and a rejection among the registration promises was dropped by a
+  one-argument `.then`.
+  
+  All four now reject, and every rejection names the bundle URL and removes the
+  injected `<script>` so a retry starts from a clean head. `defaultLoadBundleScript`
+  in the IIFE `ElementLoader` adapter was already the right pattern; this brings
+  the older path to it.
+  
+  The fifth case was reporting success. A script that loaded without populating
+  `window.pie` logged an error and *resolved*, which told the caller a bundle had
+  loaded when nothing had been registered. That is now a rejection.
+  `initializePiesFromLoadedBundle` still tolerates the same missing global,
+  deliberately: there the host's own `ElementLoader` owns registration and the
+  global is irrelevant. In `loadPieModule` this function owns registration, so
+  there is no other party whose work could still arrive — the same reasoning the
+  IIFE adapter already applies when `window.pie.default` is missing after its own
+  bundle load.
+  
+  `LoadPieElementsOptions` gains an optional `loadTimeoutMs`, named and defaulted
+  to match `EnsureRegisteredOptions.loadTimeoutMs` on the `ElementLoader`
+  primitive — `DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs`, 120s — so a bundle
+  gets one budget whichever path a host loads it through. `0` disables the
+  deadline for a host that wants the old unbounded wait back.
+  
+  This is an observable contract change on a published export: an error a host
+  previously saw as an uncaught window error now arrives as a rejected promise, and
+  a host that awaits `loadPieModule` (or `loadPieModuleFromString`, which routes
+  through it) without a `catch` gets an unhandled rejection where it used to get a
+  promise that never settled. No consumer in the dependency pad imports either
+  function: `pie-players-shared` reaches recorded hosts for instrumentation
+  providers and types only, and the one host with a `loadPieModule` call site calls
+  its own vendored fork of this module rather than the package. That fork is
+  unaffected and carries the original defect.
+- f10fa7d: Fix keyboard placement of the ruler and the protractor.
+  
+  Both tools read their current offset by parsing `style.transform` and fell back
+  to `window.innerWidth / 2` and `window.innerHeight / 2` when there was none.
+  Before the first drag there is none, so the first arrow key wrote roughly half
+  the viewport as if it were a 10px nudge, and the tool jumped to the middle of the
+  screen. The write then put `translate(-50%, -50%)` back into the inline
+  transform, which `DOMMatrix` refuses to parse — values must be resolvable at
+  parse time — so every press after that threw and keyboard placement stopped
+  working altogether.
+  
+  The offset now comes from the computed transform, which is always a resolved
+  matrix, with the centring's half-box added back to recover the offset the tool
+  has actually been moved by. That reads correctly at rest and after a pointer
+  drag, so a nudge continues from wherever the tool is.
+  
+  Keyboard movement is also clamped to the box the tool is positioned against.
+  Moveable bounds a pointer drag, but a keyboard move writes `style.transform`
+  directly and was bounded by nothing. `clampOffsetWithinBlock` and
+  `resolveContainingBlockRect` in `@pie-players/pie-players-shared` are that
+  clamp, shared rather than written twice.
+  
+  The line reader adopts the same helpers. It arrived at the same containing-block
+  resolution independently and clamps an absolute centre point where the
+  measurement tools clamp a translate offset; `clampPointWithinBlock` is that
+  clamp in point coordinates, conjugate to the offset one by a translation of half
+  the block. Behaviour is unchanged.
+- 3d6acc6: Scope late-arriving PIE element binding to the player's own container, and
+  release it when the player unmounts.
+  
+  Registering a bundle installed a `MutationObserver` on `document.body` at
+  `window._pieElementObserver` and read its config, session and container from
+  `window._pieCurrentContext`. Nothing disconnected it, so it outlived every
+  player and kept running `querySelectorAll("*")` plus a `contains()` check per
+  descendant for every DOM insertion anywhere on the host page. And the context
+  was one slot that each registration overwrote, so a late element in any player
+  but the most recently registered failed the container check and never bound —
+  including a passage element, which an item player registers immediately after
+  its item config. The callback also closed over the first registration's
+  `options`, dropping later players' `eventListeners`.
+  
+  Both globals are gone. `observePieElements(container, getContext)` observes one
+  container and returns the release for that registration; a container's observer
+  serves every registration made against it and disconnects when the last is
+  released. Scoping to the container is what removes the `contains()` walk: a
+  mutation elsewhere on the page never reaches the callback. `getContext` is read
+  when an element arrives rather than captured at registration, because a player
+  recomputes its session and env on render — a captured value is stale by the time
+  a late element needs it, and re-registering on every recomputed value would open
+  a disconnected window on each parent render.
+  
+  Observation is now the container owner's resource rather than a side effect of
+  loading a bundle, which is why the loaders no longer install one:
+  `initializePiesFromLoadedBundle`, `loadPieModule` and `loadPieModuleFromString`
+  bind what is already in `options.container` and nothing more, with their
+  signatures unchanged. `PieItemPlayer` observes its own root in an `$effect`,
+  so a late element binds against the session the player holds now rather than the
+  empty one the STEP 1 registration passes, and the observer is released with the
+  component. That also makes the behaviour uniform:
+  an item player inside a section player takes the update-only registration path,
+  which never defined a tag from a bundle module and so never got an observer at
+  all.
+  
+  `pieElementContextsWithin(root)` resolves the contexts registered for `root` or
+  a container inside it — a host holds the custom element it mounted while the
+  player registers its inner root. `apps/backend-demos` used the removed global to
+  recover the resolved models for its repair pass and now reads through this,
+  which also fixes it: the single slot held the passage config when there was one,
+  so the item's own models were unreachable.
+  
+  Additive to the package's public surface; no existing export changed shape.
+- 47ae660: Coalesce `PieItemPlayer`'s post-render overwide-wrap pass and stop it retriggering itself.
+  
+  The pass exists so images and tables a PIE element paints into its own light DOM
+  get the same `pie-image-scroll` / `pie-table-scroll` reflow affordance as authored
+  markup (PIE-94, WCAG 1.4.10). It observed the item subtree with
+  `{ childList: true, subtree: true }` and re-ran `wrapOverwideImagesInElement` +
+  `wrapOverwideTablesInElement` on every mutation tick, each a `querySelectorAll`
+  over the whole subtree. A PIE element that re-renders per keystroke or selection
+  change therefore bought a full re-scan per mutation batch, with no coalescing.
+  
+  The wrap also inserts elements, so it queued records that re-fired the observer
+  that scheduled it. That converged only because the wrap is idempotent — one
+  wasted full scan per productive pass — and an element that re-renders over its
+  own subtree and drops the inserted wrapper would have turned it into a sustained
+  wrap → mutation → wrap loop.
+  
+  Batches now coalesce into a single deferred pass, and the observer ignores a batch
+  that is entirely the wrap's own output, so the self-retrigger is gone rather than
+  absorbed. Measured in Chromium: late element-painted content settles at two
+  passes where it previously took three. A timer rather than
+  `requestAnimationFrame` schedules the pass, because a document with no compositor
+  never runs a frame callback — the PIE-885 failure mode — and a wrap that never
+  lands is a reflow regression in exactly the headless and CI contexts the e2e
+  suites run in.
+  
+  What gets wrapped and the markup produced are unchanged: the live-DOM pass still
+  emits byte-identical wrappers to the string pipeline in `sanitizeItemMarkup`, and
+  the print player's `wrapOverwideContent: false` opt-out is untouched.
+  
+  New exports: `isOverwideImageWrapMutation` and `isOverwideTableWrapMutation`,
+  which report whether a `MutationRecord` mentions nothing but the corresponding
+  wrapper's own live-DOM output. Any host running its own observer-driven wrap pass
+  needs the same test.
+- c9267e5: Sanitizers now filter the declarations inside a `style` attribute.
+  
+  DOMPurify lists `style` among its URI-safe attributes, so it permitted the
+  attribute and inspected nothing inside it. Two things reached the page through
+  an authored inline style as a result: a URL-fetching function, which makes the
+  browser request an arbitrary origin every time the item renders and reports back
+  which learner saw which item, and `position: fixed`, which leaves the item's box
+  and covers the host page — `pie-item-player` renders in light DOM
+  (`shadow: "none"`), so nothing else confined it.
+  
+  `sanitizeItemMarkup` and `sanitizeSvgIcon` now drop any declaration whose value
+  carries `url()`, `image-set()`, `-webkit-image-set()` or `src()`, and any
+  `position: fixed`. Every other declaration is kept, and an attribute with
+  nothing forbidden in it is returned byte-identical, so a shorthand stays a
+  shorthand. Filtering runs against the parsed CSSOM rather than the raw string,
+  so escaped spellings (`\75 rl(`), comments and quoted semicolons are normalized
+  before the check.
+  
+  `position: absolute` and `position: sticky` are deliberately kept. Sticky cannot
+  leave its containing block. Absolute is load-bearing for accessibility —
+  MathJax's `mjx-assistive-mml` carries `position: absolute; width: 1px;
+  height: 1px; overflow: hidden` to expose MathML to a screen reader while hiding
+  it visually.
+  
+  An authored absolute overlay therefore remains possible. Measured in Chromium: a
+  containing block on the player's container (`position: relative` or
+  `contain: layout`) moves the overlay's origin onto the item, which protects host
+  chrome laid out above it, while the box still extends a full viewport beyond the
+  container — a partial mitigation rather than a fix. Only paint containment
+  contains, and it clips, which would cut off the `overflow-x: auto` reflow
+  wrappers this same sanitizer inserts for WCAG 1.4.10. What stays reachable is
+  visual disruption by whoever authors the item's content, with no channel behind
+  it: `<script>`, `<form>` and `<style>` are forbidden and `url()` is filtered
+  here, so an overlay can cover but cannot transmit or execute. That follows from
+  the deliberate light-DOM choice and is documented rather than filtered.
+  
+  Behaviour change for consumers: an authored `background-image: url(…)` or
+  `position: fixed` in a `style` attribute is removed. Background images belong in
+  `<img>`, whose `src` already goes through the sanitizer's URI checks. Hosts that
+  trust their own content keep both existing escape hatches, `trust-markup` and a
+  caller-supplied `sanitizeMarkup`.
+- da5b9da: Sanitizers now strip `<style>` elements from authored markup and tool icons.
+  
+  `<style>` is a document-global stylesheet, and `pie-item-player` renders in
+  light DOM (`shadow: "none"`), so a `<style>` that survived sanitization applied
+  to the whole host page rather than to the item. DOMPurify's defaults already
+  dropped a top-level HTML `<style>`, but its SVG profile keeps one, so
+  `<svg><style>…</style></svg>` passed `sanitizeItemMarkup` and its rules reached
+  host chrome outside the player — verified in Chromium, where authored CSS hid an
+  element belonging to the host. `sanitizeSvgIcon` had the same gap through the
+  shared forbid-list.
+  
+  `style` is now in `SANITIZER_FORBIDDEN_TAGS`, which covers both sanitizers. It
+  is also in DOMPurify's default `FORBID_CONTENTS`, so the CSS text is dropped
+  with the tag instead of surfacing as item text.
+  
+  Behaviour change for consumers: authored item or passage markup that carried a
+  `<style>` block inside an `<svg>` loses it. Per-element styling through `style`
+  attributes, `class`, and the theme tokens is unaffected, and hosts that
+  deliberately trust their content can still opt out of sanitization entirely with
+  `trust-markup` or supply their own sanitizer via `sanitizeMarkup`.
+  
+  Inline `style` attributes are handled separately, by the declaration filter in
+  the companion changeset.
+
 ## 0.3.69
 
 ## 0.3.68

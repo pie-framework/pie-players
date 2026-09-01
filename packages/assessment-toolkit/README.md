@@ -911,6 +911,9 @@ const services = coordinator.getServiceBundle();
 coordinator.isToolEnabled('textToSpeech');  // Check if tool is enabled
 coordinator.getToolConfig('textToSpeech');  // Get tool-specific config
 coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config
+
+// Final teardown by the owner that constructed the coordinator
+await coordinator.dispose();
 ```
 
 ### Direct Service Access

@@ -73,7 +73,6 @@
 	} from "@pie-players/pie-players-shared";
 	import {
 		parseAllowedStyleOrigins,
-		scopeStylesheetCss,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
 	import type {
@@ -88,6 +87,11 @@
 	} from "./types.js";
 	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
 	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
+	import {
+		acquireScopedExternalStyle,
+		createExternalStyleScopeClass,
+		ensureCrossOriginExternalStyle,
+	} from "./utils/external-styles.js";
 	import type { DeliveryModelRefreshConfigResult } from "./backend/model-refresh.js";
 	import {
 		callbackIdentityForKey,
@@ -114,6 +118,8 @@
 		normalizeItemPlayerStrategy,
 		parsePackageName,
 		resolveInstrumentationProvider,
+		attachInstrumentationEventBridge,
+		ITEM_INSTRUMENTATION_EVENT_MAP,
 		scorePieItem,
 		updatePieElements,
 	} from "@pie-players/pie-players-shared";
@@ -565,21 +571,14 @@
 		].join("|"),
 	);
 
-	function stableHashBase36(input: string) {
-		let h = 5381;
-		for (let i = 0; i < input.length; i++) h = ((h << 5) + h) ^ input.charCodeAt(i);
-		return (h >>> 0).toString(36);
-	}
-
-	const fallbackScopeClass = $derived.by(() => {
-		if (resolvedCustomClassName) return resolvedCustomClassName;
-		const hash = stableHashBase36("/packages/item-player/src/PieItemPlayer.svelte").slice(
-			0,
-			9,
-		);
-		return `pie-player-${hash}`;
-	});
-	const scopeClass = $derived((resolvedCustomClassName || fallbackScopeClass).trim());
+	const scopeClass = $derived(resolvedCustomClassName.trim());
+	const instanceStyleScopeClass = createExternalStyleScopeClass();
+	const stylesheetScopeClass = $derived(
+		resolvedCustomClassName ? scopeClass : instanceStyleScopeClass,
+	);
+	const additionalStylesheetScopeClass = $derived(
+		stylesheetScopeClass === scopeClass ? "" : stylesheetScopeClass,
+	);
 
 	// Dedup of the last successfully-processed inputs. The deep ElementLoader
 	// primitive also deduplicates concurrent identical requests internally,
@@ -1114,77 +1113,98 @@
 		parseAllowedStyleOrigins(allowedStyleOrigins),
 	);
 
-	const cssEscapeValue = (value: string): string => {
-		const cssApi = (globalThis as { CSS?: { escape?: (v: string) => string } })
-			.CSS;
-		if (typeof cssApi?.escape === "function") {
-			return cssApi.escape(value);
-		}
-		return value.replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
-	};
-
-	const loadScopedExternalStyle = async (url: string) => {
-		if (!isBrowser || !url || typeof url !== "string") return;
-		const validation = validateExternalStyleUrl(url, {
-			baseUrl: window.location.href,
-			allowedOrigins: allowedStyleOriginList,
-		});
-		if (!validation.ok) {
-			logger.error(
-				`[pie-item-player] ${validation.message} (url=${url})`,
-			);
-			return;
-		}
-		const resolvedUrl = validation.resolvedUrl;
-		const escapedUrl = cssEscapeValue(url);
-		if (document.querySelector(`style[data-pie-style="${escapedUrl}"]`)) return;
-		if (document.querySelector(`link[data-pie-style-link="${escapedUrl}"]`))
-			return;
-		try {
-			const isCrossOrigin = resolvedUrl.origin !== window.location.origin;
-			if (isCrossOrigin) {
-				// Cross-origin stylesheets may block fetch() without CORS headers.
-				// Use a link tag so the browser can apply CSS directly.
-				const link = document.createElement("link");
-				link.setAttribute("rel", "stylesheet");
-				link.setAttribute("href", resolvedUrl.toString());
-				link.setAttribute("data-pie-style-link", url);
-				document.head.appendChild(link);
-				return;
-			}
-			const response = await fetch(resolvedUrl.toString());
-			const cssText = await response.text();
-			const scopedCss = scopeStylesheetCss(
-				cssText,
-				`.pie-item-player.${scopeClass}`,
-			);
-			const style = document.createElement("style");
-			style.setAttribute("data-pie-style", url);
-			style.textContent = scopedCss;
-			document.head.appendChild(style);
-		} catch (err) {
-			logger.error(`Failed to load external stylesheet: ${url}`, err);
-		}
-	};
-
 	$effect(() => {
-		if (!externalStyleUrls || typeof externalStyleUrls !== "string") return;
-		const urls = externalStyleUrls.split(",").map((url) => url.trim());
-		for (const url of urls) {
-			if (url) loadScopedExternalStyle(url);
+		if (!isBrowser) return;
+
+		const requestedUrls =
+			typeof externalStyleUrls === "string"
+				? externalStyleUrls.split(",").map((url) => url.trim())
+				: [];
+		const configuredStylesheets = itemConfig?.resources?.stylesheets;
+		if (Array.isArray(configuredStylesheets)) {
+			for (const resource of configuredStylesheets) {
+				if (typeof resource?.url === "string") {
+					requestedUrls.push(resource.url);
+				}
+			}
 		}
+
+		const abortController = new AbortController();
+		const releases = new Set<() => void>();
+		const resolvedUrls = new Set<string>();
+		const currentScopeClass = stylesheetScopeClass;
+		for (const url of requestedUrls) {
+			if (!url) continue;
+			const validation = validateExternalStyleUrl(url, {
+				baseUrl: window.location.href,
+				allowedOrigins: allowedStyleOriginList,
+			});
+			if (!validation.ok) {
+				logger.error(
+					`[pie-item-player] ${validation.message} (url=${url})`,
+				);
+				continue;
+			}
+
+			const resolvedUrl = validation.resolvedUrl.toString();
+			if (resolvedUrls.has(resolvedUrl)) continue;
+			resolvedUrls.add(resolvedUrl);
+			if (validation.resolvedUrl.origin !== window.location.origin) {
+				// Cross-origin stylesheets may block fetch() without CORS headers.
+				// Keep the existing unscoped link path for host-opted-in origins.
+				ensureCrossOriginExternalStyle(document, url, resolvedUrl);
+				continue;
+			}
+
+			void acquireScopedExternalStyle({
+				document,
+				resolvedUrl,
+				scopeClass: currentScopeClass,
+				signal: abortController.signal,
+				sourceUrl: url,
+			})
+				.then((release) => {
+					if (!release) return;
+					if (abortController.signal.aborted) {
+						release();
+						return;
+					}
+					releases.add(release);
+				})
+				.catch((err) => {
+					if (!abortController.signal.aborted) {
+						logger.error(`Failed to load external stylesheet: ${url}`, err);
+					}
+				});
+		}
+
+		return () => {
+			abortController.abort();
+			for (const release of releases) release();
+			releases.clear();
+		};
 	});
 
+	// Same wiring the section, toolkit and assessment players already have. The
+	// item player previously resolved an instrumentation provider only to hand it
+	// to the loader, so nothing it emitted itself reached telemetry.
 	$effect(() => {
-		if (!itemConfig?.resources?.stylesheets) return;
-		const stylesheets = itemConfig.resources.stylesheets;
-		if (!Array.isArray(stylesheets)) return;
-		for (const resource of stylesheets) {
-			const url = resource?.url;
-			if (url && typeof url === "string") {
-				loadScopedExternalStyle(url);
-			}
-		}
+		if (!hostElement) return;
+		const localHost = hostElement;
+		return attachInstrumentationEventBridge({
+			host: localHost,
+			instrumentationProvider: resolvedInstrumentationProvider,
+			component: "pie-item-player",
+			eventMap: ITEM_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "item",
+			},
+			// `handlePlayerEvent` re-dispatches from the host element, so a mapped
+			// event targeted anywhere else came from a nested player rather than
+			// this one.
+			shouldTrackEvent: (event: Event) => event.target === localHost,
+			debug: debugEnabled,
+		});
 	});
 
 	$effect(() => {
@@ -1442,7 +1462,10 @@
 	};
 </script>
 
-<div class="pie-item-player {scopeClass}" bind:this={hostElement}>
+<div
+	class="pie-item-player {scopeClass} {additionalStylesheetScopeClass}"
+	bind:this={hostElement}
+>
 	{#if error}
 		<div
 			class="pie-player-error"
@@ -1510,6 +1533,10 @@
 					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}
 					onModelLoaded={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("model-loaded", { detail }))}
+					onCorrectResponsesPopulated={(detail: unknown) =>
+						handlePlayerEvent(
+							new CustomEvent("correct-responses-populated", { detail }),
+						)}
 				/>
 			{/key}
 		</div>

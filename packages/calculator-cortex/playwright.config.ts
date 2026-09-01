@@ -2,6 +2,9 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
 	testDir: "./e2e",
+	// Not Playwright's default: that also claims the `*.test.ts` bun tests. See
+	// AGENTS.md, "Playwright And Sandboxed Execution".
+	testMatch: /.*\.spec\.ts/,
 	fullyParallel: false,
 	workers: 1,
 	timeout: 30_000,

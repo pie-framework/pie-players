@@ -71,6 +71,82 @@ mkdir -p src/routes/api/tts/synthesize
 mkdir -p src/routes/api/tts/voices
 ```
 
+### Shared Guards (required)
+
+Both routes reach AWS on every request. Without an auth check and a rate limit
+they are open, unmetered proxies to your Polly account: whoever can reach the URL
+spends your budget, and the 3000-character cap bounds one request rather than the
+number of them. Put both guards in one module and call them from every TTS route.
+
+Create **`src/lib/server/tts-guards.ts`**:
+
+```typescript
+import { error } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
+
+/** The only failure detail a caller ever receives. */
+export const OPAQUE_FAILURE = 'Text-to-speech is unavailable.';
+
+/**
+ * Reject callers your app has not authenticated.
+ *
+ * Replace the body with your real check; do not delete the function or its call
+ * sites. It fails closed so a copied route cannot ship open by accident.
+ */
+export async function requireAuthenticatedCaller(event: RequestEvent): Promise<void> {
+  // Your check, e.g. against what hooks.server.ts left on event.locals:
+  //   if (event.locals.session) return;
+  console.error(
+    '[TTS API] requireAuthenticatedCaller is not implemented, rejecting',
+    event.url.pathname,
+  );
+  throw error(503, { message: OPAQUE_FAILURE });
+}
+
+/**
+ * Reject callers who have spent their quota.
+ *
+ * Replace the body with your real limiter; do not delete the function or its
+ * call sites. Rate limiting is what bounds the cost of a shared or leaked
+ * credential.
+ */
+export async function enforceRateLimit(event: RequestEvent): Promise<void> {
+  // Your limiter, keyed on caller identity where you have it:
+  //   const key = event.locals.session?.userId ?? event.getClientAddress();
+  //   if (await limiter.take(key)) return;
+  console.error(
+    '[TTS API] enforceRateLimit is not implemented, rejecting',
+    event.url.pathname,
+  );
+  throw error(503, { message: OPAQUE_FAILURE });
+}
+
+/**
+ * Log the failure and raise a client-safe one in its place.
+ *
+ * AWS SDK error strings can carry region, ARN and credential-shape detail, so
+ * the detail stays in the server log and the caller learns only the status.
+ */
+export function failOpaquely(context: string, err: unknown): never {
+  console.error(`[TTS API] ${context}:`, err);
+
+  const detail = err instanceof Error ? err.message : '';
+
+  if (/ThrottlingException|TooManyRequestsException/.test(detail)) {
+    throw error(429, { message: 'Text-to-speech is busy. Please try again shortly.' });
+  }
+
+  if (/credentials|InvalidSignature|SignatureDoesNotMatch|NetworkingError|ENOTFOUND|ETIMEDOUT/.test(detail)) {
+    throw error(503, { message: OPAQUE_FAILURE });
+  }
+
+  throw error(500, { message: OPAQUE_FAILURE });
+}
+```
+
+The standalone files under `sveltekit/` inline these three functions instead, so
+that each stays a single self-contained copy.
+
 ### Synthesize Endpoint
 
 Copy the example to: **`src/routes/api/tts/synthesize/+server.ts`**
@@ -78,9 +154,14 @@ Copy the example to: **`src/routes/api/tts/synthesize/+server.ts`**
 > **Note:** In SvelteKit, use `import { env } from '$env/static/private'` instead of `process.env` for server-side environment variables. The examples below use `process.env` for framework-agnostic readability.
 
 ```typescript
-import { json, error } from '@sveltejs/kit';
+import { json, error, isHttpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PollyServerProvider } from '@pie-players/tts-server-polly';
+import {
+  requireAuthenticatedCaller,
+  enforceRateLimit,
+  failOpaquely,
+} from '$lib/server/tts-guards';
 
 // Singleton provider instance
 let pollyProvider: PollyServerProvider | null = null;
@@ -101,9 +182,13 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
   return pollyProvider;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
   try {
-    const body = await request.json();
+    // Guards first: reject before spending anything on the request.
+    await requireAuthenticatedCaller(event);
+    await enforceRateLimit(event);
+
+    const body = await event.request.json();
     const { text, voice, language, rate, includeSpeechMarks = true } = body;
 
     if (!text || typeof text !== 'string') {
@@ -130,8 +215,11 @@ export const POST: RequestHandler = async ({ request }) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[TTS API] Error:', err);
-    throw error(500, { message: err instanceof Error ? err.message : 'Synthesis failed' });
+    // Statuses raised above (the guards, request validation) are already
+    // client-safe and pass through unchanged.
+    if (isHttpError(err)) throw err;
+
+    failOpaquely('Synthesis error', err);
   }
 };
 ```
@@ -141,9 +229,14 @@ export const POST: RequestHandler = async ({ request }) => {
 Copy the example to: **`src/routes/api/tts/voices/+server.ts`**
 
 ```typescript
-import { json, error } from '@sveltejs/kit';
+import { json, error, isHttpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PollyServerProvider } from '@pie-players/tts-server-polly';
+import {
+  requireAuthenticatedCaller,
+  enforceRateLimit,
+  failOpaquely,
+} from '$lib/server/tts-guards';
 
 // Use same singleton as synthesize route
 let pollyProvider: PollyServerProvider | null = null;
@@ -163,18 +256,24 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
   return pollyProvider;
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async (event) => {
   try {
-    const language = url.searchParams.get('language') || undefined;
-    const gender = url.searchParams.get('gender') as 'male' | 'female' | 'neutral' | undefined;
+    // Guards first: reject before spending anything on the request.
+    await requireAuthenticatedCaller(event);
+    await enforceRateLimit(event);
+
+    const language = event.url.searchParams.get('language') || undefined;
+    const gender = event.url.searchParams.get('gender') as 'male' | 'female' | 'neutral' | undefined;
 
     const polly = await getPollyProvider();
     const voices = await polly.getVoices({ language, gender });
 
     return json({ voices });
   } catch (err) {
-    console.error('[TTS API] Error:', err);
-    throw error(500, { message: err instanceof Error ? err.message : 'Failed to get voices' });
+    // Statuses raised above (the guards) are already client-safe.
+    if (isHttpError(err)) throw err;
+
+    failOpaquely('Get voices error', err);
   }
 };
 ```
@@ -252,10 +351,15 @@ bun add ioredis
 ### Update API Route with Caching
 
 ```typescript
-import { json, error } from '@sveltejs/kit';
+import { json, error, isHttpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PollyServerProvider } from '@pie-players/tts-server-polly';
 import { generateHashedCacheKey } from '@pie-players/tts-server-core';
+import {
+  requireAuthenticatedCaller,
+  enforceRateLimit,
+  failOpaquely,
+} from '$lib/server/tts-guards';
 import Redis from 'ioredis';
 
 // Singleton instances
@@ -284,9 +388,13 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
   return pollyProvider;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
   try {
-    const body = await request.json();
+    // Guards first: reject before spending anything on the request.
+    await requireAuthenticatedCaller(event);
+    await enforceRateLimit(event);
+
+    const body = await event.request.json();
     const { text, voice = 'Joanna', language = 'en-US', rate = 1.0, includeSpeechMarks = true } = body;
 
     if (!text || typeof text !== 'string') {
@@ -356,8 +464,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
     return json(response);
   } catch (err) {
-    console.error('[TTS API] Error:', err);
-    throw error(500, { message: err instanceof Error ? err.message : 'Synthesis failed' });
+    // Statuses raised above (the guards, request validation) are already
+    // client-safe and pass through unchanged.
+    if (isHttpError(err)) throw err;
+
+    failOpaquely('Synthesis error', err);
   }
 };
 ```
@@ -417,9 +528,17 @@ tts:aws-polly:Joanna:en-US:1.00:mp3:<sha256-hash-of-text>
 - ✅ Use IAM roles in production (no hardcoded credentials)
 - ✅ Use environment variables for configuration
 
-### Authentication (Optional)
+### Error Responses
 
-Add authentication middleware to protect API:
+Return a status and a generic message; keep the detail in the server log. AWS SDK
+error strings can name the region, an ARN, or the shape of the credential that
+failed, so forwarding `err.message` to the caller hands that to whoever is
+probing the endpoint. `failOpaquely` in Step 3 is where that mapping lives.
+
+### Authentication (required)
+
+`requireAuthenticatedCaller` in Step 3 is the per-route guard. Back it with a
+`handle` hook so the check cannot be missed by a route added later:
 
 ```typescript
 // src/hooks.server.ts
@@ -442,17 +561,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 ```
 
-### Rate Limiting
+### Rate Limiting (required)
 
-Add rate limiting to prevent abuse:
+Rate limiting bounds the cost of a credential that is shared, leaked, or simply
+used more than you planned. Key it on caller identity where the session gives you
+one, and on the client address where it does not. This is what
+`enforceRateLimit` in Step 3 delegates to:
 
 ```typescript
-import { rateLimit } from '$lib/rate-limiter';
+// src/lib/server/tts-guards.ts
+import { error } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
+import { rateLimit } from '$lib/server/rate-limiter';
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
-  // Check rate limit
-  const clientIP = getClientAddress();
-  const allowed = await rateLimit.check(clientIP, {
+export async function enforceRateLimit(event: RequestEvent): Promise<void> {
+  const key = event.locals.session?.userId ?? event.getClientAddress();
+
+  const allowed = await rateLimit.check(key, {
     maxRequests: 60, // 60 requests
     windowMs: 60000, // per minute
   });
@@ -460,9 +585,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   if (!allowed) {
     throw error(429, { message: 'Rate limit exceeded' });
   }
-
-  // ... rest of handler
-};
+}
 ```
 
 ## Cost Optimization

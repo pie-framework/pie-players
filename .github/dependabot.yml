@@ -55,6 +55,17 @@ updates:
           - "minor"
           - "patch"
 
+    ignore:
+      # Hold TypeScript at 5.x. The 7.0.2 bump was raised as #347 and closed
+      # unmerged: it failed Build, Docs and four of the five critical E2E suites,
+      # so moving majors is a migration with its own branch and not a dependency
+      # bump. The dev-dependencies group already caps typescript at minor/patch,
+      # which is why the major arrived as its own ungrouped PR rather than being
+      # filtered there. Drop this entry when the migration is scheduled.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
+
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

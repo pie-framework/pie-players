@@ -10,6 +10,10 @@
 			"types": "./src/index.ts",
 			"svelte": "./src/index.ts",
 			"default": "./src/index.ts"
+		},
+		"./server": {
+			"types": "./src/server/tts-error-response.ts",
+			"default": "./src/server/tts-error-response.ts"
 		}
 	},
 	"scripts": {
@@ -17,11 +21,11 @@
 		"lint": "biome check src"
 	},
 	"dependencies": {
-		"svelte": "^5.56.10"
+		"svelte": "^5.57.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.10",
-		"svelte-check": "^4.7.5",
+		"@biomejs/biome": "^2.5.11",
+		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	}
 }

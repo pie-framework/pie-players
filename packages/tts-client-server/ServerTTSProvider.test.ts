@@ -392,4 +392,167 @@ describe("ServerTTSProvider", () => {
 			expect(caps.supportsSSML).toBe(false);
 		});
 	});
+
+	describe("word highlighting", () => {
+		type Tick = () => void;
+
+		const originalWindow = (globalThis as Record<string, unknown>).window;
+
+		/**
+		 * Captures the interval callback instead of scheduling it, so a test can
+		 * decide exactly which playback positions the loop observes.
+		 */
+		const stubWindowTimers = (): Tick[] => {
+			const ticks: Tick[] = [];
+			(globalThis as Record<string, unknown>).window = {
+				setInterval: (fn: Tick) => {
+					ticks.push(fn);
+					return ticks.length;
+				},
+			};
+			return ticks;
+		};
+
+		afterEach(() => {
+			if (originalWindow === undefined) {
+				delete (globalThis as Record<string, unknown>).window;
+			} else {
+				(globalThis as Record<string, unknown>).window = originalWindow;
+			}
+		});
+
+		const startHighlighting = async (
+			timings: Array<{ time: number; charIndex: number; word: string }>,
+		) => {
+			const provider = new ServerTTSProvider();
+			const impl = (await provider.initialize({
+				apiEndpoint: "/api/tts",
+			} as any)) as any;
+			const audio = { currentTime: 0, playbackRate: 1 };
+			impl.currentAudio = audio;
+			impl.wordTimings = timings.map((t, index) => ({
+				time: t.time,
+				wordIndex: index,
+				charIndex: t.charIndex,
+				length: t.word.length,
+				word: t.word,
+			}));
+			const boundaries: Array<{ word: string; charIndex: number }> = [];
+			impl.onWordBoundary = (word: string, charIndex: number) => {
+				boundaries.push({ word, charIndex });
+			};
+			const ticks = stubWindowTimers();
+			impl.startWordHighlighting();
+			return { impl, audio, boundaries, tick: () => ticks[0]?.() };
+		};
+
+		const denseTimings = [
+			{ time: 0, charIndex: 0, word: "the" },
+			{ time: 30, charIndex: 4, word: "quick" },
+			{ time: 60, charIndex: 10, word: "brown" },
+			{ time: 90, charIndex: 16, word: "fox" },
+		];
+
+		test("reports the word that is current, not one word per tick", async () => {
+			const { audio, boundaries, tick } = await startHighlighting(denseTimings);
+
+			audio.currentTime = 0.095;
+			tick();
+
+			expect(boundaries).toEqual([{ word: "fox", charIndex: 16 }]);
+		});
+
+		test("reports each word once when ticks keep pace with the timings", async () => {
+			const { audio, boundaries, tick } = await startHighlighting(denseTimings);
+
+			for (const ms of [0, 30, 60, 90]) {
+				audio.currentTime = ms / 1000;
+				tick();
+			}
+
+			expect(boundaries.map((b) => b.word)).toEqual([
+				"the",
+				"quick",
+				"brown",
+				"fox",
+			]);
+		});
+
+		test("does not re-report the current word on a tick that crossed nothing", async () => {
+			const { audio, boundaries, tick } = await startHighlighting(denseTimings);
+
+			audio.currentTime = 0.065;
+			tick();
+			tick();
+			audio.currentTime = 0.07;
+			tick();
+
+			expect(boundaries).toEqual([{ word: "brown", charIndex: 10 }]);
+		});
+
+		test("resumes from the spoken position instead of replaying the passage", async () => {
+			const { impl, audio, boundaries, tick } =
+				await startHighlighting(denseTimings);
+
+			audio.currentTime = 0.065;
+			tick();
+			expect(boundaries.map((b) => b.word)).toEqual(["brown"]);
+
+			// pause() then resume() tears the interval down and starts a new one.
+			impl.stopWordHighlighting();
+			const ticks: Tick[] = stubWindowTimers();
+			impl.startWordHighlighting();
+			ticks[0]?.();
+
+			expect(boundaries.map((b) => b.word)).toEqual(["brown"]);
+		});
+
+		test("re-reports an earlier word after the audio seeks backwards", async () => {
+			const { audio, boundaries, tick } = await startHighlighting(denseTimings);
+
+			audio.currentTime = 0.095;
+			tick();
+			audio.currentTime = 0.035;
+			tick();
+
+			expect(boundaries.map((b) => b.word)).toEqual(["fox", "quick"]);
+		});
+
+		test("stays silent before the first word's time has arrived", async () => {
+			const { audio, boundaries, tick } = await startHighlighting([
+				{ time: 250, charIndex: 0, word: "later" },
+			]);
+
+			audio.currentTime = 0.1;
+			tick();
+
+			expect(boundaries).toEqual([]);
+		});
+
+		test("scans forward from the cursor rather than from the first timing", async () => {
+			const { impl } = await startHighlighting(denseTimings);
+
+			// Given a cursor already past a word, an earlier timing whose time has
+			// also arrived must not be revisited.
+			expect(impl.resolveCurrentWordIndex(95, 2)).toBe(3);
+			expect(impl.resolveCurrentWordIndex(95, -1)).toBe(3);
+			expect(impl.resolveCurrentWordIndex(35, 1)).toBe(1);
+			// A cursor left over from a longer previous passage is discarded.
+			expect(impl.resolveCurrentWordIndex(95, 9)).toBe(3);
+		});
+
+		test("keeps spoken text out of the console", async () => {
+			const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+			const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
+			const { audio, tick } = await startHighlighting(denseTimings);
+
+			audio.currentTime = 0.095;
+			tick();
+
+			expect(consoleLog).not.toHaveBeenCalled();
+			expect(consoleInfo).not.toHaveBeenCalled();
+			consoleLog.mockRestore();
+			consoleInfo.mockRestore();
+		});
+	});
 });

@@ -1179,8 +1179,40 @@
 		};
 	});
 
-	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
+	const OVERLAY_BOUNDARY_SELECTOR = '[data-pie-tool-overlay-boundary]';
+
+	/**
+	 * Where a mounted element is appended.
+	 *
+	 * An element the registration marked `container: 'content-boundary'` goes to the
+	 * nearest host-declared boundary, so the content's box — not this toolbar's — is
+	 * its containing block and the frame it positions in. Which elements need that
+	 * is the registration's call, not the toolbar's: the toolbar honours the
+	 * declaration and knows nothing about the tool. A host that declares no
+	 * boundary keeps the in-toolbar host element, whose containing block is the
+	 * initial one.
+	 */
+	function resolveMountParent(node: HTMLElement, entry: ToolRenderElement): HTMLElement {
+		if (entry.container !== 'content-boundary') return node;
+		let current: Node | null = node;
+		while (current) {
+			if (current instanceof HTMLElement && current.matches(OVERLAY_BOUNDARY_SELECTOR)) {
+				return current;
+			}
+			if (current instanceof HTMLElement && current.parentElement) {
+				current = current.parentElement;
+				continue;
+			}
+			const root = current.getRootNode();
+			current = root instanceof ShadowRoot ? root.host : null;
+		}
+		return node;
+	}
+
+	function mountElement(node: HTMLSpanElement, entry: ToolRenderElement) {
+		let currentEntry = entry;
 		let mountedElement: HTMLElement | null = null;
+		let mountParent: HTMLElement = node;
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -1194,22 +1226,24 @@
 			if (mountedElement === nextElement) return;
 			if (mountedElement) {
 				invokeElementUnmount(mountedElement);
-				if (mountedElement.parentNode === node) {
-					node.removeChild(mountedElement);
+				if (mountedElement.parentNode === mountParent) {
+					mountParent.removeChild(mountedElement);
 				}
 			}
 			mountedElement = nextElement;
 			if (mountedElement) {
-				if (mountedElement.parentNode && mountedElement.parentNode !== node) {
+				mountParent = resolveMountParent(node, currentEntry);
+				if (mountedElement.parentNode && mountedElement.parentNode !== mountParent) {
 					mountedElement.parentNode.removeChild(mountedElement);
 				}
-				node.appendChild(mountedElement);
+				mountParent.appendChild(mountedElement);
 			}
 		};
-		updateMountedElement(element);
+		updateMountedElement(entry.element);
 		return {
-			update(nextElement: HTMLElement | null) {
-				updateMountedElement(nextElement);
+			update(nextEntry: ToolRenderElement) {
+				currentEntry = nextEntry;
+				updateMountedElement(nextEntry.element);
 			},
 			destroy() {
 				updateMountedElement(null);
@@ -2565,7 +2599,7 @@
 						></span>
 					{/key}
 				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
 				{/if}
 			{/each}
 
@@ -2672,7 +2706,7 @@
 						></span>
 					{/key}
 				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
 				{/if}
 			{/each}
 		</div>
@@ -2699,7 +2733,7 @@
 							></span>
 						{/key}
 					{:else}
-						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry.element}></span>
+						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry}></span>
 					{/if}
 				{/each}
 			</div>

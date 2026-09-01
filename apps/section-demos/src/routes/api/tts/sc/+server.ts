@@ -107,6 +107,20 @@ const getProvider = async (env: ScEnv): Promise<SchoolCityServerProvider> => {
 	return provider;
 };
 
+/**
+ * What the caller is told, per status. The upstream message and the details bag
+ * stay in the server log: `summarizeErrorDetails` truncates whatever the service
+ * returned without redacting it, so it is not safe to hand back. The stable
+ * `TTSErrorCode` goes to the caller instead — it identifies the failure more
+ * precisely than upstream prose would, and carries nothing about our deployment.
+ */
+const CLIENT_MESSAGE: Record<number, string> = {
+	400: "The text-to-speech request was invalid.",
+	401: "Text-to-speech authentication failed.",
+	429: "Text-to-speech is temporarily busy. Please try again in a moment.",
+	502: "The text-to-speech service returned an error.",
+};
+
 const toHttpStatus = (err: unknown): number => {
 	if (err instanceof TTSError) {
 		if (
@@ -158,9 +172,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			err instanceof Error ? err.message : "SC TTS request failed";
 		const detailsSummary =
 			err instanceof TTSError ? summarizeErrorDetails(err.details) : {};
+		const code = err instanceof TTSError ? err.code : undefined;
 		const logPayload = {
 			status,
-			code: err instanceof TTSError ? err.code : undefined,
+			code,
 			message,
 			textLength: body.text.length,
 			textPreview: previewText(body.text),
@@ -170,11 +185,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			details: detailsSummary,
 		};
 		console.error("[api/tts/sc] SchoolCity TTS request failed", logPayload);
+
 		throw error(status, {
-			message,
-			...(Object.keys(detailsSummary).length > 0
-				? { details: detailsSummary }
-				: {}),
+			message:
+				CLIENT_MESSAGE[status] ??
+				"Text-to-speech encountered an unexpected error.",
+			...(code ? { code } : {}),
 		});
 	}
 };

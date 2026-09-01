@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 import {
 	initializeMathRendering,
 	type MathRenderingAPI,
+	setMathRenderer,
 } from "../src/pie/math-rendering";
 
 const makeRenderer = (): MathRenderingAPI => ({
@@ -51,5 +52,23 @@ describe("initializeMathRendering", () => {
 
 		expect(importCount).toBe(1);
 		expect(setCount).toBe(1);
+	});
+
+	test("does not replace a custom renderer installed while the default import is in flight", async () => {
+		const defaultRenderer = makeRenderer();
+		const customRenderer = makeRenderer();
+		mock.module("@pie-lib/math-rendering-module/module", () => ({
+			_dll_pie_lib__math_rendering: defaultRenderer,
+		}));
+
+		const windowStub: Record<string, unknown> = {};
+		(globalThis as any).window = windowStub;
+
+		const defaultInitialization = initializeMathRendering();
+		setMathRenderer(customRenderer);
+		await defaultInitialization;
+
+		expect(windowStub["@pie-lib/math-rendering"]).toBe(customRenderer);
+		expect(windowStub._dll_pie_lib__math_rendering).toBe(customRenderer);
 	});
 });

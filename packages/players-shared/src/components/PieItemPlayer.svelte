@@ -14,6 +14,8 @@
   import {
     buildAuthoringAllowList,
     createDefaultItemMarkupSanitizer,
+    isOverwideImageWrapMutation,
+    isOverwideTableWrapMutation,
     wrapOverwideImagesInElement,
     wrapOverwideTablesInElement,
     type ItemMarkupSanitizer,
@@ -31,6 +33,7 @@
   } from "../pie/authoring.js";
   import { transformMarkupForAuthoring } from "../pie/authoring-tag.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
+  import { observePieElements } from "../pie/element-observer.js";
   import {
     canPopulateCorrectResponses,
     getCorrectResponseEnv,
@@ -65,6 +68,7 @@
     env = { mode: "gather", role: "student" } as Env,
     session = [] as any[],
     addCorrectResponse = false,
+    onCorrectResponsesPopulated,
     allowedResize = false,
     customClassName = "",
     passageContainerClass = "",
@@ -99,6 +103,26 @@
     env?: Env;
     session?: any[];
     addCorrectResponse?: boolean;
+    /**
+     * Called when correct responses were actually written into the session.
+     *
+     * Firing at all carries the security signal: population requires a
+     * controller with `createCorrectResponseSession` in the browser, which only
+     * a `client-player.js` bundle provides. A host that did not ask for correct
+     * responses in this context can treat the call as tampering — `role` and
+     * `mode` are client-mutable attributes, so they are not a boundary, and
+     * `hosted=true` / `player.js` is what keeps the answer key server-side.
+     *
+     * The detail deliberately carries no session data. See the emit site.
+     */
+    onCorrectResponsesPopulated?: (detail: {
+      itemId?: string;
+      mode?: string;
+      role?: string;
+      bundleType?: string;
+      populatedCount: number;
+      elements: string[];
+    }) => void;
     allowedResize?: boolean;
     customClassName?: string;
     passageContainerClass?: string;
@@ -295,9 +319,26 @@
     dispatch("player-error", normalizedDetail);
   }
 
-  // Dispatch events (will add more as needed)
+  /**
+   * Hand an event to the owning component through its callback prop.
+   *
+   * Callbacks only: this component renders inside a custom element that owns DOM
+   * emission for every public event (`handlePlayerEvent` in
+   * `packages/item-player/src/PieItemPlayer.svelte` re-dispatches from the host
+   * element, bubbling and composed). A DOM dispatch here used to sit alongside
+   * the callback, and it targeted the wrong thing: the call was a bare
+   * `dispatchEvent(event)` with no local binding, which resolves to
+   * `window.dispatchEvent`. Every event this component emitted therefore fired
+   * on `window` — including `session-changed`, whose detail carries the
+   * learner's responses — where any script on the host page could read it with
+   * no way to attribute it to a player instance.
+   *
+   * Every caller here uses one of the five types below, so the callback is the
+   * complete route. A new event type needs a callback prop and a
+   * `handlePlayerEvent` wiring in the custom element, not a dispatch from this
+   * component.
+   */
   const dispatch = (type: string, detail?: any) => {
-    // Call callback prop if provided (Svelte 5 pattern)
     if (type === "load-complete" && typeof onLoadComplete === "function") {
       onLoadComplete(detail);
     } else if (type === "player-error" && typeof onPlayerError === "function") {
@@ -309,14 +350,6 @@
     } else if (type === "model-loaded" && typeof onModelLoaded === "function") {
       onModelLoaded(detail);
     }
-
-    // Also dispatch a DOM event so hosts can listen outside Svelte.
-    const event = new CustomEvent(type, {
-      detail,
-      bubbles: true,
-      composed: true, // Allow events to cross shadow DOM boundaries
-    });
-    dispatchEvent(event);
   };
 
   const requiredHandlerNames = [
@@ -524,6 +557,31 @@
       for (const sessionEntry of newSession) {
         dispatch("session-changed", sessionEntry);
       }
+
+      // Report that correct responses reached the session, so a host can detect
+      // a population it never asked for. Prevention is not available at this
+      // layer: `addCorrectResponse`, `env` and `mode` are all public attributes
+      // on `<pie-item-player>`, so any page script can set them, and a
+      // legitimate preview (`mode: "view"`, `role: "student"`, controllers
+      // client-side) is indistinguishable from a tampered delivery from in
+      // here. `hosted=true` / `player.js` is the boundary; this is the signal.
+      //
+      // The detail carries counts and `config.models[].element` names, never
+      // the session entries: those hold the correct answers, and this payload
+      // is forwarded to a host's telemetry provider by the instrumentation
+      // bridge.
+      //
+      // Called directly rather than through `dispatch()`: that helper's DOM
+      // branch dispatches on `window`, and the custom element already owns DOM
+      // emission for every public event via `handlePlayerEvent`.
+      onCorrectResponsesPopulated?.({
+        itemId: itemConfig.id,
+        mode: env?.mode,
+        role: env?.role,
+        bundleType,
+        populatedCount: newSession.length,
+        elements: newSession.map((entry: any) => String(entry.element ?? "")),
+      });
     } else {
       logger.debug(
         "[PieItemPlayer] No correct responses returned (likely wrong env). Will retry if env/addCorrectResponse changes."
@@ -973,25 +1031,120 @@
 
   // Run a post-render pass over the player's live subtree using the same
   // per-element wrappers as the string pipeline (so the produced
-  // pie-image-scroll / pie-table-scroll markup is byte-identical) and
-  // re-run on every mutation tick so element-painted content is wrapped as
-  // soon as it lands. The wrap is idempotent.
+  // pie-image-scroll / pie-table-scroll markup is byte-identical), re-run when
+  // element-painted content lands.
+  //
+  // Each pass is a querySelectorAll over the whole item subtree, so a PIE
+  // element that re-renders on every keystroke must not buy one per mutation
+  // batch: batches coalesce into a single deferred pass, and the observer
+  // ignores the records the wrap's own insertions queue. Without that second
+  // part the pass retriggers the observer that scheduled it, and converges only
+  // because the wrap is idempotent — an element that re-renders over its own
+  // subtree and drops the wrapper would loop.
   $effect(() => {
     if (!rootElement) return;
     const root = rootElement;
-    const tickWrap = () => {
-      logger.debug("[PieItemPlayer] Running post-render wrap pass");
-      wrapOverwideImagesInElement(root);
-      wrapOverwideTablesInElement(root);
+
+    // A pass that wrapped nothing mutated nothing, so it queued no records of
+    // its own and the next batch needs no filtering.
+    let selfMutationsPending = false;
+
+    const runWrapPass = () => {
+      const wrapped =
+        wrapOverwideImagesInElement(root) + wrapOverwideTablesInElement(root);
+      selfMutationsPending = wrapped > 0;
+      logger.debug("[PieItemPlayer] Post-render wrap pass wrapped", wrapped);
     };
-    tickWrap();
+
+    runWrapPass();
     if (typeof MutationObserver === "undefined") return;
-    const observer = new MutationObserver(() => {
-      tickWrap();
+
+    let pendingHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = () => {
+      // One pass per batch, deferred so batches arriving in separate tasks
+      // collapse into a single scan. Keeping an already-pending pass rather than
+      // re-arming it means a continuous mutation stream cannot starve it.
+      //
+      // A timer rather than requestAnimationFrame: a document with no
+      // compositor never runs the frame callback, which is the PIE-885 failure
+      // recorded in assessment-toolkit's composition-emit-scheduler. A wrap that
+      // lands late in a hidden tab costs nothing; one that never lands is a
+      // WCAG 1.4.10 regression in exactly the headless and CI contexts the
+      // e2e suites run in.
+      if (pendingHandle !== null) return;
+      pendingHandle = setTimeout(() => {
+        pendingHandle = null;
+        runWrapPass();
+      }, 0);
+    };
+
+    const observer = new MutationObserver((records) => {
+      if (selfMutationsPending) {
+        selfMutationsPending = false;
+        if (
+          records.every(
+            (record) =>
+              isOverwideImageWrapMutation(record) ||
+              isOverwideTableWrapMutation(record)
+          )
+        ) {
+          return;
+        }
+      }
+      schedule();
     });
     observer.observe(root, { childList: true, subtree: true });
+    // The initial pass ran before the observer was armed, so its records were
+    // never queued here and there is nothing to filter out of the first batch.
+    selfMutationsPending = false;
+
     return () => {
       observer.disconnect();
+      if (pendingHandle !== null) {
+        clearTimeout(pendingHandle);
+        pendingHandle = null;
+      }
+    };
+  });
+
+  // Bind PIE elements that land in this player's subtree after initialization:
+  // host markup appended into the container, or an element that paints nested
+  // PIE tags of its own. Scoped to this player's root, so a mutation elsewhere
+  // on the host page costs nothing, and released with the effect, so nothing
+  // observes the page once the player unmounts.
+  //
+  // The context is read when an element arrives, so a late element binds
+  // against the config, session and env this player holds then — not the empty
+  // session the STEP 1 registration passes, and not a session array a parent has
+  // since recomputed. `session` and `env` stay out of the tracked body for the
+  // same reason: a parent recomputes both on render, and re-registering on each
+  // would open a window with nothing observing.
+  $effect(() => {
+    if (!rootElement || mode === "author" || !itemConfig) return;
+    const container = rootElement;
+    const withPassage = Boolean(passageConfig);
+    const releases = untrack(() => {
+      const acquired = [
+        observePieElements(container, () => ({
+          config: itemConfig,
+          session,
+          env,
+        })),
+      ];
+      if (withPassage) {
+        acquired.push(
+          observePieElements(container, () => ({
+            config: passageConfig as ConfigEntity,
+            session,
+            env,
+          }))
+        );
+      }
+      return acquired;
+    });
+    return () => {
+      for (const release of releases) release();
     };
   });
 

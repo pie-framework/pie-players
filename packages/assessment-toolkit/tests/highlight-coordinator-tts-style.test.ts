@@ -57,7 +57,7 @@ function setupHighlightDom() {
 	};
 	(globalThis as any).document = mockDocument;
 
-	return { styleStore, rootVars, mockDocument };
+	return { styleStore, rootVars, highlights, mockDocument };
 }
 
 afterEach(() => {
@@ -69,6 +69,19 @@ afterEach(() => {
 });
 
 describe("HighlightCoordinator TTS style contrast", () => {
+	test("destroying one coordinator preserves shared highlight styles for another", () => {
+		const { styleStore, highlights } = setupHighlightDom();
+		const first = new HighlightCoordinator();
+		const replacement = new HighlightCoordinator();
+		const replacementWordHighlight = highlights.get("tts-word");
+
+		first.destroy();
+
+		expect(styleStore.has("pie-highlight-styles")).toBe(true);
+		expect(highlights.get("tts-word")).toBe(replacementWordHighlight);
+		replacement.destroy();
+	});
+
 	test("registers strong adaptive TTS highlight rules", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();

@@ -13,6 +13,8 @@ pie/
 ├── scoring.ts        - Scoring and controller lookup
 ├── updates.ts        - Element update functions
 ├── initialization.ts - Bundle loading and element initialization
+├── initialize-element.ts - Binding one element to its model and session
+├── element-observer.ts   - Per-container binding of late-arriving elements
 ├── logger.ts         - Logging utility with debug/info/warn/error levels
 ├── index.ts          - Barrel re-export
 └── README.md         - This file
@@ -70,7 +72,9 @@ types.ts (no dependencies)
       ↑
       ├─ scoring.ts ← registry.ts, utils.ts
       ├─ updates.ts ← utils.ts, scoring.ts
-      └─ initialization.ts ← registry.ts, utils.ts, scoring.ts, updates.ts
+      ├─ initialize-element.ts ← registry.ts, utils.ts, scoring.ts
+      ├─ element-observer.ts ← registry.ts, initialize-element.ts
+      └─ initialization.ts ← registry.ts, utils.ts, updates.ts, initialize-element.ts
 ```
 
 **Design principle**: Unidirectional dependencies, no circular imports.
@@ -203,9 +207,17 @@ import { loadPieModule } from './initialization';
 
 await loadPieModule(config, session, {
   bundleType: BundleType.player,
-  env: { mode: 'gather', role: 'student' }
+  env: { mode: 'gather', role: 'student' },
+  // Optional. Deadline for the bundle `<script>` load; defaults to
+  // DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs. 0 disables it.
+  loadTimeoutMs: 120000
 });
 ```
+
+The returned promise rejects, naming the bundle URL, when the script fails to
+load, when the deadline elapses, when the script runs without populating
+`window.pie`, or when element registration throws. Handle it — an unhandled
+rejection is the only signal a host gets that its elements will never arrive.
 
 ### Load PIE Bundle from String
 
@@ -221,6 +233,27 @@ initializePiesFromLoadedBundle(config, session, {
   env: { mode: 'gather', role: 'student' }
 });
 ```
+
+### Bind Elements That Arrive Later
+
+The loaders bind what is in the container when they run. An element inserted
+afterwards — host markup appended into the container, or a PIE element painting
+nested PIE tags — is bound by an observer the container's owner holds and
+releases:
+
+```typescript
+import { observePieElements } from './element-observer';
+
+const release = observePieElements(container, () => ({ config, session, env }));
+// on teardown
+release();
+```
+
+The callback is read when an element arrives, not when the registration is
+made, so a caller that recomputes its session or env on render still binds a
+late element against current state. Several registrations may share one
+container — an item player registers its item config and its passage config —
+and each gets its own release.
 
 ### Update PIE Elements
 

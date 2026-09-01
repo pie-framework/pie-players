@@ -10,6 +10,19 @@ are final. A PRD owns the implementation decision: exact TypeScript names,
 exports, wire fields, migration behavior, host responsibilities, and acceptance
 tests.
 
+## What Earns A PRD
+
+A change needing an implementation-ready contract before code lands: a new public
+package export, custom element, event, property or wire field; a shared
+runtime, session, scoring, media, evidence or accessibility contract; behavior
+crossing package boundaries at the assessment, section, item, toolkit, tool,
+theme or adapter level; or a plan whose scope, ownership, compatibility and test
+expectations have to be settled first.
+
+Routine bug fixes, internal refactors with no contract change, docs-only edits,
+dependency bumps and release mechanics do not get a PRD. Unresolved gaps in a
+drafted PRD belong in **Open Questions** rather than holding up the document.
+
 ## Status Vocabulary
 
 Use one of these statuses at the top of each PRD:
@@ -95,3 +108,8 @@ would otherwise have to reconstruct — live in [`../adr/`](../adr/).
   PRD explicitly scopes and tests a concrete adapter.
 - Do not claim standards conformance until the adapter and its validation suite
   exist.
+- Fill every required template section; a section that does not apply says so
+  explicitly.
+- A contract sketch beats a long code snippet, and a link beats repeating
+  architecture background already under `Related architecture`. Resolved
+  questions are inlined into the section they settle, leaving no decision log.

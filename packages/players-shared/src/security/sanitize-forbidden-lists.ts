@@ -14,6 +14,15 @@ export const SANITIZER_FORBIDDEN_TAGS = [
 	"form",
 	"meta",
 	"link",
+	// A <style> element is a document-global stylesheet. The item player renders
+	// in light DOM (`shadow: "none"`), so a <style> in authored markup restyles
+	// host chrome outside the item. DOMPurify's defaults already drop a
+	// top-level HTML <style>; the SVG profile keeps one, whose rules apply
+	// document-wide all the same — verified in Chromium 2026-08-30, where
+	// `<svg><style>` passed this list and hid an element outside the player.
+	// `style` is in DOMPurify's default FORBID_CONTENTS, so the CSS text is
+	// dropped with the tag rather than surfacing as item text.
+	"style",
 	// <foreignObject> inside an <svg> is a well-known escape hatch back into
 	// HTML context.
 	"foreignobject",

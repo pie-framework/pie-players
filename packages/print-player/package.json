@@ -20,7 +20,7 @@
 	"scripts": {
 		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",
 		"dev": "bun x vite build --watch",
-		"test": "bun test '.test.ts'",
+		"test": "bun test",
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {
@@ -31,13 +31,13 @@
 		"lit": "^3.3.3"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^20.11.6",
+		"@happy-dom/global-registrator": "^20.11.15",
 		"@playwright/test": "^1.62.1",
-		"@types/node": "^26.2.0",
+		"@types/node": "^26.4.0",
 		"esbuild": "^0.28.2",
-		"svelte": "^5.56.10",
+		"svelte": "^5.57.0",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.1"
+		"vite": "^8.2.2"
 	},
 	"keywords": [
 		"pie",

@@ -17,9 +17,17 @@ test("shared calculator surfaces leave Svelte to the consuming wrapper", async (
 	const packageJson = await Bun.file(
 		new URL("../package.json", import.meta.url),
 	).json();
+	const publishPolicy = await Bun.file(
+		new URL("../../../scripts/publish-policy.json", import.meta.url),
+	).json();
 
 	// A precompiled shared component with its own Svelte runtime cannot attach
 	// effects beneath a custom-element wrapper compiled with another runtime.
 	expect(viteConfig).toContain('/^svelte(?:\\/.*)?$/');
-	expect(packageJson.dependencies?.svelte).toBe("^5.56.10");
+	// The range itself lives in scripts/publish-policy.json, which
+	// check:svelte-runtime-deps enforces across the workspace.
+	expect(publishPolicy.svelteRuntimeDependencyRange).toBeTruthy();
+	expect(packageJson.dependencies?.svelte).toBe(
+		publishPolicy.svelteRuntimeDependencyRange,
+	);
 });

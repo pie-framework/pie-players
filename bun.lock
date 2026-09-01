@@ -7,7 +7,7 @@
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "@sveltejs/kit": "^2.70.3",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "vite": "8.2.2",
       },
@@ -53,7 +53,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.4.0",
         "daisyui": "^5.7.22",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
         "typescript": "^5.9.3",
@@ -77,7 +77,7 @@
         "@types/bun": "^1.4.0",
         "@types/node": "^26.4.0",
         "daisyui": "^5.7.22",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
         "typescript": "^5.9.3",
@@ -88,7 +88,7 @@
       "name": "@pie-players/demo-ui",
       "version": "0.1.0",
       "dependencies": {
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
@@ -107,7 +107,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.4.0",
         "daisyui": "^5.7.22",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
         "typescript": "^5.9.3",
@@ -139,7 +139,7 @@
         "@types/bun": "^1.4.0",
         "@types/node": "^26.4.0",
         "daisyui": "^5.7.22",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
         "typescript": "^5.9.3",
@@ -151,7 +151,7 @@
       "version": "0.1.0",
       "dependencies": {
         "es-module-lexer": "^2.3.2",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
       },
       "devDependencies": {
         "@types/bun": "^1.4.0",
@@ -181,7 +181,7 @@
         "@sveltejs/kit": "^2.70.3",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@types/node": "^26.4.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -231,7 +231,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.4.0",
         "daisyui": "^5.7.22",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
         "typescript": "^5.9.3",
@@ -272,7 +272,7 @@
         "@pie-players/pie-calculator-desmos": "workspace:*",
         "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
@@ -309,7 +309,7 @@
         "@biomejs/biome": "^2.5.11",
         "@playwright/test": "^1.62.1",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -376,7 +376,7 @@
         "@playwright/test": "^1.62.1",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@types/node": "^26.4.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -406,7 +406,7 @@
         "@types/semver": "^7.8.0",
         "esbuild": "^0.28.2",
         "glob": "^13.0.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "typescript": "^5.9.3",
       },
     },
@@ -425,7 +425,7 @@
         "@playwright/test": "^1.62.1",
         "@types/node": "^26.4.0",
         "esbuild": "^0.28.2",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
       },
@@ -447,7 +447,7 @@
         "@playwright/test": "^1.62.1",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@types/node": "^26.4.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -466,7 +466,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -485,7 +485,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -504,7 +504,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -523,7 +523,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -540,7 +540,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -558,7 +558,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -584,7 +584,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -602,7 +602,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -619,7 +619,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -640,7 +640,7 @@
         "@biomejs/biome": "^2.5.11",
         "@pie-players/pie-calculator-desmos": "workspace:*",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -657,7 +657,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -675,7 +675,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -694,7 +694,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -712,7 +712,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -725,12 +725,12 @@
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -750,7 +750,7 @@
         "@biomejs/biome": "^2.5.11",
         "@happy-dom/global-registrator": "^20.11.15",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -766,7 +766,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
         "vite-plugin-dts": "^5.0.3",
@@ -783,7 +783,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -801,7 +801,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -819,7 +819,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -835,7 +835,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
         "vite-plugin-dts": "^5.0.3",
@@ -853,7 +853,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -872,7 +872,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -889,7 +889,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -906,7 +906,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -924,7 +924,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
-        "svelte": "^5.56.10",
+        "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.2.2",
@@ -2554,7 +2554,7 @@
 
     "supports-preserve-symlinks-flag": ["supports-preserve-symlinks-flag@1.0.0", "", {}, "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="],
 
-    "svelte": ["svelte@5.56.10", "", { "dependencies": { "@jridgewell/remapping": "^2.3.4", "@jridgewell/sourcemap-codec": "^1.5.0", "@sveltejs/acorn-typescript": "^1.0.10", "@types/estree": "^1.0.5", "@types/trusted-types": "^2.0.7", "acorn": "^8.12.1", "aria-query": "5.3.1", "axobject-query": "^4.1.0", "clsx": "^2.1.1", "devalue": "^5.8.1", "esm-env": "^1.2.1", "esrap": "^2.2.12", "is-reference": "^3.0.3", "locate-character": "^3.0.0", "magic-string": "^0.30.11", "zimmerframe": "^1.1.2" } }, "sha512-Lcxbj8I/KAbpY+VjtY4ENQBV0dDCipfGAhqb51XQZ67CIQqXgsv/8dPkbILaj4Fb6/b6JAEM/PIVbILXgDQy2g=="],
+    "svelte": ["svelte@5.57.0", "", { "dependencies": { "@jridgewell/remapping": "^2.3.4", "@jridgewell/sourcemap-codec": "^1.5.0", "@sveltejs/acorn-typescript": "^1.0.10", "@types/estree": "^1.0.5", "acorn": "^8.12.1", "aria-query": "5.3.1", "axobject-query": "^4.1.0", "clsx": "^2.1.1", "devalue": "^5.8.1", "esm-env": "^1.2.1", "esrap": "^2.2.12", "is-reference": "^3.0.3", "locate-character": "^3.0.0", "magic-string": "^0.30.11", "zimmerframe": "^1.1.2" } }, "sha512-NdbDn7fl4be1ViUG0oq/lvG6OZy3oENolV2ONjiqqsfVoeAfzaQAKUcEX3MrQod/Bebv1PgwET9rfXhgn9s4Kg=="],
 
     "svelte-check": ["svelte-check@4.7.6", "", { "dependencies": { "@jridgewell/trace-mapping": "^0.3.25", "@sveltejs/load-config": "^0.2.3", "chokidar": "^4.0.1", "fdir": "^6.2.0", "picocolors": "^1.0.0", "sade": "^1.7.4" }, "peerDependencies": { "svelte": "^4.0.0 || ^5.0.0-next.0", "typescript": "^5.0.0 || ^6.0.0" }, "bin": { "svelte-check": "bin/svelte-check" } }, "sha512-t2scM//ZuVbSY/T2w6FSBw1v9s2NEmh/g+sy1lqtosW5ylBV5AF4wFb1Ts9Kf3MbfPDUDJDZ9L436YT0SPTdvw=="],
 

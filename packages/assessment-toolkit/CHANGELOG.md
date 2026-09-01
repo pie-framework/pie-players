@@ -1,5 +1,72 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.70
+
+### Patch Changes
+
+- 599c657: Position frameless tool overlays against the content they are placed on.
+  
+  A frameless overlay was appended next to the toolbar buttons, so whichever
+  element happened to be positioned became its containing block. At `passage` and
+  `item` placement that is `pie-item-toolbar`, a header-sized box, and the line
+  reader's opening position — derived from the viewport — put the panel outside
+  the card. Auto-focus then scrolled the pane across to reveal it, taking the
+  passage off screen. At `section` placement no positioned ancestor exists, so the
+  same coordinates resolved against the initial containing block and looked right.
+  
+  `ToolRenderElement` gains `container`. A registration declaring
+  `container: 'content-boundary'` has its element appended to the nearest
+  `data-pie-tool-overlay-boundary` element — the box a host already marks as the
+  content a tool belongs to — and the section player's item and passage cards make
+  themselves the containing block for what lands there. The composition layer sets
+  it for frameless overlays, so the toolbar honours a declaration rather than
+  inferring intent from a tool's surface. A host declaring no boundary keeps the
+  previous in-toolbar mount, so section-level placement is unchanged.
+  
+  The line reader derives its opening position from that containing block instead
+  of the viewport, centring on the part of it currently on screen — the midpoint
+  of a card several screens tall is not visible. Position and width are clamped to
+  the containing block on open, on drag, on keyboard movement, on resize and on
+  window resize, and it focuses with `preventScroll` so revealing it cannot scroll
+  an ancestor pane.
+  
+  Ruler and protractor position by percentage, so they now self-centre in the card
+  they are placed on rather than in whatever box was positioned above it.
+- e3169f8: Make toolkit coordinator teardown explicit and race-safe.
+  
+  `disposeSectionController` now relinquishes a controller before awaiting its
+  persistence, so a section reacquired during a delayed teardown receives a fresh
+  controller, waits for that cohort's persisted state before hydrating it, and
+  cannot be deleted by the old finalizer. The new
+  idempotent `ToolkitCoordinator.dispose()` releases coordinator-owned controllers,
+  providers, highlights, subscriptions, and policy state while leaving
+  host-supplied registries and error buses under host ownership. Toolkit custom
+  elements call it only for coordinators they created themselves. Teardown waits
+  for controller, coordinator, provider, and TTS initialization already in flight,
+  suppresses late ready notifications, and rejects late acquisitions instead of
+  returning disposed handles. Reactive initialization retired by a rerun or
+  unmount is treated as cancellation rather than a framework runtime error.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [d4d0c39]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/tts-client-server@0.3.70
+  - @pie-players/pie-calculator@0.3.70
+  - @pie-players/pie-calculator-cortex@0.3.70
+  - @pie-players/pie-calculator-desmos@0.3.70
+  - @pie-players/pie-calculator-geogebra@0.3.70
+  - @pie-players/pie-context@0.3.70
+  - @pie-players/pie-tts@0.3.70
+
 ## 0.3.69
 
 ### Patch Changes

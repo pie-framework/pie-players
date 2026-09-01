@@ -39,7 +39,7 @@
 	},
 	"dependencies": {
 		"@pie-players/tts-server-core": "workspace:*",
-		"jose": "^6.2.8",
+		"jose": "^6.2.10",
 		"tldts": "^7.4.10"
 	},
 	"devDependencies": {

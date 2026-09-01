@@ -188,7 +188,7 @@
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@sveltejs/kit": "^2.70.3",
-		"svelte": "^5.56.10",
+		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"vite": "8.2.2"
 	}

@@ -39,7 +39,7 @@
 	},
 	"dependencies": {
 		"es-module-lexer": "^2.3.2",
-		"svelte": "^5.56.10"
+		"svelte": "^5.57.0"
 	},
 	"peerDependencies": {
 		"vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",

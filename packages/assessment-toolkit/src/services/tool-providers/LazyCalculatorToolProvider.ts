@@ -16,7 +16,7 @@ type InitializableCalculatorProvider<TConfig> = CalculatorProvider & {
 	initialize(config: TConfig): Promise<void>;
 };
 
-interface LazyCalculatorProviderDefinition<TConfig> {
+export interface LazyCalculatorProviderDefinition<TConfig> {
 	backend: string;
 	moduleImportOperation: string;
 	loadProvider: () => Promise<

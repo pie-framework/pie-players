@@ -187,4 +187,9 @@ export class ToolRequestRegistry {
 			}
 		}
 	}
+
+	dispose(): void {
+		this.targets.clear();
+		this.changeListeners.clear();
+	}
 }

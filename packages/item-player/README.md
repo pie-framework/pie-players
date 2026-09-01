@@ -15,7 +15,7 @@ bun add @pie-players/pie-item-player
 Or load from a CDN:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
 ```
 
 The script self-registers the `<pie-item-player>` custom element.

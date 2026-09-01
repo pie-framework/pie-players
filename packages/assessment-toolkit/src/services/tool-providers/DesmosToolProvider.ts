@@ -1,7 +1,10 @@
 /** Desmos calculator adapter for the generic tool-provider registry. */
 
 import type { CalculatorProviderInit } from "@pie-players/pie-calculator";
-import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
+import {
+	LazyCalculatorToolProvider,
+	type LazyCalculatorProviderDefinition,
+} from "./LazyCalculatorToolProvider.js";
 import type { ToolProviderCapabilities } from "./ToolProviderApi.js";
 
 /** Provider initialization is the provider-neutral calculator contract. */
@@ -13,7 +16,7 @@ export class DesmosToolProvider extends LazyCalculatorToolProvider<DesmosToolPro
 	readonly version = "1.12";
 	readonly requiresAuth = true;
 
-	protected getDefinition() {
+	protected getDefinition(): LazyCalculatorProviderDefinition<DesmosToolProviderConfig> {
 		return {
 			backend: "desmos",
 			moduleImportOperation: "desmos-provider-module-import",

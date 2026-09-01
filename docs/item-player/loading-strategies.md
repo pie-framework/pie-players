@@ -11,7 +11,7 @@
 ## Standalone usage
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
 
 <pie-item-player
   strategy="iife"

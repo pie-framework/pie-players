@@ -241,6 +241,75 @@ try {
 	}
 };
 
+const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
+	for (const specifier of optionalPeers) {
+		rmSync(path.join(fixtureDir, "node_modules", ...specifier.split("/")), {
+			recursive: true,
+			force: true,
+		});
+	}
+
+	writeFileSync(
+		path.join(fixtureDir, "index.ts"),
+		`import type {
+	CortexToolProvider,
+	DesmosToolProvider,
+	GeoGebraToolProvider,
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+
+export type CalculatorToolProviders = [
+	CortexToolProvider,
+	DesmosToolProvider,
+	GeoGebraToolProvider,
+];
+`,
+	);
+	writeFileSync(
+		path.join(fixtureDir, "tsconfig.json"),
+		`${JSON.stringify(
+			{
+				compilerOptions: {
+					lib: ["ES2022", "DOM", "DOM.Iterable"],
+					module: "NodeNext",
+					moduleResolution: "NodeNext",
+					noEmit: true,
+					skipLibCheck: false,
+					strict: true,
+					target: "ES2022",
+					types: [],
+				},
+				include: ["index.ts"],
+			},
+			null,
+			2,
+		)}\n`,
+	);
+
+	try {
+		execFileSync(
+			path.join(ROOT, "node_modules", ".bin", "tsc"),
+			["-p", "tsconfig.json"],
+			{
+				cwd: fixtureDir,
+				stdio: ["ignore", "pipe", "pipe"],
+			},
+		);
+		return { ok: true, message: "" };
+	} catch (error) {
+		return {
+			ok: false,
+			message: [
+				error?.stderr?.toString(),
+				error?.stdout?.toString(),
+				error?.message,
+			]
+				.filter(Boolean)
+				.join("\n")
+				.trim(),
+		};
+	}
+};
+
 const run = async () => {
 	const packageMap = workspacePackageMap();
 	const failures = [];
@@ -333,6 +402,24 @@ const run = async () => {
 					`[node-consumer] ${specifier} failed with unexpected Node error from node_modules: ${result.message}`,
 				);
 			}
+		}
+
+		const toolkitPackageName = "@pie-players/pie-assessment-toolkit";
+		const toolkitPackage = packageMap.get(toolkitPackageName)?.pkg;
+		const optionalToolkitPeers = Object.keys(
+			toolkitPackage?.peerDependenciesMeta || {},
+		).filter(
+			(peerName) =>
+				toolkitPackage.peerDependenciesMeta[peerName]?.optional === true,
+		);
+		const typecheckResult = typecheckToolkitWithoutOptionalPeers(
+			fixtureDir,
+			optionalToolkitPeers,
+		);
+		if (!typecheckResult.ok) {
+			failures.push(
+				`[node-consumer] ${toolkitPackageName}/tools/internal failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
+			);
 		}
 	} catch (error) {
 		failures.push(

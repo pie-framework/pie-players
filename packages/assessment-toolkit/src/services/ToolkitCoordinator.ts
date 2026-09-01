@@ -115,6 +115,20 @@ export type {
 	ToolPolicyDecisionRequest,
 } from "../policy/engine.js";
 
+class ToolkitCoordinatorDisposedError extends Error {
+	constructor() {
+		super("ToolkitCoordinator has been disposed.");
+		this.name = "ToolkitCoordinatorDisposedError";
+	}
+}
+
+class SectionControllerRetiredError extends Error {
+	constructor() {
+		super("Section controller acquisition was retired during initialization.");
+		this.name = "SectionControllerRetiredError";
+	}
+}
+
 /**
  * Generic tool configuration
  */
@@ -337,6 +351,25 @@ interface ActiveSectionSubscription {
 	 * on every detach so subsequent re-binds start from a clean slate.
 	 */
 	unsubscribeCurrent: (() => void) | null;
+}
+
+interface SectionControllerInitToken {
+	retired: boolean;
+	candidateClaimed: boolean;
+}
+
+interface SectionControllerInitEntry {
+	key: SectionControllerKey;
+	token: SectionControllerInitToken;
+	promise: Promise<SectionControllerHandle>;
+}
+
+interface SectionControllerCandidate {
+	mapKey: string;
+	key: SectionControllerKey;
+	controller: SectionControllerHandle;
+	persistence: SectionSessionPersistenceStrategy;
+	token: SectionControllerInitToken;
 }
 
 export type SectionItemEventType = Exclude<
@@ -587,9 +620,13 @@ export class ToolkitCoordinator {
 		string,
 		SectionControllerKey
 	>();
-	private readonly sectionControllerInitPromises = new Map<
+	private readonly sectionControllerInitEntries = new Map<
 		string,
-		Promise<SectionControllerHandle>
+		SectionControllerInitEntry
+	>();
+	private readonly sectionControllerDisposePromises = new Map<
+		string,
+		Promise<void>
 	>();
 	private readonly sectionPersistenceStrategies = new Map<
 		string,
@@ -631,15 +668,11 @@ export class ToolkitCoordinator {
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
 	private readonly frameworkErrorBus: FrameworkErrorBus;
 	private readonly ownsFrameworkErrorBus: boolean;
+	private frameworkErrorHookUnsubscribe: (() => void) | null = null;
+	private disposePromise: Promise<void> | null = null;
 
 	/**
-	 * Unified Tool Policy Engine. Owned by the coordinator and lives
-	 * for the lifetime of the coordinator instance — there is no
-	 * explicit teardown path today; the engine and its listener set
-	 * are reclaimed by GC when the coordinator becomes unreachable.
-	 * Subscribers attached via {@link onPolicyChange} must therefore
-	 * detach via the unsubscribe function the engine returns; do not
-	 * rely on a `disposed` event being emitted on coordinator teardown.
+	 * Unified Tool Policy Engine. Owned by the coordinator and disposed with it.
 	 *
 	 * Hosts read decisions via {@link decideToolPolicy} or subscribe
 	 * to changes via {@link onPolicyChange}.
@@ -800,9 +833,16 @@ export class ToolkitCoordinator {
 
 		if (!this.lazyInit) {
 			void this.waitUntilReady().catch((err) => {
+				if (err instanceof ToolkitCoordinatorDisposedError) return;
 				console.error("[ToolkitCoordinator] Failed eager initialization:", err);
 				this.handleError(err, { phase: "coordinator-ready" });
 			});
+		}
+	}
+
+	private assertNotDisposed(): void {
+		if (this.disposePromise !== null) {
+			throw new ToolkitCoordinatorDisposedError();
 		}
 	}
 
@@ -815,18 +855,19 @@ export class ToolkitCoordinator {
 	 * is picked up automatically without re-subscribing.
 	 */
 	private subscribeFrameworkErrorHookAdapters(): void {
-		this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
-			const hook = this.hooks.onFrameworkError;
-			if (!hook) return;
-			try {
-				hook(model);
-			} catch (hookError) {
-				console.warn(
-					"[ToolkitCoordinator] onFrameworkError hook failed:",
-					hookError,
-				);
-			}
-		});
+		this.frameworkErrorHookUnsubscribe =
+			this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
+				const hook = this.hooks.onFrameworkError;
+				if (!hook) return;
+				try {
+					hook(model);
+				} catch (hookError) {
+					console.warn(
+						"[ToolkitCoordinator] onFrameworkError hook failed:",
+						hookError,
+					);
+				}
+			});
 	}
 
 	/**
@@ -1005,6 +1046,7 @@ export class ToolkitCoordinator {
 			}
 			try {
 				const state = await loader();
+				this.assertNotDisposed();
 				if (state && typeof state === "object") {
 					this.elementToolStateStore.loadState(state);
 				}
@@ -1013,6 +1055,7 @@ export class ToolkitCoordinator {
 					hasState: Boolean(state),
 				});
 			} catch (err) {
+				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
 				this.handleError(err, { phase: "state-load" });
 			}
 		})().finally(() => {
@@ -1145,6 +1188,7 @@ export class ToolkitCoordinator {
 	public async ensureProviderReady(
 		providerId: string,
 	): Promise<ToolProviderApi> {
+		this.assertNotDisposed();
 		const existing = this.providerInitPromises.get(providerId);
 		if (existing) return existing;
 		const promise = (async () => {
@@ -1152,17 +1196,23 @@ export class ToolkitCoordinator {
 				providerId,
 				false,
 			);
+			this.assertNotDisposed();
 			const meta: ProviderLifecycleContext = {
 				providerId,
 				providerName: provider.providerName,
 			};
 			try {
 				await this.hooks.onProviderInitStart?.(providerId, meta);
+				this.assertNotDisposed();
 				await this.toolProviderRegistry.initialize(providerId);
+				this.assertNotDisposed();
 				await this.hooks.onProviderReady?.(providerId, meta);
+				this.assertNotDisposed();
 				await this.emitTelemetry("pie-toolkit-provider-ready", { providerId });
+				this.assertNotDisposed();
 				return provider;
 			} catch (err) {
+				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
 				const error = err instanceof Error ? err : new Error(String(err));
 				this.handleError(error, { phase: "provider-init", providerId });
 				throw error;
@@ -1178,7 +1228,11 @@ export class ToolkitCoordinator {
 		Object.assign(this.hooks, hooks);
 		this.setupStatePersistenceHooks();
 
-		if (hooks.onCoordinatorReady && this.isReady()) {
+		if (
+			this.disposePromise === null &&
+			hooks.onCoordinatorReady &&
+			this.isReady()
+		) {
 			void Promise.resolve(hooks.onCoordinatorReady(this)).catch((err) => {
 				this.handleError(err, { phase: "coordinator-ready" });
 			});
@@ -1543,6 +1597,9 @@ export class ToolkitCoordinator {
 			| SectionControllerHandle
 			| Promise<SectionControllerHandle>;
 	}): Promise<SectionControllerHandle> {
+		if (this.disposePromise !== null) {
+			throw new ToolkitCoordinatorDisposedError();
+		}
 		const key: SectionControllerKey = {
 			assessmentId: this.assessmentId,
 			sectionId: args.sectionId,
@@ -1557,25 +1614,52 @@ export class ToolkitCoordinator {
 			input: args.input,
 			updateExisting: args.updateExisting,
 		});
-		if (existingController) return existingController;
+		if (existingController) {
+			if (this.disposePromise !== null) {
+				throw new ToolkitCoordinatorDisposedError();
+			}
+			return existingController;
+		}
+		const pendingDisposal = this.sectionControllerDisposePromises.get(mapKey);
+		if (pendingDisposal) {
+			// Persistence and hydration share the cohort's durable state. Keep the
+			// retired controller out of the cache immediately, but do not let its
+			// replacement hydrate until that exact cohort's save/dispose pipeline has
+			// settled. Other cohorts remain independent.
+			await Promise.allSettled([pendingDisposal]);
+		}
+		if (this.disposePromise !== null) {
+			throw new ToolkitCoordinatorDisposedError();
+		}
 
-		const existingPromise = this.sectionControllerInitPromises.get(mapKey);
-		if (existingPromise) return existingPromise;
+		const existingEntry = this.sectionControllerInitEntries.get(mapKey);
+		if (existingEntry) return existingEntry.promise;
 
+		const token: SectionControllerInitToken = {
+			retired: false,
+			candidateClaimed: false,
+		};
 		const initPromise = this.initializeNewSectionController({
 			args,
 			key,
 			mapKey,
+			token,
 		})
 			.catch((err) => {
 				this.handleSectionControllerInitError(err, args);
 				throw err;
 			})
 			.finally(() => {
-				this.sectionControllerInitPromises.delete(mapKey);
+				if (this.sectionControllerInitEntries.get(mapKey)?.token === token) {
+					this.sectionControllerInitEntries.delete(mapKey);
+				}
 			});
 
-		this.sectionControllerInitPromises.set(mapKey, initPromise);
+		this.sectionControllerInitEntries.set(mapKey, {
+			key,
+			token,
+			promise: initPromise,
+		});
 		return initPromise;
 	}
 
@@ -1593,6 +1677,11 @@ export class ToolkitCoordinator {
 			// input refresh; updateInput should rebuild composition/runtime view
 			// without resetting responses.
 			await existingController.updateInput?.(args.input);
+		}
+		// `updateInput` may yield to a teardown. Never hand a controller back
+		// after its exact cache entry has been removed or replaced.
+		if (this.sectionControllers.get(args.mapKey) !== existingController) {
+			return undefined;
 		}
 		// PIE-512 Phase D: a `getOrCreateSectionController` call that
 		// resolves to a previously-created controller still represents a
@@ -1627,41 +1716,115 @@ export class ToolkitCoordinator {
 		};
 		key: SectionControllerKey;
 		mapKey: string;
+		token: SectionControllerInitToken;
 	}): Promise<SectionControllerHandle> {
 		const context = this.createSectionControllerContext({
 			key: args.key,
 			input: args.args.input,
 		});
 		const persistence = await this.resolveSectionPersistence(context);
+		if (this.disposePromise !== null || args.token.retired) {
+			if (this.sectionPersistenceStrategies.get(args.mapKey) === persistence) {
+				this.sectionPersistenceStrategies.delete(args.mapKey);
+			}
+			throw this.createSectionControllerRetirementError();
+		}
 		const defaults: SectionControllerFactoryDefaults = {
 			createDefaultController: args.args.createDefaultController,
 		};
 		const controller =
 			(await this.hooks.createSectionController?.(context, defaults)) ??
 			(await defaults.createDefaultController());
-		await controller.configureSessionPersistence?.({
-			strategy: persistence,
-			context,
-		});
-		await controller.initialize?.(args.args.input);
-		await controller.hydrate?.();
-		await this.finalizeSectionControllerReady({
+		const candidate = {
 			mapKey: args.mapKey,
 			key: args.key,
-			context,
 			controller,
-		});
-		return controller;
+			persistence,
+			token: args.token,
+		};
+		try {
+			await this.retireUnpublishedSectionControllerIfNeeded(candidate);
+			await controller.configureSessionPersistence?.({
+				strategy: persistence,
+				context,
+			});
+			await this.retireUnpublishedSectionControllerIfNeeded(candidate);
+			await controller.initialize?.(args.args.input);
+			await this.retireUnpublishedSectionControllerIfNeeded(candidate);
+			await controller.hydrate?.();
+			await this.finalizeSectionControllerReady({
+				...candidate,
+				context,
+			});
+			return controller;
+		} catch (error) {
+			await this.cleanupUnpublishedSectionController(candidate);
+			throw error;
+		}
 	}
 
-	private async finalizeSectionControllerReady(args: {
-		mapKey: string;
+	private createSectionControllerRetirementError(): Error {
+		return this.disposePromise !== null
+			? new ToolkitCoordinatorDisposedError()
+			: new SectionControllerRetiredError();
+	}
+
+	private async retireUnpublishedSectionControllerIfNeeded(
+		args: SectionControllerCandidate,
+	): Promise<void> {
+		if (this.disposePromise === null && !args.token.retired) return;
+		await this.cleanupUnpublishedSectionController(args);
+		throw this.createSectionControllerRetirementError();
+	}
+
+	private async cleanupUnpublishedSectionController(
+		args: SectionControllerCandidate,
+	): Promise<void> {
+		if (args.token.candidateClaimed) return;
+		args.token.candidateClaimed = true;
+		try {
+			await args.controller.dispose?.();
+		} catch (error) {
+			this.handleError(error, {
+				phase: "section-controller-dispose",
+				details: {
+					sectionId: args.key.sectionId,
+					attemptId: args.key.attemptId,
+				},
+			});
+		} finally {
+			if (
+				this.sectionPersistenceStrategies.get(args.mapKey) === args.persistence
+			) {
+				this.sectionPersistenceStrategies.delete(args.mapKey);
+			}
+		}
+	}
+
+	private retirePublishedSectionControllerIfNeeded(args: {
 		key: SectionControllerKey;
-		context: SectionControllerContext;
-		controller: SectionControllerHandle;
-	}): Promise<void> {
+		token: SectionControllerInitToken;
+	}): void {
+		if (this.disposePromise !== null && !args.token.retired) {
+			void this.disposeSectionController({
+				sectionId: args.key.sectionId,
+				attemptId: args.key.attemptId,
+			});
+		}
+		if (args.token.retired) {
+			throw this.createSectionControllerRetirementError();
+		}
+	}
+
+	private async finalizeSectionControllerReady(
+		args: SectionControllerCandidate & {
+			context: SectionControllerContext;
+		},
+	): Promise<void> {
+		await this.retireUnpublishedSectionControllerIfNeeded(args);
 		this.sectionControllers.set(args.mapKey, args.controller);
 		this.sectionControllerKeys.set(args.mapKey, args.key);
+		args.token.candidateClaimed = true;
 		// PIE-512 Phase D: a freshly-resolved controller becomes the
 		// active cohort. Active subscriptions migrate to it before the
 		// `ready` lifecycle event and `onSectionControllerReady` hook
@@ -1674,17 +1837,25 @@ export class ToolkitCoordinator {
 			controller: args.controller,
 		});
 		await this.hooks.onSectionControllerReady?.(args.context, args.controller);
+		this.retirePublishedSectionControllerIfNeeded(args);
 		await this.emitTelemetry("pie-toolkit-section-controller-ready", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
 			attemptId: args.key.attemptId,
 		});
+		this.retirePublishedSectionControllerIfNeeded(args);
 	}
 
 	private handleSectionControllerInitError(
 		err: unknown,
 		args: { sectionId: string; attemptId?: string },
 	): void {
+		if (
+			err instanceof ToolkitCoordinatorDisposedError ||
+			err instanceof SectionControllerRetiredError
+		) {
+			return;
+		}
 		this.handleError(err, {
 			phase: "section-controller-init",
 			details: {
@@ -1694,7 +1865,7 @@ export class ToolkitCoordinator {
 		});
 	}
 
-	public async disposeSectionController(args: {
+	public disposeSectionController(args: {
 		sectionId: string;
 		attemptId?: string;
 		persistBeforeDispose?: boolean;
@@ -1706,41 +1877,111 @@ export class ToolkitCoordinator {
 			attemptId: args.attemptId,
 		};
 		const mapKey = this.getSectionControllerMapKey(key);
+		const initEntry = this.sectionControllerInitEntries.get(mapKey);
+		if (initEntry) {
+			initEntry.token.retired = true;
+		}
 		const controller = this.sectionControllers.get(mapKey);
-		if (!controller) return;
+		if (!controller) {
+			const existingDisposal =
+				this.sectionControllerDisposePromises.get(mapKey);
+			if (existingDisposal) return existingDisposal;
+			if (!initEntry) return Promise.resolve();
+			const retirementBarrier = Promise.allSettled([initEntry.promise]).then(
+				() => undefined,
+			);
+			return this.trackSectionControllerDisposal(mapKey, retirementBarrier);
+		}
+		const persistenceStrategy = this.sectionPersistenceStrategies.get(mapKey);
 		// PIE-512 Phase D: if the disposing cohort is the active one,
 		// detach all listener-controller bindings before the controller
 		// itself disposes. The subscription registry stays intact so a
 		// later `getOrCreateSectionController(...)` re-binds the same
 		// listeners to the new controller.
 		this.clearActiveCohortIfMatches(mapKey);
+		// Relinquish this exact controller before the first asynchronous step.
+		// A new mount for the same cohort must create a fresh controller rather
+		// than reacquire the one whose persistence/disposal is still in flight.
+		if (this.sectionControllers.get(mapKey) === controller) {
+			this.sectionControllers.delete(mapKey);
+			this.sectionControllerKeys.delete(mapKey);
+			this.sectionPersistenceStrategies.delete(mapKey);
+			// Lifecycle consumers match by cohort key rather than controller identity.
+			// Publish retirement now so a replacement can only produce
+			// disposed -> ready, never ready -> stale disposed.
+			this.emitSectionControllerLifecycle({
+				type: "disposed",
+				key,
+			});
+		}
 
 		const context = this.createSectionControllerContext({
 			key,
 			input: undefined,
 		});
+		const controllerDisposalPromise = this.disposeSectionControllerEntry({
+			args,
+			key,
+			context,
+			controller,
+			persistenceStrategy,
+		});
+		const disposalBarrier = initEntry
+			? Promise.allSettled([initEntry.promise]).then(
+					() => controllerDisposalPromise,
+				)
+			: controllerDisposalPromise;
+		return this.trackSectionControllerDisposal(mapKey, disposalBarrier);
+	}
 
+	private trackSectionControllerDisposal(
+		mapKey: string,
+		disposePromise: Promise<void>,
+	): Promise<void> {
+		this.sectionControllerDisposePromises.set(mapKey, disposePromise);
+		const forgetDisposePromise = () => {
+			if (
+				this.sectionControllerDisposePromises.get(mapKey) === disposePromise
+			) {
+				this.sectionControllerDisposePromises.delete(mapKey);
+			}
+		};
+		void disposePromise.then(forgetDisposePromise, forgetDisposePromise);
+		return disposePromise;
+	}
+
+	private async disposeSectionControllerEntry(args: {
+		args: {
+			sectionId: string;
+			attemptId?: string;
+			persistBeforeDispose?: boolean;
+			clearPersistence?: boolean;
+		};
+		key: SectionControllerKey;
+		context: SectionControllerContext;
+		controller: SectionControllerHandle;
+		persistenceStrategy?: SectionSessionPersistenceStrategy;
+	}): Promise<void> {
 		try {
 			await this.runSectionControllerDisposePipeline({
-				key,
-				context,
-				controller,
-				persistBeforeDispose: args.persistBeforeDispose,
+				key: args.key,
+				context: args.context,
+				controller: args.controller,
+				persistBeforeDispose: args.args.persistBeforeDispose,
 			});
 		} catch (err) {
 			this.handleError(err, {
 				phase: "section-controller-dispose",
 				details: {
-					sectionId: args.sectionId,
-					attemptId: args.attemptId,
+					sectionId: args.args.sectionId,
+					attemptId: args.args.attemptId,
 				},
 			});
 		} finally {
 			await this.finalizeSectionControllerDispose({
-				mapKey,
-				key,
-				context,
-				clearPersistence: args.clearPersistence,
+				context: args.context,
+				persistenceStrategy: args.persistenceStrategy,
+				clearPersistence: args.args.clearPersistence,
 			});
 		}
 	}
@@ -1751,10 +1992,26 @@ export class ToolkitCoordinator {
 		controller: SectionControllerHandle;
 		persistBeforeDispose?: boolean;
 	}): Promise<void> {
+		const failures: unknown[] = [];
 		if (args.persistBeforeDispose !== false) {
-			await args.controller.persist?.();
+			try {
+				await args.controller.persist?.();
+			} catch (error) {
+				failures.push(error);
+			}
 		}
-		await args.controller.dispose?.();
+		try {
+			await args.controller.dispose?.();
+		} catch (error) {
+			failures.push(error);
+		}
+		if (failures.length === 1) throw failures[0];
+		if (failures.length > 1) {
+			throw new AggregateError(
+				failures,
+				"Section controller persistence and disposal both failed.",
+			);
+		}
 		await this.hooks.onSectionControllerDispose?.(
 			args.context,
 			args.controller,
@@ -1767,34 +2024,136 @@ export class ToolkitCoordinator {
 	}
 
 	private async finalizeSectionControllerDispose(args: {
-		mapKey: string;
-		key: SectionControllerKey;
 		context: SectionControllerContext;
+		persistenceStrategy?: SectionSessionPersistenceStrategy;
 		clearPersistence?: boolean;
 	}): Promise<void> {
-		this.sectionControllers.delete(args.mapKey);
-		this.sectionControllerKeys.delete(args.mapKey);
-		this.emitSectionControllerLifecycle({
-			type: "disposed",
-			key: args.key,
-		});
 		if (args.clearPersistence) {
-			const strategy = this.sectionPersistenceStrategies.get(args.mapKey);
-			await strategy?.clearSession?.(args.context);
+			await args.persistenceStrategy?.clearSession?.(args.context);
 		}
-		this.sectionPersistenceStrategies.delete(args.mapKey);
+	}
+
+	/**
+	 * Release every resource whose lifetime is owned by this coordinator.
+	 * Borrowed constructor inputs, including a host framework-error bus and tool
+	 * registry, remain owned by their caller.
+	 */
+	public dispose(): Promise<void> {
+		if (this.disposePromise) return this.disposePromise;
+		// Defer cleanup until after this promise is assigned. The promise itself is
+		// the single lifetime flag observed by every admission guard.
+		this.disposePromise = Promise.resolve().then(() =>
+			this.disposeOwnedResources(),
+		);
+		return this.disposePromise;
+	}
+
+	private async disposeOwnedResources(): Promise<void> {
+		const errors: unknown[] = [];
+		const cleanup = async (action: () => void | Promise<void>) => {
+			try {
+				await action();
+			} catch (error) {
+				errors.push(error);
+			}
+		};
+
+		// Work admitted before `dispose()` may still be inside a host hook or a
+		// provider/service initializer. Let it observe the disposal promise and
+		// settle before destroying the owned registries and services it is using.
+		await this.waitForAdmittedInitialization();
+
+		// Retire every admitted section initialization before waiting. A section
+		// with no cached controller still gets a per-key barrier; a controller that
+		// reached `ready` while its init hook was pending is removed and disposed by
+		// the same path as any other cached controller.
+		const sectionKeys = new Map<string, SectionControllerKey>();
+		for (const [mapKey, entry] of this.sectionControllerInitEntries) {
+			sectionKeys.set(mapKey, entry.key);
+		}
+		for (const [mapKey, key] of this.sectionControllerKeys) {
+			sectionKeys.set(mapKey, key);
+		}
+		for (const key of sectionKeys.values()) {
+			void this.disposeSectionController({
+				sectionId: key.sectionId,
+				attemptId: key.attemptId,
+			});
+		}
+		await Promise.allSettled(
+			Array.from(this.sectionControllerDisposePromises.values()),
+		);
+		this.sectionControllers.clear();
+		this.sectionControllerKeys.clear();
+		this.sectionControllerInitEntries.clear();
+		this.sectionPersistenceStrategies.clear();
+
+		for (const subscription of this.activeSubscriptions.values()) {
+			await cleanup(() => subscription.unsubscribeCurrent?.());
+			subscription.unsubscribeCurrent = null;
+		}
+		this.activeSubscriptions.clear();
+		this.activeCohortMapKey = null;
+		this.latestRequestedActiveCohortMapKey = null;
+
+		await cleanup(() => this.ttsService.stop());
+		await cleanup(() => this.toolProviderRegistry.destroy());
+		await cleanup(() => this.highlightCoordinator.destroy());
+		for (const toolId of this.toolCoordinator.getRegisteredTools()) {
+			await cleanup(() => this.toolCoordinator.releaseTool(toolId));
+		}
+		await cleanup(() => this.catalogResolver.destroy());
+		await cleanup(() => this.toolRequests.dispose());
+		await cleanup(() => this.policyEngine.dispose());
+
+		this.toolContextResolvers.clear();
+		this.toolContextResolverChangeListeners.clear();
+		this.sectionControllerLifecycleListeners.clear();
+		this.telemetryListeners.clear();
+		this.frameworkErrorHookUnsubscribe?.();
+		this.frameworkErrorHookUnsubscribe = null;
+		if (this.ownsFrameworkErrorBus) {
+			this.frameworkErrorBus.dispose();
+		}
+
+		if (errors.length === 1) throw errors[0];
+		if (errors.length > 1) {
+			throw new AggregateError(
+				errors,
+				"ToolkitCoordinator cleanup failed for multiple owned resources.",
+			);
+		}
+	}
+
+	private async waitForAdmittedInitialization(): Promise<void> {
+		const pending = new Set<Promise<unknown>>();
+		if (this.coordinatorReadyPromise) {
+			pending.add(this.coordinatorReadyPromise);
+		}
+		if (this.ttsInitPromise) pending.add(this.ttsInitPromise);
+		if (this.ttsReconfigurePromise) {
+			pending.add(this.ttsReconfigurePromise);
+		}
+		for (const promise of this.providerInitPromises.values()) {
+			pending.add(promise);
+		}
+		await Promise.allSettled(pending);
 	}
 
 	/**
 	 * Initialize TTS service with provider
 	 */
 	public async ensureTTSReady(config?: TTSToolConfig): Promise<void> {
+		this.assertNotDisposed();
 		await this.waitForPendingTTSReconfigure();
+		this.assertNotDisposed();
 		if (this.ttsInitialized) return;
 		if (this.ttsInitPromise) return this.ttsInitPromise;
-		this.ttsInitPromise = this._initializeTTS(config).finally(() => {
-			this.ttsInitPromise = undefined;
-		});
+		this.ttsInitPromise = this._initializeTTS(config)
+			.then(() => this.assertNotDisposed())
+			.finally(() => {
+				this.ttsInitPromise = undefined;
+			});
 		return this.ttsInitPromise;
 	}
 
@@ -1818,6 +2177,7 @@ export class ToolkitCoordinator {
 				backend: resolvedBackend,
 			},
 		});
+		this.assertNotDisposed();
 		await this.emitTelemetry("pie-toolkit-tts-init-start", {
 			backend: resolvedBackend,
 		});
@@ -1847,6 +2207,7 @@ export class ToolkitCoordinator {
 				);
 				return;
 			} catch (error) {
+				if (error instanceof ToolkitCoordinatorDisposedError) throw error;
 				const normalized =
 					error instanceof Error ? error : new Error(String(error));
 				await this.emitTelemetry("pie-tool-init-error", {
@@ -1888,6 +2249,7 @@ export class ToolkitCoordinator {
 				provider: "browser-fallback",
 			});
 		} catch (error) {
+			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
 			const normalized =
 				error instanceof Error ? error : new Error(String(error));
 			this.handleError(normalized, { phase: "tts-init" });
@@ -1931,9 +2293,11 @@ export class ToolkitCoordinator {
 		} as Partial<TTSConfig>;
 		await this.ttsService.initialize(provider, nextConfig);
 		await this.ensureBrowserVoicesReady(provider);
+		this.assertNotDisposed();
 		this.ttsService.setCatalogResolver(this.catalogResolver);
 		this.ttsInitialized = true;
 		await this.hooks.onTTSReady?.();
+		this.assertNotDisposed();
 	}
 
 	private async ensureBrowserVoicesReady(
@@ -2021,17 +2385,21 @@ export class ToolkitCoordinator {
 	}
 
 	async waitUntilReady(): Promise<void> {
+		this.assertNotDisposed();
 		if (this.isReady()) return;
 		if (this.coordinatorReadyPromise) return this.coordinatorReadyPromise;
 		this.coordinatorReadyPromise = (async () => {
 			await this.ensureStateLoaded();
+			this.assertNotDisposed();
 			const ttsConfig = this.getTTSConfigFromProviders();
 			if (ttsConfig?.enabled !== false) {
 				await this.ensureTTSReady(ttsConfig);
 			}
+			this.assertNotDisposed();
 			if (!this.coordinatorReadyNotified) {
 				this.coordinatorReadyNotified = true;
 				await this.hooks.onCoordinatorReady?.(this);
+				this.assertNotDisposed();
 				await this.emitTelemetry("pie-toolkit-coordinator-ready", {
 					assessmentId: this.assessmentId,
 				});
@@ -2318,11 +2686,9 @@ export class ToolkitCoordinator {
 	 * that want the new visible tool set should call
 	 * {@link decideToolPolicy} with their level / scope.
 	 *
-	 * Note: the engine itself can also emit `reason: "disposed"`, but
-	 * the coordinator does not dispose its engine on teardown today,
-	 * so subscribers attached via this method will not observe that
-	 * reason. Detach via the returned unsubscribe function instead of
-	 * relying on a `disposed` event.
+	 * The owned engine emits `reason: "disposed"` during coordinator teardown.
+	 * Callers should still detach through the returned unsubscribe function when
+	 * their own lifetime ends before the coordinator's.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
 		return this.policyEngine.onPolicyChange(listener);
@@ -2573,6 +2939,7 @@ export class ToolkitCoordinator {
 		toolId: string,
 		_updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
 	): void {
+		if (this.disposePromise !== null) return;
 		// Apply configuration changes based on tool
 		switch (toolId) {
 			case "textToSpeech": {
@@ -2584,6 +2951,7 @@ export class ToolkitCoordinator {
 					}
 				});
 				void reconfigurePromise.then(async () => {
+					if (this.disposePromise !== null) return;
 					const ttsConfig = this.getTTSConfigFromProviders();
 					if (!this.lazyInit && ttsConfig?.enabled !== false) {
 						await this.ensureTTSReady(ttsConfig);
@@ -2612,6 +2980,7 @@ export class ToolkitCoordinator {
 		if (this.toolProviderRegistry.has("tts")) {
 			await this.toolProviderRegistry.unregister("tts");
 		}
+		if (this.disposePromise !== null) return;
 		const ttsRegistration = this.getProviderDescriptorTools().find(
 			(tool) => tool.toolId === "textToSpeech",
 		);

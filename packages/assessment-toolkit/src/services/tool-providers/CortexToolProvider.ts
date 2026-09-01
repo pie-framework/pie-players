@@ -1,6 +1,9 @@
 /** Fully bundled open-source calculator adapter for the tool-provider registry. */
 
-import type { CalculatorToolProviderInitConfig } from "./LazyCalculatorToolProvider.js";
+import type {
+	CalculatorToolProviderInitConfig,
+	LazyCalculatorProviderDefinition,
+} from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
 import type { ToolProviderCapabilities } from "./ToolProviderApi.js";
 
@@ -12,7 +15,7 @@ export class CortexToolProvider extends LazyCalculatorToolProvider<CortexToolPro
 	readonly version = "1";
 	readonly requiresAuth = false;
 
-	protected getDefinition() {
+	protected getDefinition(): LazyCalculatorProviderDefinition<CortexToolProviderConfig> {
 		return {
 			backend: "cortex",
 			moduleImportOperation: "cortex-provider-module-import",

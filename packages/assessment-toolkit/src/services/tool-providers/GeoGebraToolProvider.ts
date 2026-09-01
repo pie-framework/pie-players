@@ -1,6 +1,9 @@
 /** GeoGebra calculator adapter for the generic tool-provider registry. */
 
-import type { CalculatorToolProviderInitConfig } from "./LazyCalculatorToolProvider.js";
+import type {
+	CalculatorToolProviderInitConfig,
+	LazyCalculatorProviderDefinition,
+} from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
 import type { ToolProviderCapabilities } from "./ToolProviderApi.js";
 
@@ -16,7 +19,7 @@ export class GeoGebraToolProvider extends LazyCalculatorToolProvider<GeoGebraToo
 	readonly version = "6";
 	readonly requiresAuth = false;
 
-	protected getDefinition() {
+	protected getDefinition(): LazyCalculatorProviderDefinition<GeoGebraToolProviderConfig> {
 		return {
 			backend: "geogebra",
 			moduleImportOperation: "geogebra-provider-module-import",

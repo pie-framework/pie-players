@@ -52,7 +52,7 @@
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.56.10",
-		"svelte-check": "^4.7.5",
+		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
 		"vite-plugin-dts": "^5.0.3"

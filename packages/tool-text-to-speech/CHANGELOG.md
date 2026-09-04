@@ -1,5 +1,54 @@
 # @pie-players/pie-tool-text-to-speech
 
+## 0.3.70
+
+### Patch Changes
+
+- f0e4edb: Keep the floating text-to-speech panel inside the viewport.
+  
+  The panel is `position: fixed` and took its position once from the viewport size,
+  with no resize handling. Shrinking the window or raising page zoom moved the
+  viewport out from under it, and a panel past the right or bottom edge could not
+  be dragged back.
+  
+  Position is now clamped to the viewport on open, on drag and on window resize,
+  measured against the panel's rendered box because its height depends on which
+  controls are showing. A position that still fits is left alone. The shared tool
+  shell already re-clamped windowed tools this way; this panel had no equivalent.
+  
+  The opening position is unchanged, expressed as the panel's width plus a gutter
+  rather than as one number.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [599c657]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [e3169f8]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/pie-assessment-toolkit@0.3.70
+
+## 0.3.69
+
+### Patch Changes
+
+- Updated dependencies [ced07e0]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

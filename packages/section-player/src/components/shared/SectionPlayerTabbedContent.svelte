@@ -395,7 +395,7 @@
 		overscroll-behavior: contain;
 		scrollbar-width: thin;
 		scrollbar-color:
-			var(--pie-scrollbar-thumb, var(--pie-border, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
+			var(--pie-scrollbar-thumb, var(--pie-border-gray, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar {
@@ -409,7 +409,7 @@
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar-thumb {
-		background: var(--pie-scrollbar-thumb, var(--pie-border, #6b7280));
+		background: var(--pie-scrollbar-thumb, var(--pie-border-gray, #6b7280));
 		border-radius: 999px;
 		border: 2px solid var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}

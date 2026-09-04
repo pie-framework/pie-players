@@ -1,8 +1,10 @@
 # Documentation Index
 
-This folder contains the active documentation set for `pie-players`. The focus
-is on current public APIs, runtime boundaries, and integration patterns. Design
-history and completed implementation plans are intentionally excluded.
+This folder contains the maintained documentation set for `pie-players`. The
+focus is on current public APIs, runtime boundaries, integration patterns, and
+contract decisions. Completed implementation plans are excluded unless they are
+accepted PRDs or ADRs retained as current contract and decision references; see
+[`prds/README.md`](./prds/README.md#retention-and-cleanup).
 
 ## Start Here
 
@@ -23,7 +25,8 @@ history and completed implementation plans are intentionally excluded.
 - [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
 - [`architecture/composition-context.md`](./architecture/composition-context.md) - How container-owned facts (heading depth, arbitration, scope) reach the descendants that need them
 - [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
-- [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what PIE builds regardless of consumer, what it refuses, and the seam obligations that make refusing defensible
+- [`architecture/domain-language.md`](./architecture/domain-language.md) - Format and admission rules for the root `CONTEXT.md` domain glossary
+- [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what must live in PIE versus a host, and the evidence required before scheduling it
 - [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
 - [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
 - [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
@@ -46,12 +49,17 @@ history and completed implementation plans are intentionally excluded.
 ## Assessment Player
 
 - [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - Production-oriented integration guide and host boundary philosophy
+- [`architecture/assessment-player-lifecycle-persistence-implementation-plan.md`](./architecture/assessment-player-lifecycle-persistence-implementation-plan.md) - Deferred assessment lifecycle repair and decision gates for persistence and authoritative submission
 
 ## Integrations
 
 - [`integrations/lti.md`](./integrations/lti.md) - Launching players from an LTI tool host after protocol validation
 - [`integrations/consumer-api-dependencies.md`](./integrations/consumer-api-dependencies.md) - Which surfaces downstream hosts actually depend on, and which break silently
 - [`integrations/consumer-api-dependencies-maintenance.md`](./integrations/consumer-api-dependencies-maintenance.md) - Harness-neutral procedure for refreshing that pad
+
+## Security
+
+- [`security/readme.md`](./security/readme.md) - Trust boundary for authored content, what the sanitizers guarantee, the limits they accept, and the host obligations PIE cannot enforce (CSP, `allowed-style-origins`, delivery integrity)
 
 ## Theming
 
@@ -91,6 +99,7 @@ history and completed implementation plans are intentionally excluded.
 ## Setup And Publishing
 
 - [`development/demo-workspace-resolution.md`](./development/demo-workspace-resolution.md) - How demo apps resolve `@pie-players/*` (`dist/` and Vite aliases)
+- [`development/calculator-external-test-corpora.md`](./development/calculator-external-test-corpora.md) - Calculator test data that CI does not ship: the on-demand GSM8K corpus, and the open-source suites mined for cases
 - [`setup/environment-setup.md`](./setup/environment-setup.md) - Local environment setup
 - [`setup/demo_system.md`](./setup/demo_system.md) - Canonical root demo commands and run orchestration
 - [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow

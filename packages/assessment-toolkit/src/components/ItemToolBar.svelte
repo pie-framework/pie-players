@@ -36,7 +36,13 @@
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
     e.g. "show calculator only when math content is present". Lives
     at the toolbar boundary by design (engine doesn't import tool
-    registry render context).
+    registry render context). A PNP-granted tool skips this gate: a
+    heuristic must not withdraw an accommodation.
+  - Pass 3: tool-owned isApplicableToContent(context) — capability veto,
+    e.g. "an answer eliminator has no choices to strike through here".
+    Outranks a grant, because a control that provably does nothing
+    delivers no accommodation. Tools declare it only where that is
+    provable; a host that resolves visibility itself is exempt.
 -->
 <script lang="ts">
 	import {
@@ -706,6 +712,21 @@
 				.forEach((tool) => visible.add(tool.toolId));
 		}
 
+		// Pass 3: applicability, the one gate a grant does not survive. Relevance
+		// asks whether a tool is plausibly useful and must never withdraw an
+		// accommodation; this asks whether the tool can act on this content at all,
+		// and a control that provably does nothing serves no learner. Only a tool
+		// that declares the gate can be removed here, and a host that resolved a
+		// tool's visibility itself keeps that answer — it may own an adapter this
+		// content works with.
+		const candidateContexts = toolContext ? [toolContext, ...elementContexts] : elementContexts;
+		for (const toolId of Array.from(visible)) {
+			if (hostResolvedToolIds.has(toolId)) continue;
+			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts)) {
+				visible.delete(toolId);
+			}
+		}
+
 		return Array.from(visible);
 	});
 	const toolbarVisibleToolIds = $derived.by(() =>
@@ -1158,8 +1179,40 @@
 		};
 	});
 
-	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
+	const OVERLAY_BOUNDARY_SELECTOR = '[data-pie-tool-overlay-boundary]';
+
+	/**
+	 * Where a mounted element is appended.
+	 *
+	 * An element the registration marked `container: 'content-boundary'` goes to the
+	 * nearest host-declared boundary, so the content's box — not this toolbar's — is
+	 * its containing block and the frame it positions in. Which elements need that
+	 * is the registration's call, not the toolbar's: the toolbar honours the
+	 * declaration and knows nothing about the tool. A host that declares no
+	 * boundary keeps the in-toolbar host element, whose containing block is the
+	 * initial one.
+	 */
+	function resolveMountParent(node: HTMLElement, entry: ToolRenderElement): HTMLElement {
+		if (entry.container !== 'content-boundary') return node;
+		let current: Node | null = node;
+		while (current) {
+			if (current instanceof HTMLElement && current.matches(OVERLAY_BOUNDARY_SELECTOR)) {
+				return current;
+			}
+			if (current instanceof HTMLElement && current.parentElement) {
+				current = current.parentElement;
+				continue;
+			}
+			const root = current.getRootNode();
+			current = root instanceof ShadowRoot ? root.host : null;
+		}
+		return node;
+	}
+
+	function mountElement(node: HTMLSpanElement, entry: ToolRenderElement) {
+		let currentEntry = entry;
 		let mountedElement: HTMLElement | null = null;
+		let mountParent: HTMLElement = node;
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -1173,22 +1226,24 @@
 			if (mountedElement === nextElement) return;
 			if (mountedElement) {
 				invokeElementUnmount(mountedElement);
-				if (mountedElement.parentNode === node) {
-					node.removeChild(mountedElement);
+				if (mountedElement.parentNode === mountParent) {
+					mountParent.removeChild(mountedElement);
 				}
 			}
 			mountedElement = nextElement;
 			if (mountedElement) {
-				if (mountedElement.parentNode && mountedElement.parentNode !== node) {
+				mountParent = resolveMountParent(node, currentEntry);
+				if (mountedElement.parentNode && mountedElement.parentNode !== mountParent) {
 					mountedElement.parentNode.removeChild(mountedElement);
 				}
-				node.appendChild(mountedElement);
+				mountParent.appendChild(mountedElement);
 			}
 		};
-		updateMountedElement(element);
+		updateMountedElement(entry.element);
 		return {
-			update(nextElement: HTMLElement | null) {
-				updateMountedElement(nextElement);
+			update(nextEntry: ToolRenderElement) {
+				currentEntry = nextEntry;
+				updateMountedElement(nextEntry.element);
 			},
 			destroy() {
 				updateMountedElement(null);
@@ -1267,6 +1322,27 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		/**
+		 * The declared size this shell was last placed at, and whether the learner has
+		 * since taken the panel over.
+		 *
+		 * A registration may compute its shell size from render params, and those
+		 * resolve a render *after* the shell is built: `getToolRenderParams` reads
+		 * `hostResolvedToolContextById`, which is empty on the first pass. The
+		 * calculator declares 720x660 for a graphing calculator and 380x500 otherwise,
+		 * so reading `initialWidth` once meant every graphing calculator — Desmos,
+		 * GeoGebra and Cortex alike — opened at the untyped 380px size and had its plot
+		 * clipped by the content box. `applyShellStrings` already re-reads the title on
+		 * update, which is why the header said "Graphing Calculator" over a panel sized
+		 * for a basic one.
+		 *
+		 * A later declaration is adopted, a learner's own size is not: once someone has
+		 * dragged or resized the panel it is theirs, and a re-render must not snap it
+		 * back.
+		 */
+		let declaredWidth = width;
+		let declaredHeight = height;
+		let learnerSizedShell = false;
 		let focusTrapCleanup: (() => void) | null = null;
 		let openerEl: HTMLElement | null = null;
 		let previousActive = false;
@@ -1392,6 +1468,26 @@
 			mountedContentElement.style.flex = '1 1 auto';
 		};
 
+		/**
+		 * Take on a declared size that changed after the shell was built.
+		 *
+		 * Re-places the panel, because the declared size is what `initialAlign` was
+		 * resolved against: a bottom-left shell that grew by 340px without moving would
+		 * hang off the top of the viewport.
+		 */
+		const adoptDeclaredSize = () => {
+			const shellConfig = currentArgs.mounted.entry.shell;
+			const nextWidth = shellConfig?.initialWidth ?? 720;
+			const nextHeight = shellConfig?.initialHeight ?? 560;
+			if (nextWidth === declaredWidth && nextHeight === declaredHeight) return;
+			declaredWidth = nextWidth;
+			declaredHeight = nextHeight;
+			if (learnerSizedShell) return;
+			width = nextWidth;
+			height = nextHeight;
+			centerShell();
+		};
+
 		const applyPositionAndSize = () => {
 			const { minWidth, minHeight, maxWidth, maxHeight } = getShellBounds();
 			// WCAG 1.4.10 Reflow at 320px / 400% zoom: when the viewport is
@@ -1422,12 +1518,14 @@
 		};
 
 		const moveBy = (dx: number, dy: number) => {
+			learnerSizedShell = true;
 			x += dx;
 			y += dy;
 			applyPositionAndSize();
 		};
 
 		const resizeBy = (dw: number, dh: number) => {
+			learnerSizedShell = true;
 			width += dw;
 			height += dh;
 			applyPositionAndSize();
@@ -1837,6 +1935,7 @@
 			if (target.closest('button') || !shellEl) return;
 
 			event.preventDefault();
+			learnerSizedShell = true;
 			dragPointerId = event.pointerId;
 			dragOffsetX = event.clientX - x;
 			dragOffsetY = event.clientY - y;
@@ -1848,6 +1947,7 @@
 			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
 			event.preventDefault();
 			event.stopPropagation();
+			learnerSizedShell = true;
 			resizePointerId = event.pointerId;
 			resizeCorner = corner;
 			resizeStartWidth = width;
@@ -2403,6 +2503,7 @@
 					currentArgs.runtime as AssessmentToolkitRuntimeContext
 				);
 				applyShellStrings();
+				adoptDeclaredSize();
 				// An <nds-icon-button> is a custom element with inline-block default
 				// display; a plain <button> shell control is inline-flex. Read which one
 				// was actually built rather than re-deriving it, so a prop refresh cannot
@@ -2498,7 +2599,7 @@
 						></span>
 					{/key}
 				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
 				{/if}
 			{/each}
 
@@ -2605,7 +2706,7 @@
 						></span>
 					{/key}
 				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
 				{/if}
 			{/each}
 		</div>
@@ -2632,7 +2733,7 @@
 							></span>
 						{/key}
 					{:else}
-						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry.element}></span>
+						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry}></span>
 					{/if}
 				{/each}
 			</div>

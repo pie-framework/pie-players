@@ -27,6 +27,17 @@ const isMetadataFile = (filePath) =>
 		filePath,
 	);
 
+/**
+ * Declarations emitted from a package's own build tooling. These are never part of
+ * a published API and reach `dist` only when a dts plugin's `include` is unbounded
+ * a recursive TypeScript glob, or absent, and sweeps the config file up with the
+ * sources.
+ */
+const isBuildConfigDeclaration = (filePath) =>
+	/(?:^|\/)(?:vite|vitest|playwright|rollup|svelte|tsup|tailwind|postcss)\.config(?:\.[a-z]+)?\.d\.ts$/.test(
+		filePath,
+	);
+
 const isRawSourceFile = (filePath) =>
 	filePath.startsWith("src/") ||
 	/\.svelte(?:\.ts)?$/.test(filePath) ||
@@ -158,13 +169,17 @@ export const collectManifestSurfaceViolations = (
 
 export const collectPackedFileSurfaceViolations = (packedFiles, pkg) =>
 	[...packedFiles]
-		.filter(
-			(filePath) =>
-				isRawSourceFile(filePath) || !isAllowedPackedFile(filePath, pkg),
-		)
-		.map(
-			(filePath) => `packed file is outside dist/metadata/assets: ${filePath}`,
-		)
+		.flatMap((filePath) => {
+			if (isBuildConfigDeclaration(filePath)) {
+				return [
+					`packed file is a build-config declaration: ${filePath} — narrow the dts plugin's include/exclude so it stops emitting one`,
+				];
+			}
+			if (isRawSourceFile(filePath) || !isAllowedPackedFile(filePath, pkg)) {
+				return [`packed file is outside dist/metadata/assets: ${filePath}`];
+			}
+			return [];
+		})
 		.sort();
 
 const getHashOnlyDeclaredTargets = (declaredTargets) =>

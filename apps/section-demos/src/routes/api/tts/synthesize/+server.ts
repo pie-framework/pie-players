@@ -6,8 +6,12 @@
  */
 
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
-import { error, json } from "@sveltejs/kit";
+import { error, isHttpError, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import {
+	mapTtsFailure,
+	TtsNotConfiguredError,
+} from "@pie-players/demo-ui/server";
 import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
 
 type PollyEngine = "neural" | "standard";
@@ -37,9 +41,7 @@ async function getPollyProvider(
 		);
 		console.log(
 			"[TTS API] AWS_ACCESS_KEY_ID:",
-			process.env.AWS_ACCESS_KEY_ID
-				? `✓ Set (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)`
-				: "✗ Missing",
+			process.env.AWS_ACCESS_KEY_ID ? "✓ Set" : "✗ Missing",
 		);
 		console.log(
 			"[TTS API] AWS_SECRET_ACCESS_KEY:",
@@ -52,7 +54,7 @@ async function getPollyProvider(
 			!process.env.AWS_ACCESS_KEY_ID ||
 			!process.env.AWS_SECRET_ACCESS_KEY
 		) {
-			throw new Error(
+			throw new TtsNotConfiguredError(
 				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file. See docs/aws-polly-setup-guide.md",
 			);
 		}
@@ -101,12 +103,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	// Check for service account credentials (advanced method)
 	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-	console.log(
-		"[TTS API] GOOGLE_API_KEY:",
-		hasApiKey
-			? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
-			: "✗ Missing",
-	);
+	console.log("[TTS API] GOOGLE_API_KEY:", hasApiKey ? "✓ Set" : "✗ Missing");
 	console.log(
 		"[TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
 		hasServiceAccount ? "✓ Set" : "✗ Missing",
@@ -123,7 +120,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 			"  - GOOGLE_API_KEY (simpler, for testing)\n" +
 			"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
 		console.error(`[TTS API] ${errorMsg}`);
-		throw new Error(errorMsg);
+		throw new TtsNotConfiguredError(errorMsg);
 	}
 
 	const { GoogleCloudTTSProvider } = await import(
@@ -221,64 +218,45 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Get the appropriate provider
 		let result;
-		try {
-			if (provider === "google") {
-				const google = await getGoogleProvider();
-				result = await google.synthesize({
-					text,
-					voice: voice || "en-US-Wavenet-A",
-					language: language || "en-US",
-					rate,
-					includeSpeechMarks,
-				});
-			} else {
-				const requestedEngine =
-					engine === "standard" || engine === "neural" ? engine : "neural";
-				const requestedFormat =
-					format === "ogg" || format === "pcm" || format === "mp3"
-						? (format as PollyOutputFormat)
-						: undefined;
-				const requestedSpeechMarkTypes = Array.isArray(speechMarkTypes)
-					? speechMarkTypes.filter(
-							(entry): entry is PollySpeechMarkType =>
-								entry === "word" || entry === "sentence" || entry === "ssml",
-						)
+		if (provider === "google") {
+			const google = await getGoogleProvider();
+			result = await google.synthesize({
+				text,
+				voice: voice || "en-US-Wavenet-A",
+				language: language || "en-US",
+				rate,
+				includeSpeechMarks,
+			});
+		} else {
+			const requestedEngine =
+				engine === "standard" || engine === "neural" ? engine : "neural";
+			const requestedFormat =
+				format === "ogg" || format === "pcm" || format === "mp3"
+					? (format as PollyOutputFormat)
 					: undefined;
-				const polly = await getPollyProvider(requestedEngine);
-				result = await polly.synthesize({
-					text,
-					voice: voice || "Joanna",
-					language: language || "en-US",
-					rate,
-					sampleRate:
-						typeof sampleRate === "number" && Number.isFinite(sampleRate)
-							? sampleRate
-							: undefined,
-					format: requestedFormat,
-					providerOptions:
-						requestedSpeechMarkTypes && requestedSpeechMarkTypes.length > 0
-							? { speechMarkTypes: requestedSpeechMarkTypes }
-							: undefined,
-					includeSpeechMarks,
-				});
-			}
-		} catch (err) {
-			// Handle credential configuration errors with user-friendly message
-			if (err instanceof Error) {
-				if (err.message.includes("AWS credentials not configured")) {
-					throw error(503, {
-						message:
-							"Text-to-speech service is not configured. AWS Polly credentials are required but not available.",
-					});
-				}
-				if (err.message.includes("Google Cloud credentials not configured")) {
-					throw error(503, {
-						message:
-							"Text-to-speech service is not configured. Google Cloud credentials are required but not available.",
-					});
-				}
-			}
-			throw err;
+			const requestedSpeechMarkTypes = Array.isArray(speechMarkTypes)
+				? speechMarkTypes.filter(
+						(entry): entry is PollySpeechMarkType =>
+							entry === "word" || entry === "sentence" || entry === "ssml",
+					)
+				: undefined;
+			const polly = await getPollyProvider(requestedEngine);
+			result = await polly.synthesize({
+				text,
+				voice: voice || "Joanna",
+				language: language || "en-US",
+				rate,
+				sampleRate:
+					typeof sampleRate === "number" && Number.isFinite(sampleRate)
+						? sampleRate
+						: undefined,
+				format: requestedFormat,
+				providerOptions:
+					requestedSpeechMarkTypes && requestedSpeechMarkTypes.length > 0
+						? { speechMarkTypes: requestedSpeechMarkTypes }
+						: undefined,
+				includeSpeechMarks,
+			});
 		}
 
 		// Convert Buffer to base64 for JSON response
@@ -298,70 +276,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json(response);
 	} catch (err) {
-		console.error("[TTS API] Synthesis error:", err);
+		// Statuses raised above (request validation) are already client-safe.
+		if (isHttpError(err)) throw err;
 
-		// If it's already a SvelteKit error, re-throw it
-		if (typeof err === "object" && err !== null && "status" in err) {
-			throw err;
-		}
+		const { status, message, logAsFault } = mapTtsFailure(err);
+		if (logAsFault) console.error("[TTS API] Synthesis error:", err);
 
-		if (err instanceof Error) {
-			// Check for specific AWS/Polly errors and provide user-friendly messages
-			if (
-				err.message.includes("credentials") ||
-				err.message.includes("not configured")
-			) {
-				throw error(503, {
-					message:
-						"Text-to-speech service is not configured. AWS Polly credentials are required but not available.",
-				});
-			}
-
-			if (
-				err.message.includes("InvalidSignatureException") ||
-				err.message.includes("SignatureDoesNotMatch")
-			) {
-				throw error(503, {
-					message:
-						"Text-to-speech service authentication failed. AWS credentials may be incorrect.",
-				});
-			}
-
-			if (
-				err.message.includes("ThrottlingException") ||
-				err.message.includes("TooManyRequestsException")
-			) {
-				throw error(429, {
-					message:
-						"Text-to-speech service is temporarily busy. Please try again in a moment.",
-				});
-			}
-
-			if (
-				err.message.includes("NetworkingError") ||
-				err.message.includes("ENOTFOUND") ||
-				err.message.includes("ETIMEDOUT")
-			) {
-				throw error(503, {
-					message:
-						"Text-to-speech service is temporarily unavailable. Please check your network connection.",
-				});
-			}
-
-			// Generic AWS error
-			if (err.message.includes("AWS") || err.message.includes("Polly")) {
-				throw error(503, {
-					message:
-						"Text-to-speech service encountered an error. Please try again later.",
-				});
-			}
-
-			// Unknown error
-			throw error(500, { message: `Text-to-speech error: ${err.message}` });
-		}
-
-		throw error(500, {
-			message: "Text-to-speech service encountered an unexpected error.",
-		});
+		throw error(status, { message });
 	}
 };

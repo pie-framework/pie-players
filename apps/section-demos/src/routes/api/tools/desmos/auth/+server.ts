@@ -1,76 +1,31 @@
 /**
  * Desmos Calculator Auth API Route
  *
- * Returns Desmos API key configuration for client-side calculator initialization.
- * This endpoint should NEVER be exposed in production without proper authentication.
+ * Returns the demo host's Desmos API key for client-side calculator loading.
+ * The key is necessarily visible to the browser in Desmos's documented CDN URL.
+ * This route keeps it out of source/static bundles; it is not a secret boundary.
  */
 
-import { error, json } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 /**
  * GET /api/tools/desmos/auth
  *
- * Response:
- * {
- *   apiKey: string;
- *   config: {
- *     expressionsCollapsed: boolean;
- *     settingsMenu: boolean;
- *     // ... other Desmos config options
- *   }
- * }
+ * Response: { apiKey: string }
  */
 export const GET: RequestHandler = async () => {
-	try {
-		console.log("[Desmos Auth API] Request received");
-		console.log(
-			"[Desmos Auth API] DESMOS_API_KEY:",
-			process.env.DESMOS_API_KEY
-				? `✓ Set (${process.env.DESMOS_API_KEY.substring(0, 8)}...)`
-				: "✗ Missing",
+	const headers = {
+		"cache-control": "private, no-store",
+		pragma: "no-cache",
+	};
+	const apiKey = process.env.DESMOS_API_KEY?.trim();
+	if (!apiKey) {
+		console.warn(
+			"[Desmos Auth API] DESMOS_API_KEY is not configured; preserving the legacy unkeyed demo path. This does not grant a Desmos license.",
 		);
-
-		// Check for API key
-		if (!process.env.DESMOS_API_KEY) {
-			console.warn(
-				"[Desmos Auth API] API key not configured - calculator will use free tier",
-			);
-
-			// Return free tier configuration (no API key)
-			return json({
-				apiKey: null,
-				config: {
-					expressionsCollapsed: false,
-					settingsMenu: true,
-					zoomButtons: true,
-					expressionsTopbar: true,
-				},
-			});
-		}
-
-		console.log("[Desmos Auth API] Returning API key configuration");
-
-		// Return API key and configuration
-		return json({
-			apiKey: process.env.DESMOS_API_KEY,
-			config: {
-				// Optional: Add default Desmos calculator configuration
-				expressionsCollapsed: false,
-				settingsMenu: true,
-				zoomButtons: true,
-				expressionsTopbar: true,
-			},
-		});
-	} catch (err) {
-		console.error("[Desmos Auth API] Error:", err);
-
-		if (err instanceof Error) {
-			throw error(500, { message: `Desmos auth error: ${err.message}` });
-		}
-
-		throw error(500, {
-			message: "Desmos auth service encountered an unexpected error.",
-		});
+		return json({ apiKey: null, compatibilityMode: true }, { headers });
 	}
+
+	return json({ apiKey }, { headers });
 };

@@ -14,6 +14,7 @@ import {
 	type ToolComponentFactoryMap,
 	type ToolRegistration,
 	type ToolTagMap,
+	type ToolProviderConfig,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types";
 import {
@@ -22,7 +23,11 @@ import {
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
 import { audioTranscriptRegistration } from "./registrations/audio-transcript.js";
-import { calculatorToolRegistration } from "./registrations/calculator.js";
+import {
+	calculatorToolRegistration,
+	type CalculatorProviderId,
+	resolveCalculatorProviderId,
+} from "./registrations/calculator.js";
 import {
 	dictionaryToolRegistration,
 	pictureDictionaryToolRegistration,
@@ -48,7 +53,17 @@ export interface ToolRegistryLike {
 	): void;
 }
 
-export interface PackagedToolRegistryOptions {
+export interface PackagedCalculatorCompositionOptions {
+	/**
+	 * The same calculator config supplied at `tools.providers.calculator`.
+	 * Selects the matching packaged element and default loader. Omit it to retain
+	 * the existing Desmos delivery.
+	 */
+	calculatorProviderConfig?: ToolProviderConfig;
+}
+
+export interface PackagedToolRegistryOptions
+	extends PackagedCalculatorCompositionOptions {
 	/** Override packaged registrations by toolId. */
 	overrides?: Partial<Record<string, ToolRegistration>>;
 	/** Override or extend the packaged element tag mapping. */
@@ -67,9 +82,10 @@ export interface RegisterPackagedToolsOptions {
 	applyOverrides?: (registration: ToolRegistration) => ToolRegistration;
 }
 
-export type RegisterDefaultToolModuleLoadersOptions = {
+export interface RegisterDefaultToolModuleLoadersOptions
+	extends PackagedCalculatorCompositionOptions {
 	loaders?: Partial<Record<string, ToolModuleLoader>>;
-};
+}
 
 type LoaderTarget = "item" | "section";
 type PackagedPlacementLevel =
@@ -101,17 +117,57 @@ interface PackagedCapabilityDefinition {
 const loadSideEffectModule = (load: () => Promise<unknown>): Promise<void> =>
 	load().then(() => undefined);
 
-function loadCalculatorModule(): Promise<unknown> {
+function loadCalculatorElement(
+	tagName: string,
+	load: () => Promise<unknown>,
+): Promise<unknown> {
 	if (
 		typeof globalThis !== "undefined" &&
 		"customElements" in globalThis &&
-		globalThis.customElements?.get("pie-tool-calculator")
+		globalThis.customElements?.get(tagName)
 	) {
 		return Promise.resolve();
 	}
-	return loadSideEffectModule(
-		() => import("@pie-players/pie-tool-calculator-desmos"),
+	return loadSideEffectModule(load);
+}
+
+const loadDesmosCalculatorModule = () =>
+	loadCalculatorElement(
+		"pie-tool-calculator",
+		() =>
+			import("@pie-players/pie-tool-calculator-shared/calculator-element"),
 	);
+const loadGeoGebraCalculatorModule = () =>
+	loadCalculatorElement(
+		"pie-tool-calculator-geogebra",
+		() => import("@pie-players/pie-tool-calculator-geogebra"),
+	);
+const loadCortexCalculatorModule = () =>
+	loadCalculatorElement(
+		"pie-tool-calculator-cortex",
+		() => import("@pie-players/pie-tool-calculator-cortex"),
+	);
+
+const CALCULATOR_DELIVERY: Record<
+	CalculatorProviderId,
+	{ tagName: string; loadModule: ToolModuleLoader }
+> = {
+	"calculator-desmos": {
+		tagName: "pie-tool-calculator",
+		loadModule: loadDesmosCalculatorModule,
+	},
+	"calculator-geogebra": {
+		tagName: "pie-tool-calculator-geogebra",
+		loadModule: loadGeoGebraCalculatorModule,
+	},
+	"calculator-cortex": {
+		tagName: "pie-tool-calculator-cortex",
+		loadModule: loadCortexCalculatorModule,
+	},
+};
+
+function resolveCalculatorDelivery(config?: ToolProviderConfig) {
+	return CALCULATOR_DELIVERY[resolveCalculatorProviderId(config)];
 }
 
 const loadTtsModule = () =>
@@ -144,18 +200,13 @@ const loadPictureDictionaryModule = () =>
 const PACKAGED_CAPABILITY_DEFINITIONS = [
 	{
 		registration: calculatorToolRegistration,
-		tagName: "pie-tool-calculator",
-		loadModule: loadCalculatorModule,
+		tagName: CALCULATOR_DELIVERY["calculator-desmos"].tagName,
+		loadModule: CALCULATOR_DELIVERY["calculator-desmos"].loadModule,
 		loaderTargets: ["item", "section"],
 		placementOrder: { element: 10 },
 		preferredPlacementOrder: { item: 10 },
 		toolbarOrder: 20,
-		universalSupportIds: [
-			"calculator",
-			"graphingCalculator",
-			"basicCalculator",
-			"scientificCalculator",
-		],
+		universalSupportIds: ["calculator", "graphingCalculator"],
 	},
 	{
 		registration: ttsToolRegistration,
@@ -165,7 +216,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 10, passage: 10, rubric: 10, element: 30 },
 		preferredPlacementOrder: { item: 20, passage: 10 },
 		toolbarOrder: 30,
-		universalSupportIds: ["textToSpeech", "readAloud", "tts", "speechOutput"],
+		universalSupportIds: ["textToSpeech", "readAloud"],
 	},
 	{
 		registration: rulerToolRegistration,
@@ -175,7 +226,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 40 },
 		preferredPlacementOrder: { section: 50 },
 		toolbarOrder: 80,
-		universalSupportIds: ["ruler", "measurement"],
+		universalSupportIds: ["ruler"],
 	},
 	{
 		registration: protractorToolRegistration,
@@ -185,7 +236,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 50 },
 		preferredPlacementOrder: { section: 60 },
 		toolbarOrder: 90,
-		universalSupportIds: ["protractor", "angleMeasurement"],
+		universalSupportIds: ["protractor"],
 	},
 	{
 		registration: answerEliminatorToolRegistration,
@@ -195,12 +246,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 20 },
 		preferredPlacementOrder: { item: 30 },
 		toolbarOrder: 70,
-		universalSupportIds: [
-			"answerMasking",
-			"answerEliminator",
-			"strikethrough",
-			"choiceMasking",
-		],
+		universalSupportIds: ["answerMasking", "answerEliminator", "strikethrough"],
 	},
 	{
 		registration: lineReaderToolRegistration,
@@ -210,13 +256,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { passage: 40, rubric: 40 },
 		preferredPlacementOrder: { section: 40 },
 		toolbarOrder: 40,
-		universalSupportIds: [
-			"readingMask",
-			"readingGuide",
-			"readingRuler",
-			"lineReader",
-			"trackingGuide",
-		],
+		universalSupportIds: ["readingMask", "readingGuide", "readingRuler"],
 	},
 	{
 		registration: themeToolRegistration,
@@ -231,8 +271,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 			"colorContrast",
 			"invertColors",
 			"theme",
-			"highContrast",
-			"customColors",
 		],
 	},
 	{
@@ -246,13 +284,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		// The last three came from the `highlighter` capability, which mounted this
 		// same element behind a second identically-labelled button. Kept here so a
 		// profile granted one of the older ids still gets highlighting.
-		universalSupportIds: [
-			"highlighting",
-			"annotations",
-			"highlighter",
-			"textHighlight",
-			"annotation",
-		],
+		universalSupportIds: ["highlighting", "annotations"],
 	},
 	{
 		registration: graphToolRegistration,
@@ -262,7 +294,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 40, element: 80 },
 		preferredPlacementOrder: { section: 20 },
 		toolbarOrder: 100,
-		universalSupportIds: ["graph", "coordinatePlane", "graphingTool"],
+		universalSupportIds: ["graph"],
 	},
 	{
 		registration: periodicTableToolRegistration,
@@ -272,11 +304,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 50, element: 90 },
 		preferredPlacementOrder: { section: 30 },
 		toolbarOrder: 110,
-		universalSupportIds: [
-			"periodicTable",
-			"chemistryReference",
-			"elementReference",
-		],
+		universalSupportIds: ["periodicTable"],
 	},
 	{
 		registration: dictionaryToolRegistration,
@@ -652,11 +680,34 @@ class PackagedCapabilityComposition {
 			options.toolModuleLoaders &&
 			Object.keys(options.toolModuleLoaders).length > 0
 		) {
-			registry.setToolModuleLoaders(options.toolModuleLoaders);
+			const toolModuleLoaders = { ...options.toolModuleLoaders };
+			const calculatorDelivery = resolveCalculatorDelivery(
+				options.calculatorProviderConfig,
+			);
+			// A host using the packaged default map gets a coherent provider-specific
+			// loader. A genuinely custom calculator loader remains the host's override.
+			if (
+				options.calculatorProviderConfig &&
+				toolModuleLoaders.calculator === this.defaultModuleLoaders.calculator
+			) {
+				toolModuleLoaders.calculator = calculatorDelivery.loadModule;
+			}
+			registry.setToolModuleLoaders(toolModuleLoaders);
 		}
 
+		const calculatorTagMap = options.calculatorProviderConfig
+			? {
+					calculator: resolveCalculatorDelivery(
+						options.calculatorProviderConfig,
+					).tagName,
+				}
+			: {};
 		registry.setComponentOverrides({
-			toolTagMap: { ...this.toolTagMap, ...(options.toolTagMap ?? {}) },
+			toolTagMap: {
+				...this.toolTagMap,
+				...calculatorTagMap,
+				...(options.toolTagMap ?? {}),
+			},
 			toolComponentFactory: options.toolComponentFactory,
 			toolComponentFactories: options.toolComponentFactories,
 		});
@@ -722,6 +773,28 @@ export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	...packagedCapabilityComposition.defaultModuleLoaders,
 };
+
+/** Build the packaged loader map for a selected calculator provider. */
+export function createDefaultToolModuleLoaders(
+	options: PackagedCalculatorCompositionOptions = {},
+): Record<string, ToolModuleLoader> {
+	return {
+		...DEFAULT_TOOL_MODULE_LOADERS,
+		calculator: resolveCalculatorDelivery(options.calculatorProviderConfig)
+			.loadModule,
+	};
+}
+
+/** Build the section-bootstrap loader subset for a selected calculator provider. */
+export function createSectionToolModuleLoaders(
+	options: PackagedCalculatorCompositionOptions = {},
+): Record<string, ToolModuleLoader> {
+	return {
+		...SECTION_TOOL_MODULE_LOADERS,
+		calculator: resolveCalculatorDelivery(options.calculatorProviderConfig)
+			.loadModule,
+	};
+}
 
 export const PACKAGED_TOOL_PLACEMENT = {
 	assessment: [...packagedCapabilityComposition.placement.assessment],
@@ -819,7 +892,7 @@ export function registerDefaultToolModuleLoaders(
 	options: RegisterDefaultToolModuleLoadersOptions = {},
 ): void {
 	registry.setToolModuleLoaders({
-		...DEFAULT_TOOL_MODULE_LOADERS,
+		...createDefaultToolModuleLoaders(options),
 		...(options.loaders ?? {}),
 	});
 }
@@ -830,7 +903,7 @@ export function registerSectionToolModuleLoaders(
 	options: RegisterDefaultToolModuleLoadersOptions = {},
 ): void {
 	registry.setToolModuleLoaders({
-		...SECTION_TOOL_MODULE_LOADERS,
+		...createSectionToolModuleLoaders(options),
 		...(options.loaders ?? {}),
 	});
 }

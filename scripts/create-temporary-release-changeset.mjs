@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -33,22 +34,64 @@ const discoverPublishablePackages = () => {
 		if (manifest.private) continue;
 		if (typeof manifest.name !== "string") continue;
 		if (!manifest.name.startsWith("@pie-players/")) continue;
+		if (typeof manifest.version !== "string") continue;
 
-		packages.push(manifest.name);
+		packages.push({ name: manifest.name, version: manifest.version });
 	}
 
-	return packages.sort((a, b) => a.localeCompare(b));
+	return packages.sort((a, b) => a.name.localeCompare(b.name));
+};
+
+/**
+ * The last release only finishes publishing once npm reports the local version back. Until
+ * then a stray merge to master must not manufacture a further bump on top of it — that is
+ * exactly how local skipped 0.3.69 on npm straight to 0.3.70. Checked against whichever
+ * discovered package npm has published before (a brand-new package 404s, and the group's
+ * uniform-version invariant is check-fixed-versioning's job, not this script's).
+ */
+const releaseAlreadyPending = (packages) => {
+	for (const pkg of packages) {
+		let published;
+		try {
+			published = execSync(`npm view "${pkg.name}" version`, {
+				cwd: ROOT,
+				stdio: "pipe",
+			})
+				.toString("utf8")
+				.trim();
+		} catch (error) {
+			const detail = error.stderr?.toString()?.trim() || error.message || "";
+			if (/E404|404 Not Found/.test(detail)) continue;
+			fail(`Failed to read published version for ${pkg.name} from npm: ${detail}`);
+		}
+		if (!published) continue;
+		return published !== pkg.version
+			? { pending: true, name: pkg.name, local: pkg.version, published }
+			: { pending: false };
+	}
+	// Every discovered package is new to npm: nothing to compare against, and there is no
+	// prior release that could be stuck.
+	return { pending: false };
 };
 
 if (!existsSync(CHANGESET_DIR)) {
 	fail("Missing .changeset directory.");
 }
 
-const packageNames = discoverPublishablePackages();
-if (packageNames.length === 0) {
+const packages = discoverPublishablePackages();
+if (packages.length === 0) {
 	fail("No publishable @pie-players packages discovered under packages/*.");
 }
 
+const pendingCheck = releaseAlreadyPending(packages);
+if (pendingCheck.pending) {
+	console.log(
+		`[create-temporary-release-changeset] Skipping: local ${pendingCheck.name}@${pendingCheck.local} has not reached npm yet (published ${pendingCheck.published}). A previous release is still pending publish; not generating another bump on top of it.`,
+	);
+	process.exit(0);
+}
+
+const packageNames = packages.map((pkg) => pkg.name);
 const frontmatterLines = packageNames.map(
 	(packageName) => `"${packageName}": patch`,
 );

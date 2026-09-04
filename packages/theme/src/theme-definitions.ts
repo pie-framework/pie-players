@@ -55,7 +55,7 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-secondary-dark": "#880e4f",
 	"--pie-tertiary": "#146eb3",
 	"--pie-tertiary-light": "#d0e2f0",
-	"--pie-background": "rgba(255, 255, 255, 0)",
+	"--pie-background": "#ffffff",
 	"--pie-background-dark": "#ecedf1",
 	"--pie-secondary-background": "rgba(241, 241, 241, 1)",
 	"--pie-dropdown-background": "#e0e1e6",
@@ -448,7 +448,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#ffddee",
 				"--pie-focus-unchecked-border": "#000000",
 				"--pie-blue-grey-100": "#ffeef5",
-				"--pie-blue-grey-300": "#ffccdd",
+				"--pie-blue-grey-300": "#ffb3cc",
 				"--pie-blue-grey-600": "#cc6688",
 				"--pie-blue-grey-900": "#000000",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -776,12 +776,7 @@ const DEFAULT_SCHEME_DESCRIPTOR: PieColorSchemeDescriptor = deepFreeze({
 	name: "Default",
 	description: "Standard PIE colors",
 	kind: "default",
-	preview: createPieColorSchemePreview({
-		...LIGHT_BASE_THEME,
-		// The live light Base Theme intentionally reveals its host surface. A
-		// catalog swatch has no such surface, so composite it on white explicitly.
-		"--pie-background": "#ffffff",
-	}),
+	preview: createPieColorSchemePreview(LIGHT_BASE_THEME),
 });
 
 const REQUIRED_SCHEME_TOKENS = Object.freeze(
@@ -970,12 +965,6 @@ function parseOpaqueColor(value: string): Rgb | null {
 	const normalized = value.trim().toLowerCase();
 	if (normalized === "black") return { r: 0, g: 0, b: 0 };
 	if (normalized === "white") return { r: 255, g: 255, b: 255 };
-	if (normalized === "rgba(255, 255, 255, 0)") {
-		// The transparent light Base Theme is an externally observed behavior. Its
-		// effective contrast depends on the host backdrop and cannot be certified
-		// from the token value alone.
-		return null;
-	}
 	const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(normalized);
 	if (hex) {
 		const expanded =
@@ -1206,12 +1195,8 @@ function validateBuiltInDefinitions(): string[] {
 function validateBaseThemes(): string[] {
 	const failures: string[] = [];
 	for (const baseTheme of ["light", "dark"] as const) {
-		const measurableVariables =
-			baseTheme === "light"
-				? { ...BASE_THEMES.light, "--pie-background": "#ffffff" }
-				: BASE_THEMES.dark;
 		for (const diagnostic of diagnoseThemeContrast(
-			measurableVariables,
+			BASE_THEMES[baseTheme],
 			`${baseTheme}-base`,
 		)) {
 			failures.push(`${baseTheme}: ${diagnostic.message}`);

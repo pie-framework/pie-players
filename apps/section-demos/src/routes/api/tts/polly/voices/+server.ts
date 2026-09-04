@@ -8,15 +8,16 @@
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import {
+	mapTtsFailure,
+	TtsNotConfiguredError,
+} from "@pie-players/demo-ui/server";
 
 type PollyEngine = "neural" | "standard";
 const SUPPORTED_ENGINES: PollyEngine[] = ["neural", "standard"];
 
 // Keep one singleton per engine so switching is cheap.
 const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
-
-/** Thrown when AWS credentials are simply absent — expected in dev/CI, not a fault to log. */
-class PollyNotConfiguredError extends Error {}
 
 /**
  * Get or initialize the Polly provider
@@ -33,7 +34,7 @@ async function getPollyProvider(
 			!process.env.AWS_ACCESS_KEY_ID ||
 			!process.env.AWS_SECRET_ACCESS_KEY
 		) {
-			throw new PollyNotConfiguredError(
+			throw new TtsNotConfiguredError(
 				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file.",
 			);
 		}
@@ -106,14 +107,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({ voices });
 	} catch (err) {
-		if (!(err instanceof PollyNotConfiguredError)) {
-			console.error("[Polly API] Error:", err);
-		}
+		const { status, message, logAsFault } = mapTtsFailure(err);
+		if (logAsFault) console.error("[Polly API] Error:", err);
 
-		if (err instanceof Error) {
-			return json({ error: err.message }, { status: 500 });
-		}
-
-		return json({ error: "Internal server error" }, { status: 500 });
+		return json({ error: message }, { status });
 	}
 };

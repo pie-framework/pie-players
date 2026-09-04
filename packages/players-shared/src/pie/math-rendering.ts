@@ -91,9 +91,12 @@ export async function initializeMathRendering(
 			const { _dll_pie_lib__math_rendering } = await import(
 				"@pie-lib/math-rendering-module/module"
 			);
-			setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
-
-			logger.debug("Math rendering module initialized (both globals set)");
+			// A host may install its renderer while the default module is in flight.
+			// The explicit renderer remains authoritative when that happens.
+			if (!getWindowRenderer()) {
+				setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
+				logger.debug("Math rendering module initialized (both globals set)");
+			}
 		} catch (error) {
 			logger.error("Failed to initialize math rendering:", error);
 			throw error;

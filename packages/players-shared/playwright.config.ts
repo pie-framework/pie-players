@@ -11,6 +11,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
 	testDir: "./tests/e2e",
+	// Not Playwright's default: that also claims the `*.test.ts` bun tests. See
+	// AGENTS.md, "Playwright And Sandboxed Execution".
+	testMatch: /.*\.spec\.ts/,
 	fullyParallel: false,
 	forbidOnly: false,
 	retries: 0,

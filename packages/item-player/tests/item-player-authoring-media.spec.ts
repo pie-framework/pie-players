@@ -59,6 +59,39 @@ test.describe("item-demos authoring media endpoints", () => {
 		expect(fetchAfterDeleteResponse.status()).toBe(404);
 	});
 
+	test("stored svg is served sandboxed and with nosniff", async ({
+		request,
+	}) => {
+		const insertResponse = await request.post(
+			"/api/authoring-media/insert-image",
+			{
+				multipart: {
+					file: {
+						name: "demo-image.svg",
+						mimeType: "image/svg+xml",
+						buffer: Buffer.from(
+							'<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>',
+						),
+					},
+					isPasted: "false",
+				},
+			},
+		);
+		expect(insertResponse.ok()).toBe(true);
+		const insertPayload = (await insertResponse.json()) as { src: string };
+
+		const fetchStoredResponse = await request.get(insertPayload.src);
+		expect(fetchStoredResponse.ok()).toBe(true);
+		const headers = fetchStoredResponse.headers();
+		expect(headers["content-type"]).toContain("image/svg+xml");
+		expect(headers["content-security-policy"]).toBe("sandbox");
+		expect(headers["x-content-type-options"]).toBe("nosniff");
+
+		await request.post("/api/authoring-media/delete-image", {
+			data: { src: insertPayload.src },
+		});
+	});
+
 	test("insert sound stores file, serves it, and delete removes it", async ({
 		request,
 	}) => {

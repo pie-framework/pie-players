@@ -41,13 +41,19 @@ is intentionally not a toolkit built-in default option.
 
 **Route**: `GET /api/tools/desmos/auth`
 
-Returns Desmos API key for calculator tool authentication.
+Returns the demo application's Desmos API key for the browser's documented
+`calculator.js` request. Responses are `private, no-store`. When
+`DESMOS_API_KEY` is absent, the route returns an empty compatibility response so
+existing local demos still exercise the legacy unkeyed Desmos URL; that fallback
+does not grant or imply a Desmos license.
 
 > **Demo only — intentionally unauthenticated.** This route returns the
-> configured `DESMOS_API_KEY` (or a free-tier config when unset) with no
-> session check. Do not deploy as-is; wrap it with the host's auth
-> middleware, or switch to `DesmosToolProvider.proxyEndpoint` so the key
-> never reaches the client. See
+> configured `DESMOS_API_KEY` with no session check. Do not deploy as-is; a real
+> host must restrict delivery to authorized users and supply a Trial or
+> Commercial Tier key licensed for that application. Runtime delivery keeps the
+> key out of static bundles but cannot hide it from the browser, because Desmos
+> requires it in the CDN URL. Do not proxy or self-host `calculator.js` unless a
+> Desmos partner agreement grants that right. See
 > [`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../../../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
 
 ### Dictionary And Picture Dictionary

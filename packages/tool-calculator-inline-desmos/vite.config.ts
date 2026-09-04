@@ -10,7 +10,14 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
-		dts({ bundleTypes: false }),
+		dts({
+			bundleTypes: false,
+			// This package has no `.ts` source — `vite.config.ts` is the only file in
+			// its tsconfig program, so it cannot be excluded there without emptying it.
+			// Name the component instead, so the config's declaration stops being
+			// emitted into the published `dist`.
+			include: ["tool-calculator-inline.svelte"],
+		}),
 	],
 	build: {
 		lib: {
@@ -25,12 +32,7 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["svelte", "@pie-players/pie-assessment-toolkit"],
-			output: {
-				globals: {
-					svelte: "Svelte",
-				},
-			},
+			external: ["@pie-players/pie-assessment-toolkit"],
 		},
 	},
 });

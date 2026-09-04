@@ -105,3 +105,7 @@ temp/
 # its correct answer. The demo loads it only when present — see
 # apps/section-demos/src/lib/content/demo-sign-language.ts.
 apps/section-demos/src/lib/content/pie881-imported-asl-item.json
+
+# Opt-in full arithmetic corpus, regenerated on demand (see
+# packages/calculator-cortex/scripts/build-expression-corpus.mjs).
+.corpus/

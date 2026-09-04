@@ -7,6 +7,9 @@ import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
+import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
+import { demoCortexCalculatorSection } from "./demo-cortex-calculators";
+import { demoDesmosCalculatorSection } from "./demo-desmos-calculators";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
@@ -23,6 +26,7 @@ import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
 import { demoTimedMediaSection } from "./demo-timed-media";
+import { demoTimedMediaVideoStimulusSection } from "./demo-timed-media-video-stimulus";
 import { demoInterfaceLocaleSection } from "./demo-interface-locale";
 
 export interface SectionDemoInfo {
@@ -613,13 +617,13 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		integrationLevel: 2,
 		integrationTheme: "Formative delivery",
 		focus:
-			"Shows that PIE renders no feedback of its own — a reveal projects `mode: \"evaluate\"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.",
+			'Shows that PIE renders no feedback of its own — a reveal projects `mode: "evaluate"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.',
 		whatMakesItTick: [
 			"`section.formative` sets the default (three Tries, correctness feedback); each `assessmentItemRefs[].formative` overrides it field by field.",
 			"A check calls the item player's existing `provideScore()` and reports the outcomes; the section controller derives correctness and owns Try state.",
-			"Only the revealed item's `env` becomes `mode: \"evaluate\"` — its neighbours stay editable, which is the per-item seam the section env never had.",
-			"`fd-q2` uses `feedback: \"solution\"`, so its reveal projects `role: \"instructor\"` and the element shows the authored correct response.",
-			"`fd-q3` uses `revealOn: \"on-final-try\"`: the first two checks record a Try and reveal nothing.",
+			'Only the revealed item\'s `env` becomes `mode: "evaluate"` — its neighbours stay editable, which is the per-item seam the section env never had.',
+			'`fd-q2` uses `feedback: "solution"`, so its reveal projects `role: "instructor"` and the element shows the authored correct response.',
+			'`fd-q3` uses `revealOn: "on-final-try"`: the first two checks record a Try and reveal nothing.',
 			"`fd-q4` sets `enabled: false`, so one ordinary item sits inside a formative section with no control at all.",
 		],
 		section: demoFormativeDeliverySection,
@@ -634,7 +638,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows that the section reaches media only through the Media Time Source port. The stimulus here is authored `<video>` markup with no PIE element in it, so the port is exercised by the exact case it exists for: a host supplying its own media element.",
 		whatMakesItTick: [
-			"The stimulus is a `class: \"stimulus\"` rubric block whose passage config mounts the media element; `timedMedia` carries only `stimulusRef`, the cues and the policy.",
+			'The stimulus is a `class: "stimulus"` rubric block whose passage config mounts the media element; `timedMedia` carries only `stimulusRef`, the cues and the policy.',
 			"`cue-first-step` reveals `tm-q1` at 0:04 and playback continues; a revealed card is mounted-and-hidden until its cue fires, so its session and shell registration survive a seek backwards.",
 			"`cue-scrub-time` gates `tm-q2` at 0:10: playback pauses, focus moves to the card, and only a correct answer releases it — the condition names the formative `FormativeCorrectness` vocabulary rather than defining its own.",
 			"`onUnknownCorrectness` is stated explicitly, because an item no controller can score has to have an authored answer rather than being treated as wrong.",
@@ -642,6 +646,18 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"`tm-q3` is named by no cue, so the timeline sequences what it names and leaves everything else alone.",
 		],
 		section: demoTimedMediaSection,
+		sections: [
+			{
+				id: "native-video",
+				name: "Host-supplied native video",
+				section: demoTimedMediaSection,
+			},
+			{
+				id: "video-stimulus-package",
+				name: "Packaged video stimulus",
+				section: demoTimedMediaVideoStimulusSection,
+			},
+		],
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",
@@ -723,6 +739,62 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The same registry is passed to `createToolsConfig`, `ToolkitCoordinator`, and the section-player element.",
 		],
 		section: demo8ToolVisibilitySection,
+	},
+	"calculator-desmos": {
+		id: "calculator-desmos",
+		name: "Desmos Calculator Suite",
+		description:
+			"The default calculator provider, named explicitly and locked down the way an assessment host configures it",
+		integrationLevel: 4,
+		integrationTheme: "Alternative tool-provider composition",
+		focus:
+			"Exercises the calculator registration, toolbar, policy, and item-data configuration through the Desmos provider, and shows the credential and lockdown configuration a host passes it.",
+		whatMakesItTick: [
+			"Names `calculator-desmos` explicitly, which is what `DEFAULT_CALCULATOR_PROVIDER_ID` resolves to for a host that configures no provider at all.",
+			"Supplies the API key through `provider.runtime.authFetcher`, fetched by the host at open time rather than carried in item content.",
+			"Configures Desmos' own settings under the vendor-neutral `settings` field, whose type ships from `@pie-players/pie-calculator-desmos` rather than from the generic calculator contract.",
+			"Sets the vendor-neutral `restrictedMode` and goes further with Desmos' own `restrictedFunctions` and chrome flags, which the neutral field does not reach.",
+			"Exercises basic, scientific, and graphing requests on separate assessment items through the same toolkit context resolver.",
+			"Opens each type at the panel size its layout measures -- 720x660 for graphing, 380 wide for the others -- and scrolls rather than clipping when a learner resizes below it.",
+		],
+		section: demoDesmosCalculatorSection,
+	},
+	"calculator-geogebra": {
+		id: "calculator-geogebra",
+		name: "GeoGebra Calculator Suite",
+		description:
+			"The calculator capability explicitly composed with GeoGebra while the unconfigured default remains Desmos",
+		integrationLevel: 4,
+		integrationTheme: "Alternative tool-provider composition",
+		focus:
+			"Exercises the same calculator registration, toolbar, policy, and item-data configuration through the separate GeoGebra provider suite.",
+		whatMakesItTick: [
+			"Selects `calculator-geogebra` through the generic provider configuration seam; no generic calculator code imports a GeoGebra implementation.",
+			"Maps the basic calculator request to GeoGebra's scientific app because GeoGebra has no equivalent four-function embed.",
+			"Exercises basic, scientific, and graphing requests on separate assessment items through the same toolkit context resolver.",
+			"Keeps the existing `calculator` capability and generic custom-element contract, so hosts switch implementation without changing item policy.",
+			"Loads GeoGebra from its official deployment script and displays the required GeoGebra attribution inside the tool surface.",
+		],
+		section: demoGeoGebraCalculatorSection,
+	},
+	"calculator-cortex": {
+		id: "calculator-cortex",
+		name: "Open-Source Calculator Suite",
+		description:
+			"The calculator capability composed with the in-repository Cortex provider, configured rather than defaulted",
+		integrationLevel: 4,
+		integrationTheme: "Alternative tool-provider composition",
+		focus:
+			"Exercises the same calculator registration, toolbar, policy, and item-data configuration through the open-source provider, and shows the per-instance settings a host passes it.",
+		whatMakesItTick: [
+			"Selects `calculator-cortex` through the generic provider configuration seam; no generic calculator code imports a Cortex implementation.",
+			"Needs no vendor key and makes no network request -- the provider is a package in this repository and evaluates in a worker, so the demo works offline.",
+			"Narrows `settings.allowedFunctions` to drop factorial and log-base-n, so the scientific keypad omits both keys rather than offering a key the validator would refuse.",
+			"Sets `restrictedMode: true`, which is monotonic: it disables clipboard actions and cannot be relaxed by `settings.allowClipboard`.",
+			"Passes `settings.angleMode: 'radian'` and `settings.historyLimit`, the same per-instance shape every adapter fills through the vendor-neutral `settings` field.",
+			"Serves basic, scientific, and graphing from one provider; graphing plots in JSXGraph and traces from the keyboard.",
+		],
+		section: demoCortexCalculatorSection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",

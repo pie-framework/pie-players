@@ -11,7 +11,6 @@ export type {
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
 
 export type ToolId = string;
@@ -189,44 +188,6 @@ export interface ResolvedItemToolParameters extends ItemToolParameters {
 }
 
 /**
- * Library configuration for external dependencies
- */
-export interface LibraryConfig {
-	id: string;
-	url: string;
-	fallbackUrls?: string[];
-	globalVar?: string;
-	dependencies?: string[];
-	integrity?: string;
-	crossorigin?: "anonymous" | "use-credentials";
-	timeout?: number;
-	async?: boolean;
-	defer?: boolean;
-	retry?: RetryConfig;
-}
-
-/**
- * Retry configuration for library loading
- */
-export interface RetryConfig {
-	maxAttempts: number;
-	delay: number;
-	backoffMultiplier?: number;
-}
-
-/**
- * Library loader statistics
- */
-export interface LoaderStats {
-	loaded: string[];
-	failed: string[];
-	pending: string[];
-	cacheHits: number;
-	cacheMisses: number;
-	totalLoadTime: number;
-}
-
-/**
  * Base interface that all tool components should implement
  */
 export interface Tool {
@@ -349,45 +310,6 @@ export interface VariantResolver {
 		itemConfig: ItemToolConfig,
 		context: VariantContext,
 	): ResolvedItemConfig;
-}
-
-/**
- * Library Loader Service
- * Dynamically loads external libraries with retry and fallback support
- */
-export interface LibraryLoader {
-	/**
-	 * Load a JavaScript library
-	 */
-	loadScript(library: LibraryConfig): Promise<void>;
-
-	/**
-	 * Load a stylesheet
-	 */
-	loadStylesheet(
-		url: string,
-		targetRoot?: Document | ShadowRoot,
-	): Promise<void>;
-
-	/**
-	 * Check if a library is already loaded
-	 */
-	isLoaded(libraryId: string): boolean;
-
-	/**
-	 * Preload multiple libraries in parallel
-	 */
-	preload(libraries: LibraryConfig[]): Promise<void>;
-
-	/**
-	 * Unload a library (remove script tag)
-	 */
-	unload(libraryId: string): void;
-
-	/**
-	 * Get loader statistics
-	 */
-	getStats(): LoaderStats;
 }
 
 // Calculator types now exported from @pie-players/pie-calculator (see top of file)

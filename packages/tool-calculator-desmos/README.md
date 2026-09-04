@@ -1,7 +1,9 @@
 # Desmos Calculator Tool
 
 Calculator custom element backed by the Desmos provider for PIE assessment
-player flows.
+player flows. It is a thin compatibility wrapper around
+`@pie-players/pie-tool-calculator-shared`; Desmos-specific layout rules and the
+default provider id remain in this package.
 
 ## Usage
 
@@ -25,8 +27,10 @@ import "@pie-players/pie-tool-calculator-desmos";
 | --- | --- | --- | --- |
 | `visible` | `boolean` | `false` | Controls whether the calculator is visible. |
 | `toolId` | `string` | `calculator` | Tool identifier used by the assessment toolkit runtime context. |
+| `providerId` | `string` | `calculator-desmos` | Toolkit provider registry id. |
 | `calculatorType` | `string` | package default | Requested calculator mode. |
 | `availableTypes` | `string[]` | package default | Calculator modes the host allows. |
+| `calculatorConfig` | `CalculatorProviderConfig` | `{}` | Provider-neutral options plus implementation-owned `settings`. |
 | `toolkitCoordinator` | `ToolkitCoordinator` | unset | Optional coordinator reference for toolkit-managed flows. |
 
 ## Related Documentation

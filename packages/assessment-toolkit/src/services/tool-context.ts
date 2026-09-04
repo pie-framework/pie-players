@@ -485,8 +485,13 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 		return models.some((m: any) => {
 			if (!m || typeof m !== "object") return false;
 			const type = m.element || "";
-			if (interactionTypes.includes(type)) return true;
-			// Fallback for configs that don't provide canonical element names.
+			// A model that names its element has answered the question, whichever way
+			// the answer falls. `choices` is carried by interactions that are not
+			// choice interactions at all — `placement-ordering`, `categorize` and
+			// `drag-in-the-blank` each hold their draggables there — so reading it on
+			// a named model showed the answer eliminator on items where the tool does
+			// nothing. The heuristic remains for configs that name no element.
+			if (type) return interactionTypes.includes(type);
 			return Array.isArray(m.choices) && m.choices.length > 0;
 		});
 	}

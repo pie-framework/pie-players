@@ -29,6 +29,31 @@ Critical requirements:
 
 ## Canonical Rules
 
+### Design Principles
+
+These govern how a new surface is shaped, and they outrank convenience.
+
+- **Internal consistency first.** Before designing an interface, find where this
+  framework already solves the same problem, and match it. Two packages solving
+  one problem two ways is a defect even when both work — the calculator contract
+  carried a type parameter for vendor config while `pie-tts` did the same job with
+  plain interface extension, and the parameter was the thing that had to go. When
+  no precedent exists, the shape you choose becomes one, so choose it as a
+  precedent.
+- **Tight, non-leaky interfaces.** A contract package exposes what a consumer
+  needs to call and nothing about who implements it. Provider knowledge belongs in
+  the adapter that owns it: `pie-calculator` names no vendor, `pie-calculator-desmos`
+  owns every Desmos type. A consumer of a contract must never have to reach past it
+  to a concrete implementation, and a contract's published declarations must not
+  drag an implementation's package in behind them.
+- **Lean and focused.** Prefer the smaller surface. Delete a parameter, an export,
+  or an abstraction that constrains nothing rather than documenting why it is
+  harmless — an unenforced generic, a re-export nothing can import, a mirror type
+  nothing checks. Abstraction earns its place by a need that exists now.
+- **A published entry describes what it delivers.** Type entries, `exports` maps
+  and declarations are promises to a consumer; a promise the runtime cannot keep is
+  a defect even where nothing has called it yet.
+
 ### PIE Element Versioning And Tag/ID Contract
 
 Versioned `pie-*--version-*` tag names are authored content contracts. They are
@@ -94,6 +119,36 @@ registered under its own distinct tag.
   `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
   `bun run check:custom-elements`.
 
+### Decision Records
+
+`docs/adr/` holds one file per decision that is hard to reverse or surprising
+without its context. `docs/adr/README.md` sets the bar and the numbering; records
+are append-only, so a superseded one keeps its number and gains a `Superseded by`
+line rather than being edited into agreement.
+
+Two rules from those records bind new code directly, both from ADR 0002:
+
+- A public interface takes no type parameter that appears only in argument
+  position. TypeScript compares method parameters bivariantly, so such a parameter
+  constrains no implementor while every implementor and annotation site has to
+  carry it. An adapter extends the contract's config interface and narrows the
+  argument in its own class signature — that is where a caller's precision
+  actually comes from. A parameter in return position is checked and stays.
+- An optional peer dependency stays out of published declarations. Declaration
+  emit preserves `implements` clauses and public return types, so a top-level
+  `import type` from an optional peer reaches the published `.d.ts` and makes that
+  peer required for any consumer type-checking without `skipLibCheck`. Type the
+  public surface with the contract package's own interface and confine the peer to
+  a method body.
+
+### Domain Language
+
+The root `CONTEXT.md` is the shared vocabulary for PIE Players and its runtime
+hosts: one tight definition per term, the aliases to avoid, the relationships,
+and the ambiguities that were resolved rather than missed. Use its terms in code,
+docs and PRDs. `docs/architecture/domain-language.md` carries the format and the
+admission rule — a term lands when it has been resolved and is worth preserving.
+
 ### Downstream Consumer Impact
 
 `docs/integrations/consumer-api-dependencies.md` records which `@pie-players`
@@ -143,6 +198,32 @@ surfaces real downstream hosts touch, and which of those break silently.
   `scripts/check-consumer-pad.mjs` is too wide — narrow it there rather than
   normalizing the override. `PIE_CONSUMER_PAD_OVERRIDE="<reason>"` exists for a
   one-off local run and is not a substitute for the trailer.
+
+### Theme Token Admission and Stability
+
+`docs/architecture/pie-727-theme-token-inventory.md` carries the full rule under
+**Registry admission** and **Token stability**. The binding parts:
+
+- A `--pie-*` name earns a `token-registry.json` entry when a host sets it, or
+  when package documentation tells a host to set it. Every other name gets an
+  allowlist line in `scripts/check-theme-tokens.mjs` and nothing else. Existing
+  in source is not the test — applying it that way published seventeen entries on
+  2026-08-02 and withdrew sixteen the next day.
+- A README that names a token states which side of that line it falls on.
+  Offering a token to hosts while leaving it unregistered is the same defect from
+  the other end: register it or withdraw the offer.
+- Registered names are not renamed or dropped, and reclassifying one narrows a
+  promise a host may hold, so it takes the same consumer-pad check as a rename.
+- A rendered value changes on a diagnosed accessibility failure or a
+  host-visible defect, named in the changeset with the relationship it repairs.
+  `packages/theme/tests/theme-definition-contract.test.ts` asserts every base
+  theme and all ten schemes come back contrast-clean, so a palette edit that
+  repairs no diagnosed failure is changing certified output.
+- Prefer an existing canonical token or `--pie-button-*` chain over a new hook.
+  Where a component needs one, match the nearest in-framework precedent — its
+  fallback shape, its scope, and its scheme participation — rather than inventing
+  a parallel convention; divergence between two components solving the same
+  problem is itself the defect.
 
 ### Legacy Compatibility Boundaries
 
@@ -232,9 +313,33 @@ This applies to:
 - Any `bun run test:e2e:*` script.
 - `bunx playwright ...` / `bun playwright ...`.
 - Playwright helper scripts, screenshot capture, or ad-hoc DOM verification.
-- `bun run test` / `bun test` in packages whose tests include Playwright specs.
 - `bun run verify:local-pr`, because it runs the full local lint/typecheck gate
   plus the critical Playwright e2e suites.
+
+`bun test` does not, and the two runners have to be kept out of each other's
+files in both directions. Bun discovers `*.spec.ts` and `*.test.ts`; Playwright's
+default `testMatch` discovers both as well.
+
+- **Bun must not load Playwright specs.** A `bunfig.toml` carrying
+  `pathIgnorePatterns = ["**/*.spec.ts"]` keeps them out, where
+  `@playwright/test`'s `test()` would otherwise throw on the missing worker
+  fixtures. Bun reads that file from the current working directory only — no
+  walking up to the workspace root, and no `extends` — so the root has one and so
+  does every package holding Playwright specs. A new package that adds a spec
+  needs its own copy; the rationale stays in the root file, and the duplicated
+  content is the one glob.
+- **Playwright must not load bun tests.** Every `playwright.config.ts` sets
+  `testMatch: /.*\.spec\.ts/`. This one is not cosmetic: a `*.test.ts` inside
+  `testDir` imports `bun:test`, Playwright's Node loader rejects the `bun:`
+  protocol, and discovery collapses to **zero tests for the entire config** — the
+  suite reports nothing rather than failing loudly. `item-player` ran that way
+  until 2026-08-30. Scoping `testDir` to a spec-only directory hides the hazard
+  without removing it, so set `testMatch` there too.
+
+Where two configs share one `testDir`, the narrower one owns its files by
+`testMatch` and the broader one excludes them by `testIgnore` —
+`packages/item-player`'s backend-demo specs need the `backend-demos` server and
+belong to `playwright.backend.config.ts`, so the main config ignores them.
 
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
@@ -316,20 +421,12 @@ Skills:
 - `consumer-dependency-audit` — trigger coverage and Claude-side mechanics for
   `docs/integrations/consumer-api-dependencies-maintenance.md`, which owns the
   procedure.
-- `grill-with-docs` — opt-in design grilling with terminology/ADR capture.
-- `loop-review-agents` — opt-in repeated three-agent review loop with consensus
-  thresholds and churn control.
-- `prd-author` — draft or update PIE Players PRDs under `docs/prds/`.
 - `releases-and-changesets` — lockstep release and changeset workflow.
 
 Commands:
 
 - `consumer-dependency-audit` — invoke the `consumer-dependency-audit` skill,
   optionally scoped to one consumer label or one surface.
-- `grill-with-docs` — invoke the `grill-with-docs` skill with optional plan
-  context.
-- `loop-review-agents` — invoke the `loop-review-agents` skill with optional
-  review target context.
 
 ## High-Value Checks
 

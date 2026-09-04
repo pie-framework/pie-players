@@ -28,6 +28,7 @@
  */
 
 import {
+	isOverwideWrapMutation,
 	type OverwideWrapSpec,
 	type WrapOverwideOptions,
 	wrapOverwideInElement,
@@ -88,4 +89,14 @@ export function wrapOverwideTablesInElement(
 
 export function wrapOverwideTables(markup: string): string {
 	return wrapOverwideMarkup(markup, TABLE_SPEC);
+}
+
+/**
+ * True when `record` mentions nothing but the output of
+ * {@link wrapOverwideTablesInElement} — a `pie-table-scroll` wrapper, or a
+ * `<table>` moving inside one. An observer-driven caller ignores such a record
+ * so its own wrap does not schedule a second pass.
+ */
+export function isOverwideTableWrapMutation(record: MutationRecord): boolean {
+	return isOverwideWrapMutation(record, TABLE_SPEC);
 }

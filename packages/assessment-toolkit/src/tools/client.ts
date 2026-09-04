@@ -9,12 +9,6 @@
  * they don't accidentally pull in server-side dependencies.
  */
 
-// Library loader (client-safe, has SSR guards)
-export {
-	COMMON_LIBRARIES,
-	LibraryLoaderImpl,
-	libraryLoader,
-} from "./library-loader.js";
 // Response discovery (client-safe, browser-only)
 export {
 	ResponseDiscoveryServiceImpl,

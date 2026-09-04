@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-item-player",
-	"version": "0.3.68",
+	"version": "0.3.70",
 	"type": "module",
 	"description": "Unified custom element for rendering PIE items with iife/esm/preloaded strategies",
 	"license": "MIT",
@@ -32,7 +32,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"test": "bun test '.test.ts'",
+		"test": "bun test",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"lint": "biome check ."
@@ -43,14 +43,14 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.8",
+		"@biomejs/biome": "^2.5.11",
 		"@playwright/test": "^1.62.1",
-		"@sveltejs/vite-plugin-svelte": "^7.2.0",
-		"@types/node": "^26.2.0",
-		"svelte": "^5.56.8",
-		"svelte-check": "^4.7.5",
+		"@sveltejs/vite-plugin-svelte": "^7.3.0",
+		"@types/node": "^26.4.0",
+		"svelte": "^5.57.0",
+		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.1",
+		"vite": "^8.2.2",
 		"vite-plugin-dts": "^5.0.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/item-player#readme",

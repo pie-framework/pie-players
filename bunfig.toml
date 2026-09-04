@@ -1,0 +1,18 @@
+# Bun's test discovery claims `*.spec.ts`, and so does Playwright's default
+# `testMatch`. Every Playwright spec in this repo uses that extension, so a bare
+# `bun test` loads them into bun's runner, where `@playwright/test`'s `test()`
+# throws on the missing worker fixtures. Ignoring the pattern here is what makes
+# discovery correct however the runner is invoked — `bun test`, `bun test tests`,
+# or a directory path. Before this, the six packages holding Playwright specs
+# each filtered them out in their own `test` script, which held only while the
+# author remembered the argument.
+#
+# Bun reads bunfig.toml from the current working directory only: no walking up to
+# the workspace root, and `extends` is not supported. Turbo runs each package's
+# `test` script with that package as the cwd, so every package holding Playwright
+# specs carries its own copy of this `[test]` block, pointing back here. Keep the
+# duplicated content to the one glob.
+#
+# Playwright is unaffected: it reads the `playwright.config.ts` files, not this.
+[test]
+pathIgnorePatterns = ["**/*.spec.ts"]

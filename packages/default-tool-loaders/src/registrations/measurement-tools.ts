@@ -48,7 +48,6 @@ export const rulerToolRegistration: ToolRegistration = {
 	// Maps to QTI 3.0 standard feature: ruler
 	pnpSupportIds: [
 		"ruler", // QTI 3.0 standard (assessment.ruler)
-		"measurement", // Common variant
 	],
 
 	/**
@@ -90,7 +89,6 @@ export const protractorToolRegistration: ToolRegistration = {
 	// Maps to QTI 3.0 standard feature: protractor
 	pnpSupportIds: [
 		"protractor", // QTI 3.0 standard (assessment.protractor)
-		"angleMeasurement", // Common variant
 	],
 
 	/**

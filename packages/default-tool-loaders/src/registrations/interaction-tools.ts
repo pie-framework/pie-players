@@ -53,14 +53,25 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	pnpSupportIds: [
 		"answerMasking", // QTI 3.0 standard (assessment.answerMasking)
 		"answerEliminator", // QTI 3.0 standard (assessment.answerEliminator)
-		"strikethrough", // Common variant
-		"choiceMasking", // Common variant
+		"strikethrough", // QTI 3.0 standard (assessment.strikethrough)
 	],
 
 	/**
 	 * Pass 2: Answer eliminator is relevant only for choice-based questions
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
+		return hasChoiceInteraction(context);
+	},
+
+	/**
+	 * Pass 3: the same question, asked as a capability. Elimination controls are
+	 * rendered per choice, so an item with no choice interaction gives this tool
+	 * nothing to act on — `placement-ordering`, `categorize` and
+	 * `drag-in-the-blank` included, whose `choices` hold draggables the
+	 * eliminator cannot reach. Answering the relevance gate alone left the button
+	 * on those items for any learner whose profile grants answer masking.
+	 */
+	isApplicableToContent(context: ToolContext): boolean {
 		return hasChoiceInteraction(context);
 	},
 

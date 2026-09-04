@@ -1,6 +1,6 @@
 # Formative Delivery Contract
 
-Status: Ready
+Status: Accepted, 2026-08-15
 
 Owner: PIE Players maintainers
 
@@ -523,18 +523,12 @@ bun run check:player-tool-boundaries
 
 Playwright-backed coverage runs outside the sandbox.
 
-## Rollout And Release Notes
+## Rollout And Release Record
 
-- Changeset required: yes — patch entries for every changed publishable package,
-  under the fixed lockstep policy.
-- Migration notes: none. Enabling formative delivery is opting into a new
-  section field.
-- Documentation updates: `packages/section-player/README.md`,
-  `packages/players-shared/README.md`, `CONTEXT.md` vocabulary, and a
-  `section-demos` route.
-- Release risk: medium. The state machine and rollup are new and user-visible,
-  but every path is gated behind `formative.enabled` and unreachable for existing
-  content.
+Accepted on 2026-08-15. The change was additive and gated behind
+`formative.enabled`; existing content remained unaffected. The implementation
+included the required package changeset, public documentation, demo coverage,
+and persisted-session coverage.
 
 ## Resolved Decisions
 

@@ -57,10 +57,11 @@ for example `--pie-button-`, `--pie-focus-`, and
 | Class | Tokens | Contract |
 | --- | --- | --- |
 | Canonical semantic | `--pie-text`, `--pie-background`, `--pie-primary`, feedback, border, neutral, focus-checked, `--pie-surface`, and `--pie-button-*` defaults | Owned by `@pie-players/pie-theme`; the active color tokens are required Scheme Participants. Existing Host A token names and fallback behavior remain source-compatible. |
-| Component-public | `--pie-tool-trigger-active-*`, section tab hooks, and annotation hooks | Owned by component packages but discoverable in `packages/theme/src/token-registry.json`; optional Scheme Participants unless their normal fallback cannot remain accessible. The annotation outline and two underline tokens are required. |
+| Component-public | `--pie-tool-trigger-active-*`, section tab hooks, annotation hooks, and the five TTS reading-highlight tokens | Owned by component packages but discoverable in `packages/theme/src/token-registry.json`; optional Scheme Participants unless their normal fallback cannot remain accessible. The annotation outline and two underline tokens are required. The five TTS reading-highlight tokens are `excluded`: the highlight coordinator derives them from the resolved theme at runtime, so no scheme value applies. |
 | Legacy/component aliases | `--pie-button-background-color`, `--pie-button-border-color`, `--pie-button-hover-background-color`, `--pie-focus-ring-color` | Host A's observed `--pie-button-background-color` remains a compatibility contract. The other names are classified historical paths, not reasons to add or retain further shims. All are excluded from Scheme Participation. |
 | Unsupported or intentional gaps | `--pie-background-light` | Do not treat as canonical until promoted by decision record; current usage falls back through `--pie-background`. |
-| Package-private or future public hooks | annotation highlight tokens, TTS highlight tokens, scrollbar tokens, `--pie-section-player-focus-outline`, `--pie-shadow` | Leave package-scoped unless a source-changing slice documents them as public and adds registry/docs/tests. |
+| Package-private or future public hooks | annotation highlight tokens, TTS panel chrome tokens, the three scrollbar hooks `--pie-scrollbar-thumb`, `--pie-scrollbar-thumb-hover` and `--pie-scrollbar-track`, `--pie-section-player-focus-outline`, `--pie-shadow` | Leave package-scoped unless a source-changing slice documents them as public and adds registry/docs/tests. The scrollbar three are registered as `package-private` with `excluded` participation: no theme or scheme sets a value, so each one's fallback chain is the contract rather than its name. |
+| Package-private layout handoffs | `--pie-section-player-layout-max-width`, `--pie-section-player-tab-zoom-comp`, `--pie-toolbar-tools-row-height`, `--pie-tts-controls-row-height` | Geometry passed between a component and its own subtree, set from props or measured at runtime, never a palette value and never a host hook. Hosts reach the same behaviour through documented max-width attributes and toolbar size inputs; overriding these directly desynchronises the component from the measurement it made. All are `excluded` from Scheme Participation. |
 
 ## High-Risk Findings
 
@@ -106,10 +107,52 @@ Built-ins must define every required token with an explicit value. Registered
 custom schemes are partial, but may name only required or optional tokens.
 Other one-off values belong in `<pie-theme>.variables` or deliberate host CSS.
 
+## Registry admission
+
+A `--pie-*` name earns a `token-registry.json` entry when a host sets it, or when
+package documentation tells a host to set it. Every other name stays in the
+`PACKAGE_PRIVATE_SOURCE_TOKENS` allowlist in `scripts/check-theme-tokens.mjs`.
+
+Existing in source is not the test. Applied on 2026-08-02 it published seventeen
+entries covering zoom compensations, panel shadows and button sizing, sixteen of
+which were withdrawn the next day (#153, #162) and have been allowlisted since.
+The five TTS reading-highlight tokens registered on 2026-08-28 pass the rule: the
+Angular delivery declares all five. The nine remaining geometry handoffs fail it
+and stay allowlisted, because registering them would buy symmetry and no signal.
+
+Two corollaries follow from the entry being a promise:
+
+- The README that names a token says which side of the line it falls on.
+  `tool-line-reader/README.md` states the contract for
+  `--pie-tool-line-reader-outline-color`; `calculator-cortex/README.md` and
+  `tool-tts-inline/README.md` carry the same statement over their package hooks.
+- Documenting a token to hosts while leaving it unregistered is the same defect
+  read from the other end. Register it or withdraw the offer.
+
+## Token stability
+
+Names and values are stable by default, and the record holds: between 2026-07-07
+and 2026-08-28 no registered name was renamed or dropped, and two commits changed
+a value a host renders — `1f29de7f` repaired six base-theme colours and six
+scheme values against WCAG, and `16926137` moved one scheme's
+`--pie-blue-grey-300`.
+
+A rendered value changes on a measured accessibility failure or a host-visible
+defect, named in the changeset along with the relationship it repairs.
+`theme-definition-contract.test.ts` asserts `diagnoseThemeContrast` returns empty
+for both base themes and all ten schemes, so a palette edit that is not repairing
+a diagnosed failure is changing certified output.
+
+A registered name is not renamed or dropped. Reclassifying one is a contract
+change on the same footing: `component-public` to `package-private` withdraws a
+promise a host may already hold, so it takes the consumer-pad check that a rename
+would.
+
 ## Follow-Up Inventory Rules
 
-- New public `--pie-*` variables require a token registry entry, owning package
-  README docs, package-local tests, and a patch changeset.
+- A `--pie-*` variable that passes **Registry admission** above requires a token
+  registry entry, owning package README docs, package-local tests, and a patch
+  changeset. One that fails it requires an allowlist line and nothing else.
 - Preserve existing names when the consumer pad records a client-facing
   dependency. Do not add compatibility paths for unobserved legacy interfaces.
 - Ambiguous tokens should be classified as `legacy`, `unsupported`, or

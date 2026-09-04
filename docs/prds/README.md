@@ -10,6 +10,19 @@ are final. A PRD owns the implementation decision: exact TypeScript names,
 exports, wire fields, migration behavior, host responsibilities, and acceptance
 tests.
 
+## What Earns A PRD
+
+A change needing an implementation-ready contract before code lands: a new public
+package export, custom element, event, property or wire field; a shared
+runtime, session, scoring, media, evidence or accessibility contract; behavior
+crossing package boundaries at the assessment, section, item, toolkit, tool,
+theme or adapter level; or a plan whose scope, ownership, compatibility and test
+expectations have to be settled first.
+
+Routine bug fixes, internal refactors with no contract change, docs-only edits,
+dependency bumps and release mechanics do not get a PRD. Unresolved gaps in a
+drafted PRD belong in **Open Questions** rather than holding up the document.
+
 ## Status Vocabulary
 
 Use one of these statuses at the top of each PRD:
@@ -19,6 +32,24 @@ Use one of these statuses at the top of each PRD:
 - `Ready` - scoped and reviewable; implementation can start.
 - `Accepted` - implemented and kept as the current contract reference.
 - `Superseded` - replaced by a newer PRD or contract document.
+
+## Retention And Cleanup
+
+Do not delete a PRD merely because its implementation is complete. An `Accepted`
+PRD is part of the current contract documentation: it records ownership,
+boundaries, rejected alternatives, compatibility decisions, and acceptance
+criteria that are not recoverable cheaply from code alone.
+
+Delete a PRD only when it was abandoned before it governed shipped behavior and
+has no decision-history value. Mark it `Superseded` when a newer document owns
+the contract, link to the replacement at the top, and remove it only in a later
+cleanup if no current document or code comment refers to it. Keep implementation
+journals concise: once a contract is accepted, prefer current behavior and the
+reasons for non-obvious decisions over branch chronology or stale rollout prose.
+
+The live development backlog is the set of `Draft`, `Ready`, and `Active`
+documents, not every file in this directory. `Accepted` and `Superseded`
+documents are reference/history and should not be presented as planned work.
 
 A contract spanning repos qualifies the status on the same line — `Accepted for
 the pie-players contract` — and names what is outstanding, and where, in the
@@ -43,17 +74,26 @@ live per-slice record is `Active`.
   CSS-class gate by transforming content rather than accommodating the class;
   plus why autoplay is a content property and not a PIE feature.
 - [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
-  Try state, feedback reveal as a per-item `env` projection, and section mastery.
-  Consumes the shipped client-side scoring path rather than replacing it.
+  accepted contract for Try state, feedback reveal as a per-item `env`
+  projection, and section mastery. Consumes the shipped client-side scoring path
+  rather than replacing it.
 - [`timed-media-section-contract.md`](./timed-media-section-contract.md) -
-  section-level timed media with cue-driven item orchestration. Sequenced behind
-  the formative contract, whose state its cue gate conditions name. Distinct from
-  sign language despite both being video; each PRD fences the other out.
+  accepted contract for section-level timed media with cue-driven item
+  orchestration. It consumes formative state for cue gate conditions and remains
+  distinct from sign language despite both using video.
+- [`assessment-authoritative-submission.md`](./assessment-authoritative-submission.md) -
+  draft contract for a host-supplied terminal assessment operation with
+  idempotency, typed receipts, retry semantics, and observable controller state;
+  ordinary assessment snapshots remain on the existing persistence strategy.
 - [`speech-to-text.md`](./speech-to-text.md) -
   dictation as the first production accommodation: it writes the response rather
   than re-presenting content, so it needs an element-facing insertion contract
   that the presentation accommodations never did. No QTI/AfA term exists to map
   to.
+- [`open-source-calculator-provider.md`](./open-source-calculator-provider.md) -
+  a fully bundled basic, scientific, and focused graphing provider built from
+  MathLive, CortexJS Compute Engine, and JSXGraph, selected additively as
+  `calculator-cortex` after the GeoGebra provider seam lands.
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).
@@ -68,3 +108,8 @@ would otherwise have to reconstruct — live in [`../adr/`](../adr/).
   PRD explicitly scopes and tests a concrete adapter.
 - Do not claim standards conformance until the adapter and its validation suite
   exist.
+- Fill every required template section; a section that does not apply says so
+  explicitly.
+- A contract sketch beats a long code snippet, and a link beats repeating
+  architecture background already under `Related architecture`. Resolved
+  questions are inlined into the section they settle, leaving no decision log.

@@ -56,11 +56,11 @@ for example `--pie-button-`, `--pie-focus-`, and
 
 | Class | Tokens | Contract |
 | --- | --- | --- |
-| Canonical semantic | `--pie-text`, `--pie-background`, `--pie-primary`, feedback, border, neutral, focus-checked, and `--pie-button-*` defaults | Owned by `@pie-players/pie-theme`; the active color tokens are required Scheme Participants. Existing Host A token names and fallback behavior remain source-compatible. |
+| Canonical semantic | `--pie-text`, `--pie-background`, `--pie-primary`, feedback, border, neutral, focus-checked, `--pie-surface`, and `--pie-button-*` defaults | Owned by `@pie-players/pie-theme`; the active color tokens are required Scheme Participants. Existing Host A token names and fallback behavior remain source-compatible. |
 | Component-public | `--pie-tool-trigger-active-*`, section tab hooks, and annotation hooks | Owned by component packages but discoverable in `packages/theme/src/token-registry.json`; optional Scheme Participants unless their normal fallback cannot remain accessible. The annotation outline and two underline tokens are required. |
 | Legacy/component aliases | `--pie-button-background-color`, `--pie-button-border-color`, `--pie-button-hover-background-color`, `--pie-focus-ring-color` | Host A's observed `--pie-button-background-color` remains a compatibility contract. The other names are classified historical paths, not reasons to add or retain further shims. All are excluded from Scheme Participation. |
 | Unsupported or intentional gaps | `--pie-background-light` | Do not treat as canonical until promoted by decision record; current usage falls back through `--pie-background`. |
-| Package-private or future public hooks | annotation highlight tokens, TTS highlight tokens, scrollbar tokens, `--pie-section-player-focus-outline`, `--pie-surface`, `--pie-shadow` | Leave package-scoped unless a source-changing slice documents them as public and adds registry/docs/tests. |
+| Package-private or future public hooks | annotation highlight tokens, TTS highlight tokens, scrollbar tokens, `--pie-section-player-focus-outline`, `--pie-shadow` | Leave package-scoped unless a source-changing slice documents them as public and adds registry/docs/tests. |
 
 ## High-Risk Findings
 

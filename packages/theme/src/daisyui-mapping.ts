@@ -112,6 +112,7 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	direct("--pie-background-dark", "base200"),
 	direct("--pie-secondary-background", "base200"),
 	direct("--pie-dropdown-background", "base300"),
+	direct("--pie-surface", "base300"),
 	direct("--pie-text", "baseContent"),
 	direct("--pie-primary", "primary"),
 	mix("--pie-primary-light", "primary", "base100", 60),

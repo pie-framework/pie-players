@@ -497,6 +497,21 @@
 		"fallbackPolicy": "Canonical dropdown or menu surface token."
 	},
 	{
+		"name": "--pie-surface",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "surface",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical raised-surface token for cards, answer pools, and menus; tracks the dropdown surface tint."
+	},
+	{
 		"name": "--pie-faded-primary",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

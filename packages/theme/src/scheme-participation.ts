@@ -43,6 +43,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-disabled": "required",
 	"--pie-disabled-secondary": "required",
 	"--pie-dropdown-background": "required",
+	"--pie-surface": "required",
 	"--pie-faded-primary": "required",
 	"--pie-fixed-hue-collapse": "required",
 	"--pie-focus-checked": "required",

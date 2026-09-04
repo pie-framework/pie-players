@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
@@ -104,6 +104,16 @@ function parseElements(elements: string[]): Record<string, string> {
 		} else {
 			parsed[el] = "latest";
 		}
+	}
+	return parsed;
+}
+
+function fullSpecsByPackageName(elements: string[]): Record<string, string> {
+	const parsed: Record<string, string> = {};
+	for (const el of elements) {
+		const lastAtIndex = el.lastIndexOf("@");
+		const name = lastAtIndex > 0 ? el.substring(0, lastAtIndex) : el;
+		parsed[name] = el;
 	}
 	return parsed;
 }
@@ -254,9 +264,41 @@ function generateIndex(
     throw lastError;
   };
 
+  // Bundles fetched from the PITS build service don't self-register: they
+  // expose raw element classes on window.pie.default, keyed by package name,
+  // and expect a loader to call customElements.define. The iife strategy's
+  // ElementLoader does that at runtime; this package must do the same thing
+  // once at import time, using the same "pie-<basename>--version-<encoded>"
+  // tag convention pie-item-player's own version-tag matching expects.
+  const encodeVersionForTag = (version) =>
+    String(version).trim().replace(/[.+]/g, '-').replace(/[^0-9A-Za-z-]/g, '-').replace(/-{2,}/g, '-');
+
+  const registerPreloadedElements = () => {
+    const pieModule = typeof window !== 'undefined' && window.pie && window.pie.default;
+    if (!pieModule) {
+      console.error('[pie-preloaded-player] window.pie.default missing after bundle load');
+      return;
+    }
+    for (const [packageName, fullSpec] of Object.entries(preloadedElements)) {
+      const elementData = pieModule[packageName];
+      if (!elementData || !elementData.Element) {
+        console.error('[pie-preloaded-player] No element class found in bundle for', packageName);
+        continue;
+      }
+      const atIndex = fullSpec.lastIndexOf('@');
+      const version = atIndex > 0 ? fullSpec.slice(atIndex + 1) : '';
+      const baseTag = 'pie-' + packageName.split('/').pop();
+      const tagName = version ? \`\${baseTag}--version-\${encodeVersionForTag(version)}\` : baseTag;
+      if (!customElements.get(tagName)) {
+        customElements.define(tagName, class extends elementData.Element {});
+      }
+    }
+  };
+
   try {
 ${mathRenderingSetup}
     await importWithRetry('./${bundleFilename}', 4, 200);
+    registerPreloadedElements();
     await importWithRetry('./pie-item-player.js', 4, 200);
   } catch (error) {
     try { console.error('[pie-preloaded-player] Initialization failed'); } catch {}
@@ -512,9 +554,10 @@ export async function buildPreloadedPlayerStaticPackage(
 		stdio: "inherit",
 	});
 
-	const customElementSrc = join(itemPlayerPkgDir, "dist", "pie-item-player.js");
-	const customElementDest = join(outputDir, "dist", "pie-item-player.js");
-	await copyFile(customElementSrc, customElementDest);
+	// Copy the whole item-player dist, not just the entry file: pie-item-player.js
+	const itemPlayerDistSrc = join(itemPlayerPkgDir, "dist");
+	const outputDistDir = join(outputDir, "dist");
+	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
 
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
 	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);
@@ -537,7 +580,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename, parseElements(config.elements)),
+		generateIndex(bundleFilename, fullSpecsByPackageName(config.elements)),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(

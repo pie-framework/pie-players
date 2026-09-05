@@ -29,7 +29,7 @@ R5 is an independent dependency-audit blocker and can proceed while R4 is in rev
 
 | Order | Issue | Branch | Status | PR / merge evidence |
 | --- | --- | --- | --- | --- |
-| 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In progress | Patched runtime and full local PR gate verified; separate PR next. |
+| 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In review | [PR #376](https://github.com/pie-framework/pie-players/pull/376); tested implementation `181b124e`. Runtime, audit, full local PR gate, and pre-push gate pass. |
 | 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375); implementation `6c089fdb`. Consumer verification remains pending; the PR records its evidence. |
 | 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Planned | — |
 | 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Planned | — |
@@ -90,7 +90,7 @@ Work and acceptance:
 - [x] Rebuild consumers and verify real MathML-to-speech/SSML behavior, package
   checks, and the local PR gate. Confirm `bun run check:audit` has no blocking
   shipped findings.
-- [ ] Record the separate PR and its validation. The workspace override covers
+- [x] Record the separate PR and its validation. The workspace override covers
   builds here; hosts resolving external Speech Rule Engine need their own
   lockfile refresh, because overrides do not propagate through published packages.
 

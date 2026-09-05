@@ -165,7 +165,8 @@
 		"vite": "8.2.2",
 		"markdown-it": "^14.3.0",
 		"linkify-it": "^5.0.2",
-		"lodash": "^4.18.1"
+		"lodash": "^4.18.1",
+		"@xmldom/xmldom": "^0.9.12"
 	},
 	"resolutions": {
 		"picomatch": "4.0.4",
@@ -183,7 +184,8 @@
 		"vite": "8.2.2",
 		"markdown-it": "^14.3.0",
 		"linkify-it": "^5.0.2",
-		"lodash": "^4.18.1"
+		"lodash": "^4.18.1",
+		"@xmldom/xmldom": "^0.9.12"
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",

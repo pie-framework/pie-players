@@ -79,6 +79,15 @@ shape the persistence strategy load/save methods exchange and the same
 shape per-section bridges roll up into via `updateSectionSession(sectionId,
 snapshot)`.
 
+The default element captures the outgoing section before navigation replaces it,
+including navigation through the controller. A returning section waits for its
+canonical `engine-ready` stage and restores its saved section snapshot before
+accepting input or session updates. The section region stays `aria-busy` during
+this handoff. Failed restoration leaves the saved snapshot intact, reports
+`assessment-error` and `onError` with phase `navigation`, and offers Retry.
+Navigating away or disconnecting retires that handoff. This in-memory restoration
+does not acknowledge durable saves; persistence still uses the host's strategy.
+
 ### Event stream
 
 The controller's typed event stream

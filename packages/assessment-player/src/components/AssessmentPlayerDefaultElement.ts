@@ -1,20 +1,24 @@
 import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 import "@pie-players/pie-section-player/components/section-player-vertical-element";
+import { SECTION_PLAYER_PUBLIC_EVENTS } from "@pie-players/pie-section-player/contracts/public-events";
 import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {
 	frameworkErrorFromUnknown,
 	type FrameworkErrorModel,
+	type SectionControllerHandle,
 } from "@pie-players/pie-assessment-toolkit";
 import {
 	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
 	attachInstrumentationEventBridge,
 	resolveInstrumentationProvider,
+	type StageChangeDetail,
 } from "@pie-players/pie-players-shared/pie";
 import {
 	createPieI18n,
 	DEFAULT_LOCALE,
 } from "@pie-players/pie-players-shared/i18n";
-import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
+import type { I18nServiceApi, MessageKey } from "@pie-players/pie-players-shared/i18n";
 import type { Env } from "@pie-players/pie-players-shared/types";
 import { AssessmentController } from "../controller/AssessmentController.js";
 import type { AssessmentControllerHandle } from "../controller/AssessmentController.js";
@@ -37,18 +41,7 @@ import type {
 	AssessmentPlayerRuntimeConfig,
 } from "../types.js";
 
-interface SectionControllerHandle {
-	getSession?: () => unknown;
-	applySession?: (
-		session: unknown,
-		options?: { mode?: string },
-	) => Promise<void>;
-}
-
 interface SectionPlayerHostElement extends HTMLElement {
-	waitForSectionController?: (
-		timeoutMs?: number,
-	) => Promise<SectionControllerHandle | null>;
 	getSectionController?: () => SectionControllerHandle | null;
 }
 
@@ -113,6 +106,8 @@ export class AssessmentPlayerDefaultElement
 	private unsubscribeI18n?: () => void;
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
+	private sectionSessionReady = false;
+	private detachSectionListeners?: () => void;
 	/**
 	 * Rendered content, tracked so a re-render can replace it without clearing the
 	 * announcer below. A live region only announces changes that happen while it is
@@ -311,12 +306,15 @@ export class AssessmentPlayerDefaultElement
 	private retireController(): void {
 		this.restoreFocusOnRender ||= this.contains(document.activeElement);
 		this.generation += 1;
+		this.detachSectionListeners?.();
+		this.detachSectionListeners = undefined;
 		const retired = this.controller || this.initializingController;
 		this.controller = null;
 		this.initializingController = null;
 		this.unsubscribeController?.();
 		this.unsubscribeController = undefined;
 		this.sectionControllerRef = null;
+		this.sectionSessionReady = false;
 		this.sectionHost = null;
 		// Removing the nested CE triggers its existing toolkit/coordinator owner.
 		// Host-supplied coordinators remain borrowed and are never disposed here.
@@ -402,6 +400,10 @@ export class AssessmentPlayerDefaultElement
 		this.unsubscribeController = controller.subscribe((event) => {
 			if (!isCurrent()) return;
 			if (event.type === "assessment-route-changed") {
+				// Read the outgoing DOM's section identity, even when a host navigates
+				// through the controller and its route has already advanced.
+				this.syncCurrentSectionSessionIntoAssessment();
+				if (!isCurrent()) return;
 				this.cleanupTtsForSectionNavigation(
 					event satisfies AssessmentRouteChangedDetail,
 				);
@@ -413,7 +415,7 @@ export class AssessmentPlayerDefaultElement
 				if (!isCurrent()) return;
 				// A route change is the one render that destroys the focused control.
 				this.restoreFocusOnRender = true;
-				this.render();
+				this.render(false);
 			}
 			if (event.type === "assessment-session-applied") {
 				this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.sessionApplied, event);
@@ -500,6 +502,15 @@ export class AssessmentPlayerDefaultElement
 		if (!this.isConnected) return;
 		const hadFocus = this.restoreFocusOnRender || this.contains(document.activeElement);
 		const failed = this.readiness.phase === "error";
+		const root = this.createStatusContent(
+			failed ? "player.assessment.loadFailed" : "common.loading",
+			failed ? () => this.queueReconciliation() : undefined,
+		);
+		this.swapContent(root);
+		if (hadFocus) root.focus();
+	}
+
+	private createStatusContent(messageKey: MessageKey, onRetry?: () => void): HTMLElement {
 		const root = document.createElement("div");
 		root.className = "pie-assessment-player-empty";
 		root.tabIndex = -1;
@@ -528,21 +539,19 @@ export class AssessmentPlayerDefaultElement
 		root.appendChild(style);
 		const message = document.createElement("p");
 		message.className = "pie-assessment-player-status-message";
-		message.setAttribute("role", failed ? "alert" : "status");
-		message.textContent = failed
-			? this.i18n.t("player.assessment.loadFailed")
-			: this.i18n.t("common.loading");
+		message.setAttribute("role", onRetry ? "alert" : "status");
+		message.dataset.pieMessageKey = messageKey;
+		message.textContent = this.i18n.t(messageKey);
 		root.appendChild(message);
-		if (failed) {
+		if (onRetry) {
 			const retry = document.createElement("button");
 			retry.type = "button";
 			retry.className = "pie-assessment-player-retry";
 			retry.textContent = this.i18n.t("common.retry");
-			retry.addEventListener("click", () => this.queueReconciliation());
+			retry.addEventListener("click", onRetry);
 			root.appendChild(retry);
 		}
-		this.swapContent(root);
-		if (hadFocus) root.focus();
+		return root;
 	}
 
 	/**
@@ -680,16 +689,14 @@ export class AssessmentPlayerDefaultElement
 
 	private syncCurrentSectionSessionIntoAssessment() {
 		const controller = this.controller;
-		if (!controller) return;
-		const sectionController =
-			(this.sectionHost?.firstElementChild as any)?.getSectionController?.() ||
-			this.sectionControllerRef;
+		if (!controller || !this.sectionSessionReady) return;
+		const sectionController = this.sectionControllerRef;
 		if (!sectionController?.getSession) return;
-		const currentSection = controller.getCurrentSection();
-		if (!currentSection) return;
+		const sectionIdentifier = this.sectionHost?.firstElementChild?.getAttribute("section-id");
+		if (!sectionIdentifier) return;
 		controller.updateSectionSession(
-			currentSection.sectionIdentifier,
-			sectionController.getSession(),
+			sectionIdentifier,
+			cloneDeep(sectionController.getSession()),
 		);
 	}
 
@@ -699,43 +706,94 @@ export class AssessmentPlayerDefaultElement
 	): void {
 		const sectionEl = target as SectionPlayerHostElement;
 		const generation = this.generation;
+		const sectionHost = this.sectionHost!;
+		const assessmentController = this.controller!;
+		// Capture before the new section can emit an empty initialization state.
+		const saved = cloneDeep(assessmentController.getSectionSession(sectionIdentifier));
 		const isCurrent = () => this.isConnected && this.generation === generation &&
-			this.sectionHost?.firstElementChild === sectionEl;
-		// Svelte 5 custom elements mount their underlying component on a
-		// microtask after `connectedCallback` (the mount sits behind an
-		// `await Promise.resolve()` inside Svelte's CE wrapper). Property
-		// getters for exported functions resolve to `this.$$c?.[name]`,
-		// which is `undefined` until the mount microtask completes. Defer
-		// the controller-resolve wait with `queueMicrotask` so it runs
-		// after Svelte's mount microtask, guaranteeing
-		// `waitForSectionController` is bound when we read it. Caller is
-		// expected to attach this *after* `appendChild`; the microtask
-		// defer is belt-and-suspenders for either ordering.
-		queueMicrotask(() => {
-			void (async () => {
+			this.sectionHost === sectionHost && this.controller === assessmentController;
+		sectionHost.setAttribute("aria-busy", "true");
+		sectionEl.inert = true;
+		// Subscribe before connection: nested custom elements need multiple mount
+		// turns before their public controller getter/waiter can reach the kernel.
+		let cancelReadiness: () => void;
+		const ready = new Promise<SectionControllerHandle | null>((resolve) => {
+			let settled = false;
+			const finish = (controller: SectionControllerHandle | null) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				sectionEl.removeEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
+				resolve(controller);
+			};
+			const onStageChange = (event: Event) => {
+				if (event.target !== sectionEl) return;
+				const { stage, status } = (event as CustomEvent<StageChangeDetail>).detail;
+				if (status === "failed" || stage === "disposed") finish(null);
+				else if (stage === "engine-ready") finish(sectionEl.getSectionController?.() || null);
+			};
+			const timer = setTimeout(() => finish(null), 5000);
+			sectionEl.addEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
+			cancelReadiness = () => finish(null);
+		});
+		void ready
+			.then(async (controller) => {
 				if (!isCurrent()) return;
-				const controller =
-					(await sectionEl.waitForSectionController?.(5000)) || null;
-				if (!isCurrent()) return;
-				this.sectionControllerRef = controller;
-				if (!controller) return;
-				const saved = this.controller?.getSectionSession(sectionIdentifier);
-				if (saved && controller.applySession) {
+				if (!controller) throw new Error("Section controller did not become ready");
+				if (saved) {
+					if (!controller.applySession) throw new Error("Section controller cannot restore its saved session");
 					await controller.applySession(saved, { mode: "replace" });
 				}
-			})().catch((error) => {
+				if (!isCurrent()) return;
+				this.sectionControllerRef = controller;
+				this.sectionSessionReady = true;
+				sectionEl.inert = false;
+				sectionHost.setAttribute("aria-busy", "false");
+				// Accept updates only after restoration has succeeded. In particular,
+				// never replace the saved snapshot with initial empty item sessions.
+			})
+			.catch((error) => {
+				if (!isCurrent()) return;
+				this.detachSectionListeners?.();
+				this.detachSectionListeners = undefined;
+				this.sectionControllerRef = null;
+				this.sectionSessionReady = false;
+				const hadFocus = sectionHost.contains(document.activeElement);
+				const status = this.createStatusContent(saved ? "player.assessment.restoreFailed" : "player.assessment.loadFailed", () => {
+					this.restoreFocusOnRender = this.contains(document.activeElement);
+					this.render();
+				});
+				sectionHost.replaceChildren(status);
+				sectionHost.setAttribute("aria-busy", "false");
+				if (hadFocus) status.focus();
+				try {
+					this.hooks?.onError?.(error instanceof Error ? error : new Error(String(error)), {
+						phase: "navigation", details: { sectionIdentifier },
+					});
+				} catch (reportError) {
+					console.error("Assessment error hook failed", reportError);
+				}
 				if (isCurrent()) this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.error, { error });
 			});
-		});
 		const onSessionChanged = () => {
 			if (isCurrent()) this.syncCurrentSectionSessionIntoAssessment();
 		};
 		target.addEventListener("session-changed", onSessionChanged);
 		target.addEventListener("item-session-changed", onSessionChanged);
+		this.detachSectionListeners = () => {
+			cancelReadiness();
+			target.removeEventListener("session-changed", onSessionChanged);
+			target.removeEventListener("item-session-changed", onSessionChanged);
+		};
 	}
 
-	private render() {
+	private render(captureCurrentSession = true) {
 		if (!this.isConnected || !this.controller) return;
+		const generation = this.generation;
+		if (captureCurrentSession) this.syncCurrentSectionSessionIntoAssessment();
+		if (!this.isConnected || !this.controller || this.generation !== generation) return;
+		this.detachSectionListeners?.();
+		this.detachSectionListeners = undefined;
 		const controller = this.controller;
 		this.attachInstrumentationBridge();
 		// Read before the swap below discards the node that holds focus.
@@ -745,6 +803,7 @@ export class AssessmentPlayerDefaultElement
 		this.restoreFocusOnRender = false;
 		this.ensureAnnouncer();
 		this.sectionControllerRef = null;
+		this.sectionSessionReady = false;
 		const container = document.createElement("div");
 		container.className = "pie-assessment-player-default";
 
@@ -871,10 +930,7 @@ export class AssessmentPlayerDefaultElement
 				cardTitleFormatter: this.hooks?.cardTitleFormatter,
 			};
 			sectionHost.appendChild(sectionEl);
-			this.attachSectionControllerReadyListener(
-				sectionEl,
-				currentSection.sectionIdentifier,
-			);
+			this.attachSectionControllerReadyListener(sectionEl, currentSection.sectionIdentifier);
 		}
 
 		container.appendChild(sectionHost);
@@ -913,8 +969,9 @@ export class AssessmentPlayerDefaultElement
 		if (next) next.textContent = this.i18n.t("common.next");
 		this.sectionHost?.setAttribute("aria-label", position);
 		const status = this.containerRef?.querySelector(".pie-assessment-player-status-message");
-		if (status) status.textContent = this.readiness.phase === "error"
-			? this.i18n.t("player.assessment.loadFailed") : this.i18n.t("common.loading");
+		if (status instanceof HTMLElement && status.dataset.pieMessageKey) {
+			status.textContent = this.i18n.t(status.dataset.pieMessageKey as MessageKey);
+		}
 		const retry = this.containerRef?.querySelector(".pie-assessment-player-retry");
 		if (retry) retry.textContent = this.i18n.t("common.retry");
 		this.forwardLocaleToSection();
@@ -1013,7 +1070,6 @@ export class AssessmentPlayerDefaultElement
 			true,
 		);
 		if (!allowed) return false;
-		this.syncCurrentSectionSessionIntoAssessment();
 		const moved = this.controller?.navigateTo(indexOrIdentifier) === true;
 		if (moved) void this.controller?.persist();
 		return moved;
@@ -1034,7 +1090,6 @@ export class AssessmentPlayerDefaultElement
 			true,
 		);
 		if (!allowed) return false;
-		this.syncCurrentSectionSessionIntoAssessment();
 		const moved = this.controller?.navigateNext() === true;
 		if (moved) void this.controller?.persist();
 		return moved;
@@ -1055,7 +1110,6 @@ export class AssessmentPlayerDefaultElement
 			true,
 		);
 		if (!allowed) return false;
-		this.syncCurrentSectionSessionIntoAssessment();
 		const moved = this.controller?.navigatePrevious() === true;
 		if (moved) void this.controller?.persist();
 		return moved;

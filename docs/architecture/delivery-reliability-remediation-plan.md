@@ -5,9 +5,9 @@ Status: Active — remediation plan and issue register.
 Owner: PIE Players maintainers
 
 Tracking: this file owns issue status, branch assignments, dependencies, and
-completion evidence. The identifiers below refer to the four findings from the
-2026-09-05 project review; they are local tracking identifiers, not external
-tickets.
+completion evidence. R1–R4 refer to the four findings from the 2026-09-05 project
+review; R5 records the dependency-audit blocker found when its first repair PR
+ran CI. These are local tracking identifiers, not external tickets.
 
 Review baseline: `develop` at `0dc255865176322c08247b3a2b568df4b7b4833b`.
 
@@ -20,15 +20,17 @@ Related:
 
 ## Priority And Issue Register
 
-All four findings are P1. Fix shared zoom behavior first because it affects
+The four original findings are P1. Fix shared zoom behavior first because it affects
 existing section and tool surfaces. Treat the other three as blockers before
 production adoption of the assessment player. The consumer inventory records no
 external assessment-player consumer; the review did not refresh downstream
 checkouts, so verify that observation before relying on it during implementation.
+R5 is an independent dependency-audit blocker and can proceed while R4 is in review.
 
 | Order | Issue | Branch | Status | PR / merge evidence |
 | --- | --- | --- | --- | --- |
-| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | Planned | — |
+| 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In progress | Patched runtime and full local PR gate verified; separate PR next. |
+| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375); implementation `6c089fdb`. Consumer verification remains pending; the PR records its evidence. |
 | 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Planned | — |
 | 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Planned | — |
 | 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Planned | — |
@@ -36,13 +38,16 @@ checkouts, so verify that observation before relying on it during implementation
 R4 is independent of the assessment fixes. R1 builds on R3's lifecycle ownership.
 R2's final navigation, active-answer, and reload verification uses R3 and R1;
 its host-boundary investigation can happen earlier. These are sequential repair
-branches, each based on the updated `develop`, with one issue per PR.
+branches, each based on `develop`, with one issue per PR. Independent repairs
+may proceed while another PR is in review; dependent repairs start after their
+prerequisites are integrated. R5 carries no R4 implementation changes.
 
 ## Working And Tracking Rules
 
 Use the existing checkout. Worktrees are unnecessary for this sequence.
 
-1. Land this plan before starting repairs so each branch inherits the tracker.
+1. Commit this plan before starting repairs so each branch inherits the tracker.
+   The planning commit lands with the first repair PR.
 2. Start each repair from a clean, current `develop`; create the branch named in
    the register and change its row to `In progress`. Keep the issue's source,
    regression tests, integration docs, and patch changeset together.
@@ -63,6 +68,51 @@ no need to create a worktree merely to keep that branch available.
 
 This register tracks the work in the repository. Update it in the same change
 that changes scope or progress; no separate issue tracker is required.
+
+## R5 — A Shipped XML Dependency Blocks The Security Audit
+
+**Observed failure.** The dependency-audit job on R4 reports
+[GHSA-6gmq-8vp8-gcm6](https://github.com/advisories/GHSA-6gmq-8vp8-gcm6)
+against `@xmldom/xmldom` 0.9.10, reached through the toolkit's existing
+`speech-rule-engine` dependency. The same dependency set is on `develop`.
+This is an upstream XML validation defect and a failing shipped-dependency
+gate; no exploitable assessment-content path has been established.
+
+Work and acceptance:
+
+- [x] Reproduce the audit finding and the upstream entity-name validation
+  failure through Speech Rule Engine's actual installed XML resolution.
+- [x] Select upstream's patched 0.9.12 release without upgrading unrelated
+  dependencies or changing the math-speech API.
+- [x] Confirm the installed runtime, not just the lockfile, rejects invalid
+  entity names at creation and during well-formed serialization while retaining
+  valid entity serialization.
+- [x] Rebuild consumers and verify real MathML-to-speech/SSML behavior, package
+  checks, and the local PR gate. Confirm `bun run check:audit` has no blocking
+  shipped findings.
+- [ ] Record the separate PR and its validation. The workspace override covers
+  builds here; hosts resolving external Speech Rule Engine need their own
+  lockfile refresh, because overrides do not propagate through published packages.
+
+Validation on 2026-09-05:
+
+- Speech Rule Engine's installed dependency resolves to 0.9.12. A direct runtime
+  probe rejects an invalid entity name both at creation and with
+  `requireWellFormed: true` serialization after a name mutation; valid entity
+  serialization remains unchanged. The same probe failed both rejection checks
+  with 0.9.10. A forced frozen install was needed to refresh an existing isolated
+  dependency link after the initial lockfile update.
+- The math speech, TTS math service, and generated SSML Bun suites pass all
+  33 tests / 107 assertions, including real MathML-to-speech conversion.
+- `bun run verify:local-pr` passes: workspace build, lint/typecheck, package and
+  consumer checks, 191 script tests, and 93 critical browser tests across section,
+  item, assessment, shared, and print players. Browser coverage includes generated
+  math speech and highlighting.
+- `bun run check:audit` reports zero shipped findings. One existing moderate
+  development-only Tiptap finding remains non-blocking under the audit policy.
+- The only changed resolved third-party package is `@xmldom/xmldom`. Bun also
+  refreshed 51 workspace version metadata entries to match existing manifests;
+  no package versions or release policy changed.
 
 ## R4 — Accommodation Controls Shrink In Constrained Viewports
 
@@ -252,7 +302,7 @@ automated gate.
 
 The repair is complete when its acceptance checklist is satisfied, relevant
 public docs and patch changeset are included, verification evidence is recorded,
-and the PR has landed on `develop`. The overall plan is complete when all four
+and the PR has landed on `develop`. The overall plan is complete when all five
 rows are `Done` and the integrated answer/navigation/reload/submission journey
 passes on the resulting `develop`. Then follow the
 [documentation retention policy](../prds/README.md#retention-and-cleanup): retain

@@ -58,8 +58,12 @@ its internal design or justify a new storage or submission architecture.
 
 ## Compatibility boundary
 
-Refresh the consumer pad before implementation. If there is still no external
-assessment-player consumer, correct the canonical API directly: do not add
+Refresh the consumer pad before downstream sign-off. The local lifecycle repair
+can be prepared against the documented public host contract while requested
+consumer checkouts are unavailable, but stays in draft with that verification
+explicitly pending. Do not advance existing verification dates from a local
+fixture. If there is still no external assessment-player consumer, correct the
+canonical API directly: do not add
 aliases, duplicate events, deprecated properties, compatibility wrappers, or a
 public bootstrap escape hatch.
 
@@ -78,8 +82,8 @@ not become a reason to alter its established host contracts.
 
 ## Decisions supported now
 
-The assessment-player lifecycle repair may proceed once its consumer check and
-host-shaped browser fixture are recorded. The public outcomes are:
+The assessment-player lifecycle repair uses a host-shaped browser fixture and
+records the consumer check separately before leaving draft. The public outcomes are:
 
 - post-connect property assignment starts or updates the intended assessment;
 - only the newest connected async attempt may publish a controller, UI, event,
@@ -88,8 +92,10 @@ host-shaped browser fixture are recorded. The public outcomes are:
 - one successful attempt produces one ready event and one ready hook;
 - failed, superseded, timed-out, or disconnected attempts do not expose a ready
   controller; and
-- internally created controllers and coordinators are disposed by the element,
-  while host-supplied coordinators remain borrowed.
+- the element disposes its assessment controller and removes its nested player;
+  the nested toolkit retains ownership of its internally created coordinator
+  and disposes it through the existing API, while host-supplied coordinators
+  remain borrowed.
 
 The implementation may use accessors, a reconcile loop, generations, abort
 signals, or another repository-native mechanism. This plan does not make those
@@ -138,7 +144,7 @@ surfaces, not private method names or source-string assertions:
   observable, produce no ready signal, and leave controller getters truthful.
 - Disconnect during initialization and prove no late DOM, event, hook,
   subscription, or controller publication occurs.
-- Prove an element-created coordinator is disposed exactly once and a borrowed
+- Prove a nested toolkit's owned coordinator is disposed exactly once and a borrowed
   coordinator is not disposed by the element.
 - Build and pack `@pie-players/pie-assessment-player`, then type-check a clean
   consumer using the documented public host contract.
@@ -151,7 +157,9 @@ submission requires its own accepted PRD before implementation.
 
 ## Decision gates
 
-1. Refresh the consumer pad and record the representative host workflow.
+1. Record the public host fixture and refresh the consumer pad before downstream
+   sign-off. Missing checkouts keep the repair in draft; they do not turn local
+   fixture evidence into downstream verification.
 2. Confirm the lifecycle repair does not require changes to documented section,
    Quiz Engine, knowledge-check, or item-player contracts.
 3. Verify the already-landed generic coordinator prerequisite with its regression

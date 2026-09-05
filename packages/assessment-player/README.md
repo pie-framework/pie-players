@@ -33,13 +33,31 @@ const controller =
   host?.getAssessmentController?.();
 ```
 
-`waitForAssessmentController(timeoutMs)` resolves once the controller has
-been wired (the same signal the
-`AssessmentPlayerHooks.onAssessmentControllerReady(controller)` hook fires
-on). Use `getAssessmentController()` if you've already passed the readiness
-anchor synchronously.
+`waitForAssessmentController(timeoutMs)` resolves after initialization and
+hydration succeed. At that point the getter, ready hook, and ready event all
+observe the same controller. The getter returns `null` while initialization is
+pending or failed, and after disconnect. A waiter resolves to `null` when its
+active attempt fails or is retired, or its own timeout expires. A waiter's
+timeout does not cancel a still-active initialization.
+
+Connect the element and assign `assessmentId`, `attemptId`, `assessment`, and
+`hooks` in the same turn, or assign them before connecting. These assignments
+are batched; changing assessment, attempt, or hooks later retires the previous
+controller and starts a new one. Replace object properties to update them;
+mutating a previously assigned object in place is not an update signal. Runtime
+props, locale, and navigation visibility do not reload the assessment.
+
+Failed initialization exposes an error and a keyboard-accessible Retry action.
+The element invokes the ready hook and emits the ready event once per successful
+initialization. Ready hooks are notifications: their rejection reaches `onError`
+and `assessment-error` without undoing successful hydration.
 
 ### Lifecycle
+
+The element owns its assessment controller and calls its idempotent `dispose()`
+when inputs replace the attempt or the element disconnects. Disposal removes
+listeners and makes the old handle unusable. The nested toolkit disposes any
+coordinator it created; a coordinator supplied by the host remains host-owned.
 
 ```ts
 // hydrate runs as part of initialize(); call it again only on a manual reload.

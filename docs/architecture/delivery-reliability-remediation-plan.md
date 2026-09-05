@@ -32,7 +32,7 @@ R5 is an independent dependency-audit blocker and can proceed while R4 is in rev
 | 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In review | [PR #376](https://github.com/pie-framework/pie-players/pull/376); tested implementation `181b124e`. Runtime, audit, full local PR gate, and pre-push gate pass. |
 | 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375); implementation `6c089fdb`. Consumer verification remains pending; the PR records its evidence. |
 | 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | In review | [Draft PR #377](https://github.com/pie-framework/pie-players/pull/377); tested implementation `ee795c8c`, final pre-push gate passes 105 browser tests. Downstream verification remains pending. Stacked on R5. |
-| 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | In progress | Public answer/navigation/reload regression and handoff repair. Stacked on R3. |
+| 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | In review | [Draft PR #378](https://github.com/pie-framework/pie-players/pull/378); tested implementation `69f354e2`. Pre-push gate passes 115 browser tests. Downstream verification remains pending. Stacked on R3. |
 | 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Blocked | A representative host's persistence boundary is unavailable. Need its checkout/read-write workflow, acknowledgement, reload, and failure behavior before selecting the repair. |
 
 R4 is independent of the assessment fixes. R1 builds on R3's lifecycle ownership.
@@ -44,6 +44,10 @@ branch and use that branch as the PR base; after integration, retarget to
 `develop`. This keeps each review focused without merging work prematurely.
 R5 carries no R4 implementation changes; R3 follows R5's patched dependency.
 R1 follows R3's controller retirement and readiness ownership.
+
+GitHub's test workflow runs for PRs targeting `develop` or `master`. R3 and R1
+therefore carry full local pre-push evidence while stacked; their notification
+job is not CI test evidence. Run the PR workflow after retargeting to `develop`.
 
 ## Working And Tracking Rules
 
@@ -275,8 +279,13 @@ Validation on 2026-09-05:
 - Whole section snapshots cross the assessment handoff; the existing session
   slice suite covers formative and timed-media JSON round trips. The browser
   fixture uses ordinary multiple-choice answers and asserts persisted content.
-- Full repository and pre-push validation is pending before opening the PR.
-  Downstream checkout verification remains pending before leaving draft.
+- Assessment Bun suites pass 16 tests / 45 assertions. Documentation links pass.
+- The complete pre-push gate passes on `69f354e2`: workspace build, lint/typecheck,
+  package/consumer checks, 191 script tests, and 115 browser tests (31 section,
+  12 item, 37 assessment, 28 shared, 7 print). The pre-commit gate also passes
+  source-export, custom-element, theme-token, and documentation checks.
+- [Draft PR #378](https://github.com/pie-framework/pie-players/pull/378) is stacked
+  on R3. Downstream checkout verification remains pending before leaving draft.
 
 Repair the existing in-memory handoff without inventing a new durable owner or
 section-controller acquisition mode. If either becomes necessary, resolve the

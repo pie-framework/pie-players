@@ -31,9 +31,9 @@ R5 is an independent dependency-audit blocker and can proceed while R4 is in rev
 | --- | --- | --- | --- | --- |
 | 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In review | [PR #376](https://github.com/pie-framework/pie-players/pull/376); tested implementation `181b124e`. Runtime, audit, full local PR gate, and pre-push gate pass. |
 | 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375); implementation `6c089fdb`. Consumer verification remains pending; the PR records its evidence. |
-| 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | In progress | Public mounting fixture and lifecycle repair; downstream checkout verification remains pending. Branch follows R5 for its patched build dependency. |
-| 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Planned | — |
-| 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Planned | — |
+| 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | In review | [Draft PR #377](https://github.com/pie-framework/pie-players/pull/377); tested implementation `ee795c8c`, final pre-push gate passes 105 browser tests. Downstream verification remains pending. Stacked on R5. |
+| 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | In review | [Draft PR #378](https://github.com/pie-framework/pie-players/pull/378); tested implementation `69f354e2`. Pre-push gate passes 115 browser tests. Downstream verification remains pending. Stacked on R3. |
+| 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Blocked | A representative host's persistence boundary is unavailable. Need its checkout/read-write workflow, acknowledgement, reload, and failure behavior before selecting the repair. |
 
 R4 is independent of the assessment fixes. R1 builds on R3's lifecycle ownership.
 R2's final navigation, active-answer, and reload verification uses R3 and R1;
@@ -43,6 +43,11 @@ PR is in review. When a prerequisite remains open, stack the next repair on its
 branch and use that branch as the PR base; after integration, retarget to
 `develop`. This keeps each review focused without merging work prematurely.
 R5 carries no R4 implementation changes; R3 follows R5's patched dependency.
+R1 follows R3's controller retirement and readiness ownership.
+
+GitHub's test workflow runs for PRs targeting `develop` or `master`. R3 and R1
+therefore carry full local pre-push evidence while stacked; their notification
+job is not CI test evidence. Run the PR workflow after retargeting to `develop`.
 
 ## Working And Tracking Rules
 
@@ -217,8 +222,9 @@ Local evidence on 2026-09-05:
   and type-checks the public mounting, readiness, persistence, and disposal
   methods with `strict: true` and `skipLibCheck: false`.
 - The source-export, custom-element consumer-contract, runtime-compatibility,
-  and documentation checks pass. The first full local PR gate passed all 104
-  browser cases; the final push gate also includes the explicit-reload regression.
+  theme-token, and documentation checks pass. The final pre-push gate on
+  `ee795c8c` passes the workspace build, lint/typecheck, package checks,
+  191 script tests, and all 105 critical browser tests.
 
 ## R1 — Returning To A Section Loses Answers
 
@@ -227,7 +233,9 @@ select A in the first question, choose Next, then Back. The selection disappears
 although it was present in the outgoing section session. This reproduced twice
 at desktop width. Source tracing points to the restoration waiter being queued
 before the replacement subtree connects, then returning when its exported
-controller waiter is unavailable.
+controller waiter is unavailable. A single microtask after connecting the entire
+tree is still too early for the nested Svelte layout/kernel references; the
+existing `pie-stage-change` event at `engine-ready` supplies the public handoff.
 
 **Code entry points:** `attachSectionControllerReadyListener()` and section
 mounting in the [assessment custom element](../../packages/assessment-player/src/components/AssessmentPlayerDefaultElement.ts),
@@ -235,18 +243,18 @@ plus section-session capture in the [assessment controller](../../packages/asses
 
 Work and acceptance:
 
-- [ ] Add a public browser regression with real item content and confirm the
+- [x] Add a public browser regression with real item content and confirm the
   exact mount/readiness failure before changing the handoff.
-- [ ] Capture the outgoing session before replacing its section. Obtain the
+- [x] Capture the outgoing session before replacing its section. Obtain the
   connected section's ready controller through the canonical public path, and
   apply the saved snapshot before accepting empty replacement-session updates.
-- [ ] Scope restoration and subscriptions to the active assessment, attempt,
+- [x] Scope restoration and subscriptions to the active assessment, attempt,
   and section. Reuse R3's lifecycle invalidation so delayed work from a retired
   section cannot apply or publish into the current one.
-- [ ] Verify answer → Next → Back through all sections, then save and reload
+- [x] Verify answer → Next → Back through all sections, then save and reload
   through a persistent browser fixture. Assert the visible answer and session
   contents, including retained formative and timed-media slices when present.
-- [ ] Exercise rapid navigation, delayed readiness, failed restoration, and
+- [x] Exercise rapid navigation, delayed readiness, failed restoration, and
   disconnect during restoration. Failure must remain observable and leave the
   saved answer intact. Preserve current navigation focus, section announcements,
   and standalone section reflow behavior.
@@ -255,6 +263,29 @@ Extend the [assessment browser suite](../../packages/assessment-player/tests/ass
 and retain [session slice round-trip coverage](../../packages/assessment-player/tests/assessment-session-slice-round-trip.test.ts).
 Use a successful persistence adapter to isolate this handoff repair; R2 adds
 adversarial save completion and failure scenarios to the same journey.
+
+Validation on 2026-09-05:
+
+- The pre-repair public browser regression fails on the missing selection after
+  returning, both through navigation buttons and direct controller navigation.
+- [Ten real-content browser cases](../../packages/assessment-player/tests/assessment-answer-restoration.spec.ts)
+  pass: all three sections and persistent reload, both section layouts,
+  delayed readiness and restoration, rapid navigation during either delay,
+  restore failure, readiness timeout, Retry, and disconnect/reload. Tests hold or
+  reject actual public controller operations on the demo's borrowed coordinator.
+- The error region passes an axe scan at 320px. Keyboard activation of Retry
+  restores the answer and returns focus to the section region. This does not
+  claim a screen-reader pass or replace R4's separate zoom evidence.
+- Whole section snapshots cross the assessment handoff; the existing session
+  slice suite covers formative and timed-media JSON round trips. The browser
+  fixture uses ordinary multiple-choice answers and asserts persisted content.
+- Assessment Bun suites pass 16 tests / 45 assertions. Documentation links pass.
+- The complete pre-push gate passes on `69f354e2`: workspace build, lint/typecheck,
+  package/consumer checks, 191 script tests, and 115 browser tests (31 section,
+  12 item, 37 assessment, 28 shared, 7 print). The pre-commit gate also passes
+  source-export, custom-element, theme-token, and documentation checks.
+- [Draft PR #378](https://github.com/pie-framework/pie-players/pull/378) is stacked
+  on R3. Downstream checkout verification remains pending before leaving draft.
 
 Repair the existing in-memory handoff without inventing a new durable owner or
 section-controller acquisition mode. If either becomes necessary, resolve the

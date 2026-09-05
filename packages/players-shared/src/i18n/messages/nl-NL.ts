@@ -83,6 +83,7 @@ const nlNL = {
 			sectionPosition: "Onderdeel {position} van {total}",
 			noSections: "Geen onderdelen",
 			loadFailed: "De toets kon niet worden geladen. Probeer het opnieuw.",
+			restoreFailed: "Je opgeslagen antwoorden voor dit onderdeel konden niet worden hersteld. Probeer het opnieuw.",
 		},
 
 		formative: {

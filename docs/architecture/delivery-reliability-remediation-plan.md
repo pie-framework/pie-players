@@ -28,7 +28,7 @@ checkouts, so verify that observation before relying on it during implementation
 
 | Order | Issue | Branch | Status | PR / merge evidence |
 | --- | --- | --- | --- | --- |
-| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | Planned | — |
+| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | Blocked | Implementation and local PR gate verified; integration review needs Host V/A/R checkout paths or explicit skips. No PR or merge yet. See the evidence below. |
 | 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Planned | — |
 | 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Planned | — |
 | 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Planned | — |
@@ -42,7 +42,8 @@ branches, each based on the updated `develop`, with one issue per PR.
 
 Use the existing checkout. Worktrees are unnecessary for this sequence.
 
-1. Land this plan before starting repairs so each branch inherits the tracker.
+1. Commit this plan before starting repairs so each branch inherits the tracker.
+   The planning commit lands with the first repair PR.
 2. Start each repair from a clean, current `develop`; create the branch named in
    the register and change its row to `In progress`. Keep the issue's source,
    regression tests, integration docs, and patch changeset together.
@@ -72,39 +73,97 @@ produces about 552% zoom. The plain read-aloud trigger measures about 3.66 × 3.
 CSS pixels and Passage/Questions tabs about 10.55 pixels high. The plain TTS
 trigger receives compensation on both its wrapper and its control class.
 
-**Code entry points:** [shared calculation](../../packages/players-shared/src/ui/zoom-compensation.ts),
-[reactive wrapper](../../packages/players-shared/src/ui/use-zoom-compensation.svelte.ts),
-[inline TTS](../../packages/tool-tts-inline/tool-tts-inline.svelte),
+**Code entry points:** [inline TTS](../../packages/tool-tts-inline/tool-tts-inline.svelte),
 [section tabs](../../packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte),
 [item toolbar](../../packages/assessment-toolkit/src/components/ItemToolBar.svelte),
 and [section scroll hint](../../packages/section-player/src/components/shared/SectionItemsPane.svelte).
 
 Work and acceptance:
 
-- [ ] Reproduce constrained-host and ordinary-window cases separately from
+- [x] Reproduce constrained-host and ordinary-window cases separately from
   actual browser zoom. Record dimensions, browser zoom, computed scaling, and
   rendered target bounds for plain and NDS controls.
-- [ ] Remove width-ratio-only inference as a reason to shrink controls. Compare
+- [x] Remove width-ratio-only inference as a reason to shrink controls. Compare
   removing compensation with the existing cap's intended behavior at real
   magnification before choosing a replacement. Keep the result shared across
   callers and apply any retained compensation once per rendered control.
-- [ ] At 100% zoom, a narrow host viewport must not shrink controls merely
+- [x] At 100% zoom, a narrow host viewport must not shrink controls merely
   because the outer browser window is wider. Verify 320px, 375px, and desktop
   widths in standalone section and nested assessment delivery.
-- [ ] Verify actual 200% text enlargement and 400% browser zoom/reflow, including
+- [x] Verify actual 200% text enlargement and 400% browser zoom/reflow, including
   readable tabs, usable controls, scrolling, keyboard access, focus visibility,
   and tool panels. Record target size or the applicable spacing exception under
   WCAG 2.5.8; the original small-target measurement alone is not a conformance
   verdict. Viewport emulation is not evidence of actual browser magnification.
-- [ ] Add behavior coverage to the shared zoom and section reflow tests; retain
+- [x] Add behavior coverage to the shared zoom and section reflow tests; retain
   theme/focus contracts and verify the changed controls with an axe scan and
   manual keyboard checks. Record manual zoom evidence alongside automated
   results rather than relying on mathematical ratio tests alone.
 
-Start with [shared zoom tests](../../packages/players-shared/tests/use-zoom-compensation.test.ts)
-and [section reflow tests](../../packages/section-player/tests/section-player-reflow.spec.ts).
+The width-ratio estimator and its Svelte wrapper are removed in this repair.
+Their formula-only unit tests are replaced by rendered-target regressions in
+the [section control-sizing suite](../../packages/section-player/tests/section-player-control-sizing.spec.ts)
+and [nested assessment suite](../../packages/assessment-player/tests/assessment-player-control-sizing.spec.ts),
+alongside the [section reflow tests](../../packages/section-player/tests/section-player-reflow.spec.ts).
 Use the [WCAG baseline](../wcag/wcag-2.2-aa-baseline.md) and evaluation method for
 the affected surfaces. This repair does not require palette or token redesign.
+
+### R4 Implementation And Evidence
+
+Implemented on 2026-09-05. The existing cap held controls at their 200% physical
+size even when a learner requested more magnification. Removing compensation
+lets browser zoom enlarge them normally; responsive layout now supplies the
+space instead of another zoom estimator. Item and passage headers wrap, section
+toolbars scroll their full-size buttons into view on keyboard focus, calculator
+headers wrap above independently scrollable content, and reading controls move
+beside or below their trigger as space permits. A visible trigger's reading
+panel stays within a short viewport and paints above the pane's scroll hint.
+Assessment demos preserve a usable player height when their status rows exceed
+the available viewport; the page and demo menu scroll instead of clipping the
+player or covering its controls.
+
+Verification evidence:
+
+- The constrained-host regression failed on the review baseline: tab height
+  was 10.55 CSS pixels, below the test's 24px target minimum. The original
+  plain reading trigger measured 3.66px. The repaired triggers retain their
+  ordinary 32px size, or 64px when the root text size doubles.
+- Nineteen browser regressions cover plain and NDS controls, 320/375/1280px
+  host widths, doubled root text, actual 200% and 400% browser zoom, and
+  nested assessment delivery. Target checks include dimensions, viewport
+  containment, and hit testing; keyboard checks cover scrolling toolbars,
+  speed selection, tool dismissal, and focus restoration.
+- The [browser-zoom helper](../../test-support/browser-zoom.ts) uses Chromium's
+  tab-zoom API in an isolated temporary profile, without viewport emulation.
+  At 200%, the measured CSS viewport was 640 × 468 with DPR 2; at 400%,
+  320 × 234 with DPR 4. `outerWidth` stayed 1280 and
+  `visualViewport.scale` stayed 1. Each run records the reported zoom factor,
+  dimensions, and a complete browser-surface screenshot for visual review.
+- Both text-size cases passed their axe scan with the existing documented
+  upstream-content exclusions. The TTS and theme contract suites passed
+  65 tests. The existing 14 hosted-tool tests, five reflow cases, and six
+  scroll-hint/scrollbar cases passed during implementation.
+- The final `bun run verify:local-pr` passed: build, package and consumer
+  checks, lint/typecheck, and 102 browser tests (35 section, 12 item, 20
+  assessment, 28 shared, and seven print). `bun run test` passed the workspace
+  unit run with 2,780 passing tests. The additional source-export,
+  custom-element consumer-contract, runtime-compatibility, and documentation
+  checks passed as well.
+- A manual 320px keyboard pass verified passage/question navigation,
+  read-aloud start → Shift+Tab → stop, calculator open/resize/Escape, and focus
+  return to each opener. Visual review covered enlarged text, actual browser
+  zoom, readable labels, and visible focus. This is focused repair evidence,
+  not a new whole-suite WCAG conformance claim; no screen-reader pass or live
+  vendor calculator keypad evaluation was performed.
+
+Remaining integration gate: the local consumer map is absent, and discovery
+did not find checkouts matching the three recorded hosts. Checkout paths or an
+explicit skip for Host V, Host A, and Host R were requested together. Their
+existing rows and verification dates remain unchanged. Complete that review
+using the [maintenance procedure](../integrations/consumer-api-dependencies-maintenance.md#step-1--locate-the-consumer-checkouts)
+before opening the repair for merge. The removed shared export and deprecated
+private token are absent from the recorded imports, but that does not substitute
+for the requested checkout check. R3 remains the next repair after R4 lands.
 
 ## R3 — Assessment Mounting And Readiness Are Inconsistent
 

@@ -3,12 +3,7 @@
 	"compilerOptions": {
 		"noEmit": true,
 		"rootDir": "..",
-		"baseUrl": ".",
-		"paths": {
-			"@pie-players/pie-players-shared/ui/use-zoom-compensation": [
-				"../players-shared/src/ui/use-zoom-compensation.svelte.ts"
-			]
-		}
+		"baseUrl": "."
 	},
 	"include": ["**/*.ts", "**/*.svelte"],
 	"exclude": ["node_modules", "dist", "tests"]

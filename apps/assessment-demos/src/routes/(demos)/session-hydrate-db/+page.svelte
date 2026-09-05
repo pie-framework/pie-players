@@ -583,9 +583,11 @@ let instrumentationDebuggerElement = $state<any>(null);
 <style>
 	.demo-page {
 		display: grid;
-		grid-template-rows: auto auto minmax(0, 1fr);
+		/* Keep the player usable when enlarged diagnostics exceed the viewport. */
+		grid-template-rows: auto auto minmax(24rem, 1fr);
 		height: 100%;
 		min-height: 0;
+		overflow-y: auto;
 		box-sizing: border-box;
 		gap: 0.75rem;
 	}

@@ -33,7 +33,7 @@
 	}: Props = $props();
 </script>
 
-<ResponsiveDemoMenuBar class="bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
+<ResponsiveDemoMenuBar class="bg-base-200 mb-0 z-50 shadow-lg">
 	{#snippet start()}
 		<a href="/" class="btn btn-ghost btn-sm">&#8592; Back to Demos</a>
 	{/snippet}

@@ -9,7 +9,7 @@
  * the package's real surface and the aliases become the surface. Nothing caught
  * that: `check-consumer-boundaries.mjs` walks `apps/` only, so three alias tables
  * accumulated in `packages/` — `players-shared/components`,
- * `players-shared/ui/use-promise` and `players-shared/ui/use-zoom-compensation`.
+ * `players-shared/ui/use-promise` and the former zoom-compensation helper.
  *
  * Aliased source imports are not banned; they are the only way to share Svelte
  * runes out of a package that builds with plain `tsc`. They have to be declared,
@@ -54,7 +54,6 @@ const ALIAS_DECLARATION = "packages/players-shared/svelte-source-aliases.ts";
 const ALIASED_SOURCE_SUBPATHS = new Set([
 	"@pie-players/pie-players-shared/components",
 	"@pie-players/pie-players-shared/ui/use-promise",
-	"@pie-players/pie-players-shared/ui/use-zoom-compensation",
 ]);
 
 const IMPORT_REGEXES = [

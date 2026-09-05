@@ -73,9 +73,6 @@
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
-	// Pure zoom-compensation math (framework-agnostic, shipped in dist so it
-	// resolves through this package's CE bundle which externalizes @pie-players/*).
-	import { approximateZoomFromWidths, computeZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/zoom-compensation';
 	import {
 		collectFocusable,
 		createFocusTrap,
@@ -292,36 +289,6 @@
 	} = $props();
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
-
-	// Freeze the calculator's furnished buttons at their 200%-zoom size. The cap
-	// is applied via CSS `zoom` on WRAPPER elements (the header-button wrapper and
-	// the shell's control cluster), never on the nds-icon-button hosts directly —
-	// `zoom` on an nds-icon-button (light-DOM render + injected global <style>)
-	// mis-sizes it. Also never on the shell root, whose fixed position + drag /
-	// resize math is computed from real viewport pixels. 0.25 floor keeps the cap
-	// holding past 500% browser zoom (see SectionPlayerTabbedContent).
-	function currentCalculatorZoomCompensation(): number {
-		if (typeof window === 'undefined') return 1;
-		// Shares ICON_BUTTON_ZOOM_OPTIONS with the TTS play button so both icon
-		// buttons compensate identically.
-		return computeZoomCompensation(
-			approximateZoomFromWidths(window.outerWidth, window.innerWidth),
-			ICON_BUTTON_ZOOM_OPTIONS.maxZoom,
-			ICON_BUTTON_ZOOM_OPTIONS.minCompensation
-		);
-	}
-	// Reactive factor for the header button (the shell recomputes its own via
-	// applyShellStyle since its DOM lives at document.body, outside this subtree).
-	let calculatorButtonZoomComp = $state(1);
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		const update = () => {
-			calculatorButtonZoomComp = currentCalculatorZoomCompensation();
-		};
-		update();
-		window.addEventListener('resize', update);
-		return () => window.removeEventListener('resize', update);
-	});
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Presentation gate from the host runtime. Controls render
@@ -1401,16 +1368,10 @@
 			};
 		};
 
-		// horizontal scroll on the *whole* shell (so header + content are
-		// part of the same scroll surface) and pin a `min-width` on every
-		// child of the column flex (header, content, mounted tool) so they
-		// all participate in the same scrollable width — without this,
-		// `contentEl` stays at the shell's visible width and clips the tool
-		// while the header alone scrolls. At normal sizes the knobs are
-		// cleared so shellEl's default `overflow: visible` is restored —
-		// that visibility is what lets the absolutely-positioned resize
-		// handles receive pointer events outside the rounded border, see
-		// the shellEl block.
+		// A tool may need horizontal panning below its declared minimum width.
+		// Keep that scrolling inside the content: the header must reflow so its
+		// close, move and resize controls remain visible at the viewport width.
+		// The shell keeps overflow visible for the corner resize handles.
 		const applyContentMinWidth = () => {
 			const configuredMinWidth = currentArgs.mounted.entry.shell?.minWidth;
 			const shouldScroll =
@@ -1423,14 +1384,11 @@
 				mountedContentElement.style.minWidth = minWidthValue;
 			}
 			if (headerEl) {
-				headerEl.style.minWidth = minWidthValue;
+				headerEl.style.minWidth = '0';
 			}
 			if (contentEl) {
-				contentEl.style.minWidth = minWidthValue;
-			}
-			if (shellEl) {
-				shellEl.style.overflowX = shouldScroll ? 'auto' : 'visible';
-				shellEl.style.overflowY = 'visible';
+				contentEl.style.minWidth = '0';
+				contentEl.style.overflowX = shouldScroll ? 'auto' : 'hidden';
 			}
 		};
 
@@ -1447,7 +1405,6 @@
 		const applyContentLayout = () => {
 			if (!contentEl) return;
 			const shellConfig = currentArgs.mounted.entry.shell;
-			contentEl.style.overflowX = 'hidden';
 			contentEl.style.overflowY = getContentOverflowY();
 			if (!mountedContentElement) return;
 
@@ -1636,14 +1593,6 @@
 			shellEl.style.width = `${width}px`;
 			shellEl.style.height = `${height}px`;
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
-			// Header control buttons read this via `zoom: var(--pie-tool-shell-zoom-comp)`
-			// on their cluster wrapper so they cap at 200% while the shell box itself
-			// stays at real pixels (its position/size math needs unscaled coordinates).
-			// Runs on init, window resize, and drag/resize — cheap + idempotent.
-			shellEl.style.setProperty(
-				'--pie-tool-shell-zoom-comp',
-				String(currentCalculatorZoomCompensation())
-			);
 		};
 
 		/**
@@ -2117,6 +2066,7 @@
 			headerEl = document.createElement('div');
 			headerEl.className = 'pie-tool-shell__header';
 			headerEl.style.display = 'flex';
+			headerEl.style.flexWrap = 'wrap';
 			headerEl.style.alignItems = 'center';
 			headerEl.style.justifyContent = 'space-between';
 			headerEl.style.gap = '6px';
@@ -2165,12 +2115,16 @@
 
 			titleEl = document.createElement('span');
 			titleEl.className = 'pie-tool-shell__title';
+			titleEl.style.minWidth = '0';
+			titleEl.style.overflowWrap = 'anywhere';
 			titleEl.textContent = currentArgs.mounted.entry.shell.title || currentArgs.mounted.toolId;
 			headerEl.appendChild(titleEl);
 
 			controlsEl = document.createElement('div');
 			controlsEl.className = 'pie-tool-shell__controls';
 			controlsEl.style.display = 'inline-flex';
+			controlsEl.style.flexWrap = 'wrap';
+			controlsEl.style.minWidth = '0';
 			controlsEl.style.alignItems = 'center';
 			controlsEl.style.gap = shellDeclaresNdsChrome() ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
@@ -2218,13 +2172,11 @@
 				rightClusterEl = document.createElement('div');
 				rightClusterEl.className = 'pie-tool-shell__header-right';
 				rightClusterEl.style.display = 'inline-flex';
+				rightClusterEl.style.flexWrap = 'wrap';
+				rightClusterEl.style.maxWidth = '100%';
+				rightClusterEl.style.justifyContent = 'flex-end';
 				rightClusterEl.style.alignItems = 'center';
 				rightClusterEl.style.gap = '6px';
-				// Cap the move / resize / close controls at their 200%-zoom size.
-				// zoom goes on this cluster wrapper (a plain div), NOT the
-				// nds-icon-button hosts inside it. --pie-tool-shell-zoom-comp is set
-				// on the shell root by applyShellStyle and inherits down here.
-				rightClusterEl.style.setProperty('zoom', 'var(--pie-tool-shell-zoom-comp, 1)');
 				rightClusterEl.appendChild(controlsEl);
 				headerEl.appendChild(rightClusterEl);
 			} else {
@@ -2578,10 +2530,13 @@
 		class:item-toolbar--header-overlay-active={headerOverlayShouldExpandForActiveTool}
 		data-content-kind={effectiveContentKind}
 		data-level={effectiveLevel}
-		style={`--pie-toolbar-zoom-comp: ${calculatorButtonZoomComp};`}
 		bind:this={toolbarRootElement}
 	>
-		<div class="item-toolbar__tools-row">
+		<div class="item-toolbar__tools-row" onfocusin={(event) => {
+			if (effectiveLevel === 'section' && event.target instanceof HTMLElement) {
+				event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+			}
+		}}>
 			{#each mountedElementsBeforeButtons as mounted (mounted.key)}
 				{#if mounted.entry.shell}
 					<!-- Re-key on `useNdsIcons` so the imperatively-built shell (which
@@ -2612,9 +2567,6 @@
 					     component's inner <button>, so `onclick` still invokes onClick.
 					     `reflectToggleState` mirrors the pressed state onto that inner
 					     button since nds has no native aria-pressed. -->
-					<!-- 200% cap on a WRAPPER, not the nds-icon-button host directly:
-					     `zoom` on an nds-icon-button (light-DOM render + injected
-					     global <style>) mis-sizes it. Matches the scroll-hint pattern. -->
 					<span class="item-toolbar__nds-button-zoom">
 						<nds-icon-button
 							use:ndsIconButtonAction
@@ -2746,6 +2698,8 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
+		min-width: 0;
+		max-width: 100%;
 		gap: 0;
 		--pie-toolbar-tools-row-height: 2rem;
 		--pie-tts-controls-row-height: 2.875rem;
@@ -2755,11 +2709,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
-		flex-wrap: nowrap;
-		/* Cap the gap between toolbar items (e.g. TTS play ↔ calculator) at its
-		   200%-zoom size with the same factor the buttons use, so the spacing
-		   doesn't keep growing past 200% while the buttons themselves freeze. */
-		gap: calc(0.5rem * var(--pie-toolbar-zoom-comp, 1));
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		max-width: 100%;
 		min-height: var(--pie-toolbar-tools-row-height);
 	}
 
@@ -2768,11 +2720,15 @@
 	   which left them impossible to focus, tab to, or click. `min-width: 0`
 	   beats the flex default (`auto`, i.e. never shrink below content), which
 	   would otherwise keep the row at full content width and make overflow-x
-	   moot. Scoped to section level: an item's own toolbar hosts far fewer
-	   tools and, for the inline TTS tool's "expanding row" layout, relies on
-	   this row growing freely to host its reading-controls panel — capping its
-	   width here clips that panel instead. */
+	   moot. Item and passage rows wrap without an overflow clip so an inline
+	   reading-controls panel can still extend outside the row. */
 	.item-toolbar[data-level="section"] .item-toolbar__tools-row {
+		flex-wrap: nowrap;
+		justify-content: flex-start;
+		/* Keep the focus outline inside the scrolling box on both axes. */
+		padding: 4px;
+		scroll-padding: 4px;
+		box-sizing: border-box;
 		overflow-x: auto;
 		max-width: 100%;
 		min-width: 0;
@@ -2836,6 +2792,7 @@
 
 	.item-toolbar__button {
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
 		width: 2rem;
@@ -2855,11 +2812,9 @@
 	   md/sm/lg dimensions (32 / 44 / 40 px) without a layout shift. The glyph
 	   keeps the NDS-native icon size (we render size="small"), so it isn't
 	   oversized. */
-	/* Freeze the calculator's header open/close button at its 200%-zoom size
-	   (factor is 1 at zoom <= 200%). Zoom on this wrapper, not the host. */
 	.item-toolbar__nds-button-zoom {
 		display: inline-flex;
-		zoom: var(--pie-toolbar-zoom-comp, 1);
+		flex-shrink: 0;
 	}
 
 	.item-toolbar nds-icon-button {

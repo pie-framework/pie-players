@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { expectUsableTarget } from "../../../test-support/control-sizing";
+import { withBrowserZoom } from "../../../test-support/browser-zoom";
 import {
 	expectDemoChromeReady,
 	openDemoMenuIfCollapsed,
@@ -371,6 +373,109 @@ async function selectPassageText(page: Page): Promise<void> {
 }
 
 test.describe("section player demo tts-ssml", () => {
+	for (const factor of [2, 4]) {
+		test(`keeps reading controls usable at ${factor * 100}% browser zoom`, async ({ baseURL }, testInfo) => {
+			await withBrowserZoom(baseURL!, testInfo, async (page, setZoom, capture) => {
+				await suppressAudibleBrowserTts(page, 30_000);
+				await gotoDemo(page);
+				await forceBrowserTtsRuntime(page);
+				await setZoom(factor);
+				await page.getByRole("navigation", { name: "Demo controls" }).getByRole("button", { name: "Close", exact: true }).click();
+				const questions = page.getByRole("tab", { name: "Questions", exact: true });
+				await questions.press("Enter");
+				await expectUsableTarget(questions);
+				const tts = page.locator('pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible').first();
+				const trigger = tts.getByRole("button", { name: "Play reading", exact: true });
+				await trigger.focus();
+				await expectUsableTarget(trigger);
+				await trigger.press("Enter");
+				const panel = tts.getByRole("toolbar", { name: "Reading controls" });
+				await expect(panel).toBeVisible();
+				for (const control of await panel.getByRole("button").all()) await expectUsableTarget(control);
+				for (const control of await panel.getByRole("radio").all()) await expectUsableTarget(control);
+				const panelBounds = (await panel.boundingBox())!;
+				const hintBounds = await page.getByRole("button", { name: "Scroll down", exact: true }).first().boundingBox();
+				if (hintBounds) {
+					const left = Math.max(panelBounds.x, hintBounds.x);
+					const right = Math.min(panelBounds.x + panelBounds.width, hintBounds.x + hintBounds.width);
+					const top = Math.max(panelBounds.y, hintBounds.y);
+					const bottom = Math.min(panelBounds.y + panelBounds.height, hintBounds.y + hintBounds.height);
+					if (right > left && bottom > top) {
+						await panel.click({ trial: true, position: {
+							x: (left + right) / 2 - panelBounds.x,
+							y: (top + bottom) / 2 - panelBounds.y,
+						} });
+					}
+				}
+				await panel.getByRole("radio", { name: "Normal speed", exact: true }).focus();
+				await page.keyboard.press("ArrowDown");
+				await expect(panel.getByRole("radio", { name: "Fast speed", exact: true })).toBeFocused();
+				await capture("reading-controls.png");
+				await panel.getByRole("button", { name: "Stop reading", exact: true }).press("Enter");
+				await expect(panel).toBeHidden();
+				await expect(tts.getByRole("button", { name: "Play reading", exact: true })).toBeFocused();
+				await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+			});
+		});
+	}
+
+	for (const rootFontPx of [16, 32]) {
+		test(`keeps reading controls accessible in a narrow host with ${rootFontPx}px root text`, async ({ page }, testInfo) => {
+			await page.addInitScript(() => {
+				Object.defineProperty(window, "outerWidth", { get: () => 1768 });
+			});
+			await suppressAudibleBrowserTts(page, 30_000);
+			await page.setViewportSize({ width: 320, height: 800 });
+			await gotoDemo(page);
+			await forceBrowserTtsRuntime(page);
+			await page.getByRole("navigation", { name: "Demo controls" })
+				.getByRole("button", { name: "Close", exact: true }).click();
+			// This exercises text resizing separately from viewport width. Actual
+			// browser magnification remains a manual acceptance check.
+			await page.addStyleTag({ content: `html { font-size: ${rootFontPx}px !important; }` });
+			const sectionButtons = await page.locator('pie-section-toolbar:visible').first().getByRole("button").all();
+			expect(sectionButtons.length).toBeGreaterThan(0);
+			await expect(sectionButtons[0]).toHaveCSS("width", `${rootFontPx * 2}px`);
+			await sectionButtons[0].focus();
+			for (let index = 0; index < sectionButtons.length; index++) {
+				if (index > 0) await sectionButtons[index - 1].press("Tab");
+				await expect(sectionButtons[index]).toBeFocused();
+				await expectUsableTarget(sectionButtons[index]);
+			}
+			const passageToolbar = page.locator('pie-passage-shell .pie-section-player-content-card-header pie-item-toolbar:visible').first();
+			for (const control of await passageToolbar.getByRole("button").all()) await expectUsableTarget(control);
+			const questions = page.getByRole("tab", { name: "Questions", exact: true });
+			await questions.press("Enter");
+			await expectUsableTarget(questions);
+			const itemToolbar = page.locator('pie-item-shell .pie-section-player-content-card-header pie-item-toolbar:visible').first();
+			for (const control of await itemToolbar.getByRole("button").all()) await expectUsableTarget(control);
+			const tts = page.locator('pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible').first();
+			const trigger = tts.getByRole("button", { name: "Play reading", exact: true });
+			await expectUsableTarget(trigger);
+			await trigger.press("Enter");
+			const panel = tts.getByRole("toolbar", { name: "Reading controls" });
+			await expect(panel).toBeVisible();
+			for (const control of await panel.getByRole("button").all()) await expectUsableTarget(control);
+			for (const control of await panel.getByRole("radio").all()) await expectUsableTarget(control);
+			const normal = panel.getByRole("radio", { name: "Normal speed", exact: true });
+			await normal.focus();
+			await normal.press("ArrowRight");
+			const fast = panel.getByRole("radio", { name: "Fast speed", exact: true });
+			await expect(fast).toBeFocused();
+			await expect(fast).toHaveAttribute("aria-checked", "true");
+			await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+			const results = await new AxeBuilder({ page })
+				.include("pie-section-player-splitpane")
+				.withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+				.analyze();
+			expect(results.violations.filter(v => !isKnownA11yBaselineDebt(v))).toEqual([]);
+			await page.screenshot({ path: testInfo.outputPath("reading-controls.png") });
+			await panel.getByRole("button", { name: "Stop reading", exact: true }).press("Enter");
+			await expect(panel).toBeHidden();
+			await expect(tts.getByRole("button", { name: "Play reading", exact: true })).toBeFocused();
+		});
+	}
+
 	test("uses a region-scope TTS highlight resolver from inline TTS", async ({
 		page,
 	}) => {

@@ -28,7 +28,7 @@ checkouts, so verify that observation before relying on it during implementation
 
 | Order | Issue | Branch | Status | PR / merge evidence |
 | --- | --- | --- | --- | --- |
-| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | Blocked | Implementation and local PR gate verified; integration review needs Host V/A/R checkout paths or explicit skips. No PR or merge yet. See the evidence below. |
+| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375). Implementation `6c089fdb` passed the local PR gate; Host V/A/R checkout paths or explicit skips are still needed before marking it ready to merge. See the evidence below. |
 | 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Planned | — |
 | 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Planned | — |
 | 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Planned | — |
@@ -161,7 +161,7 @@ did not find checkouts matching the three recorded hosts. Checkout paths or an
 explicit skip for Host V, Host A, and Host R were requested together. Their
 existing rows and verification dates remain unchanged. Complete that review
 using the [maintenance procedure](../integrations/consumer-api-dependencies-maintenance.md#step-1--locate-the-consumer-checkouts)
-before opening the repair for merge. The removed shared export and deprecated
+before marking the PR ready to merge. The removed shared export and deprecated
 private token are absent from the recorded imports, but that does not substitute
 for the requested checkout check. R3 remains the next repair after R4 lands.
 

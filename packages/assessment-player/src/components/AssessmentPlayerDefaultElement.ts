@@ -81,29 +81,28 @@ export class AssessmentPlayerDefaultElement
 		];
 	}
 
-	assessmentId = "";
-	attemptId = "";
+	private _assessmentId = "";
+	private _attemptId = "";
 	/**
 	 * Interface locale for this player's own navigation chrome, as a BCP-47 tag.
 	 * Empty means the graceful default, `en-US`. Also forwarded to the section
 	 * element, which passes it on to the toolkit.
 	 */
-	locale = "";
-	assessment: AssessmentDefinition | null = null;
-	env: Env | null = null;
-	coordinator: unknown = null;
-	hooks: AssessmentPlayerHooks | null = null;
-	showNavigation: boolean | string | null | undefined = true;
-	sectionPlayerLayout: "splitpane" | "vertical" = "splitpane";
-	playerType: "iife" | "esm" | "preloaded" = "iife";
+	private _locale = "";
+	private _assessment: AssessmentDefinition | null = null;
+	private _env: Env | null = null;
+	private _coordinator: unknown = null;
+	private _hooks: AssessmentPlayerHooks | null = null;
+	private _showNavigation: boolean | string | null | undefined = true;
+	private _sectionPlayerLayout: "splitpane" | "vertical" = "splitpane";
+	private _playerType: "iife" | "esm" | "preloaded" = "iife";
 	private _debug: boolean | string | null | undefined = undefined;
 
-	private controller: AssessmentControllerHandle | null = null;
-	private controllerReadyPromise: Promise<AssessmentControllerHandle | null> | null =
-		null;
-	private controllerReadyResolve:
-		| ((value: AssessmentControllerHandle | null) => void)
-		| null = null;
+	private controller: AssessmentController | null = null;
+	private initializingController: AssessmentController | null = null;
+	private generation = 0;
+	private reconcileQueued = false;
+	private controllerWaiters = new Set<(value: AssessmentControllerHandle | null) => void>();
 	/**
 	 * This player's own provider rather than a context read. Its navigation sits
 	 * beside the section host, not inside it, so there is no published toolkit
@@ -136,18 +135,78 @@ export class AssessmentPlayerDefaultElement
 		phase: "bootstrapping",
 	};
 
-	constructor() {
-		super();
-		this.controllerReadyPromise = new Promise((resolve) => {
-			this.controllerReadyResolve = resolve;
-		});
+	get assessmentId() { return this._assessmentId; }
+	set assessmentId(value: string) {
+		if (this._assessmentId === value) return;
+		this._assessmentId = value;
+		this.queueReconciliation();
+	}
+
+	get attemptId() { return this._attemptId; }
+	set attemptId(value: string) {
+		if (this._attemptId === value) return;
+		this._attemptId = value;
+		this.queueReconciliation();
+	}
+
+	get assessment() { return this._assessment; }
+	set assessment(value: AssessmentDefinition | null) {
+		if (this._assessment === value) return;
+		this._assessment = value;
+		this.queueReconciliation();
+	}
+
+	get hooks() { return this._hooks; }
+	set hooks(value: AssessmentPlayerHooks | null) {
+		if (this._hooks === value) return;
+		this._hooks = value;
+		this.queueReconciliation();
+	}
+
+	get locale() { return this._locale; }
+	set locale(value: string) {
+		if (this._locale === value) return;
+		this._locale = value;
+		if (this.isConnected) this.applyLocale();
+	}
+
+	get env() { return this._env; }
+	set env(value: Env | null) {
+		this._env = value;
+		if (this.isConnected) this.updateCurrentSectionRuntime();
+	}
+
+	get coordinator() { return this._coordinator; }
+	set coordinator(value: unknown) {
+		this._coordinator = value;
+		if (this.isConnected) this.updateCurrentSectionRuntime();
+	}
+
+	get showNavigation() { return this._showNavigation; }
+	set showNavigation(value: boolean | string | null | undefined) {
+		this._showNavigation = value;
+		if (this.isConnected) this.updateNavigationChrome();
+	}
+
+	get sectionPlayerLayout() { return this._sectionPlayerLayout; }
+	set sectionPlayerLayout(value: "splitpane" | "vertical") {
+		if (this._sectionPlayerLayout === value) return;
+		this._sectionPlayerLayout = value;
+		if (this.isConnected && this.controller) this.render();
+	}
+
+	get playerType() { return this._playerType; }
+	set playerType(value: "iife" | "esm" | "preloaded") {
+		this._playerType = value;
+		if (this.isConnected) this.updateCurrentSectionRuntime();
 	}
 
 	attributeChangedCallback(
 		name: string,
-		_oldValue: string | null,
+		oldValue: string | null,
 		value: string | null,
 	) {
+		if (oldValue === value) return;
 		if (name === "assessment-id") this.assessmentId = value || "";
 		if (name === "attempt-id") this.attemptId = value || "";
 		if (name === "show-navigation") this.showNavigation = value;
@@ -163,10 +222,6 @@ export class AssessmentPlayerDefaultElement
 		}
 		if (name === "locale") {
 			this.locale = value || "";
-			this.applyLocale();
-		}
-		if (this.isConnected) {
-			void this.bootstrapController();
 		}
 	}
 
@@ -178,7 +233,7 @@ export class AssessmentPlayerDefaultElement
 	private applyLocale(): void {
 		if (!this.unsubscribeI18n) {
 			this.unsubscribeI18n = this.i18n.subscribe?.(() => {
-				if (this.isConnected) this.render();
+				if (this.isConnected) this.updateNavigationChrome();
 			});
 		}
 		void this.i18n.setLocale(this.locale || DEFAULT_LOCALE);
@@ -235,16 +290,61 @@ export class AssessmentPlayerDefaultElement
 		if (!this.locale) this.locale = this.getAttribute("locale") || "";
 		this.applyLocale();
 		this.attachInstrumentationBridge();
-		void this.bootstrapController();
+		this.queueReconciliation();
 	}
 
 	disconnectedCallback() {
+		this.reconcileQueued = false;
+		this.retireController();
+		this.restoreFocusOnRender = false;
+		this.settleControllerWaiters(null);
 		this.unsubscribeI18n?.();
 		this.unsubscribeI18n = undefined;
-		this.unsubscribeController?.();
 		this.detachInstrumentationBridge?.();
 		this.detachInstrumentationBridge = undefined;
-		this.hooks?.onAssessmentControllerDispose?.(this.controller || undefined);
+	}
+
+	private settleControllerWaiters(controller: AssessmentControllerHandle | null): void {
+		for (const settle of this.controllerWaiters) settle(controller);
+	}
+
+	private retireController(): void {
+		this.restoreFocusOnRender ||= this.contains(document.activeElement);
+		this.generation += 1;
+		const retired = this.controller || this.initializingController;
+		this.controller = null;
+		this.initializingController = null;
+		this.unsubscribeController?.();
+		this.unsubscribeController = undefined;
+		this.sectionControllerRef = null;
+		this.sectionHost = null;
+		// Removing the nested CE triggers its existing toolkit/coordinator owner.
+		// Host-supplied coordinators remain borrowed and are never disposed here.
+		this.containerRef?.remove();
+		this.containerRef = null;
+		this.readiness = { phase: "bootstrapping" };
+		if (retired) {
+			this.settleControllerWaiters(null);
+			void retired.dispose().catch((error) => {
+				// Cleanup cannot publish an error into a replacement attempt.
+				console.error("Assessment controller disposal failed", error);
+			});
+		}
+	}
+
+	private queueReconciliation(): void {
+		if (!this.isConnected) return;
+		// Invalidate synchronously: a resolved old promise can resume before the
+		// reconciliation microtask. Synchronous property assignments still batch.
+		if (this.controller || this.initializingController) this.retireController();
+		this.readiness = { phase: "bootstrapping" };
+		if (this.reconcileQueued) return;
+		this.reconcileQueued = true;
+		queueMicrotask(() => {
+			if (!this.reconcileQueued) return;
+			this.reconcileQueued = false;
+			if (this.isConnected) void this.bootstrapController();
+		});
 	}
 
 	private dispatch(
@@ -264,31 +364,53 @@ export class AssessmentPlayerDefaultElement
 
 	private async bootstrapController() {
 		if (!this.assessmentId || !this.assessment) {
-			this.renderEmptyState("assessment-id and assessment are required");
+			this.renderEmptyState();
 			return;
 		}
 
 		this.readiness = { phase: "bootstrapping" };
-		this.render();
+		this.renderEmptyState();
+		const generation = this.generation;
+		const hooks = this.hooks;
+		const isCurrent = () => this.isConnected && this.generation === generation;
 
-		const controller = new AssessmentController({
+		const controller: AssessmentController = new AssessmentController({
 			assessmentId: this.assessmentId,
 			attemptId: this.attemptId || undefined,
 			assessment: this.assessment,
-			hooks: this.hooks || undefined,
+			hooks: {
+				...hooks,
+				onError: (error, context) => {
+					if (!isCurrent()) return;
+					try {
+						hooks?.onError?.(error, context);
+					} finally {
+						// A host can explicitly hydrate an already-published handle.
+						// Its load failure has the same unavailable UI as initial load.
+						if (isCurrent() && context.phase === "session-load" && this.controller === controller) {
+							this.retireController();
+							this.readiness = { phase: "error" };
+							this.renderEmptyState();
+							this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.error, { error });
+						}
+					}
+				},
+			},
 		});
 
-		this.unsubscribeController?.();
-		this.controller = controller;
+		this.initializingController = controller;
 		this.unsubscribeController = controller.subscribe((event) => {
+			if (!isCurrent()) return;
 			if (event.type === "assessment-route-changed") {
 				this.cleanupTtsForSectionNavigation(
 					event satisfies AssessmentRouteChangedDetail,
 				);
+				if (!isCurrent()) return;
 				this.dispatch(
 					ASSESSMENT_PLAYER_PUBLIC_EVENTS.routeChanged,
 					event satisfies AssessmentRouteChangedDetail,
 				);
+				if (!isCurrent()) return;
 				// A route change is the one render that destroys the focused control.
 				this.restoreFocusOnRender = true;
 				this.render();
@@ -315,19 +437,40 @@ export class AssessmentPlayerDefaultElement
 
 		try {
 			await controller.initialize();
+			if (!isCurrent()) return;
+			this.initializingController = null;
+			this.controller = controller;
 			this.readiness = { phase: "ready" };
-			this.controllerReadyResolve?.(controller);
-			this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.controllerReady, {
-				controller,
-			});
-			this.hooks?.onAssessmentControllerReady?.(controller);
 			this.render();
+			this.settleControllerWaiters(controller);
+			// Notifications observe the same ready controller as the getter/waiter.
+			// A host notification failure does not undo successful hydration.
+			const reportReadyHookError = (error: unknown) => {
+				if (!isCurrent()) return;
+				try {
+					hooks?.onError?.(error instanceof Error ? error : new Error(String(error)), { phase: "controller-init" });
+				} catch (reportError) {
+					console.error("Assessment error hook failed", reportError);
+				}
+				if (isCurrent()) this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.error, { error });
+			};
+			try {
+				Promise.resolve(hooks?.onAssessmentControllerReady?.(controller))
+					.catch(reportReadyHookError);
+			} catch (error) {
+				reportReadyHookError(error);
+			}
+			if (isCurrent()) {
+				this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.controllerReady, { controller });
+			}
 		} catch (error) {
+			if (!isCurrent()) return;
+			this.retireController();
 			this.readiness = { phase: "error" };
+			this.renderEmptyState();
 			this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.error, {
 				error,
 			});
-			this.renderEmptyState("Failed to initialize assessment player");
 		}
 	}
 
@@ -353,11 +496,53 @@ export class AssessmentPlayerDefaultElement
 		});
 	}
 
-	private renderEmptyState(message: string) {
+	private renderEmptyState() {
+		if (!this.isConnected) return;
+		const hadFocus = this.restoreFocusOnRender || this.contains(document.activeElement);
+		const failed = this.readiness.phase === "error";
 		const root = document.createElement("div");
 		root.className = "pie-assessment-player-empty";
-		root.textContent = message;
+		root.tabIndex = -1;
+		const style = document.createElement("style");
+		style.textContent = `
+			.pie-assessment-player-empty { display: grid; justify-items: start; gap: 0.75rem; padding: 1rem; }
+			.pie-assessment-player-status-message { margin: 0; }
+			.pie-assessment-player-retry {
+				font: inherit; min-height: 2rem; padding: 0.5rem 0.75rem;
+				border: 1px solid var(--pie-button-border, var(--pie-border, #8f8f8f));
+				border-radius: 4px;
+				background: var(--pie-button-bg, var(--pie-white, #fff));
+				color: var(--pie-button-color, var(--pie-text, #374151));
+				cursor: pointer;
+			}
+			.pie-assessment-player-retry:hover {
+				background: var(--pie-button-hover-bg, var(--pie-background-dark, #f9fafb));
+				border-color: var(--pie-button-hover-border, var(--pie-border, #8b919c));
+				color: var(--pie-button-hover-color, var(--pie-text, #111827));
+			}
+			.pie-assessment-player-retry:focus-visible {
+				outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
+				outline-offset: 2px;
+			}
+		`;
+		root.appendChild(style);
+		const message = document.createElement("p");
+		message.className = "pie-assessment-player-status-message";
+		message.setAttribute("role", failed ? "alert" : "status");
+		message.textContent = failed
+			? this.i18n.t("player.assessment.loadFailed")
+			: this.i18n.t("common.loading");
+		root.appendChild(message);
+		if (failed) {
+			const retry = document.createElement("button");
+			retry.type = "button";
+			retry.className = "pie-assessment-player-retry";
+			retry.textContent = this.i18n.t("common.retry");
+			retry.addEventListener("click", () => this.queueReconciliation());
+			root.appendChild(retry);
+		}
 		this.swapContent(root);
+		if (hadFocus) root.focus();
 	}
 
 	/**
@@ -373,7 +558,7 @@ export class AssessmentPlayerDefaultElement
 	 * The polite live region, created once and never replaced.
 	 */
 	private ensureAnnouncer(): HTMLElement {
-		if (this.announcer?.isConnected) return this.announcer;
+		if (this.announcer?.parentNode === this) return this.announcer;
 		const announcer = document.createElement("div");
 		announcer.className = "pie-assessment-player-announcer";
 		announcer.setAttribute("role", "status");
@@ -403,7 +588,7 @@ export class AssessmentPlayerDefaultElement
 		const active = document.activeElement;
 		if (!active || !this.contains(active)) return null;
 		if (active.classList?.contains("pie-assessment-player-nav-btn")) {
-			return active.textContent === "Back" ? "previous" : "next";
+			return active.getAttribute("data-pie-navigation") === "previous" ? "previous" : "next";
 		}
 		return "section";
 	}
@@ -513,6 +698,9 @@ export class AssessmentPlayerDefaultElement
 		sectionIdentifier: string,
 	): void {
 		const sectionEl = target as SectionPlayerHostElement;
+		const generation = this.generation;
+		const isCurrent = () => this.isConnected && this.generation === generation &&
+			this.sectionHost?.firstElementChild === sectionEl;
 		// Svelte 5 custom elements mount their underlying component on a
 		// microtask after `connectedCallback` (the mount sits behind an
 		// `await Promise.resolve()` inside Svelte's CE wrapper). Property
@@ -525,29 +713,33 @@ export class AssessmentPlayerDefaultElement
 		// defer is belt-and-suspenders for either ordering.
 		queueMicrotask(() => {
 			void (async () => {
+				if (!isCurrent()) return;
 				const controller =
 					(await sectionEl.waitForSectionController?.(5000)) || null;
+				if (!isCurrent()) return;
 				this.sectionControllerRef = controller;
 				if (!controller) return;
 				const saved = this.controller?.getSectionSession(sectionIdentifier);
 				if (saved && controller.applySession) {
 					await controller.applySession(saved, { mode: "replace" });
 				}
-			})();
+			})().catch((error) => {
+				if (isCurrent()) this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.error, { error });
+			});
 		});
-		target.addEventListener("session-changed", () =>
-			this.syncCurrentSectionSessionIntoAssessment(),
-		);
-		target.addEventListener("item-session-changed", () =>
-			this.syncCurrentSectionSessionIntoAssessment(),
-		);
+		const onSessionChanged = () => {
+			if (isCurrent()) this.syncCurrentSectionSessionIntoAssessment();
+		};
+		target.addEventListener("session-changed", onSessionChanged);
+		target.addEventListener("item-session-changed", onSessionChanged);
 	}
 
 	private render() {
+		if (!this.isConnected || !this.controller) return;
 		const controller = this.controller;
 		this.attachInstrumentationBridge();
 		// Read before the swap below discards the node that holds focus.
-		const focusIntent = this.restoreFocusOnRender
+		const focusIntent = this.restoreFocusOnRender || this.containerRef?.classList.contains("pie-assessment-player-empty")
 			? this.captureFocusIntent()
 			: null;
 		this.restoreFocusOnRender = false;
@@ -580,6 +772,7 @@ export class AssessmentPlayerDefaultElement
 				border-radius: 0.375rem;
 				background: var(--pie-background-light, var(--pie-background, #fff));
 			}
+			.pie-assessment-player-navigation[hidden] { display: none; }
 			.pie-assessment-player-current-position {
 				font-size: 0.9rem;
 				font-weight: 600;
@@ -619,22 +812,26 @@ export class AssessmentPlayerDefaultElement
 				: this.i18n.t("player.assessment.noSections");
 		let prevButton: HTMLButtonElement | null = null;
 		let nextButton: HTMLButtonElement | null = null;
-		const showNavigation = coerceBooleanLike(this.showNavigation, true);
-		if (showNavigation) {
+		{
 			const nav = document.createElement("div");
 			nav.className = "pie-assessment-player-navigation";
+			nav.hidden = !coerceBooleanLike(this.showNavigation, true);
 			const pos = document.createElement("div");
 			pos.className = "pie-assessment-player-current-position";
 			pos.textContent = positionLabel;
 			const controls = document.createElement("div");
 			controls.className = "pie-assessment-player-nav-controls";
 			prevButton = document.createElement("button");
+			prevButton.type = "button";
 			prevButton.className = "pie-assessment-player-nav-btn";
+			prevButton.setAttribute("data-pie-navigation", "previous");
 			prevButton.textContent = this.i18n.t("common.back");
 			prevButton.disabled = !snapshot.navigation.canPrevious;
 			prevButton.addEventListener("click", () => void this.navigatePrevious());
 			nextButton = document.createElement("button");
+			nextButton.type = "button";
 			nextButton.className = "pie-assessment-player-nav-btn";
+			nextButton.setAttribute("data-pie-navigation", "next");
 			nextButton.textContent = this.i18n.t("common.next");
 			nextButton.disabled = !snapshot.navigation.canNext;
 			nextButton.addEventListener("click", () => void this.navigateNext());
@@ -694,6 +891,35 @@ export class AssessmentPlayerDefaultElement
 		}
 	}
 
+	/** Locale and chrome changes must not remount a section or reload its attempt. */
+	private updateNavigationChrome(): void {
+		const navigation = this.selectNavigation();
+		const position = navigation.totalSections > 0
+			? this.i18n.t("player.assessment.sectionPosition", {
+				position: navigation.currentIndex + 1,
+				total: navigation.totalSections,
+			})
+			: this.i18n.t("player.assessment.noSections");
+		const nav = this.containerRef?.querySelector<HTMLElement>(".pie-assessment-player-navigation");
+		if (nav) {
+			nav.hidden = !coerceBooleanLike(this.showNavigation, true);
+			if (nav.hidden && nav.contains(document.activeElement)) this.sectionHost?.focus();
+		}
+		const label = this.containerRef?.querySelector(".pie-assessment-player-current-position");
+		if (label) label.textContent = position;
+		const previous = nav?.querySelector<HTMLButtonElement>('[data-pie-navigation="previous"]');
+		const next = nav?.querySelector<HTMLButtonElement>('[data-pie-navigation="next"]');
+		if (previous) previous.textContent = this.i18n.t("common.back");
+		if (next) next.textContent = this.i18n.t("common.next");
+		this.sectionHost?.setAttribute("aria-label", position);
+		const status = this.containerRef?.querySelector(".pie-assessment-player-status-message");
+		if (status) status.textContent = this.readiness.phase === "error"
+			? this.i18n.t("player.assessment.loadFailed") : this.i18n.t("common.loading");
+		const retry = this.containerRef?.querySelector(".pie-assessment-player-retry");
+		if (retry) retry.textContent = this.i18n.t("common.retry");
+		this.forwardLocaleToSection();
+	}
+
 	/**
 	 * Announce the new position, once the live region has been in the document long
 	 * enough for the change to register as a change.
@@ -720,7 +946,8 @@ export class AssessmentPlayerDefaultElement
 
 	getSnapshot(): AssessmentPlayerSnapshot {
 		const runtime = this.controller?.getRuntimeState() || {
-			readiness: this.readiness.phase,
+			readiness: this.initializingController?.getRuntimeState().readiness === "hydrating"
+				? "hydrating" : this.readiness.phase,
 			currentSectionIndex: 0,
 			totalSections: 0,
 			currentSectionId: undefined,
@@ -835,17 +1062,22 @@ export class AssessmentPlayerDefaultElement
 	}
 
 	getAssessmentController(): AssessmentControllerHandle | null {
-		return this.controller;
+		return this.isConnected && this.controller?.getRuntimeState().readiness === "ready"
+			? this.controller : null;
 	}
 
 	async waitForAssessmentController(timeoutMs = 5000) {
-		if (this.controller) return this.controller;
-		const controllerPromise =
-			this.controllerReadyPromise ||
-			Promise.resolve<AssessmentControllerHandle | null>(null);
-		const timeoutPromise = new Promise<null>((resolve) => {
-			setTimeout(() => resolve(null), timeoutMs);
+		const ready = this.getAssessmentController();
+		if (ready) return ready;
+		if (!this.isConnected || this.controller || this.readiness.phase === "error") return null;
+		return new Promise<AssessmentControllerHandle | null>((resolve) => {
+			const settle = (value: AssessmentControllerHandle | null) => {
+				clearTimeout(timer);
+				this.controllerWaiters.delete(settle);
+				resolve(value);
+			};
+			const timer = setTimeout(() => settle(null), timeoutMs);
+			this.controllerWaiters.add(settle);
 		});
-		return Promise.race([controllerPromise, timeoutPromise]);
 	}
 }

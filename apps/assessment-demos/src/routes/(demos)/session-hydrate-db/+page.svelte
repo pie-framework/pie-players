@@ -389,7 +389,6 @@ let instrumentationDebuggerElement = $state<any>(null);
 		(playerRef as any).showNavigation = true;
 		(playerRef as any).hooks = hooks;
 		(playerRef as any).coordinator = coordinator;
-		void (playerRef as any).bootstrapController?.();
 		const onRouteChanged = () => refreshSnapshot();
 		const onSessionChanged = () => {
 			refreshSnapshot();

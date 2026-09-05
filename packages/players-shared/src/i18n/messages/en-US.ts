@@ -98,6 +98,7 @@ const enUS = {
 		assessment: {
 			sectionPosition: "Section {position} of {total}",
 			noSections: "No sections",
+			loadFailed: "The assessment could not be loaded. Try again.",
 		},
 
 		/** Formative delivery: check-answer control and its outcome announcements. */

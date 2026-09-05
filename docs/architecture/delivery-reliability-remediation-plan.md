@@ -31,16 +31,18 @@ R5 is an independent dependency-audit blocker and can proceed while R4 is in rev
 | --- | --- | --- | --- | --- |
 | 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In review | [PR #376](https://github.com/pie-framework/pie-players/pull/376); tested implementation `181b124e`. Runtime, audit, full local PR gate, and pre-push gate pass. |
 | 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375); implementation `6c089fdb`. Consumer verification remains pending; the PR records its evidence. |
-| 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Planned | — |
+| 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | In progress | Public mounting fixture and lifecycle repair; downstream checkout verification remains pending. Branch follows R5 for its patched build dependency. |
 | 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Planned | — |
 | 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Planned | — |
 
 R4 is independent of the assessment fixes. R1 builds on R3's lifecycle ownership.
 R2's final navigation, active-answer, and reload verification uses R3 and R1;
 its host-boundary investigation can happen earlier. These are sequential repair
-branches, each based on `develop`, with one issue per PR. Independent repairs
-may proceed while another PR is in review; dependent repairs start after their
-prerequisites are integrated. R5 carries no R4 implementation changes.
+branches with one issue per PR. Independent repairs may proceed while another
+PR is in review. When a prerequisite remains open, stack the next repair on its
+branch and use that branch as the PR base; after integration, retarget to
+`develop`. This keeps each review focused without merging work prematurely.
+R5 carries no R4 implementation changes; R3 follows R5's patched dependency.
 
 ## Working And Tracking Rules
 
@@ -48,7 +50,8 @@ Use the existing checkout. Worktrees are unnecessary for this sequence.
 
 1. Commit this plan before starting repairs so each branch inherits the tracker.
    The planning commit lands with the first repair PR.
-2. Start each repair from a clean, current `develop`; create the branch named in
+2. Start each repair from a clean, current `develop` or its recorded prerequisite;
+   create the branch named in
    the register and change its row to `In progress`. Keep the issue's source,
    regression tests, integration docs, and patch changeset together.
 3. Complete the issue checklist and applicable validation below. Set the row to
@@ -172,23 +175,50 @@ Work and acceptance:
 - [ ] Complete the consumer check and public host fixture in the
   [decision plan](./assessment-player-lifecycle-persistence-implementation-plan.md#compatibility-boundary).
   Remove demo dependence on private bootstrap calls as part of this issue.
-- [ ] Implement one reconciliation and readiness owner for documented object
+- [x] Implement one reconciliation and readiness owner for documented object
   property updates, successful initialization, and observable failures. Meet the
   decision plan's [lifecycle outcomes](./assessment-player-lifecycle-persistence-implementation-plan.md#decisions-supported-now).
-- [ ] Complete its [public lifecycle regression cases](./assessment-player-lifecycle-persistence-implementation-plan.md#required-black-box-evidence):
+- [x] Complete its [public lifecycle regression cases](./assessment-player-lifecycle-persistence-implementation-plan.md#required-black-box-evidence):
   post-connect input assignment, exactly-once readiness, failed hydration,
   superseded initialization, disconnect/reconnect, truthful controller access,
   and owned-versus-borrowed disposal. Show a usable, accessible error state when
   initialization fails; a failure must not masquerade as a ready assessment.
-- [ ] Use the existing coordinator lifecycle API. Verify the baseline
+- [x] Use the existing coordinator lifecycle API. Verify the baseline
   [disposal regression suite](../../packages/assessment-toolkit/tests/toolkit-coordinator-disposal.test.ts)
   and extend it only if the assessment integration exposes a new failure.
-- [ ] Verify the built custom-element entry and a clean package consumer against
+- [x] Verify the built custom-element entry and a clean package consumer against
   the public mounting tutorial. Preserve navigation focus and announcements.
 
 The coordinator disposal prerequisite is already present on the review baseline
 in `e3169f8b`; adopting it does not need a separate implementation branch. This
 issue owns initialization/load failures; R2 owns save/submission failures.
+
+The host-shaped fixture follows the documented public property and readiness
+contract using the built registration entry. Checkout paths for Host V, Host A,
+and Host R were requested and remain unavailable. Their existing pad rows and
+verification dates are unchanged; R3 will remain a draft until that check or an
+explicit skip is recorded. The local repair does not select a durable owner or
+change section, Quiz Engine, knowledge-check, or item-player contracts.
+
+Local evidence on 2026-09-05:
+
+- The [public host fixture](../../apps/assessment-demos/src/routes/lifecycle-host/+page.svelte)
+  imports the built registration entry. The pre-repair browser cases reproduce
+  stalled post-connect assignment and a controller exposed before hydration.
+- [Lifecycle browser regressions](../../packages/assessment-player/tests/assessment-player-lifecycle.spec.ts)
+  cover both mounting orders, consistent ready notifications, superseded work,
+  initialization and explicit-reload failures, retry/focus recovery, reconnect,
+  presentation updates, and actual owned/borrowed coordinator cleanup. Error
+  states receive axe scans and keyboard verification, including a 320px host.
+- Assessment unit suites and the coordinator disposal suite pass 26 tests /
+  110 assertions. Rejected plan/load creation, retired asynchronous loads,
+  re-entrant disposal, idempotent initialization, and session slices are covered.
+- A clean consumer installs packed assessment-player and dependency artifacts
+  and type-checks the public mounting, readiness, persistence, and disposal
+  methods with `strict: true` and `skipLibCheck: false`.
+- The source-export, custom-element consumer-contract, runtime-compatibility,
+  and documentation checks pass. The first full local PR gate passed all 104
+  browser cases; the final push gate also includes the explicit-reload regression.
 
 ## R1 — Returning To A Section Loses Answers
 

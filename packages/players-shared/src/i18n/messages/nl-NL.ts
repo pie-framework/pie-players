@@ -82,6 +82,7 @@ const nlNL = {
 		assessment: {
 			sectionPosition: "Onderdeel {position} van {total}",
 			noSections: "Geen onderdelen",
+			loadFailed: "De toets kon niet worden geladen. Probeer het opnieuw.",
 		},
 
 		formative: {

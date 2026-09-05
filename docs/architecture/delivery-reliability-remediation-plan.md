@@ -29,10 +29,10 @@ R5 is an independent dependency-audit blocker and can proceed while R4 is in rev
 
 | Order | Issue | Branch | Status | PR / merge evidence |
 | --- | --- | --- | --- | --- |
-| 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | In review | [PR #376](https://github.com/pie-framework/pie-players/pull/376); tested implementation `181b124e`. Runtime, audit, full local PR gate, and pre-push gate pass. |
-| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | In review | [Draft PR #375](https://github.com/pie-framework/pie-players/pull/375); implementation `6c089fdb`. Consumer verification remains pending; the PR records its evidence. |
-| 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | In review | [Draft PR #377](https://github.com/pie-framework/pie-players/pull/377); tested implementation `ee795c8c`, final pre-push gate passes 105 browser tests. Downstream verification remains pending. Stacked on R5. |
-| 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | In review | [Draft PR #378](https://github.com/pie-framework/pie-players/pull/378); tested implementation `69f354e2`. Pre-push gate passes 115 browser tests. Downstream verification remains pending. Stacked on R3. |
+| 0 | [R5 — A shipped XML dependency blocks the security audit](#r5--a-shipped-xml-dependency-blocks-the-security-audit) | `codex/fix-xmldom-audit` | Done | [PR #376](https://github.com/pie-framework/pie-players/pull/376), merged into `develop` on 2026-09-05 as `38108ca8`. GitHub checks pass; see integration evidence below. |
+| 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | Done | [PR #375](https://github.com/pie-framework/pie-players/pull/375), merged into `develop` on 2026-09-05 as `8acbbd40`. GitHub checks pass; see integration evidence below. |
+| 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Done | [PR #377](https://github.com/pie-framework/pie-players/pull/377), merged into `develop` on 2026-09-05 as `c45e3bb0`. GitHub checks pass; see integration evidence below. |
+| 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Done | [PR #378](https://github.com/pie-framework/pie-players/pull/378), merged into `develop` on 2026-09-05 as `973db4df`. GitHub checks pass; see integration evidence below. |
 | 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Blocked | A representative host's persistence boundary is unavailable. Need its checkout/read-write workflow, acknowledgement, reload, and failure behavior before selecting the repair. |
 
 R4 is independent of the assessment fixes. R1 builds on R3's lifecycle ownership.
@@ -45,9 +45,25 @@ branch and use that branch as the PR base; after integration, retarget to
 R5 carries no R4 implementation changes; R3 follows R5's patched dependency.
 R1 follows R3's controller retirement and readiness ownership.
 
-GitHub's test workflow runs for PRs targeting `develop` or `master`. R3 and R1
-therefore carry full local pre-push evidence while stacked; their notification
-job is not CI test evidence. Run the PR workflow after retargeting to `develop`.
+### Integration evidence — 2026-09-05
+
+All four repair PRs were merged at the maintainer's request. R3 and R1 were
+retargeted to `develop` and the full GitHub workflow was run; all four PRs have
+passing checks. The shared mutation-observer unit test, one EBSR initialization
+test, and two passage-registration browser tests failed on initial CI runs and
+passed on targeted job retries without source changes. The five registration
+browser tests also passed locally. These intermittent failures merit follow-up
+if they recur; this integration does not claim to have repaired their cause.
+
+The combined tree passed the full local PR gate (124 browser tests: 35 section,
+12 item, 42 assessment, 28 shared, 7 print) and the workspace unit-test run.
+The resulting merge tree exactly matches that locally verified tree.
+All four repair branches were deleted locally and remotely after their merges.
+
+Host V/A/R checkouts remain unavailable. The maintainer requested integration
+with that limitation recorded; no downstream verification or refreshed consumer
+pad dates are claimed. R2 remains blocked on representative host persistence
+evidence and is not part of these merges.
 
 ## Working And Tracking Rules
 
@@ -213,14 +229,14 @@ Verification evidence:
   not a new whole-suite WCAG conformance claim; no screen-reader pass or live
   vendor calculator keypad evaluation was performed.
 
-Remaining integration gate: the local consumer map is absent, and discovery
+Remaining downstream verification: the local consumer map is absent, and discovery
 did not find checkouts matching the three recorded hosts. Checkout paths or an
 explicit skip for Host V, Host A, and Host R were requested together. Their
-existing rows and verification dates remain unchanged. Complete that review
-using the [maintenance procedure](../integrations/consumer-api-dependencies-maintenance.md#step-1--locate-the-consumer-checkouts)
-before marking the PR ready to merge. The removed shared export and deprecated
+existing rows and verification dates remain unchanged. The maintainer requested
+integration with this limitation recorded. Complete the follow-up using the
+[maintenance procedure](../integrations/consumer-api-dependencies-maintenance.md#step-1--locate-the-consumer-checkouts). The removed shared export and deprecated
 private token are absent from the recorded imports, but that does not substitute
-for the requested checkout check. R3 remains the next repair after R4 lands.
+for the requested checkout check.
 
 ## R3 — Assessment Mounting And Readiness Are Inconsistent
 
@@ -259,8 +275,8 @@ issue owns initialization/load failures; R2 owns save/submission failures.
 The host-shaped fixture follows the documented public property and readiness
 contract using the built registration entry. Checkout paths for Host V, Host A,
 and Host R were requested and remain unavailable. Their existing pad rows and
-verification dates are unchanged; R3 will remain a draft until that check or an
-explicit skip is recorded. The local repair does not select a durable owner or
+verification dates are unchanged. The maintainer requested integration with
+that downstream verification limitation recorded. The local repair does not select a durable owner or
 change section, Quiz Engine, knowledge-check, or item-player contracts.
 
 Local evidence on 2026-09-05:
@@ -342,8 +358,9 @@ Validation on 2026-09-05:
   package/consumer checks, 191 script tests, and 115 browser tests (31 section,
   12 item, 37 assessment, 28 shared, 7 print). The pre-commit gate also passes
   source-export, custom-element, theme-token, and documentation checks.
-- [Draft PR #378](https://github.com/pie-framework/pie-players/pull/378) is stacked
-  on R3. Downstream checkout verification remains pending before leaving draft.
+- [PR #378](https://github.com/pie-framework/pie-players/pull/378) was retargeted
+  from R3 to `develop`, passed GitHub CI, and merged. Downstream checkout
+  verification remains pending as recorded in the integration evidence.
 
 Repair the existing in-memory handoff without inventing a new durable owner or
 section-controller acquisition mode. If either becomes necessary, resolve the

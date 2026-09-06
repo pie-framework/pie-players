@@ -65,6 +65,81 @@ with that limitation recorded; no downstream verification or refreshed consumer
 pad dates are claimed. R2 remains blocked on representative host persistence
 evidence and is not part of these merges.
 
+### Remaining open PR integration — 2026-09-05
+
+The maintainer requested a merge plan for the two other open PRs while the R2
+persistence lab is being prepared. This section tracks that integration work;
+neither PR has been merged or verified against the combined tree yet. Use the
+existing checkout sequentially and retain each PR's existing branch and review.
+Finish the lab PR first, then integrate #374 followed by #373. Their changes do
+not depend on one another; the generated-player loading failure has priority
+over the theme correction. The lab can be reviewed independently of both.
+
+Preflight baseline: `origin/develop` at `c4abe34a`. Recheck PR heads and the base
+before execution; the observations below apply only to the recorded commits.
+
+| Order | PR / inspected head | Status | Work required before merge |
+| --- | --- | --- | --- |
+| 1 | [#374 — preloaded element registration and version handling](https://github.com/pie-framework/pie-players/pull/374), `d2ca9f35` | Planned | Update from `develop`, verify the generated static package in a browser, reconcile generated tag/version metadata, and obtain fresh passing CI. GitHub reports the current head mergeable. |
+| 2 | [#373 — publish the surface theme token](https://github.com/pie-framework/pie-players/pull/373), `b5ae383b` | Planned | Update from the resulting `develop`, resolve the inventory conflict, document consumer impact, verify the rendered surfaces and theme contract, and obtain fresh passing CI. GitHub reports a conflict. |
+
+Both heads passed their existing lint, build, docs, isolated-linker, and critical
+browser jobs. Their dependency-audit failures have different causes:
+[#374's job](https://github.com/pie-framework/pie-players/actions/runs/33864991836/job/101003295888)
+timed out before producing an audit result;
+[#373's job](https://github.com/pie-framework/pie-players/actions/runs/33866487964/job/101002411776)
+found the xmldom vulnerability repaired by R5. Incorporate R5's dependency
+resolution and rerun the audit; neither old failure is evidence of a clean
+updated branch.
+
+For #374:
+
+- [ ] Merge current `develop` into the existing PR branch, preserving its
+  authored commits. Rebuild the CLI and regenerate its manifest from the current
+  package metadata; the PR's manifest version is older than that metadata.
+- [ ] Generate registration tags with the shared `toPackageVersionedTag`
+  helper. The proposed generated entry currently repeats the version encoder;
+  deriving tags during package generation keeps the existing tag contract in
+  one place without adding a browser dependency.
+- [ ] Exercise the generated package from a real HTTP static server: all
+  imported chunks return successfully, the preloaded map contains full package
+  specs, versioned elements register and render, and a real answer updates the
+  session. Cover repeated registration and stale authored versions while
+  preserving the caller's original content. Retain this generated-artifact
+  regression; the current utility tests cover parsing and hashing, and the
+  critical item suite does not run the preloaded browser spec.
+- [ ] Run the CLI tests, the existing preloaded-item browser suite, package
+  boundary checks, `bun run verify:local-pr`, and `bun run check:audit` on the
+  updated head. Record the tested commit and generated-artifact evidence before
+  merging the PR into `develop`.
+
+For #373:
+
+- [ ] Merge the resulting `develop` into the existing PR branch. The read-only
+  merge preview finds a content conflict in the theme-token inventory: promote
+  `--pie-surface` to its canonical row while retaining R4's removal of active
+  tab zoom compensation and its deprecation explanation. Preserve the current
+  patched lockfile and regenerated token data.
+- [ ] Complete the consumer-impact record under the existing maintenance
+  procedure and explain affected integration shapes in the patch changeset and
+  PR. The inspected branch changes guarded theme surfaces without a pad update
+  or a reasoned `Consumer-pad` trailer. Record only checks actually performed;
+  unavailable downstream checkouts do not acquire new verification dates.
+- [ ] Verify the new surface across the light/dark base themes, all ten schemes,
+  DaisyUI mapping, and a host override. Inspect actual answer pools/placeholders
+  and the inline TTS selected surface with the element version that reads this
+  token. Check text, boundaries, and focus contrast; the current contrast suite
+  covers named relationships, so confirm the newly rendered relationships too.
+- [ ] Run theme unit tests, generated-CSS and theme-token checks, relevant
+  browser checks, `bun run verify:local-pr`, and `bun run check:audit`. Require
+  fresh passing GitHub checks on the resolved head before merging into `develop`.
+
+After each merge, record the merge commit and evidence here, return the checkout
+to `develop`, and remove completed task-owned local branches. Rebuild and verify
+the final integrated tree, including the persistence lab's three passing cases
+and two explicitly tracked expected failures. These integrations do not mark R2
+fixed; its production repair remains a separate issue and branch.
+
 ## Working And Tracking Rules
 
 Use the existing checkout. Worktrees are unnecessary for this sequence.

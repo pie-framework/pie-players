@@ -67,9 +67,10 @@ evidence and is not part of these merges.
 
 ### Remaining open PR integration — 2026-09-05
 
-The maintainer requested a merge plan for the two other open PRs while the R2
-persistence lab is being prepared. This section tracks that integration work;
-neither PR has been merged or verified against the combined tree yet. Use the
+The maintainer requested a merge plan for the two other open PRs and then
+requested execution. The persistence lab [PR #379](https://github.com/pie-framework/pie-players/pull/379)
+passed local and GitHub checks and merged as `0cfeb40c` on 2026-09-05 (local date).
+This section tracks the remaining integration work. Use the
 existing checkout sequentially and retain each PR's existing branch and review.
 Finish the lab PR first, then integrate #374 followed by #373. Their changes do
 not depend on one another; the generated-player loading failure has priority
@@ -80,7 +81,7 @@ before execution; the observations below apply only to the recorded commits.
 
 | Order | PR / inspected head | Status | Work required before merge |
 | --- | --- | --- | --- |
-| 1 | [#374 — preloaded element registration and version handling](https://github.com/pie-framework/pie-players/pull/374), `d2ca9f35` | Planned | Update from `develop`, verify the generated static package in a browser, reconcile generated tag/version metadata, and obtain fresh passing CI. GitHub reports the current head mergeable. |
+| 1 | [#374 — preloaded element registration and version handling](https://github.com/pie-framework/pie-players/pull/374), originally `d2ca9f35` | In progress | Incorporated `develop` through #379. The generator now honors configured authored tags, uses the public canonical tag transform, and includes a packed-artifact browser regression. Validation is in progress. |
 | 2 | [#373 — publish the surface theme token](https://github.com/pie-framework/pie-players/pull/373), `b5ae383b` | Planned | Update from the resulting `develop`, resolve the inventory conflict, document consumer impact, verify the rendered surfaces and theme contract, and obtain fresh passing CI. GitHub reports a conflict. |
 
 Both heads passed their existing lint, build, docs, isolated-linker, and critical
@@ -94,14 +95,14 @@ updated branch.
 
 For #374:
 
-- [ ] Merge current `develop` into the existing PR branch, preserving its
+- [x] Merge current `develop` into the existing PR branch, preserving its
   authored commits. Rebuild the CLI and regenerate its manifest from the current
   package metadata; the PR's manifest version is older than that metadata.
-- [ ] Generate registration tags with the shared `toPackageVersionedTag`
-  helper. The proposed generated entry currently repeats the version encoder;
+- [x] Generate registration tags with the public shared `makeUniqueTags`
+  transform, which owns use of the internal version helper. The original generated entry repeated the version encoder;
   deriving tags during package generation keeps the existing tag contract in
   one place without adding a browser dependency.
-- [ ] Exercise the generated package from a real HTTP static server: all
+- [x] Exercise the generated package from a real HTTP static server: all
   imported chunks return successfully, the preloaded map contains full package
   specs, versioned elements register and render, and a real answer updates the
   session. Cover repeated registration and stale authored versions while
@@ -112,6 +113,19 @@ For #374:
   boundary checks, `bun run verify:local-pr`, and `bun run check:audit` on the
   updated head. Record the tested commit and generated-artifact evidence before
   merging the PR into `develop`.
+
+Focused #374 evidence: the extracted-tarball browser regression passes with real
+multiple-choice responses, authored tags, stale versions, repeat registration,
+and no browser errors. The original `develop` generator fails to load the
+player; the original PR head fails to register the configured authored tag.
+An additional reproduction confirms that import previously resolved before
+registration. The generated module now awaits initialization, and a second
+browser test confirms that missing bundle elements reject the import. Registry
+metadata follows the existing `player.js` path with controllers server-side.
+The existing preload suite passes 19 cases with one existing ESM case skipped;
+both new artifact cases pass, the six CLI tests pass, and the audit reports no
+blocking shipped findings. Full-gate and refreshed CI evidence follow below
+when the integration completes.
 
 For #373:
 

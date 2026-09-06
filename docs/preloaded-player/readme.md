@@ -18,7 +18,8 @@ by the generator in
 
 `buildPreloadedPlayerStaticPackage` (`fixed-static.ts:449`) assembles:
 
-- `dist/pie-item-player.js` — a build of `packages/item-player`.
+- `dist/pie-item-player.js` and its sibling chunks and assets — the complete
+  `packages/item-player` build, so relative imports work from a static server.
 - `dist/pie-elements-bundle-<hash>.js` — one IIFE bundle fetched from the PITS
   bundle service at `https://proxy.pie-api.com/bundles/<pkg@ver>+<pkg@ver>.../player.js`,
   containing every element listed in the config, at the pinned versions.
@@ -33,14 +34,20 @@ Importing `dist/index.js` is a side-effecting module load, not an API call:
 
 1. It merges the config's elements into `window.PIE_PRELOADED_ELEMENTS`
    (`{"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3", ...}`).
-2. It sequentially imports the math-rendering module, the elements bundle,
-   then `pie-item-player.js`, each with retry/backoff. That import order
+2. It sequentially imports the math-rendering module and the elements bundle,
+   registers the raw PITS constructors under the configured versioned tags,
+   then imports `pie-item-player.js`, each import with retry/backoff. That order
    matters: `pie-item-player.js` runs its readiness assertion (below) against
    whatever is already registered, so it must load last.
 
 Nothing else is exposed to the consumer — there's no explicit "register"
 call. Once the module has loaded, `<pie-item-player strategy="preloaded">`
 picks up the already-registered elements.
+
+The generated ES module awaits initialization. A completed `await import(...)`
+means registration finished; an initialization failure rejects the import.
+Registration also records the existing `player.js` registry metadata, with
+controllers left server-side, and preserves a previous host's registration.
 
 ## Version scheme
 
@@ -58,20 +65,24 @@ picks up the already-registered elements.
 
 `publish-changed.mjs` enforces that no two configs share a hash
 (`validateUniqueCombinations`) — configs must be unique element combinations,
-not just unique filenames. A config's optional `tag` field is accepted by the
-schema but currently unused by the builder.
+not just unique filenames. A config's optional `tag` field selects its authored
+base tag, such as `multiple-choice` or `pie-element-multiple-choice`. Omitting
+it selects `pie-<package basename>`. The generator uses the shared public
+`makeUniqueTags` transform to compute versioned registrations. Match the base
+name in authored content; the player only substitutes bundled versions on its
+runtime copy. It does not rename arbitrary authored tags or alter model IDs.
 
 ## Local usage
 
 ```bash
 bun run cli pie-packages:preloaded-player-build-package \
-  --elements-file configs/preloaded-player/example.json
+  --elementsFile configs/preloaded-player/knowledge-checks.json
 ```
 
 ```bash
 bun run cli pie-packages:preloaded-player-build-and-test-package \
-  --elements-file configs/preloaded-player/example.json \
-  --generate-test-project
+  --elementsFile configs/preloaded-player/knowledge-checks.json \
+  --generateTestProject
 ```
 
 ## Consuming it: `pie-item-player` and `strategy="preloaded"`
@@ -153,6 +164,22 @@ existing integration is mostly a rename, with two behavior changes to expect:
   covered by an existing config needs a new one landed here.
 
 ## CI/CD
+
+The critical item-player suite includes a generated-package browser regression.
+It fetches the pinned multiple-choice PITS bundle through the real generator,
+packs the output with Bun, and serves only the extracted tarball over HTTP.
+It verifies chunk delivery, full package specs, authored tags with a stale
+version, import readiness, repeated registration, unchanged authored content,
+and actual answer updates. A missing-element fault verifies import rejection.
+Executable modules and player assets must come from that server; the
+existing math renderer's separate Speech Rule Engine JSON data requests are
+allowed. Workspace imports and runtime bundle fetching cannot conceal an
+incomplete package.
+
+```bash
+bun run build:e2e:item-player
+bunx playwright test packages/item-player/tests/item-player-generated-preloaded.spec.ts --config packages/item-player/playwright.config.ts
+```
 
 Workflow: [`.github/workflows/publish-preloaded-player.yml`](../../.github/workflows/publish-preloaded-player.yml)
 Publisher script: [`scripts/preloaded-player/publish-changed.mjs`](../../scripts/preloaded-player/publish-changed.mjs)

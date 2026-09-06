@@ -82,7 +82,7 @@ before execution; the observations below apply only to the recorded commits.
 | Order | PR / inspected head | Status | Work required before merge |
 | --- | --- | --- | --- |
 | 1 | [#374 — preloaded element registration and version handling](https://github.com/pie-framework/pie-players/pull/374), tested `0c16cf8a` | Done | Full local gate and all GitHub checks pass. Merged into `develop` as `fd935b54` on 2026-09-05 (local date). |
-| 2 | [#373 — publish the surface theme token](https://github.com/pie-framework/pie-players/pull/373), originally `b5ae383b` | In progress | Resolved the inventory conflict and recorded consumer impact. Corrected text and focus failures introduced by the new surface. Focused theme and browser checks pass; full-gate and refreshed CI evidence pending. |
+| 2 | [#373 — publish the surface theme token](https://github.com/pie-framework/pie-players/pull/373), tested `4e97b14f` | Done | Corrected text and focus failures introduced by the new surface. Full local gate and all GitHub checks pass, with the assessment retry noted below. Merged into `develop` as `a5073ad4` on 2026-09-05 (local date). |
 
 Both heads passed their existing lint, build, docs, isolated-linker, and critical
 browser jobs. Their dependency-audit failures have different causes:
@@ -147,7 +147,7 @@ For #373:
   and the inline TTS selected surface with the element version that reads this
   token. Check text, boundaries, and focus contrast; the current contrast suite
   covers named relationships, so confirm the newly rendered relationships too.
-- [ ] Run theme unit tests, generated-CSS and theme-token checks, relevant
+- [x] Run theme unit tests, generated-CSS and theme-token checks, relevant
   browser checks, `bun run verify:local-pr`, and `bun run check:audit`. Require
   fresh passing GitHub checks on the resolved head before merging into `develop`.
 
@@ -169,6 +169,26 @@ This proves those component surfaces, not a full drag interaction or a released
 element bundle. The permanent regression uses this repo's TTS consumer and does
 not depend on the sibling checkout. The audit reports no shipped findings;
 the existing dev-only moderate Tiptap finding remains non-blocking.
+
+Final #373 validation on `4e97b14f`: the full local PR gate passes with 191
+script tests and 132 browser cases (36 section, 14 item, 47 assessment, 28 shared,
+7 print; 130 passes plus the two tracked R2 expected failures). The source-export,
+45-package consumer-contract, and runtime-compatibility checks also pass.
+All ten GitHub checks pass on this head.
+
+The [first assessment CI run](https://github.com/pie-framework/pie-players/actions/runs/34013828235/job/101434095725)
+failed on the lab's initial radio click, before any save or fault injection.
+This PR changes no assessment or lab code. Ten consecutive repetitions of that
+test and ten initial-answer checks with 4× CPU throttling passed locally; the
+targeted assessment job retry passed without source changes. The cause of that
+intermittent initial-answer failure remains unresolved and should be investigated
+if it recurs; it is not counted as a repaired persistence defect.
+
+The integrated `develop` merge `a5073ad4` has exactly the tested `4e97b14f` tree.
+The final follow-up updates this tracker only. The lab's remote branch and both
+local integration branches were removed after their merges. The main checkout
+is on `develop`, with no linked worktrees. Other contributors' remote branches
+remain under their ownership.
 
 After each merge, record the merge commit and evidence here, return the checkout
 to `develop`, and remove completed task-owned local branches. Rebuild and verify

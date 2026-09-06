@@ -375,6 +375,16 @@ index 0 while the controller is at index 1. When `saveSession()` rejects,
 `submit()` still resolves, retains `submitted: true`, and has already emitted
 that success state.
 
+A development-only [persistence lab](../../apps/assessment-demos/README.md#persistence-lab-r2)
+now supplies the requested reproducible reference host on
+`codex/test-assessment-persistence`. Its HTTP strategy writes complete snapshots
+to a separate SQLite store, with held/rejected writes and failed acknowledgement
+controls. Browser tests exercise real answers, navigation, reload, and the two
+known defects; their desired invariants remain expected failures until repaired.
+This advances the reproduction/test work without claiming an existing host was
+verified or that R2 has been fixed. Production persistence semantics still need
+the evidence described below.
+
 **Code entry point:** `persist()` and `submit()` in the
 [assessment controller](../../packages/assessment-player/src/controller/AssessmentController.ts),
 with the host's existing `AssessmentSessionPersistenceStrategy` implementation.

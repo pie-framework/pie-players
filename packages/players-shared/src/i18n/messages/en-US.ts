@@ -98,6 +98,8 @@ const enUS = {
 		assessment: {
 			sectionPosition: "Section {position} of {total}",
 			noSections: "No sections",
+			loadFailed: "The assessment could not be loaded. Try again.",
+			restoreFailed: "Your saved answers for this section could not be restored. Try again.",
 		},
 
 		/** Formative delivery: check-answer control and its outcome announcements. */

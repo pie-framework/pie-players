@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from "$app/environment";
 	import { getAllAssessmentDemos } from "$lib/content/assessments";
 
 	const demos = getAllAssessmentDemos();
@@ -21,6 +22,10 @@
 			rendering workhorse.
 		</p>
 	</header>
+
+	{#if dev}
+		<p class="mb-6"><a class="link" href="/persistence-lab">Assessment persistence lab — hold, reject and inspect server saves</a></p>
+	{/if}
 
 	<section class="grid grid-cols-1 gap-6 md:grid-cols-2">
 		{#each demos as demo}

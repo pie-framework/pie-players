@@ -83,13 +83,15 @@ export type AssessmentControllerEvent =
 export interface AssessmentControllerHandle {
 	/**
 	 * Bootstrap the controller: build the delivery plan, ensure a
-	 * session exists, run `hydrate()`, and fire
-	 * `onAssessmentControllerReady`.
+	 * session exists, and run `hydrate()` once. The owning element
+	 * publishes readiness and invokes `onAssessmentControllerReady`.
 	 *
 	 * Called by the assessment player when the player CE mounts. Hosts
 	 * normally do not call this directly.
 	 */
 	initialize(): Promise<void>;
+	/** Retire this attempt, detach listeners, and notify its disposal hook once. */
+	dispose(): Promise<void>;
 	/**
 	 * Load and apply a previously persisted assessment session via the
 	 * registered `AssessmentSessionPersistenceStrategy`. Falls back to
@@ -269,6 +271,9 @@ export class AssessmentController implements AssessmentControllerHandle {
 		"bootstrapping";
 	private submitted = false;
 	private persistenceStrategy?: AssessmentSessionPersistenceStrategy;
+	private initializationPromise?: Promise<void>;
+	private disposalPromise?: Promise<void>;
+	private disposed = false;
 	private readonly storageContext;
 
 	constructor(
@@ -286,7 +291,15 @@ export class AssessmentController implements AssessmentControllerHandle {
 	}
 
 	private emit(event: AssessmentControllerEvent): void {
+		if (this.disposed) return;
 		for (const listener of this.listeners) listener(event);
+	}
+
+	private assertActive(): void {
+		if (!this.disposed) return;
+		const error = new Error("Assessment controller has been disposed");
+		error.name = "AbortError";
+		throw error;
 	}
 
 	private handleError(
@@ -378,47 +391,98 @@ export class AssessmentController implements AssessmentControllerHandle {
 	}
 
 	async initialize(): Promise<void> {
+		this.assertActive();
+		return (this.initializationPromise ??= this.initializeOnce());
+	}
+
+	private async initializeOnce(): Promise<void> {
+		let errorPhase: "delivery-plan-create" | null = "delivery-plan-create";
 		try {
 			this.readiness = "bootstrapping";
-			this.deliveryPlan = await this.createDeliveryPlan();
+			const plan = await this.createDeliveryPlan();
+			this.assertActive();
+			this.deliveryPlan = plan;
 			this.ensureSession();
+			// hydrate reports its own phase. The outer initialization must reject
+			// the same failure without reporting it twice or announcing readiness.
+			errorPhase = null;
 			await this.hydrate();
+			this.assertActive();
 			this.readiness = "ready";
-			await this.args.hooks?.onAssessmentControllerReady?.(this);
 		} catch (error) {
-			this.readiness = "error";
-			this.handleError(error, "controller-init");
+			try {
+				if (!this.disposed) {
+					this.readiness = "error";
+					if (errorPhase) this.handleError(error, errorPhase);
+				}
+			} catch (reportError) {
+				console.error("Assessment error hook failed", reportError);
+			}
+			throw error;
 		}
 	}
 
 	async hydrate(): Promise<void> {
+		this.assertActive();
 		this.readiness = "hydrating";
 		try {
 			await this.args.hooks?.onBeforeAssessmentHydrate?.(this.storageContext);
+			this.assertActive();
 			const strategy = await this.getPersistenceStrategy();
+			this.assertActive();
 			const loaded = await strategy.loadSession(this.storageContext);
+			this.assertActive();
 			if (loaded) {
 				this.session = loaded;
-				this.emit({ type: "assessment-session-applied", timestamp: now() });
 			}
 			this.ensureSession();
 			this.readiness = "ready";
+			if (loaded) this.emit({ type: "assessment-session-applied", timestamp: now() });
+			this.assertActive();
 		} catch (error) {
-			this.readiness = "error";
-			this.handleError(error, "session-load");
+			try {
+				if (!this.disposed) {
+					this.readiness = "error";
+					this.handleError(error, "session-load");
+				}
+			} catch (reportError) {
+				console.error("Assessment error hook failed", reportError);
+			}
+			throw error;
 		}
 	}
 
+	dispose(): Promise<void> {
+		if (this.disposalPromise) return this.disposalPromise;
+		this.disposed = true;
+		this.listeners.clear();
+		this.session = null;
+		this.deliveryPlan = { sections: [] };
+		this.readiness = "error";
+		this.disposalPromise = Promise.resolve().then(async () => {
+			try {
+				await this.args.hooks?.onAssessmentControllerDispose?.(this);
+			} catch (error) {
+				this.handleError(error, "controller-dispose");
+				throw error;
+			}
+		});
+		return this.disposalPromise;
+	}
+
 	async persist(): Promise<void> {
+		this.assertActive();
 		try {
 			const strategy = await this.getPersistenceStrategy();
+			if (this.disposed) return;
 			await this.args.hooks?.onBeforeAssessmentPersist?.(
 				this.storageContext,
 				this.session,
 			);
+			if (this.disposed) return;
 			await strategy.saveSession(this.storageContext, this.session);
 		} catch (error) {
-			this.handleError(error, "session-save");
+			if (!this.disposed) this.handleError(error, "session-save");
 		}
 	}
 
@@ -462,6 +526,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 	}
 
 	private setIndex(nextIndex: number): boolean {
+		if (this.disposed) return false;
 		const snapshot = this.buildNavigationSnapshot();
 		if (nextIndex < 0 || nextIndex >= snapshot.totalSections) return false;
 		const previousSectionId = snapshot.currentSectionId;
@@ -481,7 +546,9 @@ export class AssessmentController implements AssessmentControllerHandle {
 			canNext: nextSnapshot.canNext,
 			canPrevious: nextSnapshot.canPrevious,
 		});
+		if (this.disposed) return false;
 		this.emit({ type: "assessment-session-changed", timestamp: now() });
+		if (this.disposed) return false;
 		this.emit({
 			type: "assessment-progress-changed",
 			timestamp: now(),
@@ -514,6 +581,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 	}
 
 	async submit(): Promise<void> {
+		this.assertActive();
 		this.submitted = true;
 		this.emit({
 			type: "assessment-submission-state-changed",
@@ -524,6 +592,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 	}
 
 	subscribe(listener: (event: AssessmentControllerEvent) => void): () => void {
+		if (this.disposed) return () => {};
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
 	}
@@ -538,6 +607,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 	}
 
 	getSectionSession(sectionId: string): SectionControllerSessionState | null {
+		if (this.disposed) return null;
 		const entry = this.ensureSession().sectionSessions[sectionId];
 		return entry?.session || null;
 	}
@@ -546,6 +616,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 		sectionId: string,
 		session: SectionControllerSessionState | null,
 	): void {
+		if (this.disposed) return;
 		this.session = upsertSectionSession(this.ensureSession(), {
 			sectionIdentifier: sectionId,
 			sectionSession: session,

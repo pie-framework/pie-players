@@ -1240,7 +1240,7 @@
 		"owner": "@pie-players/pie-section-player",
 		"scope": "package-private",
 		"category": "layout",
-		"status": "active",
+		"status": "deprecated",
 		"schemeParticipation": "excluded",
 		"definedIn": [
 			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
@@ -1248,7 +1248,7 @@
 		"documentedIn": [
 			"docs/architecture/pie-727-theme-token-inventory.md"
 		],
-		"fallbackPolicy": "Package-private zoom compensation handoff for tab sizing; not a host theming hook."
+		"fallbackPolicy": "Retired package-private handoff. Tabs follow browser zoom without automatic compensation; this name no longer changes layout."
 	},
 	{
 		"name": "--pie-tertiary",

@@ -19,6 +19,13 @@ runtime resolver and the checked-in CSS adapters use those same definitions, so
 the managed custom-element path and the stylesheet-only path cannot carry
 different palettes.
 
+`--pie-surface` is a registered, public `canonical-semantic` token for raised
+surfaces such as answer pools and inline TTS panels. It is a required Scheme
+Participant, with values in both base themes, every built-in scheme, and the
+DaisyUI adapter. It is distinct from the page role `--pie-background`; text and
+controls on it must retain their contrast. Hosts can override it through
+`variables`, or the normal cascade in stylesheet-only delivery.
+
 ## Entrypoints and styles
 
 Importing the package root registers `<pie-theme>`:
@@ -206,9 +213,9 @@ its background sits from white:
 | Background | Tokens | Why |
 | --- | --- | --- |
 | white | 2 | ink and page; every base colour already holds |
-| white, with a mid-tone ink | 4 | the ink misses the tinted recessed surfaces |
-| `#000000` | 10 | inverted page; borrow the dark base theme's inks |
-| mid-tone (blue, red, green, dark gray) | ~18 | neither light nor dark inks hold, so icons, boundaries and focus rings are re-chosen too |
+| white, with a mid-tone ink | 5 | the ink misses the tinted recessed and raised surfaces |
+| `#000000` | 19 | inverted page; borrow the dark base theme's inks and control family |
+| mid-tone (blue, red, green, dark gray) | 26 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
 
 ```ts
 registerPieColorSchemes([
@@ -225,7 +232,7 @@ palette for one scheme of each cost class and is the place to copy from.
 
 Read the receipt. Contrast diagnostics are warnings, not errors, because the
 palette is host-owned — a two-token White on Blue registers successfully and
-returns fourteen warnings, and a host that filters on `severity === "error"`
+returns contrast warnings, and a host that filters on `severity === "error"`
 ships cyan links on a mid-blue page. `registerPieColorSchemes` checks only the
 relationships whose tokens the overlay touches, so covering a flagged token is
 what clears its relationship.

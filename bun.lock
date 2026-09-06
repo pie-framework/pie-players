@@ -444,6 +444,7 @@
         "@axe-core/playwright": "^4.13.0",
         "@biomejs/biome": "^2.5.11",
         "@happy-dom/global-registrator": "^20.11.15",
+        "@pie-players/pie-theme": "workspace:*",
         "@playwright/test": "^1.62.1",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@types/node": "^26.4.0",
@@ -1019,6 +1020,7 @@
     "@grpc/grpc-js": "^1.14.4",
     "@protobufjs/utf8": "^1.1.1",
     "@tootallnate/once": "^3.0.1",
+    "@xmldom/xmldom": "^0.9.12",
     "brace-expansion": "^2.1.4",
     "cookie": ">=0.7.0",
     "fast-uri": "^3.1.5",
@@ -1836,7 +1838,7 @@
 
     "@vue/shared": ["@vue/shared@3.5.29", "", {}, "sha512-w7SR0A5zyRByL9XUkCfdLs7t9XOHUyJ67qPGQjOou3p6GvBeBW+AVjUUmlxtZ4PIYaRvE+1LmK44O4uajlZwcg=="],
 
-    "@xmldom/xmldom": ["@xmldom/xmldom@0.9.10", "", {}, "sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw=="],
+    "@xmldom/xmldom": ["@xmldom/xmldom@0.9.12", "", {}, "sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A=="],
 
     "acorn": ["acorn@8.16.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw=="],
 

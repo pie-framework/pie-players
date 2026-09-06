@@ -59,7 +59,8 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-background-dark": "#ecedf1",
 	"--pie-secondary-background": "rgba(241, 241, 241, 1)",
 	"--pie-dropdown-background": "#e0e1e6",
-	"--pie-surface": "#e0e1e6",
+	// The deeper dropdown tint leaves the blue focus ring at 2.82:1.
+	"--pie-surface": "#ecedf1",
 	"--pie-border": "#8f8f8f",
 	"--pie-border-light": "#d1d1d1",
 	"--pie-border-dark": "#646464",
@@ -616,7 +617,8 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#b8dcc3",
 				"--pie-secondary-background": "#a6d0b2",
 				"--pie-dropdown-background": "#94c4a1",
-				"--pie-surface": "#94c4a1",
+				// Match the existing selected tint: purple text is 4.13:1 on the dropdown.
+				"--pie-surface": "#a6d0b2",
 				"--pie-border": "#8e2464",
 				"--pie-border-light": "#a85a86",
 				"--pie-border-dark": "#4f1237",
@@ -813,6 +815,24 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-background-dark",
 			minimum: 4.5,
 			role: "recessed surface text",
+		},
+		{
+			foreground: "--pie-text",
+			background: "--pie-surface",
+			minimum: 4.5,
+			role: "raised surface text",
+		},
+		{
+			foreground: "--pie-button-color",
+			background: "--pie-surface",
+			minimum: 4.5,
+			role: "raised surface control text",
+		},
+		{
+			foreground: "--pie-button-focus-outline",
+			background: "--pie-surface",
+			minimum: 3,
+			role: "raised surface control focus indicator",
 		},
 		{
 			foreground: "--pie-tertiary",

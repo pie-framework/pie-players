@@ -89,10 +89,6 @@
 			"types": "./dist/components/vendor/nds/nds-icon-button.d.ts",
 			"import": "./dist/components/vendor/nds/nds-icon-button.js"
 		},
-		"./ui/zoom-compensation": {
-			"types": "./dist/ui/zoom-compensation.d.ts",
-			"import": "./dist/ui/zoom-compensation.js"
-		},
 		"./ui/content-styles": {
 			"types": "./dist/ui/content-styles.d.ts",
 			"import": "./dist/ui/content-styles.js"

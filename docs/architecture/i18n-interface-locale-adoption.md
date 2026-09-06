@@ -366,8 +366,9 @@ made them visible:
   same omission that broke every non-English locale in the layer this work
   replaced; and `tool-tts-inline` needed a `tsconfig.svelte-check.json` mapping
   `ui/use-zoom-compensation` to source, mirroring the alias its Vite config
-  already carries, because a `.svelte.ts` rune module cannot ship through an
-  `exports` map as compiled output.
+  carried, because a `.svelte.ts` rune module cannot ship through an
+  `exports` map as compiled output. The zoom helper and both aliases were later
+  removed by the [control-sizing repair](./delivery-reliability-remediation-plan.md#r4--accommodation-controls-shrink-in-constrained-viewports).
 
 ## What this does not do
 

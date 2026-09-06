@@ -119,6 +119,20 @@ jobs:
         if: env.RUN_HEAVY == 'true'
         run: bun run ${{ matrix.command }}
 
+      # Playwright writes error-context.md, a screenshot, and a video per failed
+      # test. Without them a red check carries only the assertion line, and the
+      # 2026-09-06 tts-ssml failure had to be diagnosed by reproducing it locally.
+      - name: Upload E2E Failure Artifacts
+        if: failure() && env.RUN_HEAVY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-${{ matrix.name }}
+          path: |
+            packages/*/test-results
+            apps/*/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
   dependency-audit:
     name: Dependency Audit
     # Deliberately not carrying the `skip-heavy-ci` guard the other jobs use. It

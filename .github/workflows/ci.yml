@@ -71,8 +71,14 @@ jobs:
 
   critical-e2e:
     name: Critical E2E (${{ matrix.name }})
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    # The heavy-CI skip guards the steps, not the job. A skipped *job* publishes one
+    # check run under the uninterpolated name `Critical E2E (${{ matrix.name }})`, so
+    # the five per-suite names develop's branch protection requires would never report
+    # and the pull request would wait on them forever. Guarding the steps keeps the
+    # matrix expanded, so every required name reports on every run.
     runs-on: ubuntu-latest
+    env:
+      RUN_HEAVY: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
     strategy:
       fail-fast: false
       matrix:
@@ -92,20 +98,25 @@ jobs:
             command: test:e2e:print-player
     steps:
       - name: Checkout
+        if: env.RUN_HEAVY == 'true'
         uses: actions/checkout@v7
 
       - name: Setup Bun
+        if: env.RUN_HEAVY == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
 
       - name: Install Dependencies
+        if: env.RUN_HEAVY == 'true'
         run: bun install --frozen-lockfile
 
       - name: Install Playwright Chromium
+        if: env.RUN_HEAVY == 'true'
         run: bunx playwright install --with-deps chromium
 
       - name: Run Critical E2E
+        if: env.RUN_HEAVY == 'true'
         run: bun run ${{ matrix.command }}
 
   dependency-audit:

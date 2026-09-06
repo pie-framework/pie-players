@@ -175,6 +175,9 @@ export default class PreloadedPlayerBuildPackage extends Command {
 
 		const { outputDir, version } = await this.buildPackage({
 			elements: elementsArray,
+			elementTags: Object.fromEntries(
+				elements.filter((element) => element.tag).map((element) => [element.package, element.tag!]),
+			),
 			iteration: flags.publish ? flags.iteration : undefined,
 			loaderVersion: flags.loaderVersion,
 			pitsBaseUrl: flags.pitsBaseUrl,

@@ -5,12 +5,13 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
-import { encodeElementPackageSpecs } from "@pie-players/pie-players-shared/pie";
+import { BundleType, encodeElementPackageSpecs, makeUniqueTags, Status } from "@pie-players/pie-players-shared/pie";
 
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
 	elements: string[]; // "@pie-element/foo@1.2.3"
+	elementTags?: Record<string, string>; // Package name -> authored base tag
 	iteration?: number;
 	loaderVersion?: string;
 	pitsBaseUrl?: string;
@@ -231,8 +232,18 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 function generateIndex(
 	bundleFilename: string,
 	preloadedElements: Record<string, string>,
+	elementTags: Record<string, string> = {},
 ): string {
 	const preloadedElementsJson = JSON.stringify(preloadedElements, null, 2);
+	// Use the same public transform as the consuming player. The generated
+	// browser entry needs only the resulting names, not a second version encoder.
+	const registrations = Object.entries(preloadedElements).map(([name, spec]) => {
+		const baseTag = elementTags[name] ?? `pie-${name.split("/").pop()}`;
+		const { config } = makeUniqueTags({
+			config: { elements: { [baseTag]: spec }, models: [], markup: "" },
+		});
+		return [name, Object.keys(config.elements)[0]];
+	});
 	const mathRenderingSetup = `
     const mathRenderingModule = await importWithRetry('./math-rendering.js', 4, 200);
     if (typeof window !== 'undefined') {
@@ -241,7 +252,7 @@ function generateIndex(
     }`;
 
 	return `// Auto-generated entry point for pie-preloaded-player
-(async function initializePieItemPlayerStatic() {
+await (async function initializePieItemPlayerStatic() {
   const preloadedElements = ${preloadedElementsJson};
   if (typeof window !== 'undefined') {
     const existing = window.PIE_PRELOADED_ELEMENTS || {};
@@ -264,33 +275,33 @@ function generateIndex(
     throw lastError;
   };
 
-  // Bundles fetched from the PITS build service don't self-register: they
-  // expose raw element classes on window.pie.default, keyed by package name,
-  // and expect a loader to call customElements.define. The iife strategy's
-  // ElementLoader does that at runtime; this package must do the same thing
-  // once at import time, using the same "pie-<basename>--version-<encoded>"
-  // tag convention pie-item-player's own version-tag matching expects.
-  const encodeVersionForTag = (version) =>
-    String(version).trim().replace(/[.+]/g, '-').replace(/[^0-9A-Za-z-]/g, '-').replace(/-{2,}/g, '-');
-
+  // PITS exposes raw constructors; the generated host owns registration.
   const registerPreloadedElements = () => {
     const pieModule = typeof window !== 'undefined' && window.pie && window.pie.default;
     if (!pieModule) {
-      console.error('[pie-preloaded-player] window.pie.default missing after bundle load');
-      return;
+      throw new Error('[pie-preloaded-player] window.pie.default missing after bundle load');
     }
-    for (const [packageName, fullSpec] of Object.entries(preloadedElements)) {
+    const registry = window.PIE_REGISTRY ?? (window.PIE_REGISTRY = {});
+    for (const [packageName, tagName] of ${JSON.stringify(registrations)}) {
       const elementData = pieModule[packageName];
       if (!elementData || !elementData.Element) {
-        console.error('[pie-preloaded-player] No element class found in bundle for', packageName);
-        continue;
+        throw new Error('[pie-preloaded-player] No element class found in bundle for ' + packageName);
       }
-      const atIndex = fullSpec.lastIndexOf('@');
-      const version = atIndex > 0 ? fullSpec.slice(atIndex + 1) : '';
-      const baseTag = 'pie-' + packageName.split('/').pop();
-      const tagName = version ? \`\${baseTag}--version-\${encodeVersionForTag(version)}\` : baseTag;
       if (!customElements.get(tagName)) {
         customElements.define(tagName, class extends elementData.Element {});
+      }
+      // Match the IIFE adapter's player.js entry: controllers remain server-side.
+      // A previous host registration retains its metadata and controller owner.
+      if (!registry[tagName]) {
+        registry[tagName] = {
+          package: preloadedElements[packageName],
+          status: ${JSON.stringify(Status.loaded)},
+          tagName,
+          element: customElements.get(tagName),
+          controller: null,
+          config: elementData.config ?? null,
+          bundleType: ${JSON.stringify(BundleType.player)},
+        };
       }
     }
   };
@@ -302,6 +313,7 @@ ${mathRenderingSetup}
     await importWithRetry('./pie-item-player.js', 4, 200);
   } catch (error) {
     try { console.error('[pie-preloaded-player] Initialization failed'); } catch {}
+    throw error;
   }
 })();
 
@@ -355,7 +367,7 @@ function generateReadme(
 	];
 	const examplePkgSpec = `${examplePkgName}@${examplePkgVersion}`;
 	const exampleBaseName = examplePkgName.split("/").pop() || "multiple-choice";
-	const exampleTag = `pie-${exampleBaseName}`;
+	const exampleTag = config.elementTags?.[examplePkgName] ?? `pie-${exampleBaseName}`;
 
 	return `# @pie-players/pie-preloaded-player
 
@@ -363,7 +375,7 @@ Version: \`${version}\`
 
 Pre-bundled PIE item-player package with static element versions for production use.
 
-**Note:** This package is intended for production with a predefined set of PIE elements. It assumes preloaded strategy at runtime. The player skips runtime loading when required elements are already registered, and falls back to runtime loading for any missing elements.
+**Note:** This package registers a predefined set of PIE elements for the preloaded strategy. Required tags must be registered before mounting the player. Missing registrations produce a readiness error.
 
 ## Included PIE elements
 
@@ -399,7 +411,7 @@ npm install @pie-players/pie-preloaded-player@${version}
 ></pie-item-player>
 \`\`\`
 
-The preloaded bundle is already included by this package import. With \`strategy="preloaded"\`, the player skips runtime loading when required elements are already registered and falls back to runtime loading when they are not. The player also normalizes \`config.elements\` to the bundled versions exposed by this package.
+The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Use the base tag selected by each build config's \`tag\` field; the default is \`pie-<package basename>\`. The generated registrations carry the canonical version suffix.
 
 ## Attributes
 
@@ -554,7 +566,7 @@ export async function buildPreloadedPlayerStaticPackage(
 		stdio: "inherit",
 	});
 
-	// Copy the whole item-player dist, not just the entry file: pie-item-player.js
+	// The entry imports sibling chunks and assets from the item-player build.
 	const itemPlayerDistSrc = join(itemPlayerPkgDir, "dist");
 	const outputDistDir = join(outputDir, "dist");
 	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
@@ -580,7 +592,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename, fullSpecsByPackageName(config.elements)),
+		generateIndex(bundleFilename, fullSpecsByPackageName(config.elements), config.elementTags),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(

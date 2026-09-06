@@ -593,6 +593,21 @@
 		"fallbackPolicy": "Canonical dropdown or menu surface token."
 	},
 	{
+		"name": "--pie-surface",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "surface",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical raised-surface token for answer pools and tool panels, with text and focus contrast against the active palette."
+	},
+	{
 		"name": "--pie-faded-primary",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",
@@ -1225,7 +1240,7 @@
 		"owner": "@pie-players/pie-section-player",
 		"scope": "package-private",
 		"category": "layout",
-		"status": "active",
+		"status": "deprecated",
 		"schemeParticipation": "excluded",
 		"definedIn": [
 			"packages/section-player/src/components/shared/SectionPlayerTabbedContent.svelte"
@@ -1233,7 +1248,7 @@
 		"documentedIn": [
 			"docs/architecture/pie-727-theme-token-inventory.md"
 		],
-		"fallbackPolicy": "Package-private zoom compensation handoff for tab sizing; not a host theming hook."
+		"fallbackPolicy": "Retired package-private handoff. Tabs follow browser zoom without automatic compensation; this name no longer changes layout."
 	},
 	{
 		"name": "--pie-tertiary",

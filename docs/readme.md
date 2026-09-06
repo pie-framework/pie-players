@@ -27,6 +27,7 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 - [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
 - [`architecture/domain-language.md`](./architecture/domain-language.md) - Format and admission rules for the root `CONTEXT.md` domain glossary
 - [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what must live in PIE versus a host, and the evidence required before scheduling it
+- [`architecture/delivery-reliability-remediation-plan.md`](./architecture/delivery-reliability-remediation-plan.md) - Active issue tracker and sequential branch plan for zoom accessibility, assessment lifecycle, answer restoration, and persistence repairs
 - [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
 - [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
 - [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
@@ -49,7 +50,7 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 ## Assessment Player
 
 - [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - Production-oriented integration guide and host boundary philosophy
-- [`architecture/assessment-player-lifecycle-persistence-implementation-plan.md`](./architecture/assessment-player-lifecycle-persistence-implementation-plan.md) - Deferred assessment lifecycle repair and decision gates for persistence and authoritative submission
+- [`architecture/assessment-player-lifecycle-persistence-implementation-plan.md`](./architecture/assessment-player-lifecycle-persistence-implementation-plan.md) - Technical scope and evidence gates for the tracked assessment repairs; authoritative submission remains separate
 
 ## Integrations
 

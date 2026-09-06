@@ -1,13 +1,15 @@
 # Assessment Player Lifecycle And Persistence Decision Plan
 
-Status: Deferred and unscheduled. Assessment-player changes remain a separate
-workstream from generic item-player, section-player, and toolkit reliability
-fixes. This document is not approval to start source changes.
+Status: Active — technical scope and decision gates for the assessment repairs
+in the [delivery remediation plan](./delivery-reliability-remediation-plan.md).
+That plan owns priority, branches, issue status, and completion evidence.
+Authoritative submission remains a separate workstream.
 
 Owner: PIE Players maintainers
 
 Related:
 
+- [Delivery reliability and accessibility remediation plan](./delivery-reliability-remediation-plan.md)
 - [Assessment player client architecture](../assessment-player/client-architecture-tutorial.md)
 - [Assessment authoritative submission](../prds/assessment-authoritative-submission.md)
 - [Consumer API dependencies](../integrations/consumer-api-dependencies.md)
@@ -50,13 +52,18 @@ The following are current-code observations rather than proposed architecture:
   succeeds. Demos contain compensating persistence behavior, including no-op
   section adapters and an additional LTI save queue.
 
-The lifecycle and readiness failures are sufficient to plan a focused repair.
-The persistence observations justify investigation, not a preselected design.
+The lifecycle and readiness failures support the focused R3 repair. R2 tracks
+persistence investigation and a bounded repair; the observations do not select
+its internal design or justify a new storage or submission architecture.
 
 ## Compatibility boundary
 
-Refresh the consumer pad before implementation. If there is still no external
-assessment-player consumer, correct the canonical API directly: do not add
+Refresh the consumer pad before downstream sign-off. The local lifecycle repair
+can be prepared against the documented public host contract while requested
+consumer checkouts are unavailable, but stays in draft with that verification
+explicitly pending. Do not advance existing verification dates from a local
+fixture. If there is still no external assessment-player consumer, correct the
+canonical API directly: do not add
 aliases, duplicate events, deprecated properties, compatibility wrappers, or a
 public bootstrap escape hatch.
 
@@ -75,8 +82,8 @@ not become a reason to alter its established host contracts.
 
 ## Decisions supported now
 
-The assessment-player lifecycle repair may proceed once its consumer check and
-host-shaped browser fixture are recorded. The public outcomes are:
+The assessment-player lifecycle repair uses a host-shaped browser fixture and
+records the consumer check separately before leaving draft. The public outcomes are:
 
 - post-connect property assignment starts or updates the intended assessment;
 - only the newest connected async attempt may publish a controller, UI, event,
@@ -85,17 +92,19 @@ host-shaped browser fixture are recorded. The public outcomes are:
 - one successful attempt produces one ready event and one ready hook;
 - failed, superseded, timed-out, or disconnected attempts do not expose a ready
   controller; and
-- internally created controllers and coordinators are disposed by the element,
-  while host-supplied coordinators remain borrowed.
+- the element disposes its assessment controller and removes its nested player;
+  the nested toolkit retains ownership of its internally created coordinator
+  and disposes it through the existing API, while host-supplied coordinators
+  remain borrowed.
 
 The implementation may use accessors, a reconcile loop, generations, abort
 signals, or another repository-native mechanism. This plan does not make those
 internal techniques part of the public contract.
 
-The generic `ToolkitCoordinator` disposal and same-cohort retirement fixes are a
-separate prerequisite. They should land and be verified independently. The
-assessment player may adopt the resulting canonical API; it must not duplicate
-the coordinator algorithm or hide a remaining coordinator race.
+The generic `ToolkitCoordinator` disposal and same-cohort retirement prerequisite
+landed in `e3169f8b`. Verify its existing regression coverage when adopting the
+canonical API; the assessment player must not duplicate the coordinator algorithm
+or hide a remaining coordinator race.
 
 ## Decisions that need host evidence
 
@@ -109,10 +118,11 @@ Do not choose the following designs from repository demos alone:
 - authoritative-submission idempotency and receipt recovery; or
 - backend retry, reload, and indeterminate-outcome behavior.
 
-Before scheduling persistence work, use a representative host to document the
-actual read and write boundaries, navigation and reload behavior, failure modes,
-network contract, and which system is authoritative. Compare the smallest
+R2 begins with a representative host's actual read and write boundaries,
+navigation and reload behavior, failure modes, network contract, and authority.
+Before choosing and implementing persistence behavior, compare the smallest
 options against that workload, including retaining the existing public seams.
+Assigning the issue a branch does not satisfy this evidence gate.
 
 Authoritative submission remains owned by the existing Draft
 [Assessment Authoritative Submission PRD](../prds/assessment-authoritative-submission.md).
@@ -134,27 +144,29 @@ surfaces, not private method names or source-string assertions:
   observable, produce no ready signal, and leave controller getters truthful.
 - Disconnect during initialization and prove no late DOM, event, hook,
   subscription, or controller publication occurs.
-- Prove an element-created coordinator is disposed exactly once and a borrowed
+- Prove a nested toolkit's owned coordinator is disposed exactly once and a borrowed
   coordinator is not disposed by the element.
 - Build and pack `@pie-players/pie-assessment-player`, then type-check a clean
   consumer using the documented public host contract.
 
-If persistence or submission is later scheduled, add host-level evidence at the
-real storage and HTTP boundaries. At minimum it must cover rapid updates,
-navigation, reload, stale-write prevention, observable failures, and uncertain
-network outcomes. The expected behavior comes from the accepted host contract
-and PRD, not from this deferred plan.
+R2 requires host-level evidence at the real storage and, where applicable, HTTP
+boundaries. At minimum it must cover rapid updates, navigation, reload,
+stale-write prevention, observable failures, and uncertain network outcomes.
+The expected behavior comes from the recorded host contract. Authoritative
+submission requires its own accepted PRD before implementation.
 
 ## Decision gates
 
-1. Refresh the consumer pad and record the representative host workflow.
+1. Record the public host fixture and refresh the consumer pad before downstream
+   sign-off. Missing checkouts keep the repair in draft; they do not turn local
+   fixture evidence into downstream verification.
 2. Confirm the lifecycle repair does not require changes to documented section,
    Quiz Engine, knowledge-check, or item-player contracts.
-3. Land the generic coordinator prerequisite separately with its own regression
+3. Verify the already-landed generic coordinator prerequisite with its regression
    evidence.
 4. Implement and review lifecycle/readiness as its own assessment-player change.
-5. Schedule persistence only after the host ownership and network boundaries are
-   explicit and an option has been selected from evidence.
+5. Implement the planned persistence repair only after host ownership and network
+   boundaries are explicit and an option has been selected from evidence.
 6. Schedule authoritative submission only after its existing PRD is accepted.
 
 Keeping these gates separate is intentional. A confirmed custom-element

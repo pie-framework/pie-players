@@ -77,20 +77,16 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-selected-button-background",
 	"--pie-selected-button-border",
 	"--pie-shadow",
-	"--pie-surface",
 	"--pie-text-light",
 	"--pie-tool-line-reader-band-height",
 	"--pie-tool-line-reader-outline-color",
 	"--pie-tool-line-reader-side-width",
-	"--pie-tool-shell-zoom-comp",
-	"--pie-toolbar-zoom-comp",
 	"--pie-tts-button-color",
 	"--pie-tts-card-border",
 	"--pie-tts-inline-muted-color",
 	"--pie-tts-left-aligned-panel-width",
 	"--pie-tts-menu-shadow",
 	"--pie-tts-selected-bg",
-	"--pie-tts-zoom-comp",
 ]);
 
 function rel(root, absPath) {

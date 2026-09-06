@@ -153,6 +153,26 @@ describe("resolveDaisyPieVariables", () => {
 		).toBeGreaterThanOrEqual(4.5);
 	});
 
+	test("keeps text and controls legible on the raised surface", () => {
+		const vars = resolve(VALENTINE);
+		for (const token of ["--pie-text", "--pie-button-color"]) {
+			expect(
+				ratio(vars[token], vars["--pie-surface"]),
+				token,
+			).toBeGreaterThanOrEqual(4.5);
+		}
+	});
+
+	test("keeps a page-legible focus ring visible on the raised surface too", () => {
+		const vars = resolve({ ...LIGHT, primary: "#909090" });
+		for (const background of ["--pie-background", "--pie-surface"]) {
+			expect(
+				ratio(vars["--pie-button-focus-outline"], vars[background]),
+				background,
+			).toBeGreaterThanOrEqual(3);
+		}
+	});
+
 	test("leaves the dual-purpose accent alone", () => {
 		// `--pie-primary` is a foreground in some components and a button fill in
 		// others, so there is no single value that is right for both. Correcting it

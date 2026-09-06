@@ -503,6 +503,7 @@
 	.pie-section-player-content-card-header {
 		position: relative;
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
@@ -544,6 +545,8 @@
 	   nests the player deeper got an unstyled title. */
 	.pie-section-player-content-card-header :is(h1, h2, h3, h4, h5, h6) {
 		position: relative;
+		min-width: 0;
+		overflow-wrap: anywhere;
 		z-index: 0;
 		margin: 0;
 		/* Reads the scale rather than inheriting it: the card wraps the item shell
@@ -558,8 +561,15 @@
 
 	.pie-section-player-content-card-header pie-item-toolbar {
 		position: relative;
+		min-width: 0;
+		max-width: 100%;
 		z-index: 1;
 		margin-left: auto;
+	}
+
+	/* Floating reading controls must paint above the pane's scroll hint (10). */
+	.pie-section-player-content-card-header :global(pie-item-toolbar[data-pie-header-overlay-active="true"]) {
+		z-index: 11;
 	}
 
 	.pie-section-player-content-card-body {

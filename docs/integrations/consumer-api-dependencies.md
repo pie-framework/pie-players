@@ -28,6 +28,17 @@ it reads, and which resolve here — so every other row keeps the date above. It
 found the Host A token set one entry shorter than recorded and no new name in any
 host.
 
+The 2026-09-05 `--pie-surface` admission was checked against the recorded theme
+rows and the current in-repo resolver, registry, stylesheet, and TTS consumers.
+It adds a canonical required token; it removes or renames no recorded host hook.
+Neither Host V nor Host A's recorded overrides includes this name, so answer
+pools that read it and inline TTS panels now inherit a palette value in place of
+their fallback. Host R's stylesheet/managed-theme integration gains the registry
+entry and resolved values. Existing `variables` and stylesheet-only override
+precedence is covered by local browser tests. This is an impact assessment, not
+a downstream refresh: those checkouts remain unavailable and all row
+verification dates above remain unchanged.
+
 The Host R refresh replaced rows that had passed from unverified to wrong. Its
 theme fork is gone: it declares no `--pie-*` value, imports `tokens.css`, and
 drives one document-scoped `<pie-theme>` whose resolver supplies every scheme
@@ -230,6 +241,22 @@ than versioning it the right move. No host passes `locale` to a `pie-*` element
 either.
 
 ## Consumer profiles
+
+The control-sizing repair removes automatic zoom compensation from section
+tabs, inline read-aloud, toolbar controls, and floating-shell controls. Host A
+and Host R use those delivery surfaces according to the recorded rows; their
+controls now retain ordinary CSS sizing in a constrained viewport and scale
+with the browser. Item and passage toolbars wrap; section toolbars scroll on
+keyboard focus; calculator content scrolls independently of its header controls.
+Reading panels reposition within a short viewport and the existing
+`data-pie-header-overlay-active` hook places them above the pane's scroll hint.
+The shared `./ui/zoom-compensation` export is removed, and
+the package-private `--pie-section-player-tab-zoom-comp` registry entry is
+deprecated. The recorded import and token rows name neither surface.
+This assessment uses the recorded rows only. Checkout verification is pending
+for all three hosts because the local mapping and matching checkouts were not
+available on 2026-09-05; their verification dates remain unchanged. Resolve
+those paths or an explicit skip before treating the repair as ready to merge.
 
 | Label | Stack | Depth | Breakage cost |
 | --- | --- | --- | --- |

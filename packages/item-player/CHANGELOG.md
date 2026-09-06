@@ -1,5 +1,25 @@
 # @pie-players/pie-item-player
 
+## 0.3.71
+
+### Patch Changes
+
+- 181b124: Resolve Speech Rule Engine's XML dependency to `@xmldom/xmldom` 0.9.12 for
+  workspace builds, fixing GHSA-6gmq-8vp8-gcm6. Keep the existing Speech Rule Engine
+  version and math-speech API. The workspace override prevents future installs
+  from selecting an affected XML version, and rebuilt player/tool bundles use
+  the patched dependency.
+  
+  Consumers resolving Speech Rule Engine as an external dependency must also
+  refresh their own lockfile to `@xmldom/xmldom` 0.9.12 or newer on the 0.9 line;
+  workspace overrides are not inherited from the published toolkit package.
+- Updated dependencies [10b34c8]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-theme@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

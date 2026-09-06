@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-picture-dictionary
 
+## 0.3.71
+
+### Patch Changes
+
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-players-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

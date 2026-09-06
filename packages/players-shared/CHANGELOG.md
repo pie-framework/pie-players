@@ -1,5 +1,65 @@
 # @pie-players/pie-players-shared
 
+## 0.3.71
+
+### Patch Changes
+
+- 69f354e: Preserve assessment answers when returning to a section. Capture the outgoing
+  section's complete snapshot before replacing its DOM, including navigation
+  through the assessment controller. Wait for the section's canonical engine-ready
+  event and apply its saved session before accepting input or replacement-session
+  updates. Cancel listeners and readiness waits when navigation or disconnection
+  retires the section; late restoration results cannot update its replacement.
+  
+  A failed restore or controller-readiness timeout preserves saved answers and
+  reports the existing assessment error event and navigation error hook. Provide
+  localized, keyboard-accessible Retry and mark the section busy until restoration
+  succeeds. Keep the section event-contract import external in the assessment
+  bundle so it shares the existing custom-element registration.
+  
+  The recorded consumer inventory lists no external assessment-player host;
+  downstream checkout verification is still pending. Public real-content fixtures
+  cover both section layouts, navigation, reload, delayed readiness/restoration,
+  failure, timeout, retry, and disconnection. Standalone section, toolkit, and
+  item-player contracts are unchanged. Persistence ordering and submission
+  acknowledgement remain a separate repair.
+- 6c089fd: Keep tabs, read-aloud buttons, calculator controls, and scroll hints usable in
+  narrow delivery hosts. Stop estimating browser zoom from outer/inner window
+  widths: a normal 320px host could render the plain read-aloud trigger at 3.66px.
+  Controls now follow browser scaling; plain and NDS triggers keep matching sizes.
+  Item and passage toolbars wrap when enlarged text needs more space. Section
+  toolbar buttons retain their size and scroll fully into view on keyboard focus.
+  Calculator headers wrap while the tool content scrolls independently. Reading
+  panels fit beside or below their trigger, remain reachable in a short magnified
+  viewport, and paint above the question pane's scroll hint.
+  Assessment demos scroll their diagnostic chrome when magnified instead of
+  squeezing the nested player to zero height.
+  
+  Remove the `@pie-players/pie-players-shared/ui/zoom-compensation` export
+  and its internal Svelte wrapper. Retain `--pie-section-player-tab-zoom-comp` in
+  the registry as deprecated; it no longer affects layout. Hosts A and R use the
+  affected delivery surfaces in the consumer inventory. Their controls change
+  size under constrained layouts and magnification; recorded imports name neither
+  retired surface, with a fresh checkout check still pending.
+- ee795c8: Make assessment-player mounting follow its documented public property contract.
+  Connect-then-assign hosts now initialize without a private bootstrap call. Batch
+  assessment/attempt/hook changes, retire superseded or disconnected controllers,
+  and publish a ready controller only after initialization and hydration succeed.
+  Each successful initialization invokes the ready hook and ready event once.
+  
+  Load failures reject at the controller boundary and leave the element unavailable
+  with a localized, accessible retry action. Controller waiters resolve to null
+  when their active initialization fails or is retired. Assessment controllers now
+  provide idempotent `dispose()`; nested toolkit coordinators keep their existing
+  ownership rules, so borrowed coordinators are not disposed by the assessment.
+  Locale, navigation visibility, and runtime property updates preserve the active
+  assessment controller. Package entrypoints and event names/flags are unchanged.
+  
+  The recorded consumer pad lists no external assessment-player host. Its downstream
+  checkout verification remains pending; the accompanying public host fixture
+  validates the built package's documented contract. Section, Quiz Engine,
+  knowledge-check, and item-player APIs are unchanged.
+
 ## 0.3.70
 
 ### Patch Changes

@@ -1,5 +1,58 @@
 # @pie-players/pie-theme
 
+## 0.3.71
+
+### Patch Changes
+
+- 10b34c8: Publish `--pie-surface` as a canonical, required Scheme Participant.
+  
+  The raised-surface colour that `@pie-lib/drag`'s answer pools read through
+  `color.surface()` was never declared by this package, so every consumer fell
+  through to the hardcoded `#E0E1E6` in `pie-lib` — a light grey that stayed light
+  grey on the dark, high-contrast, and coloured schemes. It now resolves from the
+  theme, giving answer pools and inline TTS panels a surface that follows the
+  active palette.
+  
+  Declared in the light and dark Base Themes and all ten built-in schemes, mapped
+  from a blend of DaisyUI `base-300` and `base-100`, and recorded in `token-registry.json` as
+  `canonical-semantic` / `surface`. A host that was already setting
+  `--pie-surface` keeps its override; a host that was not now inherits a
+  scheme-correct value where it previously got `pie-lib`'s constant.
+  
+  The initial dropdown tints failed text contrast in Purple on Light Green
+  (4.13:1) and DaisyUI Valentine (4.17:1), and weakened the light base's focus ring
+  to 2.82:1. Reuse existing accessible tints for those surfaces and also correct
+  DaisyUI focus rings against the raised panel; Cupcake measured 2.93:1 there.
+  Built-in contrast diagnostics and the real TTS browser test now cover these
+  relationships. Custom-scheme examples carry the raised surface and its control
+  colours where an overlay changes the page's polarity.
+  
+  Consumer impact: the recorded Host V and Host A token overrides remain valid;
+  neither recorded set includes `--pie-surface`, so their fallback surfaces change
+  on upgrade. Host R's stylesheet/managed-theme integration receives the new
+  registry entry and scheme values. Explicit managed `variables` overrides and
+  stylesheet-only overrides retain their precedence. These statements use the
+  existing consumer inventory; unavailable downstream checkouts have not been
+  reverified.
+- 6c089fd: Keep tabs, read-aloud buttons, calculator controls, and scroll hints usable in
+  narrow delivery hosts. Stop estimating browser zoom from outer/inner window
+  widths: a normal 320px host could render the plain read-aloud trigger at 3.66px.
+  Controls now follow browser scaling; plain and NDS triggers keep matching sizes.
+  Item and passage toolbars wrap when enlarged text needs more space. Section
+  toolbar buttons retain their size and scroll fully into view on keyboard focus.
+  Calculator headers wrap while the tool content scrolls independently. Reading
+  panels fit beside or below their trigger, remain reachable in a short magnified
+  viewport, and paint above the question pane's scroll hint.
+  Assessment demos scroll their diagnostic chrome when magnified instead of
+  squeezing the nested player to zero height.
+  
+  Remove the `@pie-players/pie-players-shared/ui/zoom-compensation` export
+  and its internal Svelte wrapper. Retain `--pie-section-player-tab-zoom-comp` in
+  the registry as deprecated; it no longer affects layout. Hosts A and R use the
+  affected delivery surfaces in the consumer inventory. Their controls change
+  size under constrained layouts and magnification; recorded imports name neither
+  retired surface, with a fresh checkout check still pending.
+
 ## 0.3.70
 
 ## 0.3.69

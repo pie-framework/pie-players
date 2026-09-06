@@ -1,5 +1,48 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.71
+
+### Patch Changes
+
+- 181b124: Resolve Speech Rule Engine's XML dependency to `@xmldom/xmldom` 0.9.12 for
+  workspace builds, fixing GHSA-6gmq-8vp8-gcm6. Keep the existing Speech Rule Engine
+  version and math-speech API. The workspace override prevents future installs
+  from selecting an affected XML version, and rebuilt player/tool bundles use
+  the patched dependency.
+  
+  Consumers resolving Speech Rule Engine as an external dependency must also
+  refresh their own lockfile to `@xmldom/xmldom` 0.9.12 or newer on the 0.9 line;
+  workspace overrides are not inherited from the published toolkit package.
+- 6c089fd: Keep tabs, read-aloud buttons, calculator controls, and scroll hints usable in
+  narrow delivery hosts. Stop estimating browser zoom from outer/inner window
+  widths: a normal 320px host could render the plain read-aloud trigger at 3.66px.
+  Controls now follow browser scaling; plain and NDS triggers keep matching sizes.
+  Item and passage toolbars wrap when enlarged text needs more space. Section
+  toolbar buttons retain their size and scroll fully into view on keyboard focus.
+  Calculator headers wrap while the tool content scrolls independently. Reading
+  panels fit beside or below their trigger, remain reachable in a short magnified
+  viewport, and paint above the question pane's scroll hint.
+  Assessment demos scroll their diagnostic chrome when magnified instead of
+  squeezing the nested player to zero height.
+  
+  Remove the `@pie-players/pie-players-shared/ui/zoom-compensation` export
+  and its internal Svelte wrapper. Retain `--pie-section-player-tab-zoom-comp` in
+  the registry as deprecated; it no longer affects layout. Hosts A and R use the
+  affected delivery surfaces in the consumer inventory. Their controls change
+  size under constrained layouts and magnification; recorded imports name neither
+  retired surface, with a fresh checkout check still pending.
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-players-shared@0.3.71
+  - @pie-players/tts-client-server@0.3.71
+  - @pie-players/pie-calculator@0.3.71
+  - @pie-players/pie-calculator-cortex@0.3.71
+  - @pie-players/pie-calculator-desmos@0.3.71
+  - @pie-players/pie-calculator-geogebra@0.3.71
+  - @pie-players/pie-context@0.3.71
+  - @pie-players/pie-tts@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

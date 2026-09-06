@@ -81,8 +81,8 @@ before execution; the observations below apply only to the recorded commits.
 
 | Order | PR / inspected head | Status | Work required before merge |
 | --- | --- | --- | --- |
-| 1 | [#374 — preloaded element registration and version handling](https://github.com/pie-framework/pie-players/pull/374), originally `d2ca9f35` | In progress | Incorporated `develop` through #379. The generator now honors configured authored tags, uses the public canonical tag transform, and includes a packed-artifact browser regression. Validation is in progress. |
-| 2 | [#373 — publish the surface theme token](https://github.com/pie-framework/pie-players/pull/373), `b5ae383b` | Planned | Update from the resulting `develop`, resolve the inventory conflict, document consumer impact, verify the rendered surfaces and theme contract, and obtain fresh passing CI. GitHub reports a conflict. |
+| 1 | [#374 — preloaded element registration and version handling](https://github.com/pie-framework/pie-players/pull/374), tested `0c16cf8a` | Done | Full local gate and all GitHub checks pass. Merged into `develop` as `fd935b54` on 2026-09-05 (local date). |
+| 2 | [#373 — publish the surface theme token](https://github.com/pie-framework/pie-players/pull/373), originally `b5ae383b` | In progress | Resolved the inventory conflict and recorded consumer impact. Corrected text and focus failures introduced by the new surface. Focused theme and browser checks pass; full-gate and refreshed CI evidence pending. |
 
 Both heads passed their existing lint, build, docs, isolated-linker, and critical
 browser jobs. Their dependency-audit failures have different causes:
@@ -109,7 +109,7 @@ For #374:
   preserving the caller's original content. Retain this generated-artifact
   regression; the current utility tests cover parsing and hashing, and the
   critical item suite does not run the preloaded browser spec.
-- [ ] Run the CLI tests, the existing preloaded-item browser suite, package
+- [x] Run the CLI tests, the existing preloaded-item browser suite, package
   boundary checks, `bun run verify:local-pr`, and `bun run check:audit` on the
   updated head. Record the tested commit and generated-artifact evidence before
   merging the PR into `develop`.
@@ -124,22 +124,25 @@ browser test confirms that missing bundle elements reject the import. Registry
 metadata follows the existing `player.js` path with controllers server-side.
 The existing preload suite passes 19 cases with one existing ESM case skipped;
 both new artifact cases pass, the six CLI tests pass, and the audit reports no
-blocking shipped findings. Full-gate and refreshed CI evidence follow below
-when the integration completes.
+blocking shipped findings. The full pre-push gate passes on `0c16cf8a`: 191
+script tests and 131 browser cases (129 passing plus the two tracked R2 expected
+failures). Package-consumer checks cover 45 publishable packages and runtime
+compatibility checks cover 12 Node-safe imports plus two browser boundaries.
+All ten GitHub checks pass on that head, merged as `fd935b54`.
 
 For #373:
 
-- [ ] Merge the resulting `develop` into the existing PR branch. The read-only
+- [x] Merge the resulting `develop` into the existing PR branch. The read-only
   merge preview finds a content conflict in the theme-token inventory: promote
   `--pie-surface` to its canonical row while retaining R4's removal of active
   tab zoom compensation and its deprecation explanation. Preserve the current
   patched lockfile and regenerated token data.
-- [ ] Complete the consumer-impact record under the existing maintenance
+- [x] Complete the consumer-impact record under the existing maintenance
   procedure and explain affected integration shapes in the patch changeset and
   PR. The inspected branch changes guarded theme surfaces without a pad update
   or a reasoned `Consumer-pad` trailer. Record only checks actually performed;
   unavailable downstream checkouts do not acquire new verification dates.
-- [ ] Verify the new surface across the light/dark base themes, all ten schemes,
+- [x] Verify the new surface across the light/dark base themes, all ten schemes,
   DaisyUI mapping, and a host override. Inspect actual answer pools/placeholders
   and the inline TTS selected surface with the element version that reads this
   token. Check text, boundaries, and focus contrast; the current contrast suite
@@ -147,6 +150,25 @@ For #373:
 - [ ] Run theme unit tests, generated-CSS and theme-token checks, relevant
   browser checks, `bun run verify:local-pr`, and `bun run check:audit`. Require
   fresh passing GitHub checks on the resolved head before merging into `develop`.
+
+Focused #373 evidence: 133 theme unit tests and all 11 existing theme browser
+tests pass. A permanent critical-suite regression checks the actual inline TTS
+panel across 48 combinations: light/dark base, ten schemes, 35 DaisyUI themes,
+and an explicit host override. It measures normal/selected text, media glyphs,
+and visible keyboard focus. Decorative panel and selected-chip borders are not
+the controls' sole identifiers; labels, glyphs, and selected font weight remain
+visible. The initial text failures were Purple on Light Green (4.13:1) and
+Valentine (4.17:1); focus failed on the light base (2.82:1) and Cupcake (2.93:1).
+The corrected named relationships and real TTS panel pass.
+
+An isolated temporary Vite fixture built the unmodified `PlaceHolder` and
+`color` sources from upstream commit `835ec22d`, using its installed React/MUI
+dependencies. Both answer-pool variants follow the token with text contrast at
+least 4.5:1 in all 48 combinations (96 rendered pools), with no browser errors.
+This proves those component surfaces, not a full drag interaction or a released
+element bundle. The permanent regression uses this repo's TTS consumer and does
+not depend on the sibling checkout. The audit reports no shipped findings;
+the existing dev-only moderate Tiptap finding remains non-blocking.
 
 After each merge, record the merge commit and evidence here, return the checkout
 to `develop`, and remove completed task-owned local branches. Rebuild and verify

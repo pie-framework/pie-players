@@ -1543,10 +1543,8 @@
 		height: 3rem; /* Figma: 48px */
 		justify-content: center;
 		gap: 0.375rem;
-		/* --pie-white is the surface role every built-in sets to its page colour
-		   (DaisyUI base-100; #000 under the dark theme). --pie-background is the
-		   page token, which a host may point at its own backdrop, and a floating
-		   card needs a surface it owns. */
+		/* The raised surface is certified with control text and focus rings.
+		   --pie-white remains the fallback for hosts with no surface token. */
 		background: var(--pie-tts-selected-bg, var(--pie-surface, var(--pie-white, #fff)));
 		/* The Figma card is shadow-only, but the shadow is black: once the card
 		   takes a dark theme's surface it has no visible edge left. A hairline
@@ -1595,9 +1593,8 @@
 		background: transparent;
 		box-shadow: none;
 		/* Unselected labels are text on the card, so they take the full text colour
-		   rather than a dimmed mix: DaisyUI only guarantees base-content against the
-		   surface, and `valentine` is 5.46:1 there — a 10% dim already lands under
-		   4.5:1. Hosts that want them dimmer set --pie-tts-inline-muted-color. */
+		   rather than a dimmed mix: the raised surface has little contrast margin
+		   in `valentine`. Hosts that want them dimmer set --pie-tts-inline-muted-color. */
 		color: var(--pie-tts-inline-muted-color, var(--pie-button-color, var(--pie-text, #5b6b73)));
 		font-size: 1rem;
 	}

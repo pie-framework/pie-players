@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { DAISYUI_THEME_CATALOG, listPieColorSchemes } from "@pie-players/pie-theme";
 import { expectUsableTarget } from "../../../test-support/control-sizing";
 import { withBrowserZoom } from "../../../test-support/browser-zoom";
 import {
@@ -791,6 +792,181 @@ test.describe("section player demo tts-ssml", () => {
 			});
 			expect(postStopExpanded).toBe("false");
 		}
+	});
+
+	test("keeps raised TTS surfaces legible across schemes, providers, and host overrides", async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		await suppressAudibleBrowserTts(page, 120_000);
+		await page.setViewportSize({ width: 1320, height: 900 });
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+		const tool = page
+			.locator(
+				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+			)
+			.first();
+		await tool.getByRole("button", { name: "Play reading" }).click();
+		const panel = tool.getByRole("toolbar", { name: "Reading controls" });
+		await expect(panel).toBeVisible();
+		await expect(panel).toHaveClass(
+			/pie-tool-tts-inline__panel--left-aligned-inline/,
+		);
+		await page.mouse.move(0, 0);
+		await page.keyboard.press("Tab");
+		await panel.getByRole("radio", { name: "Slow speed", exact: true }).focus();
+
+		const palettes = [
+			...(["light", "dark"] as const).map((theme) => ({
+				id: `base-${theme}`,
+				theme,
+				provider: "none",
+				scheme: "default",
+				variables: {},
+			})),
+			...listPieColorSchemes()
+				.schemes.filter((scheme) => scheme.id !== "default")
+				.map((scheme) => ({
+					id: scheme.id,
+					theme: "light",
+					provider: "none",
+					scheme: scheme.id,
+					variables: {},
+				})),
+			...DAISYUI_THEME_CATALOG.map((theme) => ({
+				id: `daisy-${theme}`,
+				theme,
+				provider: "daisyui",
+				scheme: "default",
+				variables: {},
+			})),
+			{
+				id: "host-override",
+				theme: "light",
+				provider: "none",
+				scheme: "default",
+				variables: { "--pie-surface": "#fff4df" },
+			},
+		];
+		const evidence = [];
+		for (const palette of palettes) {
+			await page.evaluate(async ({ theme, provider, scheme, variables }) => {
+				const host = document.querySelector('pie-theme[scope="document"]');
+				if (!host) throw new Error("Document theme host unavailable");
+				document.documentElement.setAttribute("data-theme", theme);
+				host.setAttribute("theme", theme);
+				host.setAttribute("provider", provider);
+				host.setAttribute("scheme", scheme);
+				host.setAttribute("variables", JSON.stringify(variables));
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(resolve)),
+				);
+			}, palette);
+			const result = await panel.evaluate(async (element) => {
+				await Promise.all(
+					element
+						.getAnimations({ subtree: true })
+						.map((animation) => animation.finished.catch(() => undefined)),
+				);
+				const canvas = document.createElement("canvas");
+				canvas.width = canvas.height = 1;
+				const context = canvas.getContext("2d", { willReadFrequently: true });
+				if (!context) throw new Error("Canvas color parser unavailable");
+				const parse = (value: string) => {
+					context.clearRect(0, 0, 1, 1);
+					context.fillStyle = value;
+					context.fillRect(0, 0, 1, 1);
+					return [...context.getImageData(0, 0, 1, 1).data];
+				};
+				const ratio = (foreground: string, background: string) => {
+					const luminance = (value: string) => {
+						const [r, g, b] = parse(value)
+							.slice(0, 3)
+							.map((channel) => {
+								const v = channel / 255;
+								return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+							});
+						return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+					};
+					const a = luminance(foreground),
+						b = luminance(background);
+					return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+				};
+				const background = getComputedStyle(element).backgroundColor;
+				const pageBackground = getComputedStyle(element)
+					.getPropertyValue("--pie-background")
+					.trim();
+				const surface = getComputedStyle(element)
+					.getPropertyValue("--pie-surface")
+					.trim();
+				const controls = [
+					...element.querySelectorAll<HTMLElement>("button:not(:disabled)"),
+				].map((control) => {
+					const style = getComputedStyle(control);
+					const fill =
+						parse(style.backgroundColor)[3] === 0
+							? background
+							: style.backgroundColor;
+					const focused = control.matches(":focus-visible");
+					return {
+						name: control.getAttribute("aria-label"),
+						minimum: control.getAttribute("role") === "radio" ? 4.5 : 3,
+						ratio: ratio(style.color, fill),
+						focused,
+						outlineStyle: style.outlineStyle,
+						focusRatio: focused ? ratio(style.outlineColor, background) : null,
+						pageFocusRatio: focused ? ratio(style.outlineColor, pageBackground) : null,
+					};
+				});
+				return {
+					background,
+					surface,
+					followsSurface:
+						JSON.stringify(parse(background)) ===
+						JSON.stringify(parse(surface)),
+					controls,
+				};
+			});
+			evidence.push({ id: palette.id, ...result });
+			expect(result.surface, palette.id).not.toBe("");
+			expect(result.followsSurface, palette.id).toBe(true);
+			expect(result.controls.length, palette.id).toBeGreaterThanOrEqual(4);
+			for (const control of result.controls) {
+				expect(
+					control.ratio,
+					`${palette.id}: ${control.name}`,
+				).toBeGreaterThanOrEqual(control.minimum);
+			}
+			const focused = result.controls.find((control) => control.focused);
+			expect(
+				focused,
+				`${palette.id}: keyboard focus remains visible`,
+			).toBeDefined();
+			expect(focused?.outlineStyle, palette.id).not.toBe("none");
+			expect(
+				focused?.focusRatio,
+				`${palette.id}: focus on ${result.background}`,
+			).toBeGreaterThanOrEqual(3);
+			expect(
+				focused?.pageFocusRatio,
+				`${palette.id}: focus on the page`,
+			).toBeGreaterThanOrEqual(3);
+			if (palette.id === "daisy-valentine") {
+				await panel.screenshot({
+					path: test.info().outputPath("valentine-tts-surface.png"),
+				});
+			}
+			if (palette.id === "host-override")
+				expect(result.background).toBe("rgb(255, 244, 223)");
+		}
+		await test
+			.info()
+			.attach("raised-surface-contrast", {
+				body: JSON.stringify(evidence, null, 2),
+				contentType: "application/json",
+			});
 	});
 
 	test("overlays left-aligned TTS controls over the header label with inline speed radios", async ({

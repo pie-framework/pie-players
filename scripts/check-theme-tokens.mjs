@@ -77,7 +77,6 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-selected-button-background",
 	"--pie-selected-button-border",
 	"--pie-shadow",
-	"--pie-surface",
 	"--pie-text-light",
 	"--pie-tool-line-reader-band-height",
 	"--pie-tool-line-reader-outline-color",

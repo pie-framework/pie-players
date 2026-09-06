@@ -28,6 +28,17 @@ it reads, and which resolve here — so every other row keeps the date above. It
 found the Host A token set one entry shorter than recorded and no new name in any
 host.
 
+The 2026-09-05 `--pie-surface` admission was checked against the recorded theme
+rows and the current in-repo resolver, registry, stylesheet, and TTS consumers.
+It adds a canonical required token; it removes or renames no recorded host hook.
+Neither Host V nor Host A's recorded overrides includes this name, so answer
+pools that read it and inline TTS panels now inherit a palette value in place of
+their fallback. Host R's stylesheet/managed-theme integration gains the registry
+entry and resolved values. Existing `variables` and stylesheet-only override
+precedence is covered by local browser tests. This is an impact assessment, not
+a downstream refresh: those checkouts remain unavailable and all row
+verification dates above remain unchanged.
+
 The Host R refresh replaced rows that had passed from unverified to wrong. Its
 theme fork is gone: it declares no `--pie-*` value, imports `tokens.css`, and
 drives one document-scoped `<pie-theme>` whose resolver supplies every scheme

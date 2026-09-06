@@ -125,7 +125,12 @@ const register = (
 };
 
 describe("late-arriving PIE element binding", () => {
-	test("binds elements inserted into each of two mounted players", async () => {
+	// Both players stay mounted in each of the next two tests: two registrations
+	// are what the regression needed, because the second overwrote the one
+	// context slot the observer read. Only one container takes a late element per
+	// test, so neither test depends on two observers both delivering — the
+	// happy-dom drop described above.
+	test("binds a late element in the first of two mounted players", async () => {
 		const tagA = "pie-observer-two-players-a--version-1-0-0";
 		const tagB = "pie-observer-two-players-b--version-1-0-0";
 		registerTags(tagA, tagB);
@@ -136,13 +141,30 @@ describe("late-arriving PIE element binding", () => {
 		const releaseB = register(configFor(tagB, "b1"), containerB);
 
 		const elementA = appendPieElement(containerA, tagA, "a1");
-		const elementB = appendPieElement(containerB, tagB, "b1");
 		await flushMutations();
 
 		// The single global context slot this replaced held only the most recent
 		// registration, so the first player's late element never bound.
 		expect(elementA.model?.prompt).toBe("prompt for a1");
 		expect(elementA.session?.id).toBe("a1");
+
+		releaseA();
+		releaseB();
+	});
+
+	test("binds a late element in the second of two mounted players", async () => {
+		const tagA = "pie-observer-two-players-a2--version-1-0-0";
+		const tagB = "pie-observer-two-players-b2--version-1-0-0";
+		registerTags(tagA, tagB);
+
+		const containerA = makeContainer();
+		const containerB = makeContainer();
+		const releaseA = register(configFor(tagA, "a1"), containerA);
+		const releaseB = register(configFor(tagB, "b1"), containerB);
+
+		const elementB = appendPieElement(containerB, tagB, "b1");
+		await flushMutations();
+
 		expect(elementB.model?.prompt).toBe("prompt for b1");
 		expect(elementB.session?.id).toBe("b1");
 
@@ -150,13 +172,7 @@ describe("late-arriving PIE element binding", () => {
 		releaseB();
 	});
 
-	test("binds both players when each registers a new tag from a bundle", async () => {
-		// Defining a new tag from a bundle module is the branch that used to
-		// install the one document.body observer, and the second registration
-		// overwrote the one context slot that observer read — so the first
-		// player's late element failed the container check and never bound.
-		const tagA = "pie-observer-bundle-a--version-1-0-0";
-		const tagB = "pie-observer-bundle-b--version-1-0-0";
+	const registerBundleTags = (tagA: string, tagB: string): void => {
 		(window as unknown as { PIE_REGISTRY?: unknown }).PIE_REGISTRY = {};
 		(window as any).pie = {
 			default: {
@@ -164,6 +180,17 @@ describe("late-arriving PIE element binding", () => {
 				[`@pie-element/${tagB}`]: { Element: class extends HTMLElement {} },
 			},
 		};
+	};
+
+	// Defining a new tag from a bundle module is the branch that used to install
+	// the one document.body observer, and the second registration overwrote the
+	// one context slot that observer read — so the first player's late element
+	// failed the container check and never bound. The first player is therefore
+	// the assertion that carries the regression; the second is the mirror.
+	test("binds the first player's late element when both register from a bundle", async () => {
+		const tagA = "pie-observer-bundle-a--version-1-0-0";
+		const tagB = "pie-observer-bundle-b--version-1-0-0";
+		registerBundleTags(tagA, tagB);
 
 		const containerA = makeContainer();
 		const containerB = makeContainer();
@@ -173,10 +200,29 @@ describe("late-arriving PIE element binding", () => {
 		await customElements.whenDefined(tagB);
 
 		const elementA = appendPieElement(containerA, tagA, "a1");
-		const elementB = appendPieElement(containerB, tagB, "b1");
 		await flushMutations();
 
 		expect(elementA.model?.prompt).toBe("prompt for a1");
+
+		releaseA();
+		releaseB();
+	});
+
+	test("binds the second player's late element when both register from a bundle", async () => {
+		const tagA = "pie-observer-bundle-a2--version-1-0-0";
+		const tagB = "pie-observer-bundle-b2--version-1-0-0";
+		registerBundleTags(tagA, tagB);
+
+		const containerA = makeContainer();
+		const containerB = makeContainer();
+		const releaseA = register(configFor(tagA, "a1"), containerA);
+		const releaseB = register(configFor(tagB, "b1"), containerB);
+		await customElements.whenDefined(tagA);
+		await customElements.whenDefined(tagB);
+
+		const elementB = appendPieElement(containerB, tagB, "b1");
+		await flushMutations();
+
 		expect(elementB.model?.prompt).toBe("prompt for b1");
 
 		releaseA();

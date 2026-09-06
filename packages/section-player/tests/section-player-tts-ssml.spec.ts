@@ -1398,7 +1398,11 @@ test.describe("section player demo tts-ssml", () => {
 		// Q2 text interaction.
 		await q2.scrollIntoViewIfNeeded();
 		const q2TextInput = q2.getByRole("textbox").first();
-		await expect(q2TextInput).toBeVisible({ timeout: 10_000 });
+		// 30s, matching how section-player-preloaded.spec.ts waits for shell
+		// content. The 10s this replaced was the tightest wait in a test with a
+		// 180s budget, and it timed out on a loaded runner with the shell present
+		// but its element not yet rendered.
+		await expect(q2TextInput).toBeVisible({ timeout: 30_000 });
 		await q2TextInput.fill(
 			"The PTA request is time-sensitive because the April deadline affects planning for the next event.",
 		);

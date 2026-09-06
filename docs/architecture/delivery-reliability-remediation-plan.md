@@ -132,7 +132,7 @@ All ten GitHub checks pass on that head, merged as `fd935b54`.
 
 For #373:
 
-- [ ] Merge the resulting `develop` into the existing PR branch. The read-only
+- [x] Merge the resulting `develop` into the existing PR branch. The read-only
   merge preview finds a content conflict in the theme-token inventory: promote
   `--pie-surface` to its canonical row while retaining R4's removal of active
   tab zoom compensation and its deprecation explanation. Preserve the current

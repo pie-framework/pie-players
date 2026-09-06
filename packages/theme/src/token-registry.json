@@ -605,7 +605,7 @@
 		"documentedIn": [
 			"packages/theme/README.md"
 		],
-		"fallbackPolicy": "Canonical raised-surface token for cards, answer pools, and menus; tracks the dropdown surface tint."
+		"fallbackPolicy": "Canonical raised-surface token for answer pools and tool panels, with text and focus contrast against the active palette."
 	},
 	{
 		"name": "--pie-faded-primary",

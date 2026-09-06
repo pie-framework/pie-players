@@ -1,5 +1,11 @@
 # @pie-players/pie-calculator-geogebra
 
+## 0.3.71
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

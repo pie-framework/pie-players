@@ -52,7 +52,7 @@
 		"@sveltejs/kit": "^2.70.3",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"@tailwindcss/vite": "^4.3.3",
-		"@types/node": "^26.4.0",
+		"@types/node": "^26.4.1",
 		"daisyui": "^5.7.22",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",

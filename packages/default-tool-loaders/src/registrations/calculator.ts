@@ -2,7 +2,7 @@
  * Calculator Tool Registration
  *
  * Registers the calculator tool with support for multiple calculator types
- * (basic, scientific, graphing) via Desmos provider.
+ * (basic, scientific, graphing) through a host-selected provider.
  *
  * Maps to QTI 3.0 standard access features:
  * - calculator (cognitive support)
@@ -22,9 +22,66 @@ import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { CortexToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { GeoGebraToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
 
-type CalculatorType = "basic" | "scientific";
+type CalculatorType = "basic" | "scientific" | "graphing";
+export type CalculatorProviderId =
+	| "calculator-desmos"
+	| "calculator-geogebra"
+	| "calculator-cortex";
+export const DEFAULT_CALCULATOR_PROVIDER_ID: CalculatorProviderId =
+	"calculator-desmos";
+
+export function resolveCalculatorProviderId(
+	config: ToolProviderConfig | undefined,
+): CalculatorProviderId {
+	const configured = config?.provider?.id;
+	if (configured === undefined || configured === "") {
+		return DEFAULT_CALCULATOR_PROVIDER_ID;
+	}
+	if (
+		configured === "calculator-desmos" ||
+		configured === "calculator-geogebra" ||
+		configured === "calculator-cortex"
+	) {
+		return configured;
+	}
+	throw new Error(
+		`Unsupported calculator provider "${String(configured)}". Expected "calculator-desmos", "calculator-geogebra", or "calculator-cortex".`,
+	);
+}
+
+function createCalculatorToolProvider(config: ToolProviderConfig | undefined) {
+	switch (resolveCalculatorProviderId(config)) {
+		case "calculator-cortex":
+			return new CortexToolProvider();
+		case "calculator-geogebra":
+			return new GeoGebraToolProvider();
+		default:
+			return new DesmosToolProvider();
+	}
+}
+
+function getCalculatorInstanceConfig(
+	config: ToolProviderConfig | undefined,
+): CalculatorProviderConfig {
+	const theme = config?.theme;
+	return {
+		settings:
+			config?.settings && typeof config.settings === "object"
+				? { ...config.settings }
+				: {},
+		restrictedMode: config?.restrictedMode === true,
+		locale: typeof config?.locale === "string" ? config.locale : undefined,
+		theme:
+			theme === "light" || theme === "dark" || theme === "auto"
+				? theme
+				: undefined,
+	};
+}
 
 // The toolbar parent re-derives `renderedTools` whenever item state changes
 // (e.g. the learner answers a question and `effectiveItem`/`renderContext`
@@ -69,7 +126,9 @@ function setCachedOverlay(
 }
 
 function normalizeCalculatorType(value: unknown): CalculatorType | null {
-	return value === "basic" || value === "scientific" ? value : null;
+	return value === "basic" || value === "scientific" || value === "graphing"
+		? value
+		: null;
 }
 
 function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
@@ -107,6 +166,7 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 const CALCULATOR_NAME_KEYS: Record<CalculatorType | "untyped", MessageKey> = {
 	basic: "tools.calculator.nameBasic",
 	scientific: "tools.calculator.nameScientific",
+	graphing: "tools.calculator.nameGraphing",
 	untyped: "tools.calculator.name",
 };
 
@@ -114,11 +174,18 @@ function applyCalculatorParamsToElement(
 	element: HTMLElement,
 	calculatorType: CalculatorType | null,
 	availableTypes: CalculatorType[] | null,
+	providerId: CalculatorProviderId,
+	calculatorConfig: CalculatorProviderConfig,
 ): void {
 	const calculatorElement = element as HTMLElement & {
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[];
+		providerId?: CalculatorProviderId;
+		calculatorConfig?: CalculatorProviderConfig;
 	};
+	calculatorElement.providerId = providerId;
+	calculatorElement.calculatorConfig = calculatorConfig;
+	element.setAttribute("provider-id", providerId);
 
 	if (calculatorType) {
 		calculatorElement.calculatorType = calculatorType;
@@ -139,7 +206,7 @@ function applyCalculatorParamsToElement(
  * Calculator tool registration
  *
  * Supports:
- * - Basic, scientific, and graphing calculators via Desmos
+ * - Basic, scientific, and graphing calculators through Desmos, GeoGebra, or Cortex
  * - Context-aware visibility (shows only when math content is detected)
  * - Item level only
  */
@@ -151,28 +218,15 @@ export const calculatorToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.calculator.description",
 	icon: "calculator",
 	provider: {
-		getProviderId: (config: ToolProviderConfig | undefined) =>
-			typeof config?.provider?.id === "string" && config.provider.id.length > 0
-				? config.provider.id
-				: "calculator-desmos",
-		createProvider: () => new DesmosToolProvider(),
+		getProviderId: resolveCalculatorProviderId,
+		createProvider: createCalculatorToolProvider,
 		getInitConfig: (config: ToolProviderConfig | undefined) =>
 			config?.provider?.init ?? {},
 		getAuthFetcher: (config: ToolProviderConfig | undefined) => {
 			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
-			if (typeof runtimeAuthFetcher === "function") return runtimeAuthFetcher;
-			return async () => {
-				const response = await fetch("/api/tools/desmos/auth", {
-					method: "GET",
-					credentials: "same-origin",
-				});
-				if (!response.ok) {
-					throw new Error(
-						`Failed to fetch Desmos auth config (${response.status})`,
-					);
-				}
-				return (await response.json()) as Record<string, unknown>;
-			};
+			return typeof runtimeAuthFetcher === "function"
+				? runtimeAuthFetcher
+				: undefined;
 		},
 		lazy: true,
 	},
@@ -182,11 +236,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
+	// A type is not a feature id: `calculatorType` arrives through the host's
+	// render params, so `basicCalculator` / `scientificCalculator` granted the
+	// same untyped calculator these two do and only looked like they selected a
+	// variant.
 	pnpSupportIds: [
 		"calculator", // QTI 3.0 standard (cognitive.calculator)
 		"graphingCalculator", // QTI 3.0 standard (assessment.graphingCalculator)
-		"basicCalculator", // Common variant
-		"scientificCalculator", // Common variant
 	],
 
 	/**
@@ -206,6 +262,10 @@ export const calculatorToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const { calculatorType, availableTypes, displayName } =
 			getCalculatorRenderParams(toolbarContext);
+		const calculatorToolConfig =
+			toolbarContext.toolkitCoordinator?.config.tools?.providers?.calculator;
+		const providerId = resolveCalculatorProviderId(calculatorToolConfig);
+		const calculatorConfig = getCalculatorInstanceConfig(calculatorToolConfig);
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -232,7 +292,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 		}
 		overlay.setAttribute("tool-id", fullToolId);
 		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-		applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
+		applyCalculatorParamsToElement(
+			overlay,
+			calculatorType,
+			availableTypes,
+			providerId,
+			calculatorConfig,
+		);
 
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -270,11 +336,50 @@ export const calculatorToolRegistration: ToolRegistration = {
 						draggable: true,
 						resizable: true,
 						closeable: true,
-						initialWidth: 380,
-						initialHeight: 420,
+						/*
+						 * Sized per type from what each layout measures, rather than one
+						 * size for all three. A shell subtracts ~74px of header from the
+						 * height it is given, and the numbers below are the content each
+						 * type needs plus room for its history tape:
+						 *
+						 * - basic: strip, display, edit row and a four-row keypad measure
+						 *   398px. 560 left ~90px of blank above the entry line, which is
+						 *   the gap that made the panel look mis-sized.
+						 * - scientific: the same plus a keypad layer tab row.
+						 * - graphing: the expression rail beside the plot, whose column
+						 *   wants 486px on its own — viewport controls, a 14rem board floor
+						 *   and the readout that *is* the graph for assistive technology,
+						 *   since the board itself is `aria-hidden`. At 620 that column was
+						 *   12px short and the readout's last line was cut off.
+						 *
+						 * The minimums stay shared across types and providers. This
+						 * registration serves Desmos, GeoGebra and Cortex alike, so a
+						 * graphing-only floor would move the resize limit under two vendors
+						 * whose layouts were never measured for it. Cortex below 42rem
+						 * stacks the rail above the plot and needs 701px there, which no
+						 * spacing tier closes — it scrolls its own content instead of
+						 * clipping it, which is the contract every size below the opening
+						 * one already relies on.
+						 */
+						initialWidth: calculatorType === "graphing" ? 720 : 380,
+						initialHeight:
+							calculatorType === "graphing"
+								? 660
+								: calculatorType === "basic"
+									? 500
+									: 560,
 						minWidth: 380,
-						minHeight: 420,
-						initialAlign: "bottom-right",
+						minHeight: 480,
+						/*
+						 * `bottom-right` put a 560-620px-tall shell over the items
+						 * column it shares the viewport with — tall enough, at
+						 * ordinary viewport heights, to sit on top of a sibling
+						 * item's own toolbar row and block its button from mouse
+						 * and touch input. `bottom-left` keeps the same footprint
+						 * over the passage column instead, which carries no
+						 * per-item controls to collide with.
+						 */
+						initialAlign: "bottom-left",
 						initialMargin: 16,
 						// Header controls in the host's design system, and the layout that
 						// goes with them.
@@ -308,7 +413,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 				if (overlay.toolkitCoordinator !== toolbarContext.toolkitCoordinator) {
 					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 				}
-				applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
+				applyCalculatorParamsToElement(
+					overlay,
+					calculatorType,
+					availableTypes,
+					providerId,
+					calculatorConfig,
+				);
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};

@@ -108,7 +108,11 @@ const coordinator = new ToolkitCoordinator({
       passage: ['textToSpeech', 'annotationToolbar'],
     },
     providers: {
-      calculator: { authFetcher: fetchDesmosCredentials },
+      calculator: {
+        provider: {
+          runtime: { authFetcher: fetchDesmosCredentials },
+        },
+      },
     },
   },
   hooks: {
@@ -288,16 +292,28 @@ const tools = {
       // use an exact voiceURI or name returned by speechSynthesis.getVoices().
     },
     calculator: {
-      authFetcher: async () => {
-        const r = await fetch('/api/tools/desmos/auth');
-        const { apiKey } = await r.json();
-        return { apiKey };
+      provider: {
+        runtime: {
+          authFetcher: async () => {
+            const r = await fetch('/api/tools/desmos/auth');
+            const { apiKey } = await r.json();
+            return apiKey ? { apiKey } : {};
+          },
+        },
       },
     },
     annotationToolbar: { enabled: true },
   },
 };
 ```
+
+Desmos is the default if `provider.id` is omitted. Its adapter preserves the
+historical unkeyed URL for compatibility, but that does not grant or imply a
+license. A licensed deployment can provide its application key through
+`provider.runtime.authFetcher`; the documented browser integration includes the
+key in the script URL, so runtime delivery keeps it out of the static bundle but
+does not make it secret. See the current
+[Desmos API Terms](https://www.desmos.com/api-terms).
 
 Tools are placed at the level specified in `placement`. A tool in `item` gets a toolbar button rendered inside each item card; a tool in `section` goes to the shared section toolbar. Tools not listed in any placement array are not visible but may still be registered internally if they have providers.
 
@@ -348,10 +364,14 @@ const tools = {
   providers: {
     textToSpeech: customTtsProvider,
     calculator: {
-      authFetcher: async () => {
-        const r = await fetch("/api/tools/desmos/auth");
-        const payload = await r.json();
-        return payload?.apiKey ? { apiKey: payload.apiKey } : {};
+      provider: {
+        runtime: {
+          authFetcher: async () => {
+            const r = await fetch("/api/tools/desmos/auth");
+            const payload = await r.json();
+            return payload?.apiKey ? { apiKey: payload.apiKey } : {};
+          },
+        },
       },
     },
     annotationToolbar: { enabled: true },

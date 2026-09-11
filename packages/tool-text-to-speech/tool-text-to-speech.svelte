@@ -19,7 +19,7 @@
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	// Props
 	let {
@@ -37,17 +37,26 @@
 	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
+	/** Matches the panel's own width in this component's styles. */
+	const PANEL_WIDTH = 300;
+	/** Kept clear of the viewport edges so the panel's controls stay reachable. */
+	const VIEWPORT_GUTTER = 20;
+
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let closeButtonEl = $state<HTMLButtonElement | undefined>();
+	/**
+	 * Top-left of the panel, in viewport coordinates -- the root is
+	 * `position: fixed`, so the viewport is the box it is positioned against.
+	 */
 	let position = $state({
-		x: isBrowser ? window.innerWidth - 320 : 400,
+		x: isBrowser ? window.innerWidth - PANEL_WIDTH - VIEWPORT_GUTTER : 400,
 		y: isBrowser ? 100 : 100
 	});
 	const dragController = createPointerDragController({
 		getPosition: () => position,
 		setPosition: (next) => {
-			position = next;
+			position = clampToViewport(next);
 		},
 		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
 	});
@@ -129,6 +138,26 @@
 		if (coordinator && containerEl && toolId) {
 			coordinator.updateToolElement(toolId, containerEl);
 		}
+	});
+
+	/*
+	 * Containment, while the panel is on screen. The shared tool shell re-clamps a
+	 * windowed tool on resize; this panel had no equivalent, so a window shrink or a
+	 * page-zoom increase could leave it off the right or bottom edge with no way to
+	 * drag it back. Clamped once on open too, because the panel's height depends on
+	 * which controls are showing and is only known after it renders.
+	 *
+	 * `untrack`: the callback reads and writes reactive state, which AGENTS.md's
+	 * Svelte Subscription Safety keeps out of a tracked effect body.
+	 */
+	$effect(() => {
+		if (!isBrowser || !visible || !containerEl) return;
+		const contain = () => {
+			position = clampToViewport(position);
+		};
+		untrack(contain);
+		window.addEventListener('resize', contain);
+		return () => window.removeEventListener('resize', contain);
 	});
 
 	$effect(() => {
@@ -268,6 +297,26 @@
 		}
 
 		startDragging(e);
+	}
+
+	/**
+	 * Keeps the panel within the viewport. It is `position: fixed`, so shrinking the
+	 * window or raising page zoom moves the viewport out from under a panel that was
+	 * placed once and never re-checked, and a panel off the right or bottom edge
+	 * cannot be dragged back. Measured against the panel's rendered box, since its
+	 * height depends on which controls are showing.
+	 */
+	function clampToViewport(next: { x: number; y: number }) {
+		if (!isBrowser) return next;
+		const box = containerEl?.getBoundingClientRect();
+		const width = box?.width || PANEL_WIDTH;
+		const height = box?.height || 0;
+		const maxX = Math.max(0, window.innerWidth - width);
+		const maxY = Math.max(0, window.innerHeight - height);
+		return {
+			x: Math.max(0, Math.min(maxX, next.x)),
+			y: Math.max(0, Math.min(maxY, next.y))
+		};
 	}
 
 	function startDragging(e: PointerEvent) {

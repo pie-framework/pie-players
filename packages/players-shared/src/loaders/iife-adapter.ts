@@ -33,7 +33,11 @@ import {
 	isCustomElementConstructor,
 	Status,
 } from "../pie/types.js";
-import { getPackageWithoutVersion, parsePackageName } from "../pie/utils.js";
+import {
+	encodeElementPackageSpecs,
+	getPackageWithoutVersion,
+	parsePackageName,
+} from "../pie/utils.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -499,9 +503,13 @@ function buildBundleUrl(
 			: config.bundleInfo.url;
 	}
 
-	const packageVersions = Object.values(elements).join("+");
+	// The two encoders here are deliberately different: the path takes
+	// per-spec encoding because a scoped spec's `/` and `@` must stay literal
+	// for the route to match, while the `elements=` value is an ordinary query
+	// parameter. See `encodeElementPackageSpec`.
+	const packageVersions = encodeElementPackageSpecs(Object.values(elements));
 	const host = normalizeBundleHost(config.bundleHost);
-	const base = `${host}${encodeURI(packageVersions)}/${bundleType}`;
+	const base = `${host}${packageVersions}/${bundleType}`;
 	return elementTags
 		? `${base}?elements=${encodeURIComponent(elementTags)}`
 		: base;

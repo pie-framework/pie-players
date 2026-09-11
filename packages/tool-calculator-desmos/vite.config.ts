@@ -5,23 +5,20 @@ import dts from "vite-plugin-dts";
 
 export default defineConfig({
 	plugins: [
-		svelte({
-			compilerOptions: {
-				customElement: true,
-			},
-			emitCss: false,
-		}),
+		svelte({ emitCss: false }),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
-			insertTypesEntry: true,
+			// No `insertTypesEntry`: it derives the types entry from the bundle
+			// entry, which is a `.svelte` file with no declarations, and writes a
+			// stub over the `index.d.ts` emitted from `index.ts`.
 			// Only generate types for the entry point
 			include: ["index.ts"],
 		}),
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "tool-calculator.svelte"),
+			entry: resolve(__dirname, "index.ts"),
 			name: "PieToolCalculator",
 			fileName: () => "pie-tool-calculator.js",
 			formats: ["es"],
@@ -33,9 +30,9 @@ export default defineConfig({
 		sourcemap: false,
 		rollupOptions: {
 			external: [
-				"@pie-players/pie-calculator-desmos",
 				"@pie-players/tts-client-server",
 				"@pie-players/pie-assessment-toolkit",
+				"@pie-players/pie-tool-calculator-shared/calculator-element",
 			],
 			output: {
 				format: "es",

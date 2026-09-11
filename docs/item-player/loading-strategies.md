@@ -11,7 +11,7 @@
 ## Standalone usage
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
 
 <pie-item-player
   strategy="iife"
@@ -64,6 +64,8 @@ Loads IIFE bundles from the bundle host by injecting `<script>` tags into the do
 - `mode="view"` + `hosted=false` → `clientPlayer` bundle (elements + controllers)
 - `mode="view"` + `hosted=true` → `player` bundle (elements only; controllers provided by host)
 - `mode="author"` → `editor` bundle (authoring config elements)
+
+`clientPlayer` bundles carry the controllers, so the answer key and the scoring logic run in the learner's browser. That is the default: `hosted` is false unless the host sets it. See [`../security/readme.md`](../security/readme.md#delivery-integrity) for what a proctored delivery has to do instead, and for the CSP each strategy needs.
 
 After loading, elements are registered in `window.PIE_REGISTRY` and defined as custom elements with versioned tag names (e.g. `multiple-choice--version-9-9-1`).
 

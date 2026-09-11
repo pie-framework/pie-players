@@ -134,6 +134,13 @@ playerEl.hooks = hooks;
 playerEl.env = { mode: 'gather', role: 'student' };
 ```
 
+The element batches input assignments made in the same turn. Both assigning
+inputs before connection and connecting before assigning them are supported.
+Changing `assessmentId`, `attemptId`, `assessment`, or `hooks` replaces the active
+controller; assign a new object rather than mutating an old object in place.
+Locale, navigation visibility, and runtime property updates retain the assessment
+controller. No private bootstrap call is needed.
+
 Key attributes/properties on `pie-assessment-player-default`:
 
 | Attribute | Type | Purpose |
@@ -172,6 +179,18 @@ if (runtime.canNext) {
   controller.navigateNext();
 }
 ```
+
+The getter returns `null` until initialization and hydration succeed. Waiters
+resolve to `null` on initialization failure, retirement, disconnect, or their own
+timeout. A waiter timeout does not cancel the active initialization. The ready
+hook and ready event observe the same controller as the getter and waiter, once
+per successful initialization. A rejected ready notification reaches the error
+hook and event while the successfully hydrated assessment stays ready.
+
+The element disposes its old controller on input replacement or disconnect.
+The controller's `dispose()` is idempotent and retires its listeners and state.
+Nested toolkit coordinators retain their existing ownership: internally created
+ones are disposed with their toolkit; host-supplied ones remain borrowed.
 
 Use this mode when host policy (workflow/timing/gating/routing) is complex and tightly coupled to broader app state.
 
@@ -306,9 +325,13 @@ const coordinator = new ToolkitCoordinator({
         serverProvider: 'polly',
       },
       calculator: {
-        authFetcher: async () => {
-          const r = await fetch('/api/tools/desmos/auth');
-          return r.json();
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const r = await fetch('/api/tools/desmos/auth');
+              return r.json();
+            },
+          },
         },
       },
     },
@@ -317,6 +340,12 @@ const coordinator = new ToolkitCoordinator({
 
 playerEl.coordinator = coordinator;
 ```
+
+This `authFetcher` keeps the Desmos key out of the static application bundle,
+but it cannot keep the key secret from the browser because Desmos's documented
+integration includes it in the `calculator.js` URL. Use a key whose Trial or
+Commercial Tier covers the demo or deployment; see the current
+[Desmos API Terms](https://www.desmos.com/api-terms).
 
 The same coordinator instance is reused across section transitions. When the user navigates from section 1 to section 2, the assessment player unmounts the old section player and mounts a new one with the same coordinator — TTS playback state, tool state, and highlight layers reset per-section, but the coordinator's configuration and service instances persist.
 
@@ -632,12 +661,12 @@ The typical page-load sequence is:
 
 1. Mount `<pie-assessment-player-default>` with `assessment-id`, `attempt-id`, and `assessment`.
 2. Set object props (`hooks`, `env`, `coordinator`).
-3. Player calls `bootstrapController()` — creates the `AssessmentController`.
+3. Player reconciles its inputs and creates the `AssessmentController`.
 4. Controller creates the delivery plan (`createAssessmentDeliveryPlan` hook or default flattening).
 5. Controller calls `hydrate()` — resolves persistence strategy via `createAssessmentSessionPersistence`.
 6. `loadSession()` loads the assessment snapshot and applies it (emits `assessment-session-applied`).
-7. Controller transitions to `ready` — emits `assessment-controller-ready`.
-8. Player renders the current section by mounting a `pie-section-player-*` element.
+7. After initialization and hydration succeed, the player publishes the controller and mounts the current `pie-section-player-*` element.
+8. The player invokes the ready hook and emits `assessment-controller-ready`. Failed hydration instead produces `assessment-error`, an unavailable controller getter, and a localized Retry action.
 9. Section player bootstraps; the assessment player awaits `waitForSectionController(...)` on the section CE to obtain the section controller handle.
 10. Section items load and register; `section-loading-complete` fires.
 11. Session replay applies the restored section session to all loaded items.

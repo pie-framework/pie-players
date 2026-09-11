@@ -1,5 +1,97 @@
 # @pie-players/pie-tool-line-reader
 
+## 0.3.70
+
+### Patch Changes
+
+- 599c657: Position frameless tool overlays against the content they are placed on.
+  
+  A frameless overlay was appended next to the toolbar buttons, so whichever
+  element happened to be positioned became its containing block. At `passage` and
+  `item` placement that is `pie-item-toolbar`, a header-sized box, and the line
+  reader's opening position — derived from the viewport — put the panel outside
+  the card. Auto-focus then scrolled the pane across to reveal it, taking the
+  passage off screen. At `section` placement no positioned ancestor exists, so the
+  same coordinates resolved against the initial containing block and looked right.
+  
+  `ToolRenderElement` gains `container`. A registration declaring
+  `container: 'content-boundary'` has its element appended to the nearest
+  `data-pie-tool-overlay-boundary` element — the box a host already marks as the
+  content a tool belongs to — and the section player's item and passage cards make
+  themselves the containing block for what lands there. The composition layer sets
+  it for frameless overlays, so the toolbar honours a declaration rather than
+  inferring intent from a tool's surface. A host declaring no boundary keeps the
+  previous in-toolbar mount, so section-level placement is unchanged.
+  
+  The line reader derives its opening position from that containing block instead
+  of the viewport, centring on the part of it currently on screen — the midpoint
+  of a card several screens tall is not visible. Position and width are clamped to
+  the containing block on open, on drag, on keyboard movement, on resize and on
+  window resize, and it focuses with `preventScroll` so revealing it cannot scroll
+  an ancestor pane.
+  
+  Ruler and protractor position by percentage, so they now self-centre in the card
+  they are placed on rather than in whatever box was positioned above it.
+- f10fa7d: Fix keyboard placement of the ruler and the protractor.
+  
+  Both tools read their current offset by parsing `style.transform` and fell back
+  to `window.innerWidth / 2` and `window.innerHeight / 2` when there was none.
+  Before the first drag there is none, so the first arrow key wrote roughly half
+  the viewport as if it were a 10px nudge, and the tool jumped to the middle of the
+  screen. The write then put `translate(-50%, -50%)` back into the inline
+  transform, which `DOMMatrix` refuses to parse — values must be resolvable at
+  parse time — so every press after that threw and keyboard placement stopped
+  working altogether.
+  
+  The offset now comes from the computed transform, which is always a resolved
+  matrix, with the centring's half-box added back to recover the offset the tool
+  has actually been moved by. That reads correctly at rest and after a pointer
+  drag, so a nudge continues from wherever the tool is.
+  
+  Keyboard movement is also clamped to the box the tool is positioned against.
+  Moveable bounds a pointer drag, but a keyboard move writes `style.transform`
+  directly and was bounded by nothing. `clampOffsetWithinBlock` and
+  `resolveContainingBlockRect` in `@pie-players/pie-players-shared` are that
+  clamp, shared rather than written twice.
+  
+  The line reader adopts the same helpers. It arrived at the same containing-block
+  resolution independently and clamps an absolute centre point where the
+  measurement tools clamp a translate offset; `clampPointWithinBlock` is that
+  clamp in point coordinates, conjugate to the offset one by a translation of half
+  the block. Behaviour is unchanged.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [599c657]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [e3169f8]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/pie-assessment-toolkit@0.3.70
+  - @pie-players/pie-context@0.3.70
+
+## 0.3.69
+
+### Patch Changes
+
+- Updated dependencies [ced07e0]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

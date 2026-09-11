@@ -127,7 +127,9 @@ The player supports two external style mechanisms:
 - **`external-style-urls`** attribute -- comma-separated CSS URLs fetched at runtime, scoped to `.pie-item-player.{scopeClass}`, and injected into `<head>`.
 - **`config.resources.stylesheets`** -- stylesheet resources declared in the item config, loaded the same way.
 
-Both are scoped to the player instance using a generated or custom class name to avoid style leakage between items.
+Only same-origin URLs load. A cross-origin origin has to be named in `allowed-style-origins`, which is a host's opt-in and not the default: `config.resources.stylesheets` is authored input, so an open default let an item name any origin it liked.
+
+Scoping is per player instance, by a generated or custom class name, and applies to the same-origin case — the player fetches that CSS and rewrites its selectors (`scopeStylesheetCss`). A cross-origin sheet cannot be fetched and rewritten without CORS, so it is injected as a `<link>` and the browser applies it unscoped, page-wide. That asymmetry is the reason cross-origin is opt-in.
 
 ## Debug support
 

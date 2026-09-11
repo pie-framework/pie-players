@@ -6,14 +6,18 @@ This folder contains configuration files used to build and publish variants of:
 
 Each config represents a set of PIE elements (package + version) bundled for `pie-item-player`.
 
+An element's optional `tag` is the authored base tag to register, for example
+`multiple-choice`. Omit it to use `pie-<package basename>`. The generated package
+adds the canonical version suffix; content must use the same base tag.
+
 ## Local build
 
 ```bash
-bun run cli pie-packages:preloaded-player-build-package --elements-file configs/preloaded-player/<name>.json
+bun run cli pie-packages:preloaded-player-build-package --elementsFile configs/preloaded-player/<name>.json
 ```
 
 ## CI/CD
 
 Workflow: `.github/workflows/publish-preloaded-player.yml`
 
-See `docs/preloaded-player/README.md` for full publishing behavior.
+See [the preloaded-player workflow](../../docs/preloaded-player/readme.md) for full publishing behavior.

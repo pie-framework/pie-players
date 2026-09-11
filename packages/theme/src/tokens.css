@@ -5,7 +5,7 @@
 :where(pie-theme[theme="light"]) {
 	--pie-annotation-underline: #4221d5;
 	--pie-annotation-underline-dark: #9c89ec;
-	--pie-background: rgba(255, 255, 255, 0);
+	--pie-background: #ffffff;
 	--pie-background-dark: #ecedf1;
 	--pie-black: #000000;
 	--pie-blue-grey-100: #f3f5f7;
@@ -52,6 +52,7 @@
 	--pie-secondary-background: rgba(241, 241, 241, 1);
 	--pie-secondary-dark: #880e4f;
 	--pie-secondary-light: #f48fb1;
+	--pie-surface: #ecedf1;
 	--pie-tertiary: #146eb3;
 	--pie-tertiary-light: #d0e2f0;
 	--pie-text: black;
@@ -110,6 +111,7 @@
 	--pie-secondary-background: #222222;
 	--pie-secondary-dark: #cc00cc;
 	--pie-secondary-light: #ff99ff;
+	--pie-surface: #2a2a2a;
 	--pie-tertiary: #00ffff;
 	--pie-tertiary-light: #99ffff;
 	--pie-text: #ffffff;

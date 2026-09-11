@@ -362,7 +362,25 @@
 		--pie-passage-header-background: var(--pie-section-player-card-header-background);
 	}
 
+	/* Same bridge under a dark theme, so the hosted element follows the dark hook. */
+	:global([data-theme="dark"] pie-section-player-passage-card),
+	:global(pie-theme[theme="dark"] pie-section-player-passage-card) {
+		--pie-passage-header-background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background)
+		);
+	}
+
 	.pie-section-player-content-card {
+		/*
+		 * Containing block for frameless tool overlays. The toolkit appends them to
+		 * this element (see `resolveOverlayMountParent` in the assessment toolkit),
+		 * so the card's box is the frame a line reader or a ruler positions and
+		 * clamps against. Without it those overlays resolve against whichever
+		 * ancestor happens to be positioned, and a tool placed on this card can open
+		 * outside it.
+		 */
+		position: relative;
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: var(--pie-section-player-card-radius, 8px);
 		background: var(--pie-background, #fff);
@@ -389,6 +407,7 @@
 	.pie-section-player-content-card-header {
 		position: relative;
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
@@ -409,11 +428,28 @@
 		);
 	}
 
+	/*
+	 * Dark themes get their own opt-in fill: a host's light-theme brand tint
+	 * surviving into a dark theme is the failure this avoids. Unset, it falls
+	 * back to the single light hook, so a host that sets only that one is
+	 * unaffected. Keyed off the selectors the theme package writes its dark
+	 * tokens under — see renderTokensCss in packages/theme/src/theme-css.ts.
+	 */
+	:global([data-theme="dark"]) .pie-section-player-content-card-header,
+	:global(pie-theme[theme="dark"]) .pie-section-player-content-card-header {
+		background: var(
+			--pie-section-player-card-header-background-dark,
+			var(--pie-section-player-card-header-background, transparent)
+		);
+	}
+
 	/* Any heading level, not `h2`: the card renders at `base-heading-level`, so
 	   the tag is composition context rather than a fixed choice, and a host that
 	   nests the player deeper got an unstyled title. */
 	.pie-section-player-content-card-header :is(h1, h2, h3, h4, h5, h6) {
 		position: relative;
+		min-width: 0;
+		overflow-wrap: anywhere;
 		z-index: 0;
 		margin: 0;
 		/* Reads the scale rather than inheriting it: the card wraps the passage
@@ -428,8 +464,15 @@
 
 	.pie-section-player-content-card-header pie-item-toolbar {
 		position: relative;
+		min-width: 0;
+		max-width: 100%;
 		z-index: 1;
 		margin-left: auto;
+	}
+
+	/* Match item-card overlay layering above the pane's scroll hint (10). */
+	.pie-section-player-content-card-header :global(pie-item-toolbar[data-pie-header-overlay-active="true"]) {
+		z-index: 11;
 	}
 
 	.pie-section-player-content-card-body {

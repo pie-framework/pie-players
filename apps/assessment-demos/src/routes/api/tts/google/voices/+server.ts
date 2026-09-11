@@ -1,6 +1,10 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
+import {
+	mapTtsFailure,
+	TtsNotConfiguredError,
+} from "@pie-players/demo-ui/server";
 
 // Load the Google provider lazily via a variable specifier + `@vite-ignore`
 // so its native `google-gax` dependency (which uses top-level `__dirname`)
@@ -15,7 +19,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	const hasApiKey = !!process.env.GOOGLE_API_KEY;
 	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 	if (!hasApiKey && !hasServiceAccount) {
-		throw new Error(
+		throw new TtsNotConfiguredError(
 			"Google Cloud credentials not configured. Set GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS.",
 		);
 	}
@@ -61,9 +65,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 		return json({ voices });
 	} catch (err) {
-		return json(
-			{ error: err instanceof Error ? err.message : "Internal server error" },
-			{ status: 500 },
-		);
+		const { status, message, logAsFault } = mapTtsFailure(err);
+		if (logAsFault) console.error("[Google TTS API] Error:", err);
+
+		return json({ error: message }, { status });
 	}
 };

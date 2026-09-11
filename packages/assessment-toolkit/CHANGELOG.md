@@ -1,5 +1,356 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.70
+
+### Patch Changes
+
+- 599c657: Position frameless tool overlays against the content they are placed on.
+  
+  A frameless overlay was appended next to the toolbar buttons, so whichever
+  element happened to be positioned became its containing block. At `passage` and
+  `item` placement that is `pie-item-toolbar`, a header-sized box, and the line
+  reader's opening position — derived from the viewport — put the panel outside
+  the card. Auto-focus then scrolled the pane across to reveal it, taking the
+  passage off screen. At `section` placement no positioned ancestor exists, so the
+  same coordinates resolved against the initial containing block and looked right.
+  
+  `ToolRenderElement` gains `container`. A registration declaring
+  `container: 'content-boundary'` has its element appended to the nearest
+  `data-pie-tool-overlay-boundary` element — the box a host already marks as the
+  content a tool belongs to — and the section player's item and passage cards make
+  themselves the containing block for what lands there. The composition layer sets
+  it for frameless overlays, so the toolbar honours a declaration rather than
+  inferring intent from a tool's surface. A host declaring no boundary keeps the
+  previous in-toolbar mount, so section-level placement is unchanged.
+  
+  The line reader derives its opening position from that containing block instead
+  of the viewport, centring on the part of it currently on screen — the midpoint
+  of a card several screens tall is not visible. Position and width are clamped to
+  the containing block on open, on drag, on keyboard movement, on resize and on
+  window resize, and it focuses with `preventScroll` so revealing it cannot scroll
+  an ancestor pane.
+  
+  Ruler and protractor position by percentage, so they now self-centre in the card
+  they are placed on rather than in whatever box was positioned above it.
+- e3169f8: Make toolkit coordinator teardown explicit and race-safe.
+  
+  `disposeSectionController` now relinquishes a controller before awaiting its
+  persistence, so a section reacquired during a delayed teardown receives a fresh
+  controller, waits for that cohort's persisted state before hydrating it, and
+  cannot be deleted by the old finalizer. The new
+  idempotent `ToolkitCoordinator.dispose()` releases coordinator-owned controllers,
+  providers, highlights, subscriptions, and policy state while leaving
+  host-supplied registries and error buses under host ownership. Toolkit custom
+  elements call it only for coordinators they created themselves. Teardown waits
+  for controller, coordinator, provider, and TTS initialization already in flight,
+  suppresses late ready notifications, and rejects late acquisitions instead of
+  returning disposed handles. Reactive initialization retired by a rerun or
+  unmount is treated as cancellation rather than a framework runtime error.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [d4d0c39]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/tts-client-server@0.3.70
+  - @pie-players/pie-calculator@0.3.70
+  - @pie-players/pie-calculator-cortex@0.3.70
+  - @pie-players/pie-calculator-desmos@0.3.70
+  - @pie-players/pie-calculator-geogebra@0.3.70
+  - @pie-players/pie-context@0.3.70
+  - @pie-players/pie-tts@0.3.70
+
+## 0.3.69
+
+### Patch Changes
+
+- ced07e0: Withdraw the answer eliminator from items it cannot act on, including for a
+  learner whose profile grants answer masking.
+  
+  `hasChoiceInteraction` matched an item model's `element` against a list of choice
+  interactions, then fell through to "any model carrying a non-empty `choices`
+  array" for configs that name no element. `placement-ordering`, `categorize` and
+  `drag-in-the-blank` each hold their draggables in `choices`, so the fallback
+  answered `true` for all three and the toolbar offered an eliminator whose
+  controls do nothing on those items (PIE-935). The fallback now applies only to a
+  model with no element name, which is the case it was written for; a named model
+  is answered by the list alone, as the element-level branch has always done.
+  
+  That alone did not remove the button. A PNP-granted tool skips the relevance
+  gate, deliberately — a heuristic must not withdraw an accommodation a learner is
+  entitled to — and every profile granting `answerMasking`, `answerEliminator` or
+  `strikethrough` took that path. So a registration may now declare
+  `isApplicableToContent(context)`, a capability veto that a grant does not
+  survive: it answers whether the tool can act on this content at all, where
+  `isVisibleInContext` answers whether it is plausibly useful. The answer
+  eliminator declares it, and `ItemToolBar` applies it as a third pass after
+  policy and relevance.
+  
+  The two gates are not interchangeable. A calculator is applicable to every item
+  and merely relevant to some, so it declares only the relevance gate and a
+  granted calculator still reaches an item that does not look mathematical.
+  Declare the veto only where the tool's controls provably do nothing: a false
+  negative withdraws an entitlement, which is the more expensive failure. A gate
+  that throws, unresolved content, and a host that resolves the tool's visibility
+  itself all leave the tool in place.
+  
+  `ToolRegistration` gains one optional method, so a host writing its own
+  registrations is unaffected until it opts in. No recorded consumer places the
+  answer eliminator, so no host's rendered toolbar changes. PIE-917 still covers
+  replacing the element-name list with the capability contract.
+- 004d38e: Give every calculator the panel size its layout needs, and make the Cortex
+  calculator fit the panel it is given instead of clipping.
+  
+  A graphing calculator has never opened at the size it declares. `ItemToolBar`
+  builds a tool shell from the first render and reads `initialWidth` once, but a
+  registration that sizes itself from render params sees none on that pass:
+  `getToolRenderParams` reads the resolved tool context, which arrives a render
+  later. So `calculatorType` was null, the calculator declared its untyped 380px
+  panel, and every graphing calculator — Desmos, GeoGebra and Cortex alike — opened
+  in a box a third of the width its two-column layout needs, with the plot column
+  clipped away. `applyShellStrings` already re-read the title on update, which is
+  why the header said "Graphing Calculator" over a panel sized for a basic one. The
+  shell now adopts a declared size that changed, and re-places itself because the
+  declared size is what `initialAlign` resolved against. A learner's own size wins:
+  once the panel has been dragged or resized it is theirs, and a re-render must not
+  snap it back.
+  
+  Panel sizes are now per type, measured rather than assumed — 380x500 basic,
+  380x560 scientific, 720x660 graphing. Basic asked for 560 and needed 398px of
+  content, and the ~90px of blank above the entry line was that gap. The resize floor stays shared at
+  380x480: this registration serves Desmos, GeoGebra and Cortex alike, so a
+  graphing-only floor would move the limit under two vendors whose layouts were
+  never measured for it. Cortex below 42rem stacks the rail above the plot and needs
+  701px there, which no spacing tier closes — it scrolls its own content instead,
+  which is the contract every size below the opening one already relies on.
+  
+  In the Cortex calculator itself, every fixed size is now a token, and the
+  calculator measures its own box and re-declares them in three tiers. Keys keep
+  the 44px of WCAG 2.5.5 at every size a panel opens at; below that they give up
+  height so the keypad keeps its rows, down to 28px, clear of 2.5.8's 24px floor at
+  Level AA. The tier is measured with a `ResizeObserver` rather than a
+  `container-type: size` query, which carries `contain: layout` and would make the
+  calculator the containing block for every fixed-position descendant, MathLive's
+  popovers among them. The `@media (max-height: 30rem)` rule this replaces asked the
+  viewport, so it never fired for a 406px panel in a 900px window — and the tool
+  wrapper's `height: 100% !important` had overridden its effect anyway.
+  
+  Nothing is clipped now, at any size. Three separate causes: the calculator root
+  was pinned to the panel's height inside an `overflow: hidden` wrapper, so the
+  shell's own `overflow-y: auto` never saw anything to scroll; the keypad and the
+  graphing view's two panels were shrinkable flex items, and a flex item shrunk
+  below its content paints outside its box rather than clipping, which is how keypad
+  rows came to be drawn over the graph controls; and the plot carried a `width: 100%`
+  with a border at `content-box`, overflowing its column by exactly 2px. The root
+  now scrolls as the floor case, only the display yields among the rows, and the
+  graphing view places the pressure per layout: stacked, the panels hold their
+  content and the calculator takes one scroll; side by side they scroll in their own
+  columns, so the readout cannot push the plot off the panel. The readout is never
+  hidden or truncated either way — the board is `aria-hidden`, so that text is the
+  graph for assistive technology and for read-aloud.
+  
+  `Clear history` rendered 96x20 and was the one control in the tool under 2.5.8's
+  24px; it now holds 28px. The keypad layer tabs wrap rather than running off a
+  320px panel.
+  
+  The panel is now drawn as one instrument rather than as controls arranged on a
+  card, which is where the remaining space went. The visible `SCIENTIFIC CALCULATOR`
+  eyebrow is gone: the tool shell's header already carries that exact string, and a
+  second copy of it in a row of its own cost 46px of a 500px panel — a row neither
+  reference calculator spends. The heading stays in the tree as visually-hidden
+  text, so the region keeps its entry in the document outline. The angle mode moved
+  into the display, which has vertical slack a row of its own does not, pinned above
+  the tape's scroller so history passes behind it rather than pushing it away. The
+  display itself became a screen — a filled surface running to the panel's edges,
+  where before it was bare card around a lone bordered mathfield, which is what made
+  a 380x500 panel look like it had a hole above the entry line. Layer tabs,
+  backspace and clear moved onto the keypad's recessed plane as its head, so the
+  bottom of the panel is a single block; the tabs read as a tab strip rather than as
+  a row of pills. The keypad calculators drop the root's padding entirely, so screen
+  and keypad meet on one rule with no gutters, and the insets that remain are the
+  ones inside each surface — `--cortex-tape-inset` and the keypad's inline padding
+  are the same value, so the mathfield's text and the first key column share a left
+  edge. The mathfield's focus ring is inset now: at full screen width an offset ring
+  drew a box around the whole panel instead of around a control. Backspace and clear are icon
+  buttons with text accessible names and `title` on both: as two wide labelled buttons
+  they were the widest thing on the plane, and neither reference calculator spends a
+  bordered button on either. The faces are inline SVG stroked in `currentColor` rather
+  than font characters, since `⌫` (U+232B) is the code point least likely to be in a
+  host's font stack and a missing glyph renders as a notdef box — a control with no
+  legible face. The graphing view's remove-expression button takes the same clear
+  icon; the viewport arrows and math signs stay as text, being code points every
+  fallback font carries.
+  
+  In the graphing view the same treatment. The angle mode is declared by the view
+  that owns the setting and rendered in the expression rail, the layer tabs sit on
+  the keypad's plane, and the expression list became a pane that takes the column's
+  slack — sized to its rows it left ~140px of bare card between the keypad and the
+  bottom of a 720x660 panel.
+  
+  The graphing board's `ResizeObserver` resized the board synchronously inside its
+  own callback, which raised an unhandled "ResizeObserver loop completed with
+  undelivered notifications" on every host page that opened a graphing calculator,
+  its `previousSize` guard notwithstanding. It is deferred a frame.
+  
+  Section-demos gains a dedicated `calculator-desmos` demo, which the default
+  provider had never had — it appeared only incidentally in demos about other
+  things. It names `calculator-desmos` explicitly and shows the API key arriving
+  through `provider.runtime.authFetcher` at open time rather than in item content.
+  `SectionDemoRuntimePage` takes a `calculatorConfig` prop instead of keying
+  configuration off the provider name, because Desmos is what every other demo gets
+  by default and a lockdown keyed on `'desmos'` would have reconfigured the
+  calculator in a dozen demos that are about something else; the Cortex demo's
+  settings moved to its route with it. That demo deliberately does not set
+  `restrictedMode`: the Desmos adapter maps it to `expressions: false` for every
+  type, which on a graphing calculator removes the expression list and leaves graph
+  paper with no way to enter a function, so the demo locks down through Desmos' own
+  `restrictedFunctions` and chrome flags instead.
+  
+  The panel-fit test compared the root's scroll height against its client height and
+  stopped there, which is why it passed while the shipped graphing panel cut off its
+  readout: the surplus never reached the root, because the flex items above painted
+  outside their boxes instead. It now walks every node, asserts that anything
+  overflowing can be scrolled to, that the calculator never scrolls sideways, and
+  that no target drops below 24px — at both the size each panel opens at and its
+  resize floor. The isolated demo's `shell` size was also one figure for all three
+  types and larger than any of them, so the size it measured was not a size that
+  ships; it is now per type, with a `Panel minimum` option beside it.
+- cb99eae: Give the three calculator adapters one naming and narrowing convention.
+  `<Vendor>CalculatorSettings` is the vendor option shape,
+  `<Vendor>CalculatorProviderConfig` is `CalculatorProviderConfig` with `settings`
+  narrowed to it, and `<Vendor>CalculatorProviderInit` exists only where the
+  adapter narrows `CalculatorProviderInit`. Cortex already had all three and is the
+  model; the rule is stated on the two contract interfaces so a host reading one
+  adapter knows where to look in the others.
+  
+  GeoGebra's `GeoGebraCalculatorProviderConfig` typed its `initialize()` argument
+  while the identically-suffixed Desmos type typed `createCalculator()` -- the same
+  name for opposite lifecycles in sibling packages a host picks between. It is now
+  `GeoGebraCalculatorProviderInit`, extends `Pick<CalculatorProviderInit,
+  "onTelemetry">` rather than redeclaring that callback, and the freed name types
+  `createCalculator()`'s argument as it does elsewhere. GeoGebra's embed takes no
+  credential, so the narrowing is what says `apiKey` and `proxyEndpoint` cannot be
+  honoured there, and narrowing `createCalculator` removed an
+  `as GeoGebraCalculatorSettings` cast.
+  
+  Desmos's `DesmosCalculatorConfig` is renamed `DesmosCalculatorSettings`, since it
+  is the settings shape and the other two adapters already said so. It takes
+  `CalculatorProviderInit` whole -- Desmos is the one adapter that needs a
+  credential -- so it declares no init alias, and the contract records that as the
+  rule rather than an omission.
+  
+  Cortex exported `CortexCalculatorProviderInit` but typed `initialize()` with the
+  un-narrowed contract type, so `initialize({ apiKey })` compiled against a local
+  engine that has nothing to authenticate. The signature now uses the narrowed
+  type.
+  
+  No consumer breaks: verified against all three consumer checkouts on 2026-08-27,
+  none of which imports any calculator type, and no checkout offers GeoGebra.
+- 8bb668b: Add a separately packaged GeoGebra calculator suite with provider, full tool,
+  inline trigger, tests, documentation, and a section-player demo. Basic requests
+  map to GeoGebra Scientific, while scientific and graphing use their matching
+  embedded apps.
+  
+  Move calculator lifecycle and UI into a provider-neutral shared package, keep
+  vendor settings in their implementation packages, and select implementations
+  through the same `provider.init`, `provider.runtime`, and `settings` schema.
+  Desmos remains the no-configuration default and preserves its unkeyed legacy
+  load and runtime `proxyEndpoint` initialization for existing clients. The
+  packaged composition selects the GeoGebra element and lazy bundle from the same
+  provider config used by the toolkit.
+  
+  Document that PIE bundles only MIT-licensed adapter code, not either vendor
+  application. Clarify the separate Desmos and GeoGebra license obligations,
+  runtime credential boundary, attribution, and self-hosting restrictions.
+- 787ad8f: Add a fully bundled open-source calculator provider using MathLive, Cortex
+  Compute Engine, and JSXGraph, with basic, scientific, and graphing modes,
+  worker-isolated evaluation, accessible graph exploration, direct custom-element
+  wrappers, package-owned isolated mode demos, typed English/Dutch localization
+  with host message overrides and RTL support, canonical theme-token consumption,
+  themeable graph series, and opt-in default-tool-loader composition.
+  
+  Move registration of the generic `pie-tool-calculator` element into the shared,
+  provider-neutral package while retaining the Desmos compatibility entry and
+  Desmos as the default provider.
+- 3544e9d: Move Desmos per-instance configuration to the Desmos adapter package, and align the calculator contract with the TTS one. `@pie-players/pie-calculator` no longer exports the Desmos settings type or accepts `desmos` on `CalculatorProviderConfig`; import `DesmosCalculatorSettings` and `DesmosCalculatorProviderConfig` from `@pie-players/pie-calculator-desmos` instead.
+  
+  `CalculatorProvider` and `Calculator` stay un-parameterized, matching `ITTSProvider` in `@pie-players/pie-tts`. An adapter extends `CalculatorProviderConfig` and narrows `createCalculator`'s argument in its own class signature, which is what gives a caller holding the concrete provider the precise type; a type parameter on the interface would add nothing, since a provider narrowing that argument satisfies it either way. `CalculatorProvider.initialize` now takes an optional `CalculatorProviderInit` — vendor credentials and an instrumentation callback — so a provider that authenticates is describable by the contract rather than by a structural mirror. `DesmosToolProvider` is typed by `CalculatorProvider` from the contract package, the way `TTSToolProvider` is typed by `ITTSProvider`, and reaches `@pie-players/pie-calculator-desmos` only inside a method body: that package is an optional peer, and a top-level type import from it would reach the toolkit's published declarations and make the optional peer required for anyone type-checking without `skipLibCheck`.
+  
+  The runtime shape is `{ restrictedMode, settings: { … } }`, one vendor-neutral field for every adapter, so an adapter can own typed configuration without leaking provider knowledge into the generic package. The consumer dependency pad records no documented host importing any calculator type, so the listed hosts are unaffected.
+- 6e2d488: Drop the non-standard PNP support-id aliases from the packaged registrations, and report a support id no registration claims.
+  
+  Each packaged capability declared its AfA 3.0 / QTI 3.0 feature ids plus two or three "common variant" aliases — 21 aliases against 19 standard ids, so the alias vocabulary was as large as the vocabulary it aliased. They were modelled on what a particular host's UI happened to call a capability rather than on a published vocabulary, which is why the set could look complete and still miss the next host's label: a delivery system sending `responseMasking` got nothing, while `highlighter` and `lineReader` happened to work. Removed: `trackingGuide`, `highContrast`, `customColors`, `highlighter`, `textHighlight`, `annotation`, `lineReader`, `basicCalculator`, `scientificCalculator`, `choiceMasking`, `measurement`, `angleMeasurement`, `coordinatePlane`, `graphingTool`, `chemistryReference`, `elementReference`, `tts`, `speechOutput`, `spanishGlossary`, `spanishIllustratedGlossary`. `theme` stays as the theme capability's canonical id and its `toolId`. The standard ids for every capability are unchanged, so a host already sending AfA/QTI feature ids is unaffected; a host sending one of the removed strings maps its own vocabulary at the boundary instead. `UNIVERSAL_SUPPORTS_PRESET` shrinks correspondingly.
+  
+  `basicCalculator` and `scientificCalculator` were additionally misleading: `calculatorType` arrives through the host's render params, so both granted the same untyped calculator as `calculator` and only looked like they selected a variant.
+  
+  The reason the aliases felt load-bearing was a silent failure. `PnpPolicySource.mapSupportToToolId` returns an unclaimed support id verbatim, so it becomes a feature id matching nothing in placement: the capability is absent and no channel says why, which reads as an unwired toolkit. `composeDecision` now emits a `tool-policy.unknownSupportId` diagnostic naming the id, suppressed when the registry is empty because there is then no vocabulary to check against — a host supplying no registry already gets one `tool-config-validation` warning for that. `ToolPolicyDiagnosticCode` gains the new member.
+- cb99eae: Delete the Desmos adapter's deprecated configuration surface: the `apiKey` and
+  `proxyEndpoint` fields on its settings type, and the
+  `DesmosCalculatorProviderConfig.desmos` option bag that held them. Vendor options
+  are `settings`, the same field every adapter uses, and credentials are
+  provider-level -- `initialize()`, typed by `CalculatorProviderInit`, which is
+  untouched and still the canonical production path.
+  
+  Verified against all three consumer checkouts on 2026-08-27 before removing:
+  neither host that offers Desmos passes a config bag at all. Both configure it
+  through `provider.runtime.authFetcher` alone, nothing names
+  the settings type or `DesmosCalculatorProviderConfig`, and nothing sets a
+  credential in a config bag. Three source breaks with no source to break; the
+  consumer dependency pad records the check.
+  
+  Nothing changed about what reaches Desmos. The credentials were already inert in
+  a per-instance bag -- deleted before the vendor constructor, since Desmos rejects
+  an unknown option and a key there has no effect -- and `settings` already won
+  whenever both forms were present, so the merge that consulted the bag could only
+  supply keys `settings` had omitted. The stripping stays and is now one helper
+  rather than four `delete` statements; because the settings type keeps its
+  index signature, `settings` still accepts both credential names from a stale
+  caller and still drops them.
+  
+  `DesmosCalculatorProviderConfig` is now `CalculatorProviderConfig` with `settings`
+  narrowed to the settings type, which is what makes the removal an
+  improvement rather than a subtraction: a client on the canonical field previously
+  traded every Desmos option name for `Record<string, unknown>`, so the deprecated
+  bag was the only typed way to configure the calculator. The narrowing is
+  assignment-compatible in both directions with a plain `Record<string, unknown>`.
+  
+  Two pending changesets and one ADR promised the option bag or named it in a
+  trade-off; all three now describe `settings`. The calculators README also read as
+  though `proxyEndpoint` were deprecated alongside it.
+- Updated dependencies [004d38e]
+- Updated dependencies [af438ca]
+- Updated dependencies [cb99eae]
+- Updated dependencies [bacba85]
+- Updated dependencies [f24e425]
+- Updated dependencies [af438ca]
+- Updated dependencies [bacba85]
+- Updated dependencies [af438ca]
+- Updated dependencies [af438ca]
+- Updated dependencies [af438ca]
+- Updated dependencies [bacba85]
+- Updated dependencies [bacba85]
+- Updated dependencies [af438ca]
+- Updated dependencies [8bb668b]
+- Updated dependencies [eb3aed9]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-calculator-cortex@0.3.69
+  - @pie-players/pie-calculator-desmos@0.3.69
+  - @pie-players/pie-calculator-geogebra@0.3.69
+  - @pie-players/pie-calculator@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+  - @pie-players/pie-tts@0.3.69
+  - @pie-players/tts-client-server@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

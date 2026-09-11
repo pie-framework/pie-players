@@ -177,7 +177,9 @@ jobs:
         if: github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_changesets != 'true' && steps.detect.outputs.has_version_bumps != 'true'
         run: |
           bun ./scripts/create-temporary-release-changeset.mjs
-          echo "created=true" >> "$GITHUB_OUTPUT"
+          if [ -f .changeset/temporary-release-all-packages.md ]; then
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build packages (publish runs only)
         if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
@@ -374,8 +376,14 @@ jobs:
       # A PR rather than a direct push to develop: a back-merge can conflict on CHANGELOG.md, and
       # resolving that is a human's job. continue-on-error because a release that published must
       # not be reported as failed over its follow-up bookkeeping.
+      #
+      # !cancelled() rather than success(): continue-on-error keeps this step from failing the
+      # release, but it does not keep an *earlier* failure from skipping it. 0.3.70 published all
+      # 45 packages and then lost its back-merge to a closure check that 404d on npm replica lag,
+      # which is the exact drift this step exists to prevent. The post-publish checks still fail
+      # the run; they no longer decide whether develop gets the release commit back.
       - name: Open master -> develop back-merge PR
-        if: steps.changesets.outputs.published == 'true'
+        if: ${{ !cancelled() && steps.changesets.outputs.published == 'true' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,12 +9,14 @@ const BASE = "https://host.example/page";
 
 describe("validateExternalStyleUrl", () => {
 	test("accepts absolute https URLs", () => {
-		const result = validateExternalStyleUrl("https://cdn.example/style.css", {
+		// Same-origin, so this asserts the protocol check alone. The origin
+		// policy has its own tests below.
+		const result = validateExternalStyleUrl("https://host.example/style.css", {
 			baseUrl: BASE,
 		});
 		expect(result.ok).toBe(true);
 		if (result.ok) {
-			expect(result.resolvedUrl.origin).toBe("https://cdn.example");
+			expect(result.resolvedUrl.origin).toBe("https://host.example");
 		}
 	});
 
@@ -79,12 +81,49 @@ describe("validateExternalStyleUrl", () => {
 		}
 	});
 
-	test("empty allow-list skips the origin check", () => {
-		const result = validateExternalStyleUrl("https://any.example/style.css", {
+	test("empty allow-list permits same-origin", () => {
+		const result = validateExternalStyleUrl(`${BASE}/theme.css`, {
 			baseUrl: BASE,
 			allowedOrigins: [],
 		});
 		expect(result.ok).toBe(true);
+	});
+
+	test("empty allow-list rejects cross-origin", () => {
+		// The reachable input is authored (`resources.stylesheets[*].url`), and
+		// the cross-origin branch in the player injects an unscoped <link> it
+		// cannot rewrite, so naming an origin is the host's opt-in rather than
+		// the default.
+		const result = validateExternalStyleUrl("https://any.example/style.css", {
+			baseUrl: BASE,
+			allowedOrigins: [],
+		});
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("disallowed-origin");
+			expect(result.message).toContain("allowed-style-origins");
+		}
+	});
+
+	test("cross-origin still passes once its origin is allow-listed", () => {
+		const result = validateExternalStyleUrl("https://any.example/style.css", {
+			baseUrl: BASE,
+			allowedOrigins: ["https://any.example"],
+		});
+		expect(result.ok).toBe(true);
+	});
+
+	test("rejects when neither an allow-list nor a usable baseUrl is supplied", () => {
+		// Nothing to compare the origin against, so cross-origin cannot be ruled
+		// out. Fail closed rather than fall back to the old open behaviour.
+		const result = validateExternalStyleUrl(
+			"https://any.example/style.css",
+			{},
+		);
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("disallowed-origin");
+		}
 	});
 });
 

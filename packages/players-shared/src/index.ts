@@ -42,6 +42,7 @@ export { editorPostFix } from "./types/index.js";
 export * from "./ui/attribute-coercion.js";
 export * from "./ui/content-styles.js";
 export * from "./ui/pointer-drag.js";
+export * from "./ui/overlay-containment.js";
 export * from "./ui/focus-trap.js";
 export * from "./ui/first-focusable.js";
 export * from "./ui/debug-panel-persistence.js";

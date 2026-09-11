@@ -76,6 +76,16 @@ export default (async () => {
 		server: {
 			port: 5300,
 			open: true,
+			/*
+			 * The repo root, because a package's `dist` is served over `/@fs/` and
+			 * `fs.strict` denies anything outside the detected workspace root — which
+			 * with this lockfile resolves to this app, not the monorepo. Modules that
+			 * are imported never notice, since Vite bundles those; a runtime asset URL
+			 * does. `@pie-players/pie-calculator-cortex` builds its evaluation worker
+			 * to `dist/assets/`, and the 403 on it surfaced in the tool as "The
+			 * calculator is temporarily unavailable" with nothing in the console.
+			 */
+			fs: { allow: [path.resolve(__dirname, "../..")] },
 			hmr: disableErrorOverlay ? { overlay: false } : undefined,
 			proxy: {
 				// Same-origin proxy for FontAwesome 6 Pro served by Renaissance.
@@ -111,9 +121,17 @@ export default (async () => {
 					__dirname,
 					"../../packages/calculator-desmos/dist/index.js",
 				),
+				"@pie-players/pie-calculator-geogebra": resolve(
+					__dirname,
+					"../../packages/calculator-geogebra/dist/index.js",
+				),
 				"@pie-players/pie-tool-calculator-desmos": resolve(
 					__dirname,
 					"../../packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
+				),
+				"@pie-players/pie-tool-calculator-geogebra": resolve(
+					__dirname,
+					"../../packages/tool-calculator-geogebra/dist/pie-tool-calculator-geogebra.js",
 				),
 				"@pie-players/pie-tool-text-to-speech": resolve(
 					__dirname,

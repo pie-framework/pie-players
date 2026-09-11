@@ -58,6 +58,12 @@ export async function ensureMediaRoot(): Promise<void> {
 	await fs.mkdir(MEDIA_ROOT, { recursive: true });
 }
 
+// The demo trusts the extension and the browser-supplied content type, and
+// writes the bytes as they arrive. A real authoring media service must validate
+// the content against the claimed type and sanitize or re-encode it — an .svg
+// carries markup and script, and an extension is caller-controlled input. The
+// serving route (`api/authoring-media/file/[name]`) sandboxes SVG responses so
+// unvalidated bytes cannot execute here.
 export async function saveUploadedFile(
 	file: File,
 ): Promise<{ fileName: string; src: string }> {

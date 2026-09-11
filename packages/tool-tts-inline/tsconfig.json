@@ -5,6 +5,14 @@
 		"rootDir": ".",
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["**/*.ts", "**/*.svelte"],
-	"exclude": ["node_modules", "dist", "tests"]
+	"include": [
+		"**/*.ts",
+		"**/*.svelte"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"tests",
+		"vite.config.ts"
+	]
 }

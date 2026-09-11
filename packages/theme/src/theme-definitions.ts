@@ -56,10 +56,12 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-secondary-dark": "#880e4f",
 	"--pie-tertiary": "#146eb3",
 	"--pie-tertiary-light": "#d0e2f0",
-	"--pie-background": "rgba(255, 255, 255, 0)",
+	"--pie-background": "#ffffff",
 	"--pie-background-dark": "#ecedf1",
 	"--pie-secondary-background": "rgba(241, 241, 241, 1)",
 	"--pie-dropdown-background": "#e0e1e6",
+	// The deeper dropdown tint leaves the blue focus ring at 2.82:1.
+	"--pie-surface": "#ecedf1",
 	"--pie-border": "#8f8f8f",
 	"--pie-border-light": "#d1d1d1",
 	"--pie-border-dark": "#646464",
@@ -126,6 +128,7 @@ const DARK_BASE_THEME: ThemeVariables = {
 	"--pie-background-dark": "#1a1a1a",
 	"--pie-secondary-background": "#222222",
 	"--pie-dropdown-background": "#2a2a2a",
+	"--pie-surface": "#2a2a2a",
 	"--pie-border": "#ffffff",
 	"--pie-border-light": "#cccccc",
 	"--pie-border-dark": "#ffffff",
@@ -197,6 +200,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#f5f5f5",
 				"--pie-secondary-background": "#eeeeee",
 				"--pie-dropdown-background": "#e0e0e0",
+				"--pie-surface": "#e0e0e0",
 				"--pie-border": "#000000",
 				"--pie-border-light": "#666666",
 				"--pie-border-dark": "#000000",
@@ -257,6 +261,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#1a1a1a",
 				"--pie-secondary-background": "#222222",
 				"--pie-dropdown-background": "#2a2a2a",
+				"--pie-surface": "#2a2a2a",
 				"--pie-border": "#ffffff",
 				"--pie-border-light": "#cccccc",
 				"--pie-border-dark": "#ffffff",
@@ -317,6 +322,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#aaeedd",
 				"--pie-secondary-background": "#99ddbb",
 				"--pie-dropdown-background": "#88cc99",
+				"--pie-surface": "#88cc99",
 				"--pie-border": "#3d0022",
 				"--pie-border-light": "#663344",
 				"--pie-border-dark": "#220011",
@@ -377,6 +383,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#000055",
 				"--pie-secondary-background": "#000044",
 				"--pie-dropdown-background": "#000033",
+				"--pie-surface": "#000033",
 				"--pie-border": "#ffff00",
 				"--pie-border-light": "#aaaa66",
 				"--pie-border-dark": "#cccc00",
@@ -437,6 +444,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#ffb3cc",
 				"--pie-secondary-background": "#ff99bb",
 				"--pie-dropdown-background": "#ff88aa",
+				"--pie-surface": "#ff88aa",
 				"--pie-border": "#000000",
 				"--pie-border-light": "#555555",
 				"--pie-border-dark": "#000000",
@@ -448,7 +456,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#ffddee",
 				"--pie-focus-unchecked-border": "#000000",
 				"--pie-blue-grey-100": "#ffeef5",
-				"--pie-blue-grey-300": "#ffccdd",
+				"--pie-blue-grey-300": "#ffb3cc",
 				"--pie-blue-grey-600": "#cc6688",
 				"--pie-blue-grey-900": "#000000",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -497,6 +505,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#2a2a2a",
 				"--pie-secondary-background": "#222222",
 				"--pie-dropdown-background": "#1a1a1a",
+				"--pie-surface": "#1a1a1a",
 				"--pie-border": "#e0e0e0",
 				"--pie-border-light": "#cccccc",
 				"--pie-border-dark": "#ffffff",
@@ -557,6 +566,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#dcdcdc",
 				"--pie-secondary-background": "#d0d0d0",
 				"--pie-dropdown-background": "#c4c4c4",
+				"--pie-surface": "#c4c4c4",
 				"--pie-border": "#4a4a4a",
 				"--pie-border-light": "#7a7a7a",
 				"--pie-border-dark": "#2b2b2b",
@@ -617,6 +627,8 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#b8dcc3",
 				"--pie-secondary-background": "#a6d0b2",
 				"--pie-dropdown-background": "#94c4a1",
+				// Match the existing selected tint: purple text is 4.13:1 on the dropdown.
+				"--pie-surface": "#a6d0b2",
 				"--pie-border": "#8e2464",
 				"--pie-border-light": "#a85a86",
 				"--pie-border-dark": "#4f1237",
@@ -677,6 +689,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#c795d3",
 				"--pie-secondary-background": "#b982c8",
 				"--pie-dropdown-background": "#ac70bd",
+				"--pie-surface": "#ac70bd",
 				"--pie-border": "#000000",
 				"--pie-border-light": "#4a4a4a",
 				"--pie-border-dark": "#000000",
@@ -737,6 +750,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-background-dark": "#2b4576",
 				"--pie-secondary-background": "#243a63",
 				"--pie-dropdown-background": "#1d2f50",
+				"--pie-surface": "#1d2f50",
 				"--pie-border": "#ffff55",
 				"--pie-border-light": "#c2c266",
 				"--pie-border-dark": "#e0e04a",
@@ -776,12 +790,7 @@ const DEFAULT_SCHEME_DESCRIPTOR: PieColorSchemeDescriptor = deepFreeze({
 	name: "Default",
 	description: "Standard PIE colors",
 	kind: "default",
-	preview: createPieColorSchemePreview({
-		...LIGHT_BASE_THEME,
-		// The live light Base Theme intentionally reveals its host surface. A
-		// catalog swatch has no such surface, so composite it on white explicitly.
-		"--pie-background": "#ffffff",
-	}),
+	preview: createPieColorSchemePreview(LIGHT_BASE_THEME),
 });
 
 const REQUIRED_SCHEME_TOKENS = Object.freeze(
@@ -818,6 +827,24 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-background-dark",
 			minimum: 4.5,
 			role: "recessed surface text",
+		},
+		{
+			foreground: "--pie-text",
+			background: "--pie-surface",
+			minimum: 4.5,
+			role: "raised surface text",
+		},
+		{
+			foreground: "--pie-button-color",
+			background: "--pie-surface",
+			minimum: 4.5,
+			role: "raised surface control text",
+		},
+		{
+			foreground: "--pie-button-focus-outline",
+			background: "--pie-surface",
+			minimum: 3,
+			role: "raised surface control focus indicator",
 		},
 		{
 			foreground: "--pie-tertiary",
@@ -970,12 +997,6 @@ function parseOpaqueColor(value: string): Rgb | null {
 	const normalized = value.trim().toLowerCase();
 	if (normalized === "black") return { r: 0, g: 0, b: 0 };
 	if (normalized === "white") return { r: 255, g: 255, b: 255 };
-	if (normalized === "rgba(255, 255, 255, 0)") {
-		// The transparent light Base Theme is an externally observed behavior. Its
-		// effective contrast depends on the host backdrop and cannot be certified
-		// from the token value alone.
-		return null;
-	}
 	const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(normalized);
 	if (hex) {
 		const expanded =
@@ -1206,12 +1227,8 @@ function validateBuiltInDefinitions(): string[] {
 function validateBaseThemes(): string[] {
 	const failures: string[] = [];
 	for (const baseTheme of ["light", "dark"] as const) {
-		const measurableVariables =
-			baseTheme === "light"
-				? { ...BASE_THEMES.light, "--pie-background": "#ffffff" }
-				: BASE_THEMES.dark;
 		for (const diagnostic of diagnoseThemeContrast(
-			measurableVariables,
+			BASE_THEMES[baseTheme],
 			`${baseTheme}-base`,
 		)) {
 			failures.push(`${baseTheme}: ${diagnostic.message}`);

@@ -19,6 +19,10 @@
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import {
+		clampOffsetWithinBlock,
+		resolveContainingBlockRect
+	} from '@pie-players/pie-players-shared';
 	import MoveableModule from 'moveable';
 	import { onMount } from 'svelte';
 	import rulerCm from './ruler-cm.svg';
@@ -192,6 +196,18 @@
 		}
 	}
 
+	/**
+	 * Keeps a keyboard move inside the box this tool is positioned against. Pointer
+	 * drags are bounded by Moveable; a keyboard move writes `style.transform`
+	 * directly, so it needs the same bound applied here.
+	 */
+	function clampOffset(offset: { x: number; y: number }) {
+		const block = resolveContainingBlockRect(containerEl);
+		if (!block || !containerEl) return offset;
+		const box = containerEl.getBoundingClientRect();
+		return clampOffsetWithinBlock(offset, box, block);
+	}
+
 	// Keyboard navigation (preserved for accessibility)
 	function handleKeyDown(e: KeyboardEvent) {
 		if (!moveable || !containerEl) return;
@@ -199,13 +215,23 @@
 		let handled = false;
 		const isShift = e.shiftKey;
 
-		// Get current transform from element
-		const transform = containerEl.style.transform || '';
-		const matrix = new DOMMatrix(transform || 'none');
-		
-		// Extract position and rotation
-		let x = matrix.e || (isBrowser ? window.innerWidth / 2 : 400);
-		let y = matrix.f || (isBrowser ? window.innerHeight / 2 : 300);
+		/*
+		 * Read the current placement from the computed transform rather than from the
+		 * inline string. `DOMMatrix` rejects a value it cannot resolve at parse time,
+		 * and the inline transform carries the `translate(-50%, -50%)` that centres
+		 * the tool, so parsing it threw on every press after the first. The computed
+		 * value is a resolved matrix.
+		 *
+		 * That matrix includes the centring, which is half the tool's own layout box,
+		 * so adding it back leaves the offset this tool has actually been moved by --
+		 * 0 before the first drag or nudge, and Moveable's offset after a drag. A
+		 * viewport-derived fallback here is what made the first arrow key a jump to
+		 * the middle of the screen.
+		 */
+		const computed = isBrowser ? getComputedStyle(containerEl).transform : 'none';
+		const matrix = new DOMMatrix(computed === 'none' ? undefined : computed);
+		let x = matrix.e + containerEl.offsetWidth / 2;
+		let y = matrix.f + containerEl.offsetHeight / 2;
 		let rotation = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
 
 		switch (e.key) {
@@ -277,8 +303,8 @@
 		if (handled && moveable) {
 			e.preventDefault();
 			// Apply new transform via Moveable
-			const newTransform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${rotation}deg)`;
-			containerEl.style.transform = newTransform;
+			const contained = clampOffset({ x, y });
+			containerEl.style.transform = `translate(-50%, -50%) translate(${contained.x}px, ${contained.y}px) rotate(${rotation}deg)`;
 			moveable.updateRect();
 		}
 	}
@@ -337,10 +363,11 @@
 		}
 	});
 
-	// Auto-focus when tool becomes visible
+	// Auto-focus when tool becomes visible. `preventScroll` so revealing the
+	// tool cannot scroll the pane it sits in.
 	$effect(() => {
 		if (visible && containerEl) {
-			setTimeout(() => containerEl?.focus(), 100);
+			setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
 		}
 	});
 </script>

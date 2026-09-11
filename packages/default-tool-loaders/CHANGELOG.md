@@ -1,5 +1,360 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.70
+
+### Patch Changes
+
+- 599c657: Position frameless tool overlays against the content they are placed on.
+  
+  A frameless overlay was appended next to the toolbar buttons, so whichever
+  element happened to be positioned became its containing block. At `passage` and
+  `item` placement that is `pie-item-toolbar`, a header-sized box, and the line
+  reader's opening position — derived from the viewport — put the panel outside
+  the card. Auto-focus then scrolled the pane across to reveal it, taking the
+  passage off screen. At `section` placement no positioned ancestor exists, so the
+  same coordinates resolved against the initial containing block and looked right.
+  
+  `ToolRenderElement` gains `container`. A registration declaring
+  `container: 'content-boundary'` has its element appended to the nearest
+  `data-pie-tool-overlay-boundary` element — the box a host already marks as the
+  content a tool belongs to — and the section player's item and passage cards make
+  themselves the containing block for what lands there. The composition layer sets
+  it for frameless overlays, so the toolbar honours a declaration rather than
+  inferring intent from a tool's surface. A host declaring no boundary keeps the
+  previous in-toolbar mount, so section-level placement is unchanged.
+  
+  The line reader derives its opening position from that containing block instead
+  of the viewport, centring on the part of it currently on screen — the midpoint
+  of a card several screens tall is not visible. Position and width are clamped to
+  the containing block on open, on drag, on keyboard movement, on resize and on
+  window resize, and it focuses with `preventScroll` so revealing it cannot scroll
+  an ancestor pane.
+  
+  Ruler and protractor position by percentage, so they now self-centre in the card
+  they are placed on rather than in whatever box was positioned above it.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [599c657]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [1fad14d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [e3169f8]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/pie-assessment-toolkit@0.3.70
+  - @pie-players/pie-tool-line-reader@0.3.70
+  - @pie-players/pie-tool-protractor@0.3.70
+  - @pie-players/pie-tool-ruler@0.3.70
+  - @pie-players/pie-tool-annotation-toolbar@0.3.70
+  - @pie-players/pie-tool-answer-eliminator@0.3.70
+  - @pie-players/pie-tool-calculator-desmos@0.3.70
+  - @pie-players/pie-tool-calculator-shared@0.3.70
+  - @pie-players/pie-tool-theme@0.3.70
+  - @pie-players/pie-tool-dictionary@0.3.70
+  - @pie-players/pie-tool-graph@0.3.70
+  - @pie-players/pie-tool-periodic-table@0.3.70
+  - @pie-players/pie-tool-picture-dictionary@0.3.70
+  - @pie-players/pie-tool-tts-inline@0.3.70
+  - @pie-players/pie-tool-calculator-cortex@0.3.70
+  - @pie-players/pie-tool-calculator-geogebra@0.3.70
+
+## 0.3.69
+
+### Patch Changes
+
+- ced07e0: Withdraw the answer eliminator from items it cannot act on, including for a
+  learner whose profile grants answer masking.
+  
+  `hasChoiceInteraction` matched an item model's `element` against a list of choice
+  interactions, then fell through to "any model carrying a non-empty `choices`
+  array" for configs that name no element. `placement-ordering`, `categorize` and
+  `drag-in-the-blank` each hold their draggables in `choices`, so the fallback
+  answered `true` for all three and the toolbar offered an eliminator whose
+  controls do nothing on those items (PIE-935). The fallback now applies only to a
+  model with no element name, which is the case it was written for; a named model
+  is answered by the list alone, as the element-level branch has always done.
+  
+  That alone did not remove the button. A PNP-granted tool skips the relevance
+  gate, deliberately — a heuristic must not withdraw an accommodation a learner is
+  entitled to — and every profile granting `answerMasking`, `answerEliminator` or
+  `strikethrough` took that path. So a registration may now declare
+  `isApplicableToContent(context)`, a capability veto that a grant does not
+  survive: it answers whether the tool can act on this content at all, where
+  `isVisibleInContext` answers whether it is plausibly useful. The answer
+  eliminator declares it, and `ItemToolBar` applies it as a third pass after
+  policy and relevance.
+  
+  The two gates are not interchangeable. A calculator is applicable to every item
+  and merely relevant to some, so it declares only the relevance gate and a
+  granted calculator still reaches an item that does not look mathematical.
+  Declare the veto only where the tool's controls provably do nothing: a false
+  negative withdraws an entitlement, which is the more expensive failure. A gate
+  that throws, unresolved content, and a host that resolves the tool's visibility
+  itself all leave the tool in place.
+  
+  `ToolRegistration` gains one optional method, so a host writing its own
+  registrations is unaffected until it opts in. No recorded consumer places the
+  answer eliminator, so no host's rendered toolbar changes. PIE-917 still covers
+  replacing the element-name list with the capability contract.
+- 004d38e: Give every calculator the panel size its layout needs, and make the Cortex
+  calculator fit the panel it is given instead of clipping.
+  
+  A graphing calculator has never opened at the size it declares. `ItemToolBar`
+  builds a tool shell from the first render and reads `initialWidth` once, but a
+  registration that sizes itself from render params sees none on that pass:
+  `getToolRenderParams` reads the resolved tool context, which arrives a render
+  later. So `calculatorType` was null, the calculator declared its untyped 380px
+  panel, and every graphing calculator — Desmos, GeoGebra and Cortex alike — opened
+  in a box a third of the width its two-column layout needs, with the plot column
+  clipped away. `applyShellStrings` already re-read the title on update, which is
+  why the header said "Graphing Calculator" over a panel sized for a basic one. The
+  shell now adopts a declared size that changed, and re-places itself because the
+  declared size is what `initialAlign` resolved against. A learner's own size wins:
+  once the panel has been dragged or resized it is theirs, and a re-render must not
+  snap it back.
+  
+  Panel sizes are now per type, measured rather than assumed — 380x500 basic,
+  380x560 scientific, 720x660 graphing. Basic asked for 560 and needed 398px of
+  content, and the ~90px of blank above the entry line was that gap. The resize floor stays shared at
+  380x480: this registration serves Desmos, GeoGebra and Cortex alike, so a
+  graphing-only floor would move the limit under two vendors whose layouts were
+  never measured for it. Cortex below 42rem stacks the rail above the plot and needs
+  701px there, which no spacing tier closes — it scrolls its own content instead,
+  which is the contract every size below the opening one already relies on.
+  
+  In the Cortex calculator itself, every fixed size is now a token, and the
+  calculator measures its own box and re-declares them in three tiers. Keys keep
+  the 44px of WCAG 2.5.5 at every size a panel opens at; below that they give up
+  height so the keypad keeps its rows, down to 28px, clear of 2.5.8's 24px floor at
+  Level AA. The tier is measured with a `ResizeObserver` rather than a
+  `container-type: size` query, which carries `contain: layout` and would make the
+  calculator the containing block for every fixed-position descendant, MathLive's
+  popovers among them. The `@media (max-height: 30rem)` rule this replaces asked the
+  viewport, so it never fired for a 406px panel in a 900px window — and the tool
+  wrapper's `height: 100% !important` had overridden its effect anyway.
+  
+  Nothing is clipped now, at any size. Three separate causes: the calculator root
+  was pinned to the panel's height inside an `overflow: hidden` wrapper, so the
+  shell's own `overflow-y: auto` never saw anything to scroll; the keypad and the
+  graphing view's two panels were shrinkable flex items, and a flex item shrunk
+  below its content paints outside its box rather than clipping, which is how keypad
+  rows came to be drawn over the graph controls; and the plot carried a `width: 100%`
+  with a border at `content-box`, overflowing its column by exactly 2px. The root
+  now scrolls as the floor case, only the display yields among the rows, and the
+  graphing view places the pressure per layout: stacked, the panels hold their
+  content and the calculator takes one scroll; side by side they scroll in their own
+  columns, so the readout cannot push the plot off the panel. The readout is never
+  hidden or truncated either way — the board is `aria-hidden`, so that text is the
+  graph for assistive technology and for read-aloud.
+  
+  `Clear history` rendered 96x20 and was the one control in the tool under 2.5.8's
+  24px; it now holds 28px. The keypad layer tabs wrap rather than running off a
+  320px panel.
+  
+  The panel is now drawn as one instrument rather than as controls arranged on a
+  card, which is where the remaining space went. The visible `SCIENTIFIC CALCULATOR`
+  eyebrow is gone: the tool shell's header already carries that exact string, and a
+  second copy of it in a row of its own cost 46px of a 500px panel — a row neither
+  reference calculator spends. The heading stays in the tree as visually-hidden
+  text, so the region keeps its entry in the document outline. The angle mode moved
+  into the display, which has vertical slack a row of its own does not, pinned above
+  the tape's scroller so history passes behind it rather than pushing it away. The
+  display itself became a screen — a filled surface running to the panel's edges,
+  where before it was bare card around a lone bordered mathfield, which is what made
+  a 380x500 panel look like it had a hole above the entry line. Layer tabs,
+  backspace and clear moved onto the keypad's recessed plane as its head, so the
+  bottom of the panel is a single block; the tabs read as a tab strip rather than as
+  a row of pills. The keypad calculators drop the root's padding entirely, so screen
+  and keypad meet on one rule with no gutters, and the insets that remain are the
+  ones inside each surface — `--cortex-tape-inset` and the keypad's inline padding
+  are the same value, so the mathfield's text and the first key column share a left
+  edge. The mathfield's focus ring is inset now: at full screen width an offset ring
+  drew a box around the whole panel instead of around a control. Backspace and clear are icon
+  buttons with text accessible names and `title` on both: as two wide labelled buttons
+  they were the widest thing on the plane, and neither reference calculator spends a
+  bordered button on either. The faces are inline SVG stroked in `currentColor` rather
+  than font characters, since `⌫` (U+232B) is the code point least likely to be in a
+  host's font stack and a missing glyph renders as a notdef box — a control with no
+  legible face. The graphing view's remove-expression button takes the same clear
+  icon; the viewport arrows and math signs stay as text, being code points every
+  fallback font carries.
+  
+  In the graphing view the same treatment. The angle mode is declared by the view
+  that owns the setting and rendered in the expression rail, the layer tabs sit on
+  the keypad's plane, and the expression list became a pane that takes the column's
+  slack — sized to its rows it left ~140px of bare card between the keypad and the
+  bottom of a 720x660 panel.
+  
+  The graphing board's `ResizeObserver` resized the board synchronously inside its
+  own callback, which raised an unhandled "ResizeObserver loop completed with
+  undelivered notifications" on every host page that opened a graphing calculator,
+  its `previousSize` guard notwithstanding. It is deferred a frame.
+  
+  Section-demos gains a dedicated `calculator-desmos` demo, which the default
+  provider had never had — it appeared only incidentally in demos about other
+  things. It names `calculator-desmos` explicitly and shows the API key arriving
+  through `provider.runtime.authFetcher` at open time rather than in item content.
+  `SectionDemoRuntimePage` takes a `calculatorConfig` prop instead of keying
+  configuration off the provider name, because Desmos is what every other demo gets
+  by default and a lockdown keyed on `'desmos'` would have reconfigured the
+  calculator in a dozen demos that are about something else; the Cortex demo's
+  settings moved to its route with it. That demo deliberately does not set
+  `restrictedMode`: the Desmos adapter maps it to `expressions: false` for every
+  type, which on a graphing calculator removes the expression list and leaves graph
+  paper with no way to enter a function, so the demo locks down through Desmos' own
+  `restrictedFunctions` and chrome flags instead.
+  
+  The panel-fit test compared the root's scroll height against its client height and
+  stopped there, which is why it passed while the shipped graphing panel cut off its
+  readout: the surplus never reached the root, because the flex items above painted
+  outside their boxes instead. It now walks every node, asserts that anything
+  overflowing can be scrolled to, that the calculator never scrolls sideways, and
+  that no target drops below 24px — at both the size each panel opens at and its
+  resize floor. The isolated demo's `shell` size was also one figure for all three
+  types and larger than any of them, so the size it measured was not a size that
+  ships; it is now per type, with a `Panel minimum` option beside it.
+- f24e425: Make the Cortex calculator read and behave like a calculator: a display with a
+  running tape, a keypad this package owns, and a layout that responds to its tool
+  panel rather than to the window.
+  
+  The layout is now the calculator's own container, not the viewport. The package's
+  only size rules were `@media (max-width: 48rem)` and `@media (max-width: 20rem)`,
+  and the shipped tool panel is 380px wide inside a viewport that is typically
+  1280px — so neither ever fired in production. Measured at the shipped size, the
+  graphing view's grid stayed at its 34rem floor inside a 333px box and the shell,
+  which sets `overflow-x: hidden`, clipped the right 229px including most of the
+  plot, while the view stacked 1032px of content into 372px. Both are container
+  queries now, and an e2e test asserts every mode fits its panel in both axes.
+  
+  Basic and scientific gain a keypad; scientific had shipped with no scientific keys
+  reachable without typing LaTeX. It is this package's keypad — real buttons with
+  localized names, one tab stop with arrow-key movement, keys gated on
+  `settings.allowedFunctions`, and function keys on a second layer rather than in
+  extra rows. MathLive's virtual keyboard is switched off rather than hidden:
+  verified against 0.110, its keycaps are `div[tabindex="-1"]` with no `role` and its
+  toggle a `div[role="button"]` with no `tabindex`, so it holds no focusable elements
+  and cannot be opened or operated by keyboard or switch access at all; under the
+  previous `"auto"` policy it also auto-showed on any touch-capable device, landing
+  across the bottom of the assessment instead of inside the tool panel.
+  
+  Host theming now reaches the tool. Every colour resolves as
+  `var(--pie-x, var(--cortex-x))` instead of being declared on the calculator
+  element, where it overrode whatever an ancestor set — which silently defeated all
+  ten `[data-color-scheme]` PNP palettes for every token except the six series
+  colours that already used this pattern. Surfaces deliberately avoid
+  `--pie-background`, which is the page token a host may point at its own backdrop,
+  and take `--pie-white` and `--pie-background-dark` with
+  `--pie-calculator-surface{,-raised}` as host hooks. Controls gain hover and active
+  states, which the package had none of.
+  
+  Fixes a dark-theme contrast failure in the plot: JSXGraph was initialised with bare
+  `axis: true` / `grid: true`, so it used its light defaults in every theme and put
+  black tick labels on a `#1f2937` surface at 1.43:1 with axes at about 2.2:1. Axes,
+  tick labels and grid are themed from the resolved tokens and re-applied when
+  `theme: "auto"` follows the OS. The plot div is `aria-hidden`, so axe cannot see
+  inside it and the contrast is asserted directly.
+  
+  Also fixed, each found while restructuring:
+  
+  - Backspace string-sliced LaTeX, turning `\pi` into `\p` and `\sqrt{2}` into
+    `\sqrt{2}` before handing it back to MathLive. It now deletes a token.
+  - A failed calculation left the previous answer on screen next to the `role="alert"`
+    contradicting it, with no re-announcement.
+  - `setAngleMode` terminated the evaluation worker and built a new one. Settings
+    already travel with every request and the worker is stateless, so it now updates
+    in place; `importState` no longer respawns either.
+  - The graphing trace's series `<select>` reported no selected option while the
+    readout was actively tracing series 1.
+  - The series toggle announced "Show expression 1, toggle button, pressed" — the name
+    asserting the action its own state denied. The colour chip is now the toggle, with
+    a static name, `aria-pressed`, and a 44px target.
+  - `clear()` bumped `focusRequest` but the graphing view never passed it to a field,
+    so focus went nowhere after the expression rows unmounted.
+  - `menuItems = []` left an inert `div[role="button"]` in the field's gutter;
+    MathLive re-applies its inline display on every render, so it is hidden through
+    the exposed part instead.
+  - `convertLatexToMarkup` output had no stylesheet, so every superscript rendered on
+    the baseline. MathLive's static sheet is now injected alongside its fonts.
+  - The keyboard lease captured `[]` from MathLive's iframe proxy and restored it on
+    release, which would have emptied the top-level keyboard's layouts for every other
+    consumer on the page.
+  - The e2e contrast helper discarded alpha, so it would have scored a transparent
+    surface as passing. It now rejects one, and the axe scan runs both themes rather
+    than light only.
+  
+  The tool shell grows to fit a keypad — 420px of height was chosen when this
+  calculator was a text field and three buttons — and graphing gets the width its
+  rail and plot both want. `tool-calculator-shared` stops painting a hardcoded white
+  plate behind the provider's surface.
+- 8bb668b: Add a separately packaged GeoGebra calculator suite with provider, full tool,
+  inline trigger, tests, documentation, and a section-player demo. Basic requests
+  map to GeoGebra Scientific, while scientific and graphing use their matching
+  embedded apps.
+  
+  Move calculator lifecycle and UI into a provider-neutral shared package, keep
+  vendor settings in their implementation packages, and select implementations
+  through the same `provider.init`, `provider.runtime`, and `settings` schema.
+  Desmos remains the no-configuration default and preserves its unkeyed legacy
+  load and runtime `proxyEndpoint` initialization for existing clients. The
+  packaged composition selects the GeoGebra element and lazy bundle from the same
+  provider config used by the toolkit.
+  
+  Document that PIE bundles only MIT-licensed adapter code, not either vendor
+  application. Clarify the separate Desmos and GeoGebra license obligations,
+  runtime credential boundary, attribution, and self-hosting restrictions.
+- 787ad8f: Add a fully bundled open-source calculator provider using MathLive, Cortex
+  Compute Engine, and JSXGraph, with basic, scientific, and graphing modes,
+  worker-isolated evaluation, accessible graph exploration, direct custom-element
+  wrappers, package-owned isolated mode demos, typed English/Dutch localization
+  with host message overrides and RTL support, canonical theme-token consumption,
+  themeable graph series, and opt-in default-tool-loader composition.
+  
+  Move registration of the generic `pie-tool-calculator` element into the shared,
+  provider-neutral package while retaining the Desmos compatibility entry and
+  Desmos as the default provider.
+- 6e2d488: Drop the non-standard PNP support-id aliases from the packaged registrations, and report a support id no registration claims.
+  
+  Each packaged capability declared its AfA 3.0 / QTI 3.0 feature ids plus two or three "common variant" aliases — 21 aliases against 19 standard ids, so the alias vocabulary was as large as the vocabulary it aliased. They were modelled on what a particular host's UI happened to call a capability rather than on a published vocabulary, which is why the set could look complete and still miss the next host's label: a delivery system sending `responseMasking` got nothing, while `highlighter` and `lineReader` happened to work. Removed: `trackingGuide`, `highContrast`, `customColors`, `highlighter`, `textHighlight`, `annotation`, `lineReader`, `basicCalculator`, `scientificCalculator`, `choiceMasking`, `measurement`, `angleMeasurement`, `coordinatePlane`, `graphingTool`, `chemistryReference`, `elementReference`, `tts`, `speechOutput`, `spanishGlossary`, `spanishIllustratedGlossary`. `theme` stays as the theme capability's canonical id and its `toolId`. The standard ids for every capability are unchanged, so a host already sending AfA/QTI feature ids is unaffected; a host sending one of the removed strings maps its own vocabulary at the boundary instead. `UNIVERSAL_SUPPORTS_PRESET` shrinks correspondingly.
+  
+  `basicCalculator` and `scientificCalculator` were additionally misleading: `calculatorType` arrives through the host's render params, so both granted the same untyped calculator as `calculator` and only looked like they selected a variant.
+  
+  The reason the aliases felt load-bearing was a silent failure. `PnpPolicySource.mapSupportToToolId` returns an unclaimed support id verbatim, so it becomes a feature id matching nothing in placement: the capability is absent and no channel says why, which reads as an unwired toolkit. `composeDecision` now emits a `tool-policy.unknownSupportId` diagnostic naming the id, suppressed when the registry is empty because there is then no vocabulary to check against — a host supplying no registry already gets one `tool-config-validation` warning for that. `ToolPolicyDiagnosticCode` gains the new member.
+- Updated dependencies [ced07e0]
+- Updated dependencies [3017425]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [f24e425]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+- Updated dependencies [e66efff]
+- Updated dependencies [b0223d6]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-tool-calculator-shared@0.3.69
+  - @pie-players/pie-tool-calculator-desmos@0.3.69
+  - @pie-players/pie-tool-calculator-geogebra@0.3.69
+  - @pie-players/pie-tool-calculator-cortex@0.3.69
+  - @pie-players/pie-tool-answer-eliminator@0.3.69
+  - @pie-players/pie-tool-dictionary@0.3.69
+  - @pie-players/pie-tool-picture-dictionary@0.3.69
+  - @pie-players/pie-tool-tts-inline@0.3.69
+  - @pie-players/pie-tool-annotation-toolbar@0.3.69
+  - @pie-players/pie-tool-theme@0.3.69
+  - @pie-players/pie-tool-graph@0.3.69
+  - @pie-players/pie-tool-line-reader@0.3.69
+  - @pie-players/pie-tool-periodic-table@0.3.69
+  - @pie-players/pie-tool-protractor@0.3.69
+  - @pie-players/pie-tool-ruler@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

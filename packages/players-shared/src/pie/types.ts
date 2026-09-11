@@ -153,6 +153,16 @@ export interface LoadPieElementsOptions {
 	bundleUrl?: string;
 	eventListeners?: EventListenersMap;
 	container?: Element | Document; // Optional container to scope querySelector
+	/**
+	 * Deadline in ms for `loadPieModule`'s bundle `<script>` load.
+	 *
+	 * A stalled request fires neither `load` nor `error`, so without a
+	 * deadline the returned promise never settles. Named and defaulted to
+	 * match `EnsureRegisteredOptions.loadTimeoutMs` on the `ElementLoader`
+	 * primitive, so both bundle-loading paths give a host one budget to
+	 * reason about. `0` or negative disables the deadline.
+	 */
+	loadTimeoutMs?: number;
 }
 
 /**

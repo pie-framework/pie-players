@@ -13,64 +13,45 @@
 export type CalculatorType = "basic" | "scientific" | "graphing";
 
 /**
- * Desmos-specific calculator configuration options
- * Based on production implementation patterns and Desmos API documentation
+ * Provider-level initialization: credentials and instrumentation.
+ *
+ * Distinct from `CalculatorProviderConfig`, which configures one calculator
+ * instance. A hosted calculator vendor needs a key, or a server endpoint that
+ * mints one — never both in production, since `apiKey` puts the key in the
+ * browser.
+ *
+ * Naming across adapters, so a host reading one knows where to look in the
+ * others: `<Vendor>CalculatorSettings` is the vendor option shape,
+ * `<Vendor>CalculatorProviderConfig` is `CalculatorProviderConfig` with
+ * `settings` narrowed to it, and `<Vendor>CalculatorProviderInit` appears only
+ * where the adapter narrows or extends this interface — Cortex and GeoGebra take
+ * no credential, Desmos takes this type whole and declares no alias for it.
  */
-export interface DesmosCalculatorConfig {
-	// API Configuration
-	// SECURITY WARNING: Never expose API keys in client-side code in production!
-	// For development: Use apiKey directly
-	// For production: Use proxyEndpoint to handle API key server-side
-	apiKey?: string; // Desmos API key (DEVELOPMENT ONLY - obtain from https://www.desmos.com/api)
-	proxyEndpoint?: string; // Server endpoint that handles Desmos API authentication (PRODUCTION RECOMMENDED)
-
-	// Common options for all calculator types
-	border?: boolean; // Show border around calculator (default: false)
-	degreeMode?: boolean | "degree" | "radian"; // Angle mode: true = degrees, false = radians
-	decimalToFraction?: boolean; // Enable decimal to fraction conversion
-	links?: boolean; // Enable links to external Desmos resources
-
-	// Graphing Calculator specific options
-	settingsMenu?: boolean; // Show settings menu
-	expressions?: boolean; // Enable expression list/editor
-	zoomButtons?: boolean; // Show zoom buttons
-	expressionsTopbar?: boolean; // Show expressions topbar
-	notes?: boolean; // Enable notes
-	folders?: boolean; // Enable folders for organizing expressions
-	images?: boolean; // Enable image uploads
-	qwertyKeyboard?: boolean; // Use QWERTY keyboard layout
-	restrictedFunctions?: boolean; // Restrict certain functions (test mode)
-	plotSingleVariableImplicitEquations?: boolean; // Enable plotting implicit equations
-	distributions?: boolean; // Enable statistical distributions
-	plotImplicits?: boolean; // Enable implicit equation plotting
-	plotInequalities?: boolean; // Enable inequality plotting
-	geometryComputationFunctions?: boolean; // Enable geometry computation functions
-	sliders?: boolean; // Enable sliders for parameters
-	tables?: boolean; // Enable data tables feature
-	expressionsCollapsed?: boolean; // Start with expressions collapsed
-	administerSecretFolders?: boolean; // Enable secret folders
-	lockViewport?: boolean; // Lock viewport (disable panning/zooming)
-
-	// Scientific Calculator specific options
-	functionDefinition?: boolean; // Enable function definition
-	brailleExpressionDownload?: boolean; // Enable braille expression download
-
-	// Basic (Four-Function) Calculator specific options
-	keypad?: boolean; // Show on-screen keypad
-	graphpaper?: boolean; // Show graph paper background
-	additionalFunctions?: string[]; // Additional functions (e.g., ['sqrt', 'percent'])
+export interface CalculatorProviderInit {
+	/** Vendor API key. Development only — it reaches the browser. */
+	apiKey?: string;
+	/** Host endpoint that serves the vendor credential. Production. */
+	proxyEndpoint?: string;
+	/** Instrumentation callback for library-load and auth events. */
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
 }
 
 /**
- * Calculator provider configuration
+ * Provider-neutral calculator configuration.
+ *
+ * Adapters own the shape and interpretation of `settings`; the generic
+ * calculator seam deliberately does not name an implementation. An adapter
+ * narrows `settings` in its own `<Vendor>CalculatorProviderConfig`, which is the
+ * only reason a caller ever gets vendor option names.
  */
 export interface CalculatorProviderConfig {
-	settings?: Record<string, any>;
+	settings?: Record<string, unknown>;
 	restrictedMode?: boolean; // Quick toggle for restricted/test mode (affects multiple options)
 	locale?: string;
 	theme?: "light" | "dark" | "auto";
-	// Desmos-specific configuration
-	desmos?: DesmosCalculatorConfig;
 }
 
 /**
@@ -110,6 +91,14 @@ export interface CalculatorState {
  *
  * Providers are stateless factories that create calculator implementations.
  * They describe capabilities and create configured instances.
+ *
+ * Not parameterized by its configuration type, matching `ITTSProvider` in
+ * `@pie-players/pie-tts`. An adapter extends `CalculatorProviderConfig` and
+ * narrows `createCalculator`'s argument in its own class signature — see
+ * `DesmosCalculatorProviderConfig` in `@pie-players/pie-calculator-desmos` —
+ * which is what gives a caller holding the concrete provider the precise type.
+ * A type parameter here would add one, since a provider narrowing that argument
+ * satisfies this interface either way.
  */
 export interface CalculatorProvider {
 	/**
@@ -133,9 +122,9 @@ export interface CalculatorProvider {
 	readonly version: string;
 
 	/**
-	 * Initialize the provider (load libraries, etc.)
+	 * Initialize the provider: load the vendor library and authenticate.
 	 */
-	initialize(): Promise<void>;
+	initialize(config?: CalculatorProviderInit): Promise<void>;
 
 	/**
 	 * Create a calculator instance

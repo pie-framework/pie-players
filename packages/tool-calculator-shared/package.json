@@ -1,0 +1,72 @@
+{
+	"name": "@pie-players/pie-tool-calculator-shared",
+	"version": "0.3.70",
+	"type": "module",
+	"description": "Provider-neutral calculator tool surfaces shared by PIE vendor adapters",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tool-calculator-shared"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tool",
+		"calculator",
+		"shared",
+		"wcag"
+	],
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./calculator-element": {
+			"types": "./dist/calculator-element.d.ts",
+			"import": "./dist/calculator-element.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "vite build",
+		"test": "bun test tests",
+		"typecheck": "tsc --noEmit",
+		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
+		"lint": "biome check ."
+	},
+	"license": "MIT",
+	"unpkg": "./dist/index.js",
+	"jsdelivr": "./dist/index.js",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
+		"svelte": "^5.57.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.11",
+		"@sveltejs/vite-plugin-svelte": "^7.3.0",
+		"svelte": "^5.57.0",
+		"svelte-check": "^4.7.6",
+		"typescript": "^5.9.3",
+		"vite": "^8.2.2",
+		"vite-plugin-dts": "^5.0.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator-shared#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": [
+		"./dist/calculator-element.js"
+	]
+}

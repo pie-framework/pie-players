@@ -112,6 +112,8 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	direct("--pie-background-dark", "base200"),
 	direct("--pie-secondary-background", "base200"),
 	direct("--pie-dropdown-background", "base300"),
+	// Reuse the active-button tint so base-content stays legible on Valentine.
+	mix("--pie-surface", "base300", "base100", 70),
 	direct("--pie-text", "baseContent"),
 	direct("--pie-primary", "primary"),
 	mix("--pie-primary-light", "primary", "base100", 60),
@@ -221,6 +223,23 @@ export function resolveDaisyPieVariables(args: {
 				minimum: entry.minimum,
 				unmeasuredHueWeight: entry.fallbackWeight,
 			});
+			if (
+				entry.token === "--pie-button-focus-outline" &&
+				measure &&
+				resolved["--pie-surface"]
+			) {
+				// A ring that just clears the page can disappear on the raised TTS
+				// panel (Cupcake: 2.93:1). Continue toward the same readable ink so
+				// the existing page correction also holds on this second surface.
+				value = legibleColorAgainst({
+					hue: value,
+					text: read("baseContent"),
+					background: resolved["--pie-surface"],
+					measure,
+					minimum: entry.minimum,
+					unmeasuredHueWeight: entry.fallbackWeight,
+				});
+			}
 		}
 		if (value) {
 			resolved[entry.token] = value;

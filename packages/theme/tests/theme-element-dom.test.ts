@@ -115,9 +115,7 @@ describe("pie-theme DOM contract", () => {
 
 			expect(element.getAttribute("data-theme")).toBe("light");
 			expect(element.style.getPropertyValue("--pie-primary")).toBe("#3f51b5");
-			expect(element.style.getPropertyValue("--pie-background")).toBe(
-				"rgba(255, 255, 255, 0)",
-			);
+			expect(element.style.getPropertyValue("--pie-background")).toBe("#ffffff");
 		} finally {
 			restoreMatchMedia();
 		}

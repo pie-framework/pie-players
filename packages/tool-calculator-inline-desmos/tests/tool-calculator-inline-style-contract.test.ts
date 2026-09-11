@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 const source = await Bun.file(
-	new URL("../tool-calculator-inline.svelte", import.meta.url),
+	new URL(
+		"../../tool-calculator-shared/CalculatorInlineTool.svelte",
+		import.meta.url,
+	),
 ).text();
 
 const cssRuleBody = (selector: string): string => {
@@ -49,6 +52,42 @@ describe("tool-calculator-inline active trigger styling contract", () => {
 		expect(body).toContain("--pie-tool-trigger-active-background");
 		expect(body).toContain("--pie-tool-trigger-active-color");
 		expect(body).toContain("--pie-tool-trigger-active-border-color");
+	});
+
+	test("resting and hover fills resolve through the button tokens", () => {
+		/*
+		 * `--pie-background` is the page token, which a host may point at its own
+		 * backdrop. A trigger filled from it took `--pie-text` ink over whatever the
+		 * host painted, and shipped transparent under the base light theme in all
+		 * three inline calculator packages. `--pie-button-bg` and
+		 * `--pie-button-hover-bg` are required in both base themes and all ten
+		 * colour schemes, so nothing behind them fires under a theme.
+		 */
+		expect(
+			cssRuleBody(".pie-tool-calculator-inline__button").replace(/\s+/g, ""),
+		).toContain(
+			"background-color:var(--pie-button-background-color,var(--pie-button-bg,var(--pie-white,#fff)))",
+		);
+		expect(
+			cssRuleBody(
+				".pie-tool-calculator-inline__button:hover:not(:disabled)",
+			).replace(/\s+/g, ""),
+		).toContain(
+			"background-color:var(--pie-button-hover-background-color,var(--pie-button-hover-bg,var(--pie-secondary-background,#f5f5f5)))",
+		);
+	});
+
+	test("no surface fill resolves through --pie-background", () => {
+		/*
+		 * Ported from `packages/calculator-cortex/tests/calculator-cortex-style-contract.test.ts`.
+		 * Scans declaration values only, so the `--active` rules that blend ink
+		 * through `--pie-background` under `--pie-fixed-hue-collapse` are untouched.
+		 */
+		for (const [, value] of source.matchAll(
+			/(?:^|\n)\s*background(?:-color)?:\s*([^;]+);/g,
+		)) {
+			expect(value ?? "").not.toMatch(/var\(\s*--pie-background\s*[,)]/);
+		}
 	});
 
 	test("active hover keeps the active trigger background contract", () => {

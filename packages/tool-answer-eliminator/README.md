@@ -190,7 +190,7 @@ The tool detects choices through an **adapter registry** (`AdapterRegistry`), no
 Support more element types at runtime by registering your own adapter (any object implementing the `ChoiceAdapter` interface: `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange`, `getButtonContainer`):
 
 ```typescript
-import { AdapterRegistry } from '@pie-players/pie-tool-answer-eliminator';
+import { AdapterRegistry } from '@pie-players/pie-tool-answer-eliminator/adapters/adapter-registry';
 
 const registry = new AdapterRegistry();
 registry.registerAdapter(myCustomChoiceAdapter);

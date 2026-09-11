@@ -903,6 +903,92 @@ describe("IIFE adapter — contract", () => {
 	});
 });
 
+// ─── IIFE adapter — bundle URL encoding ──────────────────────────────────────
+
+describe("IIFE adapter — bundle URL encoding", () => {
+	/**
+	 * Drive one load and return the URL the adapter asked the bundle loader
+	 * for. The loader resolves without publishing `window.pie`, so the load
+	 * always fails after the URL is built — which is all these tests read.
+	 */
+	async function capturedBundleUrl(elements: Record<string, string>) {
+		const backend = createIifeBackend({
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleType: BundleType.player,
+		});
+		const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+			.__seams;
+		let requested = "";
+		seams.replaceLoadBundleScript(async (url) => {
+			requested = url;
+		});
+
+		await backend
+			.load(elements, {
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 25,
+			})
+			.catch(() => undefined);
+
+		return requested;
+	}
+
+	test("keeps a scoped spec's `/` and `@` literal in the path", async () => {
+		const url = await capturedBundleUrl({
+			"pie-mc--version-9-9-1": "@pie-element/multiple-choice@9.9.1",
+		});
+
+		expect(url).toBe(
+			"https://example.test/bundles/@pie-element/multiple-choice@9.9.1/player.js?elements=pie-mc--version-9-9-1",
+		);
+	});
+
+	test("joins a multi-element list with a literal `+`", async () => {
+		const url = await capturedBundleUrl({
+			"pie-mc--version-9-9-1": "@pie-element/multiple-choice@9.9.1",
+			"pie-hotspot--version-9-1-0": "@pie-element/hotspot@9.1.0",
+		});
+
+		expect(url).toBe(
+			"https://example.test/bundles/@pie-element/multiple-choice@9.9.1+@pie-element/hotspot@9.1.0/player.js?elements=pie-hotspot--version-9-1-0%2Cpie-mc--version-9-9-1",
+		);
+	});
+
+	test("a `#` in a spec no longer truncates the URL at a fragment", async () => {
+		const url = await capturedBundleUrl({
+			"pie-mc--version-1-0-0": "@pie-element/mc@1.0.0#frag",
+		});
+
+		expect(url).toContain("@pie-element/mc@1.0.0%23frag/player.js");
+		expect(new URL(url).hash).toBe("");
+		expect(new URL(url).searchParams.get("elements")).toBe(
+			"pie-mc--version-1-0-0",
+		);
+	});
+
+	test("a `?` in a spec no longer swallows the real `elements=` parameter", async () => {
+		const url = await capturedBundleUrl({
+			"pie-mc--version-1-0-0": "@pie-element/mc@1.0.0?elements=evil",
+		});
+
+		expect(url).toContain("@pie-element/mc@1.0.0%3Felements%3Devil/player.js");
+		expect(new URL(url).searchParams.get("elements")).toBe(
+			"pie-mc--version-1-0-0",
+		);
+	});
+
+	test("a `..` spec segment no longer escapes the bundles route", async () => {
+		const url = await capturedBundleUrl({
+			"pie-mc--version-1-0-0": "@pie-element/../../evil@1.0.0",
+		});
+
+		expect(new URL(url).pathname).toBe(
+			"/bundles/@pie-element%2F..%2F..%2Fevil@1.0.0/player.js",
+		);
+	});
+});
+
 // ─── ESM adapter — per-failure-mode contract ─────────────────────────────────
 
 describe("ESM adapter — contract", () => {

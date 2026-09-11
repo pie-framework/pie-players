@@ -111,9 +111,9 @@ Any `/api/...` route referenced by a toolkit provider must be:
 - **`authFetcher`** — optional provider runtime hook, typed as
   `() => Promise<Partial<TConfig>>`. Called during provider initialization
   in `ToolProviderRegistry`; the return value is merged into the provider
-  config before `initialize()`. The built-in calculator default uses
-  `fetch(..., { credentials: "same-origin" })`, i.e. it rides whatever
-  session cookie the host already issued for the assessment. See
+  config before `initialize()`. Calculator composition does not invent an
+  endpoint; a host that chooses runtime delivery supplies this hook explicitly.
+  See
   [`packages/default-tool-loaders/src/registrations/calculator.ts`](../../packages/default-tool-loaders/src/registrations/calculator.ts).
 - **`authToken` + `apiEndpoint`** — `ServerTTSProvider` configuration. The
   token is sent as `Authorization: Bearer <token>` on synthesis requests.
@@ -129,16 +129,30 @@ Any `/api/...` route referenced by a toolkit provider must be:
 
 ### Production-recommended patterns
 
-- **Calculator (Desmos).** The framework supports two shapes.
-  `DesmosToolProvider.proxyEndpoint` keeps the Desmos API key server-side
-  — the host runs a proxy and the client never sees the key.
-  `authFetcher` returning `{ apiKey }` sends the key to the client over
-  an authenticated channel and relies on Desmos's domain-pinning to
-  prevent reuse elsewhere. Either is an acceptable production pattern;
-  the proxy is stronger. In both cases the endpoint that returns the
-  config must require the same session the assessment does — the
-  unauthenticated `/api/tools/desmos/auth` route in `apps/section-demos`
-  is a shape reference, not a template.
+- **Calculator (Desmos).** Loading from `desmos.com` requires an API key licensed
+  for the application. Desmos's documented integration places that key in the
+  browser's `calculator.js` URL, so `authFetcher` can keep it out of source and
+  static bundles but cannot keep it secret from an authorized browser user. A
+  host-provided endpoint must require the assessment session, return
+  `Cache-Control: private, no-store`, and issue only the key assigned to that
+  application. The framework has no script-proxy path: Desmos documents
+  self-hosting as a partner option, so copying, caching, proxying, or self-hosting
+  the vendor script requires rights in the application's Desmos agreement. The
+  Trial Tier is limited to personal non-commercial use or a 90-day internal
+  evaluation; production end-user and internal business use require the
+  Commercial Tier unless a separate written agreement applies.
+- **Calculator (GeoGebra).** The PIE adapter loads GeoGebra's official
+  `deployggb.js` and shows the required attribution. GeoGebra permits its full
+  application/web services for qualifying non-commercial use under its current
+  terms; commercial deployment requires a separate agreement. A custom
+  `provider.init.scriptUrl` is not permission to mirror or self-host GeoGebra —
+  use it only when the deployment's agreement grants that right.
+- **Calculator (Cortex).** The `calculator-cortex` provider bundles MathLive,
+  Cortex Compute Engine, JSXGraph, fonts, and its evaluation worker. It requires
+  no key, service endpoint, CDN, or runtime network request. The package notices
+  record the exact open-source license choices. Learner expressions are parsed
+  and evaluated in the worker and reach JSXGraph only as sampled numeric arrays;
+  the integration does not compile or execute learner-authored JavaScript.
 - **Server-backed TTS.** Follow the security section of
   [`packages/tts-server-polly/examples/INTEGRATION-GUIDE.md#security-considerations`](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md#security-considerations)
   — JWT or session-cookie check in a SvelteKit `handle` hook on
@@ -157,27 +171,32 @@ Any `/api/...` route referenced by a toolkit provider must be:
 
 ### What's at risk if this is missed
 
-- Unauthenticated `/api/tools/desmos/auth` in production → Desmos API key
-  exposed to any caller of the URL; Desmos origin-pinning becomes the
-  only defense, and rotation is the only remediation once leaked.
+- Unauthenticated `/api/tools/desmos/auth` in production → an application API
+  key delivered to callers who are not authorized to use the licensed
+  application. Runtime delivery is access control and static-bundle hygiene, not
+  a way to make the browser-loaded key secret.
 - Unauthenticated `/api/tts/synthesize` → anyone on the internet can
   consume the host's Polly / Google credits; also a content-generation
   abuse surface (arbitrary text pushed through the TTS pipeline).
 - `includeAuthOnAssetFetch: true` without a correct `assetOrigins` list
   → a compromised or misconfigured TTS server can return a cross-origin
   URL and exfiltrate the bearer token on the follow-up fetch.
-- Vendor credentials in client bundles or client-side config → permanent
-  leak via the shipped JavaScript; again, rotation is the only
-  remediation.
+- Server-only vendor credentials in client bundles or client-side config →
+  permanent leak via the shipped JavaScript; again, rotation is the only
+  remediation. This does not describe Desmos's application key, which its
+  documented browser integration requires in the script URL.
 
 ### Demo endpoints are not production-grade
 
 The routes in `apps/section-demos/src/routes/api/` are intentionally
 unauthenticated and exist for local development and e2e specs. In
 particular, `GET /api/tools/desmos/auth` returns the configured
-`DESMOS_API_KEY` with no session check. Do not copy these routes verbatim
-into a production deployment — use them as shape references and wrap
-them in the host's auth middleware.
+`DESMOS_API_KEY` with no session check. When it is absent, the demo returns an
+empty compatibility response and the adapter preserves the historical unkeyed
+load. That behavior keeps existing local clients running; it does not grant or
+imply a Desmos license. Do not copy this route verbatim into a production
+deployment — use it only as a shape reference, require the host's auth
+middleware, and use a key/tier licensed for the deployed application.
 
 ### Related documentation
 
@@ -190,5 +209,4 @@ them in the host's auth middleware.
   — `ServerTTSProvider` configuration, including `assetOrigins` and
   `includeAuthOnAssetFetch`
 - [`../../packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts`](../../packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts)
-  — Desmos provider config (`apiKey`, `proxyEndpoint`) with inline
-  security notes
+  — Desmos provider config (`apiKey`) and browser-delivery boundary

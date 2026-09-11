@@ -65,10 +65,14 @@ const CAPABILITY_IDS = [
  *
  * `pie-tool-shell` and its BEM descendants are generic shell chrome — the class
  * names the toolbar gives every hosted tool window — not a capability element, so
- * they are excluded rather than allowlisted per-file.
+ * they are excluded rather than allowlisted per-file. `pie-tool-overlay-boundary`
+ * and `pie-tool-overlay-protect` are the same category from the other side: host
+ * contracts, declared on content by whoever renders it, naming a box rather than
+ * a capability. Every capability that positions over content reads the same two.
  */
 const CAPABILITY_TAG_PATTERN = /pie-tool-[a-z0-9-]+/g;
-const GENERIC_TOOL_TAG_PATTERN = /^pie-tool-shell(?:[_-]|$)/;
+const GENERIC_TOOL_TAG_PATTERN =
+	/^pie-tool-(?:shell|overlay-boundary|overlay-protect)(?:[_-]|$)/;
 
 const SCOPED_TARGETS = [
 	{ dir: path.join(TOOLKIT_SRC, "policy"), label: "policy/**" },

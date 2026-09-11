@@ -34,7 +34,7 @@ function withCalculatorToolMetadata(
 	} as AssessmentItemRef;
 }
 
-const basicCalculatorItem: AssessmentItemRef = withCalculatorToolMetadata(
+export const basicCalculatorItem: AssessmentItemRef = withCalculatorToolMetadata(
 	{
 		identifier: "q1-basic-calculator-cost",
 		required: true,
@@ -85,7 +85,7 @@ const basicCalculatorItem: AssessmentItemRef = withCalculatorToolMetadata(
 	"basic",
 );
 
-const scientificCalculatorItem: AssessmentItemRef = withCalculatorToolMetadata(
+export const scientificCalculatorItem: AssessmentItemRef = withCalculatorToolMetadata(
 	{
 		identifier: "q2-scientific-calculator-growth",
 		required: true,

@@ -11,9 +11,15 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
 	testDir: "./tests/e2e",
+	// Not Playwright's default: that also claims the `*.test.ts` bun tests. See
+	// AGENTS.md, "Playwright And Sandboxed Execution".
+	testMatch: /.*\.spec\.ts/,
 	fullyParallel: false,
 	forbidOnly: false,
-	retries: 0,
+	// One retry in CI, none locally. develop requires these suites, so a single
+	// intermittent failure otherwise reds a required check; a local retry would
+	// only hide the flake from whoever can debug it.
+	retries: process.env.CI ? 1 : 0,
 	workers: 1,
 	reporter: "list",
 	projects: [

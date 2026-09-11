@@ -36,7 +36,13 @@
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
     e.g. "show calculator only when math content is present". Lives
     at the toolbar boundary by design (engine doesn't import tool
-    registry render context).
+    registry render context). A PNP-granted tool skips this gate: a
+    heuristic must not withdraw an accommodation.
+  - Pass 3: tool-owned isApplicableToContent(context) — capability veto,
+    e.g. "an answer eliminator has no choices to strike through here".
+    Outranks a grant, because a control that provably does nothing
+    delivers no accommodation. Tools declare it only where that is
+    provable; a host that resolves visibility itself is exempt.
 -->
 <script lang="ts">
 	import {
@@ -67,9 +73,6 @@
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
-	// Pure zoom-compensation math (framework-agnostic, shipped in dist so it
-	// resolves through this package's CE bundle which externalizes @pie-players/*).
-	import { approximateZoomFromWidths, computeZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/zoom-compensation';
 	import {
 		collectFocusable,
 		createFocusTrap,
@@ -286,36 +289,6 @@
 	} = $props();
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
-
-	// Freeze the calculator's furnished buttons at their 200%-zoom size. The cap
-	// is applied via CSS `zoom` on WRAPPER elements (the header-button wrapper and
-	// the shell's control cluster), never on the nds-icon-button hosts directly —
-	// `zoom` on an nds-icon-button (light-DOM render + injected global <style>)
-	// mis-sizes it. Also never on the shell root, whose fixed position + drag /
-	// resize math is computed from real viewport pixels. 0.25 floor keeps the cap
-	// holding past 500% browser zoom (see SectionPlayerTabbedContent).
-	function currentCalculatorZoomCompensation(): number {
-		if (typeof window === 'undefined') return 1;
-		// Shares ICON_BUTTON_ZOOM_OPTIONS with the TTS play button so both icon
-		// buttons compensate identically.
-		return computeZoomCompensation(
-			approximateZoomFromWidths(window.outerWidth, window.innerWidth),
-			ICON_BUTTON_ZOOM_OPTIONS.maxZoom,
-			ICON_BUTTON_ZOOM_OPTIONS.minCompensation
-		);
-	}
-	// Reactive factor for the header button (the shell recomputes its own via
-	// applyShellStyle since its DOM lives at document.body, outside this subtree).
-	let calculatorButtonZoomComp = $state(1);
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		const update = () => {
-			calculatorButtonZoomComp = currentCalculatorZoomCompensation();
-		};
-		update();
-		window.addEventListener('resize', update);
-		return () => window.removeEventListener('resize', update);
-	});
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Presentation gate from the host runtime. Controls render
@@ -704,6 +677,21 @@
 			effectiveToolRegistry
 				.filterVisibleInContext(toolOwnedToolIds, context)
 				.forEach((tool) => visible.add(tool.toolId));
+		}
+
+		// Pass 3: applicability, the one gate a grant does not survive. Relevance
+		// asks whether a tool is plausibly useful and must never withdraw an
+		// accommodation; this asks whether the tool can act on this content at all,
+		// and a control that provably does nothing serves no learner. Only a tool
+		// that declares the gate can be removed here, and a host that resolved a
+		// tool's visibility itself keeps that answer — it may own an adapter this
+		// content works with.
+		const candidateContexts = toolContext ? [toolContext, ...elementContexts] : elementContexts;
+		for (const toolId of Array.from(visible)) {
+			if (hostResolvedToolIds.has(toolId)) continue;
+			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts)) {
+				visible.delete(toolId);
+			}
 		}
 
 		return Array.from(visible);
@@ -1158,8 +1146,40 @@
 		};
 	});
 
-	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
+	const OVERLAY_BOUNDARY_SELECTOR = '[data-pie-tool-overlay-boundary]';
+
+	/**
+	 * Where a mounted element is appended.
+	 *
+	 * An element the registration marked `container: 'content-boundary'` goes to the
+	 * nearest host-declared boundary, so the content's box — not this toolbar's — is
+	 * its containing block and the frame it positions in. Which elements need that
+	 * is the registration's call, not the toolbar's: the toolbar honours the
+	 * declaration and knows nothing about the tool. A host that declares no
+	 * boundary keeps the in-toolbar host element, whose containing block is the
+	 * initial one.
+	 */
+	function resolveMountParent(node: HTMLElement, entry: ToolRenderElement): HTMLElement {
+		if (entry.container !== 'content-boundary') return node;
+		let current: Node | null = node;
+		while (current) {
+			if (current instanceof HTMLElement && current.matches(OVERLAY_BOUNDARY_SELECTOR)) {
+				return current;
+			}
+			if (current instanceof HTMLElement && current.parentElement) {
+				current = current.parentElement;
+				continue;
+			}
+			const root = current.getRootNode();
+			current = root instanceof ShadowRoot ? root.host : null;
+		}
+		return node;
+	}
+
+	function mountElement(node: HTMLSpanElement, entry: ToolRenderElement) {
+		let currentEntry = entry;
 		let mountedElement: HTMLElement | null = null;
+		let mountParent: HTMLElement = node;
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -1173,22 +1193,24 @@
 			if (mountedElement === nextElement) return;
 			if (mountedElement) {
 				invokeElementUnmount(mountedElement);
-				if (mountedElement.parentNode === node) {
-					node.removeChild(mountedElement);
+				if (mountedElement.parentNode === mountParent) {
+					mountParent.removeChild(mountedElement);
 				}
 			}
 			mountedElement = nextElement;
 			if (mountedElement) {
-				if (mountedElement.parentNode && mountedElement.parentNode !== node) {
+				mountParent = resolveMountParent(node, currentEntry);
+				if (mountedElement.parentNode && mountedElement.parentNode !== mountParent) {
 					mountedElement.parentNode.removeChild(mountedElement);
 				}
-				node.appendChild(mountedElement);
+				mountParent.appendChild(mountedElement);
 			}
 		};
-		updateMountedElement(element);
+		updateMountedElement(entry.element);
 		return {
-			update(nextElement: HTMLElement | null) {
-				updateMountedElement(nextElement);
+			update(nextEntry: ToolRenderElement) {
+				currentEntry = nextEntry;
+				updateMountedElement(nextEntry.element);
 			},
 			destroy() {
 				updateMountedElement(null);
@@ -1267,6 +1289,27 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		/**
+		 * The declared size this shell was last placed at, and whether the learner has
+		 * since taken the panel over.
+		 *
+		 * A registration may compute its shell size from render params, and those
+		 * resolve a render *after* the shell is built: `getToolRenderParams` reads
+		 * `hostResolvedToolContextById`, which is empty on the first pass. The
+		 * calculator declares 720x660 for a graphing calculator and 380x500 otherwise,
+		 * so reading `initialWidth` once meant every graphing calculator — Desmos,
+		 * GeoGebra and Cortex alike — opened at the untyped 380px size and had its plot
+		 * clipped by the content box. `applyShellStrings` already re-reads the title on
+		 * update, which is why the header said "Graphing Calculator" over a panel sized
+		 * for a basic one.
+		 *
+		 * A later declaration is adopted, a learner's own size is not: once someone has
+		 * dragged or resized the panel it is theirs, and a re-render must not snap it
+		 * back.
+		 */
+		let declaredWidth = width;
+		let declaredHeight = height;
+		let learnerSizedShell = false;
 		let focusTrapCleanup: (() => void) | null = null;
 		let openerEl: HTMLElement | null = null;
 		let previousActive = false;
@@ -1325,16 +1368,10 @@
 			};
 		};
 
-		// horizontal scroll on the *whole* shell (so header + content are
-		// part of the same scroll surface) and pin a `min-width` on every
-		// child of the column flex (header, content, mounted tool) so they
-		// all participate in the same scrollable width — without this,
-		// `contentEl` stays at the shell's visible width and clips the tool
-		// while the header alone scrolls. At normal sizes the knobs are
-		// cleared so shellEl's default `overflow: visible` is restored —
-		// that visibility is what lets the absolutely-positioned resize
-		// handles receive pointer events outside the rounded border, see
-		// the shellEl block.
+		// A tool may need horizontal panning below its declared minimum width.
+		// Keep that scrolling inside the content: the header must reflow so its
+		// close, move and resize controls remain visible at the viewport width.
+		// The shell keeps overflow visible for the corner resize handles.
 		const applyContentMinWidth = () => {
 			const configuredMinWidth = currentArgs.mounted.entry.shell?.minWidth;
 			const shouldScroll =
@@ -1347,14 +1384,11 @@
 				mountedContentElement.style.minWidth = minWidthValue;
 			}
 			if (headerEl) {
-				headerEl.style.minWidth = minWidthValue;
+				headerEl.style.minWidth = '0';
 			}
 			if (contentEl) {
-				contentEl.style.minWidth = minWidthValue;
-			}
-			if (shellEl) {
-				shellEl.style.overflowX = shouldScroll ? 'auto' : 'visible';
-				shellEl.style.overflowY = 'visible';
+				contentEl.style.minWidth = '0';
+				contentEl.style.overflowX = shouldScroll ? 'auto' : 'hidden';
 			}
 		};
 
@@ -1371,7 +1405,6 @@
 		const applyContentLayout = () => {
 			if (!contentEl) return;
 			const shellConfig = currentArgs.mounted.entry.shell;
-			contentEl.style.overflowX = 'hidden';
 			contentEl.style.overflowY = getContentOverflowY();
 			if (!mountedContentElement) return;
 
@@ -1390,6 +1423,26 @@
 			mountedContentElement.style.height = '100%';
 			mountedContentElement.style.minHeight = '0';
 			mountedContentElement.style.flex = '1 1 auto';
+		};
+
+		/**
+		 * Take on a declared size that changed after the shell was built.
+		 *
+		 * Re-places the panel, because the declared size is what `initialAlign` was
+		 * resolved against: a bottom-left shell that grew by 340px without moving would
+		 * hang off the top of the viewport.
+		 */
+		const adoptDeclaredSize = () => {
+			const shellConfig = currentArgs.mounted.entry.shell;
+			const nextWidth = shellConfig?.initialWidth ?? 720;
+			const nextHeight = shellConfig?.initialHeight ?? 560;
+			if (nextWidth === declaredWidth && nextHeight === declaredHeight) return;
+			declaredWidth = nextWidth;
+			declaredHeight = nextHeight;
+			if (learnerSizedShell) return;
+			width = nextWidth;
+			height = nextHeight;
+			centerShell();
 		};
 
 		const applyPositionAndSize = () => {
@@ -1422,12 +1475,14 @@
 		};
 
 		const moveBy = (dx: number, dy: number) => {
+			learnerSizedShell = true;
 			x += dx;
 			y += dy;
 			applyPositionAndSize();
 		};
 
 		const resizeBy = (dw: number, dh: number) => {
+			learnerSizedShell = true;
 			width += dw;
 			height += dh;
 			applyPositionAndSize();
@@ -1538,14 +1593,6 @@
 			shellEl.style.width = `${width}px`;
 			shellEl.style.height = `${height}px`;
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
-			// Header control buttons read this via `zoom: var(--pie-tool-shell-zoom-comp)`
-			// on their cluster wrapper so they cap at 200% while the shell box itself
-			// stays at real pixels (its position/size math needs unscaled coordinates).
-			// Runs on init, window resize, and drag/resize — cheap + idempotent.
-			shellEl.style.setProperty(
-				'--pie-tool-shell-zoom-comp',
-				String(currentCalculatorZoomCompensation())
-			);
 		};
 
 		/**
@@ -1837,6 +1884,7 @@
 			if (target.closest('button') || !shellEl) return;
 
 			event.preventDefault();
+			learnerSizedShell = true;
 			dragPointerId = event.pointerId;
 			dragOffsetX = event.clientX - x;
 			dragOffsetY = event.clientY - y;
@@ -1848,6 +1896,7 @@
 			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
 			event.preventDefault();
 			event.stopPropagation();
+			learnerSizedShell = true;
 			resizePointerId = event.pointerId;
 			resizeCorner = corner;
 			resizeStartWidth = width;
@@ -2017,6 +2066,7 @@
 			headerEl = document.createElement('div');
 			headerEl.className = 'pie-tool-shell__header';
 			headerEl.style.display = 'flex';
+			headerEl.style.flexWrap = 'wrap';
 			headerEl.style.alignItems = 'center';
 			headerEl.style.justifyContent = 'space-between';
 			headerEl.style.gap = '6px';
@@ -2065,12 +2115,16 @@
 
 			titleEl = document.createElement('span');
 			titleEl.className = 'pie-tool-shell__title';
+			titleEl.style.minWidth = '0';
+			titleEl.style.overflowWrap = 'anywhere';
 			titleEl.textContent = currentArgs.mounted.entry.shell.title || currentArgs.mounted.toolId;
 			headerEl.appendChild(titleEl);
 
 			controlsEl = document.createElement('div');
 			controlsEl.className = 'pie-tool-shell__controls';
 			controlsEl.style.display = 'inline-flex';
+			controlsEl.style.flexWrap = 'wrap';
+			controlsEl.style.minWidth = '0';
 			controlsEl.style.alignItems = 'center';
 			controlsEl.style.gap = shellDeclaresNdsChrome() ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
@@ -2118,13 +2172,11 @@
 				rightClusterEl = document.createElement('div');
 				rightClusterEl.className = 'pie-tool-shell__header-right';
 				rightClusterEl.style.display = 'inline-flex';
+				rightClusterEl.style.flexWrap = 'wrap';
+				rightClusterEl.style.maxWidth = '100%';
+				rightClusterEl.style.justifyContent = 'flex-end';
 				rightClusterEl.style.alignItems = 'center';
 				rightClusterEl.style.gap = '6px';
-				// Cap the move / resize / close controls at their 200%-zoom size.
-				// zoom goes on this cluster wrapper (a plain div), NOT the
-				// nds-icon-button hosts inside it. --pie-tool-shell-zoom-comp is set
-				// on the shell root by applyShellStyle and inherits down here.
-				rightClusterEl.style.setProperty('zoom', 'var(--pie-tool-shell-zoom-comp, 1)');
 				rightClusterEl.appendChild(controlsEl);
 				headerEl.appendChild(rightClusterEl);
 			} else {
@@ -2403,6 +2455,7 @@
 					currentArgs.runtime as AssessmentToolkitRuntimeContext
 				);
 				applyShellStrings();
+				adoptDeclaredSize();
 				// An <nds-icon-button> is a custom element with inline-block default
 				// display; a plain <button> shell control is inline-flex. Read which one
 				// was actually built rather than re-deriving it, so a prop refresh cannot
@@ -2477,10 +2530,13 @@
 		class:item-toolbar--header-overlay-active={headerOverlayShouldExpandForActiveTool}
 		data-content-kind={effectiveContentKind}
 		data-level={effectiveLevel}
-		style={`--pie-toolbar-zoom-comp: ${calculatorButtonZoomComp};`}
 		bind:this={toolbarRootElement}
 	>
-		<div class="item-toolbar__tools-row">
+		<div class="item-toolbar__tools-row" onfocusin={(event) => {
+			if (effectiveLevel === 'section' && event.target instanceof HTMLElement) {
+				event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+			}
+		}}>
 			{#each mountedElementsBeforeButtons as mounted (mounted.key)}
 				{#if mounted.entry.shell}
 					<!-- Re-key on `useNdsIcons` so the imperatively-built shell (which
@@ -2498,7 +2554,7 @@
 						></span>
 					{/key}
 				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
 				{/if}
 			{/each}
 
@@ -2511,9 +2567,6 @@
 					     component's inner <button>, so `onclick` still invokes onClick.
 					     `reflectToggleState` mirrors the pressed state onto that inner
 					     button since nds has no native aria-pressed. -->
-					<!-- 200% cap on a WRAPPER, not the nds-icon-button host directly:
-					     `zoom` on an nds-icon-button (light-DOM render + injected
-					     global <style>) mis-sizes it. Matches the scroll-hint pattern. -->
 					<span class="item-toolbar__nds-button-zoom">
 						<nds-icon-button
 							use:ndsIconButtonAction
@@ -2605,7 +2658,7 @@
 						></span>
 					{/key}
 				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
 				{/if}
 			{/each}
 		</div>
@@ -2632,7 +2685,7 @@
 							></span>
 						{/key}
 					{:else}
-						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry.element}></span>
+						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry}></span>
 					{/if}
 				{/each}
 			</div>
@@ -2645,6 +2698,8 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
+		min-width: 0;
+		max-width: 100%;
 		gap: 0;
 		--pie-toolbar-tools-row-height: 2rem;
 		--pie-tts-controls-row-height: 2.875rem;
@@ -2654,11 +2709,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
-		flex-wrap: nowrap;
-		/* Cap the gap between toolbar items (e.g. TTS play ↔ calculator) at its
-		   200%-zoom size with the same factor the buttons use, so the spacing
-		   doesn't keep growing past 200% while the buttons themselves freeze. */
-		gap: calc(0.5rem * var(--pie-toolbar-zoom-comp, 1));
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		max-width: 100%;
 		min-height: var(--pie-toolbar-tools-row-height);
 	}
 
@@ -2667,11 +2720,15 @@
 	   which left them impossible to focus, tab to, or click. `min-width: 0`
 	   beats the flex default (`auto`, i.e. never shrink below content), which
 	   would otherwise keep the row at full content width and make overflow-x
-	   moot. Scoped to section level: an item's own toolbar hosts far fewer
-	   tools and, for the inline TTS tool's "expanding row" layout, relies on
-	   this row growing freely to host its reading-controls panel — capping its
-	   width here clips that panel instead. */
+	   moot. Item and passage rows wrap without an overflow clip so an inline
+	   reading-controls panel can still extend outside the row. */
 	.item-toolbar[data-level="section"] .item-toolbar__tools-row {
+		flex-wrap: nowrap;
+		justify-content: flex-start;
+		/* Keep the focus outline inside the scrolling box on both axes. */
+		padding: 4px;
+		scroll-padding: 4px;
+		box-sizing: border-box;
 		overflow-x: auto;
 		max-width: 100%;
 		min-width: 0;
@@ -2735,6 +2792,7 @@
 
 	.item-toolbar__button {
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
 		width: 2rem;
@@ -2754,11 +2812,9 @@
 	   md/sm/lg dimensions (32 / 44 / 40 px) without a layout shift. The glyph
 	   keeps the NDS-native icon size (we render size="small"), so it isn't
 	   oversized. */
-	/* Freeze the calculator's header open/close button at its 200%-zoom size
-	   (factor is 1 at zoom <= 200%). Zoom on this wrapper, not the host. */
 	.item-toolbar__nds-button-zoom {
 		display: inline-flex;
-		zoom: var(--pie-toolbar-zoom-comp, 1);
+		flex-shrink: 0;
 	}
 
 	.item-toolbar nds-icon-button {

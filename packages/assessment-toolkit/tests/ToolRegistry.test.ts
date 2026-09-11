@@ -358,6 +358,101 @@ describe("ToolRegistry", () => {
 		});
 	});
 
+	describe("isApplicableToAnyContext", () => {
+		const itemContext: ToolContext = {
+			level: "item",
+			assessment: {} as any,
+			itemRef: {} as any,
+			item: {} as any,
+		};
+
+		test("a tool that declares no gate is applicable", () => {
+			registry.register(mockCalculatorTool);
+
+			expect(
+				registry.isApplicableToAnyContext("calculator", [itemContext]),
+			).toBe(true);
+		});
+
+		test("one applicable context is enough", () => {
+			registry.register({
+				...mockCalculatorTool,
+				toolId: "gated",
+				isApplicableToContent: (context) => context.level === "element",
+			});
+
+			const elementContext: ToolContext = {
+				level: "element",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: {} as any,
+				elementId: "el-1",
+			} as any;
+
+			expect(
+				registry.isApplicableToAnyContext("gated", [
+					itemContext,
+					elementContext,
+				]),
+			).toBe(true);
+		});
+
+		test("withdraws a tool no context can use", () => {
+			registry.register({
+				...mockCalculatorTool,
+				toolId: "gated",
+				isApplicableToContent: () => false,
+			});
+
+			expect(registry.isApplicableToAnyContext("gated", [itemContext])).toBe(
+				false,
+			);
+		});
+
+		// Unresolved content and a throwing gate are the same case: neither has
+		// established that the tool is useless, and the failure to avoid is
+		// withdrawing an accommodation a learner is entitled to.
+		test("no contexts leaves the tool applicable", () => {
+			registry.register({
+				...mockCalculatorTool,
+				toolId: "gated",
+				isApplicableToContent: () => false,
+			});
+
+			expect(registry.isApplicableToAnyContext("gated", [])).toBe(true);
+		});
+
+		test("a gate that throws leaves the tool applicable", () => {
+			registry.register({
+				...mockCalculatorTool,
+				toolId: "gated",
+				isApplicableToContent: () => {
+					throw new Error("boom");
+				},
+			});
+
+			expect(registry.isApplicableToAnyContext("gated", [itemContext])).toBe(
+				true,
+			);
+		});
+
+		test("an unregistered tool is applicable", () => {
+			expect(
+				registry.isApplicableToAnyContext("nonexistent", [itemContext]),
+			).toBe(true);
+		});
+
+		test("rejects a non-function gate at registration", () => {
+			expect(() =>
+				registry.register({
+					...mockCalculatorTool,
+					toolId: "bad-gate",
+					isApplicableToContent: "yes" as any,
+				}),
+			).toThrow(/"isApplicableToContent" must be a function when present/);
+		});
+	});
+
 	describe("getToolMetadata", () => {
 		test("returns metadata for all tools", () => {
 			registry.register(mockCalculatorTool);

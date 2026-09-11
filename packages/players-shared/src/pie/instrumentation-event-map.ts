@@ -76,6 +76,25 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 		},
 	];
 
+export const ITEM_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [
+	// Only the security signal is mapped, deliberately. The item player's other
+	// public events (`load-complete`, `player-error`, `model-updated`,
+	// `model-loaded`, `session-changed` and the `backend-*` family) stay off the
+	// bridge because `session-changed` carries the learner's responses, and
+	// forwarding response data to a host's telemetry provider by default is the
+	// host's decision to make rather than this package's default. A host that
+	// wants them can attach its own bridge with its own map.
+	//
+	// `correct-responses-populated` firing at all is the signal: population
+	// requires a controller with `createCorrectResponseSession` in the browser,
+	// which only a `client-player.js` bundle provides, and the attributes that
+	// request it (`add-correct-response`, `env`, `mode`) are all client-mutable.
+	{
+		sourceEventName: "correct-responses-populated",
+		instrumentationEventName: "pie-item-correct-responses-populated",
+	},
+];
+
 export const ASSESSMENT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 	[
 		{

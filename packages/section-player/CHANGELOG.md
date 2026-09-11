@@ -1,5 +1,106 @@
 # @pie-players/pie-section-player
 
+## 0.3.70
+
+### Patch Changes
+
+- 599c657: Position frameless tool overlays against the content they are placed on.
+  
+  A frameless overlay was appended next to the toolbar buttons, so whichever
+  element happened to be positioned became its containing block. At `passage` and
+  `item` placement that is `pie-item-toolbar`, a header-sized box, and the line
+  reader's opening position — derived from the viewport — put the panel outside
+  the card. Auto-focus then scrolled the pane across to reveal it, taking the
+  passage off screen. At `section` placement no positioned ancestor exists, so the
+  same coordinates resolved against the initial containing block and looked right.
+  
+  `ToolRenderElement` gains `container`. A registration declaring
+  `container: 'content-boundary'` has its element appended to the nearest
+  `data-pie-tool-overlay-boundary` element — the box a host already marks as the
+  content a tool belongs to — and the section player's item and passage cards make
+  themselves the containing block for what lands there. The composition layer sets
+  it for frameless overlays, so the toolbar honours a declaration rather than
+  inferring intent from a tool's surface. A host declaring no boundary keeps the
+  previous in-toolbar mount, so section-level placement is unchanged.
+  
+  The line reader derives its opening position from that containing block instead
+  of the viewport, centring on the part of it currently on screen — the midpoint
+  of a card several screens tall is not visible. Position and width are clamped to
+  the containing block on open, on drag, on keyboard movement, on resize and on
+  window resize, and it focuses with `preventScroll` so revealing it cannot scroll
+  an ancestor pane.
+  
+  Ruler and protractor position by percentage, so they now self-centre in the card
+  they are placed on rather than in whatever box was positioned above it.
+- b8f8712: Coalesce the items-pane scroll-hint's layout read into one deferred pass, and read each box metric once.
+  
+  `updateScrollable` in `SectionItemsPane` ran on every notification from a `ResizeObserver`, a `MutationObserver` over the whole items subtree (`childList`, `subtree`, `characterData`) and a passive `scroll` listener, and each run read `scrollHeight` twice plus `scrollTop` and `clientHeight`. Every one of those reads flushes layout for the container that holds every item card and every live PIE element in the section. Typing 105 characters into a hosted rich-text element produced 105 mutation batches and 214 container `scrollHeight` reads; after the change the same input produces 106.
+  
+  Measured on a two-card pane (360 elements), one such read costs 0.1 ms median and 0.3 ms at the maximum, and it scales with pane size. The three sources now share one pending read, the pass already scheduled is kept rather than re-armed so an unbroken mutation stream cannot push it back indefinitely, and teardown cancels a pending pass so no read lands on a detached container.
+  
+  A zero-delay timer schedules the read rather than `requestAnimationFrame`, matching the post-render overwide-wrap pass in `players-shared`'s `PieItemPlayer`. A document with no compositor never runs a frame callback, which is the PIE-885 failure recorded in `assessment-toolkit/src/runtime/composition-emit-scheduler.ts`. On a frame-based read the hint stayed permanently hidden in that document — the cards mount after `onMount`, so every update that arms the hint arrives through the observer — which is the below-the-fold discoverability regression PIE-549 exists to prevent, in exactly the headless and CI contexts the e2e suites run in.
+  
+  The observer keeps `characterData` and `subtree`, both load-bearing. A separate 200-character run produced 200 mutation batches, 199 of them carrying characterData records and no childList record, against exactly one change in the container's `scrollHeight` — soft-wrapping a line inside an existing text node grows the content and emits no childList record, so dropping `characterData` would leave the hint stale while a learner types past the fold. `subtree` is required because the container's only child is the pane custom element and the item cards are its grandchildren.
+  
+  Behaviour is unchanged: the hint still appears when content sits below the fold, hides at the bottom, re-arms when content grows, and scrolls the pane on click. The gradient, the zoom cap at 200%, the gradient drop past 300% and the pointer-events split from PIE-625, PIE-717, PIE-730 and PIE-731 are untouched. `packages/section-player/tests/section-player-scroll-hint.spec.ts` covers those four behaviours plus the non-painting document, and polls, because the read is deliberately deferred.
+- 77b5686: Resolve the items-pane scroll hint's container as the nearest scrolling ancestor, so the vertical layout gets a working hint instead of a permanent one.
+  
+  PIE-549 took the pane element's parent as the scroll container. That is the scrolling box in the split-pane and tabbed layouts. In the vertical layout it is `<section class="pie-section-player-items-section">`, which is `overflow: visible`; the scroller is one level up, `.pie-section-player-vertical-content`. Measured on `/three-questions?mode=candidate&layout=vertical` at 1280x500, that section reported `scrollHeight` 1290 against `clientHeight` 1274 — the 16px is the sticky hint's own box overflowing the section, so the hint was what made its own measurement true. `isScrollable` was therefore permanently true, `atBottom` unreachable on an element whose `scrollTop` stays 0, and the control's `scrollBy` a no-op: a "Scroll down" button always on screen and always inert. Against the correct container the same content reports `scrollHeight` equal to `clientHeight` when it fits.
+  
+  PIE-549 specs the hint conditionally — "if there is content below the fold" — and exists to stop a learner clicking "Next >" with questions unseen, which an always-on indicator undercuts. PIE-717 is the other cost: a permanently present overlay is what made answer choices under the 56px gradient unclickable, and the mitigation recorded there rests on the hint disappearing at the end of the scroll.
+  
+  `auto`, `scroll` and `overlay` count as scrolling; `hidden` does not, because its scrollport is unreachable and hinting at content below the fold of a region nobody can scroll is the same defect from the other end. The walk is bounded at `<body>`: every layout in this package supplies its own scrolling pane, and falling through to the host document's scroller would hint at a region the pane does not own. Where no scrolling ancestor exists the hint stays hidden.
+  
+  The container is bound on the first deferred pass rather than in `onMount`, because computed style is what identifies it and there is none yet at mount: `getComputedStyle` returns an empty declaration for every element between the pane and `pie-section-player-base`, so `overflowY` reads `""`. One task later it resolves, and any later pass retries until it does. The `MutationObserver` moved from the container to the pane element, which needs no computed style to identify and carries the item cards as its children; in the split-pane and tabbed layouts the container's only child is that element, so it is the same record stream.
+  
+  Only the reference app exercises the vertical layout, so no external host sees this change; the consumer pad records no host touching scroll behaviour at all.
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [599c657]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+- Updated dependencies [e3169f8]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/pie-assessment-toolkit@0.3.70
+  - @pie-players/pie-default-tool-loaders@0.3.70
+  - @pie-players/pie-item-player@0.3.70
+  - @pie-players/pie-context@0.3.70
+
+## 0.3.69
+
+### Patch Changes
+
+- 01eb0f9: Add `--pie-section-player-card-header-background-dark`, a card header fill applied under dark themes. A host whose brand tint is legible on a light card gets a near-white title on that same tint once a dark theme is active; this is the hook for giving the dark theme its own fill. It falls back to `--pie-section-player-card-header-background` when unset, so a host that sets only the light hook is unaffected. The passage card bridges the dark value to `--pie-passage-header-background` as well, so a hosted passage-player follows. Dark is detected with the same selectors the theme package writes its dark tokens under: `[data-theme="dark"]` on an ancestor, or `pie-theme[theme="dark"]`.
+- 7ca30ab: Source the pane scrollbar thumb from `--pie-border-gray`, so a host that clears the generic boundary token keeps a visible scrollbar.
+  
+  The three scrolling panes — split-pane passages and items, tabbed content, vertical content — defaulted `--pie-scrollbar-thumb` through `--pie-border`. A host that wants borderless tool chrome on its player subtree sets `--pie-border: transparent` alongside `--pie-button-border: transparent`, which is a supported thing to do with a canonical token, and got a transparent thumb on every pane: scrollbars present, invisible, in both regions. Before the thumb defaulted through a canonical token it fell back to a literal `#6b7280`, so the host's override was inert and the breakage arrived with the theme-tracking change.
+  
+  `--pie-border-gray` is in the same boundary family, carries the same DaisyUI 3:1-against-surface correction, and is not one of the chrome knobs a host repoints to restyle buttons. Track and hover keep `--pie-background-dark` and `--pie-border-dark`. A host that wants different scrollbar chrome still sets `--pie-scrollbar-thumb` / `-track` / `-thumb-hover` directly. Those three stay package-private and unregistered, so the fallback chain is the contract rather than the token names.
+  
+  The durable shape is `pie-theme` owning `--pie-scrollbar-*` as registered tokens rather than every pane defaulting through a boundary token; the three hooks are unregistered today, so any canonical token behind them stays reachable by a host override.
+- 3deb7a2: Stop driving the split-pane pane backdrop from `--pie-passage-header-background` and read the canonical `--pie-background-dark` directly. The pane rule is a grouped selector covering the items pane as well, so a host that set the passage header hook to color a hosted passage-player's header also repainted both pane backdrops — including a pane that holds no passage header. `--pie-background-dark` is what the panes already resolved to whenever the hook was unset, so appearance is unchanged. The backdrop deliberately gets no pane-specific hook: it stays with the theme. `--pie-passage-header-background` keeps its documented job, the passage card bridging it to `--pie-section-player-card-header-background`.
+- Updated dependencies [ced07e0]
+- Updated dependencies [004d38e]
+- Updated dependencies [cb99eae]
+- Updated dependencies [f24e425]
+- Updated dependencies [8bb668b]
+- Updated dependencies [787ad8f]
+- Updated dependencies [3544e9d]
+- Updated dependencies [6e2d488]
+- Updated dependencies [cb99eae]
+  - @pie-players/pie-assessment-toolkit@0.3.69
+  - @pie-players/pie-default-tool-loaders@0.3.69
+  - @pie-players/pie-item-player@0.3.69
+  - @pie-players/pie-context@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

@@ -102,6 +102,14 @@ if (cached) {
 await cache.set(cacheKey, result, 86400);
 ```
 
+`MemoryCache` is for development and testing. It is a bounded LRU over one
+process's heap — 100 entries by default, evicting the least recently used entry,
+with expired entries dropped ahead of live ones — so it is lost on restart and
+every replica of a scaled deployment synthesizes the same passage into its own
+copy. A production host implements `ITTSCache` over shared storage;
+`packages/tts-server-polly/examples/sveltekit/synthesize-server.ts` sketches the
+Redis shape.
+
 ## API Reference
 
 ### Types
@@ -120,7 +128,7 @@ await cache.set(cacheKey, result, 86400);
 ### Classes
 
 - `BaseTTSProvider` - Abstract base class for providers
-- `MemoryCache` - In-memory cache implementation
+- `MemoryCache` - Bounded in-memory LRU cache, for development and testing
 - `TTSError` - Structured error class
 
 ### Functions

@@ -6,8 +6,12 @@
  */
 
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
-import { error, json } from "@sveltejs/kit";
+import { error, isHttpError, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import {
+	mapTtsFailure,
+	TtsNotConfiguredError,
+} from "@pie-players/demo-ui/server";
 
 // Use same singleton as synthesize route
 let pollyProvider: PollyServerProvider | null = null;
@@ -22,7 +26,7 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 			!process.env.AWS_ACCESS_KEY_ID ||
 			!process.env.AWS_SECRET_ACCESS_KEY
 		) {
-			throw new Error(
+			throw new TtsNotConfiguredError(
 				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file.",
 			);
 		}
@@ -93,12 +97,12 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({ voices });
 	} catch (err) {
-		console.error("[TTS API] Get voices error:", err);
+		// Statuses raised above are already client-safe and pass through unchanged.
+		if (isHttpError(err)) throw err;
 
-		if (err instanceof Error) {
-			throw error(500, { message: err.message });
-		}
+		const { status, message, logAsFault } = mapTtsFailure(err);
+		if (logAsFault) console.error("[TTS API] Get voices error:", err);
 
-		throw error(500, { message: "Internal server error" });
+		throw error(status, { message });
 	}
 };

@@ -3,7 +3,7 @@ import type {
 	ToolContextResolverMap,
 } from "@pie-players/pie-assessment-toolkit";
 
-export type ItemDataCalculatorType = "basic" | "scientific";
+export type ItemDataCalculatorType = "basic" | "scientific" | "graphing";
 
 const CALCULATOR_TOOL_ID = "calculator";
 
@@ -75,7 +75,9 @@ export function getCalculatorTypeFromToolMetadata(
 	if (!isRecord(toolMetadata)) return null;
 
 	const calculator = toolMetadata.calculator;
-	return calculator === "basic" || calculator === "scientific"
+	return calculator === "basic" ||
+		calculator === "scientific" ||
+		calculator === "graphing"
 		? calculator
 		: null;
 }

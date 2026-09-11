@@ -263,11 +263,10 @@
 	 * scheme the tester selected. Inspecting a section under White on Black meant
 	 * a light panel over a dark page.
 	 *
-	 * The surface is `--pie-background-dark`, not the `--pie-background` that
-	 * `--color-base-100` maps to: a floating panel needs an opaque surface, and the
-	 * light Base Theme sets `--pie-background` to `rgba(255, 255, 255, 0)` so the
-	 * host's own backdrop shows through. `--pie-text` on `--pie-background-dark` is
-	 * the certified recessed-surface pair.
+	 * The surface is `--pie-background-dark`, the recessed surface role, rather than
+	 * the `--pie-background` that `--color-base-100` maps to: that is the page token
+	 * and a host may point it at its own backdrop. `--pie-text` on
+	 * `--pie-background-dark` is the certified recessed-surface pair.
 	 */
 	.pie-shared-floating-panel {
 		position: fixed;

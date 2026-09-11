@@ -7,8 +7,8 @@
  * executable proof plus the measurement of what each one costs — the README
  * section "SchoolCity scheme parity" is written from it.
  *
- * They are deliberately not built-ins. A built-in scheme is a full 48-token
- * palette because a two-colour scheme is a promise the whole surface has to keep,
+ * They are deliberately not built-ins. A built-in scheme supplies every required
+ * token because a two-colour scheme is a promise the whole surface has to keep,
  * and which schemes a programme actually wants is an open product question
  * (PIE-472). A host palette is host-owned, so it can be partial, and the
  * validator tells the host exactly which relationships its overlay has to cover.
@@ -25,6 +25,7 @@ import {
 	registerPieColorSchemes,
 	resolvePieTheme,
 } from "../src/color-schemes.js";
+import { getBaseThemeVariables } from "../src/theme-definitions.js";
 
 const activeReceipts: Array<{ unregister(): void }> = [];
 
@@ -61,14 +62,15 @@ const BLUE_ON_WHITE = {
 /**
  * Green is the tightest of SchoolCity's inks at 4.73:1 against white, which
  * clears ordinary text but not the recessed surfaces the light base tints
- * (`--pie-background-dark`, `--pie-incorrect-secondary`). Flattening those two to
- * white is enough; the alternative is a darker green, which is SchoolCity's
+ * (`--pie-background-dark`, `--pie-surface`, `--pie-incorrect-secondary`). Flattening
+ * them to white is enough; the alternative is a darker green, which is SchoolCity's
  * brand colour and not ours to change.
  */
 const GREEN_ON_WHITE = {
 	"--pie-text": SC.green,
 	"--pie-background": SC.white,
 	"--pie-background-dark": SC.white,
+	"--pie-surface": SC.white,
 	"--pie-incorrect-secondary": SC.white,
 };
 
@@ -77,10 +79,20 @@ const GREEN_ON_WHITE = {
  * are the dark base theme's own values — authored against `#000000` already,
  * so they are borrowed rather than invented.
  */
+// The raised surface also carries controls. Bring their complete existing dark
+// family so changing the ink does not strand it on a light hover/active fill.
+const DARK_CONTROLS = Object.fromEntries(
+	Object.entries(getBaseThemeVariables("dark")).filter(([token]) =>
+		token.startsWith("--pie-button-"),
+	),
+);
+
 const YELLOW_ON_BLACK = {
+	...DARK_CONTROLS,
 	"--pie-text": SC.yellow,
 	"--pie-background": SC.black,
 	"--pie-background-dark": "#1a1a1a",
+	"--pie-surface": "#2a2a2a",
 	"--pie-incorrect-secondary": "#330000",
 	"--pie-tertiary": "#00ffff",
 	"--pie-correct": "#00ff00",
@@ -97,9 +109,11 @@ const YELLOW_ON_BLACK = {
  * times over.
  */
 const WHITE_ON_BLUE = {
+	...DARK_CONTROLS,
 	"--pie-text": SC.white,
 	"--pie-background": SC.blue,
 	"--pie-background-dark": "#001b6d",
+	"--pie-surface": "#001b6d",
 	"--pie-incorrect-secondary": "#3d0000",
 	"--pie-tertiary": "#9fe8ff",
 	"--pie-correct": "#7ef7a0",
@@ -115,6 +129,7 @@ const WHITE_ON_BLUE = {
 	"--pie-focus-checked-border": SC.yellow,
 	"--pie-focus-unchecked-border": SC.white,
 	"--pie-button-border": "#dfe4ff",
+	"--pie-button-hover-border": "#dfe4ff",
 };
 
 describe("SchoolCity's schemes that PIE already ships", () => {
@@ -137,9 +152,9 @@ describe("SchoolCity's schemes that PIE already ships", () => {
 describe("registering the rest as host palettes", () => {
 	test.each([
 		["blue-on-white", BLUE_ON_WHITE, 2],
-		["green-on-white", GREEN_ON_WHITE, 4],
-		["yellow-on-black", YELLOW_ON_BLACK, 10],
-		["white-on-blue", WHITE_ON_BLUE, 18],
+		["green-on-white", GREEN_ON_WHITE, 5],
+		["yellow-on-black", YELLOW_ON_BLACK, 19],
+		["white-on-blue", WHITE_ON_BLUE, 26],
 	] as const)(
 		"%s validates with no diagnostics at all, from %#",
 		(id, variables, tokenCount) => {

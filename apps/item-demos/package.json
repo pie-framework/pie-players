@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/item-demos",
-	"version": "0.1.75",
+	"version": "0.1.77",
 	"description": "Progressive demos for PIE Item Player",
 	"type": "module",
 	"private": true,
@@ -19,26 +19,26 @@
 		"@pie-players/pie-section-player-tools-instrumentation-debugger": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
 		"@tiptap/core": "^3.30.1",
-		"@tiptap/extension-code-block-lowlight": "^3.19.0",
+		"@tiptap/extension-code-block-lowlight": "^3.30.5",
 		"@tiptap/extension-document": "^3.19.0",
-		"@tiptap/extension-history": "^3.30.1",
-		"@tiptap/extension-text": "^3.30.1",
-		"@tiptap/pm": "^3.19.0",
+		"@tiptap/extension-history": "^3.30.5",
+		"@tiptap/extension-text": "^3.30.5",
+		"@tiptap/pm": "^3.30.5",
 		"lowlight": "^3.3.0"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.5.7",
-		"@sveltejs/kit": "^2.70.1",
-		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"@tailwindcss/vite": "^4.3.3",
-		"@types/node": "^26.2.0",
-		"bun-types": "^1.3.6",
-		"daisyui": "^5.7.16",
-		"svelte": "^5.56.8",
-		"svelte-check": "^4.7.5",
+		"@types/bun": "^1.4.0",
+		"@types/node": "^26.4.0",
+		"daisyui": "^5.7.22",
+		"svelte": "^5.57.0",
+		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.1"
+		"vite": "^8.2.2"
 	},
 	"license": "MIT"
 }

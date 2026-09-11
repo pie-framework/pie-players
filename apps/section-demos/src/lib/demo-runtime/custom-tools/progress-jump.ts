@@ -42,7 +42,9 @@ function createPanelElement(): HTMLElement {
 	panel.style.fontFamily = "system-ui, sans-serif";
 	panel.style.fontSize = "0.875rem";
 	panel.style.lineHeight = "1.4";
-	panel.style.background = "var(--pie-background, #fff)";
+	// --pie-white is the surface role every built-in sets to its page colour;
+	// --pie-background is the page token a host may point at its own backdrop.
+	panel.style.background = "var(--pie-white, #fff)";
 	panel.style.color = "var(--pie-text, #111827)";
 	panel.style.height = "100%";
 	panel.style.boxSizing = "border-box";

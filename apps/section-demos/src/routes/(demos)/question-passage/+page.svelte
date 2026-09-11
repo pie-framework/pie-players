@@ -13,6 +13,8 @@
 	import '@pie-players/pie-tool-annotation-toolbar';
 	import '@pie-players/pie-tool-graph';
 	import '@pie-players/pie-tool-line-reader';
+	import '@pie-players/pie-tool-protractor';
+	import '@pie-players/pie-tool-ruler';
 	import '@pie-players/pie-tool-theme';
 	import '@pie-players/pie-tool-text-to-speech';
 	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
@@ -52,8 +54,8 @@
 		},
 		placement: {
 			section: ['theme', 'graph', 'lineReader'],
-			item: ['textToSpeech', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
+			item: ['textToSpeech', 'annotationToolbar', 'lineReader', 'ruler', 'protractor'],
+			passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
 		}
 	};
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([

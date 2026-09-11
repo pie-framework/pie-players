@@ -1,6 +1,6 @@
 # Media Asset Contract
 
-Status: Ready. The media vocabulary in [Contract Shape](#contract-shape) is ratified as of 2026-08-09 and matches the shipped types in `@pie-players/pie-players-shared/types` field for field. The [Open Questions](#open-questions) that remain are policy questions — which fields a given consumer requires, whether duration is authoritative, whether rights metadata is in scope — and none of them changes a field name or a field position, so none of them blocks publication.
+Status: Accepted, 2026-08-09. The media vocabulary in [Contract Shape](#contract-shape) matches the shipped types in `@pie-players/pie-players-shared/types` field for field. The [Open Questions](#open-questions) are possible policy extensions — which fields a given consumer requires, whether duration is authoritative, and whether rights metadata is in scope — rather than unfinished parts of the accepted contract.
 
 Owner: PIE Players maintainers
 

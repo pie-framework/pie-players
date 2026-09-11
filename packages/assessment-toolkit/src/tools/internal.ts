@@ -144,7 +144,9 @@ export type { ToolConfigDiagnostic } from "../services/tool-config-validation.js
 // against the `pie-calculator` and `pie-tts` contract packages, which the
 // toolkit's own `TTSService` and provider registry also depend on.
 export {
+	CortexToolProvider,
 	DesmosToolProvider,
+	GeoGebraToolProvider,
 	TTSToolProvider,
 } from "../services/tool-providers/index.js";
 

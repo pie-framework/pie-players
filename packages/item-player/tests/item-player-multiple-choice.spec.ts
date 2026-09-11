@@ -28,6 +28,46 @@ type ChoiceState = {
 	ariaChecked: string | null;
 };
 
+type ExternalStyleProbe = {
+	customClassName?: string;
+	id: string;
+	styleUrl: string;
+};
+
+async function mountExternalStyleProbes(
+	page: Page,
+	groupId: string,
+	probes: ExternalStyleProbe[],
+) {
+	await page.evaluate(
+		({ id, definitions }) => {
+			const group = document.createElement("div");
+			group.id = id;
+			document.body.appendChild(group);
+			for (const definition of definitions) {
+				const player = document.createElement("pie-item-player") as any;
+				group.appendChild(player);
+				player.strategy = "preloaded";
+				player.session = { id: `${definition.id}-session`, data: [] };
+				player.externalStyleUrls = definition.styleUrl;
+				if (definition.customClassName) {
+					player.customClassName = definition.customClassName;
+				}
+				player.config = {
+					id: definition.id,
+					markup: `<p class="pie-style-probe" data-style-probe="${definition.id}">${definition.id}</p>`,
+					elements: {},
+					models: [],
+				};
+			}
+		},
+		{ id: groupId, definitions: probes },
+	);
+	await expect
+		.poll(() => page.locator(`#${groupId} [data-style-probe]`).count())
+		.toBe(probes.length);
+}
+
 async function gotoRoute(page: Page, path: string) {
 	// `networkidle` is unreliable against vite dev (HMR websocket + lazy module
 	// loads) — wait on the rendered nav link as the mount signal instead, with
@@ -384,6 +424,111 @@ test.describe("item-player demo multiple-choice", () => {
 			.evaluate((element) => element.className);
 		expect(scopedClassName).toContain("canonical-current-class");
 		expect(scopedClassName).not.toContain("legacy-class-should-not-win");
+	});
+
+	test("isolates different same-origin stylesheets between default player instances", async ({
+		page,
+	}) => {
+		await page.route("**/__pie-style-first.css", (route) =>
+			route.fulfill({
+				body: ".pie-style-probe { color: rgb(17, 34, 51); }",
+				contentType: "text/css",
+			}),
+		);
+		await page.route("**/__pie-style-second.css", (route) =>
+			route.fulfill({
+				body: ".pie-style-probe { color: rgb(68, 85, 102); }",
+				contentType: "text/css",
+			}),
+		);
+		await gotoRoute(page, DELIVERY_PATH);
+		await mountExternalStyleProbes(page, "default-style-probes", [
+			{ id: "default-first", styleUrl: "/__pie-style-first.css" },
+			{ id: "default-second", styleUrl: "/__pie-style-second.css" },
+		]);
+
+		const firstProbe = page.locator('[data-style-probe="default-first"]');
+		const secondProbe = page.locator('[data-style-probe="default-second"]');
+		await expect
+			.poll(() =>
+				firstProbe.evaluate((element) => getComputedStyle(element).color),
+			)
+			.toBe("rgb(17, 34, 51)");
+		await expect
+			.poll(() =>
+				secondProbe.evaluate((element) => getComputedStyle(element).color),
+			)
+			.toBe("rgb(68, 85, 102)");
+
+		const playerClasses = await page
+			.locator("#default-style-probes pie-item-player > .pie-item-player")
+			.evaluateAll((elements) =>
+				elements.map((element) => [...element.classList]),
+			);
+		expect(playerClasses).toHaveLength(2);
+		const privateStyleScopes = playerClasses.map((classes) =>
+			classes.find((name) => name.startsWith("pie-item-player-style-scope-")),
+		);
+		expect(privateStyleScopes.every(Boolean)).toBe(true);
+		expect(new Set(privateStyleScopes).size).toBe(2);
+	});
+
+	test("shares one fetch while materializing the stylesheet for each explicit scope", async ({
+		page,
+	}) => {
+		let stylesheetRequests = 0;
+		let noteFirstRequest!: () => void;
+		let releaseStylesheetResponse!: () => void;
+		const firstRequest = new Promise<void>((resolve) => {
+			noteFirstRequest = resolve;
+		});
+		const responseGate = new Promise<void>((resolve) => {
+			releaseStylesheetResponse = resolve;
+		});
+		await page.route("**/__pie-style-shared.css", async (route) => {
+			stylesheetRequests += 1;
+			noteFirstRequest();
+			await responseGate;
+			return route.fulfill({
+				body: ".pie-style-probe { border-top: 3px solid rgb(119, 136, 153); }",
+				contentType: "text/css",
+			});
+		});
+		await gotoRoute(page, DELIVERY_PATH);
+		await mountExternalStyleProbes(page, "custom-style-probes", [
+			{
+				customClassName: "first-explicit-style-scope",
+				id: "custom-first",
+				styleUrl: "/__pie-style-shared.css",
+			},
+			{
+				customClassName: "second-explicit-style-scope",
+				id: "custom-second",
+				styleUrl: "/__pie-style-shared.css",
+			},
+		]);
+		try {
+			await firstRequest;
+			await page.evaluate(
+				() =>
+					new Promise<void>((resolve) =>
+						requestAnimationFrame(() => resolve()),
+					),
+			);
+			expect(stylesheetRequests).toBe(1);
+		} finally {
+			releaseStylesheetResponse();
+		}
+
+		for (const id of ["custom-first", "custom-second"]) {
+			const probe = page.locator(`[data-style-probe="${id}"]`);
+			await expect
+				.poll(() =>
+					probe.evaluate((element) => getComputedStyle(element).borderTopColor),
+				)
+				.toBe("rgb(119, 136, 153)");
+		}
+		expect(stylesheetRequests).toBe(1);
 	});
 
 	test("honors legacy config resources without dropping advanced config properties", async ({

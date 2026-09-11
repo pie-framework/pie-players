@@ -162,6 +162,26 @@ non-delivery backend config is preserved.
 This item delivery backend is distinct from the section-player element-loader
 backend used for IIFE/ESM bundle preloading.
 
+### Section Session Persistence
+
+Section session persistence is already implemented and deliberately does not live
+under `runtime.player.backend`. `ToolkitCoordinatorHooks.createSectionSessionPersistence`
+creates a `SectionSessionPersistenceStrategy` for each
+`(assessmentId, sectionId, attemptId)` context. The section controller exposes
+`hydrate()`, `persist()`, `getSession()`, and `applySession()` over the canonical
+`SectionControllerSessionState` shape.
+
+Use this seam for section navigation, item-session aggregation, formative state,
+and timed-media state. Do not route those section-owned snapshots through each
+item player's `backend.delivery`; that namespace owns only one item's controller
+calls.
+
+What is not implemented is player-initiated loading of a section definition by
+identity. Hosts currently load an `AssessmentSection` and pass it as player input.
+A future definition-source interface should be considered separately from the
+existing session-persistence strategy rather than combining both behind a broad
+`runtime.backend.section` namespace.
+
 ## Assessment-player Runtime Configuration
 
 Hosts that render through `<pie-assessment-player-default>` configure item
@@ -194,6 +214,28 @@ defaults it from the assessment `attempt-id` on a cloned runtime object. Explici
 host values, including an intentionally empty string, are preserved. Assessment
 attempt/session persistence stays on assessment hooks such as
 `createAssessmentSessionPersistence`; it is not routed through item
+`backend.delivery`.
+
+### Assessment Session Persistence And Submission
+
+Assessment persistence is already implemented through
+`AssessmentPlayerHooks.createAssessmentSessionPersistence`. Its strategy loads,
+saves, and optionally clears the canonical `AssessmentSession`; the assessment
+controller exposes `hydrate()`, `persist()`, `getSession()`, and `submit()` and
+rolls embedded section snapshots into the assessment session.
+
+This is the canonical foreign-system seam. A parallel `backend.assessment`
+namespace would duplicate it without adding behavior and is not currently
+planned. Two narrower gaps remain:
+
+- Assessment definitions must be loaded by the host before they reach the player;
+  there is no player-initiated definition source.
+- `submit()` marks the local controller submitted and persists the final snapshot,
+  but there is no separate authoritative finalization adapter with idempotency,
+  receipt, retry, or conflict semantics.
+
+Those gaps should be designed independently: definition loading is content input,
+while finalization is a terminal attempt operation. Neither belongs in item
 `backend.delivery`.
 
 ## Authoring Contract
@@ -256,16 +298,50 @@ Authoring media callbacks can be provided either as the existing top-level
 `onInsertImage` / `onDeleteImage` / `onInsertSound` / `onDeleteSound` props or
 under `backend.authoring.media`. Top-level props win when both are present.
 
-## Backend Namespaces
+## Backend And Persistence Seams
 
-| Concern | Configure at | Purpose |
+| Concern | Configure at | Status and purpose |
 | --- | --- | --- |
-| `backend.delivery` | `<pie-item-player>` or `runtime.player.backend.delivery` | Item config/session/model/score through server-side controllers. |
-| `backend.authoring` | `<pie-item-player>` | Draft content load/save/release and authoring media callbacks. |
-| Future `runtime.backend.section` | Not implemented yet | Section composition/session lifecycle, not per-item controller calls. |
-| Assessment hooks or future `backend.assessment` | Hooks are implemented; namespace is not implemented yet | Assessment attempt hydrate/persist/submit and navigation state. |
-| Tool provider backends | Assessment toolkit/tool config | TTS, Desmos, and other tool-specific services. |
-| Element-loader backend | `loaderConfig` / `loaderOptions` | Loading player/element bundles, separate from item delivery. |
+| Item delivery | `<pie-item-player>.backend.delivery` or `runtime.player.backend.delivery` | Implemented. Item config/session/model/score through server-side controllers. |
+| Item authoring | `<pie-item-player>.backend.authoring` | Implemented. Draft content load/save/release and authoring media callbacks. |
+| Section session persistence | `ToolkitCoordinatorHooks.createSectionSessionPersistence` | Implemented. Hydrate/persist/clear `SectionControllerSessionState`; no `runtime.backend.section` alias is planned. |
+| Assessment session persistence | `AssessmentPlayerHooks.createAssessmentSessionPersistence` | Implemented. Hydrate/persist/clear `AssessmentSession`; no `backend.assessment` alias is planned. |
+| Assessment finalization | Future dedicated submission strategy | Not implemented. Authoritative submit/idempotency/receipt semantics, separate from ordinary snapshot persistence. |
+| Section or assessment definition loading | Host-provided inputs; possible future definition-source interfaces | Player-initiated loading is not implemented. Do not combine content loading with session persistence by default. |
+| Tool provider backends | Assessment toolkit/tool config | Implemented per provider. TTS, Desmos, and other tool-specific services. |
+| Element-loader backend | `loaderConfig` / `loaderOptions` | Implemented. Player/element bundle loading, separate from item delivery. |
+
+## Remaining Front-End Contract Gaps
+
+The remaining work is not a generic backend namespace. It is a small set of
+lifecycle guarantees at existing or narrowly defined seams:
+
+1. **Authoritative assessment finalization.** Keep ordinary snapshot persistence
+   on `AssessmentSessionPersistenceStrategy`, but give a host one terminal
+   submission operation with idempotency and a typed receipt. See the draft
+   [Assessment Authoritative Submission](../prds/assessment-authoritative-submission.md)
+   PRD.
+2. **Persistence ordering and observability.** Specify whether repeated
+   `persist()` calls serialize or coalesce, prevent an older completion from
+   becoming the apparent latest save, and expose enough state for host chrome to
+   report a recoverable failure. This should deepen the existing controller
+   interfaces rather than add another adapter namespace.
+3. **Reset parity.** Both persistence strategies already permit
+   `clearSession?()`, but controller-level reset/clear behavior and its events are
+   not uniform or prominent.
+4. **Definition loading, only if consumer pressure requires it.** A host can
+   already fetch section and assessment definitions before assigning player
+   inputs. Add a definition-source interface only if player-owned loading removes
+   repeated host orchestration; do not add it merely for symmetry with item
+   delivery.
+5. **Integrated evidence.** Add one demo/test that exercises assessment
+   persistence, section persistence, derived item delivery, and final submission
+   together so ownership and duplicate-save behavior are observable.
+
+Backends continue to own durable storage, authorization, conflict policy,
+retention, reporting, and workflow. PIE owns the browser lifecycle, canonical
+session snapshots, operation ordering, and observable state at its controller
+interfaces.
 
 ## Endpoint Payloads
 

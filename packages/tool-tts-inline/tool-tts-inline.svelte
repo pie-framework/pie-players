@@ -35,7 +35,6 @@
 	// players-shared/src/components/vendor/nds/README.md. players-shared is not
 	// externalized by this package's Vite build, so the bundle is inlined here.
 	import '@pie-players/pie-players-shared/nds-icon-button';
-	import { useZoomCompensation, ICON_BUTTON_ZOOM_OPTIONS } from '@pie-players/pie-players-shared/ui/use-zoom-compensation';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	let {
@@ -850,18 +849,6 @@
 	// (absolute / fixed), so DOM position has no effect on where it paints.
 	const isPanelBeforeTrigger = $derived(isFloatingLayout || isLeftAlignedFloatingLayout);
 
-	// Freeze the TTS buttons' physical size at their 200%-zoom appearance once
-	// browser zoom exceeds 200%, matching the passage/questions toggle. The
-	// factor is 1 at zoom <= 200% (behaviour unchanged below that) and applied
-	// as CSS `zoom` to the trigger + control buttons, with the surrounding
-	// panel/gap spacing compensated via calc(). It is NOT applied to the panel
-	// or root container: the left-aligned popper is position:fixed and its
-	// top/right are JS-computed from real viewport coordinates, so zooming the
-	// container would double-scale and misplace it. See minCompensation note on
-	// SectionPlayerTabbedContent — 0.25 keeps the 200% cap holding past 500%.
-	// Shared with the calculator button (assessment-toolkit) so both icon
-	// buttons cap identically — see ICON_BUTTON_ZOOM_OPTIONS.
-	const buttonZoom = useZoomCompensation(ICON_BUTTON_ZOOM_OPTIONS);
 	const OVERLAY_GUTTER_PX = 8;
 	// Host-declared boundary (panel's horizontal container) and protected
 	// sibling (e.g. a heading) the panel must not crowd.
@@ -966,16 +953,32 @@
 		leftAlignedCompact =
 			leftAlignedNaturalWidthPx > 0 &&
 			availableWidth < leftAlignedNaturalWidthPx;
+		const minPanelWidth = parseFloat(window.getComputedStyle(toolbarEl).minWidth) || 0;
+		if (leftAlignedCompact && availableWidth < minPanelWidth) {
+			// Enlarged text can make even the compact panel wider than the space
+			// beside the trigger. Place it below, within the visible card, so the
+			// media controls neither leave the viewport nor cover the trigger.
+			const boundaryRect = boundary?.getBoundingClientRect();
+			const leftEdge = Math.max(0, boundaryRect?.left ?? 0) + OVERLAY_GUTTER_PX;
+			const rightEdge = Math.min(window.innerWidth, boundaryRect?.right ?? window.innerWidth) - OVERLAY_GUTTER_PX;
+			const fullWidth = Math.max(0, rightEdge - leftEdge);
+			const panelWidth = Math.min(toolbarEl.offsetWidth, fullWidth);
+			const left = Math.max(leftEdge, Math.min(triggerRect.right - panelWidth, rightEdge - panelWidth));
+			leftAlignedOverlayStyle =
+				`top: ${triggerRect.bottom + OVERLAY_GUTTER_PX}px; left: ${left}px; right: auto; min-width: min(7.5rem, ${fullWidth}px); max-width: min(${fullWidth}px, var(--pie-tts-left-aligned-panel-width, ${fullWidth}px));`;
+			return;
+		}
 		const panelHeight = toolbarEl.offsetHeight || triggerRect.height;
-		// Position is anchored to the trigger (the TTS button) and re-tracked on
-		// scroll, with NO viewport clamp — so the panel stays glued to the button
-		// and scrolls off with it (disappears) instead of sticking to the viewport
-		// edge. Roomy: centre the 48px card on the trigger. Compact: anchor the
-		// tall popper's top to the trigger's top so its media row lines up with the
-		// play/pause circle and the speeds hang below.
-		const top = leftAlignedCompact
+		// Keep every control reachable in a short, magnified viewport while the
+		// trigger is visible. Once the trigger scrolls out, retain its position
+		// rather than leaving a detached panel pinned to the viewport edge.
+		const anchoredTop = leftAlignedCompact
 			? triggerRect.top
 			: triggerRect.top + triggerRect.height / 2 - panelHeight / 2;
+		const triggerVisible = triggerRect.bottom > 0 && triggerRect.top < window.innerHeight;
+		const top = triggerVisible
+			? Math.max(OVERLAY_GUTTER_PX, Math.min(anchoredTop, window.innerHeight - panelHeight - OVERLAY_GUTTER_PX))
+			: anchoredTop;
 		const right = window.innerWidth - triggerRect.left + OVERLAY_GUTTER_PX;
 		// CSS min() lets the browser resolve the host's optional
 		// --pie-tts-left-aligned-panel-width (rem/px/calc) at paint time.
@@ -984,11 +987,16 @@
 	}
 
 	$effect(() => {
-		if (!isLeftAlignedFloatingLayout || !controlsVisible) {
-			leftAlignedOverlayStyle = '';
-			leftAlignedCompact = false;
-			leftAlignedNaturalWidthPx = 0;
-			return;
+		const enabled = isLeftAlignedFloatingLayout && controlsVisible;
+		if (!enabled) {
+			let cancelled = false;
+			queueMicrotask(() => {
+				if (cancelled) return;
+				leftAlignedOverlayStyle = '';
+				leftAlignedCompact = false;
+				leftAlignedNaturalWidthPx = 0;
+			});
+			return () => { cancelled = true; };
 		}
 		if (typeof window === 'undefined') return;
 		let frame = 0;
@@ -999,7 +1007,9 @@
 				measureLeftAlignedOverlay();
 			});
 		};
-		measureLeftAlignedOverlay();
+		// The effect only wires observation; measurement and reactive writes
+		// share the deferred callback, outside its tracked setup body.
+		schedule();
 		window.addEventListener('resize', schedule);
 		window.addEventListener('scroll', schedule, true);
 		const trigger = getTriggerElement();
@@ -1067,14 +1077,8 @@
 		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
 		class:pie-tool-tts-inline--floating={isFloatingLayout}
 		class:pie-tool-tts-inline--left-aligned={isLeftAlignedFloatingLayout}
-		style={`--pie-tts-zoom-comp: ${buttonZoom.current};`}
 	>
 		{#snippet triggerButton()}
-			<!-- 200% zoom cap lives on this WRAPPER, never on the nds-icon-button
-			     host directly: CSS `zoom` on an nds-icon-button (light-DOM render +
-			     injected global <style>) mis-sizes it. Wrapping matches the proven
-			     section-player scroll-hint pattern. Wraps both trigger variants so
-			     the plain fallback gets the same zoom compensation. -->
 			<span class="pie-tool-tts-inline__trigger-zoom">
 				{#if useNdsIcons}
 				<!-- NDS circular icon button. `variant="primary"` (filled) marks the
@@ -1256,7 +1260,7 @@
 	/* Lay the component out as a flex box, not the default inline custom element.
 	   As `display: inline` the host is blockified into a block flex item that
 	   wraps its content in a line box, so the inline-flex root sits on the text
-	   baseline — a zoom-shrunk play button then rides that baseline and drifts
+	   baseline — a play button then rides that baseline and drifts
 	   LOW versus the calculator button (whose flex-item wrapper has no line box).
 	   inline-flex + center removes the line box and keeps the trigger centered. */
 	:host {
@@ -1268,9 +1272,7 @@
 		position: relative;
 		display: inline-flex;
 		align-items: center;
-		/* Gap between trigger and panel lives outside the zoomed buttons, so it
-		   is compensated separately or it keeps growing with browser zoom. */
-		gap: calc(0.5rem * var(--pie-tts-zoom-comp, 1));
+		gap: 0.5rem;
 	}
 
 	.pie-tool-tts-inline--controls-row {
@@ -1284,12 +1286,8 @@
 	   appearance. This class only drives the host's size via NDS's own size
 	   custom properties (see the size variants below), so the light-DOM inner
 	   button matches the toolbar's md/sm/lg dimensions. */
-	/* Freeze the play/pause button at its 200%-zoom appearance (factor is 1 at
-	   zoom <= 200%, so behaviour below that is unchanged). The zoom goes on this
-	   wrapper, not the nds-icon-button host — see the snippet. */
 	.pie-tool-tts-inline__trigger-zoom {
 		display: inline-flex;
-		zoom: var(--pie-tts-zoom-comp, 1);
 	}
 
 	.pie-tool-tts-inline__trigger {
@@ -1411,13 +1409,10 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: flex-end;
-		/* Buttons inside are zoom-capped (see __control); compensate the panel's
-		   own spacing/height with the same factor so its chrome doesn't keep
-		   growing around the frozen buttons past 200%. */
-		gap: calc(0.25rem * var(--pie-tts-zoom-comp, 1));
+		gap: 0.25rem;
 		box-sizing: border-box;
-		min-height: calc(var(--pie-tts-controls-row-height, 2.875rem) * var(--pie-tts-zoom-comp, 1));
-		padding: calc(0.25rem * var(--pie-tts-zoom-comp, 1)) calc(0.5rem * var(--pie-tts-zoom-comp, 1));
+		min-height: var(--pie-tts-controls-row-height, 2.875rem);
+		padding: 0.25rem 0.5rem;
 		background: var(--pie-surface, var(--pie-background, #fff));
 		border: 1px solid var(--pie-border, #d0d0d0);
 		border-radius: 0.5rem;
@@ -1449,9 +1444,6 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		/* Cap each control (rewind / fast-forward / stop / speed) at its
-		   200%-zoom size; matches the trigger and the passage/questions toggle. */
-		zoom: var(--pie-tts-zoom-comp, 1);
 		width: 2rem;
 		height: 2rem;
 		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
@@ -1472,7 +1464,7 @@
 		display: inline-flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: calc(0.25rem * var(--pie-tts-zoom-comp, 1));
+		gap: 0.25rem;
 	}
 
 	.pie-tool-tts-inline__control--speed {
@@ -1548,13 +1540,11 @@
 	.pie-tool-tts-inline__panel--floating,
 	.pie-tool-tts-inline__panel--left-aligned-inline {
 		min-height: 0;
-		height: calc(3rem * var(--pie-tts-zoom-comp, 1)); /* Figma: 48px */
+		height: 3rem; /* Figma: 48px */
 		justify-content: center;
-		gap: calc(0.375rem * var(--pie-tts-zoom-comp, 1));
-		/* --pie-white, not --pie-background: the base light theme sets
-		   --pie-background to rgba(255,255,255,0) so page content shows through,
-		   and a floating card cannot be transparent. --pie-white is the theme's
-		   opaque page surface (DaisyUI base-100; #000 under the dark theme). */
+		gap: 0.375rem;
+		/* The raised surface is certified with control text and focus rings.
+		   --pie-white remains the fallback for hosts with no surface token. */
 		background: var(--pie-tts-selected-bg, var(--pie-surface, var(--pie-white, #fff)));
 		/* The Figma card is shadow-only, but the shadow is black: once the card
 		   takes a dark theme's surface it has no visible edge left. A hairline
@@ -1573,7 +1563,7 @@
 	.pie-tool-tts-inline__panel--compact {
 		gap: 0;
 		width: fit-content;
-		min-width: calc(7.5rem * var(--pie-tts-zoom-comp, 1)); /* ~120px floor; grows with content beyond that */
+		min-width: 7.5rem; /* ~120px floor; grows with content beyond that */
 		height: auto; /* stacked popper grows past the 48px roomy toolbar height */
 		padding: 0;
 	}
@@ -1603,9 +1593,8 @@
 		background: transparent;
 		box-shadow: none;
 		/* Unselected labels are text on the card, so they take the full text colour
-		   rather than a dimmed mix: DaisyUI only guarantees base-content against the
-		   surface, and `valentine` is 5.46:1 there — a 10% dim already lands under
-		   4.5:1. Hosts that want them dimmer set --pie-tts-inline-muted-color. */
+		   rather than a dimmed mix: the raised surface has little contrast margin
+		   in `valentine`. Hosts that want them dimmer set --pie-tts-inline-muted-color. */
 		color: var(--pie-tts-inline-muted-color, var(--pie-button-color, var(--pie-text, #5b6b73)));
 		font-size: 1rem;
 	}
@@ -1698,13 +1687,9 @@
 			padding: 0;
 		}
 
-		/* NOTE: the trigger's --height-32 is intentionally NOT shrunk here. Browser
-		   zoom narrows the CSS viewport enough to trip this breakpoint, which would
-		   drop the play button to 1.75rem while the calculator button (furnished by
-		   the toolbar) stays 2rem, mismatching them under zoom. Size is governed by
-		   the zoom-compensation cap instead. */
+		/* Keep trigger sizes consistent with the calculator at this breakpoint. */
 
-		.pie-tool-tts-inline__control {
+		.pie-tool-tts-inline__control:not(.pie-tool-tts-inline__trigger) {
 			width: 1.75rem;
 			height: 1.75rem;
 		}

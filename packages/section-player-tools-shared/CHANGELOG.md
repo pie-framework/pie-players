@@ -1,5 +1,35 @@
 # @pie-players/pie-section-player-tools-shared
 
+## 0.3.70
+
+### Patch Changes
+
+- Updated dependencies [e8ab025]
+- Updated dependencies [9868ee1]
+- Updated dependencies [e3169f8]
+- Updated dependencies [b544a28]
+- Updated dependencies [8b4e0e4]
+- Updated dependencies [ab1b1a9]
+- Updated dependencies [f10fa7d]
+- Updated dependencies [3d6acc6]
+- Updated dependencies [47ae660]
+- Updated dependencies [c9267e5]
+- Updated dependencies [da5b9da]
+  - @pie-players/pie-players-shared@0.3.70
+  - @pie-players/pie-theme@0.3.70
+
+## 0.3.69
+
+### Patch Changes
+
+- b0223d6: Stop publishing `dist/vite.config.d.ts`. Nine packages emitted a declaration for their own Vite config because the dts pass ran over an unbounded TypeScript glob, and every one of them ships `dist`, so the file reached the tarball. No `exports` entry ever pointed at it, so nothing could import it — this is tarball contents, not API. `check:pack-integrity` now rejects a packed build-config declaration, so a new package cannot reintroduce one.
+- Updated dependencies [01eb0f9]
+- Updated dependencies [8bb668b]
+- Updated dependencies [3deb7a2]
+- Updated dependencies [3017425]
+  - @pie-players/pie-theme@0.3.69
+  - @pie-players/pie-players-shared@0.3.69
+
 ## 0.3.68
 
 ### Patch Changes

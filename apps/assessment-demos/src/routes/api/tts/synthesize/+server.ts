@@ -1,5 +1,9 @@
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
-import { error, json } from "@sveltejs/kit";
+import { error, isHttpError, json } from "@sveltejs/kit";
+import {
+	mapTtsFailure,
+	TtsNotConfiguredError,
+} from "@pie-players/demo-ui/server";
 import type { RequestHandler } from "./$types";
 import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
 
@@ -26,7 +30,7 @@ async function getPollyProvider(
 		!process.env.AWS_ACCESS_KEY_ID ||
 		!process.env.AWS_SECRET_ACCESS_KEY
 	) {
-		throw new Error(
+		throw new TtsNotConfiguredError(
 			"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file.",
 		);
 	}
@@ -53,7 +57,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	const hasApiKey = Boolean(process.env.GOOGLE_API_KEY);
 	const hasServiceAccount = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 	if (!hasApiKey && !hasServiceAccount) {
-		throw new Error(
+		throw new TtsNotConfiguredError(
 			"Google Cloud credentials not configured. Set GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS.",
 		);
 	}
@@ -154,14 +158,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			metadata: result.metadata,
 		});
 	} catch (err) {
-		if (typeof err === "object" && err !== null && "status" in err) {
-			throw err;
-		}
-		if (err instanceof Error) {
-			throw error(500, { message: `Text-to-speech error: ${err.message}` });
-		}
-		throw error(500, {
-			message: "Text-to-speech service encountered an unexpected error.",
-		});
+		// Statuses raised above are already client-safe and pass through unchanged.
+		if (isHttpError(err)) throw err;
+
+		const { status, message, logAsFault } = mapTtsFailure(err);
+		if (logAsFault) console.error("[TTS API] Synthesis error:", err);
+
+		throw error(status, { message });
 	}
 };

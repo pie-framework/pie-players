@@ -49,6 +49,7 @@
 	--pie-secondary-background: #eeeeee;
 	--pie-secondary-dark: #990044;
 	--pie-secondary-light: #ff99cc;
+	--pie-surface: #e0e0e0;
 	--pie-tertiary: #006699;
 	--pie-tertiary-light: #99ccff;
 	--pie-text: #000000;
@@ -105,6 +106,7 @@
 	--pie-secondary-background: #222222;
 	--pie-secondary-dark: #cc00cc;
 	--pie-secondary-light: #ff99ff;
+	--pie-surface: #2a2a2a;
 	--pie-tertiary: #00ffff;
 	--pie-tertiary-light: #99ffff;
 	--pie-text: #ffffff;
@@ -161,6 +163,7 @@
 	--pie-secondary-background: #99ddbb;
 	--pie-secondary-dark: #550033;
 	--pie-secondary-light: #dd99bb;
+	--pie-surface: #88cc99;
 	--pie-tertiary: #770044;
 	--pie-tertiary-light: #dd99bb;
 	--pie-text: #3d0022;
@@ -217,6 +220,7 @@
 	--pie-secondary-background: #000044;
 	--pie-secondary-dark: #cc8800;
 	--pie-secondary-light: #ffcc66;
+	--pie-surface: #000033;
 	--pie-tertiary: #ffee00;
 	--pie-tertiary-light: #ffff99;
 	--pie-text: #ffff00;
@@ -231,7 +235,7 @@
 	--pie-background-dark: #ffb3cc;
 	--pie-black: #000000;
 	--pie-blue-grey-100: #ffeef5;
-	--pie-blue-grey-300: #ffccdd;
+	--pie-blue-grey-300: #ffb3cc;
 	--pie-blue-grey-600: #cc6688;
 	--pie-blue-grey-900: #000000;
 	--pie-border: #000000;
@@ -273,6 +277,7 @@
 	--pie-secondary-background: #ff99bb;
 	--pie-secondary-dark: #770033;
 	--pie-secondary-light: #ff99cc;
+	--pie-surface: #ff88aa;
 	--pie-tertiary: #990044;
 	--pie-tertiary-light: #ffaacc;
 	--pie-text: #000000;
@@ -329,6 +334,7 @@
 	--pie-secondary-background: #222222;
 	--pie-secondary-dark: #999999;
 	--pie-secondary-light: #dddddd;
+	--pie-surface: #1a1a1a;
 	--pie-tertiary: #cccccc;
 	--pie-tertiary-light: #eeeeee;
 	--pie-text: #e0e0e0;
@@ -385,6 +391,7 @@
 	--pie-secondary-background: #d0d0d0;
 	--pie-secondary-dark: #2b2b2b;
 	--pie-secondary-light: #8f8f8f;
+	--pie-surface: #c4c4c4;
 	--pie-tertiary: #3d3d3d;
 	--pie-tertiary-light: #c4c4c4;
 	--pie-text: #4a4a4a;
@@ -441,6 +448,7 @@
 	--pie-secondary-background: #a6d0b2;
 	--pie-secondary-dark: #6d1a4c;
 	--pie-secondary-light: #c76d9d;
+	--pie-surface: #a6d0b2;
 	--pie-tertiary: #8e2464;
 	--pie-tertiary-light: #e2c6d5;
 	--pie-text: #8e2464;
@@ -497,6 +505,7 @@
 	--pie-secondary-background: #b982c8;
 	--pie-secondary-dark: #4a1259;
 	--pie-secondary-light: #a95cb8;
+	--pie-surface: #ac70bd;
 	--pie-tertiary: #4a1259;
 	--pie-tertiary-light: #e2cbe8;
 	--pie-text: #000000;
@@ -553,6 +562,7 @@
 	--pie-secondary-background: #243a63;
 	--pie-secondary-dark: #e0bb3d;
 	--pie-secondary-light: #ffeaa0;
+	--pie-surface: #1d2f50;
 	--pie-tertiary: #ffff99;
 	--pie-tertiary-light: #ffffcc;
 	--pie-text: #ffff55;

@@ -16,11 +16,19 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
 	".ogg": "audio/ogg",
 };
 
-function contentTypeFor(fileName: string): string {
-	const ext = fileName.includes(".")
+// An SVG served as image/svg+xml from this app's own origin executes its
+// scripts when navigated to directly, so an upload would be stored XSS against
+// the demo. `sandbox` with no allowances stops that: the document gets an
+// opaque origin and no script execution. It does not affect `<img src>`, which
+// is how authored markup renders the file and which never ran scripts anyway.
+// Authored SVG rendered *inside* the player goes through `sanitizeItemMarkup`;
+// this route serves bytes straight from disk and never reaches that path.
+const SANDBOXED_EXTENSIONS = new Set([".svg"]);
+
+function extensionOf(fileName: string): string {
+	return fileName.includes(".")
 		? `.${fileName.split(".").pop()?.toLowerCase() || ""}`
 		: "";
-	return CONTENT_TYPE_BY_EXTENSION[ext] || "application/octet-stream";
 }
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -32,11 +40,20 @@ export const GET: RequestHandler = async ({ params }) => {
 	if (!bytes) {
 		throw error(404, "Media file not found.");
 	}
+	const ext = extensionOf(name);
+	const contentType =
+		CONTENT_TYPE_BY_EXTENSION[ext] || "application/octet-stream";
+	const headers: Record<string, string> = {
+		"cache-control": "no-store",
+		"content-type": contentType,
+		// The fallback above is deliberately inert, and sniffing would undo it.
+		"x-content-type-options": "nosniff",
+	};
+	if (SANDBOXED_EXTENSIONS.has(ext)) {
+		headers["content-security-policy"] = "sandbox";
+	}
 	const normalizedBytes = Uint8Array.from(bytes);
-	const blob = new Blob([normalizedBytes], { type: contentTypeFor(name) });
-	return new Response(blob, {
-		headers: {
-			"cache-control": "no-store",
-		},
+	return new Response(new Blob([normalizedBytes], { type: contentType }), {
+		headers,
 	});
 };

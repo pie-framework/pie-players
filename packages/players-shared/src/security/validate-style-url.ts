@@ -8,6 +8,13 @@
  * - When `allowedOrigins` is non-empty, the URL's origin must match one
  *   of the listed origins. This lets hosts restrict style loading to a
  *   known CDN allow-list.
+ * - With no allow-list configured, only same-origin URLs pass. The reachable
+ *   input here is authored — `itemConfig.resources.stylesheets[*].url` — so an
+ *   open default let an item pull page-wide CSS from any origin it named, and
+ *   the cross-origin branch in the player is the one that cannot be scoped
+ *   (CSS the browser applies from a `<link>` rather than text the player
+ *   fetched and rewrote). Naming an origin in `allowed-style-origins` is a
+ *   host's opt-in to that.
  */
 
 export type StyleUrlValidationOk = {
@@ -26,6 +33,12 @@ export type StyleUrlValidationResult =
 	| StyleUrlValidationError;
 
 export interface StyleUrlValidationOptions {
+	/**
+	 * Document URL the stylesheet URL resolves against, and the origin a URL is
+	 * compared to when no `allowedOrigins` are configured. Omitting it while
+	 * supplying no allow-list leaves no origin to compare against, so
+	 * cross-origin cannot be ruled out and the URL is rejected.
+	 */
 	baseUrl?: string;
 	allowedOrigins?: string[];
 }
@@ -61,11 +74,39 @@ export function validateExternalStyleUrl(
 		};
 	}
 	const allowed = options.allowedOrigins ?? [];
-	if (allowed.length > 0 && !allowed.includes(resolvedUrl.origin)) {
+	if (allowed.length > 0) {
+		if (!allowed.includes(resolvedUrl.origin)) {
+			return {
+				ok: false,
+				reason: "disallowed-origin",
+				message: `External stylesheet origin ${resolvedUrl.origin} is not in the configured allow-list.`,
+			};
+		}
+		return { ok: true, resolvedUrl };
+	}
+
+	// No allow-list: same-origin only.
+	let baseOrigin: string | null = null;
+	if (options.baseUrl) {
+		try {
+			baseOrigin = new URL(options.baseUrl).origin;
+		} catch {
+			baseOrigin = null;
+		}
+	}
+	if (baseOrigin === null) {
 		return {
 			ok: false,
 			reason: "disallowed-origin",
-			message: `External stylesheet origin ${resolvedUrl.origin} is not in the configured allow-list.`,
+			message:
+				"External stylesheet origin cannot be checked: no allow-list is configured and no usable baseUrl was supplied. Pass allowedOrigins to permit a cross-origin stylesheet.",
+		};
+	}
+	if (resolvedUrl.origin !== baseOrigin) {
+		return {
+			ok: false,
+			reason: "disallowed-origin",
+			message: `External stylesheet origin ${resolvedUrl.origin} is cross-origin and no allow-list is configured. Add it to \`allowed-style-origins\` to permit it.`,
 		};
 	}
 	return { ok: true, resolvedUrl };

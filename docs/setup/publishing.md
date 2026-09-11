@@ -174,13 +174,29 @@ A PR rather than an automatic push, because the merge can conflict where `develo
 both appended to a `CHANGELOG.md`. Take both sides, release entry first. The step is idempotent: it
 reuses an open back-merge PR instead of opening a second, and skips when `develop` already contains
 `master`. It cannot fail a release — a publish that succeeded is not reported as failed over its
-follow-up bookkeeping.
+follow-up bookkeeping — and it runs under `!cancelled()`, so a failing post-publish check fails the
+run without taking the back-merge with it. 0.3.70 lost its back-merge that way before the guard
+existed.
 
 After publish, CI also validates internal dependency closure in the registry:
 
 - `scripts/check-published-closure.mjs`
 - confirms published `@pie-players/*` packages only reference resolvable internal versions
 - fails if any `workspace:*` leak or unresolved internal dependency is detected
+
+### Registry propagation
+
+Both post-publish checks read the registry in the same job that published to it, and npm serves
+reads from replicas that lag the write. `scripts/lib/registry-propagation.mjs` is the shared retry
+policy: five attempts per lookup with exponential backoff from 3s, under one 240s deadline measured
+from the first attempt across the whole run. Only E404 and ETARGET retry, so an authorization
+failure still fails immediately.
+
+The deadline is shared rather than per-package deliberately. Versioning is fixed, so a real partial
+release fails for all 45 packages at once; a per-package budget would turn that into a step running
+for the better part of an hour. Once the deadline passes, the remaining packages fail fast and the
+error names which bound was hit — `PIE_REGISTRY_PROPAGATION_DEADLINE_SECONDS` widens it for a rerun
+when npm is having a slow day.
 
 ## How CI authenticates to npm
 

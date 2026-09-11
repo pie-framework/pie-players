@@ -5,7 +5,7 @@
  * Import the built version for CDN usage, or the .svelte source for Svelte projects.
  */
 
-// Re-export AdapterRegistry for auto-hide detection
-export { AdapterRegistry } from "./adapters/adapter-registry.js";
-
-// Re-export any TypeScript types defined in the package
+// No re-export here. The root entry a consumer imports is the built bundle,
+// which exports the component and nothing named, so a value re-exported from
+// this file would type-check and then be undefined at runtime. `AdapterRegistry`
+// is reached through its own `./adapters/adapter-registry` subpath.

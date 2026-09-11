@@ -818,10 +818,19 @@ Tools query PIE content using data attributes:
 - Keyboard navigation support
 - Accessible interactions
 
-**Desmos API**
-- Graphing calculator integration
-- Scientific calculator modes
-- LaTeX math expression support
+**Calculator provider suites**
+- The generic calculator contract, lifecycle surface, toolbar registration, and
+  provider configuration do not import or name a vendor.
+- Desmos remains the no-configuration default for compatibility and supports
+  basic, scientific, and graphing modes.
+- GeoGebra is selected explicitly with `provider.id =
+  "calculator-geogebra"`; it supports scientific and graphing apps and maps a
+  basic request to scientific.
+- Vendor application code is loaded at runtime from the selected vendor and is
+  not bundled into PIE packages.
+- Desmos and GeoGebra are separately licensed from PIE's MIT adapter code; hosts
+  are responsible for the applicable license and attribution in demos and
+  deployed applications.
 
 ### Browser Support
 
@@ -1082,5 +1091,9 @@ The architecture is production-ready for core functionality, with clear paths fo
 ### Implementation
 
 - [Svelte 5 Documentation](https://svelte-5-preview.vercel.app/docs/introduction)
-- [Desmos API](https://www.desmos.com/api/v1.10/docs/index.html)
+- [Desmos API v1.12](https://www.desmos.com/api/v1.12/docs/index.html)
+- [Desmos API Terms](https://www.desmos.com/api-terms)
+- [GeoGebra Apps Embedding](https://geogebra.github.io/docs/reference/en/GeoGebra_Apps_Embedding/)
+- [GeoGebra Apps API](https://geogebra.github.io/docs/reference/en/GeoGebra_Apps_API/)
+- [GeoGebra License](https://www.geogebra.org/license)
 - [Moveable.js](https://daybrush.com/moveable/)

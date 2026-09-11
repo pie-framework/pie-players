@@ -20,9 +20,12 @@ Related:
 ## The discriminant
 
 A capability is **framework-completing** when no host can supply it from outside
-a PIE boundary, and **product-completing** when a host can. PIE builds the first
-class whether or not a consumer exists today, and refuses the second class
-outright — its obligation there is seam completeness, not implementation.
+a PIE boundary, and **product-completing** when a host can. The distinction says
+where an implementation would have to live; it does not, by itself, say that the
+implementation should be built now. PIE implements framework-completing work
+when a representative workload, an accepted external contract, or an explicitly
+bounded experiment justifies it. PIE refuses product-completing implementations;
+its obligation there is seam completeness, not implementation.
 
 The test is mechanical: name the boundary the capability would have to live
 inside. State PIE owns (Try state, the `env` projection, section session slices,
@@ -31,26 +34,28 @@ extended from within. Everything a host already owns — taxonomies, workflow,
 identity, storage, psychometrics, item selection — can be built on top of state
 PIE exposes.
 
-## Consumer count as a non-test
+## Consumer evidence and priority
 
-Consumer count does not decide either class. A framework-completing gap is a
-ceiling every downstream product hits independently, so deferring it exports the
-same workaround N times and the workarounds diverge; the divergence is the cost,
-and it is paid by the framework later as N incompatible shapes to reconcile.
+Consumer count does not decide ownership, but it is relevant evidence for
+priority and contract confidence. A framework-completing gap can force several
+hosts to invent incompatible workarounds, so waiting is not automatically free.
+Conversely, a boundary that only PIE can implement does not prove that anyone
+needs the capability, that its proposed shape fits a real host, or that its
+runtime and maintenance cost is justified.
 
-The [formative delivery contract](../prds/formative-delivery-contract.md#sequenced-next)
-records the correct posture for the no-consumer case: `assessment-player` has no
-data-driven renderer selection and no consumer, so a cross-section rollup lands
-there with nothing to validate it against — "worth knowing before scheduling it,
-not a reason to defer."
+Before scheduling framework-completing work with no current consumer, name the
+representative workload and establish at least one of these:
 
-A deliberate trade: building without a consumer ships unvalidated against a real
-host. The mitigation is a validation host inside the repo — `apps/*-demos` — and
-Playwright coverage against it, which is a cost to plan rather than a reason to
-wait. Renaissance is the priority consumer, and its interest is served by
-framework completeness rather than by narrowing PIE to its current needs: the
-Quiz Engine owning Renaissance's assessment layer is a reason to keep the
-section-level projection complete, not a reason to skip assessment-level work.
+- a real downstream operation is blocked or is repeating a costly workaround;
+- an accepted external or shared contract constrains the required behavior;
+- the work is explicitly experimental, with a bounded validation period and an
+  exit condition for promotion, revision, or deletion.
+
+Repository demos and Playwright tests can prove browser behavior,
+self-consistency, and regressions against the chosen contract. They do not prove
+that lifecycle, package, network, persistence, or ownership choices fit a real
+host. When those boundaries matter, use a representative host integration or
+keep the result experimental until one exists.
 
 ## Classification
 

@@ -1,6 +1,8 @@
 declare module "@pie-players/pie-tool-annotation-toolbar";
 declare module "@pie-players/pie-tool-answer-eliminator";
 declare module "@pie-players/pie-tool-calculator-desmos";
+declare module "@pie-players/pie-tool-calculator-cortex";
+declare module "@pie-players/pie-tool-calculator-shared/calculator-element";
 declare module "@pie-players/pie-tool-dictionary";
 declare module "@pie-players/pie-tool-graph";
 declare module "@pie-players/pie-tool-line-reader";

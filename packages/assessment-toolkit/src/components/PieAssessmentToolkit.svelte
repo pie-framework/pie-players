@@ -932,6 +932,24 @@ const DEFAULT_ENV = {
 		});
 	}
 
+	function releaseOwnedCoordinator(): Promise<void> {
+		const current = ownedCoordinator;
+		if (!current) return Promise.resolve();
+		ownedCoordinator = null;
+		return current.dispose();
+	}
+
+	function reportOwnedCoordinatorDisposeError(error: unknown): void {
+		runtimeError = error;
+		reportFrameworkError({
+			kind: "runtime-dispose",
+			source: "pie-assessment-toolkit",
+			error,
+			recoverable: true,
+			details: { owner: "toolkit-coordinator" },
+		});
+	}
+
 	const effectiveCoordinator = $derived.by(() => {
 		if (isolation !== "force" && inheritedRuntime?.coordinator) {
 			return inheritedRuntime.coordinator as ToolkitCoordinator;
@@ -959,14 +977,18 @@ const DEFAULT_ENV = {
 			if (!host) return;
 			if (coordinator) {
 				if (ownedCoordinator) {
-					ownedCoordinator = null;
+					void releaseOwnedCoordinator().catch(
+						reportOwnedCoordinatorDisposeError,
+					);
 				}
 				lastAppliedToolContextResolvers = null;
 				return;
 			}
 			if (isolation !== "force" && inheritedRuntime?.coordinator) {
 				if (ownedCoordinator) {
-					ownedCoordinator = null;
+					void releaseOwnedCoordinator().catch(
+						reportOwnedCoordinatorDisposeError,
+					);
 				}
 				lastAppliedToolContextResolvers = null;
 				return;
@@ -1525,6 +1547,9 @@ const DEFAULT_ENV = {
 				});
 			})
 			.catch((error) => {
+				// A rerun or unmount retires the previous controller acquisition.
+				// Its rejection is cancellation of obsolete work, not a runtime failure.
+				if (cancelled) return;
 				untrack(() => {
 					// If `engine-ready` has not latched yet, mark it
 					// explicitly skipped so subscribers see a monotonic
@@ -1842,6 +1867,8 @@ const DEFAULT_ENV = {
 						recoverable: true,
 					});
 				})
+				.then(() => releaseOwnedCoordinator())
+				.catch(reportOwnedCoordinatorDisposeError)
 				.finally(() => {
 					frameworkErrorBus.dispose();
 				});

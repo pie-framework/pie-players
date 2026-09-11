@@ -11,6 +11,12 @@ import { describe, expect, test } from "bun:test";
  * token — the thumb and its hover through the boundary families, which the
  * DaisyUI mapping corrects to 3:1 against the surface, and the track through
  * the surface one step off the page.
+ *
+ * The thumb defaults through --pie-border-gray and never through --pie-border.
+ * A host that wants borderless tool chrome sets --pie-border: transparent on
+ * its player subtree, which is a supported thing to do; routing the thumb
+ * through that token painted an invisible scrollbar on both panes for one such
+ * host (0.3.68).
  */
 const PANES = [
 	"../src/components/PieSectionPlayerSplitPaneElement.svelte",
@@ -19,7 +25,7 @@ const PANES = [
 ];
 
 const EXPECTED_CHAINS = [
-	"var(--pie-scrollbar-thumb, var(--pie-border, #6b7280))",
+	"var(--pie-scrollbar-thumb, var(--pie-border-gray, #6b7280))",
 	"var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db))",
 	"var(--pie-scrollbar-thumb-hover, var(--pie-border-dark, #4b5563))",
 ];
@@ -33,6 +39,15 @@ describe("scrollbar chrome follows the theme", () => {
 			for (const chain of EXPECTED_CHAINS) {
 				expect(source).toContain(chain);
 			}
+		});
+
+		test(`${name} keeps the thumb off the generic boundary token`, () => {
+			const declarations = source
+				.replace(/\/\*[\s\S]*?\*\//g, "")
+				.replace(/\s+/g, "");
+			expect(declarations).not.toContain(
+				"var(--pie-scrollbar-thumb,var(--pie-border,",
+			);
 		});
 
 		test(`${name} keeps no bare literal behind a scrollbar hook`, () => {

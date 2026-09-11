@@ -1,0 +1,170 @@
+:root {
+	font-family: system-ui, sans-serif;
+	color: #0f172a;
+	background: #f8fafc;
+}
+
+body {
+	box-sizing: border-box;
+	max-width: 76rem;
+	margin: 0 auto;
+	padding: 1rem;
+}
+
+.pie-cortex-demo-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+	margin-bottom: 1rem;
+}
+
+h1 {
+	margin: 0;
+	font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+nav {
+	display: flex;
+	gap: 0.4rem;
+	flex-wrap: wrap;
+}
+
+nav a {
+	min-height: 2.75rem;
+	display: inline-flex;
+	align-items: center;
+	padding: 0 0.8rem;
+	border: 1px solid #64748b;
+	border-radius: 0.35rem;
+	color: #0f172a;
+	background: #fff;
+	font-weight: 650;
+	text-decoration: none;
+}
+
+nav a[aria-current="page"] {
+	border-color: #1d4ed8;
+	color: #fff;
+	background: #1d4ed8;
+}
+
+nav a:focus-visible {
+	outline: 3px solid #2563eb;
+	outline-offset: 2px;
+}
+
+.pie-cortex-demo-settings {
+	display: flex;
+	gap: 0.75rem;
+	align-items: end;
+	flex-wrap: wrap;
+	margin-bottom: 1rem;
+	padding: 0.75rem;
+	border: 1px solid #cbd5e1;
+	border-radius: 0.5rem;
+	background: #fff;
+}
+
+.pie-cortex-demo-settings label {
+	display: grid;
+	gap: 0.3rem;
+	font-weight: 650;
+}
+
+.pie-cortex-demo-settings select {
+	min-height: 2.75rem;
+	padding: 0.4rem 2rem 0.4rem 0.65rem;
+	border: 1px solid #64748b;
+	border-radius: 0.35rem;
+	background: #fff;
+	color: #0f172a;
+	font: inherit;
+}
+
+.pie-cortex-demo-settings select:focus-visible {
+	outline: 3px solid #2563eb;
+	outline-offset: 2px;
+}
+
+/*
+ * A *definite* height, and one close to what ships. The tool shell gives the
+ * calculator `height: 100%` against a definite flex box sized 380x372 (see
+ * `default-tool-loaders/src/registrations/calculator.ts`), whereas this container
+ * used `min-height` with `height: auto` — so `height: 100%` inside it resolved
+ * against an indefinite parent and the demo exercised a different layout contract
+ * from production. Anything that depends on filling the panel was verified here by
+ * nothing. The resize handle is deliberate: the panel is resizable in the shell too.
+ */
+.pie-cortex-demo-calculator {
+	width: 100%;
+	max-width: 30rem;
+	height: min(70vh, 34rem);
+	resize: both;
+	overflow: auto;
+	border: 1px solid #cbd5e1;
+	border-radius: 0.5rem;
+	background: #fff;
+	box-shadow: 0 0.5rem 1.5rem rgb(15 23 42 / 8%);
+}
+
+body[data-mode="graphing"] .pie-cortex-demo-calculator {
+	max-width: 60rem;
+	height: min(80vh, 40rem);
+}
+
+/*
+ * The shipped tool panel, minus the shell's ~73px header — the box the calculator
+ * actually gets, per type. See `default-tool-loaders/src/registrations/calculator.ts`
+ * for the panel sizes these are derived from; measured against the running app, not
+ * assumed. `--floor` is the same box at the panel's resizable minimum, which is the
+ * smallest size a learner can reach without shrinking the viewport itself.
+ *
+ * They were one size for all three types, and 40px larger than any of them, which is
+ * why the panel-fit test passed while the shipped graphing panel clipped its plot.
+ */
+.pie-cortex-demo-calculator--shell,
+.pie-cortex-demo-calculator--floor {
+	max-width: none;
+}
+
+body[data-mode="basic"] .pie-cortex-demo-calculator--shell {
+	width: 380px;
+	height: 427px;
+}
+
+body[data-mode="scientific"] .pie-cortex-demo-calculator--shell {
+	width: 380px;
+	height: 487px;
+}
+
+body[data-mode="graphing"] .pie-cortex-demo-calculator--shell {
+	width: 720px;
+	height: 587px;
+}
+
+/*
+ * One floor for all three, because the registration's `minWidth`/`minHeight` are
+ * shared: 380x480 minus the header. Graphing reaches it too, where it stacks the
+ * rail above the plot and scrolls what does not fit.
+ */
+.pie-cortex-demo-calculator--floor {
+	width: 380px;
+	height: 407px;
+}
+
+@media (max-width: 30rem) {
+	body {
+		padding: 0.65rem;
+	}
+
+	nav a {
+		flex: 1 1 auto;
+		justify-content: center;
+	}
+
+	.pie-cortex-demo-settings label {
+		flex: 1 1 10rem;
+	}
+}

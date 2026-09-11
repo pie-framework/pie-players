@@ -13,9 +13,18 @@ const webServerCommand = `bun run --cwd "${itemDemosCwd}" dev -- --host ${parsed
 
 export default defineConfig({
 	testDir: "./tests",
+	// Playwright's default testMatch also claims `*.test.ts`, and those are bun
+	// tests importing `bun:test` — one in testDir aborts discovery for the whole
+	// suite. See AGENTS.md, "Playwright And Sandboxed Execution".
+	testMatch: /.*\.spec\.ts/,
+	// Owned by playwright.backend.config.ts, which serves apps/backend-demos.
+	testIgnore: /backend-demo-(delivery|section)\.spec\.ts/,
 	fullyParallel: false,
 	forbidOnly: false,
-	retries: 0,
+	// One retry in CI, none locally. develop requires these suites, so a single
+	// intermittent failure otherwise reds a required check; a local retry would
+	// only hide the flake from whoever can debug it.
+	retries: process.env.CI ? 1 : 0,
 	workers: 1,
 	reporter: "list",
 	use: {

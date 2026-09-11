@@ -54,8 +54,6 @@ export const graphToolRegistration: ToolRegistration = {
 	pnpSupportIds: [
 		"graph", // QTI 3.0 standard (assessment.graph)
 		"graphingCalculator", // QTI 3.0 standard (assessment.graphingCalculator)
-		"coordinatePlane", // Common variant
-		"graphingTool", // Common variant
 	],
 
 	/**
@@ -102,8 +100,6 @@ export const periodicTableToolRegistration: ToolRegistration = {
 	// Maps to QTI 3.0 standard feature: periodicTable
 	pnpSupportIds: [
 		"periodicTable", // QTI 3.0 standard (assessment.periodicTable)
-		"chemistryReference", // Common variant
-		"elementReference", // Common variant
 	],
 
 	/**

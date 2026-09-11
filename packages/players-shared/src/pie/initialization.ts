@@ -6,18 +6,17 @@
  */
 
 import { BUILDER_BUNDLE_URL } from "../config/profile.js";
+import { DEFAULT_IIFE_BUNDLE_RETRY_CONFIG } from "../loader-config.js";
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
-import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
-import type { ConfigEntity, Env, PieModel } from "../types/index.js";
+import type { ConfigEntity } from "../types/index.js";
 import { editorPostFix } from "../types/index.js";
+import { initializePieElement } from "./initialize-element.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { initializeMathRendering } from "./math-rendering.js";
 import { pieRegistry } from "./registry.js";
-import { findPieController } from "./scoring.js";
 import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import type {
-	EventListeners,
 	LoadPieElementsOptions,
 	PieElement,
 	PieRegistry,
@@ -30,7 +29,6 @@ import {
 } from "./types.js";
 import { updatePieElement } from "./updates.js";
 import {
-	findOrAddSession,
 	getPackageWithoutVersion,
 	getPieElementBundlesUrl,
 } from "./utils.js";
@@ -40,112 +38,19 @@ const logger = createPieLogger("pie-initialization", () =>
 	isGlobalDebugEnabled(),
 );
 
+/**
+ * Deadline for `loadPieModule`'s bundle `<script>` load when the caller
+ * sets no `loadTimeoutMs`. Shared with the `ElementLoader` primitive's
+ * `DEFAULT_LOAD_TIMEOUT_MS` so a bundle gets the same budget whichever
+ * path a host loads it through.
+ */
+const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
+
 // Default options for loading PIE elements
 const defaultOptions: LoadPieElementsOptions = {
 	buildServiceBase: BUILDER_BUNDLE_URL,
 	bundleType: BundleType.player, // Default to player.js (no controllers, server-processed models)
 	env: { mode: "gather", role: "student" },
-};
-
-// Add this to your window types
-declare global {
-	interface Window {
-		_pieElementObserver?: MutationObserver;
-		_pieCurrentContext?: {
-			config: ConfigEntity;
-			session: any[];
-			env?: Env;
-			container?: Element | Document;
-		};
-	}
-}
-
-/**
- * Helper function to initialize a PIE element
- */
-const initializePieElement = (
-	element: PieElement,
-	options: {
-		config: ConfigEntity;
-		session: any[];
-		env?: Env;
-		eventListeners?: EventListeners;
-	},
-): void => {
-	const { config, session, env, eventListeners } = options;
-	if ((element as any).__pieInitialized) {
-		return;
-	}
-	const tagName = element.tagName.toLowerCase();
-
-	logger.debug(`[initializePieElement] Initializing ${tagName}#${element.id}`);
-
-	// Find model for this element
-	let model = config?.models?.find((m) => m.id === element.id) as PieModel;
-	if (!model) {
-		// Only warn if this element is from a client-player.js bundle (where models are expected)
-		// player.js bundles use server-processed models, so missing models are expected there
-		const registry = pieRegistry();
-		const registryEntry = registry[tagName];
-
-		if (registryEntry && registryEntry.bundleType === BundleType.clientPlayer) {
-			logger.warn(
-				`[initializePieElement] Model not found for PIE element ${tagName}#${element.id} (client-player.js bundle)`,
-			);
-		}
-		return;
-	}
-
-	// Set session (with element property for updateSession callback)
-	const elementSession = findOrAddSession(session, model.id, model.element);
-	element.session = elementSession;
-	(element as any).__pieInitialized = true;
-	logger.debug(
-		`[initializePieElement] Session set for ${tagName}#${element.id}:`,
-		elementSession,
-	);
-
-	// Set model - use controller if available (client-player.js), or use server-processed model (player.js)
-	const controller = findPieController(tagName);
-
-	if (!env) {
-		logger.error(
-			`[initializePieElement] ❌ FATAL: No env provided for ${tagName}`,
-		);
-		throw new Error(
-			`No env provided for ${tagName}. PIE elements require an env object with mode and role.`,
-		);
-	}
-
-	if (!controller) {
-		// No controller available - using server-processed model (player.js bundle)
-		logger.debug(
-			`[initializePieElement] ℹ️ No controller for ${tagName}, using server-processed model`,
-		);
-		logger.debug(`[initializePieElement] Model already processed by server:`, {
-			id: model.id,
-			element: model.element,
-			hasCorrectResponse: "correctResponse" in model,
-			mode: env.mode,
-			role: env.role,
-		});
-
-		// Set model directly - server already processed it
-		element.model = wrapModelRichContent(model);
-	} else {
-		// Controller available - run client-side processing (client-player.js bundle)
-		// Note: updatePieElementWithRef handles controller invocation
-		logger.debug(
-			`[initializePieElement] Controller found for ${tagName}, will invoke model() function`,
-		);
-	}
-
-	// Add event listeners
-	if (eventListeners) {
-		Object.entries(eventListeners).forEach(([evt, fn]) => {
-			element.addEventListener(evt as any, fn);
-		});
-	}
 };
 
 const getEditorElementTagName = (elementTagName: string, pkg: string): string =>
@@ -175,7 +80,10 @@ const updateRegisteredElement = (
 /**
  * Shared element registration logic
  * Extracted from initializePiesFromLoadedBundle and loadPieModule to eliminate ~200 lines of duplication
- * Also fixes MutationObserver memory leak by storing latest config/session in window context
+ *
+ * Binds the elements already present in `options.container`. Elements that
+ * arrive later are bound by the container owner's observer — see
+ * `element-observer.ts`.
  *
  * `elementModule` may be `null`. In that case we cannot register *new*
  * tags (no element constructor source), but we can still update tags
@@ -194,13 +102,6 @@ const registerPieElementsFromBundle = (
 	options: LoadPieElementsOptions,
 ): Promise<void>[] => {
 	const promises: Promise<void>[] = [];
-	const isNodeWithinContainer = (
-		node: Node,
-		container?: Element | Document,
-	): boolean => {
-		if (!container || container === document) return true;
-		return node instanceof Node && container.contains(node);
-	};
 
 	if (elementModule) {
 		logger.debug(
@@ -216,16 +117,6 @@ const registerPieElementsFromBundle = (
 		"[registerPieElementsFromBundle] config.elements:",
 		config.elements,
 	);
-
-	// Store latest config/session in window so MutationObserver can access current values
-	if (typeof window !== "undefined") {
-		window._pieCurrentContext = {
-			config,
-			session,
-			env: options.env,
-			container: options.container,
-		};
-	}
 
 	Object.entries(config.elements).forEach(([elName, pkg]) => {
 		const elementTagName = validateCustomElementTag(
@@ -386,65 +277,6 @@ const registerPieElementsFromBundle = (
 					}),
 				);
 
-				// Setup MutationObserver that uses current context (only once)
-				if (!window._pieElementObserver) {
-					window._pieElementObserver = new MutationObserver((mutations) => {
-						// Use current context from window instead of stale closure
-						const context = window._pieCurrentContext;
-						if (!context) {
-							logger.warn("[MutationObserver] No current context available");
-							return;
-						}
-
-						mutations.forEach((mutation) => {
-							if (mutation.type === "childList") {
-								mutation.addedNodes.forEach((node) => {
-									if (node.nodeType === Node.ELEMENT_NODE) {
-										if (!isNodeWithinContainer(node, context.container)) {
-											return;
-										}
-										const tagName = (node as Element).tagName.toLowerCase();
-										if (registry[tagName]) {
-											initializePieElement(node as PieElement, {
-												config: context.config,
-												session: context.session,
-												env: context.env,
-												eventListeners: options.eventListeners?.[tagName],
-											});
-										}
-
-										// Check children of added nodes
-										(node as Element)
-											.querySelectorAll("*")
-											.forEach((childNode) => {
-												if (
-													!isNodeWithinContainer(childNode, context.container)
-												) {
-													return;
-												}
-												const childTagName = childNode.tagName.toLowerCase();
-												if (registry[childTagName]) {
-													initializePieElement(childNode as PieElement, {
-														config: context.config,
-														session: context.session,
-														env: context.env,
-														eventListeners:
-															options.eventListeners?.[childTagName],
-													});
-												}
-											});
-									}
-								});
-							}
-						});
-					});
-
-					window._pieElementObserver.observe(document.body, {
-						childList: true,
-						subtree: true,
-					});
-				}
-
 				// Handle editor elements if needed
 				if (options.bundleType === BundleType.editor) {
 					if (isCustomElementConstructor(elementData.Configure)) {
@@ -509,6 +341,10 @@ const registerPieElementsFromBundle = (
  * (bundle not loaded by *anyone*) still surface — every unregistered tag
  * gets its own warning, and `updatePieElements` later reports any tag
  * that never resolves.
+ *
+ * Binds the elements present in `opts.container` now. Elements that arrive
+ * later are the container owner's concern: a player with a lifecycle calls
+ * `observePieElements` and releases it on teardown.
  */
 export const initializePiesFromLoadedBundle = (
 	config: ConfigEntity,
@@ -538,7 +374,14 @@ export const initializePiesFromLoadedBundle = (
 };
 
 /**
- * Load a PIE bundle from a URL and initialize elements
+ * Load a PIE bundle from a URL and initialize elements.
+ *
+ * Rejects — rather than hanging or throwing on the window — for every way
+ * the load can fail: the `error` event (404, blocked request, CSP refusal),
+ * the `loadTimeoutMs` deadline (a stalled request that never fires either
+ * event), a bundle whose script ran without populating `window.pie`, and a
+ * throw out of registration. Every rejection names the bundle URL and drops
+ * the injected `<script>`.
  */
 export const loadPieModule = async (
 	config: ConfigEntity,
@@ -557,43 +400,102 @@ export const loadPieModule = async (
 	const registry = pieRegistry();
 	const options = mergeObjectsIgnoringNullUndefined(defaultOptions, opts);
 	const url = opts.bundleUrl || getPieElementBundlesUrl(config, options);
+	const loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
 	const script = document.createElement("script");
 	script.src = url;
 	script.defer = true;
-	script.onerror = () => {
-		throw new Error(`failed to load script: ${url}`);
-	};
 
-	const loadPromise = new Promise<void>((loadResolve) => {
-		script.addEventListener("load", () => {
-			logger.debug("[loadPieModule] Script loaded from:", url);
-			if (isPieAvailable(window)) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	// Removing a `<script>` does not abort a request already in flight, so a
+	// late `load` can still fire after the deadline rejected. Each handler
+	// checks this so registration never runs for a load the caller has
+	// already been told failed.
+	let settled = false;
+
+	try {
+		await new Promise<void>((resolve, reject) => {
+			const succeed = () => {
+				settled = true;
+				resolve();
+			};
+			const fail = (error: Error) => {
+				settled = true;
+				reject(error);
+			};
+
+			script.addEventListener("load", () => {
+				if (settled) return;
+				logger.debug("[loadPieModule] Script loaded from:", url);
+
+				if (!isPieAvailable(window)) {
+					// Deliberately a rejection, not a resolve. The script executed
+					// and registered nothing, so the URL did not serve a PIE IIFE
+					// bundle; resolving would report a successful load to a caller
+					// that then waits on elements which never arrive.
+					// `initializePiesFromLoadedBundle` tolerates the same missing
+					// global because there the host's own loader owns registration.
+					// Here this function owns it, so there is no other party to
+					// wait for. Matches the IIFE `ElementLoader` adapter, which
+					// fails with `cause: "window.pie.default missing after bundle
+					// load"`.
+					fail(
+						new Error(
+							`PIE bundle loaded but window.pie is absent; is ${url} a proper PIE IIFE module?`,
+						),
+					);
+					return;
+				}
+
 				logger.debug("[loadPieModule] window.pie available");
 				const elementModule = window.pie.default;
 
-				// Use shared registration logic (returns array of promises)
-				const registrationPromises = registerPieElementsFromBundle(
-					elementModule,
-					config,
-					session,
-					registry,
-					options,
-				);
+				try {
+					// Use shared registration logic (returns array of promises)
+					const registrationPromises = registerPieElementsFromBundle(
+						elementModule,
+						config,
+						session,
+						registry,
+						options,
+					);
 
-				// Wait for all element definitions to complete
-				Promise.all(registrationPromises).then(() => loadResolve());
-			} else {
-				logger.error(
-					"[loadPieModule] pie var not found; is %s a proper PIE IIFE module?",
-					url,
-				);
-				loadResolve();
+					// Wait for all element definitions to complete
+					Promise.all(registrationPromises).then(succeed, fail);
+				} catch (error) {
+					// `registerPieElementsFromBundle` throws synchronously for a
+					// package missing from the bundle and for a client-player
+					// bundle with no controller. Inside a DOM event handler that
+					// throw reaches the window instead of the caller.
+					fail(error instanceof Error ? error : new Error(String(error)));
+				}
+			});
+
+			script.addEventListener("error", () => {
+				if (settled) return;
+				fail(new Error(`failed to load PIE bundle script: ${url}`));
+			});
+
+			if (loadTimeoutMs > 0) {
+				timer = setTimeout(() => {
+					if (settled) return;
+					fail(
+						new Error(
+							`PIE bundle script load timed out after ${loadTimeoutMs}ms: ${url}`,
+						),
+					);
+				}, loadTimeoutMs);
 			}
-		});
-	});
 
-	document.head.appendChild(script);
-	await loadPromise;
+			document.head.appendChild(script);
+		});
+	} catch (error) {
+		// Drop the injected node so a retry starts from a clean head.
+		script.remove();
+		throw error;
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+
 	return { session };
 };
 

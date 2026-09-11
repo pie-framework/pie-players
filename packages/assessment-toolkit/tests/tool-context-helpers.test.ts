@@ -171,4 +171,51 @@ describe("tool-context helpers", () => {
 
 		expect(hasChoiceInteraction(context)).toBe(true);
 	});
+
+	// `choices` holds the draggables for these three, so reading it on a named
+	// model put the answer eliminator on items the tool cannot act on.
+	for (const element of [
+		"placement-ordering",
+		"categorize",
+		"categorize-element",
+		"drag-in-the-blank",
+	]) {
+		test(`does not treat ${element} as a choice interaction despite its choices`, () => {
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: {
+					config: {
+						models: [
+							{
+								element,
+								choices: [
+									{ id: "1", label: "first" },
+									{ id: "2", label: "second" },
+								],
+							},
+						],
+					},
+				} as any,
+			};
+
+			expect(hasChoiceInteraction(context)).toBe(false);
+		});
+	}
+
+	test("still reads choices when a model names no element", () => {
+		const context: ToolContext = {
+			level: "item",
+			assessment: {} as any,
+			itemRef: {} as any,
+			item: {
+				config: {
+					models: [{ choices: [{ value: "a" }, { value: "b" }] }],
+				},
+			} as any,
+		};
+
+		expect(hasChoiceInteraction(context)).toBe(true);
+	});
 });

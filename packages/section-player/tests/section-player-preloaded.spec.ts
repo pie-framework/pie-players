@@ -138,6 +138,36 @@ test.describe("section player preloaded strategy", () => {
 		expect(decodedBundleUrl).toContain("@pie-element/passage@5.3.3");
 	});
 
+	// The demo binds the universal personal needs profile, so answer masking is a
+	// granted accommodation on both items. A grant skips the relevance gate, which
+	// is why the eliminator used to reach `categorize` — an interaction whose
+	// `choices` hold draggables the tool cannot strike through (PIE-935). The
+	// applicability gate is the one a grant does not survive.
+	test("answer eliminator reaches the choice item and not the categorize item", async ({
+		page,
+	}) => {
+		await page.goto("/preloaded-fixed-elements?mode=candidate&layout=splitpane", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.locator(".preload-status")).toHaveCount(0, {
+			timeout: 30_000,
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
+			timeout: 30_000,
+		});
+
+		const itemShells = page.locator(
+			'pie-item-shell[data-pie-shell-root="item"]',
+		);
+		const multipleChoice = itemShells.nth(0);
+		const categorize = itemShells.nth(1);
+		const eliminator = (scope: typeof multipleChoice) =>
+			scope.getByRole("button", { name: /strike through/i });
+
+		await expect(eliminator(multipleChoice)).toBeVisible({ timeout: 30_000 });
+		await expect(eliminator(categorize)).toHaveCount(0);
+	});
+
 	test("forwards runtime.player.loaderConfig to embedded item players", async ({
 		page,
 	}) => {

@@ -13,6 +13,7 @@
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
+	import '@pie-players/pie-tool-answer-eliminator';
 	import '@pie-players/pie-tool-annotation-toolbar';
 	import '@pie-players/pie-tool-graph';
 	import '@pie-players/pie-tool-line-reader';
@@ -57,7 +58,7 @@
 		},
 		placement: {
 			section: ['theme', 'graph', 'lineReader'],
-			item: ['textToSpeech', 'annotationToolbar'],
+			item: ['textToSpeech', 'annotationToolbar', 'answerEliminator'],
 			passage: ['textToSpeech', 'annotationToolbar']
 		}
 	};

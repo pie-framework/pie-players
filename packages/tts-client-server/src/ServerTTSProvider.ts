@@ -14,9 +14,17 @@ import type {
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 import {
+	createPieLogger,
+	isGlobalDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
+import {
 	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
 } from "@pie-players/tts-server-core";
+
+const logger = createPieLogger("server-tts-provider", () =>
+	isGlobalDebugEnabled(),
+);
 
 /**
  * Configuration for ServerTTSProvider
@@ -543,6 +551,12 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	private pausedState = false;
 	private wordTimings: WordTiming[] = [];
 	private highlightInterval: number | null = null;
+	/**
+	 * Index of the word timing most recently handed to `onWordBoundary`, or -1
+	 * before the first. It survives pause/resume so resuming continues from the
+	 * spoken position instead of replaying the passage from its first word.
+	 */
+	private highlightCursor = -1;
 	private intentionallyStopped = false;
 	private activeSynthesisController: AbortController | null = null;
 	private synthesisRunId = 0;
@@ -568,7 +582,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		try {
 			await this.telemetryReporter?.(eventName, payload);
 		} catch (error) {
-			console.warn("[ServerTTSProvider] telemetry callback failed:", error);
+			logger.warn("telemetry callback failed:", error);
 		}
 	}
 
@@ -594,6 +608,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		}
 
 		this.wordTimings = wordTimings;
+		this.highlightCursor = -1;
 
 		return new Promise((resolve, reject) => {
 			// Create audio element
@@ -614,10 +629,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				try {
 					this.onPlaybackStart?.();
 				} catch (error) {
-					console.warn(
-						"[ServerTTSProvider] playback-start callback failed:",
-						error,
-					);
+					logger.warn("playback-start callback failed:", error);
 				}
 
 				// Start word highlighting
@@ -631,6 +643,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				URL.revokeObjectURL(audioUrl);
 				this.currentAudio = null;
 				this.wordTimings = [];
+				this.highlightCursor = -1;
 				resolve();
 			};
 
@@ -639,6 +652,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				URL.revokeObjectURL(audioUrl);
 				this.currentAudio = null;
 				this.wordTimings = [];
+				this.highlightCursor = -1;
 				void event;
 				// Only reject if this wasn't an intentional stop
 				if (!this.intentionallyStopped) {
@@ -713,18 +727,21 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				try {
 					errorData = JSON.parse(rawBody) as Record<string, unknown>;
 				} catch (parseError) {
-					console.warn(
-						"[ServerTTSProvider] non-OK response body was not JSON",
-						{
-							status: response.status,
-							url: synthUrl,
-							rawBodyPreview: rawBody.slice(0, 500),
-							parseError:
-								parseError instanceof Error
-									? parseError.message
-									: String(parseError),
-						},
-					);
+					logger.warn("non-OK response body was not JSON", {
+						status: response.status,
+						url: synthUrl,
+						bodyLength: rawBody.length,
+						parseError:
+							parseError instanceof Error
+								? parseError.message
+								: String(parseError),
+					});
+					// A provider's error body can echo the SSML it rejected, so the body
+					// itself stays behind the debug gate; the length above is what says
+					// a body arrived and was not JSON.
+					logger.debug("non-OK response body", {
+						rawBodyPreview: rawBody.slice(0, 500),
+					});
 				}
 			}
 			const errorMessage =
@@ -742,14 +759,20 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				errorType: "TTSBackendRequestError",
 				message: errorMessage,
 			});
-			const textPreview = text.replace(/\s+/g, " ").trim().slice(0, 120);
-			console.error("[ServerTTSProvider] synthesize request failed", {
+			logger.error("synthesize request failed", {
 				status: response.status,
 				url: synthUrl,
 				backend: this.config.provider || "server",
 				message: errorMessage,
-				responseBody: errorData,
 				textLength: text.length,
+			});
+			// The text under synthesis is item content and the provider's error body
+			// can echo it, so both stay behind the debug gate. `errorMessage` above is
+			// thrown to the caller regardless, and `textLength` is what correlates a
+			// failure with a payload without publishing what the learner is reading.
+			const textPreview = text.replace(/\s+/g, " ").trim().slice(0, 120);
+			logger.debug("synthesize request failed for text", {
+				responseBody: errorData,
 				textPreview:
 					textPreview.length < text.length ? `${textPreview}…` : textPreview,
 			});
@@ -903,7 +926,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			!this.onWordBoundary ||
 			this.wordTimings.length === 0
 		) {
-			console.log("[ServerTTSProvider] Cannot start highlighting:", {
+			logger.debug("cannot start word highlighting", {
 				hasAudio: !!this.currentAudio,
 				hasCallback: !!this.onWordBoundary,
 				wordTimingsCount: this.wordTimings.length,
@@ -911,56 +934,80 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			return;
 		}
 
-		console.log(
-			"[ServerTTSProvider] Starting word highlighting with",
-			this.wordTimings.length,
-			"word timings",
-		);
-		console.log(
-			"[ServerTTSProvider] Playback rate:",
-			this.currentAudio.playbackRate,
-		);
-		console.log(
-			"[ServerTTSProvider] First 3 timings:",
-			this.wordTimings.slice(0, 3),
-		);
+		logger.debug("starting word highlighting", {
+			wordTimingsCount: this.wordTimings.length,
+			playbackRate: this.currentAudio.playbackRate,
+		});
 
-		let lastWordIndex = -1;
-
-		// Poll every 50ms to check current playback time
+		// A 50ms interval, chosen over the two alternatives: 50ms is below the
+		// perceptual threshold for word-level sync at a fifth of the wake-ups a
+		// 60Hz `requestAnimationFrame` loop would spend on the same job, and
+		// `timeupdate` fires at browser discretion — commonly 150-250ms — so it
+		// would need a timer behind it to interpolate anyway. The interval also
+		// degrades better while the tab is hidden: browsers clamp it to roughly
+		// 1s where they suspend rAF outright, and because a tick resolves
+		// straight to the word that is current, one clamped tick resyncs the
+		// highlight rather than replaying a backlog.
 		this.highlightInterval = window.setInterval(() => {
 			if (!this.currentAudio) {
 				this.stopWordHighlighting();
 				return;
 			}
 
-			// Get current playback time in milliseconds
-			const currentTime = this.currentAudio.currentTime * 1000;
-
-			// Find words that should be highlighted at current time
-			for (let i = 0; i < this.wordTimings.length; i++) {
-				const timing = this.wordTimings[i];
-
-				if (currentTime >= timing.time && i > lastWordIndex) {
-					// Fire word boundary callback
-					if (this.onWordBoundary) {
-						console.log(
-							"[ServerTTSProvider] Highlighting word at charIndex:",
-							timing.charIndex,
-							"length:",
-							timing.length,
-							"time:",
-							timing.time,
-							"currentTime:",
-							currentTime,
-						);
-						this.onWordBoundary(timing.word, timing.charIndex, timing.length);
-					}
-					lastWordIndex = i;
-					break;
-				}
+			const currentTimeMs = this.currentAudio.currentTime * 1000;
+			const index = this.resolveCurrentWordIndex(
+				currentTimeMs,
+				this.highlightCursor,
+			);
+			if (index < 0 || index === this.highlightCursor) {
+				return;
 			}
-		}, 50); // 50ms polling = 20 times per second
+
+			// Report only the word that is current now. Words a tick crossed over
+			// are deliberately skipped rather than fired in order: the callback
+			// names the word being spoken and its consumer repaints a single range
+			// per call, so replaying the backlog would paint highlights the learner
+			// never sees and leave the last paint behind the audio. Firing one word
+			// per tick capped highlighting at 20 words/second, which is how the
+			// highlight used to drift off the spoken word and never catch up.
+			this.highlightCursor = index;
+			const timing = this.wordTimings[index];
+			logger.debug("word boundary", {
+				wordIndex: timing.wordIndex,
+				charIndex: timing.charIndex,
+				length: timing.length,
+				timingMs: timing.time,
+				currentTimeMs,
+			});
+			this.onWordBoundary?.(timing.word, timing.charIndex, timing.length);
+		}, 50);
+	}
+
+	/**
+	 * Index of the last timing whose start time has arrived at `currentTimeMs`,
+	 * or -1 when playback has not reached the first word yet.
+	 *
+	 * The scan resumes at `cursor`, so a tick costs the number of words it
+	 * crossed instead of the length of the passage. A backward jump — a seek, or
+	 * a replay on the same element — invalidates the cursor, and only then does
+	 * the scan restart from the beginning.
+	 */
+	private resolveCurrentWordIndex(
+		currentTimeMs: number,
+		cursor: number,
+	): number {
+		const timings = this.wordTimings;
+		let index = cursor < timings.length ? cursor : -1;
+		if (index >= 0 && currentTimeMs < timings[index].time) {
+			index = -1;
+		}
+		while (
+			index + 1 < timings.length &&
+			timings[index + 1].time <= currentTimeMs
+		) {
+			index++;
+		}
+		return index;
 	}
 
 	/**
@@ -1014,6 +1061,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 
 		this.pausedState = false;
 		this.wordTimings = [];
+		this.highlightCursor = -1;
 	}
 
 	isPlaying(): boolean {
@@ -1072,7 +1120,7 @@ export class ServerTTSProvider implements ITTSProvider {
 		try {
 			await this.telemetryReporter?.(eventName, payload);
 		} catch (error) {
-			console.warn("[ServerTTSProvider] telemetry callback failed:", error);
+			logger.warn("telemetry callback failed:", error);
 		}
 	}
 

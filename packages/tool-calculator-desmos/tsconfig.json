@@ -8,6 +8,6 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "tool-calculator.svelte"],
+	"include": ["index.ts"],
 	"exclude": ["node_modules", "dist"]
 }

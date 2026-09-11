@@ -109,6 +109,13 @@ export function renderOverlayToolbar(
 			{
 				element: overlay,
 				mount: "after-buttons",
+				// A frameless overlay draws its own surface over the content and
+				// positions itself, so the content's box has to be its containing
+				// block. A shelled tool is `position: fixed` and clamps to the
+				// viewport, so it stays where the toolbar puts it.
+				...(options.surface === "frameless"
+					? { container: "content-boundary" as const }
+					: {}),
 				...(options.shell
 					? {
 							shell: {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	createDefaultToolModuleLoaders,
 	DEFAULT_TOOL_MODULE_LOADERS,
 	ITEM_TOOL_MODULE_LOADERS,
 	registerDefaultToolModuleLoaders,
@@ -62,6 +63,27 @@ describe("default tool module loaders", () => {
 		expect(loaderSource).not.toContain("@pie-players/pie-tool-text-to-speech");
 	});
 
+	test("selects packaged calculator loaders while keeping Desmos as default", () => {
+		const defaultLoaderSource =
+			createDefaultToolModuleLoaders().calculator.toString();
+		const geogebraLoaderSource = createDefaultToolModuleLoaders({
+			calculatorProviderConfig: {
+				provider: { id: "calculator-geogebra" },
+			},
+		}).calculator.toString();
+		const cortexLoaderSource = createDefaultToolModuleLoaders({
+			calculatorProviderConfig: {
+				provider: { id: "calculator-cortex" },
+			},
+		}).calculator.toString();
+
+		expect(defaultLoaderSource).toContain(
+			"pie-tool-calculator-shared/calculator-element",
+		);
+		expect(geogebraLoaderSource).toContain("pie-tool-calculator-geogebra");
+		expect(cortexLoaderSource).toContain("pie-tool-calculator-cortex");
+	});
+
 	test("registers default loaders with host overrides", () => {
 		const registry = new CapturingRegistry();
 		const overrideLoader = () => Promise.resolve();
@@ -75,6 +97,20 @@ describe("default tool module loaders", () => {
 			ITEM_TOOL_MODULE_LOADERS.textToSpeech,
 		);
 		expect(registry.loaders?.ruler).toBe(SECTION_TOOL_MODULE_LOADERS.ruler);
+	});
+
+	test("registers the selected provider loader through the normal helper", () => {
+		const registry = new CapturingRegistry();
+
+		registerDefaultToolModuleLoaders(registry, {
+			calculatorProviderConfig: {
+				provider: { id: "calculator-geogebra" },
+			},
+		});
+
+		expect(registry.loaders?.calculator?.toString()).toContain(
+			"pie-tool-calculator-geogebra",
+		);
 	});
 
 	test("registers section-only loaders with host overrides", () => {

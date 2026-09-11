@@ -9,7 +9,7 @@ Related architecture:
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
 
 **Partly answered at the item and section layer, 2026-08-15.** The [formative
-delivery contract](../formative-delivery-contract.md) is `Ready` and ships an
+delivery contract](../formative-delivery-contract.md) is `Accepted` and ships an
 item-level aggregation plus a section rollup for one purpose: deciding whether a
 learner mastered an item. It settles three things this PRD had open — the
 aggregation follows the persisted API path's documented policy (single outcome

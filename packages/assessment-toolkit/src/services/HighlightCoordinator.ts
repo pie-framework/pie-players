@@ -1087,21 +1087,17 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	}
 
 	/**
-	 * Cleanup - remove all highlights
+	 * Cleanup this coordinator's highlights and observer.
+	 *
+	 * The stylesheet is process-global and shared by every live coordinator, so
+	 * removing it here would break a replacement or sibling coordinator. Keep the
+	 * single bounded style element installed for the lifetime of the document.
 	 */
 	destroy(): void {
 		if (!this.supported) return;
 
 		this.clearTTS();
 		this.clearAnnotations();
-
-		// Remove style element
-		if (typeof document !== "undefined") {
-			const styleEl = document.getElementById("pie-highlight-styles");
-			if (styleEl) {
-				styleEl.remove();
-			}
-		}
 		this.themeObserver?.disconnect();
 		this.themeObserver = null;
 	}

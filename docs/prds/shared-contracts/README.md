@@ -10,8 +10,8 @@ requirements.
 
 Tracking: this workstream is deliberately not tracked in an issue tracker. The
 `Status:` line in each PRD plus the sequence below are the record.
-[`media-asset-contract`](./media-asset-contract.md) is `Ready` as of 2026-08-09;
-the rest are `Draft`.
+[`media-asset-contract`](./media-asset-contract.md) is `Accepted` as of
+2026-08-09; the rest are `Draft`.
 
 ## Draft Sequence
 
@@ -59,7 +59,7 @@ Recommended review and implementation order:
      otherwise two media vocabularies get merged later. The time-range-within-an-asset
      primitive is shared by both — Media Fragments for signing, cue ranges for
      timed media — and should be designed once here rather than deferred.
-   - **Overtaken by events, then ratified (2026-08-09).** The signing consumer
+   - **Overtaken by events, then accepted (2026-08-09).** The signing consumer
      shipped first, so `MediaAssetRef`, `MediaSource`, `TextTrackRef`,
      `TranscriptRef` and `MediaFragmentRange` exist in
      `@pie-players/pie-players-shared/types`; a second catalog consumer
@@ -67,7 +67,7 @@ Recommended review and implementation order:
      shape for a second media kind without a field change. The vocabulary was
      ratified against the timed-media consumer's proposed shapes before the
      release that publishes it — cue ranges fit `MediaFragmentRange` beside the
-     asset, and `video-stimulus` needs nothing `MediaAssetRef` lacks. `Ready`;
+     asset, and `video-stimulus` needs nothing `MediaAssetRef` lacks. `Accepted`;
      no longer a blocker for anything downstream.
 4. [`branching-and-process-events`](./branching-and-process-events.md)
    - Branching, simulations, replay/debug, resumability, externally graded

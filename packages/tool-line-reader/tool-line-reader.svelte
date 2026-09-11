@@ -19,9 +19,14 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
-import { createPointerDragController } from '@pie-players/pie-players-shared';
+import {
+	clampPointWithinBlock,
+	createPointerDragController,
+	DEFAULT_CONTAINMENT_GUTTER,
+	resolveContainingBlockRect
+} from '@pie-players/pie-players-shared';
 import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
-import { onMount } from 'svelte';
+import { onMount, untrack } from 'svelte';
 
 	// Props
 	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
@@ -39,14 +44,18 @@ import { onMount } from 'svelte';
 	type ResizeTarget = 'pane' | 'frame';
 
 	let resizeTarget = $state<ResizeTarget | null>(null);
-	let position = $state({
-		x: isBrowser ? window.innerWidth / 2 : 400,
-		y: isBrowser ? window.innerHeight / 2 : 300
-	});
+	/**
+	 * Centre point of the panel, in the coordinate space of its containing block.
+	 * Seeded from that block's own box once the element is in the DOM, so a tool
+	 * placed on a passage or an item card opens over the content it reads rather
+	 * than at a viewport coordinate the card never occupies.
+	 */
+	let position = $state({ x: 0, y: 0 });
+	let positionSeeded = false;
 	const dragController = createPointerDragController({
 		getPosition: () => position,
 		setPosition: (next) => {
-			position = next;
+			position = clampToContainingBlock(next);
 		},
 		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
 	});
@@ -83,6 +92,8 @@ import { onMount } from 'svelte';
 	const MAX_FRAME_BAND_HEIGHT = 240; // pixels
 	const MIN_WIDTH = 200; // pixels
 	const MAX_WIDTH = 2000; // pixels
+	// Kept clear of the containing block's edges so the frame's controls stay reachable.
+	const CONTAINMENT_GUTTER = DEFAULT_CONTAINMENT_GUTTER;
 
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
@@ -112,11 +123,72 @@ import { onMount } from 'svelte';
 	}
 
 	function clampWidth(value: number) {
-		return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, value));
+		const available = containingBlockSize()?.width;
+		const upper =
+			available === undefined ? MAX_WIDTH : Math.min(MAX_WIDTH, available - CONTAINMENT_GUTTER * 2);
+		return Math.max(MIN_WIDTH, Math.min(Math.max(MIN_WIDTH, upper), value));
+	}
+
+	/** The box the panel's `left`/`top` are relative to. */
+	function containingBlockRect(): DOMRect | undefined {
+		return resolveContainingBlockRect(containerEl);
+	}
+
+	function containingBlockSize(): { width: number; height: number } | undefined {
+		const rect = containingBlockRect();
+		return rect && { width: rect.width, height: rect.height };
+	}
+
+	/**
+	 * Where the panel should open, in containing-block coordinates.
+	 *
+	 * The centre of the block is wrong for a block taller than the viewport -- an
+	 * item card carrying a long passage runs to several screens, and its midpoint is
+	 * off the bottom of the screen. Opening at the centre of the part currently on
+	 * screen puts the reading window on the text the student is looking at.
+	 */
+	function seedCentre(): { x: number; y: number } | undefined {
+		const rect = containingBlockRect();
+		if (!rect) return undefined;
+		const visibleLeft = Math.max(rect.left, 0);
+		const visibleTop = Math.max(rect.top, 0);
+		const visibleRight = Math.min(rect.right, window.innerWidth);
+		const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+		// Scrolled out of sight entirely: fall back to the block's own centre, which
+		// the clamp then keeps inside it.
+		if (visibleRight <= visibleLeft || visibleBottom <= visibleTop) {
+			return { x: rect.width / 2, y: rect.height / 2 };
+		}
+		return {
+			x: (visibleLeft + visibleRight) / 2 - rect.left,
+			y: (visibleTop + visibleBottom) / 2 - rect.top
+		};
+	}
+
+	/**
+	 * Keeps the panel inside its containing block. `position` is the centre point --
+	 * the root is drawn with `translate(-50%, -50%)` -- and the panel's extent moves
+	 * with its own resize controls, so both are read at call time.
+	 */
+	function clampToContainingBlock(next: { x: number; y: number }) {
+		const block = containingBlockSize();
+		if (!block) return next;
+		return clampPointWithinBlock(
+			next,
+			{ width, height: totalHeight },
+			block,
+			CONTAINMENT_GUTTER
+		);
+	}
+
+	/** Re-applies containment after a resize changed the panel's own extent. */
+	function reclampPosition() {
+		position = clampToContainingBlock(position);
 	}
 
 	function resizePane(delta: number) {
 		paneHeight = clampPaneHeight(paneHeight + delta);
+		reclampPosition();
 		announce(
 			interfaceI18n.t('tools.lineReader.windowHeightAnnounce', { pixels: paneHeight }),
 		);
@@ -124,6 +196,7 @@ import { onMount } from 'svelte';
 
 	function resizeFrameBand(delta: number) {
 		frameBandHeight = clampFrameBandHeight(frameBandHeight + delta);
+		reclampPosition();
 		announce(
 			interfaceI18n.t('tools.lineReader.frameHeightAnnounce', {
 				pixels: frameBandHeight,
@@ -133,6 +206,7 @@ import { onMount } from 'svelte';
 
 	function resizeWidth(delta: number) {
 		width = clampWidth(width + delta);
+		reclampPosition();
 		announce(interfaceI18n.t('tools.lineReader.widthAnnounce', { pixels: width }));
 	}
 
@@ -237,6 +311,7 @@ import { onMount } from 'svelte';
 		// bands, right widens the whole window.
 		frameBandHeight = clampFrameBandHeight(resizeStart.frameBandHeight + deltaY);
 		width = clampWidth(resizeStart.width + (e.clientX - resizeStart.mouseX) * 2);
+		reclampPosition();
 	}
 
 	function handlePointerUp(e: PointerEvent) {
@@ -258,7 +333,10 @@ import { onMount } from 'svelte';
 
 		switch (e.key) {
 			case 'ArrowUp':
-				position.y -= MOVE_STEP;
+				position = clampToContainingBlock({
+					x: position.x,
+					y: position.y - MOVE_STEP
+				});
 				announce(
 					interfaceI18n.t('toolkit.announce.movedUp', {
 						position: Math.round(position.y),
@@ -267,7 +345,10 @@ import { onMount } from 'svelte';
 				handled = true;
 				break;
 			case 'ArrowDown':
-				position.y += MOVE_STEP;
+				position = clampToContainingBlock({
+					x: position.x,
+					y: position.y + MOVE_STEP
+				});
 				announce(
 					interfaceI18n.t('toolkit.announce.movedDown', {
 						position: Math.round(position.y),
@@ -276,7 +357,10 @@ import { onMount } from 'svelte';
 				handled = true;
 				break;
 			case 'ArrowLeft':
-				position.x -= MOVE_STEP;
+				position = clampToContainingBlock({
+					x: position.x - MOVE_STEP,
+					y: position.y
+				});
 				announce(
 					interfaceI18n.t('toolkit.announce.movedLeft', {
 						position: Math.round(position.x),
@@ -285,7 +369,10 @@ import { onMount } from 'svelte';
 				handled = true;
 				break;
 			case 'ArrowRight':
-				position.x += MOVE_STEP;
+				position = clampToContainingBlock({
+					x: position.x + MOVE_STEP,
+					y: position.y
+				});
 				announce(
 					interfaceI18n.t('toolkit.announce.movedRight', {
 						position: Math.round(position.x),
@@ -412,11 +499,42 @@ import { onMount } from 'svelte';
 		}
 	});
 
-	// Auto-focus when tool becomes visible
+	/**
+	 * Places the panel over the visible part of its containing block the first time
+	 * it is shown, and trims a default width that does not fit. Runs once: a
+	 * position the student dragged to survives closing and reopening the tool.
+	 */
+	function seedPosition() {
+		if (positionSeeded) return;
+		const centre = seedCentre();
+		if (!centre) return;
+		positionSeeded = true;
+		width = clampWidth(width);
+		position = clampToContainingBlock(centre);
+	}
+
+	// Position, then focus, when the tool becomes visible. Seeded synchronously so
+	// the panel is never painted at an unseeded coordinate, and focused with
+	// `preventScroll` so revealing it cannot scroll the pane it sits in.
 	$effect(() => {
-		if (visible && containerEl) {
-			setTimeout(() => containerEl?.focus(), 100);
-		}
+		if (!visible || !containerEl) return;
+		// `seedPosition` reads and writes reactive state, so it stays out of the
+		// tracked body -- see AGENTS.md, Svelte Subscription Safety.
+		untrack(seedPosition);
+		const timer = setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
+		return () => clearTimeout(timer);
+	});
+
+	// The containing block's extent changes with the window, and a panel that fitted
+	// before may not fit now.
+	$effect(() => {
+		if (!isBrowser || !visible) return;
+		const onResize = () => {
+			width = clampWidth(width);
+			reclampPosition();
+		};
+		window.addEventListener('resize', onResize);
+		return () => window.removeEventListener('resize', onResize);
 	});
 </script>
 

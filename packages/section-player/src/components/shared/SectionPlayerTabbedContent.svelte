@@ -4,7 +4,6 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { useZoomCompensation } from "@pie-players/pie-players-shared/ui/use-zoom-compensation";
 	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	type LayoutModel = {
@@ -60,36 +59,6 @@
 	let activeTab = $state<TabKey>("passage");
 	let passageTabButton = $state<HTMLButtonElement | null>(null);
 	let itemsTabButton = $state<HTMLButtonElement | null>(null);
-
-	/**
-	 * Zoom compensation for the passage/questions toggle.
-	 *
-	 * The toggle scales naturally with browser zoom up to 200%. Beyond 200%,
-	 * we shrink its CSS size proportionally so its physical on-screen size
-	 * freezes at the 200% appearance, leaving more room for passage/question
-	 * content in high-zoom / small-window situations.
-	 *
-	 * `minCompensation` is the floor on that shrink factor, and once it bites
-	 * the toggle grows past 200% again (apparent size = zoom * floor). We keep
-	 * it below `maxZoom / maxBrowserZoom` (2 / 5 = 0.4) so the cap holds across
-	 * the full browser zoom range: the `outerWidth / innerWidth` estimate
-	 * overshoots real zoom (browser chrome shrinks innerWidth), so at a real
-	 * 500% the ratio already reads above 5 and a 0.4 floor would let the toggle
-	 * grow again. 0.25 pushes the floor's bite point to a ratio of 8, past any
-	 * real browser zoom, while still guarding against an unusably small toggle.
-	 *
-	 * NOTE: this same factor is also applied to the vertical spacing
-	 * (gap + block padding) surrounding the toggle in
-	 * .pie-section-player-tabbed-content, via the same CSS variable. The
-	 * `zoom` property only shrinks the toggle element itself; the flex gap
-	 * and padding live outside that element and would otherwise keep
-	 * growing with real browser zoom, silently eating back the vertical
-	 * space this work is meant to reclaim.
-	 */
-	const toggleZoom = useZoomCompensation({
-		maxZoom: 2,
-		minCompensation: 0.25,
-	});
 
 	// Reset to the Passage tab whenever we navigate to a different section.
 	$effect(() => {
@@ -154,7 +123,7 @@
 	class="pie-section-player-tabbed-frame"
 	style={`--pie-section-player-layout-max-width: ${
 		layoutMaxWidthPx !== undefined ? `${layoutMaxWidthPx}px` : "none"
-	}; --pie-section-player-tab-zoom-comp: ${toggleZoom.current};`}
+	};`}
 >
 	<div class="pie-section-player-tabbed-content">
 		{#if hasPassages}
@@ -271,27 +240,8 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		/*
-		 * The gap between the tab row and the panel below it sits OUTSIDE the
-		 * zoomed .pie-section-player-tabs element, so it isn't shrunk by the
-		 * `zoom` CSS property applied there. It must be compensated
-		 * separately using the same factor, or it keeps growing with real
-		 * browser zoom past 200% and eats back the space we're trying to
-		 * reclaim.
-		 */
-		gap: calc(
-			var(--pie-section-player-tab-gap, 0.5rem) *
-				var(--pie-section-player-tab-zoom-comp, 1)
-		);
-		/*
-		 * Likewise, vertical (block) padding around the whole content area
-		 * contributes to the white space above/below the toggle and must be
-		 * compensated. Horizontal (inline) padding is left alone since the
-		 * goal is reclaiming vertical space for passage/question content,
-		 * not narrowing the content column.
-		 */
-		padding-block: calc(0.5rem * var(--pie-section-player-tab-zoom-comp, 1));
-		padding-inline: 0.5rem;
+		gap: var(--pie-section-player-tab-gap, 0.5rem);
+		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
 		overflow: hidden;
@@ -313,14 +263,6 @@
 		padding: var(--pie-section-player-tab-track-padding, 0.25rem);
 		width: fit-content;
 		align-self: center;
-		/*
-		 * Freeze the toggle's physical size at its 200%-zoom appearance when
-		 * browser zoom exceeds 200%. The factor is 1 at zoom <= 200%, so
-		 * behavior below that threshold is unchanged. Using `zoom` (rather
-		 * than transform: scale) shrinks the layout box itself, so the
-		 * reclaimed space flows to the tab panels below.
-		 */
-		zoom: var(--pie-section-player-tab-zoom-comp, 1);
 	}
 
 	.pie-section-player-tab {
@@ -395,7 +337,7 @@
 		overscroll-behavior: contain;
 		scrollbar-width: thin;
 		scrollbar-color:
-			var(--pie-scrollbar-thumb, var(--pie-border, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
+			var(--pie-scrollbar-thumb, var(--pie-border-gray, #6b7280)) var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar {
@@ -409,7 +351,7 @@
 	}
 
 	.pie-section-player-tab-panel::-webkit-scrollbar-thumb {
-		background: var(--pie-scrollbar-thumb, var(--pie-border, #6b7280));
+		background: var(--pie-scrollbar-thumb, var(--pie-border-gray, #6b7280));
 		border-radius: 999px;
 		border: 2px solid var(--pie-scrollbar-track, var(--pie-background-dark, #d1d5db));
 	}

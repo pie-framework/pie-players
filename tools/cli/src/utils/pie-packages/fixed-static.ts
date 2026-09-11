@@ -1,14 +1,17 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+
+import { BundleType, encodeElementPackageSpecs, makeUniqueTags, Status } from "@pie-players/pie-players-shared/pie";
 
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
 	elements: string[]; // "@pie-element/foo@1.2.3"
+	elementTags?: Record<string, string>; // Package name -> authored base tag
 	iteration?: number;
 	loaderVersion?: string;
 	pitsBaseUrl?: string;
@@ -106,6 +109,16 @@ function parseElements(elements: string[]): Record<string, string> {
 	return parsed;
 }
 
+function fullSpecsByPackageName(elements: string[]): Record<string, string> {
+	const parsed: Record<string, string> = {};
+	for (const el of elements) {
+		const lastAtIndex = el.lastIndexOf("@");
+		const name = lastAtIndex > 0 ? el.substring(0, lastAtIndex) : el;
+		parsed[name] = el;
+	}
+	return parsed;
+}
+
 function generateVersion(config: BuildStaticConfig): string {
 	const loaderVersion = config.loaderVersion || "1.0.0";
 	const hash = generateHash(config.elements);
@@ -122,7 +135,12 @@ async function fetchBundle(
 	pitsBaseUrl: string,
 	overwriteBundle: boolean,
 ): Promise<string> {
-	const elementString = elements.join("+");
+	// Per-spec encoding, joined with the literal `+` the route uses as its
+	// package separator. A raw join lets a malformed spec restructure the URL:
+	// `?` moves `overwrite=true` inside an earlier query, `#` truncates the
+	// path, and either misroutes the fetch into a confusing HTTP error or a
+	// bundle built from the wrong element list.
+	const elementString = encodeElementPackageSpecs(elements);
 	const overwriteParam = overwriteBundle ? "?overwrite=true" : "";
 	const bundleUrl = `${pitsBaseUrl}/bundles/${elementString}/player.js${overwriteParam}`;
 
@@ -214,8 +232,18 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 function generateIndex(
 	bundleFilename: string,
 	preloadedElements: Record<string, string>,
+	elementTags: Record<string, string> = {},
 ): string {
 	const preloadedElementsJson = JSON.stringify(preloadedElements, null, 2);
+	// Use the same public transform as the consuming player. The generated
+	// browser entry needs only the resulting names, not a second version encoder.
+	const registrations = Object.entries(preloadedElements).map(([name, spec]) => {
+		const baseTag = elementTags[name] ?? `pie-${name.split("/").pop()}`;
+		const { config } = makeUniqueTags({
+			config: { elements: { [baseTag]: spec }, models: [], markup: "" },
+		});
+		return [name, Object.keys(config.elements)[0]];
+	});
 	const mathRenderingSetup = `
     const mathRenderingModule = await importWithRetry('./math-rendering.js', 4, 200);
     if (typeof window !== 'undefined') {
@@ -224,7 +252,7 @@ function generateIndex(
     }`;
 
 	return `// Auto-generated entry point for pie-preloaded-player
-(async function initializePieItemPlayerStatic() {
+await (async function initializePieItemPlayerStatic() {
   const preloadedElements = ${preloadedElementsJson};
   if (typeof window !== 'undefined') {
     const existing = window.PIE_PRELOADED_ELEMENTS || {};
@@ -247,12 +275,45 @@ function generateIndex(
     throw lastError;
   };
 
+  // PITS exposes raw constructors; the generated host owns registration.
+  const registerPreloadedElements = () => {
+    const pieModule = typeof window !== 'undefined' && window.pie && window.pie.default;
+    if (!pieModule) {
+      throw new Error('[pie-preloaded-player] window.pie.default missing after bundle load');
+    }
+    const registry = window.PIE_REGISTRY ?? (window.PIE_REGISTRY = {});
+    for (const [packageName, tagName] of ${JSON.stringify(registrations)}) {
+      const elementData = pieModule[packageName];
+      if (!elementData || !elementData.Element) {
+        throw new Error('[pie-preloaded-player] No element class found in bundle for ' + packageName);
+      }
+      if (!customElements.get(tagName)) {
+        customElements.define(tagName, class extends elementData.Element {});
+      }
+      // Match the IIFE adapter's player.js entry: controllers remain server-side.
+      // A previous host registration retains its metadata and controller owner.
+      if (!registry[tagName]) {
+        registry[tagName] = {
+          package: preloadedElements[packageName],
+          status: ${JSON.stringify(Status.loaded)},
+          tagName,
+          element: customElements.get(tagName),
+          controller: null,
+          config: elementData.config ?? null,
+          bundleType: ${JSON.stringify(BundleType.player)},
+        };
+      }
+    }
+  };
+
   try {
 ${mathRenderingSetup}
     await importWithRetry('./${bundleFilename}', 4, 200);
+    registerPreloadedElements();
     await importWithRetry('./pie-item-player.js', 4, 200);
   } catch (error) {
     try { console.error('[pie-preloaded-player] Initialization failed'); } catch {}
+    throw error;
   }
 })();
 
@@ -306,7 +367,7 @@ function generateReadme(
 	];
 	const examplePkgSpec = `${examplePkgName}@${examplePkgVersion}`;
 	const exampleBaseName = examplePkgName.split("/").pop() || "multiple-choice";
-	const exampleTag = `pie-${exampleBaseName}`;
+	const exampleTag = config.elementTags?.[examplePkgName] ?? `pie-${exampleBaseName}`;
 
 	return `# @pie-players/pie-preloaded-player
 
@@ -314,7 +375,7 @@ Version: \`${version}\`
 
 Pre-bundled PIE item-player package with static element versions for production use.
 
-**Note:** This package is intended for production with a predefined set of PIE elements. It assumes preloaded strategy at runtime. The player skips runtime loading when required elements are already registered, and falls back to runtime loading for any missing elements.
+**Note:** This package registers a predefined set of PIE elements for the preloaded strategy. Required tags must be registered before mounting the player. Missing registrations produce a readiness error.
 
 ## Included PIE elements
 
@@ -350,7 +411,7 @@ npm install @pie-players/pie-preloaded-player@${version}
 ></pie-item-player>
 \`\`\`
 
-The preloaded bundle is already included by this package import. With \`strategy="preloaded"\`, the player skips runtime loading when required elements are already registered and falls back to runtime loading when they are not. The player also normalizes \`config.elements\` to the bundled versions exposed by this package.
+The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Use the base tag selected by each build config's \`tag\` field; the default is \`pie-<package basename>\`. The generated registrations carry the canonical version suffix.
 
 ## Attributes
 
@@ -505,9 +566,10 @@ export async function buildPreloadedPlayerStaticPackage(
 		stdio: "inherit",
 	});
 
-	const customElementSrc = join(itemPlayerPkgDir, "dist", "pie-item-player.js");
-	const customElementDest = join(outputDir, "dist", "pie-item-player.js");
-	await copyFile(customElementSrc, customElementDest);
+	// The entry imports sibling chunks and assets from the item-player build.
+	const itemPlayerDistSrc = join(itemPlayerPkgDir, "dist");
+	const outputDistDir = join(outputDir, "dist");
+	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
 
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
 	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);
@@ -530,7 +592,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename, parseElements(config.elements)),
+		generateIndex(bundleFilename, fullSpecsByPackageName(config.elements), config.elementTags),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(

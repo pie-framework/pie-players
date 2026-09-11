@@ -4,18 +4,11 @@
  *
  * Supports: Basic, Scientific, and Graphing calculators
  * Based on Desmos API v1.12+
- * Requires: Desmos API key (obtain from https://www.desmos.com/api)
+ * Requires: A Desmos API key when this provider loads the API from desmos.com
  *
- * SECURITY BEST PRACTICE:
- * - Development: Pass apiKey directly for local testing
- * - Production: Use proxyEndpoint to keep API key server-side
- *
- * Example server-side proxy (Express.js):
- * ```
- * app.get('/api/desmos/token', requireAuth, (req, res) => {
- *   res.json({ apiKey: process.env.DESMOS_API_KEY });
- * });
- * ```
+ * Desmos's documented browser integration places the key in the calculator.js
+ * URL. A runtime credential endpoint can keep the key out of source and static
+ * bundles, but cannot keep it secret from a browser that loads the API.
  */
 
 import type {
@@ -23,10 +16,54 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
+	CalculatorProviderInit,
 	CalculatorState,
 	CalculatorType,
-	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
+
+/** Desmos API options accepted through `CalculatorProviderConfig.settings`. */
+export interface DesmosCalculatorSettings extends Record<string, unknown> {
+	border?: boolean;
+	degreeMode?: boolean | "degree" | "radian";
+	decimalToFraction?: boolean;
+	links?: boolean;
+	settingsMenu?: boolean;
+	expressions?: boolean;
+	zoomButtons?: boolean;
+	expressionsTopbar?: boolean;
+	notes?: boolean;
+	folders?: boolean;
+	images?: boolean;
+	qwertyKeyboard?: boolean;
+	restrictedFunctions?: boolean;
+	plotSingleVariableImplicitEquations?: boolean;
+	distributions?: boolean;
+	plotImplicits?: boolean;
+	plotInequalities?: boolean;
+	geometryComputationFunctions?: boolean;
+	sliders?: boolean;
+	tables?: boolean;
+	expressionsCollapsed?: boolean;
+	administerSecretFolders?: boolean;
+	lockViewport?: boolean;
+	functionDefinition?: boolean;
+	brailleExpressionDownload?: boolean;
+	keypad?: boolean;
+	graphpaper?: boolean;
+	additionalFunctions?: string | string[];
+}
+
+/**
+ * Per-instance configuration accepted by the Desmos calculator provider.
+ *
+ * Identical to the provider-neutral shape apart from naming what `settings`
+ * holds, which the neutral seam deliberately leaves as `Record<string,
+ * unknown>`.
+ */
+export interface DesmosCalculatorProviderConfig
+	extends Omit<CalculatorProviderConfig, "settings"> {
+	settings?: DesmosCalculatorSettings;
+}
 
 declare global {
 	interface Window {
@@ -49,8 +86,16 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 
 	private initialized = false;
 	private apiKey?: string;
-	private proxyEndpoint?: string;
-	private isDevelopment = false;
+	/*
+	 * Every calculator this provider handed out and that has not destroyed itself.
+	 *
+	 * `destroy()` is a host's one call to release the provider, and without this it
+	 * released only the provider's own fields: every calculator it created stayed
+	 * mounted, with its vendor instance alive and its container populated. A host
+	 * that swaps providers, or tears a section down without walking its calculators
+	 * first, leaked all of them.
+	 */
+	private readonly instances = new Set<Calculator>();
 	private onTelemetry:
 		| ((
 				eventName: string,
@@ -70,29 +115,20 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	}
 
 	/**
-	 * Get the configured API key
-	 * @internal Used internally by calculator instances
-	 */
-	getApiKey(): string | undefined {
-		return this.apiKey;
-	}
-
-	/**
 	 * Dynamically load the Desmos calculator library
 	 * @private
 	 */
-	private async loadDesmosScript(): Promise<void> {
+	private async loadDesmosScript(apiKey?: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const script = document.createElement("script");
-			// Include API key in script URL if available
-			const scriptUrl = this.apiKey
-				? `https://www.desmos.com/api/v1.12/calculator.js?apiKey=${this.apiKey}`
-				: "https://www.desmos.com/api/v1.12/calculator.js";
-			script.src = scriptUrl;
+			const scriptUrl = new URL(
+				"https://www.desmos.com/api/v1.12/calculator.js",
+			);
+			if (apiKey) scriptUrl.searchParams.set("apiKey", apiKey);
+			script.src = scriptUrl.toString();
 			script.async = true;
 			script.onload = () => {
 				if (window.Desmos) {
-					console.log("[DesmosProvider] Desmos API loaded successfully");
 					resolve();
 				} else {
 					reject(new Error("Desmos API loaded but window.Desmos is undefined"));
@@ -105,18 +141,8 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		});
 	}
 
-	/**
-	 * Initialize Desmos library
-	 * @param config Configuration with API key (development) or proxy endpoint (production)
-	 */
-	async initialize(config?: {
-		apiKey?: string;
-		proxyEndpoint?: string;
-		onTelemetry?: (
-			eventName: string,
-			payload?: Record<string, unknown>,
-		) => void | Promise<void>;
-	}): Promise<void> {
+	/** Initialize Desmos with provider-level credentials and instrumentation. */
+	async initialize(config: CalculatorProviderInit = {}): Promise<void> {
 		if (this.initialized) return;
 		this.onTelemetry = config?.onTelemetry;
 
@@ -127,16 +153,9 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			);
 		}
 
-		// Determine if we're in development mode
-		this.isDevelopment =
-			process.env.NODE_ENV === "development" ||
-			typeof process === "undefined" ||
-			!process.env.NODE_ENV;
-
-		// Configure API access pattern
-		if (config?.proxyEndpoint) {
-			// Production pattern: server-side proxy
-			this.proxyEndpoint = config.proxyEndpoint;
+		this.apiKey = config.apiKey?.trim() || undefined;
+		const proxyEndpoint = config.proxyEndpoint?.trim();
+		if (proxyEndpoint) {
 			const authStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-backend-call-start", {
 				toolId: "calculator",
@@ -144,21 +163,21 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 				operation: "proxy-auth-fetch",
 			});
 			try {
-				const response = await fetch(config.proxyEndpoint);
+				const response = await fetch(proxyEndpoint);
 				if (!response.ok) {
-					throw new Error(`Proxy endpoint returned ${response.status}`);
+					throw new Error(`Runtime endpoint returned ${response.status}`);
 				}
-				const data = await response.json();
-				this.apiKey = data.apiKey;
+				const body = (await response.json()) as { apiKey?: unknown };
+				if (typeof body.apiKey !== "string" || !body.apiKey.trim()) {
+					throw new Error("Runtime endpoint did not return a non-empty apiKey");
+				}
+				this.apiKey = body.apiKey.trim();
 				await this.emitTelemetry("pie-tool-backend-call-success", {
 					toolId: "calculator",
 					backend: "desmos",
 					operation: "proxy-auth-fetch",
 					duration: Date.now() - authStartedAt,
 				});
-				console.log(
-					"[DesmosProvider] Initialized with server-side proxy (SECURE)",
-				);
 			} catch (error) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
 					toolId: "calculator",
@@ -169,37 +188,19 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 					message: error instanceof Error ? error.message : String(error),
 				});
 				throw new Error(
-					`[DesmosProvider] Failed to fetch API key from proxy: ${error}`,
+					`[DesmosProvider] Failed to fetch API key from runtime endpoint: ${error instanceof Error ? error.message : String(error)}`,
+					{ cause: error },
 				);
 			}
-		} else if (config?.apiKey) {
-			// Development pattern: direct API key
-			this.apiKey = config.apiKey;
-
-			// Security warning in production
-			if (!this.isDevelopment) {
-				console.error(
-					"⚠️ [DesmosProvider] SECURITY WARNING: API key exposed in client-side code!\n" +
-						"This is insecure for production. Use proxyEndpoint instead.\n" +
-						"See: https://pie-players.dev/docs/calculator-desmos#security",
-				);
-			} else {
-				console.log(
-					"[DesmosProvider] Initialized with direct API key (DEVELOPMENT MODE)",
-				);
-			}
-		} else {
-			// No API key provided
-			console.warn(
-				"[DesmosProvider] No API key or proxy endpoint provided.\n" +
-					"Production usage requires authentication. Obtain API key from https://www.desmos.com/api\n" +
-					"Recommended: Use proxyEndpoint for production, apiKey for development only.",
-			);
 		}
 
 		// Load Desmos API if not already loaded
 		if (!window.Desmos) {
-			console.log("[DesmosProvider] Loading Desmos API library...");
+			if (!this.apiKey) {
+				console.warn(
+					"[DesmosProvider] Loading the legacy unkeyed Desmos URL for compatibility. Configure an application API key for licensed deployments.",
+				);
+			}
 			const libraryLoadStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-library-load-start", {
 				toolId: "calculator",
@@ -207,7 +208,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 				operation: "desmos-script-load",
 			});
 			try {
-				await this.loadDesmosScript();
+				await this.loadDesmosScript(this.apiKey);
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "calculator",
 					backend: "desmos",
@@ -236,7 +237,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	async createCalculator(
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
+		config?: DesmosCalculatorProviderConfig,
 	): Promise<Calculator> {
 		if (!this.initialized) {
 			await this.initialize();
@@ -246,7 +247,11 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			throw new Error(`Desmos does not support calculator type: ${type}`);
 		}
 
-		return new DesmosCalculator(this, type, container, config, this.apiKey);
+		const calculator = new DesmosCalculator(this, type, container, config, () =>
+			this.instances.delete(calculator),
+		);
+		this.instances.add(calculator);
+		return calculator;
 	}
 
 	/**
@@ -260,7 +265,11 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 * Cleanup
 	 */
 	destroy(): void {
+		// A copy: each `destroy()` calls back to remove itself from the set.
+		for (const instance of [...this.instances]) instance.destroy();
+		this.instances.clear();
 		this.initialized = false;
+		this.apiKey = undefined;
 		this.onTelemetry = undefined;
 	}
 
@@ -280,6 +289,20 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 }
 
 /**
+ * Credentials are provider-level (`initialize()`), never per-instance options.
+ *
+ * `DesmosCalculatorSettings` carries an index signature, so `settings` still
+ * *accepts* both names from a caller that has not moved them yet. Desmos treats
+ * an unknown option as an error, and a key there reaches nothing that would use
+ * it, so both are dropped before `settings` reaches the vendor constructor.
+ */
+const CREDENTIAL_KEYS = ["apiKey", "proxyEndpoint"] as const;
+
+function stripCredentialKeys(config: Record<string, unknown>): void {
+	for (const key of CREDENTIAL_KEYS) delete config[key];
+}
+
+/**
  * Desmos Calculator Instance
  */
 class DesmosCalculator implements Calculator {
@@ -290,12 +313,14 @@ class DesmosCalculator implements Calculator {
 	private calculator: any;
 	private container: HTMLElement;
 
+	private destroyed = false;
+
 	constructor(
 		provider: CalculatorProvider,
 		type: CalculatorType,
 		container: HTMLElement,
-		config?: CalculatorProviderConfig,
-		apiKey?: string,
+		config: DesmosCalculatorProviderConfig | undefined,
+		private readonly onDestroy: () => void,
 	) {
 		this.provider = provider;
 		this.type = type;
@@ -306,26 +331,43 @@ class DesmosCalculator implements Calculator {
 			throw new Error("Desmos API not available");
 		}
 
-		this._initializeCalculator(config, apiKey);
+		this._initializeCalculator(config);
 	}
 
-	private _initializeCalculator(
-		config?: CalculatorProviderConfig,
-		apiKey?: string,
-	): void {
-		// Merge Desmos-specific config with defaults
-		const desmosConfig: DesmosCalculatorConfig = {
-			...(config?.desmos || {}),
-			apiKey: apiKey || config?.desmos?.apiKey,
+	private _initializeCalculator(config?: DesmosCalculatorProviderConfig): void {
+		const isGraphing = this.type === "graphing";
+		const desmosConfig: DesmosCalculatorSettings = {
+			degreeMode: true,
+			settingsMenu: isGraphing,
+			qwertyKeyboard: false,
+			notes: isGraphing,
+			folders: isGraphing,
+			sliders: isGraphing,
+			tables: isGraphing,
+			...(config?.settings || {}),
 		};
+		stripCredentialKeys(desmosConfig);
 
-		// Apply restricted mode if specified
+		/*
+		 * Restricted mode is monotonic: it lands after the host's own `settings` and a
+		 * host cannot relax it, which is the same contract the Cortex adapter states
+		 * for its own flag. It suppresses chrome a learner has no use for mid-item and
+		 * routes out of the tool.
+		 *
+		 * `expressions: false` is deliberately not among them. It removes the whole
+		 * expression list, which on a `GraphingCalculator` is the only way to enter a
+		 * function, so a restricted graphing calculator was graph paper with nothing to
+		 * plot on it — the call this package's own README documents. Basic and
+		 * scientific never noticed: `expressions` is a graphing option their
+		 * constructors ignore. A host that does want the list gone passes
+		 * `settings: { expressions: false }` and sets the flags below itself, since
+		 * those are honoured whenever `restrictedMode` is not what overrides them.
+		 */
 		if (config?.restrictedMode) {
 			Object.assign(desmosConfig, {
 				expressionsTopbar: false,
 				settingsMenu: false,
 				zoomButtons: false,
-				expressions: false,
 				links: false,
 			});
 		}
@@ -353,8 +395,6 @@ class DesmosCalculator implements Calculator {
 			default:
 				throw new Error(`Unsupported calculator type: ${this.type}`);
 		}
-
-		console.log(`[DesmosCalculator] Created ${this.type} calculator`);
 	}
 
 	getValue(): string {
@@ -459,10 +499,12 @@ class DesmosCalculator implements Calculator {
 	}
 
 	destroy(): void {
+		if (this.destroyed) return;
+		this.destroyed = true;
 		if (this.calculator && this.calculator.destroy) {
 			this.calculator.destroy();
 		}
 		this.container.replaceChildren();
-		console.log("[DesmosCalculator] destroyed");
+		this.onDestroy();
 	}
 }

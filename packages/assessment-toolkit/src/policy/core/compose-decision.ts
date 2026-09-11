@@ -197,6 +197,21 @@ export function composeDecision(
 			});
 		}
 
+		// A support id no registration claims resolves to itself and then matches
+		// nothing placed, so the capability is absent with no trace of why — the
+		// failure a host sending its own vocabulary instead of an AfA/QTI feature
+		// id actually hits. Reported per decision rather than at config time
+		// because the ids arrive with the profile, not with the tools config.
+		for (const supportId of pnpPolicyResult.unmappedSupportIds) {
+			diagnostics.push({
+				code: "tool-policy.unknownSupportId",
+				level: request.level,
+				toolId: supportId,
+				message: `No registered tool claims PNP support id "${supportId}"; it was carried through as a feature id and matched nothing. Expected an AfA 3.0 / QTI 3.0 access feature id.`,
+				source: "pnp.pnp-support",
+			});
+		}
+
 		// 5a — remove PNP/profile-blocked tools from the candidate set.
 		candidates = candidates.filter((toolId) => {
 			return !pnpPolicyResult!.blockedToolIds.has(toolId);

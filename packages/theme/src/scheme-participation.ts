@@ -36,6 +36,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-correct-tertiary": "required",
 	"--pie-disabled": "required",
 	"--pie-disabled-secondary": "required",
+	"--pie-disabled-text": "required",
 	"--pie-dropdown-background": "required",
 	"--pie-faded-primary": "required",
 	"--pie-fixed-hue-collapse": "required",

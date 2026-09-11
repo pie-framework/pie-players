@@ -482,6 +482,21 @@
 		"fallbackPolicy": "Canonical secondary disabled-state token."
 	},
 	{
+		"name": "--pie-disabled-text",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "state",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical foreground for text that is disabled but still has to be read - a non-editable label rather than a control - held to the 4.5:1 text minimum against --pie-background rather than the 3:1 --pie-disabled answers to as a state fill. Must fall back through canonical --pie-text so a host that themes only the canonical text token gets full contrast rather than an unreadable literal."
+	},
+	{
 		"name": "--pie-dropdown-background",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

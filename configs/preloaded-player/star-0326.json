@@ -1,27 +1,31 @@
 [
 	{
 		"package": "@pie-element/categorize",
-		"version": "11.3.2",
+		"version": "13.2.2",
 		"tag": "pie-element-categorize"
 	},
 	{
 		"package": "@pie-element/drag-in-the-blank",
-		"version": "8.3.2",
+		"version": "10.2.3",
 		"tag": "drag-in-the-blank"
 	},
 	{
 		"package": "@pie-element/hotspot",
-		"version": "9.3.2",
+		"version": "11.3.2",
 		"tag": "hotspot"
 	},
 	{
 		"package": "@pie-element/image-cloze-association",
-		"version": "8.3.2",
+		"version": "10.3.1",
 		"tag": "image-cloze-association"
 	},
 	{
 		"package": "@pie-element/multiple-choice",
-		"version": "11.4.3",
+		"version": "13.4.2",
 		"tag": "pie-element-multiple-choice"
+	},
+	{
+		"package": "@pie-element/mc-populated-blank",
+		"version": "0.3.0-next.8"
 	}
 ]

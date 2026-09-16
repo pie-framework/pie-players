@@ -26,6 +26,7 @@
 	},
 	{
 		"package": "@pie-element/mc-populated-blank",
-		"version": "0.3.0-next.8"
+		"version": "0.3.0-next.8",
+		"tag": "mc-populated-blank"
 	}
 ]

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-shared",
-	"version": "0.3.71",
+	"version": "0.3.72",
 	"type": "module",
 	"description": "Provider-neutral calculator tool surfaces shared by PIE vendor adapters",
 	"repository": {

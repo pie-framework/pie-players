@@ -7,7 +7,20 @@ Owner: PIE Players maintainers
 Tracking: this file owns issue status, branch assignments, dependencies, and
 completion evidence. R1–R4 refer to the four findings from the 2026-09-05 project
 review; R5 records the dependency-audit blocker found when its first repair PR
-ran CI. These are local tracking identifiers, not external tickets.
+ran CI. The R-numbers stay the identifiers used here; each merged repair also
+carries a Jira issue under
+[PIE-757](https://illuminate.atlassian.net/browse/PIE-757):
+
+| Local | Jira | Scope |
+| --- | --- | --- |
+| R5 | [PIE-998](https://illuminate.atlassian.net/browse/PIE-998) | Shipped `@xmldom/xmldom` 0.9.10 fails the dependency audit |
+| R4 | [PIE-999](https://illuminate.atlassian.net/browse/PIE-999) | Accommodation controls shrink in constrained viewports |
+| R3 | [PIE-1000](https://illuminate.atlassian.net/browse/PIE-1000) | Assessment element mounting and readiness are inconsistent |
+| R1 | [PIE-1001](https://illuminate.atlassian.net/browse/PIE-1001) | Returning to an assessment section loses saved answers |
+| R2 reproduction | [PIE-1002](https://illuminate.atlassian.net/browse/PIE-1002) | Reproduce the assessment save race and false successful submission |
+
+The R2 repair itself has no Jira issue while it stays blocked on host
+persistence evidence.
 
 Review baseline: `develop` at `0dc255865176322c08247b3a2b568df4b7b4833b`.
 

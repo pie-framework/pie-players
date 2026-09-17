@@ -188,7 +188,10 @@ export const demo10TtsGeneratedSsmlSection: AssessmentSection = {
 				config: {
 					markup: '<extended-text-entry id="gq2"></extended-text-entry>',
 					elements: {
-						"extended-text-entry": "@pie-element/extended-text-entry@latest",
+						// Pinned for the reason recorded in demo4-tts-ssml.ts: a `@latest`
+						// bundle URL is `immutable`-cached per edge, so the build a run gets
+						// is not the build this repo asked for.
+						"extended-text-entry": "@pie-element/extended-text-entry@15.2.3",
 					},
 					models: [
 						{

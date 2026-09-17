@@ -362,7 +362,13 @@ export const demo4Section: AssessmentSection = {
 				config: {
 					markup: '<extended-text-entry id="q2"></extended-text-entry>',
 					elements: {
-						"extended-text-entry": "@pie-element/extended-text-entry@latest",
+						// Pinned, not `@latest`: the bundle host caches a `@latest` URL as
+						// `immutable` for a year, so two edges serve different builds of the
+						// same URL. That is how 15.2.2 — which dropped `role="textbox"` from
+						// the editable — reached CI while a 15.0.0 copy kept passing locally.
+						// A pinned spec gets its own URL, so the version this demo renders is
+						// the version this file names.
+						"extended-text-entry": "@pie-element/extended-text-entry@15.2.3",
 					},
 					models: [
 						{

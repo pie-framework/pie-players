@@ -1,5 +1,7 @@
 # @pie-players/tts-server-core
 
+## 0.3.72
+
 ## 0.3.71
 
 ## 0.3.70

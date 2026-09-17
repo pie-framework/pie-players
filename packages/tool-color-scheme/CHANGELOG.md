@@ -1,5 +1,15 @@
 # @pie-players/pie-tool-color-scheme
 
+## 0.3.72
+
+### Patch Changes
+
+- Updated dependencies [249af7f]
+  - @pie-players/pie-theme@0.3.72
+  - @pie-players/pie-assessment-toolkit@0.3.72
+  - @pie-players/pie-context@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+
 ## 0.3.71
 
 ### Patch Changes

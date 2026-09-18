@@ -1,32 +1,32 @@
 [
 	{
 		"package": "@pie-element/categorize",
-		"version": "13.2.2",
+		"version": "13.2.3",
 		"tag": "pie-element-categorize"
 	},
 	{
 		"package": "@pie-element/drag-in-the-blank",
-		"version": "10.2.3",
+		"version": "10.2.4",
 		"tag": "drag-in-the-blank"
 	},
 	{
 		"package": "@pie-element/hotspot",
-		"version": "11.3.2",
+		"version": "11.3.3",
 		"tag": "hotspot"
 	},
 	{
 		"package": "@pie-element/image-cloze-association",
-		"version": "10.3.1",
+		"version": "10.3.2",
 		"tag": "image-cloze-association"
 	},
 	{
 		"package": "@pie-element/multiple-choice",
-		"version": "13.4.2",
+		"version": "13.4.3",
 		"tag": "pie-element-multiple-choice"
 	},
 	{
 		"package": "@pie-element/mc-populated-blank",
-		"version": "0.3.0-next.8",
+		"version": "0.3.0-next.9",
 		"tag": "mc-populated-blank"
 	}
 ]

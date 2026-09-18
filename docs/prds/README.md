@@ -94,6 +94,12 @@ live per-slice record is `Active`.
   a fully bundled basic, scientific, and focused graphing provider built from
   MathLive, CortexJS Compute Engine, and JSXGraph, selected additively as
   `calculator-cortex` after the GeoGebra provider seam lands.
+- [`session-commit-on-teardown.md`](./session-commit-on-teardown.md) -
+  accepted contract for a committed response reaching the host before its
+  element stops existing. Element session state becomes synchronous so a player
+  can read it at teardown, which puts the guarantee in the players instead of a
+  host-called flush; the legacy players are in scope because that is where hosts
+  are losing responses today.
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).

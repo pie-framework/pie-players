@@ -144,6 +144,10 @@ export class SectionController implements SectionControllerHandle {
 	private readonly sessionService = new SectionSessionService();
 	private readonly itemNavigationService = new SectionItemNavigationService();
 	private sessionPersistence: SectionSessionPersistenceConfig | null = null;
+	// Set by whatever owns the DOM. The controller stays DOM-free; this is how a
+	// boundary it decides — item navigation, a section swap, a persist — gets a
+	// pending element session committed before the state moves under it.
+	private pendingSessionCommit: (() => void) | null = null;
 	private state: SectionControllerState = {
 		input: null,
 		viewModel: {
@@ -207,6 +211,24 @@ export class SectionController implements SectionControllerHandle {
 		return () => {
 			this.listeners.delete(listener);
 		};
+	}
+
+	/**
+	 * Register a commit for pending element sessions, run before a boundary this
+	 * controller owns. The owner of the section's DOM supplies it; a host-built
+	 * controller that never registers one keeps today's behaviour.
+	 */
+	public setPendingSessionCommit(commit: (() => void) | null): void {
+		this.pendingSessionCommit = commit;
+	}
+
+	private commitPendingItemSessions(): void {
+		if (!this.pendingSessionCommit) return;
+		try {
+			this.pendingSessionCommit();
+		} catch (error) {
+			logger.warn("pending session commit failed", error);
+		}
 	}
 
 	public async initialize(input?: unknown): Promise<void> {
@@ -288,6 +310,10 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public async updateInput(input?: unknown): Promise<void> {
+		// A section swap discards this section's shells. The commit runs while they
+		// are still attached and before the session snapshot below, so the outgoing
+		// section's last response survives into the refreshed state.
+		this.commitPendingItemSessions();
 		const previousSession = this.getSession();
 		await this.initialize(input);
 		if (previousSession) {
@@ -312,6 +338,7 @@ export class SectionController implements SectionControllerHandle {
 
 	public async persist(): Promise<void> {
 		if (!this.sessionPersistence) return;
+		this.commitPendingItemSessions();
 		await this.sessionPersistence.strategy.saveSession(
 			this.sessionPersistence.context,
 			this.getSession(),
@@ -319,6 +346,7 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public dispose(): void {
+		this.pendingSessionCommit = null;
 		this.clearMediaAttachWatch();
 		this.detachMediaTimeSource();
 		this.listeners.clear();
@@ -1327,6 +1355,7 @@ export class SectionController implements SectionControllerHandle {
 	 */
 	public navigateToItem(index: number): NavigationResult | null {
 		if (!this.state.testAttemptSession) return null;
+		this.commitPendingItemSessions();
 		const result = this.itemNavigationService.navigate({
 			index,
 			items: this.state.viewModel.items,

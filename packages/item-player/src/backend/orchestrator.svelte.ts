@@ -22,6 +22,23 @@
 import type { ConfigEntity } from "@pie-players/pie-players-shared";
 import { tick, untrack } from "svelte";
 import { stableStringifyForKey } from "../utils/stable-stringify.js";
+
+/** The delivery coordinates a save is filed under. */
+type DeliverySaveIdentity = {
+	itemId?: string;
+	sessionId?: string;
+	assignmentId?: string;
+	/**
+	 * The session as it stood when the save was scheduled or flushed.
+	 *
+	 * A queued save runs at least a microtask later, behind whatever is already
+	 * in flight. Reading the container at execution time instead files the
+	 * session the player holds by then under these ids, which on a
+	 * `backend.delivery` repoint is the incoming item's session under the
+	 * outgoing item's ids.
+	 */
+	session?: BackendSessionContainer;
+};
 import {
 	getAuthoringBackend,
 	getAuthoringBackendLoadSignature,
@@ -96,7 +113,13 @@ export type BackendOrchestrator = {
 	 */
 	noteConfigChanged: () => void;
 	load: (scope?: "delivery" | "authoring") => Promise<void>;
-	saveSession: () => Promise<void>;
+	saveSession: (options?: { keepalive?: boolean }) => Promise<void>;
+	/**
+	 * Run a scheduled autosave now instead of waiting out its debounce. Called
+	 * at a teardown seam and on the page going hidden, where the alternative is
+	 * dropping the save. `keepalive` lets the request outlive the document.
+	 */
+	flushPendingSave: (options?: { keepalive?: boolean }) => void;
 	score: (options?: BackendScoreOptions) => Promise<unknown>;
 	saveContent: (options?: BackendSaveContentOptions) => Promise<string>;
 	releaseContent: (
@@ -145,6 +168,11 @@ export function createBackendOrchestrator(
 	let loadSignature = "";
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	let saveQueue: Promise<void> = Promise.resolve();
+	// The delivery identity a scheduled autosave belongs to. A flush writes
+	// against this rather than against whatever `backend.delivery` holds when it
+	// runs: a host repointing to the next item inside the debounce would
+	// otherwise file the outgoing learner's session under the incoming ids.
+	let pendingSaveIdentity: DeliverySaveIdentity | null = null;
 	let configGeneration = 0;
 	let modelRefreshSignature = "";
 	let configOverrideScope: "delivery" | "authoring" | null = null;
@@ -384,20 +412,35 @@ export function createBackendOrchestrator(
 		});
 	}
 
-	async function persistCurrentSession(): Promise<void> {
+	async function persistCurrentSession(
+		options?: {
+			keepalive?: boolean;
+		},
+		identity?: DeliverySaveIdentity | null,
+	): Promise<void> {
 		const backend = deps.getBackend();
 		if (!backend || !getDeliveryBackend(backend)) {
 			throw new Error("backend.delivery is not configured.");
 		}
 		const delivery = getDeliveryBackend(backend)!;
-		const sessionContainer = sessionContainerFor(delivery.sessionId);
-		await saveToDeliveryBackend(backend, {
+		const target = identity ?? {
 			itemId: delivery.itemId,
 			sessionId: delivery.sessionId,
 			assignmentId: delivery.assignmentId,
-			session: sessionContainer,
-			env: deps.getEnv(),
-		});
+		};
+		const sessionContainer =
+			target.session ?? sessionContainerFor(target.sessionId);
+		await saveToDeliveryBackend(
+			backend,
+			{
+				itemId: target.itemId,
+				sessionId: target.sessionId,
+				assignmentId: target.assignmentId,
+				session: sessionContainer,
+				env: deps.getEnv(),
+			},
+			options,
+		);
 		dispatchBackendEvent("backend-session-saved", {
 			scope: "delivery",
 			operation: "saveSession",
@@ -406,12 +449,38 @@ export function createBackendOrchestrator(
 		});
 	}
 
-	async function saveSession(): Promise<void> {
+	async function saveSession(
+		options?: {
+			keepalive?: boolean;
+		},
+		identity?: DeliverySaveIdentity | null,
+	): Promise<void> {
 		const nextSave = saveQueue
 			.catch(() => undefined)
-			.then(() => persistCurrentSession());
+			.then(() => persistCurrentSession(options, identity));
 		saveQueue = nextSave;
 		return nextSave;
+	}
+
+	/**
+	 * Send a scheduled autosave now, under the identity it was scheduled for.
+	 *
+	 * Called when the page is going away and when the host repoints
+	 * `backend.delivery`, which are the two ways a debounced save is otherwise
+	 * dropped.
+	 */
+	function flushPendingSave(options?: { keepalive?: boolean }): void {
+		if (!saveTimer) return;
+		clearTimeout(saveTimer);
+		saveTimer = null;
+		const pending = pendingSaveIdentity;
+		pendingSaveIdentity = null;
+		const identity = pending
+			? { ...pending, session: sessionContainerFor(pending.sessionId) }
+			: null;
+		void saveSession(options, identity).catch((errorValue) => {
+			reportBackendError("saveSession", errorValue);
+		});
 	}
 
 	async function score(options?: BackendScoreOptions): Promise<unknown> {
@@ -515,14 +584,21 @@ export function createBackendOrchestrator(
 			clearTimeout(saveTimer);
 		}
 		const saveSignature = getDeliveryBackendLoadSignature(backend);
+		const saveIdentity: DeliverySaveIdentity = {
+			itemId: delivery.itemId,
+			sessionId: delivery.sessionId,
+			assignmentId: delivery.assignmentId,
+		};
+		pendingSaveIdentity = saveIdentity;
 		saveTimer = setTimeout(() => {
 			saveTimer = null;
+			pendingSaveIdentity = null;
 			if (
 				saveSignature !== getDeliveryBackendLoadSignature(deps.getBackend())
 			) {
 				return;
 			}
-			void saveSession().catch((errorValue) => {
+			void saveSession(undefined, saveIdentity).catch((errorValue) => {
 				reportBackendError("saveSession", errorValue);
 			});
 		}, autosave.debounceMs);
@@ -548,10 +624,10 @@ export function createBackendOrchestrator(
 			return;
 		}
 		if (signature === loadSignature) return;
-		if (saveTimer) {
-			clearTimeout(saveTimer);
-			saveTimer = null;
-		}
+		// The host moved to another item or sitting. A save still sitting in the
+		// debounce belongs to the one being left, so it goes out under the
+		// identity it was scheduled for instead of being dropped.
+		flushPendingSave();
 		loadSignature = signature;
 		queueMicrotask(() => {
 			untrack(() => {
@@ -614,10 +690,9 @@ export function createBackendOrchestrator(
 
 	$effect(() => {
 		return () => {
-			if (saveTimer) {
-				clearTimeout(saveTimer);
-				saveTimer = null;
-			}
+			// A scheduled autosave is sent rather than dropped: teardown is the case
+			// that loses a response, and the request outlives the component.
+			flushPendingSave();
 		};
 	});
 
@@ -651,6 +726,7 @@ export function createBackendOrchestrator(
 			);
 		},
 		saveSession,
+		flushPendingSave,
 		score,
 		saveContent,
 		releaseContent,

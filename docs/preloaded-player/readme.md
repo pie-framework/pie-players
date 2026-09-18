@@ -163,6 +163,15 @@ existing integration is mostly a rename, with two behavior changes to expect:
   `configs/preloaded-player/*.json` + CI (below). A combination not already
   covered by an existing config needs a new one landed here.
 
+The load signal carries over unchanged. The generated entry dispatches
+`PiePlayerLoadEvent` on `document` with detail `PIE-Fixed-Player-Load-Complete`,
+marks `PIE-Fixed-Player-Load-Complete` on the performance timeline and sets
+`window.pieFixedPlayerLoaded`, for a host that initializes after the player and
+misses the dispatch. A failed initialization dispatches
+`PIE-Fixed-Player-Load-Failed` before the error propagates. Star and Quiz Engine
+listen for it; `item-player-generated-preloaded.spec.ts` pins both states
+against the packed tarball.
+
 ## CI/CD
 
 The critical item-player suite includes a generated-package browser regression.

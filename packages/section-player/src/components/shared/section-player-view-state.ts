@@ -239,6 +239,20 @@ function applyFormativeEnv(
 	return { ...env, ...override };
 }
 
+function copyItemSessionForPlayer(
+	session: Record<string, unknown>,
+): Record<string, unknown> {
+	const data = Array.isArray(session.data) ? session.data : [];
+	return {
+		...session,
+		data: data.map((entry) =>
+			entry && typeof entry === "object"
+				? { ...(entry as Record<string, unknown>) }
+				: entry,
+		),
+	};
+}
+
 export function getItemPlayerParams(args: {
 	item: ItemEntity;
 	compositionModel: SectionCompositionModel;
@@ -263,7 +277,10 @@ export function getItemPlayerParams(args: {
 	return {
 		config: args.item.config || {},
 		env,
-		session: itemSession,
+		// `<pie-item-player>` keeps its host's session container live, so it gets a
+		// copy: the composition's object is the section's state, and writing an
+		// item's entries into it would put them in what `persist()` saves.
+		session: copyItemSessionForPlayer(itemSession),
 		attributes: {
 			...(args.resolvedPlayerAttributes || {}),
 			strategy: args.playerStrategy,

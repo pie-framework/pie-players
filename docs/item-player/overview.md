@@ -120,6 +120,28 @@ The player manages session state through `ItemController`:
 
 Hosts receive a single `session-changed` event on the `<pie-item-player>` element with the full updated session container.
 
+The `session` property stays a live view of that container, the contract `<pie-player>` had. The player writes an entry per model into the host's object at `load-complete` and each change into that entry before it dispatches, so a host that reads `player.session.data` — or holds a reference into it — keeps working. The projection is one-directional: `ItemController` owns the session and does not read the property back after the first load, and entries the player did not produce stay, so a section-level container spanning several items is safe to pass.
+
+### Session commit
+
+A delivery element coalesces its `session-changed` dispatch, so a response the learner has finished entering can still be pending when the element is discarded. The player commits at three seams. What each one reaches differs, and the difference decides what a host has to do:
+
+| Seam | Reaches `document` | Notes |
+| --- | --- | --- |
+| A `config` change, before the incoming item loads | yes | The outgoing elements are still mounted and connected. |
+| `visibilitychange` to `hidden`, and `pagehide` | yes | Closing the tab, navigating away and an OS reclaiming a backgrounded tab remove nothing from the DOM. `beforeunload` is not used: it is unreliable on mobile and costs the back/forward cache. |
+| The player's own destroy | **no** | A custom element only learns it was removed in `disconnectedCallback`, by which point it is detached. The event reaches the player element itself and the player's own `backend.delivery` save. |
+
+A host that removes `<pie-item-player>` and persists from a `document`-level listener calls `commitPendingElementSessions()` on the element first. Called while the player is still in the document, the commit bubbles as usual.
+
+Both `pagehide` and `visibilitychange` fire on an ordinary navigation. The commit is per element and compares against the session the host was last told about, so the second transition announces nothing — and a response that arrives between the two is still committed, which a "once per hidden transition" guard would drop.
+
+On the page-hidden path a scheduled `backend.delivery` autosave is flushed rather than dropped, and the request goes out with `keepalive` so it outlives the document. A body over the Fetch standard's 64 KiB keepalive cap is sent without the flag: an ordinary request that the unload may cut short beats one `fetch` rejects outright.
+
+An element that has adopted `createSessionNotifier` (`@pie-element/shared-player-events`) dispatches its own event with its own `complete` semantics. An older element gets a `session-changed` synthesized from its `session` getter, carrying `detail.sessionCommitReason`. No element version is required for the player-side guarantee.
+
+Nothing is announced unless it changed since the host last heard. The discriminant is a comparison against the session the player last observed for that element, recorded on the element itself — seeded when the item loads, updated on every forwarded `session-changed`. That makes a restored response the learner never touched silent, an erased response announced, and a response the learner returns to after changing it announced again. An element the player never observed falls back to `hasLearnerResponse`, which asks whether the session holds anything outside identity, dispatch metadata and controller-written shuffle order.
+
 ## External styles
 
 The player supports two external style mechanisms:

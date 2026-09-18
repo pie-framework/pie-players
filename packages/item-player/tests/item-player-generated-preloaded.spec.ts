@@ -92,10 +92,17 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   await page.goto(origin, { waitUntil: "networkidle" });
   const readyAtImport = await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
+    const loadStates: unknown[] = [];
+    (window as any).loadStates = loadStates;
+    document.addEventListener("PiePlayerLoadEvent", (event) => loadStates.push((event as CustomEvent).detail));
     await import(entry);
     return !!customElements.get("pie-item-player");
   });
   expect(readyAtImport).toBe(true);
+  // The load signal @pie-framework/pie-fixed-player-static emitted, which Star and Quiz Engine listen for.
+  expect(await page.evaluate(() => (window as any).loadStates)).toEqual(["PIE-Fixed-Player-Load-Complete"]);
+  expect(await page.evaluate(() => (window as any).pieFixedPlayerLoaded)).toBe(true);
+  expect(await page.evaluate(() => performance.getEntriesByName("PIE-Fixed-Player-Load-Complete").length)).toBe(1);
   expect(await page.evaluate((tag) => !!customElements.get(tag), runtimeTag)).toBe(true);
   expect(await page.evaluate(() => (window as any).PIE_PRELOADED_ELEMENTS)).toEqual({ [packageName]: packageSpec });
 
@@ -110,16 +117,20 @@ test("packed preloaded output registers authored tags, loads chunks, and records
     player.strategy = "preloaded";
     player.config = config;
     player.env = { mode: "gather", role: "student" };
-    player.session = { id: "generated-package-attempt", data: [] };
+    player.session = (window as any).hostSession = { id: "generated-package-attempt", data: [] };
     player.addEventListener("session-changed", (event: CustomEvent) => { (window as any).savedSession = event.detail.session; });
     document.body.appendChild(player);
   }, authored);
   await expect(page.getByText("Which is the largest planet in our solar system?")).toBeVisible();
   await expect(page.locator(runtimeTag)).toBeVisible();
   await expect(page.locator(staleTag)).toHaveCount(0);
+  // `<pie-player>` created an entry per model as the item rendered, then kept the
+  // host's own container current. Both halves hold here.
+  await expect.poll(() => page.evaluate(() => (window as any).hostSession?.data?.map((entry: any) => entry.id))).toEqual(["2"]);
   await page.locator('input[type="radio"][value="jupiter"]').click();
   await expect(page.locator('input[type="radio"][value="jupiter"]')).toBeChecked();
   await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["jupiter"]);
+  await expect.poll(() => page.evaluate(() => (window as any).hostSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["jupiter"]);
   expect(await page.evaluate(() => (window as any).authoredConfig)).toEqual(authored);
 
   // A second copy of the entry executes registration again with cached bundles.
@@ -146,14 +157,18 @@ test("import rejects when the fetched bundle is missing its promised element", a
   }));
   await page.goto(origin);
   const result = await page.evaluate(async () => {
+    const loadStates: unknown[] = [];
+    document.addEventListener("PiePlayerLoadEvent", (event) => loadStates.push((event as CustomEvent).detail));
     try {
       const entry = "/package/dist/index.js";
       await import(entry);
-      return "resolved";
+      return { message: "resolved", loadStates };
     } catch (error) {
-      return error instanceof Error ? error.message : String(error);
+      return { message: error instanceof Error ? error.message : String(error), loadStates };
     }
   });
-  expect(result).toContain("No element class found in bundle for @pie-element/multiple-choice");
+  expect(result.message).toContain("No element class found in bundle for @pie-element/multiple-choice");
+  // The legacy package reported a failed load on the same event.
+  expect(result.loadStates).toEqual(["PIE-Fixed-Player-Load-Failed"]);
   expect(await page.evaluate(() => !!customElements.get("pie-item-player"))).toBe(false);
 });

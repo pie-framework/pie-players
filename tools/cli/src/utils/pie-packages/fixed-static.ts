@@ -275,6 +275,25 @@ await (async function initializePieItemPlayerStatic() {
     throw lastError;
   };
 
+  // Parity with @pie-framework/pie-fixed-player-static, whose load signal Star
+  // and Quiz Engine listen for: the same event name on \`document\`, the same
+  // detail strings, the same performance mark, and the same global flag for a
+  // host that initializes after the player and misses the dispatch.
+  const announceLoadState = (state) => {
+    try {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return;
+      if (state === 'PIE-Fixed-Player-Load-Complete') {
+        try { window.performance && window.performance.mark(state); } catch {}
+        window.pieFixedPlayerLoaded = true;
+      }
+      document.dispatchEvent(new CustomEvent('PiePlayerLoadEvent', {
+        detail: state,
+        bubbles: true,
+        cancelable: true,
+      }));
+    } catch {}
+  };
+
   // PITS exposes raw constructors; the generated host owns registration.
   const registerPreloadedElements = () => {
     const pieModule = typeof window !== 'undefined' && window.pie && window.pie.default;
@@ -311,8 +330,10 @@ ${mathRenderingSetup}
     await importWithRetry('./${bundleFilename}', 4, 200);
     registerPreloadedElements();
     await importWithRetry('./pie-item-player.js', 4, 200);
+    announceLoadState('PIE-Fixed-Player-Load-Complete');
   } catch (error) {
     try { console.error('[pie-preloaded-player] Initialization failed'); } catch {}
+    announceLoadState('PIE-Fixed-Player-Load-Failed');
     throw error;
   }
 })();

@@ -347,6 +347,19 @@ interfaces.
 
 The built-in `pie-api` client sends JSON requests with these shapes.
 
+They are the requests `<pie-api-player>` sends, against the same routes: its
+`host` carries the `/api` segment (`https://api.pie-api.com/api`) and its paths
+are `/player/load|save|model|score`, while `baseUrl` here is the origin and the
+paths carry `/api`. Same URL, and load takes `{ itemId, sessionId, assignmentId,
+env, overrides? }` in both; save adds `itemId`, `assignmentId`, `models` and
+`passageModels` to the legacy `{ sessionId, data, env }`, which the API ignores.
+A host moving off `<pie-api-player>` therefore keeps its endpoints by putting
+its old `host` in `baseUrl`, with or without the trailing `/api`: a base ending
+in `/api` and a path starting with `/api/` resolve to one `/api`. Overriding
+`endpoints` with the legacy paths resolves to the same URL as well. A backend
+that really serves `/api/api` leaves `baseUrl` at the origin and puts the whole
+path in `endpoints`, which nothing rewrites.
+
 Load:
 
 ```json

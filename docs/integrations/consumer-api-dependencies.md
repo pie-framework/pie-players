@@ -39,6 +39,60 @@ precedence is covered by local browser tests. This is an impact assessment, not
 a downstream refresh: those checkouts remain unavailable and all row
 verification dates above remain unchanged.
 
+The 2026-09-17 session-commit change (PIE-1058) was checked against the
+recorded rows rather than re-derived from the checkouts. It renames and removes
+nothing: `pie-item-player` gains one method, `commitPendingElementSessions()`,
+which appears in no recorded host's property, event or method set; the
+section-player
+layout and item-shell custom elements keep their tag names, attribute names, and
+prop types unchanged. `SectionControllerHandle` gains one optional method,
+`setPendingSessionCommit`, which a host-built controller may leave
+unimplemented.
+
+What every recorded `session-changed` consumer does see is one additional event
+at a commit boundary — a player being rebuilt, a section swap, item navigation,
+`persist()`, and the page going hidden — carrying the response an element had
+coalesced and not yet announced, and marked with `detail.sessionCommitReason`.
+Hosts that persist off that event fire-and-forget, Host R among them, therefore
+save data they previously lost silently; the event's shape is otherwise
+unchanged, and nothing is announced that the host has already been told. This is
+an impact assessment, not a downstream refresh: all row verification dates above
+remain unchanged.
+
+Two consumer-side requirements follow, neither of which any recorded row
+currently satisfies:
+
+- A host that **re-pushes `config` or re-renders in response to
+  `session-changed`** now receives that event at boundaries where it did not
+  before. During implementation this fed back through the demo host and
+  discarded an item that was mid-load. Such a host should ignore an event
+  carrying `detail.sessionCommitReason`: the commit reports a response the host
+  is about to lose, it does not ask for a reload.
+- A host supplying its own `backend.delivery.client` receives
+  `context.requestOptions.keepalive` on the unload-path save and has to forward
+  it to `fetch`. Unforwarded, that save is an ordinary request the browser may
+  drop as the document goes away, which is the case the flag exists for.
+- A host **migrating off `<pie-player>`** keeps its session read. On
+  `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
+  element's entry into the host's own `session.data` array and the element
+  mutated that entry in place. `<pie-item-player>` owns its session in
+  `ItemController`, so it projects onto the host's container instead — an entry
+  per model at `load-complete`, then each change written into that entry before
+  the event — which holds the same read. The array and the entry objects keep
+  their identity, and entries this player did not produce are left alone, so a
+  section-level container stays intact. `detail.session` remains the
+  authoritative payload. The divergence was observed on the Quiz Engine PIE item
+  element (`element-PIEItem`, `projects/pie-item/src/app/pie-item.component.ts`)
+  during its move to `@pie-players/pie-preloaded-player`, on plain
+  `multiple-choice`, before the projection existed.
+
+A host that **unmounts `<pie-item-player>` itself** and persists from a
+`document`-level listener gets nothing from the player's own destroy: a custom
+element only learns it was removed once detached, so the event reaches the
+player element and the player's own save, and no further. Those hosts call
+`commitPendingElementSessions()` before unmounting. No recorded host unmounts
+the player this way; Host R replaces `config` instead, which is covered.
+
 The Host R refresh replaced rows that had passed from unverified to wrong. Its
 theme fork is gone: it declares no `--pie-*` value, imports `tokens.css`, and
 drives one document-scoped `<pie-theme>` whose resolver supplies every scheme

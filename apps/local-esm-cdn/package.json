@@ -54,8 +54,8 @@
 		}
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.0",
-		"@types/node": "^26.4.0",
+		"@types/bun": "^1.4.2",
+		"@types/node": "^26.5.1",
 		"typescript": "^5.9.3"
 	},
 	"license": "MIT"

@@ -53,7 +53,7 @@
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite-plugin-dts": "^5.1.0"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator-inline-geogebra#readme",
 	"bugs": {

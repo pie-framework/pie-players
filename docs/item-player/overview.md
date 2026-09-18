@@ -120,6 +120,8 @@ The player manages session state through `ItemController`:
 
 Hosts receive a single `session-changed` event on the `<pie-item-player>` element with the full updated session container.
 
+The `session` property stays a live view of that container, the contract `<pie-player>` had. The player writes an entry per model into the host's object at `load-complete` and each change into that entry before it dispatches, so a host that reads `player.session.data` — or holds a reference into it — keeps working. The projection is one-directional: `ItemController` owns the session and does not read the property back after the first load, and entries the player did not produce stay, so a section-level container spanning several items is safe to pass.
+
 ### Session commit
 
 A delivery element coalesces its `session-changed` dispatch, so a response the learner has finished entering can still be pending when the element is discarded. The player commits at three seams. What each one reaches differs, and the difference decides what a host has to do:

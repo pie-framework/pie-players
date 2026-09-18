@@ -109,6 +109,7 @@
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
+		ensureHostSessionEntries,
 		ensureRegistered,
 		ItemController,
 		isGlobalDebugEnabled,
@@ -119,6 +120,7 @@
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
+		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
 		attachInstrumentationEventBridge,
 		ITEM_INSTRUMENTATION_EVENT_MAP,
@@ -1328,6 +1330,44 @@
 		(playerEventTarget ?? hostElement)?.dispatchEvent(newEvent);
 	};
 
+	// `<pie-player>` kept the host's `session` property live, and hosts read the
+	// response off it. `ItemController` owns the session here, so the property is
+	// kept current by projecting onto it: one direction, controller to host, and
+	// before the event, so a host reading the property inside its own
+	// `session-changed` handler sees the response. A `session` passed as a JSON
+	// attribute has no object to project onto and is skipped.
+	function publishSessionToHostProp(nextSession: unknown): void {
+		try {
+			projectSessionIntoHostContainer(session, nextSession);
+		} catch (error) {
+			logger.warn(
+				"[pie-item-player] could not project the session onto the host container",
+				error,
+			);
+		}
+	}
+
+	// The other half of the legacy contract: `findOrAddSession` created an entry
+	// per model as the item rendered, so `data[0]` existed before the learner
+	// answered.
+	function seedHostSessionEntriesForItem(): void {
+		const models = (itemConfig?.models ?? []) as Array<{ id?: unknown }>;
+		const ids = models
+			.map((model) => (typeof model?.id === "string" ? model.id : ""))
+			.filter((id) => id.length > 0);
+		if (ids.length === 0) {
+			return;
+		}
+		try {
+			ensureHostSessionEntries(session, ids);
+		} catch (error) {
+			logger.warn(
+				"[pie-item-player] could not seed host session entries",
+				error,
+			);
+		}
+	}
+
 	function currentSessionContainer(): { id: string; data: unknown[] } {
 		const normalized = normalizeItemSessionContainer(parseSessionProp(effectiveSession));
 		if (!sessionController) {
@@ -1544,6 +1584,7 @@
 			return;
 		}
 		sessionSignature = nextSignature;
+		publishSessionToHostProp(merged);
 		handlePlayerEvent(new CustomEvent("session-changed", { detail: { session: merged } }));
 	};
 
@@ -1569,6 +1610,7 @@
 			});
 			sessionSignature = JSON.stringify(nextSession);
 			sessionRevision += 1;
+			publishSessionToHostProp(nextSession);
 			handlePlayerEvent(
 				new CustomEvent("session-changed", {
 					detail: { ...forwarding.detail, session: nextSession },
@@ -1641,8 +1683,10 @@
 					onDeleteImage={effectiveOnDeleteImage ?? undefined}
 					onInsertSound={effectiveOnInsertSound ?? undefined}
 					onDeleteSound={effectiveOnDeleteSound ?? undefined}
-					onLoadComplete={(detail: unknown) =>
-						handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
+					onLoadComplete={(detail: unknown) => {
+						seedHostSessionEntriesForItem();
+						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
+					}}
 					onPlayerError={(detail: unknown) =>
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),

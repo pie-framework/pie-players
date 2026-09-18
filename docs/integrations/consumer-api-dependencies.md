@@ -72,17 +72,19 @@ currently satisfies:
   `context.requestOptions.keepalive` on the unload-path save and has to forward
   it to `fetch`. Unforwarded, that save is an ordinary request the browser may
   drop as the document goes away, which is the case the flag exists for.
-- A host **migrating off `<pie-player>`** must read the session from
-  `detail.session`, not from the player's `session` property. On `<pie-player>`
-  the property was live: `findOrAddSession` pushed each element's entry into the
-  host's own `session.data` array and the element mutated that entry in place. On
-  `<pie-item-player>` the property is input and the live container is
-  `ItemController`'s, published on the event. A host carrying the old read
-  across sees `data: []`, and one that indexes `data[0]` unguarded throws inside
-  its own handler. Observed on the Quiz Engine PIE item element
-  (`element-PIEItem`, `projects/pie-item/src/app/pie-item.component.ts`) during
-  its move to `@pie-players/pie-preloaded-player`, on plain `multiple-choice`;
-  it is not element-specific.
+- A host **migrating off `<pie-player>`** keeps its session read. On
+  `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
+  element's entry into the host's own `session.data` array and the element
+  mutated that entry in place. `<pie-item-player>` owns its session in
+  `ItemController`, so it projects onto the host's container instead — an entry
+  per model at `load-complete`, then each change written into that entry before
+  the event — which holds the same read. The array and the entry objects keep
+  their identity, and entries this player did not produce are left alone, so a
+  section-level container stays intact. `detail.session` remains the
+  authoritative payload. The divergence was observed on the Quiz Engine PIE item
+  element (`element-PIEItem`, `projects/pie-item/src/app/pie-item.component.ts`)
+  during its move to `@pie-players/pie-preloaded-player`, on plain
+  `multiple-choice`, before the projection existed.
 
 A host that **unmounts `<pie-item-player>` itself** and persists from a
 `document`-level listener gets nothing from the player's own destroy: a custom

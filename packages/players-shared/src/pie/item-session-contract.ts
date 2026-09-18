@@ -412,3 +412,116 @@ export function normalizeItemSessionChange(args: {
 		complete: getMetadataComplete(sessionDetail, candidate),
 	};
 }
+
+function hostContainerEntries(hostContainer: unknown): unknown[] | null {
+	if (!isPlainObject(hostContainer)) {
+		return null;
+	}
+	// A frozen container is not a live view of anything, and a shared immutable
+	// default (one object handed to every item) must never take one item's
+	// entries. Both say the same thing: do not project here.
+	if (Object.isFrozen(hostContainer)) {
+		return null;
+	}
+	const existing = hostContainer.data;
+	if (Array.isArray(existing)) {
+		return Object.isFrozen(existing) ? null : existing;
+	}
+	if (existing === undefined || existing === null) {
+		const created: unknown[] = [];
+		hostContainer.data = created;
+		return created;
+	}
+	return null;
+}
+
+function sessionEntryId(value: unknown): string | null {
+	if (!isPlainObject(value)) {
+		return null;
+	}
+	const id = value.id;
+	return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/**
+ * Create the bare `{ id }` entry `<pie-player>` created at render time, for each
+ * element the item declares. A host that indexes `data[0]` before the learner
+ * has answered finds an entry instead of `undefined`.
+ *
+ * Only the host's container gets these. The authoritative session stays empty
+ * until an element reports something, so an untouched item still saves nothing.
+ */
+export function ensureHostSessionEntries(
+	hostContainer: unknown,
+	entryIds: Iterable<string>,
+): boolean {
+	const entries = hostContainerEntries(hostContainer);
+	if (!entries) {
+		return false;
+	}
+	let wrote = false;
+	for (const id of entryIds) {
+		if (typeof id !== "string" || id.length === 0) {
+			continue;
+		}
+		if (entries.some((entry) => sessionEntryId(entry) === id)) {
+			continue;
+		}
+		entries.push({ id });
+		wrote = true;
+	}
+	return wrote;
+}
+
+/**
+ * Keep the container a host handed in as a live view of the session, the
+ * contract `<pie-player>` had: `findOrAddSession` pushed an entry per element
+ * into the host's own `data` array and the element mutated that entry in place,
+ * so a host read the response off its own object. `ItemController` owns the
+ * session here, so this runs one way and never reads the container back.
+ *
+ * The array and the entry objects keep their identity, for a host holding a
+ * reference into `data`. Entries this player did not produce are left alone: in
+ * a section the host's container spans every item and an item player sees one.
+ */
+export function projectSessionIntoHostContainer(
+	hostContainer: unknown,
+	liveSession: unknown,
+): boolean {
+	const entries = hostContainerEntries(hostContainer);
+	if (!entries || !isPlainObject(hostContainer)) {
+		return false;
+	}
+	const live = normalizeItemSessionContainer(liveSession);
+	let wrote = false;
+	// The host owns the container id; fill it only when there is nothing there.
+	if (typeof hostContainer.id !== "string") {
+		hostContainer.id = live.id;
+		wrote = true;
+	}
+	for (const nextEntry of live.data) {
+		const id = sessionEntryId(nextEntry);
+		if (!id || !isPlainObject(nextEntry)) {
+			continue;
+		}
+		const target = entries.find((entry) => sessionEntryId(entry) === id);
+		if (!isPlainObject(target)) {
+			entries.push({ ...nextEntry });
+			wrote = true;
+			continue;
+		}
+		for (const key of Object.keys(target)) {
+			if (!(key in nextEntry)) {
+				delete target[key];
+				wrote = true;
+			}
+		}
+		for (const [key, value] of Object.entries(nextEntry)) {
+			if (target[key] !== value) {
+				target[key] = value;
+				wrote = true;
+			}
+		}
+	}
+	return wrote;
+}

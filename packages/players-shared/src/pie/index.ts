@@ -98,9 +98,11 @@ export type {
 	NormalizedItemSessionChange,
 } from "./item-session-contract.js";
 export {
+	ensureHostSessionEntries,
 	hasLearnerResponse,
 	hasResponseValue,
 	normalizeItemSessionChange,
+	projectSessionIntoHostContainer,
 } from "./item-session-contract.js";
 export type {
 	ItemSessionContainer,

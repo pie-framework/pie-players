@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
+	ensureHostSessionEntries,
 	hasLearnerResponse,
 	hasResponseField,
 	hasResponseValue,
 	normalizeItemSessionChange,
+	projectSessionIntoHostContainer,
 } from "../src/pie/item-session-contract";
 
 describe("normalizeItemSessionChange", () => {
@@ -364,4 +366,127 @@ describe("hasResponseField", () => {
 		expect(hasResponseField({ data: [{ id: "el", value: "" }] })).toBe(true);
 		expect(hasResponseField({ data: [{ id: "el", meta: "x" }] })).toBe(false);
 	});
+});
+
+describe("ensureHostSessionEntries", () => {
+	test("creates the entry a legacy host indexed before any answer", () => {
+		const host = { id: "s1", data: [] as unknown[] };
+		expect(ensureHostSessionEntries(host, ["1", "2"])).toBe(true);
+		expect(host.data).toEqual([{ id: "1" }, { id: "2" }]);
+	});
+
+	test("leaves an existing entry and its content alone", () => {
+		const entry = { id: "1", value: "A" };
+		const host = { id: "s1", data: [entry] as unknown[] };
+		expect(ensureHostSessionEntries(host, ["1"])).toBe(false);
+		expect(host.data[0]).toBe(entry);
+	});
+
+	test("creates the array when the container has none", () => {
+		const host: { id: string; data?: unknown[] } = { id: "s1" };
+		expect(ensureHostSessionEntries(host, ["1"])).toBe(true);
+		expect(host.data).toEqual([{ id: "1" }]);
+	});
+
+	test("ignores a container that is not an object", () => {
+		expect(ensureHostSessionEntries("{}", ["1"])).toBe(false);
+		expect(ensureHostSessionEntries(null, ["1"])).toBe(false);
+	});
+});
+
+describe("projectSessionIntoHostContainer", () => {
+	test("writes the response into the host's own entry object", () => {
+		const entry = { id: "1" };
+		const host = { id: "s1", data: [entry] as unknown[] };
+		const wrote = projectSessionIntoHostContainer(host, {
+			id: "s1",
+			data: [{ id: "1", element: "pie-mc", value: ["A"] }],
+		});
+		expect(wrote).toBe(true);
+		// Identity holds: a host that kept a reference to data[0] sees the value.
+		expect(host.data[0]).toBe(entry);
+		expect(entry).toEqual({ id: "1", element: "pie-mc", value: ["A"] });
+	});
+
+	test("keeps the array identity when it adds an entry", () => {
+		const data: unknown[] = [];
+		const host = { id: "s1", data };
+		projectSessionIntoHostContainer(host, {
+			id: "s1",
+			data: [{ id: "2", value: "B" }],
+		});
+		expect(host.data).toBe(data);
+		expect(data).toEqual([{ id: "2", value: "B" }]);
+	});
+
+	test("drops a key the live entry no longer carries", () => {
+		const host = {
+			id: "s1",
+			data: [{ id: "1", value: "A", stale: 1 }] as unknown[],
+		};
+		projectSessionIntoHostContainer(host, {
+			id: "s1",
+			data: [{ id: "1", value: "A" }],
+		});
+		expect(host.data[0]).toEqual({ id: "1", value: "A" });
+	});
+
+	test("leaves entries this player did not produce", () => {
+		const other = { id: "other-item", value: "kept" };
+		const host = { id: "s1", data: [other] as unknown[] };
+		projectSessionIntoHostContainer(host, {
+			id: "s1",
+			data: [{ id: "1", value: "A" }],
+		});
+		expect(host.data).toEqual([other, { id: "1", value: "A" }]);
+	});
+
+	test("fills the container id only when there is none", () => {
+		const empty: { id?: string; data: unknown[] } = { data: [] };
+		projectSessionIntoHostContainer(empty, { id: "live", data: [] });
+		expect(empty.id).toBe("live");
+		const owned = { id: "host-chose-this", data: [] as unknown[] };
+		projectSessionIntoHostContainer(owned, { id: "live", data: [] });
+		expect(owned.id).toBe("host-chose-this");
+	});
+
+	test("reports nothing written when the session is already mirrored", () => {
+		const host = { id: "s1", data: [{ id: "1", value: "A" }] as unknown[] };
+		expect(
+			projectSessionIntoHostContainer(host, {
+				id: "s1",
+				data: [{ id: "1", value: "A" }],
+			}),
+		).toBe(false);
+	});
+
+	test("ignores a session attribute passed as a string", () => {
+		expect(
+			projectSessionIntoHostContainer('{"id":"s1","data":[]}', {
+				id: "s1",
+				data: [],
+			}),
+		).toBe(false);
+	});
+	test("refuses a frozen container, and a frozen data array", () => {
+		const frozenContainer = Object.freeze({ id: "s1", data: [] as unknown[] });
+		expect(
+			projectSessionIntoHostContainer(frozenContainer, {
+				id: "s1",
+				data: [{ id: "1", value: "A" }],
+			}),
+		).toBe(false);
+		expect(frozenContainer.data).toEqual([]);
+		expect(ensureHostSessionEntries(frozenContainer, ["1"])).toBe(false);
+
+		const frozenEntries = { id: "s1", data: Object.freeze([]) as unknown[] };
+		expect(
+			projectSessionIntoHostContainer(frozenEntries, {
+				id: "s1",
+				data: [{ id: "1", value: "A" }],
+			}),
+		).toBe(false);
+		expect(ensureHostSessionEntries(frozenEntries, ["1"])).toBe(false);
+	});
+
 });

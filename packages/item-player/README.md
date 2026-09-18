@@ -127,7 +127,13 @@ support targets default bundler entrypoints under `dist`.
 
 - `config`: `Object`, default `null`. Item config with `elements`, `models`,
   and `markup` fields.
-- `session`: `Object`, default `{ id: "", data: [] }`. Session container.
+- `session`: `Object`, default `{ id: "", data: [] }`. Session container, kept
+  live the way `<pie-player>`'s was: the player writes an entry per model into
+  this object at `load-complete` and each change into that entry before it
+  dispatches `session-changed`, preserving the array's and the entries' identity
+  and leaving entries it did not produce alone. `detail.session` on the event is
+  the authoritative payload; `ItemController` owns the session and never reads
+  this object back after the first load.
 - `env`: `Object`, default `{ mode: "gather", role: "student" }`.
   Environment mode and role.
 - `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`,

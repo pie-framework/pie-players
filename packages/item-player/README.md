@@ -183,6 +183,12 @@ does: the section and assessment players are bundler-only.
   Use `configuration.authoring` for authoring-only settings.
 - `trust-markup`: `Boolean`, default `false`. Skip the built-in markup
   sanitizer. See [Content trust boundary](#content-trust-boundary).
+- `session-snapshot`: `Object` or `Boolean`, default off. Opt into a
+  device-local copy of each committed session, offered back after a crash. See
+  [Session snapshot](../../docs/item-player/overview.md#session-snapshot). A
+  snapshot requires a `backend.delivery` `sessionId`, or an explicit
+  `sessionSnapshot.key`: the item id alone is the same for every learner, so on
+  a shared device it would offer one student's draft to the next.
 
 ## Properties (JS only)
 
@@ -208,6 +214,9 @@ These are set via JavaScript, not HTML attributes.
   `context.requestOptions.keepalive` on the unload-path save and has to forward
   it to `fetch`. Without that the save is an ordinary request the browser may
   drop as the document goes away.
+- `sessionSnapshot`: `boolean | { enabled?: boolean, store?: SessionSnapshotStore, key?: string }`.
+  The property form of `session-snapshot`. `store` replaces the default
+  `sessionStorage` backing and owns the retention consequences.
 
 ## Methods
 
@@ -231,6 +240,9 @@ These are set via JavaScript, not HTML attributes.
   `session-changed` now. A host that unmounts the player itself calls this
   first: the player's own destroy runs after the element is detached, so the
   event it produces reaches the player element but not `document`.
+- `getPendingSessionSnapshot(): SessionSnapshotRecord | null` returns the
+  snapshot `session-snapshot-available` announced, for a host that attached its
+  listener after the event fired.
 
 ## Events
 
@@ -276,6 +288,10 @@ These are set via JavaScript, not HTML attributes.
   persists successfully.
 - `backend-score-complete`: emitted after server-backed `score()` completes.
 - `backend-error`: emitted when backend load/save/score fails.
+- `session-snapshot-available`: `{ key, session, timestamp }`. Emitted on load
+  when `session-snapshot` is enabled and device storage holds a snapshot for
+  this sitting. The player never applies it; the host decides. Also readable
+  afterwards through `getPendingSessionSnapshot()`.
 - `correct-responses-populated`:
   `{ itemId?, mode?, role?, bundleType?, populatedCount, elements }`. Emitted
   when correct responses were written into the session. `elements` holds the

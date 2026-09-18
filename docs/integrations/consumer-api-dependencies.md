@@ -40,9 +40,10 @@ verification dates above remain unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
-nothing: `pie-item-player` gains one method, `commitPendingElementSessions()`,
-which appears in no recorded host's property, event or method set; the
-section-player
+nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
+event, `session-snapshot-available`, and two methods,
+`commitPendingElementSessions()` and `getPendingSessionSnapshot()`, none of which
+appears in any recorded host's property, event or method set; the section-player
 layout and item-shell custom elements keep their tag names, attribute names, and
 prop types unchanged. `SectionControllerHandle` gains one optional method,
 `setPendingSessionCommit`, which a host-built controller may leave
@@ -1405,7 +1406,9 @@ over a CDN with no typecheck at all.
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
 - Attributes and props on the layout elements not listed above, including the
-  additive `locale` attribute on `pie-item-player` and the section-player layouts
+  additive `locale` attribute on `pie-item-player` and the section-player layouts,
+  and the additive opt-in `session-snapshot` property with its
+  `session-snapshot-available` event
 - `PiePlayerLoadEvent`, its two detail strings and `window.pieFixedPlayerLoaded`
   from the preloaded entry — the one host on that build renders without waiting
   for them

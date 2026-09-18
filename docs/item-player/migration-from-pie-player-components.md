@@ -135,6 +135,31 @@ The new player uses `ItemController` to:
 - Deduplicate `session-changed` events (metadata-only events are filtered out)
 - Prevent response data from being overwritten by structural re-renders
 
+### Read the session from the event, not the element property
+
+`<pie-item-player>`'s `session` property is input. The live container lives in
+`ItemController` and is published on `session-changed` as `detail.session`; the
+property keeps whatever the host set, which is `{ id: "", data: [] }` for a
+fresh session.
+
+`<pie-player>` worked the other way round. `findOrAddSession` pushed each
+element's entry into the host's own `session.data` array and the element mutated
+that entry in place, so `player.session.data[0].value` was live and a host could
+read it inside its `session-changed` handler. A host carrying that read across
+sees `data: []` and, if it indexes `data[0]` unguarded, throws inside its own
+event handler.
+
+```js
+player.addEventListener("session-changed", (event) => {
+  const data = event.detail?.session?.data ?? [];   // live
+  // not: player.session.data
+});
+```
+
+`detail.session` is also the only surface that carries a commit: a synthesized
+commit at a teardown seam builds its payload from the element's `session` getter
+and never touches the player property.
+
 ## Delivery host compatibility
 
 The current player keeps a small set of legacy delivery-host aliases where they

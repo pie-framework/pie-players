@@ -2,6 +2,7 @@ import {
 	hasResponseValue,
 	normalizeItemSessionChange,
 	type CanonicalItemSessionContainer,
+	type SessionCommitReason,
 } from "@pie-players/pie-players-shared";
 
 export type SessionChangedForwardingResult =
@@ -52,8 +53,12 @@ function keepPreviousSessionId(
  * the player directly, so the session is read off the element that dispatched -
  * without it the detail has no response field and forwarding ignores it, which
  * is the response loss this whole seam exists to prevent.
+ *
+ * Deliberately not exported. Enriching without marking produced a commit the
+ * host could not identify, so `asCommittedDetail` below is the only way to build
+ * a replay detail and the two steps cannot be separated again.
  */
-export function withCommittedSession(
+function withCommittedSession(
 	detail: unknown,
 	target: EventTarget | null | undefined,
 ): unknown {
@@ -73,6 +78,34 @@ export function withCommittedSession(
 		return detail;
 	}
 	return { ...detail, session: copy };
+}
+
+/**
+ * The detail a teardown commit replays: the element's session filled in, and the
+ * event marked as a commit.
+ *
+ * The marker cannot be left to `commitPendingSessions`'s own capture listener.
+ * That listener stamps the event's `detail` object, while the enrichment above
+ * returns a *copy* whenever the detail carries no `session` key - which is
+ * exactly the element-owned path, where the element dispatches
+ * `{ complete, component }` and the sweep has nothing to stamp for it. Both
+ * listeners sit on the same node, so the snapshot is taken before the stamp and
+ * the reason lands on the object the snapshot was cloned from.
+ *
+ * So whoever snapshots a detail mid-sweep owns the completeness of that
+ * snapshot. Applying the reason here also keeps a frozen detail out of the path:
+ * the copy is ours to write, the element's own detail is not.
+ */
+export function asCommittedDetail(
+	detail: unknown,
+	target: EventTarget | null | undefined,
+	reason: SessionCommitReason,
+): unknown {
+	const enriched = withCommittedSession(detail, target);
+	// A synthesized commit builds its own reason in; only the element-owned path
+	// arrives without one.
+	if (!isRecord(enriched) || "sessionCommitReason" in enriched) return enriched;
+	return { ...enriched, sessionCommitReason: reason };
 }
 
 export function resolveSessionChangedForwarding(args: {

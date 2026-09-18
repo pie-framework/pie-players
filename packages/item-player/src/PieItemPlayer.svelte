@@ -145,8 +145,8 @@
 	// silent no-op that left authored passage markup unstyled. The entry points
 	// install it explicitly instead; see pie-item-player.ts.
 	import {
+		asCommittedDetail,
 		resolveSessionChangedForwarding,
-		withCommittedSession,
 	} from "./session-forwarding.js";
 
 	type ItemSession = {
@@ -447,8 +447,11 @@
 			// Stopping here is what keeps one canonical event per change, and it
 			// also takes the renderer's listener out of the path - so the session
 			// it would have merged in is read off the element here instead.
+			// The commit marker is applied to this snapshot rather than left to
+			// the sweep's own capture listener: that one stamps the detail object
+			// this clones from, and both listeners sit on this same node.
 			captured.push(
-				withCommittedSession((event as CustomEvent).detail, event.target),
+				asCommittedDetail((event as CustomEvent).detail, event.target, reason),
 			);
 		};
 		host.addEventListener("session-changed", capture, true);

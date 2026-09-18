@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-dictionary",
-	"version": "0.3.72",
+	"version": "0.3.73",
 	"type": "module",
 	"description": "Dictionary lookup tool for PIE assessment player",
 	"repository": {

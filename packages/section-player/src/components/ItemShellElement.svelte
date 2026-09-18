@@ -36,6 +36,7 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		commitPendingSessions,
+		createPieLogger,
 		normalizeItemSessionChange,
 	} from "@pie-players/pie-players-shared";
 	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
@@ -43,6 +44,8 @@
 		createShellRegistrationDispatcher,
 		type ShellRegistrationIdentity,
 	} from "./shared/shell-registration.js";
+
+	const logger = createPieLogger("pie-item-shell", () => false);
 
 	const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
 	const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
@@ -262,13 +265,18 @@
 			// The shell's only real teardown, so it is also where a pending element
 			// session gets one last chance to reach the controller. It runs while
 			// the subtree is still attached, so the commit's `session-changed`
-			// arrives at `onSessionChanged` below before it is unbound.
-			commitPendingSessions(host, { reason: "teardown" });
-			host?.removeEventListener("sessionchanged", onSessionChanged);
-			host?.removeEventListener("session-changed", onSessionChanged);
-			host?.removeEventListener("load-complete", onLoadComplete);
-			host?.removeEventListener("player-error", onPlayerError);
-			registration.retire();
+			// arrives at `onSessionChanged` below before it is unbound. An escape
+			// from the commit must not strand the listeners it needed, so the
+			// unbinding runs either way.
+			try {
+				commitPendingSessions(host, { reason: "teardown", logger });
+			} finally {
+				host?.removeEventListener("sessionchanged", onSessionChanged);
+				host?.removeEventListener("session-changed", onSessionChanged);
+				host?.removeEventListener("load-complete", onLoadComplete);
+				host?.removeEventListener("player-error", onPlayerError);
+				registration.retire();
+			}
 		};
 	});
 

@@ -54,6 +54,7 @@
 	import {
 		bindPageLifecycleCommit,
 		commitPendingSessions,
+		createPieLogger,
 	} from "@pie-players/pie-players-shared";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { createEventDispatcher, onDestroy } from "svelte";
@@ -70,6 +71,9 @@
 		type RuntimeConfig,
 		type StageChangeHandler,
 	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+
+	const logger = createPieLogger("pie-section-player", () => false);
+
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
@@ -308,7 +312,7 @@
 				? (hostFactory as () => unknown)
 				: () => new SectionController();
 		const commit = (reason: "navigate" | "teardown") => {
-			commitPendingSessions(root, { reason });
+			commitPendingSessions(root, { reason, logger });
 		};
 		const register = (controller: unknown) => {
 			(
@@ -317,21 +321,42 @@
 				} | null
 			)?.setPendingSessionCommit?.(() => commit("navigate"));
 		};
-		toolkitElement.createSectionController = () => {
+		const installedFactory = () => {
 			commit("teardown");
 			const controller = factory();
 			register(controller);
 			return controller;
 		};
+		const previousFactory = root.createSectionController;
+		root.createSectionController = installedFactory;
 
 		// The controller the toolkit has already built, if any. Tried
-		// synchronously first, then polled: it appears asynchronously, and this
-		// effect re-runs whenever the toolkit element is rebound, so the wait is
-		// deliberately not cancelled by a re-run.
+		// synchronously first, then polled, since it appears asynchronously.
 		register(resolveSectionController());
+		let pollAbandoned = false;
 		void (async () => {
-			register(await waitForSectionController(10_000));
+			const deadline = Date.now() + 10_000;
+			while (!pollAbandoned && Date.now() < deadline) {
+				const controller = resolveSectionController();
+				if (controller) {
+					if (!pollAbandoned) register(controller);
+					return;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 25));
+			}
 		})();
+
+		// This effect reads the section, attempt and coordinator, so it re-runs on
+		// a section swap or a cohort flip. A poll left running across that would
+		// register a commit closure over the previous root onto whichever
+		// controller is live when it resolves, and one outliving the component
+		// would sweep a detached subtree.
+		return () => {
+			pollAbandoned = true;
+			if (root.createSectionController === installedFactory) {
+				root.createSectionController = previousFactory;
+			}
+		};
 	});
 
 	// The page going away removes nothing from the DOM, so no teardown seam fires.
@@ -339,7 +364,7 @@
 		if (typeof window === "undefined") return;
 		const root = toolkitElement;
 		if (!root) return;
-		return bindPageLifecycleCommit({ root: () => root });
+		return bindPageLifecycleCommit({ root: () => root, logger });
 	});
 
 	// Svelte 5 compiles `<custom-element onCamelCase={fn}>` as

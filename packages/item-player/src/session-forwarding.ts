@@ -43,6 +43,38 @@ function keepPreviousSessionId(
 	};
 }
 
+/**
+ * Fill in the session a committed event does not carry.
+ *
+ * The PIE element contract puts `complete` and `component` in the detail and
+ * leaves the response on `element.session`; the renderer's own listener is what
+ * merges the two before the player sees it. A commit swept at teardown reaches
+ * the player directly, so the session is read off the element that dispatched -
+ * without it the detail has no response field and forwarding ignores it, which
+ * is the response loss this whole seam exists to prevent.
+ */
+export function withCommittedSession(
+	detail: unknown,
+	target: EventTarget | null | undefined,
+): unknown {
+	if (!isRecord(detail) || "session" in detail) return detail;
+	let session: unknown;
+	try {
+		session = (target as { session?: unknown } | null | undefined)?.session;
+	} catch {
+		// A getter that throws leaves the detail as it came.
+		return detail;
+	}
+	if (!isRecord(session)) return detail;
+	let copy: unknown;
+	try {
+		copy = JSON.parse(JSON.stringify(session));
+	} catch {
+		return detail;
+	}
+	return { ...detail, session: copy };
+}
+
 export function resolveSessionChangedForwarding(args: {
 	currentSession: CanonicalItemSessionContainer;
 	currentSignature: string;

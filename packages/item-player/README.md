@@ -131,9 +131,12 @@ support targets default bundler entrypoints under `dist`.
   live the way `<pie-player>`'s was: the player writes an entry per model into
   this object at `load-complete` and each change into that entry before it
   dispatches `session-changed`, preserving the array's and the entries' identity
-  and leaving entries it did not produce alone. `detail.session` on the event is
-  the authoritative payload; `ItemController` owns the session and never reads
-  this object back after the first load.
+  and leaving entries it did not produce alone. Inside an entry the player's
+  session wins and a key it does not carry is removed, so a cleared response
+  clears here too. A frozen container is left untouched, and a section player
+  hands each item a per-render copy, so `detail.session` on the event is the
+  authoritative payload; `ItemController` owns the session and never reads this
+  object back after the first load.
 - `env`: `Object`, default `{ mode: "gather", role: "student" }`.
   Environment mode and role.
 - `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`,

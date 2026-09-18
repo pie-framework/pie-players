@@ -154,16 +154,11 @@ hosts — is correct for the math elements and wrong for CR.
 ### Element helper: `createSessionNotifier`
 
 ```ts
-// Documentation sketch only.
 export interface SessionNotifier {
   /** Schedule a `session-changed` dispatch, coalescing within `delayMs`. */
   notify(): void;
   /** Dispatch immediately if one is pending; no-op otherwise. */
   flush(): void;
-  /** Drop a pending dispatch without dispatching. */
-  cancel(): void;
-  readonly pending: boolean;
-  dispose(): void;
 }
 
 export function createSessionNotifier(
@@ -177,8 +172,6 @@ export function createSessionNotifier(
 ): SessionNotifier;
 
 export function flushSessionNotifiers(host: object): void;
-export function cancelSessionNotifiers(host: object): void;
-export function hasPendingSessionNotification(host: object): boolean;
 ```
 
 `createSessionNotifier` registers the returned notifier against `host`, so one
@@ -213,7 +206,12 @@ they are still attached. Two paths per element:
 
 - An element that owns its deferred notification exposes
   `commitPendingSession()`, so it dispatches its own event with its own
-  `complete` semantics. This is the path an adopted element takes.
+  `complete` semantics. This is the path an adopted element takes. What the
+  element dispatches is what counts as announced: the method is a no-op when
+  nothing is pending, and a session written without notifying — a controller
+  writing into it, an element path that stores a value quietly — would
+  otherwise be recorded as delivered and skipped at every later seam. A commit
+  that dispatches nothing falls through to the synthesized path below.
 - An older element gets a `session-changed` synthesized from its `session`
   getter, carrying `component` and `sessionCommitReason` and omitting `complete`
   — `complete` is element-specific knowledge the player does not have, and

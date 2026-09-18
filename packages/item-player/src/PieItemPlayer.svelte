@@ -144,7 +144,10 @@
 	// nothing loads at runtime and which the exports map does not expose — a
 	// silent no-op that left authored passage markup unstyled. The entry points
 	// install it explicitly instead; see pie-item-player.ts.
-	import { resolveSessionChangedForwarding } from "./session-forwarding.js";
+	import {
+		resolveSessionChangedForwarding,
+		withCommittedSession,
+	} from "./session-forwarding.js";
 
 	type ItemSession = {
 		id: string;
@@ -411,15 +414,6 @@
 	// out from the custom element rather than the div being torn down.
 	let playerEventTarget: HTMLElement | null = null;
 
-	/**
-	 * Commit without routing through the renderer's forwarding listener.
-	 *
-	 * By the time the player is being destroyed the renderer has already dropped
-	 * that listener, so a committed event reaches the element's parent and stops
-	 * there. Capturing on the host for the duration of the sweep picks each
-	 * element's event up directly and puts it through the same
-	 * `handleSessionChanged` the renderer would have.
-	 */
 	/** The nearest custom element above the player's root div. */
 	function resolveCustomElementHost(node: HTMLElement): HTMLElement | null {
 		let current: HTMLElement | null = node.parentElement;
@@ -435,13 +429,27 @@
 		customElementHost = resolveCustomElementHost(hostElement);
 	});
 
+	/**
+	 * Commit without routing through the renderer's forwarding listener.
+	 *
+	 * By the time the player is being destroyed the renderer has already dropped
+	 * that listener, so a committed event reaches the element's parent and stops
+	 * there. Capturing on the host for the duration of the sweep picks each
+	 * element's event up directly and puts it through `handleSessionChanged`
+	 * with the session the renderer would have merged in.
+	 */
 	function commitWithDirectForwarding(reason: "teardown"): void {
 		const host = hostElement;
 		if (!host) return;
 		const captured: unknown[] = [];
 		const capture = (event: Event) => {
 			event.stopPropagation();
-			captured.push((event as CustomEvent).detail);
+			// Stopping here is what keeps one canonical event per change, and it
+			// also takes the renderer's listener out of the path - so the session
+			// it would have merged in is read off the element here instead.
+			captured.push(
+				withCommittedSession((event as CustomEvent).detail, event.target),
+			);
 		};
 		host.addEventListener("session-changed", capture, true);
 		try {
@@ -1386,8 +1394,12 @@
 		return bindPageLifecycleCommit({
 			root: () => localHost,
 			onHidden: () => {
-				// Only synchronous work is dependable in a hidden document, so the
-				// save goes out with `keepalive` and is not awaited.
+				// The session is snapshotted synchronously here; the request itself
+				// goes out one queue turn later, which `keepalive` is what makes
+				// survivable - it is allowed to outlive the document. The built-in
+				// client module is already resolved by then, since the load went
+				// through it. A host `auth.getToken()` is the one unbounded hop on
+				// this path, and it belongs to the host.
 				backendOrchestrator.flushPendingSave({ keepalive: true });
 			},
 			logger,

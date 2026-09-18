@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { resolveSessionChangedForwarding } from "../src/session-forwarding";
+import {
+	resolveSessionChangedForwarding,
+	withCommittedSession,
+} from "../src/session-forwarding";
 
 const responsefulSession = {
 	id: "metadata-session-item",
@@ -126,5 +129,82 @@ describe("resolveSessionChangedForwarding", () => {
 				],
 			},
 		});
+	});
+});
+
+describe("withCommittedSession", () => {
+	// The element contract's own event: `complete` and `component`, response on
+	// the element. Unenriched, `resolveSessionChangedForwarding` ignores it and
+	// the committed response reaches nobody.
+	const elementSession = {
+		id: "committed-choice",
+		element: "multiple-choice--version-1-0-0",
+		value: ["B"],
+	};
+
+	test("reads the session off the element that dispatched", () => {
+		const detail = { complete: true, component: "multiple-choice" };
+		const enriched = withCommittedSession(detail, {
+			session: elementSession,
+		} as unknown as EventTarget);
+
+		expect(enriched).toEqual({
+			complete: true,
+			component: "multiple-choice",
+			session: elementSession,
+		});
+		expect(
+			resolveSessionChangedForwarding({
+				currentSession: { id: "committed-item", data: [] },
+				currentSignature: JSON.stringify({ id: "committed-item", data: [] }),
+				detail: enriched,
+				itemId: "committed-item",
+			}),
+		).toMatchObject({ action: "forward", changed: true });
+	});
+
+	test("copies the session rather than aliasing element state", () => {
+		const enriched = withCommittedSession(
+			{ complete: false },
+			{ session: elementSession } as unknown as EventTarget,
+		) as { session: typeof elementSession };
+
+		expect(enriched.session).not.toBe(elementSession);
+		expect(enriched.session.value).not.toBe(elementSession.value);
+	});
+
+	test("leaves a detail that already carries a session alone", () => {
+		const detail = { session: { id: "x", data: [] } };
+
+		expect(
+			withCommittedSession(detail, {
+				session: elementSession,
+			} as unknown as EventTarget),
+		).toBe(detail);
+	});
+
+	test("leaves the detail alone when the element has no session", () => {
+		const detail = { complete: true };
+
+		expect(withCommittedSession(detail, {} as EventTarget)).toBe(detail);
+		expect(withCommittedSession(detail, null)).toBe(detail);
+	});
+
+	test("survives a session getter that throws", () => {
+		const detail = { complete: true };
+		const target = {
+			get session() {
+				throw new Error("no session here");
+			},
+		} as unknown as EventTarget;
+
+		expect(withCommittedSession(detail, target)).toBe(detail);
+	});
+
+	test("leaves a non-record detail alone", () => {
+		expect(withCommittedSession(null, {} as EventTarget)).toBe(null);
+		expect(withCommittedSession("session-changed", {} as EventTarget)).toBe(
+			"session-changed",
+		);
 	});
 });

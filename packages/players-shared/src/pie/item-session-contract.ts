@@ -483,6 +483,11 @@ export function ensureHostSessionEntries(
  * The array and the entry objects keep their identity, for a host holding a
  * reference into `data`. Entries this player did not produce are left alone: in
  * a section the host's container spans every item and an item player sees one.
+ *
+ * Inside an entry the player's own session wins, and a key it does not carry is
+ * removed - a cleared response has to clear here too, and the entry belongs to
+ * the element, as it did under `<pie-player>`. A host keeping its own
+ * annotations on an entry keeps them beside it, not inside it.
  */
 export function projectSessionIntoHostContainer(
 	hostContainer: unknown,

@@ -173,7 +173,10 @@ function readSession(element: Element): unknown {
 
 function signatureOf(session: unknown): string | null {
 	try {
-		return JSON.stringify(session);
+		const json = JSON.stringify(session);
+		// `JSON.stringify(undefined)` is `undefined`, which would be written as a
+		// signature and then read back as "no baseline".
+		return typeof json === "string" ? json : null;
 	} catch {
 		return null;
 	}
@@ -327,18 +330,43 @@ function sweepPendingSessions(
 			SESSION_COMMIT_METHOD
 		];
 		if (typeof commit === "function") {
+			// An element's own commit is a no-op when nothing is pending, and its
+			// session can still differ from what the host heard: a controller
+			// writing into the session, or an element path that stores a value
+			// without notifying. Counting the call as the announcement recorded a
+			// response the host never received and every later seam then skipped
+			// it, so what the element dispatches is what counts. `flush()` is
+			// synchronous in every implementation of this contract; one that
+			// deferred would be announced twice, which a player's signature check
+			// absorbs.
+			let dispatched = false;
+			const witness = () => {
+				dispatched = true;
+			};
+			element.addEventListener("session-changed", witness, true);
+			let failed = false;
 			try {
 				(commit as () => void).call(element);
-				writeObservedSignature(element, signature);
-				result.committed += 1;
 			} catch (error) {
+				failed = true;
 				options.logger?.warn(
 					`[commitPendingSessions] ${element.tagName.toLowerCase()} failed to commit its pending session`,
 					error,
 				);
-				result.skipped += 1;
+			} finally {
+				element.removeEventListener("session-changed", witness, true);
 			}
-			continue;
+			if (failed) {
+				result.skipped += 1;
+				continue;
+			}
+			if (dispatched) {
+				writeObservedSignature(element, signature);
+				result.committed += 1;
+				continue;
+			}
+			// Nothing was pending, so fall through and announce the session the
+			// element holds.
 		}
 
 		try {

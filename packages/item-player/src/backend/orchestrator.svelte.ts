@@ -28,6 +28,16 @@ type DeliverySaveIdentity = {
 	itemId?: string;
 	sessionId?: string;
 	assignmentId?: string;
+	/**
+	 * The session as it stood when the save was scheduled or flushed.
+	 *
+	 * A queued save runs at least a microtask later, behind whatever is already
+	 * in flight. Reading the container at execution time instead files the
+	 * session the player holds by then under these ids, which on a
+	 * `backend.delivery` repoint is the incoming item's session under the
+	 * outgoing item's ids.
+	 */
+	session?: BackendSessionContainer;
 };
 import {
 	getAuthoringBackend,
@@ -418,7 +428,8 @@ export function createBackendOrchestrator(
 			sessionId: delivery.sessionId,
 			assignmentId: delivery.assignmentId,
 		};
-		const sessionContainer = sessionContainerFor(target.sessionId);
+		const sessionContainer =
+			target.session ?? sessionContainerFor(target.sessionId);
 		await saveToDeliveryBackend(
 			backend,
 			{
@@ -462,8 +473,11 @@ export function createBackendOrchestrator(
 		if (!saveTimer) return;
 		clearTimeout(saveTimer);
 		saveTimer = null;
-		const identity = pendingSaveIdentity;
+		const pending = pendingSaveIdentity;
 		pendingSaveIdentity = null;
+		const identity = pending
+			? { ...pending, session: sessionContainerFor(pending.sessionId) }
+			: null;
 		void saveSession(options, identity).catch((errorValue) => {
 			reportBackendError("saveSession", errorValue);
 		});

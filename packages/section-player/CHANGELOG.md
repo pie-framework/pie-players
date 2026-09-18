@@ -1,5 +1,39 @@
 # @pie-players/pie-section-player
 
+## 0.3.73
+
+### Patch Changes
+
+- e2fd6b8: Guarantee that a committed response reaches the host before its element stops
+  existing (PIE-1058).
+  
+  A delivery element coalesces its `session-changed` dispatch, so a response the
+  learner had finished entering could be dropped when the element was discarded
+  inside that window, with no event at all for a host to detect.
+  
+  `pie-players-shared` adds `commitPendingSessions(root)`,
+  `bindPageLifecycleCommit()` and `noteSessionBaseline`/`noteSessionObserved`. The
+  item player commits on a `config` change, on `visibilitychange` to `hidden`, on
+  `pagehide` and on destroy; the section player commits on shell teardown and
+  before navigation, `updateInput()` and `persist()`. Every commit carries
+  `detail.sessionCommitReason`, and nothing is announced unless it changed since
+  the host last heard. No element version is required.
+  
+  Hosts listening on `<pie-item-player>` or `document` need no change, except when
+  they unmount the player themselves, which calls
+  `commitPendingElementSessions()` first. A host supplying its own
+  `backend.delivery` client forwards `requestOptions.keepalive` to `fetch`. Hosts
+  that added DOM-level dirty-tracking workarounds can remove them.
+  
+  `docs/prds/session-commit-on-teardown.md` records the contract.
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-item-player@0.3.73
+  - @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-default-tool-loaders@0.3.73
+  - @pie-players/pie-context@0.3.73
+
 ## 0.3.72
 
 ### Patch Changes

@@ -1,5 +1,83 @@
 # @pie-players/pie-item-player
 
+## 0.3.73
+
+### Patch Changes
+
+- e2fd6b8: Guarantee that a committed response reaches the host before its element stops
+  existing (PIE-1058).
+  
+  A delivery element coalesces its `session-changed` dispatch, so a response the
+  learner had finished entering could be dropped when the element was discarded
+  inside that window, with no event at all for a host to detect.
+  
+  `pie-players-shared` adds `commitPendingSessions(root)`,
+  `bindPageLifecycleCommit()` and `noteSessionBaseline`/`noteSessionObserved`. The
+  item player commits on a `config` change, on `visibilitychange` to `hidden`, on
+  `pagehide` and on destroy; the section player commits on shell teardown and
+  before navigation, `updateInput()` and `persist()`. Every commit carries
+  `detail.sessionCommitReason`, and nothing is announced unless it changed since
+  the host last heard. No element version is required.
+  
+  Hosts listening on `<pie-item-player>` or `document` need no change, except when
+  they unmount the player themselves, which calls
+  `commitPendingElementSessions()` first. A host supplying its own
+  `backend.delivery` client forwards `requestOptions.keepalive` to `fetch`. Hosts
+  that added DOM-level dirty-tracking workarounds can remove them.
+  
+  `docs/prds/session-commit-on-teardown.md` records the contract.
+- 83d30e3: Restore two behaviours hosts had from the legacy players, so moving from
+  `<pie-player>` or the fixed player to `<pie-item-player>` and
+  `@pie-players/pie-preloaded-player` changes nothing but the server support.
+  
+  The `session` property is live again. `<pie-player>` pushed an entry per model
+  into the host's own `session.data` through `findOrAddSession` as the item
+  rendered, and the element then mutated that entry in place, so a host read the
+  response off its own object. `ItemController` owns the session here, so the
+  player projects onto the host's container instead: an entry per model at
+  `load-complete`, then each change written into that entry before
+  `session-changed` is dispatched, so a host reading the property inside its own
+  handler sees the response. The projection runs one way and never reads the
+  container back after the first load. The array and the entry objects keep their
+  identity, for a host holding a reference into `data`, and entries the player did
+  not produce are left alone, so a section-level container spanning several items
+  stays intact. `detail.session` is unchanged and remains the authoritative
+  payload. `pie-players-shared` exports `projectSessionIntoHostContainer` and
+  `ensureHostSessionEntries` for a player that owns its own host contract.
+  
+  Quiz Engine's PIE item element read `session.data` this way and saw an empty
+  array after its move to the preloaded player, on plain `multiple-choice`.
+  
+  The preloaded player announces its load the way
+  `@pie-framework/pie-fixed-player-static` did: `PiePlayerLoadEvent` on
+  `document` with detail `PIE-Fixed-Player-Load-Complete`, a matching
+  `performance.mark`, and `window.pieFixedPlayerLoaded` for a host that
+  initializes after the player and misses the dispatch. A failed initialization
+  dispatches `PIE-Fixed-Player-Load-Failed` before the error propagates, as it did
+  there. Star listens for this signal.
+  
+  `resolveUrl` in the built-in `pie-api` client now collapses a doubled `/api`.
+  `<pie-api-player>` carried that segment in its `host` and left it out of its
+  paths; this client does the reverse, so a host pasting its old `host` into
+  `baseUrl` requested `/api/api/player/load`. A base ending in `/api` and a path
+  starting with `/api/` resolve to one. A backend that really serves `/api/api`
+  leaves `baseUrl` at the origin and puts the whole path in `endpoints`.
+  
+  The section player hands each embedded item player a copy of the item session
+  rather than the composition's object, and `EMPTY_ITEM_SESSION` — the one object
+  that stands in for every item with no session yet — is frozen. Without both, a
+  live host container would write one item's entries into another item's session
+  and into what `persist()` saves. `projectSessionIntoHostContainer` and
+  `ensureHostSessionEntries` refuse a frozen container or a frozen `data` array for
+  the same reason.
+  
+  One legacy behaviour is deliberately not restored: `<pie-player>`'s
+  `responseCompleted` event, which that component declares and never emits.
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-theme@0.3.73
+
 ## 0.3.72
 
 ### Patch Changes

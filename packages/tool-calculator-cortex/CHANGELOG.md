@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-calculator-cortex
 
+## 0.3.73
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-tool-calculator-shared@0.3.73
+
 ## 0.3.72
 
 ### Patch Changes

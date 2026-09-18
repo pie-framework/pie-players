@@ -1,5 +1,29 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.73
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-tool-annotation-toolbar@0.3.73
+  - @pie-players/pie-tool-answer-eliminator@0.3.73
+  - @pie-players/pie-tool-calculator-desmos@0.3.73
+  - @pie-players/pie-tool-calculator-shared@0.3.73
+  - @pie-players/pie-tool-theme@0.3.73
+  - @pie-players/pie-tool-dictionary@0.3.73
+  - @pie-players/pie-tool-graph@0.3.73
+  - @pie-players/pie-tool-line-reader@0.3.73
+  - @pie-players/pie-tool-periodic-table@0.3.73
+  - @pie-players/pie-tool-picture-dictionary@0.3.73
+  - @pie-players/pie-tool-protractor@0.3.73
+  - @pie-players/pie-tool-ruler@0.3.73
+  - @pie-players/pie-tool-tts-inline@0.3.73
+  - @pie-players/pie-tool-calculator-cortex@0.3.73
+  - @pie-players/pie-tool-calculator-geogebra@0.3.73
+
 ## 0.3.72
 
 ### Patch Changes

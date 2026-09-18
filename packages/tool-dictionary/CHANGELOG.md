@@ -1,5 +1,28 @@
 # @pie-players/pie-tool-dictionary
 
+## 0.3.73
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-players-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

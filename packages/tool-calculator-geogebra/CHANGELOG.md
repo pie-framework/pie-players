@@ -1,5 +1,28 @@
 # @pie-players/pie-tool-calculator-geogebra
 
+## 0.3.73
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-tool-calculator-shared@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@0.3.72
+  - @pie-players/pie-tool-calculator-shared@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- Updated dependencies [181b124]
+- Updated dependencies [6c089fd]
+  - @pie-players/pie-assessment-toolkit@0.3.71
+  - @pie-players/pie-tool-calculator-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

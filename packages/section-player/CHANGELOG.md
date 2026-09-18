@@ -1,5 +1,90 @@
 # @pie-players/pie-section-player
 
+## 0.3.73
+
+### Patch Changes
+
+- e2fd6b8: Guarantee that a committed response reaches the host before its element stops
+  existing (PIE-1058).
+  
+  A delivery element coalesces its `session-changed` dispatch, so a response the
+  learner had finished entering could be dropped when the element was discarded
+  inside that window, with no event at all for a host to detect.
+  
+  `pie-players-shared` adds `commitPendingSessions(root)`,
+  `bindPageLifecycleCommit()` and `noteSessionBaseline`/`noteSessionObserved`. The
+  item player commits on a `config` change, on `visibilitychange` to `hidden`, on
+  `pagehide` and on destroy; the section player commits on shell teardown and
+  before navigation, `updateInput()` and `persist()`. Every commit carries
+  `detail.sessionCommitReason`, and nothing is announced unless it changed since
+  the host last heard. No element version is required.
+  
+  Hosts listening on `<pie-item-player>` or `document` need no change, except when
+  they unmount the player themselves, which calls
+  `commitPendingElementSessions()` first. A host supplying its own
+  `backend.delivery` client forwards `requestOptions.keepalive` to `fetch`. Hosts
+  that added DOM-level dirty-tracking workarounds can remove them.
+  
+  `docs/prds/session-commit-on-teardown.md` records the contract.
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-item-player@0.3.73
+  - @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-default-tool-loaders@0.3.73
+  - @pie-players/pie-context@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/pie-item-player@0.3.72
+  - @pie-players/pie-default-tool-loaders@0.3.72
+  - @pie-players/pie-assessment-toolkit@0.3.72
+  - @pie-players/pie-context@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- 181b124: Resolve Speech Rule Engine's XML dependency to `@xmldom/xmldom` 0.9.12 for
+  workspace builds, fixing GHSA-6gmq-8vp8-gcm6. Keep the existing Speech Rule Engine
+  version and math-speech API. The workspace override prevents future installs
+  from selecting an affected XML version, and rebuilt player/tool bundles use
+  the patched dependency.
+  
+  Consumers resolving Speech Rule Engine as an external dependency must also
+  refresh their own lockfile to `@xmldom/xmldom` 0.9.12 or newer on the 0.9 line;
+  workspace overrides are not inherited from the published toolkit package.
+- 6c089fd: Keep tabs, read-aloud buttons, calculator controls, and scroll hints usable in
+  narrow delivery hosts. Stop estimating browser zoom from outer/inner window
+  widths: a normal 320px host could render the plain read-aloud trigger at 3.66px.
+  Controls now follow browser scaling; plain and NDS triggers keep matching sizes.
+  Item and passage toolbars wrap when enlarged text needs more space. Section
+  toolbar buttons retain their size and scroll fully into view on keyboard focus.
+  Calculator headers wrap while the tool content scrolls independently. Reading
+  panels fit beside or below their trigger, remain reachable in a short magnified
+  viewport, and paint above the question pane's scroll hint.
+  Assessment demos scroll their diagnostic chrome when magnified instead of
+  squeezing the nested player to zero height.
+  
+  Remove the `@pie-players/pie-players-shared/ui/zoom-compensation` export
+  and its internal Svelte wrapper. Retain `--pie-section-player-tab-zoom-comp` in
+  the registry as deprecated; it no longer affects layout. Hosts A and R use the
+  affected delivery surfaces in the consumer inventory. Their controls change
+  size under constrained layouts and magnification; recorded imports name neither
+  retired surface, with a fresh checkout check still pending.
+- Updated dependencies [181b124]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-assessment-toolkit@0.3.71
+  - @pie-players/pie-item-player@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+  - @pie-players/pie-default-tool-loaders@0.3.71
+  - @pie-players/pie-context@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

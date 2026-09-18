@@ -30,7 +30,9 @@ let tagSeed = 0;
  * An element that owns its deferred notification: it installs the commit hook
  * and dispatches its own event, which is what an adopted element does.
  */
-function defineCommittingElement(options: { throwOnCommit?: boolean } = {}): string {
+function defineCommittingElement(
+	options: { throwOnCommit?: boolean } = {},
+): string {
 	const tag = `pie-committing-${(tagSeed += 1)}`;
 	customElements.define(
 		tag,
@@ -109,6 +111,19 @@ function observeDocument(): { events: CustomEvent[]; stop(): void } {
 
 afterEach(() => {
 	document.body.replaceChildren();
+});
+
+/**
+ * `pie-elements-ng` declares this same literal in
+ * `packages/shared/player-events`: a shared package for one string would buy a
+ * cross-repo dependency neither side otherwise needs, so each side pins it.
+ * A rename on one side alone drops every adopted element to the synthesized
+ * path, losing the element's own `complete` semantics with no error.
+ */
+describe("SESSION_COMMIT_METHOD", () => {
+	it("is the method name pie-elements-ng installs", () => {
+		expect(SESSION_COMMIT_METHOD).toBe("commitPendingSession");
+	});
 });
 
 describe("commitPendingSessions", () => {

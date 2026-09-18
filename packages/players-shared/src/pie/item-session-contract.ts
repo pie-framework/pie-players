@@ -99,6 +99,65 @@ export function hasResponseValue(value: unknown): boolean {
 	return false;
 }
 
+/**
+ * Keys a delivery element carries on its session that are never learner input:
+ * element identity, the dispatch metadata the event contract defines, and
+ * presentation state a controller writes at load (choice shuffle order).
+ */
+const NON_RESPONSE_SESSION_KEYS = new Set([
+	"id",
+	"element",
+	"complete",
+	"component",
+	"timestamp",
+	"sourceRuntimeId",
+	"shuffledValues",
+]);
+
+/**
+ * `id` inside an array entry is the response - which hotspot, which choice.
+ * `id` inside an object property that repeats the property's own name is
+ * structure, which is how `explicit-constructed-response` and `ebsr` key their
+ * parts. Distinguishing the two by container is what keeps an unanswered
+ * `{ value: { partA: { id: "partA" } } }` from reading as a response.
+ */
+function carriesContent(value: unknown, owningKey?: string): boolean {
+	if (value == null) return false;
+	if (typeof value === "string") return value.trim() !== "";
+	if (typeof value === "number" || typeof value === "boolean") return true;
+	if (Array.isArray(value)) return value.some((entry) => carriesContent(entry));
+	if (typeof value !== "object") return false;
+	return Object.entries(value as Record<string, unknown>).some(
+		([key, nested]) => {
+			if (key === "id" && owningKey !== undefined && nested === owningKey) {
+				return false;
+			}
+			return carriesContent(nested, key);
+		},
+	);
+}
+
+/**
+ * Whether an element session holds anything the learner put there.
+ *
+ * Shape-agnostic by necessity: `value` is one element's answer key, and
+ * `response`, `selectedTokens`, `answers`, `answer`, `drawables` are others.
+ * Anything outside the non-response key set with content in it counts, so an
+ * element this function has never heard of is handled by default.
+ *
+ * This is the fallback discriminant for the session commit. The primary one is
+ * a comparison against the session the player last observed, which needs no
+ * schema knowledge at all; see `session-commit.ts`.
+ */
+export function hasLearnerResponse(session: unknown): boolean {
+	if (!session || typeof session !== "object") return false;
+	if (Array.isArray(session)) return session.some(hasLearnerResponse);
+	return Object.entries(session as Record<string, unknown>).some(
+		([key, value]) =>
+			!NON_RESPONSE_SESSION_KEYS.has(key) && carriesContent(value, key),
+	);
+}
+
 export function hasResponseField(value: unknown): boolean {
 	if (value == null) return false;
 	if (Array.isArray(value))

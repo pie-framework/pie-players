@@ -98,6 +98,7 @@ export type {
 	NormalizedItemSessionChange,
 } from "./item-session-contract.js";
 export {
+	hasLearnerResponse,
 	hasResponseValue,
 	normalizeItemSessionChange,
 } from "./item-session-contract.js";
@@ -109,6 +110,25 @@ export {
 	MemoryItemSessionStorage,
 	SessionStorageItemSessionStorage,
 } from "./item-controller-storage.js";
+// Session commit at the player's seams, for a deferred `session-changed` that
+// would otherwise be dropped with the element. `navigate` and `page-hidden` run
+// attached, so the event reaches a `document`-level host listener; `teardown`
+// runs detached and serves the player's own save. `noteSessionObserved` and
+// `noteSessionBaseline` keep the discriminant "has anything happened since the
+// host last heard" instead of a guess at an element's session schema.
+export {
+	SESSION_COMMIT_METHOD,
+	bindPageLifecycleCommit,
+	commitPendingSessions,
+	noteSessionBaseline,
+	noteSessionObserved,
+} from "./session-commit.js";
+export type {
+	BindPageLifecycleCommitOptions,
+	CommitPendingSessionsOptions,
+	CommitPendingSessionsResult,
+	SessionCommitReason,
+} from "./session-commit.js";
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";

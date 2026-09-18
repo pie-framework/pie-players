@@ -34,7 +34,10 @@
 		type ItemSessionChangedDetail,
 		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { normalizeItemSessionChange } from "@pie-players/pie-players-shared";
+	import {
+		commitPendingSessions,
+		normalizeItemSessionChange,
+	} from "@pie-players/pie-players-shared";
 	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
 	import {
 		createShellRegistrationDispatcher,
@@ -215,12 +218,23 @@
 			// Guard against duplicate forwarding when both fire for the same payload.
 			if (seenSessionEvents.has(event)) return;
 			seenSessionEvents.add(event);
-			const fingerprint = createSessionEventFingerprint((event as CustomEvent).detail);
-			if (fingerprint === lastForwardedFingerprint) return;
+			const detail = (event as CustomEvent).detail;
+			const fingerprint = createSessionEventFingerprint(detail);
+			// A commit is the response's last chance to reach the controller, so
+			// it is exempt from both dedupes. A shell being replaced for the same
+			// item otherwise falls inside the cross-shell window and the outgoing
+			// shell's final response is dropped.
+			const isCommit = Boolean(
+				detail &&
+					typeof detail === "object" &&
+					(detail as Record<string, unknown>).sessionCommitReason,
+			);
+			if (!isCommit && fingerprint === lastForwardedFingerprint) return;
 			const dedupeKey = itemId || canonicalItemId || "__unknown-item__";
 			const now = Date.now();
 			const lastCrossShell = crossShellSessionDedupe.get(dedupeKey);
 			if (
+				!isCommit &&
 				lastCrossShell &&
 				lastCrossShell.fingerprint === fingerprint &&
 				now - lastCrossShell.timestamp < CROSS_SHELL_DEDUPE_WINDOW_MS
@@ -245,6 +259,11 @@
 		host.addEventListener("player-error", onPlayerError);
 
 		return () => {
+			// The shell's only real teardown, so it is also where a pending element
+			// session gets one last chance to reach the controller. It runs while
+			// the subtree is still attached, so the commit's `session-changed`
+			// arrives at `onSessionChanged` below before it is unbound.
+			commitPendingSessions(host, { reason: "teardown" });
 			host?.removeEventListener("sessionchanged", onSessionChanged);
 			host?.removeEventListener("session-changed", onSessionChanged);
 			host?.removeEventListener("load-complete", onLoadComplete);

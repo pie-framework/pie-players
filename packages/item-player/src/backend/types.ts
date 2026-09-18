@@ -29,6 +29,11 @@ export type BackendRequestConfig = {
 
 export type BackendRequestOptions = {
 	overrides?: Record<string, string>;
+	/**
+	 * Set on a save issued while the page is going away. A custom delivery
+	 * client should pass it to `fetch` so the request outlives the document.
+	 */
+	keepalive?: boolean;
 };
 
 export type BackendAutosaveConfig =

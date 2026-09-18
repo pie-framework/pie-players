@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	hasLearnerResponse,
 	hasResponseField,
 	hasResponseValue,
 	normalizeItemSessionChange,
@@ -252,6 +253,109 @@ describe("hasResponseValue", () => {
 		).toBe(true);
 		expect(hasResponseValue({ data: [{ id: "el", meta: "x" }] })).toBe(false);
 	});
+});
+
+/**
+ * Real session shapes, taken from the element controllers. The commit sweep's
+ * fallback discriminant turns on these, so a shape reading the wrong way is
+ * either a lost response or an announcement of one that never happened.
+ */
+describe("hasLearnerResponse", () => {
+	const answered: Array<[string, unknown]> = [
+		["multiple-choice", { id: "1", element: "multiple-choice", value: ["A"] }],
+		[
+			"extended-text-entry",
+			{ id: "1", element: "extended-text-entry", value: "<p>hi</p>" },
+		],
+		["math-inline", { id: "1", element: "math-inline", response: "\\frac{1}{2}" }],
+		["math-inline complete", { id: "1", element: "math-inline", completeAnswer: "x=1" }],
+		[
+			"math-templated",
+			{ id: "1", element: "math-templated", answers: { r1: { value: "2" } } },
+		],
+		[
+			"select-text",
+			{ id: "1", element: "select-text", selectedTokens: [{ start: 0, end: 4 }] },
+		],
+		["hotspot", { id: "1", element: "hotspot", answers: [{ id: "h2" }] }],
+		[
+			"categorize",
+			{ id: "1", element: "categorize", answers: [{ category: "c1", choices: ["a"] }] },
+		],
+		["match", { id: "1", element: "match", answers: { row1: [true, false] } }],
+		[
+			"number-line",
+			{ id: "1", element: "number-line", answer: [{ type: "point", domainPosition: 3 }] },
+		],
+		[
+			"graphing",
+			{ id: "1", element: "graphing", answer: { marks: [{ type: "point", x: 1, y: 2 }] } },
+		],
+		[
+			"drawing-response",
+			{ id: "1", element: "drawing-response", drawables: [{ t: "line" }], texts: [] },
+		],
+		[
+			"image-cloze-association",
+			{ id: "1", element: "image-cloze-association", answers: ["a", "b"] },
+		],
+		[
+			"explicit-constructed-response",
+			{ id: "1", element: "explicit-constructed-response", value: { "0": "cat" } },
+		],
+		[
+			"ebsr with one part answered",
+			{
+				id: "1",
+				element: "ebsr",
+				shuffledValues: { partA: ["1", "2"] },
+				value: { partA: { id: "partA", value: ["1"] }, partB: { id: "partB" } },
+			},
+		],
+		["charting", { id: "1", element: "charting", answer: [{ label: "a", value: 3 }] }],
+	];
+
+	const untouched: Array<[string, unknown]> = [
+		["identity only", { id: "1", element: "multiple-choice" }],
+		[
+			"identity and dispatch metadata",
+			{ id: "1", element: "multiple-choice", complete: false, component: "multiple-choice" },
+		],
+		[
+			"controller-written shuffle order",
+			{ id: "1", element: "multiple-choice", shuffledValues: ["c", "a", "b"] },
+		],
+		[
+			"ebsr part structure with no answer",
+			{
+				id: "1",
+				element: "ebsr",
+				shuffledValues: { partA: ["1", "2"] },
+				value: { partA: { id: "partA" }, partB: { id: "partB" } },
+			},
+		],
+		["deselected choice", { id: "1", element: "multiple-choice", value: [] }],
+		["cleared text", { id: "1", element: "extended-text-entry", value: "" }],
+		["whitespace text", { id: "1", element: "extended-text-entry", value: "   " }],
+		["emptied marks", { id: "1", element: "graphing", answer: {} }],
+		[
+			"blank constructed-response parts",
+			{ id: "1", element: "explicit-constructed-response", value: { "0": "", "1": "" } },
+		],
+		["emptied answers", { id: "1", element: "hotspot", answers: [] }],
+		["not a session", null],
+	];
+
+	for (const [name, session] of answered) {
+		test(`answered: ${name}`, () => {
+			expect(hasLearnerResponse(session)).toBe(true);
+		});
+	}
+	for (const [name, session] of untouched) {
+		test(`untouched: ${name}`, () => {
+			expect(hasLearnerResponse(session)).toBe(false);
+		});
+	}
 });
 
 describe("hasResponseField", () => {

@@ -74,17 +74,42 @@ async function resolveToken(
 	return auth.token ? String(auth.token) : null;
 }
 
+/**
+ * The Fetch standard caps the total body of a page's in-flight keepalive
+ * requests at 64 KiB. Past it `fetch` rejects, which on the unload path means
+ * the save is lost with nothing to retry it - so a body over the cap goes as an
+ * ordinary request. That one may be cut short by the document going away, which
+ * is a worse chance than a small body gets and a better one than none.
+ */
+const KEEPALIVE_BODY_LIMIT_BYTES = 64 * 1024;
+
+function exceedsKeepaliveLimit(payload: string): boolean {
+	const bytes =
+		typeof TextEncoder !== "undefined"
+			? new TextEncoder().encode(payload).length
+			: payload.length;
+	return bytes > KEEPALIVE_BODY_LIMIT_BYTES;
+}
+
 async function callJson<T>(
 	url: string,
 	method: BackendMethod,
 	body: unknown,
 	request: BackendRequestConfig | undefined,
 	token: string | null,
+	fetchOptions?: { keepalive?: boolean },
 ): Promise<T> {
+	const payload = JSON.stringify(body ?? {});
+	const keepalive =
+		fetchOptions?.keepalive === true && !exceedsKeepaliveLimit(payload);
 	const controller =
 		typeof AbortController !== "undefined" ? new AbortController() : null;
+	// A keepalive request is meant to outlive the document, so a timeout abort
+	// would defeat the only reason it was issued.
 	const timeoutMs =
-		typeof request?.timeoutMs === "number" && request.timeoutMs > 0
+		!keepalive &&
+		typeof request?.timeoutMs === "number" &&
+		request.timeoutMs > 0
 			? request.timeoutMs
 			: 0;
 	const timeoutId =
@@ -103,18 +128,21 @@ async function callJson<T>(
 		const response = await fetch(url, {
 			method,
 			headers,
-			body: JSON.stringify(body ?? {}),
-			signal: controller?.signal,
+			body: payload,
+			signal: timeoutId ? controller?.signal : undefined,
+			keepalive,
 		});
-		const payload = await response.json().catch(() => null);
+		const responseBody = await response.json().catch(() => null);
 		if (!response.ok) {
 			const message =
-				(payload && typeof payload === "object" && "error" in payload
-					? String((payload as { error?: unknown }).error)
+				(responseBody &&
+				typeof responseBody === "object" &&
+				"error" in responseBody
+					? String((responseBody as { error?: unknown }).error)
 					: "") || `Backend request failed with status ${response.status}`;
 			throw new Error(message);
 		}
-		return payload as T;
+		return responseBody as T;
 	} finally {
 		if (timeoutId) clearTimeout(timeoutId);
 	}
@@ -149,6 +177,7 @@ export async function callPieApiDeliverySave(
 	config: BackendDeliveryConfig,
 	sharedAuth: BackendAuthConfig | undefined,
 	context: BackendDeliverySessionContext,
+	options?: { keepalive?: boolean },
 ): Promise<unknown> {
 	const endpoint = normalizeEndpoint(
 		config.endpoints?.saveSession,
@@ -171,6 +200,7 @@ export async function callPieApiDeliverySave(
 		},
 		config.request,
 		token,
+		{ keepalive: options?.keepalive === true },
 	);
 }
 

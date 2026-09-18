@@ -51,6 +51,10 @@
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
 	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		bindPageLifecycleCommit,
+		commitPendingSessions,
+	} from "@pie-players/pie-players-shared";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { createEventDispatcher, onDestroy } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
@@ -283,10 +287,59 @@
 
 	onDestroy(() => overlaySurfaceHost.destroy());
 
+	// Every controller this player drives commits pending element sessions at the
+	// boundaries it owns — item navigation, a section swap, a persist. The
+	// controller stays DOM-free, so the root comes from here, and a cohort flip
+	// commits before the outgoing controller is replaced.
+	//
+	// Overriding the factory alone reaches only controllers built after this
+	// effect runs, and the toolkit has usually built the first section's
+	// controller by then: registering on that one as well is what makes the
+	// first section's navigation commit at all.
 	$effect(() => {
 		if (!toolkitElement) return;
-		toolkitElement.createSectionController =
-			effectiveCreateSectionController || (() => new SectionController());
+		const root = toolkitElement;
+		// `runtime.createSectionController` is `unknown` on the runtime config, so
+		// the host's factory is narrowed here instead of being passed straight
+		// through to the toolkit's loosely typed property.
+		const hostFactory = effectiveCreateSectionController;
+		const factory: () => unknown =
+			typeof hostFactory === "function"
+				? (hostFactory as () => unknown)
+				: () => new SectionController();
+		const commit = (reason: "navigate" | "teardown") => {
+			commitPendingSessions(root, { reason });
+		};
+		const register = (controller: unknown) => {
+			(
+				controller as {
+					setPendingSessionCommit?: (fn: (() => void) | null) => void;
+				} | null
+			)?.setPendingSessionCommit?.(() => commit("navigate"));
+		};
+		toolkitElement.createSectionController = () => {
+			commit("teardown");
+			const controller = factory();
+			register(controller);
+			return controller;
+		};
+
+		// The controller the toolkit has already built, if any. Tried
+		// synchronously first, then polled: it appears asynchronously, and this
+		// effect re-runs whenever the toolkit element is rebound, so the wait is
+		// deliberately not cancelled by a re-run.
+		register(resolveSectionController());
+		void (async () => {
+			register(await waitForSectionController(10_000));
+		})();
+	});
+
+	// The page going away removes nothing from the DOM, so no teardown seam fires.
+	$effect(() => {
+		if (typeof window === "undefined") return;
+		const root = toolkitElement;
+		if (!root) return;
+		return bindPageLifecycleCommit({ root: () => root });
 	});
 
 	// Svelte 5 compiles `<custom-element onCamelCase={fn}>` as

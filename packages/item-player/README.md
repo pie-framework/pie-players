@@ -189,6 +189,11 @@ These are set via JavaScript, not HTML attributes.
   Existing player inputs such as `env`, `strategy`, `loaderOptions`, `config`,
   and `session` remain top-level player properties.
 
+  A host-supplied `backend.delivery.client` receives
+  `context.requestOptions.keepalive` on the unload-path save and has to forward
+  it to `fetch`. Without that the save is an ordinary request the browser may
+  drop as the document goes away.
+
 ## Methods
 
 - `provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>`
@@ -206,12 +211,20 @@ These are set via JavaScript, not HTML attributes.
 - `score(options?): Promise<unknown>` performs server-backed scoring through
   `backend.delivery`. This is intentionally separate from local
   `provideScore()`.
+- `commitPendingElementSessions(): void` commits every mounted element's pending
+  `session-changed` now. A host that unmounts the player itself calls this
+  first: the player's own destroy runs after the element is detached, so the
+  event it produces reaches the player element but not `document`.
 
 ## Events
 
 - `load-complete`: emitted when PIE elements finish loading.
 - `session-changed`: `{ session, ... }`. Emitted when the student interacts and
-  session data changes.
+  session data changes. A commit at a teardown, navigation or page-hidden seam
+  carries `detail.sessionCommitReason` (`"teardown" | "navigate" |
+  "page-hidden"`). A host that re-pushes `config` in response to this event
+  should ignore a commit, since the commit exists to report a response the host
+  is about to lose rather than to request a reload.
 - `player-error`: `{ code?, message?, stage?, strategy?, mode? }`. Error event,
   for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
 - `model-updated`: emitted when a PIE element model is updated.

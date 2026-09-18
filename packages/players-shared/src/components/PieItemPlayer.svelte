@@ -42,6 +42,10 @@
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
   import { resolveInstrumentationProvider } from "../pie/instrumentation-provider-resolution.js";
   import { findPieController } from "../pie/scoring.js";
+  import {
+    noteSessionBaseline,
+    noteSessionObserved,
+  } from "../pie/session-commit.js";
   import type { AuthoringEnv } from "../pie/types.js";
   import { BundleType } from "../pie/types.js";
   import { updatePieElements } from "../pie/updates.js";
@@ -610,6 +614,35 @@
   // Track if we've initialized (to avoid double-initialization)
   let initialized = $state(false);
 
+  /**
+   * Fold an element's own session record into this component's session array.
+   *
+   * `updatePieElements` hands each element the array entry itself, so an element
+   * that mutates in place needs nothing here. One that assigns a fresh object
+   * breaks that aliasing, and the commit sweep's detail is then the only place
+   * the response exists.
+   */
+  function mergeElementSessionDetail(detail: unknown): void {
+    if (!detail || typeof detail !== "object") return;
+    const incoming = (detail as { session?: unknown }).session;
+    if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+      return;
+    }
+    const record = incoming as Record<string, unknown>;
+    // A container (`{ id, data }`) is this player's own shape, already merged.
+    if (Array.isArray(record.data)) return;
+    const entryId = typeof record.id === "string" ? record.id : "";
+    if (!entryId) return;
+    const existing = session.find(
+      (entry: any) => entry && typeof entry === "object" && entry.id === entryId
+    );
+    if (existing) {
+      Object.assign(existing, record);
+      return;
+    }
+    session.push({ ...record });
+  }
+
   // Set up session-changed listener after DOM is ready
   let sessionListenerAttached = $state(false);
   let detachSessionChangedListener: (() => void) | null = $state(null);
@@ -761,6 +794,11 @@
               onElementSessionUpdate
             );
           }
+
+          // A restored response the learner has not touched is not a change.
+          // Seeding here is what lets the commit sweep tell the two apart
+          // without knowing any element's session schema.
+          noteSessionBaseline(rootElement ?? undefined);
         }
 
         initialized = true;
@@ -840,6 +878,18 @@
                 customEvent.detail
               );
 
+              // The commit sweep reads the element's session and announces it on
+              // the element's behalf, so the payload it carries is the one the
+              // host has to receive. An element that replaces its session object
+              // instead of mutating it leaves this component's array entry
+              // stale, and forwarding the array alone would then drop the
+              // committed response with no event.
+              mergeElementSessionDetail(customEvent.detail);
+
+              // Record what the host is about to be told, so a later commit can
+              // tell a pending response from one already announced.
+              noteSessionObserved(event.target);
+
               // Forward event detail with the latest in-memory session snapshot.
               // PIE elements often emit metadata-only details, while the actual response
               // array is mutated in-place on the `session` prop.
@@ -848,14 +898,23 @@
                 session: { id: "", data: session },
               };
 
-              // Ignore duplicate payloads that can occur during model wiring.
+              // Ignore duplicate payloads that can occur during model wiring. A
+              // commit is exempt: it is the seam of last resort, and a host that
+              // dropped the element's earlier event has no other chance to see
+              // this response.
+              const isCommit = Boolean(
+                customEvent.detail?.sessionCommitReason
+              );
               let detailSignature = "";
               try {
                 detailSignature = JSON.stringify(forwardedDetail);
               } catch {
                 detailSignature = String(customEvent.detail);
               }
-              if (detailSignature === lastDispatchedSessionDetailSignature) {
+              if (
+                !isCommit &&
+                detailSignature === lastDispatchedSessionDetailSignature
+              ) {
                 return;
               }
               lastDispatchedSessionDetailSignature = detailSignature;
@@ -914,6 +973,12 @@
     });
   });
 
+  // No session commit here. This component is the one a `{#key}` swap replaces
+  // on a config change, and a commit routes through the listener below into the
+  // owning player's session state - a write landing in the middle of the swap,
+  // which remounted the incoming renderer and raced its `load-complete`. The
+  // owning player commits before it changes the config instead, while these
+  // elements are still mounted and connected.
   onDestroy(() => {
     try {
       detachSessionChangedListener?.();

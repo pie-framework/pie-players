@@ -482,6 +482,21 @@ export interface SectionControllerHandle {
 		config: SectionSessionPersistenceConfig,
 	): void | Promise<void>;
 	/**
+	 * Register a commit for the section's pending element sessions.
+	 *
+	 * A delivery element coalesces its `session-changed` dispatch, so a response
+	 * can still be pending when the controller reaches a boundary that reads or
+	 * discards the session - `updateInput()`, `navigateToItem()`, `persist()`.
+	 * The controller is DOM-free, so the owner of the section's DOM supplies the
+	 * commit and the controller calls it before those boundaries.
+	 *
+	 * The player that mounts the section registers this on every controller it
+	 * creates. A host-built controller that leaves it unimplemented keeps the
+	 * behaviour it had before the hook existed, and loses a pending response at
+	 * those boundaries.
+	 */
+	setPendingSessionCommit?(commit: (() => void) | null): void;
+	/**
 	 * Record one Try for an item: derive correctness from the element outcomes,
 	 * increment the Try count, and reveal feedback if the item's resolved
 	 * formative policy says so.

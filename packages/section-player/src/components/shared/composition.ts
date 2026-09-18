@@ -4,10 +4,14 @@ import type {
 	SectionCompositionModel,
 } from "../../controllers/types.js";
 
-export const EMPTY_ITEM_SESSION = { id: "", data: [] } as Record<
-	string,
-	unknown
->;
+// One object stands in for every item that has no session yet, so it is frozen:
+// a consumer that writes into its own session container — `<pie-item-player>`
+// keeps that container live — would otherwise leak one item's entries into
+// every other item's.
+export const EMPTY_ITEM_SESSION = Object.freeze({
+	id: "",
+	data: Object.freeze([]),
+}) as Record<string, unknown>;
 
 export const EMPTY_COMPOSITION: SectionCompositionModel = {
 	section: null,

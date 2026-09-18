@@ -135,6 +135,33 @@ The new player uses `ItemController` to:
 - Deduplicate `session-changed` events (metadata-only events are filtered out)
 - Prevent response data from being overwritten by structural re-renders
 
+### `detail.session` is the authoritative read
+
+`ItemController` owns the live container and publishes it on `session-changed`
+as `detail.session`. That is the read to port to.
+
+`<pie-player>` worked the other way round: `findOrAddSession` pushed each
+element's entry into the host's own `session.data` array and the element mutated
+that entry in place, so `player.session.data[0].value` was live inside a
+`session-changed` handler. `<pie-item-player>` keeps that read working — it
+projects each committed session onto the container the host passed, seeding the
+`{ id }` entries the legacy player seeded — so a host that indexes
+`player.session.data[0]` still finds its entry.
+
+```js
+player.addEventListener("session-changed", (event) => {
+  const data = event.detail?.session?.data ?? [];   // authoritative
+});
+```
+
+Two limits on the projection. A frozen container, or one object shared as a
+default across items, is left untouched: the player will not write one item's
+entries into state another item also reads. And inside `<pie-section-player>`
+each item player is handed a per-render copy, because the composition's own
+session object is section state that `persist()` saves — a host reading a
+section's item responses reads them from the controller, not off the item
+player's property.
+
 ## Delivery host compatibility
 
 The current player keeps a small set of legacy delivery-host aliases where they

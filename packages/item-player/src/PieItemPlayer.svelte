@@ -104,9 +104,12 @@
 		assertElementPackagesAllowed,
 		assertPieConfigContract,
 		assertRegistered,
+		bindPageLifecycleCommit,
+		commitPendingSessions,
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
+		ensureHostSessionEntries,
 		ensureRegistered,
 		ItemController,
 		isGlobalDebugEnabled,
@@ -117,6 +120,7 @@
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
+		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
 		attachInstrumentationEventBridge,
 		ITEM_INSTRUMENTATION_EVENT_MAP,
@@ -134,13 +138,16 @@
 		createPieI18n,
 		DEFAULT_LOCALE,
 	} from "@pie-players/pie-players-shared/i18n";
-	import { tick, untrack } from "svelte";
+	import { onDestroy, tick, untrack } from "svelte";
 	// The shared content stylesheet is NOT imported here. In this package's
 	// library build, a plain CSS import is extracted to dist/assets/*.css, which
 	// nothing loads at runtime and which the exports map does not expose — a
 	// silent no-op that left authored passage markup unstyled. The entry points
 	// install it explicitly instead; see pie-item-player.ts.
-	import { resolveSessionChangedForwarding } from "./session-forwarding.js";
+	import {
+		asCommittedDetail,
+		resolveSessionChangedForwarding,
+	} from "./session-forwarding.js";
 
 	type ItemSession = {
 		id: string;
@@ -398,6 +405,95 @@
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
 	let latestLoadRequestToken = 0;
+	// The custom element itself, resolved while the player is still connected.
+	// `hostElement` is the inner `<div>`; by the time a removal reaches
+	// `onDestroy` that div can already be detached from the custom element, and
+	// an event dispatched on it then reaches nobody.
+	let customElementHost: HTMLElement | null = null;
+	// Set for the duration of the teardown commit, so the events it produces go
+	// out from the custom element rather than the div being torn down.
+	let playerEventTarget: HTMLElement | null = null;
+
+	/** The nearest custom element above the player's root div. */
+	function resolveCustomElementHost(node: HTMLElement): HTMLElement | null {
+		let current: HTMLElement | null = node.parentElement;
+		while (current) {
+			if (current.tagName.includes("-")) return current;
+			current = current.parentElement;
+		}
+		return null;
+	}
+
+	$effect(() => {
+		if (!hostElement || customElementHost) return;
+		customElementHost = resolveCustomElementHost(hostElement);
+	});
+
+	/**
+	 * Commit without routing through the renderer's forwarding listener.
+	 *
+	 * By the time the player is being destroyed the renderer has already dropped
+	 * that listener, so a committed event reaches the element's parent and stops
+	 * there. Capturing on the host for the duration of the sweep picks each
+	 * element's event up directly and puts it through `handleSessionChanged`
+	 * with the session the renderer would have merged in.
+	 */
+	function commitWithDirectForwarding(reason: "teardown"): void {
+		const host = hostElement;
+		if (!host) return;
+		const captured: unknown[] = [];
+		const capture = (event: Event) => {
+			event.stopPropagation();
+			// Stopping here is what keeps one canonical event per change, and it
+			// also takes the renderer's listener out of the path - so the session
+			// it would have merged in is read off the element here instead.
+			// The commit marker is applied to this snapshot rather than left to
+			// the sweep's own capture listener: that one stamps the detail object
+			// this clones from, and both listeners sit on this same node.
+			captured.push(
+				asCommittedDetail((event as CustomEvent).detail, event.target, reason),
+			);
+		};
+		host.addEventListener("session-changed", capture, true);
+		try {
+			commitPendingSessions(host, { reason, logger });
+		} finally {
+			host.removeEventListener("session-changed", capture, true);
+		}
+		playerEventTarget = customElementHost ?? hostElement;
+		try {
+			for (const detail of captured) {
+				try {
+					handleSessionChanged(detail);
+				} catch (errorValue) {
+					logger.warn(
+						"[pie-item-player] forwarding a committed session failed",
+						errorValue,
+					);
+				}
+			}
+		} finally {
+			playerEventTarget = null;
+		}
+	}
+
+	// A host removing `<pie-item-player>` outright. Registered before the
+	// orchestrator because Svelte destroys user effects in creation order, and
+	// the orchestrator's teardown flushes the pending save: a commit registered
+	// after it would write its session into a save that had already gone out.
+	//
+	// The host element is detached by the time a custom element learns it was
+	// removed, so this event reaches the player's own backend save and any
+	// listener bound to the element - not `document`. A host that unmounts the
+	// player and persists off a `document` listener calls the element's
+	// `commitPendingElementSessions()` before unmounting.
+	onDestroy(() => {
+		try {
+			commitWithDirectForwarding("teardown");
+		} catch (errorValue) {
+			logger.warn("[pie-item-player] session commit on teardown failed", errorValue);
+		}
+	});
 
 	// Backend delivery and authoring is a state machine of its own — load and
 	// model signatures, request tokens, the autosave debounce, the config and
@@ -889,6 +985,13 @@
 			return true;
 		}
 
+		// Past the no-op guard, so this call really does replace the rendered
+		// elements. Commit while they are still mounted and connected: a response
+		// still inside an element's debounce window reaches the host, and the
+		// resulting session write lands before the renderer is torn down rather
+		// than during it.
+		commitPendingSessions(hostElement, { reason: "navigate", logger });
+
 		const requestToken = beginLoadRequest();
 		const commitIfCurrent = (commit: () => void): boolean => {
 			if (!isCurrentLoadRequest(requestToken)) return false;
@@ -1235,8 +1338,46 @@
 		});
 		// Dispatch from the custom element host so direct listeners on <pie-item-player>
 		// receive updates (item-demos attaches listeners on the element itself).
-		hostElement?.dispatchEvent(newEvent);
+		(playerEventTarget ?? hostElement)?.dispatchEvent(newEvent);
 	};
+
+	// `<pie-player>` kept the host's `session` property live, and hosts read the
+	// response off it. `ItemController` owns the session here, so the property is
+	// kept current by projecting onto it: one direction, controller to host, and
+	// before the event, so a host reading the property inside its own
+	// `session-changed` handler sees the response. A `session` passed as a JSON
+	// attribute has no object to project onto and is skipped.
+	function publishSessionToHostProp(nextSession: unknown): void {
+		try {
+			projectSessionIntoHostContainer(session, nextSession);
+		} catch (error) {
+			logger.warn(
+				"[pie-item-player] could not project the session onto the host container",
+				error,
+			);
+		}
+	}
+
+	// The other half of the legacy contract: `findOrAddSession` created an entry
+	// per model as the item rendered, so `data[0]` existed before the learner
+	// answered.
+	function seedHostSessionEntriesForItem(): void {
+		const models = (itemConfig?.models ?? []) as Array<{ id?: unknown }>;
+		const ids = models
+			.map((model) => (typeof model?.id === "string" ? model.id : ""))
+			.filter((id) => id.length > 0);
+		if (ids.length === 0) {
+			return;
+		}
+		try {
+			ensureHostSessionEntries(session, ids);
+		} catch (error) {
+			logger.warn(
+				"[pie-item-player] could not seed host session entries",
+				error,
+			);
+		}
+	}
 
 	function currentSessionContainer(): { id: string; data: unknown[] } {
 		const normalized = normalizeItemSessionContainer(parseSessionProp(effectiveSession));
@@ -1245,6 +1386,28 @@
 		}
 		return sessionController.getSession() as { id: string; data: unknown[] };
 	}
+
+	// The seams above only fire when something replaces or removes the player.
+	// Closing the tab, navigating away or an OS reclaiming a backgrounded tab
+	// removes nothing, so the commit has to hang off the page lifecycle as well.
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		return bindPageLifecycleCommit({
+			root: () => localHost,
+			onHidden: () => {
+				// The session is snapshotted synchronously here; the request itself
+				// goes out one queue turn later, which `keepalive` is what makes
+				// survivable - it is allowed to outlive the document. The built-in
+				// client module is already resolved by then, since the load went
+				// through it. A host `auth.getToken()` is the one unbounded hop on
+				// this path, and it belongs to the host.
+				backendOrchestrator.flushPendingSave({ keepalive: true });
+			},
+			logger,
+		});
+	});
 
 	/**
 	* The DOM half of a delivery model refresh: the orchestrator decides whether
@@ -1278,6 +1441,17 @@
 
 	export async function loadFromBackend(scope: "delivery" | "authoring" = "delivery"): Promise<void> {
 		return backendOrchestrator.load(scope);
+	}
+
+	/**
+	 * Commit every mounted element's pending `session-changed` now.
+	 *
+	 * For a host that unmounts the player itself: called while the player is
+	 * still in the document, the events reach a `document`-level listener, which
+	 * the player's own teardown cannot do.
+	 */
+	export function commitPendingElementSessions(): void {
+		commitPendingSessions(hostElement, { reason: "teardown", logger });
 	}
 
 	export async function saveSession(): Promise<void> {
@@ -1425,6 +1599,7 @@
 			return;
 		}
 		sessionSignature = nextSignature;
+		publishSessionToHostProp(merged);
 		handlePlayerEvent(new CustomEvent("session-changed", { detail: { session: merged } }));
 	};
 
@@ -1450,6 +1625,7 @@
 			});
 			sessionSignature = JSON.stringify(nextSession);
 			sessionRevision += 1;
+			publishSessionToHostProp(nextSession);
 			handlePlayerEvent(
 				new CustomEvent("session-changed", {
 					detail: { ...forwarding.detail, session: nextSession },
@@ -1522,8 +1698,10 @@
 					onDeleteImage={effectiveOnDeleteImage ?? undefined}
 					onInsertSound={effectiveOnInsertSound ?? undefined}
 					onDeleteSound={effectiveOnDeleteSound ?? undefined}
-					onLoadComplete={(detail: unknown) =>
-						handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
+					onLoadComplete={(detail: unknown) => {
+						seedHostSessionEntriesForItem();
+						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
+					}}
 					onPlayerError={(detail: unknown) =>
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),

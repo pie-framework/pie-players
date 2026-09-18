@@ -98,8 +98,11 @@ export type {
 	NormalizedItemSessionChange,
 } from "./item-session-contract.js";
 export {
+	ensureHostSessionEntries,
+	hasLearnerResponse,
 	hasResponseValue,
 	normalizeItemSessionChange,
+	projectSessionIntoHostContainer,
 } from "./item-session-contract.js";
 export type {
 	ItemSessionContainer,
@@ -109,6 +112,19 @@ export {
 	MemoryItemSessionStorage,
 	SessionStorageItemSessionStorage,
 } from "./item-controller-storage.js";
+export {
+	SESSION_COMMIT_METHOD,
+	bindPageLifecycleCommit,
+	commitPendingSessions,
+	noteSessionBaseline,
+	noteSessionObserved,
+} from "./session-commit.js";
+export type {
+	BindPageLifecycleCommitOptions,
+	CommitPendingSessionsOptions,
+	CommitPendingSessionsResult,
+	SessionCommitReason,
+} from "./session-commit.js";
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";

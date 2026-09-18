@@ -178,22 +178,32 @@ export async function modelFromDeliveryBackend(
 export async function saveToDeliveryBackend(
 	backend: BackendConfig,
 	context: BackendDeliverySessionContext,
+	options?: { keepalive?: boolean },
 ): Promise<unknown> {
 	const delivery = getDeliveryBackend(backend);
 	if (!delivery) {
 		throw new Error("Delivery backend is not configured.");
 	}
+	const keepalive = options?.keepalive === true;
+	const requestOptions = keepalive
+		? { ...(delivery.options ?? {}), keepalive: true }
+		: delivery.options;
 	if (typeof delivery.client?.saveSession === "function") {
 		return delivery.client.saveSession({
 			...context,
-			requestOptions: delivery.options,
+			requestOptions,
 		});
 	}
 	const { callPieApiDeliverySave } = await import("./pie-api-client.js");
-	return callPieApiDeliverySave(delivery, backend.auth, {
-		...context,
-		requestOptions: delivery.options,
-	});
+	return callPieApiDeliverySave(
+		delivery,
+		backend.auth,
+		{
+			...context,
+			requestOptions,
+		},
+		{ keepalive },
+	);
 }
 
 export async function scoreWithDeliveryBackend(

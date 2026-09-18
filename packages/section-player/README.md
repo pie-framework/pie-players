@@ -908,6 +908,36 @@ await controller?.updateItemSession?.("q1", {
 The same controller snapshot is what the persistence strategy saves/loads.
 When a controller is reused for the same `sectionId`/`attemptId`, `updateInput()` refreshes composition input while preserving in-memory section session data.
 
+### Commit at a section boundary
+
+A delivery element coalesces its `session-changed` dispatch, so a response the
+learner has finished entering can still be pending when the section moves. The
+controller commits pending element sessions before item navigation, before
+`updateInput()` snapshots the session for a section swap, and before `persist()`.
+The player also commits when an item shell tears down and when the page goes
+hidden.
+
+The commit reaches the controller, and the controller's own
+`PIE_ITEM_SESSION_CHANGED_EVENT` is what reaches a host. A raw `session-changed`
+does not leave a section: `<pie-item-shell>` stops it and re-dispatches the
+normalized event, so a host listening on `document` for `session-changed`
+receives nothing from inside a section player, before this change or after it.
+Host code persists from the controller's events or from its session snapshot.
+
+Navigation inside a section keeps every item mounted, so nothing is discarded
+and the element's own debounce would complete on its own. The commit still runs
+there because the response belongs to the item being left: a host that persists
+on the navigation event, or a `persist()` that follows it, would otherwise
+snapshot a session the learner had already changed.
+
+`SectionController` stays DOM-free; the player supplies the commit through
+`setPendingSessionCommit()`, declared on `SectionControllerHandle`. The player
+registers it both on the controllers it creates and on one the toolkit has
+already built, since the first section's controller usually exists before the
+player can override the factory. A host-built controller that leaves the method
+unimplemented keeps the behaviour it had before the hook existed, and loses a
+pending response at those boundaries.
+
 ## Content trust boundary
 
 Section-player layouts embed `<pie-item-player>` elements for each item.

@@ -500,4 +500,56 @@ describe("section player view state", () => {
 			}),
 		);
 	});
+	// `<pie-item-player>` keeps its host's session container live, so what the
+	// section hands it must not be the section's own state or the shared empty
+	// default — one item's entries would otherwise land in another item's session,
+	// and in what `persist()` saves.
+	test("hands each item player a copy of the item session", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const { EMPTY_ITEM_SESSION } = await import(
+			"../src/components/shared/composition"
+		);
+		const sessionInComposition = {
+			id: "session-1",
+			data: [{ id: "1", element: "pie-multiple-choice", value: ["A"] }],
+		};
+		const item = { id: "item-1", config: {} } as any;
+		const compositionModel = {
+			itemSessions: {},
+			itemViewModels: [
+				{ itemId: "item-1", canonicalItemId: "item-1", item, session: sessionInComposition },
+			],
+		} as any;
+		const params = getItemPlayerParams({
+			item,
+			compositionModel,
+			resolvedPlayerEnv: { mode: "gather", role: "student" },
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "iife",
+		});
+
+		expect(params.session).toEqual(sessionInComposition);
+		expect(params.session).not.toBe(sessionInComposition);
+		const handedToPlayer = params.session?.data as any[];
+		expect(handedToPlayer).not.toBe(sessionInComposition.data);
+		handedToPlayer[0].value = ["B"];
+		handedToPlayer.push({ id: "2" });
+		expect(sessionInComposition.data).toEqual([
+			{ id: "1", element: "pie-multiple-choice", value: ["A"] },
+		]);
+
+		const withoutSession = getItemPlayerParams({
+			item: { id: "item-2", config: {} } as any,
+			compositionModel: { itemSessions: {}, itemViewModels: [] } as any,
+			resolvedPlayerEnv: { mode: "gather", role: "student" },
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "iife",
+		});
+		expect(withoutSession.session).not.toBe(EMPTY_ITEM_SESSION);
+		expect(withoutSession.session).toEqual({ id: "", data: [] });
+		expect(Object.isFrozen(EMPTY_ITEM_SESSION)).toBe(true);
+	});
+
 });

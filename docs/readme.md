@@ -32,6 +32,8 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 - [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
 - [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
 - [`architecture/types-and-utilities-contract.md`](./architecture/types-and-utilities-contract.md) - Shared contracts and utility expectations
+- [`architecture/instrumentation-providers.md`](./architecture/instrumentation-providers.md) - Design note for provider readiness, New Relic agent detection, and the conformance proof that the contract is not vendor-shaped; `trackPageActions` stays the only switch that sends
+- [`architecture/instrumentation-providers-implementation-plan.md`](./architecture/instrumentation-providers-implementation-plan.md) - Slices, evidence gates, and release rules for that work
 
 ## Item Player
 

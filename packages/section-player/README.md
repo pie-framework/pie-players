@@ -98,7 +98,8 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 - `item-selected` — item navigation within the current section.
 - `item-session-data-changed` / `item-session-meta-changed` — per-item
   session updates the persistence layer should observe.
-- `content-loaded` — passage / item / rubric finished loading.
+- `content-loaded` — passage / item / rubric finished loading. Carries
+  `contentKind`, `itemId`, and `canonicalItemId`.
 - `section-loading-complete` — every renderable in the section finished
   loading.
 - `section-items-complete-changed` — aggregate completion flip.
@@ -118,6 +119,15 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
   playback policy, so it is advisory from here.
 - `timed-media-invalid` — authored `timedMedia` that cannot be delivered; the
   section renders without cue behavior.
+
+Item-scoped events carry both id forms, and both are always populated.
+`itemId` is the bare `item.id` — the form the map returned by
+`getItemSessionsByItemId()` is keyed by, and the form `applySession` expects.
+`canonicalItemId` is that item's adapter identifier, and falls back to `itemId`
+when the section was not built from an adapter or no adapter ref matches it.
+Correlate with formative policy and `runtime.player.resolveBackend` by
+`canonicalItemId`; reach the session by `itemId`. `content-loaded` and
+`item-player-error` both carry the pair.
 
 ### Formative delivery
 

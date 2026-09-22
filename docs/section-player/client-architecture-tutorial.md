@@ -840,7 +840,8 @@ const unsub = coordinator.subscribeItemEvents({
         // event.currentItemId, event.previousItemId, event.itemIndex
         break;
       case 'content-loaded':
-        // event.itemId, event.contentKind ('item'|'passage'|'rubric')
+        // event.itemId, event.canonicalItemId,
+        // event.contentKind ('item'|'passage'|'rubric')
         break;
       case 'item-session-meta-changed':
         // event.itemId — metadata (e.g. flagged state) changed

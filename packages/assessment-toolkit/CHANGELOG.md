@@ -1,5 +1,18 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.74
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.74
+  - @pie-players/pie-calculator-cortex@0.3.74
+  - @pie-players/pie-calculator-desmos@0.3.74
+  - @pie-players/pie-calculator-geogebra@0.3.74
+  - @pie-players/pie-context@0.3.74
+  - @pie-players/pie-players-shared@0.3.74
+  - @pie-players/pie-tts@0.3.74
+  - @pie-players/tts-client-server@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

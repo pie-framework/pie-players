@@ -1,5 +1,9 @@
 # @pie-players/pie-players-shared
 
+## 0.3.74
+
+No changes in this release.
+
 ## 0.3.73
 
 ### Patch Changes

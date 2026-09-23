@@ -1,5 +1,16 @@
 # @pie-players/pie-section-player
 
+## 0.3.74
+
+### Patch Changes
+
+- Updated dependencies [69f0b76]
+  - @pie-players/pie-item-player@0.3.74
+  - @pie-players/pie-assessment-toolkit@0.3.74
+  - @pie-players/pie-default-tool-loaders@0.3.74
+  - @pie-players/pie-context@0.3.74
+  - @pie-players/pie-players-shared@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

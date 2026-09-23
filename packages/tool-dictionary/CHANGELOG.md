@@ -1,5 +1,11 @@
 # @pie-players/pie-tool-dictionary
 
+## 0.3.74
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

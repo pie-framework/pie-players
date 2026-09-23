@@ -36,9 +36,11 @@ Importing `dist/index.js` is a side-effecting module load, not an API call:
    (`{"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3", ...}`).
 2. It sequentially imports the math-rendering module and the elements bundle,
    registers the raw PITS constructors under the configured versioned tags,
-   then imports `pie-item-player.js`, each import with retry/backoff. That order
-   matters: `pie-item-player.js` runs its readiness assertion (below) against
-   whatever is already registered, so it must load last.
+   then imports `pie-item-player.js` unless the page already registered
+   `pie-item-player` ([below](#the-builds-own-item-player)), each import with
+   retry/backoff. That order matters: `pie-item-player.js` runs its readiness
+   assertion (below) against whatever is already registered, so it must load
+   last.
 
 Nothing else is exposed to the consumer — there's no explicit "register"
 call. Once the module has loaded, `<pie-item-player strategy="preloaded">`
@@ -114,16 +116,45 @@ patch version than what actually got bundled, the player rewrites those
 specs to whatever `window.PIE_PRELOADED_ELEMENTS` reports before asserting
 (`normalizePreloadedElementVersions`, `PieItemPlayer.svelte:595`).
 
+## The build's own item player
+
+A build carries its own copy of `@pie-players/pie-item-player` and registers it
+as `pie-item-player` when that tag is free, so on a page holding no other copy
+the markup above renders through it. A page that already holds one — anything
+importing `@pie-players/pie-section-player` — renders the build's elements
+through that copy, and the entry skips fetching its own. Whichever copy
+registers `pie-item-player` first renders every item for the life of the
+document; a full page load resets it.
+
+`definePieItemPlayer` in `packages/item-player` is the only registration path,
+and it leaves an already-registered tag alone. The component declares no
+`svelte:options customElement` tag, because Svelte's own define runs at module
+scope unguarded: a second copy threw `NotSupportedError` and rejected the
+build's initialization.
+
+The build's copy takes no tag of its own: multiple-choice, EBSR and passage find
+their player with `closest('pie-player') || closest('pie-item-player')` to read
+`base-heading-level` and `include-sr-heading`, and the theme's font scaling
+targets `pie-item-player` by tag name, so the player has to answer to
+`pie-item-player`.
+
 ## Section player
 
-Section player renders each item through `<pie-item-player>` and maps its own
-`player-type` straight onto the item player's `strategy` (`preloaded` →
-`preloaded`), so `preloaded` is a supported section-player strategy today —
+Section player renders each item through `<pie-item-player>` and maps the
+host's `runtime.playerType` straight onto the item player's `strategy`
+(`preloaded` → `preloaded`), so `preloaded` is a supported section-player
+strategy today —
 see the mapping table in
 [`docs/item-player/loading-strategies.md`](../item-player/loading-strategies.md#section-player-integration).
 Section player's own pre-warm step (`warmupSectionElements`,
 `packages/section-player/src/components/shared/player-preload.ts:360`) calls
 the same `assertRegistered` for `strategy="preloaded"` that item-player uses.
+
+The pre-warm asserts tags derived from the authored `config.elements` specs and
+does not rewrite them from `window.PIE_PRELOADED_ELEMENTS` first, where a bare
+item player does, so a section whose content pins a different patch than the
+build fails the section-level assert. Authored content has to name the versions
+the build carries.
 
 What section player does **not** do is import
 `@pie-players/pie-preloaded-player` itself — that package has no

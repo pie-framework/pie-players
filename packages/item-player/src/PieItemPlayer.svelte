@@ -1,6 +1,11 @@
 <svelte:options
 	customElement={{
-		tag: "pie-item-player",
+		// No `tag`: `definePieItemPlayer` in pie-item-player.ts owns registration.
+		// Svelte calls `customElements.define` itself only when this option carries
+		// a tag, and that call is unguarded, so a second copy of this module in one
+		// document throws `NotSupportedError` and rejects the bundle that imported
+		// it. A generated `@pie-players/pie-preloaded-player` build is exactly that
+		// second copy.
 		// Keep light DOM so rendered assessment content can inherit required host/runtime styles.
 		shadow: "none",
 		props: {

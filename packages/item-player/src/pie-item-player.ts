@@ -1,6 +1,6 @@
 import PieItemPlayer from "./PieItemPlayer.svelte";
 import {
-	defineCustomElementSafely,
+	attemptCustomElementDefine,
 	initializeMathRendering,
 	installContentStyles,
 	auditContentStyles,
@@ -44,12 +44,34 @@ void ensureItemPlayerMathRenderingReady().catch((error) => {
 installContentStyles(contentStyles, "pie-item-player");
 auditContentStyles("pie-item-player");
 
-export function definePieItemPlayer(tagName = "pie-item-player") {
-	defineCustomElementSafely(
+// Named so `scripts/check-custom-elements.mjs` can read the tag from here.
+const PIE_ITEM_PLAYER_TAG = "pie-item-player";
+
+/**
+ * Registers the item player, under `pie-item-player` unless a host names
+ * another tag.
+ *
+ * This is the only registration path: `PieItemPlayer.svelte` declares no
+ * `customElement` tag, so the compiled component only exposes its
+ * custom-element class on `.element` and nothing reaches the registry until
+ * this runs. An already-registered tag is left alone, which is what lets a
+ * second copy of this package load into a document holding the first — a
+ * generated `@pie-players/pie-preloaded-player` build carries one — and leaves
+ * whichever copy registered first rendering every item.
+ *
+ * A custom tag falls back to a subclass once this copy's class holds the
+ * default one, because the browser refuses one constructor a second tag.
+ */
+export function definePieItemPlayer(tagName = PIE_ITEM_PLAYER_TAG): void {
+	const attempt = attemptCustomElementDefine(
 		tagName,
-		PieItemPlayer as unknown as CustomElementConstructor,
+		(PieItemPlayer as unknown as { element: CustomElementConstructor }).element,
 		"pie-item-player tagName",
+		{ allowWrappedFallback: true },
 	);
+	if (attempt.outcome === "error" || attempt.outcome === "wrapped-error") {
+		throw attempt.error;
+	}
 }
 
 definePieItemPlayer();

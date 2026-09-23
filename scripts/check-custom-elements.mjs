@@ -38,9 +38,27 @@ const listFiles = (dir, predicate) => {
 	return files;
 };
 
+// Components whose tag is declared by the package entry rather than by
+// `svelte:options`. Svelte's own `customElements.define` runs at module scope
+// and is unguarded, so a package shipped as a second copy into a page that
+// already holds it — a generated `@pie-players/pie-preloaded-player` build
+// carries `packages/item-player` — has to register from a function it controls.
+// The tag stays discoverable, and the inventory reads it from the entry.
+const ENTRY_DECLARED_TAGS = {
+	"packages/item-player/src/PieItemPlayer.svelte": {
+		entry: "packages/item-player/src/pie-item-player.ts",
+		tagPattern: /PIE_ITEM_PLAYER_TAG\s*=\s*["'`]([^"'`]+)["'`]/g,
+	},
+};
+
 const getTagsFromSvelteFile = (filePath) => {
-	const src = readText(filePath);
-	const tagRegex = /tag:\s*["'`]([^"'`]+)["'`]/g;
+	const entryDeclared = ENTRY_DECLARED_TAGS[rel(filePath)];
+	const src = readText(
+		entryDeclared ? path.join(ROOT, entryDeclared.entry) : filePath,
+	);
+	const tagRegex = entryDeclared
+		? new RegExp(entryDeclared.tagPattern)
+		: /tag:\s*["'`]([^"'`]+)["'`]/g;
 	const tags = [];
 	let match = tagRegex.exec(src);
 	while (match) {

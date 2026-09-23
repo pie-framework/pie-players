@@ -174,6 +174,6 @@ import "@pie-players/pie-item-player/components/item-session-debugger-element";
 
 ## Relationship to section player
 
-The section player (`@pie-players/pie-section-player`) orchestrates multiple items within QTI assessment sections. It renders each item via `<pie-item-player>`, passing the appropriate strategy, config, session, and environment. The section player's `player-type` attribute maps directly to the item player's `strategy`.
+The section player (`@pie-players/pie-section-player`) orchestrates multiple items within QTI assessment sections. It renders each item via `<pie-item-player>`, passing the appropriate strategy, config, session, and environment. Hosts select the strategy with `runtime.playerType` on the section-player element, which maps directly to the item player's `strategy`.
 
 For section-level concerns (navigation, layout, controller integration, passage and item composition), see the [section-player client guide](../section-player/client-architecture-tutorial.md).

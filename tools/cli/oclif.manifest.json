@@ -76,7 +76,7 @@
       "description": "Build a preloaded static package (optionally publish) and optionally generate a browser test project",
       "examples": [
         "$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/example.json --generateTestProject",
-        "$ bun run cli pie-packages:preloaded-player-build-and-test-package -e \"@pie-element/multiple-choice@11.4.3\" --publish --dry-run"
+        "$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/example.json --publish --dryRun"
       ],
       "flags": {
         "elementsFile": {
@@ -143,7 +143,7 @@
           "type": "option"
         },
         "publishTag": {
-          "description": "npm dist-tag for publish. Defaults to 'next' for prerelease versions and npm default for stable versions.",
+          "description": "npm dist-tag for publish. Defaults to the config file's set name, or 'latest' for the config that sets \"latest\": true.",
           "name": "publishTag",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -279,7 +279,7 @@
           "type": "option"
         },
         "publishTag": {
-          "description": "npm dist-tag for publish. Defaults to 'next' for prerelease versions and npm default for stable versions.",
+          "description": "npm dist-tag for publish. Defaults to the config file's set name, or 'latest' for the config that sets \"latest\": true.",
           "name": "publishTag",
           "hasDynamicHelp": false,
           "multiple": false,

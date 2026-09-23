@@ -52,6 +52,17 @@ describe("preloaded-player-build-and-test-package command", () => {
 		);
 	});
 
+	test("refuses to publish a build that has no config file to name it", async () => {
+		const command = new TestCommand([], {} as any);
+		command.flags = {
+			elements: "@pie-element/multiple-choice@1.0.0",
+			publish: true,
+			dryRun: true,
+		};
+		await expect(command.run()).rejects.toThrow("--publish needs -f/--elementsFile");
+		expect(command.buildCalls).toBe(0);
+	});
+
 	test("runs build and generate test-project orchestration", async () => {
 		const command = new TestCommand([], {} as any);
 		command.flags = {

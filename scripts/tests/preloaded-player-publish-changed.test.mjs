@@ -1,6 +1,32 @@
 import { describe, expect, test } from "bun:test";
 
-import { shouldRebuildAll } from "../preloaded-player/publish-changed.mjs";
+import {
+	shouldRebuildAll,
+	validateLatestConfig,
+} from "../preloaded-player/publish-changed.mjs";
+
+describe("validateLatestConfig", () => {
+	const config = (file, latest) => ({
+		file,
+		parsed: latest ? { latest: true, elements: [] } : [],
+	});
+
+	test("accepts exactly one config marked latest", () => {
+		expect(() =>
+			validateLatestConfig([config("star-0326.json", true), config("knowledge-checks.json")]),
+		).not.toThrow();
+	});
+
+	test("rejects a set of configs with none marked latest", () => {
+		expect(() => validateLatestConfig([config("knowledge-checks.json")])).toThrow("found none");
+	});
+
+	test("rejects two configs marked latest, naming both", () => {
+		expect(() =>
+			validateLatestConfig([config("a.json", true), config("b.json", true)]),
+		).toThrow("found a.json, b.json");
+	});
+});
 
 describe("shouldRebuildAll", () => {
 	test("rebuilds for a source change in anything every build bundles or runs", () => {

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import { BundleType, encodeElementPackageSpecs, makeUniqueTags, Status } from "@pie-players/pie-players-shared/pie";
 
@@ -14,11 +14,38 @@ export interface BuildStaticConfig {
 	elementTags?: Record<string, string>; // Package name -> authored base tag
 	iteration?: number;
 	loaderVersion?: string;
+	setName?: string; // Names a published version; local builds use the element hash
 	pitsBaseUrl?: string;
 	outputDir?: string;
 	overwriteBundle?: boolean;
 	publish?: boolean;
 	monorepoDir: string;
+}
+
+/** A published element set: the config it comes from, and the dist-tag it publishes under. */
+export interface ElementSet {
+	name: string;
+	distTag: string;
+}
+
+/** The name becomes both a semver prerelease identifier and an npm dist-tag. */
+const SET_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * Reads the element set a config file publishes. The set is named after the
+ * file, and publishes under that name, or under `latest` when the config sets
+ * `"latest": true`. A publish carries exactly one dist-tag, because npm's OIDC
+ * trusted publishing authorizes `npm publish` and not `npm dist-tag`.
+ */
+export async function readElementSet(elementsFile: string): Promise<ElementSet> {
+	const name = basename(elementsFile, ".json");
+	if (!SET_NAME_PATTERN.test(name)) {
+		throw new Error(
+			`Config file name "${name}" is not a valid element-set name: use lowercase letters, digits and hyphens, starting with a letter`,
+		);
+	}
+	const parsed = JSON.parse(await readFile(elementsFile, "utf-8"));
+	return { name, distTag: parsed?.latest === true ? "latest" : name };
 }
 
 const DEFAULT_PITS_BASE_URL = "https://proxy.pie-api.com";
@@ -56,18 +83,17 @@ async function resolveDefaultLoaderVersion(
 
 function generateVersionFromParts(
 	loaderVersion: string,
-	hash: string,
+	label: string,
 	iteration: number,
 ): string {
-	return `${loaderVersion}-${hash}.${iteration}`;
+	return `${loaderVersion}-${label}.${iteration}`;
 }
 
 async function fetchNextIterationFromNpm(
 	loaderVersion: string,
-	elements: string[],
+	setName: string,
 ): Promise<number> {
-	const hash = generateHash(elements);
-	const prefix = `${loaderVersion}-${hash}.`;
+	const prefix = `${loaderVersion}-${setName}.`;
 
 	const url = `https://registry.npmjs.org/${encodeURIComponent(STATIC_PACKAGE_NAME)}`;
 	const res = await fetch(url);
@@ -121,9 +147,9 @@ function fullSpecsByPackageName(elements: string[]): Record<string, string> {
 
 function generateVersion(config: BuildStaticConfig): string {
 	const loaderVersion = config.loaderVersion || "1.0.0";
-	const hash = generateHash(config.elements);
+	const label = config.setName ?? generateHash(config.elements);
 	const iteration = config.iteration || 1;
-	return generateVersionFromParts(loaderVersion, hash, iteration);
+	return generateVersionFromParts(loaderVersion, label, iteration);
 }
 
 async function sleep(ms: number) {
@@ -220,6 +246,7 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 		unpkg: "dist/index.js",
 		jsdelivr: "dist/index.js",
 		pie: {
+			...(config.setName ? { set: config.setName } : {}),
 			bundleHash: hash,
 			iteration: config.iteration || 1,
 			loaderVersion: config.loaderVersion || "1.0.0",
@@ -412,7 +439,7 @@ ${rows}
 ## Package metadata
 
 - Version: \`${version}\`
-- Bundle hash: \`${hash}\`
+${config.setName ? `- Element set: \`${config.setName}\`\n` : ""}- Bundle hash: \`${hash}\`
 - Loader version: \`${loaderVersion}\`
 - Iteration: \`${iteration}\`
 
@@ -550,9 +577,12 @@ export async function buildPreloadedPlayerStaticPackage(
 		!config.iteration &&
 		process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION === "true"
 	) {
+		if (!config.setName) {
+			throw new Error("Choosing the next iteration needs an element-set name");
+		}
 		config.iteration = await fetchNextIterationFromNpm(
 			config.loaderVersion,
-			config.elements,
+			config.setName,
 		);
 	}
 

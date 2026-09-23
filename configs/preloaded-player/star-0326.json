@@ -1,32 +1,35 @@
-[
-	{
-		"package": "@pie-element/categorize",
-		"version": "13.2.4",
-		"tag": "pie-element-categorize"
-	},
-	{
-		"package": "@pie-element/drag-in-the-blank",
-		"version": "10.2.5",
-		"tag": "drag-in-the-blank"
-	},
-	{
-		"package": "@pie-element/hotspot",
-		"version": "11.3.4",
-		"tag": "hotspot"
-	},
-	{
-		"package": "@pie-element/image-cloze-association",
-		"version": "10.3.3",
-		"tag": "image-cloze-association"
-	},
-	{
-		"package": "@pie-element/multiple-choice",
-		"version": "13.4.4",
-		"tag": "pie-element-multiple-choice"
-	},
-	{
-		"package": "@pie-element/mc-populated-blank",
-		"version": "0.3.0-next.9",
-		"tag": "mc-populated-blank"
-	}
-]
+{
+	"latest": true,
+	"elements": [
+		{
+			"package": "@pie-element/categorize",
+			"version": "13.2.4",
+			"tag": "pie-element-categorize"
+		},
+		{
+			"package": "@pie-element/drag-in-the-blank",
+			"version": "10.2.5",
+			"tag": "drag-in-the-blank"
+		},
+		{
+			"package": "@pie-element/hotspot",
+			"version": "11.3.4",
+			"tag": "hotspot"
+		},
+		{
+			"package": "@pie-element/image-cloze-association",
+			"version": "10.3.3",
+			"tag": "image-cloze-association"
+		},
+		{
+			"package": "@pie-element/multiple-choice",
+			"version": "13.4.4",
+			"tag": "pie-element-multiple-choice"
+		},
+		{
+			"package": "@pie-element/mc-populated-blank",
+			"version": "0.3.0-next.9",
+			"tag": "mc-populated-blank"
+		}
+	]
+}

@@ -14,7 +14,14 @@
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterEach, beforeAll, describe, expect, test } from "bun:test";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 
 import { scopeStylesheetCss } from "../src/ui/scope-css.js";
 
@@ -26,6 +33,12 @@ beforeAll(() => {
 		"undefined"
 	) {
 		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
 	}
 });
 

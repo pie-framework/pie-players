@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
@@ -13,6 +13,15 @@ const runtimeTag = "multiple-choice--version-11-4-3";
 let scratch: string;
 let server: Server;
 let origin: string;
+
+// Executable modules and player assets must come entirely from the tarball. The
+// existing math renderer fetches these two data files separately.
+const serveFromTarballOnly = (page: Page) =>
+  page.route("**/*", (route) => {
+    const url = route.request().url();
+    const mathMap = /^https:\/\/cdn\.jsdelivr\.net\/npm\/speech-rule-engine@4\.1\.2\/lib\/mathmaps\/(base|en)\.json$/;
+    return new URL(url).origin === origin || mathMap.test(url) ? route.continue() : route.abort();
+  });
 
 test.beforeAll(async () => {
   test.setTimeout(180_000);
@@ -45,7 +54,13 @@ test.beforeAll(async () => {
           <h1>Generated preloaded package</h1></html>`);
         return;
       }
-      const filename = resolve(served, `.${decodeURIComponent(pathname)}`);
+      // The build's files again under a second path, which the browser loads as
+      // separate modules: a second copy of the item player, as a page running
+      // the section player holds one.
+      const servedPath = pathname.startsWith("/host-copy/")
+        ? `/package/dist/${pathname.slice("/host-copy/".length)}`
+        : pathname;
+      const filename = resolve(served, `.${decodeURIComponent(servedPath)}`);
       if (!filename.startsWith(`${served}${sep}`)) {
         response.writeHead(404).end();
         return;
@@ -82,13 +97,7 @@ test("packed preloaded output registers authored tags, loads chunks, and records
     if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
     if (response.ok() && response.url().includes("/dist/chunks/")) loadedChunks.push(response.url());
   });
-  await page.route("**/*", (route) => {
-    const url = route.request().url();
-    // The existing math renderer fetches these data files separately. Executable
-    // modules and player assets must still come entirely from the tarball.
-    const mathMap = /^https:\/\/cdn\.jsdelivr\.net\/npm\/speech-rule-engine@4\.1\.2\/lib\/mathmaps\/(base|en)\.json$/;
-    return new URL(url).origin === origin || mathMap.test(url) ? route.continue() : route.abort();
-  });
+  await serveFromTarballOnly(page);
   await page.goto(origin, { waitUntil: "networkidle" });
   const readyAtImport = await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
@@ -147,6 +156,77 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["mars"]);
   expect(loadedChunks.length).toBeGreaterThan(0);
   expect(failedRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+});
+
+test("imports into a page whose own item player holds pie-item-player, and renders through that copy", async ({ page }) => {
+  const browserErrors: string[] = [];
+  const requested: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("request", (request) => requested.push(new URL(request.url()).pathname));
+  await serveFromTarballOnly(page);
+  await page.goto(origin, { waitUntil: "networkidle" });
+
+  // What a host running the section player presents: its own item player holds
+  // `pie-item-player` before the build loads.
+  const imported = await page.evaluate(async () => {
+    const hostCopy = "/host-copy/pie-item-player.js";
+    await import(hostCopy);
+    const hostPlayer = customElements.get("pie-item-player");
+    const loadStates: unknown[] = [];
+    document.addEventListener("PiePlayerLoadEvent", (event) => loadStates.push((event as CustomEvent).detail));
+    const entry = "/package/dist/index.js";
+    await import(entry);
+    return { loadStates, hostCopyKept: !!hostPlayer && customElements.get("pie-item-player") === hostPlayer };
+  });
+  expect(imported.loadStates).toEqual(["PIE-Fixed-Player-Load-Complete"]);
+  expect(imported.hostCopyKept).toBe(true);
+  // The build's own copy would only find the tag taken, so it is never fetched.
+  expect(requested).not.toContain("/package/dist/pie-item-player.js");
+
+  const authored = structuredClone(demo.item.config);
+  authored.elements = { [runtimeTag]: packageSpec };
+  authored.markup = `<${runtimeTag} id="2"></${runtimeTag}>`;
+  authored.models = authored.models.map((model) => ({ ...model, element: runtimeTag }));
+  await page.evaluate((config) => {
+    const player = document.createElement("pie-item-player") as any;
+    player.strategy = "preloaded";
+    player.config = config;
+    player.env = { mode: "gather", role: "student" };
+    player.session = (window as any).hostSession = { id: "host-copy-attempt", data: [] };
+    document.body.appendChild(player);
+  }, authored);
+  await expect(page.getByText("Which is the largest planet in our solar system?")).toBeVisible();
+  await expect(page.locator(runtimeTag)).toBeVisible();
+  await page.locator('input[type="radio"][value="jupiter"]').click();
+  await expect(page.locator('input[type="radio"][value="jupiter"]')).toBeChecked();
+  await expect.poll(() => page.evaluate(() => (window as any).hostSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["jupiter"]);
+  expect(browserErrors).toEqual([]);
+});
+
+test("a second item-player copy loading after the build leaves the build's copy registered", async ({ page }) => {
+  const browserErrors: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  await serveFromTarballOnly(page);
+  await page.goto(origin, { waitUntil: "networkidle" });
+
+  // A host that imports the build before the section player: the build's copy
+  // takes `pie-item-player`, and the section player's own copy loads after it.
+  const result = await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+    const buildPlayer = customElements.get("pie-item-player");
+    try {
+      const hostCopy = "/host-copy/pie-item-player.js";
+      await import(hostCopy);
+      return { message: "resolved", buildCopyKept: !!buildPlayer && customElements.get("pie-item-player") === buildPlayer };
+    } catch (error) {
+      return { message: error instanceof Error ? error.message : String(error), buildCopyKept: false };
+    }
+  });
+  expect(result).toEqual({ message: "resolved", buildCopyKept: true });
   expect(browserErrors).toEqual([]);
 });
 

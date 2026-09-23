@@ -329,7 +329,12 @@ await (async function initializePieItemPlayerStatic() {
 ${mathRenderingSetup}
     await importWithRetry('./${bundleFilename}', 4, 200);
     registerPreloadedElements();
-    await importWithRetry('./pie-item-player.js', 4, 200);
+    // A page that already registered \`pie-item-player\` — anything importing
+    // @pie-players/pie-section-player — renders these elements through that
+    // copy. This one would only find the tag taken, so it is not fetched.
+    if (!customElements.get('pie-item-player')) {
+      await importWithRetry('./pie-item-player.js', 4, 200);
+    }
     announceLoadState('PIE-Fixed-Player-Load-Complete');
   } catch (error) {
     try { console.error('[pie-preloaded-player] Initialization failed'); } catch {}
@@ -433,6 +438,8 @@ npm install @pie-players/pie-preloaded-player@${version}
 \`\`\`
 
 The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Use the base tag selected by each build config's \`tag\` field; the default is \`pie-<package basename>\`. The generated registrations carry the canonical version suffix.
+
+A page that already registered \`pie-item-player\` — anything importing \`@pie-players/pie-section-player\` — renders these elements through that copy, and this package skips loading its own.
 
 ## Attributes
 

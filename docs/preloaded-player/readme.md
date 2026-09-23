@@ -26,8 +26,8 @@ by the generator in
 - `dist/math-rendering.js` — `@pie-lib/math-rendering-module`, patched to drop
   an `eval(require)` call that doesn't survive bundling.
 - `dist/index.js` — the entry point actually imported by consumers (see below).
-- `package.json` with a `pie` metadata block (`bundleHash`, `iteration`,
-  `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
+- `package.json` with a `pie` metadata block (`set` on a published build,
+  `bundleHash`, `iteration`, `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
   `Window.PIE_PRELOADED_ELEMENTS`.
 
 Importing `dist/index.js` is a side-effecting module load, not an API call:
@@ -53,17 +53,36 @@ controllers left server-side, and preserves a previous host's registration.
 
 ## Version scheme
 
-`<loaderVersion>-<hash>.<iteration>`, e.g. `0.3.48-963a099.1`.
+`<loaderVersion>-<set>.<iteration>`, e.g. `0.3.74-star-0326.2`.
 
 - `loaderVersion` defaults to the current `packages/item-player` version
-  (`resolveDefaultLoaderVersion`, `fixed-static.ts:34`).
-- `hash` is a 7-char sha256 of the config's sorted `package@version` list
-  (`generateHash`, `fixed-static.ts:25`) — the content-address of that
-  element combination.
-- `iteration` auto-increments per unique hash: when publishing, the CLI sets
-  `PIE_PRELOADED_PLAYER_AUTO_ITERATION=true` and queries the npm registry for
-  the next free iteration for that hash (`preloaded-player-build-package.ts:168`);
-  local builds default to `1`.
+  (`resolveDefaultLoaderVersion`).
+- `set` is the config's file name: `configs/preloaded-player/star-0326.json`
+  publishes the `star-0326` set. `readElementSet` requires lowercase letters,
+  digits and hyphens, starting with a letter, because the name is both a semver
+  prerelease identifier and an npm dist-tag.
+- `iteration` auto-increments per set and loader version: when publishing, the
+  CLI sets `PIE_PRELOADED_PLAYER_AUTO_ITERATION=true` and queries the npm
+  registry for the next free iteration under the `<loaderVersion>-<set>.`
+  prefix.
+
+The iteration is a numeric identifier, so within one set and loader version,
+version order is publish order. The previous scheme,
+`<loaderVersion>-<hash>.<iteration>`, carried the element hash in that
+position, and a caret range resolved by how two hashes happened to spell, which
+installed an older build. Builds published under it stay installable; within a
+loader version both current set names sort above them.
+
+Sets are not comparable with each other, so a caret range is still unsafe:
+`^0.3.74-knowledge-checks.2` resolves to a `star-0326` build, which sorts
+after it. Consumers pin an exact version or install by dist-tag.
+
+Publishing needs `--elementsFile`, since the set name comes from the file. A
+local build carries the hash in place of the set, `<loaderVersion>-<hash>.1`.
+
+The hash stays the content address of the element combination: a 7-char sha256
+of the config's sorted `package@version` list (`generateHash`), published as
+`pie.bundleHash` beside `pie.set`.
 
 `publish-changed.mjs` enforces that no two configs share a hash
 (`validateUniqueCombinations`) — configs must be unique element combinations,
@@ -73,6 +92,17 @@ it selects `pie-<package basename>`. The generator uses the shared public
 `makeUniqueTags` transform to compute versioned registrations. Match the base
 name in authored content; the player only substitutes bundled versions on its
 runtime copy. It does not rename arbitrary authored tags or alter model IDs.
+
+### Dist-tags
+
+Each set publishes under its own name, so
+`@pie-players/pie-preloaded-player@knowledge-checks` installs the newest
+knowledge-checks build. The config that sets `"latest": true` publishes under
+`latest` in place of its name, which today is `star-0326`, and
+`publish-changed.mjs` requires exactly one such config. A publish carries one
+dist-tag because the workflow publishes through npm's OIDC trusted publishing,
+which authorizes `npm publish` and not `npm dist-tag`. `next`, the tag every
+build carried under the previous scheme, no longer moves.
 
 ## Local usage
 

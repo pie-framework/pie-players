@@ -6,7 +6,9 @@ import { Command, Flags } from "@oclif/core";
 
 import {
 	buildPreloadedPlayerStaticPackage,
+	type ElementSet,
 	parseElementsInput,
+	readElementSet,
 } from "../../utils/pie-packages/fixed-static.js";
 import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
 
@@ -59,7 +61,7 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		}),
 		publishTag: Flags.string({
 			description:
-				"npm dist-tag for publish. Defaults to 'next' for prerelease versions and npm default for stable versions.",
+				"npm dist-tag for publish. Defaults to the config file's set name, or 'latest' for the config that sets \"latest\": true.",
 		}),
 	};
 
@@ -68,6 +70,10 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		elements?: string,
 	): ReturnType<typeof parseElementsInput> {
 		return parseElementsInput(elementsFile, elements);
+	}
+
+	protected async resolveElementSet(elementsFile: string): Promise<ElementSet> {
+		return readElementSet(elementsFile);
 	}
 
 	protected async buildPackage(
@@ -89,11 +95,8 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		}
 	}
 
-	private buildPublishCommand(version: string, publishTag?: string): string {
-		const isPreRelease = version.includes("-");
-		const resolvedTag = publishTag || (isPreRelease ? "next" : "");
-		const tagArgs = resolvedTag ? ` --tag ${resolvedTag}` : "";
-		return `npm publish --access public --registry https://registry.npmjs.org/${tagArgs}`;
+	private buildPublishCommand(distTag: string): string {
+		return `npm publish --access public --registry https://registry.npmjs.org/ --tag ${distTag}`;
 	}
 
 	private findMonorepoRoot(startDir: string): string | undefined {
@@ -153,6 +156,9 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		if (flags.dryRun && !flags.publish) {
 			this.error("--dryRun can only be used with --publish");
 		}
+		if (flags.publish && !flags.elementsFile) {
+			this.error("--publish needs -f/--elementsFile: a published build is named after its config file");
+		}
 
 		const monorepoDir = this.resolveMonorepoDir(flags.elementsFile);
 		const elementsFile = flags.elementsFile
@@ -164,6 +170,8 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			: undefined;
 		const elements = await this.parseElements(elementsFile, flags.elements);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);
+		const elementSet =
+			flags.publish && elementsFile ? await this.resolveElementSet(elementsFile) : undefined;
 
 		// Enable safe iteration selection inside the builder for publishing workflows.
 		// If iteration is explicitly set, the builder will use it as-is.
@@ -180,6 +188,7 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			),
 			iteration: flags.publish ? flags.iteration : undefined,
 			loaderVersion: flags.loaderVersion,
+			setName: elementSet?.name,
 			pitsBaseUrl: flags.pitsBaseUrl,
 			monorepoDir,
 			overwriteBundle: flags.overwriteBundle,
@@ -189,8 +198,8 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		this.log(`\n✅ Built: @pie-players/pie-preloaded-player@${version}`);
 		this.log(`   Output: ${outputDir}\n`);
 
-		if (flags.publish) {
-			const cmd = this.buildPublishCommand(version, flags.publishTag);
+		if (elementSet) {
+			const cmd = this.buildPublishCommand(flags.publishTag ?? elementSet.distTag);
 			if (flags.dryRun) {
 				this.log(`[DRY RUN] Would run: ${cmd}`);
 				this.log(`[DRY RUN] In directory: ${outputDir}`);

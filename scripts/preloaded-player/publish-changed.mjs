@@ -145,6 +145,22 @@ function validateUniqueCombinations(configPaths) {
 	}
 }
 
+/**
+ * The config that sets `"latest": true` publishes under `latest`, and every other
+ * config under its own name. Exactly one, so `latest` keeps following a current
+ * build.
+ */
+export function validateLatestConfig(configs) {
+	const latest = configs
+		.filter(({ parsed }) => parsed?.latest === true)
+		.map(({ file }) => file);
+	if (latest.length !== 1) {
+		throw new Error(
+			`Exactly one config must set "latest": true; found ${latest.length ? latest.join(", ") : "none"}`,
+		);
+	}
+}
+
 function publishConfig(elementsFile, { dryRun }) {
 	const rel = path.relative(ROOT, elementsFile);
 	const abs = path.resolve(elementsFile);
@@ -165,6 +181,12 @@ async function main() {
 	for (const c of targets.configs) console.log(`- ${path.relative(ROOT, c)}`);
 	if (!targets.configs.length) return;
 	validateUniqueCombinations(targets.configs);
+	validateLatestConfig(
+		listConfigFiles().map((file) => ({
+			file: path.relative(ROOT, file),
+			parsed: readJson(file),
+		})),
+	);
 	for (const cfg of targets.configs) publishConfig(cfg, args);
 }
 

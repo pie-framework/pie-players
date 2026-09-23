@@ -8,6 +8,7 @@ class TestCommand extends PreloadedPlayerBuildPackage {
 	public parseElementsCalls = 0;
 	public buildCalls = 0;
 	public publishCalls = 0;
+	public logs: string[] = [];
 
 	protected override async parse(): Promise<any> {
 		this.parseCalls += 1;
@@ -18,9 +19,17 @@ class TestCommand extends PreloadedPlayerBuildPackage {
 		throw new Error(String(input));
 	}
 
+	public override log(message = ""): void {
+		this.logs.push(message);
+	}
+
 	protected override async parseElements(): Promise<any> {
 		this.parseElementsCalls += 1;
 		return [{ package: "@pie-element/multiple-choice", version: "1.0.0" }];
+	}
+
+	protected override async resolveElementSet(): Promise<any> {
+		return { name: "star-0326", distTag: "latest" };
 	}
 
 	protected override async buildPackage(): Promise<any> {
@@ -44,10 +53,10 @@ describe("preloaded-player-build-package command", () => {
 		expect(command.buildCalls).toBe(0);
 	});
 
-	test("runs build flow and dry-run publish without publishing", async () => {
+	test("runs build flow and dry-run publish under the set's dist-tag", async () => {
 		const command = new TestCommand([], {} as any);
 		command.flags = {
-			elements: "@pie-element/multiple-choice@1.0.0",
+			elementsFile: "configs/preloaded-player/star-0326.json",
 			publish: true,
 			dryRun: true,
 		};
@@ -55,5 +64,17 @@ describe("preloaded-player-build-package command", () => {
 		expect(command.parseElementsCalls).toBe(1);
 		expect(command.buildCalls).toBe(1);
 		expect(command.publishCalls).toBe(0);
+		expect(command.logs.some((line) => line.endsWith("--tag latest"))).toBe(true);
+	});
+
+	test("refuses to publish a build that has no config file to name it", async () => {
+		const command = new TestCommand([], {} as any);
+		command.flags = {
+			elements: "@pie-element/multiple-choice@1.0.0",
+			publish: true,
+			dryRun: true,
+		};
+		await expect(command.run()).rejects.toThrow("--publish needs -f/--elementsFile");
+		expect(command.buildCalls).toBe(0);
 	});
 });

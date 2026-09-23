@@ -74,14 +74,32 @@ function gitDiffNameOnly(base, head) {
 	return out.length ? out.split("\n") : [];
 }
 
-function shouldRebuildAll(changedFiles) {
-	const triggers = [
-		"packages/item-player/",
-		"tools/cli/",
-		"packages/players-shared/",
-		"scripts/preloaded-player/",
-	];
-	return changedFiles.some((f) => triggers.some((t) => f.startsWith(t)));
+/** A change under one of these can alter what every build bundles. */
+const REBUILD_ALL_PREFIXES = [
+	"packages/item-player/",
+	"tools/cli/",
+	"packages/players-shared/",
+	"scripts/preloaded-player/",
+];
+
+/**
+ * Paths under those prefixes that no build reads: tests, their Playwright
+ * configs, and prose. Manifests stay triggers, because the item player's version
+ * is every build's base version.
+ */
+const NOT_BUILD_INPUTS = [
+	/(^|\/)tests?\//,
+	/\.(test|spec)\.[cm]?[jt]sx?$/,
+	/(^|\/)playwright(\.[\w-]+)?\.config\.[cm]?[jt]s$/,
+	/\.md$/,
+];
+
+export function shouldRebuildAll(changedFiles) {
+	return changedFiles.some(
+		(file) =>
+			REBUILD_ALL_PREFIXES.some((prefix) => file.startsWith(prefix)) &&
+			!NOT_BUILD_INPUTS.some((pattern) => pattern.test(file)),
+	);
 }
 
 function determineTargets({ base, head, all }) {
@@ -150,7 +168,9 @@ async function main() {
 	for (const cfg of targets.configs) publishConfig(cfg, args);
 }
 
-main().catch((err) => {
-	console.error(err?.message || err);
-	process.exit(1);
-});
+if (import.meta.main) {
+	main().catch((err) => {
+		console.error(err?.message || err);
+		process.exit(1);
+	});
+}

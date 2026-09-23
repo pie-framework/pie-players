@@ -16,15 +16,6 @@ import { initializePiesFromLoadedBundle } from "../src/pie/initialization.js";
 import { BundleType, Status } from "../src/pie/types.js";
 import type { ConfigEntity, Env } from "../src/types/index.js";
 
-/**
- * happy-dom's MutationObserver delivers at most one batch per observer
- * reliably: a second delivery to the same observer, and a delivery to an
- * observer whose target mutates in a later tick than another observer's, are
- * both intermittently dropped (reproduced against happy-dom 20.11.1 at ~10% per
- * attempt). So every test here mutates the DOM once, in a single tick, and
- * flushes once. A test that needs a second delivery gets a fresh container.
- */
-
 const ENV: Env = { mode: "gather", role: "student", partialScoring: false };
 
 beforeAll(() => {
@@ -84,12 +75,23 @@ const makeContainer = (): HTMLElement => {
 
 type BoundElement = HTMLElement & { model?: any; session?: any };
 
+/**
+ * Run a full collection ahead of a late mutation, so no result depends on
+ * whether one happened to run since `observe()`. happy-dom 20.11.1 held each
+ * observer's callback only through a `WeakRef` and dropped every delivery after
+ * it was collected; against a release like that, these tests fail every run.
+ */
+const collectGarbage = (): void => {
+	Bun.gc(true);
+};
+
 /** Create a PIE element and append it to `container`, without flushing. */
 const appendPieElement = (
 	container: Element,
 	tag: string,
 	id: string,
 ): BoundElement => {
+	collectGarbage();
 	const element = document.createElement(tag) as BoundElement;
 	element.id = id;
 	container.append(element);
@@ -127,9 +129,7 @@ const register = (
 describe("late-arriving PIE element binding", () => {
 	// Both players stay mounted in each of the next two tests: two registrations
 	// are what the regression needed, because the second overwrote the one
-	// context slot the observer read. Only one container takes a late element per
-	// test, so neither test depends on two observers both delivering — the
-	// happy-dom drop described above.
+	// context slot the observer read.
 	test("binds a late element in the first of two mounted players", async () => {
 		const tagA = "pie-observer-two-players-a--version-1-0-0";
 		const tagB = "pie-observer-two-players-b--version-1-0-0";
@@ -289,6 +289,7 @@ describe("late-arriving PIE element binding", () => {
 		element.id = "deep";
 		inner.append(element);
 		wrapper.append(inner);
+		collectGarbage();
 		container.append(wrapper);
 		await flushMutations();
 

@@ -29,6 +29,8 @@
 	],
 	"scripts": {
 		"build": "tsc && oclif manifest",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"dev": "node --loader ts-node/esm --no-warnings=ExperimentalWarning ./bin/dev.js",
 		"clean": "rm -rf dist",
 		"prepack": "bun run build"

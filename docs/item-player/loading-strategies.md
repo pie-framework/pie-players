@@ -152,13 +152,20 @@ CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-
 
 ## Section player integration
 
-The section player renders each item via `<pie-item-player>`. Its `player-type` attribute maps directly to the item player's `strategy`:
+The section player renders each item via `<pie-item-player>`. Hosts select the strategy through `runtime.playerType` on the section-player element, which maps directly onto the item player's `strategy`:
 
-| Section player `player-type` | Item player `strategy` |
-| ---------------------------- | ---------------------- |
+| `runtime.playerType` | Item player `strategy` |
+| -------------------- | ---------------------- |
 | `iife` | `iife` |
 | `esm` | `esm` |
 | `preloaded` | `preloaded` |
+
+```ts
+const player = document.querySelector("pie-section-player-splitpane");
+player.runtime = { playerType: "preloaded" };
+```
+
+`player-type` carries the resolved value internally — `PieSectionPlayerBaseElement` to `<pie-assessment-toolkit>` to the item player — and is not an attribute on `<pie-section-player-splitpane>` or `<pie-section-player-vertical>`. `<pie-assessment-player>` does accept a `player-type` attribute, and maps it onto the section player's `runtime.playerType`.
 
 In the demo apps, use query parameters to switch strategies:
 

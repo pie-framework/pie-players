@@ -227,10 +227,9 @@ export {
 	QTI_STANDARD_ACCESS_FEATURES,
 } from "./services/pnp-standard-features.js";
 // Media-bearing catalog cards: the generic half, shared by every card form that
-// references a recording rather than carrying text. `applyMediaFragment` reached
-// the public surface through `sign-language-cards.js` until signing moved to
-// `@pie-players/pie-tool-sign-language`; it is exported from its own module now,
-// alongside the validators a capability package needs to read a media payload.
+// references a recording rather than carrying text. Owned by
+// `@pie-players/pie-players-shared/media`, which an element can import without
+// this package; re-exported here for toolkit consumers.
 export {
 	applyMediaFragment,
 	enforceMediaFragment,
@@ -240,7 +239,7 @@ export {
 	normalizeMediaSources,
 	SUPPORTED_MEDIA_ASSET_VERSION,
 	trimmedOrUndefined,
-} from "./services/catalog-media.js";
+} from "@pie-players/pie-players-shared/media";
 // Spoken catalog cards carrying recorded audio rather than a reading script
 export type { SpokenAudioMedia } from "./services/spoken-audio-cards.js";
 export {

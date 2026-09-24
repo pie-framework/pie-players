@@ -1189,8 +1189,8 @@ that could not parse the markup left the video in the visible content, showing t
 accommodation to every learner regardless of eligibility.
 
 This package resolves and registers those cards through
-`AccessibilityCatalogResolver` and the generic media helpers in
-`catalog-media.ts`. Which card types mean what belongs to the capability that
+`AccessibilityCatalogResolver` and the generic media helpers it re-exports
+from `@pie-players/pie-players-shared/media`. Which card types mean what belongs to the capability that
 needs them — signing's card validators and its resolution rules live in
 `@pie-players/pie-tool-sign-language`, behind that capability's
 `requiresAuthoredContent`.

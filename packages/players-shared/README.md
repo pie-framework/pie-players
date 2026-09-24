@@ -21,6 +21,7 @@ Supported subpaths are declared in `package.json`:
 - `@pie-players/pie-players-shared/types`
 - `@pie-players/pie-players-shared/formative`
 - `@pie-players/pie-players-shared/timed-media`
+- `@pie-players/pie-players-shared/media`
 - `@pie-players/pie-players-shared/pie`
 - `@pie-players/pie-players-shared/pie/tag-names`
 - `@pie-players/pie-players-shared/loaders`
@@ -83,6 +84,28 @@ annotates.
 The contract is [`docs/prds/timed-media-section-contract.md`](../../docs/prds/timed-media-section-contract.md),
 including why cue gate conditions name the formative vocabulary and why an
 unenforceable policy degrades to advisory rather than failing closed.
+
+## Media Validation
+
+`@pie-players/pie-players-shared/media` validates authored, wire-facing media
+references before they reach a media element: the source-scheme allow-list
+(`isSafeMediaSrc`), source normalization with dedupe by `src`
+(`normalizeMediaSources`), fragment-range normalization, and
+unknown-`MediaAssetRef.version` rejection. `applyMediaFragment` writes a
+fragment range as a Media Fragments URI, and `enforceMediaFragment` holds a
+media element to that range because browsers honour the URI inconsistently.
+Nothing runs at import time, so an element imports it without the assessment
+toolkit; the toolkit root re-exports the same names.
+
+```ts
+import {
+  isSafeMediaSrc,
+  isUnsupportedMediaAssetVersion,
+  normalizeMediaSources,
+} from "@pie-players/pie-players-shared/media";
+```
+
+The media vocabulary it validates is [`docs/prds/shared-contracts/media-asset-contract.md`](../../docs/prds/shared-contracts/media-asset-contract.md).
 
 ## Browser ESM Element Contract
 

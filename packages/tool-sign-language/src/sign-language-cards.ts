@@ -32,7 +32,7 @@ import {
 	normalizeMediaFragment,
 	normalizeMediaSources,
 	trimmedOrUndefined,
-} from "@pie-players/pie-assessment-toolkit";
+} from "@pie-players/pie-players-shared/media";
 import type {
 	I18nProvider,
 	MessageKey,

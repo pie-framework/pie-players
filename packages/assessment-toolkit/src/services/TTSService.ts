@@ -22,12 +22,15 @@ import type {
 	TTSConfig,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import {
+	applyMediaFragment,
+	enforceMediaFragment,
+} from "@pie-players/pie-players-shared/media";
 import type {
 	AccessibilityCatalogResolver,
 	CatalogLookupContext,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
-import { applyMediaFragment, enforceMediaFragment } from "./catalog-media.js";
 import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import {
 	resolveSpokenAudioMedia,

@@ -28,12 +28,14 @@
 	 * is eligible for.
 	 */
 	import {
-		applyMediaFragment,
 		bindTtsAudioHandoff,
-		enforceMediaFragment,
 		pauseTtsForMediaAudio,
 		type TtsServiceApi,
 	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		applyMediaFragment,
+		enforceMediaFragment,
+	} from "@pie-players/pie-players-shared/media";
 	import type { MediaSource } from "@pie-players/pie-players-shared/types";
 	import { describeSignLanguage } from "./sign-language-cards.js";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";

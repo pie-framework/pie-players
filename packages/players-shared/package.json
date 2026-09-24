@@ -45,6 +45,10 @@
 			"types": "./dist/timed-media/index.d.ts",
 			"import": "./dist/timed-media/index.js"
 		},
+		"./media": {
+			"types": "./dist/media/index.d.ts",
+			"import": "./dist/media/index.js"
+		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"

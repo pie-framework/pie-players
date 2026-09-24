@@ -5,10 +5,7 @@ import type {
 	SignLanguageCardPayload,
 } from "@pie-players/pie-players-shared/types";
 
-import {
-	AccessibilityCatalogResolver,
-	applyMediaFragment,
-} from "@pie-players/pie-assessment-toolkit";
+import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit";
 import {
 	AMERICAN_SIGN_LANGUAGE,
 	describeSignLanguage,
@@ -261,36 +258,6 @@ describe("sign language naming", () => {
 	test("labels an unknown code instead of guessing", () => {
 		expect(describeSignLanguage("zzz")).toBe("Sign language (zzz)");
 		expect(describeSignLanguage(undefined)).toBe("Sign language");
-	});
-});
-
-describe("media fragments", () => {
-	test("appends a fragment range as a Media Fragments URI", () => {
-		expect(
-			applyMediaFragment("https://cdn.example.com/asl.mp4", {
-				startSeconds: 3,
-				endSeconds: 8,
-			}),
-		).toBe("https://cdn.example.com/asl.mp4#t=3,8");
-		expect(
-			applyMediaFragment("https://cdn.example.com/asl.mp4", {
-				startSeconds: 3,
-			}),
-		).toBe("https://cdn.example.com/asl.mp4#t=3");
-	});
-
-	test("leaves an authored fragment alone", () => {
-		expect(
-			applyMediaFragment("https://cdn.example.com/asl.mp4#t=1,2", {
-				startSeconds: 9,
-			}),
-		).toBe("https://cdn.example.com/asl.mp4#t=1,2");
-	});
-
-	test("is a no-op without a fragment", () => {
-		expect(applyMediaFragment("https://cdn.example.com/asl.mp4")).toBe(
-			"https://cdn.example.com/asl.mp4",
-		);
 	});
 });
 

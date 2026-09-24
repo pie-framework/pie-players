@@ -9,13 +9,13 @@
  * Two copies of a URL allow-list is one copy that gets a fix and one that does
  * not.
  *
- * Part of PIE Assessment Toolkit.
+ * Lives here, behind its own subpath, so a PIE element can validate authored
+ * media without importing the assessment toolkit, whose root entry declares
+ * side effects and brings the TTS and calculator packages with it. The toolkit
+ * root re-exports every name. Nothing here runs at import time.
  */
 
-import type {
-	MediaFragmentRange,
-	MediaSource,
-} from "@pie-players/pie-players-shared/types";
+import type { MediaFragmentRange, MediaSource } from "../types/index.js";
 
 /**
  * Media source URLs are handed to a media element in the learner's browser. Only
@@ -108,15 +108,6 @@ export function trimmedOrUndefined(value: unknown): string | undefined {
 }
 
 /**
- * Apply a fragment range to a source URL as a Media Fragments URI, so one
- * recording can serve several content nodes.
- *
- * The URI is a hint only: browsers honour both bounds inconsistently, so the
- * caller enforces the range itself — seek forward to the start once metadata is
- * available, and stop at the end. `SignLanguageMediaRegion` and
- * `TTSService.playRecordedAudio` are the two shipped consumers that do so.
- */
-/**
  * How often the end bound is re-checked while a slice is playing. `timeupdate`
  * alone fires about four times a second, which is loose enough to leak a sliver
  * of the next node's recording.
@@ -182,6 +173,16 @@ export function enforceMediaFragment(
 	};
 }
 
+/**
+ * Apply a fragment range to a source URL as a Media Fragments URI, so one
+ * recording can serve several content nodes.
+ *
+ * The URI is a hint only: browsers honour both bounds inconsistently, so the
+ * caller enforces the range itself with `enforceMediaFragment` — seek forward
+ * to the start once metadata is available, and stop at the end.
+ * `SignLanguageMediaRegion` and `TTSService.playRecordedAudio` are the two
+ * shipped consumers that do so.
+ */
 export function applyMediaFragment(
 	src: string,
 	fragment?: MediaFragmentRange,

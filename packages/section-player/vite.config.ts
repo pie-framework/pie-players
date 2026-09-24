@@ -92,7 +92,12 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@pie-players/pie-default-tool-loaders"],
+			external: [
+				"@pie-players/pie-default-tool-loaders",
+				// speech-rule-engine and its locale tables resolve from the host's
+				// node_modules, so every PIE bundle a host loads shares one copy.
+				/^speech-rule-engine(?:\/|$)/,
+			],
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",

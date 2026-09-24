@@ -38,7 +38,8 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"moveable": "^0.53.0"
+		"moveable": "^0.53.0",
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {

@@ -36,7 +36,8 @@
 	"jsdelivr": "./dist/tool-text-to-speech.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*",
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {

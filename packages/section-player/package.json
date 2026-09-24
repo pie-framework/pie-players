@@ -98,7 +98,8 @@
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*",
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",

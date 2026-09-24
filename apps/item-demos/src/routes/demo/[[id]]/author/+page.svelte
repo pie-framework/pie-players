@@ -352,10 +352,11 @@
 			tagName: configTag,
 			element: AuthoringFixtureConfigElement,
 			controller: {
-				validate: (model: any, config: any) => ({
-					errors: config?.requirePrompt && model?.prompt ? [] : ['prompt is required'],
-					authoringOnly: config?.authoringOnly,
-				}),
+				// PIE controllers return a field → message map, empty when valid.
+				validate: (model: any, config: any) =>
+					config?.requirePrompt && !model?.prompt
+						? { prompt: 'This field is required.' }
+						: {},
 			},
 			bundleType: 'editor.js',
 		};

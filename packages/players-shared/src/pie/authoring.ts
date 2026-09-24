@@ -24,7 +24,7 @@ export type InitializedConfigureModel = {
 
 export type AuthoringValidationResult = {
 	hasErrors: boolean;
-	validatedModels: Array<PieModel & { validation?: unknown }>;
+	validatedModels: Array<PieModel & { errors?: unknown }>;
 };
 
 export type AuthoringMediaHandlers = {
@@ -189,12 +189,17 @@ function resolveValidationController(
 	return findPieController(configureElement.localName);
 }
 
-function hasValidationErrors(validation: unknown): boolean {
-	if (!validation || typeof validation !== "object") return false;
-	const validationRecord = validation as Record<string, unknown>;
-	if (validationRecord.hasErrors === true) return true;
-	const errors = validationRecord.errors;
-	return Array.isArray(errors) && errors.length > 0;
+// A controller's `validate` returns a field → message map. ebsr returns one map
+// per part, so an empty ebsr result is `{ partA: {}, partB: {} }`.
+function hasValidationErrors(errors: unknown): boolean {
+	if (!isRecord(errors)) return false;
+	if (isRecord(errors.partA) && isRecord(errors.partB)) {
+		return (
+			Object.keys(errors.partA).length > 0 ||
+			Object.keys(errors.partB).length > 0
+		);
+	}
+	return Object.keys(errors).length > 0;
 }
 
 export async function validateAuthoringModels(
@@ -223,24 +228,34 @@ export async function validateAuthoringModels(
 				elementTag,
 				String(packageSpec),
 			);
-			const validation =
-				typeof controller?.validate === "function"
-					? await controller.validate(model, elementConfiguration as object)
-					: undefined;
+			if (typeof controller?.validate !== "function") {
+				validatedModels.push(model);
+				continue;
+			}
 
-			validatedModels.push({
-				...model,
-				...(isRecord(validation) ? validation : {}),
-				id: model.id,
-				element: model.element,
-				validation,
-			});
+			const errors = await controller.validate(
+				model,
+				elementConfiguration as object,
+			);
+			const validatedModel = { ...model, errors };
+			validatedModels.push(validatedModel);
+
+			// Configure elements render inline messages from `model.errors`. Skip an
+			// unchanged set: some configure elements emit `model.updated` when their
+			// model is assigned, and a host validating on every update would loop.
+			const configureElement = element as unknown as ConfigureElement;
+			if (
+				JSON.stringify(configureElement.model?.errors) !==
+				JSON.stringify(errors)
+			) {
+				configureElement.model = validatedModel;
+			}
 		}
 	}
 
 	return {
 		hasErrors: validatedModels.some((model) =>
-			hasValidationErrors(model.validation),
+			hasValidationErrors(model.errors),
 		),
 		validatedModels,
 	};

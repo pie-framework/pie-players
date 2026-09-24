@@ -74,7 +74,10 @@ Hosts can listen for:
 
 Hosts can call `validateModels()` on the `<pie-item-player>` element to run each
 rendered configure element's controller `validate(model, configuration)` method.
-The method returns `{ hasErrors, validatedModels }`.
+The method returns `{ hasErrors, validatedModels }`. Each validated model is
+`{ ...model, errors }`, where `errors` is the controller's field → message map, and
+each configure element receives the same map as `model.errors` to render its
+inline messages.
 
 For media, `authoring-backend="demo"` installs demo handlers. Use
 `authoring-backend="required"` when production hosts must provide all four

@@ -39,6 +39,14 @@ than attempting to replace an existing custom-element definition.
 Do not assume a source-level registration guard is sufficient. Inspect or test
 the packed artifact as well, because compilation can change registration behavior.
 
+A component whose `svelte:options` names its tag compiles to an unguarded
+module-scope `customElements.define`, which throws once a second copy of the
+package loads. Every Vite build that compiles Svelte custom elements lists
+`guardSvelteCustomElementDefines()` from
+[`packages/players-shared/svelte-custom-element-guard.ts`](../../../packages/players-shared/svelte-custom-element-guard.ts)
+after `svelte()`; `bun run check:bundle-safety` fails on the define a build
+without it emits.
+
 ## `exports` shape
 
 For each registration entry, add an `exports` entry pointing at the
@@ -73,7 +81,7 @@ Rules:
 - Contract and policy-only subpaths must stay inert when imported.
 - Do **not** add a top-level `*.svelte` export. Cross-package
   `?customElement` imports are rejected by
-  `bun run check:custom-elements`.
+  `bun run check:custom-elements:dist`, which reads the built `dist`.
 
 ## Adding a new publishable package
 
@@ -109,6 +117,7 @@ lockstep invariant.
 bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements
+bun run check:custom-elements:dist
 bun run check:svelte-runtime-deps
 bun run check:ce-define-safety
 bun run check:ce-consumer-contract

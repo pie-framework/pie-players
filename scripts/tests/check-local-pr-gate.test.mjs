@@ -7,7 +7,7 @@ const basePackageJson = {
 		"verify:pre-commit":
 			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck":
-			"bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
+			"bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
 			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player",
 		"verify:pre-push": "bun run verify:local-pr",
@@ -99,6 +99,32 @@ describe("check-local-pr-gate policy", () => {
 
 		expect(failures).toContain(
 			'CI e2e matrix must run the full section-player suite ("command: test:e2e:section-player"), not a subset.',
+		);
+	});
+
+	test("rejects a CI gate that checks custom-element dist output before the build", () => {
+		// Ahead of the build a fresh CI checkout has no `dist`, which is how the
+		// dist checks passed every pull request without reading anything.
+		const ciLintTypecheck = basePackageJson.scripts["verify:ci-lint-typecheck"]
+			.replace(" && bun run check:custom-elements:dist", "")
+			.replace(
+				"bun run check:custom-elements &&",
+				"bun run check:custom-elements && bun run check:custom-elements:dist &&",
+			);
+		const failures = collectGateFailures({
+			packageJson: {
+				scripts: {
+					...basePackageJson.scripts,
+					"verify:ci-lint-typecheck": ciLintTypecheck,
+				},
+			},
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+		});
+
+		expect(failures).toContain(
+			'verify:ci-lint-typecheck runs "bun run check:custom-elements:dist" out of order.',
 		);
 	});
 

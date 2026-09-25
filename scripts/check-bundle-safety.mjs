@@ -21,7 +21,7 @@ const TARGET_DIRS = [
  */
 const TOOLKIT_CE_DIR = "packages/assessment-toolkit/dist/components";
 
-/** Directories whose published output must not contain sourcemaps. */
+/** Parent of every package whose published `dist` the suite-wide checks scan. */
 const PACKAGES_DIR = "packages";
 
 const SPEECH_RULE_ENGINE_SPECIFIER = /^speech-rule-engine(?:\/|$)/;
@@ -240,6 +240,63 @@ export function findPublishedSourcemaps(relativePaths) {
 	return relativePaths.filter((filePath) => filePath.endsWith(".map"));
 }
 
+/**
+ * True when a bundle carries Svelte's development runtime.
+ *
+ * Keys off `__svelte_cleanup`, the property Svelte's dev-only array warnings
+ * set on `Array` after wrapping `indexOf`, `lastIndexOf` and `includes` on the
+ * host page. Only the dev runtime contains that string, and a production build
+ * removes it along with every other `DEV` branch.
+ */
+export function hasSvelteDevRuntime(content) {
+	return content.includes("__svelte_cleanup");
+}
+
+const LITERAL_DEFINE_PATTERN = /customElements\.define\(\s*(["'`])([^"'`]+)\1/g;
+// How far back a `customElements.get` for the same tag may sit and still count
+// as guarding the define. Guards in shipped output sit directly before it
+// (`customElements.get("x")||customElements.define("x",…)`).
+const GUARD_LOOKBEHIND = 200;
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Tags a bundle registers by literal name with no `customElements.get` guard.
+ *
+ * This is what Svelte compiles a component whose `svelte:options` names its tag
+ * into: a module-scope `customElements.define("tag", …)` that throws
+ * `NotSupportedError` once a second copy of the package, or the host, has
+ * registered the tag, and so rejects the module that imported it. A Vite build
+ * that compiles Svelte custom elements lists `guardSvelteCustomElementDefines()`
+ * (`packages/players-shared/svelte-custom-element-guard.ts`), which routes the
+ * call through a helper whose define takes a variable tag.
+ */
+export function findUnguardedCustomElementDefines(content) {
+	const unguarded = [];
+	for (const match of content.matchAll(LITERAL_DEFINE_PATTERN)) {
+		const tag = match[2];
+		const preceding = content.slice(
+			Math.max(0, match.index - GUARD_LOOKBEHIND),
+			match.index,
+		);
+		const guard = new RegExp(
+			`customElements\\.get\\(\\s*(["'\`])${escapeRegExp(tag)}\\1\\s*\\)`,
+		);
+		if (!guard.test(preceding)) unguarded.push(tag);
+	}
+	return unguarded;
+}
+
+function listPackageDistDirs() {
+	const absPackages = path.join(ROOT, PACKAGES_DIR);
+	if (!existsSync(absPackages)) return [];
+
+	return readdirSync(absPackages, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => path.join(absPackages, entry.name, "dist"))
+		.filter((dir) => existsSync(dir));
+}
+
 function checkEvalRequire(failures) {
 	let filesChecked = 0;
 
@@ -369,13 +426,7 @@ function checkSpeechRuleEngineBoundaries(failures) {
 }
 
 function checkNoPublishedSourcemaps(failures) {
-	const absPackages = path.join(ROOT, PACKAGES_DIR);
-	if (!existsSync(absPackages)) return 0;
-
-	const distDirs = readdirSync(absPackages, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
-		.map((entry) => path.join(absPackages, entry.name, "dist"))
-		.filter((dir) => existsSync(dir));
+	const distDirs = listPackageDistDirs();
 
 	const mapFiles = [];
 	for (const dir of distDirs) {
@@ -395,12 +446,44 @@ function checkNoPublishedSourcemaps(failures) {
 	return distDirs.length;
 }
 
+function checkNoSvelteDevRuntime(failures) {
+	let filesChecked = 0;
+
+	for (const dir of listPackageDistDirs()) {
+		for (const filePath of collectJsFiles(dir)) {
+			filesChecked += 1;
+			if (hasSvelteDevRuntime(readFileSync(filePath, "utf8"))) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} ships Svelte's dev runtime, which patches Array.prototype on the host page; build it with production Svelte`,
+				);
+			}
+		}
+	}
+
+	return filesChecked;
+}
+
+function checkNoUnguardedCustomElementDefines(failures) {
+	for (const dir of listPackageDistDirs()) {
+		for (const filePath of collectJsFiles(dir)) {
+			const content = readFileSync(filePath, "utf8");
+			for (const tag of findUnguardedCustomElementDefines(content)) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} registers <${tag}> with an unguarded customElements.define, which throws when a second copy of the package loads; list guardSvelteCustomElementDefines() in the package's Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
 		checkEvalRequire(failures) + checkToolkitCustomElements(failures);
 	const mathSpeechPackages = checkSpeechRuleEngineBoundaries(failures);
 	checkNoPublishedSourcemaps(failures);
+	checkNoSvelteDevRuntime(failures);
+	checkNoUnguardedCustomElementDefines(failures);
 
 	if (failures.length > 0) {
 		console.error(

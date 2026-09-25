@@ -149,13 +149,16 @@ When adding a new package under `packages/*` that ships to npm:
 bun run verify:publish
 ```
 
-This runs build + `check:fixed-versioning`, `check:package-metadata`,
-`check:custom-elements`, `check:ce-define-safety`, `check:publint`,
-`check:types-publish`, `check:pack-exports`, `check:pack-smoke`,
-`check:deps`, `check:source-exports`, `check:consumer-boundaries`,
-`check:ce-consumer-contract`, `check:runtime-compat`,
+This runs build + `check:changeset-patch-only`, `check:fixed-versioning`,
+`check:package-metadata`, `check:svelte-runtime-deps`,
+`check:custom-elements`, `check:custom-elements:dist`,
+`check:ce-define-safety`, `check:publint`, `check:types-publish`,
+`check:pack-integrity:real`, `check:deps`, `check:undeclared-subpaths`,
+`check:consumer-boundaries`, `check:ce-consumer-contract`,
 `check:node-consumer-imports`, `check:bundle-safety`,
-`check:math-rendering-version`, `check:engine-core-purity`.
+`check:math-rendering-version`, `check:engine-core-purity`,
+`check:speech-composition-purity`, `check:capability-neutrality`,
+`check:scripts`.
 
 ## Related rule
 

@@ -946,7 +946,6 @@ const DEFAULT_ENV = {
 			source: "pie-assessment-toolkit",
 			error,
 			recoverable: true,
-			details: { owner: "toolkit-coordinator" },
 		});
 	}
 
@@ -1004,7 +1003,7 @@ const DEFAULT_ENV = {
 					runtimeError = error;
 					reportFrameworkError({
 						kind: "coordinator-init",
-						phase: "coordinator-ready",
+						source: "pie-assessment-toolkit",
 						error,
 					});
 				}

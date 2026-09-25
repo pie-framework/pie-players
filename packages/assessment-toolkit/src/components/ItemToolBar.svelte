@@ -2568,6 +2568,7 @@
 					     `reflectToggleState` mirrors the pressed state onto that inner
 					     button since nds has no native aria-pressed. -->
 					<span class="item-toolbar__nds-button-zoom">
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 						<nds-icon-button
 							use:ndsIconButtonAction
 							use:reflectToggleState={isToolbarItemActive(item)}

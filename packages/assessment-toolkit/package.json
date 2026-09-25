@@ -79,7 +79,7 @@
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
-		"check": "tsc -p tsconfig.json --noEmit",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"test": "bun test"
 	},
 	"dependencies": {
@@ -117,6 +117,7 @@
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"svelte": "^5.57.0",
+		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",

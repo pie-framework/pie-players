@@ -28,7 +28,7 @@
 		"build": "tsc -p tsconfig.json",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"devDependencies": {

@@ -46,7 +46,7 @@
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check TtsSettingsPanel.svelte index.ts vite.config.ts package.json"
+		"lint": "biome lint TtsSettingsPanel.svelte index.ts vite.config.ts package.json"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

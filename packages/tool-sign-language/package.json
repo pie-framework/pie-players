@@ -44,7 +44,7 @@
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"devDependencies": {

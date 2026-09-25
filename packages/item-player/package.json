@@ -35,7 +35,7 @@
 		"test": "bun test",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",

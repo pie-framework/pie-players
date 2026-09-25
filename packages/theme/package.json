@@ -41,7 +41,7 @@
 		"generate:css": "bun ./scripts/generate-theme-css.ts --write",
 		"check:generated-css": "bun ./scripts/generate-theme-css.ts --check",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test --dom tests"
 	},

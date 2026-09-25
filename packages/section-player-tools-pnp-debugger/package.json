@@ -47,7 +47,7 @@
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"test": "bun test tests",
-		"lint": "biome check PnpPanel.svelte derive-panel-data.ts index.ts vite.config.ts package.json tests"
+		"lint": "biome lint PnpPanel.svelte derive-panel-data.ts index.ts vite.config.ts package.json tests"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

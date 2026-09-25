@@ -114,7 +114,7 @@
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
 		"check-i18n": "bun run src/i18n/scripts/check-coverage.ts",

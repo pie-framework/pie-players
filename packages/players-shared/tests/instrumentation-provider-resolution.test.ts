@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { InstrumentationProvider } from "../src/instrumentation/types";
 import { resolveInstrumentationProvider } from "../src/pie/instrumentation-provider-resolution";
 
@@ -104,5 +105,38 @@ describe("resolveInstrumentationProvider", () => {
 			},
 		});
 		expect(provider).toBe(topLevelProvider);
+	});
+});
+
+describe("resolveInstrumentationProvider default", () => {
+	beforeAll(() => {
+		if (typeof (globalThis as { window?: unknown }).window === "undefined") {
+			GlobalRegistrator.register();
+		}
+	});
+
+	afterAll(() => {
+		delete (window as { newrelic?: unknown }).newrelic;
+		if (GlobalRegistrator.isRegistered) {
+			GlobalRegistrator.unregister();
+		}
+	});
+
+	test("sends once an agent loads after players resolved it", () => {
+		const player = { loaderConfig: { trackPageActions: true } };
+		delete (window as { newrelic?: unknown }).newrelic;
+		expect(resolveInstrumentationProvider({ player })?.isReady()).toBe(false);
+
+		const calls: string[] = [];
+		(window as { newrelic?: unknown }).newrelic = {
+			addPageAction: (name: string) => calls.push(`addPageAction ${name}`),
+			noticeError: (error: Error) => calls.push(`noticeError ${error.message}`),
+		};
+
+		resolveInstrumentationProvider({ player })?.trackError(
+			new Error("runtime error"),
+			{ component: "pie-item-player" },
+		);
+		expect(calls).toEqual(["noticeError runtime error"]);
 	});
 });

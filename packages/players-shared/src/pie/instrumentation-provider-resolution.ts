@@ -57,7 +57,6 @@ const logger = createPieLogger("instrumentation-provider-resolution", () =>
 function getDefaultInstrumentationProvider(): NewRelicInstrumentationProvider {
 	if (!defaultProvider) {
 		defaultProvider = new NewRelicInstrumentationProvider();
-		// New Relic provider sets readiness based on window.newrelic.
 		void defaultProvider.initialize();
 	}
 	return defaultProvider;

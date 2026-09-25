@@ -31,8 +31,8 @@ export type LoaderConfig = {
 	 *
 	 * - Unset or `undefined`: nothing is reported unless `trackPageActions` is
 	 *   `true`, in which case players fall back to a
-	 *   `NewRelicInstrumentationProvider`, which reports only while
-	 *   `window.newrelic` is present.
+	 *   `NewRelicInstrumentationProvider`, which reports while the New Relic
+	 *   browser agent is on the page.
 	 * - A provider: players report to it. A value that fails the
 	 *   `InstrumentationProvider` contract is treated as `null`.
 	 * - `null`: disables instrumentation, whatever `trackPageActions` says.

@@ -7,11 +7,11 @@
  * Features:
  * - Tracks resource load timing with PerformanceObserver
  * - Detects and retries failed resource loads
- * - Sends instrumentation to New Relic
+ * - With `trackPageActions`, reports loads, retries and failures to the
+ *   instrumentation provider it is given
  * - Works with all resource types (audio, video, img, link)
  */
 
-import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
@@ -27,30 +27,16 @@ export type ResourceMonitorConfig = {
 	/**
 	 * Instrumentation provider for tracking events and errors
 	 *
-	 * Optional. If not provided, defaults to NewRelicInstrumentationProvider.
-	 * The provider handles instrumentation gracefully - if New Relic is not available,
-	 * it will simply not track events (no errors thrown).
-	 *
-	 * To use a different provider, pass it here:
-	 *
-	 * @example
-	 * ```typescript
-	 * const provider = new ConsoleInstrumentationProvider();
-	 * await provider.initialize({ debug: true });
-	 *
-	 * const monitor = new ResourceMonitor({
-	 *   trackPageActions: true,
-	 *   instrumentationProvider: provider
-	 * });
-	 * ```
+	 * The monitor constructs no provider of its own: without one it only
+	 * retries. Players pass what `resolveInstrumentationProvider` resolves from
+	 * their `loaderConfig`.
 	 */
 	instrumentationProvider?: InstrumentationProvider;
 
 	/**
 	 * Whether ResourceMonitor should initialize/destroy the instrumentation provider.
 	 *
-	 * Defaults to `true` when ResourceMonitor creates the provider internally, and
-	 * `false` when a provider is injected by the host.
+	 * Defaults to `false`: the provider belongs to whoever passed it in.
 	 */
 	manageProviderLifecycle?: boolean;
 
@@ -80,8 +66,7 @@ export type ResourceMonitorConfig = {
 
 const DEFAULT_CONFIG = {
 	trackPageActions: false as const,
-	instrumentationProvider: undefined as InstrumentationProvider | undefined,
-	manageProviderLifecycle: undefined as boolean | undefined,
+	manageProviderLifecycle: false as const,
 	maxRetries: 3 as number,
 	initialRetryDelay: 500 as number,
 	maxRetryDelay: 5000 as number,
@@ -158,9 +143,7 @@ interface ResourceErrorDiagnostics {
 export class ResourceMonitor {
 	private config: Required<
 		Omit<ResourceMonitorConfig, "instrumentationProvider">
-	> & {
-		instrumentationProvider: InstrumentationProvider | undefined;
-	};
+	>;
 	private logger: ReturnType<typeof createPieLogger>;
 	private observer: PerformanceObserver | null = null;
 	private mutationObserver: MutationObserver | null = null;
@@ -170,9 +153,7 @@ export class ResourceMonitor {
 	private container: HTMLElement | null = null;
 	private isBrowser: boolean;
 	private containerResources = new Set<string>(); // Track resources within our container
-	private provider: InstrumentationProvider;
-	private readonly ownsProvider: boolean;
-	private readonly manageProviderLifecycle: boolean;
+	private provider: InstrumentationProvider | undefined;
 	private started = false;
 	private lifecycleVersion = 0;
 	private pendingRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -185,19 +166,12 @@ export class ResourceMonitor {
 	>();
 
 	constructor(config: ResourceMonitorConfig = {}) {
-		const validInjectedProvider = isInstrumentationProvider(
-			config.instrumentationProvider,
-		)
-			? config.instrumentationProvider
-			: undefined;
-		const hasInjectedProvider = !!validInjectedProvider;
-		const manageProviderLifecycle =
-			config.manageProviderLifecycle ?? !hasInjectedProvider;
 		this.config = {
 			trackPageActions:
 				config.trackPageActions ?? DEFAULT_CONFIG.trackPageActions,
-			instrumentationProvider: validInjectedProvider,
-			manageProviderLifecycle,
+			manageProviderLifecycle:
+				config.manageProviderLifecycle ??
+				DEFAULT_CONFIG.manageProviderLifecycle,
 			maxRetries: config.maxRetries ?? DEFAULT_CONFIG.maxRetries,
 			initialRetryDelay:
 				config.initialRetryDelay ?? DEFAULT_CONFIG.initialRetryDelay,
@@ -207,7 +181,10 @@ export class ResourceMonitor {
 		this.logger = createPieLogger("resource-monitor", () =>
 			this.isDebugEnabled(),
 		);
-		if (config.instrumentationProvider && !validInjectedProvider) {
+		this.provider = isInstrumentationProvider(config.instrumentationProvider)
+			? config.instrumentationProvider
+			: undefined;
+		if (config.instrumentationProvider && !this.provider) {
 			if (this.isDebugEnabled()) {
 				this.logger.warn(
 					"Ignoring invalid instrumentation provider; expected InstrumentationProvider shape",
@@ -215,15 +192,8 @@ export class ResourceMonitor {
 			}
 		}
 
-		// Always use a provider - default to NewRelic if not specified
-		this.ownsProvider = !this.config.instrumentationProvider;
-		this.provider =
-			this.config.instrumentationProvider ??
-			new NewRelicInstrumentationProvider();
-		this.manageProviderLifecycle = this.config.manageProviderLifecycle;
-
 		// Initialize the provider (async, but don't block constructor)
-		if (this.manageProviderLifecycle) {
+		if (this.provider && this.config.manageProviderLifecycle) {
 			this.provider.initialize().catch((err) => {
 				if (this.isDebugEnabled()) {
 					this.logger.warn(
@@ -232,7 +202,7 @@ export class ResourceMonitor {
 					);
 				}
 			});
-		} else if (this.isDebugEnabled()) {
+		} else if (this.provider && this.isDebugEnabled()) {
 			this.logger.debug(
 				"Skipping provider lifecycle management for injected provider",
 			);
@@ -358,7 +328,7 @@ export class ResourceMonitor {
 		eventName: string,
 		attributes: Record<string, any>,
 	): void {
-		if (!this.config.trackPageActions || !this.provider.isReady()) {
+		if (!this.config.trackPageActions || !this.provider?.isReady()) {
 			return;
 		}
 
@@ -376,7 +346,7 @@ export class ResourceMonitor {
 		error: Error,
 		attributes: Record<string, any>,
 	): void {
-		if (!this.config.trackPageActions || !this.provider.isReady()) {
+		if (!this.config.trackPageActions || !this.provider?.isReady()) {
 			return;
 		}
 
@@ -454,7 +424,7 @@ export class ResourceMonitor {
 		this.container = null;
 		this.started = false;
 
-		if (this.manageProviderLifecycle) {
+		if (this.provider && this.config.manageProviderLifecycle) {
 			try {
 				this.provider.destroy();
 			} catch (error) {

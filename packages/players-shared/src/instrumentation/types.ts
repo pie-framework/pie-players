@@ -223,7 +223,7 @@ export interface ErrorAttributes {
 	/**
 	 * Component that generated the error
 	 *
-	 * Examples: 'pie-item-player', 'pie-resource-monitor'
+	 * Examples: 'pie-item-player', 'resource-monitor'
 	 */
 	component: string;
 

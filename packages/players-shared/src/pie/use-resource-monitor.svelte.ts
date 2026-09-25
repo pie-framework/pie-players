@@ -25,9 +25,9 @@
 
 import { onDestroy, untrack } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
-import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
+import { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";
 import { createPieLogger } from "./logger.js";
 import { ResourceMonitor } from "./resource-monitor.js";
 
@@ -77,33 +77,18 @@ export function useResourceMonitor(
 			const hostElement = getHostElement();
 			const loaderConfig = getLoaderConfig();
 			const debugEnabled = getDebugEnabled();
-			const configuredProvider = loaderConfig?.instrumentationProvider;
-			const resolvedInstrumentationProvider = isInstrumentationProvider(
-				configuredProvider,
-			)
-				? configuredProvider
-				: undefined;
-			// Only an unset provider falls back to the monitor's own New Relic
-			// provider. `null` and a provider failing the `InstrumentationProvider`
-			// contract both turn tracking off; resources are still retried.
-			const resolvedTrackPageActions =
-				(configuredProvider === undefined || !!resolvedInstrumentationProvider) &&
-				(loaderConfig?.trackPageActions ?? false);
+			const resolvedTrackPageActions = loaderConfig?.trackPageActions ?? false;
 			const resolvedMaxRetries =
 				loaderConfig?.maxResourceRetries ??
 				DEFAULT_LOADER_CONFIG.maxResourceRetries;
 			const resolvedRetryDelay =
 				loaderConfig?.resourceRetryDelay ??
 				DEFAULT_LOADER_CONFIG.resourceRetryDelay;
-			if (
-				debugEnabled &&
-				configuredProvider &&
-				!resolvedInstrumentationProvider
-			) {
-				logger.warn(
-					`Ignoring invalid instrumentation provider for ${componentName}; expected InstrumentationProvider contract`,
-				);
-			}
+			const resolvedInstrumentationProvider = resolveInstrumentationProvider({
+				player: { loaderConfig },
+				component: componentName,
+				debug: debugEnabled,
+			});
 			const nextConfigKey = JSON.stringify({
 				trackPageActions: resolvedTrackPageActions,
 				maxRetries: resolvedMaxRetries,
@@ -148,7 +133,7 @@ export function useResourceMonitor(
 					trackPageActions: resolvedTrackPageActions,
 					maxRetries: resolvedMaxRetries,
 					retryDelay: resolvedRetryDelay,
-					hasCustomProvider: !!resolvedInstrumentationProvider,
+					provider: resolvedInstrumentationProvider?.providerId,
 					hasContainer: !!hostElement,
 				});
 
@@ -168,10 +153,8 @@ export function useResourceMonitor(
 				monitorConfigKey = nextConfigKey;
 				logger.info(
 					`✅ Resource monitoring enabled for ${componentName}` +
-						(resolvedTrackPageActions
-							? resolvedInstrumentationProvider
-								? " (with custom instrumentation provider)"
-								: " (with New Relic tracking)"
+						(resolvedTrackPageActions && resolvedInstrumentationProvider
+							? ` (tracking via ${resolvedInstrumentationProvider.providerName})`
 							: " (retry only)"),
 				);
 			}

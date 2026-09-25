@@ -41,6 +41,14 @@ describe("resolveInstrumentationProvider", () => {
 		expect(provider?.providerId).toBe("newrelic");
 	});
 
+	test("returns one default instance to every caller", () => {
+		const resolve = () =>
+			resolveInstrumentationProvider({
+				player: { loaderConfig: { trackPageActions: true } },
+			});
+		expect(resolve()).toBe(resolve());
+	});
+
 	test("uses custom provider when configured", () => {
 		const customProvider = new FakeInstrumentationProvider();
 		const provider = resolveInstrumentationProvider({

@@ -47,7 +47,7 @@
 		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

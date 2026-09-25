@@ -78,7 +78,7 @@
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ./scripts/build-ce-components.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"test": "bun test"
 	},

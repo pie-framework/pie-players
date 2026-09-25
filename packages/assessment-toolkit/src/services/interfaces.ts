@@ -32,6 +32,7 @@ import type {
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
 	ToolkitInitStatus,
+	TTSToolConfig,
 } from "./ToolkitCoordinator.js";
 import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
@@ -665,11 +666,16 @@ export interface ToolkitCoordinatorApi {
 	/**
 	 * Get tool configuration
 	 */
+	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
 	getToolConfig(toolId: string): ToolProviderConfig | null;
 
 	/**
 	 * Update tool configuration
 	 */
+	updateToolConfig(
+		toolId: "textToSpeech",
+		updates: Partial<TTSToolConfig>,
+	): void;
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
 	/**

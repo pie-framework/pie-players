@@ -172,7 +172,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		} as any);
 
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(initializedAfterReconfigure).toBe(true);
@@ -344,7 +344,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
@@ -394,7 +394,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(capturedConfig?.rate).toBe(1.25);
@@ -448,7 +448,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({

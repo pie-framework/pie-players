@@ -24,6 +24,7 @@ import {
 	type ToolPlacementConfig,
 	type ToolPlacementLevel,
 	type ToolPolicyConfig,
+	type TextToSpeechToolProviderConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
 	normalizeToolsConfig,
@@ -149,12 +150,15 @@ export interface ToolConfig {
  * callback for fetching provider credentials, neither of which the resolved
  * runtime settings carry.
  *
- * An intersection rather than an interface: `ToolConfig.provider` is `unknown`
- * where the runtime settings narrow it to the three provider ids, and an interface
- * cannot inherit a member from two parents that type it differently.
+ * `provider` is typed from the `textToSpeech` tools-config entry instead: a host
+ * gives either a server provider id or a runtime provider object, whose
+ * `runtime.authFetcher` the TTS registration reads, and `TTSRuntimeSettings`
+ * names only the id. The entry is therefore assignable to this type, which is
+ * what `getToolConfig("textToSpeech")` returns.
  */
 export type TTSToolConfig = ToolConfig &
-	TTSRuntimeSettings & {
+	Omit<TTSRuntimeSettings, "provider"> & {
+		provider?: TextToSpeechToolProviderConfig["provider"];
 		settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
 		authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 	};
@@ -2432,13 +2436,7 @@ export class ToolkitCoordinator {
 	}
 
 	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
-		const providers =
-			(
-				this.config.tools as {
-					providers?: Record<string, ToolProviderConfig | undefined>;
-				}
-			)?.providers || {};
-		return providers.textToSpeech as TTSToolConfig | undefined;
+		return this.config.tools?.providers?.textToSpeech;
 	}
 
 	private assertCanonicalToolId(toolId: string): void {
@@ -2509,7 +2507,7 @@ export class ToolkitCoordinator {
 	 */
 	isToolEnabled(toolId: string): boolean {
 		this.assertCanonicalToolId(toolId);
-		const toolConfig = (this.config.tools as any)?.providers?.[toolId];
+		const toolConfig = this.config.tools?.providers?.[toolId];
 		// Enabled by default unless explicitly set to false
 		return toolConfig?.enabled !== false;
 	}
@@ -2520,15 +2518,11 @@ export class ToolkitCoordinator {
 	 * @param toolId Tool identifier
 	 * @returns Tool configuration or null if not configured
 	 */
-	getToolConfig(toolId: string): ToolProviderConfig | null {
+	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
+	getToolConfig(toolId: string): ToolProviderConfig | null;
+	getToolConfig(toolId: string): ToolProviderConfig | TTSToolConfig | null {
 		this.assertCanonicalToolId(toolId);
-		return (
-			((
-				this.config.tools as {
-					providers?: Record<string, ToolProviderConfig | undefined>;
-				}
-			)?.providers?.[toolId] as ToolProviderConfig | undefined) || null
-		);
+		return this.config.tools?.providers?.[toolId] || null;
 	}
 
 	/**

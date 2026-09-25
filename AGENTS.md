@@ -387,6 +387,12 @@ resolved from worktrees on 2026-09-25. Removing those entries from the main
 checkout's `node_modules` clears them; every session shares that directory, so
 ask before touching it.
 
+`bun run check:resolution-boundary`, in both local gates, fails while a
+`node_modules` above the checkout holds entries its own manifest does not
+declare, or while the checkout has no install of its own. Dependencies the main
+checkout declares and the worktree does not install are listed without failing,
+because two branches can declare different root dependencies.
+
 A worktree path must not contain a path segment named `node_modules`, `build`,
 `dist`, `.turbo`, `.svelte-kit`, `playwright-report`, or `test-results`. Those
 are the unanchored `!**/…` entries in `biome.json`'s `files.includes`, and biome

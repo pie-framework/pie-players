@@ -17,12 +17,18 @@ pre-commit:
 
 pre-push:
   parallel: false
-  commands:
+  jobs:
     # Delegates to `bun run verify:pre-push`, but only when the push actually carries new
     # commits. `use_stdin: true` is what makes that check possible: git hands a pre-push
-    # hook one line per ref being pushed, and lefthook forwards stdin only to commands
-    # that ask for it. Without it the script sees nothing and conservatively runs the full
+    # hook one line per ref being pushed, and lefthook forwards stdin only to jobs that
+    # ask for it. Without it the script sees nothing and conservatively runs the full
     # gate, which is the old behaviour rather than a hole. See scripts/pre-push-gate.mjs.
-    fast-local-gate:
+    #
+    # A script job, because lefthook skips a pre-push `run:` command whose push-file
+    # list is empty, and that list keeps only files that still exist: a push that only
+    # deletes files, or carries an empty commit, ran no gate (evilmartians/lefthook#1191).
+    # Script jobs get no such check, so scripts/pre-push-gate.mjs makes the only skip.
+    - name: fast-local-gate
+      script: pre-push-gate.sh
+      runner: sh
       use_stdin: true
-      run: bun ./scripts/pre-push-gate.mjs

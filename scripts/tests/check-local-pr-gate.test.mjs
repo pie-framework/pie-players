@@ -15,13 +15,15 @@ const basePackageJson = {
 };
 
 const baseLefthook =
-	"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      use_stdin: true\n      run: bun ./scripts/pre-push-gate.mjs\n";
+	"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  jobs:\n    - name: fast-gate\n      script: pre-push-gate.sh\n      runner: sh\n      use_stdin: true\n";
 
 const baseCiWorkflow =
 	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  include:\n    - command: test:e2e:section-player\n    - command: test:e2e:item-player:critical\n    - command: test:e2e:assessment-player\n";
 
 const basePrePushGate =
 	'const gate = spawnSync("bun", ["run", "verify:pre-push"], { stdio: "inherit" });\n';
+
+const basePrePushHookScript = 'exec bun ./scripts/pre-push-gate.mjs "$@"\n';
 
 describe("check-local-pr-gate policy", () => {
 	test("requires pre-push to run the full local PR gate", () => {
@@ -30,6 +32,7 @@ describe("check-local-pr-gate policy", () => {
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toEqual([]);
@@ -49,6 +52,7 @@ describe("check-local-pr-gate policy", () => {
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -70,6 +74,7 @@ describe("check-local-pr-gate policy", () => {
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -95,6 +100,7 @@ describe("check-local-pr-gate policy", () => {
 				"command: test:e2e:section-player:critical\n",
 			),
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -121,6 +127,7 @@ describe("check-local-pr-gate policy", () => {
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -132,9 +139,10 @@ describe("check-local-pr-gate policy", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,
 			lefthook:
-				"pre-push:\n  commands:\n    fast-gate:\n      use_stdin: true\n      run: bun ./scripts/pre-push-gate.mjs\n",
+				"pre-push:\n  jobs:\n    - name: fast-gate\n      script: pre-push-gate.sh\n      runner: sh\n      use_stdin: true\n",
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -156,6 +164,7 @@ describe("check-local-pr-gate policy", () => {
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -182,10 +191,11 @@ describe("check-local-pr-gate pre-push wrapper wiring", () => {
 				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun run verify:pre-push\n",
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
-			"lefthook pre-push must run bun ./scripts/pre-push-gate.mjs.",
+			"lefthook pre-push must run pre-push-gate.sh as a script job.",
 		);
 	});
 
@@ -193,9 +203,10 @@ describe("check-local-pr-gate pre-push wrapper wiring", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,
 			lefthook:
-				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      run: bun ./scripts/pre-push-gate.mjs\n",
+				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  jobs:\n    - name: fast-gate\n      script: pre-push-gate.sh\n      runner: sh\n",
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
@@ -209,10 +220,43 @@ describe("check-local-pr-gate pre-push wrapper wiring", () => {
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow,
 			prePushGate: 'console.log("nothing to do here");\n',
+			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
 			"scripts/pre-push-gate.mjs must delegate to bun run verify:pre-push.",
 		);
+	});
+
+	test("rejects the gate run as a command, which lefthook skips on a push that only deletes files", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook:
+				"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  commands:\n    fast-gate:\n      use_stdin: true\n      run: bun ./scripts/pre-push-gate.mjs\n",
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+
+		expect(failures).toContain(
+			"lefthook pre-push must run pre-push-gate.sh as a script job.",
+		);
+		expect(failures).toContain(
+			"lefthook pre-push must not run the gate as a `run:` command, which lefthook skips when a push only deletes files.",
+		);
+	});
+
+	test("rejects a hook script that bypasses the wrapper", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+			prePushHookScript: "exec bun run verify:pre-push\n",
+		});
+
+		expect(failures).toEqual([
+			".lefthook/pre-push/pre-push-gate.sh must run bun ./scripts/pre-push-gate.mjs.",
+		]);
 	});
 });

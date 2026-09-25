@@ -1,5 +1,6 @@
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
 type UnknownRecord = Record<string, unknown>;
@@ -67,7 +68,7 @@ export function resolveInstrumentationProvider(args: {
 	player?: unknown;
 	debug?: boolean;
 	component?: string;
-}): unknown {
+}): InstrumentationProvider | undefined {
 	const runtimeLoaderConfig = resolveLoaderConfig(args.runtimePlayer);
 	const topLevelLoaderConfig = resolveLoaderConfig(args.player);
 	const runtimeTrackPageActions =

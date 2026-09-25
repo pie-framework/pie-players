@@ -389,13 +389,12 @@
 	});
 
 	const logger = createPieLogger("pie-item-player", () => debugEnabled);
-	const resolvedInstrumentationProvider = $derived.by(
-		() =>
-			resolveInstrumentationProvider({
-				player: { loaderConfig },
-				component: "pie-item-player",
-				debug: debugEnabled,
-			}) as LoaderConfig["instrumentationProvider"],
+	const resolvedInstrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			player: { loaderConfig },
+			component: "pie-item-player",
+			debug: debugEnabled,
+		}),
 	);
 
 	let loading = $state(true);

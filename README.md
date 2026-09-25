@@ -34,6 +34,7 @@ When consuming PIE web components from apps or other packages:
 - Do not import package source paths like `@pie-players/<pkg>/src/...` from consumers.
 - Do not use cross-package `?customElement` imports.
 - Keep runtime package exports pointing to built `dist` artifacts.
+- Type-check with `moduleResolution` `bundler`, `node16` or `nodenext`. `node10` (`node`) ignores `exports` and cannot resolve the subpaths these packages publish; see [Library Packaging Strategy](docs/setup/library-packaging-strategy.md#consumer-guidance-current-scope).
 
 Boundary checks:
 

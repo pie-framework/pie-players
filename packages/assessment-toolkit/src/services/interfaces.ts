@@ -41,6 +41,7 @@ import type {
 	ToolPlacementConfig,
 	ToolPlacementLevel,
 	ToolProviderConfig,
+	ToolProvidersConfig,
 } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
@@ -585,7 +586,7 @@ export interface ToolkitCoordinatorApi {
 	 */
 	readonly config: {
 		tools?: {
-			providers?: Record<string, ToolProviderConfig | undefined>;
+			providers?: ToolProvidersConfig;
 		};
 	};
 

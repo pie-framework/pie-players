@@ -273,6 +273,7 @@
         "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
         "svelte": "^5.57.0",
+        "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
       },
       "peerDependencies": {

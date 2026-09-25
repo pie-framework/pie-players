@@ -263,7 +263,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 		const { calculatorType, availableTypes, displayName } =
 			getCalculatorRenderParams(toolbarContext);
 		const calculatorToolConfig =
-			toolbarContext.toolkitCoordinator?.config.tools?.providers?.calculator;
+			toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
+			undefined;
 		const providerId = resolveCalculatorProviderId(calculatorToolConfig);
 		const calculatorConfig = getCalculatorInstanceConfig(calculatorToolConfig);
 		const fullToolId = createScopedToolId(

@@ -234,6 +234,14 @@ Desmos-named package to the shared calculator package; the Desmos package keeps 
 compatibility entry that imports that same guarded registration, so the runtime
 surface observed by Host A and Host R does not change.
 
+`pie-default-tool-loaders` has since dropped its dependency on the Desmos
+package, which it stopped importing with that move. Checked against all four
+checkouts on 2026-09-25 as a targeted lookup, so it does not advance the
+verification date: Hosts A and R both declare the package directly, so neither
+install changes. Host R imports it for the registration side effect; Host A
+imports it nowhere and takes the element from the section player's packaged
+loaders. Hosts V and P neither name it nor install the loaders.
+
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a
 `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so
@@ -1275,10 +1283,10 @@ over a CDN with no typecheck at all.
 - `CalculatorProvider.destroy()` leaving the calculators it created mounted. The
   Desmos and GeoGebra adapters destroy them as of 2026-08-27, matching Cortex.
   This pad records no host constructing a calculator provider directly — both
-  hosts that offer Desmos reach it through the tool package — and the toolkit's
-  own teardown destroys the tool component first, so the added call lands on
-  calculators that are already gone. Each calculator is destroyed at most once, so
-  either order is safe
+  hosts that offer Desmos reach it through the `pie-tool-calculator` element —
+  and the toolkit's own teardown destroys the tool component first, so the added
+  call lands on calculators that are already gone. Each calculator is destroyed at
+  most once, so either order is safe
 - Message-override keys on `CortexCalculatorMessages`. Six viewport controls and
   their group label were added on 2026-08-27, and two keypad keys later the same
   day; `CortexCalculatorMessageOverrides` is a partial, so an override object that
@@ -1300,10 +1308,9 @@ over a CDN with no typecheck at all.
   the exported state, the history entries and `getResult` stay `.`-separated and a
   state saved under one locale is not reinterpreted under another
 - `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
-  that offer a Desmos calculator take the tool package as a side-effect import and
-  reach the provider through the calculator package instead; one of them serves the
-  proxy endpoint that only the calculator package's provider supports. Nothing
-  imports the toolkit's copy
+  that offer a Desmos calculator reach the provider through the calculator package
+  instead; one of them serves the proxy endpoint that only the calculator package's
+  provider supports. Nothing imports the toolkit's copy
 - `TTSToolConfig` and `TTSRuntimeSettings` as names, and the fields on which the
   two differ. The one host that configures server TTS sets eleven keys, all of them
   in the intersection of the two shapes, so folding them into one owner is

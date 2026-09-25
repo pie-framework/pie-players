@@ -77,11 +77,17 @@ export function useResourceMonitor(
 			const hostElement = getHostElement();
 			const loaderConfig = getLoaderConfig();
 			const debugEnabled = getDebugEnabled();
-			// `instrumentationProvider: null` disables instrumentation. The monitor
-			// still retries resources, but with tracking on it would fall back to
-			// its own New Relic provider.
+			const configuredProvider = loaderConfig?.instrumentationProvider;
+			const resolvedInstrumentationProvider = isInstrumentationProvider(
+				configuredProvider,
+			)
+				? configuredProvider
+				: undefined;
+			// Only an unset provider falls back to the monitor's own New Relic
+			// provider. `null` and a provider failing the `InstrumentationProvider`
+			// contract both turn tracking off; resources are still retried.
 			const resolvedTrackPageActions =
-				loaderConfig?.instrumentationProvider !== null &&
+				(configuredProvider === undefined || !!resolvedInstrumentationProvider) &&
 				(loaderConfig?.trackPageActions ?? false);
 			const resolvedMaxRetries =
 				loaderConfig?.maxResourceRetries ??
@@ -89,14 +95,9 @@ export function useResourceMonitor(
 			const resolvedRetryDelay =
 				loaderConfig?.resourceRetryDelay ??
 				DEFAULT_LOADER_CONFIG.resourceRetryDelay;
-			const resolvedInstrumentationProvider = isInstrumentationProvider(
-				loaderConfig?.instrumentationProvider,
-			)
-				? loaderConfig?.instrumentationProvider
-				: undefined;
 			if (
 				debugEnabled &&
-				loaderConfig?.instrumentationProvider &&
+				configuredProvider &&
 				!resolvedInstrumentationProvider
 			) {
 				logger.warn(

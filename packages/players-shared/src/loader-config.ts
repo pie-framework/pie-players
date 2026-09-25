@@ -33,7 +33,8 @@ export type LoaderConfig = {
 	 *   `true`, in which case players fall back to a
 	 *   `NewRelicInstrumentationProvider`, which reports only while
 	 *   `window.newrelic` is present.
-	 * - A provider: players report to it.
+	 * - A provider: players report to it. A value that fails the
+	 *   `InstrumentationProvider` contract is treated as `null`.
 	 * - `null`: disables instrumentation, whatever `trackPageActions` says.
 	 *
 	 * @example Using New Relic (the fallback, no provider needed)

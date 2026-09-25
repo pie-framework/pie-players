@@ -1,12 +1,12 @@
 # Instrumentation Providers
 
 Status: Design note. Shipped today: the `InstrumentationProvider` contract,
-`BaseInstrumentationProvider`, and the New Relic, console, debug-panel and
-composite adapters;
+`BaseInstrumentationProvider`, the New Relic, console, debug-panel and
+composite adapters, and probed readiness;
 [`architecture.md`](./architecture.md#instrumentation--observability) owns the
 current provider semantics and the per-layer event ownership model. Not
-implemented: probed readiness, agent detection, the conformance suite, central
-attribute naming, and buffering. The DataDog and OpenTelemetry adapters
+implemented: agent detection, the conformance suite, central attribute naming,
+and buffering. The DataDog and OpenTelemetry adapters
 described here are verified examples of host-owned adapters, not products PIE
 ships. Correct this note or mark it historical when the built system diverges.
 
@@ -80,9 +80,9 @@ the preloaded `pie-item-player`, where both implicit default instances send to
 New Relic: the resource monitor's sends a `pie-resource-load` page action per
 tracked resource, retry and error page actions, and a `noticeError` per failure,
 and resolution's memoized instance sends a `noticeError` per item-player runtime
-error. An instance sends only if the agent was on the page when it initialized,
-the latch described under probed readiness. That host's own page loads no agent,
-so the agent comes from an outer page, as it does for Host A, and either order is
+error. Each sends whenever the agent is on the page at the moment it tracks, as
+described under probed readiness. That host's own page loads no agent, so the
+agent comes from an outer page, as it does for Host A, and either order is
 possible.
 
 The predecessor player on that host's main line never receives its loader
@@ -91,10 +91,12 @@ that element reads `loaderConfig`. PIE resource telemetry therefore first reache
 that host's account through `pie-item-player`.
 
 That puts what the default sends in a client's account, and three parts of this
-design change it. Probed readiness and buffering add volume on pages whose agent
-arrives after the player starts. Central attribute naming renames every key the
-account receives, which is free until that host's `@pie-players` rollout goes
-live and breaks any query on those keys after. Detection binds the adapter the
+design change it. Probed readiness, shipped, made both instances send from the
+agent's arrival on, which adds volume on pages whose agent arrives after the
+player starts; buffering adds what they tracked before it arrived. Central
+attribute naming renames every key the account receives, which is free until
+that host's `@pie-players` rollout goes live and breaks any query on those keys
+after. Detection binds the adapter the
 default already constructs there, so it changes nothing that host receives. The
 emission gate does not apply, because that host asked for telemetry, and each
 change reaches it when it moves its exact pin.
@@ -108,15 +110,17 @@ because the opposite assumption would narrow the design on behalf of nobody.
 `initialized` means the provider has been configured. `isReady()` evaluates the
 live world on every call.
 
-Today [`NewRelicInstrumentationProvider`](../../packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts)
-decides once, inside `initialize()`, whether the agent exists and writes that
-into `initialized`; `isReady()` re-reads the global but conjoins it with the
-latch. A host whose agent boots after the first player resolves therefore has
-instrumentation dead for the life of the page, with nothing logged above debug
-level. This is a defect independent of any new adapter, and it is the one that
-matters most: the topology it breaks — the agent injected by an outer page at a
-time neither side predicts — is the topology of the host most likely to enable
-tracking.
+[`NewRelicInstrumentationProvider`](../../packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts)
+sets `initialized` in `initialize()` whether or not the agent is there. Both
+`isReady()` and every send look the agent up through
+[`new-relic-agent.ts`](../../packages/players-shared/src/instrumentation/new-relic-agent.ts),
+the shape probe described under agent detection, which no package entry point
+exports. A provider initialized before the agent boots therefore sends from the
+agent's arrival on; what it tracked earlier is dropped until buffering lands. The
+topology this serves — the agent injected by an outer page at a time neither
+side predicts — is the topology of the host most likely to enable tracking. It
+replaced a latch in `initialize()` that left instrumentation dead for the life of
+any page whose agent booted after the first player resolved.
 
 ## Agent detection
 
@@ -204,11 +208,11 @@ only in a telemetry account. The contract has no notion of a durable sink, and a
 adapter that posts to a host endpoint satisfies it. Host-implemented, like every
 adapter but one.
 
-**Its service latches the handle exactly the way PIE's adapter does.** It
-captures the global once during configuration and every method no-ops while that
-field is falsy. Its own page loads no agent, so the agent arrives from an outer
-page neither repository controls. The same page therefore gives the same defect
-two independent chances to silence telemetry. PIE fixes its own half by probing.
+**Its service latches the handle the way PIE's adapter did before probed
+readiness.** It captures the global once during configuration and every method
+no-ops while that field is falsy. Its own page loads no agent, so the agent
+arrives from an outer page neither repository controls. The same page gave the
+same defect two independent chances to silence telemetry; probing removed PIE's.
 
 Under this design that host opts in by setting `trackPageActions: true` and
 constructing nothing. Detection finds the agent, and PIE's events inherit the

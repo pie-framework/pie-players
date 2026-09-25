@@ -2,6 +2,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
 export default defineConfig({
 	plugins: [
@@ -9,6 +10,7 @@ export default defineConfig({
 			compilerOptions: { customElement: true },
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
 		dts({
 			tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 			outDirs: "dist",

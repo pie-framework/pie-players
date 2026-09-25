@@ -232,7 +232,7 @@ let instrumentationDebuggerElement = $state<any>(null);
 
 		try {
 			await coordinator.ensureTTSReady(
-				coordinator.getToolConfig("textToSpeech") as Record<string, unknown>,
+				coordinator.getToolConfig("textToSpeech") ?? undefined,
 			);
 			await probePollyAvailability();
 			ttsBackend = "polly";

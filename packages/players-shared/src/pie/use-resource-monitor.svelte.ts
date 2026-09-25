@@ -26,6 +26,7 @@
 import { onDestroy, untrack } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
 import { createPieLogger } from "./logger.js";
 import { ResourceMonitor } from "./resource-monitor.js";
@@ -54,9 +55,7 @@ export function useResourceMonitor(
 	let isInitialized = $state(false);
 	let activeHostElement = $state<HTMLElement | null>(null);
 	let monitorConfigKey = $state<string>("");
-	let activeProvider = $state<
-		LoaderConfig["instrumentationProvider"] | undefined
-	>(undefined);
+	let activeProvider = $state<InstrumentationProvider | undefined>(undefined);
 
 	// Initialize resource monitor when conditions are met.
 	//
@@ -78,7 +77,12 @@ export function useResourceMonitor(
 			const hostElement = getHostElement();
 			const loaderConfig = getLoaderConfig();
 			const debugEnabled = getDebugEnabled();
-			const resolvedTrackPageActions = loaderConfig?.trackPageActions ?? false;
+			// `instrumentationProvider: null` disables instrumentation. The monitor
+			// still retries resources, but with tracking on it would fall back to
+			// its own New Relic provider.
+			const resolvedTrackPageActions =
+				loaderConfig?.instrumentationProvider !== null &&
+				(loaderConfig?.trackPageActions ?? false);
 			const resolvedMaxRetries =
 				loaderConfig?.maxResourceRetries ??
 				DEFAULT_LOADER_CONFIG.maxResourceRetries;

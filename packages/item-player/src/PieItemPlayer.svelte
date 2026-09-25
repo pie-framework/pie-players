@@ -73,6 +73,7 @@
 		ConfigResource,
 		Env,
 		IifeBundleRetryStatus,
+		InstrumentationProvider,
 		ItemMarkupSanitizer,
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
@@ -395,7 +396,7 @@
 				player: { loaderConfig },
 				component: "pie-item-player",
 				debug: debugEnabled,
-			}) as LoaderConfig["instrumentationProvider"],
+			}) as InstrumentationProvider | undefined,
 	);
 
 	let loading = $state(true);

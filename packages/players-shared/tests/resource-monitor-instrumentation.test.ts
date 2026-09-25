@@ -108,6 +108,21 @@ describe("useResourceMonitor wiring contract", () => {
 		);
 	});
 
+	test("turns tracking off when loaderConfig.instrumentationProvider is null", () => {
+		const useResourceMonitorPath = join(
+			import.meta.dir,
+			"../src/pie/use-resource-monitor.svelte.ts",
+		);
+		const source = readFileSync(useResourceMonitorPath, "utf8");
+
+		// With tracking on and no provider, ResourceMonitor reports to its own
+		// New Relic provider, so the documented `null` opt-out has to reach
+		// `trackPageActions`.
+		expect(source).toContain(
+			"loaderConfig?.instrumentationProvider !== null &&",
+		);
+	});
+
 	test("reinitializes monitor when config or provider changes", () => {
 		const useResourceMonitorPath = join(
 			import.meta.dir,

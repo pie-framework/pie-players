@@ -96,6 +96,16 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"what the implicit instrumentation default sends into Host P's observability account, in volume or attribute names: New Relic readiness and agent calls, the base provider's filtering, sampling and attribute shaping, and when resolution falls back to the default",
+		match: (file) =>
+			[
+				"packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts",
+				"packages/players-shared/src/instrumentation/providers/BaseInstrumentationProvider.ts",
+				"packages/players-shared/src/pie/instrumentation-provider-resolution.ts",
+			].includes(file),
+	},
+	{
+		reason:
 			"generated `@pie-players/pie-preloaded-player` package: the `dist/` entry name and layout a host copies and loads by path",
 		match: (file) =>
 			file === "tools/cli/src/utils/pie-packages/fixed-static.ts",

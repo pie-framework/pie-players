@@ -929,6 +929,40 @@ target on `origin/develop`, but the CDN path bypasses the map, so renaming the
 Two of the four routes fall back to `latest` when no version is supplied, so a
 rename lands there as soon as it publishes, with no install and no build.
 
+## Single-file bundle (Host A)
+
+Verified against the checkout on 2026-09-24.
+
+Host A deploys its element as one JavaScript file, where a lazy chunk would
+404, so its webpack build turns chunk splitting off and compiles every
+`import()` eagerly. Every module reachable through an `import()` from a
+`@pie-players` package it bundles is therefore initial-bundle weight there,
+whether or not that code path runs: each `pie-tool-*` package the packaged tool
+loaders import
+(`packages/default-tool-loaders/src/packaged-capability-composition.ts`),
+placed or not, and speech-rule-engine with its 16 locale tables (4.3 MB). Lazy
+loading takes nothing out of that file; deleting code or sharing one copy of it
+across packages does.
+
+Its production build warns past 13 MB of initial bundle and fails past 14 MB,
+and its caret range takes each patch on the next install, so a patch can fail
+that build with no change on Host A's side. Host A has resolved
+`@pie-players/pie-calculator-cortex` to a local stub in its build since the
+toolkit's Cortex provider, new in 0.3.69, took it past that budget with about
+7 MB of engine. The engine stays out only while the toolkit reaches it through
+that bare specifier, at its one import site in
+`packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts`.
+A subpath of the specifier fails Host A's build, since the alias targets a file,
+and any other route brings the engine back.
+
+An `import()` of a specifier computed at runtime cannot reach the network
+there. The build resolves it against an empty module context, which rejects
+with `Cannot find module`. Host A sets no `playerType`, so it runs the default
+`iife` strategy (`DEFAULT_PLAYER_TYPE` in
+`packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`), which loads
+element bundles by script tag; the `esm` strategy's loader would reject every
+element.
+
 ## Content stylesheet delivery
 
 The most fragile shared surface, because it changed underneath the hosts.
@@ -1041,6 +1075,17 @@ change it and fix Host R in the same push.
 - Changing how content styles are delivered, without accounting for Host V's
   pinned-version workaround and the opt-out attribute Host A and Host R now
   rely on implicitly by not setting it
+
+**Build or runtime failure in a client-facing host (A). Coordinate before
+shipping.**
+
+- Adding weight behind an `import()` in any package Host A bundles, a new entry
+  in the packaged tool loaders included: its single-file build puts all of it in
+  an initial bundle that fails past 14 MB
+- Reaching the Cortex engine through anything but the bare
+  `@pie-players/pie-calculator-cortex` specifier Host A stubs
+- Putting an `import()` of a computed specifier on a path Host A runs, making
+  `esm` the default `playerType` among them: it rejects in that build
 
 **Host R only. Change freely; land the internally controlled host fix in the
 same push.** Its checkout was available for the 2026-08-19 refresh, so these are

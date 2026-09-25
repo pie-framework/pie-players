@@ -81,16 +81,25 @@ bun run verify:publish
 `verify:publish` executes:
 
 - package build
+- patch-only changeset guard (`scripts/check-changeset-patch-only.mjs`)
 - fixed-versioning invariants (`scripts/check-fixed-versioning.mjs`)
 - metadata policy validation
+- Svelte runtime dependency policy (`scripts/check-svelte-runtime-deps.mjs`)
 - custom-element contract checks (`check:custom-elements`, `check:custom-elements:dist`,
   `check:ce-define-safety`)
 - `publint` package surface checks
 - ATTW type-surface checks (`scripts/check-attw.mjs`)
-- pack exports check (`npm pack --dry-run` + export target verification)
-- pack smoke check (`npm pack` tarball verification)
+- real-tarball pack integrity (`scripts/check-pack-integrity.mjs --real-pack`)
+- dependency declaration checks (`scripts/check-deps.mjs`)
+- cross-package subpath declarations (`scripts/check-undeclared-subpaths.mjs`)
+- app import boundary checks (`scripts/check-consumer-boundaries.mjs`)
+- Svelte peer dependency policy (`scripts/check-ce-consumer-contract.mjs`)
 - Node consumer import boundary checks (`scripts/check-node-consumer-imports.mjs`)
-- dependency, publish-surface, sourcemap, and runtime boundary checks
+- built bundle shape and player/tool boundary checks (`check:bundle-safety`)
+- math-rendering-module version alignment (`scripts/check-math-rendering-version.mjs`)
+- toolkit core boundary checks (`check:engine-core-purity`,
+  `check:speech-composition-purity`, `check:capability-neutrality`)
+- `scripts/` unit tests (`check:scripts`)
 
 ## Dist-only publish surface
 

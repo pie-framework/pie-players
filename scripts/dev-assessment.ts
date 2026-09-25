@@ -14,7 +14,6 @@ await runDevServerBootstrap({
 		"packages/section-player-tools-instrumentation-debugger/dist/section-player-tools-instrumentation-debugger.js",
 		"packages/section-player-tools-session-debugger/dist/section-player-tools-session-debugger.js",
 		"packages/section-player-tools-shared/dist/index.js",
-		"packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
 		"packages/tool-text-to-speech/dist/tool-text-to-speech.js",
 		"packages/tts-server-google/dist/index.js",
 		"packages/tts-server-polly/dist/index.js",

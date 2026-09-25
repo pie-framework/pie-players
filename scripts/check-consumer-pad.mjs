@@ -120,6 +120,16 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"what Host A's single-file build inlines or cannot load: the packaged tool loaders' imports, the Cortex engine's one import site, or the default loading strategy",
+		match: (file) =>
+			[
+				"packages/default-tool-loaders/src/packaged-capability-composition.ts",
+				"packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts",
+				"packages/assessment-toolkit/src/runtime/core/engine-resolver.ts",
+			].includes(file),
+	},
+	{
+		reason:
 			"published type surface of a provider adapter package: the owner of a vendor's configuration types",
 		match: (file) =>
 			/^packages\/(calculator-desmos|tts-client-server|tts-server-[a-z]+)\/(src\/)?index\.ts$/.test(

@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+	analyzeSpeechRuleEngineBoundary,
+	findInlinedSreLocaleTables,
+	findModuleSpecifiers,
 	findPublishedSourcemaps,
-	findStaticSpeechRuleEngineImports,
 	findUnguardedCustomElementDefines,
 	hasInlinedSpeechRuleEngine,
 	hasSvelteDevRuntime,
@@ -59,57 +61,214 @@ describe("hasInlinedSpeechRuleEngine", () => {
 	});
 });
 
-describe("findStaticSpeechRuleEngineImports", () => {
-	test("accepts the dynamic import, which is the whole point", () => {
+describe("findInlinedSreLocaleTables", () => {
+	test("reads the locale of a table bundled as an object literal", () => {
+		const content =
+			'var e={"base/functions/algebra.min":[{locale:"base"}],"base/symbols/digits.min":[]};export{e as default};';
+		expect(findInlinedSreLocaleTables(content)).toEqual(["base"]);
+	});
+
+	test("reads tables bundled as a JSON.parse string", () => {
+		const content =
+			'const e=JSON.parse(\'{"es/messages/alphabets.min":[],"en/rules/clearspeak_english.min":[]}\');';
+		expect(findInlinedSreLocaleTables(content)).toEqual(["en", "es"]);
+	});
+
+	test("does not flag a dynamic import of a table", () => {
 		expect(
-			findStaticSpeechRuleEngineImports(
-				'let m=await import("speech-rule-engine");',
+			findInlinedSreLocaleTables(
+				'en:()=>import("speech-rule-engine/lib/mathmaps/en.json")',
 			),
 		).toEqual([]);
 	});
+});
 
-	test("flags a static default/named import", () => {
+describe("findModuleSpecifiers", () => {
+	test("reads a dynamic import as dynamic only", () => {
 		expect(
-			findStaticSpeechRuleEngineImports(
-				'import sre from "speech-rule-engine";\n',
-			),
-		).toHaveLength(1);
+			findModuleSpecifiers('let m=await import("speech-rule-engine");'),
+		).toEqual({ static: [], dynamic: ["speech-rule-engine"] });
 	});
 
-	test("flags the minified no-space form", () => {
+	test("reads a dynamic import that carries import attributes", () => {
 		expect(
-			findStaticSpeechRuleEngineImports('import{a}from"speech-rule-engine";'),
-		).toHaveLength(1);
+			findModuleSpecifiers(
+				'en:()=>import("speech-rule-engine/lib/mathmaps/en.json",{with:{type:"json"}})',
+			).dynamic,
+		).toEqual(["speech-rule-engine/lib/mathmaps/en.json"]);
 	});
 
-	test("flags a static subpath import", () => {
+	test("reads a default import", () => {
 		expect(
-			findStaticSpeechRuleEngineImports(
+			findModuleSpecifiers('import sre from "speech-rule-engine";\n').static,
+		).toEqual(["speech-rule-engine"]);
+	});
+
+	test("reads the minified no-space forms", () => {
+		expect(
+			findModuleSpecifiers(
+				'import{a}from"./chunks/a.js";import*as b from"speech-rule-engine";',
+			).static,
+		).toEqual(["./chunks/a.js", "speech-rule-engine"]);
+	});
+
+	test("reads a subpath import", () => {
+		expect(
+			findModuleSpecifiers(
 				'import { engineReady } from "speech-rule-engine/js/common/system";',
-			),
-		).toHaveLength(1);
+			).static,
+		).toEqual(["speech-rule-engine/js/common/system"]);
 	});
 
-	test("flags a side-effect-only static import", () => {
-		expect(
-			findStaticSpeechRuleEngineImports('import"speech-rule-engine";'),
-		).toHaveLength(1);
+	test("reads a side-effect-only import", () => {
+		expect(findModuleSpecifiers('import"./chunks/b.js";').static).toEqual([
+			"./chunks/b.js",
+		]);
 	});
 
-	test("flags a re-export", () => {
+	test("reads a re-export", () => {
 		expect(
-			findStaticSpeechRuleEngineImports(
-				'export { toSpeech } from "speech-rule-engine";',
-			),
-		).toHaveLength(1);
+			findModuleSpecifiers('export { toSpeech } from "speech-rule-engine";')
+				.static,
+		).toEqual(["speech-rule-engine"]);
 	});
 
-	test("ignores unrelated packages", () => {
+	test("ignores an export list with no source module", () => {
+		expect(findModuleSpecifiers("var y=q;export{y as default};")).toEqual({
+			static: [],
+			dynamic: [],
+		});
+	});
+});
+
+describe("analyzeSpeechRuleEngineBoundary", () => {
+	// The shape the toolkit's CE build emits: the entry reaches the engine chunk
+	// only through `import()`, and the engine chunk imports SRE statically so it
+	// can configure SRE the moment SRE evaluates.
+	const toolkitShape = [
+		{
+			path: "Toolkit.custom-element.js",
+			content:
+				'import{k}from"./chunks/shared.js";const load=()=>import("./chunks/sre-engine.js");',
+		},
+		{
+			path: "chunks/shared.js",
+			content:
+				'var t={en:()=>import("speech-rule-engine/lib/mathmaps/en.json",{with:{type:"json"}})};export{t as k};',
+		},
+		{
+			path: "chunks/sre-engine.js",
+			content:
+				'import{k}from"./shared.js";import*as b from"speech-rule-engine";b.setupEngine(k);export{b as d};',
+		},
+	];
+
+	test("accepts SRE imported statically from a lazily loaded chunk", () => {
+		expect(analyzeSpeechRuleEngineBoundary(toolkitShape)).toEqual({
+			issues: [],
+			lazyEngineModules: ["chunks/sre-engine.js"],
+			dynamicEngineImporters: [],
+			tableImporters: ["chunks/shared.js"],
+		});
+	});
+
+	test("accepts a static import further down a lazily loaded chain", () => {
+		const result = analyzeSpeechRuleEngineBoundary([
+			{ path: "entry.js", content: 'const l=()=>import("./lazy.js");' },
+			{ path: "lazy.js", content: 'import"./engine.js";' },
+			{ path: "engine.js", content: 'import*as b from"speech-rule-engine";' },
+		]);
+		expect(result.issues).toEqual([]);
+		expect(result.lazyEngineModules).toEqual(["engine.js"]);
+	});
+
+	test("reports a dynamic import of SRE itself as a lazy route to it", () => {
 		expect(
-			findStaticSpeechRuleEngineImports(
-				'import x from "@pie-players/pie-players-shared";',
-			),
-		).toEqual([]);
+			analyzeSpeechRuleEngineBoundary([
+				{
+					path: "entry.js",
+					content: 'const l=()=>import("speech-rule-engine");',
+				},
+			]).dynamicEngineImporters,
+		).toEqual(["entry.js"]);
+	});
+
+	test("flags an entry that imports SRE statically", () => {
+		expect(
+			analyzeSpeechRuleEngineBoundary([
+				{ path: "entry.js", content: 'import sre from "speech-rule-engine";' },
+			]).issues,
+		).toEqual([
+			"entry.js imports speech-rule-engine statically and is an entry; only a module reached through a dynamic import may import it statically",
+		]);
+	});
+
+	test("flags an engine chunk that an entry also imports statically", () => {
+		const [entry, ...rest] = toolkitShape;
+		const result = analyzeSpeechRuleEngineBoundary([
+			{
+				...entry,
+				content: `import"./chunks/sre-engine.js";${entry.content}`,
+			},
+			...rest,
+		]);
+		expect(result.issues).toEqual([
+			"chunks/sre-engine.js imports speech-rule-engine statically and loads eagerly with Toolkit.custom-element.js; only a module reached through a dynamic import may import it statically",
+		]);
+		expect(result.lazyEngineModules).toEqual([]);
+	});
+
+	test("flags a module that imports SRE statically but nothing loads", () => {
+		// Two modules importing each other have no entry and no dynamic importer.
+		expect(
+			analyzeSpeechRuleEngineBoundary([
+				{
+					path: "a.js",
+					content: 'import"./b.js";import*as s from"speech-rule-engine";',
+				},
+				{ path: "b.js", content: 'import"./a.js";' },
+			]).issues,
+		).toEqual([
+			"a.js imports speech-rule-engine statically, but no dynamic import reaches it",
+		]);
+	});
+
+	test("flags a locale table imported statically, even from a lazy chunk", () => {
+		const result = analyzeSpeechRuleEngineBoundary([
+			{ path: "entry.js", content: 'const l=()=>import("./lazy.js");' },
+			{
+				path: "lazy.js",
+				content:
+					'import en from"speech-rule-engine/lib/mathmaps/en.json"with{type:"json"};',
+			},
+		]);
+		expect(result.issues).toEqual([
+			"lazy.js imports a speech-rule-engine locale table statically (speech-rule-engine/lib/mathmaps/en.json); the tables must stay behind a dynamic import",
+		]);
+		expect(result.tableImporters).toEqual([]);
+	});
+
+	test("finds nothing in a bundle that inlined SRE and its tables", () => {
+		// What a Vite bundle emits when `speech-rule-engine` is not external.
+		expect(
+			analyzeSpeechRuleEngineBoundary([
+				{
+					path: "tool.js",
+					content: 'const l=()=>import("./sre-engine-x.js");',
+				},
+				{
+					path: "sre-engine-x.js",
+					content:
+						'var t={en:()=>import("./en-x.js")};var sre=(()=>{/* SRE */})();',
+				},
+				{ path: "en-x.js", content: "var e={};export{e as default};" },
+			]),
+		).toEqual({
+			issues: [],
+			lazyEngineModules: [],
+			dynamicEngineImporters: [],
+			tableImporters: [],
+		});
 	});
 });
 

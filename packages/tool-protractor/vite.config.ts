@@ -33,7 +33,9 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: [],
+			// speech-rule-engine and its locale tables resolve from the host's
+			// node_modules, so every PIE bundle a host loads shares one copy.
+			external: [/^speech-rule-engine(?:\/|$)/],
 			onwarn(warning, warn) {
 				if (
 					typeof warning.message === "string" &&

@@ -1,7 +1,10 @@
 import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 import "@pie-players/pie-section-player/components/section-player-vertical-element";
 import { SECTION_PLAYER_PUBLIC_EVENTS } from "@pie-players/pie-section-player/contracts/public-events";
-import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+import {
+	coerceBooleanLike,
+	type InstrumentationProvider,
+} from "@pie-players/pie-players-shared";
 import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {
 	frameworkErrorFromUnknown,
@@ -476,7 +479,7 @@ export class AssessmentPlayerDefaultElement
 		}
 	}
 
-	private resolveInstrumentationProvider(): unknown {
+	private resolveInstrumentationProvider(): InstrumentationProvider | undefined {
 		return resolveInstrumentationProvider({
 			runtimePlayer: this.sectionPlayerRuntime?.player,
 			component: "pie-assessment-player-default",

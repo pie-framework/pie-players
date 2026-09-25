@@ -73,7 +73,6 @@
 		ConfigResource,
 		Env,
 		IifeBundleRetryStatus,
-		InstrumentationProvider,
 		ItemMarkupSanitizer,
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
@@ -390,13 +389,12 @@
 	});
 
 	const logger = createPieLogger("pie-item-player", () => debugEnabled);
-	const resolvedInstrumentationProvider = $derived.by(
-		() =>
-			resolveInstrumentationProvider({
-				player: { loaderConfig },
-				component: "pie-item-player",
-				debug: debugEnabled,
-			}) as InstrumentationProvider | undefined,
+	const resolvedInstrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			player: { loaderConfig },
+			component: "pie-item-player",
+			debug: debugEnabled,
+		}),
 	);
 
 	let loading = $state(true);

@@ -21,7 +21,7 @@ const TARGET_DIRS = [
  */
 const TOOLKIT_CE_DIR = "packages/assessment-toolkit/dist/components";
 
-/** Directories whose published output must not contain sourcemaps. */
+/** Parent of every package whose published `dist` the suite-wide checks scan. */
 const PACKAGES_DIR = "packages";
 
 function collectFiles(dir, predicate) {
@@ -112,6 +112,28 @@ export function findPublishedSourcemaps(relativePaths) {
 	return relativePaths.filter((filePath) => filePath.endsWith(".map"));
 }
 
+/**
+ * True when a bundle carries Svelte's development runtime.
+ *
+ * Keys off `__svelte_cleanup`, the property Svelte's dev-only array warnings
+ * set on `Array` after wrapping `indexOf`, `lastIndexOf` and `includes` on the
+ * host page. Only the dev runtime contains that string, and a production build
+ * removes it along with every other `DEV` branch.
+ */
+export function hasSvelteDevRuntime(content) {
+	return content.includes("__svelte_cleanup");
+}
+
+function listPackageDistDirs() {
+	const absPackages = path.join(ROOT, PACKAGES_DIR);
+	if (!existsSync(absPackages)) return [];
+
+	return readdirSync(absPackages, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => path.join(absPackages, entry.name, "dist"))
+		.filter((dir) => existsSync(dir));
+}
+
 function checkEvalRequire(failures) {
 	let filesChecked = 0;
 
@@ -191,13 +213,7 @@ function checkToolkitCustomElements(failures) {
 }
 
 function checkNoPublishedSourcemaps(failures) {
-	const absPackages = path.join(ROOT, PACKAGES_DIR);
-	if (!existsSync(absPackages)) return 0;
-
-	const distDirs = readdirSync(absPackages, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
-		.map((entry) => path.join(absPackages, entry.name, "dist"))
-		.filter((dir) => existsSync(dir));
+	const distDirs = listPackageDistDirs();
 
 	const mapFiles = [];
 	for (const dir of distDirs) {
@@ -217,11 +233,29 @@ function checkNoPublishedSourcemaps(failures) {
 	return distDirs.length;
 }
 
+function checkNoSvelteDevRuntime(failures) {
+	let filesChecked = 0;
+
+	for (const dir of listPackageDistDirs()) {
+		for (const filePath of collectJsFiles(dir)) {
+			filesChecked += 1;
+			if (hasSvelteDevRuntime(readFileSync(filePath, "utf8"))) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} ships Svelte's dev runtime, which patches Array.prototype on the host page; build it with production Svelte`,
+				);
+			}
+		}
+	}
+
+	return filesChecked;
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
 		checkEvalRequire(failures) + checkToolkitCustomElements(failures);
 	checkNoPublishedSourcemaps(failures);
+	checkNoSvelteDevRuntime(failures);
 
 	if (failures.length > 0) {
 		console.error(

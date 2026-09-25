@@ -4,6 +4,7 @@ import {
 	findPublishedSourcemaps,
 	findStaticSpeechRuleEngineImports,
 	hasInlinedSpeechRuleEngine,
+	hasSvelteDevRuntime,
 	looksUnminified,
 } from "../check-bundle-safety.mjs";
 
@@ -126,5 +127,20 @@ describe("findPublishedSourcemaps", () => {
 		expect(
 			findPublishedSourcemaps(["packages/assessment-toolkit/dist/index.js"]),
 		).toEqual([]);
+	});
+});
+
+describe("hasSvelteDevRuntime", () => {
+	test("flags the Array patch Svelte's dev runtime installs", () => {
+		// Minified shape of `init_array_prototype_warnings` from a DEV build.
+		const content =
+			"function R8(){let{prototype:J,__svelte_cleanup:Q}=Array;if(Q)Q();J.indexOf=W;Array.__svelte_cleanup=()=>{J.indexOf=X}}";
+		expect(hasSvelteDevRuntime(content)).toBe(true);
+	});
+
+	test("passes production Svelte, where the DEV branch is gone", () => {
+		const content =
+			'if(ZQ(W))W[s7]=void 0}function u(J=""){return document.createTextNode(J)}';
+		expect(hasSvelteDevRuntime(content)).toBe(false);
 	});
 });

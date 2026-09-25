@@ -1618,15 +1618,3 @@ export class ResourceMonitor {
 		};
 	}
 }
-
-/**
- * Create and start a resource monitor for a container
- */
-export function createResourceMonitor(
-	container: HTMLElement,
-	config: ResourceMonitorConfig = {},
-): ResourceMonitor {
-	const monitor = new ResourceMonitor(config);
-	monitor.start(container);
-	return monitor;
-}

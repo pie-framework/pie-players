@@ -60,7 +60,6 @@ import {
 import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
-import type { TTSToolProviderConfig } from "./tool-providers/index.js";
 
 import { ToolRegistry } from "./ToolRegistry.js";
 import type {
@@ -145,10 +144,9 @@ export interface ToolConfig {
  *
  * The field set is `TTSRuntimeSettings`, which the runtime resolver owns: the two
  * were declared separately and had already drifted in both directions, so a field
- * the runtime honoured could not be named here. What this adds is the two things
- * only a host-facing config has — a place to stash unrecognised keys, and a
- * callback for fetching provider credentials, neither of which the resolved
- * runtime settings carry.
+ * the runtime honoured could not be named here. What this adds is the one thing
+ * only a host-facing config has — a place to stash unrecognised keys, which the
+ * resolved runtime settings do not carry.
  *
  * `provider` is typed from the `textToSpeech` tools-config entry instead: a host
  * gives either a server provider id or a runtime provider object, whose
@@ -160,7 +158,6 @@ export type TTSToolConfig = ToolConfig &
 	Omit<TTSRuntimeSettings, "provider"> & {
 		provider?: TextToSpeechToolProviderConfig["provider"];
 		settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
-		authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 	};
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>

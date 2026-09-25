@@ -465,6 +465,51 @@ describe("parseTTSSpeedOptionsFromText / formatTTSSpeedOptionsAsText", () => {
 	});
 });
 
+describe("runtime provider object in the provider slot", () => {
+	const authFetcher = async () => ({ authToken: "token" });
+	const objectProviderConfig = {
+		enabled: true,
+		backend: "server",
+		apiEndpoint: "/api/tts",
+		provider: { id: "host-tts", runtime: { authFetcher } },
+	};
+
+	test("resolves no provider id without serverProvider", () => {
+		const settings = resolveTTSRuntimeSettings(objectProviderConfig);
+		const runtimeConfig = buildRuntimeTTSConfig(settings);
+		const initConfig =
+			ttsToolRegistration.provider?.getInitConfig?.(objectProviderConfig);
+
+		expect(settings.provider).toBeUndefined();
+		expect(resolveRuntimeProvider(settings, "server")).toBeUndefined();
+		expect(runtimeConfig.provider).toBeUndefined();
+		expect(initConfig?.serverProvider).toBeUndefined();
+		expect(initConfig?.provider).toBeUndefined();
+		expect(
+			ttsToolRegistration.provider?.getAuthFetcher?.(objectProviderConfig),
+		).toBe(authFetcher);
+	});
+
+	test("resolves serverProvider as the provider id", () => {
+		const config = {
+			...objectProviderConfig,
+			serverProvider: "custom" as const,
+		};
+		const settings = resolveTTSRuntimeSettings(config);
+		const runtimeConfig = buildRuntimeTTSConfig(settings);
+		const initConfig = ttsToolRegistration.provider?.getInitConfig?.(config);
+
+		expect(settings.provider).toBeUndefined();
+		expect(resolveRuntimeProvider(settings, "server")).toBe("custom");
+		expect(runtimeConfig.provider).toBe("custom");
+		expect(initConfig?.serverProvider).toBe("custom");
+		expect(initConfig?.provider).toBe("custom");
+		expect(ttsToolRegistration.provider?.getAuthFetcher?.(config)).toBe(
+			authFetcher,
+		);
+	});
+});
+
 describe("tts registration auth fetcher behavior", () => {
 	test("does not require authFetcher for init config resolution", () => {
 		const initConfig = ttsToolRegistration.provider?.getInitConfig?.({

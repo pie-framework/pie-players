@@ -74,10 +74,13 @@ Rules:
   runtime counterpart. Route values through their own subpath instead.
 - `insertTypesEntry` in a package's `vite-plugin-dts` config derives the types entry
   from the **bundle** entry. Where that entry is a `.svelte` component it overwrites
-  the `index.d.ts` emitted from `index.ts`, silently publishing `export {}` in place
-  of the type exports the entrypoint declares. Drop it where `index.ts` re-exports
-  types; keep it where `index.ts` exports nothing, so the advertised
-  `dist/index.d.ts` still exists.
+  the `index.d.ts` emitted from `index.ts` with a default re-export of the
+  component's declaration, which drops the type exports the entrypoint declares
+  and imports `svelte`. Leave it off such a package and keep `.svelte` files out of
+  the dts `include`: list `index.ts` there, so the advertised `dist/index.d.ts` is
+  the one `index.ts` emits, and where `index.ts` exports nothing it declares
+  `export type {}`. `bun run check:svelte-type-imports` fails on any published
+  declaration that imports `svelte`.
 - Contract and policy-only subpaths must stay inert when imported.
 - Do **not** add a top-level `*.svelte` export. Cross-package
   `?customElement` imports are rejected by
@@ -119,6 +122,7 @@ bun run check:consumer-boundaries
 bun run check:custom-elements
 bun run check:custom-elements:dist
 bun run check:svelte-runtime-deps
+bun run check:svelte-type-imports
 bun run check:ce-define-safety
 bun run check:ce-consumer-contract
 bun run check:runtime-compat

@@ -20,10 +20,10 @@
 		"inline"
 	],
 	"main": "./dist/tool-calculator-inline-geogebra.js",
-	"types": "./dist/tool-calculator-inline-geogebra.svelte.d.ts",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/tool-calculator-inline-geogebra.svelte.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-calculator-inline-geogebra.js"
 		}
 	},

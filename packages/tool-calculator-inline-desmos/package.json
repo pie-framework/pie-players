@@ -21,10 +21,10 @@
 		"accessibility"
 	],
 	"main": "./dist/tool-calculator-inline.js",
-	"types": "./dist/tool-calculator-inline.svelte.d.ts",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/tool-calculator-inline.svelte.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-calculator-inline.js"
 		}
 	},

@@ -52,6 +52,7 @@ const requiredCiLintTypecheckCommands = [
 	"check:bundle-safety",
 	"check:publint",
 	"check:types-publish",
+	"check:svelte-type-imports",
 	"check:pack-integrity",
 	"check:node-consumer-imports",
 	"check:consumer-boundaries",

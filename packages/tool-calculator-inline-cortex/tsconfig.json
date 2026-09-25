@@ -8,6 +8,6 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["tool-calculator-inline-cortex.svelte"],
+	"include": ["index.ts", "tool-calculator-inline-cortex.svelte"],
 	"exclude": ["node_modules", "dist", "tests"]
 }

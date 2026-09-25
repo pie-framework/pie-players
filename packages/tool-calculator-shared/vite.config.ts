@@ -39,12 +39,12 @@ export default defineConfig(({ mode }) => {
 						dts({
 							tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 							outDirs: "dist",
-							insertTypesEntry: true,
+							// `index.types.ts` is the root types entry. `insertTypesEntry` would
+							// write a re-export of `index.ts` over it, and the components
+							// `index.ts` exports declare as stubs importing `svelte`, which hosts
+							// do not install.
 							include: [
-								"index.ts",
-								"CalculatorTool.svelte",
-								"CalculatorInlineTool.svelte",
-								"CalculatorElement.svelte",
+								"index.types.ts",
 								"calculator-element.ts",
 								"svelte-shims.d.ts",
 							],

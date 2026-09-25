@@ -12,10 +12,6 @@
 		"declarationMap": false,
 		"sourceMap": true
 	},
-	// This package has no `.ts` source, so with the Vite config excluded the
-	// program is empty; an explicit `files` makes that legal (TS18003).
-	// svelte-check covers the component.
-	"files": [],
 	"include": ["**/*.ts", "**/*.svelte"],
 	"exclude": ["node_modules", "dist", "tests", "vite.config.ts"]
 }

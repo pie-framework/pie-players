@@ -94,6 +94,9 @@ export default defineConfig({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
 			insertTypesEntry: true,
+			// No `.svelte`: a component declares as a stub that imports `svelte`,
+			// which hosts do not install, and no type entry reaches one.
+			include: ["src/**/*.ts", "src/**/*.d.ts"],
 		}),
 		assertNoEvalRequireInOutput,
 	],

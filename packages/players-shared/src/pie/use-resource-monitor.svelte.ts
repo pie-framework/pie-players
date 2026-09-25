@@ -26,6 +26,7 @@
 import { onDestroy, untrack } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
 import { createPieLogger } from "./logger.js";
 import { ResourceMonitor } from "./resource-monitor.js";
@@ -54,9 +55,7 @@ export function useResourceMonitor(
 	let isInitialized = $state(false);
 	let activeHostElement = $state<HTMLElement | null>(null);
 	let monitorConfigKey = $state<string>("");
-	let activeProvider = $state<
-		LoaderConfig["instrumentationProvider"] | undefined
-	>(undefined);
+	let activeProvider = $state<InstrumentationProvider | undefined>(undefined);
 
 	// Initialize resource monitor when conditions are met.
 	//
@@ -78,21 +77,27 @@ export function useResourceMonitor(
 			const hostElement = getHostElement();
 			const loaderConfig = getLoaderConfig();
 			const debugEnabled = getDebugEnabled();
-			const resolvedTrackPageActions = loaderConfig?.trackPageActions ?? false;
+			const configuredProvider = loaderConfig?.instrumentationProvider;
+			const resolvedInstrumentationProvider = isInstrumentationProvider(
+				configuredProvider,
+			)
+				? configuredProvider
+				: undefined;
+			// Only an unset provider falls back to the monitor's own New Relic
+			// provider. `null` and a provider failing the `InstrumentationProvider`
+			// contract both turn tracking off; resources are still retried.
+			const resolvedTrackPageActions =
+				(configuredProvider === undefined || !!resolvedInstrumentationProvider) &&
+				(loaderConfig?.trackPageActions ?? false);
 			const resolvedMaxRetries =
 				loaderConfig?.maxResourceRetries ??
 				DEFAULT_LOADER_CONFIG.maxResourceRetries;
 			const resolvedRetryDelay =
 				loaderConfig?.resourceRetryDelay ??
 				DEFAULT_LOADER_CONFIG.resourceRetryDelay;
-			const resolvedInstrumentationProvider = isInstrumentationProvider(
-				loaderConfig?.instrumentationProvider,
-			)
-				? loaderConfig?.instrumentationProvider
-				: undefined;
 			if (
 				debugEnabled &&
-				loaderConfig?.instrumentationProvider &&
+				configuredProvider &&
 				!resolvedInstrumentationProvider
 			) {
 				logger.warn(

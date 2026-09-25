@@ -383,11 +383,6 @@ function generateTypes(): string {
     }
     interface Window {
       PIE_DEBUG?: boolean;
-      PIE_LOADER_CONFIG?: {
-        trackPageActions?: boolean;
-        maxResourceRetries?: number;
-        resourceRetryDelay?: number;
-      };
       PIE_PRELOADED_ELEMENTS?: Record<string, string>;
       newrelic?: {
         addPageAction(name: string, attributes?: Record<string, any>): void;
@@ -496,21 +491,6 @@ Options:
 - \`trackPageActions\` (boolean, default: \`false\`) - Enable instrumentation for resource/module loading
 - \`maxResourceRetries\` (number, default: \`3\`) - Maximum retry attempts for failed resources
 - \`resourceRetryDelay\` (number, default: \`500\`) - Initial retry delay in milliseconds
-
-Global alternative:
-
-\`\`\`html
-<script>
-  window.PIE_LOADER_CONFIG = {
-    trackPageActions: true,
-    maxResourceRetries: 3,
-    resourceRetryDelay: 500
-  };
-</script>
-<script type="module">
-  import "@pie-players/pie-preloaded-player";
-</script>
-\`\`\`
 
 ## Resilient loading
 

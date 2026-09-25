@@ -108,6 +108,21 @@ describe("useResourceMonitor wiring contract", () => {
 		);
 	});
 
+	test("keeps tracking on only for an unset or valid provider", () => {
+		const useResourceMonitorPath = join(
+			import.meta.dir,
+			"../src/pie/use-resource-monitor.svelte.ts",
+		);
+		const source = readFileSync(useResourceMonitorPath, "utf8");
+
+		// With tracking on and no provider, ResourceMonitor reports to its own
+		// New Relic provider, so `null` and an invalid provider have to turn
+		// `trackPageActions` off before they reach it.
+		expect(source).toContain(
+			"(configuredProvider === undefined || !!resolvedInstrumentationProvider) &&",
+		);
+	});
+
 	test("reinitializes monitor when config or provider changes", () => {
 		const useResourceMonitorPath = join(
 			import.meta.dir,

@@ -10,8 +10,10 @@ import {
 } from "bun:test";
 import { BundleType } from "@pie-players/pie-players-shared";
 
+const ensureItemPlayerMathRenderingReady = mock(async () => undefined);
+
 mock.module("@pie-players/pie-item-player", () => ({
-	ensureItemPlayerMathRenderingReady: async () => undefined,
+	ensureItemPlayerMathRenderingReady,
 }));
 
 beforeAll(() => {
@@ -353,6 +355,53 @@ describe("warmupSectionElements", () => {
 			},
 			resolvedPlayerEnv: {},
 		});
+	});
+
+	test("esm strategy does not install the math renderer", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		definePreloadedTag("pie-mc-esm--version-1-0-0");
+		ensureItemPlayerMathRenderingReady.mockClear();
+		await warmupSectionElements({
+			strategy: "esm",
+			renderables: [
+				{
+					id: "item-1",
+					config: {
+						markup: '<pie-mc-esm id="m1"></pie-mc-esm>',
+						elements: { "pie-mc-esm": "@pie-element/multiple-choice@1.0.0" },
+						models: [{ id: "m1", element: "pie-mc-esm" }],
+					},
+				} as any,
+			],
+			resolvedPlayerProps: { loaderOptions: { esmCdnUrl: "https://esm.sh" } },
+			resolvedPlayerEnv: {},
+		});
+		expect(ensureItemPlayerMathRenderingReady).not.toHaveBeenCalled();
+	});
+
+	test("iife strategy installs the math renderer", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		definePreloadedTag("pie-mc-iife--version-1-0-0");
+		ensureItemPlayerMathRenderingReady.mockClear();
+		await warmupSectionElements({
+			strategy: "iife",
+			renderables: [
+				{
+					id: "item-1",
+					config: {
+						markup: '<pie-mc-iife id="m1"></pie-mc-iife>',
+						elements: { "pie-mc-iife": "@pie-element/multiple-choice@1.0.0" },
+						models: [{ id: "m1", element: "pie-mc-iife" }],
+					},
+				} as any,
+			],
+			resolvedPlayerProps: {
+				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+			},
+			resolvedPlayerEnv: {},
+			iifeBundleHost: "https://proxy.pie-api.com/bundles",
+		});
+		expect(ensureItemPlayerMathRenderingReady).toHaveBeenCalledTimes(1);
 	});
 
 	test("rejects when iife preload is requested without bundle host", async () => {

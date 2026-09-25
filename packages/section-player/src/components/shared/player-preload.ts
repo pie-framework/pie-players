@@ -322,7 +322,8 @@ export function describeBundleHost(
  *   (wrapped in `PreloadStageError` with stage `"preloaded-assert"`) on
  *   any missing tag, surfacing one section-level diagnostic instead of
  *   N small per-item rejections.
- * - Otherwise: aggregate tags, build backend, await `ensureRegistered`.
+ * - Otherwise: aggregate tags, build backend, install the math renderer
+ *   unless the strategy is ESM, await `ensureRegistered`.
  *
  * On any validation or load failure, rejects with a descriptive Error.
  * The caller (section-player widget) is expected to surface the failure
@@ -379,7 +380,10 @@ export async function warmupSectionElements(args: {
 		args.strategy === "esm" ? "esm-load" : "iife-load";
 
 	try {
-		await ensureItemPlayerMathRenderingReady();
+		// ESM element builds bring their own math renderer.
+		if (args.strategy !== "esm") {
+			await ensureItemPlayerMathRenderingReady();
+		}
 		await ensureRegistered(elements, { backend, elementPackagePolicy });
 	} catch (error) {
 		throw new PreloadStageError(loadStage, error);

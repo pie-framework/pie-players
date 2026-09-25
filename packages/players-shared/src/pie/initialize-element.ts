@@ -34,9 +34,11 @@ export const initializePieElement = (
 		session: any[];
 		env?: Env;
 		eventListeners?: EventListeners;
+		/** The delivering player's bundle type, see `findPieController`. */
+		bundleType?: BundleType;
 	},
 ): boolean => {
-	const { config, session, env, eventListeners } = options;
+	const { config, session, env, eventListeners, bundleType } = options;
 	if ((element as any).__pieInitialized) {
 		return true;
 	}
@@ -70,7 +72,7 @@ export const initializePieElement = (
 	);
 
 	// Set model - use controller if available (client-player.js), or use server-processed model (player.js)
-	const controller = findPieController(tagName);
+	const controller = findPieController(tagName, bundleType);
 
 	if (!env) {
 		logger.error(

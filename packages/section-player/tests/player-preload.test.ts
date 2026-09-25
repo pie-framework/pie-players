@@ -172,6 +172,26 @@ describe("player-preload: backend config", () => {
 		}
 	});
 
+	test("esm backend fetches controllers only for a player that is not hosted", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const loadControllersFor = (
+			resolvedPlayerProps: Record<string, unknown>,
+			resolvedPlayerEnv: Record<string, unknown> = {},
+		) => {
+			const backend = buildBackendConfigFromProps({
+				strategy: "esm",
+				resolvedPlayerProps,
+				resolvedPlayerEnv,
+			});
+			if (backend.kind !== "esm") throw new Error("expected esm backend");
+			return backend.loadControllers;
+		};
+
+		expect(loadControllersFor({ hosted: true })).toBe(false);
+		expect(loadControllersFor({})).toBe(true);
+		expect(loadControllersFor({ hosted: true }, { mode: "author" })).toBe(true);
+	});
+
 	test("esm backend honors import-map moduleResolution", async () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
 		const backend = buildBackendConfigFromProps({

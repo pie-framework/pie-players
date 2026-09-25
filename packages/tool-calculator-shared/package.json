@@ -36,7 +36,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && vite build --mode calculator-element",
 		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",

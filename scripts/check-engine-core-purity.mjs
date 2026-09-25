@@ -19,7 +19,7 @@
  * The core layers are pure FSM / pure decision logic; the adapter
  * layer is the I/O bridge. All stay Svelte-free so they can be reused
  * from non-Svelte hosts (Node tests, Storybook, future non-Svelte
- * consumers) and so the `check:custom-elements` `.svelte`
+ * consumers) and so the `check:custom-elements:dist` `.svelte`
  * published-dist gate has nothing to flag here.
  *
  * If you need a Svelte-side helper, put it in the facade entry points

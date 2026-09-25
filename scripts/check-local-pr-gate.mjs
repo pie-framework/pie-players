@@ -36,6 +36,9 @@ const requiredCiLintTypecheckCommands = [
 	"check:speech-composition-purity",
 	"check:scripts",
 	"build",
+	// Reads build output, so it must follow the build: ahead of it, it reads a
+	// stale `dist` locally and none at all in a fresh CI checkout.
+	"check:custom-elements:dist",
 	"check:player-tool-boundaries",
 	// Asserts the built bundle shape: toolkit custom elements stay minified and
 	// code-split, speech-rule-engine stays external and dynamically imported, and

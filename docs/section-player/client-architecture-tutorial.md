@@ -261,7 +261,10 @@ tools: {
     [toolId: string]: {
       enabled?: boolean;
       settings?: Record<string, unknown>;
-      authFetcher?: () => Promise<Record<string, unknown>>;
+      provider?: {
+        id?: string;
+        runtime?: { authFetcher?: () => Promise<Record<string, unknown>> };
+      };
       // ...tool-specific keys
     };
   };

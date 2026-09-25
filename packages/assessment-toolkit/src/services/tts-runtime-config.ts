@@ -399,9 +399,12 @@ export const resolveTTSRuntimeSettings = (
 ): TTSRuntimeSettings => {
 	const configRecord = toRecord(config);
 	const settingsRecord = toRecord(configRecord.settings);
+	const { provider, ...merged } = { ...configRecord, ...settingsRecord };
+	// A runtime provider object in `provider` is for the tool registration; the
+	// runtime settings carry only a server provider id.
 	return applyRuntimeDefaults({
-		...configRecord,
-		...settingsRecord,
+		...merged,
+		...(typeof provider === "string" ? { provider } : {}),
 	} as TTSRuntimeSettings);
 };
 

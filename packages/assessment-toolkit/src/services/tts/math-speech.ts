@@ -1,4 +1,5 @@
 import type { MathAwareSpeechChunk } from "./math-aware-text-processing.js";
+import { setSreStartupLocaleSource, sreLocaleSource } from "./sre-locales.js";
 import { normalizeTextForSpeech } from "./text-processing.js";
 
 interface SpeechRuleEngineApi {
@@ -29,7 +30,11 @@ export interface SREMathSpeechOptions {
 	domain?: string;
 	/** Raw SRE style/preference string. ClearSpeak preferences are ":"-joined. */
 	style?: string;
-	/** Extra SRE setupEngine options for hosts that need a newly exposed SRE knob. */
+	/**
+	 * Extra SRE setupEngine options for hosts that need a newly exposed SRE knob.
+	 * In a browser, SRE's locale tables load from the host's bundle unless `json`
+	 * (a base URL or path) or `custom` (a loader) names another source.
+	 */
 	engineOptions?: Record<string, unknown>;
 }
 
@@ -51,17 +56,19 @@ let sreOperationQueue: Promise<unknown> = Promise.resolve();
 const normalizeLocale = (language?: string): string =>
 	(language || "en").split("-")[0].toLowerCase() || "en";
 
-const defaultLoadSre = async (): Promise<SpeechRuleEngineApi> => {
+const defaultLoadSre = async (
+	engineOptions?: Record<string, unknown>,
+): Promise<SpeechRuleEngineApi> => {
 	if (!sreLoadPromise) {
-		sreLoadPromise = import("speech-rule-engine").then((module) => {
-			const candidate =
-				(module as { default?: SpeechRuleEngineApi }).default ||
-				(module as unknown as SpeechRuleEngineApi);
-			if (!candidate || typeof candidate.toSpeech !== "function") {
-				throw new Error("speech-rule-engine did not expose toSpeech");
-			}
-			return candidate;
-		});
+		setSreStartupLocaleSource(engineOptions);
+		sreLoadPromise = import("./sre-engine.js").then(
+			({ default: candidate }) => {
+				if (!candidate || typeof candidate.toSpeech !== "function") {
+					throw new Error("speech-rule-engine did not expose toSpeech");
+				}
+				return candidate;
+			},
+		);
 	}
 	return sreLoadPromise;
 };
@@ -104,8 +111,10 @@ const setupSre = async (
 ): Promise<void> => {
 	const locale = normalizeLocale(language);
 	const normalizedMathSpeech = normalizeSREMathSpeechOptions(mathSpeech);
+	const engineOptions = normalizedMathSpeech?.engineOptions || {};
 	await sre.setupEngine?.({
-		...(normalizedMathSpeech?.engineOptions || {}),
+		...sreLocaleSource(engineOptions),
+		...engineOptions,
 		locale,
 		domain: normalizedMathSpeech?.domain || domainForLocale(locale),
 		...(normalizedMathSpeech?.style
@@ -192,7 +201,12 @@ export const resolveMathSpeechFromChunks = async (
 	let sre: SpeechRuleEngineApi | null = null;
 	let usedMathSpeech = false;
 	let usedFallback = false;
-	const loadSre = options.loadSre || defaultLoadSre;
+	const loadSre =
+		options.loadSre ||
+		(() =>
+			defaultLoadSre(
+				normalizeSREMathSpeechOptions(options.mathSpeech)?.engineOptions,
+			));
 	const speechParts: string[] = [];
 
 	for (const chunk of chunks) {

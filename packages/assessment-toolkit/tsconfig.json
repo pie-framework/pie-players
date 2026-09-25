@@ -9,6 +9,7 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"moduleResolution": "NodeNext",
+		"resolveJsonModule": false,
 		"baseUrl": ".",
 		"paths": {
 			"@pie-players/pie-assessment-toolkit": ["./src/index.ts"],

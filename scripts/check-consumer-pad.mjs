@@ -100,6 +100,7 @@ const TRIGGERS = [
 		match: (file) =>
 			[
 				"packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts",
+				"packages/players-shared/src/instrumentation/new-relic-agent.ts",
 				"packages/players-shared/src/instrumentation/providers/BaseInstrumentationProvider.ts",
 				"packages/players-shared/src/pie/instrumentation-provider-resolution.ts",
 			].includes(file),

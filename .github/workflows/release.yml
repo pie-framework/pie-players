@@ -526,6 +526,21 @@ jobs:
               ]
             }
 
+      # The commit author's name is free text inside the failure payload below: a raw double quote
+      # fails the payload parse, and `&`, `<` and `>` are Slack mrkdwn control characters. Each
+      # --arg becomes a step output of the same name, escaped for both, as in pr-notifications.yml.
+      # Gated like the notification, so it runs only once the release has already failed.
+      - name: Escape free-text fields for the failure notification
+        id: escaped
+        if: failure()
+        env:
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+        run: |
+          jq -rn --arg author_name "$AUTHOR_NAME" '
+            $ARGS.named | to_entries[]
+            | "\(.key)=\(.value | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | tojson | .[1:-1])"
+          ' >> "$GITHUB_OUTPUT"
+
       - name: Notify Slack on Release Failure
         if: failure()
         continue-on-error: true
@@ -561,7 +576,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Author:*\n${{ github.event.head_commit.author.name }}"
+                      "text": "*Author:*\n${{ steps.escaped.outputs.author_name }}"
                     },
                     {
                       "type": "mrkdwn",

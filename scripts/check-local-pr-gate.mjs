@@ -7,6 +7,7 @@ const ROOT = process.cwd();
 const requiredPreCommitCommands = [
 	"check:changeset-patch-only",
 	"check:local-pr-gate",
+	"check:resolution-boundary",
 	"check:deps",
 	"check:package-metadata",
 	// Only the inventory half of `check:docs`. The rest of that script builds
@@ -27,6 +28,9 @@ const requiredPreCommitCommands = [
 
 const requiredCiLintTypecheckCommands = [
 	"check:local-pr-gate",
+	// A fresh CI checkout has nothing above it, so this always passes there. It is
+	// listed for the pre-push run of this gate, which happens in local worktrees.
+	"check:resolution-boundary",
 	"check:deps",
 	"check:package-metadata",
 	"check:docs:publishable-packages",

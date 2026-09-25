@@ -360,11 +360,38 @@ introduces nothing.
 
 ### Git Worktrees
 
-A fresh worktree needs `bun install` **and** `bun run build` before any gate
-passes. Nothing hoists from the main checkout: without `node_modules` every gate
-fails on a missing binary, and without build artifacts `bun run check` fails with
-`TS2307: Cannot find module '@pie-players/pie-players-shared'` from packages that
-resolve a workspace sibling through its published `exports`.
+A fresh worktree needs `bun install` **and** `bun run build` before the gates
+pass. Without build artifacts `bun run check` fails with `TS2307: Cannot find
+module '@pie-players/pie-players-shared'` from packages that resolve a workspace
+sibling through its published `exports`.
+
+A worktree under `.claude/worktrees/` sits inside the main checkout, so whatever
+it does not install itself comes from the main checkout's install. Bun, Node and
+TypeScript look a bare specifier up in every ancestor `node_modules`, and `bun
+run` puts every ancestor's `node_modules/.bin` on `PATH`. Before its own `bun
+install` a worktree runs the main checkout's binaries against the main
+checkout's packages, and a gate can pass that way: `bun run lint:biome` does,
+with the main checkout's biome. After it, a package the worktree does not
+install, whether an undeclared import or a dependency its branch removed, still
+resolves from the main checkout's root `node_modules`; a workspace package found
+there is the main checkout's `packages/*/dist`, built from whichever branch it
+has checked out. A worktree test, build or typecheck can then pass where CI's
+fresh checkout fails. `bun run check:deps` reads manifests and imports without
+resolving them, so it is the evidence for a dependency change.
+
+The main checkout's root `node_modules` also keeps packages its manifest no
+longer declares. Bun's isolated linker leaves a root link in place when a
+dependency leaves the root manifest, `bun install --force` included (bun
+1.3.14): links for root dependencies added and removed on 2026-05-04 still
+resolved from worktrees on 2026-09-25. Removing those entries from the main
+checkout's `node_modules` clears them; every session shares that directory, so
+ask before touching it.
+
+`bun run check:resolution-boundary`, in both local gates, fails while a
+`node_modules` above the checkout holds entries its own manifest does not
+declare, or while the checkout has no install of its own. Dependencies the main
+checkout declares and the worktree does not install are listed without failing,
+because two branches can declare different root dependencies.
 
 A worktree path must not contain a path segment named `node_modules`, `build`,
 `dist`, `.turbo`, `.svelte-kit`, `playwright-report`, or `test-results`. Those

@@ -73,7 +73,7 @@ Rules:
 - Contract and policy-only subpaths must stay inert when imported.
 - Do **not** add a top-level `*.svelte` export. Cross-package
   `?customElement` imports are rejected by
-  `bun run check:custom-elements`.
+  `bun run check:custom-elements:dist`, which reads the built `dist`.
 
 ## Adding a new publishable package
 
@@ -109,6 +109,7 @@ lockstep invariant.
 bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements
+bun run check:custom-elements:dist
 bun run check:svelte-runtime-deps
 bun run check:ce-define-safety
 bun run check:ce-consumer-contract

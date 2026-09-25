@@ -117,7 +117,8 @@ registered under its own distinct tag.
   vertical overflow.
 - Before finalizing CE-related changes, run:
   `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
-  `bun run check:custom-elements`.
+  `bun run check:custom-elements`, then `bun run check:custom-elements:dist`
+  after a build.
 
 ### Decision Records
 
@@ -436,6 +437,7 @@ For custom-element packaging or consumer-boundary changes, run:
 bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements
+bun run check:custom-elements:dist
 ```
 
 For changes to the toolkit core, the policy engine or a player, also run:

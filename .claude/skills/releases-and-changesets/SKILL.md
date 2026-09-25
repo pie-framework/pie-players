@@ -150,8 +150,9 @@ bun run verify:publish
 ```
 
 This runs build + `check:fixed-versioning`, `check:package-metadata`,
-`check:custom-elements`, `check:ce-define-safety`, `check:publint`,
-`check:types-publish`, `check:pack-exports`, `check:pack-smoke`,
+`check:custom-elements`, `check:custom-elements:dist`,
+`check:ce-define-safety`, `check:publint`, `check:types-publish`,
+`check:pack-exports`, `check:pack-smoke`,
 `check:deps`, `check:source-exports`, `check:consumer-boundaries`,
 `check:ce-consumer-contract`, `check:runtime-compat`,
 `check:node-consumer-imports`, `check:bundle-safety`,

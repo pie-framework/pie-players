@@ -42,7 +42,6 @@ import type {
 	ToolPlacementConfig,
 	ToolPlacementLevel,
 	ToolProviderConfig,
-	ToolProvidersConfig,
 } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
@@ -581,15 +580,6 @@ export interface ToolkitCoordinatorApi {
 	 * Assessment identifier
 	 */
 	readonly assessmentId: string;
-
-	/**
-	 * Configuration
-	 */
-	readonly config: {
-		tools?: {
-			providers?: ToolProvidersConfig;
-		};
-	};
 
 	/**
 	 * TTS service

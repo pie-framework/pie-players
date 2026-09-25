@@ -19,23 +19,25 @@ export type * from "./types.js";
 
 let itemPlayerMathReadyPromise: Promise<void> | null = null;
 
+/**
+ * Installs the math renderer that IIFE and preloaded elements expect on
+ * window. The players call it before loading those elements, never for ESM
+ * ones, so a page that only loads ESM elements never fetches it. A host can
+ * call it earlier to fetch math rendering ahead of the first item.
+ */
 export function ensureItemPlayerMathRenderingReady(): Promise<void> {
 	if (typeof window === "undefined") {
 		return Promise.resolve();
 	}
 	if (!itemPlayerMathReadyPromise) {
-		itemPlayerMathReadyPromise = initializeMathRendering();
+		itemPlayerMathReadyPromise = initializeMathRendering().catch((error) => {
+			// Cleared so the next call retries instead of replaying the failure.
+			itemPlayerMathReadyPromise = null;
+			throw error;
+		});
 	}
 	return itemPlayerMathReadyPromise;
 }
-
-void ensureItemPlayerMathRenderingReady().catch((error) => {
-	console.error(
-		"[pie-item-player] Failed to initialize math rendering:",
-		error,
-	);
-	itemPlayerMathReadyPromise = null;
-});
 
 // Installed at import time, alongside element registration, so the stylesheet is
 // in the document before any instance renders — no unstyled first paint. A host

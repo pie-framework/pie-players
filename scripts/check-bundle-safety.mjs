@@ -124,6 +124,41 @@ export function hasSvelteDevRuntime(content) {
 	return content.includes("__svelte_cleanup");
 }
 
+const LITERAL_DEFINE_PATTERN = /customElements\.define\(\s*(["'`])([^"'`]+)\1/g;
+// How far back a `customElements.get` for the same tag may sit and still count
+// as guarding the define. Guards in shipped output sit directly before it
+// (`customElements.get("x")||customElements.define("x",…)`).
+const GUARD_LOOKBEHIND = 200;
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Tags a bundle registers by literal name with no `customElements.get` guard.
+ *
+ * This is what Svelte compiles a component whose `svelte:options` names its tag
+ * into: a module-scope `customElements.define("tag", …)` that throws
+ * `NotSupportedError` once a second copy of the package, or the host, has
+ * registered the tag, and so rejects the module that imported it. A Vite build
+ * that compiles Svelte custom elements lists `guardSvelteCustomElementDefines()`
+ * (`packages/players-shared/svelte-custom-element-guard.ts`), which routes the
+ * call through a helper whose define takes a variable tag.
+ */
+export function findUnguardedCustomElementDefines(content) {
+	const unguarded = [];
+	for (const match of content.matchAll(LITERAL_DEFINE_PATTERN)) {
+		const tag = match[2];
+		const preceding = content.slice(
+			Math.max(0, match.index - GUARD_LOOKBEHIND),
+			match.index,
+		);
+		const guard = new RegExp(
+			`customElements\\.get\\(\\s*(["'\`])${escapeRegExp(tag)}\\1\\s*\\)`,
+		);
+		if (!guard.test(preceding)) unguarded.push(tag);
+	}
+	return unguarded;
+}
+
 function listPackageDistDirs() {
 	const absPackages = path.join(ROOT, PACKAGES_DIR);
 	if (!existsSync(absPackages)) return [];
@@ -250,12 +285,26 @@ function checkNoSvelteDevRuntime(failures) {
 	return filesChecked;
 }
 
+function checkNoUnguardedCustomElementDefines(failures) {
+	for (const dir of listPackageDistDirs()) {
+		for (const filePath of collectJsFiles(dir)) {
+			const content = readFileSync(filePath, "utf8");
+			for (const tag of findUnguardedCustomElementDefines(content)) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} registers <${tag}> with an unguarded customElements.define, which throws when a second copy of the package loads; list guardSvelteCustomElementDefines() in the package's Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
 		checkEvalRequire(failures) + checkToolkitCustomElements(failures);
 	checkNoPublishedSourcemaps(failures);
 	checkNoSvelteDevRuntime(failures);
+	checkNoUnguardedCustomElementDefines(failures);
 
 	if (failures.length > 0) {
 		console.error(

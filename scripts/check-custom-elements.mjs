@@ -46,11 +46,9 @@ const listFiles = (dir, predicate) => {
 };
 
 // Components whose tag is declared by the package entry rather than by
-// `svelte:options`. Svelte's own `customElements.define` runs at module scope
-// and is unguarded, so a package shipped as a second copy into a page that
-// already holds it — a generated `@pie-players/pie-preloaded-player` build
-// carries `packages/item-player` — has to register from a function it controls.
-// The tag stays discoverable, and the inventory reads it from the entry.
+// `svelte:options`, because the entry registers the class through a function
+// it exports: `definePieItemPlayer` also takes a host's own tag. The tag stays
+// discoverable, and the inventory reads it from the entry.
 const ENTRY_DECLARED_TAGS = {
 	"packages/item-player/src/PieItemPlayer.svelte": {
 		entry: "packages/item-player/src/pie-item-player.ts",

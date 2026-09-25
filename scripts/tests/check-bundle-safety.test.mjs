@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	findPublishedSourcemaps,
 	findStaticSpeechRuleEngineImports,
+	findUnguardedCustomElementDefines,
 	hasInlinedSpeechRuleEngine,
 	hasSvelteDevRuntime,
 	looksUnminified,
@@ -142,5 +143,45 @@ describe("hasSvelteDevRuntime", () => {
 		const content =
 			'if(ZQ(W))W[s7]=void 0}function u(J=""){return document.createTextNode(J)}';
 		expect(hasSvelteDevRuntime(content)).toBe(false);
+	});
+});
+
+describe("findUnguardedCustomElementDefines", () => {
+	test("flags the define Svelte emits for a component that names its tag", () => {
+		const content =
+			'var r=class extends HTMLElement{};customElements.define("pie-tool-ruler",Ot(r,{},[],[]));';
+		expect(findUnguardedCustomElementDefines(content)).toEqual([
+			"pie-tool-ruler",
+		]);
+	});
+
+	test("flags the single-quoted form", () => {
+		expect(
+			findUnguardedCustomElementDefines(
+				"customElements.define('pie-item-shell', $.create_custom_element(S, {}, [], []));",
+			),
+		).toEqual(["pie-item-shell"]);
+	});
+
+	test("passes a define the same tag's customElements.get guards", () => {
+		expect(
+			findUnguardedCustomElementDefines(
+				'customElements.get("nds-icon-button")||customElements.define("nds-icon-button",n);',
+			),
+		).toEqual([]);
+	});
+
+	test("does not accept a guard for a different tag", () => {
+		expect(
+			findUnguardedCustomElementDefines(
+				'customElements.get("pie-a")||customElements.define("pie-a",a);customElements.define("pie-b",b);',
+			),
+		).toEqual(["pie-b"]);
+	});
+
+	test("passes the guard plugin's helper, whose define takes a variable tag", () => {
+		const content =
+			'Ot(r,{},[],[]);e("pie-tool-ruler",r);function e(t,n){customElements.get(t)||customElements.define(t,n)}';
+		expect(findUnguardedCustomElementDefines(content)).toEqual([]);
 	});
 });

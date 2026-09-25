@@ -1,10 +1,12 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
 export default defineConfig({
 	plugins: [
 		svelte({ compilerOptions: { customElement: true }, emitCss: false }),
+		guardSvelteCustomElementDefines(),
 		dts({ bundleTypes: false }),
 	],
 	build: {

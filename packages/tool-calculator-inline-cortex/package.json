@@ -11,10 +11,10 @@
 	"publishConfig": { "access": "public" },
 	"keywords": ["pie", "assessment", "tool", "calculator", "cortex", "inline"],
 	"main": "./dist/tool-calculator-inline-cortex.js",
-	"types": "./dist/tool-calculator-inline-cortex.svelte.d.ts",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/tool-calculator-inline-cortex.svelte.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-calculator-inline-cortex.js"
 		}
 	},

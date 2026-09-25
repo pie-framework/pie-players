@@ -20,10 +20,10 @@
 		"wcag"
 	],
 	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"types": "./dist/index.types.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
+			"types": "./dist/index.types.d.ts",
 			"import": "./dist/index.js"
 		},
 		"./calculator-element": {

@@ -11,7 +11,9 @@ export default defineConfig({
 			tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 			outDirs: "dist",
 			insertTypesEntry: true,
-			include: ["src/**/*.ts", "src/**/*.svelte", "svelte-shims.d.ts"],
+			// No `.svelte`: a component declares as a stub that imports `svelte`,
+			// which hosts do not install, and no type entry reaches one.
+			include: ["src/**/*.ts", "svelte-shims.d.ts"],
 		}),
 	],
 	build: {

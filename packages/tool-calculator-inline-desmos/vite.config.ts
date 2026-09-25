@@ -12,8 +12,12 @@ export default defineConfig({
 			emitCss: false,
 		}),
 		guardSvelteCustomElementDefines(),
+		// The build entry is the component, whose declaration is a stub that
+		// imports `svelte`, which hosts do not install; `index.ts` is the type
+		// entry instead.
 		dts({
 			bundleTypes: false,
+			include: ["index.ts"],
 		}),
 	],
 	build: {

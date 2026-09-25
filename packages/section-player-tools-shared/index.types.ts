@@ -1,3 +1,8 @@
+/**
+ * The published types entry, declaring what `index.ts` exports. The components
+ * are Svelte, compiled into this bundle, and typed here without Svelte because
+ * hosts install none.
+ */
 export declare const PanelWindowControls: any;
 export declare const PanelResizeHandle: any;
 export declare const SharedFloatingPanel: any;
@@ -19,3 +24,7 @@ export {
 	type SectionControllerKeyLike,
 	type ToolkitCoordinatorWithSectionController,
 } from "./section-controller.js";
+export {
+	createSectionControllerSubscriptionManager,
+	type SectionControllerSubscriptionHandlers,
+} from "./section-controller-subscription.js";

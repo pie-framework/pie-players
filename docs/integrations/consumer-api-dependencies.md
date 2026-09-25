@@ -1046,6 +1046,25 @@ with `Cannot find module`. Host A sets no `playerType`, so it runs the default
 element bundles by script tag; the `esm` strategy's loader would reject every
 element.
 
+## TypeScript resolution (Host A)
+
+Verified against the checkout on 2026-09-25.
+
+Host A type-checks with TypeScript's `node10` resolution, which this repository
+does not support (see
+[Library Packaging Strategy](../setup/library-packaging-strategy.md#consumer-guidance-current-scope)),
+and leaves `skipLibCheck` at its default, `false`, so every `@pie-players`
+declaration its program loads is checked. That program loads `pie-theme`'s root
+declarations and nothing else: the `pie-section-player` component subpath is a
+side-effect import, which `node10` leaves unresolved without an error.
+
+Its type-check fails when a declaration reachable from `pie-theme`'s root imports
+an `exports`-only subpath, or when Host A imports the root of a package whose
+declarations do. Nine packages' root declarations fail under `node10`, the
+toolkit, the section player and the item player among them, all on subpaths of
+`pie-players-shared` or the toolkit. Moving Host A to `bundler` resolution
+removes the constraint.
+
 ## Content stylesheet delivery
 
 The most fragile shared surface, because it changed underneath the hosts.
@@ -1188,6 +1207,9 @@ shipping.**
   `@pie-players/pie-calculator-cortex` specifier Host A stubs
 - Putting an `import()` of a computed specifier on a path Host A runs, making
   `esm` the default `playerType` among them: it rejects in that build
+- Importing an `exports`-only subpath from any declaration `pie-theme`'s root
+  reaches: Host A type-checks those declarations under `node10`, which cannot
+  resolve one
 
 **Host R only. Change freely; land the internally controlled host fix in the
 same push.** Its checkout was available for the 2026-08-19 refresh, so these are

@@ -91,6 +91,12 @@ Notes:
 - NodeJS service recommendation:
   - import only Node-safe packages (for example `@pie-players/pie-assessment-toolkit`, `@pie-players/pie-context`, `@pie-players/pie-players-shared`)
 - Browser-only packages (`pie-item-player`, `pie-section-player`) must stay out of plain Node runtime imports.
+- TypeScript hosts resolve these packages with `moduleResolution` `bundler`,
+  `node16` or `nodenext`. `node10`, spelled `node` in a tsconfig, is not
+  supported: it ignores `exports`, through which these packages publish their
+  subpaths, so a declaration that imports one fails with TS2307 under
+  `skipLibCheck: false`. TypeScript 6.0 deprecates `node10` and 7.0 removes it,
+  so the packages carry no `typesVersions` fallback for it.
 
 ## Publish Gates
 
@@ -106,6 +112,9 @@ Release checks validate Node reliability:
 4. **Custom-element define safety**
    - fail build if source files use direct `customElements.define(...)` outside approved wrappers
    - require shared race-safe registration helper for hand-written registration code
+5. **Type resolution in the supported modes**
+   - `check:types-publish` runs ATTW over every packed package and fails on a non-CSS entry that does not resolve with types under `node16` or `bundler`; `node10` results are ignored
+   - `check:undeclared-subpaths` holds every cross-package import to a subpath the owning package exports
 
 ## Decision Record
 

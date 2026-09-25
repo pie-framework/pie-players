@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -82,7 +82,8 @@ const requiredCiE2eCommands = [
  * The subset stays in `verify:local-pr` on purpose: CI is the safety net, and an
  * ordinary push should not pay ten minutes for it.
  */
-const requiredCiSectionPlayerCommand = /command:\s*test:e2e:section-player\s*$/m;
+const requiredCiSectionPlayerCommand =
+	/command:\s*test:e2e:section-player\s*$/m;
 
 function collectMissingOrderedCommands({
 	scripts,
@@ -120,6 +121,7 @@ export function collectGateFailures({
 	lefthook,
 	ciWorkflow,
 	prePushGate = "",
+	prePushHookScript = "",
 }) {
 	const failures = [];
 	const scripts = packageJson.scripts;
@@ -154,12 +156,26 @@ export function collectGateFailures({
 
 	// The pre-push hook reaches verify:pre-push through scripts/pre-push-gate.mjs, which
 	// skips the gate for pushes that carry no new commits. That indirection is only safe
-	// while all three links hold, so assert each one: the hook runs the wrapper, the
-	// wrapper is fed the pushed refs, and the wrapper still delegates to the real gate.
-	// Break any one of them and the hook either stops gating or gates nothing.
-	if (!lefthook.includes("run: bun ./scripts/pre-push-gate.mjs")) {
+	// while every link holds, so assert each one: the hook runs the wrapper as a script
+	// job, the wrapper is fed the pushed refs, and the wrapper still delegates to the real
+	// gate. Break any one of them and the hook either stops gating or gates nothing. A
+	// `run:` command breaks the first: lefthook skips a pre-push command whose push-file
+	// list is empty, and a push that only deletes files produces an empty one.
+	if (!lefthook.includes("script: pre-push-gate.sh")) {
 		failures.push(
-			"lefthook pre-push must run bun ./scripts/pre-push-gate.mjs.",
+			"lefthook pre-push must run pre-push-gate.sh as a script job.",
+		);
+	}
+
+	if (/^\s*run:.*pre-push-gate/m.test(lefthook)) {
+		failures.push(
+			"lefthook pre-push must not run the gate as a `run:` command, which lefthook skips when a push only deletes files.",
+		);
+	}
+
+	if (!prePushHookScript.includes("bun ./scripts/pre-push-gate.mjs")) {
+		failures.push(
+			".lefthook/pre-push/pre-push-gate.sh must run bun ./scripts/pre-push-gate.mjs.",
 		);
 	}
 
@@ -206,16 +222,26 @@ function main() {
 	const ciWorkflowPath = path.join(ROOT, ".github", "workflows", "ci.yml");
 
 	const prePushGatePath = path.join(ROOT, "scripts", "pre-push-gate.mjs");
+	const prePushHookScriptPath = path.join(
+		ROOT,
+		".lefthook",
+		"pre-push",
+		"pre-push-gate.sh",
+	);
 
 	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 	const lefthook = readFileSync(lefthookPath, "utf8");
 	const ciWorkflow = readFileSync(ciWorkflowPath, "utf8");
 	const prePushGate = readFileSync(prePushGatePath, "utf8");
+	const prePushHookScript = existsSync(prePushHookScriptPath)
+		? readFileSync(prePushHookScriptPath, "utf8")
+		: "";
 	const failures = collectGateFailures({
 		packageJson,
 		lefthook,
 		ciWorkflow,
 		prePushGate,
+		prePushHookScript,
 	});
 
 	if (failures.length > 0) {

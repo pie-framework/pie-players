@@ -353,10 +353,12 @@ reach for `--no-verify` when a push feels like it should have been skipped: repo
 the case instead, because a skip the wrapper misses is a bug in
 `scripts/lib/push-scope.mjs`.
 
-Note that lefthook's own `push_files` filtering is not a substitute: it is derived
-from the current branch against its upstream, not from the refs actually being
-pushed, so it runs the gate for a `git push origin <sha>:refs/heads/other` that
-introduces nothing.
+The gate is a lefthook script job, which lefthook runs without its own push-file
+check. That check is derived from the current branch rather than the refs being
+pushed, and keeps only files that still exist, so as a `run:` command the gate was
+skipped for a push whose commits only deleted files or were empty.
+`bun run check:local-pr-gate` rejects the gate as a command, and
+`scripts/tests/pre-push-hook.test.mjs` pushes both cases through lefthook.
 
 ### Git Worktrees
 

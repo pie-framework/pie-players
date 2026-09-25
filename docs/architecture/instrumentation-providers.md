@@ -2,7 +2,7 @@
 
 Status: Design note. Shipped today: the `InstrumentationProvider` contract,
 `BaseInstrumentationProvider`, the New Relic, console, debug-panel and
-composite adapters, and probed readiness;
+composite adapters, probed readiness, and the one default factory;
 [`architecture.md`](./architecture.md#instrumentation--observability) owns the
 current provider semantics and the per-layer event ownership model. Not
 implemented: agent detection, the conformance suite, central attribute naming,
@@ -76,14 +76,13 @@ scanned on 2026-09-18, sets `trackPageActions` nowhere, names
 The implicit default that detection replaces — `trackPageActions: true` with no
 provider named — has one consumer, Host P, which is client-facing and whose
 loader configuration the pad records. Its `@pie-players` path renders through
-the preloaded `pie-item-player`, where both implicit default instances send to
-New Relic: the resource monitor's sends a `pie-resource-load` page action per
-tracked resource, retry and error page actions, and a `noticeError` per failure,
-and resolution's memoized instance sends a `noticeError` per item-player runtime
-error. Each sends whenever the agent is on the page at the moment it tracks, as
-described under probed readiness. That host's own page loads no agent, so the
-agent comes from an outer page, as it does for Host A, and either order is
-possible.
+the preloaded `pie-item-player`, where the implicit default sends New Relic a
+`pie-resource-load` page action per tracked resource, retry and error page
+actions and a `noticeError` per failure from the resource monitor, and a
+`noticeError` per item-player runtime error. It sends whenever the agent is on
+the page at the moment it tracks, as described under probed readiness. That
+host's own page loads no agent, so the agent comes from an outer page, as it
+does for Host A, and either order is possible.
 
 The predecessor player on that host's main line never receives its loader
 configuration: the host binds it there as a property named `loader-config`, and
@@ -91,15 +90,16 @@ that element reads `loaderConfig`. PIE resource telemetry therefore first reache
 that host's account through `pie-item-player`.
 
 That puts what the default sends in a client's account, and three parts of this
-design change it. Probed readiness, shipped, made both instances send from the
+design change it. Probed readiness, shipped, made the default send from the
 agent's arrival on, which adds volume on pages whose agent arrives after the
-player starts; buffering adds what they tracked before it arrived. Central
+player starts; buffering adds what it tracked before it arrived. Central
 attribute naming renames every key the account receives, which is free until
 that host's `@pie-players` rollout goes live and breaks any query on those keys
-after. Detection binds the adapter the
-default already constructs there, so it changes nothing that host receives. The
-emission gate does not apply, because that host asked for telemetry, and each
-change reaches it when it moves its exact pin.
+after. Detection binds the adapter the default already constructs there, and
+the one default factory moved the resource monitor onto that instance, so
+neither changes what that host receives. The emission gate does not apply,
+because that host asked for telemetry, and each change reaches it when it moves
+its exact pin.
 
 Renaming is available and declined. The existing export names are accurate and
 nothing in the design argues for new ones, so they stay; the freedom is recorded
@@ -222,14 +222,15 @@ free, and the two attribute prefixes coexist without collision.
 
 ## One default factory
 
-Two independent implicit defaults exist:
+The implicit New Relic default has one source: the module-level instance
 [`instrumentation-provider-resolution.ts`](../../packages/players-shared/src/pie/instrumentation-provider-resolution.ts)
-memoizes a module-level New Relic instance, and
+memoizes. Resolution is the seam. Every player element routes through
+`resolveInstrumentationProvider`, and
 [`resource-monitor.ts`](../../packages/players-shared/src/pie/resource-monitor.ts)
-constructs a fresh one per monitor and manages its lifecycle. Both collapse
-behind one internal factory. Resolution is the seam: every player element already
-routes through `resolveInstrumentationProvider`, and the resource monitor's own
-default is redundant with it.
+takes the provider its player resolves and constructs none, so
+`instrumentationProvider: null` and an invalid provider silence it as they
+silence every other emitter. The monitor leaves a provider's lifecycle to
+whoever passed it in, which is what makes sharing one instance safe.
 
 ## Attribute naming
 

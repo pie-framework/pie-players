@@ -34,6 +34,14 @@ const SRE_LOCALE_TABLE_SPECIFIER = /^speech-rule-engine\/lib\/mathmaps\//;
  */
 const MATH_SPEECH_MARKER = "speech-rule-engine did not expose toSpeech";
 
+/**
+ * A rule-set key from one of SRE's locale tables, such as
+ * `"en/messages/alphabets.min"`: each table keys its rule sets by its own
+ * locale, so the key is present wherever the table is.
+ */
+const SRE_LOCALE_TABLE_KEY_PATTERN =
+	/["']([a-z]+)\/(?:characters|functions|messages|rules|si|symbols|units)\/[\w-]+\.min["']/g;
+
 function collectFiles(dir, predicate) {
 	const entries = readdirSync(dir);
 	const files = [];
@@ -88,6 +96,17 @@ export function looksUnminified(
  */
 export function hasInlinedSpeechRuleEngine(content) {
 	return content.includes("cdn.jsdelivr.net/npm/speech-rule-engine");
+}
+
+/** The locales of the SRE locale tables a bundle carries inline. */
+export function findInlinedSreLocaleTables(content) {
+	return [
+		...new Set(
+			[...content.matchAll(SRE_LOCALE_TABLE_KEY_PATTERN)].map(
+				(match) => match[1],
+			),
+		),
+	].sort();
 }
 
 // `import x from "m"`, `import{a}from"m"`, `export { y } from "m"`, `export*from"m"`.
@@ -280,9 +299,10 @@ function checkToolkitCustomElements(failures) {
 }
 
 /**
- * Applies `analyzeSpeechRuleEngineBoundary` to every package whose published
- * output carries math speech: the toolkit itself and each Vite bundle that
- * inlines it. Returns how many packages it checked.
+ * Fails any package whose published output bundles an SRE locale table, and
+ * applies `analyzeSpeechRuleEngineBoundary` to every package whose output
+ * carries math speech: the toolkit itself and each Vite bundle that inlines it.
+ * Returns how many packages carry math speech.
  */
 function checkSpeechRuleEngineBoundaries(failures) {
 	const toolkitDist = path.posix.dirname(TOOLKIT_CE_DIR);
@@ -300,6 +320,16 @@ function checkSpeechRuleEngineBoundaries(failures) {
 			path: path.relative(absDist, filePath).split(path.sep).join("/"),
 			content: readFileSync(filePath, "utf8"),
 		}));
+		// A bundled table ships in the package whether or not it is loaded, and a
+		// host that inlines every `import()` carries it in its one file.
+		for (const file of files) {
+			const tables = findInlinedSreLocaleTables(file.content);
+			if (tables.length > 0) {
+				failures.push(
+					`[bundle-safety] ${distDir}/${file.path} bundles the speech-rule-engine locale table(s) ${tables.join(", ")}; they may be reached only as dynamic imports of speech-rule-engine/lib/mathmaps, which the host resolves`,
+				);
+			}
+		}
 		const isToolkit = distDir === toolkitDist;
 		if (
 			!isToolkit &&

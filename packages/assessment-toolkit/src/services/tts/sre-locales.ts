@@ -1,26 +1,16 @@
 // SRE loads each locale's rule tables at runtime, from a public CDN unless it is
-// handed a source. One static import per table SRE ships in
-// `speech-rule-engine/lib/mathmaps` lets the host's bundler emit each as a lazy
-// chunk served from the host's own origin. No `with { type: "json" }`: bundlers
-// infer JSON from the extension, while Vite's dev server and Bun's bundler turn
-// a table into JavaScript and keep the attribute, which a browser then rejects.
+// handed a source. An import per table lets the host's bundler emit each as a
+// lazy chunk served from the host's own origin, but a build that inlines every
+// `import()` into one file carries every table listed here, at 0.2 to 0.4 MB
+// each. So only `base`, which every locale builds on, and the `en` and `es`
+// locales are packaged; any other locale needs a source from the host's
+// `engineOptions`. No `with { type: "json" }`: bundlers infer JSON from the
+// extension, while Vite's dev server and Bun's bundler turn a table into
+// JavaScript and keep the attribute, which a browser then rejects.
 const SRE_LOCALE_TABLES: Record<string, () => Promise<{ default: unknown }>> = {
-	af: () => import("speech-rule-engine/lib/mathmaps/af.json"),
 	base: () => import("speech-rule-engine/lib/mathmaps/base.json"),
-	ca: () => import("speech-rule-engine/lib/mathmaps/ca.json"),
-	da: () => import("speech-rule-engine/lib/mathmaps/da.json"),
-	de: () => import("speech-rule-engine/lib/mathmaps/de.json"),
 	en: () => import("speech-rule-engine/lib/mathmaps/en.json"),
 	es: () => import("speech-rule-engine/lib/mathmaps/es.json"),
-	euro: () => import("speech-rule-engine/lib/mathmaps/euro.json"),
-	fr: () => import("speech-rule-engine/lib/mathmaps/fr.json"),
-	hi: () => import("speech-rule-engine/lib/mathmaps/hi.json"),
-	it: () => import("speech-rule-engine/lib/mathmaps/it.json"),
-	ko: () => import("speech-rule-engine/lib/mathmaps/ko.json"),
-	nb: () => import("speech-rule-engine/lib/mathmaps/nb.json"),
-	nemeth: () => import("speech-rule-engine/lib/mathmaps/nemeth.json"),
-	nn: () => import("speech-rule-engine/lib/mathmaps/nn.json"),
-	sv: () => import("speech-rule-engine/lib/mathmaps/sv.json"),
 };
 
 // SRE's `custom` loader contract: called with a locale name, resolving to that
@@ -28,7 +18,9 @@ const SRE_LOCALE_TABLES: Record<string, () => Promise<{ default: unknown }>> = {
 // to English when a table fails to load.
 const loadPackagedSreLocale = async (locale: string): Promise<unknown> => {
 	if (!Object.hasOwn(SRE_LOCALE_TABLES, locale)) {
-		throw new Error(`speech-rule-engine ships no locale table for "${locale}"`);
+		throw new Error(
+			`no speech-rule-engine locale table is packaged for "${locale}"; name a source with mathSpeech.engineOptions.json or .custom`,
+		);
 	}
 	return (await SRE_LOCALE_TABLES[locale]()).default;
 };
@@ -58,7 +50,9 @@ export const sreLocaleSource = (
 	return sreFetchesTables() ? { custom: loadPackagedSreLocale } : {};
 };
 
-let startupLocaleSource = sreLocaleSource();
+// Resolved on first read: a call at module scope would keep the table imports
+// in every bundle that includes this module, math speech used or not.
+let startupLocaleSource: Record<string, unknown> | undefined;
 
 /**
  * Sets the source SRE loads its start-up locales from; see `./sre-engine.ts`.
@@ -70,5 +64,7 @@ export const setSreStartupLocaleSource = (
 	startupLocaleSource = sreLocaleSource(engineOptions);
 };
 
-export const sreStartupLocaleSource = (): Record<string, unknown> =>
-	startupLocaleSource;
+export const sreStartupLocaleSource = (): Record<string, unknown> => {
+	startupLocaleSource ??= sreLocaleSource();
+	return startupLocaleSource;
+};

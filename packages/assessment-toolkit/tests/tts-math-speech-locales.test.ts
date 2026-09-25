@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -66,13 +66,9 @@ describe("SRE locale source", () => {
 		});
 	});
 
-	test("the packaged loader serves every table SRE ships", async () => {
+	test("the packaged loader serves base, en and es", async () => {
 		const load = await packagedLoader();
-		const locales = readdirSync(mathmapsDir)
-			.filter((file) => file.endsWith(".json"))
-			.map((file) => file.slice(0, -".json".length));
-		expect(locales).toContain("base");
-		for (const locale of locales) {
+		for (const locale of ["base", "en", "es"]) {
 			const table = (await load(locale)) as Record<string, unknown>;
 			// SRE keys every rule set in a table by the table's own locale.
 			const keys = Object.keys(table);
@@ -81,14 +77,13 @@ describe("SRE locale source", () => {
 		}
 	});
 
-	test("the packaged loader rejects a locale SRE does not ship", async () => {
+	test("the packaged loader rejects every other locale", async () => {
 		const load = await packagedLoader();
-		await expect(load("xx")).rejects.toThrow(
-			'speech-rule-engine ships no locale table for "xx"',
-		);
-		await expect(load("constructor")).rejects.toThrow(
-			'speech-rule-engine ships no locale table for "constructor"',
-		);
+		for (const locale of ["de", "nemeth", "xx", "constructor"]) {
+			await expect(load(locale)).rejects.toThrow(
+				`no speech-rule-engine locale table is packaged for "${locale}"`,
+			);
+		}
 	});
 
 	test("setupEngine receives the packaged loader unless the host names a source", async () => {
@@ -239,10 +234,19 @@ describe("SRE start-up in a host bundle", () => {
 		}
 	};
 
-	test("loads every locale from the packaged tables, with no request", () => {
-		expect(runProbe("default", ["en-US", "de-DE"])).toEqual({
-			speech: ["x squared", "x Quadrat"],
+	test("loads the packaged locales from the packaged tables, with no request", () => {
+		expect(runProbe("default", ["en-US", "es-ES"])).toEqual({
+			speech: ["x squared", "x al cuadrado"],
 			errors: [],
+			requests: [],
+			loaded: [],
+		});
+	}, 30_000);
+
+	test("speaks a locale with no packaged table in English, with no request", () => {
+		expect(runProbe("default", ["de-DE", "en-US"])).toEqual({
+			speech: ["x squared", "x squared"],
+			errors: ["Unable to load locale: de"],
 			requests: [],
 			loaded: [],
 		});

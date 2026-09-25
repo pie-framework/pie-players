@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	analyzeSpeechRuleEngineBoundary,
+	findInlinedSreLocaleTables,
 	findModuleSpecifiers,
 	findPublishedSourcemaps,
 	hasInlinedSpeechRuleEngine,
@@ -55,6 +56,28 @@ describe("hasInlinedSpeechRuleEngine", () => {
 		expect(
 			hasInlinedSpeechRuleEngine('await import("speech-rule-engine")'),
 		).toBe(false);
+	});
+});
+
+describe("findInlinedSreLocaleTables", () => {
+	test("reads the locale of a table bundled as an object literal", () => {
+		const content =
+			'var e={"base/functions/algebra.min":[{locale:"base"}],"base/symbols/digits.min":[]};export{e as default};';
+		expect(findInlinedSreLocaleTables(content)).toEqual(["base"]);
+	});
+
+	test("reads tables bundled as a JSON.parse string", () => {
+		const content =
+			'const e=JSON.parse(\'{"es/messages/alphabets.min":[],"en/rules/clearspeak_english.min":[]}\');';
+		expect(findInlinedSreLocaleTables(content)).toEqual(["en", "es"]);
+	});
+
+	test("does not flag a dynamic import of a table", () => {
+		expect(
+			findInlinedSreLocaleTables(
+				'en:()=>import("speech-rule-engine/lib/mathmaps/en.json")',
+			),
+		).toEqual([]);
 	});
 });
 

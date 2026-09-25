@@ -940,9 +940,9 @@ Host A deploys its element as one JavaScript file, where a lazy chunk would
 whether or not that code path runs: each `pie-tool-*` package the packaged tool
 loaders import
 (`packages/default-tool-loaders/src/packaged-capability-composition.ts`),
-placed or not, and speech-rule-engine with its 16 locale tables (4.3 MB). Lazy
-loading takes nothing out of that file; deleting code or sharing one copy of it
-across packages does.
+placed or not, and speech-rule-engine with its `base`, `en` and `es` locale
+tables (0.8 MB). Lazy loading takes nothing out of that file; deleting code or
+sharing one copy of it across packages does.
 
 Its production build warns past 13 MB of initial bundle and fails past 14 MB,
 and its caret range takes each patch on the next install, so a patch can fail

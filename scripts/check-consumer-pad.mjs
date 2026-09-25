@@ -89,6 +89,19 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"resource monitor: the DOM events a host gates item display on (names, bubbling, `detail.url`, `detail.duration`), and the page actions the implicit instrumentation default sends",
+		match: (file) =>
+			file === "packages/players-shared/src/pie/resource-monitor.ts" ||
+			file === "packages/players-shared/src/pie/use-resource-monitor.svelte.ts",
+	},
+	{
+		reason:
+			"generated `@pie-players/pie-preloaded-player` package: the `dist/` entry name and layout a host copies and loads by path",
+		match: (file) =>
+			file === "tools/cli/src/utils/pie-packages/fixed-static.ts",
+	},
+	{
+		reason:
 			"published type surface of a contract package or a tool export barrel: a name added to or removed from what consumers can import",
 		match: (file) =>
 			/^packages\/(calculator|tts)\/src\/(index|provider-interface)\.ts$/.test(

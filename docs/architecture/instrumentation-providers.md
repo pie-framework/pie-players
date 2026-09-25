@@ -26,9 +26,9 @@ initializes one, or holds a dependency on one.
 
 ## Scope
 
-PIE ships one adapter, for New Relic, because one host has that agent on the
-page. Around it ship the contract, probed readiness, central attribute naming,
-and detection restricted to that one agent.
+PIE ships one adapter, for New Relic, because Hosts A and P have that agent on
+their pages. Around it ship the contract, probed readiness, central attribute
+naming, and detection restricted to that one agent.
 
 DataDog and OpenTelemetry stay unshipped and get exercised anyway. A conformance
 suite in `packages/players-shared/tests` runs the contract's whole surface
@@ -63,7 +63,7 @@ already carries it.
 
 ## Consumer position
 
-No external host consumes any part of this module.
+No external host imports any part of this module.
 `CompositeInstrumentationProvider`, `NewRelicInstrumentationProvider` and
 `DebugPanelInstrumentationProvider` have exactly one consumer, Host R, recorded
 under Programmatic API in
@@ -71,9 +71,33 @@ under Programmatic API in
 That host is internally controlled, so under the downstream-consumer rule in
 `AGENTS.md` it is not a constraint: it gets fixed in the same push. Host A,
 scanned on 2026-09-18, sets `trackPageActions` nowhere, names
-`instrumentationProvider` nowhere, and imports nothing from the module. The
-implicit default that detection replaces — `trackPageActions: true` with no
-provider named — therefore has no consumer at all.
+`instrumentationProvider` nowhere, and imports nothing from the module.
+
+The implicit default that detection replaces — `trackPageActions: true` with no
+provider named — has one consumer, Host P, which is client-facing and whose
+loader configuration the pad records. Its `@pie-players` path renders through
+the preloaded `pie-item-player`, where both implicit default instances send to
+New Relic: the resource monitor's sends a `pie-resource-load` page action per
+tracked resource, retry and error page actions, and a `noticeError` per failure,
+and resolution's memoized instance sends a `noticeError` per item-player runtime
+error. An instance sends only if the agent was on the page when it initialized,
+the latch described under probed readiness. That host's own page loads no agent,
+so the agent comes from an outer page, as it does for Host A, and either order is
+possible.
+
+The predecessor player on that host's main line never receives its loader
+configuration: the host binds it there as a property named `loader-config`, and
+that element reads `loaderConfig`. PIE resource telemetry therefore first reaches
+that host's account through `pie-item-player`.
+
+That puts what the default sends in a client's account, and three parts of this
+design change it. Probed readiness and buffering add volume on pages whose agent
+arrives after the player starts. Central attribute naming renames every key the
+account receives, which is free until that host's `@pie-players` rollout goes
+live and breaks any query on those keys after. Detection binds the adapter the
+default already constructs there, so it changes nothing that host receives. The
+emission gate does not apply, because that host asked for telemetry, and each
+change reaches it when it moves its exact pin.
 
 Renaming is available and declined. The existing export names are accurate and
 nothing in the design argues for new ones, so they stay; the freedom is recorded
@@ -206,9 +230,9 @@ default is redundant with it.
 ## Attribute naming
 
 The contract's attribute bags are flat and New Relic-shaped. Naming is applied
-centrally, in the base class, and settled before detection makes PIE send to a
-real backend for the first time. After that, renaming means breaking dashboards
-that exist.
+centrally, in the base class, and settled before a real backend holds PIE's
+keys, which [consumer position](#consumer-position) ties to one host's rollout.
+After that, renaming means breaking dashboards that exist.
 
 | Contract | New Relic | DataDog RUM | OpenTelemetry |
 | --- | --- | --- | --- |

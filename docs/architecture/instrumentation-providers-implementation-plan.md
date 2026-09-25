@@ -23,9 +23,10 @@ Related:
 - Every slice that touches published source carries one `patch` changeset;
   `bun run check:changeset-patch-only` is the gate and pending `minor` entries
   are release blockers.
-- Slices 1 through 4 change no host-visible behavior. Slice 5 is the first that
-  can change what a host's backend receives, and it does not land before its
-  evidence gate clears.
+- Slices 3 and 4 change no host-visible behavior. Slices 1, 2 and 6 change what
+  Host P's backend receives, as the design note's
+  [consumer position](./instrumentation-providers.md#consumer-position)
+  records. Slice 5 does not land before its evidence gate clears.
 
 ## Slice 1: Probed Readiness
 
@@ -48,8 +49,8 @@ OTel's `exception.*` — stays in the adapter.
 Done when every PIE-emitted attribute passes through one function and the
 design note's mapping table is asserted by tests.
 
-This is the last cheap moment for naming: after slice 5 a real backend is
-receiving these keys.
+Naming stops being cheap once a real backend receives these keys, which for
+Host P starts with its `@pie-players` rollout, independent of slice 5.
 
 ## Slice 3: Conformance Suite And Fixtures
 
@@ -79,10 +80,10 @@ unchanged.
 When `trackPageActions` is true and no provider is named, the factory probes and
 binds. One entry, closed list.
 
-Gate before landing: refresh the consumer pad by its maintenance procedure,
-including the delivery consumer not yet profiled there, and confirm that no host
-enables `trackPageActions` without also naming a provider. The 2026-09-18 scan
-covered one delivery host and predates the pad's own refresh.
+Gate before landing: refresh the consumer pad by its maintenance procedure and
+confirm that no host enables `trackPageActions` without also naming a provider.
+The gate fails on Host P, profiled 2026-09-24; the design note's consumer
+position records what detection and the earlier slices change for that host.
 
 Done when the pad is refreshed or its commit trailer recorded,
 `bun run check:consumer-pad` is green, and a page carrying an agent with

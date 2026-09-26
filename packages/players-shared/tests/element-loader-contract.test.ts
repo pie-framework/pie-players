@@ -24,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import {
 	__testing as elementLoaderTesting,
+	AdapterFailure,
 	ElementAssertionError,
 	ElementLoaderError,
 	assertRegistered,
@@ -39,6 +40,7 @@ import {
 	createEsmBackend,
 	mapEsmViewElements,
 	resolveEsmRuntimeSupportUrl,
+	type EsmBackendConfig,
 	type EsmBackendTestSeams,
 	type EsmCdnProvider,
 } from "../src/loaders/esm-adapter.js";
@@ -177,12 +179,32 @@ function createMockDocument(): Document {
 	} as unknown as Document;
 }
 
+type ScriptStub = {
+	type?: string;
+	textContent?: string;
+	getAttribute(name: string): string | null;
+	setAttribute(name: string, value: string): void;
+};
+
+function createScriptStub(
+	init: { type?: string; textContent?: string } = {},
+): ScriptStub {
+	const attributes = new Map<string, string>();
+	return {
+		...init,
+		getAttribute: (name) => attributes.get(name) ?? null,
+		setAttribute: (name, value) => {
+			attributes.set(name, value);
+		},
+	};
+}
+
 /** A document whose import maps `querySelectorAll` reports, the host's first. */
 function createImportMapDocument(
 	hostImports: Record<string, string>[] = [],
 ): Document {
-	const maps: Array<{ type?: string; textContent?: string }> = hostImports.map(
-		(imports) => ({
+	const maps: ScriptStub[] = hostImports.map((imports) =>
+		createScriptStub({
 			type: "importmap",
 			textContent: JSON.stringify({ imports }),
 		}),
@@ -190,11 +212,11 @@ function createImportMapDocument(
 	return {
 		head: {
 			appendChild: (el: unknown) => {
-				maps.push(el as (typeof maps)[number]);
+				maps.push(el as ScriptStub);
 				return el;
 			},
 		},
-		createElement: () => ({}),
+		createElement: () => createScriptStub(),
 		querySelector: () => null,
 		querySelectorAll: (selector: string) =>
 			(selector === 'script[type="importmap"]'
@@ -1641,17 +1663,116 @@ describe("ESM adapter — contract", () => {
 				},
 			},
 		}));
+		let importerCalls = 0;
+		seams.replaceImporter(async () => {
+			importerCalls++;
+			return {};
+		});
 
-		await expect(
-			backend.load(
-				{
-					"pie-math-inline--version-12-1-0": "@pie-element/math-inline@12.1.0",
+		const tag = "pie-math-inline--version-12-1-0";
+		const error = await backend
+			.load(
+				{ [tag]: "@pie-element/math-inline@12.1.0" },
+				{ doc: createMockDocument() },
+			)
+			.then(
+				() => undefined,
+				(err: unknown) => err as AdapterFailure,
+			);
+
+		expect(error).toBeInstanceOf(AdapterFailure);
+		const reason = error?.reasons.get(tag);
+		expect(reason?.kind).toBe("module-load-failed");
+		if (reason?.kind === "module-load-failed") {
+			expect(reason.cause).toMatch(
+				/does not publish browser ESM export \.\/browser\/delivery/,
+			);
+		}
+		expect(importerCalls).toBe(0);
+	});
+
+	test("a package missing the view's browser export fails alone, reported as a missing export", async () => {
+		const trackedErrors: Array<Record<string, unknown>> = [];
+		const provider = {
+			providerId: "test",
+			providerName: "Test Provider",
+			async initialize() {},
+			trackError(_error: Error, attributes: Record<string, unknown>) {
+				trackedErrors.push(attributes);
+			},
+			trackEvent() {},
+			destroy() {},
+			isReady() {
+				return true;
+			},
+		};
+		const logged: string[] = [];
+		const originalError = console.error;
+		console.error = (...args: unknown[]) => {
+			logged.push(args.map(String).join(" "));
+		};
+		try {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				view: "author",
+				trackPageActions: true,
+				instrumentationProvider: provider,
+			});
+			const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+				.__seams;
+			seams.replacePackageMetadataLoader(async (packageVersion) => ({
+				exports: {
+					"./browser/delivery": "./dist/browser/delivery/index.js",
+					"./browser/controller": "./dist/browser/controller/index.js",
+					...(packageVersion.includes("match-list")
+						? {}
+						: { "./browser/author": "./dist/browser/author/index.js" }),
 				},
-				{
-					doc: createMockDocument(),
+				pie: {
+					browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" },
 				},
-			),
-		).rejects.toThrow(/does not publish browser ESM export/);
+			}));
+			seams.replaceImporter(async (specifier) => ({
+				default: createConstructorFor(specifier),
+			}));
+
+			let error: ElementLoaderError | undefined;
+			try {
+				await ensureRegistered(
+					{
+						"pie-mc--version-13-4-0-config":
+							"@pie-element/multiple-choice@13.4.0",
+						"pie-match-list--version-7-1-2-config":
+							"@pie-element/match-list@7.1.2",
+					},
+					{ backend, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+				);
+			} catch (err) {
+				error = err as ElementLoaderError;
+			}
+
+			expect(error).toBeInstanceOf(ElementLoaderError);
+			expect([...(error?.unregisteredTags ?? [])]).toEqual([
+				"pie-match-list--version-7-1-2-config",
+			]);
+			const reason = error?.reasons.get("pie-match-list--version-7-1-2-config");
+			expect(reason?.kind).toBe("module-load-failed");
+			if (reason?.kind === "module-load-failed") {
+				expect(reason.cause).toBe(
+					"@pie-element/match-list@7.1.2 does not publish browser ESM export ./browser/author; use IIFE/preloaded mode or publish browser ESM artifacts first",
+				);
+			}
+			expect(
+				g.customElements?.get("pie-mc--version-13-4-0-config"),
+			).toBeDefined();
+			expect(logged).toEqual([
+				"[pie-esm] @pie-element/match-list@7.1.2 does not publish browser ESM export ./browser/author; use IIFE/preloaded mode or publish browser ESM artifacts first",
+			]);
+			expect(trackedErrors).toEqual([]);
+		} finally {
+			console.error = originalError;
+		}
 	});
 
 	test("url mode resolves same-major React conflicts to the higher version with warnings and instrumentation", async () => {
@@ -1806,6 +1927,65 @@ describe("ESM adapter — contract", () => {
 		expect(
 			errors.some((error) => error.message.includes("cannot be upgraded")),
 		).toBe(true);
+	});
+
+	test("url mode orders React prereleases by semver precedence", async () => {
+		const reactVersion = (packageVersion: string) =>
+			packageVersion.includes("choice") ? "18.3.0-next.9" : "18.3.0-next.10";
+		const createBackend = () => {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				loadControllers: false,
+			});
+			const injected: string[] = [];
+			const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+				.__seams;
+			seams.observeImportMapInjection((json) => {
+				injected.push(json);
+			});
+			seams.replacePackageMetadataLoader(async (packageVersion) => ({
+				pie: {
+					browserSharedDependencies: {
+						react: reactVersion(packageVersion),
+						"react-dom": reactVersion(packageVersion),
+					},
+				},
+			}));
+			seams.replaceImporter(async (specifier) => ({
+				default: createConstructorFor(specifier),
+			}));
+			return { backend, injected };
+		};
+		const originalWarn = console.warn;
+		console.warn = () => {};
+		try {
+			const batch = createBackend();
+			await batch.backend.load(
+				{
+					"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
+					"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
+				},
+				{ doc: createMockDocument() },
+			);
+			expect(JSON.parse(batch.injected[0] ?? "{}").imports.react).toBe(
+				"https://cdn.jsdelivr.net/npm/react@18.3.0-next.10/+esm",
+			);
+
+			const sequential = createBackend();
+			await sequential.backend.load(
+				{ "pie-mc--version-13-2-1": "@pie-element/multiple-choice@13.2.1" },
+				{ doc: createMockDocument() },
+			);
+			await expect(
+				sequential.backend.load(
+					{ "pie-passage--version-3-2-5": "@pie-element/passage@3.2.5" },
+					{ doc: createMockDocument() },
+				),
+			).rejects.toThrow(/requires higher version 18\.3\.0-next\.10/);
+		} finally {
+			console.warn = originalWarn;
+		}
 	});
 
 	test("config-object ESM backend preserves shared dependency locks across sequential loads", async () => {
@@ -2864,6 +3044,658 @@ describe("ESM adapter — existing import maps", () => {
 
 		expect(first.injected).toHaveLength(1);
 		expect(second.injected).toEqual([]);
+	});
+});
+
+// ─── ESM adapter — shared editor runtime ─────────────────────────────────────
+
+describe("ESM adapter — shared editor runtime", () => {
+	const CDN = "https://cdn.jsdelivr.net/npm";
+	const RUNTIME = "@pie-element/shared-editor-runtime";
+	const RUNTIME_MODULES = {
+		"@tiptap/core": "tiptap-core",
+		"@tiptap/pm/state": "tiptap-pm-state",
+		"prosemirror-state": "prosemirror-state",
+	};
+	const VARIANT_VIEWS = {
+		delivery: "editor-runtime/delivery",
+		author: "editor-runtime/author",
+		print: "editor-runtime/print",
+		controller: "editor-runtime/controller",
+	};
+	const MC = "@pie-element/multiple-choice@13.4.0-next.15";
+	const MC_TAG = "pie-mc--version-13-4-0-next-15";
+	const EBSR = "@pie-element/ebsr@14.2.2-next.20";
+	const EBSR_TAG = "pie-ebsr--version-14-2-2-next-20";
+	const VENN = "@pie-element/venn-classification@0.1.1-next.11";
+	const VENN_TAG = "pie-venn--version-0-1-1-next-11";
+	/** Published before elements declared a variant. */
+	const PASSAGE = "@pie-element/passage@7.1.2-next.17";
+	const PASSAGE_TAG = "pie-passage--version-7-1-2-next-17";
+
+	const url = (packageVersion: string, view: string) =>
+		`${CDN}/${packageVersion}/dist/browser/${view}/index.js`;
+	const runtimeImports = (version: string, base = CDN) =>
+		Object.fromEntries(
+			Object.entries(RUNTIME_MODULES).map(([specifier, view]) => [
+				specifier,
+				`${base}/${RUNTIME}@${version}/dist/browser/${view}/index.js`,
+			]),
+		);
+
+	const standardExports = {
+		"./browser/delivery": "./dist/browser/delivery/index.js",
+		"./browser/author": "./dist/browser/author/index.js",
+		"./browser/print": "./dist/browser/print/index.js",
+		"./browser/controller": "./dist/browser/controller/index.js",
+	};
+	const react = {
+		browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" },
+	};
+	const declaring = (
+		version: string,
+		overrides: Record<string, unknown> = {},
+	) => ({
+		exports: standardExports,
+		pie: {
+			...react,
+			browserEditorRuntime: {
+				name: RUNTIME,
+				version,
+				views: VARIANT_VIEWS,
+				...overrides,
+			},
+		},
+	});
+	const svelteDeclaring = (version: string, views: Record<string, string>) => ({
+		exports: standardExports,
+		pie: { browserEditorRuntime: { name: RUNTIME, version, views } },
+	});
+	const undeclared = { exports: standardExports, pie: react };
+	const runtimePackage = (modules: unknown = RUNTIME_MODULES) => ({
+		name: RUNTIME,
+		exports: { "./package.json": "./package.json" },
+		pie: { browserModules: modules },
+	});
+
+	let warnings: string[];
+	let originalWarn: typeof console.warn;
+	beforeEach(() => {
+		warnings = [];
+		originalWarn = console.warn;
+		console.warn = (...args: unknown[]) => {
+			warnings.push(String(args[0]));
+		};
+	});
+	afterEach(() => {
+		console.warn = originalWarn;
+	});
+
+	/**
+	 * A backend whose package metadata comes from `packages`: an entry that is
+	 * an Error throws, a missing one reads as a failed fetch.
+	 */
+	function harness(
+		packages: Record<string, unknown>,
+		options: {
+			config?: Partial<EsmBackendConfig>;
+			failImport?: (specifier: string) => boolean;
+		} = {},
+	) {
+		const injected: string[] = [];
+		const imported: string[] = [];
+		const metadataRequests: string[] = [];
+		const events: Array<{ name: string; attributes: Record<string, unknown> }> =
+			[];
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: CDN,
+			trackPageActions: true,
+			instrumentationProvider: {
+				providerId: "test",
+				providerName: "Test Provider",
+				async initialize() {},
+				trackError() {},
+				trackEvent(name: string, attributes: Record<string, unknown>) {
+					events.push({ name, attributes });
+				},
+				destroy() {},
+				isReady: () => true,
+			} as unknown as EsmBackendConfig["instrumentationProvider"],
+			...options.config,
+		});
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		seams.observeImportMapInjection((json) => {
+			injected.push(json);
+		});
+		seams.replacePackageMetadataLoader(async (packageVersion, jsonUrl) => {
+			metadataRequests.push(jsonUrl);
+			const metadata = packages[packageVersion];
+			if (metadata instanceof Error) throw metadata;
+			return (metadata ?? null) as never;
+		});
+		seams.replaceImporter(async (specifier) => {
+			imported.push(specifier);
+			if (options.failImport?.(specifier)) {
+				throw new TypeError(
+					`Failed to fetch dynamically imported module: ${specifier}`,
+				);
+			}
+			return { default: createConstructorFor(specifier) };
+		});
+		return { backend, injected, imported, metadataRequests, events };
+	}
+
+	const injectedImports = (injected: string[]) =>
+		Object.assign(
+			{},
+			...injected.map((json) => JSON.parse(json).imports as object),
+		) as Record<string, string>;
+	const mappedRuntimes = (doc: Document) =>
+		Array.from(doc.querySelectorAll('script[type="importmap"]'))
+			.map((script) => script.getAttribute("data-pie-editor-runtime"))
+			.filter(Boolean);
+	const runtimeRequests = (requests: string[]) =>
+		requests.filter((request) => request.includes(RUNTIME));
+	const fallbackWarning = (packageVersion: string, reason: string) =>
+		`[pie-esm] ${packageVersion} loads ./browser/* in place of its editor-runtime variant: ${reason}`;
+
+	test("url mode loads declared variants and maps the runtime once for React and Svelte elements", async () => {
+		const doc = createImportMapDocument();
+		const delivery = harness({
+			[MC]: declaring("0.1.1-next.0"),
+			[VENN]: svelteDeclaring("0.1.1-next.0", {
+				author: "editor-runtime/author",
+				delivery: "editor-runtime/delivery",
+				controller: "editor-runtime/controller",
+			}),
+			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+		});
+
+		await delivery.backend.load({ [MC_TAG]: MC, [VENN_TAG]: VENN }, { doc });
+
+		expect(delivery.imported.sort()).toEqual(
+			[
+				url(MC, "editor-runtime/delivery"),
+				url(MC, "editor-runtime/controller"),
+				url(VENN, "editor-runtime/delivery"),
+				url(VENN, "editor-runtime/controller"),
+			].sort(),
+		);
+		expect(delivery.injected).toHaveLength(1);
+		const imports = injectedImports(delivery.injected);
+		expect(Object.keys(imports).sort()).toEqual(
+			[...REACT_SHARED_SPECIFIERS, ...Object.keys(RUNTIME_MODULES)].sort(),
+		);
+		expect(imports).toMatchObject(runtimeImports("0.1.1-next.0"));
+		expect(runtimeRequests(delivery.metadataRequests)).toEqual([
+			`${CDN}/${RUNTIME}@0.1.1-next.0/package.json`,
+		]);
+		expect(mappedRuntimes(doc)).toEqual([`${RUNTIME}@0.1.1-next.0`]);
+		expect(warnings).toEqual([]);
+		expect(g.customElements?.get(MC_TAG)).toBeDefined();
+		expect(g.customElements?.get(VENN_TAG)).toBeDefined();
+
+		// Another view's backend on the page serves from the same runtime.
+		const author = harness(
+			{
+				[MC]: declaring("0.1.1-next.0"),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			},
+			{ config: { view: "author" } },
+		);
+		await author.backend.load({ [`${MC_TAG}-config`]: MC }, { doc });
+
+		expect(author.imported).toEqual([
+			url(MC, "editor-runtime/author"),
+			url(MC, "editor-runtime/controller"),
+		]);
+		expect(author.injected).toEqual([]);
+		expect(runtimeRequests(author.metadataRequests)).toEqual([]);
+		expect(warnings).toEqual([]);
+	});
+
+	test("a custom provider addresses the runtime's metadata, modules and every variant", async () => {
+		const sharedDependencies: string[] = [];
+		const cdnProvider: EsmCdnProvider = {
+			name: "local",
+			packageJsonUrl: (pv) => `https://meta.test/${pv}`,
+			browserViewUrl: (pv, view) => `https://files.test/${pv}/${view}.mjs`,
+			browserControllerUrl: (pv) => `https://files.test/${pv}/controller.mjs`,
+			sharedDependencyUrl: (dependency, version, subpath) => {
+				sharedDependencies.push(dependency);
+				return `https://deps.test/${dependency}@${version}${subpath ? `/${subpath}` : ""}`;
+			},
+		};
+		const doc = createImportMapDocument();
+		const { backend, injected, imported, metadataRequests } = harness(
+			{
+				[MC]: declaring("0.1.1-next.0"),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			},
+			{ config: { cdnBaseUrl: "https://ignored.test", cdnProvider } },
+		);
+
+		await backend.load({ [MC_TAG]: MC }, { doc });
+
+		expect(runtimeRequests(metadataRequests)).toEqual([
+			`https://meta.test/${RUNTIME}@0.1.1-next.0`,
+		]);
+		const imports = injectedImports(injected);
+		for (const [specifier, view] of Object.entries(RUNTIME_MODULES)) {
+			expect(imports[specifier]).toBe(
+				`https://files.test/${RUNTIME}@0.1.1-next.0/${view}.mjs`,
+			);
+		}
+		expect(new Set(sharedDependencies)).toEqual(
+			new Set(["react", "react-dom"]),
+		);
+		expect(imported).toEqual([
+			`https://files.test/${MC}/editor-runtime/delivery.mjs`,
+			`https://files.test/${MC}/editor-runtime/controller.mjs`,
+		]);
+	});
+
+	test("import-map mode keeps ./browser/* and maps no runtime", async () => {
+		const doc = createImportMapDocument();
+		const { backend, injected, imported, metadataRequests } = harness(
+			{
+				[MC]: declaring("0.1.1-next.0"),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			},
+			{ config: { moduleResolution: "import-map" } },
+		);
+
+		await backend.load({ [MC_TAG]: MC }, { doc });
+
+		expect(imported).toEqual([
+			"@pie-element/multiple-choice",
+			"@pie-element/multiple-choice/controller",
+		]);
+		const imports = injectedImports(injected);
+		expect(imports["@pie-element/multiple-choice"]).toBe(url(MC, "delivery"));
+		for (const specifier of Object.keys(RUNTIME_MODULES)) {
+			expect(imports[specifier]).toBeUndefined();
+		}
+		expect(runtimeRequests(metadataRequests)).toEqual([]);
+		expect(mappedRuntimes(doc)).toEqual([]);
+	});
+
+	test("a page mixing undeclared and declaring versions loads each its own way", async () => {
+		const doc = createImportMapDocument();
+		const { backend, imported } = harness({
+			[MC]: declaring("0.1.1-next.0"),
+			[PASSAGE]: undeclared,
+			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+		});
+
+		await backend.load({ [MC_TAG]: MC, [PASSAGE_TAG]: PASSAGE }, { doc });
+
+		expect(imported.sort()).toEqual(
+			[
+				url(MC, "editor-runtime/delivery"),
+				url(MC, "editor-runtime/controller"),
+				url(PASSAGE, "delivery"),
+				url(PASSAGE, "controller"),
+			].sort(),
+		);
+		expect(g.customElements?.get(MC_TAG)).toBeDefined();
+		expect(g.customElements?.get(PASSAGE_TAG)).toBeDefined();
+		expect(warnings).toEqual([]);
+	});
+
+	test("a view the variant does not cover loads ./browser/* and maps no runtime", async () => {
+		const doc = createImportMapDocument();
+		const { backend, imported, injected, metadataRequests } = harness(
+			{
+				[VENN]: svelteDeclaring("0.1.1-next.0", {
+					author: "editor-runtime/author",
+					delivery: "editor-runtime/delivery",
+					controller: "editor-runtime/controller",
+				}),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			},
+			{ config: { view: "print" } },
+		);
+
+		await backend.load({ [`${VENN_TAG}-print`]: VENN }, { doc });
+
+		expect(imported).toEqual([url(VENN, "print"), url(VENN, "controller")]);
+		expect(injected).toEqual([]);
+		expect(runtimeRequests(metadataRequests)).toEqual([]);
+		expect(warnings).toEqual([]);
+	});
+
+	test("a newer runtime declared after an older one is mapped falls back, through the same backend", async () => {
+		const doc = createImportMapDocument();
+		const { backend, imported, injected, metadataRequests, events } = harness({
+			[MC]: declaring("0.1.1-next.0"),
+			[EBSR]: declaring("0.1.1-next.1"),
+			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			[`${RUNTIME}@0.1.1-next.1`]: runtimePackage(),
+		});
+
+		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [EBSR_TAG]: EBSR }, { doc });
+
+		expect(imported.filter((specifier) => specifier.includes(EBSR))).toEqual([
+			url(EBSR, "delivery"),
+			url(EBSR, "controller"),
+		]);
+		expect(g.customElements?.get(EBSR_TAG)).toBeDefined();
+		expect(injected).toHaveLength(1);
+		expect(runtimeRequests(metadataRequests)).toEqual([
+			`${CDN}/${RUNTIME}@0.1.1-next.0/package.json`,
+		]);
+		const reason = `the page maps ${RUNTIME}@0.1.1-next.0, which cannot serve ${RUNTIME}@0.1.1-next.1`;
+		expect(warnings).toEqual([fallbackWarning(EBSR, reason)]);
+		expect(events).toEqual([
+			{
+				name: "pie-esm-shared-dependency-conflict",
+				attributes: {
+					dependencyName: RUNTIME,
+					existingVersion: "0.1.1-next.0",
+					requestedVersion: "0.1.1-next.1",
+					packageVersion: EBSR,
+					fallback: "./browser/*",
+					reason,
+				},
+			},
+		]);
+	});
+
+	test("a newer runtime declared after an older one is mapped falls back, through a second backend", async () => {
+		const doc = createImportMapDocument();
+		const first = harness({
+			[MC]: declaring("0.1.1-next.0"),
+			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+		});
+		const second = harness(
+			{
+				[EBSR]: declaring("0.1.1-next.1"),
+				[`${RUNTIME}@0.1.1-next.1`]: runtimePackage(),
+			},
+			{ config: { cdnBaseUrl: "https://cdn.other.test/npm" } },
+		);
+
+		await first.backend.load({ [MC_TAG]: MC }, { doc });
+		await second.backend.load({ [EBSR_TAG]: EBSR }, { doc });
+
+		expect(second.imported).toEqual([
+			`https://cdn.other.test/npm/${EBSR}/dist/browser/delivery/index.js`,
+			`https://cdn.other.test/npm/${EBSR}/dist/browser/controller/index.js`,
+		]);
+		expect(second.injected).toEqual([]);
+		expect(runtimeRequests(second.metadataRequests)).toEqual([]);
+		expect(mappedRuntimes(doc)).toEqual([`${RUNTIME}@0.1.1-next.0`]);
+		expect(warnings).toEqual([
+			fallbackWarning(
+				EBSR,
+				`the page maps ${RUNTIME}@0.1.1-next.0, which cannot serve ${RUNTIME}@0.1.1-next.1`,
+			),
+		]);
+		expect(second.events.map((event) => event.name)).toEqual([
+			"pie-esm-shared-dependency-conflict",
+		]);
+	});
+
+	test("the mapped runtime serves a variant built against a lower compatible version, reported as resolved", async () => {
+		const doc = createImportMapDocument();
+		const { backend, imported, events } = harness({
+			[EBSR]: declaring("0.1.1-next.1"),
+			[MC]: declaring("0.1.1-next.0"),
+			[`${RUNTIME}@0.1.1-next.1`]: runtimePackage(),
+		});
+
+		await backend.load({ [EBSR_TAG]: EBSR }, { doc });
+		await backend.load({ [MC_TAG]: MC }, { doc });
+
+		expect(imported.filter((specifier) => specifier.includes(MC))).toEqual([
+			url(MC, "editor-runtime/delivery"),
+			url(MC, "editor-runtime/controller"),
+		]);
+		expect(warnings).toEqual([
+			`[pie-esm] Shared dependency version conflict resolved for ${RUNTIME}`,
+		]);
+		expect(events.map((event) => event.attributes)).toEqual([
+			{
+				dependencyName: RUNTIME,
+				existingVersion: "0.1.1-next.1",
+				requestedVersion: "0.1.1-next.0",
+				resolvedVersion: "0.1.1-next.1",
+				packageVersion: MC,
+			},
+		]);
+	});
+
+	test.each([
+		["0.1.1-next.0", "0.2.0-next.0", false],
+		["0.1.2", "0.1.1-next.3", true],
+		["0.1.1-next.10", "0.1.1-next.9", true],
+		["0.1.1-next.9", "0.1.1-next.10", false],
+		["1.2.0-next.1", "1.2.0", false],
+		["1.2.0", "1.0.5", true],
+		["1.2.0", "2.0.0", false],
+		["2.0.0", "1.9.0", false],
+	])(
+		"a page mapping runtime %s serves a variant declaring %s: %p",
+		async (mapped, declared, served) => {
+			const doc = createImportMapDocument();
+			const { backend, imported } = harness({
+				[MC]: declaring(mapped),
+				[EBSR]: declaring(declared),
+				[`${RUNTIME}@${mapped}`]: runtimePackage(),
+			});
+
+			await backend.load({ [MC_TAG]: MC }, { doc });
+			await backend.load({ [EBSR_TAG]: EBSR }, { doc });
+
+			expect(imported.filter((specifier) => specifier.includes(EBSR))[0]).toBe(
+				url(EBSR, served ? "editor-runtime/delivery" : "delivery"),
+			);
+		},
+	);
+
+	test("one batch maps the highest declared runtime by semver precedence", async () => {
+		const doc = createImportMapDocument();
+		const { backend, imported, injected, metadataRequests } = harness({
+			[MC]: declaring("0.1.1-next.9"),
+			[EBSR]: declaring("0.1.1-next.10"),
+			[`${RUNTIME}@0.1.1-next.9`]: runtimePackage(),
+			[`${RUNTIME}@0.1.1-next.10`]: runtimePackage(),
+		});
+
+		await backend.load({ [MC_TAG]: MC, [EBSR_TAG]: EBSR }, { doc });
+
+		expect(runtimeRequests(metadataRequests)).toEqual([
+			`${CDN}/${RUNTIME}@0.1.1-next.10/package.json`,
+		]);
+		expect(injectedImports(injected)).toMatchObject(
+			runtimeImports("0.1.1-next.10"),
+		);
+		expect(mappedRuntimes(doc)).toEqual([`${RUNTIME}@0.1.1-next.10`]);
+		expect(imported).toContain(url(MC, "editor-runtime/delivery"));
+		expect(imported).toContain(url(EBSR, "editor-runtime/delivery"));
+	});
+
+	test("a page that maps a runtime specifier itself keeps its mapping, and the elements fall back", async () => {
+		const hostMapping = {
+			"prosemirror-state": "https://host.test/pm-state.js",
+		};
+		const doc = createImportMapDocument([hostMapping]);
+		const { backend, imported, injected } = harness({
+			[MC]: declaring("0.1.1-next.0"),
+			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+		});
+
+		await backend.load({ [MC_TAG]: MC }, { doc });
+
+		expect(imported).toEqual([url(MC, "delivery"), url(MC, "controller")]);
+		expect(Object.keys(injectedImports(injected)).sort()).toEqual(
+			[...REACT_SHARED_SPECIFIERS].sort(),
+		);
+		expect(mappedRuntimes(doc)).toEqual([]);
+		expect(warnings).toEqual([
+			fallbackWarning(MC, "the page already maps prosemirror-state"),
+		]);
+	});
+
+	test.each([
+		[
+			"fails to load",
+			new Error("network down"),
+			`the package.json of ${RUNTIME}@0.1.1-next.0 could not be loaded: network down`,
+		],
+		[
+			"is missing",
+			undefined,
+			`the package.json of ${RUNTIME}@0.1.1-next.0 could not be loaded`,
+		],
+		[
+			"declares no modules",
+			{ name: RUNTIME, pie: {} },
+			`${RUNTIME}@0.1.1-next.0 declares no valid pie.browserModules`,
+		],
+		[
+			"maps React",
+			runtimePackage({ ...RUNTIME_MODULES, "react/jsx-runtime": "react" }),
+			`${RUNTIME}@0.1.1-next.0 declares no valid pie.browserModules`,
+		],
+		[
+			"names a path outside its browser build",
+			runtimePackage({ "@tiptap/core": "../../../evil" }),
+			`${RUNTIME}@0.1.1-next.0 declares no valid pie.browserModules`,
+		],
+	])(
+		"a runtime whose package.json %s falls back and the element loads",
+		async (_label, runtimeMetadata, reason) => {
+			const doc = createImportMapDocument();
+			const { backend, imported, injected } = harness({
+				[MC]: declaring("0.1.1-next.0"),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimeMetadata,
+			});
+
+			await backend.load({ [MC_TAG]: MC }, { doc });
+
+			expect(imported).toEqual([url(MC, "delivery"), url(MC, "controller")]);
+			expect(g.customElements?.get(MC_TAG)).toBeDefined();
+			expect(Object.keys(injectedImports(injected)).sort()).toEqual(
+				[...REACT_SHARED_SPECIFIERS].sort(),
+			);
+			expect(mappedRuntimes(doc)).toEqual([]);
+			expect(warnings).toEqual([fallbackWarning(MC, reason)]);
+		},
+	);
+
+	test("a variant view that fails to import falls back to ./browser/*", async () => {
+		const doc = createImportMapDocument();
+		const variant = url(MC, "editor-runtime/delivery");
+		const { backend, imported, events } = harness(
+			{
+				[MC]: declaring("0.1.1-next.0"),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			},
+			{ failImport: (specifier) => specifier === variant },
+		);
+
+		await backend.load({ [MC_TAG]: MC }, { doc });
+
+		expect(imported).toEqual([
+			variant,
+			url(MC, "delivery"),
+			url(MC, "controller"),
+		]);
+		expect(g.customElements?.get(MC_TAG)).toBeDefined();
+		expect(warnings).toEqual([
+			fallbackWarning(
+				MC,
+				`its editor-runtime delivery view failed to load: Failed to fetch dynamically imported module: ${variant}`,
+			),
+		]);
+		expect(events[0]?.attributes.fallback).toBe("./browser/*");
+	});
+
+	test("a variant controller that fails to import falls back to the ./browser/* controller", async () => {
+		const doc = createImportMapDocument();
+		const variantController = url(MC, "editor-runtime/controller");
+		const { backend, imported } = harness(
+			{
+				[MC]: declaring("0.1.1-next.0"),
+				[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+			},
+			{ failImport: (specifier) => specifier === variantController },
+		);
+
+		await backend.load({ [MC_TAG]: MC }, { doc });
+
+		expect(imported).toEqual([
+			url(MC, "editor-runtime/delivery"),
+			variantController,
+			url(MC, "controller"),
+		]);
+		const registry =
+			(g.window as { PIE_REGISTRY?: Record<string, any> }).PIE_REGISTRY ?? {};
+		expect(registry[MC_TAG]?.controller).toBeDefined();
+		expect(warnings).toEqual([
+			fallbackWarning(
+				MC,
+				`its editor-runtime controller failed to load: Failed to fetch dynamically imported module: ${variantController}`,
+			),
+		]);
+	});
+
+	test.each([
+		["a version range", { version: "^0.1.1-next.0" }],
+		[
+			"a path outside the package",
+			{ views: { delivery: "../../other/delivery" } },
+		],
+		["no views", { views: {} }],
+		["an invalid package name", { name: "Shared Editor Runtime" }],
+	])(
+		"a declaration with %s falls back without fetching a runtime",
+		async (_label, overrides) => {
+			const doc = createImportMapDocument();
+			const { backend, imported, metadataRequests } = harness({
+				[MC]: declaring("0.1.1-next.0", overrides),
+			});
+
+			await backend.load({ [MC_TAG]: MC }, { doc });
+
+			expect(imported).toEqual([url(MC, "delivery"), url(MC, "controller")]);
+			expect(runtimeRequests(metadataRequests)).toEqual([]);
+			expect(warnings).toEqual([
+				fallbackWarning(
+					MC,
+					"its pie.browserEditorRuntime declaration is invalid",
+				),
+			]);
+		},
+	);
+
+	test("a browser without import maps loads ./browser/* for a Svelte element instead of failing", async () => {
+		g.HTMLScriptElement = class {
+			static supports() {
+				return false;
+			}
+		} as unknown as GlobalWithDom["HTMLScriptElement"];
+		const doc = createImportMapDocument();
+		const { backend, imported, injected } = harness({
+			[VENN]: svelteDeclaring("0.1.1-next.0", {
+				delivery: "editor-runtime/delivery",
+				controller: "editor-runtime/controller",
+			}),
+			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
+		});
+
+		await backend.load({ [VENN_TAG]: VENN }, { doc });
+
+		expect(imported).toEqual([url(VENN, "delivery"), url(VENN, "controller")]);
+		expect(injected).toEqual([]);
+		expect(warnings).toEqual([
+			fallbackWarning(VENN, "this browser does not support import maps"),
+		]);
 	});
 });
 

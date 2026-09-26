@@ -110,6 +110,12 @@ player.loaderOptions = {
 
 The view defaults to `"delivery"` unless `mode="author"` (which resolves to `"author"`), or explicitly overridden via `loaderOptions.view`.
 
+#### Shared editor runtime
+
+A package that declares `pie.browserEditorRuntime` also publishes, for each view its `views` names, a variant that imports Tiptap and ProseMirror from a shared runtime package instead of bundling them. Under `moduleResolution: "url"` the player loads that variant, `dist/browser/<views[view]>/index.js`, and adds the runtime's `pie.browserModules` to the import map, each at `dist/browser/<module>/index.js` of the runtime package on the same CDN, so every editor on the page runs one engine. A view `views` does not name loads its `./browser/*` module, and so does every package under `moduleResolution: "import-map"` or without the declaration.
+
+The runtime is a page singleton. The first load that needs it maps the highest version among the packages it loads and records it as `data-pie-editor-runtime` on the import map script; later loads on the page, from any player, use that version. It serves a package that declares the same runtime at a version in its caret range at or below its own: the same major, and below 1.0.0 the same minor. A lower version it serves is reported as a resolved shared-dependency conflict, as React is. A package it cannot serve loads `./browser/*` and is reported the same way: a `[pie-esm]` console warning and, with instrumentation, a `pie-esm-shared-dependency-conflict` event. The player also loads `./browser/*` and reports it when the runtime's `package.json`, its modules or the variant fail to load, when the page already maps one of the runtime's specifiers, and in a browser without import maps.
+
 ESM element builds bring their own math rendering, so the player installs no renderer and never fetches its MathJax module. An ESM element still uses a renderer the host installs on `window["@pie-lib/math-rendering"]`.
 
 For esm.sh, pass both the provider name and base URL:
@@ -149,7 +155,7 @@ A host that installs element packages registers them with `registerPreloadedElem
 import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
 import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
-import manifest from "../package.json"; // pins "@pie-element/multiple-choice": "13.4.0-next.13"
+import manifest from "../package.json"; // pins "@pie-element/multiple-choice": "13.4.0-next.15"
 
 registerPreloadedElements([
   {
@@ -163,7 +169,7 @@ registerPreloadedElements([
 await import("@pie-players/pie-item-player");
 ```
 
-- `tag` is the base tag the content authors. The element registers under its versioned form, `pie-element-multiple-choice--version-13-4-0-next-13`.
+- `tag` is the base tag the content authors. The element registers under its versioned form, `pie-element-multiple-choice--version-13-4-0-next-15`.
 - `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package.
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
 - `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.

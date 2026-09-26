@@ -48,9 +48,39 @@ async function pluginForFixture() {
 		relativePath: "browser/mathquill-Bq3k.js",
 		content: `export const font = new URL("./assets/Symbola-4c507403.woff2", import.meta.url);`,
 	});
+	await writePackageFile({
+		...pkg,
+		relativePath: "browser/editor-runtime/delivery/index.js",
+		content: `import { Editor } from "@tiptap/core"; import { main } from "../main-By6Ldawu.js"; export default main(Editor);`,
+	});
+	await writePackageFile({
+		...pkg,
+		relativePath: "browser/editor-runtime/main-By6Ldawu.js",
+		content: `export const main = (Editor) => Editor;`,
+	});
 	await writePackageJson({
 		...pkg,
-		content: { name: "@pie-element/multiple-choice", version: "1.0.0" },
+		content: {
+			name: "@pie-element/multiple-choice",
+			version: "1.0.0",
+			pie: {
+				browserEditorRuntime: {
+					name: "@pie-element/shared-editor-runtime",
+					version: "0.1.1-next.0",
+					views: { delivery: "editor-runtime/delivery" },
+				},
+			},
+		},
+	});
+	await writePackageJson({
+		pieElementsNgRoot: fixture.pieElementsNgRoot,
+		scope: "@pie-element",
+		name: "shared-editor-runtime",
+		content: {
+			name: "@pie-element/shared-editor-runtime",
+			version: "0.1.1-next.0",
+			pie: { browserModules: { "@tiptap/core": "tiptap-core" } },
+		},
 	});
 
 	const plugin = createVitePlugin({
@@ -111,6 +141,27 @@ describe("local-esm-cdn Vite adapter", () => {
 			"/@pie-element/multiple-choice@1.0.0/dist/browser/delivery/index.js",
 		);
 		expect(module.passed).toBe(true);
+	});
+
+	it("answers an editor-runtime variant's modules, whose runtime imports stay bare for the page's import map", async () => {
+		const { middlewares } = await pluginForFixture();
+
+		const view = await request(
+			middlewares,
+			"/@pie-element/multiple-choice@1.0.0/dist/browser/editor-runtime/delivery/index.js",
+		);
+		expect(view.status).toBe(200);
+		expect(view.headers?.["content-type"]).toContain("javascript");
+		expect(String(view.body)).toContain('from "@tiptap/core"');
+		expect(String(view.body)).toContain(
+			'"/@pie-element/multiple-choice/browser/editor-runtime/main-By6Ldawu.js"',
+		);
+
+		const chunk = await request(
+			middlewares,
+			"/@pie-element/multiple-choice/browser/editor-runtime/main-By6Ldawu.js",
+		);
+		expect(chunk.status).toBe(200);
 	});
 
 	it("answers a font a build's stylesheet addresses by URL, as its bytes", async () => {

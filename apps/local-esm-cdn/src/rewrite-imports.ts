@@ -9,6 +9,8 @@ export type RewriteOptions = {
 	 * "browser/delivery/index.js". Relative imports resolve against it.
 	 */
 	modulePath?: string;
+	/** Specifiers left bare, for the page's import map to resolve. */
+	bareSpecifiers?: ReadonlySet<string>;
 };
 
 function shouldRewriteToEsmSh(specifier: string): boolean {
@@ -79,6 +81,8 @@ function parseBunNodeModulesSpecifier(
 }
 
 function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
+	if (opts.bareSpecifiers?.has(specifier)) return specifier;
+
 	// Rewrite PIE packages to use /@pie- prefix for local serving
 	if (
 		specifier.startsWith("@pie-element/") ||

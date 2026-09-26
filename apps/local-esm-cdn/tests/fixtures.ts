@@ -50,6 +50,15 @@ function packageBaseDir(
 	name: string,
 ): string {
 	if (scope === "@pie-element") {
+		if (name.startsWith("shared-")) {
+			return path.join(
+				pieElementsNgRoot,
+				"packages",
+				"shared",
+				name.slice("shared-".length),
+				"dist",
+			);
+		}
 		return path.join(
 			pieElementsNgRoot,
 			"packages",

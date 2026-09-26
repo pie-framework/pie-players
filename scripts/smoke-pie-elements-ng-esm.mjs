@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -7,7 +6,9 @@ import { chromium } from "playwright";
 import {
 	buildEsmSmokeMatrix,
 	createJsDelivrLocalMapper,
-	findElementPackageDir,
+	defaultPieElementsNgRoot,
+	findPackageJsonPath,
+	loadedBrowserView,
 } from "./lib/pie-elements-ng-esm-smoke.mjs";
 
 const DEFAULT_CDN_PORT = 5179;
@@ -15,7 +16,7 @@ const DEFAULT_PAGE_PORT = 5401;
 
 function parseArgs(argv) {
 	const options = {
-		pieElementsNgRoot: path.resolve(process.cwd(), "../pie-elements-ng"),
+		pieElementsNgRoot: defaultPieElementsNgRoot(),
 		only: new Set(),
 		concurrency: 1,
 		reportPath: path.resolve(
@@ -67,7 +68,7 @@ function printHelp() {
 	console.log(`Usage: bun scripts/smoke-pie-elements-ng-esm.mjs [options]
 
 Options:
-  --pie-elements-ng-root <path>  Path to pie-elements-ng (default: ../pie-elements-ng)
+  --pie-elements-ng-root <path>  Path to pie-elements-ng (default: PIE_ELEMENTS_NG_PATH, else ../pie-elements-ng)
   --only <slug[,slug]>          Run a subset of element slugs
   --concurrency <n>             Number of browser pages to run at once (default: 1)
   --report <path>               JSON report output path
@@ -122,42 +123,6 @@ async function waitForHttp(url, label, timeoutMs = 120_000) {
 	);
 }
 
-function packageJsonPath(pieElementsNgRoot, packageName) {
-	const [scope, name] = packageName.split("/");
-	if (scope === "@pie-element") {
-		return findElementPackageDir(pieElementsNgRoot, name)
-			? path.join(
-					findElementPackageDir(pieElementsNgRoot, name),
-					"package.json",
-				)
-			: null;
-	}
-	if (scope === "@pie-lib") {
-		for (const workspace of ["lib-react", "lib-svelte"]) {
-			const candidate = path.join(
-				pieElementsNgRoot,
-				"packages",
-				workspace,
-				name,
-				"package.json",
-			);
-			if (existsSync(candidate)) return candidate;
-		}
-	}
-	if (scope === "@pie-elements-ng") {
-		const sharedName = name.replace(/^shared-/, "");
-		const candidate = path.join(
-			pieElementsNgRoot,
-			"packages",
-			"shared",
-			sharedName,
-			"package.json",
-		);
-		if (existsSync(candidate)) return candidate;
-	}
-	return null;
-}
-
 function createStaticHostServer(playersRoot, pagePort) {
 	return Bun.serve({
 		hostname: "127.0.0.1",
@@ -194,7 +159,7 @@ async function installCdnRoutes(
 		if (!parsed) return route.continue();
 
 		if (parsed.subpath === "package.json") {
-			const pkgJsonPath = packageJsonPath(
+			const pkgJsonPath = findPackageJsonPath(
 				pieElementsNgRoot,
 				parsed.packageName,
 			);
@@ -231,6 +196,17 @@ function isIgnorableConsoleError(text) {
 		text.includes("favicon") ||
 		text.includes("Failed to load resource") ||
 		text.includes("Unable to load locale:")
+	);
+}
+
+/**
+ * A warning that an element loaded outside the shared editor runtime: the
+ * loader fell back to `./browser/*`, or the page holds a second tiptap engine.
+ */
+function isEditorRuntimeWarning(text) {
+	return (
+		text.includes("in place of its editor-runtime variant") ||
+		text.includes("is loaded more than once")
 	);
 }
 
@@ -374,6 +350,42 @@ async function smokeDirectViews(browser, entry, context) {
 	return { results, failures, ignoredFailures };
 }
 
+/**
+ * Import the variant views the player did not load, in its page: they resolve
+ * the runtime through the import map the loader injected.
+ */
+async function smokeVariantViews(page, entry) {
+	const results = [];
+	for (const [view, variantPath] of Object.entries(
+		entry.editorRuntime?.views ?? {},
+	)) {
+		if (view === "delivery" || view === "controller") continue;
+		const url = `https://cdn.jsdelivr.net/npm/${entry.packageName}@latest/dist/browser/${variantPath}/index.js`;
+		results.push(
+			await page.evaluate(
+				async ({ url, view }) => {
+					try {
+						const mod = await import(url);
+						const ok = ["default", "Element", "Configure", "Print"].some(
+							(name) => typeof mod[name] === "function",
+						);
+						return { view, url, ok, keys: Object.keys(mod).sort() };
+					} catch (error) {
+						return {
+							view,
+							url,
+							ok: false,
+							error: String(error?.message ?? error),
+						};
+					}
+				},
+				{ url, view },
+			),
+		);
+	}
+	return results;
+}
+
 async function runOneEntry(browser, entry, context) {
 	const page = await browser.newPage();
 	const routed = [];
@@ -386,8 +398,11 @@ async function runOneEntry(browser, entry, context) {
 			failures.push(`pageerror: ${error.message}`),
 		);
 		page.on("console", (message) => {
-			if (message.type() !== "error") return;
 			const text = message.text();
+			if (message.type() === "warning" && isEditorRuntimeWarning(text)) {
+				failures.push(`console warning: ${text}`);
+			}
+			if (message.type() !== "error") return;
 			if (!isIgnorableConsoleError(text))
 				failures.push(`console error: ${text}`);
 		});
@@ -426,17 +441,43 @@ async function runOneEntry(browser, entry, context) {
 		if (!routed.some((route) => route.url.includes(`/${entry.packageName}@`))) {
 			failures.push(`no routed CDN requests for ${entry.packageName}`);
 		}
+		const requested = (view) =>
+			routed.some((route) =>
+				route.url.includes(
+					`/${entry.packageName}@latest/dist/browser/${loadedBrowserView(entry, view)}/index.js`,
+				),
+			);
+		if (!requested("delivery")) {
+			failures.push(
+				`${loadedBrowserView(entry, "delivery")} browser entry was not requested for ${entry.slug}`,
+			);
+		}
 		if (
 			entry.browserViews.some((view) => view.view === "controller") &&
+			!requested("controller")
+		) {
+			failures.push(
+				`${loadedBrowserView(entry, "controller")} browser entry was not requested for ${entry.slug}`,
+			);
+		}
+		const runtime = entry.editorRuntime;
+		if (
+			runtime &&
 			!routed.some((route) =>
-				route.url.includes(
-					`/${entry.packageName}@latest/dist/browser/controller/index.js`,
-				),
+				route.url.endsWith(`/${runtime.name}@${runtime.version}/package.json`),
 			)
 		) {
 			failures.push(
-				`controller browser entry was not requested for ${entry.slug}`,
+				`${runtime.name}@${runtime.version} was not requested for ${entry.slug}`,
 			);
+		}
+		const variantViews = await smokeVariantViews(page, entry);
+		for (const viewResult of variantViews) {
+			if (!viewResult.ok) {
+				failures.push(
+					`${entry.slug} ${viewResult.view} variant did not load beside the page's runtime: ${viewResult.error ?? "unexpected module shape"}`,
+				);
+			}
 		}
 
 		const directViewResult = await smokeDirectViews(browser, entry, {
@@ -464,6 +505,7 @@ async function runOneEntry(browser, entry, context) {
 			browserViews: entry.browserViews.map((view) => view.view),
 			delivery,
 			directViews,
+			variantViews,
 			routedRequestCount:
 				routed.length +
 				directViews.reduce(
@@ -485,6 +527,7 @@ async function runOneEntry(browser, entry, context) {
 			browserViews: entry.browserViews.map((view) => view.view),
 			delivery: null,
 			directViews: [],
+			variantViews: [],
 			routedRequestCount: routed.length,
 			failures,
 			ignoredFailures,

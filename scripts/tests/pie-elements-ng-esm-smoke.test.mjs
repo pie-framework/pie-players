@@ -6,7 +6,10 @@ import path from "node:path";
 import {
 	buildEsmSmokeMatrix,
 	createJsDelivrLocalMapper,
+	defaultPieElementsNgRoot,
 	findElementPackageDir,
+	findPackageJsonPath,
+	loadedBrowserView,
 	loadSampleForSlug,
 	parseJsDelivrPieUrl,
 } from "../lib/pie-elements-ng-esm-smoke.mjs";
@@ -80,6 +83,73 @@ describe("pie-elements-ng ESM smoke matrix helpers", () => {
 		expect(findElementPackageDir(root, "multiple-choice")).toBe(reactDir);
 		expect(findElementPackageDir(root, "simple-cloze")).toBe(svelteDir);
 		expect(findElementPackageDir(root, "not-real")).toBeNull();
+	});
+
+	test("finds the package.json of elements, libs and shared packages, the editor runtime included", async () => {
+		const root = await createFixture();
+		const elementDir = await writeElementPackage(root, {
+			workspace: "elements-svelte",
+			slug: "venn-classification",
+		});
+		const runtimeJson = path.join(
+			root,
+			"packages",
+			"shared",
+			"editor-runtime",
+			"package.json",
+		);
+		await writeJson(runtimeJson, {
+			name: "@pie-element/shared-editor-runtime",
+		});
+		const libJson = path.join(
+			root,
+			"packages",
+			"lib-react",
+			"render-ui",
+			"package.json",
+		);
+		await writeJson(libJson, { name: "@pie-lib/render-ui" });
+
+		expect(findPackageJsonPath(root, "@pie-element/venn-classification")).toBe(
+			path.join(elementDir, "package.json"),
+		);
+		expect(
+			findPackageJsonPath(root, "@pie-element/shared-editor-runtime"),
+		).toBe(runtimeJson);
+		expect(findPackageJsonPath(root, "@pie-lib/render-ui")).toBe(libJson);
+		expect(findPackageJsonPath(root, "@pie-element/absent")).toBeNull();
+	});
+
+	test("reads the checkout from PIE_ELEMENTS_NG_PATH before the sibling default", () => {
+		expect(
+			defaultPieElementsNgRoot(
+				{ PIE_ELEMENTS_NG_PATH: "/checkouts/pie-elements-ng" },
+				"/work/pie-players",
+			),
+		).toBe("/checkouts/pie-elements-ng");
+		expect(defaultPieElementsNgRoot({}, "/work/pie-players")).toBe(
+			"/work/pie-elements-ng",
+		);
+	});
+
+	test("loads a view from the element's editor-runtime variant when its declaration covers it", () => {
+		const entry = {
+			editorRuntime: {
+				name: "@pie-element/shared-editor-runtime",
+				version: "0.1.1-next.0",
+				views: {
+					delivery: "editor-runtime/delivery",
+					controller: "editor-runtime/controller",
+				},
+			},
+		};
+		expect(loadedBrowserView(entry, "delivery")).toBe(
+			"editor-runtime/delivery",
+		);
+		expect(loadedBrowserView(entry, "print")).toBe("print");
+		expect(loadedBrowserView({ editorRuntime: null }, "delivery")).toBe(
+			"delivery",
+		);
 	});
 
 	test("loads the first usable element-demo sample for a slug", async () => {
@@ -221,9 +291,15 @@ describe("pie-elements-ng ESM smoke matrix helpers", () => {
 				},
 			},
 		});
+		const editorRuntime = {
+			name: "@pie-element/shared-editor-runtime",
+			version: "0.1.1-next.0",
+			views: { delivery: "editor-runtime/delivery" },
+		};
 		await writeElementPackage(root, {
 			workspace: "elements-svelte",
 			slug: "simple-cloze",
+			pkg: { pie: { browserEditorRuntime: editorRuntime } },
 		});
 		await writeJson(
 			path.join(
@@ -257,6 +333,8 @@ describe("pie-elements-ng ESM smoke matrix helpers", () => {
 		expect(matrix[1].elementTag).toBe("simple-cloze");
 		expect(matrix[1].sharedDependencies).toEqual({});
 		expect(matrix[1].registrationOnly).toBe(true);
+		expect(matrix[0].editorRuntime).toBeNull();
+		expect(matrix[1].editorRuntime).toEqual(editorRuntime);
 
 		await writeJson(path.join(root, ".compatibility", "report.json"), {
 			browserEsmReady: ["multiple-choice"],

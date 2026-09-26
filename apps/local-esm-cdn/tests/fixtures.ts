@@ -70,7 +70,7 @@ export async function writePackageFile(params: {
 	scope: PackageScope;
 	name: string;
 	relativePath: string;
-	content: string;
+	content: string | Uint8Array;
 }): Promise<string> {
 	const dir = packageBaseDir(
 		params.pieElementsNgRoot,

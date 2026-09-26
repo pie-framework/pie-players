@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { rewriteImports } from "../rewrite-imports.js";
 import type { LocalEsmCdnContext } from "./config.js";
 import { getHealth } from "./health.js";
@@ -8,6 +9,9 @@ import {
 	resolvePackageJson,
 } from "./resolver.js";
 import { js, json, text, withCors } from "./utils.js";
+
+const MODULE_FILE = /\.m?js$/;
+const FILE_TYPES: Record<string, string> = { ".woff2": "font/woff2" };
 
 /**
  * Generate help text for the server
@@ -133,6 +137,19 @@ export async function handleRequest(
 			},
 			{ status: 404 },
 		);
+	}
+
+	// Only modules have imports to rewrite. Any other file a build ships, such
+	// as the MathQuill font its stylesheet addresses by URL, is served as is.
+	if (!MODULE_FILE.test(entry.file)) {
+		return new Response(await readFile(entry.file), {
+			headers: withCors({
+				"content-type":
+					FILE_TYPES[path.extname(entry.file)] ?? "application/octet-stream",
+				"cache-control": "no-store",
+				"x-local-esm-cdn-file": entry.file,
+			}),
+		});
 	}
 
 	// Read and rewrite the file

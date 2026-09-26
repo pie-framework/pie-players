@@ -3,8 +3,16 @@ import type { Plugin, ViteDevServer } from "vite";
 import type { LocalEsmCdnConfig } from "../core/config.js";
 import { createLocalEsmCdn } from "../embedded.js";
 
-const PACKAGE_JSON_REQUEST =
-	/^\/@pie-(?:element|lib|elements-ng)\/[^?#]+\/package\.json(?:[?#]|$)/;
+const LOCAL_CDN_REQUEST = /^\/@pie-(?:element|lib|elements-ng)\//;
+// Requests Vite's module transform does not answer: the package.json an ESM
+// loader reads for a package's exports, and the fonts a build's stylesheet
+// addresses by URL.
+const FILE_REQUEST =
+	/^\/@pie-(?:element|lib|elements-ng)\/[^?#]+(?:\/package\.json|\.woff2)(?:[?#]|$)/;
+// Vite resolves a module's `new URL("./asset", import.meta.url)` against the
+// module's id as a path on disk, which this URL space is not. Marked ignored,
+// the URL resolves in the browser against the module's URL, as from a CDN.
+const RELATIVE_ASSET_URL = /\bnew\s+URL\s*\(\s*(?=["'`]\.\.?\/)/g;
 
 /**
  * Create a Vite plugin that serves local PIE packages as ESM modules
@@ -39,35 +47,16 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 		enforce: "pre", // Run before other plugins
 
 		resolveId(id) {
-			// Only intercept packages from pie-elements-ng (@pie-element, @pie-lib, @pie-elements-ng)
-			// Let Vite handle @pie-players packages normally (they're workspace deps)
-			if (
-				id.startsWith("@pie-element") ||
-				id.startsWith("/@pie-element") ||
-				id.startsWith("@pie-lib") ||
-				id.startsWith("/@pie-lib") ||
-				id.startsWith("@pie-elements-ng") ||
-				id.startsWith("/@pie-elements-ng")
-			) {
-				// Normalize to always have the leading slash
-				const normalizedId = id.startsWith("/@") ? id : `/${id}`;
-				console.log(
-					`[vite-plugin-local-esm-cdn] resolveId: ${id} -> ${normalizedId}`,
-				);
-				return { id: normalizedId, external: false };
-			}
+			// Only this server's URL space, which the ESM loader and the served
+			// modules' rewritten imports address. A bare specifier in the app's own
+			// graph, such as players-shared's `@pie-lib/math-rendering-module`,
+			// resolves from node_modules as it does without the plugin.
+			if (LOCAL_CDN_REQUEST.test(id)) return { id, external: false };
 			return null;
 		},
 
 		async load(id) {
-			// Only handle pie-elements-ng package requests
-			if (
-				!id.startsWith("/@pie-element") &&
-				!id.startsWith("/@pie-lib") &&
-				!id.startsWith("/@pie-elements-ng")
-			) {
-				return null;
-			}
+			if (!LOCAL_CDN_REQUEST.test(id)) return null;
 
 			try {
 				console.log(`[vite-plugin-local-esm-cdn] Loading: ${id}`);
@@ -90,7 +79,10 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 					);
 				}
 
-				const code = await response.text();
+				const code = (await response.text()).replace(
+					RELATIVE_ASSET_URL,
+					"$&/* @vite-ignore */ ",
+				);
 				return { code, map: null };
 			} catch (error) {
 				console.error("[vite-plugin-local-esm-cdn] Error:", error);
@@ -101,10 +93,8 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 		configureServer(serverInstance) {
 			server = serverInstance;
 
-			// Vite transforms module requests only. The package.json an ESM loader
-			// fetches for a package's exports is not one, so it is answered here.
 			serverInstance.middlewares.use((req, res, next) => {
-				if (!req.url || !PACKAGE_JSON_REQUEST.test(req.url)) return next();
+				if (!req.url || !FILE_REQUEST.test(req.url)) return next();
 				cdn
 					.handler(new Request(`http://localhost${req.url}`))
 					.then(async (response) => {
@@ -112,7 +102,7 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 						response.headers.forEach((value, key) => {
 							res.setHeader(key, value);
 						});
-						res.end(await response.text());
+						res.end(Buffer.from(await response.arrayBuffer()));
 					})
 					.catch(next);
 			});

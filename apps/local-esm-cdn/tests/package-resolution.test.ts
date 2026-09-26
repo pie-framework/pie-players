@@ -213,9 +213,9 @@ describe("local-esm-cdn package resolution and serving", () => {
 		);
 		expect(metadata.status).toBe(200);
 		expect(metadata.headers.get("content-type")).toContain("application/json");
-		expect(
-			(await readJson<{ exports: unknown }>(metadata)).exports,
-		).toEqual(exportsMap);
+		expect((await readJson<{ exports: unknown }>(metadata)).exports).toEqual(
+			exportsMap,
+		);
 
 		const view = await handleRequest(
 			makeRequest(`${base}/dist/browser/delivery/index.js`),
@@ -275,6 +275,37 @@ describe("local-esm-cdn package resolution and serving", () => {
 			context,
 		);
 		expect(aliased.status).toBe(404);
+	});
+
+	it("serves a file other than a module as its bytes", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const pkg = {
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-element" as const,
+			name: "math-inline",
+		};
+		await writePackageFile({ ...pkg, relativePath: "index.js", content: "" });
+		// A woff2 signature followed by bytes that are not UTF-8.
+		const font = new Uint8Array([
+			0x77, 0x4f, 0x46, 0x32, 0x00, 0xff, 0xfe, 0x80,
+		]);
+		await writePackageFile({
+			...pkg,
+			relativePath: "browser/assets/Symbola-4c507403.woff2",
+			content: font,
+		});
+
+		const response = await handleRequest(
+			makeRequest(
+				"/@pie-element/math-inline/browser/assets/Symbola-4c507403.woff2",
+			),
+			createFixtureContext(fixture),
+		);
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("content-type")).toBe("font/woff2");
+		expect(new Uint8Array(await response.arrayBuffer())).toEqual(font);
 	});
 
 	it("returns 404 json for missing package entry", async () => {

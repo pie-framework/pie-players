@@ -108,7 +108,7 @@
 		interactionReady: false,
 		allLoadingComplete: false,
 	} as const satisfies SectionPlayerSnapshot["readiness"];
-	let snapshot = $state<SectionPlayerSnapshot>({
+	const BOOTSTRAP_SNAPSHOT = {
 		readiness: BOOTSTRAP_READINESS,
 		composition: {
 			itemsCount: 0,
@@ -120,7 +120,7 @@
 			canNext: false,
 			canPrevious: false,
 		},
-	});
+	} as const satisfies SectionPlayerSnapshot;
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
 			runtimePlayer: runtime?.player,
@@ -132,18 +132,18 @@
 
 	export function getSnapshot(): SectionPlayerSnapshot {
 		return {
-			...snapshot,
 			readiness: selectReadiness(),
-			navigation: kernelRef?.selectNavigation?.() || snapshot.navigation,
+			composition: selectComposition(),
+			navigation: selectNavigation(),
 		};
 	}
 
 	export function selectComposition(): SectionPlayerSnapshot["composition"] {
-		return snapshot.composition;
+		return kernelRef?.selectComposition?.() || BOOTSTRAP_SNAPSHOT.composition;
 	}
 
 	export function selectNavigation(): SectionPlayerSnapshot["navigation"] {
-		return kernelRef?.selectNavigation?.() || snapshot.navigation;
+		return kernelRef?.selectNavigation?.() || BOOTSTRAP_SNAPSHOT.navigation;
 	}
 
 	export function selectReadiness(): SectionPlayerSnapshot["readiness"] {
@@ -178,13 +178,6 @@
 		dispatch(customEvent.type, customEvent.detail);
 	}
 
-	function syncNavigationSnapshot() {
-		snapshot = {
-			...snapshot,
-			navigation: kernelRef?.selectNavigation?.() || snapshot.navigation,
-		};
-	}
-
 	$effect(() => {
 		if (!hostElement) return;
 		// `policies.telemetry.enabled === false` skips instrumentation bridge
@@ -211,11 +204,13 @@
 	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`,
 	// `framework-error`) are dispatched by the kernel-owned section
 	// runtime engine directly onto this CE element via its DOM-event
-	// bridge, so outside listeners on `<pie-section-player-kernel-host>`
-	// already see them without any CE-level re-emission. Local
-	// `snapshot.readiness` is read on demand from the kernel via
-	// `selectReadiness()` (see above) — no in-CE event listener is
-	// needed because the kernel owns the canonical readiness state.
+	// bridge, and the toolkit's own events (`session-changed`,
+	// `composition-changed`, `runtime-owned`, `runtime-inherited`,
+	// `toolkit-ready`, `section-ready`) bubble to it from the toolkit, so
+	// outside listeners on `<pie-section-player-kernel-host>` see each once
+	// without any CE-level re-emission. Snapshots are read on demand from
+	// the kernel, which owns the canonical composition, navigation and
+	// readiness state.
 </script>
 
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
@@ -243,25 +238,6 @@
 	{onLoadingComplete}
 	sourceCe="pie-section-player"
 	host={hostElement}
-	on:runtime-owned={reemit}
-	on:runtime-inherited={reemit}
-	on:session-changed={reemit}
-	on:composition-changed={(event: CustomEvent) => {
-		const detail = (event as CustomEvent).detail as {
-			composition?: { items?: unknown[]; passages?: unknown[] };
-		};
-		const items = detail?.composition?.items || [];
-		const passages = detail?.composition?.passages || [];
-		snapshot = {
-			...snapshot,
-			composition: {
-				itemsCount: items.length,
-				passagesCount: passages.length,
-			},
-		};
-		syncNavigationSnapshot();
-		reemit(event);
-	}}
 	on:element-preload-retry={reemit}
 	on:element-preload-error={reemit}
 	let:items

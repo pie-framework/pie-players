@@ -197,17 +197,9 @@ test.describe("section player preloaded version drift", () => {
 		// Give a premature `interactive` or `pie-loading-complete` time to show.
 		await page.waitForTimeout(1_000);
 		const events = await recordedEvents(page);
-		const frameworkErrors = events.filter(
-			(event) => event.type === "framework-error",
-		);
-		expect(frameworkErrors.length).toBeGreaterThan(0);
-		for (const event of frameworkErrors) {
-			expect(event).toEqual({
-				type: "framework-error",
-				kind: "element-preload",
-				recoverable: false,
-			});
-		}
+		expect(events.filter((event) => event.type === "framework-error")).toEqual([
+			{ type: "framework-error", kind: "element-preload", recoverable: false },
+		]);
 		expect(
 			events.filter((event) => event.type === "onFrameworkError"),
 		).toHaveLength(1);

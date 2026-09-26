@@ -107,7 +107,6 @@
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
 		getShellHostElement,
-		resolveConfiguredPx,
 		resolveContentMaxWidths,
 	} from "./shared/section-player-shell-layout.svelte.js";
 
@@ -291,10 +290,6 @@
 		stateKey: "__tabbedAppliedParams",
 		includeSessionRefInState: false,
 	}}
-	on:runtime-owned={forward}
-	on:runtime-inherited={forward}
-	on:session-changed={forward}
-	on:composition-changed={forward}
 	on:element-preload-retry={forward}
 	on:element-preload-error={forward}
 	let:layoutModel

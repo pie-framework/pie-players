@@ -65,19 +65,17 @@
 	};
 
 	type KernelEvents = {
-		// Non-engine Svelte events the kernel still dispatches up to the
-		// hosting layout CE. The canonical M6 vocabulary
-		// (`pie-stage-change` / `pie-loading-complete`) and
-		// `framework-error` are not dispatched here — the section
-		// runtime engine bridges those onto DOM events fired directly
-		// on the layout CE host. The readiness aliases
-		// (`readiness-change` / `interaction-ready` / `ready`) and
-		// their DOM-event bridge were removed in the broad
-		// architecture review compat sweep.
-		"runtime-owned": Record<string, unknown>;
-		"runtime-inherited": Record<string, unknown>;
-		"session-changed": Record<string, unknown>;
-		"composition-changed": { composition: unknown };
+		// The only Svelte events the kernel dispatches up to the hosting
+		// layout CE, which re-dispatches them on its host. The toolkit's own
+		// events (`session-changed`, `composition-changed`, `runtime-owned`,
+		// `runtime-inherited`, `toolkit-ready`, `section-ready`) reach the
+		// layout host by bubbling from the toolkit, and the canonical M6
+		// vocabulary (`pie-stage-change` / `pie-loading-complete`) and
+		// `framework-error` are fired on it by the section runtime engine.
+		// Re-dispatching a bubbled event here delivered it to the host a
+		// second and third time. The readiness aliases (`readiness-change` /
+		// `interaction-ready` / `ready`) and their DOM-event bridge were
+		// removed in the broad architecture review compat sweep.
 		"element-preload-retry": Record<string, unknown>;
 		"element-preload-error": Record<string, unknown>;
 	};
@@ -333,7 +331,6 @@
 	function handleBaseCompositionChanged(event: Event) {
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
 		compositionReceived = true;
-		dispatch("composition-changed", (event as CustomEvent<{ composition: unknown }>).detail);
 	}
 
 	function handleItemsPaneElementsLoaded(event: Event) {
@@ -395,15 +392,12 @@
 		// The wrapped `<pie-assessment-toolkit>` still dispatches its
 		// own `framework-error` (with `bubbles: true, composed: true`)
 		// for direct toolkit consumers — that emit is captured here
-		// mid-bubble at `<pie-section-player-base>`. To collapse the
-		// previously dual-emitted layout-host surface to a single
-		// canonical `framework-error` per error, we stop further
-		// propagation after re-feeding the engine: the bubbled toolkit
-		// emit no longer reaches the layout CE host, but the engine
-		// bridge fires its own (non-bubbling) `framework-error` on the
-		// layout host directly. Direct listeners on the toolkit host
-		// itself are unaffected because the event was already
-		// delivered to them before this listener runs.
+		// mid-bubble at `<pie-section-player-base>`. Propagation stops
+		// after re-feeding the engine, so the layout CE host receives
+		// the engine's (non-bubbling) `framework-error` alone, once per
+		// error. Direct listeners on the toolkit host itself are
+		// unaffected because the event was already delivered to them
+		// before this listener runs.
 		//
 		// `onFrameworkError` is still delivered exactly once by the
 		// underlying `pie-assessment-toolkit` (two-tier precedence:
@@ -411,24 +405,11 @@
 		// `resolveRuntime`); the kernel intentionally does not invoke
 		// any handler here to avoid double-firing.
 		//
-		// The collapse is pinned by
-		// `tests/section-player-framework-error-dual-emit.test.ts`,
-		// which now asserts the single canonical emit on the layout host.
+		// Both counts are pinned by
+		// `tests/section-player-event-delivery.spec.ts`.
 		if (!detail) return;
 		event.stopPropagation();
 		engine.dispatchInput({ kind: "framework-error", error: detail });
-	}
-
-	function handleSessionChanged(event: Event) {
-		dispatch("session-changed", (event as CustomEvent<Record<string, unknown>>).detail || {});
-	}
-
-	function handleRuntimeOwned(event: Event) {
-		dispatch("runtime-owned", (event as CustomEvent<Record<string, unknown>>).detail || {});
-	}
-
-	function handleRuntimeInherited(event: Event) {
-		dispatch("runtime-inherited", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
 
 	function notifySectionControllerResolved(_controller: SectionControllerHandle) {
@@ -732,9 +713,6 @@
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
 	onFrameworkErrorEvent={handleFrameworkError}
-	onSessionChanged={handleSessionChanged}
-	onRuntimeOwned={handleRuntimeOwned}
-	onRuntimeInherited={handleRuntimeInherited}
 	onToolkitReady={handleToolkitReady}
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}

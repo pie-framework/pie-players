@@ -223,7 +223,7 @@ commit cannot set it — it knows nothing about the seam — so the sweep marks 
 event from a capture listener on its root, held for the length of the sweep. The
 marker is the field every guard in a `session-changed`'s way keys on to let a
 commit past: the Stencil player's 150 ms model-set blocker, the item renderer's
-duplicate-payload suppression, the section shells' cross-shell dedupe, and
+duplicate-payload suppression, the item shell's repeat suppression, and
 `<pie-api-player>`'s decision to save now instead of debouncing. Leaving it to
 the synthesized path only was implemented and corrected: the guards exempted a
 commit from the path that never needed exempting and dropped the one from the
@@ -495,10 +495,12 @@ registers a commit keeps its current behaviour.
 A raw `session-changed` does not leave a section: `<pie-item-shell>` stops it and
 re-dispatches the normalized `PIE_ITEM_SESSION_CHANGED_EVENT`. So inside a
 section the commit's reach is the controller, and a host persists from the
-controller's events or its session snapshot. A commit is exempt from both of the
-shell's dedupes, because a shell being replaced for the same item otherwise
-falls inside the cross-shell window and the outgoing shell's last response is
-dropped.
+controller's events or its session snapshot. A commit is exempt from the shell's
+repeat suppression, because it is the response's last chance to reach the
+controller. The shell also had a 500 ms cross-shell window, which dropped a
+replaced shell's last response until commits were exempted; it was removed in
+2026-09, when a measurement across the three layouts, the IIFE and preloaded
+strategies, re-mounts and section reassignment found nothing for it to suppress.
 
 The commit sits in `updateInput()` rather than `initialize()` because
 `updateInput()` snapshots the session before delegating, so a commit inside

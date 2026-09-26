@@ -29,9 +29,6 @@
 		onCompositionChanged,
 		onSectionReady,
 		onFrameworkErrorEvent,
-		onSessionChanged,
-		onRuntimeOwned,
-		onRuntimeInherited,
 		onToolkitReady,
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
@@ -54,9 +51,6 @@
 		 * model contract — it only re-emits raw events to its consumer.
 		 */
 		onFrameworkErrorEvent?: (event: Event) => void;
-		onSessionChanged?: (event: Event) => void;
-		onRuntimeOwned?: (event: Event) => void;
-		onRuntimeInherited?: (event: Event) => void;
 		onToolkitReady?: (event: Event) => void;
 	}>();
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
@@ -121,18 +115,6 @@
 
 	function handleFrameworkError(event: Event) {
 		onFrameworkErrorEvent?.(event);
-	}
-
-	function handleSessionChanged(event: Event) {
-		onSessionChanged?.(event);
-	}
-
-	function handleRuntimeOwned(event: Event) {
-		onRuntimeOwned?.(event);
-	}
-
-	function handleRuntimeInherited(event: Event) {
-		onRuntimeInherited?.(event);
 	}
 
 	function handleToolkitReady(event: Event) {
@@ -219,9 +201,6 @@
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
 	onframework-error={handleFrameworkError}
-	onsession-changed={handleSessionChanged}
-	onruntime-owned={handleRuntimeOwned}
-	onruntime-inherited={handleRuntimeInherited}
 	ontoolkit-ready={handleToolkitReady}
 >
 	<pie-section-player-shell

@@ -3,7 +3,10 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
-import type { CatalogSourceEntity } from "../src/services/catalog-owner";
+import {
+	catalogSourceSignature,
+	type CatalogSourceEntity,
+} from "../src/services/catalog-owner";
 
 beforeAll(() => {
 	if (typeof (globalThis as { window?: unknown }).window === "undefined") {
@@ -405,5 +408,64 @@ describe("AccessibilityCatalogResolver scoped catalogs", () => {
 		expect(resolved?.content).not.toMatch(/onclick/i);
 		expect(resolved?.content).not.toMatch(/javascript:/i);
 		expect(resolved?.content).not.toContain("alert");
+	});
+});
+
+describe("catalogSourceSignature", () => {
+	const item = (): CatalogSourceEntity => ({
+		accessibilityCatalogs: [spokenCatalog("root", "Root")],
+		config: {
+			extractedCatalogs: [spokenCatalog("extracted", "Extracted")],
+			models: [
+				{
+					id: "m1",
+					accessibilityCatalogs: [spokenCatalog("prompt", "Prompt")],
+				},
+			],
+		},
+	});
+
+	test("is equal for separate objects carrying the same catalogs", () => {
+		expect(catalogSourceSignature(item(), "item")).toBe(
+			catalogSourceSignature({ ...item() }, "item"),
+		);
+	});
+
+	test("changes when any catalog group changes", () => {
+		const base = catalogSourceSignature(item(), "item");
+		const root = item();
+		root.accessibilityCatalogs?.push(spokenCatalog("added", "Added"));
+		const extracted = item();
+		extracted.config?.extractedCatalogs?.splice(0, 1);
+		const model = item();
+		model.config?.models?.push({
+			id: "m2",
+			accessibilityCatalogs: [spokenCatalog("prompt", "Other")],
+		});
+		for (const changed of [root, extracted, model]) {
+			expect(catalogSourceSignature(changed, "item")).not.toBe(base);
+		}
+	});
+
+	test("ignores model catalogs for a passage, which does not register them", () => {
+		const passage = item();
+		const withModelCatalog = item();
+		withModelCatalog.config?.models?.push({
+			id: "m2",
+			accessibilityCatalogs: [spokenCatalog("other", "Other")],
+		});
+		expect(catalogSourceSignature(withModelCatalog, "passage")).toBe(
+			catalogSourceSignature(passage, "passage"),
+		);
+	});
+
+	test("is null when the catalogs do not serialize", () => {
+		const cyclic = item();
+		const catalog = cyclic.accessibilityCatalogs?.[0] as unknown as Record<
+			string,
+			unknown
+		>;
+		catalog.self = catalog;
+		expect(catalogSourceSignature(cyclic, "item")).toBeNull();
 	});
 });

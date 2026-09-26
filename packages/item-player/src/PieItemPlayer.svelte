@@ -107,6 +107,7 @@
 	import { ITEM_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 	import {
 		BundleType,
+		alignPreloadedElementVersions,
 		assertElementPackagesAllowed,
 		assertPieConfigContract,
 		assertRegistered,
@@ -128,6 +129,7 @@
 		parsePackageName,
 		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
+		resolveLoadControllers,
 		attachInstrumentationEventBridge,
 		ITEM_INSTRUMENTATION_EVENT_MAP,
 		scorePieItem,
@@ -694,45 +696,13 @@
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
-		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
-			return configEntity;
+		const aligned = alignPreloadedElementVersions(configEntity);
+		if (aligned !== configEntity) {
+			logger.debug(
+				"[pie-item-player] Normalized preloaded config.elements to bundled versions",
+			);
 		}
-		const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS;
-		if (!preloadedElements || typeof preloadedElements !== "object") {
-			return configEntity;
-		}
-
-		let changed = false;
-		const normalizedElements = Object.entries(configEntity.elements).reduce(
-			(acc, [tagName, packageSpec]) => {
-				const packageSpecStr = String(packageSpec);
-				try {
-					const packageName = parsePackageName(packageSpecStr).name;
-					const bundledSpec = preloadedElements[packageName];
-					if (typeof bundledSpec === "string" && bundledSpec.length > 0) {
-						acc[tagName] = bundledSpec;
-						if (bundledSpec !== packageSpecStr) {
-							changed = true;
-						}
-						return acc;
-					}
-				} catch {
-					// Keep original packageSpec when parsing fails.
-				}
-				acc[tagName] = packageSpecStr;
-				return acc;
-			},
-			{} as Record<string, string>,
-		);
-
-		if (!changed) return configEntity;
-		logger.debug(
-			"[pie-item-player] Normalized preloaded config.elements to bundled versions",
-		);
-		return {
-			...configEntity,
-			elements: normalizedElements,
-		};
+		return aligned;
 	}
 
 	type NormalizedItemPlayerConfigInput = {
@@ -896,10 +866,12 @@
 		return resolvedHosted ? BundleType.player : BundleType.clientPlayer;
 	}
 
-	// A hosted (player.js) delivery takes its models and scores from the server
-	// and resolves no controller, so fetching one would be wasted.
-	function usesControllers(): boolean {
-		return resolveBundleType() !== BundleType.player;
+	function resolveEsmLoadControllers(): boolean {
+		return resolveLoadControllers({
+			loadControllers: loaderOptions?.loadControllers,
+			author: resolvedMode === "author",
+			hosted: resolvedHosted,
+		});
 	}
 
 	function buildIifeBackendConfig(
@@ -942,7 +914,7 @@
 			cdnProvider: loaderOptions?.esmCdnProvider,
 			moduleResolution,
 			view: view || "delivery",
-			loadControllers: loaderOptions?.loadControllers ?? usesControllers(),
+			loadControllers: resolveEsmLoadControllers(),
 			trackPageActions: loaderConfig?.trackPageActions,
 			instrumentationProvider: resolvedInstrumentationProvider,
 		};
@@ -981,7 +953,7 @@
 		const loaderOptionsSignature = JSON.stringify({
 			bundleHost: resolvedIifeBundleHost,
 			esmCdnUrl: resolvedEsmCdnUrl,
-			loadControllers: loaderOptions?.loadControllers ?? usesControllers(),
+			loadControllers: resolveEsmLoadControllers(),
 			moduleResolution: loaderOptions?.moduleResolution ?? "url",
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,

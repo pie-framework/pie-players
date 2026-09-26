@@ -141,10 +141,20 @@ to bundle fetching if it doesn't.
 </pie-item-player>
 ```
 
-Because the item author's `config.elements` may name a slightly different
-patch version than what actually got bundled, the player rewrites those
-specs to whatever `window.PIE_PRELOADED_ELEMENTS` reports before asserting
-(`normalizePreloadedElementVersions`, `PieItemPlayer.svelte:595`).
+Authored `config.elements` can name a different version of a package than the
+page registered. Before asserting, the player replaces each spec with the one
+`window.PIE_PRELOADED_ELEMENTS` records for the same package
+(`alignPreloadedElementVersions` in `@pie-players/pie-players-shared`), on its
+runtime copy of the config. A package the map does not name keeps its authored
+spec.
+
+### Models and scoring
+
+A preloaded page registers view elements only. The generated package's
+`player.js` bundle and `registerPreloadedElements` carry no controllers, so the
+player runs no client-side controller. It renders the models it receives as
+they are, so they have to arrive server-processed, and scoring happens on the
+server.
 
 ## The build's own item player
 
@@ -177,14 +187,14 @@ strategy today —
 see the mapping table in
 [`docs/item-player/loading-strategies.md`](../item-player/loading-strategies.md#section-player-integration).
 Section player's own pre-warm step (`warmupSectionElements`,
-`packages/section-player/src/components/shared/player-preload.ts:360`) calls
-the same `assertRegistered` for `strategy="preloaded"` that item-player uses.
-
-The pre-warm asserts tags derived from the authored `config.elements` specs and
-does not rewrite them from `window.PIE_PRELOADED_ELEMENTS` first, where a bare
-item player does, so a section whose content pins a different patch than the
-build fails the section-level assert. Authored content has to name the versions
-the build carries.
+`packages/section-player/src/components/shared/player-preload.ts`) aligns each
+item's and passage's authored versions with the same
+`alignPreloadedElementVersions`, then calls the same `assertRegistered` for
+`strategy="preloaded"` that item-player uses, so it asserts the tags the items
+mount. When the assertion fails, the items stay unmounted and the section
+reports an `element-preload` framework error, delivered like its other framework
+errors to `framework-error` and `onFrameworkError`. It emits neither the
+`interactive` stage of `pie-stage-change` nor `pie-loading-complete`.
 
 What section player does **not** do is import
 `@pie-players/pie-preloaded-player` itself — that package has no

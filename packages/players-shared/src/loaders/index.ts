@@ -77,6 +77,11 @@ export type {
 } from "./iife-adapter.js";
 export { createIifeBackend, DEFAULT_BUNDLE_HOST } from "./iife-adapter.js";
 
-// Host-side registration for the `preloaded` strategy, which only asserts.
+export { resolveLoadControllers } from "./controller-loading.js";
+
+// Host-side registration for the `preloaded` strategy, which only asserts, and
+// the version alignment both players apply before asserting.
 export type { PreloadedElement } from "./preloaded-registration.js";
 export { registerPreloadedElements } from "./preloaded-registration.js";
+export type { PreloadedElementSpecs } from "./preloaded-alignment.js";
+export { alignPreloadedElementVersions } from "./preloaded-alignment.js";

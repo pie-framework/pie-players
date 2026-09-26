@@ -6,8 +6,8 @@ import {
 	type ToolContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
-import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
-import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map";
+import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
+import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
 
 const createFakeElement = (tag: string) =>
 	({

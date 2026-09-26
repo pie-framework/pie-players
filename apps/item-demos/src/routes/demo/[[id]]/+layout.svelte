@@ -288,7 +288,6 @@
 </div>
 
 <DemoOverlays
-	demoName={demoHeading}
 	demoId={data.demoId || ''}
 	config={$configStore}
 	{showSessionPanel}

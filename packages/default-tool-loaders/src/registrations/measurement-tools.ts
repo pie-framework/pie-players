@@ -10,21 +10,11 @@
 
 import type {
 	ToolRegistration,
-	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	createToolElement,
-	type ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	applyOverlaySurface,
-	createScopedVisibilityBinding,
-	syncButtonAndOverlayVisibility,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 
 /**

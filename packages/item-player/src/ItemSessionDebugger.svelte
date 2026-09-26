@@ -3,7 +3,6 @@
 		tag: "pie-item-player-session-debugger",
 		shadow: "none",
 		props: {
-			itemName: { type: "String", attribute: "item-name" },
 			itemId: { type: "String", attribute: "item-id" },
 			config: { type: "Object", attribute: "config" },
 			session: { type: "Object", attribute: "session" },
@@ -60,7 +59,6 @@
 	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 	let {
-		itemName = "",
 		itemId = "",
 		config = null,
 		session = null,
@@ -69,7 +67,6 @@
 		locale = "",
 		hosted = false,
 	}: {
-		itemName?: string;
 		itemId?: string;
 		config?: unknown;
 		session?: unknown;

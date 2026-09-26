@@ -5,12 +5,11 @@ import type {
 	AssessmentSessionRealization,
 	SectionControllerSessionState,
 } from "@pie-players/pie-players-shared/types";
-import type { StorageLike } from "./TestSession.js";
 
 /**
  * Re-exported so every existing import site keeps its specifier. These shapes are
  * canonical in `@pie-players/pie-players-shared/types`; this module owns the
- * storage helpers over them, not the shapes.
+ * helpers over them, not the shapes.
  */
 export type {
 	AssessmentSession,
@@ -20,53 +19,9 @@ export type {
 };
 
 const ASSESSMENT_SESSION_VERSION = 1 as const;
-const STORAGE_PREFIX = "pie:assessment-session:v1:";
 
 function nowIso(): string {
 	return new Date().toISOString();
-}
-
-export function getAssessmentSessionStorageKey(
-	assessmentAttemptSessionIdentifier: string,
-): string {
-	return `${STORAGE_PREFIX}${assessmentAttemptSessionIdentifier}`;
-}
-
-export function loadAssessmentSession(
-	storage: StorageLike,
-	assessmentAttemptSessionIdentifier: string,
-): AssessmentSession | null {
-	const raw = storage.getItem(
-		getAssessmentSessionStorageKey(assessmentAttemptSessionIdentifier),
-	);
-	if (!raw) return null;
-	try {
-		const parsed = JSON.parse(raw) as AssessmentSession;
-		if (!parsed || parsed.version !== ASSESSMENT_SESSION_VERSION) return null;
-		if (
-			parsed.assessmentAttemptSessionIdentifier !==
-			assessmentAttemptSessionIdentifier
-		) {
-			return null;
-		}
-		return parsed;
-	} catch {
-		return null;
-	}
-}
-
-export function saveAssessmentSession(
-	storage: StorageLike,
-	session: AssessmentSession,
-): void {
-	const updated: AssessmentSession = {
-		...session,
-		updatedAt: nowIso(),
-	};
-	storage.setItem(
-		getAssessmentSessionStorageKey(session.assessmentAttemptSessionIdentifier),
-		JSON.stringify(updated),
-	);
 }
 
 export function createNewAssessmentSession(args: {

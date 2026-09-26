@@ -5,7 +5,12 @@
  */
 
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
-import type { ConfigEntity, Env, PieModel } from "../types/index.js";
+import type {
+	ConfigEntity,
+	Env,
+	PieModel,
+	PieUpdateSession,
+} from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { findPieController } from "./scoring.js";
 import type {
@@ -129,7 +134,7 @@ const applyControllerToElement = async (
 	// so subsequent renders reuse it instead of regenerating it. The write-back is
 	// keyed by the canonical model id/element (the entry findOrAddSession resolved),
 	// which also tolerates controllers that pass an undefined id/element.
-	const updateSession = (id: string, _elementName: string, properties: any) => {
+	const updateSession: PieUpdateSession = (id, _elementName, properties) => {
 		logger.debug(
 			`${logPrefix} updateSession called for ${id} with:`,
 			properties,

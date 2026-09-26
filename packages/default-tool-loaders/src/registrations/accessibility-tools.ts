@@ -15,21 +15,14 @@ import type {
 	ToolRegistration,
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
-	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
-	createToolElement,
 	resolveToolTag,
 	type ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	applyOverlaySurface,
-	createScopedVisibilityBinding,
-	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { buildSelectionActions } from "./selection-actions.js";
 import { renderOverlayToolbar } from "./overlay-toolbar-render.js";

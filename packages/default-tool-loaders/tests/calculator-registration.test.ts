@@ -4,7 +4,7 @@ import {
 	DEFAULT_CALCULATOR_PROVIDER_ID,
 	resolveCalculatorProviderId,
 } from "../src/registrations/calculator.js";
-import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map.js";
+import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";

@@ -217,8 +217,6 @@ Section-player owned canonical event stream:
 
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
-- `pie-section-session-changed`
-- `pie-section-composition-changed`
 - `pie-section-framework-error`
 
 Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:

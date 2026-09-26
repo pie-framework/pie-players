@@ -866,8 +866,6 @@ Section-player owned instrumentation stream:
 
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
-- `pie-section-session-changed`
-- `pie-section-composition-changed`
 - `pie-section-framework-error`
 
 Build consumers against these canonical lifecycle events:

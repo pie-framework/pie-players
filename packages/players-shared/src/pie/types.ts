@@ -13,11 +13,6 @@ import type {
 } from "../types/index.js";
 
 /**
- * Player modes
- */
-export type PlayerMode = "gather" | "view" | "evaluate" | "author";
-
-/**
  * PIE custom element interface
  */
 export interface PieElement extends HTMLElement {

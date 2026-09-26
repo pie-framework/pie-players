@@ -83,7 +83,6 @@ export interface PieItemPlayerElement extends HTMLElement {
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {
-	itemName?: string;
 	itemId?: string;
 	config?: unknown;
 	session?: unknown;

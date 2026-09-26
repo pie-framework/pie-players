@@ -128,20 +128,6 @@ export type {
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
-// Player bootstrap helpers (used by inline/preloaded players)
-export type {
-	ItemData,
-	PiePlayerConfig,
-	PiePlayerElements,
-} from "./player-initializer.js";
-export {
-	buildApiParams,
-	buildEventListenersMap,
-	ensurePiePlayerLoaded,
-	extractPassageMarkup,
-	fetchItemData,
-	initializePiePlayer,
-} from "./player-initializer.js";
 // Registry
 export { pieRegistry } from "./registry.js";
 // Scoring

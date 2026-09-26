@@ -963,9 +963,9 @@ Build host integrations against the canonical events as follows:
 
 Note on `framework-error`: while a `<pie-assessment-toolkit>` is nested inside a layout CE, the kernel listener at `<pie-section-player-base>` stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface; it does not bubble to `document`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
 
-### Internal plumbing events (do not build host integrations against)
+### Session and runtime events
 
-The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are the toolkit's own events, bubbling once through the layout element to `document`; their shape is not part of the public host contract.
+The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are public events (`SECTION_PLAYER_PUBLIC_EVENTS` in `packages/section-player/src/contracts/public-events.ts`), dispatched by the toolkit and bubbling once through the layout element to `document`. `session-changed` publishes the section's canonical session on each change; the coordinator subscription API (§9) remains the typed, scoped surface for session state.
 
 ---
 

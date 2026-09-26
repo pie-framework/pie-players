@@ -359,6 +359,112 @@ test.describe("item-player strategy regressions", () => {
 		expect(versionRewriteState.authoredConfig).toEqual(authoredConfig);
 	});
 
+	test("a hosted player never runs a controller another loader registered", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		const tag = "pie-hosted-gate--version-1-0-0";
+		await page.evaluate((tag) => {
+			const calls: string[] = [];
+			(window as any).__pieHostedGateCalls = calls;
+			customElements.define(
+				tag,
+				class extends HTMLElement {
+					private _model: any;
+
+					set model(value: any) {
+						this._model = value;
+						this.textContent = String(value?.prompt ?? "");
+					}
+
+					get model() {
+						return this._model;
+					}
+				},
+			);
+			// What a non-hosted ESM load leaves in the shared registry.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/hosted-gate@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "esm",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+					async outcome() {
+						calls.push("outcome");
+						return { score: 1 };
+					},
+					async createCorrectResponseSession() {
+						calls.push("createCorrectResponseSession");
+						return { value: ["a"] };
+					},
+				},
+			};
+			(window as any).__mountHostedGatePlayer = (hosted: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = hosted ? "hosted-gate-hosted" : "hosted-gate-client";
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				player.strategy = "preloaded";
+				player.hosted = hosted;
+				player.addCorrectResponse = true;
+				player.env = { mode: "gather", role: "instructor" };
+				player.config = {
+					id: `hosted-gate-${hosted}`,
+					markup: '<pie-hosted-gate id="gate-model"></pie-hosted-gate>',
+					elements: { "pie-hosted-gate": "@pie-element/hosted-gate@1.0.0" },
+					models: [
+						{ id: "gate-model", element: "pie-hosted-gate", prompt: "server model" },
+					],
+				};
+				fixture.appendChild(player);
+			};
+			(window as any).__mountHostedGatePlayer(true);
+		}, tag);
+
+		await expect(page.locator(`#hosted-gate-hosted ${tag}`)).toHaveText(
+			"server model",
+			{ timeout: 20_000 },
+		);
+		const hostedScore = await page.evaluate(async () => {
+			const results: unknown[] = await (
+				document.querySelector("#hosted-gate-hosted pie-item-player") as any
+			).provideScore();
+			return results.map((result) => result === undefined);
+		});
+		expect(hostedScore).toEqual([true]);
+		await page.evaluate(() =>
+			(
+				document.querySelector("#hosted-gate-hosted pie-item-player") as any
+			).updateElementModel({ id: "gate-model", prompt: "updated server model" }),
+		);
+		await expect(page.locator(`#hosted-gate-hosted ${tag}`)).toHaveText(
+			"updated server model",
+			{ timeout: 20_000 },
+		);
+		expect(await page.evaluate(() => (window as any).__pieHostedGateCalls)).toEqual(
+			[],
+		);
+
+		// The same registry entry drives a player that is not hosted.
+		await page.evaluate(() => (window as any).__mountHostedGatePlayer(false));
+		await expect(page.locator(`#hosted-gate-client ${tag}`)).toHaveText(
+			"client model",
+			{ timeout: 20_000 },
+		);
+		expect(
+			await page.evaluate(() => (window as any).__pieHostedGateCalls),
+		).toContain("model");
+	});
+
 	test("backend delivery refreshes rendered models when env changes", async ({
 		page,
 	}) => {
@@ -482,6 +588,126 @@ test.describe("item-player strategy regressions", () => {
 		expect(refreshState.callCount).toBe(1);
 		expect(refreshState.tagName).toBe("pie-model-refresh--version-1-0-0");
 		expect(refreshState.modelElement).toBe(refreshState.tagName);
+	});
+
+	test("backend delivery implies hosted, so a registered controller never runs over its models", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		const tag = "pie-backend-gate--version-1-0-0";
+		await page.evaluate((tag) => {
+			const calls: string[] = [];
+			(window as any).__pieBackendGateCalls = calls;
+			customElements.define(
+				tag,
+				class extends HTMLElement {
+					private _model: any;
+
+					set model(value: any) {
+						this._model = value;
+						this.textContent = String(value?.prompt ?? "");
+					}
+
+					get model() {
+						return this._model;
+					}
+				},
+			);
+			// What a non-hosted ESM load leaves in the shared registry.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/backend-gate@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "esm",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+				},
+			};
+			(window as any).__mountBackendGatePlayer = async (hosted?: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = `backend-gate-${hosted ?? "default"}`;
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				fixture.appendChild(player);
+				await customElements.whenDefined("pie-item-player");
+				player.strategy = "preloaded";
+				if (hosted !== undefined) player.hosted = hosted;
+				player.env = { mode: "gather", role: "student" };
+				player.backend = {
+					delivery: {
+						enabled: true,
+						itemId: `backend-gate-item-${hosted ?? "default"}`,
+						sessionId: `backend-gate-session-${hosted ?? "default"}`,
+						client: {
+							async load() {
+								return {
+									item: {
+										id: `backend-gate-config-${hosted ?? "default"}`,
+										markup:
+											'<pie-backend-gate id="backend-gate-model"></pie-backend-gate>',
+										elements: {
+											"pie-backend-gate": "@pie-element/backend-gate@1.0.0",
+										},
+										models: [
+											{
+												id: "backend-gate-model",
+												element: "pie-backend-gate",
+												prompt: "server model",
+											},
+										],
+									},
+									session: { id: "backend-gate-session", data: [] },
+								};
+							},
+							async model(context: any) {
+								return [
+									{
+										id: "backend-gate-model",
+										element: tag,
+										prompt: `server model for ${context.env.mode}`,
+									},
+								];
+							},
+						},
+					},
+				};
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				await player.loadFromBackend("delivery");
+			};
+		}, tag);
+
+		await page.evaluate(() => (window as any).__mountBackendGatePlayer());
+		const hostedByDefault = page.locator(`#backend-gate-default ${tag}`);
+		await expect(hostedByDefault).toHaveText("server model", { timeout: 20_000 });
+		await page.evaluate(() => {
+			(
+				document.querySelector("#backend-gate-default pie-item-player") as any
+			).env = { mode: "evaluate", role: "student" };
+		});
+		await expect(hostedByDefault).toHaveText("server model for evaluate", {
+			timeout: 20_000,
+		});
+		expect(await page.evaluate(() => (window as any).__pieBackendGateCalls)).toEqual(
+			[],
+		);
+
+		// A host that sets `hosted` false keeps browser controllers.
+		await page.evaluate(() => (window as any).__mountBackendGatePlayer(false));
+		await expect(page.locator(`#backend-gate-false ${tag}`)).toHaveText(
+			"client model",
+			{ timeout: 20_000 },
+		);
+		expect(
+			await page.evaluate(() => (window as any).__pieBackendGateCalls),
+		).toContain("model");
 	});
 
 	test("backend delivery refreshes rendered passage models when env changes", async ({

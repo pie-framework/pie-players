@@ -70,6 +70,7 @@ const updateRegisteredElement = (
 		config,
 		session,
 		...(omitEnv ? {} : { env: options.env }),
+		bundleType: options.bundleType,
 		container: options.container,
 		...(options.eventListeners?.[elementTagName] && {
 			eventListeners: options.eventListeners[elementTagName],
@@ -259,6 +260,7 @@ const registerPieElementsFromBundle = (
 						session,
 						env: options.env,
 						eventListeners: options.eventListeners?.[elementTagName],
+						bundleType: options.bundleType,
 					});
 				});
 

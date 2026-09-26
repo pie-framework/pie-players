@@ -83,6 +83,10 @@ When `backend.delivery` has a load signature, `<pie-item-player>` also
 auto-loads on configuration changes. Hosts can still call
 `loadFromBackend("delivery")` explicitly for imperative flows.
 
+An enabled `backend.delivery` makes the player hosted unless the host sets
+`hosted`: it renders the backend's models, refreshed through the `model`
+endpoint when `env` changes, and runs no element controller in the browser.
+
 Backend session persistence is explicit:
 
 ```ts

@@ -235,6 +235,7 @@ export function buildBackendConfigFromProps(args: {
 
 	if (args.strategy === "esm") {
 		const esmCdnProvider = readEsmCdnProvider(loaderOptions?.esmCdnProvider);
+		const view = getLoaderView(args.resolvedPlayerEnv);
 		return {
 			kind: "esm",
 			cdnBaseUrl: String(
@@ -243,8 +244,10 @@ export function buildBackendConfigFromProps(args: {
 			cdnProvider: esmCdnProvider,
 			moduleResolution:
 				loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url",
-			view: getLoaderView(args.resolvedPlayerEnv),
-			loadControllers: true,
+			view,
+			// A hosted item player resolves no controller, so none is fetched.
+			loadControllers:
+				view === "author" || args.resolvedPlayerProps?.hosted !== true,
 		};
 	}
 

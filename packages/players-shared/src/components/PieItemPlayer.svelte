@@ -465,7 +465,7 @@
     const newSession: any[] = [];
 
     for (const model of itemConfig.models) {
-      const controller = findPieController(model.element);
+      const controller = findPieController(model.element, bundleType);
       logger.debug(
         "[PieItemPlayer] Controller lookup for %s: %s (createCorrectResponseSession=%s)",
         model.element,
@@ -533,7 +533,8 @@
           session,
           env,
           rootElement ?? undefined,
-          onElementSessionUpdate
+          onElementSessionUpdate,
+          bundleType
         );
         if (passageConfig) {
           void updatePieElements(
@@ -541,7 +542,8 @@
             session,
             env,
             rootElement ?? undefined,
-            onElementSessionUpdate
+            onElementSessionUpdate,
+            bundleType
           );
         }
       } catch (e) {
@@ -782,7 +784,8 @@
             session,
             env,
             rootElement ?? undefined,
-            onElementSessionUpdate
+            onElementSessionUpdate,
+            bundleType
           );
 
           if (passageConfig) {
@@ -791,7 +794,8 @@
               session,
               env,
               rootElement ?? undefined,
-              onElementSessionUpdate
+              onElementSessionUpdate,
+              bundleType
             );
           }
 
@@ -1024,7 +1028,8 @@
         session,
         env,
         rootElement ?? undefined,
-        onElementSessionUpdate
+        onElementSessionUpdate,
+        bundleType
       )
         .then(() =>
           passageConfig
@@ -1033,7 +1038,8 @@
                 session,
                 env,
                 rootElement ?? undefined,
-                onElementSessionUpdate
+                onElementSessionUpdate,
+                bundleType
               )
             : undefined
         )
@@ -1195,6 +1201,7 @@
           config: itemConfig,
           session,
           env,
+          bundleType,
         })),
       ];
       if (withPassage) {
@@ -1203,6 +1210,7 @@
             config: passageConfig as ConfigEntity,
             session,
             env,
+            bundleType,
           }))
         );
       }

@@ -144,8 +144,9 @@ support targets default bundler entrypoints under `dist`.
 - `mode`: `String`, default `"view"`. Player mode: `"view"` or `"author"`.
 - `authoring-backend`: `String`, default `"demo"`. `"demo"` uses built-in
   stubs; `"required"` requires host-provided handlers.
-- `hosted`: `Boolean`, default `false`. Whether running in hosted mode; affects
-  IIFE bundle type.
+- `hosted`: `Boolean`, default `false`, or `true` when `backend.delivery` is
+  enabled. A hosted player renders server-processed models and runs no element
+  controller in the browser; under `iife` it loads the `player.js` bundle.
 - `add-correct-response`: `Boolean`, default `false`. Populate correct
   responses on models.
 - `show-bottom-border`: `Boolean`, default `false`. Add bottom border in

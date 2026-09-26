@@ -9,7 +9,11 @@ import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { findPieController } from "./scoring.js";
-import type { PieElement, UpdatePieElementOptions } from "./types.js";
+import type {
+	BundleType,
+	PieElement,
+	UpdatePieElementOptions,
+} from "./types.js";
 import { defaultPieElementOptions } from "./types.js";
 import { findOrAddSession } from "./utils.js";
 
@@ -187,6 +191,7 @@ type ResolvedUpdateOptions = Pick<
 	| "env"
 	| "eventListeners"
 	| "invokeControllerForModel"
+	| "bundleType"
 	| "onElementSessionUpdate"
 >;
 
@@ -199,6 +204,7 @@ const resolveAndValidateUpdateOptions = (
 		env,
 		eventListeners,
 		invokeControllerForModel,
+		bundleType,
 		onElementSessionUpdate,
 	} = mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
 	if (!env) {
@@ -216,6 +222,7 @@ const resolveAndValidateUpdateOptions = (
 		env,
 		eventListeners,
 		invokeControllerForModel,
+		bundleType,
 		onElementSessionUpdate,
 	};
 };
@@ -232,6 +239,7 @@ const updateSinglePieElement = async (
 		env,
 		eventListeners,
 		invokeControllerForModel,
+		bundleType,
 		onElementSessionUpdate,
 	} = options;
 	const model = config.models?.find((m) => m.id === pieElement.id) as
@@ -252,7 +260,7 @@ const updateSinglePieElement = async (
 	}
 
 	if (env && invokeControllerForModel) {
-		const controller = findPieController(controllerLookupTag);
+		const controller = findPieController(controllerLookupTag, bundleType);
 		if (!controller) {
 			logger.debug(
 				`${logContext} ℹ️ No controller for ${controllerLookupTag}, using server-processed model`,
@@ -375,6 +383,7 @@ export const updatePieElements = (
 	env: Env,
 	container?: Element | Document,
 	onElementSessionUpdate?: UpdatePieElementOptions["onElementSessionUpdate"],
+	bundleType?: BundleType,
 ): Promise<void> => {
 	logger.debug("[updatePieElements] Updating all elements with env:", env);
 	return Promise.all(
@@ -385,6 +394,7 @@ export const updatePieElements = (
 				env,
 				container,
 				onElementSessionUpdate,
+				bundleType,
 			}),
 		),
 	).then(() => undefined);

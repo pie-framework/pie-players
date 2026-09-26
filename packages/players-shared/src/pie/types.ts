@@ -112,6 +112,8 @@ export interface UpdatePieElementOptions {
 	session: any[];
 	env?: Env;
 	invokeControllerForModel?: boolean;
+	/** The delivering player's bundle type, see `findPieController`. */
+	bundleType?: BundleType;
 	eventListeners?: EventListeners;
 	container?: Element | Document; // Optional container to scope querySelector (defaults to document)
 	/**

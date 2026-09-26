@@ -242,6 +242,7 @@ Omitting `provider.id` continues to select `"calculator-desmos"`.
 | Calculation precision | 15 digits | 1-21 digits |
 | Display precision | 10 digits | 1-12 digits |
 | Evaluation time limit | 1,000 ms | 100-2,000 ms |
+| Worker start | n/a | 20 s |
 | Expression input | n/a | 1,024 UTF-16 code units |
 | Canonical AST | n/a | 256 nodes, maximum depth 32 |
 | History | 20 entries | 0-50 entries |

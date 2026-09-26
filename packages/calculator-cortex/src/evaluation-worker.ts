@@ -3,13 +3,14 @@ import { evaluateLatex, sampleLatex } from "./evaluation-engine.js";
 import {
 	CORTEX_WORKER_PROTOCOL_VERSION,
 	type SerializedCortexError,
+	type WorkerReadyMessage,
 	type WorkerRequest,
 	type WorkerResponse,
 } from "./worker-protocol.js";
 
 const workerScope = globalThis as unknown as {
 	onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
-	postMessage(message: WorkerResponse): void;
+	postMessage(message: WorkerResponse | WorkerReadyMessage): void;
 };
 
 function serializeError(error: unknown): SerializedCortexError {
@@ -66,3 +67,10 @@ workerScope.onmessage = (event) => {
 		});
 	}
 };
+
+// The client times a calculation from here, so the time it took to fetch and
+// compile this module is not charged to the learner's first calculation.
+workerScope.postMessage({
+	protocolVersion: CORTEX_WORKER_PROTOCOL_VERSION,
+	kind: "ready",
+});

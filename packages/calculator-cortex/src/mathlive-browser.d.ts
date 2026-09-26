@@ -29,6 +29,8 @@ declare module "mathlive" {
 		// stay the single writer to the controller.
 		executeCommand(command: string | [string, ...unknown[]]): boolean;
 		insert(latex: string, options?: Record<string, unknown>): boolean;
+		// Tells a `change` from Return apart from the one MathLive emits on blur.
+		hasFocus(): boolean;
 	}
 }
 

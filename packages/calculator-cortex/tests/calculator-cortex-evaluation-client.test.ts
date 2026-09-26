@@ -12,14 +12,19 @@ import {
 /*
  * `EvaluationClient` is the boundary this package owns between the calculator and
  * the worker that computes. What it must get right is everything the worker does
- * *not* do: bound a reply that never arrives, survive a worker that dies, drop a
- * reply the input has already moved past, and ignore traffic addressed elsewhere.
- * None of that is reachable through a real worker, which always answers.
+ * *not* do: bound a start that never finishes and a reply that never arrives,
+ * survive a worker that dies, drop a reply the input has already moved past, and
+ * ignore traffic addressed elsewhere. None of that is reachable through a real
+ * worker, which always answers.
  */
 
 let fleet: FakeWorkerFleet | null = null;
+const clients: EvaluationClient[] = [];
 
 afterEach(() => {
+	// Every promise a test creates has settled by now, so this only clears the
+	// startup limits of workers a test never reported ready.
+	for (const client of clients.splice(0)) client.destroy();
 	fleet?.restore();
 	fleet = null;
 });
@@ -29,6 +34,17 @@ const settings = (overrides: Record<string, unknown> = {}) =>
 	resolveCortexSettings("scientific", {
 		settings: { evaluationTimeLimitMs: 100, ...overrides },
 	});
+
+function createClient(
+	resolved = settings(),
+	startupLimitMs?: number,
+): EvaluationClient {
+	const client = new EvaluationClient(resolved, startupLimitMs);
+	clients.push(client);
+	return client;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Resolves to `"pending"` if the promise has not settled within a beat. */
 async function settlement(promise: Promise<unknown>): Promise<string> {
@@ -43,15 +59,46 @@ async function settlement(promise: Promise<unknown>): Promise<string> {
 	return raced === pending ? "pending" : (raced as string);
 }
 
-describe("a reply that never arrives", () => {
-	test("fails as a timeout and terminates the worker", async () => {
-		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+/** Records how a promise settles without leaving a rejection unhandled. */
+function observe(promise: Promise<unknown>): { readonly state: string } {
+	const observed = { state: "pending" };
+	promise.then(
+		() => {
+			observed.state = "resolved";
+		},
+		() => {
+			observed.state = "rejected";
+		},
+	);
+	return observed;
+}
 
-		const error = await expectCortexRejection(
-			client.evaluate("2+2"),
-			"evaluation-timeout",
-		);
+describe("the time limit", () => {
+	test("starts when the worker reports ready, so a slow start still answers", async () => {
+		fleet = installFakeWorkers();
+		const client = createClient();
+		const pending = client.evaluate("2+2");
+		const outcome = observe(pending);
+
+		// Longer than the 250ms the limit allows a calculation.
+		await sleep(400);
+		expect(outcome.state).toBe("pending");
+		expect(fleet.last.terminated).toBe(false);
+
+		fleet.last.ready();
+		const request = fleet.last.requests[0];
+		if (!request) throw new Error("The worker received no request.");
+		fleet.last.respondWithResult(request, "4");
+		expect((await pending).formatted).toBe("4");
+	});
+
+	test("fails a reply that never arrives as a timeout and terminates the worker", async () => {
+		fleet = installFakeWorkers();
+		const client = createClient();
+		const pending = client.evaluate("2+2");
+		fleet.last.ready();
+
+		const error = await expectCortexRejection(pending, "evaluation-timeout");
 		expect(error.recoverable).toBe(true);
 		expect(fleet.created).toHaveLength(1);
 		expect(fleet.created[0]?.terminated).toBe(true);
@@ -59,8 +106,10 @@ describe("a reply that never arrives", () => {
 
 	test("restarts on the next request rather than staying dead", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
-		await expectCortexRejection(client.evaluate("2+2"), "evaluation-timeout");
+		const client = createClient();
+		const first = client.evaluate("2+2");
+		fleet.last.ready();
+		await expectCortexRejection(first, "evaluation-timeout");
 
 		const pending = client.evaluate("3+3");
 		expect(fleet.created).toHaveLength(2);
@@ -71,10 +120,82 @@ describe("a reply that never arrives", () => {
 	});
 });
 
+describe("a worker that does not start", () => {
+	test("fails as unavailable at the startup limit, and the next request starts afresh", async () => {
+		fleet = installFakeWorkers();
+		const client = createClient(settings(), 300);
+		const error = await expectCortexRejection(
+			client.evaluate("2+2"),
+			"worker-unavailable",
+		);
+		expect(error.recoverable).toBe(false);
+		expect(fleet.created[0]?.terminated).toBe(true);
+
+		const pending = client.evaluate("3+3");
+		expect(fleet.created).toHaveLength(2);
+		fleet.last.ready();
+		const request = fleet.last.requests[0];
+		if (!request) throw new Error("The restarted worker received no request.");
+		fleet.last.respondWithResult(request, "6");
+		expect((await pending).formatted).toBe("6");
+	});
+
+	test("is not held to the startup limit once it reports ready", async () => {
+		fleet = installFakeWorkers();
+		const client = createClient(settings(), 300);
+		client.start();
+		fleet.last.ready();
+		await sleep(400);
+		expect(fleet.last.terminated).toBe(false);
+
+		const pending = client.evaluate("2+2");
+		const request = fleet.last.requests[0];
+		if (!request) throw new Error("The worker received no request.");
+		fleet.last.respondWithResult(request, "4");
+		expect((await pending).formatted).toBe("4");
+	});
+});
+
+describe("starting before the first request", () => {
+	test("starts the worker once, and the first request goes to it", async () => {
+		fleet = installFakeWorkers();
+		const client = createClient();
+		client.start();
+		client.start();
+		expect(fleet.created).toHaveLength(1);
+		expect(fleet.last.requests).toHaveLength(0);
+		fleet.last.ready();
+
+		const pending = client.evaluate("2+2");
+		expect(fleet.created).toHaveLength(1);
+		const request = fleet.last.requests[0];
+		if (!request) throw new Error("The worker received no request.");
+		fleet.last.respondWithResult(request, "4");
+		expect((await pending).formatted).toBe("4");
+	});
+
+	test("replaces a worker that failed to load before the first request", async () => {
+		fleet = installFakeWorkers();
+		const client = createClient();
+		client.start();
+		fleet.last.emitError();
+		expect(fleet.created[0]?.terminated).toBe(true);
+
+		const pending = client.evaluate("2+2");
+		expect(fleet.created).toHaveLength(2);
+		fleet.last.ready();
+		const request = fleet.last.requests[0];
+		if (!request)
+			throw new Error("The replacement worker received no request.");
+		fleet.last.respondWithResult(request, "4");
+		expect((await pending).formatted).toBe("4");
+	});
+});
+
 describe("a worker that dies", () => {
 	test("fails in flight as unrecoverable and restarts on the next request", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+		const client = createClient();
 		const inFlight = client.evaluate("2+2");
 		fleet.last.emitError();
 
@@ -92,8 +213,9 @@ describe("a worker that dies", () => {
 
 	test("refuses to start a new one after the client is destroyed", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+		const client = createClient();
 		client.destroy();
+		client.start();
 
 		const error = await expectCortexRejection(
 			client.evaluate("2+2"),
@@ -105,7 +227,7 @@ describe("a worker that dies", () => {
 
 	test("fails everything in flight when the client is destroyed", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+		const client = createClient();
 		const inFlight = client.evaluate("2+2");
 		client.destroy();
 		await expectCortexRejection(inFlight, "worker-unavailable");
@@ -116,7 +238,7 @@ describe("a worker that dies", () => {
 describe("replies that no longer apply", () => {
 	test("drops a reply the input has moved past and honours the current one", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+		const client = createClient();
 
 		const first = client.evaluate("2+2");
 		const second = client.evaluate("3+3");
@@ -138,9 +260,7 @@ describe("replies that no longer apply", () => {
 
 	test("ignores a reply from another protocol version or another instance", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(
-			settings({ evaluationTimeLimitMs: 2_000 }),
-		);
+		const client = createClient(settings({ evaluationTimeLimitMs: 2_000 }));
 		const pending = client.evaluate("2+2");
 		const worker = fleet.last;
 		const request = worker.requests[0];
@@ -170,7 +290,7 @@ describe("settings that travel with the request", () => {
 		 * settings change would discard a warm Compute Engine for nothing.
 		 */
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+		const client = createClient();
 		const first = client.evaluate("\\sin(30)");
 		const worker = fleet.last;
 		const firstRequest = worker.requests[0];
@@ -195,7 +315,7 @@ describe("settings that travel with the request", () => {
 
 	test("a sample request carries the viewport, width and allowlist", async () => {
 		fleet = installFakeWorkers();
-		const client = new EvaluationClient(settings());
+		const client = createClient();
 		const pending = client.sample(
 			[{ id: "row-1", latex: "y=x" }],
 			{ xMin: -3, xMax: 3, yMin: -2, yMax: 2 },

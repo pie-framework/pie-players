@@ -267,6 +267,10 @@ request still matches the active input generation.
 bundler-owned URL. Consumers do not configure a worker CDN. The package artifact
 test verifies that the worker and its dependent chunks are present.
 
+The provider creates the worker when it creates a calculator, so fetching,
+compiling and running the worker's module overlaps the learner's first edit. The
+worker posts `ready` once its module has run.
+
 ### Protocol
 
 ```ts
@@ -297,6 +301,12 @@ type WorkerResponse =
   | (WorkerEnvelope & { kind: "result"; result: EvaluationResult })
   | (WorkerEnvelope & { kind: "series"; series: SampledSeries[] })
   | (WorkerEnvelope & { kind: "error"; error: SerializedCortexError });
+
+// Posted once, after the worker's module has run.
+interface WorkerReadyMessage {
+  protocolVersion: 1;
+  kind: "ready";
+}
 ```
 
 The protocol is internal but versioned so stale chunks fail closed with
@@ -306,10 +316,15 @@ The protocol is internal but versioned so stale chunks fail closed with
 
 - Set Compute Engine's evaluation time limit for every request.
 - Start a main-thread watchdog for the configured limit plus a small fixed
-  message-delivery allowance.
+  message-delivery allowance. It runs from the worker's `ready`, so a request
+  made while the worker starts waits for it and the start is never charged to a
+  calculation.
 - On watchdog expiry, terminate the worker, reject outstanding requests with
   `evaluation-timeout`, create a fresh worker for later requests, and never
   reuse the timed-out engine.
+- Allow a new worker 20 s to post `ready`. Past that, terminate it and reject
+  outstanding requests with `worker-unavailable`; the next request creates a
+  fresh worker.
 - Superseded graph requests are logically cancelled by generation. Their
   responses are ignored even if the worker finishes them.
 - Destroy rejects pending requests, removes listeners, and terminates the
@@ -446,6 +461,7 @@ Telemetry callback failures are contained and never break calculator behavior.
 | Compute Engine limit/watchdog | `evaluation-timeout` | Keep input and prior valid result/graph | Worker recreated |
 | Invalid persisted state | `invalid-state` | Preserve live calculator unchanged | Host discards or replaces state |
 | Worker creation/protocol failure | `worker-unavailable` | Tool-level error state | Remount or deployment fix |
+| Worker not ready within 20 s | `worker-unavailable` | Tool-level error state | Next request starts a fresh worker |
 
 Dependency exceptions are translated at the package boundary. Hosts do not need
 to recognize MathLive, Compute Engine, JSXGraph, or worker-native error shapes.

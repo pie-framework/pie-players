@@ -39,8 +39,7 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*",
-		"speech-rule-engine": "^5.0.0-rc.4"
+		"@pie-players/pie-theme": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {

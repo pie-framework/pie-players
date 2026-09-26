@@ -31,11 +31,11 @@
 	"jsdelivr": "./dist/tool-calculator-inline-cortex.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tool-calculator-shared": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@pie-players/pie-tool-calculator-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",

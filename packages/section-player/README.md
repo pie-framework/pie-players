@@ -36,8 +36,11 @@ import "@pie-players/pie-section-player";
 If hosts need explicit registration control, keep using documented component
 entrypoints under `@pie-players/pie-section-player/components/*`.
 
-Standalone browser variants for this package are intentionally deferred; the
-current supported contract is the default bundler entrypoints under `dist`.
+The entries are bundler-only: they import `@pie-players/pie-item-player`,
+`@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
+engine's JSON locale tables, by bare specifier and without import attributes.
+Items render through the host's one `@pie-players/pie-item-player`, which this
+package depends on at its own version.
 
 ## SectionController
 

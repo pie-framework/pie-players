@@ -25,7 +25,6 @@ Supported subpaths are declared in `package.json`:
 - `@pie-players/pie-players-shared/pie`
 - `@pie-players/pie-players-shared/pie/tag-names`
 - `@pie-players/pie-players-shared/loaders`
-- `@pie-players/pie-players-shared/server/npm-registry`
 - `@pie-players/pie-players-shared/i18n`
 
 ## Formative Delivery

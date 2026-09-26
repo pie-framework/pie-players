@@ -1,5 +1,13 @@
 import type { SectionPlayerPolicies } from "./types.js";
 
+export type {
+	ReadinessPolicyAdapter,
+	SectionPlayerPolicies,
+	SectionPlayerPreloadPolicy,
+	SectionPlayerReadinessPolicy,
+	SectionPlayerTelemetryPolicy,
+} from "./types.js";
+
 export const DEFAULT_SECTION_PLAYER_POLICIES: SectionPlayerPolicies = {
 	readiness: { mode: "progressive" },
 	preload: { enabled: true },

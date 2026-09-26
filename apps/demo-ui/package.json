@@ -14,6 +14,10 @@
 		"./server": {
 			"types": "./src/server/tts-error-response.ts",
 			"default": "./src/server/tts-error-response.ts"
+		},
+		"./server/npm-registry": {
+			"types": "./src/server/npm-registry.ts",
+			"default": "./src/server/npm-registry.ts"
 		}
 	},
 	"scripts": {
@@ -21,10 +25,12 @@
 		"lint": "biome lint src"
 	},
 	"dependencies": {
+		"semver": "^7.8.5",
 		"svelte": "^5.57.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@types/semver": "^7.8.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	}

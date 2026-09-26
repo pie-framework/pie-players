@@ -20,7 +20,7 @@
 		CalculatorProviderConfig,
 		CalculatorType,
 	} from '@pie-players/pie-assessment-toolkit/tools/client';
-	import { CalculatorTool } from '@pie-players/pie-tool-calculator-shared';
+	import { CalculatorTool } from '@pie-players/pie-tool-calculator-shared/components';
 
 	let {
 		visible = false,

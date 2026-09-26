@@ -4,7 +4,7 @@ const NPM_REGISTRY_URL = "https://registry.npmjs.org";
 
 if (typeof window !== "undefined") {
 	throw new Error(
-		"[npm-registry] @pie-players/pie-players-shared/server/npm-registry is server-only and cannot be imported in browser code",
+		"[npm-registry] @pie-players/demo-ui/server/npm-registry is server-only and cannot be imported in browser code",
 	);
 }
 

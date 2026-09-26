@@ -91,6 +91,12 @@ Notes:
 - NodeJS service recommendation:
   - import only Node-safe packages (for example `@pie-players/pie-assessment-toolkit`, `@pie-players/pie-context`, `@pie-players/pie-players-shared`)
 - Browser-only packages (`pie-item-player`, `pie-section-player`) must stay out of plain Node runtime imports.
+- `pie-section-player` and `pie-assessment-player` are bundler-only. Their
+  entries import PIE packages and `speech-rule-engine` by bare specifier, and
+  the section player imports the engine's JSON locale tables without import
+  attributes, so a host loads them through a bundler that resolves both.
+- `pie-item-player` is the one player whose root entry imports no bare
+  specifier; it loads raw from a CDN through `<script type="module">`.
 - TypeScript hosts resolve these packages with `moduleResolution` `bundler`,
   `node16` or `nodenext`. `node10`, spelled `node` in a tsconfig, is not
   supported: it ignores `exports`, through which these packages publish their

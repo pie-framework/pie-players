@@ -1,16 +1,12 @@
+// Plain ESM, unbuilt: the release workflow runs `node scripts/check-npm-auth.mjs`
+// before anything builds this package.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-if (typeof window !== "undefined") {
-	throw new Error(
-		"[npm-auth-env] @pie-players/pie-players-shared/server/npm-auth-env is server-only and cannot be imported in browser code",
-	);
-}
-
 const REGISTRY = "https://registry.npmjs.org/";
 
-const parseDotEnvToken = (envPath: string, key: string): string => {
+const parseDotEnvToken = (envPath, key) => {
 	try {
 		const content = readFileSync(envPath, "utf8");
 		const pattern = new RegExp(
@@ -29,10 +25,7 @@ const parseDotEnvToken = (envPath: string, key: string): string => {
 	}
 };
 
-const resolveToken = (
-	envPath: string | undefined,
-	baseEnv: NodeJS.ProcessEnv,
-): string => {
+const resolveToken = (envPath, baseEnv) => {
 	const envToken = String(
 		baseEnv.NPM_TOKEN || baseEnv.NODE_AUTH_TOKEN || "",
 	).trim();
@@ -45,19 +38,8 @@ const resolveToken = (
 	);
 };
 
-/**
- * Write a temp `.npmrc` carrying a scoped `_authToken` and return an env
- * object pointing `NPM_CONFIG_USERCONFIG` at it, so a publish subprocess
- * authenticates without a separate `npm login`. The token comes from
- * `NPM_TOKEN`/`NODE_AUTH_TOKEN` in `baseEnv` first, falling back to parsing
- * an `.env`-style file at `envPath` for either key.
- *
- * Call `cleanup()` once the subprocess using `env` has exited.
- */
-export const createNpmAuthEnvironment = (
-	envPath?: string,
-	baseEnv: NodeJS.ProcessEnv = process.env,
-): { env: NodeJS.ProcessEnv; cleanup: () => void } => {
+/** Typed and documented in `npm-auth-env.d.mts`. */
+export const createNpmAuthEnvironment = (envPath, baseEnv = process.env) => {
 	const token = resolveToken(envPath, baseEnv);
 	if (!token) {
 		return {

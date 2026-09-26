@@ -1,4 +1,4 @@
-declare module "@pie-lib/math-rendering-module/module" {
+declare module "@pie-lib/math-rendering-module/module/index.js" {
 	type MathRenderer = (element: HTMLElement) => void | Promise<void>;
 	interface MathRenderingAPI {
 		renderMath: MathRenderer;

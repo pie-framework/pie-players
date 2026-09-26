@@ -8,6 +8,9 @@ Primary entrypoint:
 
 - `@pie-players/pie-assessment-player`
 
+The entry is bundler-only: it imports the toolkit, players-shared and the
+section player by bare specifier.
+
 ## AssessmentController
 
 `AssessmentController` is the domain authority for an assessment attempt. It

@@ -9,12 +9,16 @@ import {
 import path from "node:path";
 
 const DEFAULT_ROOT = process.cwd();
-const CONCRETE_TOOL_PACKAGE_PATTERN = /^@pie-players\/pie-tool-/;
+// Concrete packages are the `pie-tool-*` packages and the calculator engines
+// (`pie-calculator-<engine>`). The engine-neutral `@pie-players/pie-calculator`
+// contract carries no `-` suffix, so the toolkit may keep depending on it.
+const CONCRETE_TOOL_PACKAGE_PATTERN = /^@pie-players\/pie-(?:tool|calculator)-/;
 const TOOL_IMPORT_PATTERN =
-	/(?:from\s*|import\s*\(\s*|import\s+)["'](@pie-players\/pie-tool-[^"']+)["']/g;
-const TOOL_PACKAGE_STRING_PATTERN = /["'](@pie-players\/pie-tool-[^"']+)["']/g;
+	/(?:from\s*|import\s*\(\s*|import\s+)["'](@pie-players\/pie-(?:tool|calculator)-[^"']+)["']/g;
+const TOOL_PACKAGE_STRING_PATTERN =
+	/["'](@pie-players\/pie-(?:tool|calculator)-[^"']+)["']/g;
 const DIST_CONCRETE_CHUNK_PATTERN =
-	/(?:^|[/\\])(?:pie-tool-|tool-tts-inline|tool-calculator|calculator-desmos)[^/\\]*\.js$/i;
+	/(?:^|[/\\])(?:pie-tool-|tool-tts-inline|tool-calculator|calculator-(?:cortex|desmos|geogebra))[^/\\]*\.js$/i;
 const MATH_RENDERING_MARKER = "@pie-lib/math-rendering-module";
 
 const SOURCE_IMPORT_TARGETS = [

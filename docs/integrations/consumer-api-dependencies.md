@@ -242,6 +242,20 @@ install changes. Host R imports it for the registration side effect; Host A
 imports it nowhere and takes the element from the section player's packaged
 loaders. Hosts V and P neither name it nor install the loaders.
 
+The three calculator engines have since moved from optional peers of the toolkit
+to dependencies of `pie-default-tool-loaders`, whose calculator adapters now hold
+the only import of each. `CortexToolProvider`, `DesmosToolProvider` and
+`GeoGebraToolProvider` left the toolkit's `./tools/internal` subpath with them.
+Checked against all four checkouts on 2026-09-25 as a targeted lookup, so it does
+not advance the verification date: no checkout imports an adapter or that
+subpath. Host A installs all three engines and aliases the Cortex one to a local
+stub by package name, so its installs are now redundant and the alias still keeps
+the engine out; a scratch build with its configuration came out the same size.
+Host R declares only the Desmos engine and selects no other provider, so its Vite
+build replaced the other two with modules that throw when loaded. After its next
+install they are real lazy chunks it never fetches, and its install grows by the
+Cortex engine. Hosts V and P install neither the loaders nor the toolkit.
+
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a
 `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so
@@ -333,7 +347,8 @@ Packages consumed:
 
 - **Host V** — `pie-item-player`, `pie-theme`.
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
-  `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
+  `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
+  its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
   section-player debugger tools.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
@@ -351,6 +366,8 @@ Packages consumed:
   resolve without their surfaces being consumed. Two more tool packages, both
   dictionaries, reach it transitively as dependencies of
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
+  The Cortex and GeoGebra calculator engines reach it the same way, imported by
+  the loaders' calculator adapters.
 
 Host V pins an exact patch (`0.3.53` at last read), so it upgrades
 deliberately. Host P pins an exact preloaded build (`0.3.73-34b9257.1` at last
@@ -1032,9 +1049,9 @@ and its caret range takes each patch on the next install, so a patch can fail
 that build with no change on Host A's side. Host A has resolved
 `@pie-players/pie-calculator-cortex` to a local stub in its build since the
 toolkit's Cortex provider, new in 0.3.69, took it past that budget with about
-7 MB of engine. The engine stays out only while the toolkit reaches it through
-that bare specifier, at its one import site in
-`packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts`.
+7 MB of engine. The engine stays out only while the packaged tool loaders reach
+it through that bare specifier, at its one import site in
+`packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts`.
 A subpath of the specifier fails Host A's build, since the alias targets a file,
 and any other route brings the engine back.
 
@@ -1299,6 +1316,9 @@ over a CDN with no typecheck at all.
   `LibraryLoader` from its `types`. Deleted on 2026-08-27: no checkout names any of
   the eight, nothing in this repository used them either, and each provider loads
   its own vendor script
+- `CortexToolProvider`, `DesmosToolProvider` and `GeoGebraToolProvider` on the
+  toolkit's `./tools/internal` subpath. They moved into `pie-default-tool-loaders`
+  with the engine imports on 2026-09-25, and no checkout imports that subpath
 - `Calculator` and `CalculatorProvider` as interfaces to implement, and the
   additive optional argument on `CalculatorProvider.initialize`. Every implementor
   is a package in this repository

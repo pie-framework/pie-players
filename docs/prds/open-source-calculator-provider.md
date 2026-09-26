@@ -75,7 +75,6 @@ or network connection is required.
 - Owning package: `@pie-players/pie-calculator-cortex`.
 - Public export path: `@pie-players/pie-calculator-cortex`.
 - Consuming packages:
-  - `@pie-players/pie-assessment-toolkit`
   - `@pie-players/pie-default-tool-loaders`
   - `@pie-players/pie-tool-calculator-cortex`
   - `@pie-players/pie-tool-calculator-inline-cortex`

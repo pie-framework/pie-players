@@ -6,11 +6,11 @@ import type {
 	CalculatorProviderConfig,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
+import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	type CalculatorToolProviderInitConfig,
 	LazyCalculatorToolProvider,
-} from "../src/services/tool-providers/LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "../src/services/tool-providers/ToolProviderApi.js";
+} from "../src/calculator-providers/LazyCalculatorToolProvider.js";
 
 interface TestConfig extends CalculatorToolProviderInitConfig {
 	label?: string;

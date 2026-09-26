@@ -135,7 +135,7 @@ const TRIGGERS = [
 		match: (file) =>
 			[
 				"packages/default-tool-loaders/src/packaged-capability-composition.ts",
-				"packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts",
+				"packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts",
 				"packages/assessment-toolkit/src/runtime/core/engine-resolver.ts",
 			].includes(file),
 	},

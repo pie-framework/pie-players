@@ -465,6 +465,155 @@ test.describe("item-player strategy regressions", () => {
 		).toContain("model");
 	});
 
+	test("the session debugger runs no controller for a hosted player", async ({
+		page,
+	}) => {
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.waitForFunction(() =>
+			Boolean(customElements.get("pie-item-player-session-debugger")),
+		);
+
+		const tag = "pie-debugger-gate--version-1-0-0";
+		await page.evaluate((tag) => {
+			const calls: string[] = [];
+			(window as any).__pieDebuggerGateCalls = calls;
+			customElements.define(tag, class extends HTMLElement {});
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/debugger-gate@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "esm",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+				},
+			};
+			(window as any).__mountGateDebugger = (hosted: boolean) => {
+				const debuggerElement = document.createElement(
+					"pie-item-player-session-debugger",
+				) as any;
+				debuggerElement.id = hosted ? "debugger-gate-hosted" : "debugger-gate-client";
+				debuggerElement.hosted = hosted;
+				debuggerElement.env = { mode: "gather", role: "student" };
+				debuggerElement.session = { id: "debugger-gate-session", data: [] };
+				debuggerElement.config = {
+					id: "debugger-gate",
+					markup: '<pie-debugger-gate id="gate-model"></pie-debugger-gate>',
+					elements: { "pie-debugger-gate": "@pie-element/debugger-gate@1.0.0" },
+					models: [
+						{ id: "gate-model", element: "pie-debugger-gate", prompt: "server model" },
+					],
+				};
+				document.body.appendChild(debuggerElement);
+			};
+			(window as any).__mountGateDebugger(true);
+		}, tag);
+		const filteredModel = (id: string) =>
+			page.evaluate(async (id) => {
+				const panel = document.getElementById(id) as HTMLElement;
+				(
+					[...panel.querySelectorAll('[role="tab"]')].at(-1) as HTMLElement
+				).click();
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				return panel.querySelector(".pie-item-player-session-debugger__card-pre")
+					?.textContent;
+			}, id);
+
+		await expect
+			.poll(() => filteredModel("debugger-gate-hosted"))
+			.toContain("server model");
+		expect(
+			await page.evaluate(() => (window as any).__pieDebuggerGateCalls),
+		).toEqual([]);
+
+		await page.evaluate(() => (window as any).__mountGateDebugger(false));
+		await expect
+			.poll(() => filteredModel("debugger-gate-client"))
+			.toContain("client model");
+	});
+
+	test("a player that is not hosted warns about each preloaded tag without a controller", async ({
+		page,
+	}) => {
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+		const warnings: string[] = [];
+		page.on("console", (message) => {
+			if (message.type() === "warning" && message.text().includes("without a controller")) {
+				warnings.push(message.text());
+			}
+		});
+
+		const tag = "pie-no-controller--version-1-0-0";
+		await page.evaluate((tag) => {
+			customElements.define(
+				tag,
+				class extends HTMLElement {
+					set model(value: any) {
+						this.textContent = String(value?.prompt ?? "");
+					}
+				},
+			);
+			// What registerPreloadedElements records for an entry without a controller.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/no-controller@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "player.js",
+			};
+			(window as any).__mountNoControllerPlayer = (id: string, hosted: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = id;
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				player.strategy = "preloaded";
+				player.hosted = hosted;
+				player.env = { mode: "gather", role: "student" };
+				player.config = {
+					id,
+					markup: '<pie-no-controller id="no-controller-model"></pie-no-controller>',
+					elements: { "pie-no-controller": "@pie-element/no-controller@1.0.0" },
+					models: [
+						{ id: "no-controller-model", element: "pie-no-controller", prompt: "authored model" },
+					],
+				};
+				fixture.appendChild(player);
+			};
+			(window as any).__mountNoControllerPlayer("no-controller-hosted", true);
+		}, tag);
+		await expect(page.locator(`#no-controller-hosted ${tag}`)).toHaveText(
+			"authored model",
+			{ timeout: 20_000 },
+		);
+		expect(warnings).toEqual([]);
+
+		await page.evaluate(() => {
+			(window as any).__mountNoControllerPlayer("no-controller-client", false);
+			(window as any).__mountNoControllerPlayer("no-controller-client-2", false);
+		});
+		await expect(page.locator(`#no-controller-client ${tag}`)).toHaveText(
+			"authored model",
+			{ timeout: 20_000 },
+		);
+		await expect(page.locator(`#no-controller-client-2 ${tag}`)).toHaveText(
+			"authored model",
+			{ timeout: 20_000 },
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain(tag);
+	});
+
 	test("backend delivery refreshes rendered models when env changes", async ({
 		page,
 	}) => {
@@ -1877,15 +2026,20 @@ test.describe("item-player strategy regressions", () => {
 		expect(runtimeSupportRequests).toBe(0);
 	});
 
-	test("metadata unsupported does not alter unrelated load errors", async ({
+	test("on runtime support check does not probe metadata for preloaded", async ({
 		page,
 	}) => {
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
 
-		await page.route("**/runtime-support*", async (route) => {
+		let runtimeSupportRequests = 0;
+		// Any metadata URL: a jsDelivr `/runtime-support/+esm` route as well as a
+		// package's `dist/runtime-support.js`.
+		await page.route((url) => url.pathname.includes("runtime-support"), async (route) => {
+			runtimeSupportRequests += 1;
 			await route.fulfill({
 				status: 200,
 				contentType: "application/javascript",
@@ -1941,8 +2095,7 @@ test.describe("item-player strategy regressions", () => {
 		await expect(
 			page.getByText("Error loading elements (preloaded-readiness):"),
 		).toBeVisible({ timeout: 20_000 });
-		await expect(
-			page.getByText("Missing runtime-support metadata"),
-		).not.toBeVisible();
+		await expect(page.getByText("Runtime support metadata")).not.toBeVisible();
+		expect(runtimeSupportRequests).toBe(0);
 	});
 });

@@ -20,6 +20,10 @@
  */
 
 import { DEFAULT_IIFE_BUNDLE_RETRY_CONFIG } from "../loader-config.js";
+import { pieRegistry } from "../pie/registry.js";
+import { Status } from "../pie/types.js";
+import { parsePackageName } from "../pie/utils.js";
+import { parseVersionedTagName } from "../pie/versioned-tag.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -68,21 +72,25 @@ export class ElementLoaderError extends Error {
 
 /**
  * Thrown by `assertRegistered` when any requested tag is missing from
- * `customElements`. Carries enough detail for the host to diagnose what
- * pre-registration step was skipped.
+ * `customElements`. The message names, for each missing tag, the tags its
+ * package (or, without one, its base tag) is registered under.
  */
 export class ElementAssertionError extends Error {
 	override readonly name = "ElementAssertionError";
 	readonly expectedTags: readonly ElementTag[];
 	readonly missingTags: readonly ElementTag[];
+	/** The `window.PIE_REGISTRY` tags `customElements` holds. */
 	readonly currentlyRegisteredTags: readonly ElementTag[];
 
 	constructor(
 		expected: ElementTag[],
 		missing: ElementTag[],
 		currentlyRegistered: ElementTag[],
+		packages: ElementMap = {},
 	) {
-		super(buildAssertionMessage(expected, missing, currentlyRegistered));
+		super(
+			buildAssertionMessage(expected, missing, currentlyRegistered, packages),
+		);
 		this.expectedTags = expected;
 		this.missingTags = missing;
 		this.currentlyRegisteredTags = currentlyRegistered;
@@ -93,16 +101,43 @@ function buildAssertionMessage(
 	expected: ElementTag[],
 	missing: ElementTag[],
 	registered: ElementTag[],
+	packages: ElementMap,
 ): string {
-	const expectedStr = expected.join(", ");
-	const missingStr = missing.join(", ");
-	const registeredStr = registered.length
-		? registered.join(", ")
-		: "(none enumerable)";
+	const details = missing.map((tag) => {
+		const packageName = packageNameOf(packages[tag]);
+		const baseName = parseVersionedTagName(tag).baseName;
+		const related = packageName
+			? registered.filter(
+					(other) => registeredPackageName(other) === packageName,
+				)
+			: registered.filter(
+					(other) => parseVersionedTagName(other).baseName === baseName,
+				);
+		if (!related.includes(baseName) && isRegistered(baseName)) {
+			related.push(baseName);
+		}
+		const subject = packageName ?? baseName;
+		return related.length > 0
+			? `${subject} is registered as [${related.join(", ")}]`
+			: `nothing is registered for ${subject}`;
+	});
 	return (
-		`ElementLoader.assertRegistered: expected [${expectedStr}], ` +
-		`missing [${missingStr}]. customElements contains: [${registeredStr}].`
+		`ElementLoader.assertRegistered: missing [${missing.join(", ")}] ` +
+		`of [${expected.join(", ")}]; ${details.join("; ")}.`
 	);
+}
+
+function packageNameOf(spec: string | undefined): string | undefined {
+	if (!spec) return undefined;
+	try {
+		return parsePackageName(spec).name || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function registeredPackageName(tag: ElementTag): string | undefined {
+	return packageNameOf(pieRegistry()[tag]?.package);
 }
 
 export type BackendOption =
@@ -294,13 +329,22 @@ async function raceWithLoadTimeout(
  * Throws `ElementAssertionError` with diagnostic detail otherwise.
  *
  * Used by hosts that opt into the "preloaded" strategy — they pre-register
- * elements out-of-band and want a loud failure if anything is missing.
+ * elements out-of-band and want a loud failure if anything is missing. An
+ * element map, tag to package spec, lets the error name what each missing
+ * tag's package is registered as.
  */
-export function assertRegistered(tags: ElementTag[]): void {
-	if (!tags || tags.length === 0) return;
-	const missing = tags.filter((tag) => !isRegistered(tag));
+export function assertRegistered(tags: ElementTag[] | ElementMap): void {
+	const packages: ElementMap = Array.isArray(tags) ? {} : (tags ?? {});
+	const expected = Array.isArray(tags) ? tags : Object.keys(packages);
+	if (expected.length === 0) return;
+	const missing = expected.filter((tag) => !isRegistered(tag));
 	if (missing.length === 0) return;
-	throw new ElementAssertionError(tags, missing, snapshotRegisteredTags());
+	throw new ElementAssertionError(
+		expected,
+		missing,
+		snapshotRegisteredTags(),
+		packages,
+	);
 }
 
 // ─── Internals ───────────────────────────────────────────────────────────────
@@ -501,24 +545,17 @@ async function whenDefinedWithTimeout(
 	}
 }
 
+/**
+ * `customElements` cannot be enumerated, so the registered tags are the
+ * `window.PIE_REGISTRY` entries it holds.
+ */
 function snapshotRegisteredTags(): ElementTag[] {
-	if (typeof customElements === "undefined") return [];
-	// Standard `CustomElementRegistry` does not expose iteration. Tests install
-	// a scripted registry with a `__pieSnapshot` extension to make diagnostic
-	// messages assertable. Production falls through to an empty list —
-	// still strictly better than today's "missing tags: X" error which leaks
-	// no registry state at all.
-	const reg = customElements as unknown as {
-		__pieSnapshot?: () => ElementTag[];
-	};
-	if (typeof reg.__pieSnapshot === "function") {
-		try {
-			return reg.__pieSnapshot();
-		} catch {
-			return [];
-		}
-	}
-	return [];
+	if (typeof window === "undefined") return [];
+	return Object.values(pieRegistry())
+		.filter((entry) => entry?.status === Status.loaded)
+		.map((entry) => entry.tagName)
+		.filter((tag) => typeof tag === "string" && isRegistered(tag))
+		.sort();
 }
 
 function extractAdapterReason(

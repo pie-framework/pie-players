@@ -104,6 +104,7 @@ export default defineConfig({
 		lib: {
 			entry: {
 				"pie-item-player": resolve(__dirname, "src/pie-item-player.ts"),
+				preloaded: resolve(__dirname, "src/preloaded.ts"),
 				"components/item-session-debugger-element": resolve(
 					__dirname,
 					"src/components/item-session-debugger-element.ts",

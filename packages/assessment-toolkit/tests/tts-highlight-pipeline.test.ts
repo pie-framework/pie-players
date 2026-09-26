@@ -162,6 +162,110 @@ describe("TTS highlight pipeline", () => {
 		expect(normalized.reason).toContain("could not resolve");
 	});
 
+	test("resolves a plain catalog boundary whose raw offset follows collapsed whitespace", () => {
+		const speechText = "Read the passage.\n        Then answer the question.";
+		const visibleText = "Read the passage. Then answer the question.";
+		const chunk = makeChunk({
+			speechText,
+			visibleText,
+			catalogAlignment: createCatalogSpanAlignment({ speechText, visibleText }),
+		});
+
+		const normalized = normalizeBoundaryEvent(chunk, {
+			chunkId: chunk.id,
+			word: "answer",
+			position: speechText.indexOf("answer"),
+			length: "answer".length,
+			providerOffsetSpace: "plain-spoken-text",
+		});
+
+		expect(normalized).toMatchObject({
+			chunkSpokenStart: visibleText.indexOf("answer"),
+			chunkSpokenEnd: visibleText.indexOf("answer") + "answer".length,
+			confidence: 1,
+		});
+	});
+
+	test("resolves a catalog boundary on a word between decoded XML entities", () => {
+		const speechText = "<speak>X &lt; 2 &amp; Y &gt; 1</speak>";
+		const visibleText = "X < 2 & Y > 1";
+		const chunk = makeChunk({
+			speechText,
+			visibleText,
+			catalogAlignment: createCatalogSpanAlignment({ speechText, visibleText }),
+			offsetSpace: "raw-ssml",
+		});
+
+		const normalized = normalizeBoundaryEvent(chunk, {
+			chunkId: chunk.id,
+			word: "Y",
+			position: speechText.indexOf("Y"),
+			length: 1,
+			providerOffsetSpace: "raw-ssml",
+		});
+
+		expect(normalized).toMatchObject({
+			chunkSpokenStart: visibleText.indexOf("Y"),
+			chunkSpokenEnd: visibleText.indexOf("Y") + 1,
+			confidence: 1,
+		});
+	});
+
+	test("normalizes boundaries identically with and without catalog alignment", () => {
+		const visibleText = "Read the passage. Then pick 2 answers.";
+		const cases = [
+			{
+				speechText: "Read the passage.\n        Then pick two answers.",
+				offsetSpace: "plain-spoken-text",
+			},
+			{
+				speechText:
+					"<speak>Read the <emphasis>passage</emphasis>.\n  Then pick two answers.</speak>",
+				offsetSpace: "raw-ssml",
+			},
+		] as const;
+		const resolvedSpan = (
+			normalized: ReturnType<typeof normalizeBoundaryEvent>,
+		) => ({
+			start: normalized.chunkSpokenStart,
+			end: normalized.chunkSpokenEnd,
+			confidence: normalized.confidence,
+		});
+
+		for (const { speechText, offsetSpace } of cases) {
+			const withCatalog = makeChunk({
+				speechText,
+				visibleText,
+				offsetSpace,
+				catalogAlignment: createCatalogSpanAlignment({
+					speechText,
+					visibleText,
+				}),
+			});
+			const withoutCatalog = makeChunk({
+				speechText,
+				visibleText,
+				offsetSpace,
+			});
+			for (const word of ["Read", "passage", "pick", "two", "answers"]) {
+				const event = {
+					chunkId: "chunk-1",
+					word,
+					position: speechText.indexOf(word),
+					length: word.length,
+					providerOffsetSpace: offsetSpace,
+				};
+				const catalogSpan = resolvedSpan(
+					normalizeBoundaryEvent(withCatalog, event),
+				);
+				expect(catalogSpan).toEqual(
+					resolvedSpan(normalizeBoundaryEvent(withoutCatalog, event)),
+				);
+				expect(catalogSpan.confidence).toBe(1);
+			}
+		}
+	});
+
 	test("resolves readable regions without content surface special cases", () => {
 		const root = document.createElement("div");
 		root.innerHTML = `

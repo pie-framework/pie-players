@@ -87,6 +87,66 @@ describe("registerPreloadedElements", () => {
 		expect(findPieController("pie-hosted--version-1-0-0")).toBeUndefined();
 	});
 
+	test("records the ./browser/controller module for a player that is not hosted", () => {
+		const pkg = uniquePackage();
+		const Element = elementClass();
+		// A module namespace: named exports, no default.
+		const controller = {
+			model: async (model: unknown) => model,
+			outcome: async () => ({ score: 1 }),
+		};
+
+		registerPreloadedElements([
+			{ tag: "pie-local", package: pkg, version: "1.0.0", element: Element, controller },
+		]);
+
+		const tag = "pie-local--version-1-0-0";
+		expect(host().PIE_REGISTRY?.[tag]).toEqual({
+			package: `${pkg}@1.0.0`,
+			status: Status.loaded,
+			tagName: tag,
+			element: Element,
+			controller,
+			bundleType: BundleType.clientPlayer,
+		});
+		expect(findPieController(tag, BundleType.clientPlayer)).toBe(controller);
+		expect(findPieController(tag, BundleType.player)).toBeUndefined();
+	});
+
+	test("accepts a controller module's default export", () => {
+		const pkg = uniquePackage();
+		const controller = { model: async (model: unknown) => model };
+
+		registerPreloadedElements([
+			{
+				tag: "pie-default-controller",
+				package: pkg,
+				version: "1.0.0",
+				element: elementClass(),
+				controller: { default: controller },
+			},
+		]);
+
+		expect(
+			findPieController("pie-default-controller--version-1-0-0", BundleType.clientPlayer),
+		).toBe(controller);
+	});
+
+	test("adds a controller to a tag registered without one and keeps its element", () => {
+		const pkg = uniquePackage();
+		const Element = elementClass();
+		const controller = { model: async (model: unknown) => model };
+		const entry = { tag: "pie-later", package: pkg, version: "1.0.0", element: Element };
+
+		registerPreloadedElements([entry]);
+		registerPreloadedElements([{ ...entry, element: elementClass(), controller }]);
+
+		const registered = host().PIE_REGISTRY?.["pie-later--version-1-0-0"];
+		expect(registered?.element).toBe(Element);
+		expect(registered?.controller).toBe(controller);
+		expect(registered?.bundleType).toBe(BundleType.clientPlayer);
+	});
+
 	test("accepts the ./browser/delivery module namespace", () => {
 		const pkg = uniquePackage();
 		const Element = elementClass();
@@ -159,8 +219,14 @@ describe("registerPreloadedElements", () => {
 	test.each([
 		["a package spec with a version", { package: "@pie-element/x@1.0.0" }, "bare package name"],
 		["an empty version", { version: "" }, "installed version"],
+		["a version range", { version: "^1.0.0" }, "exact"],
+		["a dist-tag", { version: "latest" }, "exact"],
+		["a partial version", { version: "1.0" }, "exact"],
+		["a v-prefixed version", { version: "v1.0.0" }, "exact"],
+		["build metadata", { version: "1.0.0+build.7" }, "exact"],
 		["an empty tag", { tag: "" }, "authored base tag"],
 		["a module without an element class", { element: {} }, "./browser/delivery module"],
+		["a controller without model()", { controller: { outcome: () => ({}) } }, "./browser/controller module"],
 	])("rejects %s before registering anything", (_label, override, message) => {
 		const pkg = uniquePackage();
 		const valid = { tag: "pie-valid", package: pkg, version: "1.0.0", element: elementClass() };

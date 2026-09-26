@@ -65,6 +65,7 @@ export enum BundleType {
 	player = "player.js", // Elements only (no controllers)
 	clientPlayer = "client-player.js", // Elements + controllers
 	editor = "editor.js", // Editor UI
+	esm = "esm", // Browser ESM modules; controllers when the loader loaded them
 }
 
 /**

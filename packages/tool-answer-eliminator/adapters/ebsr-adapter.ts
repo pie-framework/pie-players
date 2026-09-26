@@ -1,19 +1,13 @@
+import { parseVersionedTagName } from "@pie-players/pie-players-shared/pie/tag-names";
 import type { ChoiceAdapter } from "./choice-adapter.js";
 import { MultipleChoiceAdapter } from "./multiple-choice-adapter.js";
 
 const EBSR_MULTIPLE_CHOICE_TAG = "ebsr-multiple-choice";
-const EBSR_MULTIPLE_CHOICE_VERSIONED_PREFIX = `${EBSR_MULTIPLE_CHOICE_TAG}--version-`;
 
-const isEbsrMultipleChoiceElement = (element: Element | null): boolean => {
-	if (!(element instanceof HTMLElement)) {
-		return false;
-	}
-	const tagName = element.tagName.toLowerCase();
-	return (
-		tagName === EBSR_MULTIPLE_CHOICE_TAG ||
-		tagName.startsWith(EBSR_MULTIPLE_CHOICE_VERSIONED_PREFIX)
-	);
-};
+const isEbsrMultipleChoiceElement = (element: Element | null): boolean =>
+	element instanceof HTMLElement &&
+	parseVersionedTagName(element.tagName.toLowerCase()).baseName ===
+		EBSR_MULTIPLE_CHOICE_TAG;
 
 const findEbsrMultipleChoicePart = (
 	root: HTMLElement,

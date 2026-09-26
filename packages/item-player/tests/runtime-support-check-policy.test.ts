@@ -11,8 +11,8 @@ describe("runtime-support check policy", () => {
 		expect(shouldProbeRuntimeSupport("esm", "off")).toBe(false);
 	});
 
-	test("honors runtimeSupportCheck for preloaded", () => {
-		expect(shouldProbeRuntimeSupport("preloaded", "on")).toBe(true);
+	test("ignores runtimeSupportCheck for preloaded, which loads nothing", () => {
+		expect(shouldProbeRuntimeSupport("preloaded", "on")).toBe(false);
 		expect(shouldProbeRuntimeSupport("preloaded", "off")).toBe(false);
 	});
 });

@@ -1,7 +1,6 @@
 import PieItemPlayer from "./PieItemPlayer.svelte";
 import {
 	attemptCustomElementDefine,
-	initializeMathRendering,
 	installContentStyles,
 	auditContentStyles,
 } from "@pie-players/pie-players-shared";
@@ -16,28 +15,7 @@ import {
 import contentStyles from "@pie-players/pie-theme/components.css?raw";
 
 export type * from "./types.js";
-
-let itemPlayerMathReadyPromise: Promise<void> | null = null;
-
-/**
- * Installs the math renderer that IIFE and preloaded elements expect on
- * window. The players call it before loading those elements, never for ESM
- * ones, so a page that only loads ESM elements never fetches it. A host can
- * call it earlier to fetch math rendering ahead of the first item.
- */
-export function ensureItemPlayerMathRenderingReady(): Promise<void> {
-	if (typeof window === "undefined") {
-		return Promise.resolve();
-	}
-	if (!itemPlayerMathReadyPromise) {
-		itemPlayerMathReadyPromise = initializeMathRendering().catch((error) => {
-			// Cleared so the next call retries instead of replaying the failure.
-			itemPlayerMathReadyPromise = null;
-			throw error;
-		});
-	}
-	return itemPlayerMathReadyPromise;
-}
+export { ensureItemPlayerMathRenderingReady } from "./math-rendering-ready.js";
 
 // Installed at import time, alongside element registration, so the stylesheet is
 // in the document before any instance renders — no unstyled first paint. A host

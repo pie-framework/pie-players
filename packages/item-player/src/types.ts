@@ -89,4 +89,6 @@ export interface PieItemSessionDebuggerElement extends HTMLElement {
 	session?: unknown;
 	env?: unknown;
 	score?: unknown;
+	/** The player's `hosted`: the panel runs no controller over a hosted player's models. */
+	hosted?: boolean;
 }

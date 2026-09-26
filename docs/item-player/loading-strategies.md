@@ -53,7 +53,7 @@ player.loaderOptions = {
 | `moduleResolution` | `esm` | `"url"` | Module resolution mode: `"url"` (fully-qualified CDN imports) or `"import-map"` |
 | `view` | `esm` | resolved from `env.mode` | ESM view: `"delivery"`, `"author"`, or `"print"` |
 | `loadControllers` | `esm` | `true`; `false` for a hosted player outside author mode | Whether to load PIE controllers alongside elements. A player is hosted when `hosted` is set or `backend.delivery` is enabled, and a hosted player resolves no controller. The section pre-warm resolves the default the same way |
-| `runtimeSupportCheck` | `iife`, `esm`, `preloaded` | `"off"` | When `"on"`, reads optional `./runtime-support` metadata and surfaces unsupported strategy/view hints before loading |
+| `runtimeSupportCheck` | `esm` | `"off"` | When `"on"`, reads each package's optional `./runtime-support` metadata through `esmCdnProvider` and surfaces unsupported view hints before loading |
 
 ## Strategy details
 
@@ -69,7 +69,7 @@ Loads IIFE bundles from the bundle host by injecting `<script>` tags into the do
 
 After loading, elements are registered in `window.PIE_REGISTRY` and defined as custom elements with versioned tag names (e.g. `multiple-choice--version-9-9-1`).
 
-IIFE bundles resolve `@pie-lib/math-rendering` to `window["@pie-lib/math-rendering"]`, so the player installs its MathJax renderer there before the first bundle loads. A host that wants the MathJax module fetched sooner calls `ensureItemPlayerMathRenderingReady()` from `@pie-players/pie-item-player` at startup.
+IIFE bundles resolve `@pie-lib/math-rendering` to `window["@pie-lib/math-rendering"]`, so the player installs its MathJax renderer there before the first bundle loads. A host that wants the MathJax module fetched sooner calls `ensureItemPlayerMathRenderingReady()` from `@pie-players/pie-item-player` at startup. A host that loads IIFE element bundles itself, outside the player, awaits `ensureItemPlayerMathRenderingReady()` before the first bundle evaluates, because the bundle reads the renderer as it evaluates; `@pie-players/pie-item-player/preloaded` exports it without defining the player. A renderer already on `window` stays.
 
 ```ts
 player.strategy = "iife";
@@ -139,11 +139,39 @@ The player assumes all required PIE custom elements are already defined in the b
 ></pie-item-player>
 ```
 
-When a preloaded package is imported (it registers `window.PIE_PRELOADED_ELEMENTS`), `strategy="preloaded"` is satisfied without any further loading. The player calls `assertRegistered(tags)` from the `ElementLoader` primitive to confirm every required tag is in `customElements`; if any tag is missing, an `ElementAssertionError` is thrown with the expected / missing / currently-registered tag sets — there is no silent fall-back to bundle fetching.
+Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`. The player replaces every authored spec of a recorded package with that version on its runtime copy of the config, then calls `assertRegistered` from the `ElementLoader` primitive for the versioned tags that result. A missing tag throws `ElementAssertionError`, naming each missing tag and the tags its package is registered as; there is no fall-back to bundle fetching.
+
+### Registering elements from npm
+
+A host that installs element packages registers them with `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`, before the player renders. That entry defines no element and installs no stylesheet. It ships in `@pie-players/pie-item-player`, so the host declares that package and the element packages alone:
+
+```ts
+import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
+import * as delivery from "@pie-element/multiple-choice/browser/delivery";
+import * as controller from "@pie-element/multiple-choice/browser/controller";
+import manifest from "../package.json"; // pins "@pie-element/multiple-choice": "13.4.0-next.13"
+
+registerPreloadedElements([
+  {
+    tag: "pie-element-multiple-choice",
+    package: "@pie-element/multiple-choice",
+    version: manifest.dependencies["@pie-element/multiple-choice"],
+    element: delivery,
+    controller,
+  },
+]);
+await import("@pie-players/pie-item-player");
+```
+
+- `tag` is the base tag the content authors. The element registers under its versioned form, `pie-element-multiple-choice--version-13-4-0-next-13`.
+- `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package.
+- A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
+- `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.
+- The call is synchronous and validates every entry before registering any. A tag that is already defined keeps its definition.
 
 ### Preloaded player builds
 
-The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time, so `<pie-item-player strategy="preloaded">` can render them without any network requests.
+The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time through `registerPreloadedElements`, without controllers, so a hosted `<pie-item-player strategy="preloaded">` renders them without fetching bundles. See [`docs/preloaded-player/readme.md`](../preloaded-player/readme.md).
 
 Build a preloaded bundle locally:
 

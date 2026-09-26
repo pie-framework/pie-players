@@ -7,5 +7,5 @@
 ESM element builds bring their own renderer, so the item player and the section
 player's preload install `window["@pie-lib/math-rendering"]` only for IIFE and
 preloaded elements. Importing `@pie-players/pie-item-player` no longer starts
-that load either; IIFE hosts that want it fetched at startup call
-`ensureItemPlayerMathRenderingReady()`.
+that load either, so a host that loads IIFE element bundles itself must await
+`ensureItemPlayerMathRenderingReady()` before the first bundle evaluates.

@@ -121,6 +121,9 @@ PIE uses versioned tag names to allow multiple versions side-by-side:
 ```
 
 This is necessary because custom elements can't be redefined once registered.
+`parseVersionedTagName` from `pie/tag-names` splits a runtime tag back into its
+base name and encoded version, so code that matches an element by tag compares
+`baseName`.
 
 ## Custom Element Tag Validation
 

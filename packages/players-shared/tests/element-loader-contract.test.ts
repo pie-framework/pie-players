@@ -38,9 +38,14 @@ import {
 import {
 	createEsmBackend,
 	mapEsmViewElements,
+	resolveEsmRuntimeSupportUrl,
 	type EsmBackendTestSeams,
+	type EsmCdnProvider,
 } from "../src/loaders/esm-adapter.js";
-import { BundleType } from "../src/pie/types.js";
+import { BundleType, Status } from "../src/pie/types.js";
+import { writeRegistryEntry } from "../src/pie/registry.js";
+import { findPieController } from "../src/pie/scoring.js";
+import { registerPreloadedElements } from "../src/loaders/preloaded-registration.js";
 import { ElementPackagePolicyError } from "../src/loaders/element-package-policy.js";
 
 // ─── Test harness ────────────────────────────────────────────────────────────
@@ -112,10 +117,6 @@ function installScriptedCustomElements(): ScriptedRegistry {
 				pending.set(tag, resolve);
 			});
 		},
-		// Non-standard hook the primitive uses for diagnostic messages.
-		__pieSnapshot(): string[] {
-			return [...registry.keys()].sort();
-		},
 	};
 	g.customElements = scriptedRegistry;
 
@@ -175,6 +176,40 @@ function createMockDocument(): Document {
 		_scripts: scripts,
 	} as unknown as Document;
 }
+
+/** A document whose import maps `querySelectorAll` reports, the host's first. */
+function createImportMapDocument(
+	hostImports: Record<string, string>[] = [],
+): Document {
+	const maps: Array<{ type?: string; textContent?: string }> = hostImports.map(
+		(imports) => ({
+			type: "importmap",
+			textContent: JSON.stringify({ imports }),
+		}),
+	);
+	return {
+		head: {
+			appendChild: (el: unknown) => {
+				maps.push(el as (typeof maps)[number]);
+				return el;
+			},
+		},
+		createElement: () => ({}),
+		querySelector: () => null,
+		querySelectorAll: (selector: string) =>
+			(selector === 'script[type="importmap"]'
+				? maps.filter((script) => script.type === "importmap")
+				: []) as unknown as NodeListOf<Element>,
+	} as unknown as Document;
+}
+
+const REACT_SHARED_SPECIFIERS = [
+	"react",
+	"react/jsx-runtime",
+	"react/jsx-dev-runtime",
+	"react-dom",
+	"react-dom/client",
+];
 
 beforeEach(() => {
 	installHtmlElementBase();
@@ -619,24 +654,39 @@ describe("assertRegistered — synchronous contract", () => {
 		).not.toThrow();
 	});
 
+	const registerLoaded = (tag: string, spec: string) => {
+		g.customElements?.define(tag, createConstructorFor(tag));
+		writeRegistryEntry({
+			package: spec,
+			status: Status.loaded,
+			tagName: tag,
+			bundleType: BundleType.player,
+		});
+	};
+
+	const assertionErrorOf = (
+		tags: Parameters<typeof assertRegistered>[0],
+	): ElementAssertionError | undefined => {
+		try {
+			assertRegistered(tags);
+		} catch (err) {
+			return err as ElementAssertionError;
+		}
+		return undefined;
+	};
+
 	test("throws ElementAssertionError with expected, missing, and currently-registered tags", () => {
-		const registry = installScriptedCustomElements();
-		registry.define("pie-a--version-1-0-0", createConstructorFor("pie-a"));
-		registry.define(
+		registerLoaded("pie-a--version-1-0-0", "@pie-element/a@1.0.0");
+		registerLoaded(
 			"pie-unrelated--version-9-9-9",
-			createConstructorFor("pie-unrelated"),
+			"@pie-element/unrelated@9.9.9",
 		);
 
-		let error: ElementAssertionError | undefined;
-		try {
-			assertRegistered([
-				"pie-a--version-1-0-0",
-				"pie-b--version-2-0-0",
-				"pie-c--version-3-0-0",
-			]);
-		} catch (err) {
-			error = err as ElementAssertionError;
-		}
+		const error = assertionErrorOf([
+			"pie-a--version-1-0-0",
+			"pie-b--version-2-0-0",
+			"pie-c--version-3-0-0",
+		]);
 
 		expect(error).toBeInstanceOf(ElementAssertionError);
 		expect(error?.expectedTags).toEqual([
@@ -648,17 +698,54 @@ describe("assertRegistered — synchronous contract", () => {
 			"pie-b--version-2-0-0",
 			"pie-c--version-3-0-0",
 		]);
-		expect(error?.currentlyRegisteredTags).toContain("pie-a--version-1-0-0");
-		expect(error?.currentlyRegisteredTags).toContain(
+		expect(error?.currentlyRegisteredTags).toEqual([
+			"pie-a--version-1-0-0",
 			"pie-unrelated--version-9-9-9",
-		);
+		]);
 		expect(error?.message).toContain("missing");
 		expect(error?.message).toContain("pie-b--version-2-0-0");
 		expect(error?.message).toContain("pie-c--version-3-0-0");
 	});
 
+	test("names the tags a missing tag's package is registered under", () => {
+		registerLoaded("pie-b--version-1-9-0", "@pie-element/b@1.9.0");
+		registerLoaded(
+			"pie-unrelated--version-9-9-9",
+			"@pie-element/unrelated@9.9.9",
+		);
+
+		const error = assertionErrorOf({
+			"pie-b--version-2-0-0": "@pie-element/b@2.0.0",
+			"pie-c--version-3-0-0": "@pie-element/c@3.0.0",
+		});
+
+		expect(error?.missingTags).toEqual([
+			"pie-b--version-2-0-0",
+			"pie-c--version-3-0-0",
+		]);
+		expect(error?.message).toBe(
+			"ElementLoader.assertRegistered: missing [pie-b--version-2-0-0, pie-c--version-3-0-0] " +
+				"of [pie-b--version-2-0-0, pie-c--version-3-0-0]; " +
+				"@pie-element/b is registered as [pie-b--version-1-9-0]; " +
+				"nothing is registered for @pie-element/c.",
+		);
+	});
+
+	test("without packages, names the tags registered under a missing tag's base tag", () => {
+		registerLoaded("pie-b--version-1-9-0", "@pie-element/b@1.9.0");
+		g.customElements?.define("pie-b", createConstructorFor("pie-b"));
+
+		const error = assertionErrorOf(["pie-b--version-2-0-0", "pie-c"]);
+
+		expect(error?.message).toContain(
+			"pie-b is registered as [pie-b--version-1-9-0, pie-b]",
+		);
+		expect(error?.message).toContain("nothing is registered for pie-c");
+	});
+
 	test("empty tag list is a no-op", () => {
 		expect(() => assertRegistered([])).not.toThrow();
+		expect(() => assertRegistered({})).not.toThrow();
 	});
 });
 
@@ -2532,5 +2619,307 @@ describe("empty-config parity across backends", () => {
 		);
 
 		expect(importerCalls).toBe(0);
+	});
+});
+
+// ─── PIE_REGISTRY — one writer for every registration path ──────────────────
+
+describe("PIE_REGISTRY entries", () => {
+	const registryOf = () =>
+		(g.window as { PIE_REGISTRY?: Record<string, any> }).PIE_REGISTRY ?? {};
+
+	test("writeRegistryEntry keeps the first loaded entry of a defined tag and fills only what it lacks", () => {
+		const tag = "pie-first--version-1-0-0";
+		const First = createConstructorFor(tag);
+		g.customElements?.define(tag, First);
+		const controller = { model: async (model: unknown) => model } as any;
+
+		const first = writeRegistryEntry({
+			package: "@pie-element/first@1.0.0",
+			status: Status.loaded,
+			tagName: tag,
+			element: First,
+			bundleType: BundleType.player,
+		});
+		const filled = writeRegistryEntry({
+			package: "@pie-element/first@1.0.0",
+			status: Status.loaded,
+			tagName: tag,
+			element: createConstructorFor(tag),
+			controller,
+			config: { configured: true },
+			bundleType: BundleType.clientPlayer,
+		});
+		const kept = writeRegistryEntry({
+			package: "@pie-element/first@1.0.0",
+			status: Status.loaded,
+			tagName: tag,
+			element: createConstructorFor(tag),
+			controller: { model: async () => ({}) } as any,
+			bundleType: BundleType.esm,
+		});
+
+		expect(first.controller).toBeUndefined();
+		expect(filled).toEqual({
+			package: "@pie-element/first@1.0.0",
+			status: Status.loaded,
+			tagName: tag,
+			element: First,
+			controller,
+			config: { configured: true },
+			bundleType: BundleType.clientPlayer,
+		});
+		expect(kept).toBe(filled);
+		expect(registryOf()[tag]).toBe(filled);
+	});
+
+	test("writeRegistryEntry replaces a loading entry and one whose tag is not defined", () => {
+		const loading = writeRegistryEntry({
+			package: "@pie-element/loading@1.0.0",
+			status: Status.loading,
+			tagName: "pie-loading--version-1-0-0",
+		});
+		const loaded = { ...loading, status: Status.loaded };
+		expect(writeRegistryEntry(loaded)).toBe(loaded);
+
+		const replacement = { ...loaded, package: "@pie-element/loading@1.0.1" };
+		expect(writeRegistryEntry(replacement)).toBe(replacement);
+	});
+
+	test("a player.js IIFE load keeps the controller an earlier client-player.js load recorded", async () => {
+		const tag = "pie-kept--version-1-0-0";
+		const controller = {
+			model: async (model: unknown) => model,
+			outcome: async () => ({}),
+		};
+		const Element = createConstructorFor(tag);
+		const bundle = { "@pie-element/kept": { Element, controller } };
+		const backends = [
+			createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+			}),
+			createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.player,
+				needsControllers: false,
+			}),
+		];
+		for (const backend of backends) {
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			seams.replaceLoadBundleScript(async () => {
+				(g.window as { pie?: unknown }).pie = { default: bundle };
+			});
+			await backend.load(
+				{ [tag]: "@pie-element/kept@1.0.0" },
+				{ doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+			);
+		}
+
+		expect(registryOf()[tag]?.bundleType).toBe(BundleType.clientPlayer);
+		expect(findPieController(tag, BundleType.clientPlayer)).toBe(
+			controller as any,
+		);
+	});
+
+	test("an ESM load records BundleType.esm", async () => {
+		const tag = "pie-esm-entry--version-1-0-0";
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			loadControllers: false,
+		});
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		seams.replaceImporter(async () => ({ default: createConstructorFor(tag) }));
+
+		await backend.load(
+			{ [tag]: "@pie-element/esm-entry@1.0.0" },
+			{ doc: createMockDocument() },
+		);
+
+		expect(registryOf()[tag]?.bundleType).toBe(BundleType.esm);
+	});
+
+	test("an ESM load of a tag already registered keeps that entry and fills its controller", async () => {
+		const tag = "pie-mc--version-13-2-0";
+		const Preloaded = createConstructorFor(tag);
+		registerPreloadedElements([
+			{
+				tag: "pie-mc",
+				package: "@pie-element/multiple-choice",
+				version: "13.2.0",
+				element: Preloaded,
+			},
+		]);
+		const controller = { model: async (model: unknown) => model };
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+		});
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		seams.replaceImporter(async (specifier) =>
+			specifier.includes("/controller/")
+				? controller
+				: { default: createConstructorFor(tag) },
+		);
+
+		await backend.load(
+			{ [tag]: "@pie-element/multiple-choice@13.2.0" },
+			{ doc: createMockDocument() },
+		);
+
+		const entry = registryOf()[tag];
+		expect(entry?.element).toBe(Preloaded);
+		expect(entry?.controller).toBe(controller);
+		expect(entry?.bundleType).toBe(BundleType.esm);
+	});
+});
+
+// ─── ESM adapter — import maps already in the document ──────────────────────
+
+describe("ESM adapter — existing import maps", () => {
+	const reactBackend = () => {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			loadControllers: false,
+		});
+		const injected: string[] = [];
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		seams.observeImportMapInjection((json) => {
+			injected.push(json);
+		});
+		seams.replacePackageMetadataLoader(async () => ({
+			pie: {
+				browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" },
+			},
+		}));
+		seams.replaceImporter(async (specifier) => ({
+			default: createConstructorFor(specifier),
+		}));
+		return { backend, injected };
+	};
+
+	test("injects no map when the page's own map already maps every shared specifier", async () => {
+		const doc = createImportMapDocument([
+			Object.fromEntries(
+				REACT_SHARED_SPECIFIERS.map((specifier) => [
+					specifier,
+					`https://host.test/${specifier}.js`,
+				]),
+			),
+		]);
+		const { backend, injected } = reactBackend();
+
+		await backend.load(
+			{ "pie-own-map--version-1-0-0": "@pie-element/own-map@1.0.0" },
+			{ doc },
+		);
+
+		expect(injected).toEqual([]);
+		expect(g.customElements?.get("pie-own-map--version-1-0-0")).toBeDefined();
+	});
+
+	test("injects only the specifiers the page leaves unmapped", async () => {
+		const doc = createImportMapDocument([
+			{ react: "https://host.test/react.js" },
+		]);
+		const { backend, injected } = reactBackend();
+
+		await backend.load(
+			{ "pie-partial-map--version-1-0-0": "@pie-element/partial-map@1.0.0" },
+			{ doc },
+		);
+
+		expect(injected).toHaveLength(1);
+		expect(Object.keys(JSON.parse(injected[0]).imports).sort()).toEqual(
+			REACT_SHARED_SPECIFIERS.filter(
+				(specifier) => specifier !== "react",
+			).sort(),
+		);
+	});
+
+	test("a second player's loader on the page injects no specifier the first mapped", async () => {
+		const doc = createImportMapDocument();
+		const first = reactBackend();
+		const second = reactBackend();
+
+		await first.backend.load(
+			{ "pie-first-player--version-1-0-0": "@pie-element/first-player@1.0.0" },
+			{ doc },
+		);
+		await second.backend.load(
+			{
+				"pie-second-player--version-1-0-0": "@pie-element/second-player@1.0.0",
+			},
+			{ doc },
+		);
+
+		expect(first.injected).toHaveLength(1);
+		expect(second.injected).toEqual([]);
+	});
+});
+
+// ─── ESM runtime-support URL ─────────────────────────────────────────────────
+
+describe("resolveEsmRuntimeSupportUrl", () => {
+	const spec = "@pie-element/math-inline@12.1.1";
+	const customProvider = (
+		overrides: Partial<EsmCdnProvider> = {},
+	): EsmCdnProvider => ({
+		name: "local",
+		packageJsonUrl: (pv) => `https://cdn.test/${pv}/package.json`,
+		browserViewUrl: (pv, view) =>
+			`https://cdn.test/${pv}/dist/browser/${view}/index.js`,
+		browserControllerUrl: (pv) =>
+			`https://cdn.test/${pv}/dist/browser/controller/index.js`,
+		sharedDependencyUrl: (dep, version) => `https://esm.sh/${dep}@${version}`,
+		...overrides,
+	});
+
+	test("names the published file on jsDelivr and esm.sh", () => {
+		expect(
+			resolveEsmRuntimeSupportUrl(spec, {
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm/",
+			}),
+		).toBe(`https://cdn.jsdelivr.net/npm/${spec}/dist/runtime-support.js`);
+		expect(
+			resolveEsmRuntimeSupportUrl(spec, { cdnBaseUrl: "https://esm.sh" }),
+		).toBe(`https://raw.esm.sh/${spec}/dist/runtime-support.js`);
+	});
+
+	test("takes a custom provider's runtimeSupportUrl", () => {
+		expect(
+			resolveEsmRuntimeSupportUrl(spec, {
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: customProvider({
+					runtimeSupportUrl: (pv) => `https://meta.test/${pv}.js`,
+				}),
+			}),
+		).toBe(`https://meta.test/${spec}.js`);
+	});
+
+	test("derives the file from a custom provider's package root", () => {
+		expect(
+			resolveEsmRuntimeSupportUrl(spec, {
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: customProvider(),
+			}),
+		).toBe(`https://cdn.test/${spec}/dist/runtime-support.js`);
+		expect(
+			resolveEsmRuntimeSupportUrl(spec, {
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: customProvider({
+					packageJsonUrl: (pv) => `https://cdn.test/meta?package=${pv}`,
+				}),
+			}),
+		).toBeUndefined();
 	});
 });

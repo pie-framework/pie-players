@@ -24,8 +24,6 @@
 	 * `register` call below are the whole opt-in.
 	 */
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-tool-text-to-speech';
-	import '@pie-players/pie-tool-theme';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
 	import {
 		createPackagedToolRegistry,

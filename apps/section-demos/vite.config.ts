@@ -14,46 +14,42 @@ import { workspaceDistFullReload } from "./vite-plugins/workspace-dist-full-relo
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load local ESM CDN plugin for testing packages locally before publishing
-// Enable with: LOCAL_ESM_CDN=true bun run dev
+/**
+ * `dev:cdn` (`LOCAL_ESM_CDN=true`) serves pie-elements-ng from this dev server,
+ * so the ESM strategy loads the local ng build. The checkout is
+ * `PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`.
+ */
 async function createLocalEsmCdnPlugin() {
-	// Only load if explicitly enabled
 	if (process.env.LOCAL_ESM_CDN !== "true") {
 		return null;
 	}
 
-	const siblingRepoPath = path.resolve(__dirname, "../../../pie-elements-ng");
-	const playersRepoPath = path.resolve(__dirname, "../..");
-
-	// Check if sibling repo exists
-	if (!fs.existsSync(siblingRepoPath)) {
-		console.log(
-			"[local-esm-cdn] Sibling pie-elements-ng not found, skipping plugin",
+	const pieElementsNgRoot = path.resolve(
+		process.env.PIE_ELEMENTS_NG_PATH ||
+			path.resolve(__dirname, "../../../pie-elements-ng"),
+	);
+	if (!fs.existsSync(pieElementsNgRoot)) {
+		throw new Error(
+			`[local-esm-cdn] pie-elements-ng not found at ${pieElementsNgRoot}; set PIE_ELEMENTS_NG_PATH`,
 		);
-		return null;
 	}
-
-	try {
-		// Import from local-esm-cdn in this repo
-		const adapterPath = path.resolve(
-			__dirname,
-			"../local-esm-cdn/dist/adapters/vite.js",
+	const adapterPath = path.resolve(
+		__dirname,
+		"../local-esm-cdn/dist/adapters/vite.js",
+	);
+	if (!fs.existsSync(adapterPath)) {
+		throw new Error(
+			`[local-esm-cdn] ${adapterPath} not found; run bun run --cwd apps/local-esm-cdn build`,
 		);
-		const { createVitePlugin } = await import(adapterPath);
-
-		console.log("[local-esm-cdn] Plugin enabled - testing prod-like CDN mode");
-
-		// Configure the local ESM CDN Vite plugin
-		return createVitePlugin({
-			pieElementsNgRoot: siblingRepoPath,
-			piePlayersRoot: playersRepoPath,
-			esmShBaseUrl: "https://esm.sh",
-			debug: process.env.LOCAL_ESM_CDN_DEBUG === "true",
-		});
-	} catch (err) {
-		console.warn("[local-esm-cdn] Failed to load plugin:", err);
-		return null;
 	}
+	const { createVitePlugin } = await import(adapterPath);
+	console.log(`[local-esm-cdn] serving pie-elements-ng from ${pieElementsNgRoot}`);
+	return createVitePlugin({
+		pieElementsNgRoot,
+		piePlayersRoot: path.resolve(__dirname, "../.."),
+		esmShBaseUrl: "https://esm.sh",
+		debug: process.env.LOCAL_ESM_CDN_DEBUG === "true",
+	});
 }
 
 export default (async () => {
@@ -73,6 +69,12 @@ export default (async () => {
 			tailwindcss(),
 			localEsmCdn,
 		].filter(Boolean),
+		define: {
+			// Read by `withDemoLoaderOptions`: ESM element loads go to this origin.
+			"import.meta.env.VITE_LOCAL_ESM_CDN": JSON.stringify(
+				localEsmCdn ? "true" : "",
+			),
+		},
 		server: {
 			port: 5300,
 			open: true,

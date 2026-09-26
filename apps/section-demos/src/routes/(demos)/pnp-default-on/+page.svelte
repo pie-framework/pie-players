@@ -15,9 +15,6 @@
 	 * smoke fixture that wants to assert the auto-default chain.
 	 */
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-tool-graph';
-	import '@pie-players/pie-tool-text-to-speech';
-	import '@pie-players/pie-tool-theme';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity } from '@pie-players/pie-players-shared/types';
 	import type { PageData } from './$types';

@@ -4,10 +4,9 @@
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
-		ensureRegistered,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
-	import { BundleType } from '@pie-players/pie-players-shared/pie';
+	import { preloadDemoElements } from '@pie-players/demo-ui/preloaded';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 	import '@pie-players/pie-item-player';
@@ -31,7 +30,7 @@
 	let selectedPlayerType = $state<'iife' | 'esm' | 'preloaded'>('iife');
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
-	let loadedPreloadedBundleKey = $state<string | null>(null);
+	let preloadAttempt = 0;
 	let esmLoadPending = $state(false);
 	let esmLoadAttempt = 0;
 	let esmLoadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -76,79 +75,6 @@
 		}, ESM_LOAD_TIMEOUT_MS);
 	}
 
-	function buildBundleKey(packages: string[]): string {
-		return [...packages]
-			.filter((pkg) => typeof pkg === "string" && pkg.length > 0)
-			.sort()
-			.join("+");
-	}
-
-	const latestResolutionCache = new Map<string, Promise<string>>();
-
-	async function resolveLatestPackageSpec(spec: string): Promise<string> {
-		if (!spec.endsWith("@latest")) return spec;
-		const atIndex = spec.lastIndexOf("@");
-		if (atIndex <= 0) return spec;
-		const packageName = spec.slice(0, atIndex);
-		if (!latestResolutionCache.has(packageName)) {
-			const promise = (async () => {
-				const response = await fetch(
-					`/api/packages?package=${encodeURIComponent(packageName)}&search=0`,
-				);
-				if (!response.ok) return spec;
-				const versions = (await response.json()) as unknown;
-				if (!Array.isArray(versions)) return spec;
-				const concreteVersion = versions.find(
-					(version): version is string =>
-						typeof version === "string" &&
-						version !== "latest" &&
-						!version.includes("-"),
-				);
-				if (concreteVersion) {
-					return `${packageName}@${concreteVersion}`;
-				}
-				const fallbackVersion = versions.find(
-					(version): version is string =>
-						typeof version === "string" && version !== "latest",
-				);
-				return fallbackVersion ? `${packageName}@${fallbackVersion}` : spec;
-			})().catch(() => spec);
-			latestResolutionCache.set(packageName, promise);
-		}
-		return latestResolutionCache.get(packageName)!;
-	}
-
-	function buildPreloadedVersionMap(specs: string[]): Record<string, string> {
-		const map: Record<string, string> = {};
-		for (const spec of specs) {
-			const atIndex = spec.lastIndexOf("@");
-			if (atIndex <= 0) continue;
-			const packageName = spec.slice(0, atIndex);
-			map[packageName] = spec;
-		}
-		return map;
-	}
-
-	async function resolveElementPackagesForPreload(
-		elements: Record<string, string>,
-	): Promise<Record<string, string>> {
-		const resolvedEntries = await Promise.all(
-			Object.entries(elements).map(async ([tagName, packageSpec]) => {
-				const resolvedSpec = await resolveLatestPackageSpec(String(packageSpec));
-				return [tagName, resolvedSpec] as const;
-			}),
-		);
-		return Object.fromEntries(resolvedEntries);
-	}
-
-	function normalizeTagWithVersion(tagName: string, packageSpec: string): string {
-		const atIndex = packageSpec.lastIndexOf("@");
-		if (atIndex <= 0) return tagName;
-		const version = packageSpec.slice(atIndex + 1).trim();
-		if (!version || tagName.includes("--version-")) return tagName;
-		return `${tagName}--version-${version.replace(/\./g, "-")}`;
-	}
-
 	// Set properties imperatively when config or env changes
 	$effect(() => {
 		const currentConfig = $configStore;
@@ -190,53 +116,16 @@
 			clearEsmLoadTimer();
 		}
 		if (selectedPlayerType !== 'preloaded') return;
-		const currentConfig = $configStore;
-		const elementPackages = Object.values(currentConfig?.elements || {}) as string[];
-		if (!elementPackages.length) {
-			preloadedError = 'No elements were found to preload';
-			return;
-		}
-		preloadedReady = false;
-		void (async () => {
-			try {
-				const resolvedElements = await resolveElementPackagesForPreload(
-					(currentConfig?.elements || {}) as Record<string, string>,
-				);
-				const resolvedPackages = Object.values(resolvedElements);
-				const bundleKey = buildBundleKey(resolvedPackages);
-				if (loadedPreloadedBundleKey === bundleKey) {
-					preloadedReady = true;
-					return;
-				}
-				const globalPreloadedMap = (window as any).PIE_PRELOADED_ELEMENTS ?? {};
-				(window as any).PIE_PRELOADED_ELEMENTS = {
-					...globalPreloadedMap,
-					...buildPreloadedVersionMap(resolvedPackages)
-				};
-				const preloadedElements = Object.fromEntries(
-					Object.entries(resolvedElements).map(([tagName, packageSpec]) => [
-						normalizeTagWithVersion(tagName, packageSpec),
-						packageSpec,
-					]),
-				);
-				// Pre-register elements via the deep ElementLoader primitive.
-				// This drives the `strategy="preloaded"` demo path: the player
-				// itself runs `assertRegistered` and mounts without hitting
-				// the network.
-				await ensureRegistered(preloadedElements, {
-					backend: {
-						kind: 'iife',
-						bundleHost: 'https://proxy.pie-api.com/bundles/',
-						bundleType: BundleType.clientPlayer,
-						needsControllers: true,
-					},
-				});
-				loadedPreloadedBundleKey = bundleKey;
-				preloadedReady = true;
-			} catch (error) {
+		const elements = ($configStore?.elements ?? {}) as Record<string, string>;
+		const attempt = ++preloadAttempt;
+		preloadDemoElements([elements])
+			.then(() => {
+				if (attempt === preloadAttempt) preloadedReady = true;
+			})
+			.catch((error) => {
+				if (attempt !== preloadAttempt) return;
 				preloadedError = error instanceof Error ? error.message : String(error);
-			}
-		})();
+			});
 	});
 
 	$effect(() => {

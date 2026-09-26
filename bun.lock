@@ -88,10 +88,14 @@
       "name": "@pie-players/demo-ui",
       "version": "0.1.0",
       "dependencies": {
+        "@pie-players/pie-item-player": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "semver": "^7.8.5",
         "svelte": "^5.57.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.14",
+        "@types/semver": "^7.8.0",
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
       },
@@ -191,11 +195,13 @@
       "name": "@pie-players/section-demos",
       "version": "0.1.83",
       "dependencies": {
+        "@pie-element/mc-populated-blank": "0.3.0-next.16",
         "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-calculator-geogebra": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-default-tool-loaders": "workspace:*",
+        "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-print-player": "workspace:*",
         "@pie-players/pie-section-player": "workspace:*",
@@ -229,6 +235,7 @@
         "@sveltejs/kit": "^2.70.3",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@tailwindcss/vite": "^4.3.3",
+        "@types/bun": "^1.4.2",
         "@types/node": "^26.6.2",
         "daisyui": "^5.7.22",
         "svelte": "^5.57.0",
@@ -1323,6 +1330,8 @@
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.144.0", "", {}, "sha512-nuhZIOLuI6TFQ32I/WnUx+SCPY7SdSKwgnFHydAuoS1+Z4BRcaP+RRJmGzl9lw+0OFF7UmaESf7KQRXaNLHypg=="],
+
+    "@pie-element/mc-populated-blank": ["@pie-element/mc-populated-blank@0.3.0-next.16", "", {}, "sha512-+gIUoizfAuP0gWHDOHtYw/ZGybhWwXGxOT6PKSeJ39aaXtvmFmBe5B9qpltNmFaqa+Fkob+Wb8hZF/x9uaVANw=="],
 
     "@pie-lib/math-rendering-module": ["@pie-lib/math-rendering-module@6.0.0", "", {}, "sha512-qXI7z1E8blazVDijE3ul5S25hWZGx0fRAEpuPUuNhs0R4usFJzPbg2DrAX0pEPd4Fxuz6yQkCknVtIqYWPXbSQ=="],
 

@@ -9,7 +9,6 @@
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 	import "@pie-players/pie-section-player/components/section-player-vertical-element";
-	import "@pie-players/pie-tool-theme";
 	import DemoRuntimeChrome from "$lib/demo-runtime/components/DemoRuntimeChrome.svelte";
 	import { createToggleSpeedTtsToolRegistry } from "$lib/demo-runtime/custom-tools/tts-toggle-speed";
 	import {
@@ -28,6 +27,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS,
 	} from "$lib/demo-runtime/demo-page-helpers";
+	import { withDemoLoaderOptions } from "$lib/demo-runtime/demo-player-config";
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from "$lib/demo-runtime/section-demos-default-tts";
 	import type { PageData } from "./$types";
 
@@ -96,11 +96,11 @@
 	let pnpDebuggerElement: any = $state(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	const sectionPlayerConfig = {
+	const sectionPlayerConfig = withDemoLoaderOptions({
 		loaderConfig: {
 			trackPageActions: false,
 		},
-	};
+	});
 
 	const resolvedSectionForPlayer = $derived.by(() => {
 		const section = data.section as any;

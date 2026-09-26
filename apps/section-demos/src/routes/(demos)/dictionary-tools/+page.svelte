@@ -14,12 +14,9 @@
 	 * server.
 	 */
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-tool-dictionary';
-	import '@pie-players/pie-tool-picture-dictionary';
 	// The selection door. The annotation strip is the gateway that offers a lookup on
 	// the learner's current selection; the composition layer pairs the two, so this
 	// page only has to make the strip available.
-	import '@pie-players/pie-tool-annotation-toolbar';
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity } from '@pie-players/pie-players-shared/types';

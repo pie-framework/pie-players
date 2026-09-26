@@ -69,6 +69,8 @@ Loads IIFE bundles from the bundle host by injecting `<script>` tags into the do
 
 After loading, elements are registered in `window.PIE_REGISTRY` and defined as custom elements with versioned tag names (e.g. `multiple-choice--version-9-9-1`).
 
+IIFE bundles resolve `@pie-lib/math-rendering` to `window["@pie-lib/math-rendering"]`, so the player installs its MathJax renderer there before the first bundle loads. A host that wants the MathJax module fetched sooner calls `ensureItemPlayerMathRenderingReady()` from `@pie-players/pie-item-player` at startup.
+
 ```ts
 player.strategy = "iife";
 player.loaderOptions = {
@@ -107,6 +109,8 @@ player.loaderOptions = {
 ```
 
 The view defaults to `"delivery"` unless `mode="author"` (which resolves to `"author"`), or explicitly overridden via `loaderOptions.view`.
+
+ESM element builds bring their own math rendering, so the player installs no renderer and never fetches its MathJax module. An ESM element still uses a renderer the host installs on `window["@pie-lib/math-rendering"]`.
 
 For esm.sh, pass both the provider name and base URL:
 

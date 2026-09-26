@@ -71,18 +71,18 @@ export interface ToolProviderConfig<TConfig = any> {
  * const registry = new ToolProviderRegistry();
  *
  * // Register a provider with auth fetcher
- * registry.register('desmos-calculator', {
- *   provider: new DesmosToolProvider(),
+ * registry.register('example-provider', {
+ *   provider: new ExampleToolProvider(),
  *   config: {},
  *   lazy: true,
  *   authFetcher: async () => {
- *     const response = await fetch('/api/desmos/token');
+ *     const response = await fetch('/api/example/token');
  *     return response.json();
  *   },
  * });
  *
  * // Get provider (auto-initializes if lazy)
- * const desmosProvider = await registry.getProvider('desmos-calculator');
+ * const provider = await registry.getProvider('example-provider');
  * ```
  */
 export class ToolProviderRegistry {

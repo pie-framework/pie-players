@@ -208,5 +208,5 @@ middleware, and use a key/tier licensed for the deployed application.
 - [`../../packages/tts-client-server/README.md`](../../packages/tts-client-server/README.md)
   — `ServerTTSProvider` configuration, including `assetOrigins` and
   `includeAuthOnAssetFetch`
-- [`../../packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts`](../../packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts)
+- [`../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts`](../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts)
   — Desmos provider config (`apiKey`) and browser-delivery boundary

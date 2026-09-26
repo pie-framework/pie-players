@@ -5,7 +5,7 @@ import type {
 	LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "./ToolProviderApi.js";
+import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 export type CortexToolProviderConfig = CalculatorToolProviderInitConfig;
 

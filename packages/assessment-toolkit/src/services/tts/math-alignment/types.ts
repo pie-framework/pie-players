@@ -61,12 +61,15 @@ export type BoundaryOffsetSpace =
 	| "raw-ssml"
 	| "unsupported";
 
-export interface SpeechAlignmentToken {
-	id: string;
+export interface AlignmentTextToken {
 	text: string;
 	normalized: string;
 	start: number;
 	end: number;
+}
+
+export interface SpeechAlignmentToken extends AlignmentTextToken {
+	id: string;
 	sourceStart: number;
 	sourceEnd: number;
 	coordinateSystem: BoundaryCoordinateSystem;

@@ -10,6 +10,10 @@ const encodeVersionForTag = (version: string): string =>
 		.replace(/[^0-9A-Za-z-]/g, "-")
 		.replace(/-{2,}/g, "-");
 
+/**
+ * Split a runtime tag into its base name and the encoded version that follows
+ * `--version-`, when it has one.
+ */
 export function parseVersionedTagName(tagName: string): {
 	baseName: string;
 	existingEncodedVersion?: string;

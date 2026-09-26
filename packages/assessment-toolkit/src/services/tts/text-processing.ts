@@ -338,8 +338,3 @@ export const collectVisibleTextAndMap = (
 	}
 	return { text, map };
 };
-
-export const extractVisibleText = (
-	element: Element,
-	options?: TextProcessingOptions,
-): string => collectVisibleTextAndMap(element, options).text;

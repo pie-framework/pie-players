@@ -27,7 +27,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"test": "bun test tests",
+		"test": "bun run build && bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint ."
@@ -39,6 +39,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@happy-dom/global-registrator": "^20.11.15",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",

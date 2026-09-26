@@ -1,25 +1,15 @@
-import { extractSpokenText } from "./ssml/spoken-text.js";
 import {
-	createSpeechAlignmentTokenPattern,
-	normalizeTextForSpeech,
-} from "./text-processing.js";
+	type SpeechSourceTokenization,
+	tokenizeAlignmentText,
+	tokenizeSpeechSource,
+} from "./math-alignment/speech-tokenizer.js";
+import type { AlignmentTextToken } from "./math-alignment/types.js";
+import { normalizeTextForSpeech } from "./text-processing.js";
 
 export type CatalogChunkPlaybackMode =
 	| "exact-word"
 	| "anchor-span"
 	| "region-fallback";
-
-export type BoundaryOffsetMode =
-	| "plain-spoken-text"
-	| "raw-ssml"
-	| "unsupported";
-
-export interface CatalogTextToken {
-	text: string;
-	normalized: string;
-	start: number;
-	end: number;
-}
 
 export interface CatalogSpanAnchor {
 	spokenStart: number;
@@ -30,16 +20,11 @@ export interface CatalogSpanAnchor {
 }
 
 export interface CatalogSpanAlignment {
-	speechText: string;
-	spokenText: string;
+	speech: SpeechSourceTokenization;
 	visibleText: string;
 	playbackMode: CatalogChunkPlaybackMode;
-	boundaryOffsetMode: BoundaryOffsetMode;
 	anchors: CatalogSpanAnchor[];
 	confidence: number;
-	spokenTokens: CatalogTextToken[];
-	visibleTokens: CatalogTextToken[];
-	rawToSpokenOffsetMap: Map<number, number>;
 }
 
 interface MatchCandidate {
@@ -49,28 +34,9 @@ interface MatchCandidate {
 	score: number;
 }
 
-// Shared Unicode-aware tokenizer (see `createSpeechAlignmentTokenPattern`), so
-// accented Latin and non-Latin words tokenize the same way here as in the math
-// speech tokenizer. LIMITATION (i18n): the phrase table below is still English,
-// so multi-word operator phrases ("plus or minus", "divided by") only align for
-// English speech; other locales degrade to coarse region highlighting. A fresh
-// pattern per call because of the global flag's mutable `lastIndex`.
-const TOKEN_PATTERN = createSpeechAlignmentTokenPattern();
-
-const NUMERIC_WORDS = new Map<string, string>([
-	["zero", "0"],
-	["one", "1"],
-	["two", "2"],
-	["three", "3"],
-	["four", "4"],
-	["five", "5"],
-	["six", "6"],
-	["seven", "7"],
-	["eight", "8"],
-	["nine", "9"],
-	["ten", "10"],
-]);
-
+// LIMITATION (i18n): the phrase table is English, so multi-word operator
+// phrases ("plus or minus", "divided by") only align for English speech; other
+// locales degrade to coarse region highlighting.
 const SPOKEN_PHRASE_TARGETS: Array<{
 	phrase: string[];
 	visible: string;
@@ -92,27 +58,9 @@ const SPOKEN_PHRASE_TARGETS: Array<{
 	{ phrase: ["plus"], visible: "+", score: 5 },
 ];
 
-const tokenize = (text: string): CatalogTextToken[] => {
-	const tokens: CatalogTextToken[] = [];
-	for (const match of text.matchAll(TOKEN_PATTERN)) {
-		const value = match[0];
-		const start = match.index ?? 0;
-		tokens.push({
-			text: value,
-			normalized: value.toLowerCase(),
-			start,
-			end: start + value.length,
-		});
-	}
-	return tokens;
-};
-
-const normalizedTokenValue = (token: CatalogTextToken): string =>
-	NUMERIC_WORDS.get(token.normalized) || token.normalized;
-
 const createCandidates = (
-	spokenTokens: CatalogTextToken[],
-	visibleTokens: CatalogTextToken[],
+	spokenTokens: AlignmentTextToken[],
+	visibleTokens: AlignmentTextToken[],
 ): MatchCandidate[] => {
 	const candidates: MatchCandidate[] = [];
 	for (let spokenIndex = 0; spokenIndex < spokenTokens.length; spokenIndex++) {
@@ -121,9 +69,10 @@ const createCandidates = (
 			visibleIndex < visibleTokens.length;
 			visibleIndex++
 		) {
-			const spokenValue = normalizedTokenValue(spokenTokens[spokenIndex]);
-			const visibleValue = normalizedTokenValue(visibleTokens[visibleIndex]);
-			if (spokenValue === visibleValue) {
+			if (
+				spokenTokens[spokenIndex].normalized ===
+				visibleTokens[visibleIndex].normalized
+			) {
 				candidates.push({
 					spokenStartToken: spokenIndex,
 					spokenEndToken: spokenIndex + 1,
@@ -152,7 +101,9 @@ const createCandidates = (
 				visibleIndex < visibleTokens.length;
 				visibleIndex++
 			) {
-				if (visibleTokens[visibleIndex].normalized !== phraseTarget.visible) {
+				// Glyph targets compare against the visible text as written, so a
+				// visible number word ("two") never stands in for the digit "2".
+				if (visibleTokens[visibleIndex].text !== phraseTarget.visible) {
 					continue;
 				}
 				candidates.push({
@@ -168,8 +119,8 @@ const createCandidates = (
 };
 
 const computeAnchors = (
-	spokenTokens: CatalogTextToken[],
-	visibleTokens: CatalogTextToken[],
+	spokenTokens: AlignmentTextToken[],
+	visibleTokens: AlignmentTextToken[],
 ): CatalogSpanAnchor[] => {
 	const candidates = createCandidates(spokenTokens, visibleTokens).sort(
 		(left, right) =>
@@ -233,8 +184,8 @@ const computeAnchors = (
 
 const scoreConfidence = (
 	anchors: CatalogSpanAnchor[],
-	spokenTokens: CatalogTextToken[],
-	visibleTokens: CatalogTextToken[],
+	spokenTokens: AlignmentTextToken[],
+	visibleTokens: AlignmentTextToken[],
 ): number => {
 	if (anchors.length === 0) return 0;
 	const tokenCoverage =
@@ -251,22 +202,22 @@ export const createCatalogSpanAlignment = (args: {
 	speechText: string;
 	visibleText: string;
 }): CatalogSpanAlignment => {
-	const extracted = extractSpokenText(args.speechText);
+	const speech = tokenizeSpeechSource({ speechText: args.speechText });
 	const visibleText = normalizeTextForSpeech(args.visibleText);
-	const spokenText = extracted.spokenText;
-	const spokenTokens = tokenize(spokenText);
-	const visibleTokens = tokenize(visibleText);
-	const anchors = extracted.unsupportedSemantic
+	const spokenTokens = speech.tokens;
+	const visibleTokens = tokenizeAlignmentText(visibleText);
+	const anchors = speech.unsupportedSemantic
 		? []
 		: computeAnchors(spokenTokens, visibleTokens);
 	const confidence = scoreConfidence(anchors, spokenTokens, visibleTokens);
-	const isExact = spokenText === visibleText && spokenText.length > 0;
+	const isExact =
+		speech.spokenText === visibleText && speech.spokenText.length > 0;
 	const hasShortSingleExactAnchor =
 		anchors.length === 1 &&
 		anchors[0].score === 10 &&
 		spokenTokens.length <= 2 &&
 		visibleTokens.length <= 2;
-	const playbackMode: CatalogChunkPlaybackMode = extracted.unsupportedSemantic
+	const playbackMode: CatalogChunkPlaybackMode = speech.unsupportedSemantic
 		? "region-fallback"
 		: isExact
 			? "exact-word"
@@ -275,143 +226,14 @@ export const createCatalogSpanAlignment = (args: {
 					? "anchor-span"
 					: "region-fallback"
 				: "region-fallback";
-	const boundaryOffsetMode: BoundaryOffsetMode = extracted.unsupportedSemantic
-		? "unsupported"
-		: extracted.hasMarkup
-			? "raw-ssml"
-			: "plain-spoken-text";
 
 	return {
-		speechText: args.speechText,
-		spokenText,
+		speech,
 		visibleText,
 		playbackMode,
-		boundaryOffsetMode,
 		anchors,
 		confidence,
-		spokenTokens,
-		visibleTokens,
-		rawToSpokenOffsetMap: extracted.rawToSpokenOffsetMap,
 	};
-};
-
-const findTokenAtOffset = (
-	tokens: CatalogTextToken[],
-	offset: number,
-): CatalogTextToken | null =>
-	tokens.find((token) => token.start <= offset && offset < token.end) || null;
-
-const normalizeBoundaryWord = (word?: string): string | null => {
-	if (!word) return null;
-	if (/^<[^>]+>$/.test(word.trim())) return null;
-	const token = tokenize(word)[0];
-	if (!token) return null;
-	return NUMERIC_WORDS.get(token.normalized) || token.normalized;
-};
-
-const candidateMatchesBoundaryWord = (
-	alignment: CatalogSpanAlignment,
-	candidate: { start: number; length: number } | null,
-	boundaryWord?: string,
-): boolean => {
-	const normalizedBoundary = normalizeBoundaryWord(boundaryWord);
-	if (!candidate || !normalizedBoundary) return false;
-	const token = findTokenAtOffset(alignment.spokenTokens, candidate.start);
-	if (!token) return false;
-	return normalizedTokenValue(token) === normalizedBoundary;
-};
-
-const mapRawOffsetToSpokenOffset = (
-	alignment: CatalogSpanAlignment,
-	position: number,
-): number | null => {
-	const direct = alignment.rawToSpokenOffsetMap.get(position);
-	if (direct !== undefined) return direct;
-	for (let offset = position; offset < alignment.speechText.length; offset++) {
-		const mapped = alignment.rawToSpokenOffsetMap.get(offset);
-		if (mapped !== undefined) return mapped;
-		if (alignment.speechText[offset] === ">") break;
-	}
-	return null;
-};
-
-const resolveRawBoundaryOffset = (
-	alignment: CatalogSpanAlignment,
-	position: number,
-	safeLength: number,
-): { start: number; length: number } | null => {
-	const mappedStart = mapRawOffsetToSpokenOffset(alignment, position);
-	if (mappedStart === null) return null;
-	const mappedEnd = mapRawOffsetToSpokenOffset(
-		alignment,
-		Math.max(position, position + safeLength - 1),
-	);
-	const token = findTokenAtOffset(alignment.spokenTokens, mappedStart);
-	const mappedLength =
-		mappedEnd !== null && mappedEnd >= mappedStart
-			? mappedEnd - mappedStart + 1
-			: token
-				? token.end - mappedStart
-				: safeLength;
-	return { start: mappedStart, length: Math.max(1, mappedLength) };
-};
-
-const resolvePlainBoundaryOffset = (
-	alignment: CatalogSpanAlignment,
-	position: number,
-	safeLength: number,
-): { start: number; length: number } | null => {
-	if (position < 0 || position >= alignment.spokenText.length) return null;
-	const token = findTokenAtOffset(alignment.spokenTokens, position);
-	if (!token) return null;
-	return {
-		start: position,
-		length: Math.min(safeLength, token.end - position),
-	};
-};
-
-export const resolveSpokenBoundaryOffset = (
-	alignment: CatalogSpanAlignment,
-	position: number,
-	length = 1,
-	boundaryWord?: string,
-): { start: number; length: number } | null => {
-	if (
-		alignment.boundaryOffsetMode === "unsupported" ||
-		!Number.isFinite(position)
-	) {
-		return null;
-	}
-	const safeLength = Math.max(1, Number.isFinite(length) ? length : 1);
-	if (boundaryWord && /^<[^>]+>$/.test(boundaryWord.trim())) return null;
-	if (alignment.boundaryOffsetMode === "raw-ssml") {
-		const rawCandidate = resolveRawBoundaryOffset(
-			alignment,
-			position,
-			safeLength,
-		);
-		const plainCandidate = resolvePlainBoundaryOffset(
-			alignment,
-			position,
-			safeLength,
-		);
-		if (boundaryWord) {
-			if (candidateMatchesBoundaryWord(alignment, rawCandidate, boundaryWord)) {
-				return rawCandidate;
-			}
-			if (
-				candidateMatchesBoundaryWord(alignment, plainCandidate, boundaryWord)
-			) {
-				return plainCandidate;
-			}
-			if (normalizeBoundaryWord(boundaryWord)) return null;
-		}
-		return rawCandidate || plainCandidate;
-	}
-	return (
-		resolvePlainBoundaryOffset(alignment, position, safeLength) ||
-		resolveRawBoundaryOffset(alignment, position, safeLength)
-	);
 };
 
 export const resolveVisibleSpanForBoundary = (

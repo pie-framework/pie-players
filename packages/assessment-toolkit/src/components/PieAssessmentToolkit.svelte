@@ -582,11 +582,15 @@ const DEFAULT_ENV = {
 		}
 	}
 
+	// Errors republished from a coordinator the host constructed. See the forward
+	// below.
+	const hostCoordinatorErrors = new WeakSet<FrameworkErrorModel>();
+
 	$effect(() => {
 		const detach = frameworkErrorBus.subscribeFrameworkErrors((model) => {
 			console.error(formatFrameworkErrorForConsole(model), model.cause);
 
-			if (isBootstrapKind(model.kind)) {
+			if (isBootstrapKind(model.kind) && !hostCoordinatorErrors.has(model)) {
 				const rendered = applyErrorRenderer(model);
 				frameworkErrorModel = model;
 				frameworkErrorTitle = rendered.title;
@@ -600,6 +604,25 @@ const DEFAULT_ENV = {
 		return () => {
 			detach();
 		};
+	});
+
+	// A coordinator the host constructed reports into its own bus, which the
+	// subscriber above never sees, so its failures reach this CE's `framework-error`
+	// event and `onFrameworkError` prop only through this forward. An owned
+	// coordinator already shares the bus, and an inherited one is delivered by the
+	// toolkit that owns its runtime. The forwarded errors skip the initialization
+	// banner: it replaces the section, and the host that constructed the
+	// coordinator handles that coordinator's failures.
+	$effect(() => {
+		const hostCoordinator = coordinator;
+		if (!hostCoordinator || effectiveCoordinator !== hostCoordinator) return;
+		if (typeof hostCoordinator.subscribeFrameworkErrors !== "function") return;
+		return untrack(() =>
+			hostCoordinator.subscribeFrameworkErrors((model) => {
+				hostCoordinatorErrors.add(model);
+				frameworkErrorBus.reportFrameworkError(model);
+			}),
+		);
 	});
 
 	$effect(() => {
@@ -1586,8 +1609,16 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		if (!host) return;
 		const localHost = host;
-		const guardLocalRuntime = (event: Event): boolean =>
-			isLocalToCurrentRuntime(event.target);
+		// The shells' private channel to their runtime. A claimed event goes no
+		// further: nothing above the runtime that handles it has a use for it,
+		// and hosts would otherwise receive every registration and raw session
+		// change on `document`. An event from another runtime's shell keeps
+		// bubbling toward the toolkit that owns it.
+		const claimLocalEvent = (event: Event): boolean => {
+			if (!isLocalToCurrentRuntime(event.target)) return false;
+			event.stopPropagation();
+			return true;
+		};
 		const bindings: Array<{
 			name: HostRuntimeEventName;
 			handler: HostRuntimeEventHandler;
@@ -1595,7 +1626,7 @@ const DEFAULT_ENV = {
 			{
 				name: PIE_REGISTER_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.element || !detail?.itemId) return;
 					const changed = sectionEngine.register(detail);
@@ -1608,7 +1639,7 @@ const DEFAULT_ENV = {
 			{
 				name: PIE_UNREGISTER_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.itemId) return;
 					const changed = detail?.element
@@ -1625,7 +1656,7 @@ const DEFAULT_ENV = {
 			{
 				name: PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalItemSessionChangedDetail>(event);
 					if (!detail?.itemId) return;
 					const result = sectionEngine.updateItemSession(detail.itemId, detail.session);
@@ -1640,7 +1671,7 @@ const DEFAULT_ENV = {
 			{
 				name: PIE_INTERNAL_CONTENT_LOADED_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalContentLoadedDetail>(event);
 					if (!detail?.itemId) return;
 					sectionEngine.handleContentLoaded({
@@ -1655,7 +1686,7 @@ const DEFAULT_ENV = {
 			{
 				name: PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalItemPlayerErrorDetail>(event);
 					if (!detail?.itemId) return;
 					sectionEngine.handleItemPlayerError({
@@ -1673,7 +1704,7 @@ const DEFAULT_ENV = {
 				// route carries data rather than a decision.
 				name: PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalFormativeActionDetail>(event);
 					if (!detail?.itemId) return;
 					if (detail.action !== "check" && detail.action !== "retry") return;
@@ -1690,7 +1721,7 @@ const DEFAULT_ENV = {
 				// port through the same event.
 				name: PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 				handler: (event: Event) => {
-					if (!guardLocalRuntime(event)) return;
+					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalMediaTimeSourceDetail>(event);
 					if (!detail?.renderableId) return;
 					if (detail.action !== "attach" && detail.action !== "detach") return;

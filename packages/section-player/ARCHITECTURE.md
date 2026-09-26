@@ -314,6 +314,28 @@ The following are considered non-structural updates and must preserve identity/s
 
 If an update changes the section composition structure (add/remove/reorder/new IDs), remount behavior can be valid.
 
+## Event delivery
+
+The toolkit's events (`session-changed`, `composition-changed`,
+`runtime-owned`, `runtime-inherited`, `toolkit-ready`, `section-ready`)
+reach the layout element and `document` by native bubbling alone, so a
+listener on either receives each dispatch once. No section-player
+component re-dispatches them: a Svelte custom element's
+`addEventListener` also subscribes to the component's own events, so a
+re-dispatch reaches every listener on that element a second time. The
+base, kernel and layout forwards that did so delivered these events to
+the layout element three times until 2026-09. `framework-error` follows
+the contract below.
+
+The shells' events for their runtime (`pie-register`,
+`pie-unregister`, `pie-item-session-changed`, `pie-content-loaded`,
+`pie-item-player-error`, `pie-formative-action`,
+`pie-media-time-source`) stop at the toolkit that handles them. A raw
+item-player `session-changed` stops at its `<pie-item-shell>`, which
+drops it when it repeats the last event that shell forwarded, and
+otherwise forwards it to the runtime and, unless it carries only
+metadata, as `item-session-changed`.
+
 ## Framework error contract
 
 `framework-error` is the canonical error event for any failure that
@@ -334,6 +356,12 @@ Single-fire delivery (callback / bus)
   `pie-section-player-kernel-host`) and `pie-section-player-base`
   forward `onFrameworkError` through `effectiveRuntime →
   pie-section-player-base → pie-assessment-toolkit`.
+- A coordinator the host passes as `runtime.coordinator` reports into
+  a bus of its own. The toolkit subscribes to it and republishes each
+  error on its bus, so those errors reach the same subscriber; the
+  host coordinator's own hooks still receive them. They skip the
+  toolkit's initialization banner, which replaces the section: the host
+  that constructed the coordinator handles its failures.
 
 DOM event (single-emit)
 - The `framework-error` *DOM event* on the layout CE host delivers
@@ -343,15 +371,15 @@ DOM event (single-emit)
   and re-feeds the detail into the section runtime engine — the
   engine's `dom-event-bridge` then dispatches a (non-bubbling)
   `framework-error` directly on the layout CE host. Outside listeners
-  on the layout host therefore see exactly one emit per error.
+  on the layout host therefore see exactly one emit per error, and
+  `document` sees none.
   Direct listeners attached to `<pie-assessment-toolkit>` itself are
   unaffected (the toolkit dispatch reaches them before the kernel
   listener runs). The kernel does **not** re-invoke the
   `onFrameworkError` callback for the intercepted event, so callback
-  delivery is also single-fire. The single-emit contract is pinned by
-  [`tests/section-player-framework-error-dual-emit.test.ts`](tests/section-player-framework-error-dual-emit.test.ts).
-  The previous dual-emit was removed in the broad architecture review
-  compat sweep.
+  delivery is also single-fire.
+  [`tests/section-player-event-delivery.spec.ts`](tests/section-player-event-delivery.spec.ts)
+  pins both counts on every layout element.
 
 Two-tier precedence
 - `runtime.onFrameworkError` wins over the top-level

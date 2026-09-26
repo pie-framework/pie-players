@@ -360,15 +360,8 @@
 		logger.warn(model.message, cause);
 	}
 
-	$effect(() => {
-		const current = readiness.current;
-		if (current.status !== "rejected") return;
-		untrack(() => reportWarmupFailure(current.error));
-	});
-
-	$effect(() => {
-		if (readiness.current.status !== "rejected") return;
-		const { stage, cause } = describeWarmupFailure(readiness.current.error);
+	function dispatchWarmupFailure(error: unknown): void {
+		const { stage, cause } = describeWarmupFailure(error);
 		logger.error(formatElementLoadError(stage, cause));
 		let backendForTelemetry: ReturnType<typeof buildBackendConfigFromProps> | null =
 			null;
@@ -390,6 +383,18 @@
 			bundleType: describeBundleType(backendForTelemetry),
 			bundleHost: describeBundleHost(backendForTelemetry),
 			renderablesCount: preloadedRenderables.length,
+		});
+	}
+
+	// One report per rejection. The report reads the props it describes
+	// untracked, so a re-render that hands the pane new objects while the warmup
+	// stays rejected does not repeat it.
+	$effect(() => {
+		const current = readiness.current;
+		if (current.status !== "rejected") return;
+		untrack(() => {
+			reportWarmupFailure(current.error);
+			dispatchWarmupFailure(current.error);
 		});
 	});
 

@@ -1541,8 +1541,9 @@ section-player kernel intercepts the toolkit's bubbled emit at
 layout host sees only the canonical engine-bridge emit. Direct
 listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
 own emit (the toolkit dispatch reaches them before the kernel listener
-runs). The single-emit contract is pinned by
-`packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`.
+runs). A coordinator the host passes in reports through the same
+surfaces. `packages/section-player/tests/section-player-event-delivery.spec.ts`
+pins these counts.
 The layout host emits one `framework-error` DOM event per framework error.
 
 Hosts should listen to `pie-stage-change` (with the readiness detail also

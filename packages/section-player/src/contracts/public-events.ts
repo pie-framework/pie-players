@@ -10,15 +10,14 @@
  * the engine's DOM-event bridge dispatches `pie-stage-change`,
  * `pie-loading-complete`, and `framework-error`.
  *
- * **Kernel-side Svelte forwards (not engine-routed).** The
- * composition / session / runtime-tier family
- * (`composition-changed`, `session-changed`, `runtime-owned`,
- * `runtime-inherited`) is forwarded by the kernel's Svelte
- * `createEventDispatcher` from `<pie-section-player-base>` events; it
- * does not flow through the engine. This split is intentional: the
- * engine owns lifecycle and error reporting, while composition /
- * session forwarding stays in section-player because the shape is
- * section-player-specific and the engine has no opinion on it.
+ * **Toolkit events (not engine-routed).** The composition / session /
+ * runtime-tier family (`composition-changed`, `session-changed`,
+ * `runtime-owned`, `runtime-inherited`) is dispatched by
+ * `<pie-assessment-toolkit>` and bubbles through the layout CE host to
+ * `document`; no section-player component re-dispatches it, so each
+ * listener receives each dispatch once. It does not flow through the
+ * engine: the engine owns lifecycle and error reporting, and has no
+ * opinion on composition or session shape.
  *
  * **`framework-error` single-emit on the layout host.**
  * `<pie-assessment-toolkit>` nested inside a layout CE still
@@ -28,9 +27,9 @@
  * emit at `<pie-section-player-base>` and calls
  * `event.stopPropagation()`, leaving the engine-bridge emit on the
  * layout host as the single canonical DOM surface for
- * section-player consumers. The single-emit contract is pinned by
- * `tests/section-player-framework-error-dual-emit.test.ts`. The
- * layout host does not receive duplicate framework-error events.
+ * section-player consumers. `tests/section-player-event-delivery.spec.ts`
+ * pins one delivery per error on the layout host and none on
+ * `document`.
  *
  * Lifecycle should be consumed through canonical events:
  *   - `readiness-change` → `pie-stage-change` (the readiness phase

@@ -40,6 +40,7 @@ export {
 } from "./context/runtime-context-consumer.js";
 export {
 	catalogOwnerContextFor,
+	catalogSourceSignature,
 	type CatalogOwnerContext,
 	type CatalogOwnerIdentity,
 	type CatalogOwnerKind,

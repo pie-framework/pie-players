@@ -837,14 +837,14 @@ Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
   framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
   package-internal `FrameworkErrorBus` and the `onFrameworkError`
   callback prop deliver each error exactly once regardless of wrapper
-  depth. The `framework-error` *DOM event* on the outer layout CE
-  also delivers each error exactly once: the kernel listener at
-  `<pie-section-player-base>` intercepts the toolkit's bubbled emit
-  and calls `event.stopPropagation()`, leaving only the canonical
-  engine-bridge emit on the layout host. The single-emit contract is
-  pinned by `tests/section-player-framework-error-dual-emit.test.ts`.
-  Direct listeners attached to `<pie-assessment-toolkit>` itself
-  still see the toolkit's own emit.
+  depth, including errors from a coordinator the host passes as
+  `runtime.coordinator`. The `framework-error` *DOM event* on the outer
+  layout CE also delivers each error exactly once: the kernel listener at
+  `<pie-section-player-base>` stops the toolkit's bubbled emit, and the
+  engine dispatches the error on the layout host without bubbling, so it
+  does not reach `document`. `tests/section-player-event-delivery.spec.ts`
+  pins these counts. Direct listeners attached to `<pie-assessment-toolkit>`
+  itself still see the toolkit's own emit.
 
 Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
 the top-level prop):
@@ -933,11 +933,12 @@ controller commits pending element sessions before item navigation, before
 The player also commits when an item shell tears down and when the page goes
 hidden.
 
-The commit reaches the controller, and the controller's own
-`PIE_ITEM_SESSION_CHANGED_EVENT` is what reaches a host. A raw `session-changed`
-does not leave a section: `<pie-item-shell>` stops it and re-dispatches the
-normalized event, so a host listening on `document` for `session-changed`
-receives nothing from inside a section player, before this change or after it.
+A committed response travels like any other. A raw element `session-changed`
+does not leave its `<pie-item-shell>`, which re-dispatches it as the normalized
+`item-session-changed` (`PIE_ITEM_SESSION_CHANGED_EVENT`); the toolkit then
+publishes the section's canonical `session-changed`. Both bubble through the
+layout element to `document`, and a listener on either receives each dispatch
+once.
 Host code persists from the controller's events or from its session snapshot.
 
 Navigation inside a section keeps every item mounted, so nothing is discarded

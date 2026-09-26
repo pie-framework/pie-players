@@ -347,9 +347,20 @@ export function normalizeAndValidateToolsConfig(
 	input?: Partial<CanonicalToolsConfig> | null,
 	options: ToolConfigValidationOptions = {},
 ): ToolConfigValidationResult {
-	const strictness = normalizeToolConfigStrictness(options.strictness);
-	const source = options.source ?? "tools";
-	const registryTools = getRegistryToolMap(options.toolRegistry);
+	const result = collectToolConfigDiagnostics(input, options.toolRegistry);
+	reportToolConfigDiagnostics(result.diagnostics, options);
+	return result;
+}
+
+/**
+ * The normalization and diagnostics of {@link normalizeAndValidateToolsConfig},
+ * without reporting: nothing is printed or thrown.
+ */
+export function collectToolConfigDiagnostics(
+	input: Partial<CanonicalToolsConfig> | null | undefined,
+	toolRegistry: ToolRegistry | null | undefined,
+): ToolConfigValidationResult {
+	const registryTools = getRegistryToolMap(toolRegistry);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
 
@@ -413,21 +424,39 @@ export function normalizeAndValidateToolsConfig(
 		hasRemovedTtsKey,
 		diagnostics,
 	);
-	if (hasRemovedTtsKey) {
-		throwValidationError(
-			diagnostics.filter((entry) => entry.code === "tools.removedProviderKey"),
-			source,
-		);
+
+	return {
+		config: nextConfig,
+		diagnostics,
+	};
+}
+
+/**
+ * Report diagnostics as {@link normalizeAndValidateToolsConfig} does: a removed
+ * provider key throws at every strictness, `"warn"` prints every diagnostic, and
+ * `"error"` throws the blocking ones or, when there are none, prints the rest.
+ */
+export function reportToolConfigDiagnostics(
+	diagnostics: ToolConfigDiagnostic[],
+	options: Pick<ToolConfigValidationOptions, "strictness" | "source"> = {},
+): void {
+	const strictness = normalizeToolConfigStrictness(options.strictness);
+	const source = options.source ?? "tools";
+	const removedKeys = diagnostics.filter(
+		(entry) => entry.code === "tools.removedProviderKey",
+	);
+	if (removedKeys.length > 0) {
+		throwValidationError(removedKeys, source);
 	}
 
 	if (strictness === "warn") {
 		emitWarnings(diagnostics, source);
 	}
-	// Severity decides what `strictness: "error"` rejects. Every diagnostic this
-	// function raised was `"error"` until `tools.registryUnavailable`, which
-	// reports that validation could not run rather than that the config is wrong —
-	// throwing on it would turn "no registry supplied" from a host's existing,
-	// working setup into a construction failure.
+	// Severity decides what `strictness: "error"` rejects. Every diagnostic was
+	// `"error"` until `tools.registryUnavailable`, which reports that validation
+	// could not run rather than that the config is wrong — throwing on it would
+	// turn "no registry supplied" from a host's existing, working setup into a
+	// construction failure.
 	const blocking = diagnostics.filter((entry) => entry.severity === "error");
 	if (strictness === "error" && blocking.length > 0) {
 		throwValidationError(blocking, source);
@@ -435,9 +464,4 @@ export function normalizeAndValidateToolsConfig(
 	if (strictness === "error" && blocking.length === 0) {
 		emitWarnings(diagnostics, source);
 	}
-
-	return {
-		config: nextConfig,
-		diagnostics,
-	};
 }

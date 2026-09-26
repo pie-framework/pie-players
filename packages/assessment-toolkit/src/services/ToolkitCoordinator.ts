@@ -30,8 +30,9 @@ import {
 	normalizeToolsConfig,
 } from "./tools-config-normalizer.js";
 import {
-	normalizeAndValidateToolsConfig,
+	collectToolConfigDiagnostics,
 	normalizeToolConfigStrictness,
+	reportToolConfigDiagnostics,
 	type ToolConfigStrictness,
 } from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
@@ -558,9 +559,13 @@ export interface ToolkitServiceBundle {
  *
  * @example
  * ```typescript
+ * import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+ *
  * // Create coordinator with configuration
+ * const toolRegistry = createPackagedToolRegistry();
  * const coordinator = new ToolkitCoordinator({
  *   assessmentId: 'demo-three-questions',
+ *   toolRegistry,
  *   tools: {
  *     providers: {
  *       textToSpeech: { enabled: true, backend: 'browser' },
@@ -573,7 +578,7 @@ export interface ToolkitServiceBundle {
  * });
  *
  * // Pass to section player
- * player.toolkitCoordinator = coordinator;
+ * player.runtime = { ...(player.runtime ?? {}), coordinator };
  *
  * // Access services directly
  * const ttsService = coordinator.ttsService;
@@ -733,7 +738,15 @@ export class ToolkitCoordinator {
 	 */
 	private reportedMissingTTSProvider = false;
 
-	private static resolveConfig(
+	/**
+	 * Whether {@link validateToolsConfig} has already reported validating with
+	 * no registry (`tools.registryUnavailable`). Once per coordinator: every
+	 * {@link updateToolConfig} and {@link updateToolsPlacement} re-validates, and
+	 * the missing registry is the same gap each time.
+	 */
+	private reportedRegistryUnavailable = false;
+
+	private resolveConfig(
 		config: ToolkitCoordinatorConfig,
 	): ToolkitCoordinatorConfig {
 		const strictness = normalizeToolConfigStrictness(
@@ -749,11 +762,11 @@ export class ToolkitCoordinator {
 		const normalized =
 			config.deferToolConfigValidation === true
 				? normalizeToolsConfig(config.tools as any)
-				: normalizeAndValidateToolsConfig(config.tools as any, {
+				: this.validateToolsConfig(config.tools as any, {
 						strictness,
 						source: "ToolkitCoordinator.init",
 						toolRegistry,
-					}).config;
+					});
 		const defaultProviders: ToolkitToolsConfig["providers"] = {
 			textToSpeech: {
 				enabled: true,
@@ -783,12 +796,43 @@ export class ToolkitCoordinator {
 		};
 	}
 
+	/**
+	 * `normalizeAndValidateToolsConfig`, except that `tools.registryUnavailable`
+	 * is reported once per coordinator, whichever call validates.
+	 */
+	private validateToolsConfig(
+		tools: Partial<CanonicalToolsConfig> | null | undefined,
+		options: {
+			strictness: ToolConfigStrictness;
+			source: string;
+			toolRegistry: ToolRegistry;
+		},
+	): CanonicalToolsConfig {
+		const { config, diagnostics } = collectToolConfigDiagnostics(
+			tools,
+			options.toolRegistry,
+		);
+		const unreported = this.reportedRegistryUnavailable
+			? diagnostics.filter(
+					(entry) => entry.code !== "tools.registryUnavailable",
+				)
+			: diagnostics;
+		reportToolConfigDiagnostics(unreported, options);
+		if (
+			options.strictness !== "off" &&
+			unreported.some((entry) => entry.code === "tools.registryUnavailable")
+		) {
+			this.reportedRegistryUnavailable = true;
+		}
+		return config;
+	}
+
 	constructor(config: ToolkitCoordinatorConfig) {
 		if (!config.assessmentId) {
 			throw new Error("ToolkitCoordinator requires assessmentId in config");
 		}
 
-		const resolvedConfig = ToolkitCoordinator.resolveConfig(config);
+		const resolvedConfig = this.resolveConfig(config);
 
 		this.assessmentId = resolvedConfig.assessmentId;
 		this.config = resolvedConfig;
@@ -1090,39 +1134,52 @@ export class ToolkitCoordinator {
 		return this.toolRegistry.getAllTools().filter((tool) => !!tool.provider);
 	}
 
+	/**
+	 * Register the provider `tool`'s descriptor creates for the tool's current
+	 * config, unless the tool is disabled or that provider id is registered. A
+	 * descriptor that throws is reported the way a failed registration is.
+	 */
 	private async registerProviderFromTool(
 		tool: ToolRegistration,
 	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
-		const toolConfig = this.getToolConfig(tool.toolId) || undefined;
-		if (toolConfig?.enabled === false) return;
-		const providerId = resolveToolProviderId(tool, toolConfig);
-		if (!providerId || this.toolProviderRegistry.has(providerId)) return;
-		const provider = descriptor.createProvider(toolConfig);
-		const initConfig =
-			descriptor.getInitConfig?.(toolConfig) ??
-			toolConfig?.provider?.init ??
-			{};
-		const initConfigWithTelemetry = this.addToolTelemetryReporter({
-			toolId: tool.toolId,
-			providerId,
-			initConfig,
-		});
-		const registryTelemetry = this.createToolTelemetryForwarder({
-			toolId: tool.toolId,
-			providerId,
-		});
-		const authFetcher =
-			descriptor.getAuthFetcher?.(toolConfig) ??
-			toolConfig?.provider?.runtime?.authFetcher;
-		await this.registerProvider(providerId, {
-			provider,
-			config: initConfigWithTelemetry,
-			lazy: descriptor.lazy ?? true,
-			authFetcher,
-			onTelemetry: registryTelemetry,
-		});
+		let providerId: string | null = null;
+		let registration: Parameters<ToolProviderRegistry["register"]>[1];
+		try {
+			const toolConfig = this.getToolConfig(tool.toolId) || undefined;
+			if (toolConfig?.enabled === false) return;
+			providerId = resolveToolProviderId(tool, toolConfig);
+			if (!providerId || this.toolProviderRegistry.has(providerId)) return;
+			const provider = descriptor.createProvider(toolConfig);
+			const initConfig =
+				descriptor.getInitConfig?.(toolConfig) ??
+				toolConfig?.provider?.init ??
+				{};
+			const initConfigWithTelemetry = this.addToolTelemetryReporter({
+				toolId: tool.toolId,
+				providerId,
+				initConfig,
+			});
+			const registryTelemetry = this.createToolTelemetryForwarder({
+				toolId: tool.toolId,
+				providerId,
+			});
+			const authFetcher =
+				descriptor.getAuthFetcher?.(toolConfig) ??
+				toolConfig?.provider?.runtime?.authFetcher;
+			registration = {
+				provider,
+				config: initConfigWithTelemetry,
+				lazy: descriptor.lazy ?? true,
+				authFetcher,
+				onTelemetry: registryTelemetry,
+			};
+		} catch (err) {
+			this.reportProviderRegisterFailure(err, providerId, tool.toolId);
+			return;
+		}
+		await this.registerProvider(providerId, registration);
 	}
 
 	private createToolTelemetryForwarder(args: {
@@ -1186,12 +1243,29 @@ export class ToolkitCoordinator {
 				providerName: config.provider.providerName,
 			});
 		} catch (err) {
-			console.warn(
-				`[ToolkitCoordinator] Failed to register provider "${providerId}":`,
-				err,
-			);
-			this.handleError(err, { phase: "provider-register", providerId });
+			this.reportProviderRegisterFailure(err, providerId);
 		}
+	}
+
+	/**
+	 * A console warning and a `provider-register` framework error. `providerId`
+	 * is null when resolving it is what failed; the warning names the tool then.
+	 */
+	private reportProviderRegisterFailure(
+		err: unknown,
+		providerId: string | null,
+		toolId?: string,
+	): void {
+		console.warn(
+			providerId
+				? `[ToolkitCoordinator] Failed to register provider "${providerId}":`
+				: `[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
+			err,
+		);
+		this.handleError(err, {
+			phase: "provider-register",
+			providerId: providerId ?? undefined,
+		});
 	}
 
 	public async ensureProviderReady(
@@ -2466,8 +2540,8 @@ export class ToolkitCoordinator {
 		// host's every tool-config call into an exception — including the calls
 		// this coordinator's own default-provider block provokes, which is how a
 		// host that passes no registry ended up unable to read its own config.
-		// `normalizeAndValidateToolsConfig` already reports the missing registry
-		// once, as `tools.registryUnavailable`; a second report per call is noise.
+		// Validation reports the missing registry once per coordinator, as
+		// `tools.registryUnavailable`; a report per call would be noise.
 		if (this.toolRegistry.getAllToolIds().length === 0) return;
 		if (!this.toolRegistry.get(toolId)) {
 			throw new Error(`Unknown tool id "${toolId}".`);
@@ -2558,11 +2632,11 @@ export class ToolkitCoordinator {
 		this.assertCanonicalToolId(toolId);
 		const current = this.getToolConfig(toolId) || {};
 		if (!this.config.tools) {
-			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+			this.config.tools = this.validateToolsConfig(undefined, {
 				strictness: this.config.toolConfigStrictness ?? "error",
 				source: "ToolkitCoordinator.updateToolConfig",
 				toolRegistry: this.toolRegistry,
-			}).config;
+			});
 		}
 		if (!(this.config.tools as any).providers) {
 			(this.config.tools as any).providers = {};
@@ -2571,7 +2645,7 @@ export class ToolkitCoordinator {
 			...((this.config.tools as any).providers || {}),
 			[toolId]: mergeToolConfigUpdate(toolId, current, updates),
 		};
-		const validated = normalizeAndValidateToolsConfig(
+		this.config.tools = this.validateToolsConfig(
 			{
 				...(this.config.tools as CanonicalToolsConfig),
 				providers: nextProviders,
@@ -2582,7 +2656,6 @@ export class ToolkitCoordinator {
 				toolRegistry: this.toolRegistry,
 			},
 		);
-		this.config.tools = validated.config;
 		// M8 PR 2 — keep the policy engine's tools input in lockstep
 		// with the validated coordinator config. The engine emits an
 		// `inputs` change event so subscribers (e.g. PR 3 toolbars) can
@@ -2593,7 +2666,7 @@ export class ToolkitCoordinator {
 		void this.emitTelemetry("pie-toolkit-tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
-		this._applyToolConfigChange(toolId, updates);
+		this._applyToolConfigChange(toolId, current);
 	}
 
 	/**
@@ -2613,11 +2686,11 @@ export class ToolkitCoordinator {
 	 */
 	updateToolsPlacement(partial: ToolPlacementConfig): void {
 		if (!this.config.tools) {
-			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+			this.config.tools = this.validateToolsConfig(undefined, {
 				strictness: this.config.toolConfigStrictness ?? "error",
 				source: "ToolkitCoordinator.updateToolsPlacement",
 				toolRegistry: this.toolRegistry,
-			}).config;
+			});
 		}
 		const currentPlacement = this.config.tools?.placement ?? {
 			section: [],
@@ -2629,7 +2702,7 @@ export class ToolkitCoordinator {
 			item: [...(partial.item ?? currentPlacement.item ?? [])],
 			passage: [...(partial.passage ?? currentPlacement.passage ?? [])],
 		};
-		const validated = normalizeAndValidateToolsConfig(
+		const validated = this.validateToolsConfig(
 			{
 				...(this.config.tools as CanonicalToolsConfig),
 				placement: nextPlacement,
@@ -2640,8 +2713,8 @@ export class ToolkitCoordinator {
 				toolRegistry: this.toolRegistry,
 			},
 		);
-		validated.config.placement = nextPlacement;
-		this.config.tools = validated.config;
+		validated.placement = nextPlacement;
+		this.config.tools = validated;
 		this.policyEngine.updateInputs({
 			tools: this.config.tools as CanonicalToolsConfig,
 		});
@@ -2940,11 +3013,11 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Apply tool configuration changes to underlying services.
-	 * Called after updateToolConfig().
+	 * Called after updateToolConfig() with the tool's config before the update.
 	 */
 	private _applyToolConfigChange(
 		toolId: string,
-		_updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
+		previousConfig: ToolProviderConfig,
 	): void {
 		if (this.disposePromise !== null) return;
 		// Apply configuration changes based on tool
@@ -2971,8 +3044,49 @@ export class ToolkitCoordinator {
 				// Future: Could notify answer eliminator tools of strategy change
 				break;
 
-			// Add cases for other tools as needed
+			default:
+				this._registerChangedToolProvider(toolId, previousConfig);
 		}
+	}
+
+	/**
+	 * Register the provider a tool's updated config names, and unregister the
+	 * one its previous config named when the provider id changed, as
+	 * {@link _reconfigureTTSProvider} does for `tts`. Registration completes
+	 * before this returns, so a check on the policy change the update dispatched
+	 * finds the new provider.
+	 */
+	private _registerChangedToolProvider(
+		toolId: string,
+		previousConfig: ToolProviderConfig,
+	): void {
+		const registration = this.getProviderDescriptorTools().find(
+			(tool) => tool.toolId === toolId,
+		);
+		if (!registration) return;
+		void this.registerProviderFromTool(registration);
+		const resolveQuietly = (config: ToolProviderConfig | undefined) => {
+			try {
+				return resolveToolProviderId(registration, config);
+			} catch {
+				return null;
+			}
+		};
+		const previousId = resolveQuietly(previousConfig);
+		const nextId = resolveQuietly(this.getToolConfig(toolId) || undefined);
+		if (
+			!previousId ||
+			previousId === nextId ||
+			!this.toolProviderRegistry.has(previousId)
+		) {
+			return;
+		}
+		void this.toolProviderRegistry.unregister(previousId).catch((err) => {
+			console.warn(
+				`[ToolkitCoordinator] Failed to unregister provider "${previousId}":`,
+				err,
+			);
+		});
 	}
 
 	private async _reconfigureTTSProvider(): Promise<void> {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
 	import { afterNavigate, replaceState } from "$app/navigation";
-	import { onMount } from "svelte";
+	import { onMount, untrack } from "svelte";
 import {
 	CompositeInstrumentationProvider,
 	DebugPanelInstrumentationProvider,
@@ -11,6 +11,8 @@ import {
 		createToolsConfig,
 		ToolkitCoordinator,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+	import { assessmentDemoTextToSpeechConfig } from "$lib/demo-runtime/demo-tts";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 	import "@pie-players/pie-section-player-tools-event-debugger";
 import "@pie-players/pie-section-player-tools-instrumentation-debugger";
@@ -40,27 +42,17 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	const SECTION_LAYOUT_QUERY_PARAM = "sectionLayout";
 	const DB_SUPPRESSION_WINDOW_MS = 1200;
 	const DEMO_ASSESSMENT_ID = "assessment-session-db-demo-001";
+	// The section player inside the assessment player renders from the packaged
+	// registry, so the coordinator registers its tool providers from it too.
+	const toolRegistry = createPackagedToolRegistry();
+	const ttsBackend = untrack(() => data.ttsBackend);
 	const toolsConfigResult = createToolsConfig({
 		source: "assessment-demos.session-hydrate-db",
 		strictness: "error",
+		toolRegistry,
 		tools: {
 			providers: {
-				textToSpeech: {
-					enabled: true,
-					backend: "polly",
-					serverProvider: "polly",
-					apiEndpoint: "/api/tts",
-					transportMode: "pie",
-					endpointMode: "synthesizePath",
-					endpointValidationMode: "voices",
-					defaultVoice: "Joanna",
-					language: "en-US",
-					rate: 1,
-					engine: "neural",
-					sampleRate: 24000,
-					format: "mp3",
-					speechMarksMode: "word",
-				},
+				textToSpeech: assessmentDemoTextToSpeechConfig(ttsBackend),
 			},
 			placement: {
 				section: [],
@@ -79,6 +71,7 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolRegistry,
 		toolConfigStrictness: "error",
 		tools: toolkitToolsConfig,
 		hooks: {
@@ -145,7 +138,6 @@ let instrumentationDebuggerElement = $state<any>(null);
 	let isPersistingSession = $state(false);
 	let suppressDbAutoPersist = $state(false);
 	let suppressDbAutoPersistUntilMs = $state(0);
-	let ttsBackend = $state<"polly" | "browser">("polly");
 
 	function getInitialSectionId(): string {
 		const testParts = (data.demo.assessment as any)?.testParts;
@@ -211,47 +203,6 @@ let instrumentationDebuggerElement = $state<any>(null);
 
 	function isDbAutoPersistSuppressed(): boolean {
 		return suppressDbAutoPersist || Date.now() < suppressDbAutoPersistUntilMs;
-	}
-
-	async function ensureTtsReadyWithFallback() {
-		const waitForTtsReady = async (timeoutMs = 3000): Promise<boolean> => {
-			const startedAt = Date.now();
-			while (Date.now() - startedAt < timeoutMs) {
-				if (coordinator.getInitStatus().tts) return true;
-				await new Promise((resolve) => setTimeout(resolve, 50));
-			}
-			return false;
-		};
-
-		const probePollyAvailability = async (): Promise<void> => {
-			const response = await fetch("/api/tts/voices", { cache: "no-store" });
-			if (!response.ok) {
-				throw new Error(`Polly voices endpoint failed (${response.status})`);
-			}
-		};
-
-		try {
-			await coordinator.ensureTTSReady(
-				coordinator.getToolConfig("textToSpeech") ?? undefined,
-			);
-			await probePollyAvailability();
-			ttsBackend = "polly";
-		} catch (error) {
-			console.warn(
-				"[Assessment Session DB Demo] Polly TTS unavailable, falling back to browser TTS:",
-				error,
-			);
-			coordinator.updateToolConfig("textToSpeech", {
-				backend: "browser",
-				provider: undefined,
-				serverProvider: undefined,
-			});
-			const ready = await waitForTtsReady();
-			if (!ready) {
-				throw new Error("Timed out while reinitializing TTS in browser mode");
-			}
-			ttsBackend = "browser";
-		}
 	}
 
 	async function bootstrapSessionDemoDb(reset = true) {
@@ -353,7 +304,6 @@ let instrumentationDebuggerElement = $state<any>(null);
 		if (requestedLayout === "vertical" || requestedLayout === "splitpane") {
 			sectionLayout = requestedLayout;
 		}
-		void ensureTtsReadyWithFallback();
 		syncUrl();
 	});
 

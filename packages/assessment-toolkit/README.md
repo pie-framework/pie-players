@@ -28,16 +28,20 @@ player.toolCoordinator = toolCoordinator;
 
 **After** (coordinator orchestrates):
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
 // Create one coordinator with configuration
+const toolRegistry = createPackagedToolRegistry();
 const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
+  toolRegistry,
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
       calculator: { enabled: true }
     },
     placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech']
     }
@@ -141,8 +145,12 @@ tier; the choice is about ergonomics, not capability.
   object passed by reference. Example:
 
   ```ts
+  import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: "my-assessment",
+    toolRegistry,
     toolConfigStrictness: "warn",
     tools: {
       providers: { calculator: { enabled: true } },
@@ -229,17 +237,20 @@ Otherwise expose it through the configuration object only.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // Create coordinator with configuration
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
+  toolRegistry,
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
       calculator: { enabled: true }
     },
     placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech']
     }
@@ -529,15 +540,19 @@ Use **floating tools** when:
 Complete example showing both types:
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
+  toolRegistry,
   tools: {
     placement: {
       // Contextual placement
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech'],
       // Section-level utilities
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
     },
     providers: {
       calculator: {
@@ -566,11 +581,15 @@ const coordinator = new ToolkitCoordinator({
 For most use cases, simply enable all available tools:
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
+  toolRegistry,
   tools: {
     placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech']
     },
@@ -1239,18 +1258,21 @@ mounted surface elements immediately.
 The section player provides automatic ToolkitCoordinator integration:
 
 ```html
-<pie-section-player id="player"></pie-section-player>
+<pie-section-player-splitpane id="player"></pie-section-player-splitpane>
 
 <script type="module">
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
   // Create coordinator
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
+    toolRegistry,
     tools: {
       providers: { textToSpeech: { enabled: true, backend: 'browser' } },
       placement: {
-        section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+        section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
         item: ['calculator', 'textToSpeech', 'answerEliminator'],
         passage: ['textToSpeech']
       }
@@ -1310,15 +1332,9 @@ player.section = mySection;
 
 // Internally creates:
 // new ToolkitCoordinator({
-//   assessmentId: 'anon_...',  // auto-generated
-//   tools: {
-//     providers: { textToSpeech: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
-//     placement: {
-//       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-//       item: ['calculator', 'textToSpeech', 'answerEliminator'],
-//       passage: ['textToSpeech']
-//     }
-//   }
+//   assessmentId: 'section-demo-direct', // or the assessment-id attribute
+//   toolRegistry,                        // the player's toolRegistry, else the packaged registry
+//   tools: player.runtime?.tools         // no tools are placed when this is unset
 // })
 ```
 

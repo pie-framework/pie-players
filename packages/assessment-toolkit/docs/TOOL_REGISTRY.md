@@ -347,9 +347,12 @@ The default registry includes 12 tools organized by purpose:
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  toolRegistry,
   tools: { placement: { item: ["calculator", "textToSpeech", "theme"] } }
 });
 coordinator.updateAssessment(assessment);

@@ -9,6 +9,7 @@ await runDevServerBootstrap({
 	requiredDistArtifacts: [
 		"packages/assessment-player/dist/pie-assessment-player.js",
 		"packages/assessment-toolkit/dist/index.js",
+		"packages/default-tool-loaders/dist/index.js",
 		"packages/players-shared/dist/index.js",
 	],
 });

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
 import { ToolRegistry } from "../src/services/ToolRegistry.js";
 import { createTestToolRegistration } from "./fixtures/test-tool-registry.js";
@@ -13,7 +13,7 @@ import { createTestToolRegistration } from "./fixtures/test-tool-registry.js";
  * into an exception — including the ones the coordinator provokes itself, so a
  * host could not read the config it had just passed in.
  *
- * `normalizeAndValidateToolsConfig` reports the missing registry once, as
+ * The coordinator reports the missing registry once, as
  * `tools.registryUnavailable`. That is the diagnostic; this is the behaviour.
  */
 describe("ToolkitCoordinator tool ids without a registry", () => {
@@ -62,5 +62,35 @@ describe("ToolkitCoordinator tool ids without a registry", () => {
 			/no longer supported/,
 		);
 		expect(() => coordinator.isToolEnabled("")).toThrow(/non-empty string/);
+	});
+
+	test("the missing registry is reported once per coordinator", () => {
+		const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const reports = () =>
+				warnSpy.mock.calls.filter((args: unknown[]) =>
+					String(args[0]).includes("No tool registry was supplied"),
+				).length;
+			const coordinator = new ToolkitCoordinator({
+				assessmentId: "registryless-reports",
+				lazyInit: true,
+				tools: { providers: { calculator: { enabled: true } } },
+			});
+			coordinator.updateToolConfig("calculator", { enabled: false });
+			coordinator.updateToolConfig("calculator", { enabled: true });
+			coordinator.updateToolsPlacement({ item: ["calculator"] });
+			expect(reports()).toBe(1);
+
+			// A second coordinator is a second deployment gap.
+			const second = new ToolkitCoordinator({
+				assessmentId: "registryless-reports-second",
+				lazyInit: true,
+			});
+			second.updateToolConfig("calculator", { enabled: true });
+			second.updateToolConfig("calculator", { enabled: false });
+			expect(reports()).toBe(2);
+		} finally {
+			warnSpy.mockRestore();
+		}
 	});
 });

@@ -637,12 +637,16 @@ experiments.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 
 function createCoordinatorForProfile(profile: PersonalNeedsProfile) {
   const supportsTts = profile.supports.includes('textToSpeech');
 
   return new ToolkitCoordinator({
     assessmentId: 'assessment-1',
+    toolRegistry,
     tools: {
       placement: {
         section: ['lineReader', 'ruler'],
@@ -674,10 +678,13 @@ import '@pie-players/pie-section-player/components/section-player-splitpane-elem
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // Create a single runtime coordinator for the assessment surface.
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  toolRegistry,
   accessibility: {
     catalogs: assessment.accessibilityCatalogs ?? [],
     language: 'en-US',
@@ -847,9 +854,12 @@ const item = {
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
+  toolRegistry,
   tools: {
     placement: {
       item: ['textToSpeech'],

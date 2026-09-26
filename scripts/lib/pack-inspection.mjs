@@ -25,10 +25,36 @@ const requireStringArray = (policy, pathSegments) => {
 		throw new Error(
 			`scripts/publish-policy.json must define ${pathSegments.join(
 				".",
-			)} as an array of package names`,
+			)} as an array of package specifiers`,
 		);
 	}
 	return value;
+};
+
+/** `@scope/name/sub/path` as its package name and the `exports` key it names. */
+export const splitPackageSpecifier = (specifier) => {
+	const segments = specifier.split("/");
+	const nameLength = specifier.startsWith("@") ? 2 : 1;
+	const rest = segments.slice(nameLength).join("/");
+	return {
+		name: segments.slice(0, nameLength).join("/"),
+		subpath: rest ? `./${rest}` : ".",
+	};
+};
+
+/** The file an ESM import of `subpath` loads from `pkg`, or null. */
+export const getImportTarget = (pkg, subpath = ".") => {
+	const exp =
+		subpath === "."
+			? (pkg.exports?.["."] ?? pkg.exports)
+			: pkg.exports?.[subpath];
+	if (typeof exp === "string") return exp;
+	if (exp && typeof exp === "object") {
+		if (typeof exp.import === "string") return exp.import;
+		if (typeof exp.default === "string") return exp.default;
+	}
+	if (subpath === "." && typeof pkg.main === "string") return pkg.main;
+	return null;
 };
 
 export const getNodeConsumerImportTargets = (policy) => ({

@@ -13,7 +13,7 @@
 />
 
 <script lang="ts">
-	import { CalculatorInlineTool } from '@pie-players/pie-tool-calculator-shared';
+	import { CalculatorInlineTool } from '@pie-players/pie-tool-calculator-shared/components';
 
 	let {
 		toolId = 'calculator-inline',

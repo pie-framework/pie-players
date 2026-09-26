@@ -58,28 +58,28 @@
 			"import": "./dist/pie-section-player.js"
 		},
 		"./contracts/layout-contract": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/layout-contract.d.ts",
+			"import": "./dist/contracts/layout-contract.js"
 		},
 		"./contracts/public-events": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/public-events.d.ts",
+			"import": "./dist/contracts/public-events.js"
 		},
 		"./contracts/runtime-host-contract": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/runtime-host-contract.d.ts",
+			"import": "./dist/contracts/runtime-host-contract.js"
 		},
 		"./contracts/layout-parity-metadata": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/layout-parity-metadata.d.ts",
+			"import": "./dist/contracts/layout-parity-metadata.js"
 		},
 		"./contracts/host-hooks": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/host-hooks.d.ts",
+			"import": "./dist/contracts/host-hooks.js"
 		},
 		"./policies": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/policies/index.d.ts",
+			"import": "./dist/policies/index.js"
 		}
 	},
 	"files": [
@@ -99,7 +99,7 @@
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"speech-rule-engine": "^5.0.0-rc.4"
+		"speech-rule-engine": "5.0.0-rc.4"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",

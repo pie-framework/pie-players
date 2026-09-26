@@ -24,7 +24,14 @@ export default defineConfig({
 			formats: ["es"],
 		},
 		rollupOptions: {
-			external: ["svelte", "@pie-players/pie-assessment-toolkit"],
+			// The toolkit, players-shared and pie-context resolve from the
+			// host's node_modules, so every PIE bundle a host loads shares one
+			// copy of each. A pattern, because an exact-string external still
+			// inlines the subpaths this tool imports.
+			external: [
+				"svelte",
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
+			],
 			output: {
 				globals: {
 					svelte: "Svelte",

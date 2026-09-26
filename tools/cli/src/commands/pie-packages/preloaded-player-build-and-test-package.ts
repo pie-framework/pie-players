@@ -9,7 +9,7 @@ import {
 	parseElementsInput,
 	readElementSet,
 } from "../../utils/pie-packages/fixed-static.js";
-import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
+import { createNpmAuthEnvironment } from "@pie-players/pie-players-cli/npm-auth-env";
 import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
 export default class PreloadedPlayerBuildAndTestPackage extends Command {

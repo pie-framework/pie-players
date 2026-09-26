@@ -28,32 +28,44 @@ const SOURCE_EXTENSIONS = new Set([".ts", ".mts", ".cts", ".js", ".mjs", ".svelt
 const SKIP_DIRS = new Set(["node_modules", "dist", "build", ".turbo", ".svelte-kit"]);
 
 /**
- * Where the source-resolved alias set is declared.
+ * Where each owning package declares its source-resolved alias set.
  *
  * Every Vite alias for one of these subpaths must name the same relative source
- * path this module gives, whether the config imports the module (item-player,
- * section-player) or spells the alias out (tool-tts-inline, whose `tsconfig`
- * puts `vite.config.ts` in its own TS program with `rootDir: "."`, so importing a
- * file from a sibling package raises TS6059). The check below is what keeps the
- * spelled-out ones honest.
+ * path the owner's module gives, whether the config imports the module
+ * (item-player, section-player, the calculator wrappers) or spells the alias out
+ * (tool-tts-inline, whose `tsconfig` puts `vite.config.ts` in its own TS program
+ * with `rootDir: "."`, so importing a file from a sibling package raises TS6059).
+ * The check below is what keeps the spelled-out ones honest.
  */
-const ALIAS_DECLARATION = "packages/players-shared/svelte-source-aliases.ts";
+const ALIAS_DECLARATIONS = new Map([
+	[
+		"@pie-players/pie-players-shared",
+		"packages/players-shared/svelte-source-aliases.ts",
+	],
+	[
+		"@pie-players/pie-tool-calculator-shared",
+		"packages/tool-calculator-shared/svelte-source-aliases.ts",
+	],
+]);
 
 /**
  * Subpaths that resolve from source through a Vite alias rather than from `dist`.
  *
- * Each is a Svelte rune module or component: `players-shared` builds with `tsc`,
+ * Each is a Svelte rune module or component. `players-shared` builds with `tsc`,
  * whose config excludes `src/**\/*.svelte.ts` and `src/components/**` because
- * `tsc` cannot compile either, so these never reach `dist`. Adding them to the
- * `exports` map means publishing the source and making them public API — a
- * consumer-facing decision, deliberately not taken here.
+ * `tsc` cannot compile either, so these never reach `dist`.
+ * `tool-calculator-shared`'s shells run on the Svelte runtime of the wrapper that
+ * renders them, so each wrapper compiles them. Adding them to the `exports` map
+ * means publishing the source and making them public API — a consumer-facing
+ * decision, deliberately not taken here.
  *
- * The alias map itself lives in
- * `packages/players-shared/svelte-source-aliases.ts`; this list must match it.
+ * Each owner's alias map lives in its module in ALIAS_DECLARATIONS; this list
+ * must match them.
  */
 const ALIASED_SOURCE_SUBPATHS = new Set([
 	"@pie-players/pie-players-shared/components",
 	"@pie-players/pie-players-shared/ui/use-promise",
+	"@pie-players/pie-tool-calculator-shared/components",
 ]);
 
 const IMPORT_REGEXES = [
@@ -86,7 +98,10 @@ function collectDeclaredSubpaths() {
 		if (!existsSync(manifestPath)) continue;
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 		if (!manifest.name) continue;
-		const subpaths = new Set([manifest.name]);
+		// The bare name resolves only when the package exports its root.
+		const exportsRoot =
+			typeof manifest.exports !== "object" || "." in manifest.exports;
+		const subpaths = new Set(exportsRoot ? [manifest.name] : []);
 		for (const key of Object.keys(manifest.exports ?? {})) {
 			if (key === ".") continue;
 			if (key.includes("*")) {
@@ -124,17 +139,24 @@ function collectViteAliases() {
 	return found;
 }
 
-/** The relative source path the declaration module gives for each subpath. */
+/**
+ * The relative source path each owner's declaration module gives for its
+ * subpaths, as subpath -> `{ declaration, packageDir, target }`.
+ */
 function collectDeclaredAliasTargets() {
-	const declarationPath = path.join(ROOT, ALIAS_DECLARATION);
-	const source = readFileSync(declarationPath, "utf8");
 	const targets = new Map();
-	const pattern =
-		/["'](@pie-players\/pie-players-shared\/[^"']+)["']\s*:\s*\n?\s*["']([^"']+)["']/g;
-	let match = pattern.exec(source);
-	while (match !== null) {
-		targets.set(match[1], match[2]);
-		match = pattern.exec(source);
+	for (const [owner, declaration] of ALIAS_DECLARATIONS) {
+		const source = readFileSync(path.join(ROOT, declaration), "utf8");
+		const packageDir = path.basename(path.dirname(declaration));
+		const pattern =
+			/["'](@pie-players\/[^"']+)["']\s*:\s*\n?\s*["']([^"']+)["']/g;
+		let match = pattern.exec(source);
+		while (match !== null) {
+			if (match[1].startsWith(`${owner}/`)) {
+				targets.set(match[1], { declaration, packageDir, target: match[2] });
+			}
+			match = pattern.exec(source);
+		}
 	}
 	return targets;
 }
@@ -149,8 +171,9 @@ function main() {
 	const declaredTargets = collectDeclaredAliasTargets();
 	for (const subpath of ALIASED_SOURCE_SUBPATHS) {
 		if (!declaredTargets.has(subpath)) {
+			const owner = subpath.split("/").slice(0, 2).join("/");
 			failures.push(
-				`${ALIAS_DECLARATION}: does not declare "${subpath}", which this script exempts as an aliased source path`,
+				`${ALIAS_DECLARATIONS.get(owner) ?? owner}: does not declare "${subpath}", which this script exempts as an aliased source path`,
 			);
 		}
 	}
@@ -158,10 +181,10 @@ function main() {
 		const expected = declaredTargets.get(subpath);
 		if (expected === undefined) continue;
 		// Configs spell the target relative to their own directory.
-		const normalized = target.replace(/^\.\.\/players-shared\//, "");
-		if (normalized !== expected) {
+		const normalized = target.replace(`../${expected.packageDir}/`, "");
+		if (normalized !== expected.target) {
 			failures.push(
-				`${config}: aliases "${subpath}" to "${target}", but ${ALIAS_DECLARATION} declares "${expected}"`,
+				`${config}: aliases "${subpath}" to "${target}", but ${expected.declaration} declares "${expected.target}"`,
 			);
 		}
 	}
@@ -202,7 +225,7 @@ function main() {
 			"\nAdd the subpath to the owning package's `exports` map, or import a subpath" +
 				"\nthat is already declared. If it can only resolve from source through a" +
 				"\nVite alias, add it to ALIASED_SOURCE_SUBPATHS in this script with the" +
-				"\nreason, and to packages/players-shared/svelte-source-aliases.ts.",
+				"\nreason, and to the owning package's svelte-source-aliases.ts.",
 		);
 		process.exit(1);
 	}

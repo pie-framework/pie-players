@@ -40,7 +40,7 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
-		"speech-rule-engine": "^5.0.0-rc.4"
+		"speech-rule-engine": "5.0.0-rc.4"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {

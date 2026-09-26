@@ -37,8 +37,11 @@ export default defineConfig({
 				// The observable scheme registry must be the host's single theme
 				// module, not a private copy embedded in this custom-element bundle.
 				/^@pie-players\/pie-theme(?:\/|$)/,
-				// speech-rule-engine and its locale tables resolve from the host's
-				// node_modules, so every PIE bundle a host loads shares one copy.
+				// The toolkit, players-shared, pie-context and speech-rule-engine
+				// resolve from the host's node_modules, so every PIE bundle a host
+				// loads shares one copy of each. Patterns, because an exact-string
+				// external still inlines the subpaths this tool imports.
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
 				/^speech-rule-engine(?:\/|$)/,
 			],
 			output: {

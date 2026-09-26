@@ -356,7 +356,8 @@ Packages consumed:
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
   its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
-  section-player debugger tools.
+  section-player debugger tools. The section player imports `pie-item-player`
+  by name to render items, so that package reaches Host A as its dependency.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
@@ -567,6 +568,13 @@ These tags are structural API to this host even though they are not entrypoints
 in the section-player `exports` map. Renaming them, or moving a card out from
 under the splitpane element, changes rendering there silently — no build error,
 no runtime error.
+
+A document-wide margin and padding reset in the host's global stylesheet exempts
+`pie-item-player` and everything inside it, so authored item content keeps its
+spacing only while each section item renders inside that tag. The section player
+imports `@pie-players/pie-item-player` by name, so the element this host matches
+is that package's registration. Renaming the tag, or rendering section items
+through another one, removes that spacing silently.
 
 Host R styles the two layout hosts through `:global()` in two files and is
 similarly exposed by the tag names, but only for flex sizing and overflow — it
@@ -1202,9 +1210,9 @@ change it and fix Host R in the same push.
 **Silent breakage in a client-facing host (V, A or P). Coordinate before
 shipping.**
 
-- Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`, or
-  `pie-section-player-passage-card`, or moving a card out from under the
-  splitpane element
+- Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`,
+  `pie-section-player-passage-card` or `pie-item-player`, moving a card out from
+  under the splitpane element, or rendering section items through another tag
 - Renaming or dropping any `--pie-*` token listed above, including
   `--pie-passage-header-background` and its bridge to
   `--pie-section-player-card-header-background`

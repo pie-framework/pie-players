@@ -19,12 +19,12 @@
 		"shared",
 		"wcag"
 	],
-	"main": "./dist/index.js",
-	"types": "./dist/index.types.d.ts",
+	"main": "./dist/calculator-element.js",
+	"types": "./dist/calculator-element.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/index.types.d.ts",
-			"import": "./dist/index.js"
+			"types": "./dist/calculator-element.d.ts",
+			"import": "./dist/calculator-element.js"
 		},
 		"./calculator-element": {
 			"types": "./dist/calculator-element.d.ts",
@@ -36,19 +36,18 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "vite build && vite build --mode calculator-element",
+		"build": "vite build",
 		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint ."
 	},
 	"license": "MIT",
-	"unpkg": "./dist/index.js",
-	"jsdelivr": "./dist/index.js",
+	"unpkg": "./dist/calculator-element.js",
+	"jsdelivr": "./dist/calculator-element.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"svelte": "^5.57.0"
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

@@ -22,6 +22,10 @@
 		"./server": {
 			"types": "./src/server/tts-error-response.ts",
 			"default": "./src/server/tts-error-response.ts"
+		},
+		"./server/npm-registry": {
+			"types": "./src/server/npm-registry.ts",
+			"default": "./src/server/npm-registry.ts"
 		}
 	},
 	"scripts": {

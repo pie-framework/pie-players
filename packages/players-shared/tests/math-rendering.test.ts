@@ -22,7 +22,7 @@ describe("initializeMathRendering", () => {
 		let importCount = 0;
 		let setCount = 0;
 
-		mock.module("@pie-lib/math-rendering-module/module", () => {
+		mock.module("@pie-lib/math-rendering-module/module/index.js", () => {
 			importCount += 1;
 			return {
 				_dll_pie_lib__math_rendering: makeRenderer(),
@@ -57,7 +57,7 @@ describe("initializeMathRendering", () => {
 	test("does not replace a custom renderer installed while the default import is in flight", async () => {
 		const defaultRenderer = makeRenderer();
 		const customRenderer = makeRenderer();
-		mock.module("@pie-lib/math-rendering-module/module", () => ({
+		mock.module("@pie-lib/math-rendering-module/module/index.js", () => ({
 			_dll_pie_lib__math_rendering: defaultRenderer,
 		}));
 

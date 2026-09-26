@@ -7,9 +7,10 @@
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
 	"svelteRuntimeDependencyRange": "^5.57.0",
-	"allowedSvelteRuntimeDependencies": {
-		"@pie-players/pie-tool-calculator-shared": "The root entry exports components that the vendor wrappers bundle at build time and render on their own Svelte instance, so it keeps Svelte external; nothing a host installs imports it at runtime. `./calculator-element`, which hosts load, bundles Svelte."
+	"pinnedRuntimeDependencies": {
+		"speech-rule-engine": "5.0.0-rc.4"
 	},
+	"allowedSvelteRuntimeDependencies": {},
 	"allowedUndeclaredRuntimeImports": {
 		"@pie-players/pie-calculator-cortex": [
 			"https://esm.run/@cortex-js/compute-engine",
@@ -24,7 +25,8 @@
 			"./i18n/use-i18n",
 			"./i18n/use-i18n-standalone",
 			"./ui/use-promise"
-		]
+		],
+		"@pie-players/pie-tool-calculator-shared": ["./components"]
 	},
 	"nodeConsumerImportTargets": {
 		"nodeSafe": [
@@ -39,7 +41,13 @@
 			"@pie-players/tts-client-server",
 			"@pie-players/tts-server-core",
 			"@pie-players/tts-server-google",
-			"@pie-players/tts-server-polly"
+			"@pie-players/tts-server-polly",
+			"@pie-players/pie-section-player/contracts/layout-contract",
+			"@pie-players/pie-section-player/contracts/public-events",
+			"@pie-players/pie-section-player/contracts/runtime-host-contract",
+			"@pie-players/pie-section-player/contracts/layout-parity-metadata",
+			"@pie-players/pie-section-player/contracts/host-hooks",
+			"@pie-players/pie-section-player/policies"
 		],
 		"browserOnly": [
 			"@pie-players/pie-item-player",

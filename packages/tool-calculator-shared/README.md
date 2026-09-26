@@ -16,11 +16,12 @@ Desmos-named package remains a compatibility entry for the same guarded
 registration. The entry bundles its own Svelte runtime and never resolves the
 host's.
 
-Provider packages wrap these components in their own custom-element tags and
-supply a default provider id. The root entry keeps `svelte` external, so a
-wrapper compiles its element and these components against the one runtime it
-bundles. Applications normally install a provider package, not this package
-directly, unless they intentionally want the generic element.
+The package root resolves to the same entry. Provider packages wrap the
+calculator and inline shells in their own custom-element tags and supply a
+default provider id; the shells are unpublished, and each wrapper compiles them
+from source onto the one Svelte runtime it bundles. Applications normally
+install a provider package, not this package directly, unless they
+intentionally want the generic element.
 
 The shared inline trigger owns these component-level active-state theme hooks:
 

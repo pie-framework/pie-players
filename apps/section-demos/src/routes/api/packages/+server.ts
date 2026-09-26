@@ -1,4 +1,4 @@
-import { getNpmPackageVersions } from "@pie-players/pie-players-shared/server/npm-registry";
+import { getNpmPackageVersions } from "@pie-players/demo-ui/server/npm-registry";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

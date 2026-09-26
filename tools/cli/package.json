@@ -20,11 +20,16 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./npm-auth-env": {
+			"types": "./lib/npm-auth-env.d.mts",
+			"default": "./lib/npm-auth-env.mjs"
 		}
 	},
 	"files": [
 		"bin",
 		"dist",
+		"lib",
 		"oclif.manifest.json"
 	],
 	"scripts": {

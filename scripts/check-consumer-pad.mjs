@@ -107,9 +107,54 @@ const TRIGGERS = [
 	},
 	{
 		reason:
-			"generated `@pie-players/pie-preloaded-player` package: the `dist/` entry name and layout a host copies and loads by path",
+			"generated `@pie-players/pie-preloaded-player` package: the `dist/` entry name and layout a host copies and loads by path, or the `pie` block of its package.json a host lists builds from",
 		match: (file) =>
 			file === "tools/cli/src/utils/pie-packages/fixed-static.ts",
+	},
+	{
+		reason:
+			"the item player's attributes and props, or its bubbles+composed re-dispatch of element events, which carries `session-changed` to a host's own listener",
+		match: (file) =>
+			file === "packages/item-player/src/PieItemPlayer.svelte" ||
+			file === "packages/item-player/src/pie-item-player.ts",
+	},
+	{
+		reason:
+			"the tag the section player renders items in, and how `runtime.player`, `hosted` included, reaches that item player",
+		match: (file) =>
+			[
+				"packages/section-player/src/component-definitions.ts",
+				"packages/section-player/src/components/shared/section-player-host-runtime.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"when `toolkit-ready` fires relative to the section controller, which a host's unguarded event subscriptions depend on",
+		match: (file) =>
+			file ===
+			"packages/assessment-toolkit/src/components/PieAssessmentToolkit.svelte",
+	},
+	{
+		reason:
+			'`<pie-theme>`: which entry registers it, its attributes, or how `scope="document"` writes `--pie-*` values onto the root element',
+		match: (file) =>
+			file === "packages/theme/src/theme-element.ts" ||
+			file === "packages/theme/src/index.ts",
+	},
+	{
+		reason:
+			"a debugger or settings panel's props, or the `close` event a host hides it on",
+		match: (file) =>
+			/^packages\/section-player-tools-[^/]+\/[A-Za-z]+Panel\.svelte$/.test(
+				file,
+			),
+	},
+	{
+		reason:
+			"the `pie-image-scroll` wrapper's class, or whether it reaches element sessions, which a host strips before scoring",
+		match: (file) =>
+			file === "packages/players-shared/src/security/wrap-overwide.ts" ||
+			file === "packages/players-shared/src/security/wrap-overwide-images.ts",
 	},
 	{
 		reason:

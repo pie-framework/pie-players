@@ -16,20 +16,16 @@ lives per-machine in the gitignored `.claude/consumer-checkouts.local.json`; the
 `consumer-dependency-audit` skill reads it, and asks for anything missing.
 
 Last verified against consumer checkouts and this repo's `develop` line:
-**2026-08-19** for every Host R row, re-derived from that checkout and checked
-against `origin/develop` at `@pie-players` 0.3.68. Host V and Host A rows carry
-**2026-08-16**, scoped to the i18n surfaces described below, and their earlier
-verification before that. Host P rows carry **2026-09-24**, derived from the
-branch of that checkout that carries its `@pie-players` dependency and checked
-against `origin/develop` the same day; its main line still runs the predecessor
-player with the same listeners.
+**2026-09-26** for every row of all four hosts, re-derived from each checkout
+and checked against `origin/develop` the same day. Host P's rows come from the
+branch of that checkout that carries its `@pie-players` dependency; its main
+line still runs the predecessor player with the same listeners. The dated
+assessments below record when each change was first checked; the rows they
+touch now carry this date.
 
-The **theme-token rows carry 2026-08-28** for Hosts V, A and R, re-derived from
-each checkout when the light Base Theme's `--pie-background` became opaque. That
-sweep covered the `--pie-*` surface only — which names each host declares, which
-it reads, and which resolve here — so every other row keeps the date above. It
-found the Host A token set one entry shorter than recorded and no new name in any
-host.
+The theme-token rows were re-derived on their own once before, on 2026-08-28,
+when the light Base Theme's `--pie-background` became opaque; that sweep found
+the Host A token set one entry shorter than recorded.
 
 The 2026-09-05 `--pie-surface` admission was checked against the recorded theme
 rows and the current in-repo resolver, registry, stylesheet, and TTS consumers.
@@ -337,10 +333,7 @@ Reading panels reposition within a short viewport and the existing
 The shared `./ui/zoom-compensation` export is removed, and
 the package-private `--pie-section-player-tab-zoom-comp` registry entry is
 deprecated. The recorded import and token rows name neither surface.
-This assessment uses the recorded rows only. Checkout verification is pending
-for all three hosts because the local mapping and matching checkouts were not
-available on 2026-09-05; their verification dates remain unchanged. Resolve
-those paths or an explicit skip before treating the repair as ready to merge.
+The 2026-09-26 re-derivation found neither surface in any host.
 
 | Label | Stack | Depth | Breakage cost |
 | --- | --- | --- | --- |
@@ -355,8 +348,9 @@ Packages consumed:
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
   its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
-  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
-  section-player debugger tools. The section player imports `pie-item-player`
+  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, and the
+  event and session debuggers. Its source imports only the splitpane layout
+  element and `pie-theme`. The section player imports `pie-item-player`
   by name to render items, so that package reaches Host A as its dependency.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
@@ -366,7 +360,8 @@ Packages consumed:
   `tokens.css` and `token-registry.json` subpaths, eleven `pie-tool-*`, four
   `section-player-tools-*` debuggers plus `section-player-tools-tts-settings`,
   and `tts-server-core` / `-google` / `-polly` / `-sc`. It loads
-  `pie-item-player` from a CDN by version rather than as a dependency.
+  `pie-item-player` and `pie-preloaded-player` from a CDN by version rather than
+  as dependencies.
   Four declared packages are imported nowhere in its source —
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server` — so their ranges
@@ -380,8 +375,9 @@ Host V pins an exact patch (`0.3.53` at last read), so it upgrades
 deliberately. Host P pins an exact preloaded build (`0.3.73-34b9257.1` at last
 read, a devDependency) and serves the copy committed under that version's name,
 so it also upgrades deliberately. Host A and Host R both use caret ranges on the
-`0.3.x` line (both `^0.3.68` at last read, and uniform across all 29 of Host
-R's), so **every published patch reaches them on their next install** — a
+`0.3.x` line (`^0.3.70` for Host A, locked at `0.3.70`, and `^0.3.71` for Host
+R, uniform across all 29 of its packages, at last read), so **every published
+patch reaches them on their next install** — a
 lockstep patch that changes behavior lands in live delivery without a code change
 on their side.
 
@@ -394,7 +390,7 @@ and to fix it there in the same push.
 | Specifier | Consumers | Note |
 | --- | --- | --- |
 | `@pie-players/pie-item-player` | V | Dynamic `import()`, registration by side effect. R loads the same file from a CDN by version instead |
-| `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references |
+| `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references. R loads the same `dist/index.js` from a CDN by version |
 | `@pie-players/pie-theme` | A, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
@@ -407,7 +403,7 @@ and to fix it there in the same push.
 | `@pie-players/pie-players-shared` | R | Instrumentation providers |
 | `@pie-players/pie-players-shared/types` | R | `AssessmentSection`, `AssessmentEntity`, `RubricBlock`, `PersonalNeedsProfile` |
 | `@pie-players/pie-tool-*` (11 packages) | R | Ten bare side-effect imports, each self-registering at import time; `pie-tool-sign-language` is imported for its named `signLanguageRegistration` instead, because signing sits outside the packaged set |
-| `@pie-players/pie-section-player-tools-*` (5 packages) | A (2), R (5) | Bare side-effect imports; R uses four debuggers plus the TTS settings panel |
+| `@pie-players/pie-section-player-tools-*` (5 packages) | R | Bare side-effect imports of four debuggers plus the TTS settings panel. A declares the event and session debuggers and imports neither |
 | `@pie-players/tts-server-core` / `-google` / `-polly` / `-sc` | R | Node side, in SvelteKit server routes |
 
 The self-registration asymmetry between `pie-theme` and
@@ -440,15 +436,27 @@ reconstruct `env` down to its declared keys.
 `role: "student"` to suppress rationale, because the item player has no
 `preview` mode.
 
-Host R drives a wider surface than Host V — ten properties across four preview
-routes: `config`, `env`, `session`, `render-stimulus`, `allowed-resize`,
-`add-correct-response`, `show-bottom-border`, `hosted`, `bundleEndpoints`,
-`strategy`. All ten exist on `origin/develop`. Host P sets six of them, `session`
-and `strategy` among them; `render-stimulus`, `allowed-resize` and
-`bundleEndpoints` are Host R's alone.
+Host R drives a wider surface than Host V — ten properties across five routes,
+four item and passage previews and a preloaded-package view: `config`, `env`,
+`session`, `render-stimulus`, `allowed-resize`, `add-correct-response`,
+`show-bottom-border`, `hosted`, `bundleEndpoints`, `strategy`. All ten exist on
+`origin/develop`. Host P sets six of them, `session` and `strategy` among them;
+`render-stimulus`, `allowed-resize` and `bundleEndpoints` are Host R's alone.
+
+The preloaded-package view loads the published `pie-preloaded-player` from a CDN
+at `@<version>/dist/index.js`, mounts `pie-item-player` with
+`strategy="preloaded"`, `config`, `env`, `session`, `render-stimulus`,
+`show-bottom-border` and `hosted`, and listens for `session-changed`,
+`load-complete` and `player-error`. It lists builds from the npm registry's
+document for that package: each version's `pie.bundleHash`, `pie.elements` and
+`pie.loaderVersion`, and the registry's publish `time`, defaulting to the newest
+build. The generated package's `pie` block, written by
+`tools/cli/src/utils/pie-packages/fixed-static.ts`, is therefore API to that host.
+A renamed field degrades the list without an error: without `bundleHash` every
+build falls into one unnamed set, and without `elements` sets lose their labels.
 
 That surface arrives over a CDN path rather than a dependency, at a version the
-route computes, with `latest` as the fallback on two of the four routes. So
+route computes, with `latest` as the fallback on the two fullscreen previews. So
 Host R is not on its caret range for the item player at all: it can be rendering
 a much older build than the rest of the suite, or a floating newest one, and a
 property removed here breaks it only once the CDN serves the version that removed
@@ -479,12 +487,15 @@ the map drops its pre-upgrade value without an error.
 
 Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
 
-Attributes both hosts pass: `assessment-id`, `section-id`, `attempt-id`,
-`show-toolbar`, `toolbar-position`, `iife-bundle-host`.
+Attributes both hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
 
 Host A additionally: `debug`, `narrow-layout-breakpoint`,
 `split-pane-initial-passage-width`, `nds-icons`. Host R passes none of those
-four, so a change to one of them is a Host A question alone. Neither host passes
+four, so a change to one of them is a Host A question alone. Host R
+additionally: `assessment-id` on its demo, playground and preview mounts,
+`toolbar-position` on the demo and playground ones, and `iife-bundle-host` on the
+playground alone. Host A carries its
+assessment id in `runtime.assessmentId` instead. Neither host passes
 `locale`, `base-heading-level`, `tool-config-strictness`, the two
 `content-max-width-*` attributes, either remaining `split-pane-*` attribute, the
 three `*HostButtons` object props, or `policies`.
@@ -506,9 +517,9 @@ two. Retyping it to `Boolean` inverts A's intent, since attribute presence would
 then read as `true`. Same trap for `debug` and any other `type: "String"`
 attribute a host sets to `"false"`.
 
-Host R also sets a class of its own on the layout element, toggled by a policy
-decision. Class attributes on the layout host must therefore survive to the
-rendered element rather than being reconstructed.
+Both hosts set a class of their own on the layout element: Host A a fixed one,
+Host R one toggled by a policy decision. Class attributes on the layout host must
+therefore survive to the rendered element rather than being reconstructed.
 
 The vertical layout is exercised only by Host R, which is exactly why a
 splitpane-only change that skips it stays invisible until someone opens the
@@ -576,6 +587,12 @@ imports `@pie-players/pie-item-player` by name, so the element this host matches
 is that package's registration. Renaming the tag, or rendering section items
 through another one, removes that spacing silently.
 
+Host A also matches the `pie-image-scroll` wrapper class in response values: it
+strips those spans before scoring a preview. On `develop` the wrapper is applied
+at render time and no longer reaches an element session, so the strip matters
+only for sessions stored from 0.3.49 through the current release; the class
+name stays API for those.
+
 Host R styles the two layout hosts through `:global()` in two files and is
 similarly exposed by the tag names, but only for flex sizing and overflow — it
 sets no custom property and reaches no card. It styles no internal card tag at
@@ -615,7 +632,13 @@ The deepest coupling in the set, and the one no client-facing host has. From
   `toolConfigStrictness`, `tools`, `toolRegistry`, `toolContextResolvers`. Every
   call site pins itself with `satisfies ConstructorParameters<…>[0]`, so a
   constructor-signature change is a type error there rather than a silent
-  misconfiguration. `hooks` is no longer passed to the constructor.
+  misconfiguration. `hooks` is no longer passed to the constructor. Only the
+  section-preview route passes `toolRegistry`; the four section demos and the
+  playground build a registry for `createToolsConfig` and omit it from the
+  constructor, so their coordinators register no tool providers. They speak
+  with browser speech whatever TTS backend they configure, a placed calculator
+  fails to open, and they log `tools.registryUnavailable`, a text-to-speech
+  fallback warning and one section-player warning per placed tool.
 - `coordinator.setHooks({ onFrameworkError })`, with the handler reading the
   framework-error model as an opaque value
 - `coordinator.updateAssessment(entity)` — driven off a `$effect`, so it is
@@ -780,8 +803,9 @@ The match runs against the authored tag name, which `toPackageVersionedTag`
 keeps as the prefix of the rendered versioned tag; a tag transform that dropped
 it would store those three types' responses under the wrong field without an
 error. An error thrown in that handler reaches the host's global error handler,
-which ends the session, so once an item is displayed every `session-changed`
-has to carry a string `component` and a non-empty `session.data`. The
+which ends the session, so once an item is displayed every `session-changed` it
+does not skip has to carry a string `component` and a non-empty `session.data`,
+and an event with `complete: true` has to carry them before display too. The
 controller write-back path dispatches `{ session }` alone, and it is unreachable
 there only because the preloaded build registers no client-side controller.
 
@@ -849,10 +873,13 @@ loophole to tighten.
 
 Host R sets the same eleven-key TTS provider config, the same three-part
 unvalidated transport combination among them, and adds a twelfth key —
-`providerOptions`, an opaque object forwarded to the provider. So that path has
-two consumers rather than one, and the internally controlled one is where a
-tightening would surface first. `providerOptions` itself has one consumer and no
-type constraint on the host side.
+`providerOptions`, an untyped object. The toolkit merges it into the provider's
+config; on the custom transport the request body is `{ text, speedRate, lang_id,
+cache }`, and only those three option names are read from it, so the host's
+other keys reach no request. So that path has two consumers rather than one, and the
+internally controlled one is where a tightening would surface first.
+`providerOptions` itself has one consumer and no type constraint on the host
+side.
 
 Host R builds a larger `runtime` than Host A and a different one from what this
 pad previously recorded:
@@ -993,8 +1020,8 @@ load-bearing while the light Base Theme published `--pie-background` as
 `rgba(255,255,255,0)`, because aliasing a host background slot to a transparent
 value stripped the chrome of a background on every unschemed page; that value is
 opaque white now, so the gate only scopes the aliasing to a resolved scheme. The
-host's gate stays correct and needs no change, and the comment in that host
-explaining the gate by the transparency is stale.
+host's gate stays correct and needs no change, and its comment now gives that
+scoping as the reason.
 
 The runtime inspector adds two further dependencies. From `token-registry.json`
 it reads six of the nine entry fields — `name`, `owner`, `scope`, `status`,
@@ -1049,7 +1076,10 @@ routes, so that filename is API too. It matches the package's `exports` map
 target on `origin/develop`, but the CDN path bypasses the map, so renaming the
 `dist` entry file breaks those routes even if the bare specifier keeps resolving.
 Two of the four routes fall back to `latest` when no version is supplied, so a
-rename lands there as soon as it publishes, with no install and no build.
+rename lands there as soon as it publishes, with no install and no build. Its
+preloaded-package view does the same with
+`@pie-players/pie-preloaded-player@<version>/dist/index.js`, the entry Host P
+also loads by name.
 
 Host P serves `@pie-players/pie-preloaded-player` itself. An install step copies
 the package's `dist/` into a static-asset directory named for the installed
@@ -1294,6 +1324,8 @@ re-derived rather than remembered.
 - `dist/pie-item-player.js` as a CDN filename, and `render-stimulus`,
   `allowed-resize` and `bundleEndpoints` on `pie-item-player` — the three of that
   host's ten properties no client-facing host sets
+- The `bundleHash`, `elements` and `loaderVersion` fields of a generated
+  preloaded package's `pie` block, and the registry publish time beside them
 - `runtime.coordinator`, `runtime.playerType`, `runtime.lazyInit`,
   `runtime.player.loaderConfig`, and `env` on the section-player runtime
 - The five debugger and settings panel CE prop sets, and the duck-typed

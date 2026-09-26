@@ -30,6 +30,16 @@ function createFixtureRoot() {
 	);
 	write(
 		root,
+		"packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts",
+		'const module = await import("@pie-players/pie-calculator-cortex");\n',
+	);
+	write(
+		root,
+		"packages/assessment-toolkit/src/tools/types.ts",
+		'export type { CalculatorProvider } from "@pie-players/pie-calculator";\n',
+	);
+	write(
+		root,
 		"packages/section-player/dist/pie-section-player.js",
 		'import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";\nconst tag = "pie-tool-calculator";\n',
 	);
@@ -53,7 +63,9 @@ function createFixtureRoot() {
 		"packages/assessment-toolkit/package.json",
 		JSON.stringify({
 			name: "@pie-players/pie-assessment-toolkit",
-			dependencies: {},
+			dependencies: {
+				"@pie-players/pie-calculator": "workspace:*",
+			},
 		}),
 	);
 	write(
@@ -114,6 +126,63 @@ describe("check-player-tool-boundaries", () => {
 		expect(failures.join("\n")).toContain(
 			"packages/assessment-toolkit/src/tools/default-tool-module-loaders.ts imports @pie-players/pie-tool-tts-inline",
 		);
+	});
+
+	test("rejects calculator engine imports from assessment-toolkit source and dist", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts",
+			'const module = await import("@pie-players/pie-calculator-cortex");\n',
+		);
+		write(
+			root,
+			"packages/assessment-toolkit/dist/services/tool-providers/GeoGebraToolProvider.js",
+			'const module = await import("@pie-players/pie-calculator-geogebra");\n',
+		);
+		write(
+			root,
+			"packages/section-player/dist/chunks/calculator-cortex-abcd.js",
+			"export {};\n",
+		);
+
+		const failures = checkPlayerToolBoundaries(root).join("\n");
+
+		expect(failures).toContain(
+			"packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts imports @pie-players/pie-calculator-cortex",
+		);
+		expect(failures).toContain(
+			"packages/assessment-toolkit/dist/services/tool-providers/GeoGebraToolProvider.js imports concrete tool package @pie-players/pie-calculator-geogebra",
+		);
+		expect(failures).toContain(
+			"player/toolkit dist includes concrete tool chunk: packages/section-player/dist/chunks/calculator-cortex-abcd.js",
+		);
+	});
+
+	test("rejects calculator engines in toolkit manifests, optional peers included", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/assessment-toolkit/package.json",
+			JSON.stringify({
+				name: "@pie-players/pie-assessment-toolkit",
+				dependencies: {
+					"@pie-players/pie-calculator": "workspace:*",
+				},
+				peerDependencies: {
+					"@pie-players/pie-calculator-desmos": "workspace:*",
+				},
+				peerDependenciesMeta: {
+					"@pie-players/pie-calculator-desmos": { optional: true },
+				},
+			}),
+		);
+
+		expect(checkPlayerToolBoundaries(root)).toEqual([
+			expect.stringContaining(
+				"packages/assessment-toolkit/package.json declares @pie-players/pie-calculator-desmos in peerDependencies",
+			),
+		]);
 	});
 
 	test("rejects concrete tool dependencies in player and toolkit manifests", () => {

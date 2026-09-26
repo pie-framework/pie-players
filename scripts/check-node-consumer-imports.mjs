@@ -252,16 +252,11 @@ const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
 	writeFileSync(
 		path.join(fixtureDir, "index.ts"),
 		`import type {
-	CortexToolProvider,
-	DesmosToolProvider,
-	GeoGebraToolProvider,
+	ToolProviderApi,
+	TTSToolProvider,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
-export type CalculatorToolProviders = [
-	CortexToolProvider,
-	DesmosToolProvider,
-	GeoGebraToolProvider,
-];
+export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
 `,
 	);
 	writeFileSync(

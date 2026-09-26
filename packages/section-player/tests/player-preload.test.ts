@@ -194,6 +194,31 @@ describe("player-preload: backend config", () => {
 		expect(loadControllersFor({ hosted: true }, { mode: "author" })).toBe(true);
 	});
 
+	test("esm backend lets loaderOptions.loadControllers decide", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const loadControllersFor = (
+			resolvedPlayerProps: Record<string, unknown>,
+		) => {
+			const backend = buildBackendConfigFromProps({
+				strategy: "esm",
+				resolvedPlayerProps,
+				resolvedPlayerEnv: {},
+			});
+			if (backend.kind !== "esm") throw new Error("expected esm backend");
+			return backend.loadControllers;
+		};
+
+		expect(
+			loadControllersFor({ loaderOptions: { loadControllers: false } }),
+		).toBe(false);
+		expect(
+			loadControllersFor({
+				hosted: true,
+				loaderOptions: { loadControllers: true },
+			}),
+		).toBe(true);
+	});
+
 	test("esm backend honors import-map moduleResolution", async () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
 		const backend = buildBackendConfigFromProps({
@@ -319,6 +344,38 @@ describe("warmupSectionElements", () => {
 			resolvedPlayerProps: {},
 			resolvedPlayerEnv: {},
 		});
+	});
+
+	test("preloaded strategy asserts the page's registered version of an authored package", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		definePreloadedTag("pie-mc-drift--version-2-0-1");
+		const host = window as unknown as {
+			PIE_PRELOADED_ELEMENTS?: Record<string, string>;
+		};
+		host.PIE_PRELOADED_ELEMENTS = {
+			"@pie-element/mc-drift": "@pie-element/mc-drift@2.0.1",
+		};
+		const renderable = {
+			id: "item-drift",
+			config: {
+				markup: '<pie-mc-drift id="m1"></pie-mc-drift>',
+				elements: { "pie-mc-drift": "@pie-element/mc-drift@2.0.0" },
+				models: [{ id: "m1", element: "pie-mc-drift" }],
+			},
+		};
+		try {
+			await warmupSectionElements({
+				strategy: "preloaded",
+				renderables: [renderable as any],
+				resolvedPlayerProps: {},
+				resolvedPlayerEnv: {},
+			});
+		} finally {
+			host.PIE_PRELOADED_ELEMENTS = undefined;
+		}
+		expect(renderable.config.elements["pie-mc-drift"]).toBe(
+			"@pie-element/mc-drift@2.0.0",
+		);
 	});
 
 	test("preloaded strategy with missing aggregate tags throws diagnostic-rich PreloadStageError(stage=preloaded-assert)", async () => {

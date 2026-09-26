@@ -18,14 +18,8 @@ export type {
 export { ToolProviderRegistry } from "./ToolProviderRegistry.js";
 export type { ToolProviderConfig } from "./ToolProviderRegistry.js";
 
-// Concrete providers
-export { DesmosToolProvider } from "./DesmosToolProvider.js";
-export type { DesmosToolProviderConfig } from "./DesmosToolProvider.js";
-export { CortexToolProvider } from "./CortexToolProvider.js";
-export type { CortexToolProviderConfig } from "./CortexToolProvider.js";
-export { GeoGebraToolProvider } from "./GeoGebraToolProvider.js";
-export type { GeoGebraToolProviderConfig } from "./GeoGebraToolProvider.js";
-
+// Concrete providers. The calculator adapters live in the composition layer,
+// `@pie-players/pie-default-tool-loaders`, which owns the engine imports.
 export { TTSToolProvider } from "./TTSToolProvider.js";
 export type {
 	TTSToolProviderConfig,

@@ -27,6 +27,7 @@
 
 import {
 	aggregateElements,
+	alignPreloadedElementVersions,
 	assertElementPackagesAllowed,
 	assertPieConfigContract,
 	assertRegistered,
@@ -41,6 +42,7 @@ import {
 	type ItemEntity,
 	createPieLogger,
 	isGlobalDebugEnabled,
+	resolveLoadControllers,
 	validatePieConfigContract,
 } from "@pie-players/pie-players-shared";
 import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
@@ -245,9 +247,14 @@ export function buildBackendConfigFromProps(args: {
 			moduleResolution:
 				loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url",
 			view,
-			// A hosted item player resolves no controller, so none is fetched.
-			loadControllers:
-				view === "author" || args.resolvedPlayerProps?.hosted !== true,
+			loadControllers: resolveLoadControllers({
+				loadControllers:
+					typeof loaderOptions?.loadControllers === "boolean"
+						? loaderOptions.loadControllers
+						: undefined,
+				author: view === "author",
+				hosted: args.resolvedPlayerProps?.hosted === true,
+			}),
 		};
 	}
 
@@ -320,7 +327,9 @@ export function describeBundleHost(
  *
  * Contract:
  * - `renderables.length === 0` — no-op. Nothing to load.
- * - `strategy === "preloaded"` — assert every aggregate tag is already
+ * - `strategy === "preloaded"` — align each renderable's authored versions
+ *   to the page's registrations (`alignPreloadedElementVersions`, as the
+ *   item player does), then assert every aggregate tag is already
  *   registered with `customElements`. Throws `ElementAssertionError`
  *   (wrapped in `PreloadStageError` with stage `"preloaded-assert"`) on
  *   any missing tag, surfacing one section-level diagnostic instead of
@@ -329,9 +338,8 @@ export function describeBundleHost(
  *   unless the strategy is ESM, await `ensureRegistered`.
  *
  * On any validation or load failure, rejects with a descriptive Error.
- * The caller (section-player widget) is expected to surface the failure
- * through an `element-preload-error` event; item-players then attempt
- * their own registration and typically get a clean per-tag error.
+ * The caller (`SectionItemsPane`) keeps the items unmounted, reports an
+ * `element-preload` framework error and dispatches `element-preload-error`.
  */
 export async function warmupSectionElements(args: {
 	strategy: string;
@@ -354,7 +362,6 @@ export async function warmupSectionElements(args: {
 
 	if (args.renderables.length === 0) return;
 
-	const elements: ElementMap = aggregateElements(args.renderables);
 	const elementPackagePolicy = (
 		args.resolvedPlayerProps?.loaderOptions as
 			| { elementPackagePolicy?: ElementPackagePolicy }
@@ -363,6 +370,9 @@ export async function warmupSectionElements(args: {
 
 	if (args.strategy === "preloaded") {
 		try {
+			const elements: ElementMap = aggregateElements(
+				args.renderables.map(alignRenderableVersions),
+			);
 			assertElementPackagesAllowed(elements, elementPackagePolicy);
 			assertRegistered(Object.keys(elements));
 		} catch (error) {
@@ -370,6 +380,8 @@ export async function warmupSectionElements(args: {
 		}
 		return;
 	}
+
+	const elements: ElementMap = aggregateElements(args.renderables);
 
 	const backend = buildBackendConfigFromProps({
 		strategy: args.strategy,
@@ -391,4 +403,11 @@ export async function warmupSectionElements(args: {
 	} catch (error) {
 		throw new PreloadStageError(loadStage, error);
 	}
+}
+
+function alignRenderableVersions(renderable: ItemEntity): ItemEntity {
+	const config = renderable?.config;
+	if (!config) return renderable;
+	const aligned = alignPreloadedElementVersions(config);
+	return aligned === config ? renderable : { ...renderable, config: aligned };
 }

@@ -34,6 +34,10 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator": "workspace:*",
+		"@pie-players/pie-calculator-cortex": "workspace:*",
+		"@pie-players/pie-calculator-desmos": "workspace:*",
+		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",

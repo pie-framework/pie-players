@@ -21,11 +21,11 @@ import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/inte
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { CortexToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { GeoGebraToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
+import { CortexToolProvider } from "../calculator-providers/CortexToolProvider.js";
+import { DesmosToolProvider } from "../calculator-providers/DesmosToolProvider.js";
+import { GeoGebraToolProvider } from "../calculator-providers/GeoGebraToolProvider.js";
 
 type CalculatorType = "basic" | "scientific" | "graphing";
 export type CalculatorProviderId =

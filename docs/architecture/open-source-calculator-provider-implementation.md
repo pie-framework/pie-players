@@ -51,12 +51,9 @@ keyboard coordination remain internal details.
     MathLive + Compute Engine + JSXGraph implementation
              ^
              |
-@pie-players/pie-assessment-toolkit
-    CortexToolProvider registration adapter
-             ^
-             |
 @pie-players/pie-default-tool-loaders
-    calculator-cortex composition and lazy loading
+    CortexToolProvider registration adapter, calculator-cortex composition
+    and lazy loading
 
 @pie-players/pie-tool-calculator-shared
     generic shell, inline shell, neutral generic-element registration
@@ -83,11 +80,10 @@ All three packages join the fixed Changesets release block.
 
 ### Existing packages changed
 
-- `@pie-players/pie-assessment-toolkit` adds `CortexToolProvider`, following the
-  final GeoGebra adapter shape and lazy-importing
-  `@pie-players/pie-calculator-cortex`.
-- `@pie-players/pie-default-tool-loaders` recognizes
-  `"calculator-cortex"`, maps it to the Cortex adapter, and preserves
+- `@pie-players/pie-default-tool-loaders` adds `CortexToolProvider`, following
+  the final GeoGebra adapter shape and lazy-importing
+  `@pie-players/pie-calculator-cortex`, which it declares as a dependency. It
+  recognizes `"calculator-cortex"`, maps it to the Cortex adapter, and preserves
   `"calculator-desmos"` as the omission default.
 - `@pie-players/pie-tool-calculator-shared` gains a provider-neutral
   registration entry for the generic `<pie-tool-calculator>` element.
@@ -532,8 +528,8 @@ without interpreting the visual graph alone.
 
 ### Slice 6: Toolkit and direct integration
 
-- Add `CortexToolProvider` to the assessment toolkit.
-- Add provider recognition and lazy composition to default tool loaders.
+- Add `CortexToolProvider`, provider recognition and lazy composition to
+  default tool loaders.
 - Add shelled and inline direct custom-element packages and demos.
 - Update calculator, provider-system, package, attribution, and consumer-impact
   documentation.

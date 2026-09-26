@@ -52,7 +52,7 @@ player.loaderOptions = {
 | `esmCdnProvider` | `esm` | inferred from `esmCdnUrl` | CDN route strategy. Use `"jsdelivr"`, `"esm.sh"`, or a provider object with package and shared-dependency URL builders |
 | `moduleResolution` | `esm` | `"url"` | Module resolution mode: `"url"` (fully-qualified CDN imports) or `"import-map"` |
 | `view` | `esm` | resolved from `env.mode` | ESM view: `"delivery"`, `"author"`, or `"print"` |
-| `loadControllers` | `esm` | `true` | Whether to load PIE controllers alongside elements |
+| `loadControllers` | `esm` | `true`; `false` for a hosted player outside author mode | Whether to load PIE controllers alongside elements. A player is hosted when `hosted` is set or `backend.delivery` is enabled, and a hosted player resolves no controller. The section pre-warm resolves the default the same way |
 | `runtimeSupportCheck` | `iife`, `esm`, `preloaded` | `"off"` | When `"on"`, reads optional `./runtime-support` metadata and surfaces unsupported strategy/view hints before loading |
 
 ## Strategy details

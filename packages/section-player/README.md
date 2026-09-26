@@ -625,11 +625,16 @@ sequential keyboard navigation.
 </main>
 ```
 
-**Wired policy toggles.** Each `SectionPlayerPolicies` field has a real
-runtime effect; nothing in this surface is decorative.
+**Policy fields.** The layout accepts a partial `policies` object: every
+unset field, a missing section included, takes its value from
+`DEFAULT_SECTION_PLAYER_POLICIES`.
 
-- `readiness.mode` (`"progressive"` | `"strict"`) — drives readiness-event
-  emission via `createReadinessDetail` in `SectionPlayerLayoutKernel`.
+- `readiness.mode` (`"progressive"` | `"strict"`) — the mode
+  `SectionPlayerLayoutKernel` passes to `createReadinessDetail`. Both modes
+  hold the `interactive` stage and `pie-loading-complete` until the section's
+  element pre-warm resolves and the item cards can mount. The kernel has no
+  later loading signal, so the two modes currently emit the same sequence.
+  Default: `"progressive"`.
 - `preload.enabled` — when `false`, `SectionItemsPane` short-circuits the
   section-level element warmup pipeline (`warmupSectionElements`). Items
   still mount and item-players register their own elements on demand. Use
@@ -825,8 +830,9 @@ Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
 - `pie-stage-change` — single typed transition stream covering
   `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
   `StageChangeDetail`.
-- `pie-loading-complete` — fires once per cohort when every item has
-  loaded (kernel-routed; gated on `interactive`).
+- `pie-loading-complete` — fires once per cohort, when the section's element
+  pre-warm resolves for the current composition and the item cards can mount
+  (kernel-routed).
 - `framework-error` — canonical error event for any failure crossing the
   framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
   package-internal `FrameworkErrorBus` and the `onFrameworkError`

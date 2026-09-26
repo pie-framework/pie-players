@@ -1409,8 +1409,9 @@ pick the stability surface that matches their use case:
 ## Writing a capability package
 
 `@pie-players/pie-assessment-toolkit/tools/internal` is what a capability
-package imports: the `ToolRegistration` contract, the surface and content
-dependency types, `resolveToolTag` and the toolbar registration helpers. Same
+package imports: the `ToolRegistration` contract, the `ToolProviderApi` its
+provider descriptor creates, the surface and content dependency types,
+`resolveToolTag` and the toolbar registration helpers. Same
 stability contract as the other `*/internal` entry points — symbols may change
 between minor versions with a changeset note.
 

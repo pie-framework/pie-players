@@ -14,9 +14,24 @@
  * the real divergence — an image has `alt`, a table has `<caption>`,
  * `aria-label` and `aria-labelledby` — which is why it is a function rather than
  * a template.
+ *
+ * Content inside an editing host is never wrapped, on either pass. The editor
+ * owns that DOM: ProseMirror reads the wrapper as a foreign mutation and redraws
+ * the node without it, so an observer-driven wrap and the editor undo each other
+ * for as long as the editor holds an image.
  */
 
 const PIE_CUSTOM_ELEMENT_TAG_REGEX = /^pie-/i;
+
+/**
+ * An editing host: `contenteditable` in any state but `false`. A
+ * `contenteditable="false"` island inside a host still belongs to the host's
+ * editor — ProseMirror marks every leaf node that way, images included — so the
+ * test looks past such islands to the nearest host. A read-only editor root
+ * (`contenteditable="false"`) is no host; ProseMirror registers no DOM mutations
+ * while its view is not editable.
+ */
+const EDITING_HOST_SELECTOR = '[contenteditable]:not([contenteditable="false" i])';
 
 /** What one content kind needs in order to be wrapped. */
 export interface OverwideWrapSpec {
@@ -79,6 +94,8 @@ export function wrapOverwideInElement(
 
 		// Authored-markup pass: leave PIE custom-element internals alone.
 		if (skipPieDescendants && isInsidePieCustomElement(node, root)) continue;
+
+		if (node.closest(EDITING_HOST_SELECTOR)) continue;
 
 		const wrapper = ownerDocument.createElement(spec.wrapperTag);
 		wrapper.className = spec.wrapperClass;

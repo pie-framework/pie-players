@@ -37,7 +37,10 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { connectAssessmentToolkitRuntimeContext } from "@pie-players/pie-assessment-toolkit";
+	import {
+		connectAssessmentToolkitRuntimeContext,
+		toFrameworkErrorModel,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
@@ -78,11 +81,10 @@
 		hostButtons = [] as ToolbarItem[],
 		iifeBundleHost = "",
 		preloadedRenderables = [] as ItemEntity[],
-		/* preloadedRenderablesSignature is plumbed through the host element
-		 * tree for back-compat, but the deep ElementLoader primitive
-		 * deduplicates concurrent requests by itself, so we no longer key
-		 * warmup on it. The prop stays accepted so call-sites outside this
-		 * package don't have to change in lock-step. */
+		// Echoed on `elements-loaded-change` so the kernel counts a report only
+		// for the composition it holds. The warmup is keyed on
+		// `renderablesFingerprint` below.
+		preloadedRenderablesSignature = "",
 		preloadComponentTag = "pie-section-player-items-pane",
 		preloadEnabled = true,
 	} = $props<{
@@ -104,7 +106,10 @@
 	}>();
 
 	const dispatch = createEventDispatcher<{
-		"elements-loaded-change": { elementsLoaded: boolean };
+		"elements-loaded-change": {
+			elementsLoaded: boolean;
+			renderablesSignature: string;
+		};
 		"element-preload-retry": ElementPreloadRetryDetail;
 		"element-preload-error": ElementPreloadErrorDetail;
 	}>();
@@ -293,20 +298,77 @@
 	);
 
 	$effect(() => {
-		dispatch("elements-loaded-change", { elementsLoaded });
+		dispatch("elements-loaded-change", {
+			elementsLoaded,
+			renderablesSignature: preloadedRenderablesSignature,
+		});
+	});
+
+	function describeWarmupFailure(error: unknown): {
+		stage: PreloadStage;
+		cause: unknown;
+	} {
+		if (error instanceof PreloadStageError) {
+			return { stage: error.stage, cause: error.cause };
+		}
+		return {
+			stage: playerStrategy === "esm" ? "esm-load" : "iife-load",
+			cause: error,
+		};
+	}
+
+	/*
+	 * A rejected warmup leaves the items unmounted, so it is a framework error:
+	 * through the toolkit coordinator it reaches `framework-error` listeners and
+	 * `onFrameworkError` like every other one. Without a coordinator the event
+	 * bubbles from the pane, as a tool surface's does.
+	 */
+	function reportWarmupFailure(error: unknown): void {
+		const { stage, cause } = describeWarmupFailure(error);
+		const model = toFrameworkErrorModel({
+			kind: "element-preload",
+			source: preloadComponentTag,
+			message: formatElementLoadError(stage, cause),
+			details: [
+				`stage=${stage}`,
+				`strategy=${playerStrategy}`,
+				`renderablesCount=${preloadedRenderables.length}`,
+			],
+			recoverable: false,
+			cause,
+		});
+		const coordinator = chromeRuntimeContext?.toolkitCoordinator;
+		if (typeof coordinator?.reportFrameworkError === "function") {
+			try {
+				coordinator.reportFrameworkError(model);
+				return;
+			} catch (reportError) {
+				logger.warn("element-preload framework error report failed:", reportError);
+			}
+		}
+		const anchor = scrollHintSentinel?.parentElement;
+		if (anchor) {
+			anchor.dispatchEvent(
+				new CustomEvent("framework-error", {
+					detail: model,
+					bubbles: true,
+					composed: true,
+				}),
+			);
+			return;
+		}
+		logger.warn(model.message, cause);
+	}
+
+	$effect(() => {
+		const current = readiness.current;
+		if (current.status !== "rejected") return;
+		untrack(() => reportWarmupFailure(current.error));
 	});
 
 	$effect(() => {
 		if (readiness.current.status !== "rejected") return;
-		const error = readiness.current.error;
-		const stage: PreloadStage =
-			error instanceof PreloadStageError
-				? error.stage
-				: playerStrategy === "esm"
-					? "esm-load"
-					: "iife-load";
-		const cause =
-			error instanceof PreloadStageError ? error.cause : error;
+		const { stage, cause } = describeWarmupFailure(readiness.current.error);
 		logger.error(formatElementLoadError(stage, cause));
 		let backendForTelemetry: ReturnType<typeof buildBackendConfigFromProps> | null =
 			null;

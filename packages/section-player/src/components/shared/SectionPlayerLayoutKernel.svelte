@@ -34,7 +34,7 @@
 	} from "../../contracts/runtime-host-contract.js";
 	import {
 		DEFAULT_SECTION_PLAYER_POLICIES,
-		isPreloadEnabled,
+		resolveSectionPlayerPolicies,
 	} from "../../policies/index.js";
 	import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
@@ -162,7 +162,16 @@
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
-	let paneElementsLoaded = $state(false);
+	// The items pane reports whether its element pre-warm has resolved, with the
+	// renderables signature the report was made for. It counts only for the
+	// composition the kernel holds, and only once the toolkit has published one:
+	// before that the pane renders no items and reports its empty pre-warm as
+	// resolved.
+	let paneReport = $state<{
+		elementsLoaded: boolean;
+		renderablesSignature: string;
+	} | null>(null);
+	let compositionReceived = $state(false);
 	let scaffoldRef = $state<{
 		navigateToItem?: (index: number) => boolean;
 		getCompositionModelSnapshot?: () => unknown;
@@ -225,6 +234,11 @@
 	const preloadedRenderables = $derived(compositionSnapshot.renderables);
 	const preloadedRenderablesSignature = $derived(
 		compositionSnapshot.renderablesSignature,
+	);
+	const paneElementsLoaded = $derived(
+		compositionReceived &&
+			paneReport?.elementsLoaded === true &&
+			paneReport.renderablesSignature === preloadedRenderablesSignature,
 	);
 	const runtimeState = $derived.by(() =>
 		resolveSectionPlayerRuntimeState({
@@ -299,28 +313,43 @@
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
-	const preloadEnabled = $derived(isPreloadEnabled(policies));
+	const effectivePolicies = $derived(resolveSectionPlayerPolicies(policies));
+	const preloadEnabled = $derived(effectivePolicies.preload.enabled);
+	// Interaction waits for the items to mount, so the progressive and strict
+	// modes coincide on these signals.
 	const readinessDetail = $derived.by(() =>
 		createReadinessDetail({
-			mode: policies.readiness.mode,
+			mode: effectivePolicies.readiness.mode,
 			signals: {
 				sectionReady,
-				interactionReady: sectionReady,
+				interactionReady: sectionReady && paneElementsLoaded,
 				allLoadingComplete: paneElementsLoaded,
 				runtimeError: runtimeErrorState,
 			},
-			reason: `policy:${policies.readiness.mode}`,
+			reason: `policy:${effectivePolicies.readiness.mode}`,
 		}),
 	);
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
+		compositionReceived = true;
 		dispatch("composition-changed", (event as CustomEvent<{ composition: unknown }>).detail);
 	}
 
 	function handleItemsPaneElementsLoaded(event: Event) {
-		const detail = (event as CustomEvent<{ elementsLoaded?: unknown }>).detail;
-		paneElementsLoaded = detail?.elementsLoaded === true;
+		const detail = (
+			event as CustomEvent<{
+				elementsLoaded?: unknown;
+				renderablesSignature?: unknown;
+			}>
+		).detail;
+		paneReport = {
+			elementsLoaded: detail?.elementsLoaded === true,
+			renderablesSignature:
+				typeof detail?.renderablesSignature === "string"
+					? detail.renderablesSignature
+					: "",
+		};
 	}
 
 	function handleItemsPanePreloadRetry(event: Event) {
@@ -585,7 +614,7 @@
 		void sectionReady;
 		void paneElementsLoaded;
 		void runtimeErrorState;
-		void policies.readiness.mode;
+		void effectivePolicies.readiness.mode;
 		untrack(() => {
 			if (!host) return;
 			engine.attachHost({
@@ -631,7 +660,7 @@
 			if (lastCohort !== null) {
 				const signals: EngineReadinessSignals = {
 					sectionReady,
-					interactionReady: sectionReady,
+					interactionReady: sectionReady && paneElementsLoaded,
 					allLoadingComplete: paneElementsLoaded,
 					runtimeError: runtimeErrorState,
 				};
@@ -640,7 +669,7 @@
 					signals,
 					loadedCount: itemCount,
 					itemCount,
-					mode: policies.readiness.mode,
+					mode: effectivePolicies.readiness.mode,
 				});
 			}
 		});

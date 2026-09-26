@@ -222,6 +222,102 @@ describe("ServerTTSProvider", () => {
 		expect(synthBody.cache).toBe(true);
 	});
 
+	describe("custom transport asset auth", () => {
+		const speakAndCaptureHeaders = async (
+			config: Record<string, unknown>,
+		): Promise<Record<string, Record<string, string>>> => {
+			const captured: Record<string, Record<string, string>> = {};
+			const fetchMock = vi.fn(
+				async (input: RequestInfo | URL, init?: RequestInit) => {
+					const url = String(input);
+					const headers = { ...(init?.headers as Record<string, string>) };
+					if (url === "https://tts.custom.example/v1") {
+						captured.synthesize = headers;
+						return createJSONResponse({
+							audioContent: "https://cdn.custom.example/audio.mp3",
+							word: "https://cdn.custom.example/marks.jsonl",
+						});
+					}
+					if (url === "https://cdn.custom.example/marks.jsonl") {
+						captured.marks = headers;
+						return new Response(
+							'{"time":0,"type":"word","start":0,"end":4,"value":"Read"}\n',
+							{ status: 200, headers: { "Content-Type": "text/plain" } },
+						);
+					}
+					if (url === "https://cdn.custom.example/audio.mp3") {
+						captured.audio = headers;
+						return new Response(new Blob(["mp3-bytes"]), { status: 200 });
+					}
+					return new Response("not-found", { status: 404 });
+				},
+			);
+			globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+			const provider = new ServerTTSProvider();
+			const impl = await provider.initialize({
+				apiEndpoint: "https://tts.custom.example/v1",
+				transportMode: "custom",
+				endpointMode: "rootPost",
+				assetOrigins: [
+					"https://tts.custom.example",
+					"https://cdn.custom.example",
+				],
+				...config,
+			} as any);
+			await impl.speak("Read this text");
+			return captured;
+		};
+
+		test("sends the Authorization header of the synthesize request with the marks and audio fetches", async () => {
+			const captured = await speakAndCaptureHeaders({
+				headers: { Authorization: "Bearer t", "X-Tenant": "district-7" },
+				includeAuthOnAssetFetch: true,
+			});
+
+			expect(captured.synthesize).toMatchObject({
+				Authorization: "Bearer t",
+				"X-Tenant": "district-7",
+			});
+			expect(captured.marks).toEqual({ Authorization: "Bearer t" });
+			expect(captured.audio).toEqual({ Authorization: "Bearer t" });
+		});
+
+		test("sends an authToken with the marks and audio fetches", async () => {
+			const captured = await speakAndCaptureHeaders({
+				authToken: "t",
+				includeAuthOnAssetFetch: true,
+			});
+
+			expect(captured.synthesize).toMatchObject({ Authorization: "Bearer t" });
+			expect(captured.marks).toEqual({ Authorization: "Bearer t" });
+			expect(captured.audio).toEqual({ Authorization: "Bearer t" });
+		});
+
+		test("keeps asset fetches unauthenticated without includeAuthOnAssetFetch", async () => {
+			const captured = await speakAndCaptureHeaders({
+				headers: { Authorization: "Bearer t" },
+				authToken: "t",
+			});
+
+			expect(captured.synthesize).toMatchObject({ Authorization: "Bearer t" });
+			expect(captured.marks).toEqual({});
+			expect(captured.audio).toEqual({});
+		});
+
+		test("scrubs auth from asset fetches to an origin outside assetOrigins", async () => {
+			const captured = await speakAndCaptureHeaders({
+				headers: { Authorization: "Bearer t" },
+				includeAuthOnAssetFetch: true,
+				assetOrigins: ["https://tts.custom.example"],
+			});
+
+			expect(captured.synthesize).toMatchObject({ Authorization: "Bearer t" });
+			expect(captured.marks).toEqual({});
+			expect(captured.audio).toEqual({});
+		});
+	});
+
 	test("updates custom transport speedRate for active inline speed changes", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);

@@ -747,6 +747,13 @@ tools: {
 }
 ```
 
+The fetch completes before the first TTS request, and its result merges over the
+provider config: a returned `authToken` is sent as `Authorization: Bearer <token>`
+and returned `headers` with every synthesis request, and under
+`includeAuthOnAssetFetch` the `Authorization` header also reaches the custom
+transport's speech-mark and audio fetches. A failed fetch falls back to browser
+speech and reports `pie-tool-init-error`.
+
 ### Custom Transport via Server Proxy (SC-style)
 
 For custom backends that return URL assets (for example `{ audioContent, word }`),

@@ -16,40 +16,51 @@ by the generator in
 
 ## What the generated package contains
 
-`buildPreloadedPlayerStaticPackage` (`fixed-static.ts:449`) assembles:
+`buildPreloadedPlayerStaticPackage` (`fixed-static.ts:524`) assembles:
 
-- `dist/pie-item-player.js` and its sibling chunks and assets — the complete
-  `packages/item-player` build, so relative imports work from a static server.
+- `dist/pie-item-player.js`, `dist/preloaded.js` and their sibling chunks and
+  assets — the complete `packages/item-player` build, so relative imports work
+  from a static server. `preloaded.js` is the player's registration entry,
+  `@pie-players/pie-item-player/preloaded`.
 - `dist/pie-elements-bundle-<hash>.js` — one IIFE bundle fetched from the PITS
   bundle service at `https://proxy.pie-api.com/bundles/<pkg@ver>+<pkg@ver>.../player.js`,
   containing every element listed in the config, at the pinned versions.
-- `dist/math-rendering.js` — `@pie-lib/math-rendering-module`, patched to drop
-  an `eval(require)` call that doesn't survive bundling.
 - `dist/index.js` — the entry point actually imported by consumers (see below).
 - `package.json` with a `pie` metadata block (`set` on a published build,
   `bundleHash`, `iteration`, `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
   `Window.PIE_PRELOADED_ELEMENTS`.
 
-Importing `dist/index.js` is a side-effecting module load, not an API call:
+Importing `dist/index.js` is a side-effecting module load, not an API call. It
+runs three steps in order, each import with retry/backoff:
 
-1. It merges the config's elements into `window.PIE_PRELOADED_ELEMENTS`
+1. It imports `preloaded.js` and installs the item player's math renderer with
+   `ensureItemPlayerMathRenderingReady()`, because the bundle's elements read
+   `window["@pie-lib/math-rendering"]` as they evaluate. A renderer the page
+   already installed stays.
+2. It imports the elements bundle and registers the raw PITS constructors,
+   without controllers, under the configured versioned tags through
+   `registerPreloadedElements`, which records each package's spec in
+   `window.PIE_PRELOADED_ELEMENTS`
    (`{"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3", ...}`).
-2. It sequentially imports the math-rendering module and the elements bundle,
-   registers the raw PITS constructors under the configured versioned tags,
-   then imports `pie-item-player.js` unless the page already registered
-   `pie-item-player` ([below](#the-builds-own-item-player)), each import with
-   retry/backoff. That order matters: `pie-item-player.js` runs its readiness
-   assertion (below) against whatever is already registered, so it must load
-   last.
+3. It imports `pie-item-player.js` unless the page already registered
+   `pie-item-player` ([below](#the-builds-own-item-player)).
+   `pie-item-player.js` runs its readiness assertion (below) against whatever
+   is already registered, so it loads last.
 
 Nothing else is exposed to the consumer — there's no explicit "register"
 call. Once the module has loaded, `<pie-item-player strategy="preloaded">`
 picks up the already-registered elements.
 
 The generated ES module awaits initialization. A completed `await import(...)`
-means registration finished; an initialization failure rejects the import.
-Registration also records the existing `player.js` registry metadata, with
-controllers left server-side, and preserves a previous host's registration.
+means registration finished; an initialization failure rejects the import. A
+bundler that processes the entry needs an es2022 or later target for that
+top-level await: Vite 6 and earlier default to an older target and fail the
+build.
+
+A tag the page already defined keeps its definition and its registry entry, so
+importing the entry twice is harmless. A package the page already registered at
+another version rejects the import, because the players align every authored
+version of a package to the registered one.
 
 ## Version scheme
 
@@ -86,12 +97,14 @@ of the config's sorted `package@version` list (`generateHash`), published as
 
 `publish-changed.mjs` enforces that no two configs share a hash
 (`validateUniqueCombinations`) — configs must be unique element combinations,
-not just unique filenames. A config's optional `tag` field selects its authored
-base tag, such as `multiple-choice` or `pie-element-multiple-choice`. Omitting
-it selects `pie-<package basename>`. The generator uses the shared public
-`makeUniqueTags` transform to compute versioned registrations. Match the base
-name in authored content; the player only substitutes bundled versions on its
-runtime copy. It does not rename arbitrary authored tags or alter model IDs.
+not just unique filenames. A config lists each package once at an exact
+version; the generator rejects a range or a repeated package. A config's
+optional `tag` field selects its authored base tag, such as `multiple-choice`
+or `pie-element-multiple-choice`. Omitting it selects
+`pie-<package basename>`. Registration derives each versioned tag from the base
+tag and the pinned version (`toPackageVersionedTag`). Match the base name in
+authored content; the player only substitutes bundled versions on its runtime
+copy. It does not rename arbitrary authored tags or alter model IDs.
 
 ### Dist-tags
 
@@ -127,11 +140,18 @@ mapping: [`docs/item-player/loading-strategies.md`](../item-player/loading-strat
 The short version: for `iife`/`esm`, the player fetches and registers
 elements at render time via `ElementLoader.ensureRegistered`. For
 `preloaded`, it does no loading at all — it calls
-`ElementLoader.assertRegistered(tags)`, a synchronous check that throws
-`ElementAssertionError` if any required tag isn't already in
-`customElements`. Importing `@pie-players/pie-preloaded-player` before
-mounting the player is what makes that assertion pass; there is no fallback
-to bundle fetching if it doesn't.
+`ElementLoader.assertRegistered`, a synchronous check that throws
+`ElementAssertionError` when a required tag is not in `customElements`, naming
+each missing tag and the tags its package is registered as. Importing
+`@pie-players/pie-preloaded-player` before mounting the player is what makes
+that assertion pass; there is no fallback to bundle fetching if it doesn't.
+
+A host that bundles element packages itself registers them without this
+package, through `registerPreloadedElements` from
+`@pie-players/pie-item-player/preloaded`; see
+[`strategy="preloaded"`](../item-player/loading-strategies.md#strategypreloaded).
+A host that evaluates a PITS IIFE bundle itself first awaits
+`ensureItemPlayerMathRenderingReady()` from that entry, as step 1 above does.
 
 ```html
 <script type="module">
@@ -150,11 +170,12 @@ spec.
 
 ### Models and scoring
 
-A preloaded page registers view elements only. The generated package's
-`player.js` bundle and `registerPreloadedElements` carry no controllers, so the
-player runs no client-side controller. It renders the models it receives as
-they are, so they have to arrive server-processed, and scoring happens on the
-server.
+A generated build registers view elements only: the PITS `player.js` bundle
+carries no controllers. The player rendering them has to be hosted (`hosted`,
+or `backend.delivery` enabled), so its models arrive server-processed and
+scoring happens on the server. A player that is not hosted renders each model as
+authored, without running `model()`, and warns once per tag that it has no
+controller.
 
 ## The build's own item player
 
@@ -200,8 +221,8 @@ What section player does **not** do is import
 `@pie-players/pie-preloaded-player` itself — that package has no
 section-player consumer today. Getting elements registered before setting
 `playerType: "preloaded"` is left to the host, exactly as it is for a bare
-`<pie-item-player>`: import the package (or otherwise pre-register the
-elements) before mounting the section player. The
+`<pie-item-player>`: import the package, or register the elements with
+`registerPreloadedElements`, before mounting the section player. The
 `preloaded-fixed-elements` demo
 (`apps/section-demos/src/routes/(demos)/preloaded-fixed-elements/+page.svelte`)
 shows the pattern, though it fetches the PITS bundle itself rather than

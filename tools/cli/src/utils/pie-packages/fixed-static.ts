@@ -2,10 +2,10 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { basename, join } from "node:path";
 
-import { BundleType, encodeElementPackageSpecs, makeUniqueTags, Status } from "@pie-players/pie-players-shared/pie";
+import { assertElementPackagesAllowed } from "@pie-players/pie-players-shared/loaders";
+import { encodeElementPackageSpecs, parsePackageName } from "@pie-players/pie-players-shared/pie";
 
 import type { ElementSpec } from "./types.js";
 
@@ -50,7 +50,6 @@ export async function readElementSet(elementsFile: string): Promise<ElementSet> 
 
 const DEFAULT_PITS_BASE_URL = "https://proxy.pie-api.com";
 const STATIC_PACKAGE_NAME = "@pie-players/pie-preloaded-player";
-const EVAL_REQUIRE_PATTERN = /return\s+eval\((["'])require\1\);/g;
 
 export function generateHash(elements: string[]): string {
 	const sorted = [...elements].sort();
@@ -121,28 +120,47 @@ async function fetchNextIterationFromNpm(
 }
 
 function parseElements(elements: string[]): Record<string, string> {
-	const parsed: Record<string, string> = {};
-	for (const el of elements) {
-		const lastAtIndex = el.lastIndexOf("@");
-		if (lastAtIndex > 0) {
-			const name = el.substring(0, lastAtIndex);
-			const version = el.substring(lastAtIndex + 1);
-			parsed[name] = version;
-		} else {
-			parsed[el] = "latest";
-		}
-	}
-	return parsed;
+	return Object.fromEntries(
+		elements.map((spec) => {
+			const { name, version } = parsePackageName(spec);
+			return [name, version || "latest"];
+		}),
+	);
 }
 
-function fullSpecsByPackageName(elements: string[]): Record<string, string> {
-	const parsed: Record<string, string> = {};
-	for (const el of elements) {
-		const lastAtIndex = el.lastIndexOf("@");
-		const name = lastAtIndex > 0 ? el.substring(0, lastAtIndex) : el;
-		parsed[name] = el;
+/** The `registerPreloadedElements` entries a build registers, less their element classes. */
+function preloadedEntries(
+	elements: string[],
+	elementTags: Record<string, string> = {},
+): Array<{ tag: string; package: string; version: string }> {
+	return elements.map((spec) => {
+		const { name, version } = parsePackageName(spec);
+		return {
+			tag: elementTags[name] ?? `pie-${name.split("/").pop()}`,
+			package: name,
+			version,
+		};
+	});
+}
+
+/**
+ * The generated entry registers each element at its build version, and a
+ * page holds one version per package, so a build pins exact versions.
+ */
+export function assertBuildElements(
+	elements: string[],
+	elementTags: Record<string, string> = {},
+): void {
+	const entries = preloadedEntries(elements, elementTags);
+	const names = entries.map((entry) => entry.package);
+	const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+	if (duplicate) {
+		throw new Error(`${duplicate} is listed twice; a build registers one version per package`);
 	}
-	return parsed;
+	assertElementPackagesAllowed(
+		Object.fromEntries(entries.map((entry, index) => [entry.tag, elements[index]])),
+		{ allowedPackages: names },
+	);
 }
 
 function generateVersion(config: BuildStaticConfig): string {
@@ -187,23 +205,6 @@ async function fetchBundle(
 		);
 	}
 	throw new Error(`Failed to fetch bundle after ${maxRetries} attempts`);
-}
-
-function resolveMathRenderingModulePath(monorepoDir: string): string {
-	const playersSharedPkgJsonPath = join(
-		monorepoDir,
-		"packages",
-		"players-shared",
-		"package.json",
-	);
-	const requireFromPlayersShared = createRequire(playersSharedPkgJsonPath);
-	return requireFromPlayersShared.resolve(
-		"@pie-lib/math-rendering-module/module/index.js",
-	);
-}
-
-function patchMathRenderingModuleEval(code: string): string {
-	return code.replace(EVAL_REQUIRE_PATTERN, "return commonjsRequire;");
 }
 
 function generatePackageJson(config: BuildStaticConfig, version: string): any {
@@ -256,41 +257,32 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 	};
 }
 
-function generateIndex(
+/**
+ * The build's browser entry. It installs the math renderer, which the PITS
+ * bundle's legacy elements read as they evaluate, then loads the bundle,
+ * registers its elements through the item player's `registerPreloadedElements`,
+ * and loads the item player. The top-level await makes `await import()` of
+ * the entry resolve once every element is registered.
+ */
+export function generateIndex(
 	bundleFilename: string,
-	preloadedElements: Record<string, string>,
+	elements: string[],
 	elementTags: Record<string, string> = {},
 ): string {
-	const preloadedElementsJson = JSON.stringify(preloadedElements, null, 2);
-	// Use the same public transform as the consuming player. The generated
-	// browser entry needs only the resulting names, not a second version encoder.
-	const registrations = Object.entries(preloadedElements).map(([name, spec]) => {
-		const baseTag = elementTags[name] ?? `pie-${name.split("/").pop()}`;
-		const { config } = makeUniqueTags({
-			config: { elements: { [baseTag]: spec }, models: [], markup: "" },
-		});
-		return [name, Object.keys(config.elements)[0]];
-	});
-	const mathRenderingSetup = `
-    const mathRenderingModule = await importWithRetry('./math-rendering.js', 4, 200);
-    if (typeof window !== 'undefined') {
-      window['@pie-lib/math-rendering'] = mathRenderingModule._dll_pie_lib__math_rendering;
-      window['_dll_pie_lib__math_rendering'] = mathRenderingModule._dll_pie_lib__math_rendering;
-    }`;
+	const entries = JSON.stringify(preloadedEntries(elements, elementTags), null, 2).replace(
+		/\n/g,
+		"\n  ",
+	);
 
 	return `// Auto-generated entry point for pie-preloaded-player
 await (async function initializePieItemPlayerStatic() {
-  const preloadedElements = ${preloadedElementsJson};
-  if (typeof window !== 'undefined') {
-    const existing = window.PIE_PRELOADED_ELEMENTS || {};
-    window.PIE_PRELOADED_ELEMENTS = { ...existing, ...preloadedElements };
-  }
+  const elements = ${entries};
 
-  const importWithRetry = async (specifier, attempts = 3, baseDelayMs = 200) => {
+  const withRetry = async (load, attempts = 4, baseDelayMs = 200) => {
     let lastError;
     for (let attempt = 1; attempt <= attempts; attempt++) {
       try {
-        return await import(specifier);
+        return await load();
       } catch (err) {
         lastError = err;
         if (attempt < attempts) {
@@ -301,6 +293,7 @@ await (async function initializePieItemPlayerStatic() {
     }
     throw lastError;
   };
+  const importWithRetry = (specifier) => withRetry(() => import(specifier));
 
   // Parity with @pie-framework/pie-fixed-player-static, whose load signal Star
   // and Quiz Engine listen for: the same event name on \`document\`, the same
@@ -321,46 +314,30 @@ await (async function initializePieItemPlayerStatic() {
     } catch {}
   };
 
-  // PITS exposes raw constructors; the generated host owns registration.
-  const registerPreloadedElements = () => {
+  try {
+    const { ensureItemPlayerMathRenderingReady, registerPreloadedElements } =
+      await importWithRetry('./preloaded.js');
+    // Keeps a renderer the page already installed.
+    await withRetry(() => ensureItemPlayerMathRenderingReady());
+    await importWithRetry('./${bundleFilename}');
     const pieModule = typeof window !== 'undefined' && window.pie && window.pie.default;
     if (!pieModule) {
       throw new Error('[pie-preloaded-player] window.pie.default missing after bundle load');
     }
-    const registry = window.PIE_REGISTRY ?? (window.PIE_REGISTRY = {});
-    for (const [packageName, tagName] of ${JSON.stringify(registrations)}) {
-      const elementData = pieModule[packageName];
+    // PITS exposes raw constructors; the build registers them without
+    // controllers, for hosted players.
+    registerPreloadedElements(elements.map((entry) => {
+      const elementData = pieModule[entry.package];
       if (!elementData || !elementData.Element) {
-        throw new Error('[pie-preloaded-player] No element class found in bundle for ' + packageName);
+        throw new Error('[pie-preloaded-player] No element class found in bundle for ' + entry.package);
       }
-      if (!customElements.get(tagName)) {
-        customElements.define(tagName, class extends elementData.Element {});
-      }
-      // Match the IIFE adapter's player.js entry: controllers remain server-side.
-      // A previous host registration retains its metadata and controller owner.
-      if (!registry[tagName]) {
-        registry[tagName] = {
-          package: preloadedElements[packageName],
-          status: ${JSON.stringify(Status.loaded)},
-          tagName,
-          element: customElements.get(tagName),
-          controller: null,
-          config: elementData.config ?? null,
-          bundleType: ${JSON.stringify(BundleType.player)},
-        };
-      }
-    }
-  };
-
-  try {
-${mathRenderingSetup}
-    await importWithRetry('./${bundleFilename}', 4, 200);
-    registerPreloadedElements();
+      return { ...entry, element: elementData.Element };
+    }));
     // A page that already registered \`pie-item-player\` — anything importing
     // @pie-players/pie-section-player — renders these elements through that
     // copy. This one would only find the tag taken, so it is not fetched.
     if (!customElements.get('pie-item-player')) {
-      await importWithRetry('./pie-item-player.js', 4, 200);
+      await importWithRetry('./pie-item-player.js');
     }
     announceLoadState('PIE-Fixed-Player-Load-Complete');
   } catch (error) {
@@ -463,6 +440,8 @@ The preloaded bundle is included by this package import. With \`strategy="preloa
 
 A page that already registered \`pie-item-player\` — anything importing \`@pie-players/pie-section-player\` — renders these elements through that copy, and this package skips loading its own.
 
+The entry uses top-level await, so \`await import()\` of it resolves once every element is registered. A bundler that processes it needs an es2022 or later target: Vite 6 and earlier default to an older one, which fails the build (\`build.target: "es2022"\`).
+
 ## Attributes
 
 - \`config\` - Item config containing \`elements\`, \`models\`, and \`markup\`
@@ -496,7 +475,7 @@ Options:
 
 This package includes retry behavior for:
 
-- Module imports (math-rendering, preloaded bundle, player module): up to 4 attempts with exponential backoff
+- Module imports (registration, math renderer, preloaded bundle, player module): up to 4 attempts with exponential backoff
 - Runtime resources (images/audio/video): configurable retries via \`loader-config\`
 
 ## Events
@@ -534,8 +513,8 @@ export async function parseElementsInput(
 				return parsed.elements;
 		} catch {
 			return elementsString.split(",").map((item) => {
-				const [pkg, version] = item.trim().split("@").filter(Boolean);
-				return { package: `@${pkg}`, version };
+				const { name, version } = parsePackageName(item.trim());
+				return { package: name, version };
 			});
 		}
 	}
@@ -566,6 +545,7 @@ export async function buildPreloadedPlayerStaticPackage(
 		);
 	}
 
+	assertBuildElements(config.elements, config.elementTags);
 	const version = generateVersion(config);
 	const hash = generateHash(config.elements);
 
@@ -612,17 +592,6 @@ export async function buildPreloadedPlayerStaticPackage(
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
 	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);
 
-	const mathModuleSrc = resolveMathRenderingModulePath(config.monorepoDir);
-	const mathModuleDest = join(outputDir, "dist", "math-rendering.js");
-	const mathModuleCode = await readFile(mathModuleSrc, "utf-8");
-	const patchedMathModuleCode = patchMathRenderingModuleEval(mathModuleCode);
-	if (/eval\((["'])require\1\)/.test(patchedMathModuleCode)) {
-		throw new Error(
-			"math-rendering-module still contains eval(require) after patching",
-		);
-	}
-	await writeFile(mathModuleDest, patchedMathModuleCode);
-
 	const packageJson = generatePackageJson(config, version);
 	await writeFile(
 		join(outputDir, "package.json"),
@@ -630,7 +599,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename, fullSpecsByPackageName(config.elements), config.elementTags),
+		generateIndex(bundleFilename, config.elements, config.elementTags),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(

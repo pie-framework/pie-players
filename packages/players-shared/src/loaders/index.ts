@@ -70,6 +70,7 @@ export {
 	BUILT_IN_VIEWS,
 	createEsmBackend,
 	mapEsmViewElements,
+	resolveEsmRuntimeSupportUrl,
 } from "./esm-adapter.js";
 export type {
 	IifeBackend,
@@ -81,7 +82,10 @@ export { resolveLoadControllers } from "./controller-loading.js";
 
 // Host-side registration for the `preloaded` strategy, which only asserts, and
 // the version alignment both players apply before asserting.
-export type { PreloadedElement } from "./preloaded-registration.js";
+export type {
+	PreloadedController,
+	PreloadedElement,
+} from "./preloaded-registration.js";
 export { registerPreloadedElements } from "./preloaded-registration.js";
 export type { PreloadedElementSpecs } from "./preloaded-alignment.js";
 export { alignPreloadedElementVersions } from "./preloaded-alignment.js";

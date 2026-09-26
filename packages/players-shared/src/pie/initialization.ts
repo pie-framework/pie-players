@@ -13,7 +13,7 @@ import { editorPostFix } from "../types/index.js";
 import { initializePieElement } from "./initialize-element.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { initializeMathRendering } from "./math-rendering.js";
-import { pieRegistry } from "./registry.js";
+import { pieRegistry, writeRegistryEntry } from "./registry.js";
 import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import type {
@@ -231,14 +231,14 @@ const registerPieElementsFromBundle = (
 						: " (no controller - server-processed models)"
 				}`,
 			);
-			registry[elementTagName] = {
+			writeRegistryEntry({
 				package: pkg as string,
 				status: Status.loading,
 				tagName: elementTagName,
 				controller: elementData.controller || null,
 				config: elementData.config,
 				bundleType: options.bundleType,
-			};
+			});
 
 			if (isCustomElementConstructor(elementData.Element)) {
 				defineCustomElementSafely(
@@ -264,11 +264,10 @@ const registerPieElementsFromBundle = (
 					});
 				});
 
-				// Update registry status
-				registry[elementTagName] = {
+				writeRegistryEntry({
 					...registry[elementTagName],
 					status: Status.loaded,
-				};
+				});
 
 				promises.push(
 					customElements.whenDefined(elementTagName).then(() => {

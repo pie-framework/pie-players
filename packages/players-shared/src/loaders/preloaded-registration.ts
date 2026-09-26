@@ -1,35 +1,49 @@
 /**
  * Registration for the `preloaded` strategy: the host's bundler resolves the
- * element packages, and the players only assert that their tags are
- * registered (`assertRegistered`).
+ * element packages, and the players load nothing.
  *
  * Each element is defined under the versioned tag `toPackageVersionedTag`
- * derives from its authored base tag, recorded in `window.PIE_REGISTRY`, which
- * the players bind model and session through, and recorded by package in
- * `window.PIE_PRELOADED_ELEMENTS`, from which the players align authored
- * versions to the installed one.
+ * derives from its authored base tag and the registered version, recorded in
+ * `window.PIE_REGISTRY`, and recorded by package in
+ * `window.PIE_PRELOADED_ELEMENTS`. The item player and the section player
+ * rewrite every authored spec of a registered package to that version
+ * (`alignPreloadedElementVersions`), derive the versioned tags from the result
+ * and assert them (`assertRegistered`).
  *
- * Entries carry no controller: preloaded delivery runs hosted, with `model()`
- * and `outcome()` on the server, and a hosted player resolves no controller
- * (`findPieController`).
+ * A hosted player takes models from the server and resolves no controller. A
+ * player that is not hosted runs the controller's `model()` in the browser, so
+ * it needs the `controller` an entry registers; the item player warns about
+ * each tag it renders without one.
  */
 
+import type { PieController } from "../types/index.js";
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
-import { pieRegistry } from "../pie/registry.js";
+import { writeRegistryEntry } from "../pie/registry.js";
 import { BundleType, isCustomElementConstructor, Status } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
 import { toPackageVersionedTag } from "../pie/versioned-tag.js";
+import { isExactSemver } from "./element-package-policy.js";
 import { pickElementClass } from "./esm-adapter.js";
+
+/** A controller module: the `model()` a player that is not hosted runs. */
+export type PreloadedController = {
+	readonly model: (...args: any[]) => unknown;
+};
 
 export interface PreloadedElement {
 	/** Base tag the content authors, e.g. `pie-element-multiple-choice`. */
 	tag: string;
 	/** npm package name, e.g. `@pie-element/multiple-choice`. */
 	package: string;
-	/** The installed version, e.g. `13.4.4`. */
+	/** The installed version, exact, e.g. `13.4.4`. */
 	version: string;
 	/** The package's `./browser/delivery` module, or its default export. */
 	element: CustomElementConstructor | { readonly default: CustomElementConstructor };
+	/**
+	 * The package's `./browser/controller` module, or its default export.
+	 * Required for a player that is not hosted.
+	 */
+	controller?: PreloadedController | { readonly default: PreloadedController };
 }
 
 type ResolvedElement = {
@@ -37,6 +51,7 @@ type ResolvedElement = {
 	spec: string;
 	tagName: string;
 	elementClass: CustomElementConstructor;
+	controller?: PieController;
 };
 
 /**
@@ -44,9 +59,10 @@ type ResolvedElement = {
  *
  * Synchronous: every tag is in `customElements` when the call returns.
  * Idempotent: a tag that is already defined keeps its definition and its
- * registry entry. Every entry is validated before any is registered, and a
- * package registers at one version per page, because the players align every
- * authored version of a package to the registered one.
+ * registry entry, which only gains a controller it lacked. Every entry is
+ * validated before any is registered. A package registers at one version per
+ * page, because the players align every authored version of a package to the
+ * registered one.
  */
 export function registerPreloadedElements(
 	elements: readonly PreloadedElement[],
@@ -61,20 +77,20 @@ export function registerPreloadedElements(
 	const resolved = elements.map(resolveElement);
 	assertOneVersionPerPackage(resolved, preloaded);
 
-	const registry = pieRegistry();
-	for (const { packageName, spec, tagName, elementClass } of resolved) {
+	for (const { packageName, spec, tagName, elementClass, controller } of resolved) {
 		defineCustomElementSafely(
 			tagName,
 			class extends elementClass {},
 			`preloaded element tag for ${packageName}`,
 		);
-		registry[tagName] ??= {
+		writeRegistryEntry({
 			package: spec,
 			status: Status.loaded,
 			tagName,
 			element: elementClass,
-			bundleType: BundleType.player,
-		};
+			...(controller ? { controller } : {}),
+			bundleType: controller ? BundleType.clientPlayer : BundleType.player,
+		});
 		preloaded[packageName] = spec;
 	}
 }
@@ -94,9 +110,9 @@ function resolveElement(
 			`${at}: package must be a bare package name, got ${JSON.stringify(packageName)}`,
 		);
 	}
-	if (typeof version !== "string" || !version || /\s/.test(version)) {
+	if (typeof version !== "string" || !isExactSemver(version)) {
 		throw new Error(
-			`${at} (${packageName}): version must be the installed version, got ${JSON.stringify(version)}`,
+			`${at} (${packageName}): version must be the installed version, exact, such as 13.4.4; got ${JSON.stringify(version)}`,
 		);
 	}
 	if (typeof tag !== "string" || !tag) {
@@ -115,13 +131,35 @@ function resolveElement(
 		);
 	}
 
+	let controller: PieController | undefined;
+	if (element.controller !== undefined) {
+		controller = resolveController(element.controller);
+		if (!controller) {
+			throw new Error(
+				`${at} (${packageName}): controller must be the ./browser/controller module or its default export`,
+			);
+		}
+	}
+
 	const spec = `${packageName}@${version}`;
 	return {
 		packageName,
 		spec,
 		tagName: toPackageVersionedTag(tag, spec),
 		elementClass: candidate,
+		controller,
 	};
+}
+
+function resolveController(value: unknown): PieController | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const module = value as { model?: unknown; default?: unknown };
+	const candidate = (
+		typeof module.model === "function" ? module : module.default
+	) as { model?: unknown } | undefined;
+	return candidate && typeof candidate.model === "function"
+		? (candidate as PieController)
+		: undefined;
 }
 
 function assertOneVersionPerPackage(

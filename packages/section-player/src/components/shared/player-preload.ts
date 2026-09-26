@@ -374,7 +374,7 @@ export async function warmupSectionElements(args: {
 				args.renderables.map(alignRenderableVersions),
 			);
 			assertElementPackagesAllowed(elements, elementPackagePolicy);
-			assertRegistered(Object.keys(elements));
+			assertRegistered(elements);
 		} catch (error) {
 			throw new PreloadStageError("preloaded-assert", error);
 		}

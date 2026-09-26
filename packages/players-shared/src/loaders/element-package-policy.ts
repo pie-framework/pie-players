@@ -23,7 +23,8 @@ export class ElementPackagePolicyError extends Error {
 	}
 }
 
-function isExactSemver(version: string): boolean {
+/** Exact semver: no range, tag, `v` prefix or build metadata. */
+export function isExactSemver(version: string): boolean {
 	return validSemver(version) === version;
 }
 

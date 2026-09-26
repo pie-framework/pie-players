@@ -6,14 +6,23 @@ import {
 	type EvaluationResult,
 	type SampledSeries,
 	type WorkerEvaluationSettings,
+	type WorkerReadyMessage,
 	type WorkerRequest,
 	type WorkerResponse,
 } from "./worker-protocol.js";
 
+/*
+ * How long a worker may take to fetch, compile and run its module. It is 0.7s on a
+ * fast machine and several seconds on a slow one, so the calculation's own limit
+ * cannot also cover it. The GeoGebra provider allows its applet the same 20s.
+ */
+const WORKER_STARTUP_LIMIT_MS = 20_000;
+
 interface PendingRequest {
 	resolve(value: EvaluationResult | SampledSeries[]): void;
 	reject(error: unknown): void;
-	timer: ReturnType<typeof setTimeout>;
+	/** Armed when the worker is ready; a request made while it starts waits. */
+	timer: ReturnType<typeof setTimeout> | null;
 }
 
 type WithoutWorkerEnvelope<T> = T extends WorkerRequest
@@ -36,13 +45,18 @@ function createInstanceId(): string {
 
 export class EvaluationClient {
 	private worker: Worker | null = null;
+	private workerReady = false;
+	private startupTimer: ReturnType<typeof setTimeout> | null = null;
 	private readonly pending = new Map<number, PendingRequest>();
 	private readonly instanceId = createInstanceId();
 	private nextRequestId = 0;
 	private generation = 0;
 	private destroyed = false;
 
-	constructor(private settings: ResolvedCortexSettings) {}
+	constructor(
+		private settings: ResolvedCortexSettings,
+		private readonly startupLimitMs = WORKER_STARTUP_LIMIT_MS,
+	) {}
 
 	/*
 	 * Settings travel with every request and the worker is stateless — it reads
@@ -92,6 +106,16 @@ export class EvaluationClient {
 			worker.addEventListener("message", this.handleMessage);
 			worker.addEventListener("error", this.handleWorkerError);
 			this.worker = worker;
+			this.workerReady = false;
+			this.startupTimer = setTimeout(() => {
+				this.resetWorker(
+					new CortexCalculatorError(
+						"worker-unavailable",
+						"The calculator worker did not start in time.",
+						{ recoverable: false },
+					),
+				);
+			}, this.startupLimitMs);
 			return worker;
 		} catch (error) {
 			throw new CortexCalculatorError(
@@ -103,19 +127,19 @@ export class EvaluationClient {
 	}
 
 	private readonly handleMessage = (
-		event: MessageEvent<WorkerResponse>,
+		event: MessageEvent<WorkerResponse | WorkerReadyMessage>,
 	): void => {
 		const response = event.data;
-		if (
-			response.protocolVersion !== CORTEX_WORKER_PROTOCOL_VERSION ||
-			response.instanceId !== this.instanceId
-		) {
+		if (response.protocolVersion !== CORTEX_WORKER_PROTOCOL_VERSION) return;
+		if (response.kind === "ready") {
+			this.handleReady();
 			return;
 		}
+		if (response.instanceId !== this.instanceId) return;
 		const pending = this.pending.get(response.requestId);
 		if (!pending) return;
 		this.pending.delete(response.requestId);
-		clearTimeout(pending.timer);
+		if (pending.timer) clearTimeout(pending.timer);
 		if (response.generation !== this.generation) {
 			pending.reject(
 				new CortexCalculatorError(
@@ -138,6 +162,27 @@ export class EvaluationClient {
 		}
 	};
 
+	private handleReady(): void {
+		if (this.workerReady) return;
+		this.workerReady = true;
+		if (this.startupTimer) clearTimeout(this.startupTimer);
+		this.startupTimer = null;
+		for (const pending of this.pending.values()) {
+			pending.timer ??= this.startRequestTimer();
+		}
+	}
+
+	private startRequestTimer(): ReturnType<typeof setTimeout> {
+		return setTimeout(() => {
+			this.resetWorker(
+				new CortexCalculatorError(
+					"evaluation-timeout",
+					"The calculation took too long and was stopped.",
+				),
+			);
+		}, this.settings.evaluationTimeLimitMs + 150);
+	}
+
 	private readonly handleWorkerError = (): void => {
 		this.resetWorker(
 			new CortexCalculatorError(
@@ -151,14 +196,29 @@ export class EvaluationClient {
 	private resetWorker(error: CortexCalculatorError): void {
 		const worker = this.worker;
 		this.worker = null;
+		this.workerReady = false;
+		if (this.startupTimer) clearTimeout(this.startupTimer);
+		this.startupTimer = null;
 		worker?.removeEventListener("message", this.handleMessage);
 		worker?.removeEventListener("error", this.handleWorkerError);
 		worker?.terminate();
 		for (const pending of this.pending.values()) {
-			clearTimeout(pending.timer);
+			if (pending.timer) clearTimeout(pending.timer);
 			pending.reject(error);
 		}
 		this.pending.clear();
+	}
+
+	/**
+	 * Starts the worker ahead of the first request, so the learner's typing covers
+	 * its cold start. A worker that cannot be created is reported by that request.
+	 */
+	start(): void {
+		try {
+			this.ensureWorker();
+		} catch {
+			// `request` calls `ensureWorker` again and rejects with the same error.
+		}
 	}
 
 	private request(
@@ -168,14 +228,7 @@ export class EvaluationClient {
 		const requestId = ++this.nextRequestId;
 		const generation = this.generation;
 		return new Promise((resolve, reject) => {
-			const timer = setTimeout(() => {
-				this.resetWorker(
-					new CortexCalculatorError(
-						"evaluation-timeout",
-						"The calculation took too long and was stopped.",
-					),
-				);
-			}, this.settings.evaluationTimeLimitMs + 150);
+			const timer = this.workerReady ? this.startRequestTimer() : null;
 			this.pending.set(requestId, { resolve, reject, timer });
 			const message = {
 				...request,

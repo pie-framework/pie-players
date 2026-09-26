@@ -10,19 +10,19 @@ function demoPath(player: "iife" | "esm" | "preloaded"): string {
 	return `/calculator-cortex?${params}`;
 }
 
-// Section demos load the Cortex provider from its built chunks. The spec ends
-// once the evaluation worker's script is served: the first evaluation's time
-// limit covers the worker's cold start, which a CI runner exceeds, and each
-// timeout starts the worker cold again.
+// Section demos load the Cortex provider from its built chunks, and the
+// provider evaluates in a module worker that starts when the calculator opens.
+// The keys are pressed while the tool shell is still resizing the calculator it
+// just opened, and the first evaluation waits on the worker's cold start.
 for (const player of ["iife", "esm", "preloaded"] as const) {
-	test(`Cortex calculator opens and starts its worker under the ${player} player`, async ({
+	test(`Cortex calculator evaluates in its worker under the ${player} player`, async ({
 		page,
 	}) => {
 		test.setTimeout(180_000);
-		const workerScripts: number[] = [];
-		page.on("response", (response) => {
-			if (response.url().includes("evaluation-worker")) {
-				workerScripts.push(response.status());
+		const workerScripts: string[] = [];
+		page.on("request", (request) => {
+			if (request.url().includes("evaluation-worker")) {
+				workerScripts.push(request.url());
 			}
 		});
 
@@ -34,34 +34,30 @@ for (const player of ["iife", "esm", "preloaded"] as const) {
 			.first()
 			.getByRole("button", { name: /^(basic |scientific )?calculator$/i });
 		await expect(calculatorButton).toBeVisible({ timeout: 60_000 });
+		expect(workerScripts).toEqual([]);
 		await calculatorButton.click();
 		const calculator = page
 			.locator('[data-pie-tool-shell="calculator"]')
 			.first();
 		await expect(calculator).toBeVisible();
 
-		const field = calculator.locator("math-field");
-		// A press made while the keypad settles can be lost, so each attempt
-		// starts from a cleared field.
-		await expect(async () => {
-			await calculator
-				.getByRole("button", { name: "Clear", exact: true })
-				.click();
-			for (const key of ["digit-7", "multiply", "digit-8"]) {
-				await calculator.locator(`[data-key-id="${key}"]`).click();
-			}
-			await expect
-				.poll(
-					() =>
-						field.evaluate(
-							(element) => (element as HTMLElement & { value: string }).value,
-						),
-					{ timeout: 5_000 },
-				)
-				.toBe("7\\times8");
-		}).toPass({ timeout: 60_000 });
+		for (const key of ["digit-7", "multiply", "digit-8"]) {
+			await calculator.locator(`[data-key-id="${key}"]`).click();
+		}
+		await expect
+			.poll(() =>
+				calculator
+					.locator("math-field")
+					.evaluate(
+						(element) => (element as HTMLElement & { value: string }).value,
+					),
+			)
+			.toBe("7\\times8");
+		expect(workerScripts).not.toEqual([]);
 
 		await calculator.locator('[data-key-id="commit"]').click();
-		await expect.poll(() => workerScripts, { timeout: 30_000 }).toContain(200);
+		await expect(
+			calculator.locator(".pie-cortex-tape__result").first(),
+		).toHaveText("56", { timeout: 30_000 });
 	});
 }

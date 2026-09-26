@@ -60,3 +60,9 @@ export type WorkerResponse =
 	| (WorkerEnvelope & { kind: "result"; result: EvaluationResult })
 	| (WorkerEnvelope & { kind: "series"; series: SampledSeries[] })
 	| (WorkerEnvelope & { kind: "error"; error: SerializedCortexError });
+
+/** Posted once, when the worker's module has run and it takes requests. */
+export interface WorkerReadyMessage {
+	protocolVersion: typeof CORTEX_WORKER_PROTOCOL_VERSION;
+	kind: "ready";
+}

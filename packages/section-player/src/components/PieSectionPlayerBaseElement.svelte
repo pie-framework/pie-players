@@ -57,11 +57,9 @@
 		createPieLogger,
 	} from "@pie-players/pie-players-shared";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
-	import { createEventDispatcher, onDestroy } from "svelte";
+	import { onDestroy } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
-	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
-	import { EMPTY_COMPOSITION } from "./shared/composition.js";
 	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
 	import {
 		DEFAULT_ASSESSMENT_ID,
@@ -92,17 +90,6 @@
 
 	let toolkitElement = $state<any>(null);
 	let activeToolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
-	let lastCompositionVersion = $state(-1);
-	type BaseSectionPlayerEvents = {
-		"composition-changed": { composition: SectionCompositionModel };
-		"toolkit-ready": Record<string, unknown>;
-		"section-ready": Record<string, unknown>;
-		"framework-error": Record<string, unknown>;
-		"session-changed": Record<string, unknown>;
-		"runtime-owned": Record<string, unknown>;
-		"runtime-inherited": Record<string, unknown>;
-	};
-	const dispatch = createEventDispatcher<BaseSectionPlayerEvents>();
 	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId ?? assessmentId);
 	const effectivePlayerType = $derived.by(() => runtime?.playerType);
 	const effectivePlayer = $derived.by(() => runtime?.player ?? null);
@@ -191,64 +178,18 @@
 		() => sectionId || (section as any)?.identifier || "",
 	);
 
-	function emit<K extends keyof BaseSectionPlayerEvents>(
-		name: K,
-		detail: BaseSectionPlayerEvents[K],
-	): void {
-		dispatch(name, detail);
-	}
-
-	function handleCompositionChanged(event: Event): void {
-		const detail = (event as CustomEvent<{
-			composition?: SectionCompositionModel;
-			version?: number;
-		}>).detail;
-		const nextComposition = detail?.composition || EMPTY_COMPOSITION;
-		const nextVersion =
-			typeof detail?.version === "number"
-				? detail.version
-				: lastCompositionVersion + 1;
-		if (nextVersion === lastCompositionVersion) return;
-		lastCompositionVersion = nextVersion;
-		emit("composition-changed", {
-			composition: nextComposition,
-		});
-	}
-
-	function handleToolkitEvent(
-		event: Event,
-		eventName: Exclude<keyof BaseSectionPlayerEvents, "composition-changed">,
-	): void {
-		const detail = (event as CustomEvent).detail as Record<string, unknown>;
-		if (eventName === "toolkit-ready" && detail?.coordinator) {
-			activeToolkitCoordinator =
-				detail.coordinator as ToolkitCoordinatorApi;
-		}
-		emit(eventName, detail || ({} as Record<string, unknown>));
-	}
-
+	// The toolkit's events bubble out of this element on their own, which is
+	// the one channel they reach the layout host and `document` by. This element
+	// reads `toolkit-ready` for the coordinator and re-dispatches nothing:
+	// a re-dispatch reaches every listener on this element a second time,
+	// because a Svelte custom element's `addEventListener` also subscribes to
+	// its component events.
 	function handleToolkitReadyEvent(event: Event): void {
-		handleToolkitEvent(event, "toolkit-ready");
-	}
-
-	function handleSectionReadyEvent(event: Event): void {
-		handleToolkitEvent(event, "section-ready");
-	}
-
-	function handleFrameworkErrorEvent(event: Event): void {
-		handleToolkitEvent(event, "framework-error");
-	}
-
-	function handleSessionChangedEvent(event: Event): void {
-		handleToolkitEvent(event, "session-changed");
-	}
-
-	function handleRuntimeOwnedEvent(event: Event): void {
-		handleToolkitEvent(event, "runtime-owned");
-	}
-
-	function handleRuntimeInheritedEvent(event: Event): void {
-		handleToolkitEvent(event, "runtime-inherited");
+		const coordinator = (event as CustomEvent<{ coordinator?: unknown }>).detail
+			?.coordinator;
+		if (coordinator) {
+			activeToolkitCoordinator = coordinator as ToolkitCoordinatorApi;
+		}
 	}
 
 	/**
@@ -495,13 +436,7 @@
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
 	isolation={effectiveIsolation}
-	oncomposition-changed={handleCompositionChanged}
 	ontoolkit-ready={handleToolkitReadyEvent}
-	onsection-ready={handleSectionReadyEvent}
-	onframework-error={handleFrameworkErrorEvent}
-	onsession-changed={handleSessionChangedEvent}
-	onruntime-owned={handleRuntimeOwnedEvent}
-	onruntime-inherited={handleRuntimeInheritedEvent}
 >
 	<!-- Mount point for section-scoped surface capabilities. Always present so a
 	     capability granted mid-session has somewhere to land, and inside

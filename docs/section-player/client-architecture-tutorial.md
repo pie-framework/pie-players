@@ -955,11 +955,11 @@ Build host integrations against the canonical events as follows:
 | `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
 | `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
-Note on `framework-error`: while a `<pie-assessment-toolkit>` is nested inside a layout CE, the kernel listener at `<pie-section-player-base>` stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface. The single-emit contract is pinned by `tests/section-player-framework-error-dual-emit.test.ts`. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
+Note on `framework-error`: while a `<pie-assessment-toolkit>` is nested inside a layout CE, the kernel listener at `<pie-section-player-base>` stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface; it does not bubble to `document`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
 
 ### Internal plumbing events (do not build host integrations against)
 
-The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. These are kernel-side Svelte forwards used by the player's own rendering pipeline; their shape is not part of the public host contract.
+The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are the toolkit's own events, bubbling once through the layout element to `document`; their shape is not part of the public host contract.
 
 ---
 

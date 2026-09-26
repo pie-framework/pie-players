@@ -89,25 +89,47 @@ async function mountedShellIds(
 }
 
 /**
- * Replace a shell's `item` with a new object carrying the same content — what a
- * host or an upstream derivation produces when it rebuilds content. It is a real
- * change as far as the shell can tell, since the catalogs inside may differ, so
- * it has to register again; what it must not do is unregister first, which would
+ * Replace a shell's `item` with a new object. `same-catalogs` carries the same
+ * content, which is what every composition republish hands a shell: nothing for
+ * the runtime to register. `new-catalogs` adds a catalog, which the runtime has
+ * to register; what the shell must not do is unregister first, which would
  * leave content the learner is looking at with no accessibility catalogs.
  */
 async function replaceShellItem(
 	page: Page,
 	tag: "pie-item-shell" | "pie-passage-shell",
+	change: "same-catalogs" | "new-catalogs",
 ): Promise<string> {
-	return page.evaluate((shellTag) => {
-		const shell = document.querySelector(shellTag) as HTMLElement & {
-			item?: unknown;
-		};
-		// Shallow: a new top-level identity is the whole point, and content is not
-		// structured-cloneable — it carries functions.
-		shell.item = { ...(shell.item as Record<string, unknown>) };
-		return shell.getAttribute("data-item-id") || "";
-	}, tag);
+	return page.evaluate(
+		({ shellTag, change }) => {
+			const shell = document.querySelector(shellTag) as HTMLElement & {
+				item?: unknown;
+			};
+			// Shallow: a new top-level identity is the whole point, and content is
+			// not structured-cloneable — it carries functions.
+			const current = shell.item as Record<string, unknown>;
+			const catalogs = Array.isArray(current.accessibilityCatalogs)
+				? current.accessibilityCatalogs
+				: [];
+			shell.item =
+				change === "same-catalogs"
+					? { ...current }
+					: {
+							...current,
+							accessibilityCatalogs: [
+								...catalogs,
+								{
+									identifier: "registration-spec-added",
+									cards: [
+										{ catalog: "spoken", language: "en-US", content: "Added" },
+									],
+								},
+							],
+						};
+			return shell.getAttribute("data-item-id") || "";
+		},
+		{ shellTag: tag, change },
+	);
 }
 
 test.describe("item shell registration", () => {
@@ -147,30 +169,39 @@ test.describe("item shell registration", () => {
 		).toEqual([]);
 	});
 
-	test("replacing an item's content re-registers without unregistering first", async ({
-		page,
-	}) => {
-		await countRegistrations(page);
+	for (const [change, added] of [
+		["new-catalogs", 1],
+		["same-catalogs", 0],
+	] as const) {
+		test(`replacing an item with ${change} registers ${added} more time(s) and unregisters none`, async ({
+			page,
+		}) => {
+			await countRegistrations(page);
 
-		await page.goto("/three-questions?mode=candidate&layout=splitpane", {
-			waitUntil: "networkidle",
+			await page.goto("/three-questions?mode=candidate&layout=splitpane", {
+				waitUntil: "networkidle",
+			});
+			await expect(page.locator("pie-item-player").first()).toBeVisible({
+				timeout: 30_000,
+			});
+			await page.waitForTimeout(2_000);
+			const before = await readRegistrations(page);
+
+			const shellItemId = await replaceShellItem(
+				page,
+				"pie-item-shell",
+				change,
+			);
+			expect(shellItemId).not.toBe("");
+			await page.waitForTimeout(1_000);
+
+			const after = await readRegistrations(page);
+			expect(tallyKind(after.register, "item")[shellItemId]).toBe(
+				(tallyKind(before.register, "item")[shellItemId] || 0) + added,
+			);
+			expect(after.unregister).toEqual([]);
 		});
-		await expect(page.locator("pie-item-player").first()).toBeVisible({
-			timeout: 30_000,
-		});
-		await page.waitForTimeout(2_000);
-		const before = await readRegistrations(page);
-
-		const shellItemId = await replaceShellItem(page, "pie-item-shell");
-		expect(shellItemId).not.toBe("");
-		await page.waitForTimeout(1_000);
-
-		const after = await readRegistrations(page);
-		expect(tallyKind(after.register, "item")[shellItemId]).toBe(
-			(tallyKind(before.register, "item")[shellItemId] || 0) + 1,
-		);
-		expect(after.unregister).toEqual([]);
-	});
+	}
 
 	test("survives repeated card re-renders without re-registering", async ({
 		page,
@@ -252,26 +283,35 @@ test.describe("passage shell registration", () => {
 		).toEqual([]);
 	});
 
-	test("replacing a passage's content re-registers without unregistering first", async ({
-		page,
-	}) => {
-		await countRegistrations(page);
+	for (const [change, added] of [
+		["new-catalogs", 1],
+		["same-catalogs", 0],
+	] as const) {
+		test(`replacing a passage with ${change} registers ${added} more time(s) and unregisters none`, async ({
+			page,
+		}) => {
+			await countRegistrations(page);
 
-		await page.goto(PASSAGES_PATH, { waitUntil: "networkidle" });
-		await expect(page.locator("pie-passage-shell").first()).toBeAttached({
-			timeout: 30_000,
+			await page.goto(PASSAGES_PATH, { waitUntil: "networkidle" });
+			await expect(page.locator("pie-passage-shell").first()).toBeAttached({
+				timeout: 30_000,
+			});
+			await page.waitForTimeout(2_000);
+			const before = await readRegistrations(page);
+
+			const shellItemId = await replaceShellItem(
+				page,
+				"pie-passage-shell",
+				change,
+			);
+			expect(shellItemId).not.toBe("");
+			await page.waitForTimeout(1_000);
+
+			const after = await readRegistrations(page);
+			expect(tallyKind(after.register, "passage")[shellItemId]).toBe(
+				(tallyKind(before.register, "passage")[shellItemId] || 0) + added,
+			);
+			expect(after.unregister).toEqual([]);
 		});
-		await page.waitForTimeout(2_000);
-		const before = await readRegistrations(page);
-
-		const shellItemId = await replaceShellItem(page, "pie-passage-shell");
-		expect(shellItemId).not.toBe("");
-		await page.waitForTimeout(1_000);
-
-		const after = await readRegistrations(page);
-		expect(tallyKind(after.register, "passage")[shellItemId]).toBe(
-			(tallyKind(before.register, "passage")[shellItemId] || 0) + 1,
-		);
-		expect(after.unregister).toEqual([]);
-	});
+	}
 });

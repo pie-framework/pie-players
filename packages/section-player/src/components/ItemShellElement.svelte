@@ -14,13 +14,6 @@
 	}}
 />
 
-<script module lang="ts">
-	const crossShellSessionDedupe = new Map<
-		string,
-		{ fingerprint: string; timestamp: number }
-	>();
-</script>
-
 <script lang="ts">
 	import {
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -210,45 +203,26 @@
 	$effect(() => {
 		if (!host) return;
 
-		const seenSessionEvents = new WeakSet<Event>();
+		// Elements repeat themselves, a `complete` echo most often, so a shell
+		// forwards a session event only when it differs from the last one it
+		// forwarded. A commit is the response's last chance to reach the
+		// controller and is always forwarded.
 		let lastForwardedFingerprint = "";
-		const CROSS_SHELL_DEDUPE_WINDOW_MS = 500;
 		const onSessionChanged = (event: Event) => {
-			// Keep framework surface minimal: normalize these descendant events and do not
-			// leak raw item-player session events to external listeners.
+			// Raw item-player session events stay inside the shell; outside it they
+			// travel as `item-session-changed` and the runtime's own events.
 			event.stopPropagation();
-			// Some players emit `session-changed`, others emit `sessionchanged`.
-			// Guard against duplicate forwarding when both fire for the same payload.
-			if (seenSessionEvents.has(event)) return;
-			seenSessionEvents.add(event);
 			const detail = (event as CustomEvent).detail;
 			const fingerprint = createSessionEventFingerprint(detail);
-			// A commit is the response's last chance to reach the controller, so
-			// it is exempt from both dedupes. A shell being replaced for the same
-			// item otherwise falls inside the cross-shell window and the outgoing
-			// shell's final response is dropped.
 			const isCommit = Boolean(
 				detail &&
 					typeof detail === "object" &&
 					(detail as Record<string, unknown>).sessionCommitReason,
 			);
 			if (!isCommit && fingerprint === lastForwardedFingerprint) return;
-			const dedupeKey = itemId || canonicalItemId || "__unknown-item__";
-			const now = Date.now();
-			const lastCrossShell = crossShellSessionDedupe.get(dedupeKey);
-			if (
-				!isCommit &&
-				lastCrossShell &&
-				lastCrossShell.fingerprint === fingerprint &&
-				now - lastCrossShell.timestamp < CROSS_SHELL_DEDUPE_WINDOW_MS
-			) {
-				return;
-			}
-			crossShellSessionDedupe.set(dedupeKey, { fingerprint, timestamp: now });
 			lastForwardedFingerprint = fingerprint;
 			normalizeAndDispatchSession(event);
 		};
-		host.addEventListener("sessionchanged", onSessionChanged);
 		host.addEventListener("session-changed", onSessionChanged);
 		const onLoadComplete = (event: Event) => {
 			event.stopPropagation();
@@ -271,7 +245,6 @@
 			try {
 				commitPendingSessions(host, { reason: "teardown", logger });
 			} finally {
-				host?.removeEventListener("sessionchanged", onSessionChanged);
 				host?.removeEventListener("session-changed", onSessionChanged);
 				host?.removeEventListener("load-complete", onLoadComplete);
 				host?.removeEventListener("player-error", onPlayerError);

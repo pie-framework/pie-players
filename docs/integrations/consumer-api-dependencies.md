@@ -708,6 +708,7 @@ API**.
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
 | `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it |
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
+| `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
 | `load-complete` | DOM event out of `pie-item-player`, bubbling | P | Half of the item display gate |
 | `player-error` | DOM event out of `pie-item-player`, bubbling | P | Fatal: exits the delivery session |
@@ -727,6 +728,21 @@ either way the host's watchdog fires and ends the session.
 `packages/assessment-toolkit/src/runtime/tool-host-contract.ts`, whose default
 init is `bubbles: true, composed: true`. Dropping those defaults silently
 disconnects that host listener — now in two hosts rather than one.
+
+The section player's `session-changed` leaves `<pie-assessment-toolkit>` through
+the same helper. A listener on `document` receives each dispatch of either event
+once. Since 2026-09-26 a listener on the layout element does too; until then it
+received `session-changed`, `composition-changed`, `runtime-owned` and
+`runtime-inherited` three times and `framework-error` twice, and no recorded host
+listens there for any of the five. The runtime's internal events (`pie-register`,
+`pie-unregister`, `pie-item-session-changed`, `pie-content-loaded`,
+`pie-item-player-error`, `pie-formative-action`, `pie-media-time-source`) stop at
+the toolkit from the same date, where they used to reach `document`; no checkout
+listens for one. An item shell forwards its first response unconditionally, too:
+a page-wide 500 ms window used to drop an identical response from a second shell
+for the same item, whether a second player's or a re-mounted one's. Checked
+against all four checkouts on 2026-09-26 as a targeted lookup, so it does not
+advance the verification date.
 
 The `item-session-data-changed` payload is destructured as
 `event.session.data[0]`, with `event.complete` read through an
@@ -875,7 +891,12 @@ Changing the context shape, or calling the formatter for a new `kind` without a
 `defaultTitle`, produces wrong or blank card titles.
 
 Host R sets `onFrameworkError` through `coordinator.setHooks` instead of on the
-element.
+element. Its hook still receives each error once. Since 2026-09-26 an error its
+coordinator reports after the section player mounts also reaches the layout's
+`framework-error` event, the `onFrameworkError` prop and the console, as one
+from a toolkit-owned coordinator does. The toolkit's initialization banner stays
+off for these errors, so the section stays on screen when Host R's coordinator
+fails to initialize.
 
 ## Theme tokens set by hosts
 

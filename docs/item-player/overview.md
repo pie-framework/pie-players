@@ -41,7 +41,9 @@ static browser ESM package surface defined by the producer-side
 injected import map plus dynamic `import()`. It supports `delivery`, `author`,
 and `print` views through
 `dist/browser/<view>/index.js` entries and resolves shared browser singletons
-from exact `pie.browserSharedDependencies` metadata.
+from exact `pie.browserSharedDependencies` metadata. Under URL resolution it
+loads the variant a package declares in `pie.browserEditorRuntime`, against one
+[shared editor runtime](./loading-strategies.md#shared-editor-runtime) per page.
 
 ## Modes
 

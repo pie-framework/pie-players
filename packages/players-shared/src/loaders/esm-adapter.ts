@@ -13,6 +13,12 @@
  * call `customElements.define`.
  */
 
+import {
+	compare as compareSemver,
+	major as semverMajor,
+	minor as semverMinor,
+} from "semver";
+
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
@@ -32,6 +38,7 @@ import {
 	type ElementTag,
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
+import { isExactSemver } from "./element-package-policy.js";
 
 /** View configuration: how a PIE package's subpath maps to a tag suffix. */
 export type ViewConfig = {
@@ -52,6 +59,10 @@ export type EsmCdnProviderName = BuiltInEsmCdnProviderName | (string & {});
 export type EsmCdnProvider = {
 	name: EsmCdnProviderName;
 	packageJsonUrl(packageVersion: string): string;
+	/**
+	 * URL of `dist/browser/<view>/index.js`. `view` can be a nested path: an
+	 * element's editor-runtime variant is `editor-runtime/<view>`.
+	 */
 	browserViewUrl(packageVersion: string, view: string): string;
 	browserControllerUrl(packageVersion: string): string;
 	sharedDependencyUrl(
@@ -97,6 +108,10 @@ type PackageMetadata = {
 	peerDependencies?: Record<string, string>;
 	pie?: {
 		browserSharedDependencies?: Record<string, string>;
+		/** An element's editor-runtime variant; read by `readEditorRuntimeDeclaration`. */
+		browserEditorRuntime?: unknown;
+		/** The editor runtime's specifiers and views; read by `readBrowserModules`. */
+		browserModules?: unknown;
 	};
 };
 
@@ -137,9 +152,14 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	const view = config.view ?? "delivery";
 	const loadControllers = config.loadControllers ?? true;
 	const viewConfig = resolveEsmViewConfig(view, config.viewConfig);
+	const browserView = browserViewName(viewConfig, view);
 
 	const injectedPackageVersions = new Set<string>();
 	const importMappedPackageVersions = new Map<string, string>();
+	/** Packages whose editor-runtime variant this backend loads. */
+	const editorRuntimeVariants = new Map<string, EditorRuntimeVariant>();
+	/** Packages that do not publish the browser ESM exports this backend loads. */
+	const unpublishedPackages = new Map<string, string>();
 	let sharedDependencyVersions: Record<string, string> = {};
 	let importer: EsmModuleImporter = defaultImporter;
 	let packageMetadataLoader: EsmPackageMetadataLoader =
@@ -162,6 +182,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			importMapObserver = undefined;
 			injectedPackageVersions.clear();
 			importMappedPackageVersions.clear();
+			editorRuntimeVariants.clear();
+			unpublishedPackages.clear();
 			sharedDependencyVersions = {};
 		},
 	};
@@ -207,15 +229,33 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				reportSharedDependencyError(err);
 				throw err;
 			}
+			for (const [pkg, cause] of importMapResult.unpublished) {
+				unpublishedPackages.set(pkg, cause);
+				if (typeof console !== "undefined" && console.error) {
+					console.error(`[pie-esm] ${cause}`);
+				}
+			}
+			const editorRuntime =
+				moduleResolution === "url"
+					? await prepareEditorRuntime(importMapResult.metadata, context.doc)
+					: undefined;
+			// Synchronous from here through the injection, so a loader that runs
+			// next on this page reads the runtime this one maps.
+			const runtimePlan = editorRuntime
+				? planEditorRuntime(editorRuntime, context.doc)
+				: undefined;
 			const imports = withoutMappedSpecifiers(
-				importMapResult.imports,
+				{ ...importMapResult.imports, ...runtimePlan?.imports },
 				context.doc,
 			);
 			if (Object.keys(imports).length > 0) {
 				const json = JSON.stringify({ imports }, null, 2);
 				assertImportMapSupported();
-				injectImportMap(json, context.doc);
+				injectImportMap(json, context.doc, runtimePlan?.mappedRuntime);
 				importMapObserver?.(json, context.doc);
+			}
+			for (const [pkg, variant] of runtimePlan?.served ?? []) {
+				editorRuntimeVariants.set(pkg, variant);
 			}
 			sharedDependencyVersions = importMapResult.sharedDependencyVersions;
 			for (const pkg of Object.values(newEntries)) {
@@ -255,54 +295,76 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					view,
 				);
 
-				let module: any;
-				try {
-					module = await importer(specifier);
-				} catch (err) {
-					if (viewConfig.fallback) {
-						const fallbackConfig =
-							BUILT_IN_VIEWS[viewConfig.fallback] ?? BUILT_IN_VIEWS.delivery;
-						const fallbackSpecifier = resolveElementSpecifier(
-							packageName,
-							packageVersion,
-							fallbackConfig,
-							moduleResolution,
-							cdnProvider,
-							viewConfig.fallback,
-						);
-						try {
-							module = await importer(fallbackSpecifier);
-						} catch (fallbackErr) {
+				const unpublished = unpublishedPackages.get(packageVersion);
+				if (unpublished) {
+					reasons.set(tag, {
+						kind: "module-load-failed",
+						tag,
+						specifier,
+						cause: unpublished,
+					});
+					return;
+				}
+
+				const variant = editorRuntimeVariants.get(packageVersion);
+				let ElementClass: unknown;
+				if (variant) {
+					ElementClass = await importVariantElementClass(
+						packageVersion,
+						variant,
+					);
+				}
+
+				if (!ElementClass) {
+					let module: any;
+					try {
+						module = await importer(specifier);
+					} catch (err) {
+						if (viewConfig.fallback) {
+							const fallbackConfig =
+								BUILT_IN_VIEWS[viewConfig.fallback] ?? BUILT_IN_VIEWS.delivery;
+							const fallbackSpecifier = resolveElementSpecifier(
+								packageName,
+								packageVersion,
+								fallbackConfig,
+								moduleResolution,
+								cdnProvider,
+								viewConfig.fallback,
+							);
+							try {
+								module = await importer(fallbackSpecifier);
+							} catch (fallbackErr) {
+								reasons.set(tag, {
+									kind: "module-load-failed",
+									tag,
+									specifier: fallbackSpecifier,
+									cause:
+										fallbackErr instanceof Error
+											? fallbackErr.message
+											: String(fallbackErr),
+								});
+								return;
+							}
+						} else {
 							reasons.set(tag, {
 								kind: "module-load-failed",
 								tag,
-								specifier: fallbackSpecifier,
-								cause:
-									fallbackErr instanceof Error
-										? fallbackErr.message
-										: String(fallbackErr),
+								specifier,
+								cause: err instanceof Error ? err.message : String(err),
 							});
 							return;
 						}
-					} else {
+					}
+
+					ElementClass = pickElementClass(module, view);
+					if (!ElementClass) {
 						reasons.set(tag, {
-							kind: "module-load-failed",
+							kind: "no-element-class",
 							tag,
-							specifier,
-							cause: err instanceof Error ? err.message : String(err),
+							packageName,
 						});
 						return;
 					}
-				}
-
-				const ElementClass = pickElementClass(module, view);
-				if (!ElementClass) {
-					reasons.set(tag, {
-						kind: "no-element-class",
-						tag,
-						packageName,
-					});
-					return;
 				}
 
 				if (!isCustomElementConstructor(ElementClass)) {
@@ -331,18 +393,37 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 
 				let controller: any = null;
 				if (loadControllers) {
-					const controllerSpecifier = resolveControllerSpecifier(
-						packageName,
-						packageVersion,
-						moduleResolution,
-						cdnProvider,
-					);
-					try {
-						const controllerModule: any = await importer(controllerSpecifier);
-						controller = controllerModule?.default ?? controllerModule;
-					} catch {
-						// Controllers are best-effort; element registration is what the
-						// primitive verifies.
+					const servedVariant = editorRuntimeVariants.get(packageVersion);
+					const variantController = servedVariant?.views.controller;
+					if (servedVariant && variantController) {
+						try {
+							const controllerModule: any = await importer(
+								cdnProvider.browserViewUrl(packageVersion, variantController),
+							);
+							controller = controllerModule?.default ?? controllerModule;
+						} catch (err) {
+							reportEditorRuntimeFallback(
+								packageVersion,
+								servedVariant.declaration,
+								servedVariant.runtime,
+								`its editor-runtime controller failed to load: ${errorMessage(err)}`,
+							);
+						}
+					}
+					if (!controller) {
+						const controllerSpecifier = resolveControllerSpecifier(
+							packageName,
+							packageVersion,
+							moduleResolution,
+							cdnProvider,
+						);
+						try {
+							const controllerModule: any = await importer(controllerSpecifier);
+							controller = controllerModule?.default ?? controllerModule;
+						} catch {
+							// Controllers are best-effort; element registration is what the
+							// primitive verifies.
+						}
 					}
 				}
 
@@ -363,6 +444,179 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		}
 	}
 
+	/**
+	 * The element class of a package's editor-runtime variant, or `undefined`
+	 * after reporting why it cannot load, so the caller loads `./browser/*`.
+	 */
+	async function importVariantElementClass(
+		packageVersion: string,
+		variant: EditorRuntimeVariant,
+	): Promise<unknown> {
+		const specifier = cdnProvider.browserViewUrl(
+			packageVersion,
+			variant.views[browserView],
+		);
+		try {
+			const ElementClass = pickElementClass(await importer(specifier), view);
+			if (isCustomElementConstructor(ElementClass)) return ElementClass;
+			throw new Error(`${specifier} exports no custom element class`);
+		} catch (err) {
+			editorRuntimeVariants.delete(packageVersion);
+			reportEditorRuntimeFallback(
+				packageVersion,
+				variant.declaration,
+				variant.runtime,
+				`its editor-runtime ${browserView} view failed to load: ${errorMessage(err)}`,
+			);
+			return undefined;
+		}
+	}
+
+	/**
+	 * Collect the packages whose variant covers this backend's view and, when
+	 * the page maps no editor runtime yet, fetch the metadata of the one to map.
+	 */
+	async function prepareEditorRuntime(
+		metadataByPackage: Map<string, PackageMetadata | null>,
+		doc: Document,
+	): Promise<PreparedEditorRuntime> {
+		const candidates: EditorRuntimeCandidate[] = [];
+		for (const [packageVersion, metadata] of metadataByPackage) {
+			const declaration = readEditorRuntimeDeclaration(metadata);
+			if (declaration === undefined) continue;
+			if (declaration === null) {
+				reportEditorRuntimeFallback(
+					packageVersion,
+					undefined,
+					undefined,
+					"its pie.browserEditorRuntime declaration is invalid",
+				);
+				continue;
+			}
+			if (declaration.views[browserView]) {
+				candidates.push({ packageVersion, declaration });
+			}
+		}
+		if (candidates.length === 0) return { candidates };
+		if (!importMapsSupported()) {
+			for (const { packageVersion, declaration } of candidates) {
+				reportEditorRuntimeFallback(
+					packageVersion,
+					declaration,
+					undefined,
+					"this browser does not support import maps",
+				);
+			}
+			return { candidates: [] };
+		}
+		if (readMappedEditorRuntime(doc)) return { candidates };
+		const runtime = highestDeclaredEditorRuntime(candidates);
+		return {
+			candidates,
+			target: { runtime, ...(await loadEditorRuntimeModules(runtime)) },
+		};
+	}
+
+	async function loadEditorRuntimeModules(
+		runtime: EditorRuntimeRef,
+	): Promise<{ modules?: Record<string, string>; failure?: string }> {
+		const runtimeVersion = `${runtime.name}@${runtime.version}`;
+		let metadata: PackageMetadata | null;
+		try {
+			metadata = await packageMetadataLoader(
+				runtimeVersion,
+				cdnProvider.packageJsonUrl(runtimeVersion),
+			);
+		} catch (err) {
+			return {
+				failure: `the package.json of ${runtimeVersion} could not be loaded: ${errorMessage(err)}`,
+			};
+		}
+		if (!metadata) {
+			return {
+				failure: `the package.json of ${runtimeVersion} could not be loaded`,
+			};
+		}
+		const modules = readBrowserModules(metadata);
+		return modules
+			? { modules }
+			: { failure: `${runtimeVersion} declares no valid pie.browserModules` };
+	}
+
+	/**
+	 * Decide which packages the page's editor runtime serves, and the entries
+	 * that map it when the page maps none yet. Runs synchronously up to the
+	 * import-map injection, so it reads the runtime any other loader mapped
+	 * while this one awaited metadata.
+	 */
+	function planEditorRuntime(
+		prepared: PreparedEditorRuntime,
+		doc: Document,
+	): EditorRuntimePlan {
+		const plan: EditorRuntimePlan = { imports: {}, served: new Map() };
+		if (prepared.candidates.length === 0) return plan;
+
+		let runtime = readMappedEditorRuntime(doc);
+		if (!runtime) {
+			const { target } = prepared;
+			let failure = target?.failure;
+			if (target?.modules) {
+				const taken = mappedImportSpecifiers(doc);
+				const mapped = Object.keys(target.modules).find((specifier) =>
+					taken.has(specifier),
+				);
+				if (mapped) failure = `the page already maps ${mapped}`;
+			}
+			if (failure || !target?.modules) {
+				for (const { packageVersion, declaration } of prepared.candidates) {
+					reportEditorRuntimeFallback(
+						packageVersion,
+						declaration,
+						undefined,
+						failure ?? "the page no longer maps its editor runtime",
+					);
+				}
+				return plan;
+			}
+			runtime = target.runtime;
+			const runtimeVersion = `${runtime.name}@${runtime.version}`;
+			for (const [specifier, runtimeView] of Object.entries(target.modules)) {
+				plan.imports[specifier] = cdnProvider.browserViewUrl(
+					runtimeVersion,
+					runtimeView,
+				);
+			}
+			plan.mappedRuntime = runtimeVersion;
+		}
+
+		for (const { packageVersion, declaration } of prepared.candidates) {
+			if (!canServeEditorRuntime(runtime, declaration)) {
+				reportEditorRuntimeFallback(
+					packageVersion,
+					declaration,
+					runtime,
+					`the page maps ${runtime.name}@${runtime.version}, which cannot serve ${declaration.name}@${declaration.version}`,
+				);
+				continue;
+			}
+			plan.served.set(packageVersion, {
+				views: declaration.views,
+				declaration,
+				runtime,
+			});
+			if (declaration.version !== runtime.version) {
+				reportSharedDependencyConflict({
+					dependencyName: runtime.name,
+					existingVersion: runtime.version,
+					requestedVersion: declaration.version,
+					resolvedVersion: runtime.version,
+					packageVersion,
+				});
+			}
+		}
+		return plan;
+	}
+
 	function getInstrumentationProvider(): InstrumentationProvider | undefined {
 		if (!config.trackPageActions) return undefined;
 		const provider = config.instrumentationProvider;
@@ -373,12 +627,10 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 
 	function reportSharedDependencyConflict(
 		attributes: Record<string, unknown>,
+		message = `[pie-esm] Shared dependency version conflict resolved for ${String(attributes.dependencyName)}`,
 	): void {
 		if (typeof console !== "undefined" && console.warn) {
-			console.warn(
-				`[pie-esm] Shared dependency version conflict resolved for ${String(attributes.dependencyName)}`,
-				attributes,
-			);
+			console.warn(message, attributes);
 		}
 		const provider = getInstrumentationProvider();
 		if (!provider) return;
@@ -387,6 +639,26 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		} catch {
 			// Swallow: instrumentation must never break loading.
 		}
+	}
+
+	/** Report a package that loads `./browser/*` although it declares a variant. */
+	function reportEditorRuntimeFallback(
+		packageVersion: string,
+		declaration: EditorRuntimeDeclaration | undefined,
+		runtime: EditorRuntimeRef | undefined,
+		reason: string,
+	): void {
+		reportSharedDependencyConflict(
+			{
+				dependencyName: declaration?.name,
+				existingVersion: runtime?.version,
+				requestedVersion: declaration?.version,
+				packageVersion,
+				fallback: "./browser/*",
+				reason,
+			},
+			`[pie-esm] ${packageVersion} loads ./browser/* in place of its editor-runtime variant: ${reason}`,
+		);
 	}
 
 	function reportSharedDependencyError(error: unknown): void {
@@ -561,14 +833,18 @@ function resolveEsmViewConfig(view: string, viewConfig?: ViewConfig): ViewConfig
 	return viewConfig ?? BUILT_IN_VIEWS[view] ?? BUILT_IN_VIEWS.delivery;
 }
 
-function assertBrowserEsmExports(
+/**
+ * Why a package cannot load this view as browser ESM, or `undefined` when its
+ * metadata publishes every export the view needs or names no exports.
+ */
+function missingBrowserEsmExport(
 	metadata: PackageMetadata | null,
 	packageVersion: string,
 	viewConfig: ViewConfig,
 	loadControllers: boolean,
 	viewName: string,
-): void {
-	if (!metadata?.exports) return;
+): string | undefined {
+	if (!metadata?.exports) return undefined;
 
 	const requiredExports = new Set<string>([
 		`./browser/${browserViewName(viewConfig, viewName)}`,
@@ -587,11 +863,10 @@ function assertBrowserEsmExports(
 
 	for (const exportKey of requiredExports) {
 		if (!(exportKey in metadata.exports)) {
-			throw new Error(
-				`${packageVersion} does not publish browser ESM export ${exportKey}; use IIFE/preloaded mode or publish browser ESM artifacts first`,
-			);
+			return `${packageVersion} does not publish browser ESM export ${exportKey}; use IIFE/preloaded mode or publish browser ESM artifacts first`;
 		}
 	}
+	return undefined;
 }
 
 function cleanViewSubpath(subpath: string): string | null {
@@ -681,7 +956,7 @@ function declaredSharedDependencyVersion(
 			`${packageVersion} is missing required pie.browserSharedDependencies.${dependencyName}`,
 		);
 	}
-	if (!isExactVersion(version)) {
+	if (!isExactSemver(version)) {
 		throw new Error(
 			`${packageVersion} pie.browserSharedDependencies.${dependencyName} must be an exact version; received "${version}"`,
 		);
@@ -760,34 +1035,7 @@ function addSharedDependencyImports(
 	}
 }
 
-function isExactVersion(version: string): boolean {
-	return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version);
-}
-
-function parseVersion(version: string): {
-	major: number;
-	minor: number;
-	patch: number;
-} {
-	const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
-	if (!match) {
-		throw new Error(`Invalid shared browser dependency version "${version}"`);
-	}
-	return {
-		major: Number(match[1]),
-		minor: Number(match[2]),
-		patch: Number(match[3]),
-	};
-}
-
-function compareVersions(a: string, b: string): number {
-	const parsedA = parseVersion(a);
-	const parsedB = parseVersion(b);
-	if (parsedA.major !== parsedB.major) return parsedA.major - parsedB.major;
-	if (parsedA.minor !== parsedB.minor) return parsedA.minor - parsedB.minor;
-	return parsedA.patch - parsedB.patch;
-}
-
+/** Versions are exact semver, validated before they are compared. */
 function resolveSharedDependencyVersion(
 	dependencyName: string,
 	currentVersion: string,
@@ -795,19 +1043,17 @@ function resolveSharedDependencyVersion(
 	packageVersion: string,
 	isLocked: boolean,
 ): string {
-	const current = parseVersion(currentVersion);
-	const requested = parseVersion(requestedVersion);
-	if (current.major !== requested.major) {
+	if (semverMajor(currentVersion) !== semverMajor(requestedVersion)) {
 		throw new Error(
 			`Conflicting shared browser dependency ${dependencyName}: ${currentVersion} vs ${requestedVersion} from ${packageVersion}; different major versions cannot share one browser singleton`,
 		);
 	}
-	if (isLocked && compareVersions(requestedVersion, currentVersion) > 0) {
+	if (isLocked && compareSemver(requestedVersion, currentVersion) > 0) {
 		throw new Error(
 			`Conflicting shared browser dependency ${dependencyName}: ${currentVersion} is already selected, but ${packageVersion} requires higher version ${requestedVersion}; the browser singleton cannot be upgraded after import-map injection`,
 		);
 	}
-	return compareVersions(currentVersion, requestedVersion) >= 0
+	return compareSemver(currentVersion, requestedVersion) >= 0
 		? currentVersion
 		: requestedVersion;
 }
@@ -815,6 +1061,10 @@ function resolveSharedDependencyVersion(
 type BrowserImportMapBuildResult = {
 	imports: Record<string, string>;
 	sharedDependencyVersions: Record<string, string>;
+	/** Metadata of each package that publishes the exports the view needs. */
+	metadata: Map<string, PackageMetadata | null>;
+	/** Why each other package cannot load the view. */
+	unpublished: Map<string, string>;
 };
 
 async function buildImportMap(
@@ -832,7 +1082,25 @@ async function buildImportMap(
 		...currentSharedDependencyVersions,
 	};
 	const lockedVersions = new Set(Object.keys(currentSharedDependencyVersions));
+	const metadataByPackage = new Map<string, PackageMetadata | null>();
+	const unpublished = new Map<string, string>();
 	for (const [, pkg] of Object.entries(elements)) {
+		const metadata = await packageMetadataLoader(
+			pkg,
+			cdnProvider.packageJsonUrl(pkg),
+		);
+		const missingExport = missingBrowserEsmExport(
+			metadata,
+			pkg,
+			viewConfig,
+			loadControllers,
+			cleanViewSubpath(viewConfig.subpath) ?? "delivery",
+		);
+		if (missingExport) {
+			unpublished.set(pkg, missingExport);
+			continue;
+		}
+		metadataByPackage.set(pkg, metadata);
 		const packageName = parsePackageName(pkg).name;
 		if (includeElementImports) {
 			imports[packageName] = resolveBrowserViewUrl(
@@ -871,17 +1139,6 @@ async function buildImportMap(
 			}
 		}
 
-		const metadata = await packageMetadataLoader(
-			pkg,
-			cdnProvider.packageJsonUrl(pkg),
-		);
-		assertBrowserEsmExports(
-			metadata,
-			pkg,
-			viewConfig,
-			loadControllers,
-			cleanViewSubpath(viewConfig.subpath) ?? "delivery",
-		);
 		for (const dependencyName of SHARED_BROWSER_DEPENDENCIES) {
 			if (!packageUsesSharedDependency(metadata, dependencyName)) {
 				continue;
@@ -898,7 +1155,205 @@ async function buildImportMap(
 			);
 		}
 	}
-	return { imports, sharedDependencyVersions: selectedVersions };
+	return {
+		imports,
+		sharedDependencyVersions: selectedVersions,
+		metadata: metadataByPackage,
+		unpublished,
+	};
+}
+
+// ─── Shared editor runtime ───────────────────────────────────────────────────
+
+/**
+ * Names the editor runtime an injected import map maps, as `<name>@<version>`.
+ * The document holds it because every loader on the page, whichever backend
+ * or players-shared copy runs it, shares the one import map.
+ */
+const EDITOR_RUNTIME_ATTRIBUTE = "data-pie-editor-runtime";
+
+/** A variant's module path under `dist/browser`, by browser view name. */
+type EditorRuntimeViews = Readonly<Record<string, string>>;
+
+type EditorRuntimeRef = { name: string; version: string };
+
+/** An element's `pie.browserEditorRuntime`. */
+type EditorRuntimeDeclaration = EditorRuntimeRef & {
+	views: EditorRuntimeViews;
+};
+
+type EditorRuntimeCandidate = {
+	packageVersion: string;
+	declaration: EditorRuntimeDeclaration;
+};
+
+type EditorRuntimeVariant = {
+	views: EditorRuntimeViews;
+	declaration: EditorRuntimeDeclaration;
+	/** The runtime the page serves the variant from. */
+	runtime: EditorRuntimeRef;
+};
+
+type PreparedEditorRuntime = {
+	/** Packages whose variant covers the backend's view. */
+	candidates: EditorRuntimeCandidate[];
+	/** When the page mapped no runtime: the one to map, with its modules. */
+	target?: {
+		runtime: EditorRuntimeRef;
+		modules?: Record<string, string>;
+		failure?: string;
+	};
+};
+
+type EditorRuntimePlan = {
+	/** Entries mapping the runtime; empty when the page already maps one. */
+	imports: Record<string, string>;
+	/** `<name>@<version>` of the runtime `imports` maps. */
+	mappedRuntime?: string;
+	served: Map<string, EditorRuntimeVariant>;
+};
+
+const PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
+/** Slash-separated segments, none starting with a dot. */
+const BROWSER_VIEW_PATH =
+	/^[A-Za-z0-9_-][A-Za-z0-9._-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$/;
+const BARE_SPECIFIER =
+	/^(?:@[A-Za-z0-9_-][A-Za-z0-9._-]*\/)?[A-Za-z0-9_-][A-Za-z0-9._-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$/;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A package's `pie.browserEditorRuntime`: `undefined` when it declares none,
+ * `null` when the declaration is malformed.
+ */
+function readEditorRuntimeDeclaration(
+	metadata: PackageMetadata | null | undefined,
+): EditorRuntimeDeclaration | null | undefined {
+	const declared = metadata?.pie?.browserEditorRuntime;
+	if (declared === undefined) return undefined;
+	if (!isRecord(declared) || !isRecord(declared.views)) return null;
+	const { name, version } = declared;
+	if (typeof name !== "string" || !PACKAGE_NAME.test(name)) return null;
+	if (typeof version !== "string" || !isExactSemver(version)) return null;
+	const views = Object.entries(declared.views);
+	if (
+		views.length === 0 ||
+		!views.every(
+			([, path]) => typeof path === "string" && BROWSER_VIEW_PATH.test(path),
+		)
+	) {
+		return null;
+	}
+	return {
+		name,
+		version,
+		views: Object.fromEntries(views) as Record<string, string>,
+	};
+}
+
+/**
+ * The editor runtime's `pie.browserModules`, or `null` when it is missing or
+ * malformed. A runtime has no React import, so it maps no React specifier.
+ */
+function readBrowserModules(
+	metadata: PackageMetadata,
+): Record<string, string> | null {
+	const declared = metadata.pie?.browserModules;
+	if (!isRecord(declared)) return null;
+	const modules = Object.entries(declared);
+	const valid =
+		modules.length > 0 &&
+		modules.every(
+			([specifier, view]) =>
+				BARE_SPECIFIER.test(specifier) &&
+				!SHARED_BROWSER_DEPENDENCIES.some(
+					(dependency) =>
+						specifier === dependency || specifier.startsWith(`${dependency}/`),
+				) &&
+				typeof view === "string" &&
+				BROWSER_VIEW_PATH.test(view),
+		);
+	return valid ? (Object.fromEntries(modules) as Record<string, string>) : null;
+}
+
+/** The highest runtime version the candidates declare, by semver precedence. */
+function highestDeclaredEditorRuntime(
+	candidates: EditorRuntimeCandidate[],
+): EditorRuntimeRef {
+	const { name } = candidates[0].declaration;
+	let { version } = candidates[0].declaration;
+	for (const { declaration } of candidates) {
+		if (
+			declaration.name === name &&
+			compareSemver(declaration.version, version) > 0
+		) {
+			version = declaration.version;
+		}
+	}
+	return { name, version };
+}
+
+/**
+ * A runtime serves a variant built against a version in its caret range (the
+ * same major, and below 1.0.0 the same minor) at or below its own.
+ */
+function canServeEditorRuntime(
+	runtime: EditorRuntimeRef,
+	declaration: EditorRuntimeRef,
+): boolean {
+	if (runtime.name !== declaration.name) return false;
+	if (semverMajor(runtime.version) !== semverMajor(declaration.version)) {
+		return false;
+	}
+	if (
+		semverMajor(runtime.version) === 0 &&
+		semverMinor(runtime.version) !== semverMinor(declaration.version)
+	) {
+		return false;
+	}
+	return compareSemver(runtime.version, declaration.version) >= 0;
+}
+
+function importMapScripts(doc: Document): Element[] {
+	return typeof doc.querySelectorAll === "function"
+		? Array.from(doc.querySelectorAll('script[type="importmap"]'))
+		: [];
+}
+
+/** The editor runtime an import map in the document maps, first map first. */
+function readMappedEditorRuntime(doc: Document): EditorRuntimeRef | null {
+	for (const script of importMapScripts(doc)) {
+		const mapped = script.getAttribute(EDITOR_RUNTIME_ATTRIBUTE);
+		const at = mapped?.lastIndexOf("@") ?? -1;
+		if (!mapped || at <= 0) continue;
+		const name = mapped.slice(0, at);
+		const version = mapped.slice(at + 1);
+		if (PACKAGE_NAME.test(name) && isExactSemver(version)) {
+			return { name, version };
+		}
+	}
+	return null;
+}
+
+function mappedImportSpecifiers(doc: Document): Set<string> {
+	const mapped = new Set<string>();
+	for (const script of importMapScripts(doc)) {
+		try {
+			const existing = JSON.parse(script.textContent || "{}")?.imports;
+			if (existing && typeof existing === "object") {
+				for (const specifier of Object.keys(existing)) mapped.add(specifier);
+			}
+		} catch {
+			// The browser rejects a map it cannot parse, so it maps nothing.
+		}
+	}
+	return mapped;
+}
+
+function errorMessage(err: unknown): string {
+	return err instanceof Error ? err.message : String(err);
 }
 
 /**
@@ -910,34 +1365,26 @@ function withoutMappedSpecifiers(
 	imports: Record<string, string>,
 	doc: Document,
 ): Record<string, string> {
-	const mapped = new Set<string>();
-	const scripts =
-		typeof doc.querySelectorAll === "function"
-			? Array.from(doc.querySelectorAll('script[type="importmap"]'))
-			: [];
-	for (const script of scripts) {
-		try {
-			const existing = JSON.parse(script.textContent || "{}")?.imports;
-			if (existing && typeof existing === "object") {
-				for (const specifier of Object.keys(existing)) mapped.add(specifier);
-			}
-		} catch {
-			// The browser rejects a map it cannot parse, so it maps nothing.
-		}
-	}
+	const mapped = mappedImportSpecifiers(doc);
 	return Object.fromEntries(
 		Object.entries(imports).filter(([specifier]) => !mapped.has(specifier)),
 	);
 }
 
-function injectImportMap(json: string, doc: Document): void {
+function injectImportMap(
+	json: string,
+	doc: Document,
+	editorRuntime?: string,
+): void {
 	const script = doc.createElement("script") as HTMLScriptElement;
 	script.type = "importmap";
+	if (editorRuntime)
+		script.setAttribute(EDITOR_RUNTIME_ATTRIBUTE, editorRuntime);
 	script.textContent = json;
 	doc.head.appendChild(script);
 }
 
-function assertImportMapSupported(): void {
+function importMapsSupported(): boolean {
 	const htmlScriptElement = (
 		typeof HTMLScriptElement !== "undefined" ? HTMLScriptElement : undefined
 	) as
@@ -945,10 +1392,14 @@ function assertImportMapSupported(): void {
 				supports?: (type: string) => boolean;
 		  })
 		| undefined;
-	const supports =
+	return (
 		typeof htmlScriptElement?.supports === "function" &&
-		htmlScriptElement.supports("importmap");
-	if (!supports) {
+		htmlScriptElement.supports("importmap")
+	);
+}
+
+function assertImportMapSupported(): void {
+	if (!importMapsSupported()) {
 		throw new Error(
 			'This browser does not support import maps. Use moduleResolution="url" or switch to iife/preloaded strategy.',
 		);

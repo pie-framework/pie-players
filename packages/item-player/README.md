@@ -319,6 +319,10 @@ The canonical producer-side contract for `@pie-element/*` packages lives in the
 - React-backed browser ESM packages declare exact shared browser singleton
   versions in `package.json` under `pie.browserSharedDependencies`; dependency
   and peer-dependency ranges are not used as fallback runtime contracts.
+- A package may declare `pie.browserEditorRuntime`: an exact version of the
+  shared editor runtime and the variant path of each view it covers. Under URL
+  resolution the player loads those variants against one runtime per page; see
+  [Shared editor runtime](../../docs/item-player/loading-strategies.md#shared-editor-runtime).
 - `./runtime-support` metadata is optional for ESM-capable packages unless they
   need to disable a runtime strategy or view. Set
   `loaderOptions.runtimeSupportCheck = "on"` when you want the player to read

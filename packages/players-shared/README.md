@@ -116,6 +116,10 @@ The ESM element loader consumes static `@pie-element/*` browser entries such as
 `dist/browser/delivery/index.js`; it does not transform element packages through
 CDN `+esm` entry points. Browser ESM elements must publish exact shared runtime
 metadata in `package.json` under `pie.browserSharedDependencies`.
+Under URL resolution it loads the variant an element declares in
+`pie.browserEditorRuntime` and maps that runtime's `pie.browserModules`, one
+runtime version per page; see
+[Shared editor runtime](../../docs/item-player/loading-strategies.md#shared-editor-runtime).
 
 jsDelivr is the default npm CDN provider. Hosts can opt into `esm.sh` with
 `loaderOptions.esmCdnProvider = "esm.sh"` and `loaderOptions.esmCdnUrl =

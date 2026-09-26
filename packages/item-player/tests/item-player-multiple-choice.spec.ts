@@ -579,13 +579,14 @@ test.describe("item-player demo multiple-choice", () => {
 	});
 
 	// npm `latest` of multiple-choice is the legacy line, which ships no browser
-	// ESM, so `?player=esm` loads the demos' pinned pie-elements-ng build.
+	// ESM, so `?player=esm` loads the demos' pinned pie-elements-ng build. That
+	// build declares the shared editor runtime, so its variant loads.
 	test("esm delivery renders the pie-elements-ng build", async ({ page }) => {
 		const browserBuilds: string[] = [];
 		page.on("response", (response) => {
 			if (
 				response.ok() &&
-				/\/@pie-element\/multiple-choice@[^/]+\/dist\/browser\/delivery\//.test(
+				/\/@pie-element\/multiple-choice@[^/]+\/dist\/browser\/editor-runtime\/delivery\//.test(
 					response.url(),
 				)
 			) {
@@ -601,6 +602,12 @@ test.describe("item-player demo multiple-choice", () => {
 		});
 		await expect(page.getByRole("radio").first()).toBeVisible();
 		expect(browserBuilds.length).toBeGreaterThan(0);
+		await expect(
+			page.locator('script[type="importmap"][data-pie-editor-runtime]'),
+		).toHaveAttribute(
+			"data-pie-editor-runtime",
+			/^@pie-element\/shared-editor-runtime@/,
+		);
 	});
 
 	test("author route loads and stays in sync with delivery/source", async ({

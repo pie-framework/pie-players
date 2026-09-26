@@ -55,6 +55,19 @@ export interface ResolvedEntry {
 function packageDistDirs(pieElementsNgRoot: string, pkg: string): string[] {
 	const [scope, name] = pkg.split("/") as [string, string];
 	if (scope === "@pie-element") {
+		// @pie-element/shared-* packages, such as the editor runtime element
+		// variants import, are in packages/shared/.
+		if (name.startsWith("shared-")) {
+			return [
+				path.join(
+					pieElementsNgRoot,
+					"packages",
+					"shared",
+					name.slice("shared-".length),
+					"dist",
+				),
+			];
+		}
 		return ["elements-react", "elements-svelte"].map((elementWorkspace) =>
 			path.join(pieElementsNgRoot, "packages", elementWorkspace, name, "dist"),
 		);

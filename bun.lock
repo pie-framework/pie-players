@@ -197,7 +197,7 @@
       "name": "@pie-players/section-demos",
       "version": "0.1.83",
       "dependencies": {
-        "@pie-element/mc-populated-blank": "0.3.0-next.16",
+        "@pie-element/mc-populated-blank": "0.3.0-next.17",
         "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-calculator-geogebra": "workspace:*",
@@ -1328,7 +1328,7 @@
 
     "@oxc-project/types": ["@oxc-project/types@0.144.0", "", {}, "sha512-nuhZIOLuI6TFQ32I/WnUx+SCPY7SdSKwgnFHydAuoS1+Z4BRcaP+RRJmGzl9lw+0OFF7UmaESf7KQRXaNLHypg=="],
 
-    "@pie-element/mc-populated-blank": ["@pie-element/mc-populated-blank@0.3.0-next.16", "", {}, "sha512-+gIUoizfAuP0gWHDOHtYw/ZGybhWwXGxOT6PKSeJ39aaXtvmFmBe5B9qpltNmFaqa+Fkob+Wb8hZF/x9uaVANw=="],
+    "@pie-element/mc-populated-blank": ["@pie-element/mc-populated-blank@0.3.0-next.17", "", {}, "sha512-9N7x333ZmXKaObadFQ53r5h+4m5RdWqTefARnHjuuZCBUOXwmVs6cDndkaXuKlu9Yxqe7OfKvML27gOB0g3weA=="],
 
     "@pie-lib/math-rendering-module": ["@pie-lib/math-rendering-module@6.0.0", "", {}, "sha512-qXI7z1E8blazVDijE3ul5S25hWZGx0fRAEpuPUuNhs0R4usFJzPbg2DrAX0pEPd4Fxuz6yQkCknVtIqYWPXbSQ=="],
 

@@ -12,6 +12,38 @@ import { js, json, text, withCors } from "./utils.js";
 
 const MODULE_FILE = /\.m?js$/;
 const FILE_TYPES: Record<string, string> = { ".woff2": "font/woff2" };
+const EDITOR_RUNTIME_VARIANT = /^browser\/editor-runtime\//;
+
+async function readPackageJson(
+	pieElementsNgRoot: string,
+	pkg: string,
+): Promise<Record<string, any> | null> {
+	const packageJsonPath = await resolvePackageJson(pieElementsNgRoot, pkg);
+	if (!packageJsonPath) return null;
+	try {
+		return JSON.parse(await readFile(packageJsonPath, "utf8"));
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The specifiers an element's editor-runtime variant imports from the page's
+ * import map: the `pie.browserModules` of the runtime the element declares.
+ */
+async function editorRuntimeSpecifiers(
+	pieElementsNgRoot: string,
+	pkg: string,
+): Promise<Set<string>> {
+	const declared = (await readPackageJson(pieElementsNgRoot, pkg))?.pie
+		?.browserEditorRuntime;
+	if (typeof declared?.name !== "string") return new Set();
+	const modules = (await readPackageJson(pieElementsNgRoot, declared.name))?.pie
+		?.browserModules;
+	return new Set(
+		modules && typeof modules === "object" ? Object.keys(modules) : [],
+	);
+}
 
 /**
  * Generate help text for the server
@@ -158,6 +190,12 @@ export async function handleRequest(
 		esmShBaseUrl: context.config.esmShBaseUrl,
 		pkg: parsed.pkg,
 		modulePath: entry.distPath,
+		bareSpecifiers: EDITOR_RUNTIME_VARIANT.test(entry.distPath)
+			? await editorRuntimeSpecifiers(
+					context.config.pieElementsNgRoot,
+					parsed.pkg,
+				)
+			: undefined,
 	});
 
 	// Log if rewriting changed the code

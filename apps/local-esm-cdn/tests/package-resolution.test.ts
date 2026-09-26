@@ -308,6 +308,96 @@ describe("local-esm-cdn package resolution and serving", () => {
 		expect(new Uint8Array(await response.arrayBuffer())).toEqual(font);
 	});
 
+	it("serves the editor runtime and leaves its specifiers bare in an element's variant", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const runtime = {
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-element" as const,
+			name: "shared-editor-runtime",
+		};
+		await writePackageJson({
+			...runtime,
+			content: {
+				name: "@pie-element/shared-editor-runtime",
+				version: "0.1.1-next.0",
+				pie: { browserModules: { "@tiptap/core": "tiptap-core" } },
+			},
+		});
+		await writePackageFile({
+			...runtime,
+			relativePath: "browser/tiptap-core/index.js",
+			content: `export { Editor } from "../dist-86k79VvK.js";`,
+		});
+		const element = {
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-element" as const,
+			name: "multiple-choice",
+		};
+		await writePackageJson({
+			...element,
+			content: {
+				name: "@pie-element/multiple-choice",
+				pie: {
+					browserEditorRuntime: {
+						name: "@pie-element/shared-editor-runtime",
+						version: "0.1.1-next.0",
+						views: { delivery: "editor-runtime/delivery" },
+					},
+				},
+			},
+		});
+		await writePackageFile({
+			...element,
+			relativePath: "index.js",
+			content: "",
+		});
+		const source = `import { Editor } from "@tiptap/core"; import { jsx } from "react/jsx-runtime"; import { main } from "../main-By6Ldawu.js";`;
+		await writePackageFile({
+			...element,
+			relativePath: "browser/editor-runtime/delivery/index.js",
+			content: source,
+		});
+		await writePackageFile({
+			...element,
+			relativePath: "browser/delivery/index.js",
+			content: source,
+		});
+		const context = createFixtureContext(fixture);
+		const serve = (pathname: string) =>
+			handleRequest(makeRequest(pathname), context);
+
+		const runtimeMetadata = await serve(
+			"/@pie-element/shared-editor-runtime@0.1.1-next.0/package.json",
+		);
+		expect(runtimeMetadata.status).toBe(200);
+		const runtimeModule = await serve(
+			"/@pie-element/shared-editor-runtime@0.1.1-next.0/dist/browser/tiptap-core/index.js",
+		);
+		expect(runtimeModule.status).toBe(200);
+		expect(await runtimeModule.text()).toContain(
+			'"/@pie-element/shared-editor-runtime/browser/dist-86k79VvK.js"',
+		);
+
+		const variant = await (
+			await serve(
+				"/@pie-element/multiple-choice@13.4.0-next.15/dist/browser/editor-runtime/delivery/index.js",
+			)
+		).text();
+		expect(variant).toContain('from "@tiptap/core"');
+		expect(variant).toContain('"https://esm.sh/react@18.2.0/jsx-runtime"');
+		expect(variant).toContain(
+			'"/@pie-element/multiple-choice/browser/editor-runtime/main-By6Ldawu.js"',
+		);
+
+		const standard = await (
+			await serve(
+				"/@pie-element/multiple-choice@13.4.0-next.15/dist/browser/delivery/index.js",
+			)
+		).text();
+		expect(standard).toContain('from "https://esm.sh/@tiptap/core"');
+	});
+
 	it("returns 404 json for missing package entry", async () => {
 		const fixture = await createTempFixture();
 		cleanups.push(fixture.cleanup);

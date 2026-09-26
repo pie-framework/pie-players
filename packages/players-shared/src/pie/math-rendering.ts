@@ -88,8 +88,11 @@ export async function initializeMathRendering(
 
 	initPromise = (async () => {
 		try {
+			// The package has no exports map, so the file is named in full for
+			// resolvers that do not complete a directory, such as webpack's
+			// fully-specified ESM resolution.
 			const { _dll_pie_lib__math_rendering } = await import(
-				"@pie-lib/math-rendering-module/module"
+				"@pie-lib/math-rendering-module/module/index.js"
 			);
 			// A host may install its renderer while the default module is in flight.
 			// The explicit renderer remains authoritative when that happens.

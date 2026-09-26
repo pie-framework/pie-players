@@ -95,7 +95,7 @@ Delivery and author views include a PIEOneer-style element version toolbar.
 - Base catalog defaults still come from each demo's `config.elements` map
 - `GET /api/packages` powers combobox version suggestions via npm registry lookup
 
-The server npm helper is imported from `@pie-players/pie-players-shared/server/npm-registry`
+The server npm helper is imported from `@pie-players/demo-ui/server/npm-registry`
 and must remain server-only (route/load modules only, never Svelte/browser code).
 
 ### Content Standards

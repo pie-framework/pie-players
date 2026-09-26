@@ -124,6 +124,25 @@ const run = () => {
 			missing.push('"bugs" must be a URL string or an object with URL');
 		}
 
+		// One exact version, so every PIE bundle a host loads resolves the same copy
+		// and the locale-table paths the bundles import.
+		for (const [dependency, version] of Object.entries(
+			policy.pinnedRuntimeDependencies ?? {},
+		)) {
+			for (const bucket of [
+				"dependencies",
+				"peerDependencies",
+				"optionalDependencies",
+			]) {
+				const range = pkg[bucket]?.[dependency];
+				if (range !== undefined && range !== version) {
+					missing.push(
+						`${bucket}.${dependency} must be "${version}"; found "${range}"`,
+					);
+				}
+			}
+		}
+
 		if (policy.requireNodeEngine) {
 			if (
 				!pkg.engines ||

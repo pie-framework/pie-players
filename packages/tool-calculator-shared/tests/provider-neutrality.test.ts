@@ -37,23 +37,18 @@ test("the element entry bundles Svelte, since hosts resolve it at runtime", asyn
 	expect(imports.has("@pie-players/pie-players-shared")).toBe(true);
 });
 
-test("the component entry leaves Svelte to the wrappers that bundle it", async () => {
+test("no published entry imports Svelte, so hosts install none", async () => {
 	const packageJson = await Bun.file(
 		new URL("../package.json", import.meta.url),
 	).json();
-	const publishPolicy = await Bun.file(
-		new URL("../../../scripts/publish-policy.json", import.meta.url),
-	).json();
 
-	// A precompiled shared component with its own Svelte runtime cannot attach
-	// effects beneath a custom-element wrapper compiled with another runtime.
-	expect((await bareImports("index.js")).has("svelte/internal/client")).toBe(
-		true,
-	);
-	// The range itself lives in scripts/publish-policy.json, which
-	// check:svelte-runtime-deps enforces across the workspace.
-	expect(publishPolicy.svelteRuntimeDependencyRange).toBeTruthy();
-	expect(packageJson.dependencies?.svelte).toBe(
-		publishPolicy.svelteRuntimeDependencyRange,
-	);
+	for (const target of Object.values(packageJson.exports) as {
+		import: string;
+	}[]) {
+		const imports = await bareImports(target.import.replace(/^\.\/dist\//, ""));
+		expect([...imports].filter((path) => SVELTE_SPECIFIER.test(path))).toEqual(
+			[],
+		);
+	}
+	expect(packageJson.dependencies?.svelte).toBeUndefined();
 });

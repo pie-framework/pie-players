@@ -34,9 +34,14 @@ export default defineConfig({
 		cssMinify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			// speech-rule-engine and its locale tables resolve from the host's
-			// node_modules, so every PIE bundle a host loads shares one copy.
-			external: [/^speech-rule-engine(?:\/|$)/],
+			// The toolkit, players-shared, pie-context and speech-rule-engine
+			// resolve from the host's node_modules, so every PIE bundle a host
+			// loads shares one copy of each. Patterns, because an exact-string
+			// external still inlines the subpaths this tool imports.
+			external: [
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
+				/^speech-rule-engine(?:\/|$)/,
+			],
 			output: {
 				format: "es",
 			},

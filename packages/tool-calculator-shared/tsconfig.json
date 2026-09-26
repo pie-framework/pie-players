@@ -9,13 +9,13 @@
 		"moduleResolution": "NodeNext"
 	},
 	"include": [
-		"index.ts",
-		"index.types.ts",
+		"components.ts",
 		"CalculatorTool.svelte",
 		"CalculatorInlineTool.svelte",
 		"CalculatorElement.svelte",
 		"calculator-element.ts",
 		"calculator-config-key.ts",
+		"svelte-source-aliases.ts",
 		"svelte-shims.d.ts"
 	],
 	"exclude": ["node_modules", "dist", "tests"]

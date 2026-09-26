@@ -5,6 +5,11 @@
 		"module": "NodeNext",
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"moduleResolution": "NodeNext",
+		"paths": {
+			"@pie-players/pie-tool-calculator-shared/components": [
+				"../tool-calculator-shared/components.types.d.ts"
+			]
+		},
 		"types": ["svelte"],
 		"outDir": "./dist",
 		"rootDir": ".",

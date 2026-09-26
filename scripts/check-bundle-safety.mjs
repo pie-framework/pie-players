@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -252,6 +253,89 @@ export function hasSvelteDevRuntime(content) {
 	return content.includes("__svelte_cleanup");
 }
 
+const EMPTY_MODULE_PATTERN = /^\s*(?:export\s*\{\s*\}\s*;?\s*)?$/;
+
+/**
+ * Groups of a build's files with identical bytes, each group sorted. A bundler
+ * that reaches one module through two import paths can emit it twice, and a
+ * host that loads both copies fetches it twice. Empty modules, which type-only
+ * entries compile to, carry nothing to fetch twice.
+ */
+export function findIdenticalFiles(files) {
+	const byDigest = new Map();
+	for (const file of files) {
+		if (EMPTY_MODULE_PATTERN.test(file.content)) continue;
+		const digest = createHash("sha256").update(file.content).digest("hex");
+		byDigest.set(digest, [...(byDigest.get(digest) ?? []), file.path]);
+	}
+	return [...byDigest.values()]
+		.filter((group) => group.length > 1)
+		.map((group) => group.sort());
+}
+
+/**
+ * Packages every tool imports from the host's node_modules, each with a string
+ * only its own published code carries and minifiers keep: a `Symbol.for` key of
+ * the toolkit's contexts, pie-context's request event name, and an error of
+ * players-shared's i18n provider.
+ */
+export const HOST_SHARED_PACKAGES = [
+	{
+		name: "@pie-players/pie-assessment-toolkit",
+		dist: "packages/assessment-toolkit/dist",
+		marker: /pie\.assessmentToolkit\.runtimeContext/,
+	},
+	{
+		name: "@pie-players/pie-context",
+		dist: "packages/pie-context/dist",
+		marker: /["'`]context-request["'`]/,
+	},
+	{
+		name: "@pie-players/pie-players-shared",
+		dist: "packages/players-shared/dist",
+		marker: /Failed to load i18n catalog for locale/,
+	},
+];
+
+/** The host-shared packages whose code a bundle carries inline. */
+export function findInlinedHostSharedPackages(
+	content,
+	packages = HOST_SHARED_PACKAGES,
+) {
+	return packages
+		.filter((entry) => entry.marker.test(content))
+		.map((entry) => entry.name);
+}
+
+const FILE_EXTENSION_PATTERN = /\.(?:[cm]?js|json|css|wasm)$/;
+
+/** The package name and subpath of a bare specifier; null for any other. */
+export function splitBareSpecifier(specifier) {
+	if (/^(?:\.|\/|[a-z][a-z\d+.-]*:)/i.test(specifier)) return null;
+	const parts = specifier.split("/");
+	const nameLength = specifier.startsWith("@") ? 2 : 1;
+	if (parts.length < nameLength || parts.some((part) => part === "")) {
+		return null;
+	}
+	return {
+		name: parts.slice(0, nameLength).join("/"),
+		subpath: parts.slice(nameLength).join("/"),
+	};
+}
+
+/**
+ * True when a bare specifier's subpath names no file inside a package without
+ * an exports map. Only a resolver that completes directories and extensions
+ * finds its target; webpack's fully specified ESM resolution warns instead.
+ */
+export function needsFullySpecifiedSubpath(specifier, manifest) {
+	const parsed = splitBareSpecifier(specifier);
+	if (!parsed?.subpath || !manifest || manifest.exports !== undefined) {
+		return false;
+	}
+	return !FILE_EXTENSION_PATTERN.test(parsed.subpath);
+}
+
 const LITERAL_DEFINE_PATTERN = /customElements\.define\(\s*(["'`])([^"'`]+)\1/g;
 // How far back a `customElements.get` for the same tag may sit and still count
 // as guarding the define. Guards in shipped output sit directly before it
@@ -482,6 +566,94 @@ function checkNoSvelteDevRuntime(failures) {
 	return filesChecked;
 }
 
+const readDistFiles = (dir) =>
+	collectJsFiles(dir).map((filePath) => ({
+		path: path.relative(dir, filePath).split(path.sep).join("/"),
+		content: readFileSync(filePath, "utf8"),
+	}));
+
+const readManifest = (dir) =>
+	JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8"));
+
+function checkNoIdenticalFiles(failures) {
+	for (const dir of listPackageDistDirs()) {
+		for (const group of findIdenticalFiles(readDistFiles(dir))) {
+			failures.push(
+				`[bundle-safety] ${path.relative(ROOT, dir)} ships identical files ${group.join(", ")}; a host that loads both fetches the module twice, so give it one import path`,
+			);
+		}
+	}
+}
+
+/**
+ * A tool resolves the toolkit, players-shared and pie-context from the host,
+ * so a section host carries one copy of each rather than one per tool.
+ */
+function checkToolsImportHostSharedPackages(failures) {
+	for (const shared of HOST_SHARED_PACKAGES) {
+		const absDist = path.join(ROOT, shared.dist);
+		if (
+			!existsSync(absDist) ||
+			!readDistFiles(absDist).some((file) => shared.marker.test(file.content))
+		) {
+			failures.push(
+				`[bundle-safety] ${shared.dist} no longer carries ${shared.marker}, which marks ${shared.name} inlined elsewhere; pick a string only its published code still carries`,
+			);
+		}
+	}
+
+	for (const dir of listPackageDistDirs()) {
+		const packageDir = path.dirname(dir);
+		if (!/^@pie-players\/pie-tool-/.test(readManifest(packageDir).name)) {
+			continue;
+		}
+		for (const file of readDistFiles(dir)) {
+			for (const name of findInlinedHostSharedPackages(file.content)) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} inlines ${name}; list /^@pie-players\\/pie-(?:assessment-toolkit|players-shared|context)(?:\\/|$)/ in the tool's Vite externals so the host resolves one copy`,
+				);
+			}
+		}
+	}
+}
+
+/** The manifest of `name` as Node resolves it from `fromDir`, or null. */
+function findInstalledManifest(fromDir, name) {
+	for (let dir = fromDir; ; dir = path.dirname(dir)) {
+		const candidate = path.join(dir, "node_modules", name, "package.json");
+		if (existsSync(candidate)) {
+			return JSON.parse(readFileSync(candidate, "utf8"));
+		}
+		if (dir === path.dirname(dir)) return null;
+	}
+}
+
+function checkFullySpecifiedSubpaths(failures) {
+	for (const dir of listPackageDistDirs()) {
+		const packageDir = path.dirname(dir);
+		if (readManifest(packageDir).private) continue;
+		const manifests = new Map();
+		for (const file of readDistFiles(dir)) {
+			const specifiers = findModuleSpecifiers(file.content);
+			for (const specifier of [...specifiers.static, ...specifiers.dynamic]) {
+				const parsed = splitBareSpecifier(specifier);
+				if (!parsed?.subpath) continue;
+				if (!manifests.has(parsed.name)) {
+					manifests.set(
+						parsed.name,
+						findInstalledManifest(packageDir, parsed.name),
+					);
+				}
+				if (needsFullySpecifiedSubpath(specifier, manifests.get(parsed.name))) {
+					failures.push(
+						`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, which names no file in a package without an exports map; import the file itself`,
+					);
+				}
+			}
+		}
+	}
+}
+
 function checkNoUnguardedCustomElementDefines(failures) {
 	for (const dir of listPackageDistDirs()) {
 		for (const filePath of collectJsFiles(dir)) {
@@ -515,6 +687,9 @@ function main() {
 	const mathSpeechPackages = checkSpeechRuleEngineBoundaries(failures);
 	checkNoPublishedSourcemaps(failures);
 	checkNoSvelteDevRuntime(failures);
+	checkNoIdenticalFiles(failures);
+	checkToolsImportHostSharedPackages(failures);
+	checkFullySpecifiedSubpaths(failures);
 	checkNoUnguardedCustomElementDefines(failures);
 	checkNewUrlTails(failures);
 

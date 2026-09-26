@@ -102,8 +102,9 @@ control (for example the session debugger element export).
 `@pie-players/pie-item-player/preloaded` exports `registerPreloadedElements` and
 `ensureItemPlayerMathRenderingReady`, and defines no element.
 
-Standalone browser variants for this package are intentionally deferred; current
-support targets default bundler entrypoints under `dist`.
+The root entry imports no bare specifier, so it loads raw from a CDN as under
+[Install](#install) as well as through a bundler. It is the only player that
+does: the section and assessment players are bundler-only.
 
 ## Quick start
 

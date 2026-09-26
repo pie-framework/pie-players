@@ -6,6 +6,16 @@ import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-sourc
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
+/** Source modules behind the `./contracts/*` and `./policies` exports. */
+const CONTRACT_ENTRIES = [
+	"contracts/layout-contract",
+	"contracts/public-events",
+	"contracts/runtime-host-contract",
+	"contracts/layout-parity-metadata",
+	"contracts/host-hooks",
+	"policies/index",
+];
+
 const sanitizeChunkKey = (value: string) =>
 	value
 		.replace(/\\/g, "/")
@@ -83,6 +93,14 @@ export default defineConfig({
 		lib: {
 			entry: {
 				"pie-section-player": resolve(__dirname, "src/pie-section-player.ts"),
+				// Each contract subpath is its own entry, so importing one loads no
+				// custom element and runs in Node.
+				...Object.fromEntries(
+					CONTRACT_ENTRIES.map((entry) => [
+						entry,
+						resolve(__dirname, `src/${entry}.ts`),
+					]),
+				),
 			},
 			name: "PieSectionPlayer",
 			fileName: (_format, entryName) => `${entryName}.js`,
@@ -96,6 +114,9 @@ export default defineConfig({
 		rollupOptions: {
 			external: [
 				"@pie-players/pie-default-tool-loaders",
+				// The host's one item player defines `pie-item-player` and installs
+				// the math renderer, for this player's items and its own.
+				/^@pie-players\/pie-item-player(?:\/|$)/,
 				// speech-rule-engine and its locale tables resolve from the host's
 				// node_modules, so every PIE bundle a host loads shares one copy.
 				/^speech-rule-engine(?:\/|$)/,

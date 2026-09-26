@@ -12,7 +12,7 @@ Publishable `@pie-players/*` packages expose runtime code through `package.json`
 [`apps/section-demos/vite.config.ts`](../../apps/section-demos/vite.config.ts) maps many workspace imports to **concrete files under each package’s `dist/`** (for example tool packages). That matches **npm + Vite resolve** behavior for those entrypoints: the dev server uses the same bundled artifacts consumers get.
 
 - **Why:** Reduces “works in monorepo dev, breaks from the registry” drift for those modules.
-- **Optional:** With **`LOCAL_ESM_CDN=true`**, the config can load the local ESM CDN plugin for **production-like** CDN-style loading (see comments in the same file).
+- **Local pie-elements-ng:** **`bun run dev:section:cdn`** serves a built pie-elements-ng checkout (`PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`) from the dev server, and `?player=esm` loads its elements from there.
 
 Packages **not** listed in that alias block still resolve through normal **`workspace:*` → `exports` → `dist/`**, so they also require an up-to-date build.
 
@@ -35,6 +35,8 @@ Uses a **small** set of explicit `dist` aliases where needed (see its `vite.conf
 | Goal | Command |
 |------|--------|
 | Section demo dev server | `bun run dev:section` |
+| Section demo dev server with ESM elements from a local pie-elements-ng build | `bun run dev:section:cdn` |
+| Specs for that path | `bun run test:e2e:section-player:local-esm-cdn` |
 | Rebuild all workspace packages then section dev | `bun run dev:section -- --rebuild` |
 | Watch builds for common section/tool packages | `bun run build:watch:section-tools` |
 | Item demo dev | `bun run dev:item` |

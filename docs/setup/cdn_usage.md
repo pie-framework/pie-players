@@ -56,11 +56,9 @@ Example:
 
 ## Local ESM CDN (development, no publishing)
 
-When developing ESM-loading flows without publishing PIE element packages, you can run a local "ESM CDN" server from a sibling `pie-elements-ng` checkout and point the ESM player to it via `esm-cdn-url`.
+`bun run local-esm-cdn` serves a pie-elements-ng checkout (`PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`) as an ESM CDN on port 5179, or `LOCAL_ESM_CDN_PORT`. It builds the checkout's React element and lib packages first; `LOCAL_ESM_CDN_SKIP_BUILD=1` skips the build. Point the ESM player at it with `loaderOptions.esmCdnUrl`.
 
-See the repo root README for the full workflow and the `bun run local-esm-cdn` convenience script.
-
-Tip: if you run the local server on a different port, set `LOCAL_ESM_CDN_PORT=...` and update your app to use that base URL (for the example app: `?localEsmCdnUrl=http://localhost:PORT`).
+`bun run dev:section:cdn` serves the same checkout, built, from the section demos' dev server, and their `?player=esm` loads from it.
 
 ## Automatic HMR File Watching
 

@@ -29,11 +29,11 @@ export interface NormalizeSpeechChunksArgs {
 const chunkOffsetSpaceFor = (
 	chunk: SpeechCompositionChunkInput,
 ): ChunkOffsetSpace => {
-	if (chunk.alignment?.boundaryOffsetMode)
-		return chunk.alignment.boundaryOffsetMode;
-	const mathOffsetSpace = chunk.mathAlignment?.speech.boundaryOffsetSpace;
-	if (mathOffsetSpace) return mathOffsetSpace;
-	return "plain-spoken-text";
+	return (
+		chunk.alignment?.speech.boundaryOffsetSpace ??
+		chunk.mathAlignment?.speech.boundaryOffsetSpace ??
+		"plain-spoken-text"
+	);
 };
 
 const mathAlignmentsFor = (

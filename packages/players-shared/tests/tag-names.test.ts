@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	parseVersionedTagName,
 	toPrintHashedTag,
 	toViewTag,
 	validateCustomElementTag,
@@ -46,5 +47,17 @@ describe("tag helpers", () => {
 	test("toPrintHashedTag uses a positive hash value", () => {
 		const tag = toPrintHashedTag("pie-mc", "url", () => -123);
 		expect(tag).toBe("pie-mc-print-123");
+	});
+
+	test("parseVersionedTagName splits a runtime tag at its version suffix", () => {
+		expect(
+			parseVersionedTagName("ebsr-multiple-choice--version-14-2-2-next-18"),
+		).toEqual({
+			baseName: "ebsr-multiple-choice",
+			existingEncodedVersion: "14-2-2-next-18",
+		});
+		expect(parseVersionedTagName("ebsr-multiple-choice")).toEqual({
+			baseName: "ebsr-multiple-choice",
+		});
 	});
 });

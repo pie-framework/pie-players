@@ -9,95 +9,31 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
+import type { ITTSProvider } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
+import type {
+	RuntimeTTSConfig,
+	TTSRuntimeSettings,
+} from "../tts-runtime-config.js";
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
 } from "./ToolProviderApi.js";
 
-/**
- * TTS backend type
- */
-export type TTSBackend = "browser" | "polly" | "google" | "server";
+export type TTSBackend = NonNullable<TTSRuntimeSettings["backend"]>;
 
 /**
- * TTS tool provider configuration
+ * The runtime provider config plus the backend selection and instrumentation
+ * this tool provider reads.
  */
-export interface TTSToolProviderConfig extends Partial<TTSConfig> {
-	/**
-	 * TTS backend to use
-	 */
+export type TTSToolProviderConfig = RuntimeTTSConfig & {
 	backend: TTSBackend;
-
-	/**
-	 * Server API endpoint (for server backends)
-	 * @example '/api/tts/synthesize'
-	 * @example 'https://api.example.com/tts/synthesize'
-	 */
-	apiEndpoint?: string;
-
-	/**
-	 * Provider to use on server ('polly', 'google')
-	 * Only used when backend is 'server', 'polly', or 'google'
-	 */
-	serverProvider?: "polly" | "google" | "custom";
-
-	/**
-	 * Explicit transport mode for server provider payload translation.
-	 */
-	transportMode?: "pie" | "custom";
-
-	/**
-	 * Endpoint style used by the server-backed provider.
-	 */
-	endpointMode?: "synthesizePath" | "rootPost";
-
-	/**
-	 * Endpoint validation strategy when validateEndpoint=true.
-	 */
-	endpointValidationMode?: "voices" | "endpoint" | "none";
-
-	/**
-	 * Include auth header when fetching remote audio/speech-mark assets.
-	 */
-	includeAuthOnAssetFetch?: boolean;
-
-	/**
-	 * Auth token (if required)
-	 * Typically fetched via authFetcher in ToolProviderRegistry
-	 */
-	authToken?: string;
-
-	/**
-	 * Organization ID for multi-tenant applications
-	 */
-	organizationId?: string;
-
-	/**
-	 * Default voice to use
-	 */
-	voice?: string;
-
-	/**
-	 * Speech rate (0.25 to 4.0, default 1.0)
-	 */
-	rate?: number;
-
-	/**
-	 * Speech pitch (0 to 2, default 1.0)
-	 * Note: Only browser backend supports pitch
-	 */
-	pitch?: number;
-
-	/**
-	 * Optional telemetry callback for tool/backend instrumentation.
-	 */
+	serverProvider?: TTSRuntimeSettings["serverProvider"];
 	onTelemetry?: (
 		eventName: string,
 		payload?: Record<string, unknown>,
 	) => void | Promise<void>;
-}
+};
 
 /**
  * TTS Tool Provider
@@ -112,13 +48,12 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
  * const ttsProvider = await provider.createInstance();
  * ```
  *
- * @example Server TTS (with auth)
+ * @example Server TTS
  * ```typescript
- * const provider = new TTSToolProvider();
+ * const provider = new TTSToolProvider('polly');
  * await provider.initialize({
  *   backend: 'polly',
- *   apiEndpoint: '/api/tts/synthesize',
- *   authToken: 'bearer-token', // Fetched via authFetcher
+ *   apiEndpoint: '/api/tts',
  * });
  * const ttsProvider = await provider.createInstance();
  * ```

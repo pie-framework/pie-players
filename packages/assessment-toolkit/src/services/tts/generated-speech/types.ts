@@ -15,8 +15,6 @@
  * (see `./dom/types.ts`).
  */
 
-export type StructuralBreakStrength = "weak" | "medium" | "strong";
-
 export interface ProseSegment {
 	kind: "prose";
 	/** Spoken words for this prose run. Identical to `visibleText` today. */
@@ -51,19 +49,7 @@ export interface MathSegment {
 	ssml?: string;
 }
 
-/**
- * A structural pause. Breaks are never standalone speakable units: the DOM
- * adapter folds them into the SSML of an adjacent speakable segment (or relies
- * on the gap between sequential per-chunk utterances). Modeled here so the
- * plan can carry pause intent for the SSML serializer.
- */
-export interface StructuralBreak {
-	kind: "break";
-	strength: StructuralBreakStrength;
-}
-
 export type SpeechSegment = ProseSegment | MathSegment;
-export type PlanSegment = SpeechSegment | StructuralBreak;
 
 /** One assembled (still anchor-free) segment plus its source chunk index. */
 export interface AssembledSegment {

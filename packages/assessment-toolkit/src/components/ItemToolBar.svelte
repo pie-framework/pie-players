@@ -1258,7 +1258,6 @@
 		// HTMLElement (not HTMLButtonElement) so the calculator branch can use
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
-		let resizeHandleEl: HTMLDivElement | null = null;
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
 		let focusGuardRedirecting = false;

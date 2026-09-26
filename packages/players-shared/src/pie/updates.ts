@@ -5,7 +5,6 @@
  */
 
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
-import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { findPieController } from "./scoring.js";
@@ -166,17 +165,16 @@ const applyControllerToElement = async (
 			element: model.element,
 			...controllerResultObject,
 		};
-		const wrappedModel = wrapModelRichContent(filteredModel);
 
 		logger.debug(`${logPrefix} ✅ Controller filtered model:`, {
-			id: wrappedModel.id,
-			element: wrappedModel.element,
-			hasCorrectResponse: "correctResponse" in wrappedModel,
+			id: filteredModel.id,
+			element: filteredModel.element,
+			hasCorrectResponse: "correctResponse" in filteredModel,
 			mode: env.mode,
 			role: env.role,
 		});
 
-		element.model = wrappedModel;
+		element.model = filteredModel;
 		element.session = elementSession;
 	} catch (err) {
 		logger.error(`${logPrefix} ❌ Controller error:`, err);
@@ -265,7 +263,7 @@ const updateSinglePieElement = async (
 			logger.debug(
 				`${logContext} ℹ️ No controller for ${controllerLookupTag}, using server-processed model`,
 			);
-			pieElement.model = wrapModelRichContent(model);
+			pieElement.model = model;
 			pieElement.session = elementSession;
 			return;
 		}
@@ -313,14 +311,14 @@ const updateSinglePieElement = async (
 				cause: errorMessage,
 			});
 			// Fall back to raw model on controller error
-			pieElement.model = wrapModelRichContent(model);
+			pieElement.model = model;
 			pieElement.session = elementSession;
 		}
 	} else {
 		logger.debug(
 			`${logContext} Direct model assignment for ${controllerLookupTag}#${pieElement.id} (no controller invocation requested)`,
 		);
-		pieElement.model = wrapModelRichContent(model);
+		pieElement.model = model;
 		pieElement.session = elementSession;
 	}
 };

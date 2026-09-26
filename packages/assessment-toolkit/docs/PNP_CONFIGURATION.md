@@ -446,12 +446,12 @@ const context: ItemToolContext = {
 const visibleTools = registry.filterVisibleInContext(allowedToolIds, context);
 
 // 5. Render toolbar
-<ToolButtonGroup
-  {registry}
-  {allowedToolIds}
-  {context}
-  onToolClick={handleToolClick}
-/>
+<pie-item-toolbar
+  .toolRegistry={registry}
+  .assessment={assessment}
+  .itemRef={currentItem}
+  .item={itemData}
+></pie-item-toolbar>
 ```
 
 ### Data Sources
@@ -467,7 +467,7 @@ ToolPolicyEngine → allowedToolIds
     ↓
 ToolRegistry → visibleTools
     ↓
-ToolButtonGroup → rendered buttons
+pie-item-toolbar → rendered buttons
 ```
 
 ### Admin Interfaces

@@ -155,17 +155,6 @@ export interface SectionCanonicalItemViewModel {
 	session: unknown;
 }
 
-export interface SectionCanonicalSectionViewModel {
-	sectionId: string;
-	currentItemIndex: number;
-	items: SectionCanonicalItemViewModel[];
-}
-
-export interface SectionCanonicalSessionViewModel {
-	currentItemIndex: number;
-	itemSessionsByCanonicalId: Record<string, unknown>;
-}
-
 export interface SectionAttemptSessionSliceLoadedRenderable {
 	itemId: string;
 	canonicalItemId: string;

@@ -18,10 +18,7 @@ import type {
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	hasChoiceInteraction,
-	hasReadableText,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createToolElement,
 	type ToolComponentOverrides,

@@ -259,7 +259,7 @@
 
 			<div class="card bg-base-100 border border-base-300">
 				<div class="card-body">
-					<h4 class="font-bold text-primary mb-2">ToolConfigResolver</h4>
+					<h4 class="font-bold text-primary mb-2">ToolPolicyEngine</h4>
 					<p class="text-sm">
 						Resolves tool availability from placement, host policy, provider gates, profile data,
 						and custom policy sources.

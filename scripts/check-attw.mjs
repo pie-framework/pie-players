@@ -162,8 +162,6 @@ const shouldSuppressProblem = (problem) => {
 		typeof problem.entrypoint === "string" ? problem.entrypoint : "";
 	const resolutionKind =
 		typeof problem.resolutionKind === "string" ? problem.resolutionKind : "";
-	const moduleSpecifier =
-		typeof problem.moduleSpecifier === "string" ? problem.moduleSpecifier : "";
 
 	// CJS resolver warning is already intentionally ignored in existing policy.
 	if (problem.kind === "CJSResolvesToESM") return true;
@@ -175,16 +173,6 @@ const shouldSuppressProblem = (problem) => {
 		if (resolutionKind === "node10") return true;
 		// ATTW cannot reliably model CSS-only entrypoints.
 		if (entrypoint.endsWith(".css")) return true;
-	}
-
-	// Declarations that re-export Svelte components keep the `.svelte` specifier.
-	// It resolves for consumers through Svelte's ambient `*.svelte` module
-	// declaration, which ATTW's isolated program never loads.
-	if (
-		problem.kind === "InternalResolutionError" &&
-		moduleSpecifier.endsWith(".svelte")
-	) {
-		return true;
 	}
 
 	return false;

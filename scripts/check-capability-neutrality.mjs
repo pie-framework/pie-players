@@ -82,14 +82,12 @@ const SCOPED_TARGETS = [
 	},
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-validation.ts") },
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-defaults.ts") },
-	{ file: path.join(TOOLKIT_SRC, "services", "createDefaultToolRegistry.ts") },
 	{
 		file: path.join(TOOLKIT_SRC, "services", "defaultPersonalNeedsProfile.ts"),
 	},
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
 	{ file: path.join(TOOLKIT_SRC, "components", "ItemToolBar.svelte") },
 	{ file: path.join(TOOLKIT_SRC, "components", "SectionToolBar.svelte") },
-	{ file: path.join(TOOLKIT_SRC, "components", "ToolButtonGroup.svelte") },
 	{
 		file: path.join(TOOLKIT_SRC, "tools", "content-capability-resolution.ts"),
 	},

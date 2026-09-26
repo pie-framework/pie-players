@@ -47,7 +47,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      UI LAYER                                │
-│  (ToolButtonGroup, ItemToolBar)                             │
+│  (ItemToolBar, SectionToolBar)                              │
 │                                                              │
 │  Renders: Buttons for visible tools only                    │
 └─────────────────────────────────────────────────────────────┘
@@ -402,46 +402,6 @@ buttons.forEach(button => {
 ```
 
 ## UI Components
-
-### ToolButtonGroup
-
-Generic toolbar component that implements the two-pass visibility model:
-
-```svelte
-<script lang="ts">
-  import { ToolButtonGroup } from '@pie-players/pie-assessment-toolkit';
-
-  let {
-    toolRegistry,      // ToolRegistry instance
-    allowedToolIds,    // Pass 1: from orchestrator
-    context,           // ToolContext for Pass 2
-    onToolClick        // Callback when tool clicked
-  } = $props();
-</script>
-
-<ToolButtonGroup
-  {toolRegistry}
-  {allowedToolIds}
-  {context}
-  {onToolClick}
-  orientation="horizontal"
-  compact={false}
-/>
-```
-
-### ToolButton
-
-Individual button component:
-
-```svelte
-<script lang="ts">
-  import { ToolButton } from '@pie-players/pie-assessment-toolkit';
-
-  let { button } = $props();  // ToolButtonDefinition
-</script>
-
-<ToolButton {button} />
-```
 
 ### ItemToolBar
 

@@ -279,7 +279,6 @@ const DEFAULT_ENV = {
 	let hostRuntimeRoot: ContextRoot | null = null;
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
-	let runtimeError = $state<unknown>(null);
 	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
 	let frameworkErrorTitle = $state("Unable to initialize assessment toolkit.");
 	let frameworkErrorDetails = $state<string[]>([]);
@@ -963,7 +962,6 @@ const DEFAULT_ENV = {
 	}
 
 	function reportOwnedCoordinatorDisposeError(error: unknown): void {
-		runtimeError = error;
 		reportFrameworkError({
 			kind: "runtime-dispose",
 			source: "pie-assessment-toolkit",
@@ -984,7 +982,7 @@ const DEFAULT_ENV = {
 	// change so the toolkit can swap between owned, passed-in, and
 	// inherited coordinators. It must *not* re-run on its own writes to
 	// `ownedCoordinator` / `lastOwnedBootstrapFailureKey` /
-	// `frameworkError*` / `runtimeError` — those self-mutations were the
+	// `frameworkError*` — those self-mutations were the
 	// observed source of the `effect_update_depth_exceeded` warnings in
 	// the assessment-player smoke flow. We therefore explicitly track
 	// only the ownership inputs and run the bootstrap body inside
@@ -1023,7 +1021,6 @@ const DEFAULT_ENV = {
 					ownedCoordinator.setToolContextResolvers(toolContextResolvers as any);
 					lastAppliedToolContextResolvers = toolContextResolvers;
 				} catch (error) {
-					runtimeError = error;
 					reportFrameworkError({
 						kind: "coordinator-init",
 						source: "pie-assessment-toolkit",
@@ -1046,7 +1043,6 @@ const DEFAULT_ENV = {
 					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
 					frameworkErrorDetails = [];
 				} catch (error) {
-					runtimeError = error;
 					ownedCoordinator = null;
 					lastOwnedBootstrapFailureKey = failureKey;
 					reportFrameworkError({
@@ -1588,7 +1584,6 @@ const DEFAULT_ENV = {
 					}
 					stageTracker.enter("interactive", "failed");
 				});
-				runtimeError = error;
 				sectionEngine.reportSectionError({
 					source: "section-runtime",
 					error,
@@ -1889,7 +1884,6 @@ const DEFAULT_ENV = {
 			void sectionEngine
 				.dispose()
 				.catch((error) => {
-					runtimeError = error;
 					reportFrameworkError({
 						kind: "runtime-dispose",
 						source: "pie-assessment-toolkit",

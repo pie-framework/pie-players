@@ -4,7 +4,6 @@
 import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 
 	interface Props {
-		demoName: string;
 		demoId: string;
 		config: unknown;
 		showSessionPanel: boolean;
@@ -17,7 +16,6 @@ import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 	}
 
 	let {
-		demoName,
 		demoId,
 		config,
 		showSessionPanel,
@@ -33,7 +31,6 @@ import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 {#if showSessionPanel}
 	<pie-item-player-session-debugger
 		bind:this={sessionDebuggerElement}
-		itemName={demoName}
 		itemId={demoId}
 		{config}
 		{session}

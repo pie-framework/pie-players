@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from "bun:test";
 import { CONTENT_ALTERNATE_REGISTRATIONS } from "../src/content-alternates.js";
-import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-tool-registry.js";
+import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-capability-composition.js";
 
 /** What print can resolve: an authored alternate rendered as its own region. */
 const isContentAlternate = (registration: {

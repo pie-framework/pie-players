@@ -9,8 +9,8 @@ import {
 	audioTranscriptRegistration,
 	resolveAudioTranscript,
 } from "../src/registrations/audio-transcript.js";
-import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-tool-registry.js";
-import { UNIVERSAL_SUPPORTS_PRESET } from "../src/universal-supports.js";
+import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-capability-composition.js";
+import { UNIVERSAL_SUPPORTS_PRESET } from "../src/packaged-capability-composition.js";
 
 const itemWithCards = (cards: CatalogCard[]) =>
 	({

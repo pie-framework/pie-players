@@ -1,5 +1,11 @@
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+} from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -15,28 +21,22 @@ const outDir = join(repoRoot, "local-builds");
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
-const basePackagesToPack = [
-	// CLI + core shared
+const isPublished = (rel) => {
+	const manifest = join(repoRoot, rel, "package.json");
+	return (
+		existsSync(manifest) &&
+		JSON.parse(readFileSync(manifest, "utf8")).private !== true
+	);
+};
+
+// tools/cli is private and packed anyway.
+const packagesToPack = [
 	"tools/cli",
-	"packages/players-shared",
-
-	// Item players
-	"packages/esm-player",
-
-	// Assessment stack
-	"packages/assessment-toolkit",
-	"packages/iife-player",
+	...readdirSync(join(repoRoot, "packages"))
+		.map((name) => `packages/${name}`)
+		.filter(isPublished)
+		.sort(),
 ];
-
-const toolPackagesToPack = readdirSync(join(repoRoot, "packages"))
-	.filter((name) => name.startsWith("tool-"))
-	.map((name) => `packages/${name}`)
-	.filter((rel) => existsSync(join(repoRoot, rel, "package.json")))
-	.sort();
-
-const packagesToPack = [...basePackagesToPack, ...toolPackagesToPack].filter(
-	(rel) => existsSync(join(repoRoot, rel, "package.json")),
-);
 
 for (const rel of packagesToPack) {
 	const pkgDir = join(repoRoot, rel);

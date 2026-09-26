@@ -21,10 +21,6 @@
 		"./adapters/sveltekit": {
 			"types": "./dist/adapters/sveltekit.d.ts",
 			"default": "./dist/adapters/sveltekit.js"
-		},
-		"./adapters/connect": {
-			"types": "./dist/adapters/connect.d.ts",
-			"default": "./dist/adapters/connect.js"
 		}
 	},
 	"files": [

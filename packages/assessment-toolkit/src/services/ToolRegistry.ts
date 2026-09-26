@@ -46,8 +46,8 @@ export interface ToolToolbarButtonDefinition {
 	toolId: string;
 	label: string;
 	/**
-	 * Optional to match what the renderers already do: `ToolButton.svelte` and
-	 * `ItemToolBar.svelte` both guard on `button.icon`, and `ToolbarItem.icon` is
+	 * Optional to match what the renderer already does: `ItemToolBar.svelte`
+	 * guards on `button.icon`, and `ToolbarItem.icon` is
 	 * already optional, so requiring it here claimed a guarantee nothing relied
 	 * on. A registration that renders a button still has to declare an icon —
 	 * `assertToolRegistrationShape` enforces that.
@@ -303,26 +303,14 @@ export interface ToolToolbarRenderResult {
  * falls back to `name` rather than rendering the key, so a catalog gap degrades
  * to English instead of to `tools.something.name` on a toolbar button.
  *
- * Both display resolvers live here so the toolbars, the settings panels and the
- * PNP debugger cannot each invent their own precedence.
+ * It lives here so the toolbars, the settings panels and the PNP debugger
+ * cannot each invent their own precedence.
  */
 export function resolveToolRegistrationName(
 	registration: Pick<ToolRegistration, "name" | "nameKey">,
 	i18n?: I18nProvider,
 ): string {
 	return resolveKeyedString(registration.name, registration.nameKey, i18n);
-}
-
-/** A registration's description in the interface locale. See the name resolver. */
-export function resolveToolRegistrationDescription(
-	registration: Pick<ToolRegistration, "description" | "descriptionKey">,
-	i18n?: I18nProvider,
-): string {
-	return resolveKeyedString(
-		registration.description,
-		registration.descriptionKey,
-		i18n,
-	);
 }
 
 function resolveKeyedString(
@@ -698,7 +686,7 @@ function assertNonEmptyString(
 
 // Defence-in-depth: reject obvious XSS payloads in tool-registered icon
 // markup at registration time. Runtime rendering still runs each icon
-// through DOMPurify (see `ToolIcon.svelte`), but surfacing the problem
+// through DOMPurify (`sanitizeSvgIcon` in `ItemToolBar.svelte`), but surfacing the problem
 // early produces a clearer error for tool authors than "the icon silently
 // disappeared after sanitization".
 const SCRIPTABLE_ICON_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [

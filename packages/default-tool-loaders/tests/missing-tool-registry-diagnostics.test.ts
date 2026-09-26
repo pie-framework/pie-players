@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
+import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 
 /**
  * A coordinator registers tool providers only from its own `toolRegistry`, so

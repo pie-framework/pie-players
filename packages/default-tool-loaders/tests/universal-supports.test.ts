@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
+import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 import {
 	UNIVERSAL_SUPPORTS_PRESET,
 	createUniversalPersonalNeedsProfile,
-} from "../src/universal-supports";
+} from "../src/packaged-capability-composition.js";
 
 describe("universal supports preset", () => {
 	test("carries the packaged set's universal feature ids", () => {

@@ -203,7 +203,7 @@ export {
 	isRubricContext,
 	isSectionContext,
 } from "./services/tool-context.js";
-export { DEFAULT_TOOL_PLACEMENT } from "./services/createDefaultToolRegistry.js";
+export { DEFAULT_TOOL_PLACEMENT } from "./services/tool-config-defaults.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
 export { createEmptyPersonalNeedsProfile } from "./services/defaultPersonalNeedsProfile.js";
@@ -435,9 +435,6 @@ export type {
 } from "./attempt/AssessmentSession.js";
 export {
 	createNewAssessmentSession,
-	getAssessmentSessionStorageKey,
-	loadAssessmentSession,
-	saveAssessmentSession,
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "./attempt/AssessmentSession.js";

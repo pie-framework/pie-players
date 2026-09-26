@@ -11,8 +11,12 @@ const readSource = (relativePath: string): string =>
 	readFileSync(join(import.meta.dir, relativePath), "utf8");
 
 describe("item-player math rendering contract", () => {
-	test("importing the player installs no math renderer", () => {
-		const source = readSource("../src/pie-item-player.ts");
+	test.each([
+		"../src/pie-item-player.ts",
+		"../src/preloaded.ts",
+		"../src/math-rendering-ready.ts",
+	])("importing %s installs no math renderer", (path) => {
+		const source = readSource(path);
 
 		// Module-scope statements start in column 0; calls inside functions do not.
 		expect(source).not.toMatch(

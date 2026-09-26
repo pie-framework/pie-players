@@ -16,9 +16,14 @@
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
-import { pieRegistry } from "../pie/registry.js";
+import { writeRegistryEntry } from "../pie/registry.js";
 import { validateCustomElementTag } from "../pie/tag-names.js";
-import { isCustomElementConstructor, Status } from "../pie/types.js";
+import {
+	BundleType,
+	isCustomElementConstructor,
+	Status,
+} from "../pie/types.js";
+import { parsePackageName } from "../pie/utils.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -54,6 +59,11 @@ export type EsmCdnProvider = {
 		version: string,
 		subpath?: string,
 	): string;
+	/**
+	 * URL of the package's `./runtime-support` module. Without it, the file
+	 * `dist/runtime-support.js` beside `packageJsonUrl`.
+	 */
+	runtimeSupportUrl?(packageVersion: string): string;
 };
 
 export type EsmCdnProviderOption = EsmCdnProviderName | EsmCdnProvider;
@@ -167,7 +177,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 
 		const newEntries: ElementMap = {};
 		for (const [tag, pkg] of Object.entries(elements)) {
-			const packageName = extractPackageName(pkg);
+			const packageName = parsePackageName(pkg).name;
 			if (moduleResolution === "import-map") {
 				const existingVersion = importMappedPackageVersions.get(packageName);
 				if (existingVersion && existingVersion !== pkg) {
@@ -183,7 +193,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		if (Object.keys(newEntries).length > 0) {
 			let importMapResult: BrowserImportMapBuildResult;
 			try {
-				importMapResult = await buildImportMapJson(
+				importMapResult = await buildImportMap(
 					newEntries,
 					viewConfig,
 					cdnProvider,
@@ -197,8 +207,12 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				reportSharedDependencyError(err);
 				throw err;
 			}
-			const json = importMapResult.json;
-			if (json) {
+			const imports = withoutMappedSpecifiers(
+				importMapResult.imports,
+				context.doc,
+			);
+			if (Object.keys(imports).length > 0) {
+				const json = JSON.stringify({ imports }, null, 2);
 				assertImportMapSupported();
 				injectImportMap(json, context.doc);
 				importMapObserver?.(json, context.doc);
@@ -207,17 +221,16 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			for (const pkg of Object.values(newEntries)) {
 				injectedPackageVersions.add(pkg);
 				if (moduleResolution === "import-map") {
-					importMappedPackageVersions.set(extractPackageName(pkg), pkg);
+					importMappedPackageVersions.set(parsePackageName(pkg).name, pkg);
 				}
 			}
 		}
 
 		const reasons = new Map<ElementTag, RegistrationFailureReason>();
-		const registry = pieRegistry();
 
 		await Promise.all(
 			Object.entries(elements).map(async ([tag, packageVersion]) => {
-				const packageName = extractPackageName(packageVersion);
+				const packageName = parsePackageName(packageVersion).name;
 				let actualTag: string;
 				try {
 					actualTag = validateCustomElementTag(
@@ -333,15 +346,15 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					}
 				}
 
-				registry[actualTag] = {
+				writeRegistryEntry({
 					package: packageVersion,
 					status: Status.loaded,
 					tagName: actualTag,
 					element: ElementClass,
 					controller,
 					config: null,
-					bundleType: "esm" as unknown as import("../pie/types.js").BundleType,
-				};
+					bundleType: BundleType.esm,
+				});
 			}),
 		);
 
@@ -442,6 +455,27 @@ async function defaultPackageMetadataLoader(
 	return (await response.json()) as PackageMetadata;
 }
 
+const RUNTIME_SUPPORT_PATH = "dist/runtime-support.js";
+
+/**
+ * URL of a package's `./runtime-support` module on the ESM CDN the players load
+ * elements from, or `undefined` when a custom provider names no package root.
+ */
+export function resolveEsmRuntimeSupportUrl(
+	packageVersion: string,
+	options: { cdnBaseUrl: string; cdnProvider?: EsmCdnProviderOption },
+): string | undefined {
+	const cdnBaseUrl = options.cdnBaseUrl.replace(/\/+$/, "");
+	const provider = resolveCdnProvider(options.cdnProvider, cdnBaseUrl);
+	if (typeof provider.runtimeSupportUrl === "function") {
+		return provider.runtimeSupportUrl(packageVersion);
+	}
+	const packageJsonUrl = provider.packageJsonUrl(packageVersion);
+	return packageJsonUrl.endsWith("/package.json")
+		? `${packageJsonUrl.slice(0, -"package.json".length)}${RUNTIME_SUPPORT_PATH}`
+		: undefined;
+}
+
 function resolveCdnProvider(
 	provider: EsmCdnProviderOption | undefined,
 	cdnBaseUrl: string,
@@ -479,6 +513,8 @@ function createJsDelivrProvider(
 			`${cdnBaseUrl}/${packageVersion}/dist/browser/${view}/index.js`,
 		browserControllerUrl: (packageVersion) =>
 			`${cdnBaseUrl}/${packageVersion}/dist/browser/controller/index.js`,
+		runtimeSupportUrl: (packageVersion) =>
+			`${cdnBaseUrl}/${packageVersion}/${RUNTIME_SUPPORT_PATH}`,
 		sharedDependencyUrl: (dependencyName, version, subpath) => {
 			const suffix = subpath ? `/${subpath}/+esm` : "/+esm";
 			return `${cdnBaseUrl}/${dependencyName}@${version}${suffix}`;
@@ -497,6 +533,8 @@ function createEsmShProvider(cdnBaseUrl: string): EsmCdnProvider {
 			`${rawBaseUrl}/${packageVersion}/dist/browser/${view}/index.js`,
 		browserControllerUrl: (packageVersion) =>
 			`${rawBaseUrl}/${packageVersion}/dist/browser/controller/index.js`,
+		runtimeSupportUrl: (packageVersion) =>
+			`${rawBaseUrl}/${packageVersion}/${RUNTIME_SUPPORT_PATH}`,
 		sharedDependencyUrl: (dependencyName, version, subpath) => {
 			const suffix = subpath ? `/${subpath}` : "";
 			return `${esmBaseUrl}/${dependencyName}@${version}${suffix}`;
@@ -554,11 +592,6 @@ function assertBrowserEsmExports(
 			);
 		}
 	}
-}
-
-function extractPackageName(packageVersion: string): string {
-	const parts = packageVersion.split("@");
-	return parts.length >= 3 ? `@${parts[1]}` : parts[0];
 }
 
 function cleanViewSubpath(subpath: string): string | null {
@@ -780,11 +813,11 @@ function resolveSharedDependencyVersion(
 }
 
 type BrowserImportMapBuildResult = {
-	json: string | null;
+	imports: Record<string, string>;
 	sharedDependencyVersions: Record<string, string>;
 };
 
-async function buildImportMapJson(
+async function buildImportMap(
 	elements: ElementMap,
 	viewConfig: ViewConfig,
 	cdnProvider: EsmCdnProvider,
@@ -800,7 +833,7 @@ async function buildImportMapJson(
 	};
 	const lockedVersions = new Set(Object.keys(currentSharedDependencyVersions));
 	for (const [, pkg] of Object.entries(elements)) {
-		const packageName = extractPackageName(pkg);
+		const packageName = parsePackageName(pkg).name;
 		if (includeElementImports) {
 			imports[packageName] = resolveBrowserViewUrl(
 				pkg,
@@ -865,13 +898,36 @@ async function buildImportMapJson(
 			);
 		}
 	}
-	if (Object.keys(imports).length === 0) {
-		return { json: null, sharedDependencyVersions: selectedVersions };
+	return { imports, sharedDependencyVersions: selectedVersions };
+}
+
+/**
+ * Drop the specifiers an import map already in the document maps. The browser
+ * keeps the first rule for a specifier and discards a later one with a console
+ * warning, so injecting them changes no resolution.
+ */
+function withoutMappedSpecifiers(
+	imports: Record<string, string>,
+	doc: Document,
+): Record<string, string> {
+	const mapped = new Set<string>();
+	const scripts =
+		typeof doc.querySelectorAll === "function"
+			? Array.from(doc.querySelectorAll('script[type="importmap"]'))
+			: [];
+	for (const script of scripts) {
+		try {
+			const existing = JSON.parse(script.textContent || "{}")?.imports;
+			if (existing && typeof existing === "object") {
+				for (const specifier of Object.keys(existing)) mapped.add(specifier);
+			}
+		} catch {
+			// The browser rejects a map it cannot parse, so it maps nothing.
+		}
 	}
-	return {
-		json: JSON.stringify({ imports }, null, 2),
-		sharedDependencyVersions: selectedVersions,
-	};
+	return Object.fromEntries(
+		Object.entries(imports).filter(([specifier]) => !mapped.has(specifier)),
+	);
 }
 
 function injectImportMap(json: string, doc: Document): void {

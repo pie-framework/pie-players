@@ -21,6 +21,10 @@
 			"types": "./dist/pie-item-player.d.ts",
 			"import": "./dist/pie-item-player.js"
 		},
+		"./preloaded": {
+			"types": "./dist/preloaded.d.ts",
+			"import": "./dist/preloaded.js"
+		},
 		"./components/item-session-debugger-element": {
 			"types": "./dist/components/item-session-debugger-element.d.ts",
 			"import": "./dist/components/item-session-debugger-element.js"

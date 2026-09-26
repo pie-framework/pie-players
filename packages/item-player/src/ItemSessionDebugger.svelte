@@ -10,6 +10,7 @@
 			env: { type: "Object", attribute: "env" },
 			score: { type: "Object", attribute: "score" },
 			locale: { attribute: "locale", type: "String" },
+			hosted: { attribute: "hosted", type: "Boolean" },
 		},
 	}}
 />
@@ -18,6 +19,7 @@
 	// Content styles are installed by this component's entry point, not imported
 	// here — see the note in PieItemPlayer.svelte and pie-item-player.ts.
 	import {
+		BundleType,
 		findOrAddSession,
 		findPieController,
 		makeUniqueTags,
@@ -65,6 +67,7 @@
 		env = null,
 		score = null,
 		locale = "",
+		hosted = false,
 	}: {
 		itemName?: string;
 		itemId?: string;
@@ -73,6 +76,7 @@
 		env?: unknown;
 		score?: unknown;
 		locale?: string;
+		hosted?: boolean;
 	} = $props();
 	// Interface locale for this panel's own chrome. The JSON payloads it dumps are
 	// data, not message content, and stay as authored.
@@ -149,6 +153,7 @@
 		nextConfig: unknown,
 		nextSession: unknown,
 		nextEnv: unknown,
+		bundleType: BundleType,
 	): Promise<unknown> {
 		const rawConfig = asItemConfig(nextConfig);
 		if (
@@ -191,7 +196,7 @@
 				);
 				const controller =
 					typeof baseModel.element === "string"
-						? findPieController(baseModel.element)
+						? findPieController(baseModel.element, bundleType)
 						: undefined;
 
 				if (!controller?.model) {
@@ -388,12 +393,14 @@
 		const nextConfig = config;
 		const nextSession = session;
 		const nextEnv = env;
+		const bundleType = hosted ? BundleType.player : BundleType.clientPlayer;
 		let cancelled = false;
 		void (async () => {
 			const nextFilteredModel = await buildFilteredModels(
 				nextConfig,
 				nextSession,
 				nextEnv,
+				bundleType,
 			);
 			if (!cancelled) {
 				filteredModelSnapshot = nextFilteredModel;

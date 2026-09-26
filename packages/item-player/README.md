@@ -99,6 +99,8 @@ import "@pie-players/pie-item-player";
 
 Use explicit component subpath exports only when you need targeted registration
 control (for example the session debugger element export).
+`@pie-players/pie-item-player/preloaded` exports `registerPreloadedElements` and
+`ensureItemPlayerMathRenderingReady`, and defines no element.
 
 Standalone browser variants for this package are intentionally deferred; current
 support targets default bundler entrypoints under `dist`.
@@ -121,7 +123,9 @@ support targets default bundler entrypoints under `dist`.
   - Description: main player element
 - `pie-item-player-session-debugger`
   - Export: `@pie-players/pie-item-player/components/item-session-debugger-element`
-  - Description: floating debug panel showing live session and filtered model data
+  - Description: floating debug panel showing live session and filtered model data.
+    Set its `hosted` to the player's: the panel runs no controller over a hosted
+    player's models.
 
 ## Attributes
 
@@ -319,7 +323,10 @@ The canonical producer-side contract for `@pie-element/*` packages lives in the
   `loaderOptions.runtimeSupportCheck = "on"` when you want the player to read
   those hints before loading.
 - `strategy="preloaded"` is not a separate package shape. It means the host has
-  already registered the versioned custom element tag before the player renders.
+  already registered the versioned custom element tag before the player renders,
+  with `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
+  or a generated `@pie-players/pie-preloaded-player` build. See
+  [Loading strategies](../../docs/item-player/loading-strategies.md#strategypreloaded).
 
 ## Authoring configuration
 

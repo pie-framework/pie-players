@@ -1022,8 +1022,9 @@ the package's `dist/` into a static-asset directory named for the installed
 the copied `index.js` as a module script, picking the directory by a version
 string the host's launch configuration supplies. That makes three things API
 there: `dist/index.js` as the entry name; `dist/` as a self-contained tree whose
-runtime imports are all relative — `math-rendering.js`, the
-`pie-elements-bundle-<hash>.js` file, `pie-item-player.js` and its `chunks/`;
+runtime imports are all relative — `preloaded.js`, the
+`pie-elements-bundle-<hash>.js` file, `pie-item-player.js`, and the `chunks/`
+both player modules import;
 and a `version` string usable as a directory name. The generated package has no
 `exports` map, so none of this passes through one. A break shows up only in the
 browser, as a failed import before any player exists, and ends in the host's load

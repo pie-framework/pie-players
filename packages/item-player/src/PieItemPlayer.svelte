@@ -91,6 +91,10 @@
 		SoundHandler,
 	} from "./types.js";
 	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
+	import {
+		missingControllerWarning,
+		takeTagsWithoutController,
+	} from "./preloaded-controllers.js";
 	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
 	import {
 		acquireScopedExternalStyle,
@@ -129,6 +133,7 @@
 		parsePackageName,
 		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
+		resolveEsmRuntimeSupportUrl,
 		resolveLoadControllers,
 		attachInstrumentationEventBridge,
 		ITEM_INSTRUMENTATION_EVENT_MAP,
@@ -270,12 +275,11 @@
 		return fallback;
 	}
 
-	function resolveRuntimeSupportUrl(packageVersion: string): string {
-		const isJsDelivr = resolvedEsmCdnUrl.includes("cdn.jsdelivr.net/npm");
-		if (isJsDelivr) {
-			return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support/+esm`;
-		}
-		return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support`;
+	function resolveRuntimeSupportUrl(packageVersion: string): string | undefined {
+		return resolveEsmRuntimeSupportUrl(packageVersion, {
+			cdnBaseUrl: resolvedEsmCdnUrl,
+			cdnProvider: loaderOptions?.esmCdnProvider,
+		});
 	}
 
 	function isStrategySupportedForView(
@@ -328,9 +332,13 @@
 		if (missingAt && Date.now() - missingAt < RUNTIME_SUPPORT_NEGATIVE_CACHE_MS) {
 			return undefined;
 		}
+		const url = resolveRuntimeSupportUrl(packageVersion);
+		if (!url) {
+			return undefined;
+		}
 		try {
 			// @vite-ignore
-			const module = await import(/* @vite-ignore */ resolveRuntimeSupportUrl(packageVersion));
+			const module = await import(/* @vite-ignore */ url);
 			const runtimeSupport = module.default || module.runtimeSupport || module;
 			if (!runtimeSupport || typeof runtimeSupport !== "object") {
 				throw new Error(`Invalid runtime-support export for ${packageVersion}`);
@@ -349,13 +357,10 @@
 
 	async function collectRuntimeSupportHints(
 		elements: Record<string, string>,
-		strategy: "iife" | "esm" | "preloaded",
 		view: "delivery" | "author" | "print",
 		mode: "off" | "on",
 	): Promise<{ unsupportedPackages: string[] }> {
 		if (mode !== "on") return { unsupportedPackages: [] };
-		const strategyForChecks: "esm" | "iife" =
-			strategy === "iife" || strategy === "preloaded" ? "iife" : "esm";
 		const unsupportedPackages: string[] = [];
 
 		for (const packageVersion of Object.values(elements || {})) {
@@ -363,7 +368,7 @@
 			if (!runtimeSupport) {
 				continue;
 			}
-			const supported = isStrategySupportedForView(runtimeSupport, strategyForChecks, view);
+			const supported = isStrategySupportedForView(runtimeSupport, "esm", view);
 			if (supported) {
 				continue;
 			}
@@ -924,18 +929,6 @@
 		return loaderOptions?.view || (resolvedMode === "author" ? "author" : "delivery");
 	}
 
-	function tagsForConfig(
-		transformedConfig: any,
-		context: { strategy: string; view: string; bundleType: BundleType },
-	): string[] {
-		if (!transformedConfig?.elements) return [];
-		const isEditor =
-			context.bundleType === BundleType.editor || context.view === "author";
-		return Object.keys(transformedConfig.elements).map((el) =>
-			isEditor ? `${el}-config` : el,
-		);
-	}
-
 	function mapExpectedRegistrationElements(
 		elements: Record<string, string>,
 		bundleType: BundleType,
@@ -1074,16 +1067,13 @@
 			);
 			const runtimeSupportHints = await collectRuntimeSupportHints(
 				elementMap,
-				normalizedStrategy,
 				runtimeSupportView as "delivery" | "author" | "print",
 				effectiveRuntimeSupportCheck,
 			);
 			if (!isCurrentLoadRequest(requestToken)) return false;
-			const strategyForChecks: "esm" | "iife" =
-				normalizedStrategy === "esm" ? "esm" : "iife";
 			runtimeSupportErrorHint =
 				runtimeSupportHints.unsupportedPackages.length > 0
-					? ` Runtime support metadata indicates ${strategyForChecks}/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
+					? ` Runtime support metadata indicates esm/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
 					: null;
 
 			// Only IIFE and preloaded elements need the renderer this installs on
@@ -1097,15 +1087,18 @@
 			if (normalizedStrategy === "preloaded") {
 				stage = "preloaded-readiness";
 				const bundleType = resolveBundleType();
-				const tags = tagsForConfig({ ...transformedConfig, elements: elementMap }, {
-					strategy: normalizedStrategy,
-					view: runtimeSupportView,
-					bundleType,
-				});
-				// `assertRegistered` throws `ElementAssertionError` with a
-				// diagnostic message (expected, missing, currently-registered)
-				// when any tag is missing. No loading, no fallback.
-				assertRegistered(tags);
+				const expectedElements = mapExpectedRegistrationElements(
+					elementMap,
+					runtimeSupportView === "author" ? BundleType.editor : bundleType,
+				);
+				// Throws `ElementAssertionError` naming each missing tag and the tags
+				// its package is registered as. No loading, no fallback.
+				assertRegistered(expectedElements);
+				if (bundleType === BundleType.clientPlayer) {
+					for (const tag of takeTagsWithoutController(Object.keys(expectedElements))) {
+						logger.warn(missingControllerWarning(tag));
+					}
+				}
 			} else if (normalizedStrategy === "iife") {
 				stage = "iife-load";
 				const bundleType = resolveBundleType();

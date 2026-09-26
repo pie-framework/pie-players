@@ -169,7 +169,9 @@ const shouldSuppressProblem = (problem) => {
 	if (problem.kind === "CJSResolvesToESM") return true;
 
 	if (problem.kind === "NoResolution") {
-		// Node10 is out of support for this repo (engines >=18 in publish policy checks).
+		// TypeScript's node10 resolution is not a supported mode: it ignores
+		// `exports`, which publishes every subpath. Unrelated to the Node.js
+		// version. See docs/setup/library-packaging-strategy.md.
 		if (resolutionKind === "node10") return true;
 		// ATTW cannot reliably model CSS-only entrypoints.
 		if (entrypoint.endsWith(".css")) return true;

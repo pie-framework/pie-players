@@ -102,6 +102,7 @@
 		callbackIdentityForKey,
 		createBackendOrchestrator,
 	} from "./backend/orchestrator.svelte.js";
+	import { isDeliveryBackendEnabled } from "./backend/delivery.js";
 	import { stableStringifyForKey } from "./utils/stable-stringify.js";
 	import { ITEM_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 	import {
@@ -181,7 +182,7 @@
 		env = { mode: "gather", role: "student" } as Env,
 		addCorrectResponse = false,
 		showBottomBorder = false,
-		hosted = false,
+		hosted = undefined as boolean | undefined,
 		debug = "" as string | boolean,
 		customClassName = "",
 		customClassname = "",
@@ -389,13 +390,12 @@
 	});
 
 	const logger = createPieLogger("pie-item-player", () => debugEnabled);
-	const resolvedInstrumentationProvider = $derived.by(
-		() =>
-			resolveInstrumentationProvider({
-				player: { loaderConfig },
-				component: "pie-item-player",
-				debug: debugEnabled,
-			}) as LoaderConfig["instrumentationProvider"],
+	const resolvedInstrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			player: { loaderConfig },
+			component: "pie-item-player",
+			debug: debugEnabled,
+		}),
 	);
 
 	let loading = $state(true);
@@ -887,9 +887,19 @@
 	//   - a manual "all elements already registered" shortcut (the primitive
 	//     short-circuits when every tag is in `customElements` already)
 
+	// A delivery backend serves server-processed models, so it implies hosted
+	// unless the host says otherwise.
+	const resolvedHosted = $derived(hosted ?? isDeliveryBackendEnabled(backend));
+
 	function resolveBundleType(): BundleType {
 		if (resolvedMode === "author") return BundleType.editor;
-		return hosted ? BundleType.player : BundleType.clientPlayer;
+		return resolvedHosted ? BundleType.player : BundleType.clientPlayer;
+	}
+
+	// A hosted (player.js) delivery takes its models and scores from the server
+	// and resolves no controller, so fetching one would be wasted.
+	function usesControllers(): boolean {
+		return resolveBundleType() !== BundleType.player;
 	}
 
 	function buildIifeBackendConfig(
@@ -898,7 +908,7 @@
 	): IifeBackendConfig {
 		const needsControllers =
 			bundleType === BundleType.editor ||
-			(bundleType === BundleType.clientPlayer && !hosted);
+			(bundleType === BundleType.clientPlayer && !resolvedHosted);
 		return {
 			kind: "iife",
 			bundleHost: resolvedIifeBundleHost,
@@ -932,7 +942,7 @@
 			cdnProvider: loaderOptions?.esmCdnProvider,
 			moduleResolution,
 			view: view || "delivery",
-			loadControllers: loaderOptions?.loadControllers ?? true,
+			loadControllers: loaderOptions?.loadControllers ?? usesControllers(),
 			trackPageActions: loaderConfig?.trackPageActions,
 			instrumentationProvider: resolvedInstrumentationProvider,
 		};
@@ -971,7 +981,7 @@
 		const loaderOptionsSignature = JSON.stringify({
 			bundleHost: resolvedIifeBundleHost,
 			esmCdnUrl: resolvedEsmCdnUrl,
-			loadControllers: loaderOptions?.loadControllers ?? true,
+			loadControllers: loaderOptions?.loadControllers ?? usesControllers(),
 			moduleResolution: loaderOptions?.moduleResolution ?? "url",
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,
@@ -1435,6 +1445,7 @@
 				parseEnvValue(env),
 				hostElement ?? undefined,
 				handleElementSessionUpdate,
+				resolveBundleType(),
 			);
 		}
 		if (refresh.passageChanged && passageConfig) {
@@ -1444,6 +1455,7 @@
 				parseEnvValue(env),
 				hostElement ?? undefined,
 				handleElementSessionUpdate,
+				resolveBundleType(),
 			);
 		}
 	}
@@ -1501,6 +1513,7 @@
 			},
 			outcomeArguments: "model-session-env",
 			includeMissingResults: true,
+			bundleType: resolveBundleType(),
 		});
 		return results;
 	}
@@ -1554,6 +1567,7 @@
 			parseEnvValue(env),
 			hostElement ?? undefined,
 			handleElementSessionUpdate,
+			resolveBundleType(),
 		);
 	}
 
@@ -1694,7 +1708,7 @@
 					baseHeadingLevel={resolvedBaseHeadingLevel}
 					{includeSrHeading}
 					i18n={interfaceMessages}
-					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
+					bundleType={resolveBundleType()}
 					{loaderConfig}
 					mode={resolvedMode}
 					authoringBackend={authoringBackend}

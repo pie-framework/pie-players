@@ -3,6 +3,7 @@
  *
  * Provides pluggable instrumentation for PIE players.
  * Supports multiple providers (New Relic, console logging, custom, etc.)
+ * Players take the provider as `loaderConfig.instrumentationProvider`.
  *
  * @example Using New Relic (default)
  * ```typescript
@@ -11,10 +12,10 @@
  * const provider = new NewRelicInstrumentationProvider();
  * await provider.initialize();
  *
- * const monitor = new ResourceMonitor({
+ * const loaderConfig = {
  *   trackPageActions: true,
  *   instrumentationProvider: provider
- * });
+ * };
  * ```
  * @example Using console logger for development
  * ```typescript
@@ -23,10 +24,10 @@
  * const provider = new ConsoleInstrumentationProvider();
  * await provider.initialize({ debug: true });
  *
- * const monitor = new ResourceMonitor({
+ * const loaderConfig = {
  *   trackPageActions: true,
  *   instrumentationProvider: provider
- * });
+ * };
  * ```
  */
 

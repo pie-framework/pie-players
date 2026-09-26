@@ -24,6 +24,7 @@ import {
 	type ToolPlacementConfig,
 	type ToolPlacementLevel,
 	type ToolPolicyConfig,
+	type TextToSpeechToolProviderConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
 	normalizeToolsConfig,
@@ -59,7 +60,6 @@ import {
 import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
-import type { TTSToolProviderConfig } from "./tool-providers/index.js";
 
 import { ToolRegistry } from "./ToolRegistry.js";
 import type {
@@ -144,19 +144,20 @@ export interface ToolConfig {
  *
  * The field set is `TTSRuntimeSettings`, which the runtime resolver owns: the two
  * were declared separately and had already drifted in both directions, so a field
- * the runtime honoured could not be named here. What this adds is the two things
- * only a host-facing config has — a place to stash unrecognised keys, and a
- * callback for fetching provider credentials, neither of which the resolved
- * runtime settings carry.
+ * the runtime honoured could not be named here. What this adds is the one thing
+ * only a host-facing config has — a place to stash unrecognised keys, which the
+ * resolved runtime settings do not carry.
  *
- * An intersection rather than an interface: `ToolConfig.provider` is `unknown`
- * where the runtime settings narrow it to the three provider ids, and an interface
- * cannot inherit a member from two parents that type it differently.
+ * `provider` is typed from the `textToSpeech` tools-config entry instead: a host
+ * gives either a server provider id or a runtime provider object, whose
+ * `runtime.authFetcher` the TTS registration reads, and `TTSRuntimeSettings`
+ * names only the id. The entry is therefore assignable to this type, which is
+ * what `getToolConfig("textToSpeech")` returns.
  */
 export type TTSToolConfig = ToolConfig &
-	TTSRuntimeSettings & {
+	Omit<TTSRuntimeSettings, "provider"> & {
+		provider?: TextToSpeechToolProviderConfig["provider"];
 		settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
-		authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 	};
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
@@ -2432,13 +2433,7 @@ export class ToolkitCoordinator {
 	}
 
 	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
-		const providers =
-			(
-				this.config.tools as {
-					providers?: Record<string, ToolProviderConfig | undefined>;
-				}
-			)?.providers || {};
-		return providers.textToSpeech as TTSToolConfig | undefined;
+		return this.config.tools?.providers?.textToSpeech;
 	}
 
 	private assertCanonicalToolId(toolId: string): void {
@@ -2509,7 +2504,7 @@ export class ToolkitCoordinator {
 	 */
 	isToolEnabled(toolId: string): boolean {
 		this.assertCanonicalToolId(toolId);
-		const toolConfig = (this.config.tools as any)?.providers?.[toolId];
+		const toolConfig = this.config.tools?.providers?.[toolId];
 		// Enabled by default unless explicitly set to false
 		return toolConfig?.enabled !== false;
 	}
@@ -2520,15 +2515,11 @@ export class ToolkitCoordinator {
 	 * @param toolId Tool identifier
 	 * @returns Tool configuration or null if not configured
 	 */
-	getToolConfig(toolId: string): ToolProviderConfig | null {
+	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
+	getToolConfig(toolId: string): ToolProviderConfig | null;
+	getToolConfig(toolId: string): ToolProviderConfig | TTSToolConfig | null {
 		this.assertCanonicalToolId(toolId);
-		return (
-			((
-				this.config.tools as {
-					providers?: Record<string, ToolProviderConfig | undefined>;
-				}
-			)?.providers?.[toolId] as ToolProviderConfig | undefined) || null
-		);
+		return this.config.tools?.providers?.[toolId] || null;
 	}
 
 	/**

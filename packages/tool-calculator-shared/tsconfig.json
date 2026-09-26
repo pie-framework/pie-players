@@ -10,6 +10,7 @@
 	},
 	"include": [
 		"index.ts",
+		"index.types.ts",
 		"CalculatorTool.svelte",
 		"CalculatorInlineTool.svelte",
 		"CalculatorElement.svelte",

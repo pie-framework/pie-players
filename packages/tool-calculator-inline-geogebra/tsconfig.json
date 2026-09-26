@@ -8,6 +8,6 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["tool-calculator-inline-geogebra.svelte"],
+	"include": ["index.ts", "tool-calculator-inline-geogebra.svelte"],
 	"exclude": ["node_modules", "dist", "tests"]
 }

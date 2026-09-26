@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import {
 	cpSync,
@@ -9,7 +9,6 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "svelte/compiler";
@@ -43,10 +42,7 @@ const externalPackages = [
 ];
 // Both forms: the bare name plus a subpath glob, since these components import
 // deep entrypoints such as `@pie-players/pie-players-shared/pie`.
-const externalArgs = externalPackages.flatMap((name) => [
-	`--external=${name}`,
-	`--external=${name}/*`,
-]);
+const externals = externalPackages.flatMap((name) => [name, `${name}/*`]);
 
 mkdirSync(distComponents, { recursive: true });
 rmSync(path.join(distComponents, ".generated"), {
@@ -196,34 +192,87 @@ for (const entry of entries) {
 	writeFileSync(entry.generated, `// @ts-nocheck\n${sanitizedCode}`, "utf8");
 }
 
-// One invocation for every entry. `--splitting` is what lets the bundler hoist
+// Svelte gates its dev-only runtime on `DEV` from esm-env, including the
+// `Array.prototype` warning patches it installs on the host page. Resolving
+// esm-env to its production build turns those branches off without removing
+// them: Bun folds neither a constant imported from another module nor one
+// declared inside an import cycle, which Svelte's internals form. Dropping the
+// `DEV` import leaves a free identifier that the `DEV` define below replaces
+// with a literal while parsing, so minification removes the dev code, matching
+// what the Vite-built packages ship. Any other esm-env import shape fails the
+// build rather than passing through unrewritten.
+const ESM_ENV_BINDINGS = new Set(["BROWSER", "DEV", "NODE"]);
+const ESM_ENV_IMPORT = /import\s*\{([^}]*)\}\s*from\s*["']esm-env["'];?/g;
+
+const dropSvelteDevImport = {
+	name: "drop-svelte-dev-import",
+	setup(build) {
+		build.onLoad(
+			{ filter: /[\\/]svelte[\\/]src[\\/].*\.js$/ },
+			async ({ path: modulePath }) => {
+				const source = await Bun.file(modulePath).text();
+				const contents = source.replace(ESM_ENV_IMPORT, (_, specifiers) => {
+					const kept = specifiers
+						.split(",")
+						.map((specifier) => specifier.trim())
+						.filter(Boolean)
+						.filter((specifier) => {
+							if (!ESM_ENV_BINDINGS.has(specifier)) {
+								throw new Error(
+									`[build-ce-components] unexpected esm-env import "${specifier}" in ${modulePath}`,
+								);
+							}
+							return specifier !== "DEV";
+						});
+					return kept.length > 0
+						? `import { ${kept.join(", ")} } from "esm-env";`
+						: "";
+				});
+				return { contents, loader: "js" };
+			},
+		);
+	},
+};
+
+// One invocation for every entry. `splitting` is what lets the bundler hoist
 // shared code into `chunks/`, and it is also what makes dynamic imports stay
 // dynamic: with the previous single-file `--outfile` build there was nowhere to
 // put a chunk, so the `import("speech-rule-engine")` in
 // `src/services/tts/math-speech.ts` was flattened into the eager bundle —
 // roughly half of the toolkit artifact, loaded by every host whether or not it
 // ever spoke a formula. Splitting restores the lazy boundary the source asks
-// for. `--minify` matches what every Vite-built package in this repo already
+// for. `minify` matches what every Vite-built package in this repo already
 // does; this script predates that convention and never adopted it.
-execFileSync(
-	process.execPath,
-	[
-		"build",
-		...entries.map((entry) => entry.generated),
-		"--target=browser",
-		"--format=esm",
-		"--splitting",
-		"--minify",
-		...externalArgs,
-		`--outdir=${distComponents}`,
-		"--entry-naming=[name].custom-element.js",
-		"--chunk-naming=chunks/[name]-[hash].js",
-	],
-	{
-		cwd: packageRoot,
-		stdio: "pipe",
+//
+// The `NODE_ENV` define and the `production` condition are Bun's production
+// resolution for every module the plugin does not rewrite. The define alone
+// drops the `development` export condition without adding `production`, which
+// leaves esm-env on its runtime `process.env` probe.
+const result = await Bun.build({
+	entrypoints: entries.map((entry) => entry.generated),
+	target: "browser",
+	format: "esm",
+	splitting: true,
+	minify: true,
+	define: {
+		DEV: "false",
+		"process.env.NODE_ENV": JSON.stringify("production"),
 	},
-);
+	conditions: ["production"],
+	plugins: [dropSvelteDevImport],
+	external: externals,
+	outdir: distComponents,
+	naming: {
+		entry: "[name].custom-element.js",
+		chunk: "chunks/[name]-[hash].js",
+	},
+});
+if (!result.success) {
+	for (const log of result.logs) console.error(log);
+	throw new Error(
+		"[build-ce-components] bundling the toolkit custom elements failed",
+	);
+}
 
 for (const entry of entries) {
 	rmSync(entry.generated, { force: true });

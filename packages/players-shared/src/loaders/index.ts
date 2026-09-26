@@ -76,3 +76,7 @@ export type {
 	IifeBundleRetryStatus,
 } from "./iife-adapter.js";
 export { createIifeBackend, DEFAULT_BUNDLE_HOST } from "./iife-adapter.js";
+
+// Host-side registration for the `preloaded` strategy, which only asserts.
+export type { PreloadedElement } from "./preloaded-registration.js";
+export { registerPreloadedElements } from "./preloaded-registration.js";

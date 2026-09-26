@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
 const sanitizeChunkKey = (value: string) =>
 	value
@@ -70,6 +71,7 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
@@ -92,7 +94,12 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@pie-players/pie-default-tool-loaders"],
+			external: [
+				"@pie-players/pie-default-tool-loaders",
+				// speech-rule-engine and its locale tables resolve from the host's
+				// node_modules, so every PIE bundle a host loads shares one copy.
+				/^speech-rule-engine(?:\/|$)/,
+			],
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",

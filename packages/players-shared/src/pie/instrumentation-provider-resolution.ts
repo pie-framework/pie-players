@@ -1,5 +1,6 @@
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
 type UnknownRecord = Record<string, unknown>;
@@ -56,7 +57,6 @@ const logger = createPieLogger("instrumentation-provider-resolution", () =>
 function getDefaultInstrumentationProvider(): NewRelicInstrumentationProvider {
 	if (!defaultProvider) {
 		defaultProvider = new NewRelicInstrumentationProvider();
-		// New Relic provider sets readiness based on window.newrelic.
 		void defaultProvider.initialize();
 	}
 	return defaultProvider;
@@ -67,7 +67,7 @@ export function resolveInstrumentationProvider(args: {
 	player?: unknown;
 	debug?: boolean;
 	component?: string;
-}): unknown {
+}): InstrumentationProvider | undefined {
 	const runtimeLoaderConfig = resolveLoaderConfig(args.runtimePlayer);
 	const topLevelLoaderConfig = resolveLoaderConfig(args.player);
 	const runtimeTrackPageActions =

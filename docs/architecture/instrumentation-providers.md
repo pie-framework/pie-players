@@ -1,12 +1,12 @@
 # Instrumentation Providers
 
 Status: Design note. Shipped today: the `InstrumentationProvider` contract,
-`BaseInstrumentationProvider`, and the New Relic, console, debug-panel and
-composite adapters;
+`BaseInstrumentationProvider`, the New Relic, console, debug-panel and
+composite adapters, probed readiness, and the one default factory;
 [`architecture.md`](./architecture.md#instrumentation--observability) owns the
 current provider semantics and the per-layer event ownership model. Not
-implemented: probed readiness, agent detection, the conformance suite, central
-attribute naming, and buffering. The DataDog and OpenTelemetry adapters
+implemented: agent detection, the conformance suite, central attribute naming,
+and buffering. The DataDog and OpenTelemetry adapters
 described here are verified examples of host-owned adapters, not products PIE
 ships. Correct this note or mark it historical when the built system diverges.
 
@@ -26,9 +26,9 @@ initializes one, or holds a dependency on one.
 
 ## Scope
 
-PIE ships one adapter, for New Relic, because one host has that agent on the
-page. Around it ship the contract, probed readiness, central attribute naming,
-and detection restricted to that one agent.
+PIE ships one adapter, for New Relic, because Hosts A and P have that agent on
+their pages. Around it ship the contract, probed readiness, central attribute
+naming, and detection restricted to that one agent.
 
 DataDog and OpenTelemetry stay unshipped and get exercised anyway. A conformance
 suite in `packages/players-shared/tests` runs the contract's whole surface
@@ -63,7 +63,7 @@ already carries it.
 
 ## Consumer position
 
-No external host consumes any part of this module.
+No external host imports any part of this module.
 `CompositeInstrumentationProvider`, `NewRelicInstrumentationProvider` and
 `DebugPanelInstrumentationProvider` have exactly one consumer, Host R, recorded
 under Programmatic API in
@@ -71,9 +71,35 @@ under Programmatic API in
 That host is internally controlled, so under the downstream-consumer rule in
 `AGENTS.md` it is not a constraint: it gets fixed in the same push. Host A,
 scanned on 2026-09-18, sets `trackPageActions` nowhere, names
-`instrumentationProvider` nowhere, and imports nothing from the module. The
-implicit default that detection replaces — `trackPageActions: true` with no
-provider named — therefore has no consumer at all.
+`instrumentationProvider` nowhere, and imports nothing from the module.
+
+The implicit default that detection replaces — `trackPageActions: true` with no
+provider named — has one consumer, Host P, which is client-facing and whose
+loader configuration the pad records. Its `@pie-players` path renders through
+the preloaded `pie-item-player`, where the implicit default sends New Relic a
+`pie-resource-load` page action per tracked resource, retry and error page
+actions and a `noticeError` per failure from the resource monitor, and a
+`noticeError` per item-player runtime error. It sends whenever the agent is on
+the page at the moment it tracks, as described under probed readiness. That
+host's own page loads no agent, so the agent comes from an outer page, as it
+does for Host A, and either order is possible.
+
+The predecessor player on that host's main line never receives its loader
+configuration: the host binds it there as a property named `loader-config`, and
+that element reads `loaderConfig`. PIE resource telemetry therefore first reaches
+that host's account through `pie-item-player`.
+
+That puts what the default sends in a client's account, and three parts of this
+design change it. Probed readiness, shipped, made the default send from the
+agent's arrival on, which adds volume on pages whose agent arrives after the
+player starts; buffering adds what it tracked before it arrived. Central
+attribute naming renames every key the account receives, which is free until
+that host's `@pie-players` rollout goes live and breaks any query on those keys
+after. Detection binds the adapter the default already constructs there, and
+the one default factory moved the resource monitor onto that instance, so
+neither changes what that host receives. The emission gate does not apply,
+because that host asked for telemetry, and each change reaches it when it moves
+its exact pin.
 
 Renaming is available and declined. The existing export names are accurate and
 nothing in the design argues for new ones, so they stay; the freedom is recorded
@@ -84,15 +110,17 @@ because the opposite assumption would narrow the design on behalf of nobody.
 `initialized` means the provider has been configured. `isReady()` evaluates the
 live world on every call.
 
-Today [`NewRelicInstrumentationProvider`](../../packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts)
-decides once, inside `initialize()`, whether the agent exists and writes that
-into `initialized`; `isReady()` re-reads the global but conjoins it with the
-latch. A host whose agent boots after the first player resolves therefore has
-instrumentation dead for the life of the page, with nothing logged above debug
-level. This is a defect independent of any new adapter, and it is the one that
-matters most: the topology it breaks — the agent injected by an outer page at a
-time neither side predicts — is the topology of the host most likely to enable
-tracking.
+[`NewRelicInstrumentationProvider`](../../packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts)
+sets `initialized` in `initialize()` whether or not the agent is there. Both
+`isReady()` and every send look the agent up through
+[`new-relic-agent.ts`](../../packages/players-shared/src/instrumentation/new-relic-agent.ts),
+the shape probe described under agent detection, which no package entry point
+exports. A provider initialized before the agent boots therefore sends from the
+agent's arrival on; what it tracked earlier is dropped until buffering lands. The
+topology this serves — the agent injected by an outer page at a time neither
+side predicts — is the topology of the host most likely to enable tracking. It
+replaced a latch in `initialize()` that left instrumentation dead for the life of
+any page whose agent booted after the first player resolved.
 
 ## Agent detection
 
@@ -180,11 +208,11 @@ only in a telemetry account. The contract has no notion of a durable sink, and a
 adapter that posts to a host endpoint satisfies it. Host-implemented, like every
 adapter but one.
 
-**Its service latches the handle exactly the way PIE's adapter does.** It
-captures the global once during configuration and every method no-ops while that
-field is falsy. Its own page loads no agent, so the agent arrives from an outer
-page neither repository controls. The same page therefore gives the same defect
-two independent chances to silence telemetry. PIE fixes its own half by probing.
+**Its service latches the handle the way PIE's adapter did before probed
+readiness.** It captures the global once during configuration and every method
+no-ops while that field is falsy. Its own page loads no agent, so the agent
+arrives from an outer page neither repository controls. The same page gave the
+same defect two independent chances to silence telemetry; probing removed PIE's.
 
 Under this design that host opts in by setting `trackPageActions: true` and
 constructing nothing. Detection finds the agent, and PIE's events inherit the
@@ -194,21 +222,22 @@ free, and the two attribute prefixes coexist without collision.
 
 ## One default factory
 
-Two independent implicit defaults exist:
+The implicit New Relic default has one source: the module-level instance
 [`instrumentation-provider-resolution.ts`](../../packages/players-shared/src/pie/instrumentation-provider-resolution.ts)
-memoizes a module-level New Relic instance, and
+memoizes. Resolution is the seam. Every player element routes through
+`resolveInstrumentationProvider`, and
 [`resource-monitor.ts`](../../packages/players-shared/src/pie/resource-monitor.ts)
-constructs a fresh one per monitor and manages its lifecycle. Both collapse
-behind one internal factory. Resolution is the seam: every player element already
-routes through `resolveInstrumentationProvider`, and the resource monitor's own
-default is redundant with it.
+takes the provider its player resolves and constructs none, so
+`instrumentationProvider: null` and an invalid provider silence it as they
+silence every other emitter. The monitor leaves a provider's lifecycle to
+whoever passed it in, which is what makes sharing one instance safe.
 
 ## Attribute naming
 
 The contract's attribute bags are flat and New Relic-shaped. Naming is applied
-centrally, in the base class, and settled before detection makes PIE send to a
-real backend for the first time. After that, renaming means breaking dashboards
-that exist.
+centrally, in the base class, and settled before a real backend holds PIE's
+keys, which [consumer position](#consumer-position) ties to one host's rollout.
+After that, renaming means breaking dashboards that exist.
 
 | Contract | New Relic | DataDog RUM | OpenTelemetry |
 | --- | --- | --- | --- |

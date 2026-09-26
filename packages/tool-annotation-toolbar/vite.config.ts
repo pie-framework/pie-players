@@ -2,6 +2,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
 export default defineConfig({
 	plugins: [
@@ -11,6 +12,7 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
@@ -32,7 +34,9 @@ export default defineConfig({
 		cssMinify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: [],
+			// speech-rule-engine and its locale tables resolve from the host's
+			// node_modules, so every PIE bundle a host loads shares one copy.
+			external: [/^speech-rule-engine(?:\/|$)/],
 			output: {
 				format: "es",
 			},

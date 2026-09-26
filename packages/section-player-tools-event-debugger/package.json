@@ -39,7 +39,8 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*"
+		"@pie-players/pie-theme": "workspace:*",
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
@@ -47,16 +48,16 @@
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check EventPanel.svelte index.ts vite.config.ts package.json"
+		"lint": "biome lint EventPanel.svelte index.ts vite.config.ts package.json"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-event-debugger#readme",
 	"bugs": {

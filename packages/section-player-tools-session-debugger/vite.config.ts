@@ -2,6 +2,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
 export default defineConfig({
 	plugins: [
@@ -11,11 +12,15 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
-			insertTypesEntry: true,
-			include: ["**/*.ts", "**/*.svelte"],
+			// No `insertTypesEntry`: it derives the types entry from the bundle
+			// entry, which is a `.svelte` file with no declarations, and writes a
+			// stub over the `index.d.ts` emitted from `index.ts`. The stub imports
+			// `svelte`, which hosts do not install, so no `.svelte` is included.
+			include: ["index.ts"],
 		}),
 	],
 	resolve: {

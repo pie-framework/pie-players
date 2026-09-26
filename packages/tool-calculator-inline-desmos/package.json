@@ -21,10 +21,10 @@
 		"accessibility"
 	],
 	"main": "./dist/tool-calculator-inline.js",
-	"types": "./dist/tool-calculator-inline.svelte.d.ts",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/tool-calculator-inline.svelte.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-calculator-inline.js"
 		}
 	},
@@ -46,16 +46,16 @@
 		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator-inline-desmos#readme",
 	"bugs": {

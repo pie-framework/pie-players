@@ -52,7 +52,8 @@ export interface InstrumentationProvider {
 	readonly providerName: string;
 
 	/**
-	 * Initialize the provider (load SDKs, configure clients, etc.)
+	 * Configure the provider. Its backend does not have to be available yet:
+	 * `isReady()` answers that.
 	 *
 	 * @param config Optional configuration for the provider
 	 */
@@ -119,7 +120,10 @@ export interface InstrumentationProvider {
 	/**
 	 * Check if provider is ready to track events
 	 *
-	 * @returns true if provider is initialized and ready, false otherwise
+	 * Evaluated on every call, so a backend that becomes available after
+	 * `initialize()` makes the provider ready without another call.
+	 *
+	 * @returns true if provider is initialized and its backend is available now
 	 */
 	isReady(): boolean;
 }
@@ -219,7 +223,7 @@ export interface ErrorAttributes {
 	/**
 	 * Component that generated the error
 	 *
-	 * Examples: 'pie-item-player', 'pie-resource-monitor'
+	 * Examples: 'pie-item-player', 'resource-monitor'
 	 */
 	component: string;
 

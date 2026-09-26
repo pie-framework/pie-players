@@ -13,5 +13,5 @@
 		"sourceMap": true
 	},
 	"include": ["**/*.ts", "**/*.svelte"],
-	"exclude": ["node_modules", "dist", "tests"]
+	"exclude": ["node_modules", "dist", "tests", "vite.config.ts"]
 }

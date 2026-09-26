@@ -81,15 +81,26 @@ bun run verify:publish
 `verify:publish` executes:
 
 - package build
+- patch-only changeset guard (`scripts/check-changeset-patch-only.mjs`)
 - fixed-versioning invariants (`scripts/check-fixed-versioning.mjs`)
 - metadata policy validation
-- custom-element contract checks (`check:custom-elements`, `check:ce-define-safety`)
+- Svelte runtime dependency policy (`scripts/check-svelte-runtime-deps.mjs`)
+- custom-element contract checks (`check:custom-elements`, `check:custom-elements:dist`,
+  `check:ce-define-safety`)
 - `publint` package surface checks
 - ATTW type-surface checks (`scripts/check-attw.mjs`)
-- pack exports check (`npm pack --dry-run` + export target verification)
-- pack smoke check (`npm pack` tarball verification)
+- published declarations free of `svelte` (`scripts/check-svelte-type-imports.mjs`)
+- real-tarball pack integrity (`scripts/check-pack-integrity.mjs --real-pack`)
+- dependency declaration checks (`scripts/check-deps.mjs`)
+- cross-package subpath declarations (`scripts/check-undeclared-subpaths.mjs`)
+- app import boundary checks (`scripts/check-consumer-boundaries.mjs`)
+- Svelte peer dependency policy (`scripts/check-ce-consumer-contract.mjs`)
 - Node consumer import boundary checks (`scripts/check-node-consumer-imports.mjs`)
-- dependency, publish-surface, sourcemap, and runtime boundary checks
+- built bundle shape and player/tool boundary checks (`check:bundle-safety`)
+- math-rendering-module version alignment (`scripts/check-math-rendering-version.mjs`)
+- toolkit core boundary checks (`check:engine-core-purity`,
+  `check:speech-composition-purity`, `check:capability-neutrality`)
+- `scripts/` unit tests (`check:scripts`)
 
 ## Dist-only publish surface
 
@@ -102,10 +113,20 @@ Debuggability is provided by generated sourcemaps, not by importable source file
 `bun run check:sourcemaps` rejects packed `.js.map` files that reference source
 files missing from the npm tarball unless the map embeds source content.
 
+No published declaration imports `svelte`: hosts install no Svelte, and
+TypeScript loads every declaration a type entry reaches. vite-plugin-dts
+declares a `.svelte` file as a stub re-exporting `SvelteComponent` from
+`svelte`, so a package leaves `.svelte` files out of its dts `include` and
+declares any component it exports without Svelte. A package whose bundle entry
+is a component also leaves off `insertTypesEntry`, which derives the types entry
+from that component, and ships an `index.ts` types entry instead.
+
 The common gates are:
 
 - `bun run check:publish-surface`
 - `bun run check:sourcemaps`
+- `bun run check:svelte-type-imports`, after a build: every declaration a type
+  entry reaches, and every one the package ships
 
 ## Release intent in CI
 

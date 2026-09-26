@@ -8,7 +8,7 @@
 	"defaultNodeEngine": ">=20.0.0",
 	"svelteRuntimeDependencyRange": "^5.57.0",
 	"allowedSvelteRuntimeDependencies": {
-		"@pie-players/pie-tool-calculator-shared": "Provider-neutral Svelte components externalize the runtime so vendor custom-element wrappers compile against one shared Svelte instance."
+		"@pie-players/pie-tool-calculator-shared": "The root entry exports components that the vendor wrappers bundle at build time and render on their own Svelte instance, so it keeps Svelte external; nothing a host installs imports it at runtime. `./calculator-element`, which hosts load, bundles Svelte."
 	},
 	"allowedUndeclaredRuntimeImports": {
 		"@pie-players/pie-calculator-cortex": [

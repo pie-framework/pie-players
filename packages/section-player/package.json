@@ -90,7 +90,7 @@
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"dependencies": {
@@ -98,21 +98,22 @@
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*",
+		"speech-rule-engine": "^5.0.0-rc.4"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"@happy-dom/global-registrator": "^20.11.15",
 		"@pie-players/pie-theme": "workspace:*",
 		"@playwright/test": "^1.62.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"@types/node": "^26.5.1",
+		"@types/node": "^26.6.2",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player#readme",
 	"bugs": {

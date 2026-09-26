@@ -277,18 +277,15 @@ describe("calculator tool registration", () => {
 			i18n: resolveInterfaceI18n(null),
 			toolCoordinator: null,
 			toolkitCoordinator: {
-				config: {
-					tools: {
-						providers: {
-							calculator: {
+				getToolConfig: (toolId: string) =>
+					toolId === "calculator"
+						? {
 								provider: { id: "calculator-geogebra" },
 								settings: { showResetIcon: true },
 								restrictedMode: true,
 								locale: "nl-NL",
-							},
-						},
-					},
-				},
+							}
+						: null,
 			},
 			toggleTool: () => {},
 			isToolVisible: () => false,

@@ -47,7 +47,7 @@
 		"test": "bun test",
 		"typecheck": "tsc --noEmit",
 		"check": "tsc --noEmit",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -57,10 +57,10 @@
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
 		"@playwright/test": "^1.62.1",
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-player#readme",
 	"bugs": {

@@ -1,5 +1,5 @@
 import type { TTSConfig } from "./TTSService.js";
-import type { ToolProviderConfig } from "./tools-config-normalizer.js";
+import type { TextToSpeechToolProviderConfig } from "./tools-config-normalizer.js";
 import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
@@ -395,13 +395,16 @@ const applyRuntimeDefaults = (
 };
 
 export const resolveTTSRuntimeSettings = (
-	config: ToolProviderConfig | TTSRuntimeSettings | undefined,
+	config: TextToSpeechToolProviderConfig | TTSRuntimeSettings | undefined,
 ): TTSRuntimeSettings => {
 	const configRecord = toRecord(config);
 	const settingsRecord = toRecord(configRecord.settings);
+	const { provider, ...merged } = { ...configRecord, ...settingsRecord };
+	// A runtime provider object in `provider` is for the tool registration; the
+	// runtime settings carry only a server provider id.
 	return applyRuntimeDefaults({
-		...configRecord,
-		...settingsRecord,
+		...merged,
+		...(typeof provider === "string" ? { provider } : {}),
 	} as TTSRuntimeSettings);
 };
 

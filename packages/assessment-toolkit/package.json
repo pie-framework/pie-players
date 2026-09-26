@@ -78,8 +78,8 @@
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ./scripts/build-ce-components.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
-		"check": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome lint .",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"test": "bun test"
 	},
 	"dependencies": {
@@ -110,13 +110,14 @@
 		}
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"@happy-dom/global-registrator": "^20.11.15",
 		"@pie-players/pie-calculator-cortex": "workspace:*",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"svelte": "^5.57.0",
+		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",

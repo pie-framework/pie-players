@@ -29,7 +29,7 @@
 		"check:composition": "bun test tests/packaged-capability-composition.test.ts",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"dependencies": {
@@ -37,7 +37,6 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
-		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
 		"@pie-players/pie-tool-calculator-cortex": "workspace:*",
 		"@pie-players/pie-tool-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-tool-calculator-shared": "workspace:*",
@@ -52,7 +51,7 @@
 		"@pie-players/pie-tool-tts-inline": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/default-tool-loaders#readme",

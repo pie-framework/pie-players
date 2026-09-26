@@ -24,7 +24,7 @@
 		"test:e2e": "bun run build && bunx playwright test --config playwright.config.ts",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.demo.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"keywords": [
 		"pie",
@@ -47,21 +47,21 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@cortex-js/compute-engine": "0.120.0",
+		"@cortex-js/compute-engine": "0.130.0",
 		"@pie-players/pie-calculator": "workspace:*",
 		"jsxgraph": "1.13.2",
 		"mathlive": "0.110.0"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"@playwright/test": "^1.62.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"sideEffects": false,
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/calculator-cortex#readme",

@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 
 const sanitizeChunkKey = (value: string) =>
 	value
@@ -88,10 +89,14 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
 			insertTypesEntry: true,
+			// No `.svelte`: a component declares as a stub that imports `svelte`,
+			// which hosts do not install, and no type entry reaches one.
+			include: ["src/**/*.ts", "src/**/*.d.ts"],
 		}),
 		assertNoEvalRequireInOutput,
 	],

@@ -18,13 +18,13 @@
 	},
 	"scripts": {
 		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"lint": "biome check src"
+		"lint": "biome lint src"
 	},
 	"dependencies": {
 		"svelte": "^5.57.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.14",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	}

@@ -17,6 +17,22 @@ jobs:
     # anyway — a scheduled run can raise a dozen at once.
     if: github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
+      # The PR title and branch names are free text inside the JSON payloads below: a raw double
+      # quote fails the payload parse, and `&`, `<` and `>` are Slack mrkdwn control characters.
+      # Each --arg becomes a step output of the same name, escaped for both. A free-text field
+      # added to a payload later, such as a review body, goes through here as another --arg.
+      - name: Escape free-text fields
+        id: escaped
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          jq -rn --arg title "$TITLE" --arg base_ref "$BASE_REF" --arg head_ref "$HEAD_REF" '
+            $ARGS.named | to_entries[]
+            | "\(.key)=\(.value | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | tojson | .[1:-1])"
+          ' >> "$GITHUB_OUTPUT"
+
       - name: Notify Slack on PR Opened
         if: github.event.action == 'opened'
         uses: slackapi/slack-github-action@v4.0.0
@@ -43,7 +59,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}>"
+                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ steps.escaped.outputs.title }}>"
                     },
                     {
                       "type": "mrkdwn",
@@ -51,11 +67,11 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Base:*\n${{ github.event.pull_request.base.ref }}"
+                      "text": "*Base:*\n${{ steps.escaped.outputs.base_ref }}"
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Head:*\n${{ github.event.pull_request.head.ref }}"
+                      "text": "*Head:*\n${{ steps.escaped.outputs.head_ref }}"
                     }
                   ]
                 }
@@ -88,7 +104,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}>"
+                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ steps.escaped.outputs.title }}>"
                     },
                     {
                       "type": "mrkdwn",
@@ -100,7 +116,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Into:*\n${{ github.event.pull_request.base.ref }}"
+                      "text": "*Into:*\n${{ steps.escaped.outputs.base_ref }}"
                     }
                   ]
                 }
@@ -133,7 +149,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}>"
+                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ steps.escaped.outputs.title }}>"
                     },
                     {
                       "type": "mrkdwn",
@@ -170,7 +186,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}>"
+                      "text": "*PR:*\n<${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }} - ${{ steps.escaped.outputs.title }}>"
                     },
                     {
                       "type": "mrkdwn",

@@ -25,8 +25,9 @@
 
 import { onDestroy, untrack } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
-import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
+import { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";
 import { createPieLogger } from "./logger.js";
 import { ResourceMonitor } from "./resource-monitor.js";
 
@@ -54,9 +55,7 @@ export function useResourceMonitor(
 	let isInitialized = $state(false);
 	let activeHostElement = $state<HTMLElement | null>(null);
 	let monitorConfigKey = $state<string>("");
-	let activeProvider = $state<
-		LoaderConfig["instrumentationProvider"] | undefined
-	>(undefined);
+	let activeProvider = $state<InstrumentationProvider | undefined>(undefined);
 
 	// Initialize resource monitor when conditions are met.
 	//
@@ -85,20 +84,11 @@ export function useResourceMonitor(
 			const resolvedRetryDelay =
 				loaderConfig?.resourceRetryDelay ??
 				DEFAULT_LOADER_CONFIG.resourceRetryDelay;
-			const resolvedInstrumentationProvider = isInstrumentationProvider(
-				loaderConfig?.instrumentationProvider,
-			)
-				? loaderConfig?.instrumentationProvider
-				: undefined;
-			if (
-				debugEnabled &&
-				loaderConfig?.instrumentationProvider &&
-				!resolvedInstrumentationProvider
-			) {
-				logger.warn(
-					`Ignoring invalid instrumentation provider for ${componentName}; expected InstrumentationProvider contract`,
-				);
-			}
+			const resolvedInstrumentationProvider = resolveInstrumentationProvider({
+				player: { loaderConfig },
+				component: componentName,
+				debug: debugEnabled,
+			});
 			const nextConfigKey = JSON.stringify({
 				trackPageActions: resolvedTrackPageActions,
 				maxRetries: resolvedMaxRetries,
@@ -143,7 +133,7 @@ export function useResourceMonitor(
 					trackPageActions: resolvedTrackPageActions,
 					maxRetries: resolvedMaxRetries,
 					retryDelay: resolvedRetryDelay,
-					hasCustomProvider: !!resolvedInstrumentationProvider,
+					provider: resolvedInstrumentationProvider?.providerId,
 					hasContainer: !!hostElement,
 				});
 
@@ -163,10 +153,8 @@ export function useResourceMonitor(
 				monitorConfigKey = nextConfigKey;
 				logger.info(
 					`✅ Resource monitoring enabled for ${componentName}` +
-						(resolvedTrackPageActions
-							? resolvedInstrumentationProvider
-								? " (with custom instrumentation provider)"
-								: " (with New Relic tracking)"
+						(resolvedTrackPageActions && resolvedInstrumentationProvider
+							? ` (tracking via ${resolvedInstrumentationProvider.providerName})`
 							: " (retry only)"),
 				);
 			}

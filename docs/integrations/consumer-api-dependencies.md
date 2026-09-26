@@ -19,9 +19,12 @@ Last verified against consumer checkouts and this repo's `develop` line:
 **2026-08-19** for every Host R row, re-derived from that checkout and checked
 against `origin/develop` at `@pie-players` 0.3.68. Host V and Host A rows carry
 **2026-08-16**, scoped to the i18n surfaces described below, and their earlier
-verification before that.
+verification before that. Host P rows carry **2026-09-24**, derived from the
+branch of that checkout that carries its `@pie-players` dependency and checked
+against `origin/develop` the same day; its main line still runs the predecessor
+player with the same listeners.
 
-The **theme-token rows carry 2026-08-28** for all three hosts, re-derived from
+The **theme-token rows carry 2026-08-28** for Hosts V, A and R, re-derived from
 each checkout when the light Base Theme's `--pie-background` became opaque. That
 sweep covered the `--pie-*` surface only — which names each host declares, which
 it reads, and which resolve here — so every other row keeps the date above. It
@@ -81,9 +84,8 @@ currently satisfies:
   the event — which holds the same read. The array and the entry objects keep
   their identity, and entries this player did not produce are left alone, so a
   section-level container stays intact. `detail.session` remains the
-  authoritative payload. The divergence was observed on the Quiz Engine PIE item
-  element (`element-PIEItem`, `projects/pie-item/src/app/pie-item.component.ts`)
-  during its move to `@pie-players/pie-preloaded-player`, on plain
+  authoritative payload. The divergence was observed on a delivery host's item
+  wrapper during its move to `@pie-players/pie-preloaded-player`, on plain
   `multiple-choice`, before the projection existed.
 
 A host that **unmounts `<pie-item-player>` itself** and persists from a
@@ -232,6 +234,14 @@ Desmos-named package to the shared calculator package; the Desmos package keeps 
 compatibility entry that imports that same guarded registration, so the runtime
 surface observed by Host A and Host R does not change.
 
+`pie-default-tool-loaders` has since dropped its dependency on the Desmos
+package, which it stopped importing with that move. Checked against all four
+checkouts on 2026-09-25 as a targeted lookup, so it does not advance the
+verification date: Hosts A and R both declare the package directly, so neither
+install changes. Host R imports it for the registration side effect; Host A
+imports it nowhere and takes the element from the section player's packaged
+loaders. Hosts V and P neither name it nor install the loaders.
+
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a
 `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so
@@ -316,6 +326,7 @@ those paths or an explicit skip before treating the repair as ready to merge.
 | --- | --- | --- | --- |
 | **Host V** | Vue 3 + Vite | One item at a time, read-only instructor rendering, behind a host feature flag; migrating off `@pie-framework/pie-player-components` | High — external client-facing |
 | **Host A** | Angular + webpack | Full fixed-form delivery: one layout CE, the toolkit coordinator via `toolkit-ready`, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
+| **Host P** | Angular + webpack, packaged as a custom element that an outer page mounts | One item at a time in learner delivery, through the preloaded build of `pie-item-player`, which it serves from its own static assets; migrating off `@pie-framework/pie-fixed-player-static` behind a host-side player-type switch | High — external client-facing; the `@pie-players` path is live wherever that switch selects it |
 | **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it constructs `ToolkitCoordinator` itself, drives the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
@@ -325,6 +336,8 @@ Packages consumed:
   `pie-calculator-desmos`, `pie-tool-calculator-desmos`,
   `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, two
   section-player debugger tools.
+- **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
+  copied into the host's static assets and loaded by path.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
   `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath, two
   `pie-section-player/components/*-element` subpaths, `pie-theme` plus its
@@ -340,11 +353,13 @@ Packages consumed:
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
 
 Host V pins an exact patch (`0.3.53` at last read), so it upgrades
-deliberately. Host A and Host R both use caret ranges on the `0.3.x` line
-(both `^0.3.68` at last read, and uniform across all 29 of Host R's), so
-**every published patch reaches them on their next install** — a lockstep patch
-that changes behavior lands in live delivery without a code change on their
-side.
+deliberately. Host P pins an exact preloaded build (`0.3.73-34b9257.1` at last
+read, a devDependency) and serves the copy committed under that version's name,
+so it also upgrades deliberately. Host A and Host R both use caret ranges on the
+`0.3.x` line (both `^0.3.68` at last read, and uniform across all 29 of Host
+R's), so **every published patch reaches them on their next install** — a
+lockstep patch that changes behavior lands in live delivery without a code change
+on their side.
 
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
@@ -355,6 +370,7 @@ and to fix it there in the same push.
 | Specifier | Consumers | Note |
 | --- | --- | --- |
 | `@pie-players/pie-item-player` | V | Dynamic `import()`, registration by side effect. R loads the same file from a CDN by version instead |
+| `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references |
 | `@pie-players/pie-theme` | A, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
@@ -382,7 +398,7 @@ call disappears silently from Host R rather than failing to build.
 
 ## Custom-element surface
 
-### `pie-item-player` (Hosts V, R)
+### `pie-item-player` (Hosts V, P, R)
 
 Host V sets properties imperatively: `config`, `env`, `addCorrectResponse`,
 `baseHeadingLevel`. Attributes are never used. No events are consumed — the host
@@ -403,10 +419,9 @@ reconstruct `env` down to its declared keys.
 Host R drives a wider surface than Host V — ten properties across four preview
 routes: `config`, `env`, `session`, `render-stimulus`, `allowed-resize`,
 `add-correct-response`, `show-bottom-border`, `hosted`, `bundleEndpoints`,
-`strategy`. All ten exist on `origin/develop`. Two of them are the reason this
-matters more than the count suggests: `session` is the only observed use of that
-property anywhere, and `strategy` the only observed use of the loader-strategy
-selector.
+`strategy`. All ten exist on `origin/develop`. Host P sets six of them, `session`
+and `strategy` among them; `render-stimulus`, `allowed-resize` and
+`bundleEndpoints` are Host R's alone.
 
 That surface arrives over a CDN path rather than a dependency, at a version the
 route computes, with `latest` as the fallback on two of the four routes. So
@@ -414,6 +429,27 @@ Host R is not on its caret range for the item player at all: it can be rendering
 a much older build than the rest of the suite, or a floating newest one, and a
 property removed here breaks it only once the CDN serves the version that removed
 it. There is no install step to catch it and no build error when it happens.
+
+Host P sets `strategy="preloaded"` and two string attributes,
+`show-bottom-border="false"` and `hosted="true"`, and binds `config`, `session`,
+`env`, `loaderConfig` and `autoplayAudioEnabled` (`true`) as properties. `env` is
+always `{ mode: "gather", role: "student" }`. Responses are read off
+`session-changed`, not off the `session` object, so the projection onto it is
+not load-bearing there.
+
+`loaderConfig` is `{ trackPageActions: true, maxResourceRetries: 3,
+resourceRetryDelay: 1000 }` and names no `instrumentationProvider`, which makes
+Host P the one consumer of the implicit instrumentation default. What that
+constrains is owned by the instrumentation design note's
+[consumer position](../architecture/instrumentation-providers.md#consumer-position).
+`maxResourceRetries` equals its default and `resourceRetryDelay` doubles it. The
+`loader-config` attribute is not set.
+
+That host does not wait for the generated entry's load signal before rendering,
+so it can assign these properties before `pie-item-player` is defined. Svelte
+adopts a pre-upgrade value only for a name in the element's declared `props`
+map, so every property Host P sets has to stay declared there; one that leaves
+the map drops its pre-upgrade value without an error.
 
 ### `pie-section-player-splitpane` and `-vertical` (Hosts A, R)
 
@@ -454,7 +490,7 @@ The vertical layout is exercised only by Host R, which is exactly why a
 splitpane-only change that skips it stays invisible until someone opens the
 reference app.
 
-### `pie-theme` (all three)
+### `pie-theme` (Hosts V, A, R)
 
 Attributes used: `theme`, `scope`. V uses `theme="light" scope="self"`; A uses
 `theme="light" scope="document"`. `observedAttributes` also carries `provider`,
@@ -649,6 +685,13 @@ API**.
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
 | `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it |
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
+| `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
+| `load-complete` | DOM event out of `pie-item-player`, bubbling | P | Half of the item display gate |
+| `player-error` | DOM event out of `pie-item-player`, bubbling | P | Fatal: exits the delivery session |
+| `pie-resource-load-success`, `pie-resource-retry-success` | Resource monitor, bubbling out of `pie-item-player` | P | The other half of the display gate |
+| `pie-resource-load-error` | Resource monitor, bubbling out of `pie-item-player` | P | Fatal: exits the delivery session, recording `detail.url` |
+| `pie-resource-load-failed`, `pie-resource-retry-failed` | Resource monitor, bubbling out of `pie-item-player` | P | Logged with the serialized `detail` |
+| `PiePlayerLoadEvent` | `document` event from the preloaded build's `index.js`, alongside `window.pieFixedPlayerLoaded` | none | P waits on the same signal only on its predecessor-player path |
 
 The `content-loaded` payload fields Host A reads are `itemId` and `contentKind`.
 It counts distinct `itemId`s against the section's expected item list and treats
@@ -667,6 +710,33 @@ The `item-session-data-changed` payload is destructured as
 `event.detail.complete` fallback. Reshaping the item event payload — nesting the
 session, making `data` lazy, or emitting an empty `data` array — breaks response
 capture rather than degrading it.
+
+Host P attaches its eight `pie-item-player` listeners to a container of its own
+around the player, so each depends on the event bubbling out of it; the
+player's re-dispatch and the resource monitor both set `bubbles: true`.
+
+Its item display gate opens only on `load-complete` plus, when the item's
+content references the host's own asset domain, a `pie-resource-load-success`
+or `pie-resource-retry-success` whose `detail.url` resolves to that domain with
+`detail.duration > 0`. Short of both, the host's load timeout ends the session.
+The resource monitor's DOM events are therefore a readiness signal there, which
+pins three invariants: they fire whatever `trackPageActions` says and whether
+or not a provider is ready; `detail.url` stays absolute, because the host parses
+it with `new URL`; and `detail.duration` stays the unrounded resource-timing
+value, since the instrumentation event rounds it and a rounded 0 fails the gate.
+
+On `session-changed` it skips `detail.intent === "metadata-only"`, reads
+`detail.complete`, and takes the response from `detail.session.data[0]`:
+`answers` when `detail.component` contains `cloze-association`, `hotspot` or
+`categorize`, `value` otherwise, plus that entry's `selector` and `waitTime`.
+The match runs against the authored tag name, which `toPackageVersionedTag`
+keeps as the prefix of the rendered versioned tag; a tag transform that dropped
+it would store those three types' responses under the wrong field without an
+error. An error thrown in that handler reaches the host's global error handler,
+which ends the session, so once an item is displayed every `session-changed`
+has to carry a string `component` and a non-empty `session.data`. The
+controller write-back path dispatches `{ session }` alone, and it is unreachable
+there only because the preloaded build registers no client-side controller.
 
 ## Controller and coordinator methods
 
@@ -929,6 +999,72 @@ target on `origin/develop`, but the CDN path bypasses the map, so renaming the
 Two of the four routes fall back to `latest` when no version is supplied, so a
 rename lands there as soon as it publishes, with no install and no build.
 
+Host P serves `@pie-players/pie-preloaded-player` itself. An install step copies
+the package's `dist/` into a static-asset directory named for the installed
+`version`, the host commits that copy, and the page that mounts the host loads
+the copied `index.js` as a module script, picking the directory by a version
+string the host's launch configuration supplies. That makes three things API
+there: `dist/index.js` as the entry name; `dist/` as a self-contained tree whose
+runtime imports are all relative — `math-rendering.js`, the
+`pie-elements-bundle-<hash>.js` file, `pie-item-player.js` and its `chunks/`;
+and a `version` string usable as a directory name. The generated package has no
+`exports` map, so none of this passes through one. A break shows up only in the
+browser, as a failed import before any player exists, and ends in the host's load
+timeout.
+
+## Single-file bundle (Host A)
+
+Verified against the checkout on 2026-09-24.
+
+Host A deploys its element as one JavaScript file, where a lazy chunk would
+404, so its webpack build turns chunk splitting off and compiles every
+`import()` eagerly. Every module reachable through an `import()` from a
+`@pie-players` package it bundles is therefore initial-bundle weight there,
+whether or not that code path runs: each `pie-tool-*` package the packaged tool
+loaders import
+(`packages/default-tool-loaders/src/packaged-capability-composition.ts`),
+placed or not, and speech-rule-engine with its `base`, `en` and `es` locale
+tables (0.8 MB). Lazy loading takes nothing out of that file; deleting code or
+sharing one copy of it across packages does.
+
+Its production build warns past 13 MB of initial bundle and fails past 14 MB,
+and its caret range takes each patch on the next install, so a patch can fail
+that build with no change on Host A's side. Host A has resolved
+`@pie-players/pie-calculator-cortex` to a local stub in its build since the
+toolkit's Cortex provider, new in 0.3.69, took it past that budget with about
+7 MB of engine. The engine stays out only while the toolkit reaches it through
+that bare specifier, at its one import site in
+`packages/assessment-toolkit/src/services/tool-providers/CortexToolProvider.ts`.
+A subpath of the specifier fails Host A's build, since the alias targets a file,
+and any other route brings the engine back.
+
+An `import()` of a specifier computed at runtime cannot reach the network
+there. The build resolves it against an empty module context, which rejects
+with `Cannot find module`. Host A sets no `playerType`, so it runs the default
+`iife` strategy (`DEFAULT_PLAYER_TYPE` in
+`packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`), which loads
+element bundles by script tag; the `esm` strategy's loader would reject every
+element.
+
+## TypeScript resolution (Host A)
+
+Verified against the checkout on 2026-09-25.
+
+Host A type-checks with TypeScript's `node10` resolution, which this repository
+does not support (see
+[Library Packaging Strategy](../setup/library-packaging-strategy.md#consumer-guidance-current-scope)),
+and leaves `skipLibCheck` at its default, `false`, so every `@pie-players`
+declaration its program loads is checked. That program loads `pie-theme`'s root
+declarations and nothing else: the `pie-section-player` component subpath is a
+side-effect import, which `node10` leaves unresolved without an error.
+
+Its type-check fails when a declaration reachable from `pie-theme`'s root imports
+an `exports`-only subpath, or when Host A imports the root of a package whose
+declarations do. Nine packages' root declarations fail under `node10`, the
+toolkit, the section player and the item player among them, all on subpaths of
+`pie-players-shared` or the toolkit. Moving Host A to `bundler` resolution
+removes the constraint.
+
 ## Content stylesheet delivery
 
 The most fragile shared surface, because it changed underneath the hosts.
@@ -963,11 +1099,14 @@ Consequences per host:
 - **Host R** imports no copy of its own either, so it is also in the healthy
   configuration. Re-derived: it references `components.css` only in a comment
   recording that importing it there made the stylesheet load twice.
+- **Host P** imports no copy and sets no opt-out, so its preloaded build installs
+  the stylesheet and it is in the healthy configuration too. It styles no player
+  DOM and sets no `--pie-*` token.
 
 Host V is the only host still in the duplicate-risk state, and it enters that
 state the moment it bumps to `0.3.61` or later without the opt-out. Any further
 change to how content styles are delivered has to account for it and for the
-opt-out attribute the other two now rely on implicitly by absence.
+opt-out attribute the other three now rely on implicitly by absence.
 
 Three rules were removed from it outright: a `#stimulus` / `#item` pair of
 50%-wide left floats, a `.lrn_feature h3` margin override and
@@ -987,7 +1126,7 @@ or `--pie-white`, so both see it on upgrade.
 
 ## Host-served endpoint contracts
 
-A surface class the other two hosts do not have. PIE ships no dictionary
+A surface class no other host has. PIE ships no dictionary
 endpoint — `pie-tool-dictionary` posts to a path the host configures — so the
 wire shape is a contract this repository defines and a host implements.
 
@@ -1015,7 +1154,8 @@ Grouped by who breaks, not by how hard the change is. Host R is ours and
 refactoring it is expected, so a surface only it touches is not a constraint —
 change it and fix Host R in the same push.
 
-**Silent breakage in a client-facing host (V or A). Coordinate before shipping.**
+**Silent breakage in a client-facing host (V, A or P). Coordinate before
+shipping.**
 
 - Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`, or
   `pie-section-player-passage-card`, or moving a card out from under the
@@ -1039,8 +1179,37 @@ change it and fix Host R in the same push.
 - Layering generated theme CSS, resolving Host A's tokens at build time, or
   otherwise preventing its outside `!important` declarations from winning
 - Changing how content styles are delivered, without accounting for Host V's
-  pinned-version workaround and the opt-out attribute Host A and Host R now
+  pinned-version workaround and the opt-out attribute Hosts A, P and R now
   rely on implicitly by not setting it
+- Renaming or removing a `pie-item-player` property Host P sets, taking one out
+  of the element's declared `props` map, or renaming the `"preloaded"` strategy
+- Renaming `session-changed`, `load-complete`, `player-error` or any of the five
+  `pie-resource-*` events Host P listens for, stopping one bubbling out of
+  `pie-item-player`, or emitting `player-error` or `pie-resource-load-error` for
+  a condition the player recovers from
+- Gating the resource monitor's DOM events on `trackPageActions` or on provider
+  readiness, rounding their `detail.duration`, or reporting a relative
+  `detail.url`
+- Dispatching `session-changed` without a string `component` or with an empty
+  `session.data`, or a tag transform that drops the authored tag name
+- Renaming the preloaded build's `dist/index.js`, or giving anything under its
+  `dist/` a runtime import from outside that tree
+- Changing what the implicit instrumentation default sends, in volume or in
+  attribute names, which lands in Host P's observability account
+
+**Build or runtime failure in a client-facing host (A). Coordinate before
+shipping.**
+
+- Adding weight behind an `import()` in any package Host A bundles, a new entry
+  in the packaged tool loaders included: its single-file build puts all of it in
+  an initial bundle that fails past 14 MB
+- Reaching the Cortex engine through anything but the bare
+  `@pie-players/pie-calculator-cortex` specifier Host A stubs
+- Putting an `import()` of a computed specifier on a path Host A runs, making
+  `esm` the default `playerType` among them: it rejects in that build
+- Importing an `exports`-only subpath from any declaration `pie-theme`'s root
+  reaches: Host A type-checks those declarations under `node10`, which cannot
+  resolve one
 
 **Host R only. Change freely; land the internally controlled host fix in the
 same push.** Its checkout was available for the 2026-08-19 refresh, so these are
@@ -1069,9 +1238,9 @@ re-derived rather than remembered.
   `tts-server-*` provider classes
 - The `ColorSchemeSnapshot` return of `listPieColorSchemes()` and the `id` /
   `name` fields on its descriptors
-- `dist/pie-item-player.js` as a CDN filename, and the ten `pie-item-player`
-  properties that host sets — including `session` and `strategy`, which no other
-  consumer touches
+- `dist/pie-item-player.js` as a CDN filename, and `render-stimulus`,
+  `allowed-resize` and `bundleEndpoints` on `pie-item-player` — the three of that
+  host's ten properties no client-facing host sets
 - `runtime.coordinator`, `runtime.playerType`, `runtime.lazyInit`,
   `runtime.player.loaderConfig`, and `env` on the section-player runtime
 - The five debugger and settings panel CE prop sets, and the duck-typed
@@ -1097,6 +1266,9 @@ over a CDN with no typecheck at all.
   toolbars package, and `pie-context` — no consumer imports any of them
 - Attributes and props on the layout elements not listed above, including the
   additive `locale` attribute on `pie-item-player` and the section-player layouts
+- `PiePlayerLoadEvent`, its two detail strings and `window.pieFixedPlayerLoaded`
+  from the preloaded entry — the one host on that build renders without waiting
+  for them
 - `@pie-players/pie-players-shared/i18n` in any form — the pre-adoption layer had
   no call site in any checkout, so its replacement breaks nobody
 - Additive optional members on `ToolRegistration`, `ToolbarContext`,
@@ -1133,10 +1305,10 @@ over a CDN with no typecheck at all.
 - `CalculatorProvider.destroy()` leaving the calculators it created mounted. The
   Desmos and GeoGebra adapters destroy them as of 2026-08-27, matching Cortex.
   This pad records no host constructing a calculator provider directly — both
-  hosts that offer Desmos reach it through the tool package — and the toolkit's
-  own teardown destroys the tool component first, so the added call lands on
-  calculators that are already gone. Each calculator is destroyed at most once, so
-  either order is safe
+  hosts that offer Desmos reach it through the `pie-tool-calculator` element —
+  and the toolkit's own teardown destroys the tool component first, so the added
+  call lands on calculators that are already gone. Each calculator is destroyed at
+  most once, so either order is safe
 - Message-override keys on `CortexCalculatorMessages`. Six viewport controls and
   their group label were added on 2026-08-27, and two keypad keys later the same
   day; `CortexCalculatorMessageOverrides` is a partial, so an override object that
@@ -1158,10 +1330,9 @@ over a CDN with no typecheck at all.
   the exported state, the history entries and `getResult` stay `.`-separated and a
   state saved under one locale is not reinterpreted under another
 - `DesmosCalculatorProvider` on the toolkit's `./tools/client` subpath. Both hosts
-  that offer a Desmos calculator take the tool package as a side-effect import and
-  reach the provider through the calculator package instead; one of them serves the
-  proxy endpoint that only the calculator package's provider supports. Nothing
-  imports the toolkit's copy
+  that offer a Desmos calculator reach the provider through the calculator package
+  instead; one of them serves the proxy endpoint that only the calculator package's
+  provider supports. Nothing imports the toolkit's copy
 - `TTSToolConfig` and `TTSRuntimeSettings` as names, and the fields on which the
   two differ. The one host that configures server TTS sets eleven keys, all of them
   in the intersection of the two shapes, so folding them into one owner is
@@ -1224,6 +1395,15 @@ repo.
   `@pie-players` token — they are absent from `tokens.css` and from the registry —
   and the tag is not one this repository ships. Three dead declarations against a
   dead selector, and the only `--pie-*` values that host declares at all.
+- Host P sets `show-bottom-border="false"` and `hosted="true"` as string
+  attributes on `Boolean` props, which read presence, so both come out `true`.
+  `hosted` gets the value the host means. The border stays off only because it
+  draws in `evaluate` mode and that host always gathers.
+- Host P omits `render-stimulus` and `allowed-resize` on its `@pie-players`
+  path, though `pie-item-player` declares both, so `renderStimulus` stays `true`
+  and a stimulus-linked item renders its passage. Its predecessor path renders
+  it too: `render-stimulus="false"` there is a string attribute on a `Boolean`
+  prop, which reads `true`. Only binding the property turns it off.
 - Host R's contrast inspector reads the four `--pie-section-player-tab-*` tokens
   off the root element. They are `component-public` and resolve inside a
   section-player component, so those four rows measure an empty value regardless

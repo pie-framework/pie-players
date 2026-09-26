@@ -624,7 +624,7 @@ function resolveControllerSpecifier(
 	return resolveBrowserControllerUrl(packageVersion, cdnProvider);
 }
 
-function pickElementClass(module: any, view: string): unknown {
+export function pickElementClass(module: any, view: string): unknown {
 	if (!module || typeof module !== "object") return undefined;
 	if (view === "author") {
 		return module.default ?? module.Configure ?? module.Element;

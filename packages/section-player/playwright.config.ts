@@ -14,6 +14,8 @@ const webServerCommand = `bun run --cwd "${workspaceRootCwd}" dev:section -- --h
 export default defineConfig({
 	testDir: "./tests",
 	testMatch: /.*\.spec\.ts/,
+	// Needs a pie-elements-ng checkout: `playwright.local-esm-cdn.config.ts`.
+	testIgnore: /local-esm-cdn\//,
 	fullyParallel: false,
 	forbidOnly: false,
 	// One retry in CI, none locally. develop requires these suites, so a single

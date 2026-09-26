@@ -1,17 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
-function demoPath(player: "iife" | "esm"): string {
+function demoPath(player: "iife" | "esm" | "preloaded"): string {
 	const params = new URLSearchParams({
 		mode: "candidate",
 		layout: "splitpane",
 		player,
 	});
-	// npm `latest` of multiple-choice is the legacy line, which publishes no
-	// browser ESM build.
-	if (player === "esm") {
-		params.set("pie-overrides[@pie-element/multiple-choice]", "13.4.0-next.13");
-	}
 	return `/calculator-cortex?${params}`;
 }
 
@@ -19,7 +14,7 @@ function demoPath(player: "iife" | "esm"): string {
 // once the evaluation worker's script is served: the first evaluation's time
 // limit covers the worker's cold start, which a CI runner exceeds, and each
 // timeout starts the worker cold again.
-for (const player of ["iife", "esm"] as const) {
+for (const player of ["iife", "esm", "preloaded"] as const) {
 	test(`Cortex calculator opens and starts its worker under the ${player} player`, async ({
 		page,
 	}) => {

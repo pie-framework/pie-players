@@ -1071,8 +1071,12 @@
   // part the pass retriggers the observer that scheduled it, and converges only
   // because the wrap is idempotent — an element that re-renders over its own
   // subtree and drops the wrapper would loop.
+  //
+  // Author mode runs no pass: the wrapper is a delivery reflow affordance, and a
+  // configure element's DOM belongs to its editors and its framework. Delivery
+  // editors are covered by the wrap, which leaves editing-host content alone.
   $effect(() => {
-    if (!rootElement) return;
+    if (!rootElement || mode === "author") return;
     const root = rootElement;
 
     // A pass that wrapped nothing mutated nothing, so it queued no records of

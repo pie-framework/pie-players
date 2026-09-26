@@ -287,6 +287,25 @@ export function findUnguardedCustomElementDefines(content) {
 	return unguarded;
 }
 
+/**
+ * Vite 7's asset-import-meta-url plugin tests every module a host build
+ * transforms against `/new\s+URL.+import\.meta\.url/s`. Node 26 compiles that
+ * pattern without V8's fixed-length-loop optimization once the build has
+ * generated over 1 MB of regexp code and holds over 16 MB of executable memory.
+ * The greedy `.+` then takes one entry of V8's 64 MiB backtrack stack per
+ * character after the module's first `new URL`, and past about 4.19 million
+ * characters the host build fails with "Maximum call stack size exceeded". The
+ * limit is half that ceiling, because a host's earlier transforms grow a module
+ * before the filter reads it.
+ */
+export const NEW_URL_TAIL_LIMIT = 2 * 1024 * 1024;
+
+/** How many characters follow a module's first `new URL`; 0 without one. */
+export function newUrlTailLength(content) {
+	const match = /new\s+URL/.exec(content);
+	return match ? content.length - (match.index + match[0].length) : 0;
+}
+
 function listPackageDistDirs() {
 	const absPackages = path.join(ROOT, PACKAGES_DIR);
 	if (!existsSync(absPackages)) return [];
@@ -476,6 +495,19 @@ function checkNoUnguardedCustomElementDefines(failures) {
 	}
 }
 
+function checkNewUrlTails(failures) {
+	for (const dir of listPackageDistDirs()) {
+		for (const filePath of collectJsFiles(dir)) {
+			const tail = newUrlTailLength(readFileSync(filePath, "utf8"));
+			if (tail > NEW_URL_TAIL_LIMIT) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} has ${tail} characters after its first \`new URL\` (limit ${NEW_URL_TAIL_LIMIT}), enough to overflow V8's regexp stack in a Vite 7 host's asset filter on Node 26; split the module, as packages/calculator-cortex/vite.config.ts does`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
@@ -484,6 +516,7 @@ function main() {
 	checkNoPublishedSourcemaps(failures);
 	checkNoSvelteDevRuntime(failures);
 	checkNoUnguardedCustomElementDefines(failures);
+	checkNewUrlTails(failures);
 
 	if (failures.length > 0) {
 		console.error(

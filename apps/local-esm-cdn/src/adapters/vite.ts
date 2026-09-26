@@ -3,6 +3,9 @@ import type { Plugin, ViteDevServer } from "vite";
 import type { LocalEsmCdnConfig } from "../core/config.js";
 import { createLocalEsmCdn } from "../embedded.js";
 
+const PACKAGE_JSON_REQUEST =
+	/^\/@pie-(?:element|lib|elements-ng)\/[^?#]+\/package\.json(?:[?#]|$)/;
+
 /**
  * Create a Vite plugin that serves local PIE packages as ESM modules
  *
@@ -97,6 +100,22 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 
 		configureServer(serverInstance) {
 			server = serverInstance;
+
+			// Vite transforms module requests only. The package.json an ESM loader
+			// fetches for a package's exports is not one, so it is answered here.
+			serverInstance.middlewares.use((req, res, next) => {
+				if (!req.url || !PACKAGE_JSON_REQUEST.test(req.url)) return next();
+				cdn
+					.handler(new Request(`http://localhost${req.url}`))
+					.then(async (response) => {
+						res.statusCode = response.status;
+						response.headers.forEach((value, key) => {
+							res.setHeader(key, value);
+						});
+						res.end(await response.text());
+					})
+					.catch(next);
+			});
 
 			// Only set up file watching in dev mode
 			if (!config.pieElementsNgRoot && !config.piePlayersRoot) {

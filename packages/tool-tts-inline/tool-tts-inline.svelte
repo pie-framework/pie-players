@@ -1043,7 +1043,12 @@
 		const host = resolveHostElement();
 		if (!host) return;
 		const active = controlsVisible === true;
-		host.setAttribute('data-active', active ? 'true' : 'false');
+		// `data-active` is the state last announced from this host; absent reads as
+		// inactive, which is what a subscriber assumes before any event. Only a
+		// change is announced. The record lives on the host, so a remount compares
+		// against what the previous instance announced, and it is written with the
+		// event, so a cancelled announcement leaves it unchanged.
+		if ((host.getAttribute('data-active') === 'true') === active) return;
 		// Defer the broadcast so listeners (e.g. the parent toolbar's
 		// `subscribeActive` callback) never run inside our own mount /
 		// update flush. Without this, a parent that synchronously creates
@@ -1056,6 +1061,7 @@
 		let cancelled = false;
 		queueMicrotask(() => {
 			if (cancelled) return;
+			host.setAttribute('data-active', active ? 'true' : 'false');
 			host.dispatchEvent(
 				new CustomEvent('pie-tool-active-change', {
 					detail: { active },

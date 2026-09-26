@@ -139,6 +139,7 @@ export class AnswerEliminatorCore {
 		button.type = "button";
 		button.className = AnswerEliminatorCore.TOGGLE_CLASS;
 		button.setAttribute("aria-label", `Toggle elimination for ${choiceLabel}`);
+		button.setAttribute("aria-pressed", "false");
 		button.setAttribute("data-choice-id", choiceId);
 		button.textContent = "⊗"; // Cross mark (use textContent instead of innerHTML for better security)
 

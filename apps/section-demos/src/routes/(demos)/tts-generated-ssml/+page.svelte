@@ -13,10 +13,6 @@
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import '@pie-players/pie-tool-annotation-toolbar';
-	import '@pie-players/pie-tool-line-reader';
-	import '@pie-players/pie-tool-text-to-speech';
-	import '@pie-players/pie-tool-theme';
 	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		applyDaisyTheme,
@@ -34,12 +30,9 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
 	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import {
-		buildBundleKey,
-		collectElementPackages,
-		fetchBundleWithRetry
-	} from '$lib/demo-runtime/preload-utils';
+	import { preloadSectionElements } from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -87,12 +80,12 @@
 			});
 		})
 		.catch(() => {});
-	const sectionPlayerConfig = {
+	const sectionPlayerConfig = withDemoLoaderOptions({
 		loaderConfig: {
 			trackPageActions: true,
 			instrumentationProvider: sectionInstrumentationProvider
 		}
-	};
+	});
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -108,7 +101,6 @@
 	let playerInstanceKey = $state(0);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
-	let loadedPreloadedBundleKey = $state<string | null>(null);
 	let toolkitCoordinator: any = $state(null);
 	let playerHostElement: HTMLElement | null = $state(null);
 	let showSessionPanel = $state(false);
@@ -181,32 +173,10 @@
 		preloadedReady = selectedPlayerType !== 'preloaded';
 		preloadedError = null;
 		if (selectedPlayerType !== 'preloaded') return;
-		const packages = collectElementPackages(resolvedSectionForPlayer);
-		if (!packages.length) {
-			preloadedError = 'No element packages were found to preload';
-			return;
-		}
-		const bundleKey = buildBundleKey(packages);
-		if (loadedPreloadedBundleKey === bundleKey) {
-			preloadedReady = true;
-			return;
-		}
-		preloadedReady = false;
-		void (async () => {
-			try {
-				const bundleUrl = `https://proxy.pie-api.com/bundles/${bundleKey}/player.js`;
-				const response = await fetchBundleWithRetry(bundleUrl);
-				const bundleJs = await response.text();
-				const script = document.createElement('script');
-				script.type = 'text/javascript';
-				script.text = bundleJs;
-				document.head.appendChild(script);
-				loadedPreloadedBundleKey = bundleKey;
-				preloadedReady = true;
-			} catch (error) {
-				preloadedError = error instanceof Error ? error.message : String(error);
-			}
-		})();
+		return preloadSectionElements(resolvedSectionForPlayer, {
+			ready: () => (preloadedReady = true),
+			failed: (error) => (preloadedError = error.message)
+		});
 	});
 
 	$effect(() => {
@@ -332,10 +302,10 @@
 	bind:pnpDebuggerElement
 >
 	{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
-		{#if selectedPlayerType === 'preloaded' && !preloadedReady}
-			<div class="preload-status">Preloading section item bundles...</div>
-		{:else if preloadedError}
+		{#if preloadedError}
 			<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+		{:else if selectedPlayerType === 'preloaded' && !preloadedReady}
+			<div class="preload-status">Preloading section item bundles...</div>
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
 				bind:this={playerHostElement}

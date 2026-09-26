@@ -93,16 +93,12 @@ consistent monorepo startup behavior.
 - **Framework:** SvelteKit with static adapter
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
 - **Player:** PIE Section Player (QTI 3.0)
-- **Elements:** Loaded from jsDelivr CDN (`https://cdn.jsdelivr.net/npm`)
+- **Elements:** PITS bundles under `iife` and `preloaded`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`
 
 ### Element Loading
-The demos use the ESM-based PIE player that loads elements dynamically from jsDelivr CDN. This approach:
-- Requires no local element bundles
-- Works out of the box
-- Uses the latest published element versions
-- Supports version resolution via CDN
+`?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos load the pie-elements-ng versions in [`element-versions.ts`](../demo-ui/src/element-versions.ts). `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [demo workspace resolution](../../docs/development/demo-workspace-resolution.md).
 
-**Note:** For local development with unpublished elements, you would need to configure `bundleHost` to point to a local element server. This feature is planned for future implementation.
+`?player=preloaded` loads one PITS bundle for the page's elements and registers each element, with its controller, through `registerPreloadedElements` before the player mounts. The `preloaded-bundled-elements` demo registers an element its bundler resolved from the installed package instead.
 
 ### Content Standards
 All content is:

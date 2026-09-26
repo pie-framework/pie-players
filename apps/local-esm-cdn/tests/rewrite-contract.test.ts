@@ -39,7 +39,7 @@ describe("local-esm-cdn import rewriting contract", () => {
 		);
 	});
 
-	it("rewrites relative imports to package absolute imports", async () => {
+	it("resolves relative imports against the importing module's path", async () => {
 		const packageId = ["@pie-lib", "render-ui"].join("/");
 		const source = `
       import x from "./feedback.js";
@@ -48,11 +48,49 @@ describe("local-esm-cdn import rewriting contract", () => {
 		const rewritten = await rewriteImports(source, {
 			esmShBaseUrl: "https://esm.sh",
 			pkg: packageId,
-			subpath: "controller/index.js",
+			modulePath: "controller/index.js",
 		});
 
 		expect(rewritten).toContain('"/@pie-lib/render-ui/controller/feedback.js"');
-		expect(rewritten).toContain('"/@pie-lib/render-ui/controller/tokens.js"');
+		expect(rewritten).toContain('"/@pie-lib/render-ui/tokens.js"');
+	});
+
+	it("maps a browser view's chunk imports to the shared browser directory", async () => {
+		const packageId = ["@pie-element", "multiple-choice"].join("/");
+		const view = await rewriteImports(
+			`import { a } from "../Radio-90M7O0Rk.js";`,
+			{
+				esmShBaseUrl: "https://esm.sh",
+				pkg: packageId,
+				modulePath: "browser/delivery/index.js",
+			},
+		);
+		const chunk = await rewriteImports(
+			`import { b } from "./Radio-90M7O0Rk.js";`,
+			{
+				esmShBaseUrl: "https://esm.sh",
+				pkg: packageId,
+				modulePath: "browser/main-Ch9DU_mG.js",
+			},
+		);
+
+		expect(view).toContain(
+			'"/@pie-element/multiple-choice/browser/Radio-90M7O0Rk.js"',
+		);
+		expect(chunk).toContain(
+			'"/@pie-element/multiple-choice/browser/Radio-90M7O0Rk.js"',
+		);
+	});
+
+	it("leaves a relative import that leaves the package's dist unrewritten", async () => {
+		const packageId = ["@pie-lib", "render-ui"].join("/");
+		const rewritten = await rewriteImports(`import x from "../outside.js";`, {
+			esmShBaseUrl: "https://esm.sh",
+			pkg: packageId,
+			modulePath: "index.js",
+		});
+
+		expect(rewritten).toContain('"../outside.js"');
 	});
 
 	it("rewrites bun node_modules relative imports to esm CDN", async () => {
@@ -65,12 +103,23 @@ describe("local-esm-cdn import rewriting contract", () => {
 		const rewritten = await rewriteImports(source, {
 			esmShBaseUrl: "https://esm.sh",
 			pkg: packageId,
-			subpath: "index.js",
+			modulePath: "index.js",
 		});
 
 		expect(rewritten).toContain(
 			"https://esm.sh/react-transition-group/esm/CSSTransition.js",
 		);
+	});
+
+	it("leaves import.meta expressions untouched", async () => {
+		const source = `const href = new URL("./worker.js", import.meta.url).href;`;
+		const rewritten = await rewriteImports(source, {
+			esmShBaseUrl: "https://esm.sh",
+			pkg: ["@pie-element", "multiple-choice"].join("/"),
+			modulePath: "browser/author/index.js",
+		});
+
+		expect(rewritten).toBe(source);
 	});
 
 	it("rewrites string-literal dynamic imports but not expression imports", async () => {
@@ -84,7 +133,7 @@ describe("local-esm-cdn import rewriting contract", () => {
 		const rewritten = await rewriteImports(source, {
 			esmShBaseUrl: "https://esm.sh",
 			pkg: packageId,
-			subpath: "index.js",
+			modulePath: "index.js",
 		});
 
 		expect(rewritten).toContain('import("https://esm.sh/react@18.2.0")');

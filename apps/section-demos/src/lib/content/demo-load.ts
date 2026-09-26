@@ -1,3 +1,4 @@
+import { strategyElementVersions } from "@pie-players/demo-ui/element-versions";
 import { error } from "@sveltejs/kit";
 import {
 	parseElementOverridesFromUrl,
@@ -40,15 +41,27 @@ export function loadDemoRouteDataById(demoId: string, url: URL): DemoRouteData {
 	const rawSection = activeDemoPage?.section || demo.section || null;
 	const allowElementVersionOverrides =
 		demo.allowElementVersionOverrides !== false;
+	// The strategy's versions apply whether or not URL overrides are allowed:
+	// they are what the `?player` strategy can load.
+	const strategyVersions = strategyElementVersions(
+		url.searchParams.get("player"),
+	);
 
 	const elementOverrides = allowElementVersionOverrides
 		? parseElementOverridesFromUrl(url.searchParams)
 		: {};
-	const section = allowElementVersionOverrides
-		? applyOverridesToSection(rawSection, elementOverrides)
-		: rawSection;
+	const section = applyOverridesToSection(rawSection, {
+		...strategyVersions,
+		...elementOverrides,
+	});
 	const aggregatedElements = allowElementVersionOverrides
-		? aggregateElementsAcrossPages(demoPages, demo.section || null)
+		? aggregateElementsAcrossPages(
+				demoPages.map((page) => ({
+					...page,
+					section: applyOverridesToSection(page.section, strategyVersions),
+				})) as DemoPageEntry[],
+				applyOverridesToSection(demo.section || null, strategyVersions),
+			)
 		: {};
 
 	return {

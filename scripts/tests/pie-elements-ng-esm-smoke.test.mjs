@@ -311,9 +311,16 @@ describe("pie-elements-ng ESM smoke matrix helpers", () => {
 		).toBe("/@pie-element/simple-cloze@latest/browser/delivery/index.js");
 		expect(
 			mapper.toLocalCdnPath(
-				"https://cdn.jsdelivr.net/@pie-element/simple-cloze/browser/delivery/client-abc.js",
+				"https://cdn.jsdelivr.net/@pie-element/simple-cloze/browser/client-abc.js",
 			),
 		).toBe("/@pie-element/simple-cloze/browser/client-abc.js");
+		// local-esm-cdn resolves a view's chunk imports to the shared browser
+		// directory itself, so a view-relative path is passed through unchanged.
+		expect(
+			mapper.toLocalCdnPath(
+				"https://cdn.jsdelivr.net/@pie-element/simple-cloze/browser/delivery/client-abc.js",
+			),
+		).toBe("/@pie-element/simple-cloze/browser/delivery/client-abc.js");
 		expect(
 			mapper.toLocalCdnPath(
 				"https://cdn.jsdelivr.net/npm/@pie-element/simple-cloze@latest/runtime-support/+esm",

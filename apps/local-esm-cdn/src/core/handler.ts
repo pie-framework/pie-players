@@ -1,9 +1,17 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { rewriteImports } from "../rewrite-imports.js";
 import type { LocalEsmCdnContext } from "./config.js";
 import { getHealth } from "./health.js";
-import { parsePackageRequest, resolveEntryFile } from "./resolver.js";
+import {
+	parsePackageRequest,
+	resolveEntryFile,
+	resolvePackageJson,
+} from "./resolver.js";
 import { js, json, text, withCors } from "./utils.js";
+
+const MODULE_FILE = /\.m?js$/;
+const FILE_TYPES: Record<string, string> = { ".woff2": "font/woff2" };
 
 /**
  * Generate help text for the server
@@ -21,6 +29,10 @@ Endpoints:
   GET  /health
   GET  /@pie-element/<name>@<version>[/<subpath>]
   GET  /@pie-lib/<name>@<version>[/<subpath>]
+  GET  /@pie-element/<name>@<version>/package.json
+
+A subpath addresses a file in the package's dist, with or without the dist/
+prefix of the npm layout, so an ESM CDN URL maps onto this server unchanged.
 
 Env:
   PIE_ELEMENTS_NG_PATH=${config.pieElementsNgRoot}
@@ -86,13 +98,33 @@ export async function handleRequest(
 		);
 	}
 
+	if (parsed.subpath === "package.json") {
+		const packageJsonPath = await resolvePackageJson(
+			context.config.pieElementsNgRoot,
+			parsed.pkg,
+		);
+		if (!packageJsonPath) {
+			return json(
+				{ error: "package.json not found on disk.", requested: parsed },
+				{ status: 404 },
+			);
+		}
+		return new Response(await readFile(packageJsonPath, "utf8"), {
+			headers: withCors({
+				"content-type": "application/json; charset=utf-8",
+				"cache-control": "no-store",
+				"x-local-esm-cdn-file": packageJsonPath,
+			}),
+		});
+	}
+
 	// Resolve the entry file on disk
-	const entryFile = await resolveEntryFile(
+	const entry = await resolveEntryFile(
 		context.config.pieElementsNgRoot,
 		parsed.pkg,
 		parsed.subpath,
 	);
-	if (!entryFile) {
+	if (!entry) {
 		return json(
 			{
 				error: "Entrypoint not found on disk.",
@@ -107,12 +139,25 @@ export async function handleRequest(
 		);
 	}
 
+	// Only modules have imports to rewrite. Any other file a build ships, such
+	// as the MathQuill font its stylesheet addresses by URL, is served as is.
+	if (!MODULE_FILE.test(entry.file)) {
+		return new Response(await readFile(entry.file), {
+			headers: withCors({
+				"content-type":
+					FILE_TYPES[path.extname(entry.file)] ?? "application/octet-stream",
+				"cache-control": "no-store",
+				"x-local-esm-cdn-file": entry.file,
+			}),
+		});
+	}
+
 	// Read and rewrite the file
-	const code = await readFile(entryFile, "utf8");
+	const code = await readFile(entry.file, "utf8");
 	const rewritten = await rewriteImports(code, {
 		esmShBaseUrl: context.config.esmShBaseUrl,
 		pkg: parsed.pkg,
-		subpath: parsed.subpath,
+		modulePath: entry.distPath,
 	});
 
 	// Log if rewriting changed the code
@@ -129,7 +174,7 @@ export async function handleRequest(
 
 	return js(rewritten, {
 		headers: {
-			"x-local-esm-cdn-file": entryFile,
+			"x-local-esm-cdn-file": entry.file,
 		},
 	});
 }

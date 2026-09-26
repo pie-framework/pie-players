@@ -40,42 +40,79 @@ export function parsePackageRequest(pathname: string): PackageRequest | null {
 }
 
 /**
- * Resolve the entry file path for a package on disk (pie-elements-ng only)
+ * A module file on disk and its path inside the package's `dist`, which is
+ * where its relative imports resolve from.
+ */
+export interface ResolvedEntry {
+	file: string;
+	distPath: string;
+}
+
+/**
+ * The `dist` directories a package can be built to in pie-elements-ng, in
+ * lookup order.
+ */
+function packageDistDirs(pieElementsNgRoot: string, pkg: string): string[] {
+	const [scope, name] = pkg.split("/") as [string, string];
+	if (scope === "@pie-element") {
+		return ["elements-react", "elements-svelte"].map((elementWorkspace) =>
+			path.join(pieElementsNgRoot, "packages", elementWorkspace, name, "dist"),
+		);
+	}
+	if (scope === "@pie-lib") {
+		return ["lib-react", "lib-svelte"].map((libWorkspace) =>
+			path.join(pieElementsNgRoot, "packages", libWorkspace, name, "dist"),
+		);
+	}
+	if (scope === "@pie-elements-ng") {
+		// @pie-elements-ng/shared-* packages are in packages/shared/
+		// e.g. @pie-elements-ng/shared-math-rendering -> packages/shared/math-rendering
+		const packageName = name.replace(/^shared-/, "");
+		return [
+			path.join(pieElementsNgRoot, "packages", "shared", packageName, "dist"),
+		];
+	}
+	return [];
+}
+
+/**
+ * Resolve a package's `package.json` on disk (pie-elements-ng only)
+ * @returns The absolute file path, or null if not found
+ */
+export async function resolvePackageJson(
+	pieElementsNgRoot: string,
+	pkg: string,
+): Promise<string | null> {
+	for (const base of packageDistDirs(pieElementsNgRoot, pkg)) {
+		const packageJsonPath = path.join(path.dirname(base), "package.json");
+		if (await fileExists(packageJsonPath)) return packageJsonPath;
+	}
+	return null;
+}
+
+/**
+ * Resolve the entry file for a package on disk (pie-elements-ng only)
+ *
+ * A subpath addresses a file inside the package's `dist`. The `dist/` prefix
+ * the npm layout carries is accepted, so `dist/browser/delivery/index.js`
+ * and `browser/delivery/index.js` are the same file.
+ *
  * @param pieElementsNgRoot - Root path to the pie-elements-ng repository
  * @param pkg - Package name (e.g., "@pie-element/hotspot")
  * @param subpath - Subpath within the package (e.g., "controller/index")
- * @returns The absolute file path, or null if not found
+ * @returns The file and its path inside `dist`, or null if not found
  */
 export async function resolveEntryFile(
 	pieElementsNgRoot: string,
 	pkg: string,
 	subpath: string,
-): Promise<string | null> {
-	const [scope, name] = pkg.split("/") as [string, string];
+): Promise<ResolvedEntry | null> {
+	const bases = packageDistDirs(pieElementsNgRoot, pkg);
 
-	let bases: string[];
-	if (scope === "@pie-element") {
-		// From pie-elements-ng repo
-		bases = ["elements-react", "elements-svelte"].map((elementWorkspace) =>
-			path.join(pieElementsNgRoot, "packages", elementWorkspace, name, "dist"),
-		);
-	} else if (scope === "@pie-lib") {
-		// From pie-elements-ng repo
-		bases = ["lib-react", "lib-svelte"].map((libWorkspace) =>
-			path.join(pieElementsNgRoot, "packages", libWorkspace, name, "dist"),
-		);
-	} else if (scope === "@pie-elements-ng") {
-		// @pie-elements-ng/shared-* packages are in packages/shared/
-		// e.g. @pie-elements-ng/shared-math-rendering -> packages/shared/math-rendering
-		const packageName = name.replace(/^shared-/, "");
-		bases = [
-			path.join(pieElementsNgRoot, "packages", "shared", packageName, "dist"),
-		];
-	} else {
-		return null;
-	}
-
-	const normalizedSubpath = subpath.replace(/^\/+/, "").replace(/\/+$/, "");
+	const normalizedSubpath = subpath
+		.replace(/^\/+/, "")
+		.replace(/\/+$/, "")
+		.replace(/^dist(?:\/|$)/, "");
 
 	const buildCandidates = (
 		basePath: string,
@@ -105,6 +142,11 @@ export async function resolveEntryFile(
 		return list;
 	};
 
+	const entry = (base: string, file: string): ResolvedEntry => ({
+		file,
+		distPath: path.relative(base, file).split(path.sep).join("/"),
+	});
+
 	for (const base of bases) {
 		if (!normalizedSubpath) {
 			// Try to read package.json to get the correct entry point
@@ -124,7 +166,7 @@ export async function resolveEntryFile(
 						// Convert relative path to absolute
 						const entryPath = path.join(path.dirname(base), defaultExport);
 						if (await fileExists(entryPath)) {
-							return entryPath;
+							return entry(base, entryPath);
 						}
 					}
 				}
@@ -133,7 +175,7 @@ export async function resolveEntryFile(
 				if (packageJson.main) {
 					const mainPath = path.join(path.dirname(base), packageJson.main);
 					if (await fileExists(mainPath)) {
-						return mainPath;
+						return entry(base, mainPath);
 					}
 				}
 			} catch (err) {
@@ -146,32 +188,12 @@ export async function resolveEntryFile(
 				path.join(base, "index.mjs"),
 			];
 			for (const c of rootCandidates) {
-				if (await fileExists(c)) return c;
+				if (await fileExists(c)) return entry(base, c);
 			}
 		} else {
 			const candidates = buildCandidates(base, normalizedSubpath);
 			for (const c of candidates) {
-				if (await fileExists(c)) return c;
-			}
-
-			// Controller/configure fallback for controller-local imports (e.g. defaults.js, utils.js)
-			if (!normalizedSubpath.startsWith("controller/")) {
-				const controllerCandidates = buildCandidates(
-					base,
-					path.join("controller", normalizedSubpath),
-				);
-				for (const c of controllerCandidates) {
-					if (await fileExists(c)) return c;
-				}
-			}
-			if (!normalizedSubpath.startsWith("configure/")) {
-				const configureCandidates = buildCandidates(
-					base,
-					path.join("configure", normalizedSubpath),
-				);
-				for (const c of configureCandidates) {
-					if (await fileExists(c)) return c;
-				}
+				if (await fileExists(c)) return entry(base, c);
 			}
 		}
 	}

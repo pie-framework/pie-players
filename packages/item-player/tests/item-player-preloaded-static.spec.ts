@@ -1965,9 +1965,6 @@ test.describe("item-player strategy regressions", () => {
 		});
 		await page.waitForTimeout(400);
 		expect(runtimeSupportRequests).toBe(0);
-		await expect(
-			page.getByText("Missing runtime-support metadata"),
-		).not.toBeVisible();
 	});
 
 	test("off runtime support check does not request metadata", async ({

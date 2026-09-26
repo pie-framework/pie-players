@@ -223,14 +223,6 @@ export function createJsDelivrLocalMapper() {
 			if (parts[2] === "dist") {
 				return `/${parts[0]}/${parts[1]}/${parts.slice(3).join("/")}`;
 			}
-			if (
-				/^browser\/(delivery|author|print|controller)\/.+\.js$/.test(
-					parsed.subpath,
-				) &&
-				!parsed.subpath.endsWith("/index.js")
-			) {
-				return `/${parts[0]}/${parts[1]}/browser/${path.basename(parsed.subpath)}`;
-			}
 			return parsed.localPath;
 		},
 	};

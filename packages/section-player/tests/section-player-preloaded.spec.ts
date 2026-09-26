@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const SPLITPANE_PRELOADED_PATH =
 	"/tts-ssml?mode=candidate&layout=splitpane&player=preloaded";
@@ -9,6 +9,18 @@ const FIXED_PRELOADED_EXPECTED_TAGS = [
 	"multiple-choice--version-11-4-3",
 	"categorize-element--version-11-3-2",
 ];
+
+// The demo players are not hosted, so each registered element needs the
+// controller whose `model()` the player runs.
+function collectMissingControllerWarnings(page: Page): string[] {
+	const warnings: string[] = [];
+	page.on("console", (message) => {
+		if (message.text().includes("is registered without a controller")) {
+			warnings.push(message.text());
+		}
+	});
+	return warnings;
+}
 
 test.describe("section player preloaded strategy", () => {
 	test("splitpane renders item shells with preloaded strategy", async ({
@@ -21,6 +33,7 @@ test.describe("section player preloaded strategy", () => {
 			if (url.includes("/bundles/")) bundleRequests.push(url);
 			if (url.includes("esm.sh")) esmRequests.push(url);
 		});
+		const controllerWarnings = collectMissingControllerWarnings(page);
 
 		await page.goto(SPLITPANE_PRELOADED_PATH, { waitUntil: "networkidle" });
 		await expect(page.locator(".preload-status")).toHaveCount(0, {
@@ -50,6 +63,7 @@ test.describe("section player preloaded strategy", () => {
 
 		expect(bundleRequests.length).toBeGreaterThan(0);
 		expect(esmRequests.length).toBe(0);
+		expect(controllerWarnings).toEqual([]);
 	});
 
 	test("vertical layout renders with preloaded strategy", async ({ page }) => {
@@ -66,6 +80,27 @@ test.describe("section player preloaded strategy", () => {
 		).toHaveCount(2, { timeout: 30_000 });
 	});
 
+	// These pages host their own section player, so they preload its elements
+	// themselves.
+	for (const path of ["/custom-tools", "/tts-toggle-speed"]) {
+		test(`${path} renders under the preloaded player`, async ({ page }) => {
+			const controllerWarnings = collectMissingControllerWarnings(page);
+			await page.goto(
+				`${path}?mode=candidate&layout=splitpane&player=preloaded`,
+				{ waitUntil: "networkidle" },
+			);
+			await expect(
+				page
+					.locator(
+						'pie-section-player-splitpane pie-item-player input[type="radio"]',
+					)
+					.first(),
+			).toBeVisible({ timeout: 30_000 });
+			await expect(page.locator(".preload-status")).toHaveCount(0);
+			expect(controllerWarnings).toEqual([]);
+		});
+	}
+
 	test("fixed-version demo preloads pinned passage and item versions", async ({
 		page,
 	}) => {
@@ -74,6 +109,7 @@ test.describe("section player preloaded strategy", () => {
 			const url = request.url();
 			if (url.includes("/bundles/")) bundleRequests.push(url);
 		});
+		const controllerWarnings = collectMissingControllerWarnings(page);
 		const fixedUrl = new URL(
 			"http://section-demos.local/preloaded-fixed-elements",
 		);
@@ -136,6 +172,54 @@ test.describe("section player preloaded strategy", () => {
 		expect(decodedBundleUrl).toContain("@pie-element/categorize@11.3.2");
 		expect(decodedBundleUrl).toContain("@pie-element/multiple-choice@11.4.3");
 		expect(decodedBundleUrl).toContain("@pie-element/passage@5.3.3");
+		expect(
+			await page.evaluate(
+				() =>
+					(window as { PIE_PRELOADED_ELEMENTS?: Record<string, string> })
+						.PIE_PRELOADED_ELEMENTS,
+			),
+		).toEqual({
+			"@pie-element/categorize": "@pie-element/categorize@11.3.2",
+			"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3",
+			"@pie-element/passage": "@pie-element/passage@5.3.3",
+		});
+		expect(controllerWarnings).toEqual([]);
+	});
+
+	// The demo imports pie-elements-ng's `mc-populated-blank` browser build and
+	// registers it with its controller, so no request fetches element code.
+	test("host-bundled element renders with no element request", async ({
+		page,
+		baseURL,
+	}) => {
+		const pageModules: string[] = [];
+		const elementRequests: string[] = [];
+		page.on("request", (request) => {
+			const url = request.url();
+			if (url.startsWith(`${baseURL}/`)) {
+				if (url.includes("mc-populated-blank")) pageModules.push(url);
+			} else if (/\/bundles\/|\/@pie-element\//.test(url)) {
+				elementRequests.push(url);
+			}
+		});
+		const controllerWarnings = collectMissingControllerWarnings(page);
+
+		await page.goto(
+			"/preloaded-bundled-elements?mode=candidate&layout=splitpane",
+			{ waitUntil: "networkidle" },
+		);
+		await expect(page.locator(".preload-status")).toHaveCount(0);
+		const choice = page
+			.locator("mc-populated-blank--version-0-3-0-next-16")
+			.getByRole("radio", { name: "teapot" });
+		await expect(choice).toBeVisible({ timeout: 30_000 });
+		await choice.click();
+		await expect(choice).toBeChecked();
+
+		// The element came with the page's own modules, and from nowhere else.
+		expect(pageModules.length).toBeGreaterThan(0);
+		expect(elementRequests).toEqual([]);
+		expect(controllerWarnings).toEqual([]);
 	});
 
 	// The demo binds the universal personal needs profile, so answer masking is a

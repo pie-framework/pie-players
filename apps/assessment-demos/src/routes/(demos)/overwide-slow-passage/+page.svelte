@@ -22,16 +22,12 @@
 	import { browser } from "$app/environment";
 	import { onMount } from "svelte";
 	import "@pie-players/pie-item-player";
+	import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
 
 	const SYNTHETIC_TAG = "pie-slow-passage";
+	const SYNTHETIC_PACKAGE = "@pie-demos/slow-passage";
 	const SYNTHETIC_PACKAGE_VERSION = "1.0.0";
-	// `makeUniqueTags` (run inside <pie-item-player>) rewrites every authored
-	// tag to `<base>--version-<dot-encoded-version>` so the same item can host
-	// multiple element versions on one page. We need to register the
-	// custom element under that versioned name *and* the bare name so the
-	// preloaded-strategy `assertRegistered` check finds it.
-	const SYNTHETIC_VERSIONED_TAG = `${SYNTHETIC_TAG}--version-${SYNTHETIC_PACKAGE_VERSION.replace(/\./g, "-")}`;
-	const SYNTHETIC_PACKAGE_SPEC = `@pie-demos/slow-passage@${SYNTHETIC_PACKAGE_VERSION}`;
+	const SYNTHETIC_PACKAGE_SPEC = `${SYNTHETIC_PACKAGE}@${SYNTHETIC_PACKAGE_VERSION}`;
 	const DEFAULT_DELAY_MS = 1500;
 
 	const PASSAGE_INNER_HTML = `
@@ -93,29 +89,26 @@
 		}
 	}
 
-	// The custom-elements spec only allows a constructor to be registered under
-	// one tag, so the versioned tag gets a thin subclass with the same behavior.
-	class SlowPassageVersioned extends SlowPassage {}
-
 	function ensureSlowPassageDefined(delayMs: number) {
 		if (!browser) return;
 		fallbackDelayMs = delayMs;
-		if (!customElements.get(SYNTHETIC_TAG)) {
-			customElements.define(SYNTHETIC_TAG, SlowPassage);
-		}
-		if (!customElements.get(SYNTHETIC_VERSIONED_TAG)) {
-			customElements.define(SYNTHETIC_VERSIONED_TAG, SlowPassageVersioned);
-		}
+		registerPreloadedElements([
+			{
+				tag: SYNTHETIC_TAG,
+				package: SYNTHETIC_PACKAGE,
+				version: SYNTHETIC_PACKAGE_VERSION,
+				element: SlowPassage,
+				// The passage has no model to process.
+				controller: { model: async (model: unknown) => model },
+			},
+		]);
 	}
 
 	const ITEM_CONFIG = {
 		id: "slow-passage-item",
 		markup: `<${SYNTHETIC_TAG}></${SYNTHETIC_TAG}>`,
-		// `pie-item-player` strategy="preloaded" runs `makeUniqueTags`, which
-		// rewrites the authored tag to `<base>--version-<encoded-version>`,
-		// then calls `assertRegistered` against the versioned name. We register
-		// both the bare and versioned tag in onMount so the assertion passes
-		// without going to a CDN.
+		// `registerPreloadedElements` in onMount defines the versioned tag the
+		// preloaded player asserts, so nothing is fetched.
 		elements: {
 			[SYNTHETIC_TAG]: SYNTHETIC_PACKAGE_SPEC,
 		},
@@ -136,9 +129,6 @@
 			delayMs = requestedDelay;
 		}
 		ensureSlowPassageDefined(delayMs);
-		(window as unknown as { PIE_PRELOADED_ELEMENTS?: Record<string, string> }).PIE_PRELOADED_ELEMENTS = {
-			"@pie-demos/slow-passage": SYNTHETIC_PACKAGE_SPEC,
-		};
 		mountedAt = performance.now();
 
 		// Poll the live DOM so the on-page status badge reflects whether the

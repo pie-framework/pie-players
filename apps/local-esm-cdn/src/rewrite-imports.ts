@@ -1,7 +1,14 @@
+import path from "node:path";
+
 export type RewriteOptions = {
 	esmShBaseUrl: string;
-	pkg?: string; // e.g., "@pie-lib/render-ui"
-	subpath?: string; // e.g., "controller/index" or empty
+	/** The package the module belongs to, e.g. "@pie-lib/render-ui". */
+	pkg?: string;
+	/**
+	 * The module's file path inside the package's `dist`, e.g.
+	 * "browser/delivery/index.js". Relative imports resolve against it.
+	 */
+	modulePath?: string;
 };
 
 function shouldRewriteToEsmSh(specifier: string): boolean {
@@ -102,30 +109,14 @@ function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
 			return specifier;
 		}
 
-		// For relative imports, convert to absolute package path
-		// e.g., "./feedback.js" in @pie-lib/render-ui becomes "/@pie-lib/render-ui/feedback.js"
-
-		// Remove leading ./ or ../
-		let cleaned = specifier;
-		if (cleaned.startsWith("./")) {
-			cleaned = cleaned.slice(2);
-		} else if (cleaned.startsWith("../")) {
-			// Handle ../ by going up in the subpath
-			// For now, just remove the ../
-			cleaned = cleaned.slice(3);
-		}
-
-		// Construct absolute path
-		if (opts.subpath) {
-			// If we're in a subpath, go up one level
-			const parts = opts.subpath.split("/");
-			parts.pop(); // Remove the file part
-			if (parts.length > 0) {
-				return `/${opts.pkg}/${parts.join("/")}/${cleaned}`;
-			}
-		}
-
-		return `/${opts.pkg}/${cleaned}`;
+		// The package's URL space mirrors its `dist`, so a relative import
+		// resolves against the importing file as the browser would resolve it.
+		const resolved = path.posix.join(
+			path.posix.dirname(opts.modulePath ?? ""),
+			specifier,
+		);
+		if (resolved === ".." || resolved.startsWith("../")) return specifier;
+		return `/${opts.pkg}/${resolved}`;
 	}
 
 	return specifier;
@@ -151,6 +142,8 @@ async function tryRewriteWithEsModuleLexer(
 		let out = "";
 		let last = 0;
 		for (const i of imports) {
+			// `import.meta` (d === -2) carries no specifier.
+			if (i.d === -2) continue;
 			const spec = code.slice(i.s, i.e);
 
 			// Skip if this is a dynamic import with a variable/expression (not a string literal)

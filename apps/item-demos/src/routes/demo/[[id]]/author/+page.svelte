@@ -2,7 +2,8 @@
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
-	import { makeUniqueTags } from '@pie-players/pie-players-shared/pie';
+	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
+	import { makeUniqueTags, parsePackageName } from '@pie-players/pie-players-shared/pie';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
@@ -316,36 +317,32 @@
 	}
 
 	function defineAuthoringContractFixture(currentConfig: any) {
-		const versionedConfig = makeUniqueTags({ config: currentConfig }).config;
-		const runtimeTag = Object.keys(versionedConfig?.elements ?? {})[0];
-		const packageSpec = versionedConfig?.elements?.[runtimeTag];
-		const modelId = versionedConfig?.models?.[0]?.id;
-		if (!runtimeTag || !packageSpec || !modelId) return;
-		const configTag = `${runtimeTag}-config`;
+		const [tag, packageSpec] = Object.entries(currentConfig?.elements ?? {})[0] ?? [];
+		const runtimeTag = Object.keys(
+			makeUniqueTags({ config: currentConfig }).config?.elements ?? {}
+		)[0];
+		const modelId = currentConfig?.models?.[0]?.id;
+		if (!tag || typeof packageSpec !== 'string' || !runtimeTag || !modelId) return;
+		const { name, version } = parsePackageName(packageSpec);
+		const controller = {
+			model: async (model: any) => model,
+			outcome: async () => ({
+				id: modelId,
+				element: runtimeTag,
+				score: 1,
+			}),
+		};
+		registerPreloadedElements([
+			{ tag, package: name, version, element: AuthoringFixtureElement, controller },
+		]);
 
-		if (!customElements.get(runtimeTag)) {
-			customElements.define(runtimeTag, AuthoringFixtureElement);
-		}
+		// Preloaded registration covers delivery elements only, so the authoring
+		// element's definition and registry entry are written here.
+		const configTag = `${runtimeTag}-config`;
 		if (!customElements.get(configTag)) {
 			customElements.define(configTag, AuthoringFixtureConfigElement);
 		}
-
 		const registry = ((window as any).PIE_REGISTRY ??= {});
-		registry[runtimeTag] = {
-			package: packageSpec,
-			status: 'loaded',
-			tagName: runtimeTag,
-			element: AuthoringFixtureElement,
-			controller: {
-				model: async (model: any) => model,
-				outcome: async () => ({
-					id: modelId,
-					element: runtimeTag,
-					score: 1,
-				}),
-			},
-			bundleType: 'client-player.js',
-		};
 		registry[configTag] = {
 			package: packageSpec,
 			status: 'loaded',

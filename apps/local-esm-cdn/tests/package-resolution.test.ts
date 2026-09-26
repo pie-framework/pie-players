@@ -68,7 +68,9 @@ describe("local-esm-cdn package resolution and serving", () => {
 			"@pie-lib/render-ui",
 			"",
 		);
-		expect(resolved).toContain("/packages/lib-react/render-ui/dist/main.js");
+		expect(resolved?.file).toContain(
+			"/packages/lib-react/render-ui/dist/main.js",
+		);
 	});
 
 	it("resolves @pie-element packages from the Svelte element workspace", async () => {
@@ -107,9 +109,10 @@ describe("local-esm-cdn package resolution and serving", () => {
 			"browser/delivery/index.js",
 		);
 
-		expect(resolved).toContain(
+		expect(resolved?.file).toContain(
 			"/packages/elements-svelte/simple-cloze/dist/browser/delivery/index.js",
 		);
+		expect(resolved?.distPath).toBe("browser/delivery/index.js");
 	});
 
 	it("serves JS module with expected headers when package exists", async () => {
@@ -169,6 +172,140 @@ describe("local-esm-cdn package resolution and serving", () => {
 		expect(body.ok).toBe(true);
 		expect(body.builtSharedPackages).toBe(1);
 		expect(body.sampleShared).toBe("math-rendering");
+	});
+
+	it("serves the npm package layout the jsDelivr provider requests", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const pkg = {
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-element" as const,
+			name: "multiple-choice",
+		};
+		await writePackageFile({
+			...pkg,
+			relativePath: "index.js",
+			content: "export {};",
+		});
+		await writePackageFile({
+			...pkg,
+			relativePath: "browser/delivery/index.js",
+			content: `import { Radio } from "../Radio-90M7O0Rk.js"; export default Radio;`,
+		});
+		await writePackageFile({
+			...pkg,
+			relativePath: "browser/Radio-90M7O0Rk.js",
+			content: "export class Radio {}",
+		});
+		const exportsMap = {
+			"./browser/delivery": { default: "./dist/browser/delivery/index.js" },
+		};
+		await writePackageJson({
+			...pkg,
+			content: { name: "@pie-element/multiple-choice", exports: exportsMap },
+		});
+		const context = createFixtureContext(fixture);
+		const base = "/@pie-element/multiple-choice@13.4.0-next.13";
+
+		const metadata = await handleRequest(
+			makeRequest(`${base}/package.json`),
+			context,
+		);
+		expect(metadata.status).toBe(200);
+		expect(metadata.headers.get("content-type")).toContain("application/json");
+		expect((await readJson<{ exports: unknown }>(metadata)).exports).toEqual(
+			exportsMap,
+		);
+
+		const view = await handleRequest(
+			makeRequest(`${base}/dist/browser/delivery/index.js`),
+			context,
+		);
+		expect(view.status).toBe(200);
+		expect(await view.text()).toContain(
+			'"/@pie-element/multiple-choice/browser/Radio-90M7O0Rk.js"',
+		);
+
+		const chunk = await handleRequest(
+			makeRequest("/@pie-element/multiple-choice/browser/Radio-90M7O0Rk.js"),
+			context,
+		);
+		expect(chunk.status).toBe(200);
+		expect(chunk.headers.get("x-local-esm-cdn-file")).toContain(
+			"/multiple-choice/dist/browser/Radio-90M7O0Rk.js",
+		);
+	});
+
+	it("resolves a directory request's relative imports against the file it serves", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const pkg = {
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-lib" as const,
+			name: "render-ui",
+		};
+		await writePackageFile({
+			...pkg,
+			relativePath: "index.js",
+			content: "export {};",
+		});
+		await writePackageFile({
+			...pkg,
+			relativePath: "controller/index.js",
+			content: `export { defaults } from "./defaults.js";`,
+		});
+		await writePackageFile({
+			...pkg,
+			relativePath: "controller/defaults.js",
+			content: "export const defaults = {};",
+		});
+		const context = createFixtureContext(fixture);
+
+		const controller = await handleRequest(
+			makeRequest("/@pie-lib/render-ui/controller"),
+			context,
+		);
+		expect(controller.status).toBe(200);
+		expect(await controller.text()).toContain(
+			'"/@pie-lib/render-ui/controller/defaults.js"',
+		);
+
+		const aliased = await handleRequest(
+			makeRequest("/@pie-lib/render-ui/defaults.js"),
+			context,
+		);
+		expect(aliased.status).toBe(404);
+	});
+
+	it("serves a file other than a module as its bytes", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const pkg = {
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-element" as const,
+			name: "math-inline",
+		};
+		await writePackageFile({ ...pkg, relativePath: "index.js", content: "" });
+		// A woff2 signature followed by bytes that are not UTF-8.
+		const font = new Uint8Array([
+			0x77, 0x4f, 0x46, 0x32, 0x00, 0xff, 0xfe, 0x80,
+		]);
+		await writePackageFile({
+			...pkg,
+			relativePath: "browser/assets/Symbola-4c507403.woff2",
+			content: font,
+		});
+
+		const response = await handleRequest(
+			makeRequest(
+				"/@pie-element/math-inline/browser/assets/Symbola-4c507403.woff2",
+			),
+			createFixtureContext(fixture),
+		);
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("content-type")).toBe("font/woff2");
+		expect(new Uint8Array(await response.arrayBuffer())).toEqual(font);
 	});
 
 	it("returns 404 json for missing package entry", async () => {

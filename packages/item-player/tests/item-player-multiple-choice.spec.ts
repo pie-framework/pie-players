@@ -578,6 +578,31 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(defaultExtraModels).toEqual({ legacyExtra: { preserved: true } });
 	});
 
+	// npm `latest` of multiple-choice is the legacy line, which ships no browser
+	// ESM, so `?player=esm` loads the demos' pinned pie-elements-ng build.
+	test("esm delivery renders the pie-elements-ng build", async ({ page }) => {
+		const browserBuilds: string[] = [];
+		page.on("response", (response) => {
+			if (
+				response.ok() &&
+				/\/@pie-element\/multiple-choice@[^/]+\/dist\/browser\/delivery\//.test(
+					response.url(),
+				)
+			) {
+				browserBuilds.push(response.url());
+			}
+		});
+
+		await page.goto(`${DELIVERY_PATH}&player=esm`, {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(page.getByRole("radio").first()).toBeVisible();
+		expect(browserBuilds.length).toBeGreaterThan(0);
+	});
+
 	test("author route loads and stays in sync with delivery/source", async ({
 		page,
 	}) => {

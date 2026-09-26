@@ -61,7 +61,7 @@ import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 
-import { ToolRegistry } from "./ToolRegistry.js";
+import { resolveToolProviderId, ToolRegistry } from "./ToolRegistry.js";
 import type {
 	ResolvedToolContext,
 	ToolContextResolver,
@@ -228,8 +228,11 @@ export interface ToolkitCoordinatorConfig {
 	toolConfigStrictness?: ToolConfigStrictness;
 
 	/**
-	 * Optional registry used for tool-config validation and provider descriptor resolution.
-	 * Defaults to packaged PIE tools when omitted.
+	 * Registry used for tool-config validation and the only source of tool
+	 * providers: the coordinator registers one per registration that carries a
+	 * provider descriptor. Omitted, it is empty, so nothing is validated and no
+	 * provider registers. For the packaged capability set, pass
+	 * `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`.
 	 */
 	toolRegistry?: ToolRegistry | null;
 
@@ -722,6 +725,14 @@ export class ToolkitCoordinator {
 	 */
 	private reportedUnboundFeaturePolicy = false;
 
+	/**
+	 * Whether {@link _initializeTTS} has already reported a non-browser backend
+	 * falling back to browser speech because no `tts` provider is registered.
+	 * Once per coordinator: a text-to-speech config change re-runs
+	 * initialization, and the missing provider is the same gap each time.
+	 */
+	private reportedMissingTTSProvider = false;
+
 	private static resolveConfig(
 		config: ToolkitCoordinatorConfig,
 	): ToolkitCoordinatorConfig {
@@ -1086,11 +1097,8 @@ export class ToolkitCoordinator {
 		if (!descriptor) return;
 		const toolConfig = this.getToolConfig(tool.toolId) || undefined;
 		if (toolConfig?.enabled === false) return;
-		const providerId =
-			descriptor.getProviderId?.(toolConfig) ??
-			toolConfig?.provider?.id ??
-			tool.toolId;
-		if (this.toolProviderRegistry.has(providerId)) return;
+		const providerId = resolveToolProviderId(tool, toolConfig);
+		if (!providerId || this.toolProviderRegistry.has(providerId)) return;
 		const provider = descriptor.createProvider(toolConfig);
 		const initConfig =
 			descriptor.getInitConfig?.(toolConfig) ??
@@ -2234,6 +2242,14 @@ export class ToolkitCoordinator {
 					normalized,
 				);
 			}
+		} else if (
+			resolvedBackend !== "browser" &&
+			!this.reportedMissingTTSProvider
+		) {
+			this.reportedMissingTTSProvider = true;
+			console.warn(
+				`[ToolkitCoordinator] Text-to-speech is configured for the "${resolvedBackend}" backend but falls back to browser speech: no "tts" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, so construct it with one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
+			);
 		}
 
 		// Fallback to browser provider

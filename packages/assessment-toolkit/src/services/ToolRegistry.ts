@@ -267,6 +267,27 @@ export interface ToolProviderDescriptor {
 	lazy?: boolean;
 }
 
+/**
+ * The id a registration's provider registers under for one tool config: the
+ * descriptor's answer, then the config's `provider.id`, then the tool id. `null`
+ * when the registration carries no provider.
+ *
+ * The coordinator registers providers under this id and the section player looks
+ * for them in a host-supplied coordinator by it, so the two resolve it one way.
+ */
+export function resolveToolProviderId(
+	registration: Pick<ToolRegistration, "toolId" | "provider">,
+	config: ToolRuntimeConfig | undefined,
+): string | null {
+	const descriptor = registration.provider;
+	if (!descriptor) return null;
+	return (
+		descriptor.getProviderId?.(config) ??
+		config?.provider?.id ??
+		registration.toolId
+	);
+}
+
 export interface ToolToolbarRenderResult {
 	toolId: string;
 	elements?: ToolRenderElement[];

@@ -57,8 +57,9 @@
 		createPieLogger,
 	} from "@pie-players/pie-players-shared";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
-	import { onDestroy } from "svelte";
+	import { onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
+	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
 	import {
@@ -191,6 +192,17 @@
 			activeToolkitCoordinator = coordinator as ToolkitCoordinatorApi;
 		}
 	}
+
+	// A coordinator the host supplies registers tool providers from its own
+	// registry, so a tool this player's toolbars render can have none behind it.
+	// The player's own coordinator is built from `effectiveToolRegistry` and is not
+	// checked.
+	$effect(() => {
+		const coordinator = activeToolkitCoordinator;
+		const registry = effectiveToolRegistry;
+		if (!coordinator || coordinator !== effectiveCoordinator) return;
+		return untrack(() => watchMissingToolProviders(coordinator, registry));
+	});
 
 	/**
 	 * The section-scoped surface this CE offers. Capabilities opt in by listing it

@@ -9,6 +9,7 @@ import {
 	hasInlinedSpeechRuleEngine,
 	hasSvelteDevRuntime,
 	looksUnminified,
+	newUrlTailLength,
 } from "../check-bundle-safety.mjs";
 
 // Roughly the shape the toolkit CE artifact had before it was minified:
@@ -342,5 +343,28 @@ describe("findUnguardedCustomElementDefines", () => {
 		const content =
 			'Ot(r,{},[],[]);e("pie-tool-ruler",r);function e(t,n){customElements.get(t)||customElements.define(t,n)}';
 		expect(findUnguardedCustomElementDefines(content)).toEqual([]);
+	});
+});
+
+describe("newUrlTailLength", () => {
+	test("counts the characters after the first `new URL`", () => {
+		expect(newUrlTailLength('let u=new URL("./w.js",import.meta.url);')).toBe(
+			'("./w.js",import.meta.url);'.length,
+		);
+	});
+
+	test("measures from the first of several, where the filter's backtracking starts", () => {
+		const content = 'new URL(a).href;f();new URL("./w.js",import.meta.url)';
+		expect(newUrlTailLength(content)).toBe(content.length - "new URL".length);
+	});
+
+	test("matches the whitespace the filter's `\\s+` allows", () => {
+		expect(newUrlTailLength("x=new\n\tURL(y)")).toBe("(y)".length);
+	});
+
+	test("is 0 without a `new URL`, however large the module", () => {
+		expect(
+			newUrlTailLength(`URL.createObjectURL(b);${"x".repeat(5_000_000)}`),
+		).toBe(0);
 	});
 });

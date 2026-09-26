@@ -559,10 +559,10 @@ export interface ToolkitServiceBundle {
  *
  * @example
  * ```typescript
- * import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+ * // createPackagedToolRegistry is exported by @pie-players/pie-default-tool-loaders
+ * const toolRegistry = createPackagedToolRegistry();
  *
  * // Create coordinator with configuration
- * const toolRegistry = createPackagedToolRegistry();
  * const coordinator = new ToolkitCoordinator({
  *   assessmentId: 'demo-three-questions',
  *   toolRegistry,

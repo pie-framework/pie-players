@@ -367,7 +367,7 @@ export function collectToolConfigDiagnostics(
 	// Tool-id and provider checks need a registry to check against, and every
 	// collector below returns early without one. Say so: this package no longer
 	// falls back to a packaged registry, so a caller that used to get id
-	// validation for free now gets none, and a silent downgrade from "your ids are
+	// validation for free now gets none, and a silent downgrade of "your ids are
 	// valid" to "nobody looked" is the kind of change that surfaces as a typo
 	// reaching a learner.
 	const hasConfiguredTools =

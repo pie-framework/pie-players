@@ -29,11 +29,56 @@ export type TTSBackend = NonNullable<TTSRuntimeSettings["backend"]>;
 export type TTSToolProviderConfig = RuntimeTTSConfig & {
 	backend: TTSBackend;
 	serverProvider?: TTSRuntimeSettings["serverProvider"];
+	/**
+	 * Bearer token for a server backend, sent as `Authorization`. A host supplies
+	 * it through `provider.runtime.authFetcher`.
+	 */
+	authToken?: string;
 	onTelemetry?: (
 		eventName: string,
 		payload?: Record<string, unknown>,
 	) => void | Promise<void>;
 };
+
+/** The part of `TTSToolProviderConfig` a server backend's provider reads. */
+type ServerBackendConfig = Omit<
+	TTSToolProviderConfig,
+	"backend" | "serverProvider" | "onTelemetry"
+>;
+
+/**
+ * Binds a server backend's provider to the config the registry initialized this
+ * tool provider with, including what `provider.runtime.authFetcher` returned.
+ * The bound config wins over the runtime config the TTS service initializes the
+ * provider with; `headers` and `providerOptions` merge key by key, keeping the
+ * host's headers and the service's telemetry reporter.
+ */
+function bindServerBackendConfig(
+	provider: ITTSProvider,
+	bound: ServerBackendConfig,
+): ITTSProvider {
+	return {
+		providerId: provider.providerId,
+		providerName: provider.providerName,
+		version: provider.version,
+		initialize: (config) => {
+			const runtime = config as ServerBackendConfig;
+			const merged: ServerBackendConfig = {
+				...runtime,
+				...bound,
+				headers: { ...runtime.headers, ...bound.headers },
+				providerOptions: {
+					...runtime.providerOptions,
+					...bound.providerOptions,
+				},
+			};
+			return provider.initialize(merged);
+		},
+		supportsFeature: (feature) => provider.supportsFeature(feature),
+		getCapabilities: () => provider.getCapabilities(),
+		destroy: () => provider.destroy(),
+	};
+}
 
 /**
  * TTS Tool Provider
@@ -188,7 +233,19 @@ export class TTSToolProvider
 				throw error;
 			}
 		})();
-		this.ttsProvider = new serverModule.ServerTTSProvider();
+		// The server adapter owns these fields. Picking them from its config type
+		// fails the build when one is renamed there or typed differently. The
+		// adapter is an optional peer, so it is named only in this body, which
+		// declaration emit leaves out (ADR 0002).
+		type ServerTTSProviderConfig =
+			import("@pie-players/tts-client-server").ServerTTSProviderConfig;
+		const { backend, serverProvider, onTelemetry, ...backendConfig } = config;
+		this.ttsProvider = bindServerBackendConfig(
+			new serverModule.ServerTTSProvider(),
+			backendConfig satisfies Partial<
+				Pick<ServerTTSProviderConfig, keyof ServerBackendConfig>
+			>,
+		);
 
 		console.log(
 			`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,

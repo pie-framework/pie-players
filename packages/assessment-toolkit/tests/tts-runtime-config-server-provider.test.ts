@@ -81,6 +81,7 @@ const speakWithSettings = async (settings: Record<string, unknown>) => {
 	return {
 		synthesis: requests.find((request) => request.url === API_ENDPOINT),
 		marks: requests.find((request) => request.url === MARKS_URL),
+		audio: requests.find((request) => request.url === AUDIO_URL),
 	};
 };
 
@@ -95,17 +96,20 @@ describe("runtime TTS config reaching ServerTTSProvider", () => {
 	});
 
 	test("trusts the configured asset origins with the authorization header", async () => {
-		const { marks } = await speakWithSettings({
+		const { marks, audio } = await speakWithSettings({
 			assetOrigins: ["https://cdn.example.test"],
 		});
 
-		expect(marks?.headers.Authorization).toBe("Bearer host-token");
+		expect(marks?.headers).toEqual({ Authorization: "Bearer host-token" });
+		expect(audio?.headers).toEqual({ Authorization: "Bearer host-token" });
 	});
 
 	test("keeps the authorization header off an asset origin outside the list", async () => {
-		const { marks } = await speakWithSettings({});
+		const { marks, audio } = await speakWithSettings({});
 
 		expect(marks).toBeDefined();
 		expect(marks?.headers.Authorization).toBeUndefined();
+		expect(audio).toBeDefined();
+		expect(audio?.headers.Authorization).toBeUndefined();
 	});
 });

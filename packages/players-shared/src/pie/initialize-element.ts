@@ -5,7 +5,6 @@
  * `element-observer.ts` can reuse it without importing the bundle loaders.
  */
 
-import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { pieRegistry } from "./registry.js";
@@ -97,7 +96,7 @@ export const initializePieElement = (
 		});
 
 		// Set model directly - server already processed it
-		element.model = wrapModelRichContent(model);
+		element.model = model;
 	} else {
 		// Controller available - run client-side processing (client-player.js bundle)
 		// Note: updatePieElementWithRef handles controller invocation

@@ -24,7 +24,6 @@ export {
 	wrapOverwideImages,
 	wrapOverwideImagesInElement,
 } from "./wrap-overwide-images.js";
-export { wrapModelRichContent } from "./wrap-model-rich-content.js";
 export {
 	isOverwideTableWrapMutation,
 	wrapOverwideTables,

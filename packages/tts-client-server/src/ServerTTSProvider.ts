@@ -74,8 +74,9 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	endpointValidationMode?: "voices" | "endpoint" | "none";
 
 	/**
-	 * Include auth headers when fetching custom-transport speech marks and audio URLs.
-	 * Defaults to false for compatibility.
+	 * Send the synthesis request's `Authorization` header, whether it comes from
+	 * `headers` or `authToken`, with the custom-transport speech-mark and audio
+	 * fetches. Defaults to false for compatibility.
 	 */
 	includeAuthOnAssetFetch?: boolean;
 
@@ -199,6 +200,25 @@ function scrubAuthHeaders(
 		cleaned[key] = value;
 	}
 	return cleaned;
+}
+
+/**
+ * The headers a custom-transport speech-mark or audio fetch starts from: the
+ * synthesis request's `Authorization` header under `includeAuthOnAssetFetch`,
+ * nothing otherwise.
+ */
+function assetFetchHeaders(
+	requestHeaders: Record<string, string>,
+	config: ServerTTSProviderConfig,
+): Record<string, string> {
+	const assetHeaders: Record<string, string> = {};
+	if (!config.includeAuthOnAssetFetch) return assetHeaders;
+	for (const [key, value] of Object.entries(requestHeaders)) {
+		if (key.toLowerCase() === "authorization") {
+			assetHeaders[key] = value;
+		}
+	}
+	return assetHeaders;
 }
 
 const getTelemetryReporter = (
@@ -490,14 +510,7 @@ const customAdapter: TransportAdapter = {
 	},
 	parseResponse: async (response, config, headers, signal, text) => {
 		const data: CustomTransportResponse = await response.json();
-		const marksHeaders: Record<string, string> = {};
-		if (config.includeAuthOnAssetFetch) {
-			for (const [key, value] of Object.entries(headers)) {
-				if (key.toLowerCase() === "authorization") {
-					marksHeaders[key] = value;
-				}
-			}
-		}
+		const marksHeaders = assetFetchHeaders(headers, config);
 		let speechMarks: NormalizedSynthesisResult["speechMarks"] = [];
 		const inlineSpeechMarks = parseInlineSpeechMarks(data.speechMarks);
 		if (inlineSpeechMarks.length > 0) {
@@ -804,12 +817,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				backend: this.config.provider || "server",
 				operation: "fetch-synthesized-audio-asset",
 			});
-			const assetHeaders: Record<string, string> = {};
-			if (this.config.includeAuthOnAssetFetch) {
-				if (this.config.authToken) {
-					assetHeaders["Authorization"] = `Bearer ${this.config.authToken}`;
-				}
-			}
+			const assetHeaders = assetFetchHeaders(headers, this.config);
 			const parsedAssetUrl = parseAssetUrl(audioAssetUrl, this.config);
 			if (parsedAssetUrl === null) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {

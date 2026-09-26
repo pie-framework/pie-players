@@ -80,6 +80,27 @@ test.describe("section player preloaded strategy", () => {
 		).toHaveCount(2, { timeout: 30_000 });
 	});
 
+	// These pages host their own section player, so they preload its elements
+	// themselves.
+	for (const path of ["/custom-tools", "/tts-toggle-speed"]) {
+		test(`${path} renders under the preloaded player`, async ({ page }) => {
+			const controllerWarnings = collectMissingControllerWarnings(page);
+			await page.goto(
+				`${path}?mode=candidate&layout=splitpane&player=preloaded`,
+				{ waitUntil: "networkidle" },
+			);
+			await expect(
+				page
+					.locator(
+						'pie-section-player-splitpane pie-item-player input[type="radio"]',
+					)
+					.first(),
+			).toBeVisible({ timeout: 30_000 });
+			await expect(page.locator(".preload-status")).toHaveCount(0);
+			expect(controllerWarnings).toEqual([]);
+		});
+	}
+
 	test("fixed-version demo preloads pinned passage and item versions", async ({
 		page,
 	}) => {

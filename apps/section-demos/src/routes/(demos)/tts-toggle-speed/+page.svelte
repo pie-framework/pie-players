@@ -28,6 +28,7 @@
 		PLAYER_OPTIONS,
 	} from "$lib/demo-runtime/demo-page-helpers";
 	import { withDemoLoaderOptions } from "$lib/demo-runtime/demo-player-config";
+	import { preloadSectionElements } from "$lib/demo-runtime/preload-utils";
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from "$lib/demo-runtime/section-demos-default-tts";
 	import type { PageData } from "./$types";
 
@@ -70,6 +71,8 @@
 	} satisfies ToolkitCoordinatorHooks);
 
 	let selectedPlayerType = $state(getUrlEnumParam("player", PLAYER_OPTIONS, "iife"));
+	let preloadedReady = $state(false);
+	let preloadedError = $state<string | null>(null);
 	let roleType = $state<"candidate" | "scorer">(
 		getUrlEnumParam("mode", MODE_OPTIONS, "candidate"),
 	);
@@ -119,6 +122,15 @@
 	// payload alone is invisible to `decideFeaturePolicy`.
 	$effect(() => {
 		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
+	});
+	$effect(() => {
+		preloadedReady = selectedPlayerType !== "preloaded";
+		preloadedError = null;
+		if (selectedPlayerType !== "preloaded") return;
+		return preloadSectionElements(resolvedSectionForPlayer, {
+			ready: () => (preloadedReady = true),
+			failed: (error) => (preloadedError = error.message),
+		});
 	});
 	const sessionPanelSectionId = $derived(
 		String(
@@ -238,7 +250,11 @@
 	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 >
-	{#if layoutType === "vertical"}
+	{#if preloadedError}
+		<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+	{:else if selectedPlayerType === "preloaded" && !preloadedReady}
+		<div class="preload-status">Preloading section item bundles...</div>
+	{:else if layoutType === "vertical"}
 		<pie-section-player-vertical
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
@@ -286,5 +302,16 @@
 		min-height: 0;
 		overflow: hidden;
 		background: var(--pie-background-dark, #ecedf1);
+	}
+
+	.preload-status {
+		padding: 0.75rem 1rem;
+		color: var(--color-base-content);
+		opacity: 0.8;
+	}
+
+	.preload-status.error {
+		color: var(--color-error);
+		opacity: 1;
 	}
 </style>

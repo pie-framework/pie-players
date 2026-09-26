@@ -240,7 +240,7 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     placement: {
       item: ["calculator", "textToSpeech", "annotationToolbar"],
-      section: ["theme", "textToSpeech"],
+      section: ["theme"],
       passage: ["textToSpeech", "lineReader"]
     }
   }

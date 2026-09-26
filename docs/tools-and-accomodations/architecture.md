@@ -388,13 +388,17 @@ calculatorState = {
 The configuration structure reflects this scope distinction via `tools.placement` and `tools.providers`:
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
+  toolRegistry,
   tools: {
     placement: {
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech'],
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
     },
     providers: {
       calculator: {

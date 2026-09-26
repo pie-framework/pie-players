@@ -28,20 +28,23 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 <script type="module">
   import '@pie-players/pie-section-player';
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
+    toolRegistry,
     tools: {
-      answerEliminator: { enabled: true }
+      placement: { item: ['answerEliminator'] }
     }
   });
 
   const player = document.getElementById('player');
-  player.toolkitCoordinator = coordinator;
+  player.runtime = { ...(player.runtime ?? {}), coordinator };
   player.section = mySection;
 </script>
 
-<pie-section-player id="player"></pie-section-player>
+<pie-section-player-splitpane id="player"></pie-section-player-splitpane>
 ```
 
 The section player automatically:
@@ -157,9 +160,13 @@ The answer eliminator stores state in **ElementToolStateStore** (ephemeral, clie
 To persist tool state across page refreshes:
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
-  tools: { answerEliminator: { enabled: true } }
+  toolRegistry,
+  tools: { placement: { item: ['answerEliminator'] } }
 });
 
 // Save to localStorage on change

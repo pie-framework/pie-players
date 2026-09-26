@@ -75,9 +75,12 @@ Use the current semantic tool IDs in docs and examples:
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo-assessment",
+  toolRegistry,
   tools: {
     placement: {
       section: ["theme", "graph", "periodicTable", "lineReader", "ruler"],
@@ -184,6 +187,7 @@ in the pipeline.
 ```ts
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo",
+  toolRegistry,
   tools: {
     placement: {
       item: ["textToSpeech"],
@@ -230,9 +234,9 @@ The `@pie-players/pie-section-player-tools-tts-settings` package is optional and
 ```ts
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo",
+  toolRegistry,
   tools: {
     placement: {
-      section: ["calculator"],
       item: ["calculator"],
     },
     providers: {

@@ -142,4 +142,25 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		expect(coordinator.toolProviderRegistry.has("tts")).toBe(true);
 		expect(providerWarnings()).toEqual([]);
 	});
+
+	test("a coordinator built from the player's registry is silent through a calculator provider change", async () => {
+		const playerRegistry = createPackagedToolRegistry();
+		const coordinator = createCoordinator({ toolRegistry: playerRegistry });
+		watch(coordinator, playerRegistry);
+		await coordinator.waitUntilReady();
+		await nextPoll();
+
+		coordinator.updateToolConfig("calculator", {
+			provider: { id: "calculator-geogebra" },
+		});
+		await nextPoll();
+
+		expect(coordinator.toolProviderRegistry.has("calculator-geogebra")).toBe(
+			true,
+		);
+		expect(coordinator.toolProviderRegistry.has("calculator-desmos")).toBe(
+			false,
+		);
+		expect(providerWarnings()).toEqual([]);
+	});
 });

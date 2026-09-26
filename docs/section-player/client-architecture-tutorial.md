@@ -98,9 +98,12 @@ When your host application needs to own the coordinator lifecycle — because it
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment-001',
+  toolRegistry,
   tools: {
     placement: {
       section: ['theme', 'graph', 'periodicTable'],
@@ -341,6 +344,7 @@ The following is a full client-side example showing:
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
 const customTtsProvider = {
   enabled: true,
@@ -379,8 +383,11 @@ const tools = {
   },
 };
 
+const toolRegistry = createPackagedToolRegistry();
+
 export const coordinator = new ToolkitCoordinator({
   assessmentId: "my-assessment-id",
+  toolRegistry,
   tools,
 });
 ```
@@ -723,6 +730,7 @@ Session persistence is wired through the `createSectionSessionPersistence` hook 
 ```ts
 const coordinator = new ToolkitCoordinator({
   assessmentId,
+  toolRegistry,
   tools,
   hooks: {
     async createSectionSessionPersistence(context, defaults) {

@@ -15,6 +15,7 @@
 		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-assessment-player": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-event-debugger": "workspace:*",

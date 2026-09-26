@@ -27,9 +27,12 @@ placement, and provider setup.
 ```javascript
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  toolRegistry,
   accessibility: {
     catalogs: assessment.accessibilityCatalogs ?? [],
     language: 'en-US',
@@ -86,6 +89,7 @@ For production with high-quality voices and precise word highlighting:
 ```javascript
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  toolRegistry,
   accessibility: {
     catalogs: assessment.accessibilityCatalogs ?? [],
     language: 'en-US',

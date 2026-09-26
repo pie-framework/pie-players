@@ -200,9 +200,12 @@ When the host constructs a `ToolkitCoordinator` for tool and TTS configuration, 
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'assessment-001',
+  toolRegistry,
   tools: { /* placement, providers */ },
   hooks: { /* persistence, error handling */ },
 });
@@ -311,8 +314,12 @@ Each section is passed to a `pie-section-player-splitpane` or `pie-section-playe
 Tools, TTS, accessibility, and theming are configured at the `ToolkitCoordinator` level — not the assessment player. The assessment player's role is to pass the coordinator through to each section player it mounts.
 
 ```ts
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'assessment-001',
+  toolRegistry,
   tools: {
     placement: {
       section: ['theme', 'graph', 'periodicTable', 'lineReader'],

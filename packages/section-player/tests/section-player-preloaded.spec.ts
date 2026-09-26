@@ -210,7 +210,7 @@ test.describe("section player preloaded strategy", () => {
 		);
 		await expect(page.locator(".preload-status")).toHaveCount(0);
 		const choice = page
-			.locator("mc-populated-blank--version-0-3-0-next-16")
+			.locator("mc-populated-blank--version-0-3-0-next-17")
 			.getByRole("radio", { name: "teapot" });
 		await expect(choice).toBeVisible({ timeout: 30_000 });
 		await choice.click();

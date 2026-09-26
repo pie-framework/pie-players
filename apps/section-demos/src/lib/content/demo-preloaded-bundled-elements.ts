@@ -5,7 +5,7 @@ export const MC_POPULATED_BLANK_PACKAGE = "@pie-element/mc-populated-blank";
  * The route registers the installed package under this version, so it equals
  * the exact version section-demos depends on.
  */
-export const MC_POPULATED_BLANK_VERSION = "0.3.0-next.16";
+export const MC_POPULATED_BLANK_VERSION = "0.3.0-next.17";
 
 export const demoPreloadedBundledElementsSection: AssessmentSection = {
 	identifier: "preloaded-bundled-elements",

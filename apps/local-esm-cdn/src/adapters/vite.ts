@@ -9,6 +9,11 @@ const LOCAL_CDN_REQUEST = /^\/@pie-(?:element|lib|elements-ng)\//;
 // addresses by URL.
 const FILE_REQUEST =
 	/^\/@pie-(?:element|lib|elements-ng)\/[^?#]+(?:\/package\.json|\.woff2)(?:[?#]|$)/;
+// An element's editor-runtime variant imports the runtime's specifiers bare,
+// for the page's import map to resolve. Vite's import analysis would resolve
+// them from node_modules, so these modules bypass the transform.
+const EDITOR_RUNTIME_VARIANT_REQUEST =
+	/^\/@pie-element\/[^/?#]+\/(?:dist\/)?browser\/editor-runtime\/[^?#]+\.m?js(?:[?#]|$)/;
 // Vite resolves a module's `new URL("./asset", import.meta.url)` against the
 // module's id as a path on disk, which this URL space is not. Marked ignored,
 // the URL resolves in the browser against the module's URL, as from a CDN.
@@ -94,7 +99,15 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 			server = serverInstance;
 
 			serverInstance.middlewares.use((req, res, next) => {
-				if (!req.url || !FILE_REQUEST.test(req.url)) return next();
+				if (
+					!req.url ||
+					!(
+						FILE_REQUEST.test(req.url) ||
+						EDITOR_RUNTIME_VARIANT_REQUEST.test(req.url)
+					)
+				) {
+					return next();
+				}
 				cdn
 					.handler(new Request(`http://localhost${req.url}`))
 					.then(async (response) => {

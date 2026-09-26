@@ -82,6 +82,24 @@ describe("local-esm-cdn import rewriting contract", () => {
 		);
 	});
 
+	it("leaves the bare specifiers it is given for the page's import map", async () => {
+		const rewritten = await rewriteImports(
+			`import { Editor } from "@tiptap/core"; import { jsx } from "react/jsx-runtime"; import { x } from "lodash-es";`,
+			{
+				esmShBaseUrl: "https://esm.sh",
+				pkg: ["@pie-element", "multiple-choice"].join("/"),
+				modulePath: "browser/editor-runtime/delivery/index.js",
+				bareSpecifiers: new Set(["@tiptap/core"]),
+			},
+		);
+
+		expect(rewritten).toContain('from "@tiptap/core"');
+		expect(rewritten).toContain(
+			'from "https://esm.sh/react@18.2.0/jsx-runtime"',
+		);
+		expect(rewritten).toContain('from "https://esm.sh/lodash-es"');
+	});
+
 	it("leaves a relative import that leaves the package's dist unrewritten", async () => {
 		const packageId = ["@pie-lib", "render-ui"].join("/");
 		const rewritten = await rewriteImports(`import x from "../outside.js";`, {

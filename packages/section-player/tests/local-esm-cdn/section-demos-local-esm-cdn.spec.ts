@@ -27,7 +27,8 @@ for (const path of ["/tts-ssml", "/two-passages"]) {
 			if (response.headers()["x-local-esm-cdn-file"]?.startsWith(CHECKOUT)) {
 				manifestsFromCheckout.push(url);
 			}
-			if (url.includes("/dist/browser/delivery/")) {
+			// The checkout's elements declare the shared editor runtime.
+			if (url.includes("/dist/browser/editor-runtime/delivery/")) {
 				browserBuilds.push(url);
 			}
 		});
@@ -45,6 +46,9 @@ for (const path of ["/tts-ssml", "/two-passages"]) {
 		await expect(page.getByText("Player Error")).toHaveCount(0);
 
 		expect(manifestsFromCheckout.length).toBeGreaterThan(0);
+		expect(manifestsFromCheckout).toContainEqual(
+			expect.stringContaining("/@pie-element/shared-editor-runtime@"),
+		);
 		expect(browserBuilds.length).toBeGreaterThan(0);
 		expect(loadedElsewhere).toEqual([]);
 	});
@@ -106,7 +110,7 @@ test("/preloaded-bundled-elements bundles the installed element", async ({
 	);
 	await expect(
 		page
-			.locator("mc-populated-blank--version-0-3-0-next-16")
+			.locator("mc-populated-blank--version-0-3-0-next-17")
 			.getByRole("radio", { name: "teapot" }),
 	).toBeVisible({ timeout: 30_000 });
 	expect(fromCheckout).toEqual([]);

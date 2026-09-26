@@ -254,7 +254,13 @@ the engine out; a scratch build with its configuration came out the same size.
 Host R declares only the Desmos engine and selects no other provider, so its Vite
 build replaced the other two with modules that throw when loaded. After its next
 install they are real lazy chunks it never fetches, and its install grows by the
-Cortex engine. Hosts V and P install neither the loaders nor the toolkit.
+Cortex engine. The Cortex package ships MathLive and the Compute Engine as chunks
+of their own, because Host R's SvelteKit build on Vite 7 tests every module
+against `/new\s+URL.+import\.meta\.url/s`, which on Node 26, in a build of its
+size, overflows V8's regexp stack once about 4M characters follow a module's
+first `new URL`; `check:bundle-safety` holds every dist module to 2M. Found by
+building Host R's committed checkout on 2026-09-26, so it does not advance the
+verification date. Hosts V and P install neither the loaders nor the toolkit.
 
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a

@@ -219,8 +219,8 @@ const enUS = {
 		},
 		graph: {
 			name: "Graph",
-			description: "Graphing calculator and coordinate plane",
-			buttonA11y: "Graph, graphing calculator",
+			description: "Coordinate plane",
+			buttonA11y: "Graph, coordinate plane",
 			tooltip: "Graph",
 			toolA11y: "Graph tool — draw points and lines on a coordinate grid",
 			canvasA11y: "Graph canvas — use tools to add points and draw lines",

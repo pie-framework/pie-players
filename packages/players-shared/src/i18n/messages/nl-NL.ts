@@ -165,8 +165,8 @@ const nlNL = {
 		},
 		graph: {
 			name: "Grafiek",
-			description: "Grafische rekenmachine en assenstelsel",
-			buttonA11y: "Grafiek, grafische rekenmachine",
+			description: "Assenstelsel",
+			buttonA11y: "Grafiek, assenstelsel",
 			tooltip: "Grafiek",
 			toolA11y:
 				"Grafiekhulpmiddel — punten en lijnen tekenen in een assenstelsel",

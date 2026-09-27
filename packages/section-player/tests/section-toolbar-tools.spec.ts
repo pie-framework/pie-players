@@ -19,7 +19,7 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 	},
 	{
 		id: "graph",
-		buttonAriaLabel: "Graph, graphing calculator",
+		buttonAriaLabel: "Graph, coordinate plane",
 		toolHostTag: "pie-tool-graph",
 		panelRole: "dialog",
 	},
@@ -297,7 +297,7 @@ test.describe("section toolbar tools", () => {
 			name: "Theme, change colors and contrast",
 		});
 		const graphButton = page.getByRole("button", {
-			name: "Graph, graphing calculator",
+			name: "Graph, coordinate plane",
 		});
 		await expect(themeButton).toBeVisible();
 		await expect(graphButton).toBeVisible();
@@ -385,7 +385,7 @@ test.describe("section toolbar tools", () => {
 
 		const toolbar = sectionToolbar(page);
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph, graphing calculator",
+			name: "Graph, coordinate plane",
 		});
 		await expect(graphButton).toBeVisible();
 		await graphButton.click();
@@ -414,7 +414,7 @@ test.describe("section toolbar tools", () => {
 		await gotoDemo(page);
 		const toolbar = sectionToolbar(page);
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph, graphing calculator",
+			name: "Graph, coordinate plane",
 		});
 		await graphButton.click();
 
@@ -469,7 +469,7 @@ test.describe("section toolbar tools", () => {
 		await gotoDemo(page);
 		const toolbar = page.locator("pie-section-toolbar").first();
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph, graphing calculator",
+			name: "Graph, coordinate plane",
 		});
 		await graphButton.click();
 
@@ -489,7 +489,7 @@ test.describe("section toolbar tools", () => {
 		await gotoDemo(page);
 		const toolbar = sectionToolbar(page);
 		const graphButton = toolbar.getByRole("button", {
-			name: "Graph, graphing calculator",
+			name: "Graph, coordinate plane",
 		});
 		await graphButton.focus();
 		await expect(graphButton).toBeFocused();

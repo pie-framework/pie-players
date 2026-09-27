@@ -131,16 +131,28 @@
 	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
 	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
+	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
+	// without that path, stays in <head> marked `data-pie-load-failed`: no later
+	// call requests it again, and no shadow root copies it.
+	const appendHeadStylesheet = (href: string) => {
+		if (document.querySelector(`link[href="${href}"]`)) return;
+		const link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.href = href;
+		link.addEventListener(
+			'error',
+			() => {
+				link.dataset.pieLoadFailed = '';
+			},
+			{ once: true }
+		);
+		document.head.appendChild(link);
+	};
 	let ndsAssetsInstalled = false;
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
 		ndsAssetsInstalled = true;
-		if (!document.querySelector('link[href*="Roboto"]')) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = ROBOTO_HREF;
-			document.head.appendChild(link);
-		}
+		if (!document.querySelector('link[href*="Roboto"]')) appendHeadStylesheet(ROBOTO_HREF);
 		// Only inject our FA stylesheets when the host page hasn't already
 		// loaded one. If we always appended Free, it would land later in the
 		// document cascade than the host's FA Pro and override Pro's
@@ -153,19 +165,8 @@
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
-		if (!document.querySelector(`link[href="${FA_FREE_HREF}"]`)) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = FA_FREE_HREF;
-			document.head.appendChild(link);
-		}
-		for (const href of FA_PRO_HREFS) {
-			if (document.querySelector(`link[href="${href}"]`)) continue;
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = href;
-			document.head.appendChild(link);
-		}
+		appendHeadStylesheet(FA_FREE_HREF);
+		for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
@@ -194,7 +195,24 @@
 		const documentFaLinks = Array.from(
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
 		).filter((link) => FA_HREF_PATTERN.test(link.href));
-		for (const link of documentFaLinks) appendLink(link.href);
+		// A stylesheet still loading is copied once it loads, so the copy comes from
+		// the cache; one that fails is not copied, since every copy would request
+		// it again. Chromium gives a link a `sheet` even when its load fails, so a
+		// failed one is known by its mark.
+		for (const link of documentFaLinks) {
+			if ('pieLoadFailed' in link.dataset) continue;
+			if (link.sheet) {
+				appendLink(link.href);
+				continue;
+			}
+			const settle = (event: Event) => {
+				link.removeEventListener('load', settle);
+				link.removeEventListener('error', settle);
+				if (event.type === 'load') appendLink(link.href);
+			};
+			link.addEventListener('load', settle);
+			link.addEventListener('error', settle);
+		}
 	};
 	const ndsIconButtonAction = (node: HTMLElement) => {
 		ensureNdsAssets();
@@ -989,9 +1007,10 @@
 	// Prefetch FA + Roboto into document head as soon as we know an NDS icon will
 	// render. The shadow-root injection in `ndsIconButtonAction` clones whatever
 	// <link>s are already on the page; running this first means the prod-host's FA
-	// stylesheet is guaranteed to be present by the time the button mounts.
+	// stylesheet is guaranteed to be present by the time the button mounts. Plain
+	// buttons render no FA glyphs, so without `ndsIcons` nothing is loaded.
 	$effect(() => {
-		if (!isBrowser) return;
+		if (!isBrowser || !useNdsIcons) return;
 		if (toolbarItems.some((item) => !!resolveFaIconName(item))) {
 			ensureNdsAssets();
 		}

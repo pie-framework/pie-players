@@ -149,7 +149,9 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	}
 
 	isEliminated(choiceId: string): boolean {
-		return this.highlights.has(choiceId);
+		return (
+			this.highlights.has(choiceId) || this.fallbackContainers.has(choiceId)
+		);
 	}
 
 	clearAll(): void {
@@ -170,7 +172,9 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	}
 
 	getEliminatedIds(): string[] {
-		return Array.from(this.highlights.keys());
+		return Array.from(
+			new Set([...this.highlights.keys(), ...this.fallbackContainers.keys()]),
+		);
 	}
 
 	private isSupported(): boolean {

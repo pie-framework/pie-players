@@ -71,18 +71,22 @@ export class MaskStrategy implements EliminationStrategy {
 	}
 
 	isEliminated(choiceId: string): boolean {
-		return this.highlights.has(choiceId);
+		return (
+			this.highlights.has(choiceId) || this.fallbackContainers.has(choiceId)
+		);
 	}
 
 	clearAll(): void {
-		for (const choiceId of this.highlights.keys()) {
+		for (const choiceId of this.getEliminatedIds()) {
 			this.remove(choiceId);
 		}
 		this.fallbackContainers.clear();
 	}
 
 	getEliminatedIds(): string[] {
-		return Array.from(this.highlights.keys());
+		return Array.from(
+			new Set([...this.highlights.keys(), ...this.fallbackContainers.keys()]),
+		);
 	}
 
 	private isSupported(): boolean {

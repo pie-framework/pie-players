@@ -513,6 +513,7 @@ tools: {
 **Available Item-Level Tools:**
 - **TTS (Text-to-Speech)**: Reads the specific question/passage text
 - **Answer Eliminator**: Strikes through answer choices for that question
+- **Calculator**: Basic, scientific or graphing calculator
 - **Highlighter**: Highlights text within the item (future)
 
 **Example Use Case:**
@@ -525,15 +526,7 @@ Tools that **float above the entire assessment** and persist across questions:
 ```typescript
 tools: {
   placement: {
-    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
-  },
-  providers: {
-    calculator: {
-      enabled: true,
-      provider: {
-        runtime: { authFetcher: async () => { /* ... */ } }
-      }
-    }
+    section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
   }
 }
 ```
@@ -541,12 +534,11 @@ tools: {
 **Characteristics:**
 - **Scope**: Section-wide, shared across all questions
 - **Lifecycle**: Single instance initialized for entire section
-- **State**: Persistent (calculator history remains as you navigate)
+- **State**: Persistent (a tool stays open and in place as you navigate)
 - **UI Pattern**: Draggable floating panels/overlays with z-index management
 - **State Persistence**: Global state maintained throughout section
 
 **Available Floating Tools:**
-- **Calculator**: Scientific/graphing calculator with computation history
 - **Graph**: Coordinate plane
 - **Periodic Table**: Interactive periodic table reference
 - **Protractor**: Angle measurement tool
@@ -556,7 +548,7 @@ tools: {
 - **Color Scheme**: High-contrast color adjustments
 
 **Example Use Case:**
-A student opens the calculator on Question 2, computes 45 × 12 = 540. They navigate to Question 7, and the calculator still shows their computation history. They can reference previous calculations across multiple questions without losing context.
+A student opens the periodic table on Question 2 and moves it beside the passage. When they navigate to Question 7, it is still open where they left it.
 
 ### When to Use Each
 

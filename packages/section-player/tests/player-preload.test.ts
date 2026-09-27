@@ -8,7 +8,10 @@ import {
 	mock,
 	test,
 } from "bun:test";
-import { BundleType } from "@pie-players/pie-players-shared";
+import {
+	BundleType,
+	registerPreloadedElements,
+} from "@pie-players/pie-players-shared";
 
 const ensureItemPlayerMathRenderingReady = mock(async () => undefined);
 
@@ -437,6 +440,52 @@ describe("warmupSectionElements", () => {
 		expect(renderable.config.elements["pie-mc-drift"]).toBe(
 			"@pie-element/mc-drift@2.0.0",
 		);
+	});
+
+	test("preloaded strategy defines the tag an item names for a package registered under another base tag", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		const Element = class extends HTMLElement {};
+		registerPreloadedElements([
+			{
+				tag: "pie-element-mc-authored",
+				package: "@pie-element/mc-authored",
+				version: "13.4.0",
+				element: Element,
+			},
+		]);
+		const item = (id: string, tag: string) =>
+			({
+				id,
+				config: {
+					markup: `<${tag} id="m1"></${tag}>`,
+					elements: { [tag]: "@pie-element/mc-authored@13.3.0" },
+					models: [{ id: "m1", element: tag }],
+				},
+			}) as any;
+		const host = window as unknown as {
+			PIE_PRELOADED_ELEMENTS?: Record<string, string>;
+		};
+		try {
+			await warmupSectionElements({
+				strategy: "preloaded",
+				renderables: [
+					item("item-registered-tag", "pie-element-mc-authored"),
+					item("item-other-tag", "mc-authored"),
+				],
+				resolvedPlayerProps: { hosted: true },
+				resolvedPlayerEnv: {},
+			});
+		} finally {
+			host.PIE_PRELOADED_ELEMENTS = undefined;
+		}
+		expect(
+			document.createElement("mc-authored--version-13-4-0"),
+		).toBeInstanceOf(Element);
+		expect(
+			(window as unknown as { PIE_REGISTRY: Record<string, any> }).PIE_REGISTRY[
+				"mc-authored--version-13-4-0"
+			]?.package,
+		).toBe("@pie-element/mc-authored@13.4.0");
 	});
 
 	test("preloaded strategy with missing aggregate tags throws diagnostic-rich PreloadStageError(stage=preloaded-assert)", async () => {

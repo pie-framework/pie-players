@@ -30,6 +30,8 @@ async function mountFreshSplitpane(
 	page: Page,
 	options: {
 		elementOverrides: Record<string, Record<string, string>>;
+		/** Per item ref, authored base tags to rename: `{ [from]: to }`. */
+		authoredTags?: Record<string, Record<string, string>>;
 		missingItem?: boolean;
 	},
 ): Promise<void> {
@@ -37,7 +39,7 @@ async function mountFreshSplitpane(
 	await expect(page.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
 
 	await page.evaluate(
-		({ registeredSpecs, elementOverrides, missingItem }) => {
+		({ registeredSpecs, elementOverrides, authoredTags, missingItem }) => {
 			const existing = document.querySelector("pie-section-player-splitpane") as
 				| (HTMLElement & { section?: unknown })
 				| null;
@@ -47,14 +49,30 @@ async function mountFreshSplitpane(
 			const section = JSON.parse(JSON.stringify(existing.section)) as {
 				assessmentItemRefs: Array<{
 					identifier: string;
-					item: { config: { elements: Record<string, string> } };
+					item: {
+						config: {
+							elements: Record<string, string>;
+							markup: string;
+							models: Array<{ element: string }>;
+						};
+					};
 				}>;
 			};
 			for (const ref of section.assessmentItemRefs) {
-				Object.assign(
-					ref.item.config.elements,
-					elementOverrides[ref.identifier] ?? {},
-				);
+				const config = ref.item.config;
+				Object.assign(config.elements, elementOverrides[ref.identifier] ?? {});
+				for (const [from, to] of Object.entries(
+					authoredTags[ref.identifier] ?? {},
+				)) {
+					config.elements[to] = config.elements[from];
+					delete config.elements[from];
+					config.markup = config.markup
+						.replaceAll(`<${from} `, `<${to} `)
+						.replaceAll(`</${from}>`, `</${to}>`);
+					for (const model of config.models) {
+						if (model.element === from) model.element = to;
+					}
+				}
 			}
 			if (missingItem) {
 				section.assessmentItemRefs.push({
@@ -119,6 +137,7 @@ async function mountFreshSplitpane(
 		{
 			registeredSpecs: REGISTERED_SPECS,
 			elementOverrides: options.elementOverrides,
+			authoredTags: options.authoredTags ?? {},
 			missingItem: options.missingItem === true,
 		},
 	);
@@ -174,6 +193,54 @@ test.describe("section player preloaded version drift", () => {
 				)?.item.config.elements["multiple-choice"],
 		);
 		expect(authoredSpec).toBe("@pie-element/multiple-choice@11.4.2");
+	});
+
+	test("renders an item authoring another base tag than the registered one", async ({
+		page,
+	}) => {
+		// The demo registers multiple-choice under its own `multiple-choice` tag.
+		await mountFreshSplitpane(page, {
+			elementOverrides: {},
+			authoredTags: {
+				"preloaded-fixed-multiple-choice-ref": {
+					"multiple-choice": "pie-element-multiple-choice",
+				},
+			},
+		});
+
+		const fresh = page.locator("pie-section-player-splitpane");
+		await expect(fresh.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
+		await expect(
+			fresh.locator("pie-element-multiple-choice--version-11-4-3"),
+		).toHaveCount(1);
+		await expect(fresh.locator("multiple-choice--version-11-4-3")).toHaveCount(0);
+		await expect
+			.poll(async () =>
+				(await recordedEvents(page)).map((event) => event.stage ?? event.type),
+			)
+			.toContain("pie-loading-complete");
+
+		const events = await recordedEvents(page);
+		expect(events.filter((event) => event.type === "framework-error")).toEqual(
+			[],
+		);
+		expect(events.map((event) => event.stage)).toContain("interactive");
+		// The section's items are not hosted, so the registration's controller
+		// comes along with the tag.
+		const controllers = await page.evaluate(() => {
+			const registry = (
+				window as unknown as {
+					PIE_REGISTRY: Record<string, { controller?: unknown }>;
+				}
+			).PIE_REGISTRY;
+			return {
+				registered: !!registry["multiple-choice--version-11-4-3"]?.controller,
+				same:
+					registry["pie-element-multiple-choice--version-11-4-3"]?.controller ===
+					registry["multiple-choice--version-11-4-3"]?.controller,
+			};
+		});
+		expect(controllers).toEqual({ registered: true, same: true });
 	});
 
 	test("reports an unregistered element as a framework error and holds readiness", async ({

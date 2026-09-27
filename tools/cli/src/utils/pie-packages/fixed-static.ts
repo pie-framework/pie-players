@@ -1,17 +1,18 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 import { assertElementPackagesAllowed } from "@pie-players/pie-players-shared/loaders";
 import { encodeElementPackageSpecs, parsePackageName } from "@pie-players/pie-players-shared/pie";
+import { transform } from "esbuild";
 
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
 	elements: string[]; // "@pie-element/foo@1.2.3"
-	elementTags?: Record<string, string>; // Package name -> authored base tag
+	elementTags?: Record<string, string>; // Package name -> base tag to register
 	iteration?: number;
 	loaderVersion?: string;
 	setName?: string; // Names a published version; local builds use the element hash
@@ -437,7 +438,7 @@ npm install @pie-players/pie-preloaded-player@${version}
 ></pie-item-player>
 \`\`\`
 
-The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Use the base tag selected by each build config's \`tag\` field; the default is \`pie-<package basename>\`. The generated registrations carry the canonical version suffix.
+The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Each element registers under the base tag its build config's \`tag\` field selects, \`pie-<package basename>\` by default, with the canonical version suffix. Content can author another base tag for a bundled package; the player defines that versioned tag from the registered element.
 
 A page that already registered \`pie-item-player\` — anything importing \`@pie-players/pie-section-player\` — renders these elements through that copy, and this package skips loading its own.
 
@@ -523,6 +524,30 @@ export async function parseElementsInput(
 	throw new Error("Either elementsFile or elementsString must be provided");
 }
 
+/**
+ * Strip the whitespace from every module under `dir`. Vite's library build
+ * leaves whitespace in the item player's ES output, because removing it drops
+ * the pure annotations bundlers read; a page loads this package's `dist/`
+ * unbundled. Each file keeps its name and imports. A deliberate trade:
+ * a host that bundles this package loses those annotations and the
+ * `webpackIgnore` hints on the `esm` strategy's runtime imports, which the
+ * `preloaded` strategy never runs.
+ */
+export async function minifyPlayerModules(dir: string): Promise<void> {
+	const files = (await readdir(dir, { recursive: true })).filter((file) =>
+		file.endsWith(".js"),
+	);
+	for (const file of files) {
+		const path = join(dir, file);
+		const { code } = await transform(await readFile(path, "utf-8"), {
+			loader: "js",
+			minifyWhitespace: true,
+			charset: "utf8",
+		});
+		await writeFile(path, code);
+	}
+}
+
 export async function buildPreloadedPlayerStaticPackage(
 	config: BuildStaticConfig,
 ): Promise<{ outputDir: string; version: string }> {
@@ -590,6 +615,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	const itemPlayerDistSrc = join(itemPlayerPkgDir, "dist");
 	const outputDistDir = join(outputDir, "dist");
 	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
+	await minifyPlayerModules(outputDistDir);
 
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
 	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);

@@ -32,6 +32,7 @@ import {
 	assertPieConfigContract,
 	assertRegistered,
 	BundleType,
+	defineAuthoredPreloadedTags,
 	type ElementMap,
 	type ElementPackagePolicy,
 	ensureRegistered,
@@ -345,11 +346,12 @@ export function describeBundleHost(
  * - `renderables.length === 0` — no-op. Nothing to load.
  * - `strategy === "preloaded"` — align each renderable's authored versions
  *   to the page's registrations (`alignPreloadedElementVersions`, as the
- *   item player does), then assert every aggregate tag is already
- *   registered with `customElements`. Throws `ElementAssertionError`
- *   (wrapped in `PreloadStageError` with stage `"preloaded-assert"`) on
- *   any missing tag, surfacing one section-level diagnostic instead of
- *   N small per-item rejections.
+ *   item player does), define each authored tag of a package registered
+ *   under another base tag (`defineAuthoredPreloadedTags`), then assert
+ *   every aggregate tag is registered with `customElements`. Throws
+ *   `ElementAssertionError` (wrapped in `PreloadStageError` with stage
+ *   `"preloaded-assert"`) on any missing tag, surfacing one section-level
+ *   diagnostic instead of N small per-item rejections.
  * - Otherwise: aggregate tags, build backend, install the math renderer
  *   unless the strategy is ESM, await `ensureRegistered`.
  *
@@ -395,7 +397,7 @@ export async function warmupSectionElements(args: {
 				args.resolvedPlayerEnv,
 			);
 			// The author view registers each element's editor under `<tag>-config`.
-			assertRegistered(
+			const expected: ElementMap =
 				view === "author"
 					? Object.fromEntries(
 							Object.entries(elements).map(([tag, spec]) => [
@@ -403,8 +405,9 @@ export async function warmupSectionElements(args: {
 								spec,
 							]),
 						)
-					: elements,
-			);
+					: elements;
+			defineAuthoredPreloadedTags(expected);
+			assertRegistered(expected);
 		} catch (error) {
 			throw new PreloadStageError("preloaded-assert", error);
 		}

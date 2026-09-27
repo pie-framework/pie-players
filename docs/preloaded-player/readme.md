@@ -99,12 +99,15 @@ of the config's sorted `package@version` list (`generateHash`), published as
 hash (`validateUniqueCombinations`) — configs must be unique element combinations,
 not just unique filenames. A config lists each package once at an exact
 version; the generator rejects a range or a repeated package. A config's
-optional `tag` field selects its authored base tag, such as `multiple-choice`
-or `pie-element-multiple-choice`. Omitting it selects
-`pie-<package basename>`. Registration derives each versioned tag from the base
-tag and the pinned version (`toPackageVersionedTag`). Match the base name in
-authored content; the player only substitutes bundled versions on its runtime
-copy. It does not rename arbitrary authored tags or alter model IDs.
+optional `tag` field selects the base tag the build registers the package
+under, such as `multiple-choice` or `pie-element-multiple-choice`. Omitting it
+selects `pie-<package basename>`. Registration derives each versioned tag from
+the base tag and the pinned version (`toPackageVersionedTag`). Content can
+author the package under any base tag: the player defines each authored
+versioned tag from the registered element
+([below](#consuming-it-pie-item-player-and-strategypreloaded)). The player
+changes only versions, on its runtime copy; authored base tags and model IDs
+stay as authored.
 
 ### Dist-tags
 
@@ -168,6 +171,15 @@ page registered. Before asserting, the player replaces each spec with the one
 runtime copy of the config. A package the map does not name keeps its authored
 spec.
 
+Content can also name a registered package under another base tag: one item
+authors `multiple-choice`, another `pie-element-multiple-choice`. After
+aligning, the player defines each versioned tag the page lacks as a subclass of
+the element registered for the same package spec, and records it in
+`window.PIE_REGISTRY` with that registration's controller and bundle type
+(`defineAuthoredPreloadedTags` in `@pie-players/pie-players-shared`). The item
+renders under its authored tag. A tag whose package spec the page did not
+register stays undefined, and `assertRegistered` reports it.
+
 ### Models and scoring
 
 A generated build registers view elements only: the PITS `player.js` bundle
@@ -210,7 +222,8 @@ see the mapping table in
 Section player's own pre-warm step (`warmupSectionElements`,
 `packages/section-player/src/components/shared/player-preload.ts`) aligns each
 item's and passage's authored versions with the same
-`alignPreloadedElementVersions`, then calls the same `assertRegistered` for
+`alignPreloadedElementVersions`, defines their authored tags with the same
+`defineAuthoredPreloadedTags`, then calls the same `assertRegistered` for
 `strategy="preloaded"` that item-player uses, so it asserts the tags the items
 mount. When the assertion fails, the items stay unmounted and the section
 reports an `element-preload` framework error, delivered like its other framework
@@ -270,7 +283,8 @@ The critical item-player suite includes a generated-package browser regression.
 It fetches the pinned multiple-choice PITS bundle through the real generator,
 packs the output with Bun, and serves only the extracted tarball over HTTP.
 It verifies chunk delivery, full package specs, authored tags with a stale
-version, import readiness, repeated registration, unchanged authored content,
+version, an authored base tag other than the build's in hosted and client
+players, import readiness, repeated registration, unchanged authored content,
 and actual answer updates. A missing-element fault verifies import rejection.
 Executable modules and player assets must come from that server; the
 existing math renderer's separate Speech Rule Engine JSON data requests are

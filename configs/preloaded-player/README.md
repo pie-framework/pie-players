@@ -13,9 +13,10 @@ starts a new set. Exactly one config sets `"latest": true`, in the
 `{ "latest": true, "elements": [...] }` form, and publishes under `latest` in
 place of its name.
 
-An element's optional `tag` is the authored base tag to register, for example
+An element's optional `tag` is the base tag to register, for example
 `multiple-choice`. Omit it to use `pie-<package basename>`. The generated package
-adds the canonical version suffix; content must use the same base tag.
+adds the canonical version suffix. Content can author another base tag for the
+same package; the player defines that versioned tag from the registered element.
 
 ## Local build
 

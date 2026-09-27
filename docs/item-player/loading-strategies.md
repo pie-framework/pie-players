@@ -145,7 +145,7 @@ The player assumes all required PIE custom elements are already defined in the b
 ></pie-item-player>
 ```
 
-Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`. The player replaces every authored spec of a recorded package with that version on its runtime copy of the config, then calls `assertRegistered` from the `ElementLoader` primitive for the versioned tags that result. A missing tag throws `ElementAssertionError`, naming each missing tag and the tags its package is registered as; there is no fall-back to bundle fetching.
+Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`. The player replaces every authored spec of a recorded package with that version on its runtime copy of the config. Content can author a package under another base tag than the one it is registered under, so the player then defines each resulting versioned tag the page lacks from the element registered for the same package spec, with that registration's controller and bundle type (`defineAuthoredPreloadedTags`), and calls `assertRegistered` from the `ElementLoader` primitive for the versioned tags. A tag whose package spec the page did not register stays undefined and throws `ElementAssertionError`, naming each missing tag and the tags its package is registered as; there is no fall-back to bundle fetching.
 
 ### Registering elements from npm
 
@@ -169,7 +169,7 @@ registerPreloadedElements([
 await import("@pie-players/pie-item-player");
 ```
 
-- `tag` is the base tag the content authors. The element registers under its versioned form, `pie-element-multiple-choice--version-13-4-0-next-15`.
+- `tag` is the base tag to register. The element registers under its versioned form, `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors the package under another base tag, such as `multiple-choice`, renders through the versioned tag the player defines from this registration.
 - `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package.
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
 - `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.

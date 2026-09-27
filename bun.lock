@@ -1021,6 +1021,7 @@
         "@oclif/core": "^5.0.0",
         "@oclif/plugin-help": "^6.3.0",
         "@pie-players/pie-players-shared": "workspace:*",
+        "esbuild": "^0.28.2",
       },
       "devDependencies": {
         "@types/node": "^26.6.2",

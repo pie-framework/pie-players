@@ -224,7 +224,7 @@ describe("registerPreloadedElements", () => {
 		["a partial version", { version: "1.0" }, "exact"],
 		["a v-prefixed version", { version: "v1.0.0" }, "exact"],
 		["build metadata", { version: "1.0.0+build.7" }, "exact"],
-		["an empty tag", { tag: "" }, "authored base tag"],
+		["an empty tag", { tag: "" }, "base tag to register"],
 		["a module without an element class", { element: {} }, "./browser/delivery module"],
 		["a controller without model()", { controller: { outcome: () => ({}) } }, "./browser/controller module"],
 	])("rejects %s before registering anything", (_label, override, message) => {

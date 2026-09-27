@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -10,6 +10,7 @@ import {
 	assertBuildElements,
 	generateHash,
 	generateIndex,
+	minifyPlayerModules,
 	parseElementsInput,
 	readElementSet,
 } from "./fixed-static.js";
@@ -248,5 +249,34 @@ describe("build element validation", () => {
 			{ package: "@pie-element/multiple-choice", version: "13.4.4" },
 			{ package: "legacy-element", version: "1.0.0" },
 		]);
+	});
+});
+
+describe("player module minification", () => {
+	test("strips each module's whitespace and keeps its name, imports and text", async () => {
+		const dir = await mkdtemp(join(os.tmpdir(), "pie-preloaded-minify-"));
+		await mkdir(join(dir, "chunks"));
+		await writeFile(
+			join(dir, "chunks", "label-1234.js"),
+			'const label = "Größe";\n\nexport { label as l };\n',
+		);
+		await writeFile(
+			join(dir, "pie-item-player.js"),
+			'import { l as label } from "./chunks/label-1234.js";\n\nexport function read() {\n  return label;\n}\n',
+		);
+		const declarations = "export declare function read(): string;\n";
+		await writeFile(join(dir, "pie-item-player.d.ts"), declarations);
+
+		await minifyPlayerModules(dir);
+
+		expect(await readFile(join(dir, "chunks", "label-1234.js"), "utf-8")).toBe(
+			'const label="Größe";export{label as l};\n',
+		);
+		expect(await readFile(join(dir, "pie-item-player.js"), "utf-8")).toBe(
+			'import{l as label}from"./chunks/label-1234.js";export function read(){return label}\n',
+		);
+		expect(await readFile(join(dir, "pie-item-player.d.ts"), "utf-8")).toBe(declarations);
+		const { read } = await import(pathToFileURL(join(dir, "pie-item-player.js")).href);
+		expect(read()).toBe("Größe");
 	});
 });

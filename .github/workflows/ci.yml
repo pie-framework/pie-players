@@ -13,6 +13,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Jobs restore the Turbo cache that turbo-cache.yml saves from develop, so a pull
+# request replays the builds its change leaves untouched. Restore-only: a pull
+# request's cache is readable by that pull request alone.
+env:
+  TURBO_CACHE_DIR: .turbo/cache
+
 jobs:
   lint-and-typecheck:
     name: Lint & Typecheck
@@ -29,6 +35,13 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
 
       - name: Verify CI Lint & Typecheck Gate
         run: bun run verify:ci-lint-typecheck
@@ -48,6 +61,13 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
 
       - name: Build All Packages
         run: bun run build
@@ -87,11 +107,6 @@ jobs:
             command: test:e2e:assessment-player
           - name: item-player-critical
             command: test:e2e:item-player:critical
-          # The whole section-player suite, not a subset. The four critical specs
-          # were the only ones CI ran, and three stale specs and two real product
-          # defects sat undetected for months behind that gap.
-          - name: section-player
-            command: test:e2e:section-player
           - name: players-shared-sanitizer
             command: test:e2e:players-shared
           - name: print-player-sanitizer
@@ -111,6 +126,14 @@ jobs:
         if: env.RUN_HEAVY == 'true'
         run: bun install --frozen-lockfile
 
+      - name: Restore Turbo Cache
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
       - name: Install Playwright Chromium
         if: env.RUN_HEAVY == 'true'
         run: bunx playwright install --with-deps chromium
@@ -118,12 +141,6 @@ jobs:
       - name: Run Critical E2E
         if: env.RUN_HEAVY == 'true'
         run: bun run ${{ matrix.command }}
-
-      # The Cortex calculator's own browser suite runs in the section-player job,
-      # which already installs Chromium, so it adds no check to require.
-      - name: Run Cortex Calculator E2E
-        if: env.RUN_HEAVY == 'true' && matrix.name == 'section-player'
-        run: bun run --cwd packages/calculator-cortex test:e2e
 
       # Playwright writes error-context.md, a screenshot, and a video per failed
       # test. Without them a red check carries only the assertion line, and the
@@ -136,6 +153,136 @@ jobs:
           path: |
             packages/*/test-results
             apps/*/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The whole section-player suite, not a subset. The four critical specs were the
+  # only ones CI ran, and three stale specs and two real product defects sat
+  # undetected for months behind that gap. Sharded because on one worker it was
+  # the slowest leg by a factor of five; Playwright splits the spec files by test
+  # count, and `strategy.job-total` keeps the divisor in step with the matrix.
+  section-player-e2e:
+    name: Section Player E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    env:
+      RUN_HEAVY: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        if: env.RUN_HEAVY == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        if: env.RUN_HEAVY == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        if: env.RUN_HEAVY == 'true'
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Section Player E2E
+        if: env.RUN_HEAVY == 'true'
+        run: bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+      - name: Upload E2E Failure Artifacts
+        if: failure() && env.RUN_HEAVY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-section-player-${{ matrix.shard }}
+          path: packages/section-player/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The check develop's branch protection requires for the section-player suite:
+  # it passes only when every shard passed.
+  section-player-e2e-result:
+    name: Critical E2E (section-player)
+    needs: section-player-e2e
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Shard Results
+        run: test "${{ needs.section-player-e2e.result }}" = success
+
+  # The Cortex calculator's own browser suite, in parallel with the critical legs.
+  # Not a required check: a pull request runs it only when it touches Cortex, the
+  # calculator contract it depends on, or the toolchain, and every push to master
+  # runs it.
+  cortex-e2e:
+    name: Cortex Calculator E2E
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # A pull request checks out its merge commit, whose first parent is the base
+      # branch tip, so that diff is the pull request's change.
+      - name: Detect Cortex Changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] ||
+            git diff --name-only HEAD^1 HEAD | grep -qE '^(packages/calculator-cortex/|packages/calculator/|package\.json$|bun\.lock$|\.github/workflows/ci\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Bun
+        if: steps.changes.outputs.run == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        if: steps.changes.outputs.run == 'true'
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build Cortex Dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: bunx turbo build --filter='@pie-players/pie-calculator-cortex^...'
+
+      - name: Run Cortex Calculator E2E
+        if: steps.changes.outputs.run == 'true'
+        run: bun run --cwd packages/calculator-cortex test:e2e
+
+      - name: Upload E2E Failure Artifacts
+        if: failure() && steps.changes.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-cortex
+          path: packages/calculator-cortex/test-results
           retention-days: 7
           if-no-files-found: ignore
 
@@ -183,6 +330,8 @@ jobs:
       - name: Check Documentation
         run: bun run check:docs
 
+  # No Turbo cache here: Turbo's hash ignores the linker, so a hit would replay a
+  # hoisted-linker build in the one job that exists to build under isolation.
   isolated-linker-validation:
     name: Isolated Linker Validation
     if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}

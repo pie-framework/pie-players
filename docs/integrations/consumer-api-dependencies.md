@@ -51,14 +51,18 @@ unimplemented.
 What every recorded `session-changed` consumer does see is one additional event
 at a commit boundary — a player being rebuilt, a section swap, item navigation,
 `persist()`, and the page going hidden — carrying the response an element had
-coalesced and not yet announced, and marked with `detail.sessionCommitReason`.
-Hosts that persist off that event fire-and-forget, Host R among them, therefore
-save data they previously lost silently; the event's shape is otherwise
-unchanged, and nothing is announced that the host has already been told. This is
-an impact assessment, not a downstream refresh: all row verification dates above
-remain unchanged.
+coalesced and not yet announced. `pie-item-player`'s own `session-changed` marks
+it with `detail.sessionCommitReason`. Since 2026-09-27 the section player's
+channels carry the same marker: the item shell's `item-session-changed`, the
+toolkit's `session-changed`, and the coordinator's `item-session-data-changed`
+and `item-session-meta-changed`, which also carry `sectionId`. Until then none
+of them marked a commit. Hosts that persist off that event fire-and-forget,
+Host R among them, therefore save data they previously lost silently. The
+marker and the section id are additive fields, and nothing is announced that
+the host has already been told. This is an impact assessment, not a downstream
+refresh: all row verification dates above remain unchanged.
 
-Two consumer-side requirements follow, neither of which any recorded row
+Three consumer-side requirements follow, none of which any recorded row
 currently satisfies:
 
 - A host that **re-pushes `config` or re-renders in response to
@@ -71,18 +75,30 @@ currently satisfies:
   `context.requestOptions.keepalive` on the unload-path save and has to forward
   it to `fetch`. Unforwarded, that save is an ordinary request the browser may
   drop as the document goes away, which is the case the flag exists for.
-- A host **migrating off `<pie-player>`** keeps its session read. On
-  `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
-  element's entry into the host's own `session.data` array and the element
-  mutated that entry in place. `<pie-item-player>` owns its session in
-  `ItemController`, so it projects onto the host's container instead — an entry
-  per model at `load-complete`, then each change written into that entry before
-  the event — which holds the same read. The array and the entry objects keep
-  their identity, and entries this player did not produce are left alone, so a
-  section-level container stays intact. `detail.session` remains the
-  authoritative payload. The divergence was observed on a delivery host's item
-  wrapper during its move to `@pie-players/pie-preloaded-player`, on plain
-  `multiple-choice`, before the projection existed.
+- A host that **moves its navigation state on `item-session-data-changed`**
+  receives the commit for the item being left after its own navigation has
+  started. Host A's handler moves its current item to the event's item, so a
+  back or visited-section jump taken while an element still holds an
+  unannounced response puts the host back on the item just left, and the
+  committed response reaches the host's store after it has already submitted
+  that item on navigation. Such a handler should leave navigation state alone
+  for an event carrying `sessionCommitReason` and persist its session as usual;
+  `sectionId` names the section the item belongs to. Committing with
+  `persist()` before dispatching its own navigation also closes the gap. The
+  chain is traced through Host A's code; its runtime effect is inferred.
+
+A host **migrating off `<pie-player>`** keeps its session read. On
+`<pie-player>` the `session` property was live: `findOrAddSession` pushed each
+element's entry into the host's own `session.data` array and the element
+mutated that entry in place. `<pie-item-player>` owns its session in
+`ItemController`, so it projects onto the host's container instead — an entry
+per model at `load-complete`, then each change written into that entry before
+the event — which holds the same read. The array and the entry objects keep
+their identity, and entries this player did not produce are left alone, so a
+section-level container stays intact. `detail.session` remains the
+authoritative payload. The divergence was observed on a delivery host's item
+wrapper during its move to `@pie-players/pie-preloaded-player`, on plain
+`multiple-choice`, before the projection existed.
 
 A host that **unmounts `<pie-item-player>` itself** and persists from a
 `document`-level listener gets nothing from the player's own destroy: a custom
@@ -810,9 +826,9 @@ it would store those three types' responses under the wrong field without an
 error. An error thrown in that handler reaches the host's global error handler,
 which ends the session, so once an item is displayed every `session-changed` it
 does not skip has to carry a string `component` and a non-empty `session.data`,
-and an event with `complete: true` has to carry them before display too. The
-controller write-back path dispatches `{ session }` alone, and it is unreachable
-there only because the preloaded build registers no client-side controller.
+and an event with `complete: true` has to carry them before display too. A
+controller write-back dispatches no event of its own; the next element event
+carries it.
 
 ## Controller and coordinator methods
 

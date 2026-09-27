@@ -237,12 +237,26 @@ These are set via JavaScript, not HTML attributes.
 ## Events
 
 - `load-complete`: emitted when PIE elements finish loading.
-- `session-changed`: `{ session, ... }`. Emitted when the student interacts and
-  session data changes. A commit at a teardown, navigation or page-hidden seam
-  carries `detail.sessionCommitReason` (`"teardown" | "navigate" |
-  "page-hidden"`). A host that re-pushes `config` in response to this event
-  should ignore a commit, since the commit exists to report a response the host
-  is about to lose rather than to request a reload.
+- `session-changed`: emitted when an element's session or completion changes.
+  An element's own announcement is forwarded when its `complete` or its session
+  differs from what that element last announced, so each element reaches the
+  host once at load and one response produces one event. The detail has one of
+  two shapes:
+  - `{ complete, component, elementId, session: { id, data } }` when the item
+    session changed. `session` is the whole item session.
+  - `{ complete, component, elementId, session: null, intent: "metadata-only" }`
+    when it did not.
+
+  `complete` is the announcing element's own, `component` its tag and
+  `elementId` its model id. State an element's controller derives and writes
+  back, such as a shuffled choice order, dispatches no event of its own: the
+  `session` container holds it at once, and the next event carries it. A commit
+  at a teardown, navigation or page-hidden seam has the first shape plus
+  `sessionCommitReason` (`"teardown" | "navigate" | "page-hidden"`), and one
+  synthesized for an element that cannot commit itself carries no `complete`.
+  A host that re-pushes `config` in response to this event should ignore a
+  commit, since the commit exists to report a response the host is about to
+  lose rather than to request a reload.
 - `player-error`: `{ code?, message?, stage?, strategy?, mode?, cause? }`. Error
   event, for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
   When elements fail to register, `cause` names each one and why, such as the

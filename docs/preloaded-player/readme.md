@@ -227,8 +227,9 @@ item's and passage's authored versions with the same
 `strategy="preloaded"` that item-player uses, so it asserts the tags the items
 mount. When the assertion fails, the items stay unmounted and the section
 reports an `element-preload` framework error, delivered like its other framework
-errors to `framework-error` and `onFrameworkError`. It emits neither the
-`interactive` stage of `pie-stage-change` nor `pie-loading-complete`.
+errors to `framework-error` and `onFrameworkError`, and as the section
+controller's `section-error`. It emits neither the `interactive` stage of
+`pie-stage-change` nor `pie-loading-complete`.
 
 What section player does **not** do is import
 `@pie-players/pie-preloaded-player` itself — that package has no

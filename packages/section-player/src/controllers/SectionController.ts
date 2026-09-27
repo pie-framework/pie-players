@@ -167,6 +167,12 @@ export class SectionController implements SectionControllerHandle {
 	private readonly trackedRenderables = new Map<string, TrackedRenderable>();
 	private readonly loadedRenderableKeys = new Set<string>();
 	private readonly itemCompletionByCanonicalId = new Map<string, boolean>();
+	// Each element's own `complete`, by canonical item id and element id. An
+	// item is complete when every element that has reported is.
+	private readonly elementCompletionByCanonicalId = new Map<
+		string,
+		Map<string, boolean>
+	>();
 	private sectionLoadingComplete = false;
 	private totalRegistered = 0;
 	private totalLoaded = 0;
@@ -1277,6 +1283,12 @@ export class SectionController implements SectionControllerHandle {
 				? result.eventDetail.complete
 				: this.readCompleteFromSession(result.eventDetail.session);
 
+		const { elementId, sessionCommitReason } = result.eventDetail;
+		const reporting = {
+			...(elementId ? { elementId } : {}),
+			sectionId: this.state.input?.sectionId || "",
+			...(sessionCommitReason ? { sessionCommitReason } : {}),
+		};
 		if (intent === "metadata-only") {
 			const metaEvent: ItemSessionMetaChangedEvent = {
 				type: "item-session-meta-changed",
@@ -1284,6 +1296,7 @@ export class SectionController implements SectionControllerHandle {
 				canonicalItemId,
 				complete: result.eventDetail.complete,
 				component: result.eventDetail.component,
+				...reporting,
 				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 				timestamp,
 			};
@@ -1297,6 +1310,7 @@ export class SectionController implements SectionControllerHandle {
 				intent: result.eventDetail.intent,
 				complete: result.eventDetail.complete,
 				component: result.eventDetail.component,
+				...reporting,
 				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 				timestamp,
 			};
@@ -1307,7 +1321,11 @@ export class SectionController implements SectionControllerHandle {
 			this.updateItemCompleteState({
 				itemId: result.eventDetail.itemId,
 				canonicalItemId,
-				complete: completeFromEvent,
+				complete: this.recordElementCompletion(
+					canonicalItemId,
+					elementId,
+					completeFromEvent,
+				),
 				timestamp,
 			});
 		}
@@ -1528,6 +1546,7 @@ export class SectionController implements SectionControllerHandle {
 		this.trackedRenderables.clear();
 		this.loadedRenderableKeys.clear();
 		this.itemCompletionByCanonicalId.clear();
+		this.elementCompletionByCanonicalId.clear();
 		this.sectionLoadingComplete = false;
 		this.totalRegistered = 0;
 		this.totalLoaded = 0;
@@ -1567,6 +1586,8 @@ export class SectionController implements SectionControllerHandle {
 		for (const item of items) {
 			const complete = this.readCompleteFromSession(item.session);
 			if (typeof complete === "boolean") {
+				// A persisted item completion replaces what its elements reported.
+				this.elementCompletionByCanonicalId.delete(item.canonicalItemId);
 				this.itemCompletionByCanonicalId.set(item.canonicalItemId, complete);
 			} else if (!this.itemCompletionByCanonicalId.has(item.canonicalItemId)) {
 				this.itemCompletionByCanonicalId.set(item.canonicalItemId, false);
@@ -1574,6 +1595,31 @@ export class SectionController implements SectionControllerHandle {
 		}
 		this.emitSectionItemsCompleteIfChanged(Date.now());
 		this.notifyTimedMediaDeliveryChanged();
+	}
+
+	/**
+	 * The item's completion after one element reports its own. A report that
+	 * names no element is the item's completion itself.
+	 */
+	private recordElementCompletion(
+		canonicalItemId: string,
+		elementId: string | undefined,
+		complete: boolean,
+	): boolean {
+		if (!elementId) {
+			this.elementCompletionByCanonicalId.delete(canonicalItemId);
+			return complete;
+		}
+		let elements = this.elementCompletionByCanonicalId.get(canonicalItemId);
+		if (!elements) {
+			elements = new Map();
+			this.elementCompletionByCanonicalId.set(canonicalItemId, elements);
+		}
+		elements.set(elementId, complete);
+		for (const elementComplete of elements.values()) {
+			if (!elementComplete) return false;
+		}
+		return true;
 	}
 
 	private updateItemCompleteState(args: {

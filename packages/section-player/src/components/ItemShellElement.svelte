@@ -148,6 +148,9 @@
 			itemId,
 			canonicalItemId: canonicalItemId || itemId,
 			session: normalized.session,
+			...(normalized.sessionCommitReason
+				? { sessionCommitReason: normalized.sessionCommitReason }
+				: {}),
 		};
 		dispatchCrossBoundaryEvent(host, PIE_ITEM_SESSION_CHANGED_EVENT, payload);
 	}

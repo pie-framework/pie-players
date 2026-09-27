@@ -68,6 +68,11 @@ export interface AssessmentToolkitRuntimeContext {
 	 */
 	i18n?: I18nProvider;
 	reportSessionChanged?: (itemId: string, detail: unknown) => void;
+	/**
+	 * Reports a failure that keeps the section's content from loading as the
+	 * section controller's `section-error`, with source `section-runtime`.
+	 */
+	reportSectionError?: (error: unknown) => void;
 }
 
 export const assessmentToolkitRuntimeContext =

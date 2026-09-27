@@ -10,6 +10,7 @@ import type {
 	TimedMediaSectionProjection,
 	TimedMediaValidationError,
 } from "@pie-players/pie-players-shared/timed-media";
+import type { SessionCommitReason } from "@pie-players/pie-players-shared/pie";
 import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
 
 /**
@@ -109,8 +110,15 @@ export type SectionControllerItemSessionDataChangedEvent =
 		canonicalItemId: string;
 		session: unknown;
 		intent?: string;
+		/** The reported completion: the element's own when `elementId` is set. */
 		complete?: boolean;
 		component?: string;
+		/** The id of the element that reported, when the change names one. */
+		elementId?: string;
+		/** The controller input's `sectionId`. */
+		sectionId?: string;
+		/** Set when the change is a commit at a teardown, navigation or page-hidden seam. */
+		sessionCommitReason?: SessionCommitReason;
 		currentItemIndex: number;
 	};
 
@@ -119,8 +127,15 @@ export type SectionControllerItemSessionMetaChangedEvent =
 		type: "item-session-meta-changed";
 		itemId: string;
 		canonicalItemId: string;
+		/** The reported completion: the element's own when `elementId` is set. */
 		complete?: boolean;
 		component?: string;
+		/** The id of the element that reported, when the change names one. */
+		elementId?: string;
+		/** The controller input's `sectionId`. */
+		sectionId?: string;
+		/** Set when the change is a commit at a teardown, navigation or page-hidden seam. */
+		sessionCommitReason?: SessionCommitReason;
 		currentItemIndex: number;
 	};
 

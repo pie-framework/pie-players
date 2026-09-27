@@ -1136,6 +1136,13 @@ const DEFAULT_ENV = {
 					fallbackSession: detail,
 				});
 			},
+			reportSectionError: (error: unknown) => {
+				sectionEngine.reportSectionError({
+					source: "section-runtime",
+					error,
+					timestamp: Date.now(),
+				});
+			},
 		};
 	});
 	const hostRuntimeContextValue = $derived.by(

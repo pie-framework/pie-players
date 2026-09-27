@@ -321,7 +321,8 @@
 	 * A rejected warmup leaves the items unmounted, so it is a framework error:
 	 * through the toolkit coordinator it reaches `framework-error` listeners and
 	 * `onFrameworkError` like every other one. Without a coordinator the event
-	 * bubbles from the pane, as a tool surface's does.
+	 * bubbles from the pane, as a tool surface's does. It is also the section's
+	 * `section-error`, which section hosts take as the load failing.
 	 */
 	function reportWarmupFailure(error: unknown): void {
 		const { stage, cause } = describeWarmupFailure(error);
@@ -337,6 +338,11 @@
 			recoverable: false,
 			cause,
 		});
+		try {
+			chromeRuntimeContext?.reportSectionError?.(model);
+		} catch (reportError) {
+			logger.warn("element-preload section error report failed:", reportError);
+		}
 		const coordinator = chromeRuntimeContext?.toolkitCoordinator;
 		if (typeof coordinator?.reportFrameworkError === "function") {
 			try {

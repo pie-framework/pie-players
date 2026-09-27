@@ -114,6 +114,9 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 - `section-loading-complete` — every renderable in the section finished
   loading.
 - `section-items-complete-changed` — aggregate completion flip.
+- `section-error` — an item player failed (`source: "item-player"`), or the
+  section runtime did (`source: "section-runtime"`), a rejected element warmup
+  included, which leaves the items unmounted.
 - `section-navigation-change` — the controller's section identity changed.
 - `formative-try-recorded` — a learner checked an answer.
 - `formative-reveal-changed` — the reveal state changed without a Try: a learner

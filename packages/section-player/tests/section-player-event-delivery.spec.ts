@@ -58,6 +58,8 @@ type DeliveryLog = {
 	// Capturing listener on `window`: proves an event was dispatched at all.
 	window: Counts;
 	onFrameworkError: number;
+	// `section-error` from the coordinator's section lifecycle subscription.
+	sectionErrors: number;
 };
 
 declare global {
@@ -66,6 +68,9 @@ declare global {
 		__pieDeliveryCoordinator?: {
 			reportFrameworkError?: (model: unknown) => void;
 			setHooks?: (hooks: Record<string, unknown>) => void;
+			subscribeSectionLifecycleEvents?: (args: {
+				listener: (event: { type: string }) => void;
+			}) => () => void;
 		};
 		__pieCoordinatorHookCalls?: number;
 	}
@@ -111,6 +116,7 @@ async function mountFreshLayout(
 				document: {},
 				window: {},
 				onFrameworkError: 0,
+				sectionErrors: 0,
 			};
 			window.__pieDelivery = log;
 			const bump = (bucket: Counts, type: string) => {
@@ -183,11 +189,17 @@ async function mountFreshLayout(
 				window.addEventListener(type, () => bump(log.window, type), true);
 			}
 			fresh.addEventListener("toolkit-ready", (event) => {
-				window.__pieDeliveryCoordinator = (
+				const coordinator = (
 					event as CustomEvent<{
 						coordinator?: Window["__pieDeliveryCoordinator"];
 					}>
 				).detail?.coordinator;
+				window.__pieDeliveryCoordinator = coordinator;
+				coordinator?.subscribeSectionLifecycleEvents?.({
+					listener: (sectionEvent) => {
+						if (sectionEvent.type === "section-error") log.sectionErrors += 1;
+					},
+				});
 			});
 			const onFrameworkError = () => {
 				log.onFrameworkError += 1;
@@ -232,6 +244,7 @@ function deliveryLog(page: Page): Promise<DeliveryLog> {
 				document: {},
 				window: {},
 				onFrameworkError: 0,
+				sectionErrors: 0,
 			},
 	);
 }
@@ -409,10 +422,12 @@ test.describe("section player event delivery", () => {
 		await page.waitForTimeout(500);
 
 		const log = await deliveryLog(page);
+		// The section stays up, so the error is no `section-error`.
 		expect({
 			host: log.host["framework-error"] || 0,
 			onFrameworkError: log.onFrameworkError,
-		}).toEqual({ host: 1, onFrameworkError: 1 });
+			sectionErrors: log.sectionErrors,
+		}).toEqual({ host: 1, onFrameworkError: 1, sectionErrors: 0 });
 		await expect(page.locator(".pie-assessment-toolkit-error")).toHaveCount(0);
 		await expect(page.locator(`${tag} pie-item-player`).first()).toBeVisible();
 	});
@@ -496,10 +511,12 @@ test.describe("section player event delivery", () => {
 			onFrameworkError: log.onFrameworkError,
 			"framework-error": log.host["framework-error"] || 0,
 			"element-preload-error": log.host["element-preload-error"] || 0,
+			"section-error": log.sectionErrors,
 		}).toEqual({
 			onFrameworkError: 1,
 			"framework-error": 1,
 			"element-preload-error": 1,
+			"section-error": 1,
 		});
 	});
 

@@ -1,5 +1,8 @@
 import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
-import type { ItemSessionUpdateIntent } from "@pie-players/pie-players-shared";
+import type {
+	ItemSessionUpdateIntent,
+	SessionCommitReason,
+} from "@pie-players/pie-players-shared";
 import type {
 	AssessmentItemRef,
 	AssessmentSection,
@@ -189,6 +192,7 @@ export interface SessionChangedResult {
 		complete?: boolean;
 		component?: string;
 		elementId?: string;
+		sessionCommitReason?: SessionCommitReason;
 		timestamp: number;
 	};
 }
@@ -257,6 +261,10 @@ export interface ItemSessionDataChangedEvent
 	component?: string;
 	/** The id of the element that reported, when the change names one. */
 	elementId?: string;
+	/** The controller input's `sectionId`. */
+	sectionId?: string;
+	/** Set when the change is a commit at a teardown, navigation or page-hidden seam. */
+	sessionCommitReason?: SessionCommitReason;
 }
 
 export interface ItemSessionMetaChangedEvent
@@ -269,6 +277,10 @@ export interface ItemSessionMetaChangedEvent
 	component?: string;
 	/** The id of the element that reported, when the change names one. */
 	elementId?: string;
+	/** The controller input's `sectionId`. */
+	sectionId?: string;
+	/** Set when the change is a commit at a teardown, navigation or page-hidden seam. */
+	sessionCommitReason?: SessionCommitReason;
 }
 
 export interface ItemSelectedEvent extends ItemScopedControllerEventBase {

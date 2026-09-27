@@ -109,7 +109,12 @@ export class SectionSessionService {
 				intent: normalizedChange.intent as ItemSessionUpdateIntent,
 				complete: normalizedChange.complete,
 				component: normalizedChange.component,
-				elementId: normalizedChange.elementId,
+				...(normalizedChange.elementId
+					? { elementId: normalizedChange.elementId }
+					: {}),
+				...(normalizedChange.sessionCommitReason
+					? { sessionCommitReason: normalizedChange.sessionCommitReason }
+					: {}),
 				timestamp: Date.now(),
 			},
 		};

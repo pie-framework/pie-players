@@ -204,6 +204,34 @@ describe("normalizeItemSessionChange", () => {
 		expect(out.elementId).toBeUndefined();
 	});
 
+	test("carries a commit's reason, and a commit is never metadata-only", () => {
+		const session = { id: "", data: [{ id: "choice", value: ["A"] }] };
+		const commit = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session,
+				complete: true,
+				component: "multiple-choice--version-1-0-0",
+				sessionCommitReason: "page-hidden",
+			},
+			previousItemSession: session,
+		});
+		const repeat = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session,
+				complete: true,
+				component: "multiple-choice--version-1-0-0",
+			},
+			previousItemSession: session,
+		});
+
+		expect(commit.sessionCommitReason).toBe("page-hidden");
+		expect(commit.intent).toBe("replace-item-session");
+		expect("sessionCommitReason" in repeat).toBe(false);
+		expect(repeat.intent).toBe("metadata-only");
+	});
+
 	test("keeps raw explicit clears as element-session data changes", () => {
 		const out = normalizeItemSessionChange({
 			itemId: "item-1",

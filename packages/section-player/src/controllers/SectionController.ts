@@ -1283,7 +1283,12 @@ export class SectionController implements SectionControllerHandle {
 				? result.eventDetail.complete
 				: this.readCompleteFromSession(result.eventDetail.session);
 
-		const elementId = result.eventDetail.elementId;
+		const { elementId, sessionCommitReason } = result.eventDetail;
+		const reporting = {
+			...(elementId ? { elementId } : {}),
+			sectionId: this.state.input?.sectionId || "",
+			...(sessionCommitReason ? { sessionCommitReason } : {}),
+		};
 		if (intent === "metadata-only") {
 			const metaEvent: ItemSessionMetaChangedEvent = {
 				type: "item-session-meta-changed",
@@ -1291,7 +1296,7 @@ export class SectionController implements SectionControllerHandle {
 				canonicalItemId,
 				complete: result.eventDetail.complete,
 				component: result.eventDetail.component,
-				...(elementId ? { elementId } : {}),
+				...reporting,
 				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 				timestamp,
 			};
@@ -1305,7 +1310,7 @@ export class SectionController implements SectionControllerHandle {
 				intent: result.eventDetail.intent,
 				complete: result.eventDetail.complete,
 				component: result.eventDetail.component,
-				...(elementId ? { elementId } : {}),
+				...reporting,
 				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 				timestamp,
 			};

@@ -1,3 +1,5 @@
+import type { SessionCommitReason } from "./session-commit.js";
+
 export type ItemSessionContainer = {
 	id: string;
 	data: unknown[];
@@ -19,6 +21,8 @@ export type NormalizedItemSessionChange = {
 	 */
 	elementId?: string;
 	complete?: boolean;
+	/** The detail's `sessionCommitReason`, when the change is a commit. */
+	sessionCommitReason?: SessionCommitReason;
 };
 
 const DEFAULT_SESSION_ID = "";
@@ -291,6 +295,19 @@ export function mergeElementIntoSession(
 }
 
 export function normalizeItemSessionChange(args: {
+	itemId: string;
+	sessionDetail: unknown;
+	previousItemSession?: unknown;
+}): NormalizedItemSessionChange {
+	const change = classifyItemSessionChange(args);
+	const reason = (args.sessionDetail as Record<string, unknown> | null)
+		?.sessionCommitReason;
+	return typeof reason === "string" && reason
+		? { ...change, sessionCommitReason: reason as SessionCommitReason }
+		: change;
+}
+
+function classifyItemSessionChange(args: {
 	itemId: string;
 	sessionDetail: unknown;
 	previousItemSession?: unknown;

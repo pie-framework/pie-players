@@ -684,4 +684,51 @@ describe("SectionController item completion", () => {
 			{ type: "item-session-data-changed", elementId: "a" },
 		]);
 	});
+
+	test("names the section on its session events, and marks a commit", async () => {
+		const controller = await initializedController();
+		const reported: Array<Record<string, unknown>> = [];
+		controller.subscribe((event) => {
+			if (
+				event.type === "item-session-data-changed" ||
+				event.type === "item-session-meta-changed"
+			) {
+				reported.push({
+					type: event.type,
+					sectionId: event.sectionId,
+					commit: "sessionCommitReason" in event,
+					sessionCommitReason: event.sessionCommitReason,
+				});
+			}
+		});
+
+		report(controller, "a", false);
+		report(controller, "a", false);
+		controller.updateItemSession(itemId, {
+			component: "multiple-choice",
+			elementId: "a",
+			session: { id: "", data: [{ id: "a", value: ["y"] }] },
+			sessionCommitReason: "navigate",
+		});
+		expect(reported).toEqual([
+			{
+				type: "item-session-data-changed",
+				sectionId: "section-completion",
+				commit: false,
+				sessionCommitReason: undefined,
+			},
+			{
+				type: "item-session-meta-changed",
+				sectionId: "section-completion",
+				commit: false,
+				sessionCommitReason: undefined,
+			},
+			{
+				type: "item-session-data-changed",
+				sectionId: "section-completion",
+				commit: true,
+				sessionCommitReason: "navigate",
+			},
+		]);
+	});
 });

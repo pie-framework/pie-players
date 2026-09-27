@@ -100,9 +100,11 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 
 - `item-selected` — item navigation within the current section.
 - `item-session-data-changed` / `item-session-meta-changed` — per-item
-  session updates the persistence layer should observe. `elementId` names the
-  reporting element when the change carries one, and `complete` is then that
-  element's own.
+  session updates the persistence layer should observe. `sectionId` names the
+  section. `elementId` names the reporting element when the change carries one,
+  and `complete` is then that element's own. A commit carries
+  `sessionCommitReason` (see [Commit at a section
+  boundary](#commit-at-a-section-boundary)).
 - `item-complete-changed` — an item's completion flipped. An item is complete
   when every element that has reported its completion is complete. A report
   without `elementId`, and a restored session's item-level `complete`, set the
@@ -1011,6 +1013,15 @@ publishes the section's canonical `session-changed`. Both bubble through the
 layout element to `document`, and a listener on either receives each dispatch
 once.
 Host code persists from the controller's events or from its session snapshot.
+
+Each of those events marks a commit with `sessionCommitReason`
+(`"teardown" | "navigate" | "page-hidden"`): `item-session-changed`, the
+toolkit's `session-changed`, and the controller's `item-session-data-changed`
+and `item-session-meta-changed`. A commit at a section swap or item navigation
+reports the item being left, which the host may already have moved past, so a
+handler that sets its current item or navigation state from these events leaves
+that state alone on a commit and persists the commit's session as usual. The
+controller's events also carry `sectionId`, the section the item belongs to.
 
 Navigation inside a section keeps every item mounted, so nothing is discarded
 and the element's own debounce would complete on its own. The commit still runs

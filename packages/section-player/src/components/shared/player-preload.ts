@@ -428,8 +428,8 @@ export async function warmupSectionElements(args: {
 		args.strategy === "esm" ? "esm-load" : "iife-load";
 
 	try {
-		// ESM element builds bring their own math renderer.
-		if (args.strategy !== "esm") {
+		// IIFE bundles read the math renderer as they evaluate; ESM builds bring their own.
+		if (args.strategy === "iife") {
 			await ensureItemPlayerMathRenderingReady();
 		}
 		await ensureRegistered(elements, { backend, elementPackagePolicy });

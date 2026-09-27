@@ -349,10 +349,11 @@ The canonical producer-side contract for `@pie-element/*` packages lives in the
   need to disable a runtime strategy or view. Set
   `loaderOptions.runtimeSupportCheck = "on"` when you want the player to read
   those hints before loading.
-- `strategy="preloaded"` is not a separate package shape. It means the host has
-  already registered the versioned custom element tag before the player renders,
-  with `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
-  or a generated `@pie-players/pie-preloaded-player` build. See
+- `strategy="preloaded"` means the host installs pie-elements-ng packages as
+  npm dependencies and registers their ESM builds with
+  `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
+  before the player renders. Generated `@pie-players/pie-preloaded-player`
+  builds register the same way and remain for hosts that have not moved. See
   [Loading strategies](../../docs/item-player/loading-strategies.md#strategypreloaded).
 
 ## Authoring configuration

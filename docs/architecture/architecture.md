@@ -12,7 +12,7 @@ Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web 
 
 ### Key Capabilities
 
-- **Multiple Player Strategies**: IIFE, ESM, and Preloaded static (pre-bundled) delivery
+- **Multiple Player Strategies**: IIFE, ESM, and preloaded (host-bundled ESM) delivery
 - **Unified Authoring & Delivery**: Single players support both student/teacher delivery views and authoring/configuration modes
 - **Assessment Toolkit**: Composable services for full test delivery with navigation, tools, and accommodations
 - **Accessibility First**: WCAG 2.2 AA compliance, IEP/504 accommodation support
@@ -119,26 +119,20 @@ The ESM player supports loading different views/variants of elements through ESM
 
 ---
 
-#### 3. Preloaded Static Strategy (`<pie-item-player strategy="preloaded">`)
+#### 3. Preloaded Strategy (`<pie-item-player strategy="preloaded">`)
 
-**Purpose**: Pre-bundled player with predefined element combinations (performance optimized).
+**Purpose**: Elements resolved at the host's build time, with no runtime element loading.
 
 **Architecture**:
-- All elements pre-bundled at build time
-- Zero runtime bundle fetching
-- Published builds are versioned `<loaderVersion>-<set>.<iteration>`, where `set` is the config's file name; a local build without a set name takes the element-combination hash as its label
+- The host installs pie-elements-ng packages as npm dependencies; its build bundles their ESM builds
+- The host registers them with `registerPreloadedElements` before the player renders, and the player asserts they are registered
+- ESM only: runtime-loaded IIFE bundles are the `iife` strategy
 
 **Use Cases**:
-- Performance-critical deployments
-- Predefined question type sets
-- Reduced runtime overhead
+- Hosts that fix their element set and versions at build time
+- Offline and test environments
 
-**Key Features**:
-- Build-time element combination
-- Smaller API payload (data only, no bundles)
-- CI/CD publishing from in-repo configs
-
-See: [docs/preloaded-player/readme.md](../preloaded-player/readme.md)
+Generated `@pie-players/pie-preloaded-player` builds, which carry a PITS IIFE bundle, predate npm registration and stay published for hosts that have not moved; see [docs/preloaded-player/readme.md](../preloaded-player/readme.md).
 
 ---
 
@@ -164,15 +158,15 @@ See: [packages/print-player/README.md](../../packages/print-player/README.md)
 
 ### Player Comparison
 
-| Feature             | IIFE Strategy | ESM Strategy | Preloaded Static | Print Player |
+| Feature             | IIFE Strategy | ESM Strategy | Preloaded    | Print Player |
 | ------------------- | ------------- | ----------- | ------------ | ------------ |
-| **Bundle Format**   | IIFE          | ESM         | Pre-bundled  | ESM          |
+| **Bundle Format**   | IIFE          | ESM         | ESM (host)   | ESM          |
 | **Loading**         | Dynamic       | Dynamic     | Static       | Dynamic      |
-| **Browser Support** | All           | Modern      | All          | Modern       |
+| **Browser Support** | All           | Modern      | Modern       | Modern       |
 | **Bundle Size**     | Large         | Small       | Smallest     | Small        |
 | **Performance**     | Medium        | Medium      | Fast         | Fast         |
 | **Interactivity**   | Yes           | Yes         | Yes          | No (static)  |
-| **Use Case**        | IIFE bundles  | Modern apps | Performance  | Print/PDF    |
+| **Use Case**        | IIFE bundles  | Modern apps | Build-time   | Print/PDF    |
 
 ---
 
@@ -448,7 +442,7 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 Use a single item player for rendering individual questions. Suitable for embedding single questions in content management systems or learning platforms.
 
-**Players**: IIFE, ESM, or preloaded static strategy
+**Players**: IIFE, ESM, or preloaded strategy
 **Complexity**: Low
 **Use Case**: Single question rendering
 
@@ -556,7 +550,7 @@ but correctness is ownership-first by design.
 
 The **PIE Players** architecture provides a comprehensive, modern foundation for rendering PIE assessment content. The system is organized into three major areas:
 
-1. **Item Players** - Multiple player strategies (IIFE, ESM, Preloaded Static, Print) for different deployment scenarios
+1. **Item Players** - Multiple player strategies (IIFE, ESM, Preloaded, Print) for different deployment scenarios
 2. **Assessment Toolkit** - Composable services for full test delivery with tools and accommodations
 3. **Tools & Accommodations** - 15+ assessment tools with WCAG 2.2 AA compliance
 

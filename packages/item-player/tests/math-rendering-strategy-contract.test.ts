@@ -1,7 +1,8 @@
 /**
- * Only IIFE and preloaded elements need the math renderer the item player
- * installs on window. ESM element builds bring their own, so a page that only
- * loads ESM elements never fetches the MathJax module the renderer comes from.
+ * Only IIFE bundles need the math renderer the item player installs on window.
+ * ESM element builds, which the preloaded strategy renders, bring their own, so
+ * a page that only renders ESM elements never fetches the MathJax module the
+ * renderer comes from.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -27,11 +28,11 @@ describe("item-player math rendering contract", () => {
 		);
 	});
 
-	test("the load pipeline installs the math renderer for every strategy but ESM", () => {
+	test("the load pipeline installs the math renderer for IIFE only", () => {
 		const source = readSource("../src/PieItemPlayer.svelte");
 		const call = source.indexOf("await initializeMathRendering()");
 		const guard = source.lastIndexOf(
-			'if (normalizedStrategy !== "esm") {',
+			'if (normalizedStrategy === "iife") {',
 			call,
 		);
 

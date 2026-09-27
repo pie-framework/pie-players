@@ -3,12 +3,11 @@ import { initializeMathRendering } from "@pie-players/pie-players-shared/pie";
 let itemPlayerMathReadyPromise: Promise<void> | null = null;
 
 /**
- * Installs the math renderer that IIFE and preloaded elements expect on
- * window, unless the page already holds one. The players call it before
- * loading those elements, never for ESM ones, so a page that only loads ESM
- * elements never fetches it. A host that loads legacy IIFE element bundles
- * itself must call it first, because those bundles read the renderer as they
- * evaluate.
+ * Installs the math renderer that IIFE element bundles read on window, unless
+ * the page already holds one. The players call it only before loading IIFE
+ * bundles, so a page of ESM elements, preloaded or loaded by the player, never
+ * fetches it. A host that loads IIFE element bundles itself must call it first,
+ * because those bundles read the renderer as they evaluate.
  */
 export function ensureItemPlayerMathRenderingReady(): Promise<void> {
 	if (typeof window === "undefined") {

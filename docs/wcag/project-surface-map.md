@@ -90,4 +90,4 @@ Keep those roles separate to avoid duplicating standards text or letting test sp
 ## Scope Baseline Notes
 
 - Root CI validates build/lint/package rules and runs the critical Playwright e2e matrix, including axe-backed smoke checks.
-- Root pre-push hooks intentionally stay lightweight; run `bun run verify:local-pr` for the full local gate before higher-risk PRs.
+- The root pre-push hook runs the full local gate (`verify:pre-push`, which is `bun run verify:local-pr`) whenever a push carries new commits.

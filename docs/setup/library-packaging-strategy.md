@@ -46,11 +46,11 @@ For package `@pie-players/pie-section-player`, exports follow this shape:
 {
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/pie-section-player.d.ts",
       "import": "./dist/pie-section-player.js"
     },
     "./components/section-player-splitpane-element": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/pie-section-player.d.ts",
       "import": "./dist/pie-section-player.js"
     }
   }

@@ -78,6 +78,7 @@ export class MyCalculatorProvider implements CalculatorProvider {
 
 ## Implementations
 
+- `@pie-players/pie-calculator-cortex`
 - `@pie-players/pie-calculator-desmos`
 - `@pie-players/pie-calculator-geogebra`
 

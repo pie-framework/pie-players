@@ -4,6 +4,31 @@
 
 This is not an opinionated framework or monolithic "player" - it's a toolkit that solves specific problems through centralized service management.
 
+## Install
+
+```bash
+npm install @pie-players/pie-assessment-toolkit @pie-players/pie-default-tool-loaders
+```
+
+The examples build their tool registry with `createPackagedToolRegistry()` from
+`@pie-players/pie-default-tool-loaders`, so a host that imports it declares it
+in its own dependencies. The section player depends on it too, but strict
+installers such as pnpm expose only the packages a host declares.
+
+Server-backed TTS (`backend: "polly"`, `"google"` or `"server"`) loads
+`@pie-players/tts-client-server`, an optional peer of this package:
+
+```bash
+npm install @pie-players/tts-client-server
+```
+
+Without it, TTS initialization reports a `provider-init` framework error and
+falls back to browser speech.
+
+A `ToolkitCoordinator` registers tool providers only from its `toolRegistry`.
+Built without one, it registers none, skips tool-id and placement validation,
+and warns once (`tools.registryUnavailable`).
+
 ## What's New: ToolkitCoordinator
 
 ✨ **Centralized Service Management**: The new `ToolkitCoordinator` provides a single entry point for all toolkit services, simplifying initialization and configuration.
@@ -88,6 +113,7 @@ provider path is the item-player loader config:
 
 ### Toolkit-Owned Canonical Event Stream
 
+- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
@@ -446,7 +472,10 @@ demo composes the owned-coordinator form.
 The toolkit uses one canonical `tools` model with three concerns:
 
 - `policy`: allow/block constraints (global gates)
-- `placement`: where tools appear (`assessment`, `section`, `item`, `passage`, `rubric`, plus custom registered levels)
+- `placement`: where tools appear (`section`, `item`, `passage`). Each tool
+  declares the levels it supports; `calculator` is item-only, and a tool placed
+  at a level it does not support fails validation, which throws under the
+  default `toolConfigStrictness: "error"`.
 - `providers`: provider/runtime options (calculator, textToSpeech, etc.)
 
 Example:
@@ -458,11 +487,9 @@ tools: {
     blocked: ['graph']
   },
   placement: {
-    assessment: [],
-    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+    section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
     item: ['calculator', 'textToSpeech', 'answerEliminator'],
-    passage: ['textToSpeech'],
-    rubric: []
+    passage: ['textToSpeech']
   },
   providers: {
     calculator: {
@@ -514,7 +541,7 @@ tools: {
 - **TTS (Text-to-Speech)**: Reads the specific question/passage text
 - **Answer Eliminator**: Strikes through answer choices for that question
 - **Calculator**: Basic, scientific or graphing calculator
-- **Highlighter**: Highlights text within the item (future)
+- **Highlighter** (`annotationToolbar`): Highlights and annotates selected text; it opens from a text selection, outside the toolbars
 
 **Example Use Case:**
 A student uses answer eliminator on Question 3 to cross out choices B and D. When they navigate to Question 4, they see fresh, uneliminated choices. When they return to Question 3, their eliminations are restored.
@@ -544,8 +571,7 @@ tools: {
 - **Protractor**: Angle measurement tool
 - **Ruler**: Linear measurement tool (metric/imperial)
 - **Line Reader**: Reading guide/masking overlay
-- **Magnifier**: Screen magnification tool
-- **Color Scheme**: High-contrast color adjustments
+- **Color Scheme** (`theme`): High-contrast color adjustments
 
 **Example Use Case:**
 A student opens the periodic table on Question 2 and moves it beside the passage. When they navigate to Question 7, it is still open where they left it.
@@ -893,9 +919,9 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 ### ✅ QTI 3.0 Standard Access Features
 
 - **95+ Standardized Features**: Complete QTI 3.0 / IMS AfA 3.0 accessibility features
-- **9 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
+- **8 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
 - **Example Configurations**: Illustrative PNP profile examples (low vision, dyslexia, ADHD, etc.)
-- **Tool Mappings**: All 12 default tools map to standard QTI 3.0 features
+- **Tool Mappings**: Every packaged tool registration maps to standard QTI 3.0 features
 
 ### ✅ Section Player Integration
 
@@ -920,11 +946,9 @@ export interface ToolkitCoordinatorConfig {
       blocked?: string[];
     };
     placement?: {
-      assessment?: string[];
       section?: string[];
       item?: string[];
       passage?: string[];
-      rubric?: string[];
     };
     providers?: {
       textToSpeech?: {
@@ -1287,7 +1311,7 @@ mounted surface elements immediately.
 The section player provides automatic ToolkitCoordinator integration:
 
 ```html
-<pie-section-player-splitpane id="player"></pie-section-player-splitpane>
+<pie-section-player-splitpane id="player" section-id="section-1"></pie-section-player-splitpane>
 
 <script type="module">
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
@@ -1315,7 +1339,7 @@ The section player provides automatic ToolkitCoordinator integration:
 
   // Player automatically:
   // - Extracts services from coordinator
-  // - Generates section ID
+  // - Scopes its runtime engine to `section-id`
   // - Provides runtime context to child components
   // - Manages SSML extraction
   // - Handles catalog lifecycle
@@ -1662,8 +1686,8 @@ Full TypeScript definitions included:
 
 ```typescript
 import type {
-  IToolkitCoordinator,
-  IElementToolStateStore,
+  ToolkitCoordinatorApi,
+  ElementToolStateStoreApi,
   ToolkitCoordinatorConfig,
   ToolkitServiceBundle
 } from '@pie-players/pie-assessment-toolkit';
@@ -1677,7 +1701,7 @@ from tool configuration. Two sanitization layers apply:
 
 - **Item / passage markup** - sanitized by default in
   `pie-item-player`. See
-  [pie-item-player README](./README.md#content-trust-boundary)
+  [pie-item-player README](../item-player/README.md#content-trust-boundary)
   for the `trust-markup` opt-out and the `sanitizeMarkup` override.
   As a post-sanitization step, every authored `<img>` outside a `pie-*`
   custom element is wrapped in `<span class="pie-image-scroll">` so

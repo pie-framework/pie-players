@@ -1,9 +1,9 @@
 # Desmos Calculator Tool
 
 Calculator custom element backed by the Desmos provider for PIE assessment
-player flows. It is a thin compatibility wrapper around
-`@pie-players/pie-tool-calculator-shared`; Desmos-specific layout rules and the
-default provider id remain in this package.
+player flows. It is a thin compatibility entry for
+`@pie-players/pie-tool-calculator-shared/calculator-element`, which holds the
+Desmos-specific layout rules and the default `calculator-desmos` provider id.
 
 ## Usage
 

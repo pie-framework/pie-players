@@ -59,9 +59,12 @@ Two consequences, both host-facing:
 The spec asserts the pre-blur state deliberately. A debounce would be a change to
 constructed-response persistence, and it should surface as a failing test here
 rather than land unnoticed. Tracked as
-[PIE-916](https://illuminate.atlassian.net/browse/PIE-916), which also carries the
-unanswered half: whether unmounting an element or navigating a section away commits
-an in-progress response before the editor is torn down.
+[PIE-916](https://illuminate.atlassian.net/browse/PIE-916). The player commits each
+element's pending session at a `config` change, a page hide and its own teardown
+([Session commit](../item-player/overview.md#session-commit)), so a response the
+editor committed on blur reaches the host while its notification is still deferred.
+Text in an editor that still has focus when its element is torn down is not in the
+session, so it survives only if the editor blurs first.
 
 ## Host Responsibilities
 

@@ -148,7 +148,7 @@ Content items are rendered via `<pie-item-player>` elements. `runtime.playerType
 
 - **`esm`**: Elements are loaded via dynamic `import()` from an ESM CDN (default: `https://cdn.jsdelivr.net/npm`). This is the intended future default — the PIE team is targeting ESM as the primary strategy by end of 2026. Compared to IIFE, ESM loading offers genuine architectural advantages: modules are fetched concurrently and cached by the browser's native module cache across loads (unlike IIFE script tags, which are re-executed every time), shared dependencies between elements can be deduplicated at the module graph level rather than being bundled redundantly into each IIFE, and the format supports standard toolchain features like tree-shaking and source maps. ESM also produces a better local development experience since modules integrate naturally with browser DevTools and bundlers. The PIE elements library is still being migrated to full ESM compatibility; the team is targeting full ESM support by end of 2026.
 
-- **`preloaded`**: All required PIE custom elements are assumed to be already registered in the browser — no loading occurs at runtime. This strategy is used with the `@pie-players/pie-preloaded-player` package, which is a pre-built project dependency containing a fixed set of elements bundled at build time. Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
+- **`preloaded`**: The page registers every PIE custom element the section needs before the section mounts, and the player loads nothing at runtime. Before mounting items, the section's element pre-warm aligns authored versions with the registered ones and asserts each registration; a missing one leaves the items unmounted and reports an `element-preload` framework error (see the [preloaded-player guide](../preloaded-player/readme.md#section-player)). Elements come from the `@pie-players/pie-preloaded-player` package, which is a pre-built project dependency containing a fixed set of elements bundled at build time, or from the host's own `registerPreloadedElements` call (`@pie-players/pie-item-player/preloaded`). Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
 
 For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](../item-player/loading-strategies.md).
 
@@ -188,7 +188,7 @@ Notes:
 
 - `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
 - For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
-- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `pie-stage-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
+- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `pie-stage-change`, `pie-loading-complete`, `framework-error`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs. `session-changed` stays off the bridge because it carries learner responses.
 - New Relic remains one provider implementation option; it is not the player contract.
 - With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
 - `instrumentationProvider: null` is an explicit no-op opt-out.
@@ -221,9 +221,12 @@ Section-player owned canonical event stream:
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
 - `pie-section-framework-error`
+- `pie-section-element-preload-retry`
+- `pie-section-element-preload-error`
 
 Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
 
+- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
@@ -278,7 +281,7 @@ tools: {
 }
 ```
 
-Tool IDs: `theme`, `graph`, `periodicTable`, `protractor`, `lineReader`, `ruler`, `calculator`, `textToSpeech`, `annotationToolbar`, `answerEliminator`.
+Tool IDs: `theme`, `graph`, `periodicTable`, `protractor`, `lineReader`, `ruler`, `calculator`, `textToSpeech`, `annotationToolbar`, `answerEliminator`, `dictionary`, `dictionarySpanish`, `pictureDictionary`, `pictureDictionarySpanish`.
 
 A typical multi-tool configuration:
 
@@ -856,7 +859,7 @@ const unsub = coordinator.subscribeItemEvents({
         // event.itemId — metadata (e.g. flagged state) changed
         break;
       case 'item-player-error':
-        // event.itemId, event.error
+        // event.itemId, event.canonicalItemId, event.contentKind, event.error
         break;
     }
   },
@@ -894,7 +897,8 @@ const unsub = coordinator.subscribeSectionLifecycleEvents({
         // event.mode, event.replay, event.itemSessionCount
         break;
       case 'section-navigation-change':
-        // event.currentIndex, event.previousIndex
+        // event.previousSectionId, event.currentSectionId, event.attemptId,
+        // event.reason ('input-change'|'runtime-transition')
         break;
       case 'section-error':
         // event.source, event.error
@@ -933,11 +937,11 @@ The player element does dispatch a small set of DOM `CustomEvent`s that are genu
 
 ### Canonical readiness and error events (recommended)
 
-These are the events to build host integrations against. They are dispatched on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`) by the section runtime engine, with stable typed payloads.
+These are the events to build host integrations against, with stable typed payloads. The section runtime engine dispatches `pie-stage-change`, `pie-loading-complete` and `framework-error` on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`); `toolkit-ready` comes from the wrapped `<pie-assessment-toolkit>` and reaches the layout element by bubbling.
 
 | Event name | Detail | Callback-prop mirror | When |
 | --- | --- | --- | --- |
-| `toolkit-ready` | `{ coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
+| `toolkit-ready` | `{ runtimeId, assessmentId, sectionId, itemPlayer, coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
 | `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`, with a single subscription that correlates across wrapper depths. |
 | `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort, when the section's element pre-warm resolves for the current composition and the item cards can mount. |
 | `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface, the section's element pre-warm). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. Recoverable warnings remain observable without setting readiness to `error`. |
@@ -946,7 +950,7 @@ Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` obje
 
 Recommended host wiring:
 
-- Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(output => { if (output.kind === "stage-change" && output.detail.stage === "interactive") { /* … */ } })` if you hold a programmatic engine reference.
+- Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(outputs => { for (const output of outputs) { if (output.kind === "stage-change" && output.stage === "interactive") { /* … */ } } })` if you hold a programmatic engine reference. The listener receives each batch of outputs as an array.
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
 - Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
 

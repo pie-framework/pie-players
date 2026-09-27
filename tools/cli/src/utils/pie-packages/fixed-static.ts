@@ -430,6 +430,7 @@ npm install @pie-players/pie-preloaded-player@${version}
 
 <pie-item-player
   strategy="preloaded"
+  hosted
   config='{"elements":{"${exampleTag}":"${examplePkgSpec}"},"models":[{"id":"1","element":"${exampleTag}"}],"markup":"<${exampleTag} id=\\"1\\"></${exampleTag}>"}'
   env='{"mode":"gather","role":"student"}'
   session='{"id":"session-1","data":[]}'
@@ -448,6 +449,7 @@ The entry uses top-level await, so \`await import()\` of it resolves once every 
 - \`session\` - Session container with attempt data
 - \`env\` - Runtime environment (mode and role)
 - \`strategy\` - Must be \`"preloaded"\` for this package
+- \`hosted\` - Required: the bundle registers elements without controllers, so the player renders server-processed models and scoring happens on the server. A player that is not hosted renders each model as authored and warns once per tag
 - \`add-correct-response\` - Show correct response values on models
 - \`external-style-urls\` - Comma-separated CSS URLs scoped to player content
 - \`loader-config\` - Loader/retry/instrumentation config (JSON string)

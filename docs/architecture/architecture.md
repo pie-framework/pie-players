@@ -86,7 +86,7 @@ Item players are Web Components that render individual PIE assessment items. The
 **Purpose**: Load PIE elements from modern ESM packages with view-based architecture.
 
 **Architecture**:
-- Generates import maps for PIE packages and dependencies
+- Imports fully-qualified CDN URLs by default (`moduleResolution: "url"`); `moduleResolution: "import-map"` generates an import map instead
 - Uses native dynamic import() for package loading
 - Supports view-based loading (delivery, author, print, custom variants)
 - Automatic fallback to standard view if custom view unavailable
@@ -126,7 +126,7 @@ The ESM player supports loading different views/variants of elements through ESM
 **Architecture**:
 - All elements pre-bundled at build time
 - Zero runtime bundle fetching
-- Hash-based versioning for deterministic builds
+- Published builds are versioned `<loaderVersion>-<set>.<iteration>`, where `set` is the config's file name; a local build without a set name takes the element-combination hash as its label
 
 **Use Cases**:
 - Performance-critical deployments
@@ -194,7 +194,7 @@ The section player implements **element aggregation** to eliminate duplicate bun
   - After: 1 loader call, ~250ms total
   - **50% faster**
 
-**Architecture**: Element loaders implement a common interface with `loadFromItems()` method that handles aggregation and version conflict detection.
+**Architecture**: `aggregateElements(items)` collects the section's elements into one map keyed by versioned tag and throws when one tag maps to two package specs. `ensureRegistered(elements, { backend })` loads that map through the IIFE or ESM adapter and resolves once every tag is registered.
 
 See: `@pie-players/pie-players-shared/loaders` for implementation details.
 

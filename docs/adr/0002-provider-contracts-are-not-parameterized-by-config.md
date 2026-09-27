@@ -93,3 +93,14 @@ The parameter was added to `CalculatorProvider` and `Calculator` and removed aga
 within one branch. Its inertness surfaced as a `Pick<Calculator, 'destroy' | 'focus'
 | 'resize'>` workaround in `pie-tool-calculator-desmos`: the component could not
 name the type it was holding, because the parameter carried no information to name.
+
+## Update, 2026-09-27
+
+Since 498f9376 (2026-09-25) the calculator tool providers live in
+`@pie-players/pie-default-tool-loaders`, which takes the three calculator adapters
+as ordinary dependencies. `DesmosToolProvider` now extends
+`LazyCalculatorToolProvider`, which implements
+`ToolProviderApi<TConfig, CalculatorProvider>`, so the typing rule in
+**Consequences** holds there. The toolkit's one remaining optional peer is
+`@pie-players/tts-client-server`, which `TTSToolProvider` and
+`tts-runtime-config.ts` name only inside function bodies.

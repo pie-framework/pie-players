@@ -10,6 +10,7 @@ This directory contains SvelteKit API routes used by section demos for developme
 
 - `POST /api/tts/synthesize` - Synthesize speech from text
 - `POST /api/tts/sc` - Proxy SchoolCity-style custom transport synthesis
+- `GET /api/tts/sc/voices` - List the voices `/api/tts/sc` offers; reads no credentials
 - `GET /api/tts/voices` - Get available voices
 - `GET /api/tts/polly/voices` - Get AWS Polly voices
 - `GET /api/tts/google/voices` - Get Google Cloud TTS voices
@@ -82,10 +83,19 @@ reference implementation of a real corpus.
 - `GET /api/session-demo/snapshot` - Return one section snapshot (`assessmentId`, `sectionId`, `attemptId`)
 - `PUT /api/session-demo/snapshot` - Upsert one section snapshot
 - `DELETE /api/session-demo/snapshot` - Delete one section snapshot
+- `POST /api/session-demo/activity/load` - Seed the attempt when its sections are missing (or when `reset` is set), then return the activity definition, item sessions and the requested section's snapshot
+- `GET /api/session-demo/activity/load` - Return the same payload without seeding
+- `GET /api/session-demo/state/stream` - Stream DB state updates as Server-Sent Events
 
 These endpoints back the `session-hydrate-db` demo and are intentionally lightweight for local use.
+
+### Element Versions
+
+**Route**: `GET /api/packages?package=<name>&search=<term>`
+
+Lists an element package's npm versions, newest first and without deprecated ones, for the element version selector: `latest` and the 20 highest without `search`, every version containing `search` with it.
 
 ## Notes
 
 - The translation demo API has been removed.
-- All remaining endpoints support CORS via OPTIONS handler.
+- No route sets CORS headers or handles `OPTIONS`; the demo pages call them same-origin.

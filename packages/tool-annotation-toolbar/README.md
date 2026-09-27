@@ -1,6 +1,6 @@
 # Annotation Toolbar
 
-A text selection toolbar for highlighting and annotating text in the PIEoneer assessment player. Uses modern CSS Custom Highlight API for zero DOM mutation and optimal performance.
+A text selection toolbar for highlighting and annotating text in PIE assessment players. Uses modern CSS Custom Highlight API for zero DOM mutation and optimal performance.
 
 ## Features
 
@@ -147,15 +147,17 @@ The annotation toolbar includes a "Read" button that uses the TTS service to rea
 The toolbar uses `ttsService.speakRange()` instead of `ttsService.speak()` to ensure accurate word highlighting:
 
 ```typescript
-// speakRange() calculates text offset for accurate highlighting
-await ttsService.speakRange(selectedRange, {
-  rate: 1.0,
-  highlightWords: true
-}, {
-  onEnd: () => ttsSpeaking = false,
-  onError: (err) => ttsSpeaking = false
-});
+ttsSpeaking = true;
+try {
+  // speakRange() calculates text offset for accurate highlighting.
+  // contentRoot: the item or passage scope element, else the document element.
+  await ttsService.speakRange(selectedRange, { contentRoot });
+} finally {
+  ttsSpeaking = false;
+}
 ```
+
+`speakRange` resolves when reading ends and rejects on a playback error.
 
 **Why this matters:**
 

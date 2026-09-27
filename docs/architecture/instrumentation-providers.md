@@ -7,7 +7,7 @@ composite adapters, probed readiness, and the one default factory;
 current provider semantics and the per-layer event ownership model. Not
 implemented: agent detection, the conformance suite, central attribute naming,
 and buffering. The DataDog and OpenTelemetry adapters
-described here are verified examples of host-owned adapters, not products PIE
+described here are untested examples of host-owned adapters, not products PIE
 ships. Correct this note or mark it historical when the built system diverges.
 
 Owner: PIE Players maintainers
@@ -26,16 +26,18 @@ initializes one, or holds a dependency on one.
 
 ## Scope
 
-PIE ships one adapter, for New Relic, because Hosts A and P have that agent on
-their pages. Around it ship the contract, probed readiness, central attribute
-naming, and detection restricted to that one agent.
+PIE ships one adapter, for New Relic, because two of the hosts embedding PIE
+today have that agent on their pages. The contract and probed readiness ship
+with it. Central attribute naming and detection restricted to that one agent
+are designed here and not built.
 
-DataDog and OpenTelemetry stay unshipped and get exercised anyway. A conformance
-suite in `packages/players-shared/tests` runs the contract's whole surface
-against the New Relic adapter and against DataDog RUM and OTel fixtures, so "the
-contract is not New Relic-shaped" is a test result instead of an assertion. The
-fixtures live in the test tree, enter no `exports` map, and are the version the
-documentation points at. A published adapter is a standing commitment to a
+DataDog and OpenTelemetry stay unshipped. The design exercises them through a
+conformance suite in `packages/players-shared/tests` that runs the contract's
+whole surface against the New Relic adapter and against DataDog RUM and OTel
+fixtures, so "the contract is not New Relic-shaped" becomes a test result
+instead of an assertion. Neither the suite nor the fixtures exist yet. The
+fixtures belong in the test tree, enter no `exports` map, and are the version
+the documentation points at. A published adapter is a standing commitment to a
 vendor SDK's drift; the contract is the thing that needed proving, and a test
 proves it without taking the commitment on.
 
@@ -261,9 +263,10 @@ part of the OTel JS stack, which the design inherits once rather than per vendor
 ## Metric semantics
 
 `trackMetric` stays event-shaped, which is what the base class already does — a
-`metric:`-prefixed event name with `metricValue` and `metricName` in the bag —
-and no adapter overrides it. Two of the three candidate backends cannot express a
-metric: the New Relic browser agent at 1.274 exposes `noticeError`,
+`metric:`-prefixed event name with `metricValue` and `metricName` in the bag.
+The console adapter overrides it to format the log line, and the composite
+adapter fans it out to its providers. Two of the three candidate backends cannot
+express a metric: the New Relic browser agent at 1.274 exposes `noticeError`,
 `addPageAction`, `setCustomAttribute`, `setUserId`, `interaction` and
 `addToTrace` with no metric primitive, and DataDog RUM's `addAction` is the same
 shape. Only OTel has counters and histograms. The method has no production

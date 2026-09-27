@@ -31,7 +31,8 @@ The new player supports three strategies via the `strategy` attribute:
 
 - `iife`: IIFE bundles from a bundle host; the same general approach as
   legacy, modernized.
-- `esm`: ESM modules from a CDN via import maps; no script injection, and
+- `esm`: ESM modules imported from a CDN by URL, or through an import map when
+  `moduleResolution` is `"import-map"`; no script injection, and
   tree-shakeable.
 - `preloaded`: host preloads element bundles at the page level; the player skips
   all loading.

@@ -490,13 +490,13 @@ An integration can:
     models: [{
       id: 'q1',
       element: 'multiple-choice',
-      prompt: `<div data-catalog-idref="auto-prompt-q1">
+      prompt: `<div data-catalog-idref="auto-prompt-q1-0">
         <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
       </div>`
     }],
     extractedCatalogs: [
       {
-        identifier: 'auto-prompt-q1',
+        identifier: 'auto-prompt-q1-0',
         cards: [{
           catalog: 'spoken',
           language: 'en-US',

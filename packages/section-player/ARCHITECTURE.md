@@ -10,7 +10,7 @@ This package exposes layout-specific section-player custom elements:
 ## High-level flow
 
 1. Host app imports a layout entrypoint from package exports.
-2. Host sets `runtime`, `section`, and `env` on the layout custom element.
+2. Host sets `runtime` and `section` on the layout custom element; `env` travels as `runtime.env`.
 3. Layout element composes passages/items and delegates runtime wiring to:
    - `pie-section-player-base`
    - `SectionPlayerShell`
@@ -24,11 +24,12 @@ This package exposes layout-specific section-player custom elements:
 
 - `src/components/PieSectionPlayerSplitPaneElement.svelte`
 - `src/components/PieSectionPlayerVerticalElement.svelte`
+- `src/components/PieSectionPlayerTabbedElement.svelte`
 - `src/components/PieSectionPlayerBaseElement.svelte`
 - `src/components/PieSectionPlayerKernelHostElement.svelte`
 - `src/components/SectionPlayerShell.svelte`
-- `src/components/SectionPlayerLayoutKernel.svelte`
-- `src/components/SectionPlayerLayoutScaffold.svelte`
+- `src/components/shared/SectionPlayerLayoutKernel.svelte`
+- `src/components/shared/SectionPlayerLayoutScaffold.svelte`
 - `src/components/shared/SectionItemCard.svelte`
 - `src/components/shared/SectionPassageCard.svelte`
 - `src/components/shared/section-player-card-context.ts`
@@ -261,8 +262,9 @@ The tier-1 attribute set is the same shape across the
 - Runtime config: `runtime`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
-  bubbling `framework-error` DOM event (see "Framework error contract"
-  below).
+  `framework-error` DOM event, which bubbles from `<pie-assessment-toolkit>`
+  and is dispatched without bubbling on a layout element (see "Framework
+  error contract" below).
 - Layout / shell (section-player only): `show-toolbar`, `toolbar-position`,
   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
   `content-max-width-no-passage`, `content-max-width-with-passage`,
@@ -403,8 +405,10 @@ Stages and order (post-retro: 4 canonical stages)
   present)
 - `engine-ready` (controller / toolkit engine ready — coordinator
   bring-up settled, section controller initialized)
-- `interactive` (user input accepted — readiness predicate passed,
-  toolkit's join of `engine-ready` and `sectionInitialized` reached)
+- `interactive` (user input accepted). A layout element enters it once
+  the section controller is ready and the section's element pre-warm has
+  resolved for the current items; the toolkit enters it on the join of
+  `engine-ready` and `sectionInitialized`.
 - `disposed` (cohort change or unmount)
 
 The original M6 plan included `attached`, `runtime-bound`, and
@@ -418,14 +422,17 @@ the per-DOM-element single-fire requirement on `attached`.
 The `StageTracker` primitive (`@pie-players/pie-players-shared/pie`)
 enforces monotonic ordering, applicability per CE shape (layout vs
 toolkit; identical post-retro), and cohort reset on
-`(sectionId, attemptId)` change. Both the layout kernel and
-`<pie-assessment-toolkit>` use the same primitive; `sourceCe` and
-`sourceCeShape` distinguish emissions.
+`(sectionId, attemptId)` change. `<pie-assessment-toolkit>` emits its
+stages through it. The layout kernel emits the stages the section
+runtime engine derives, through the engine's DOM event bridge. Each
+detail's `sourceCe` names the emitting element.
 
 DOM events
 - Canonical: `pie-stage-change` (detail = `StageChangeDetail`).
 - Canonical: `pie-loading-complete` (detail = `LoadingCompleteDetail`)
-  — kernel-only; fires once per cohort when every item has loaded.
+  — kernel-only; fires once per cohort, on the same condition as a layout
+  element's `interactive`: the section controller is ready and the element
+  pre-warm has resolved for the current items.
 - Use the canonical events as follows:
   - `readiness-change` → listen for `pie-stage-change`; the readiness
     payload is also reachable via `selectReadiness()` /

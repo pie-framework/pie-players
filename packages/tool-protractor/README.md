@@ -5,10 +5,11 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 ## Features
 
 - **Draggable**: Click and drag anywhere on the protractor to move it
-- **Rotatable**: Use the rotate handle (green circle) to rotate the protractor
-- **180-degree scale**: Standard protractor with 0-180 degree markings
-- **Major tick marks**: Every 30 degrees (0, 30, 60, 90, 120, 150, 180)
-- **Minor tick marks**: Every 10 degrees
+- **Rotatable**: Drag the rotation handle above the protractor to rotate it
+- **180-degree scale**: Standard protractor with two opposing 0-180 degree scales
+- **Tick marks**: Every degree, with longer ticks every 5 degrees
+- **Labels**: Every 10 degrees on both scales, each with a radial guide line
+- **Keyboard control**: Arrow keys move the protractor; Shift+Arrow keys and PageUp/PageDown rotate it
 - **Semi-transparent**: Allows viewing content underneath
 - **Z-index management**: Automatically brings to front when clicked
 
@@ -19,19 +20,24 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 ```svelte
 <script>
   import '@pie-players/pie-tool-protractor';
-  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-  let showProtractor = $derived(
-    toolCoordinator.getToolState('protractor')?.isVisible ?? false
-  );
+  let showProtractor = $state(false);
 </script>
 
-<button onclick={() => toolCoordinator.toggleTool('protractor')}>
+<button onclick={() => (showProtractor = !showProtractor)}>
   Toggle Protractor
 </button>
 
 <pie-tool-protractor visible={showProtractor} toolId="protractor" />
 ```
+
+Inside a toolkit runtime context, the element takes the ToolCoordinator from
+that context and registers `toolId` on `ZIndexLayer.TOOL`. The coordinator then
+displays the element only while `toolId` is visible there, so the host shows the
+tool through the coordinator as well as through `visible`. The packaged
+`protractor` toolbar capability in `@pie-players/pie-default-tool-loaders` does
+both: its button toggles the tool in the coordinator and its sync sets
+`visible`.
 
 ## Props
 
@@ -43,11 +49,13 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 ## Interactions
 
 ### Moving
-- Click and drag the protractor body or header to move it around the screen
+- Click and drag the protractor to move it around the screen
+- Arrow keys move it 10px per press
 - The cursor changes to indicate draggability
 
 ### Rotating
-- Click and drag the green rotate handle (bottom right) to rotate the protractor
+- Drag the rotation handle above the protractor to rotate it
+- Shift+Arrow keys rotate it 5 degrees per press; PageUp/PageDown rotate it 1 degree
 - Rotation is continuous and smooth
 - Useful for aligning with different angles in diagrams
 
@@ -56,8 +64,8 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 - Managed automatically by the tool coordinator
 
 ### Closing
-- Click the × button in the header to close the protractor
-- Can also be closed programmatically via `toolCoordinator.hideTool('protractor')`
+- Setting `visible` to `false` closes the protractor and removes its drag and rotation controls
+- Under a coordinator, the host also hides `toolId` there, as the packaged toolbar does
 
 ## Implementation Details
 
@@ -65,46 +73,48 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 
 ```
 tool-protractor.svelte
-├── Header (title + close button)
-├── SVG Protractor
-│   ├── Background semicircle
-│   ├── Degree markings (0-180)
-│   ├── Tick marks (major every 30°, minor every 10°)
-│   ├── Degree labels
-│   ├── Center point
-│   └── Baseline
-└── Rotate handle (bottom right)
+├── Status live region (screen reader announcements)
+└── Protractor (role="application", focusable)
+    └── Container
+        └── protractor.svg image
+            ├── Semicircular scale, 0-180 in both directions
+            ├── Tick marks (every 1°, longer every 5°)
+            ├── Degree labels and radial guide lines (every 10°)
+            ├── Center point
+            └── Baseline
 ```
+
+Drag and rotation run through Moveable (`moveable`), which attaches its controls
+to `document.body`.
 
 ### State Management
 
-- Position: `{ x, y }` in pixels from top-left
-- Rotation: Angle in degrees
-- Drag state: Tracks active dragging
-- Rotation state: Tracks active rotation
+- Placement: the protractor's CSS `transform` (translate and rotate), written by
+  Moveable during a drag or rotation and by the keyboard handler
+- The keyboard handler reads the current position and angle back from the
+  computed transform matrix
 
 ### Event Handling
 
-- `mousedown`: Initiates drag or rotation
-- `mousemove`: Updates position or rotation
-- `mouseup`: Ends drag or rotation
-- Events use global listeners for smooth interaction
+- Moveable `drag` and `rotate` events write the new transform
+- `pointerdown`: Brings the protractor to the front
+- `keydown`: Arrow keys, Shift+Arrow keys and PageUp/PageDown
+- `resize`: Updates Moveable's bounds
 
 ## Styling
 
 The protractor uses:
-- White background with subtle transparency
-- Black stroke for visibility
-- Shadow for depth
-- Rounded corners on container
-- Hover effects on buttons
+- A semi-transparent overlay in `--pie-background` (white by default) behind the scale
+- Black strokes for visibility
+- A focus outline in `--pie-button-focus-outline`
 
 ## Accessibility
 
-- `role="dialog"`: Identifies the tool as a dialog
-- `aria-label="Protractor Tool"`: Provides accessible name
-- `tabindex="-1"`: Allows programmatic focus
-- Close button has `aria-label="Close protractor"`
+- `role="application"` with a localized `aria-label` and `aria-roledescription`
+- `tabindex="0"`; the protractor takes focus, without scrolling, when shown
+- Arrow keys move it; Shift+Arrow keys and PageUp/PageDown rotate it
+- A polite live region announces each move and rotation
+- The protractor image has localized `alt` text
 
 ## Future Enhancements
 
@@ -112,6 +122,4 @@ The protractor uses:
 - [ ] Snap-to-grid option
 - [ ] Measurement lines/guides
 - [ ] Different protractor sizes
-- [ ] Keyboard controls for precise positioning
 - [ ] Save/restore position between questions
-

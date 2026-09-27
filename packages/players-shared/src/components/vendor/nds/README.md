@@ -66,11 +66,13 @@ TypeScript program, and is covered by the `!**/src/components/vendor` ignore in
 
 Consuming bundlers treat this module per their own externals config:
 
-- `tool-tts-inline` (Vite lib build) does **not** externalize `players-shared`,
-  so this bundle is inlined into its published output.
-- `assessment-toolkit` builds its CE artifacts with `--external=@pie-players/*`,
-  so this module stays a bare external import in those artifacts — resolved by
-  the host/loader exactly like every other `@pie-players/*` specifier the
+- `tool-tts-inline` (Vite lib build) externalizes `players-shared` and its
+  subpaths, so its published output imports
+  `@pie-players/pie-players-shared/nds-icon-button` from the host.
+- `assessment-toolkit` builds its CE artifacts with every dependency and peer
+  dependency, plus each one's subpaths, as esbuild externals, so this module
+  stays a bare external import in those artifacts — resolved by the
+  host/loader exactly like every other `@pie-players/*` specifier the
   artifacts already emit.
 
 ## How to refresh

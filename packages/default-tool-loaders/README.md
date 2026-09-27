@@ -99,7 +99,7 @@ import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
 import {
 	calculatorToolRegistration,
 	PACKAGED_TOOL_TAG_MAP,
-	registerSectionToolModuleLoaders,
+	registerDefaultToolModuleLoaders,
 	ttsToolRegistration,
 } from "@pie-players/pie-default-tool-loaders";
 
@@ -107,9 +107,13 @@ const registry = new ToolRegistry();
 registry.register(calculatorToolRegistration);
 registry.register(ttsToolRegistration);
 registry.setComponentOverrides({ toolTagMap: PACKAGED_TOOL_TAG_MAP });
-// Section-only loaders, for section toolbar bootstrap points.
-registerSectionToolModuleLoaders(registry);
+registerDefaultToolModuleLoaders(registry);
 ```
+
+`registerDefaultToolModuleLoaders` installs a loader for every packaged tool.
+`registerSectionToolModuleLoaders` installs only the section-bootstrap subset,
+which has no text-to-speech loader, so a registry that places item-level text to
+speech needs the full set.
 
 ## Content-dependent capabilities require an explicit packaging decision
 

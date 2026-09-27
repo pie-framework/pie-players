@@ -52,12 +52,11 @@ In the players:
 The learner-visible failure: type a constructed response, click Next, and the
 host destroys the question view inside the element's debounce window. No
 `session-changed` is dispatched, so the host cannot detect the loss — there is no
-event that failed to arrive. DNAFORM-1097 and DNAFORM-2207 are closed customer
-defects on this symptom.
+event that failed to arrive. Two closed customer defects report this symptom.
 
-Online Testing works around it today by listening for `keyup` on
-`.tiptap.ProseMirror` and locking navigation until their own save completes. That
-selector is PIE's suggestion, the lock is a race they have to win, and `keyup`
+A host can work around it by listening for `keyup` on
+`.tiptap.ProseMirror` and locking navigation until its own save completes. That
+selector is PIE's suggestion, the lock is a race the host has to win, and `keyup`
 misses context-menu paste and drag-and-drop, which ProseMirror handles by
 `preventDefault()` plus a transaction and which therefore emit no input event
 either.
@@ -72,8 +71,8 @@ either.
   and `<pie-player>` are the ones hitting this now.
 - The section player inherits the guarantee from the item player it already
   mounts, and needs additions only for boundaries it alone owns.
-- Quiz Engine's existing `document`-level listener starts receiving the final
-  event without Quiz Engine changing anything.
+- A host's existing `document`-level `session-changed` listener starts receiving
+  the final event with no change on the host's side.
 - A commit on the page going away — tab close, navigation, mobile freeze — not
   only on the player being removed from the page.
 - A recoverable draft after a crash, offered to the host rather than applied.
@@ -383,10 +382,11 @@ cap `fetch` rejects, so the save is lost outright on the one path that exists as
 a last resort; an ordinary request the unload may cut short is a worse chance
 than a small body gets and a better one than none.
 
-For a host that persists from its own listener — Online Testing and Quiz Engine
-both do — PIE guarantees the event arrives, not that the host's request
-completes. Hosts wanting the unload case covered end to end either move their
-save onto `backend.delivery` or make their own handler `keepalive`.
+For a host that persists from its own listener, PIE guarantees the event
+arrives, not that the host's request completes. Hosts wanting the unload case covered end to end either move their
+save onto `backend.delivery` or make their own handler `keepalive`. An enabled
+`backend.delivery` also makes the player hosted, running no element controller in
+the browser, so a host moving only its save sets `hosted` to `false`.
 
 ## Compatibility
 
@@ -470,12 +470,12 @@ The section player mounts items through `pie-item-player`
 the item-player guarantee without changes of its own.
 
 Intra-section navigation is already safe, and for a structural reason rather than
-by timing: `SectionItemsPane.svelte:656` renders every item in the section —
+by timing: `SectionItemsPane.svelte` renders every item in the section —
 `{#each items as item, itemIndex (item.id || itemIndex)}` — and navigation only
-flips `isCurrent={itemIndex === currentItemIndex}` at :672. The editor is never
-unmounted between questions, so the debounce always completes. This is why Quiz
-Engine, which persists off these same events, has not hit the defect that Online
-Testing has.
+flips `isCurrent={itemIndex === currentItemIndex}`. The editor is never
+unmounted between questions, so the debounce always completes, and a host that
+persists off these same events does not hit the defect between items of one
+section.
 
 What the section player alone owns is the boundary where a section does go away:
 section change and submit. `SectionController.navigateToItem()` is synchronous,
@@ -506,13 +506,11 @@ The commit sits in `updateInput()` rather than `initialize()` because
 `updateInput()` snapshots the session before delegating, so a commit inside
 `initialize()` would land in state that snapshot had already taken.
 
-Quiz Engine is the host this matters to. Its wrapper listens with
-`@HostListener('document:session-changed')` and persists with
-`void this.persistSection(previousSectionId)` — fire-and-forget, no lock, no
-await. A student typing in the last question of a section and immediately
+This matters to a host that listens for `session-changed` on `document` and
+persists fire-and-forget, with no lock and no await. A student typing in the last question of a section and immediately
 advancing snapshots pre-commit state, silently. Because the listener is on
 `document`, the element-side unmount flush alone would not reach it; the
-player-side sweep, dispatching while attached, does. Quiz Engine changes nothing.
+player-side sweep, dispatching while attached, does. Such a host changes nothing.
 
 What this does not close is a host that persists on its own navigation before it
 feeds the new section to the player: PIE has no hook ahead of that. Such a host
@@ -541,8 +539,8 @@ render on the deferred path at the 200ms cadence it already had.
   also cover the section-level session `SectionController` owns, which no item
   player can see. Implemented and parked on
   `feat/PIE-1058-session-snapshot`: it is the only piece carrying a host-facing
-  storage decision, and no reported defect turns on it. The connectivity case
-  George Schneiderman raised for Online Testing is what would justify it.
+  storage decision, and no reported defect turns on it. A connectivity case one
+  host raised is what would justify it.
 - Whether `multiple-choice`'s zero-delay debounce is worth touching at all, or
   should simply become a direct dispatch.
 - Whether `extended-text-entry`'s 1500ms is worth keeping now that it is on the

@@ -114,7 +114,7 @@ Merging satisfies this trivially. Emitting both satisfies it only if assembly an
 - Runtime host: `@pie-players/pie-section-player`, same as spoken/TTS catalogs today. It offers the `content-media` surface and mounts whatever is registered on it; it does not depend on the signing package and does not name signing, the `signLanguage` support id or the `sign-language` catalog type.
 - Rendering placement: **a content-scoped region shared by item and passage cards**, alongside the `header` and `content` regions they already declare — decided 2026-08-07, generalized from the original item-only placement on 2026-08-10, and reached through the generic `content-media` surface rather than by name. Not a toolbar surface, and not an item-player affordance. `item-player` needs to know nothing about signing.
 - Policy identity: **signing takes a feature id and registers for policy**, so it inherits the six-level precedence in `PnpPolicySource` (`district-block`, `test-admin-override`, `item-restriction`, `item-requirement`, `district-requirement`, `pnp-support`, `pnp-prohibited`). Policy identity and rendering placement are deliberately separated here; see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool).
-- Public export path: `@pie-players/pie-tool-sign-language` for the registration, the card validators and the content resolver; the generic media-payload helpers (`applyMediaFragment` and the normalizers) stay on the toolkit's public surface.
+- Public export path: `@pie-players/pie-tool-sign-language` for the registration, the card validators and the content resolver. The generic media-payload helpers (`applyMediaFragment` and the normalizers) are owned by `@pie-players/pie-players-shared/media`, which the signing package imports; the toolkit root re-exports them.
 - Consuming packages or apps: `section-player`, `assessment-toolkit` registry and policy engine, demo apps, `pie-elements-ng` only if per-node docking below the prompt is later scoped, and `pie-qti` adapters.
 - Runtime environment: browser and custom element; data types must stay Node-safe for importers and adapters.
 
@@ -145,8 +145,7 @@ The names below are the shipped ones, not a proposal — this section described 
 ```ts
 // Documentation sketch only.
 
-// Today: `CatalogCard.content` is a flat string, which forces a bare URL.
-// Proposed: keep `content` for text-ish catalogs and add a typed media payload.
+// `content` carries the string form; a media card carries a typed `payload`.
 interface SignLanguageCardPayload {
   /**
    * ISO 639-3 sign language code. "ase" = ASL, matching QTI 3 `xml:lang`.
@@ -168,7 +167,13 @@ interface SignLanguageCardPayload {
   fragment?: { startSeconds: number; endSeconds?: number };
 }
 
-type CatalogCardPayload = SignLanguageCardPayload;
+/** A recorded `spoken` alternate. */
+interface SpokenAudioCardPayload {
+  media: MediaAssetRef;
+  fragment?: { startSeconds: number; endSeconds?: number };
+}
+
+type CatalogCardPayload = SignLanguageCardPayload | SpokenAudioCardPayload;
 
 interface CatalogCard {
   catalog: string;    // QTI's `qti-card@support` — the only discriminator
@@ -329,13 +334,13 @@ Import/export mapping, if it is ever built, belongs in `pie-qti` and is where an
 
 **Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. Since PIE-886 the host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["content-media"]`, and signing lives in its own package.
 
-What this PRD is *not* is a new section flavor. [Timed media](./timed-media-section-contract.md) is a section flavor — it introduces `sectionType: "timed-media"`, cue orchestration, and a specialized layout custom element — because it composes multiple items around a shared timeline. Signing does none of that: many short recordings, each translating one content node, played on learner demand, gating nothing.
+What this PRD is *not* is a new section flavor. [Timed media](./timed-media-section-contract.md) is a section flavor — it introduces `sectionType: "timed-media"` and cue orchestration, and runs in the existing section-player layouts — because it composes multiple items around a shared timeline. Signing does none of that: many short recordings, each translating one content node, played on learner demand, gating nothing.
 
 An earlier intuition was to model ASL as a passage and build a specialized ASL section layout. That framing is rejected by facts 1 and 2 above: the video translates a prompt rather than framing multiple items, and it must coexist with the English content inside the same item. The rejection is about *modeling ASL as a passage*, not about section-player involvement.
 
 | | Timed media | Sign language |
 | --- | --- | --- |
-| Runtime host | Section-player (timed-media variant) | Section-player (existing catalog rail) |
+| Runtime host | Section-player (existing layouts) | Section-player (existing catalog rail) |
 | Section-level flavor? | Yes (`sectionType`) | No |
 | Media count | One shared stimulus | Many short recordings |
 | Timeline role | Reveals, gates, sequences items | None |
@@ -396,7 +401,7 @@ Settled in review 2026-08-07 and inlined into the sections above rather than lef
 | Signed English in scope? | Not needed for current (US) scope. Distinct from the international sign-language question below; don't conflate the two. |
 | Multi-signed-language capability | Ships as part of the base design at no extra cost — same card-array-plus-`language` mechanism already used for multi-language spoken TTS, applied to a new catalog type rather than built new. Default to *no* cross-sign-language fallback (show nothing rather than silently substitute a different sign language a student may not follow); revisit only if real usage shows the strict default is wrong. |
 | Item model, clone vs. link | Link video to the existing item id rather than cloning. Shipped in PIE-881, Done 2026-08-10. See [The Import Invariant](#the-import-invariant). |
-| Default audio state | "Audio off by default" is the direction; confirm exactly which audio channel during prototyping — see the callout at the top of this PRD. |
+| Default audio state | Shipped: the region renders `<video muted>`, which settles the signing track. Whether the item's own narration is suppressed while signing plays stays open — see the callout at the top of this PRD. |
 | Authoring tooling | Explicitly deferred until a concrete use case exists. Ship rendering first. |
 
 Settled during PIE-880 implementation, 2026-08-08:

@@ -1,6 +1,6 @@
 # Using PIE web components from an npm CDN
 
-The player and tool packages in this repo compile to **custom elements** and can be loaded directly in the browser via an npm CDN such as **jsDelivr** or **unpkg**.
+`@pie-players/pie-item-player` loads directly in the browser from an npm CDN such as **jsDelivr** or **unpkg**, because its root entry imports no bare specifier. The section player, the assessment player, the toolkit's custom elements and the `pie-tool-*` packages import other packages by bare specifier, so a host loads them through a bundler, or an import map that resolves every one of those specifiers (see [library packaging strategy](./library-packaging-strategy.md#consumer-guidance-current-scope)).
 
 ## Item player (recommended)
 
@@ -8,7 +8,7 @@ The player and tool packages in this repo compile to **custom elements** and can
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@0.1.0/dist/pie-item-player.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js';
 </script>
 
 <pie-item-player strategy="esm"></pie-item-player>
@@ -18,7 +18,7 @@ The player and tool packages in this repo compile to **custom elements** and can
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@0.1.0/dist/pie-item-player.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js';
 </script>
 
 <pie-item-player strategy="iife"></pie-item-player>
@@ -26,31 +26,12 @@ The player and tool packages in this repo compile to **custom elements** and can
 
 ## Tools
 
-Example:
-
-```html
-<script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/components/item-toolbar-element.js';
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/components/section-toolbar-element.js';
-  import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/index.js';
-
-  // `pie-item-toolbar` renders buttons without a coordinator, but the buttons won't do anything.
-  // Wire a ToolCoordinator so tools can actually open/close.
-  const coordinator = new ToolCoordinator();
-
-  window.addEventListener('DOMContentLoaded', () => {
-    const toolbar = document.querySelector('pie-item-toolbar');
-    toolbar.toolCoordinator = coordinator; // JS property (NOT an attribute)
-  });
-</script>
-
-<pie-item-toolbar tools="protractor,ruler,graph"></pie-item-toolbar>
-```
+Tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
 
 ## Notes
 
-- CDN imports require the package to publish its built file under `dist/` and register the custom element tag (this repo’s player/tool packages do).
-- Tool coordination is done via **JS properties** (e.g. `toolbar.toolCoordinator = new ToolCoordinator()`), not HTML attributes.
+- A package loads raw from a CDN when it publishes its built file under `dist/`, registers its custom element tag and imports no bare specifier. Of the players, only `pie-item-player` meets all three.
+- Object values such as `config`, `runtime` or a `toolRegistry` are JS properties; HTML attributes carry strings.
 - Pin versions in production (`@x.y.z`) to avoid breaking changes.
 - For the full list of publishable packages, see `docs/setup/publishable_packages.md`.
 

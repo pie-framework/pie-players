@@ -1,6 +1,6 @@
 # Ruler Tool
 
-A draggable and rotatable ruler measurement tool for the PIEoneer assessment player.
+A draggable and rotatable ruler measurement tool for PIE assessment players.
 
 ## Features
 

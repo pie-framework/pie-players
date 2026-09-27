@@ -95,8 +95,8 @@ The hash stays the content address of the element combination: a 7-char sha256
 of the config's sorted `package@version` list (`generateHash`), published as
 `pie.bundleHash` beside `pie.set`.
 
-`publish-changed.mjs` enforces that no two configs share a hash
-(`validateUniqueCombinations`) — configs must be unique element combinations,
+`publish-changed.mjs` rejects a run in which two of its selected configs share a
+hash (`validateUniqueCombinations`) — configs must be unique element combinations,
 not just unique filenames. A config lists each package once at an exact
 version; the generator rejects a range or a repeated package. A config's
 optional `tag` field selects its authored base tag, such as `multiple-choice`
@@ -157,7 +157,7 @@ A host that evaluates a PITS IIFE bundle itself first awaits
 <script type="module">
   import "@pie-players/pie-preloaded-player";
 </script>
-<pie-item-player strategy="preloaded" config="..." env="..." session="...">
+<pie-item-player strategy="preloaded" hosted config="..." env="..." session="...">
 </pie-item-player>
 ```
 
@@ -237,7 +237,7 @@ package and served the same purpose. `<pie-fixed-player>` took the same
 (`addCorrectResponse`, `renderStimulus`, `allowedResize`, `showBottomBorder`,
 `customClassname`, `containerClass`, `passageContainerClass`,
 `externalStyleUrls`, `loaderConfig`, `debug`) that `<pie-item-player>` still
-exposes today (`PieItemPlayer.svelte:10-18,164-172`), and both assume
+exposes today, and both assume
 server-side scoring via an elements-only `player.js` bundle — migrating an
 existing integration is mostly a rename, with two behavior changes to expect:
 
@@ -260,8 +260,8 @@ The load signal carries over unchanged. The generated entry dispatches
 marks `PIE-Fixed-Player-Load-Complete` on the performance timeline and sets
 `window.pieFixedPlayerLoaded`, for a host that initializes after the player and
 misses the dispatch. A failed initialization dispatches
-`PIE-Fixed-Player-Load-Failed` before the error propagates. Star and Quiz Engine
-listen for it; `item-player-generated-preloaded.spec.ts` pins both states
+`PIE-Fixed-Player-Load-Failed` before the error propagates. Hosts listen for
+it; `item-player-generated-preloaded.spec.ts` pins both states
 against the packed tarball.
 
 ## CI/CD
@@ -297,8 +297,8 @@ either race this one for the same version or publish without provenance, so:
   workflow both published the same package on the same push. That was
   removed.
 - A versioned release still triggers this workflow anyway: its path filter
-  covers `packages/**` and `package.json`, both of which a version bump
-  touches.
+  covers `packages/item-player/**`, `packages/players-shared/**` and
+  `package.json`, all of which a version bump touches.
 - There was also a second, undocumented workflow (`preloaded-release.yml`)
   publishing the same package off the same `master` trigger. It was deleted.
 
@@ -312,7 +312,8 @@ either race this one for the same version or publish without provenance, so:
   `packages/item-player/`, `tools/cli/`, `packages/players-shared/`, or
   `scripts/preloaded-player/` — those are shared inputs to every variant's
   `loaderVersion`/build, not per-config data — or if `base` is the all-zero
-  SHA (first push / force-push);
+  SHA (first push / force-push). Tests, Playwright configs and Markdown under
+  those paths do not count (`NOT_BUILD_INPUTS`);
 - otherwise rebuilds only the configs whose own JSON file changed.
 
 To publish every config regardless of what changed, run the workflow

@@ -1,6 +1,6 @@
 # Open-Source Calculator Provider
 
-Status: Implemented
+Status: Accepted
 
 Owner: `@pie-players/pie-calculator-cortex`
 
@@ -27,7 +27,7 @@ Desmos or GeoGebra.
 The implementation is based on:
 
 - [MathLive](https://github.com/arnog/mathlive) for accessible mathematical
-  input and the mode-specific virtual keyboard.
+  input; the mode-specific keypad is the package's own.
 - [CortexJS Compute Engine](https://github.com/cortex-js/compute-engine) for
   parsing, canonical MathJSON, validation, and numeric evaluation.
 - [JSXGraph](https://jsxgraph.org/home/) for the graph viewport and rendered
@@ -74,11 +74,8 @@ or network connection is required.
 
 - Owning package: `@pie-players/pie-calculator-cortex`.
 - Public export path: `@pie-players/pie-calculator-cortex`.
-- Consuming packages:
-  - `@pie-players/pie-default-tool-loaders`
-  - `@pie-players/pie-tool-calculator-cortex`
-  - `@pie-players/pie-tool-calculator-inline-cortex`
-  - `@pie-players/pie-tool-calculator-shared`
+- Consuming package: `@pie-players/pie-default-tool-loaders`, whose
+  `CortexToolProvider` adapter lazy-imports the provider.
 - Runtime environment: browser-only provider with module Web Workers; the public
   types remain safe to import in TypeScript without creating browser globals.
 
@@ -90,6 +87,8 @@ The package root owns and exports:
 - `CortexCalculatorSettings`
 - `CortexCalculatorMessages`, `CortexCalculatorMessageKey`, and
   `CortexCalculatorMessageOverrides`
+- `cortexEnglishMessages` and `cortexDutchMessages`, the shipped catalogs
+- `localeDirection(locale)`, the writing direction a locale resolves to
 - `CortexTextDirection`
 - `CortexAngleMode`
 - `CortexCalculatorError`
@@ -107,9 +106,9 @@ libraries through PIE package internals.
 
 ## Contract Shape
 
-The public types below are the proposed implementation contract. The owning
-package may factor them into internal modules, but the names and semantics are
-reviewed as one root export surface.
+The public types below are the shipped contract. The owning package factors
+them into internal modules, but the names and semantics are reviewed as one root
+export surface.
 
 ```ts
 import type {
@@ -218,15 +217,17 @@ silently clamped, except where the contract explicitly defines a default.
 ### Provider and registration identifiers
 
 The provider instance uses `providerId: "cortex"`, matching the existing
-provider-state convention. The assessment-toolkit registration identifier is
-`"calculator-cortex"`, matching `"calculator-desmos"` and
-`"calculator-geogebra"`.
+provider-state convention. The calculator registration in
+`@pie-players/pie-default-tool-loaders` accepts `"calculator-cortex"` as
+`provider.id`, matching `"calculator-desmos"` and `"calculator-geogebra"`.
 
 ```ts
 {
   tools: {
-    calculator: {
-      provider: { id: "calculator-cortex" },
+    providers: {
+      calculator: {
+        provider: { id: "calculator-cortex" },
+      },
     },
   },
 }
@@ -370,8 +371,8 @@ PIE owns:
 - Validation and enforcement of calculator type, expression capability,
   restriction settings, precision, complexity, and time limits.
 - Versioned provider-state serialization and atomic import validation.
-- Safe lifecycle management for MathLive, the virtual keyboard, Compute Engine
-  workers, and JSXGraph boards.
+- Safe lifecycle management for MathLive and its page-wide settings, Compute
+  Engine workers, and JSXGraph boards.
 - Provider-specific errors and privacy-preserving lifecycle telemetry.
 
 Hosts own:
@@ -460,7 +461,7 @@ The implementation must meet WCAG 2.2 Level AA and provide:
   checked against PIE light and dark themes.
 - A textual graph summary and keyboard trace alternative for information that
   would otherwise be available only visually.
-- No focus trap in MathLive's global virtual keyboard or the JSXGraph board.
+- No focus trap in the keypad or the JSXGraph board.
 - No required animation; any optional transition honors reduced-motion
   preferences.
 - Usable layouts at 200% browser zoom and 320 CSS-pixel width.
@@ -496,8 +497,8 @@ Unit and contract coverage must include:
   history, export/import round trips, and atomic import failure.
 - Graph viewport, expression limits, sampling cancellation, discontinuity
   segmentation, stale-response suppression, pan/zoom/reset, and keyboard trace.
-- MathLive virtual-keyboard lease ownership and cleanup with multiple calculator
-  instances.
+- MathLive settings-lease ownership (locale and decimal separator) and cleanup
+  with multiple calculator instances.
 - Privacy contract tests proving telemetry omits expressions, results, state,
   history, and coordinates.
 - Existing Desmos and GeoGebra provider-selection tests as regression coverage.
@@ -533,19 +534,18 @@ Playwright-backed tests and the full local PR gate run outside the sandbox.
   state, dependency attribution, direct custom-element entrypoints, and local
   demo coverage.
 - Release risk: medium. The provider is additive, but introduces three bundled
-  browser libraries, a worker boundary, global MathLive keyboard coordination,
-  new custom-element packages, and a persisted provider-state schema.
-- Implementation starts only after the GeoGebra calculator work is complete and
-  its final package/export shape has been audited against this PRD.
+  browser libraries, a worker boundary, a lease over MathLive's page-wide
+  settings, new custom-element packages, and a persisted provider-state schema.
+- Implementation followed the GeoGebra provider suite, which landed on
+  2026-08-26 (8bb668b0) ahead of the Cortex suite (787ad8ff).
 
 ## Open Questions
 
-There are no product-scope questions blocking Draft review. Immediately before
-implementation, revalidate:
-
-- The final post-GeoGebra provider, package, and custom-element seams. If they
-  differ from this PRD, amend this document rather than layering a second seam.
-- Current dependency versions, browser support, licenses, bundled asset paths,
-  and published security advisories for MathLive, Compute Engine, and JSXGraph.
-- The exact accessible color-and-line-style palette against the current PIE
-  theme tokens.
+None open. The pre-implementation revalidation items are settled in place: the
+post-GeoGebra seams in [Package And Export Ownership](#package-and-export-ownership),
+where the calculator adapters have lived in
+`@pie-players/pie-default-tool-loaders` since 498f9376; the dependency pins in
+the package's `package.json` (`@cortex-js/compute-engine` 0.130.0, `jsxgraph`
+1.13.2, `mathlive` 0.110.0) and their notices in its `LICENSE.md`; and the
+palette as the six `--pie-calculator-series-1` to `--pie-calculator-series-6`
+tokens described under [Accessibility](#accessibility).

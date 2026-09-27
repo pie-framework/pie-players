@@ -1359,11 +1359,20 @@ const DEFAULT_ENV = {
 		resetSessionEmitPolicyState(sessionEmitPolicyState);
 	});
 
+	// Each context has one provider per host, and `setValue` republishes a
+	// changed value to its subscribers. A provider replaced on every change
+	// drops them: when the coordinator changes, both providers and both roots
+	// are replaced in one flush and no root is left to replay the requests.
+	const hasHostRuntimeContext = $derived(hostRuntimeContextValue !== null);
+	const hasRuntimeContext = $derived(runtimeContextValue !== null);
+
 	$effect(() => {
-		if (!host || !hostRuntimeContextValue) return;
+		if (!host || !hasHostRuntimeContext) return;
+		const initialValue = untrack(() => hostRuntimeContextValue);
+		if (!initialValue) return;
 		hostRuntimeProvider = new ContextProvider(host, {
 			context: assessmentToolkitHostRuntimeContext,
-			initialValue: hostRuntimeContextValue,
+			initialValue,
 		});
 		hostRuntimeProvider.connect();
 		hostRuntimeRoot = new ContextRoot(host);
@@ -1391,10 +1400,12 @@ const DEFAULT_ENV = {
 	});
 
 	$effect(() => {
-		if (!host || !runtimeContextValue) return;
+		if (!host || !hasRuntimeContext) return;
+		const initialValue = untrack(() => runtimeContextValue);
+		if (!initialValue) return;
 		provider = new ContextProvider(host, {
 			context: assessmentToolkitRuntimeContext,
-			initialValue: runtimeContextValue,
+			initialValue,
 		});
 		provider.connect();
 		contextRoot = new ContextRoot(host);

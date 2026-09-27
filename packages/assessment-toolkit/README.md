@@ -467,9 +467,16 @@ with `coordinator.updateAssessment(...)`, since the toolkit applies its
 `assessment` property to a coordinator it owns. The `calculator-pnp` section
 demo composes the owned-coordinator form.
 
-The coordinator the toolkit builds for itself reports feature policy asked
-with no assessment bound only while `pnp-enforcement` is `on`: a toolkit given
-no `assessment` and no enforcement has asked for no accommodation.
+The toolkit builds its own coordinator at mount from `tools`, `enabled-tools`,
+`assessment-id`, `accessibility`, `lazy-init`, `tool-config-strictness` and
+`toolRegistry`. A section that arrives after one of those changed initializes
+with a coordinator rebuilt from the current values, and the toolbars move to
+it. After a section has initialized, a change to them is reported once in the
+console and does not reach the coordinator; `pnp-enforcement`, `assessment`,
+`currentItemRef` and `toolContextResolvers` apply to it at any time. That
+coordinator reports feature policy asked with no assessment bound only while
+`pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
+has asked for no accommodation.
 
 ## Tool Configuration Model
 

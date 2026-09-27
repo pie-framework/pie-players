@@ -291,6 +291,11 @@ const DEFAULT_ENV = {
 	// any subscriber.
 	let deliveredFrameworkErrorKey = "";
 	let lastOwnedBootstrapFailureKey = "";
+	// The inputs the owned coordinator was built from, and whether a section has
+	// initialized with it. Plain `let` for the same reason as the latches above.
+	let ownedCoordinatorInputs: OwnedCoordinatorInputs | null = null;
+	let ownedCoordinatorBound = false;
+	let reportedLateOwnedCoordinatorInputs = false;
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
 	// PIE-885: the emit latch and its frame/deadline handles live in the
@@ -957,6 +962,57 @@ const DEFAULT_ENV = {
 		});
 	}
 
+	// What `buildOwnedCoordinator` reads, in a form two reads compare by. The
+	// tools leave out `pnpEnforcement`, which the policy effect below pushes to a
+	// live coordinator, as the bootstrap effect does with the resolvers.
+	type OwnedCoordinatorInputs = {
+		signatures: Record<string, string>;
+		toolRegistry: ToolRegistry | null;
+	};
+
+	function signatureOf(value: unknown): string {
+		try {
+			return JSON.stringify(value ?? null);
+		} catch {
+			return "[unserializable]";
+		}
+	}
+
+	function readOwnedCoordinatorInputs(): OwnedCoordinatorInputs {
+		return {
+			signatures: {
+				assessmentId: assessmentId || "",
+				toolConfigStrictness: String(toolConfigStrictness || "error"),
+				lazyInit: String(lazyInit),
+				tools: signatureOf({
+					...buildEffectiveToolsInput(),
+					pnpEnforcement: undefined,
+				}),
+				accessibility: signatureOf(accessibility),
+			},
+			toolRegistry,
+		};
+	}
+
+	function changedOwnedCoordinatorInputs(): string[] {
+		const built = ownedCoordinatorInputs;
+		if (!built) return [];
+		const current = readOwnedCoordinatorInputs();
+		const changed = Object.keys(current.signatures).filter(
+			(name) => current.signatures[name] !== built.signatures[name],
+		);
+		if (current.toolRegistry !== built.toolRegistry) changed.push("toolRegistry");
+		return changed;
+	}
+
+	function reportLateOwnedCoordinatorInputs(changed: string[]): void {
+		if (reportedLateOwnedCoordinatorInputs) return;
+		reportedLateOwnedCoordinatorInputs = true;
+		console.warn(
+			`[pie-assessment-toolkit] ${changed.join(", ")} changed after a section initialized with the coordinator this toolkit built, and that coordinator keeps the values it was built with. Set these inputs no later than the section, pass a coordinator of your own, or update this one from toolkit-ready with updateToolConfig(...) or updateToolsPlacement(...). Reported once per toolkit.`,
+		);
+	}
+
 	function releaseOwnedCoordinator(): Promise<void> {
 		const current = ownedCoordinator;
 		if (!current) return Promise.resolve();
@@ -979,6 +1035,7 @@ const DEFAULT_ENV = {
 		}
 		return coordinator || ownedCoordinator;
 	});
+	const hasSection = $derived(section != null);
 
 	// Owned-coordinator bootstrap. The effect must re-run when ownership
 	// inputs (`host`, `coordinator`, `isolation`, `inheritedRuntime`)
@@ -990,12 +1047,27 @@ const DEFAULT_ENV = {
 	// the assessment-player smoke flow. We therefore explicitly track
 	// only the ownership inputs and run the bootstrap body inside
 	// `untrack`, matching the Svelte subscription guidance in `AGENTS.md`.
+	//
+	// It also tracks what the owned coordinator is built from, and whether a
+	// section is present. A section that arrives after one of those inputs
+	// changed initializes with a coordinator rebuilt from the current values,
+	// so a host that sets `runtime` and `section` a tick after mount gets the
+	// coordinator it would have had setting them first. Once a section has
+	// initialized with the coordinator, a change is reported instead.
 	$effect(() => {
 		void host;
 		void coordinator;
 		void isolation;
 		void inheritedRuntime;
 		void toolContextResolvers;
+		void hasSection;
+		void tools;
+		void enabledTools;
+		void assessmentId;
+		void toolConfigStrictness;
+		void lazyInit;
+		void accessibility;
+		void toolRegistry;
 		untrack(() => {
 			if (!host) return;
 			if (coordinator) {
@@ -1015,6 +1087,16 @@ const DEFAULT_ENV = {
 				}
 				lastAppliedToolContextResolvers = null;
 				return;
+			}
+			if (ownedCoordinator) {
+				const changed = changedOwnedCoordinatorInputs();
+				if (changed.length > 0 && ownedCoordinatorBound) {
+					reportLateOwnedCoordinatorInputs(changed);
+				} else if (changed.length > 0 && section) {
+					void releaseOwnedCoordinator().catch(
+						reportOwnedCoordinatorDisposeError,
+					);
+				}
 			}
 			if (
 				ownedCoordinator &&
@@ -1040,6 +1122,8 @@ const DEFAULT_ENV = {
 				try {
 					const validatedTools = validateToolsConfigForBootstrap();
 					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					ownedCoordinatorInputs = readOwnedCoordinatorInputs();
+					ownedCoordinatorBound = false;
 					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
 					frameworkErrorModel = null;
@@ -1543,6 +1627,11 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		if (!section || !effectiveCoordinator) return;
 		let cancelled = false;
+		// The section's controller now lives on the coordinator, and the host
+		// receives it from `toolkit-ready`, so an owned one is no longer rebuilt.
+		if (effectiveCoordinator === untrack(() => ownedCoordinator)) {
+			ownedCoordinatorBound = true;
+		}
 
 		void sectionEngine
 			.initialize({

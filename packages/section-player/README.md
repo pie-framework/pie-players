@@ -320,6 +320,17 @@ Render in HTML/Svelte/JSX:
 Set complex values (`runtime`, `section`) as JS properties. `env` is a
 `runtime` field (`runtime.env`); the layout elements have no `env` property.
 
+Set `runtime` no later than `section`. When the player builds its own
+coordinator, the section's arrival rebuilds that coordinator from the current
+`runtime`, so both can be set a tick after the element mounts. Once the section
+has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
+`runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
+`toolRegistry` is reported once in the console and does not reach that
+coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
+coordinator through the one `toolkit-ready` delivers, with
+`updateToolConfig(...)` or `updateToolsPlacement(...)`, or pass your own as
+`runtime.coordinator`.
+
 ## Runtime Inputs
 
 The layout elements (`pie-section-player-splitpane`,

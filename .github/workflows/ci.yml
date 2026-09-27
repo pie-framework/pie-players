@@ -119,12 +119,6 @@ jobs:
         if: env.RUN_HEAVY == 'true'
         run: bun run ${{ matrix.command }}
 
-      # The Cortex calculator's own browser suite runs in the section-player job,
-      # which already installs Chromium, so it adds no check to require.
-      - name: Run Cortex Calculator E2E
-        if: env.RUN_HEAVY == 'true' && matrix.name == 'section-player'
-        run: bun run --cwd packages/calculator-cortex test:e2e
-
       # Playwright writes error-context.md, a screenshot, and a video per failed
       # test. Without them a red check carries only the assertion line, and the
       # 2026-09-06 tts-ssml failure had to be diagnosed by reproducing it locally.
@@ -136,6 +130,63 @@ jobs:
           path: |
             packages/*/test-results
             apps/*/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The Cortex calculator's own browser suite, in parallel with the critical legs.
+  # Not a required check: a pull request runs it only when it touches Cortex, the
+  # calculator contract it depends on, or the toolchain, and every push to master
+  # runs it.
+  cortex-e2e:
+    name: Cortex Calculator E2E
+    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # A pull request checks out its merge commit, whose first parent is the base
+      # branch tip, so that diff is the pull request's change.
+      - name: Detect Cortex Changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] ||
+            git diff --name-only HEAD^1 HEAD | grep -qE '^(packages/calculator-cortex/|packages/calculator/|package\.json$|bun\.lock$|\.github/workflows/ci\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Bun
+        if: steps.changes.outputs.run == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        if: steps.changes.outputs.run == 'true'
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build Cortex Dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: bunx turbo build --filter='@pie-players/pie-calculator-cortex^...'
+
+      - name: Run Cortex Calculator E2E
+        if: steps.changes.outputs.run == 'true'
+        run: bun run --cwd packages/calculator-cortex test:e2e
+
+      - name: Upload E2E Failure Artifacts
+        if: failure() && steps.changes.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-cortex
+          path: packages/calculator-cortex/test-results
           retention-days: 7
           if-no-files-found: ignore
 

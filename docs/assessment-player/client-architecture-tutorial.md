@@ -563,7 +563,7 @@ const sectionSession = controller.getSectionSession('section-1');
 controller.updateSectionSession('section-1', modifiedSnapshot);
 ```
 
-The default element automatically syncs the active section player's session into the assessment session on navigation transitions and on `session-changed` / `item-session-changed` events from the section player.
+The default element automatically syncs the active section player's session into the assessment session on navigation transitions and on each `session-changed` from the section player.
 
 ---
 
@@ -789,7 +789,7 @@ The assessment player is an orchestrator, not a renderer. Understanding the boun
 - item element loading and readiness tracking
 
 **Cross-layer session sync:**
-When the active section player emits `session-changed` or `item-session-changed`, the default element captures the section controller's `getSession()` output and writes it into the assessment session via `controller.updateSectionSession()`. When navigating to a previously visited section, the assessment player reads the stored section session from `controller.getSectionSession()` and applies it to the newly mounted section player via `applySession({ mode: 'replace' })`.
+When the active section player emits `session-changed`, the default element captures the section controller's `getSession()` output and writes it into the assessment session via `controller.updateSectionSession()`. When navigating to a previously visited section, the assessment player reads the stored section session from `controller.getSectionSession()` and applies it to the newly mounted section player via `applySession({ mode: 'replace' })`.
 
 This means item-level persistence can be fully handled by the assessment controller — the section player's own `createSectionSessionPersistence` hook can return a no-op strategy when the assessment player is the sole persistence owner.
 

@@ -103,7 +103,8 @@ change only — section-level events flow through the embedded
   `previousSectionId`, `canNext` / `canPrevious`).
 - `assessment-session-applied` — `hydrate()` loaded a persisted session.
 - `assessment-session-changed` — assessment session mutated (navigation,
-  per-section snapshot upsert).
+  per-section snapshot upsert). The active section's snapshot is upserted once
+  for each `session-changed` it emits.
 - `assessment-progress-changed` — visited-section count flipped.
 - `assessment-submission-state-changed` — `submit()` recorded the final
   state.

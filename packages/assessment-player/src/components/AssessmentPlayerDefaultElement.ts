@@ -781,12 +781,13 @@ export class AssessmentPlayerDefaultElement
 		const onSessionChanged = () => {
 			if (isCurrent()) this.syncCurrentSectionSessionIntoAssessment();
 		};
+		// The toolkit's `session-changed` alone: it follows every item session change
+		// the section controller records, and `item-session-changed` repeats the
+		// responses among them.
 		target.addEventListener("session-changed", onSessionChanged);
-		target.addEventListener("item-session-changed", onSessionChanged);
 		this.detachSectionListeners = () => {
 			cancelReadiness();
 			target.removeEventListener("session-changed", onSessionChanged);
-			target.removeEventListener("item-session-changed", onSessionChanged);
 		};
 	}
 

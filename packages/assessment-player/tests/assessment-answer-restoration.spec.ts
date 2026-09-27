@@ -119,6 +119,39 @@ test("answers survive Next and Back through every section and a saved reload", a
 	}
 });
 
+test("one answer changes the assessment session once", async ({ page }) => {
+	await page.goto("/three-section-assessment", { waitUntil: "networkidle" });
+	const host = page.locator(player);
+	await expect(host.locator(sectionHost)).toHaveAttribute("aria-busy", "false");
+	await page.evaluate(() => {
+		const counts = ((window as any).__sessionEventCounts = {
+			"assessment-session-changed": 0,
+			"session-changed": 0,
+			"item-session-changed": 0,
+			lastAt: performance.now(),
+		});
+		const host = document.querySelector("pie-assessment-player-default")!;
+		for (const type of ["assessment-session-changed", "session-changed", "item-session-changed"] as const) {
+			host.addEventListener(type, () => {
+				counts[type] += 1;
+				counts.lastAt = performance.now();
+			});
+		}
+	});
+	await host.locator(firstChoice).first().click();
+	await expect(host.locator(firstChoice).first()).toBeChecked();
+	await page.waitForFunction(() => {
+		const counts = (window as any).__sessionEventCounts;
+		return counts["assessment-session-changed"] > 0 && performance.now() - counts.lastAt > 500;
+	});
+	const { lastAt: _lastAt, ...counts } = await page.evaluate(() => (window as any).__sessionEventCounts);
+	expect(counts).toEqual({
+		"assessment-session-changed": 1,
+		"session-changed": 1,
+		"item-session-changed": 1,
+	});
+});
+
 for (const fault of ["delay", "readiness"] as const) {
 	test(`saved answers wait for ${fault === "delay" ? "restoration" : "section readiness"} before interaction`, async ({ page }) => {
 		const host = await prepareRestore(page, fault);

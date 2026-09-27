@@ -96,3 +96,51 @@ describe("a bound assessment is silent", () => {
 		expect(unbound(second.warnings)).toHaveLength(0);
 	});
 });
+
+describe("a coordinator the toolkit built for itself", () => {
+	// The toolkit binds only the assessment its host passed, and a section player
+	// passes none, so an unbound assessment is a gap only when the host enforces
+	// profile policy.
+	const makeToolkitOwned = (pnpEnforcement?: "on" | "off") =>
+		new ToolkitCoordinator({
+			assessmentId: "unbound-assessment-diagnostic",
+			lazyInit: true,
+			assessmentOptional: true,
+			tools: {
+				placement: { section: [] },
+				...(pnpEnforcement ? { pnpEnforcement } : {}),
+			},
+		});
+
+	test("is silent while enforcement is unset or off", () => {
+		for (const coordinator of [makeToolkitOwned(), makeToolkitOwned("off")]) {
+			const { value, warnings } = captureWarnings(() => {
+				coordinator.decideFeaturePolicy(FEATURE);
+				return coordinator.decideFeaturePolicy("transcript");
+			});
+			expect(unbound(warnings)).toHaveLength(0);
+			expect(value.granted).toBe(false);
+			expect(value.assessmentBound).toBe(false);
+		}
+	});
+
+	test("reports once when the host enforces profile policy", () => {
+		const coordinator = makeToolkitOwned("on");
+		const { warnings } = captureWarnings(() => {
+			coordinator.decideFeaturePolicy(FEATURE);
+			coordinator.decideFeaturePolicy("transcript");
+		});
+		expect(unbound(warnings)).toHaveLength(1);
+	});
+
+	test("reports once enforcement is switched on after a silent decision", () => {
+		const coordinator = makeToolkitOwned();
+		const { warnings } = captureWarnings(() => {
+			coordinator.decideFeaturePolicy(FEATURE);
+			coordinator.setPnpEnforcement("on");
+			coordinator.decideFeaturePolicy(FEATURE);
+			coordinator.decideFeaturePolicy(FEATURE);
+		});
+		expect(unbound(warnings)).toHaveLength(1);
+	});
+});

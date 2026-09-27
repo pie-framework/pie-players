@@ -467,6 +467,10 @@ with `coordinator.updateAssessment(...)`, since the toolkit applies its
 `assessment` property to a coordinator it owns. The `calculator-pnp` section
 demo composes the owned-coordinator form.
 
+The coordinator the toolkit builds for itself reports feature policy asked
+with no assessment bound only while `pnp-enforcement` is `on`: a toolkit given
+no `assessment` and no enforcement has asked for no accommodation.
+
 ## Tool Configuration Model
 
 The toolkit uses one canonical `tools` model with three concerns:

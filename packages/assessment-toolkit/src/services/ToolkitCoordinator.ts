@@ -278,6 +278,16 @@ export interface ToolkitCoordinatorConfig {
 	deferToolConfigValidation?: boolean;
 
 	/**
+	 * Set by `<pie-assessment-toolkit>` on the coordinator it builds for itself.
+	 * That toolkit binds only the `assessment` its host passes, and a section
+	 * player passes none, so feature policy reports an unbound assessment only
+	 * while PNP enforcement is explicitly `"on"`.
+	 *
+	 * @internal
+	 */
+	assessmentOptional?: boolean;
+
+	/**
 	 * Optional pre-constructed framework-error bus.
 	 *
 	 * Pass a bus owned by the embedding host (typically
@@ -2742,10 +2752,22 @@ export class ToolkitCoordinator {
 	 * capability it asks about, which is indistinguishable from a student who was
 	 * properly declined — so without this, forgetting {@link updateAssessment}
 	 * presents as an accommodation that silently never appears.
+	 *
+	 * A coordinator built with `assessmentOptional` reports only while PNP
+	 * enforcement is explicitly `"on"`. Its toolkit binds whatever assessment the
+	 * host gave, usually none, and a host that passes no profile and leaves
+	 * enforcement unset or `"off"` has asked for no accommodation.
 	 */
 	decideFeaturePolicy(featureId: string): FeaturePolicyDecision {
 		const decision = this.policyEngine.decideFeature(featureId);
-		if (!decision.assessmentBound && !this.reportedUnboundFeaturePolicy) {
+		const unboundIsMisconfigured =
+			this.config.assessmentOptional !== true ||
+			this.pnpEnforcementOverride === "on";
+		if (
+			!decision.assessmentBound &&
+			unboundIsMisconfigured &&
+			!this.reportedUnboundFeaturePolicy
+		) {
 			this.reportedUnboundFeaturePolicy = true;
 			console.warn(
 				`[ToolkitCoordinator] Feature policy was asked about "${featureId}" with no assessment bound, so every capability will be declined for want of a profile to read. Call updateAssessment(...) with the assessment (its personalNeedsProfile, settings.districtPolicy and settings.testAdministration are what policy reads) before relying on any accommodation. Reported once per coordinator.`,

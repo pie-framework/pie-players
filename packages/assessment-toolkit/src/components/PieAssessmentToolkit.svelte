@@ -946,6 +946,9 @@ const DEFAULT_ENV = {
 			lazyInit,
 			toolConfigStrictness,
 			deferToolConfigValidation: true,
+			// This toolkit binds only its `assessment` prop, which a section player
+			// leaves unset.
+			assessmentOptional: true,
 			tools: validatedTools as any,
 			toolRegistry,
 			toolContextResolvers: toolContextResolvers as any,

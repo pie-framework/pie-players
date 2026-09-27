@@ -10,5 +10,4 @@ when, with no `tts` provider registered, it falls back to browser speech; and
 the section player warns once per placed tool whose provider a host-supplied
 `runtime.coordinator` has not registered. Each warning names
 `createPackagedToolRegistry()` as the remedy. `./tools/internal` exports
-`resolveToolProviderId`. Host R's section demos log these warnings until their
-coordinators receive `toolRegistry`.
+`resolveToolProviderId`.

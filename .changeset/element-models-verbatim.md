@@ -8,5 +8,6 @@ overwide scroll wrapper, and elements that copy model strings into the session
 stored that markup: image-cloze-association scored correct answers 0, and
 select-text misplaced its tokens when its text held an image. The wrapper is now
 applied to the rendered DOM only, and `wrapModelRichContent` is removed from the
-package root and its `./security` entry. Host A strips the wrapper from answer values before preview
-scoring; new sessions no longer carry it, so that strip becomes a no-op.
+package root and its `./security` entry. New sessions no longer carry the
+wrapper, so a host that strips it from answer values before scoring needs that
+step only for sessions stored by 0.3.49 to 0.3.73.

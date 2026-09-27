@@ -9,7 +9,7 @@ provider initialized before the agent loads sends once it arrives. A
 `window.newrelic` whose `noticeError` or `addPageAction` is not a function no
 longer counts as the agent.
 
-This adds volume for Host P, which enables `trackPageActions` without naming a
+This adds volume for a host that enables `trackPageActions` without naming a
 provider and whose agent can load after the first player: on those pages the
 item player's runtime errors, and the resource page actions and errors of items
 started before the agent, now reach its New Relic account from the agent's

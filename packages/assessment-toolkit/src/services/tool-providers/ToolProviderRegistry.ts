@@ -299,14 +299,6 @@ export class ToolProviderRegistry {
 		providerId: string,
 		autoInitialize = true,
 	): Promise<T> {
-		console.log("[ToolProviderRegistry] getProvider called", {
-			providerId,
-			autoInitialize,
-			isRegistered: this.providers.has(providerId),
-			isInitialized: this.initialized.get(providerId),
-			allProviderIds: Array.from(this.providers.keys()),
-		});
-
 		const provider = this.providers.get(providerId);
 		if (!provider) {
 			console.error("[ToolProviderRegistry] Provider not found:", {
@@ -326,12 +318,6 @@ export class ToolProviderRegistry {
 			);
 			await this.initialize(providerId);
 		}
-
-		console.log("[ToolProviderRegistry] Returning provider:", {
-			providerId,
-			providerName: provider.providerName,
-			isReady: provider.isReady(),
-		});
 
 		return provider as T;
 	}

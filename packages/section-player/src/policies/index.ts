@@ -22,7 +22,7 @@ export const DEFAULT_SECTION_PLAYER_POLICIES: SectionPlayerPolicies = {
  * still mount and item-players register their own elements on demand.
  */
 export function isPreloadEnabled(
-	policies: SectionPlayerPolicies | null | undefined,
+	policies: Partial<SectionPlayerPolicies> | null | undefined,
 ): boolean {
 	return policies?.preload?.enabled !== false;
 }
@@ -37,7 +37,7 @@ export function isPreloadEnabled(
  * `instrumentationProvider`.
  */
 export function isTelemetryEnabled(
-	policies: SectionPlayerPolicies | null | undefined,
+	policies: Partial<SectionPlayerPolicies> | null | undefined,
 ): boolean {
 	return policies?.telemetry?.enabled !== false;
 }
@@ -48,7 +48,7 @@ export function isTelemetryEnabled(
  * value from `DEFAULT_SECTION_PLAYER_POLICIES`.
  */
 export function resolveSectionPlayerPolicies(
-	policies: SectionPlayerPolicies | null | undefined,
+	policies: Partial<SectionPlayerPolicies> | null | undefined,
 ): SectionPlayerPolicies {
 	const mode = policies?.readiness?.mode;
 	return {

@@ -216,7 +216,7 @@
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
-		policies = undefined as SectionPlayerPolicies | undefined,
+		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		onFrameworkError = undefined as

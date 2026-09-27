@@ -210,5 +210,10 @@ test.describe("section player preloaded version drift", () => {
 		await expect(
 			page.locator("pie-section-player-splitpane pie-item-player"),
 		).toHaveCount(0);
+		const pane = page.locator("pie-section-player-splitpane");
+		await expect(pane.getByText(LOADING_SECTION)).toHaveCount(0);
+		await expect(
+			pane.getByText("Section content could not be loaded."),
+		).toBeVisible();
 	});
 });

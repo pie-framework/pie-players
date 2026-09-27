@@ -39,12 +39,13 @@ export default defineConfig({
 		video: "retain-on-failure",
 	},
 	webServer: {
-		command: `bun run --cwd "${workspaceRootCwd}" dev:section:cdn -- --host ${sectionDemosHost} --port ${sectionDemosPort}`,
+		command: `bun run --cwd "${workspaceRootCwd}" dev:section:cdn -- --host ${sectionDemosHost} --port ${sectionDemosPort} --strictPort`,
 		url: baseURL,
 		reuseExistingServer: false,
 		timeout: 180_000,
 		env: {
 			PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1",
+			BROWSER: "none",
 			PIE_ELEMENTS_NG_PATH: pieElementsNgRoot,
 			LOCAL_ESM_CDN_SKIP_BUILD: "1",
 		},

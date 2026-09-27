@@ -716,7 +716,11 @@
 		<div
 			class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
 		>
-			{interfaceI18n.t("player.loadingSection")}
+			{interfaceI18n.t(
+				readiness.current.status === "rejected"
+					? "player.sectionLoadError"
+					: "player.loadingSection",
+			)}
 		</div>
 	</div>
 {:else}

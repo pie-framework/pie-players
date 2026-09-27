@@ -60,6 +60,7 @@ const nlNL = {
 		items: "Vragen",
 		section: "Onderdeel",
 		loadingSection: "Onderdeel wordt geladen…",
+		sectionLoadError: "Het onderdeel kon niet worden geladen.",
 		loadingPassage: "Tekst wordt geladen…",
 		configurationError: "Configuratiefout",
 		playerError: "Fout in de speler",

@@ -33,14 +33,17 @@
 	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
 	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import { preloadSectionElements } from '$lib/demo-runtime/preload-utils';
+	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	const demoId = 'tts-generated-ssml';
+	const toolRegistry = createSectionDemoToolRegistry();
 	const toolsConfigResult = createToolsConfig({
 		source: 'section-demos.tts-generated-ssml',
 		strictness: 'error',
+		toolRegistry,
 		tools: {
 			providers: {
 				textToSpeech: {
@@ -320,6 +323,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				ontoolkit-ready={handleToolkitReady}
@@ -338,6 +342,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				ontoolkit-ready={handleToolkitReady}

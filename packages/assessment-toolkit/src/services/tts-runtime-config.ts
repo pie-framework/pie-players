@@ -99,6 +99,11 @@ export interface TTSRuntimeSettings {
 	 * instead of relying on toolkit-specific speech rewrites.
 	 */
 	mathSpeech?: SREMathSpeechOptions;
+	/**
+	 * Options passed through to the provider. The fields derived from the
+	 * settings above, such as `locale` and the Polly engine, win over these.
+	 */
+	providerOptions?: Record<string, unknown>;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -468,6 +473,7 @@ export const buildRuntimeTTSConfig = (
 		rate: config.rate,
 		pitch: config.pitch,
 		providerOptions: {
+			...toRecord(config.providerOptions),
 			...(config.language ? { locale: config.language } : {}),
 			...(backend === "polly" && config.engine
 				? { engine: config.engine }

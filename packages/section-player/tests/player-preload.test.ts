@@ -102,6 +102,24 @@ describe("player-preload: backend config", () => {
 		}
 	});
 
+	test("iife backend skips controllers only for the hosted player bundle", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const needsControllersFor = (resolvedPlayerProps: Record<string, unknown>) => {
+			const backend = buildBackendConfigFromProps({
+				strategy: "iife",
+				resolvedPlayerProps,
+				resolvedPlayerEnv: {},
+				iifeBundleHost: "https://proxy.pie-api.com/bundles",
+			});
+			if (backend.kind !== "iife") throw new Error("expected iife backend");
+			return backend.needsControllers;
+		};
+
+		expect(needsControllersFor({ hosted: true })).toBe(false);
+		expect(needsControllersFor({})).toBe(true);
+		expect(needsControllersFor({ hosted: true, mode: "author" })).toBe(true);
+	});
+
 	test("iife backend falls back to iifeBundleHost arg when loaderOptions omit it", async () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
 		const backend = buildBackendConfigFromProps({
@@ -172,6 +190,22 @@ describe("player-preload: backend config", () => {
 		} else {
 			throw new Error("expected esm backend");
 		}
+	});
+
+	test("esm backend takes the view the item players render", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const viewFor = (resolvedPlayerProps: Record<string, unknown>) => {
+			const backend = buildBackendConfigFromProps({
+				strategy: "esm",
+				resolvedPlayerProps,
+				resolvedPlayerEnv: {},
+			});
+			if (backend.kind !== "esm") throw new Error("expected esm backend");
+			return backend.view;
+		};
+
+		expect(viewFor({ mode: "author" })).toBe("author");
+		expect(viewFor({ loaderOptions: { view: "print" } })).toBe("print");
 	});
 
 	test("esm backend fetches controllers only for a player that is not hosted", async () => {
@@ -344,6 +378,33 @@ describe("warmupSectionElements", () => {
 			resolvedPlayerProps: {},
 			resolvedPlayerEnv: {},
 		});
+	});
+
+	test("preloaded strategy in author mode asserts the editor tags", async () => {
+		const { warmupSectionElements, PreloadStageError } =
+			await loadPlayerPreloadModule();
+		const renderables = [
+			{
+				id: "item-author",
+				config: {
+					markup: '<pie-mc-author id="m1"></pie-mc-author>',
+					elements: { "pie-mc-author": "@pie-element/mc-author@1.0.0" },
+					models: [{ id: "m1", element: "pie-mc-author" }],
+				},
+			} as any,
+		];
+		const warmup = () =>
+			warmupSectionElements({
+				strategy: "preloaded",
+				renderables,
+				resolvedPlayerProps: { mode: "author" },
+				resolvedPlayerEnv: {},
+			});
+
+		definePreloadedTag("pie-mc-author--version-1-0-0");
+		await expect(warmup()).rejects.toBeInstanceOf(PreloadStageError);
+		definePreloadedTag("pie-mc-author--version-1-0-0-config");
+		await warmup();
 	});
 
 	test("preloaded strategy asserts the page's registered version of an authored package", async () => {

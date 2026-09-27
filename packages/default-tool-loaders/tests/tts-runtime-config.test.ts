@@ -55,6 +55,22 @@ describe("tts-runtime-config defaults", () => {
 		});
 	});
 
+	test("passes host providerOptions through, under the derived fields", () => {
+		const runtimeConfig = buildRuntimeTTSConfig(
+			resolveTTSRuntimeSettings({
+				enabled: true,
+				backend: "polly",
+				language: "es-ES",
+				providerOptions: { highlightMode: "word", locale: "fr-FR" },
+			} as any),
+		);
+		expect(runtimeConfig.providerOptions).toMatchObject({
+			highlightMode: "word",
+			locale: "es-ES",
+			engine: "neural",
+		});
+	});
+
 	test("forwards mathTokenHighlighting only when explicitly set", () => {
 		expect(
 			buildRuntimeTTSConfig(

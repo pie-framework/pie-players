@@ -18,7 +18,7 @@ const baseLefthook =
 	"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  jobs:\n    - name: fast-gate\n      script: pre-push-gate.sh\n      runner: sh\n      use_stdin: true\n";
 
 const baseCiWorkflow =
-	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  include:\n    - command: test:e2e:section-player\n    - command: test:e2e:item-player:critical\n    - command: test:e2e:assessment-player\n";
+	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  include:\n    - command: test:e2e:item-player:critical\n    - command: test:e2e:assessment-player\nsteps:\n  - name: Run Section Player E2E\n    run: bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}\n";
 
 const basePrePushGate =
 	'const gate = spawnSync("bun", ["run", "verify:pre-push"], { stdio: "inherit" });\n';
@@ -96,15 +96,32 @@ describe("check-local-pr-gate policy", () => {
 			packageJson: basePackageJson,
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow.replace(
-				"command: test:e2e:section-player\n",
-				"command: test:e2e:section-player:critical\n",
+				"test:e2e:section-player --shard",
+				"test:e2e:section-player:critical --shard",
 			),
 			prePushGate: basePrePushGate,
 			prePushHookScript: basePrePushHookScript,
 		});
 
 		expect(failures).toContain(
-			'CI e2e matrix must run the full section-player suite ("command: test:e2e:section-player"), not a subset.',
+			'CI must run the full section-player suite across its shards ("bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}"), not a subset.',
+		);
+	});
+
+	test("rejects a CI section-player run pinned to one shard", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow.replace(
+				"--shard=${{ matrix.shard }}/${{ strategy.job-total }}",
+				"--shard=1/4",
+			),
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+
+		expect(failures).toContain(
+			'CI must run the full section-player suite across its shards ("bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}"), not a subset.',
 		);
 	});
 

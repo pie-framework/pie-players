@@ -75,16 +75,17 @@ const requiredCiE2eCommands = [
 ];
 
 /**
- * CI must run the whole section-player suite, not the critical subset. Matched on
- * the full matrix line rather than by substring, because
- * `test:e2e:section-player` is a prefix of `test:e2e:section-player:critical` and
- * a substring check would accept the subset it exists to forbid.
+ * CI must run the whole section-player suite, not the critical subset, split
+ * across every shard of its matrix. Matched on the full run line rather than by
+ * substring, because `test:e2e:section-player` is a prefix of
+ * `test:e2e:section-player:critical` and a substring check would accept the
+ * subset it exists to forbid; a fixed `--shard=1/4` would run a quarter of it.
  *
  * The subset stays in `verify:local-pr` on purpose: CI is the safety net, and an
  * ordinary push should not pay ten minutes for it.
  */
 const requiredCiSectionPlayerCommand =
-	/command:\s*test:e2e:section-player\s*$/m;
+	/run:\s*bun run test:e2e:section-player --shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\s*$/m;
 
 function collectMissingOrderedCommands({
 	scripts,
@@ -210,7 +211,7 @@ export function collectGateFailures({
 
 	if (!requiredCiSectionPlayerCommand.test(ciWorkflow)) {
 		failures.push(
-			'CI e2e matrix must run the full section-player suite ("command: test:e2e:section-player"), not a subset.',
+			'CI must run the full section-player suite across its shards ("bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}"), not a subset.',
 		);
 	}
 

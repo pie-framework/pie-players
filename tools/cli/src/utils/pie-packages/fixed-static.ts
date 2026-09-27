@@ -1,11 +1,12 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 import { assertElementPackagesAllowed } from "@pie-players/pie-players-shared/loaders";
 import { encodeElementPackageSpecs, parsePackageName } from "@pie-players/pie-players-shared/pie";
+import { transform } from "esbuild";
 
 import type { ElementSpec } from "./types.js";
 
@@ -521,6 +522,30 @@ export async function parseElementsInput(
 	throw new Error("Either elementsFile or elementsString must be provided");
 }
 
+/**
+ * Strip the whitespace from every module under `dir`. Vite's library build
+ * leaves whitespace in the item player's ES output, because removing it drops
+ * the pure annotations bundlers read; a page loads this package's `dist/`
+ * unbundled. Each file keeps its name and imports. A deliberate trade:
+ * a host that bundles this package loses those annotations and the
+ * `webpackIgnore` hints on the `esm` strategy's runtime imports, which the
+ * `preloaded` strategy never runs.
+ */
+export async function minifyPlayerModules(dir: string): Promise<void> {
+	const files = (await readdir(dir, { recursive: true })).filter((file) =>
+		file.endsWith(".js"),
+	);
+	for (const file of files) {
+		const path = join(dir, file);
+		const { code } = await transform(await readFile(path, "utf-8"), {
+			loader: "js",
+			minifyWhitespace: true,
+			charset: "utf8",
+		});
+		await writeFile(path, code);
+	}
+}
+
 export async function buildPreloadedPlayerStaticPackage(
 	config: BuildStaticConfig,
 ): Promise<{ outputDir: string; version: string }> {
@@ -588,6 +613,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	const itemPlayerDistSrc = join(itemPlayerPkgDir, "dist");
 	const outputDistDir = join(outputDir, "dist");
 	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
+	await minifyPlayerModules(outputDistDir);
 
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
 	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);

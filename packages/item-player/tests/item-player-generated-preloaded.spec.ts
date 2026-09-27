@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
@@ -161,6 +161,20 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   expect(loadedChunks.length).toBeGreaterThan(0);
   expect(failedRequests).toEqual([]);
   expect(browserErrors).toEqual([]);
+});
+
+test("ships every item-player module with its whitespace stripped", async () => {
+  const playerDist = join(workspace, "packages/item-player/dist");
+  const shipped = join(scratch, "served/package/dist");
+  const modules = (await readdir(playerDist, { recursive: true })).filter((file) => file.endsWith(".js"));
+  expect(modules).toContain("pie-item-player.js");
+  for (const file of modules) {
+    const [source, output] = await Promise.all([
+      readFile(join(playerDist, file), "utf-8"),
+      readFile(join(shipped, file), "utf-8"),
+    ]);
+    expect(output.length, file).toBeLessThan(source.length);
+  }
 });
 
 test("renders an item authoring another base tag than the build, hosted and not hosted", async ({ page }) => {

@@ -117,7 +117,7 @@ function resolveElement(
 	}
 	if (typeof version !== "string" || !isExactSemver(version)) {
 		throw new Error(
-			`${at} (${packageName}): version must be the installed version, exact, such as 13.4.4; got ${JSON.stringify(version)}`,
+			`${at} (${packageName}): version must be the installed version, exact, such as 1.2.3; got ${JSON.stringify(version)}`,
 		);
 	}
 	if (typeof tag !== "string" || !tag) {

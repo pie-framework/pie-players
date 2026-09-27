@@ -81,3 +81,18 @@ composition republish, with no assessment-player in it — so `ToolPolicyEngine`
 own cue and playback policy whichever player mounts the section. Where the flavor
 attaches was then decided the same day — the existing layouts on the standalone
 path, no new element — which moved that PRD to `Ready`.
+
+## Update, 2026-09-27
+
+Browser scoring, the evaluation half **Supporting reasons** counts as shipped,
+holds only for an unhosted player. Since adc3da63 (2026-09-25) a hosted player —
+`hosted` set to `true`, or an enabled `backend.delivery` with `hosted` unset —
+runs no element controllers, so `provideScore()` returns `undefined` for every
+model, every Try lands on `"unknown"`, and a correctness gate follows its
+`onUnknownCorrectness`.
+
+Cue and playback policy did not go to `ToolPolicyEngine`. It lives in
+`@pie-players/pie-players-shared/timed-media`, with the live state in
+`SectionController`; the timed-media contract's [Implementation
+Record](../prds/timed-media-section-contract.md#implementation-record-2026-08-17)
+gives the reason.

@@ -71,9 +71,9 @@ export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	stageChange: "pie-stage-change",
 	/**
 	 * Engine-routed (M7). Companion to `stageChange`. Fires once per
-	 * cohort when every item in the section has finished loading
-	 * (`loadedCount === itemCount`), gated by the engine's
-	 * `interactive` state.
+	 * cohort, once the section controller is ready and the section's
+	 * element pre-warm has resolved for the current items: the same
+	 * condition that moves a layout element to `interactive`.
 	 */
 	loadingComplete: "pie-loading-complete",
 } as const;

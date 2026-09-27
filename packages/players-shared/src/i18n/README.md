@@ -145,9 +145,10 @@ English.
 
 ## Module layout
 
-Which module you import decides what ships. Every player and tool
-`vite.config.ts` sets `external: []`, so anything reachable from an entry inlines
-into that bundle.
+Which module you import decides what ships. The item player, the print player
+and the dictionary tools set `external: []`, so anything reachable from their
+entries inlines into their bundles; the other tool bundles import
+`players-shared` from the host, whose bundler follows the same imports.
 
 | Module | Contents | Imported by |
 |---|---|---|

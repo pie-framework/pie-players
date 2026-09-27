@@ -34,9 +34,9 @@ PIE needs enough media metadata to render accessible stimulus media and coordina
 
 ## Package And Export Ownership
 
-- Owning package: `@pie-players/pie-players-shared` (source at `packages/players-shared/src/types/index.ts`).
-- Public export path: `@pie-players/pie-players-shared/types`, a subpath already in the package's `exports` map. The earlier `<owner>/media` candidate was not taken: the media types sit beside the catalog and section types that reference them, and a second subpath would split one vocabulary across two entry points.
-- Consuming packages or apps: `assessment-toolkit` (sign-language and spoken-audio catalog cards, shared media validation), `section-player` (the per-item media region), timed-media section-player PRDs, `assessment-player`, `pie-elements-ng` `video-stimulus`, the `pie-api-aws` Learnosity importer as a producer, and `../pie-qti` adapters.
+- Owning package: `@pie-players/pie-players-shared` (types at `packages/players-shared/src/types/index.ts`, validation helpers at `packages/players-shared/src/media/index.ts`).
+- Public export path: `@pie-players/pie-players-shared/types` for the types, a subpath already in the package's `exports` map. The earlier `<owner>/media` candidate was not taken for the types: they sit beside the catalog and section types that reference them, and a second subpath would split one vocabulary across two entry points. `@pie-players/pie-players-shared/media`, added 2026-09-23, exports the validation and fragment helpers and no types, so an element can validate authored media without importing the toolkit; the toolkit root re-exports them.
+- Consuming packages or apps: `assessment-toolkit` (spoken-audio catalog cards), `tool-sign-language` (sign-language catalog cards), `players-shared/timed-media` (cue ranges), `section-player` (the per-item media region), timed-media section-player PRDs, `assessment-player`, `pie-elements-ng` `video-stimulus`, the `pie-api-aws` Learnosity importer as a producer, and `../pie-qti` adapters.
 - Runtime environment: browser, Node-safe, custom element, and adapter-only.
 
 The contract should stay data-only. Rendering APIs belong to element or player implementation PRDs.
@@ -170,7 +170,7 @@ What the two shipped consumers already cover, as of ratification: `sign-language
 
 Five gaps follow, and they are the coverage a third consumer would otherwise discover:
 
-- **`@pie-players/pie-players-shared/media` has no direct test of its validators.** It is the shared validation layer — scheme allow-list, source normalization, dedupe by `src`, fragment normalization — reached only through its two callers, so a rule neither caller exercises is untested. It is also the security-relevant file of the set.
+- **`@pie-players/pie-players-shared/media` has no direct test of its validators.** Its one test file covers `applyMediaFragment`. It is the shared validation layer — scheme allow-list, source normalization, dedupe by `src`, fragment normalization — reached only through its three callers: the two card validators and the timed-media cue validation, which uses only fragment normalization. A rule none of them exercises is untested. It is also the security-relevant file of the set.
 - **Multi-source payloads are untested.** Every fixture in both consumers carries a single source, so `normalizeMediaSources`' dedupe-by-`src` path and any encoding negotiation are unexercised. Dedupe is not cosmetic: a duplicate `src` would throw Svelte's duplicate-key error in the region's `{#each}` and take the region down rather than degrade.
 - **`tracks` and `transcript` are untested, because neither shipped consumer uses them.** Meaningless for signing, unused for recorded audio, so the first real exercise is `video-stimulus`. Their shape is ratified on inspection, not on use.
 - **`bitrate`, `thumbnail` and `durationSeconds` are unread by any consumer.**

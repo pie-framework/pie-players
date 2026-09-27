@@ -191,11 +191,14 @@ does: the section and assessment players are bundler-only.
 
 These are set via JavaScript, not HTML attributes.
 
-- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on" }`.
+- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on", elementPackagePolicy?: { allowedPackages: string[], requireExactVersions?: boolean } }`.
   Strategy-specific loader options. For ESM, the default provider is jsDelivr
   (`https://cdn.jsdelivr.net/npm`); use `esmCdnProvider: "esm.sh"` with
   `esmCdnUrl: "https://esm.sh"` for esm.sh, or pass a provider object when
   package artifacts and shared dependencies use custom routes.
+  `elementPackagePolicy` limits the `config.elements` packages that may execute
+  to exact names or `name@version` specs; see
+  [Escape hatches](../../docs/security/readme.md#escape-hatches).
 - `sanitizeMarkup`: `(markup: string) => string`. Replace the built-in
   DOMPurify sanitizer with a host-supplied function. Ignored when
   `trust-markup` is set.
@@ -213,7 +216,8 @@ These are set via JavaScript, not HTML attributes.
 
 - `provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>`
   returns one result slot per scored model for legacy-compatible local browser
-  scoring.
+  scoring. A hosted player, including one with `backend.delivery` enabled and
+  `hosted` unset, runs no controllers and leaves every slot `undefined`.
 - `updateElementModel(update): Promise<void>` applies a legacy-compatible
   preview update for a single loaded PIE model.
 - `validateModels(): Promise<AuthoringValidationResult>` runs authoring-mode
@@ -265,10 +269,12 @@ These are set via JavaScript, not HTML attributes.
   (`mode="view"`, `role="student"`, controllers client-side) is indistinguishable
   from a tampered delivery from inside the player. The event firing at all is the
   signal, because population needs a controller with
-  `createCorrectResponseSession` in the browser, which only a
-  `client-player.js` bundle provides. `hosted="true"` — which selects the
-  `player.js` bundle and leaves controllers to the host — is the actual boundary
-  for proctored delivery. See [Loading strategies](../../docs/item-player/loading-strategies.md).
+  `createCorrectResponseSession` in the browser. A player that is not hosted
+  gets one from a `client-player.js` bundle under `iife`, from the controller
+  modules `esm` loads, or from a controller registered with
+  `registerPreloadedElements`. `hosted="true"` — under which the player runs no
+  controller in the browser and leaves them to the host — is the actual
+  boundary for proctored delivery. See [Loading strategies](../../docs/item-player/loading-strategies.md).
 
   Also forwarded to a configured instrumentation provider as
   `pie-item-correct-responses-populated`. It is the only item-player event on

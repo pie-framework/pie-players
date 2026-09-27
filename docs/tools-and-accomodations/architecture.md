@@ -329,6 +329,7 @@ Tools that operate within the context of a specific question/item:
 - **TTS (tool-tts-inline)**: Reads this question's text (not other questions)
 - **Answer Eliminator**: Strikes through choices for this item only
 - **Highlighter**: Highlights within this item's text
+- **Calculator**: Opens a floating panel scoped to this item
 
 **State Management:**
 ```typescript
@@ -352,36 +353,23 @@ Tools that float above the entire assessment and persist across navigation:
 - See diagram above for persistent section-level lifecycle behavior.
 
 **Characteristics:**
-- **Single instance per section**: One calculator, one graph, etc. for entire section
+- **Single instance per section**: One graph, one periodic table, etc. for entire section
 - **Global scope**: Not bound to specific item's DOM
-- **Persistent state**: Calculator history, graph equations, tool positions maintained
+- **Persistent state**: Graph points and lines, tool positions maintained
 - **UI pattern**: Draggable floating panels/overlays with z-index management
 - **Rich UI**: Full-featured interfaces (can be large, user controls positioning)
 
 **Examples:**
-- **Calculator**: Computation history persists across questions
-- **Graph**: Plot multiple functions, reference throughout test
+- **Graph**: Plot points and lines on a coordinate plane, reference throughout test
 - **Periodic Table**: Reference material available anytime
 - **Protractor**: Measure angles in diagrams across items
 - **Ruler**: Measure lengths in diagrams across items
 - **Line Reader**: Reading guide overlay across all content
-- **Magnifier**: Screen magnification across entire assessment
-- **Color Scheme**: High-contrast mode affects all content
+- **Theme**: High-contrast mode affects all content
 
 **State Management:**
-```typescript
-// Calculator state is global (not item-specific)
-calculatorState = {
-  history: [
-    { expression: '45 * 12', result: 540 },
-    { expression: 'sqrt(144)', result: 12 }
-  ],
-  position: { x: 100, y: 200 },
-  size: { width: 300, height: 400 }
-};
 
-// State persists as user navigates between questions
-```
+A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. Any policy change, including a host binding the next item with `updateCurrentItemRef`, re-renders the toolbar and swaps in a fresh element, whose state starts over.
 
 ### Configuration in ToolkitCoordinator
 
@@ -445,23 +433,22 @@ The canonical order is:
 
 The host resolver intentionally cannot re-enable a tool removed by placement,
 provider config, district/test policy, or PNP/profile rules. It is the right
-place for content metadata, such as Pieoneer's `searchMetaData.k12_tags`, to
-choose whether the calculator appears and which calculator type to pass to the
-packaged tool.
+place for content metadata, such as an item's tags, to choose whether the
+calculator appears and which calculator type to pass to the packaged tool.
 
 ### Structured Tool Instance IDs
 
 Tool instances use a scoped ID format:
 
 ```text
-<toolId>:<scopeLevel>:<scopeId>[:inline]
+<toolId>:<scopeLevel>:<scopeId>
 ```
 
 Examples:
 - `calculator:item:item-12`
-- `calculator:section:section-1`
+- `graph:section:section-1`
 - `textToSpeech:passage:passage-2`
-- `highlighter:rubric:rb-5`
+- `annotationToolbar:rubric:rb-5`
 
 Supported built-in levels include `assessment`, `section`, `item`, `passage`, and `rubric`.
 The runtime can register additional levels if your product needs custom scopes.
@@ -483,43 +470,43 @@ The runtime can register additional levels if your product needs custom scopes.
 
 **4. Different State Models**
 - Item tools: state per-question (which answers eliminated for Q5)
-- Floating tools: global state (calculator equation history)
+- Floating tools: one state for the section (graph points and lines)
 
 **5. Different PNP Mapping**
-- QTI 3.0 accessibility features map to appropriate tool level
-- Example: `ext:answer-masking` → item-level answerEliminator
-- Example: `ext:calculator-scientific` → floating calculator
+- QTI 3.0 access features map to tools through each registration's `pnpSupportIds`; placement sets the level the tool shows at
+- Example: `answerMasking` → answerEliminator, placed at item level
+- Example: `graph` → graph, placed at section level
+- A support id that no registration claims produces a `tool-policy.unknownSupportId` diagnostic
 
 ### Implementation Example
 
 **Section Player Rendering:**
 
 ```svelte
-<!-- Section-level: One toolbar for all questions -->
-<pie-section-toolbar toolCoordinator={coordinator.toolCoordinator} />
+<!-- Toolbars take the tool coordinator and TTS service from the enclosing toolkit -->
+<pie-assessment-toolkit {coordinator}>
+  <!-- Section-level: One toolbar for all questions -->
+  <pie-section-toolbar {toolRegistry} />
 
-<!-- Item-level: New toolbar instance per question -->
-{#each items as item}
-  <div class="item-container">
-    <!-- Question header with item-scoped tools -->
-    <pie-item-toolbar
-      itemId={item.id}
-      tools="tts,answerEliminator"
-      toolCoordinator={coordinator.toolCoordinator}
-      ttsService={coordinator.ttsService}
-      scopeElement={itemElement}
-    />
+  <!-- Item-level: New toolbar instance per question -->
+  {#each items as item}
+    <div class="item-container">
+      <!-- Question header with item-scoped tools; placement decides the buttons -->
+      <pie-item-toolbar
+        item-id={item.id}
+        {item}
+        {toolRegistry}
+        scopeElement={itemElement}
+      />
 
-    <!-- Question content -->
-    <pie-item-player item={item} />
-  </div>
-{/each}
-
-<!-- Floating tool instances (outside item loop) -->
-<tool-calculator visible={showCalculator} />
-<tool-graph visible={showGraph} />
-<!-- ... other floating tools ... -->
+      <!-- Question content -->
+      <pie-item-player config={item.config} />
+    </div>
+  {/each}
+</pie-assessment-toolkit>
 ```
+
+Each toolbar mounts the elements of its floating tools, such as `pie-tool-graph` and `pie-tool-calculator`, in toolbar-hosted windows.
 
 ### Architecture Decision: Why Two Categories?
 
@@ -527,7 +514,7 @@ This separation emerged from real-world assessment platform analysis and reflect
 
 **Educational Context:**
 - Students need **contextual tools** (TTS, eliminator) that change per-question
-- Students need **utility tools** (calculator, ruler) that remain available throughout
+- Students need **utility tools** (graph, ruler) that remain available throughout
 
 **Technical Benefits:**
 - Clear lifecycle boundaries (when to create/destroy)
@@ -639,8 +626,8 @@ CSS.highlights.set('highlight-name', highlight);
 **Provider Architecture:**
 
 The service uses a pluggable provider pattern:
-- **BrowserTTSProvider** - Uses Web Speech API (currently implemented)
-- **AWS Polly Provider** - Cloud-based neural voices; client provides integration
+- **BrowserTTSProvider** - Uses Web Speech API (the `browser` backend)
+- **ServerTTSProvider** - From `@pie-players/tts-client-server`, an optional peer. The `polly`, `google` and `server` backends use it to play speech synthesized by a host TTS server, such as one built on `@pie-players/tts-server-polly` or `@pie-players/tts-server-google`
 - Provider registration is descriptor-driven from tool registrations.
 - `tools.providers[toolId]` is generic for every tool (`enabled`, `provider`, `settings`).
 - Runtime hooks (`provider.runtime`) support auth fetch, backend request bridging, and host event wiring.
@@ -651,9 +638,9 @@ TTS Service
   ↓ triggers
 HighlightCoordinator.highlightTTSWord()
   ↓ creates
-CSS.highlights.set('tts-current-word', highlight)
+CSS.highlights.set('tts-word', highlight)
   ↓ renders
-Yellow highlight with border (::highlight CSS)
+Yellow highlight with underline (::highlight CSS)
 ```
 
 **QTI 3.0 Catalog Integration:** TTS integrates with AccessibilityCatalogResolver for SSML support. The section player registers authored catalogs and `config.extractedCatalogs`; embedded `<speak>` extraction must run before render if that content style is used.
@@ -732,57 +719,51 @@ Enable/disable uses canonical tool config and follows standard precedence:
 
 ### State Persistence Pattern
 
-Tools save state per item using player container's storage API:
+Tools write per-element state to the coordinator's `ElementToolStateStore`, keyed `assessmentId:sectionId:itemId:elementId`; the answer eliminator is the packaged tool that writes to it. The host persists the store through two coordinator hooks:
 
 ```typescript
-// On item load
-const state = await player.loadToolState(itemId, toolId);
-if (state) loadState(state);
-
-// On item unload or user action
-const state = saveState();
-await player.saveToolState(itemId, toolId, state);
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'math-exam',
+  toolRegistry,
+  hooks: {
+    // Read once, while the coordinator gets ready
+    loadToolState: () => JSON.parse(sessionStorage.getItem('tool-state') ?? 'null'),
+    // Receives the whole state map on every change
+    saveToolState: (state) => sessionStorage.setItem('tool-state', JSON.stringify(state)),
+  },
+});
 ```
 
-**Storage Options:**
+**Storage Options** (the host's choice):
 - sessionStorage (temporary, current session)
-- IndexedDB (persistent, cross-session)
+- IndexedDB or a server (persistent, cross-session)
 
 **Benefits:**
-- State isolated per item
+- State isolated per element
 - Survives navigation
-- Player container controls storage strategy
+- Host controls storage strategy
 - Tools don't need storage logic
+
+The annotation toolbar keeps its annotations in sessionStorage under a per-item key, outside the store.
 
 ### PIE Element Integration
 
-Tools query PIE content using data attributes:
+Content controls tools through two data attributes:
 
 ```html
-<!-- Highlighting -->
-<p data-highlightable="true" data-highlight-group="passage">
-  Content that students can highlight
-</p>
+<!-- A region an accessibility catalog card describes; TTSService resolves it -->
+<div data-catalog-idref="prompt-1">Question text</div>
 
-<!-- TTS -->
-<div data-readable="true"
-     data-reading-order="1"
-     data-content-type="question"
-     lang="en">
-  Question text to be read aloud
-</div>
-
-<!-- Answer Elimination -->
-<button data-eliminatable="true" data-option-id="option-a">
-  Option A
-</button>
+<!-- Never read aloud, for items where reading is the construct -->
+<span data-tts-suppress="computer-read-aloud">cat</span>
 ```
 
 **Benefits:**
 - Non-invasive (data- attributes ignored by screen readers)
-- Tools query without tight coupling to PIE internals
 - Content authors control tool behavior per element
 - Clear contract between content and tools
+
+Tools otherwise read the content itself. Relevance checks read the item's authored config: `hasMathContent`, `hasReadableText` and `hasScienceContent` scan its markup and model text, and `hasChoiceInteraction` looks for choice element types among its models. The annotation toolbar works on the rendered selection, highlighting it through the CSS Custom Highlight API and reading it aloud. The answer eliminator finds choices in rendered multiple-choice, EBSR and inline-dropdown elements through per-element adapters, which depend on each element's markup.
 
 ---
 
@@ -830,8 +811,12 @@ Tools query PIE content using data attributes:
 - GeoGebra is selected explicitly with `provider.id =
   "calculator-geogebra"`; it supports scientific and graphing apps and maps a
   basic request to scientific.
-- Vendor application code is loaded at runtime from the selected vendor and is
-  not bundled into PIE packages.
+- Cortex is selected with `provider.id = "calculator-cortex"`;
+  `@pie-players/pie-calculator-cortex` bundles MathLive, the Cortex Compute
+  Engine and JSXGraph, supports basic, scientific, and graphing modes, and
+  needs no key, CDN, or network connection at runtime.
+- Desmos and GeoGebra application code is loaded at runtime from the vendor and
+  is not bundled into PIE packages.
 - Desmos and GeoGebra are separately licensed from PIE's MIT adapter code; hosts
   are responsible for the applicable license and attribution in demos and
   deployed applications.
@@ -900,7 +885,6 @@ The toolkit meets WCAG 2.2 Level AA requirements:
 - Color scheme adjustment (high contrast)
 - Text highlighting (4 colors)
 - Line reader (focus/masking)
-- Magnification
 
 **Calculation Support**
 - Basic, scientific, graphing calculators
@@ -941,7 +925,7 @@ Final Configuration:
 ### Implemented & Production Ready
 
 ✅ **Calculator Tool**
-- Desmos provider
+- Desmos (default), GeoGebra and Cortex providers
 - Full featured with settings
 - Tested and deployed
 
@@ -983,15 +967,11 @@ Final Configuration:
 
 ✅ **TTS Service**
 - Web Speech API provider
+- Server provider for host TTS servers (Polly, Google)
 - Word highlighting
 - Pause/resume/stop controls
 
 ### Partially Implemented
-
-⚠️ **AWS Polly TTS Provider**
-- Interface defined
-- Implementation pending
-- Web Speech API covers basic needs
 
 ⚠️ **Range Serialization**
 - Basic path-based export implemented
@@ -1063,7 +1043,7 @@ Capabilities were once described as three tiers, with a "dependent" tier that re
 
 **Trade-offs:**
 - Slightly larger than pure Svelte (but still small)
-- Shadow DOM optional (we use 'none' for simplicity)
+- Tool elements use open shadow roots; the three floating calculator elements (Desmos, GeoGebra, Cortex) render without one
 - Requires compilation step (handled by Svelte)
 
 ---

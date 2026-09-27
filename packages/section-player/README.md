@@ -123,6 +123,11 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 - `timed-media-invalid` — authored `timedMedia` that cannot be delivered; the
   section renders without cue behavior.
 
+The helpers' default event sets leave out `formative-try-recorded`,
+`formative-reveal-changed`, `section-mastery-changed` and
+`timed-media-audio-started`. Name them in `subscribeItemEvents({ eventTypes })`,
+or subscribe through `subscribeSectionEvents`.
+
 Item-scoped events carry both id forms, and both are always populated.
 `itemId` is the bare `item.id` — the form the map returned by
 `getItemSessionsByItemId()` is keyed by, and the form `applySession` expects.
@@ -293,15 +298,16 @@ Render in HTML/Svelte/JSX:
 <pie-section-player-splitpane></pie-section-player-splitpane>
 ```
 
-Set complex values (`runtime`, `section`, `env`) as JS properties.
+Set complex values (`runtime`, `section`) as JS properties. `env` is a
+`runtime` field (`runtime.env`); the layout elements have no `env` property.
 
 ## Runtime Inputs
 
-Both layout elements support:
+The layout elements (`pie-section-player-splitpane`,
+`pie-section-player-vertical`, `pie-section-player-tabbed`) support:
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
-- `env` (object): optional top-level override for `{ mode, role }`
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
@@ -311,6 +317,11 @@ Both layout elements support:
 - `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
 - `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
+- `locale` (string, optional): BCP-47 locale for the player's own interface text. Mirrored onto `runtime.locale`, which wins when both are set. Unset renders `en-US`.
+- `nds-icons` (boolean): opt in to NDS icon buttons. Mirrored onto `runtime.ndsIcons`, which wins when both are set.
+- `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`. `runtime.toolConfigStrictness` wins when both are set.
+- `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50.
+- `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
 When viewport width is within the collapsed range (~1100px and below), splitpane and
@@ -547,9 +558,9 @@ Advanced runtime configuration is supplied through the `runtime` object. Set pla
 
 Hosts can configure item-player backend delivery once at the section-player
 runtime level. Section-player derives a concrete `backend` prop for each
-embedded item player before it renders the item. This is intended for hosts such
-as Quiz Engine that need server-processed PIE models and server scoring without
-querying every nested `<pie-item-player>`.
+embedded item player before it renders the item. This is intended for hosts
+that need server-processed PIE models and server scoring without querying every
+nested `<pie-item-player>`.
 
 ```ts
 import type {
@@ -590,6 +601,10 @@ each embedded item player. Static delivery fields such as `baseUrl`, `auth`,
 `endpoints`, `assignmentId`, and `autosave` are preserved. Use `assignmentId`
 for shared attempt/player identity.
 
+An enabled `backend.delivery` also sets `hosted: true` on each embedded item
+player unless `runtime.player.hosted` is set, so the item players load no
+element controllers and render the models the server returns.
+
 `runtime.player.resolveBackend` is a section-player-reserved key. It is called
 with `{ itemId, canonicalItemId, item, itemIndex, itemSession, sectionId, env,
 baseBackend }` and is stripped before props reach `<pie-item-player>`. Use it
@@ -607,12 +622,59 @@ backend config is preserved.
 This backend delivery config is separate from the element-loader backend used
 for IIFE/ESM bundle preloading.
 
+### Preloaded elements
+
+With `runtime.playerType: "preloaded"` the section player loads no element
+code. Its pre-warm asserts that every tag the section's items and passages name
+is registered, so the host registers the elements first:
+
+```ts
+import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
+import * as delivery from "@pie-element/multiple-choice/browser/delivery";
+import * as controller from "@pie-element/multiple-choice/browser/controller";
+import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
+
+registerPreloadedElements([
+  {
+    tag: "pie-element-multiple-choice",
+    package: "@pie-element/multiple-choice",
+    version: manifest.dependencies["@pie-element/multiple-choice"],
+    element: delivery,
+    controller,
+  },
+]);
+
+sectionPlayer.runtime = { ...sectionPlayer.runtime, playerType: "preloaded" };
+```
+
+- Register before the section player mounts. A tag missing at pre-warm leaves
+  the items unmounted and raises a non-recoverable `element-preload` framework
+  error.
+- Install element packages with `npm install --save-exact`. npm otherwise saves
+  a caret range, which registration rejects as a `version`, and which a fresh
+  install can resolve to another release line: `^13.4.0-next.15` resolves to
+  the legacy `13.4.4`, which has no `./browser/*` modules.
+- Register one version per package. The players align every authored version
+  of a package to the registered one, and registering a second version throws.
+- Register each package's `controller` unless the item players are hosted
+  (`runtime.player.hosted`, or an enabled `runtime.player.backend.delivery`).
+  A player that is not hosted runs `model()` in the browser and warns for each
+  tag registered without one.
+- Only `@pie-element/*` builds from pie-elements-ng publish
+  `./browser/delivery` and `./browser/controller`.
+- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
+  package version that ships no declarations for `./browser/*` needs a
+  `declare module` shim for those subpaths.
+
+See [`strategy="preloaded"`](../../docs/item-player/loading-strategies.md#strategypreloaded)
+for the registration contract.
+
 ### Host-owned focus
 
 Section-player does not move focus on behalf of host-level affordances such
 as "Skip to Main", nor does it make passage/question containers tab stops.
 Hosts own page chrome, skip links, landmarks, and any special focus placement.
-For example, Quiz Engine's Fixed Player shell can focus its own
+For example, a host shell can focus its own
 `main#main-content`; the next Tab then follows the browser's natural order
 into the first actionable control rendered inside the section player.
 
@@ -867,6 +929,8 @@ Section-player owned instrumentation stream:
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
 - `pie-section-framework-error`
+- `pie-section-element-preload-retry`
+- `pie-section-element-preload-error`
 
 Build consumers against these canonical lifecycle events:
 
@@ -959,8 +1023,9 @@ pending response at those boundaries.
 ## Content trust boundary
 
 Section-player layouts embed `<pie-item-player>` elements for each item.
-Item and passage markup is sanitized by default via DOMPurify; see
-[pie-item-player README](./README.md#content-trust-boundary)
+Item and passage markup is sanitized by default via DOMPurify; see the
+[pie-item-player README](../item-player/README.md#content-trust-boundary)
+for the allow-list, the `trust-markup` opt-out and the `sanitizeMarkup`
 property. Hosts can forward those settings through the section-player
 `runtime.player` overrides — the runtime flattens these onto the embedded
 `<pie-item-player>` instance, so any field not recognized by the kernel is

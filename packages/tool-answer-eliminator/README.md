@@ -86,7 +86,7 @@ The web component accepts the following properties (set via JavaScript, not HTML
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `globalElementId` | `string` | Yes | Composite key: `assessmentId:sectionId:itemId:elementId` |
-| `elementToolStateStore` | `IElementToolStateStore` | Yes | Store for element-level tool state |
+| `elementToolStateStore` | `ElementToolStateStoreApi` | Yes | Store for element-level tool state |
 | `scopeElement` | `HTMLElement` | No | DOM element to scope choice detection (defaults to document) |
 
 ## Global Element ID Format
@@ -266,7 +266,7 @@ store.clearAll();
 Full TypeScript definitions included:
 
 ```typescript
-import type { IElementToolStateStore } from '@pie-players/pie-assessment-toolkit';
+import type { ElementToolStateStoreApi } from '@pie-players/pie-assessment-toolkit';
 
 interface AnswerEliminatorState {
   eliminatedChoices: string[];

@@ -10,8 +10,8 @@ element. It wraps the provider-neutral inline surface from
 
 ## Features
 
-- **Web Component** - Custom element with no shadow DOM for better integration
-- **Imperative API** - Services passed as JavaScript properties
+- **Web Component** - Custom element with an open shadow root
+- **Runtime Context** - Takes its ToolCoordinator from the toolkit runtime context
 - **Coordinator Integration** - Managed by ToolCoordinator for consistent state
 - **Size Variants** - Supports sm, md, lg button sizes
 - **WCAG 2.2 Level AA** - Fully accessible with proper ARIA attributes
@@ -21,109 +21,85 @@ element. It wraps the provider-neutral inline surface from
 
 ### Basic Setup
 
-```svelte
-<!-- Import the component -->
-<script>
-  import '@pie-players/pie-tool-calculator-inline-desmos';
-  import '@pie-players/pie-tool-calculator-desmos';
-  import { ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+The calculator surface this button toggles, `<pie-tool-calculator>`, comes from
+`@pie-players/pie-tool-calculator-desmos`. Neither this package nor
+`@pie-players/pie-default-tool-loaders` depends on it, so the host installs it:
 
-  const coordinator = new ToolCoordinator();
-  let calculatorInlineEl;
-  let calculatorEl;
-  let calculatorVisible = false;
-
-  // Bind services imperatively (after element creation)
-  $effect(() => {
-    if (calculatorInlineEl) {
-      calculatorInlineEl.coordinator = coordinator;
-    }
-    if (calculatorEl) {
-      calculatorEl.coordinator = coordinator;
-    }
-  });
-
-  // Subscribe to visibility changes
-  $effect(() => {
-    if (coordinator) {
-      const unsubscribe = coordinator.subscribe(() => {
-        calculatorVisible = coordinator.isToolVisible('calculator');
-      });
-      return unsubscribe;
-    }
-  });
-</script>
-
-<!-- Inline toggle button -->
-<pie-tool-calculator-inline
-  bind:this={calculatorInlineEl}
-  tool-id="calculator-inline"
-  calculator-type="scientific"
-  available-types="basic,scientific,graphing"
-  size="md"
-></pie-tool-calculator-inline>
-
-<!-- Calculator tool instance (hidden/shown by coordinator) -->
-<pie-tool-calculator
-  bind:this={calculatorEl}
-  visible={calculatorVisible}
-  tool-id="calculator"
-></pie-tool-calculator>
+```bash
+bun add @pie-players/pie-tool-calculator-desmos
 ```
 
-### In ItemToolBar
+Both elements sit inside `<pie-assessment-toolkit>`, whose runtime context
+supplies the ToolCoordinator:
 
-The component is designed to work with `pie-item-toolbar`:
+```html
+<pie-assessment-toolkit>
+  <!-- Inline toggle button -->
+  <pie-tool-calculator-inline
+    tool-id="calculator-inline"
+    target-tool-id="calculator"
+    calculator-type="scientific"
+    available-types="basic,scientific,graphing"
+    size="md"
+  ></pie-tool-calculator-inline>
 
-```svelte
-<pie-item-toolbar
-  item-id="question-1"
-  tools="tts,answerEliminator,calculator"
-  size="md"
-></pie-item-toolbar>
+  <!-- Calculator tool instance -->
+  <pie-tool-calculator tool-id="calculator"></pie-tool-calculator>
+</pie-assessment-toolkit>
 ```
 
-The toolbar will automatically:
-1. Render the calculator inline button
-2. Bind the coordinator imperatively
-3. Manage the calculator visibility state
+`toggleTool` ignores an id the coordinator has not registered, and
+`<pie-tool-calculator>` shows on its `visible` property, so the host registers
+the target id and binds `visible` to it:
+
+```javascript
+import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+import '@pie-players/pie-tool-calculator-inline-desmos';
+import '@pie-players/pie-tool-calculator-desmos';
+
+// toolkitCoordinator: the ToolkitCoordinator passed to <pie-assessment-toolkit> as `coordinator`
+const tools = toolkitCoordinator.toolCoordinator;
+const calculatorEl = document.querySelector('pie-tool-calculator');
+tools.registerTool('calculator', 'Calculator');
+
+// Subscribe to visibility changes
+tools.subscribe(() => {
+  calculatorEl.visible = tools.isToolVisible('calculator');
+});
+```
+
+The calculator surface's props are in the
+[Desmos calculator tool README](../tool-calculator-desmos/README.md).
 
 ### Props
 
 #### Attributes (String)
 
 - `tool-id` - Unique identifier for the tool (default: `'calculator-inline'`)
-- `calculator-type` - Default calculator type (default: `'scientific'`)
+- `target-tool-id` - Tool id the button toggles; empty toggles `tool-id` (default: `''`)
+- `calculator-type` - Calculator type named in the button's label and announcements (default: `'basic'`); a type outside `available-types` falls back to `'basic'`
 - `available-types` - Comma-separated list of calculator types (default: `'basic,scientific,graphing'`)
 - `size` - Button size: `'sm' | 'md' | 'lg'` (default: `'md'`)
 
-#### JavaScript Properties
-
-- `coordinator` - IToolCoordinator instance (required)
-
-**Important:** The `coordinator` property must be set via JavaScript, not as an attribute:
-
-```javascript
-element.coordinator = coordinatorInstance;
-```
+The button is disabled until a toolkit runtime context supplies a
+ToolCoordinator.
 
 ## Calculator Tool Integration
 
 This component works in tandem with `@pie-players/pie-tool-calculator-desmos`. The flow is:
 
-1. **Button renders** - `pie-tool-calculator-inline` shows a toggle button
-2. **User clicks** - Button calls `coordinator.toggleTool('calculator')`
-3. **Calculator shows/hides** - `pie-tool-calculator` reacts to visibility state
-4. **Button updates** - Active state reflects calculator visibility
+1. **Button registers** - `pie-tool-calculator-inline` registers its `tool-id` with the context's ToolCoordinator
+2. **User clicks** - Button calls the coordinator's `toggleTool` with the target id
+3. **Calculator shows/hides** - the host sets `pie-tool-calculator`'s `visible` from the coordinator's visibility state
+4. **Button updates** - `aria-pressed`, the active style and a status announcement follow the target's visibility
 
 ## Tool ID Convention
 
-The inline button typically uses a different tool ID than the calculator instance:
+The inline button uses a different tool ID than the calculator instance, which
+`target-tool-id` names:
 
-- Inline button: `calculator-inline` or `calculator-inline-{itemId}`
-- Calculator tool: `calculator` or `calculator-{itemId}`
-
-The component automatically strips `-inline` suffix when checking calculator visibility.
+- Inline button: `calculator-inline`
+- Calculator tool: `calculator`, or a scoped instance id such as `calculator:item:question-1`
 
 ## Accessibility
 
@@ -200,7 +176,6 @@ bun run lint
 ## Dependencies
 
 - `@pie-players/pie-assessment-toolkit` - Core toolkit services
-- `svelte` - Framework (peer dependency)
 
 ## License
 

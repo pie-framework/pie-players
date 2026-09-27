@@ -8,20 +8,20 @@ focuses on the inline custom element API.
 
 ## Overview
 
-`pie-tool-tts-inline` is a web component that renders an inline speaker trigger with an expanded floating control panel for reading controls. Unlike floating modal tools, this component renders at its natural position in the DOM (typically in passage/item headers).
+`pie-tool-tts-inline` is a web component that renders an inline play/pause trigger with an expanded floating control panel for reading controls. Unlike floating modal tools, this component renders at its natural position in the DOM (typically in passage/item headers).
 
 ## Features
 
-- Speaker trigger that toggles an expanded panel
-- Expanded controls: Play/Pause, Stop, Fast-forward, Rewind, configurable Speed options
+- Play/pause trigger that opens the expanded panel when reading starts
+- Expanded controls: configurable Speed options, Rewind, Fast-forward, Stop
 - Play button switches to Pause while reading
 - Panel remains open while reading and closes on Stop
 - Arrow-key navigation within the controls toolbar
-- Registers with `ToolCoordinator` for lifecycle management
+- Takes its services from the toolkit runtime context and its reading scope from the enclosing item or passage shell
 - Integrates with `TTSService` for QTI 3.0 catalog-based TTS
 - Size variants: `sm`, `md`, `lg`
 - Full accessibility support (ARIA labels, `role="toolbar"`, live status updates)
-- Coordinator-controlled visibility via CSS `display` property
+- Four panel layouts through `layout-mode`
 
 ## Installation
 
@@ -31,27 +31,24 @@ bun add @pie-players/pie-tool-tts-inline
 
 ## Usage
 
+The element renders inside `<pie-item-shell>` or `<pie-passage-shell>` under
+`<pie-assessment-toolkit>`. The toolkit runtime context supplies the TTS
+service, the highlight coordinator and the toolkit coordinator, and the shell
+supplies the content to read; section players provide both. The packaged
+`textToSpeech` capability in `@pie-players/pie-default-tool-loaders` creates
+this element in item and passage toolbars, takes `catalog-id`, `language` and
+`size` from the toolbar, and takes `layout-mode`, `speedOptions` and
+`showSingleSpeedOption` from the toolkit's `textToSpeech` tool configuration.
+
 ```javascript
 import '@pie-players/pie-tool-tts-inline';
-import { TTSService, BrowserTTSProvider, ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-// Initialize services
-const ttsService = new TTSService();
-await ttsService.initialize(new BrowserTTSProvider());
-const toolCoordinator = new ToolCoordinator();
-
-// Create element
+// passageHeader: an element inside <pie-passage-shell>
 const ttsButton = document.createElement('pie-tool-tts-inline');
-ttsButton.setAttribute('tool-id', 'tts-passage-1');
 ttsButton.setAttribute('catalog-id', 'passage-1');
 ttsButton.setAttribute('size', 'md');
-
-// Bind services as JavaScript properties (not HTML attributes)
-ttsButton.ttsService = ttsService;
-ttsButton.coordinator = toolCoordinator;
-
-// Coordinator controls visibility
-toolCoordinator.showTool('tts-passage-1');
+ttsButton.setAttribute('layout-mode', 'expanding-row');
+passageHeader.append(ttsButton);
 ```
 
 ### With Svelte
@@ -59,29 +56,14 @@ toolCoordinator.showTool('tts-passage-1');
 ```svelte
 <script>
   import '@pie-players/pie-tool-tts-inline';
-  import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-
-  let ttsToolElement;
-
-  $effect(() => {
-    if (ttsToolElement && toolCoordinator) {
-      ttsToolElement.ttsService = ttsService;
-      ttsToolElement.coordinator = toolCoordinator;
-
-      if (ttsService) {
-        toolCoordinator.showTool('tts-passage-1');
-      }
-    }
-  });
 </script>
 
 <div class="header">
   <h3>Passage Title</h3>
   <pie-tool-tts-inline
-    bind:this={ttsToolElement}
-    tool-id="tts-passage-1"
     catalog-id="passage-1"
     size="md"
+    layout-mode="expanding-row"
   ></pie-tool-tts-inline>
 </div>
 ```
@@ -90,17 +72,22 @@ toolCoordinator.showTool('tts-passage-1');
 
 ### HTML Attributes
 
-- `tool-id` - Unique identifier for tool registration (default: `'tts-inline'`)
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
 - `language` - Language code for TTS (default: `'en-US'`)
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
+- `layout-mode` - Panel placement (default: `'expanding-row'`). `'reserved-row'`
+  and `'expanding-row'` drop the panel below the trigger; in the packaged toolbar
+  the first keeps the controls row reserved and the second expands it while the
+  panel is open. `'floating-overlay'` and `'left-aligned'` open the panel as an
+  overlay to the left of the trigger.
 
 ### JavaScript Properties
 
-- `ttsService` - ITTSService instance (required)
-- `coordinator` - IToolCoordinator instance (optional, for visibility management)
 - `speedOptions` - Optional speed options controlling inline speed button rendering
 - `showSingleSpeedOption` - Optional boolean to show a one-option speed group (hidden by default)
+
+Both also read attributes: `speed-options` takes a JSON array, and
+`show-single-speed-option` is true when present.
 
 ### `speedOptions` Configuration
 
@@ -145,19 +132,19 @@ Semantics:
 
 ## Behavior
 
-1. **Tool Registration**: Registers with ToolCoordinator on mount using the provided `tool-id`
-2. **Text Extraction**: Finds nearest `.pie-section-player__passage-content` or `.pie-section-player__item-content` container
-3. **TTS Trigger**: Calls `ttsService.speak(text, { catalogId, language })`
+1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives, and starting playback awaits `toolkitCoordinator.ensureTTSReady()`
+2. **Text Extraction**: Reads the `textContent` of the scope element (the region scope, else the shell scope) when it is `[data-region='content']`, else of its first `[data-region='content']` descendant, else of the scope element itself
+3. **TTS Trigger**: Calls `ttsService.speak(text, { catalogId, catalogContext, language, contentElement })`, where `contentElement` is that reading target and `catalogContext` names the owning item or passage
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)
    - **Assessment-level catalogs** (manually authored)
    - **Plain text fallback** (browser TTS)
 5. **Expanded Controls**:
-   - Trigger button opens/closes the panel
-   - Play/Pause toggles based on playback state
+   - The trigger starts, pauses and resumes reading; starting opens the panel
+   - Starting one instance stops playback another instance owns and closes that instance's panel
    - Stop halts playback and closes the panel
-   - Fast-forward/Rewind invoke sentence-jump seek on `ITTSService`
+   - Fast-forward/Rewind call `seekForward(1)` / `seekBackward(1)` on the TTS service, one sentence per press, and are enabled only while reading
    - Speed buttons call `ttsService.setPlaybackRate(rate)` when available,
      otherwise `ttsService.updateSettings({ rate })`
    - Speed choices render as a named `Playback speed` radio group with
@@ -166,8 +153,9 @@ Semantics:
    - Clicking the currently active speed leaves the selection unchanged
    - If `speedOptions` is `[]`, speed controls are omitted and playback rate is
      reset to `1x` while rewind/forward/stop still render
-6. **Keyboard Interaction**: Arrow keys move between controls; Tab enters/leaves the toolbar
-7. **Cleanup**: Unregisters from coordinator on unmount
+6. **Keyboard Interaction**: Arrow keys, Home and End move focus within one cluster, either the speed radio group or the Rewind/Fast-forward/Stop buttons, and skip disabled controls; arrowing onto a speed also selects it. Every control is a Tab stop except the speed radios, which share one Tab stop on the checked option
+7. **Active State**: Opening or closing the panel dispatches a bubbling, composed `pie-tool-active-change` event with `{ active }` and mirrors the state in the host's `data-active` attribute
+8. **Cleanup**: Releases playback ownership and clears its highlight target resolver provider on unmount
 
 ## SSML Extraction Integration
 
@@ -202,8 +190,8 @@ when a host/import pipeline runs `SSMLExtractor` before render:
 
 The component uses scoped styles and doesn't require external CSS. Styling uses `--pie-*` token variables:
 
-- **Trigger**: Circular speaker button that indicates panel open state
-- **Panel**: Floating card with vertically stacked controls
+- **Trigger**: Circular play/pause button that indicates panel open state
+- **Panel**: Floating card with the controls in a row; in the compact `left-aligned` overlay the speed options stack below them
 - **Speed state**: Active speed button receives distinct token-driven styling
 - **Disabled**: Reduced opacity, no pointer
 
@@ -233,10 +221,9 @@ colors.
 
 ### Overlay panel colours
 
-The floating and left-aligned panels take their shape from the Knowledge-Check
-design and their colour from the active theme. Each surface resolves a
-component-scoped hook first, then a canonical token, then a literal that only
-applies when no theme is loaded:
+The floating and left-aligned panels take their colour from the active theme.
+Each surface resolves a component-scoped hook first, then a canonical token,
+then a literal that only applies when no theme is loaded:
 
 ```css
 --pie-tts-button-color        /* media glyphs, selected speed → --pie-button-color */
@@ -282,9 +269,11 @@ tokens.
 This tool follows the PIE Assessment Toolkit tool pattern:
 
 - Always rendered in DOM at natural position
-- ToolCoordinator controls visibility via `showTool()`/`hideTool()` (CSS `display` property)
-- Registers with `ZIndexLayer.TOOL` for proper layering
-- Services passed as JavaScript properties (objects can't be HTML attributes)
+- Services arrive through `connectToolRuntimeContext`, and the reading scope
+  through `connectToolShellContext` and `connectToolRegionScopeContext`
+- One instance owns playback at a time across the page
+- Panel state is announced with `pie-tool-active-change`, which the packaged
+  toolbar registration subscribes to
 
 ## Example
 

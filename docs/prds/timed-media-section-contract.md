@@ -4,13 +4,13 @@ Status: Accepted, 2026-08-17.
 
 Owner: PIE Players maintainers
 
-Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05 and 2026-08-15; see [Current State](../architecture/timed-media-section.md#current-state) in the architecture note for what moved underneath this draft. Nothing here is blocked on a ticket.
+Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05 and 2026-08-15; see [Current State](../architecture/timed-media-section.md#current-state) in the architecture note for what moved underneath the draft. Nothing here is blocked on a ticket.
 
-Sequenced behind formative delivery, 2026-08-15. [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) records the decision and its reason: a cue's interesting gate condition is "answered correctly", which needs a per-item evaluation seam PIE did not have, so building cues first would force `responded` as the only expressible condition and then revise a shipped section slice. The [formative delivery contract](./formative-delivery-contract.md) supplies that seam — Try state, per-item feedback reveal, and the four-valued `FormativeCorrectness` this PRD's cue policy names as gate conditions. That work merged on 2026-08-15 and releases with the next publish, so `FormativeCorrectness` is a real exported type and the per-item `env` seam exists: a cue policy can name `correct` rather than settling for `responded`.
+Sequenced behind formative delivery, 2026-08-15. [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) records the decision and its reason: a cue's interesting gate condition is "answered correctly", which needs a per-item evaluation seam PIE did not have, so building cues first would force `responded` as the only expressible condition and then revise a shipped section slice. The [formative delivery contract](./formative-delivery-contract.md) supplies that seam — Try state, per-item feedback reveal, and the four-valued `FormativeCorrectness` this PRD's cue policy names as gate conditions. That work merged on 2026-08-15 and was first published in `@pie-players/pie-players-shared` 0.3.68, so `FormativeCorrectness` is a real exported type and the per-item `env` seam exists: a cue policy can name `correct` rather than settling for `responded`.
 
 Every prerequisite this PRD inherits is satisfied: the [media asset contract](./shared-contracts/media-asset-contract.md) is `Accepted` and its types are shipped, `@pie-players/pie-players-shared/media` owns media validation, and the [theming contract](./pie-727-broad-theming-contract.md) is `Accepted` so media controls have a palette. The questions left in [Open Questions](#open-questions) were implementation-time choices, not contract gates.
 
-Cue and playback policy ownership does not ride on it, contrary to the earlier reading here. `assessment-toolkit` sits beneath the standalone path as well as beneath assessment-player: formative delivery's Try round trip runs controller → `SectionRuntimeEngine` → `PieAssessmentToolkit` → composition republish, with no assessment-player in it. So `ToolPolicyEngine` can own cue and playback policy whichever player mounts the section, and that choice can be taken on its own merits. The architecture note's layer-ownership table was re-derived against the engine on 2026-08-15.
+Cue and playback policy ownership does not ride on it, contrary to the earlier reading here. `assessment-toolkit` sits beneath the standalone path as well as beneath assessment-player: formative delivery's Try round trip runs controller → `SectionRuntimeEngine` → `PieAssessmentToolkit` → composition republish, with no assessment-player in it. So `ToolPolicyEngine` can own cue and playback policy whichever player mounts the section, and that choice can be taken on its own merits. The architecture note's layer-ownership table was re-derived against the engine on 2026-08-15. On those merits cue policy went to `@pie-players/pie-players-shared/timed-media` instead; see the [Implementation Record](#implementation-record-2026-08-17).
 
 Related architecture:
 
@@ -28,7 +28,7 @@ Related architecture:
 
 Video-linked assessment is a high-value gap because it combines shared media stimulus, timestamp cues, normal PIE child items, playback policy, completion, and score aggregation. The architecture should be implemented as section-level composition, not as one opaque element or a full assessment-player replacement.
 
-This PRD defines the section contract that timed-media section-player variants, assessment-player renderer selection, `video-stimulus`, and future adapters can align around.
+This PRD defines the section contract that the existing section-player layouts, `video-stimulus`, and future adapters align around.
 
 ## Goals
 
@@ -111,9 +111,11 @@ universal one. A dedicated timed-media layout owns its own placement.
 Decided 2026-08-15. Timed media targets the existing section-player layouts on the
 standalone path: the host mounts the layout tag, as every integration that renders a
 section already does. `assessment-player` gains no `sectionType`-driven renderer
-dispatch — `sectionType` occurs nowhere in `packages/`, no integration renders a
-section through assessment-player, and dispatch would be selection machinery with no
-caller.
+dispatch — when this was decided `sectionType` occurred nowhere in `packages/`, no
+integration renders a section through assessment-player, and dispatch would be
+selection machinery with no caller. `sectionType` now exists as a data
+discriminator that `SectionController` reads; `assessment-player` still dispatches
+on nothing.
 
 No new custom element is required and none is added here. A stimulus passage already
 renders in every layout: `SectionContentService` normalizes a `class: "stimulus"`
@@ -139,17 +141,15 @@ capability gap, so it follows a working cue engine rather than gating one.
 
 ## Package And Export Ownership
 
-- Owning package: `@pie-players/pie-players-shared` (source at `packages/players-shared`) for timed-media section data types, alongside the existing `AssessmentSection` and `RubricBlock` definitions. Runtime behavior is the open part, not the data home.
-- Runtime home: `@pie-players/pie-assessment-toolkit` is the leading candidate for cue and playback policy, not merely "slice helpers if needed." Since this PRD was drafted the toolkit has grown `SectionRuntimeEngine`, `SectionEngineCore`, engine state/transition machinery, and a `ToolPolicyEngine` with `PolicySource`, `compose-decision`, and provenance. Composed policy decisions are a closer match for cue/playback policy than layout-custom-element internals. `SectionController` still lives in `section-player`.
-- Public export path: open question; candidate shape is shared section type exports plus toolkit runtime/policy contributions.
+- Owning package: `@pie-players/pie-players-shared` (source at `packages/players-shared`) for timed-media section data types, alongside the existing `AssessmentSection` and `RubricBlock` definitions. It is the one canonical type home for `sectionType`, `timedMedia`, cues, and the timed-media session slice.
+- Runtime home: `@pie-players/pie-players-shared/timed-media` owns validation and the cue reduction. `SectionController` in `section-player` owns the live state and the Media Time Source port, and the layouts read the projection it resolves with `resolveTimedMediaProjection`. `@pie-players/pie-assessment-toolkit` arbitrates the TTS/media handoff through `pauseMediaForCompetingAudio()` on the controller and the controller's `timed-media-audio-started` event. `ToolPolicyEngine` was the leading candidate for cue and playback policy and was not taken; the [Implementation Record](#implementation-record-2026-08-17) gives the reason.
+- Public export path: `@pie-players/pie-players-shared/timed-media` for the cue, policy and session-slice types, validation, the reduction, the projection, and the Media Time Source port. `TimedMediaSectionData`, the authored half, is also exported beside `AssessmentSection` from the package root and `/types`.
 - Consuming packages or apps: `section-player`, `assessment-player`, `assessment-toolkit`, `apps/section-demos`, `apps/assessment-demos`, `pie-elements-ng` `video-stimulus`, and `pie-qti` adapters.
 - Runtime environment: browser and custom element; data types should be Node-safe for adapters.
 
-Implementation must choose one canonical type home for `sectionType`, `timedMedia`, cues, and the timed-media session slice, and must decide the data/runtime split above before the contract hardens.
-
 ## Contract Shape
 
-The final names are not ratified by this draft. The section shape should extend existing section data additively.
+These names are the shipped ones. The section shape extends existing section data additively.
 
 Documentation sketch only:
 
@@ -178,32 +178,38 @@ interface TimedMediaCue {
   };
 }
 
+/** Additive fields on the existing `AssessmentSection`. */
+interface AssessmentSection {
+  sectionType?: "timed-media";
+  /** Ignored unless `sectionType` is `"timed-media"`. */
+  timedMedia?: TimedMediaSectionData;
+}
+
 interface TimedMediaSectionData {
-  sectionType: "timed-media";
-  timedMedia: {
-    /**
-     * The renderable that supplies the time source, authored as a
-     * `class: "stimulus"` rubric block whose passage config mounts the media
-     * element. Required, and validated to resolve within this section — see
-     * [Media Representation](#media-representation). No media payload lives
-     * here; the passage owns the asset and its accessibility catalogs.
-     */
-    stimulusRef: string;
-    cues: TimedMediaCue[];
-    playbackPolicy: {
-      allowSeekAhead: boolean;
-      pauseOnRequiredCue: boolean;
-      requireMediaCompletion: boolean;
-    };
-    scoringPolicy?: {
-      strategy: "sum-child-outcomes" | "average-child-outcomes" | "host-defined";
-    };
+  /**
+   * The renderable that supplies the time source, authored as a
+   * `class: "stimulus"` rubric block whose passage config mounts the media
+   * element. Required, and validated to resolve within this section — see
+   * [Media Representation](#media-representation). No media payload lives
+   * here; the passage owns the asset and its accessibility catalogs.
+   */
+  stimulusRef: string;
+  cues: TimedMediaCue[];
+  playbackPolicy: {
+    allowSeekAhead: boolean;
+    pauseOnRequiredCue: boolean;
+    requireMediaCompletion: boolean;
+  };
+  scoringPolicy?: {
+    strategy: "sum-child-outcomes" | "average-child-outcomes" | "host-defined";
   };
 }
 
 interface TimedMediaSectionSessionSlice {
   version: 1;
   mediaCurrentTime: number;
+  /** Furthest position reached, which `allowSeekAhead: false` clamps against. */
+  maxPositionSeconds: number;
   mediaCompleted: boolean;
   visitedCueIdentifiers: string[];
   completedCueIdentifiers: string[];
@@ -309,7 +315,7 @@ Playwright-backed tests must run outside the sandbox.
 
 - Changeset required: yes, when public exports or player variants are added.
 - Migration notes: additive section flavor; existing sections and layouts remain valid.
-- Documentation updates: section-player docs, assessment-player renderer selection docs, timed-media demos, `pie-elements-ng` `video-stimulus` PRD, and `pie-qti` adapter PRDs.
+- Documentation updates: section-player docs, timed-media demos, `pie-elements-ng` `video-stimulus` PRD, and `pie-qti` adapter PRDs.
 - Release risk: high, because media playback, focus, completion, and score aggregation are user-visible and cross-package.
 
 ## Implementation Record, 2026-08-17

@@ -1,6 +1,7 @@
 # Instrumentation Providers Implementation Plan
 
-Status: Active — slices, order and evidence gates. The
+Status: Active — slices, order and evidence gates. Slices 1 and 4 landed on
+2026-09-25 (a0408d4a, da9e2f71); slices 2, 3, 5, 6 and 7 are open. The
 [design note](./instrumentation-providers.md) owns the model, the ownership
 boundary and the open questions; this file owns sequence, done conditions and
 release evidence.
@@ -19,7 +20,8 @@ Related:
   later one to be correct.
 - No slice adds an entry to a published `exports` map, and no published surface
   gains the name of a backend PIE does not ship an adapter for. The DataDog and
-  OTel code lives in `packages/players-shared/tests/fixtures`.
+  OTel code belongs in `packages/players-shared/tests/fixtures`, which slice 3
+  creates.
 - Every slice that touches published source carries one `patch` changeset;
   `bun run check:changeset-patch-only` is the gate and pending `minor` entries
   are release blockers.

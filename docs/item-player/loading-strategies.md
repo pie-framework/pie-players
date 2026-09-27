@@ -47,7 +47,7 @@ player.loaderOptions = {
 
 | Option | Used by | Default | Description |
 | ------ | ------- | ------- | ----------- |
-| `bundleHost` | `iife`, `preloaded` | `https://proxy.pie-api.com/bundles/` | Base URL for IIFE bundle downloads |
+| `bundleHost` | `iife` | `https://proxy.pie-api.com/bundles/` | Base URL for IIFE bundle downloads |
 | `esmCdnUrl` | `esm` | `https://cdn.jsdelivr.net/npm` | Base URL for ESM module resolution |
 | `esmCdnProvider` | `esm` | inferred from `esmCdnUrl` | CDN route strategy. Use `"jsdelivr"`, `"esm.sh"`, or a provider object with package and shared-dependency URL builders |
 | `moduleResolution` | `esm` | `"url"` | Module resolution mode: `"url"` (fully-qualified CDN imports) or `"import-map"` |
@@ -183,7 +183,7 @@ Build a preloaded bundle locally:
 
 ```bash
 bun run cli pie-packages:preloaded-player-build-package \
-  --elements-file configs/preloaded-player/sb1.json
+  --elementsFile configs/preloaded-player/<name>.json
 ```
 
 CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-player.yml`.

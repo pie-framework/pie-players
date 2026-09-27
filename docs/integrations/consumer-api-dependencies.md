@@ -202,8 +202,8 @@ on `@pie-players/pie-calculator-desmos` alongside a new
 its `initialize` gained an optional `CalculatorProviderInit`, matching
 `ITTSProvider` in `pie-tts`. No checkout imports any
 calculator type: both hosts that show a calculator declare their own
-`CalculatorType` union, and the one offering Desmos configures it through the
-auth-fetcher runtime key alone.
+`CalculatorType` union, and the two offering Desmos pass it an auth fetcher and
+nothing else.
 
 The `desmos` option bag and the `apiKey`/`proxyEndpoint` fields on
 `DesmosCalculatorSettings` (then `DesmosCalculatorConfig`) have since been
@@ -211,9 +211,11 @@ deleted, re-checked against all three
 checkouts on 2026-08-27 as a targeted lookup. Vendor options are `settings` only,
 and `DesmosCalculatorProviderConfig` is now `CalculatorProviderConfig` with
 `settings` narrowed to `DesmosCalculatorSettings`. No checkout passes `desmos`,
-names either type, or sets a credential in a config bag: the two hosts offering
-Desmos both configure it through `provider.runtime.authFetcher` and nothing else,
-so all three removals are source breaks with no source to break.
+names either type, or sets a credential in a config bag, so all three removals
+are source breaks with no source to break. Host A configures Desmos through
+`provider.runtime.authFetcher` alone. Host R sets `authFetcher` directly on
+`tools.providers.calculator`, a key the calculator registration never reads, so
+its Desmos loads unkeyed.
 
 The open-source Cortex calculator is additive and was assessed against the
 recorded calculator rows rather than a fresh consumer-checkout refresh, so it
@@ -527,9 +529,11 @@ reference app.
 
 ### `pie-theme` (Hosts V, A, R)
 
-Attributes used: `theme`, `scope`. V uses `theme="light" scope="self"`; A uses
-`theme="light" scope="document"`. `observedAttributes` also carries `provider`,
-`scheme`, and `variables`; V's local typings declare all five.
+Attributes used: `theme`, `scope`, and V's `variables` (see theme tokens below).
+V uses `theme="light" scope="self"`. A uses `scope="document"` and binds `theme`
+to a host setting that defaults to `light` and can select `dark`.
+`observedAttributes` also carries `provider` and `scheme`; V's local typings
+declare all five.
 
 Host R mounts exactly one `<pie-theme scope="document">`, with no attributes in
 the markup, and writes `theme`, `scheme` and `provider` onto the element from a
@@ -548,9 +552,10 @@ too, applying a surviving owner's state or restoring the baseline. So the
 last-writer-wins owner map and its disconnect path are free to change; only the
 target resolution and the inline-style write are load-bearing here.
 
-Neither V nor A uses `theme="auto"`. Both deliberately force light so an
-OS-dark-mode user does not get dark-rendered content inside a light-only host
-UI. R is the only consumer that exercises scheme switching at all.
+Neither V nor A uses `theme="auto"`, so neither follows the OS color scheme. V
+forces light so an OS-dark-mode user does not get dark-rendered content inside a
+light-only host UI; A renders light unless its host setting selects dark. R is
+the only consumer that sets `scheme`.
 
 No client-facing host uses the programmatic scheme catalog, custom-scheme
 registration, raw base/palette constants, or the theme picker's `schemes` /
@@ -733,7 +738,7 @@ API**.
 | --- | --- | --- | --- |
 | `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator`. R compares it against the coordinator it constructed itself and warns on a mismatch, so identity is checked, not just presence |
 | `pie-stage-change` | DOM event on the layout CE | R | Filtered on `detail.stage === "engine-ready"`, then calls the zero-arg `getSectionController()` off `currentTarget`. The stage vocabulary and this transition's timing are both API |
-| `item-session-data-changed` | `subscribeItemEvents` | A | Response capture → store dispatch → autosave |
+| `item-session-data-changed` | `subscribeItemEvents` | A | Response capture → store dispatch → autosave. The handler also takes the event's item as the current item, marks it answered, submits the previously answered item when the item changes within the section, and in a preview mode requests a score, so an event naming an item other than the one on screen moves the host's current item |
 | `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
 | `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with an empty handler; R logs it |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
@@ -1170,12 +1175,11 @@ Consequences per host:
 - **Host V** pins `0.3.53`, before the fix, and works around its absence by
   importing the stylesheet text from `pie-theme` and re-injecting it wrapped in
   `@scope (.item-content)`. The scoping is deliberate: `components.css` carries
-  bare `h1`–`h6`, `table`, `th`, `#stimulus`, `#item`, `.table`, and
-  `.text-center` selectors that bleed onto a surrounding host UI if applied
-  document-globally. On upgrading to 0.3.61 or later that host gets a *second,
-  unscoped* copy installed by the player, reintroducing exactly the bleed it
-  scoped around, plus the duplicate warning. It needs the opt-out attribute at
-  the same time as the version bump.
+  bare `h1`–`h6`, `table`, `th`, `.table`, and `.text-center` selectors that
+  bleed onto a surrounding host UI if applied document-globally. On upgrading to
+  0.3.61 or later that host gets a *second, unscoped* copy installed by the
+  player, reintroducing exactly the bleed it scoped around, plus the duplicate
+  warning. It needs the opt-out attribute at the same time as the version bump.
 - **Host A** dropped its build-config `components.css` entry and now cedes
   ownership to the player entirely: no opt-out attribute, no stylesheet import
   of its own, so it is in the healthy configuration.
@@ -1370,8 +1374,9 @@ over a CDN with no typecheck at all.
 - The `desmos` option bag itself, deleted on 2026-08-27, the deprecated
   `apiKey`/`proxyEndpoint` fields on the settings type deleted with it, and that
   type renamed `DesmosCalculatorConfig` -> `DesmosCalculatorSettings` to match the
-  Cortex and GeoGebra adapters. Both hosts offering Desmos configure it through
-  `provider.runtime.authFetcher` alone, so neither passed a config bag at all. The
+  Cortex and GeoGebra adapters. Neither host offering Desmos passed a config bag:
+  Host A configures it through `provider.runtime.authFetcher` alone, and Host R
+  through a top-level `authFetcher` the registration ignores. The
   settings type keeps an index signature, so `settings` still accepts the two
   credential names from a stale caller and still drops them before the vendor
   constructor
@@ -1473,10 +1478,11 @@ repo.
   last surviving instance of the forking pattern its colour schemes used to share.
 - Host R declares four `@pie-players` packages it imports nowhere:
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
-  `pie-section-player-tools-shared`, `tts-client-server`. The first two are
-  reachable through the packaged registry without being declared, so the
-  declarations are redundant rather than load-bearing — but they make its
-  dependency list overstate what it consumes, which is what made the previous
+  `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
+  reaches `pie-calculator-desmos` without the declaration, and nothing reaches
+  `pie-tool-text-to-speech`: the registry's text-to-speech tool is
+  `pie-tool-tts-inline`. None of the four is load-bearing, and together they make
+  its dependency list overstate what it consumes, which is what made the previous
   entrypoint rows wrong in the other direction.
 - Host R sets `--pie-padding`, `--pie-spacing` and `--pie-gap` on a legacy
   `pie-player` tag from the predecessor package. None of the three is a

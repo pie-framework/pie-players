@@ -192,16 +192,61 @@ Toolkit tool/backend operational stream (when toolkit is mounted):
 - `pie-tool-backend-call-start|success|error`
 - `pie-tool-library-load-start|success|error`
 
+## Preloaded elements
+
+With `player-type="preloaded"` (or `playerType = "preloaded"`) the section
+players load no element code, and their pre-warm asserts that every tag the
+content names is registered. The host registers the elements with
+`registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
+before the assessment player mounts:
+
+```ts
+import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
+import * as delivery from "@pie-element/multiple-choice/browser/delivery";
+import * as controller from "@pie-element/multiple-choice/browser/controller";
+import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
+
+registerPreloadedElements([
+  {
+    tag: "pie-element-multiple-choice",
+    package: "@pie-element/multiple-choice",
+    version: manifest.dependencies["@pie-element/multiple-choice"],
+    element: delivery,
+    controller,
+  },
+]);
+```
+
+- A tag missing at pre-warm leaves the section's items unmounted and raises a
+  non-recoverable `element-preload` framework error.
+- Install element packages with `npm install --save-exact`. npm otherwise saves
+  a caret range, which registration rejects as a `version`, and which a fresh
+  install can resolve to another release line: `^13.4.0-next.15` resolves to
+  the legacy `13.4.4`, which has no `./browser/*` modules.
+- Register one version per package; registering a second version throws.
+- Register each package's `controller` unless the item players are hosted
+  (`sectionPlayerRuntime.player.hosted`, or an enabled
+  `sectionPlayerRuntime.player.backend.delivery`). A player that is not hosted
+  runs `model()` in the browser and warns for each tag registered without one.
+- Only `@pie-element/*` builds from pie-elements-ng publish
+  `./browser/delivery` and `./browser/controller`.
+- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
+  package version that ships no declarations for `./browser/*` needs a
+  `declare module` shim for those subpaths.
+
+See [`strategy="preloaded"`](../../docs/item-player/loading-strategies.md#strategypreloaded)
+for the registration contract.
+
 ## Content trust boundary
 
 Assessment markup reaches the DOM via the underlying
 `<pie-item-player>` element, which now sanitizes item / passage markup by
-default through DOMPurify. See
-[pie-item-player README](./README.md#content-trust-boundary)
+default through DOMPurify. See the
+[pie-item-player README](../item-player/README.md#content-trust-boundary)
 for the allow-list, opt-out mechanics (`trust-markup`), and the
 `sanitizeMarkup` property override. Assessment-player hosts forward these
-settings by setting `runtime.player.trustMarkup` /
-`runtime.player.sanitizeMarkup` on the shared runtime they pass into the
-section-player instances; the section-player runtime flattens `runtime.player.*`
+settings by setting `sectionPlayerRuntime.player.trustMarkup` /
+`sectionPlayerRuntime.player.sanitizeMarkup` on the assessment player; it passes
+that runtime to each section player, whose runtime flattens `runtime.player.*`
 fields onto the embedded `<pie-item-player>` (see the section-player README
 for the exact forwarding shape).

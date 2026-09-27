@@ -91,9 +91,9 @@ live per-slice record is `Active`.
   that the presentation accommodations never did. No QTI/AfA term exists to map
   to.
 - [`open-source-calculator-provider.md`](./open-source-calculator-provider.md) -
-  a fully bundled basic, scientific, and focused graphing provider built from
-  MathLive, CortexJS Compute Engine, and JSXGraph, selected additively as
-  `calculator-cortex` after the GeoGebra provider seam lands.
+  accepted contract for a fully bundled basic, scientific, and focused graphing
+  provider built from MathLive, CortexJS Compute Engine, and JSXGraph, selected
+  additively as `calculator-cortex`.
 - [`session-commit-on-teardown.md`](./session-commit-on-teardown.md) -
   accepted contract for a committed response reaching the host before its
   element stops existing. Element session state becomes synchronous so a player

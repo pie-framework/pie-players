@@ -87,13 +87,15 @@ types.ts (no dependencies)
 enum BundleType {
   player = 'player.js',           // Elements only (no controllers)
   clientPlayer = 'client-player.js',  // Elements + controllers
-  editor = 'editor.js'            // Editor UI
+  editor = 'editor.js',           // Editor UI
+  esm = 'esm'                     // Browser ESM modules; controllers when the loader loaded them
 }
 ```
 
 - **`player.js`**: Server-side controller processing, client receives pre-filtered models
 - **`client-player.js`**: Client-side controller processing for development
 - **`editor.js`**: Authoring UI (not used by players)
+- **`esm`**: Registry entries the ESM loader writes; it loads each element's browser modules directly, with no bundle file
 
 ### Registry
 

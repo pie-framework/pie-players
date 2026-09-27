@@ -316,9 +316,8 @@ The scale is applied as `calc(1rem * var(--pie-font-scale))` rather than an `em`
 factor because the content hosts nest — an `em` factor would compound, turning a
 requested 1.25 into 1.56 wherever an item shell sits inside a themed region.
 
-There is no student-facing control here. The picker is host chrome, which in the
-Renaissance context is Quiz Engine's surface; this package owns the token, the
-presets, and the rules that consume them.
+There is no student-facing control here. The picker is host chrome; this package
+owns the token, the presets, and the rules that consume them.
 
 ## Token registry
 

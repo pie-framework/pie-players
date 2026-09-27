@@ -20,37 +20,52 @@ focuses on the floating tool custom element API.
 
 ### As Web Component
 
+With a `coordinator`, the coordinator displays the panel only while `toolId` is
+visible there, so the host shows the tool through the coordinator and binds
+`visible` to it:
+
 ```html
-<pie-tool-text-to-speech
-  visible="true"
-  tool-id="textToSpeech"
-></pie-tool-text-to-speech>
+<pie-tool-text-to-speech tool-id="textToSpeech"></pie-tool-text-to-speech>
+
+<script type="module">
+  import '@pie-players/pie-tool-text-to-speech';
+  import { ToolCoordinator, TTSService } from '@pie-players/pie-assessment-toolkit';
+
+  const tools = new ToolCoordinator();
+  tools.registerTool('textToSpeech', 'Text-to-Speech');
+
+  const tts = document.querySelector('pie-tool-text-to-speech');
+  tts.ttsService = new TTSService();
+  tts.coordinator = tools;
+  tools.subscribe(() => {
+    tts.visible = tools.isToolVisible('textToSpeech');
+  });
+  tools.showTool('textToSpeech');
+</script>
 ```
 
 ### As Svelte Component
 
+Without a `coordinator`, `visible` alone controls the panel, and the close
+button and Escape do nothing, so the host closes the panel through `visible`:
+
 ```svelte
 <script>
   import '@pie-players/pie-tool-text-to-speech';
-  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
+  import { TTSService } from '@pie-players/pie-assessment-toolkit';
 
+  const ttsService = new TTSService();
   let visible = $state(false);
 </script>
 
-<pie-tool-text-to-speech
-  {visible}
-  toolId="textToSpeech"
-  coordinator={toolCoordinator}
-/>
+<pie-tool-text-to-speech {visible} toolId="textToSpeech" {ttsService} />
 ```
 
-### Via Tool Toolbar
+### Toolkit Toolbars
 
-The TTS tool is automatically included when using `<pie-tool-toolbar>`:
-
-```html
-<pie-tool-toolbar tools="protractor,ruler,textToSpeech"></pie-tool-toolbar>
-```
+The packaged `textToSpeech` capability in `@pie-players/pie-default-tool-loaders`
+mounts `<pie-tool-tts-inline>` from `@pie-players/pie-tool-tts-inline` in item
+and passage toolbars. A host that wants this floating panel mounts it itself.
 
 ## How It Works
 
@@ -67,29 +82,47 @@ The TTS tool is automatically included when using `<pie-tool-toolbar>`:
 |------|------|---------|-------------|
 | `visible` | `Boolean` | `false` | Show/hide the tool |
 | `toolId` | `String` | `'textToSpeech'` | Unique identifier for the tool |
-| `coordinator` | `ToolCoordinator` | Required | Tool coordination service |
+| `ttsService` | `TtsServiceApi` | Required | TTS service the tool reads with |
+| `coordinator` | `ToolCoordinatorApi` | unset | Tool coordinator for registration, z-order and closing |
+
+`ttsService` and `coordinator` are JavaScript properties. The element registers
+`toolId` with `coordinator` on `ZIndexLayer.MODAL`, brings the panel to the
+front when it is pressed or dragged, and hides `toolId` there from the close
+button and Escape.
 
 ## TTS Service Integration
 
-The tool uses the shared `TTSService` from `@pie-players/pie-assessment-toolkit`:
+`ttsService` takes a `TtsServiceApi`, such as `TTSService` from
+`@pie-players/pie-assessment-toolkit`. On mount the element initializes it with
+a `BrowserTTSProvider`, replacing any provider already set. The service API:
 
 ```typescript
-import { ttsService } from '@pie-players/pie-assessment-toolkit';
+import {
+  BrowserTTSProvider,
+  HighlightCoordinator,
+  TTSService,
+} from '@pie-players/pie-assessment-toolkit';
+
+const ttsService = new TTSService();
 
 // Initialize
-await ttsService.initialize();
+await ttsService.initialize(new BrowserTTSProvider());
 
-// Set root element for highlighting
-ttsService.setRootElement(containerElement);
+// Word highlighting needs a highlight coordinator and a contentElement
+ttsService.setHighlightCoordinator(new HighlightCoordinator());
 
-// Speak with options
-await ttsService.speak(text, {
-  rate: 1.0,
-  highlightWords: true
-}, {
-  onEnd: () => { /* cleanup */ },
-  onError: (error) => { /* handle error */ }
-});
+// Speed
+await ttsService.setPlaybackRate(1.0);
+
+// Speak; resolves when playback ends and rejects on a playback error
+try {
+  await ttsService.speak(text, {
+    catalogId,
+    contentElement: containerElement
+  });
+} catch (error) {
+  /* handle error */
+}
 ```
 
 ## Browser Support
@@ -150,8 +183,9 @@ The tool handles these error scenarios:
 
 ## Performance
 
-- **Lightweight**: ~15KB minified
-- **No Dependencies**: Uses browser-native APIs
+- **Dependencies**: Imports `@pie-players/pie-assessment-toolkit` and
+  `@pie-players/pie-players-shared`, which stay external to its bundle; speech
+  uses the Web Speech API through `BrowserTTSProvider`
 - **Efficient**: Only highlights visible text, no DOM mutation
 - **Memory Safe**: Cleans up event listeners on unmount
 
@@ -160,15 +194,19 @@ The tool handles these error scenarios:
 ```svelte
 <script>
   import '@pie-players/pie-tool-text-to-speech';
-  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
+  import { ToolCoordinator, TTSService } from '@pie-players/pie-assessment-toolkit';
 
-  let showTTS = $derived(
-    toolCoordinator.getToolState('textToSpeech')?.isVisible ?? false
+  const toolCoordinator = new ToolCoordinator();
+  const ttsService = new TTSService();
+  toolCoordinator.registerTool('textToSpeech', 'Text-to-Speech');
+
+  let showTTS = $state(false);
+
+  $effect(() =>
+    toolCoordinator.subscribe(() => {
+      showTTS = toolCoordinator.isToolVisible('textToSpeech');
+    })
   );
-
-  $effect(() => {
-    toolCoordinator.registerTool('textToSpeech', 'Text-to-Speech');
-  });
 </script>
 
 <!-- Assessment content -->
@@ -178,13 +216,14 @@ The tool handles these error scenarios:
 
 <!-- TTS button -->
 <button onclick={() => toolCoordinator.toggleTool('textToSpeech')}>
-  🔊 Text-to-Speech
+  Text-to-Speech
 </button>
 
 <!-- TTS tool -->
 <pie-tool-text-to-speech
   visible={showTTS}
   toolId="textToSpeech"
+  {ttsService}
   coordinator={toolCoordinator}
 />
 ```

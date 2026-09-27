@@ -128,7 +128,8 @@
 	let preloadedError = $state<string | null>(null);
 	let coordinatorReady = $state(false);
 	let playerHostElement: HTMLElement | null = $state(null);
-	let unsubscribeController: (() => void) | null = $state(null);
+	// Untracked, since the effect that binds the subscription also writes it.
+	let unsubscribeController: (() => void) | null = null;
 
 	let showSessionPanel = $state(false);
 	let showEventPanel = $state(false);

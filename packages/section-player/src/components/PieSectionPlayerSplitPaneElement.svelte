@@ -67,6 +67,8 @@
 				type: "String",
 			},
 		},
+		// The host methods, callable before the component mounts.
+		extend: withHostMethods(NULL_READS),
 	}}
 />
 
@@ -85,6 +87,10 @@
 		mergeLayoutAttrsIntoRuntime,
 		resolveSectionId,
 	} from "./shared/section-player-host-runtime.js";
+	import {
+		NULL_READS,
+		withHostMethods,
+	} from "./shared/layout-host-methods.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	// TS language service false-positive in this workspace: Svelte component has a default export.
@@ -399,13 +405,6 @@
 
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
-	}
-
-	export async function waitForSectionController(
-		timeoutMs = 5000,
-	) {
-		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
-		return controller || null;
 	}
 
 	$effect(() => {

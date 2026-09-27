@@ -37,6 +37,8 @@
 			// event stay in lockstep per cohort.
 			onLoadingComplete: { type: "Object", reflect: false },
 		},
+		// The host methods, callable before the component mounts.
+		extend: withHostMethods(BOOTSTRAP_READS),
 	}}
 />
 
@@ -57,6 +59,12 @@
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
 	import { resolveSectionId } from "./shared/section-player-host-runtime.js";
+	import {
+		BOOTSTRAP_READINESS,
+		BOOTSTRAP_READS,
+		BOOTSTRAP_SNAPSHOT,
+		withHostMethods,
+	} from "./shared/layout-host-methods.js";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
@@ -107,24 +115,6 @@
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
-	const BOOTSTRAP_READINESS = {
-		phase: "bootstrapping",
-		interactionReady: false,
-		allLoadingComplete: false,
-	} as const satisfies SectionPlayerSnapshot["readiness"];
-	const BOOTSTRAP_SNAPSHOT = {
-		readiness: BOOTSTRAP_READINESS,
-		composition: {
-			itemsCount: 0,
-			passagesCount: 0,
-		},
-		navigation: {
-			currentIndex: 0,
-			totalItems: 0,
-			canNext: false,
-			canPrevious: false,
-		},
-	} as const satisfies SectionPlayerSnapshot;
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
 			runtimePlayer: runtime?.player,
@@ -168,13 +158,6 @@
 
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
-	}
-
-	export async function waitForSectionController(
-		timeoutMs = 5000,
-	) {
-		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
-		return controller || null;
 	}
 
 	function reemit(event: Event) {

@@ -62,13 +62,21 @@ the per-method contract.
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 ```
 
 `waitForSectionController(timeoutMs)` resolves when the layout CE has wired
 its controller (the same anchor `pie-stage-change` reaches with
-`detail.stage === "engine-ready"`). Use `getSectionController()` if you've
-already passed the readiness anchor synchronously.
+`detail.stage === "engine-ready"`), or with `null` once `timeoutMs` passes.
+Use `getSectionController()` if you've already passed the readiness anchor
+synchronously.
+
+The layout elements define their host methods from the moment they are
+created, so a host can call them before the element mounts. Until it mounts,
+`waitForSectionController` waits, `getSectionController()` returns `null`, the
+navigation methods return `false`, and `getSnapshot()` and the `select*` reads
+return `null` (`pie-section-player-kernel-host` returns its bootstrapping
+snapshot).
 
 ### Session lifecycle
 
@@ -179,7 +187,7 @@ Read the resolved state from `getFormativeProjection()`, or off
 same handle:
 
 ```ts
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 // The learner's actions, budget-respecting.
 controller?.recordFormativeTry?.({ itemId, outcomes }); // outcomes from provideScore()
 controller?.retryFormativeItem?.({ itemId });
@@ -254,7 +262,7 @@ with its own player registers its own port instead, and that port outranks the
 card's discovery for as long as it is attached:
 
 ```ts
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 // No `renderableId`: a host is asserting its own port, where a renderable's adapter
 // has to name itself and is ignored unless it is the resolved stimulus.
 controller?.attachMediaTimeSource?.(myThirdPartyPort);
@@ -819,7 +827,7 @@ Minimal pattern for package layout components:
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 let sectionComplete = false;
 
 const unsubscribe = controller?.subscribe?.((event: any) => {
@@ -973,7 +981,7 @@ Section session data can be managed either through persistence hooks or directly
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 
 // Read current section session snapshot.
 const currentSession = controller?.getSession?.();

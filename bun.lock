@@ -5,7 +5,6 @@
     "": {
       "name": "pie-players",
       "dependencies": {
-        "@pie-players/pie-players-cli": "workspace:*",
         "@sveltejs/kit": "^2.70.3",
         "svelte": "^5.57.0",
         "svelte-check": "^4.7.6",

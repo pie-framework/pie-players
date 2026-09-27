@@ -154,19 +154,6 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 }
 
 /**
- * The section id a player keys its cohort, controller lookup and stage events
- * on: the `section-id` attribute, or the section's own `identifier` when markup
- * leaves the attribute unset.
- */
-export function resolveSectionId(
-	sectionId: string | null | undefined,
-	section: { identifier?: unknown } | null | undefined,
-): string {
-	if (sectionId) return sectionId;
-	return typeof section?.identifier === "string" ? section.identifier : "";
-}
-
-/**
  * Fold a layout element's presentation convenience attributes — `nds-icons` and
  * `locale` — into the `runtime` config handed to the kernel.
  *

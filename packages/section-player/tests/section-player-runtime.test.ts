@@ -284,30 +284,6 @@ describe("mapRenderablesToItems", () => {
 	});
 });
 
-describe("resolveSectionId", () => {
-	test("the section-id attribute wins over the section's identifier", async () => {
-		const { resolveSectionId } = await loadHostRuntime();
-		expect(resolveSectionId("from-attribute", { identifier: "from-section" })).toBe(
-			"from-attribute",
-		);
-	});
-
-	test("an unset attribute falls back to the section's identifier", async () => {
-		const { resolveSectionId } = await loadHostRuntime();
-		const section = { identifier: "from-section" };
-		expect(resolveSectionId("", section)).toBe("from-section");
-		expect(resolveSectionId(undefined, section)).toBe("from-section");
-		expect(resolveSectionId(null, section)).toBe("from-section");
-	});
-
-	test("no attribute and no usable identifier resolve to the empty id", async () => {
-		const { resolveSectionId } = await loadHostRuntime();
-		expect(resolveSectionId("", null)).toBe("");
-		expect(resolveSectionId(undefined, {})).toBe("");
-		expect(resolveSectionId("", { identifier: 7 })).toBe("");
-	});
-});
-
 /**
  * Heading depth is composition context: the section player publishes one level
  * and each content kind derives its own from it. These pin the derivation and

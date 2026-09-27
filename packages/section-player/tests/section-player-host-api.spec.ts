@@ -52,8 +52,6 @@ declare global {
 
 type MountOptions = {
 	tag: string;
-	/** Leaves the `section-id` attribute unset. */
-	withoutSectionId?: boolean;
 	/** Sets `runtime` and `section` a tick after the element is appended. */
 	late?: boolean;
 	/** Calls every host method before and right after the append. */
@@ -68,7 +66,7 @@ async function openPreloadedDemo(page: Page): Promise<void> {
 
 async function mountFreshLayout(page: Page, options: MountOptions) {
 	await page.evaluate(
-		({ tag, withoutSectionId, late, probeMethods, extraRuntime, methods }) => {
+		({ tag, late, probeMethods, extraRuntime, methods }) => {
 			const existing = document.querySelector(
 				"pie-section-player-splitpane",
 			) as (HTMLElement & { section?: { identifier?: string } }) | null;
@@ -94,9 +92,7 @@ async function mountFreshLayout(page: Page, options: MountOptions) {
 			window.__pieHostApi = log;
 
 			const fresh = document.createElement(tag) as HostApiElement;
-			if (!withoutSectionId) {
-				fresh.setAttribute("section-id", "host-api-section");
-			}
+			fresh.setAttribute("section-id", "host-api-section");
 			fresh.setAttribute("attempt-id", `host-api-${Date.now()}`);
 			fresh.setAttribute("show-toolbar", "true");
 			fresh.addEventListener("pie-stage-change", (event) => {
@@ -188,7 +184,6 @@ async function mountFreshLayout(page: Page, options: MountOptions) {
 		},
 		{
 			tag: options.tag,
-			withoutSectionId: options.withoutSectionId === true,
 			late: options.late === true,
 			probeMethods: options.probeMethods === true,
 			extraRuntime: options.runtime ?? {},
@@ -231,29 +226,6 @@ function collectPageErrors(page: Page): string[] {
 
 test.describe("section player host API", () => {
 	for (const tag of LAYOUT_TAGS) {
-		test(`${tag} without section-id keys its stage events on the section identifier`, async ({
-			page,
-		}) => {
-			await openPreloadedDemo(page);
-			await mountFreshLayout(page, { tag, withoutSectionId: true });
-
-			const log = await waitForLoadingComplete(page);
-			expect(log.sectionIdentifier).toBeTruthy();
-			expect(log.stageSectionIds.length).toBeGreaterThan(0);
-			expect(new Set(log.stageSectionIds)).toEqual(
-				new Set([log.sectionIdentifier]),
-			);
-			expect(new Set(log.loadingCompleteSectionIds)).toEqual(
-				new Set([log.sectionIdentifier]),
-			);
-			await expect
-				.poll(async () => (await hostApiLog(page)).telemetrySectionIds.length)
-				.toBeGreaterThan(0);
-			expect(new Set((await hostApiLog(page)).telemetrySectionIds)).toEqual(
-				new Set([log.sectionIdentifier]),
-			);
-		});
-
 		test(`${tag} answers its host methods before it mounts`, async ({
 			page,
 		}) => {

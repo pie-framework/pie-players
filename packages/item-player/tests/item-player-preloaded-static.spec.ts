@@ -359,6 +359,114 @@ test.describe("item-player strategy regressions", () => {
 		expect(versionRewriteState.authoredConfig).toEqual(authoredConfig);
 	});
 
+	test("renders an item authoring another base tag than the registration, hosted and not hosted", async ({
+		page,
+	}) => {
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+		const warnings: string[] = [];
+		page.on("console", (message) => {
+			if (message.type() === "warning" && message.text().includes("without a controller")) {
+				warnings.push(message.text());
+			}
+		});
+
+		const registeredTag = "pie-element-authored-tag--version-1-0-0";
+		const authoredTag = "authored-tag--version-1-0-0";
+		await page.evaluate((registeredTag) => {
+			const calls: string[] = [];
+			(window as any).__pieAuthoredTagCalls = calls;
+			class Registered extends HTMLElement {
+				set model(value: any) {
+					this.textContent = String(value?.prompt ?? "");
+				}
+			}
+			customElements.define(registeredTag, Registered);
+			// What registerPreloadedElements records for an entry with a controller.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[registeredTag] = {
+				package: "@pie-element/authored-tag@1.0.0",
+				status: "loaded",
+				tagName: registeredTag,
+				element: Registered,
+				bundleType: "client-player.js",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+				},
+			};
+			(window as any).PIE_PRELOADED_ELEMENTS = {
+				...(window as any).PIE_PRELOADED_ELEMENTS,
+				"@pie-element/authored-tag": "@pie-element/authored-tag@1.0.0",
+			};
+			(window as any).__mountAuthoredTagPlayer = (id: string, hosted: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = id;
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				player.strategy = "preloaded";
+				player.hosted = hosted;
+				player.env = { mode: "gather", role: "student" };
+				// Authored at a stale version under its own base tag.
+				player.config = {
+					id,
+					markup: '<authored-tag id="authored-model"></authored-tag>',
+					elements: { "authored-tag": "@pie-element/authored-tag@0.9.0" },
+					models: [
+						{ id: "authored-model", element: "authored-tag", prompt: "server model" },
+					],
+				};
+				fixture.appendChild(player);
+			};
+			(window as any).__mountAuthoredTagPlayer("authored-tag-hosted", true);
+		}, registeredTag);
+
+		await expect(page.locator(`#authored-tag-hosted ${authoredTag}`)).toHaveText(
+			"server model",
+			{ timeout: 20_000 },
+		);
+		expect(await page.evaluate(() => (window as any).__pieAuthoredTagCalls)).toEqual(
+			[],
+		);
+
+		await page.evaluate(() =>
+			(window as any).__mountAuthoredTagPlayer("authored-tag-client", false),
+		);
+		await expect(page.locator(`#authored-tag-client ${authoredTag}`)).toHaveText(
+			"client model",
+			{ timeout: 20_000 },
+		);
+		const registration = await page.evaluate(
+			({ registeredTag, authoredTag }) => {
+				const entry = (window as any).PIE_REGISTRY[authoredTag];
+				const defined = customElements.get(authoredTag);
+				return {
+					package: entry?.package,
+					bundleType: entry?.bundleType,
+					sameController:
+						entry?.controller === (window as any).PIE_REGISTRY[registeredTag].controller,
+					subclass:
+						!!defined &&
+						defined !== customElements.get(registeredTag) &&
+						defined.prototype instanceof (customElements.get(registeredTag) as any),
+				};
+			},
+			{ registeredTag, authoredTag },
+		);
+		expect(registration).toEqual({
+			package: "@pie-element/authored-tag@1.0.0",
+			bundleType: "client-player.js",
+			sameController: true,
+			subclass: true,
+		});
+		expect(warnings).toEqual([]);
+	});
+
 	test("a hosted player never runs a controller another loader registered", async ({
 		page,
 	}) => {
@@ -1599,8 +1707,9 @@ test.describe("item-player strategy regressions", () => {
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "missing-tags", data: [] };
 			player.config = {
+				// A package the page did not register, so its tag stays undefined.
 				elements: {
-					"pie-runtime-missing": "@pie-element/multiple-choice@11.4.3",
+					"pie-runtime-missing": "@pie-element/unregistered@1.0.0",
 				},
 				models: [
 					{
@@ -1650,8 +1759,9 @@ test.describe("item-player strategy regressions", () => {
 					markup: "<p>Item without elements</p>",
 				},
 				passage: {
+					// A package the page did not register, so its tag stays undefined.
 					elements: {
-						"pie-passage-missing": "@pie-element/multiple-choice@11.4.3",
+						"pie-passage-missing": "@pie-element/unregistered@1.0.0",
 					},
 					models: [
 						{
@@ -1701,8 +1811,9 @@ test.describe("item-player strategy regressions", () => {
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "disable-bundler", data: [] };
 			player.config = {
+				// A package the page did not register, so its tag stays undefined.
 				elements: {
-					"pie-disable-bundler-missing": "@pie-element/multiple-choice@11.4.3",
+					"pie-disable-bundler-missing": "@pie-element/unregistered@1.0.0",
 				},
 				models: [
 					{

@@ -3,12 +3,13 @@
  * element packages, and the players load nothing.
  *
  * Each element is defined under the versioned tag `toPackageVersionedTag`
- * derives from its authored base tag and the registered version, recorded in
+ * derives from its base tag and the registered version, recorded in
  * `window.PIE_REGISTRY`, and recorded by package in
  * `window.PIE_PRELOADED_ELEMENTS`. The item player and the section player
  * rewrite every authored spec of a registered package to that version
- * (`alignPreloadedElementVersions`), derive the versioned tags from the result
- * and assert them (`assertRegistered`).
+ * (`alignPreloadedElementVersions`), derive the versioned tags from the result,
+ * define the ones content names under another base tag
+ * (`defineAuthoredPreloadedTags`) and assert them (`assertRegistered`).
  *
  * A hosted player takes models from the server and resolves no controller. A
  * player that is not hosted runs the controller's `model()` in the browser, so
@@ -31,7 +32,11 @@ export type PreloadedController = {
 };
 
 export interface PreloadedElement {
-	/** Base tag the content authors, e.g. `pie-element-multiple-choice`. */
+	/**
+	 * Base tag to register, e.g. `pie-element-multiple-choice`. Content can
+	 * author another base tag for the package, which the players define from
+	 * this registration.
+	 */
 	tag: string;
 	/** npm package name, e.g. `@pie-element/multiple-choice`. */
 	package: string;
@@ -117,7 +122,7 @@ function resolveElement(
 	}
 	if (typeof tag !== "string" || !tag) {
 		throw new Error(
-			`${at} (${packageName}): tag must be the authored base tag, got ${JSON.stringify(tag)}`,
+			`${at} (${packageName}): tag must be the base tag to register, got ${JSON.stringify(tag)}`,
 		);
 	}
 

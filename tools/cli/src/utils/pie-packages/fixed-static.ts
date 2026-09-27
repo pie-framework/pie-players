@@ -11,7 +11,7 @@ import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
 	elements: string[]; // "@pie-element/foo@1.2.3"
-	elementTags?: Record<string, string>; // Package name -> authored base tag
+	elementTags?: Record<string, string>; // Package name -> base tag to register
 	iteration?: number;
 	loaderVersion?: string;
 	setName?: string; // Names a published version; local builds use the element hash
@@ -436,7 +436,7 @@ npm install @pie-players/pie-preloaded-player@${version}
 ></pie-item-player>
 \`\`\`
 
-The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Use the base tag selected by each build config's \`tag\` field; the default is \`pie-<package basename>\`. The generated registrations carry the canonical version suffix.
+The preloaded bundle is included by this package import. With \`strategy="preloaded"\`, the player verifies registration without fetching additional bundles. It normalizes \`config.elements\` to the bundled versions on a runtime copy. Each element registers under the base tag its build config's \`tag\` field selects, \`pie-<package basename>\` by default, with the canonical version suffix. Content can author another base tag for a bundled package; the player defines that versioned tag from the registered element.
 
 A page that already registered \`pie-item-player\` — anything importing \`@pie-players/pie-section-player\` — renders these elements through that copy, and this package skips loading its own.
 

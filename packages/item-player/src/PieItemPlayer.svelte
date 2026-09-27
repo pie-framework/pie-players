@@ -120,6 +120,7 @@
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
+		defineAuthoredPreloadedTags,
 		ensureHostSessionEntries,
 		ensureRegistered,
 		ItemController,
@@ -1091,6 +1092,7 @@
 					elementMap,
 					runtimeSupportView === "author" ? BundleType.editor : bundleType,
 				);
+				defineAuthoredPreloadedTags(expectedElements);
 				// Throws `ElementAssertionError` naming each missing tag and the tags
 				// its package is registered as. No loading, no fallback.
 				assertRegistered(expectedElements);

@@ -9,6 +9,9 @@ import demo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio
 const workspace = resolve(import.meta.dirname, "../../..");
 const packageName = "@pie-element/multiple-choice";
 const packageSpec = `${packageName}@11.4.3`;
+// The build registers the base tag the published configs give the package, and
+// the items author `multiple-choice`, so each player defines the tag it renders.
+const registeredTag = "pie-element-multiple-choice--version-11-4-3";
 const runtimeTag = "multiple-choice--version-11-4-3";
 let scratch: string;
 let server: Server;
@@ -35,7 +38,7 @@ test.beforeAll(async () => {
     import { buildPreloadedPlayerStaticPackage } from "./tools/cli/src/utils/pie-packages/fixed-static.ts";
     await buildPreloadedPlayerStaticPackage(${JSON.stringify({
       elements: [packageSpec],
-      elementTags: { [packageName]: "multiple-choice" },
+      elementTags: { [packageName]: "pie-element-multiple-choice" },
       monorepoDir: workspace,
       outputDir: generated,
       iteration: 1,
@@ -112,7 +115,8 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   expect(await page.evaluate(() => (window as any).loadStates)).toEqual(["PIE-Fixed-Player-Load-Complete"]);
   expect(await page.evaluate(() => (window as any).pieFixedPlayerLoaded)).toBe(true);
   expect(await page.evaluate(() => performance.getEntriesByName("PIE-Fixed-Player-Load-Complete").length)).toBe(1);
-  expect(await page.evaluate((tag) => !!customElements.get(tag), runtimeTag)).toBe(true);
+  expect(await page.evaluate((tag) => !!customElements.get(tag), registeredTag)).toBe(true);
+  expect(await page.evaluate((tag) => !!customElements.get(tag), runtimeTag)).toBe(false);
   expect(await page.evaluate(() => (window as any).PIE_PRELOADED_ELEMENTS)).toEqual({ [packageName]: packageSpec });
 
   const staleTag = "multiple-choice--version-0-0-1";
@@ -156,6 +160,51 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["mars"]);
   expect(loadedChunks.length).toBeGreaterThan(0);
   expect(failedRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+});
+
+test("renders an item authoring another base tag than the build, hosted and not hosted", async ({ page }) => {
+  const browserErrors: string[] = [];
+  const warnings: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+    if (message.type() === "warning" && message.text().includes("without a controller")) warnings.push(message.text());
+  });
+  await serveFromTarballOnly(page);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+  });
+
+  // The demo item authors `multiple-choice` at `latest`.
+  const authored = structuredClone(demo.item.config);
+  for (const hosted of [true, false]) {
+    const id = hosted ? "hosted-player" : "client-player";
+    await page.evaluate(({ config, id, hosted }) => {
+      document.querySelector("pie-item-player")?.remove();
+      const player = document.createElement("pie-item-player") as any;
+      player.id = id;
+      player.strategy = "preloaded";
+      player.hosted = hosted;
+      player.config = config;
+      player.env = { mode: "gather", role: "student" };
+      player.session = { id: `${id}-attempt`, data: [] };
+      player.addEventListener("session-changed", (event: CustomEvent) => { (window as any).savedSession = event.detail.session; });
+      document.body.appendChild(player);
+    }, { config: authored, id, hosted });
+    await expect(page.locator(`#${id} ${runtimeTag}`)).toBeVisible();
+    await page.locator(`#${id} input[type="radio"][value="jupiter"]`).click();
+    await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["jupiter"]);
+  }
+  expect(await page.evaluate((tag) => {
+    const { package: spec, status, tagName, bundleType } = (window as any).PIE_REGISTRY[tag];
+    return { spec, status, tagName, bundleType };
+  }, runtimeTag)).toEqual({ spec: packageSpec, status: "loaded", tagName: runtimeTag, bundleType: "player.js" });
+  // The build registers no controllers, so the player that is not hosted warns once.
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0]).toContain(runtimeTag);
   expect(browserErrors).toEqual([]);
 });
 

@@ -163,6 +163,11 @@ function sourceTranscript(): string {
 }
 
 test.describe("package-backed video stimulus timed media", () => {
+	// Opt-in: `beforeAll` builds the element inside the sibling checkout.
+	test.skip(
+		process.env.PIE_VIDEO_STIMULUS_PACKAGE_E2E !== "1",
+		"set PIE_VIDEO_STIMULUS_PACKAGE_E2E=1 to build and test the sibling pie-elements-ng package",
+	);
 	test.skip(
 		!existsSync(SOURCE_PACKAGE_DIR) || !existsSync(SOURCE_FIXTURE_DIR),
 		"requires the sibling pie-elements-ng checkout and its original video fixtures",

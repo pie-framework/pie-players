@@ -9,7 +9,7 @@ const itemDemosPort = Number(process.env.ITEM_DEMOS_PORT || "5400");
 const defaultBaseUrl = `http://${itemDemosHost}:${itemDemosPort}`;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || defaultBaseUrl;
 const parsedBaseUrl = new URL(baseURL);
-const webServerCommand = `bun run --cwd "${itemDemosCwd}" dev -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"}`;
+const webServerCommand = `bun run --cwd "${itemDemosCwd}" dev -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"} --strictPort`;
 
 export default defineConfig({
 	testDir: "./tests",
@@ -39,7 +39,7 @@ export default defineConfig({
 		timeout: 120_000,
 		// Suppress vite's dev-only crash overlay so it can't intercept clicks
 		// when something throws unhandled (e.g. lazy-loaded module errors).
-		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1" },
+		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1", BROWSER: "none" },
 	},
 	projects: [
 		{

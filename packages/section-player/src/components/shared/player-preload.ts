@@ -43,6 +43,7 @@ import {
 	createPieLogger,
 	isGlobalDebugEnabled,
 	resolveLoadControllers,
+	toViewTag,
 	validatePieConfigContract,
 } from "@pie-players/pie-players-shared";
 import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
@@ -113,10 +114,24 @@ export function getPreloadLogger(componentTag: string) {
 	return createPieLogger(componentTag, () => isGlobalDebugEnabled());
 }
 
-export function getLoaderView(
+function isAuthorMode(
+	props: Record<string, unknown>,
 	env: Record<string, unknown>,
-): "author" | "delivery" {
-	return env?.mode === "author" ? "author" : "delivery";
+): boolean {
+	return (
+		String(props?.mode ?? "").toLowerCase() === "author" ||
+		env?.mode === "author"
+	);
+}
+
+/** The element view the item players render, which pre-warm has to match. */
+export function getLoaderView(
+	props: Record<string, unknown>,
+	env: Record<string, unknown>,
+): string {
+	const view = (props?.loaderOptions as { view?: unknown } | undefined)?.view;
+	if (typeof view === "string" && view) return view;
+	return isAuthorMode(props, env) ? "author" : "delivery";
 }
 
 /**
@@ -237,7 +252,10 @@ export function buildBackendConfigFromProps(args: {
 
 	if (args.strategy === "esm") {
 		const esmCdnProvider = readEsmCdnProvider(loaderOptions?.esmCdnProvider);
-		const view = getLoaderView(args.resolvedPlayerEnv);
+		const view = getLoaderView(
+			args.resolvedPlayerProps,
+			args.resolvedPlayerEnv,
+		);
 		return {
 			kind: "esm",
 			cdnBaseUrl: String(
@@ -252,7 +270,7 @@ export function buildBackendConfigFromProps(args: {
 					typeof loaderOptions?.loadControllers === "boolean"
 						? loaderOptions.loadControllers
 						: undefined,
-				author: view === "author",
+				author: isAuthorMode(args.resolvedPlayerProps, args.resolvedPlayerEnv),
 				hosted: args.resolvedPlayerProps?.hosted === true,
 			}),
 		};
@@ -265,11 +283,8 @@ export function buildBackendConfigFromProps(args: {
 		throw new Error("Missing iifeBundleHost for element preloading");
 	}
 
-	const mode = String(
-		(args.resolvedPlayerProps?.mode as string) || "",
-	).toLowerCase();
 	const bundleType: BundleType =
-		mode === "author"
+		isAuthorMode(args.resolvedPlayerProps, args.resolvedPlayerEnv)
 			? BundleType.editor
 			: args.resolvedPlayerProps?.hosted === true
 				? BundleType.player
@@ -279,7 +294,8 @@ export function buildBackendConfigFromProps(args: {
 		kind: "iife",
 		bundleHost,
 		bundleType,
-		needsControllers: true,
+		// A hosted player's server runs the controllers.
+		needsControllers: bundleType !== BundleType.player,
 		onBundleRetryStatus: args.onBundleRetryStatus,
 	};
 }
@@ -374,7 +390,21 @@ export async function warmupSectionElements(args: {
 				args.renderables.map(alignRenderableVersions),
 			);
 			assertElementPackagesAllowed(elements, elementPackagePolicy);
-			assertRegistered(elements);
+			const view = getLoaderView(
+				args.resolvedPlayerProps,
+				args.resolvedPlayerEnv,
+			);
+			// The author view registers each element's editor under `<tag>-config`.
+			assertRegistered(
+				view === "author"
+					? Object.fromEntries(
+							Object.entries(elements).map(([tag, spec]) => [
+								toViewTag(tag, "author"),
+								spec,
+							]),
+						)
+					: elements,
+			);
 		} catch (error) {
 			throw new PreloadStageError("preloaded-assert", error);
 		}

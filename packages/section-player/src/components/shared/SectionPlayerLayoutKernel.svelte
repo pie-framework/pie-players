@@ -103,7 +103,7 @@
 			stateKey: "__sectionPlayerAppliedParams",
 			includeSessionRefInState: false,
 		} satisfies PlayerActionConfig,
-		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
+		policies = DEFAULT_SECTION_PLAYER_POLICIES as Partial<SectionPlayerPolicies>,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		onFrameworkError = undefined as
 			| undefined

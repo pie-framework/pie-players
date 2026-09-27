@@ -75,6 +75,7 @@ const enUS = {
 		items: "Items",
 		section: "Section",
 		loadingSection: "Loading section content…",
+		sectionLoadError: "Section content could not be loaded.",
 		loadingPassage: "Loading passage content…",
 		configurationError: "Configuration Error",
 		playerError: "Player Error",

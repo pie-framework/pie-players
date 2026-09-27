@@ -707,8 +707,42 @@ function defaultImporter(specifier: string): Promise<unknown> {
 	return import(/* webpackIgnore: true */ /* @vite-ignore */ specifier);
 }
 
-async function defaultPackageMetadataLoader(
+/**
+ * One request per package.json URL, shared by every backend on the page: the
+ * players on a page read the metadata of the same element versions and of the
+ * same editor runtime. A request that fails or finds no metadata is dropped
+ * once it settles, so a later load asks again.
+ */
+const packageMetadataRequests = new Map<
+	string,
+	Promise<PackageMetadata | null>
+>();
+
+/** @internal Test-only: drops every shared package.json request. */
+export function clearPackageMetadataRequests(): void {
+	packageMetadataRequests.clear();
+}
+
+function defaultPackageMetadataLoader(
 	packageVersion: string,
+	packageJsonUrl: string,
+): Promise<PackageMetadata | null> {
+	const pending = packageMetadataRequests.get(packageJsonUrl);
+	if (pending) return pending;
+	const request = fetchPackageMetadata(packageJsonUrl);
+	packageMetadataRequests.set(packageJsonUrl, request);
+	const forget = () => {
+		if (packageMetadataRequests.get(packageJsonUrl) === request) {
+			packageMetadataRequests.delete(packageJsonUrl);
+		}
+	};
+	request.then((metadata) => {
+		if (metadata === null) forget();
+	}, forget);
+	return request;
+}
+
+async function fetchPackageMetadata(
 	packageJsonUrl: string,
 ): Promise<PackageMetadata | null> {
 	const browserFetch =

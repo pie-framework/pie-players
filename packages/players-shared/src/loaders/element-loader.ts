@@ -33,7 +33,11 @@ import {
 	type ElementTag,
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
-import { createEsmBackend, type EsmBackendConfig } from "./esm-adapter.js";
+import {
+	clearPackageMetadataRequests,
+	createEsmBackend,
+	type EsmBackendConfig,
+} from "./esm-adapter.js";
 import { createIifeBackend, type IifeBackendConfig } from "./iife-adapter.js";
 import {
 	assertElementPackagesAllowed,
@@ -628,6 +632,7 @@ export const __testing = {
 		inFlightRequests.clear();
 		resolvedEsmBackends.clear();
 		resolvedBackendOverrides.clear();
+		clearPackageMetadataRequests();
 	},
 	inFlightCount(): number {
 		return inFlightRequests.size;

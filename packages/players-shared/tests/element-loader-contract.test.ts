@@ -1271,6 +1271,50 @@ describe("ESM adapter — contract", () => {
 		);
 	});
 
+	test("a package.json request that fails is made again by the next player, and one that succeeds is reused", async () => {
+		const packageJsonUrl =
+			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/package.json";
+		const responses: Array<() => unknown> = [
+			() => {
+				throw new TypeError("Failed to fetch");
+			},
+			() => ({ ok: false, json: async () => ({}) }),
+			() => ({ ok: true, json: async () => ({}) }),
+		];
+		const fetched: string[] = [];
+		(g.window as { fetch?: unknown }).fetch = async (input: string) => {
+			fetched.push(input);
+			const respond = responses.shift();
+			if (!respond) throw new Error(`unexpected request for ${input}`);
+			return respond();
+		};
+		const ElementClass = createConstructorFor("pie-mc--version-13-2-0");
+		const loadInNewPlayer = () => {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			});
+			backend.__seams.replaceImporter(async () => ({ default: ElementClass }));
+			return backend.load(
+				{ "pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0" },
+				{ doc: createMockDocument(), whenDefinedTimeoutMs: 50 },
+			);
+		};
+
+		const originalError = console.error;
+		console.error = () => {};
+		try {
+			await expect(loadInNewPlayer()).rejects.toThrow("Failed to fetch");
+		} finally {
+			console.error = originalError;
+		}
+		await loadInNewPlayer();
+		await loadInNewPlayer();
+		await loadInNewPlayer();
+
+		expect(fetched).toEqual([packageJsonUrl, packageJsonUrl, packageJsonUrl]);
+	});
+
 	test("author view registers the requested versioned config tag without double suffixing", async () => {
 		const backend = createEsmBackend({
 			kind: "esm",
@@ -3387,6 +3431,45 @@ describe("ESM adapter — shared editor runtime", () => {
 		expect(author.injected).toEqual([]);
 		expect(runtimeRequests(author.metadataRequests)).toEqual([]);
 		expect(warnings).toEqual([]);
+	});
+
+	test("standalone players on one page share one request for the runtime's package.json", async () => {
+		const metadataByUrl: Record<string, unknown> = {
+			[`${CDN}/${MC}/package.json`]: declaring("0.1.1-next.0"),
+			[`${CDN}/${EBSR}/package.json`]: declaring("0.1.1-next.0"),
+			[`${CDN}/${VENN}/package.json`]: declaring("0.1.1-next.0"),
+			[`${CDN}/${RUNTIME}@0.1.1-next.0/package.json`]: runtimePackage(),
+		};
+		const fetched: string[] = [];
+		(g.window as { fetch?: unknown }).fetch = async (input: string) => {
+			fetched.push(input);
+			const metadata = metadataByUrl[input];
+			return { ok: metadata !== undefined, json: async () => metadata };
+		};
+		const doc = createImportMapDocument();
+
+		await Promise.all(
+			[
+				[MC_TAG, MC],
+				[EBSR_TAG, EBSR],
+				[VENN_TAG, VENN],
+			].map(([tag, packageVersion]) => {
+				const backend = createEsmBackend({ kind: "esm", cdnBaseUrl: CDN });
+				backend.__seams.replaceImporter(async (specifier) => ({
+					default: createConstructorFor(specifier),
+				}));
+				return backend.load({ [tag]: packageVersion }, { doc });
+			}),
+		);
+
+		expect(runtimeRequests(fetched)).toEqual([
+			`${CDN}/${RUNTIME}@0.1.1-next.0/package.json`,
+		]);
+		expect(fetched).toHaveLength(4);
+		expect(mappedRuntimes(doc)).toEqual([`${RUNTIME}@0.1.1-next.0`]);
+		for (const tag of [MC_TAG, EBSR_TAG, VENN_TAG]) {
+			expect(g.customElements?.get(tag)).toBeDefined();
+		}
 	});
 
 	test("a custom provider addresses the runtime's metadata, modules and every variant", async () => {

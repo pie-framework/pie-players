@@ -303,23 +303,26 @@ export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
 };
 
 /**
- * The server TTS declarations name Node's `Buffer`. A consumer that installs
- * no `@types/node` of its own must still resolve it, through the package's
- * own dependency and default `types` inclusion. The package installs into a
- * fixture of its own, since other fixture packages bring `@types/node` in
- * transitively.
+ * The server TTS declarations use no Node types, and the package installs none:
+ * `@types/node` is included in every compilation that can see it, so one pulled
+ * in by a dependency breaks a consumer on an older TypeScript. The package
+ * installs into a fixture of its own, since other fixture packages bring
+ * `@types/node` in transitively.
  */
 const typecheckTtsServerCore = (tarballPath) => {
 	const fixtureDir = createFixtureProject();
 	try {
 		installTarballs(fixtureDir, [tarballPath]);
+		if (existsSync(path.join(fixtureDir, "node_modules", "@types", "node"))) {
+			return { ok: false, message: "installing it installs @types/node" };
+		}
 		return typecheckFixture(
 			fixtureDir,
 			`import type { SynthesizeResponse } from "${TTS_SERVER_CORE}";
 
 export type SynthesizedAudio = SynthesizeResponse["audio"];
 `,
-			{},
+			{ types: [] },
 		);
 	} finally {
 		rmSync(fixtureDir, { recursive: true, force: true });
@@ -428,7 +431,7 @@ const run = async () => {
 		const ttsTypecheckResult = typecheckTtsServerCore(ttsServerCoreTarball);
 		if (!ttsTypecheckResult.ok) {
 			failures.push(
-				`[node-consumer] ${TTS_SERVER_CORE} failed TypeScript consumption without a host @types/node: ${ttsTypecheckResult.message}`,
+				`[node-consumer] ${TTS_SERVER_CORE} failed TypeScript consumption without Node types: ${ttsTypecheckResult.message}`,
 			);
 		}
 

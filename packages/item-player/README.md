@@ -238,7 +238,10 @@ These are set via JavaScript, not HTML attributes.
 
 - `load-complete`: emitted when PIE elements finish loading.
 - `session-changed`: `{ session, ... }`. Emitted when the student interacts and
-  session data changes. A commit at a teardown, navigation or page-hidden seam
+  session data changes. An element's own announcement is forwarded when its
+  `complete` or its session differs from what that element last announced, so
+  each element reaches the host once at load and one response produces one
+  event. A commit at a teardown, navigation or page-hidden seam
   carries `detail.sessionCommitReason` (`"teardown" | "navigate" |
   "page-hidden"`). A host that re-pushes `config` in response to this event
   should ignore a commit, since the commit exists to report a response the host

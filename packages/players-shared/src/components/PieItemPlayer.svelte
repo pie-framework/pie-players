@@ -33,6 +33,10 @@
   } from "../pie/authoring.js";
   import { transformMarkupForAuthoring } from "../pie/authoring-tag.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
+  import {
+    createElementAnnouncementFilter,
+    holdsPlaceholderSession,
+  } from "../pie/element-announcements.js";
   import { observePieElements } from "../pie/element-observer.js";
   import {
     canPopulateCorrectResponses,
@@ -642,24 +646,32 @@
   }
 
   /**
-   * The session a dispatching element holds, when that element renders one of
-   * this item's models. A part nested inside an element keeps a session of its
-   * own, which is no entry of this array.
+   * The model id a dispatching element renders, or `""`. A part nested inside
+   * an element keeps a session of its own, which is no entry of this array.
    */
-  function modelElementSession(target: EventTarget | null): unknown {
-    const element = target as { id?: unknown; session?: unknown } | null;
+  function renderedModelId(target: EventTarget | null): string {
+    const element = target as { id?: unknown } | null;
     const id = typeof element?.id === "string" ? element.id : "";
-    if (!id) return undefined;
+    if (!id) return "";
     const rendersModel = [itemConfig, passageConfig].some((config) =>
       config?.models?.some((model) => model?.id === id)
     );
-    if (!rendersModel) return undefined;
+    return rendersModel ? id : "";
+  }
+
+  function heldSession(target: EventTarget | null): unknown {
     try {
-      return element?.session;
+      return (target as { session?: unknown } | null)?.session;
     } catch {
-      // A getter that throws holds no session to fold.
+      // A getter that throws holds no session to read.
       return undefined;
     }
+  }
+
+  function sessionEntry(modelId: string): unknown {
+    return session.find(
+      (entry: any) => entry && typeof entry === "object" && entry.id === modelId
+    );
   }
 
   // Root element reference for resource monitor
@@ -669,7 +681,12 @@
   // emits from above this root, so the one re-entry left is the same event
   // delivered twice.
   const forwardedEvents = new WeakSet<Event>();
-  let lastDispatchedSessionDetailSignature = "";
+  // An update pass re-hands every element its session, and an element that
+  // announces from its `session` setter announces each time. Forwarding only
+  // what is new for the announcing element keeps one learner response at one
+  // event, and keeps a sibling's unchanged `complete` from reaching the host
+  // after another element's response.
+  const admitAnnouncement = createElementAnnouncementFilter();
 
   function handleModelUpdated(event: Event) {
     // Only edits are forwarded. While it initializes, a configure element can
@@ -706,6 +723,25 @@
       customEvent.detail
     );
 
+    const target = event.target;
+    const modelId = renderedModelId(target);
+    // A commit is the seam of last resort: a host that dropped the element's
+    // earlier event has no other chance to see this response.
+    const isCommit = Boolean(customEvent.detail?.sessionCommitReason);
+
+    // STEP 1 hands each element a placeholder and STEP 3 its entry of this
+    // array, so an element announcing from its `session` setter announces
+    // once for each. Its `complete` describes the placeholder, which STEP 3's
+    // announcement replaces.
+    if (
+      !initialized &&
+      !isCommit &&
+      modelId &&
+      holdsPlaceholderSession(heldSession(target), sessionEntry(modelId))
+    ) {
+      return;
+    }
+
     // Fold the element's own record in before forwarding: the array can hold
     // a stale copy of its entry, and forwarding that would drop the response
     // with no event. A commit carries the record in its detail. The element
@@ -713,36 +749,33 @@
     // still hold STEP 1's placeholder, which must not overwrite a restored
     // response.
     mergeElementSession(customEvent.detail?.session);
-    if (initialized) mergeElementSession(modelElementSession(event.target));
+    if (initialized && modelId) mergeElementSession(heldSession(target));
 
-    // Record what the host is about to be told, so a later commit can
-    // tell a pending response from one already announced.
-    noteSessionObserved(event.target);
+    // Record what the host has been told, so a later commit can tell a
+    // pending response from one already announced.
+    noteSessionObserved(target);
+
+    const ownSession = modelId
+      ? (heldSession(target) ?? sessionEntry(modelId))
+      : (heldSession(target) ?? customEvent.detail?.session ?? session);
+    if (
+      !admitAnnouncement({
+        element: target,
+        complete: customEvent.detail?.complete,
+        session: ownSession,
+        commit: isCommit,
+      })
+    ) {
+      return;
+    }
 
     // Forward event detail with the latest in-memory session snapshot.
     // PIE elements often emit metadata-only details, while the actual response
     // array is mutated in-place on the `session` prop.
-    const forwardedDetail = {
+    dispatch("session-changed", {
       ...(customEvent.detail || {}),
       session: { id: "", data: session },
-    };
-
-    // Ignore duplicate payloads that can occur during model wiring. A
-    // commit is exempt: it is the seam of last resort, and a host that
-    // dropped the element's earlier event has no other chance to see
-    // this response.
-    const isCommit = Boolean(customEvent.detail?.sessionCommitReason);
-    let detailSignature = "";
-    try {
-      detailSignature = JSON.stringify(forwardedDetail);
-    } catch {
-      detailSignature = String(customEvent.detail);
-    }
-    if (!isCommit && detailSignature === lastDispatchedSessionDetailSignature) {
-      return;
-    }
-    lastDispatchedSessionDetailSignature = detailSignature;
-    dispatch("session-changed", forwardedDetail);
+    });
   }
 
   // Attached as soon as the root exists, ahead of the first model or session

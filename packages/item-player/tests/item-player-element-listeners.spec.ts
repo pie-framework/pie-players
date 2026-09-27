@@ -36,6 +36,8 @@ type HostSessionEvent = {
 	fromElement: boolean;
 	hasSessionKey: boolean;
 	intent: unknown;
+	complete: unknown;
+	component: unknown;
 	session: HostSession;
 };
 
@@ -44,6 +46,7 @@ declare global {
 		__sessionEvents: HostSessionEvent[];
 		__modelUpdates: unknown[];
 		__announcedBeforeLoad: number | null;
+		__announcedBy: Record<string, number>;
 		__lastEventAt: number;
 	}
 }
@@ -119,9 +122,12 @@ async function mountPlayer(
 			window.__sessionEvents = [];
 			window.__modelUpdates = [];
 			window.__announcedBeforeLoad = null;
+			window.__announcedBy = {};
 			window.__lastEventAt = performance.now();
 			const emit = (element: HTMLElement, type: string, detail: unknown) => {
 				announcements += 1;
+				window.__announcedBy[element.localName] =
+					(window.__announcedBy[element.localName] ?? 0) + 1;
 				element.dispatchEvent(
 					new CustomEvent(type, { bubbles: true, composed: true, detail }),
 				);
@@ -187,6 +193,8 @@ async function mountPlayer(
 					fromElement: event.target instanceof DeliveryProbe,
 					hasSessionKey: "session" in detail,
 					intent: detail.intent ?? null,
+					complete: detail.complete ?? null,
+					component: detail.component ?? null,
 					session: JSON.parse(JSON.stringify(detail.session ?? null)),
 				});
 			});
@@ -248,6 +256,56 @@ test.describe("delivery", () => {
 		).toEqual([]);
 	});
 
+	test("each element reaches the host once at load, with its restored complete", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			session: {
+				id: "attempt-3",
+				data: [{ id: "a", element: "element-probe-a", value: ["x"] }],
+			},
+		});
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(
+			events.map(({ component, complete }) => ({ component, complete })),
+		).toEqual([
+			{ component: probes[0].tag, complete: true },
+			{ component: probes[1].tag, complete: false },
+		]);
+	});
+
+	test("one learner response reaches the host as one event, and its sibling's re-announcement does not", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			session: { id: "attempt-4", data: [] },
+		});
+		await page.evaluate(
+			({ tag }) => {
+				window.__sessionEvents.length = 0;
+				window.__announcedBy = {};
+				(document.querySelector(tag) as any).answer("x");
+			},
+			{ tag: probes[0].tag },
+		);
+		await settle(page);
+		// Both elements were handed their sessions again and re-announced.
+		const announcedBy = await page.evaluate(() => window.__announcedBy);
+		expect(announcedBy[probes[0].tag]).toBeGreaterThan(1);
+		expect(announcedBy[probes[1].tag]).toBeGreaterThan(0);
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(
+			events.map(({ component, complete, intent }) => ({
+				component,
+				complete,
+				intent,
+			})),
+		).toEqual([{ component: probes[0].tag, complete: true, intent: null }]);
+		expect(valuesOf(events[0].session).a).toEqual(["x"]);
+	});
+
 	test("two elements announcing in one task both reach the host", async ({
 		page,
 	}) => {
@@ -274,10 +332,14 @@ test.describe("delivery", () => {
 			)
 			.toEqual({ a: ["x"], b: ["y"] });
 		await settle(page);
-		const announced = (await page.evaluate(() => window.__sessionEvents)).filter(
-			(event) => event.session !== null,
-		);
-		expect(valuesOf(announced.at(-1)?.session ?? null)).toEqual({
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(
+			events.map(({ component, complete }) => ({ component, complete })),
+		).toEqual([
+			{ component: probes[0].tag, complete: true },
+			{ component: probes[1].tag, complete: true },
+		]);
+		expect(valuesOf(events.at(-1)?.session ?? null)).toEqual({
 			a: ["x"],
 			b: ["y"],
 		});

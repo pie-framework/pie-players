@@ -109,8 +109,11 @@ export type SectionControllerItemSessionDataChangedEvent =
 		canonicalItemId: string;
 		session: unknown;
 		intent?: string;
+		/** The reported completion: the element's own when `elementId` is set. */
 		complete?: boolean;
 		component?: string;
+		/** The id of the element that reported, when the change names one. */
+		elementId?: string;
 		currentItemIndex: number;
 	};
 
@@ -119,8 +122,11 @@ export type SectionControllerItemSessionMetaChangedEvent =
 		type: "item-session-meta-changed";
 		itemId: string;
 		canonicalItemId: string;
+		/** The reported completion: the element's own when `elementId` is set. */
 		complete?: boolean;
 		component?: string;
+		/** The id of the element that reported, when the change names one. */
+		elementId?: string;
 		currentItemIndex: number;
 	};
 

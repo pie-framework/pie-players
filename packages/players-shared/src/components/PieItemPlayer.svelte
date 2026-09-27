@@ -771,9 +771,12 @@
 
     // Forward event detail with the latest in-memory session snapshot.
     // PIE elements often emit metadata-only details, while the actual response
-    // array is mutated in-place on the `session` prop.
+    // array is mutated in-place on the `session` prop. `elementId` names the
+    // announcing element, since `component` is shared by two elements of one
+    // type.
     dispatch("session-changed", {
       ...(customEvent.detail || {}),
+      ...(modelId ? { elementId: modelId } : {}),
       session: { id: "", data: session },
     });
   }

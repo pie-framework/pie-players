@@ -241,7 +241,8 @@ These are set via JavaScript, not HTML attributes.
   session data changes. An element's own announcement is forwarded when its
   `complete` or its session differs from what that element last announced, so
   each element reaches the host once at load and one response produces one
-  event. A commit at a teardown, navigation or page-hidden seam
+  event. `complete` is the announcing element's own, and `elementId` is its
+  model id. A commit at a teardown, navigation or page-hidden seam
   carries `detail.sessionCommitReason` (`"teardown" | "navigate" |
   "page-hidden"`). A host that re-pushes `config` in response to this event
   should ignore a commit, since the commit exists to report a response the host

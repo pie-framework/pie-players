@@ -100,7 +100,13 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 
 - `item-selected` — item navigation within the current section.
 - `item-session-data-changed` / `item-session-meta-changed` — per-item
-  session updates the persistence layer should observe.
+  session updates the persistence layer should observe. `elementId` names the
+  reporting element when the change carries one, and `complete` is then that
+  element's own.
+- `item-complete-changed` — an item's completion flipped. An item is complete
+  when every element that has reported its completion is complete. A report
+  without `elementId`, and a restored session's item-level `complete`, set the
+  item's completion directly.
 - `content-loaded` — passage / item / rubric finished loading. Carries
   `contentKind`, `itemId`, and `canonicalItemId`.
 - `section-loading-complete` — every renderable in the section finished

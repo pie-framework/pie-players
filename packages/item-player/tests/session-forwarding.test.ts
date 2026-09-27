@@ -16,6 +16,24 @@ const responsefulSession = {
 };
 
 describe("resolveSessionChangedForwarding", () => {
+	test("names the element of a commit read off the element", () => {
+		const result = resolveSessionChangedForwarding({
+			currentSession: responsefulSession,
+			currentSignature: JSON.stringify(responsefulSession),
+			detail: {
+				component: "metadata-session-fixture--version-1-0-0",
+				session: { id: "metadata-choice", value: ["B"] },
+				sessionCommitReason: "teardown",
+			},
+			itemId: "metadata-session-item",
+		});
+
+		expect(result.action === "forward" ? result.detail : null).toMatchObject({
+			elementId: "metadata-choice",
+			sessionCommitReason: "teardown",
+		});
+	});
+
 	test("ignores unchanged non-metadata session details", () => {
 		const result = resolveSessionChangedForwarding({
 			currentSession: responsefulSession,

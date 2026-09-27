@@ -188,6 +188,7 @@ export interface SessionChangedResult {
 		intent?: ItemSessionUpdateIntent;
 		complete?: boolean;
 		component?: string;
+		elementId?: string;
 		timestamp: number;
 	};
 }
@@ -251,8 +252,11 @@ export interface ItemSessionDataChangedEvent
 	canonicalItemId: string;
 	session: unknown;
 	intent?: ItemSessionUpdateIntent;
+	/** The reported completion: the element's own when `elementId` is set. */
 	complete?: boolean;
 	component?: string;
+	/** The id of the element that reported, when the change names one. */
+	elementId?: string;
 }
 
 export interface ItemSessionMetaChangedEvent
@@ -260,8 +264,11 @@ export interface ItemSessionMetaChangedEvent
 	type: "item-session-meta-changed";
 	itemId: string;
 	canonicalItemId: string;
+	/** The reported completion: the element's own when `elementId` is set. */
 	complete?: boolean;
 	component?: string;
+	/** The id of the element that reported, when the change names one. */
+	elementId?: string;
 }
 
 export interface ItemSelectedEvent extends ItemScopedControllerEventBase {

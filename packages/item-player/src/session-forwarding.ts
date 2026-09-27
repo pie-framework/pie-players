@@ -137,14 +137,19 @@ export function resolveSessionChangedForwarding(args: {
 	const signature = JSON.stringify(session);
 	const changed = signature !== args.currentSignature;
 	if (!changed && !metadataOnly) return { action: "ignore" };
+	// A commit read off the element carries its record, and the record's id.
+	const identified =
+		normalized.elementId && !("elementId" in detailObj)
+			? { ...detailObj, elementId: normalized.elementId }
+			: detailObj;
 
 	return {
 		action: "forward",
 		changed,
 		detail:
 			metadataOnly && !changed
-				? { ...detailObj, intent: "metadata-only", session: null }
-				: { ...detailObj, session },
+				? { ...identified, intent: "metadata-only", session: null }
+				: { ...identified, session },
 		metadataOnly,
 		session,
 		signature,

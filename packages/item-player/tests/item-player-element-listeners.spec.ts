@@ -38,6 +38,7 @@ type HostSessionEvent = {
 	intent: unknown;
 	complete: unknown;
 	component: unknown;
+	elementId: unknown;
 	session: HostSession;
 };
 
@@ -195,6 +196,7 @@ async function mountPlayer(
 					intent: detail.intent ?? null,
 					complete: detail.complete ?? null,
 					component: detail.component ?? null,
+					elementId: detail.elementId ?? null,
 					session: JSON.parse(JSON.stringify(detail.session ?? null)),
 				});
 			});
@@ -268,10 +270,14 @@ test.describe("delivery", () => {
 		});
 		const events = await page.evaluate(() => window.__sessionEvents);
 		expect(
-			events.map(({ component, complete }) => ({ component, complete })),
+			events.map(({ component, complete, elementId }) => ({
+				component,
+				complete,
+				elementId,
+			})),
 		).toEqual([
-			{ component: probes[0].tag, complete: true },
-			{ component: probes[1].tag, complete: false },
+			{ component: probes[0].tag, complete: true, elementId: "a" },
+			{ component: probes[1].tag, complete: false, elementId: "b" },
 		]);
 	});
 

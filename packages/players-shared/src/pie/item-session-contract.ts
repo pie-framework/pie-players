@@ -13,6 +13,11 @@ export type NormalizedItemSessionChange = {
 	session: ItemSessionContainer | null;
 	intent: ItemSessionUpdateIntent;
 	component?: string;
+	/**
+	 * The id of the element whose change this is: the detail's `elementId`, or
+	 * the `id` of an element session record carried as `session`.
+	 */
+	elementId?: string;
 	complete?: boolean;
 };
 
@@ -20,6 +25,7 @@ const DEFAULT_SESSION_ID = "";
 const METADATA_ONLY_SESSION_KEYS = new Set([
 	"complete",
 	"component",
+	"elementId",
 	"timestamp",
 	"sourceRuntimeId",
 ]);
@@ -198,6 +204,23 @@ function getMetadataComplete(
 	return undefined;
 }
 
+/**
+ * `elementRecord` is an element's own session record, whose `id` is the
+ * element's; an item session container's `id` is the item session's.
+ */
+function withElementId(
+	sessionDetail: Record<string, unknown>,
+	elementRecord?: Record<string, unknown>,
+): { elementId?: string } {
+	const elementId =
+		typeof sessionDetail.elementId === "string" && sessionDetail.elementId
+			? sessionDetail.elementId
+			: typeof elementRecord?.id === "string" && elementRecord.id
+				? elementRecord.id
+				: undefined;
+	return elementId ? { elementId } : {};
+}
+
 function isElementIdentityOnlyPayload(
 	candidate: Record<string, unknown>,
 ): boolean {
@@ -294,6 +317,7 @@ export function normalizeItemSessionChange(args: {
 			session: null,
 			intent: "metadata-only",
 			component: getMetadataComponent(sessionDetail),
+			...withElementId(sessionDetail),
 			complete: getMetadataComplete(sessionDetail),
 		};
 	}
@@ -317,12 +341,7 @@ export function normalizeItemSessionChange(args: {
 		const metadataWithSessionOnly =
 			sessionDetailKeys.length > 0 &&
 			sessionDetailKeys.every(
-				(key) =>
-					key === "session" ||
-					key === "complete" ||
-					key === "component" ||
-					key === "timestamp" ||
-					key === "sourceRuntimeId",
+				(key) => key === "session" || METADATA_ONLY_SESSION_KEYS.has(key),
 			);
 		const hasMetadataBeyondSession = sessionDetailKeys.some(
 			(key) => key !== "session",
@@ -341,6 +360,7 @@ export function normalizeItemSessionChange(args: {
 				session: null,
 				intent: "metadata-only",
 				component: getMetadataComponent(sessionDetail),
+				...withElementId(sessionDetail),
 				complete: getMetadataComplete(sessionDetail),
 			};
 		}
@@ -353,6 +373,7 @@ export function normalizeItemSessionChange(args: {
 				session: null,
 				intent: "metadata-only",
 				component: getMetadataComponent(sessionDetail),
+				...withElementId(sessionDetail),
 				complete: getMetadataComplete(sessionDetail),
 			};
 		}
@@ -361,6 +382,7 @@ export function normalizeItemSessionChange(args: {
 			session: normalizedCandidate,
 			intent: "replace-item-session",
 			component: getMetadataComponent(sessionDetail),
+			...withElementId(sessionDetail),
 			complete: getMetadataComplete(sessionDetail),
 		};
 	}
@@ -368,19 +390,14 @@ export function normalizeItemSessionChange(args: {
 	const candidateKeys = Object.keys(candidate);
 	const isMetadataOnlyPayload =
 		candidateKeys.length > 0 &&
-		candidateKeys.every(
-			(key) =>
-				key === "complete" ||
-				key === "component" ||
-				key === "timestamp" ||
-				key === "sourceRuntimeId",
-		);
+		candidateKeys.every((key) => METADATA_ONLY_SESSION_KEYS.has(key));
 	if (isMetadataOnlyPayload) {
 		return {
 			itemId: safeItemId,
 			session: null,
 			intent: "metadata-only",
 			component: getMetadataComponent(sessionDetail, candidate),
+			...withElementId(sessionDetail),
 			complete: getMetadataComplete(sessionDetail, candidate),
 		};
 	}
@@ -390,6 +407,7 @@ export function normalizeItemSessionChange(args: {
 			session: null,
 			intent: "metadata-only",
 			component: getMetadataComponent(sessionDetail, candidate),
+			...withElementId(sessionDetail, candidate),
 			complete: getMetadataComplete(sessionDetail, candidate),
 		};
 	}
@@ -409,6 +427,7 @@ export function normalizeItemSessionChange(args: {
 		session: merged,
 		intent: "merge-element-session",
 		component,
+		...withElementId(sessionDetail, candidate),
 		complete: getMetadataComplete(sessionDetail, candidate),
 	};
 }

@@ -704,7 +704,7 @@ export function mapEsmViewElements(
 
 function defaultImporter(specifier: string): Promise<unknown> {
 	// @vite-ignore — dynamic import resolved at runtime.
-	return import(/* @vite-ignore */ specifier);
+	return import(/* webpackIgnore: true */ /* @vite-ignore */ specifier);
 }
 
 async function defaultPackageMetadataLoader(

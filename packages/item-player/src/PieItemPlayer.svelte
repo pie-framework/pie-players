@@ -338,7 +338,7 @@
 		}
 		try {
 			// @vite-ignore
-			const module = await import(/* @vite-ignore */ url);
+			const module = await import(/* webpackIgnore: true */ /* @vite-ignore */ url);
 			const runtimeSupport = module.default || module.runtimeSupport || module;
 			if (!runtimeSupport || typeof runtimeSupport !== "object") {
 				throw new Error(`Invalid runtime-support export for ${packageVersion}`);

@@ -123,7 +123,7 @@ export const defaultLoadResolution = async (
 
 	if (r.module) {
 		try {
-			const mod = await import(/* @vite-ignore */ r.url);
+			const mod = await import(/* webpackIgnore: true */ /* @vite-ignore */ r.url);
 			const ElementClass = mod.default || mod;
 			define(r.printTagName, ElementClass);
 			return whenDefined(r.printTagName).then(() => ({

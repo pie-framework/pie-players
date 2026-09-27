@@ -120,7 +120,7 @@ test.describe("section player interface locale", () => {
 			waitUntil: "networkidle",
 		});
 
-		await page.getByRole("button", { name: "Grafiek, grafische" }).click();
+		await page.getByRole("button", { name: "Grafiek, assenstelsel" }).click();
 
 		const shell = page.locator('[data-pie-tool-shell="graph"]');
 		await expect(shell).toBeVisible();

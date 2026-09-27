@@ -62,13 +62,21 @@ the per-method contract.
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 ```
 
 `waitForSectionController(timeoutMs)` resolves when the layout CE has wired
 its controller (the same anchor `pie-stage-change` reaches with
-`detail.stage === "engine-ready"`). Use `getSectionController()` if you've
-already passed the readiness anchor synchronously.
+`detail.stage === "engine-ready"`), or with `null` once `timeoutMs` passes.
+Use `getSectionController()` if you've already passed the readiness anchor
+synchronously.
+
+The layout elements define their host methods from the moment they are
+created, so a host can call them before the element mounts. Until it mounts,
+`waitForSectionController` waits, `getSectionController()` returns `null`, the
+navigation methods return `false`, and `getSnapshot()` and the `select*` reads
+return `null` (`pie-section-player-kernel-host` returns its bootstrapping
+snapshot).
 
 ### Session lifecycle
 
@@ -179,7 +187,7 @@ Read the resolved state from `getFormativeProjection()`, or off
 same handle:
 
 ```ts
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 // The learner's actions, budget-respecting.
 controller?.recordFormativeTry?.({ itemId, outcomes }); // outcomes from provideScore()
 controller?.retryFormativeItem?.({ itemId });
@@ -254,7 +262,7 @@ with its own player registers its own port instead, and that port outranks the
 card's discovery for as long as it is attached:
 
 ```ts
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 // No `renderableId`: a host is asserting its own port, where a renderable's adapter
 // has to name itself and is ignored unless it is the resolved stimulus.
 controller?.attachMediaTimeSource?.(myThirdPartyPort);
@@ -312,6 +320,17 @@ Render in HTML/Svelte/JSX:
 Set complex values (`runtime`, `section`) as JS properties. `env` is a
 `runtime` field (`runtime.env`); the layout elements have no `env` property.
 
+Set `runtime` no later than `section`. When the player builds its own
+coordinator, the section's arrival rebuilds that coordinator from the current
+`runtime`, so both can be set a tick after the element mounts. Once the section
+has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
+`runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
+`toolRegistry` is reported once in the console and does not reach that
+coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
+coordinator through the one `toolkit-ready` delivers, with
+`updateToolConfig(...)` or `updateToolsPlacement(...)`, or pass your own as
+`runtime.coordinator`.
+
 ## Runtime Inputs
 
 The layout elements (`pie-section-player-splitpane`,
@@ -319,6 +338,7 @@ The layout elements (`pie-section-player-splitpane`,
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
+- `section-id` (string, optional): the section's id in events, telemetry and the controller key. Unset, the section's `identifier` stands in.
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
@@ -818,7 +838,7 @@ Minimal pattern for package layout components:
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 let sectionComplete = false;
 
 const unsubscribe = controller?.subscribe?.((event: any) => {
@@ -972,7 +992,7 @@ Section session data can be managed either through persistence hooks or directly
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 
 // Read current section session snapshot.
 const currentSession = controller?.getSession?.();

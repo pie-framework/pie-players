@@ -67,6 +67,8 @@
 				type: "String",
 			},
 		},
+		// The host methods, callable before the component mounts.
+		extend: withHostMethods(NULL_READS),
 	}}
 />
 
@@ -81,7 +83,14 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
+	import {
+		mergeLayoutAttrsIntoRuntime,
+		resolveSectionId,
+	} from "./shared/section-player-host-runtime.js";
+	import {
+		NULL_READS,
+		withHostMethods,
+	} from "./shared/layout-host-methods.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
@@ -156,6 +165,9 @@
 	const kernelRuntime = $derived(
 		mergeLayoutAttrsIntoRuntime(runtime, { ndsIcons, locale }),
 	);
+	// The section's own identifier stands in for an unset `section-id`, so the
+	// kernel's engine has a cohort to emit the stage events for.
+	const effectiveSectionId = $derived(resolveSectionId(sectionId, section));
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
@@ -230,13 +242,6 @@
 		return kernelRef?.getSectionController?.() || null;
 	}
 
-	export async function waitForSectionController(
-		timeoutMs = 5000,
-	) {
-		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
-		return controller || null;
-	}
-
 	$effect(() => {
 		if (!hostElement) return;
 		// `policies.telemetry.enabled === false` skips instrumentation bridge
@@ -252,7 +257,7 @@
 			staticAttributes: {
 				instrumentationLayer: "section",
 				assessmentId,
-				sectionId,
+				sectionId: effectiveSectionId,
 				attemptId: attemptId || undefined,
 			},
 			shouldTrackEvent: (event: Event) => event.target === localHost,
@@ -267,7 +272,7 @@
 	{assessmentId}
 	runtime={kernelRuntime}
 	{section}
-	{sectionId}
+	sectionId={effectiveSectionId}
 	{attemptId}
 	{iifeBundleHost}
 	{debug}

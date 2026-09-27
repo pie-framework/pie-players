@@ -37,6 +37,8 @@
 			// event stay in lockstep per cohort.
 			onLoadingComplete: { type: "Object", reflect: false },
 		},
+		// The host methods, callable before the component mounts.
+		extend: withHostMethods(BOOTSTRAP_READS),
 	}}
 />
 
@@ -56,6 +58,13 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import { resolveSectionId } from "./shared/section-player-host-runtime.js";
+	import {
+		BOOTSTRAP_READINESS,
+		BOOTSTRAP_READS,
+		BOOTSTRAP_SNAPSHOT,
+		withHostMethods,
+	} from "./shared/layout-host-methods.js";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
@@ -94,6 +103,9 @@
 		onStageChange = undefined as StageChangeHandler | undefined,
 		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
+	// The section's own identifier stands in for an unset `section-id`, so the
+	// kernel's engine has a cohort to emit the stage events for.
+	const effectiveSectionId = $derived(resolveSectionId(sectionId, section));
 	// Two-tier resolution for `onFrameworkError` is handled by the
 	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
 	// `effectiveRuntime.onFrameworkError`); the CE forwards the
@@ -103,24 +115,6 @@
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
-	const BOOTSTRAP_READINESS = {
-		phase: "bootstrapping",
-		interactionReady: false,
-		allLoadingComplete: false,
-	} as const satisfies SectionPlayerSnapshot["readiness"];
-	const BOOTSTRAP_SNAPSHOT = {
-		readiness: BOOTSTRAP_READINESS,
-		composition: {
-			itemsCount: 0,
-			passagesCount: 0,
-		},
-		navigation: {
-			currentIndex: 0,
-			totalItems: 0,
-			canNext: false,
-			canPrevious: false,
-		},
-	} as const satisfies SectionPlayerSnapshot;
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
 			runtimePlayer: runtime?.player,
@@ -166,13 +160,6 @@
 		return kernelRef?.getSectionController?.() || null;
 	}
 
-	export async function waitForSectionController(
-		timeoutMs = 5000,
-	) {
-		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
-		return controller || null;
-	}
-
 	function reemit(event: Event) {
 		const customEvent = event as CustomEvent;
 		dispatch(customEvent.type, customEvent.detail);
@@ -193,7 +180,7 @@
 			staticAttributes: {
 				instrumentationLayer: "section",
 				assessmentId,
-				sectionId,
+				sectionId: effectiveSectionId,
 				attemptId: attemptId || undefined,
 			},
 			shouldTrackEvent: (event: Event) => event.target === localHost,
@@ -219,7 +206,7 @@
 	{assessmentId}
 	{runtime}
 	{section}
-	{sectionId}
+	sectionId={effectiveSectionId}
 	{attemptId}
 	{iifeBundleHost}
 	{debug}

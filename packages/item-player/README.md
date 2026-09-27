@@ -73,9 +73,8 @@ silently rendering unstyled content. Presence is detected through
 `--pie-content-styles`, a sentinel `components.css` declares; it carries no
 themeable value, so do not consume it for styling or depend on anything beyond it
 being non-empty. Declare `@pie-players/pie-theme` in your own
-`package.json` if you go this route: it is a dependency of this package, so the
-file is already on disk, but importing a subpath from a transitive dependency
-breaks on a dedupe change or a move to pnpm / Yarn PnP.
+`package.json` if you go this route: the player inlines its copy of the
+stylesheet at build time and does not install the package.
 
 This stylesheet is only the shared content styles. See
 [`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the

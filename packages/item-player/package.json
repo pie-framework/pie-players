@@ -42,12 +42,12 @@
 		"lint": "biome lint ."
 	},
 	"dependencies": {
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
 		"@biomejs/biome": "^2.5.14",
+		"@pie-players/pie-theme": "workspace:*",
 		"@playwright/test": "^1.62.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"@types/node": "^26.6.2",

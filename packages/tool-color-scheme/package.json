@@ -37,7 +37,6 @@
 	"jsdelivr": "./dist/tool-color-scheme.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*"
 	},

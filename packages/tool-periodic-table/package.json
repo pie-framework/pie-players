@@ -36,7 +36,6 @@
 	"jsdelivr": "./dist/tool-periodic-table.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",

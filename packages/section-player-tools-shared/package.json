@@ -31,10 +31,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"dependencies": {
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*"
-	},
 	"types": "./dist/index.types.d.ts",
 	"scripts": {
 		"build": "vite build",
@@ -46,6 +42,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@pie-players/pie-players-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",

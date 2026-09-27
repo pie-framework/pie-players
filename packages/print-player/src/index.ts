@@ -6,10 +6,9 @@
  * @packageDocumentation
  */
 
-// Imported from the narrow `ui/content-styles` subpath rather than the package
-// root: `@pie-players/pie-players-shared` sets `sideEffects: true` and this
-// package externalizes nothing, so pulling the root barrel in would bundle all
-// of players-shared into print-player.js.
+// Imported from the narrow `ui/content-styles` subpath: this package
+// externalizes nothing, and the subpath brings in only the content-style
+// helpers.
 import {
 	installContentStyles,
 	auditContentStyles,

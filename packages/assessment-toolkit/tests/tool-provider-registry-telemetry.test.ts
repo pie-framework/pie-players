@@ -119,3 +119,29 @@ describe("ToolProviderRegistry telemetry", () => {
 		expect(events.map((entry) => entry.name)).toContain("pie-tool-init-error");
 	});
 });
+
+describe("ToolProviderRegistry logging", () => {
+	test("getProvider logs nothing for a provider that is ready", async () => {
+		const registry = new ToolProviderRegistry();
+		registry.register("tts-provider", {
+			provider: new FakeProvider(),
+			config: { backend: "polly" },
+		});
+		await registry.initialize("tts-provider");
+
+		const logged: unknown[][] = [];
+		const originalLog = console.log;
+		console.log = (...args: unknown[]) => {
+			logged.push(args);
+		};
+		try {
+			for (let call = 0; call < 3; call++) {
+				await registry.getProvider("tts-provider");
+			}
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(logged).toEqual([]);
+	});
+});

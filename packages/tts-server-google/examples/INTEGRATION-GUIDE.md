@@ -108,7 +108,8 @@ export const POST: RequestHandler = async ({ request }) => {
     });
 
     // Convert audio buffer to base64 for JSON response
-    const audioBase64 = result.audio.toString('base64');
+    const audioBase64 =
+      result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio;
 
     return json({
       audio: audioBase64,
@@ -406,7 +407,7 @@ app.post('/api/tts/synthesize', async (req, res) => {
 
     // Return audio as buffer
     res.json({
-      audio: result.audio.toString('base64'),
+      audio: result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio,
       contentType: result.contentType,
       speechMarks: result.speechMarks,
       metadata: result.metadata,
@@ -474,7 +475,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      audio: result.audio.toString('base64'),
+      audio: result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio,
       contentType: result.contentType,
       speechMarks: result.speechMarks,
       metadata: result.metadata,

@@ -10,9 +10,10 @@
  *     unregistered tags and a per-tag `RegistrationFailureReason` map.
  *
  * The primitive delegates the actual fetch/register work to a backend
- * adapter (IIFE or ESM) but always verifies the outcome via
+ * adapter (IIFE or ESM) and verifies the outcome via
  * `customElements.whenDefined`. An adapter cannot silently under-register
- * — the primitive will catch it and surface a timeout reason.
+ * — the primitive will catch it and surface a timeout reason. A tag the
+ * adapter reports a failed load for is not waited on.
  *
  * See packages/players-shared/tests/element-loader-contract.test.ts for
  * the executable specification of every failure mode this primitive is
@@ -32,7 +33,11 @@ import {
 	type ElementTag,
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
-import { createEsmBackend, type EsmBackendConfig } from "./esm-adapter.js";
+import {
+	clearPackageMetadataRequests,
+	createEsmBackend,
+	type EsmBackendConfig,
+} from "./esm-adapter.js";
 import { createIifeBackend, type IifeBackendConfig } from "./iife-adapter.js";
 import {
 	assertElementPackagesAllowed,
@@ -52,7 +57,7 @@ export type { EsmBackendConfig } from "./esm-adapter.js";
 
 /**
  * Aggregate error thrown by `ensureRegistered` when one or more requested
- * tags were not registered by the time verification timed out.
+ * tags were not registered: their loads failed, or verification timed out.
  */
 export class ElementLoaderError extends Error {
 	override readonly name = "ElementLoaderError";
@@ -68,6 +73,45 @@ export class ElementLoaderError extends Error {
 		this.unregisteredTags = unregisteredTags;
 		this.reasons = reasons;
 	}
+}
+
+const describeRegistrationFailure = (
+	reason: RegistrationFailureReason,
+): string => {
+	switch (reason.kind) {
+		case "timeout":
+			return `not defined within ${reason.timeoutMs} ms`;
+		case "module-load-failed":
+			return `${reason.specifier} failed to load: ${reason.cause}`;
+		case "bundle-load-failed":
+			return `${reason.url} failed to load: ${reason.cause}`;
+		case "define-failed":
+		case "backend-rejected":
+			return reason.cause;
+		case "not-a-constructor":
+			return `${reason.packageName ?? "its package"} exports no element constructor`;
+		case "no-element-class":
+			return `${reason.packageName} exports no element class`;
+		case "package-not-in-bundle":
+			return `${reason.packageName} is not in the bundle, which holds ${reason.availablePackages.join(", ") || "no packages"}`;
+	}
+};
+
+/**
+ * Why each tag of an `ElementLoaderError` failed to register, one clause per
+ * tag; `undefined` for any other error. Players report it as the `cause` of a
+ * load error.
+ */
+export function describeRegistrationFailures(
+	error: unknown,
+): string | undefined {
+	if (!(error instanceof ElementLoaderError)) return undefined;
+	return [...error.reasons]
+		.map(
+			([tag, reason]) =>
+				`${tag} (${reason.kind}): ${describeRegistrationFailure(reason)}`,
+		)
+		.join("; ");
 }
 
 /**
@@ -190,6 +234,8 @@ const resolvedBackendOverrides = new Map<string, ElementLoaderBackend>();
  * - After the adapter's `load` settles, a post-load verification pass
  *   (bounded `customElements.whenDefined`) checks every tag. Any missing
  *   tag becomes a rejection.
+ * - Verification does not wait on a tag the adapter reports a failed load
+ *   for, so when that covers every missing tag the rejection is immediate.
  */
 export async function ensureRegistered(
 	elements: ElementMap,
@@ -254,9 +300,15 @@ async function runEnsureRegistered(
 		adapterError = err instanceof Error ? err : new Error(String(err));
 	}
 
+	// A tag whose load failed cannot register any more, so verification waits
+	// only on the others. A timed-out load can still register, so its tag waits.
 	const verification = await Promise.all(
 		tags.map(async (tag) => {
 			if (isRegistered(tag)) return { tag, ok: true as const };
+			const adapterReason = extractAdapterReason(adapterError, tag);
+			if (adapterReason && adapterReason.kind !== "timeout") {
+				return { tag, ok: false as const };
+			}
 			try {
 				await whenDefinedWithTimeout(tag, timeoutMs);
 				return { tag, ok: true as const };
@@ -580,6 +632,7 @@ export const __testing = {
 		inFlightRequests.clear();
 		resolvedEsmBackends.clear();
 		resolvedBackendOverrides.clear();
+		clearPackageMetadataRequests();
 	},
 	inFlightCount(): number {
 		return inFlightRequests.size;

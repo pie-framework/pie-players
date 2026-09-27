@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
 
@@ -187,6 +187,50 @@ const validateRuntimeImportClosure = (dir, pkg) => {
 	return failures;
 };
 
+const TYPE_REFERENCE_PATTERN =
+	/\/\/\/\s*<reference\s+types\s*=\s*["']([^"']+)["']/g;
+const CSS_IMPORT_PATTERN = /@import\s+(?:url\(\s*)?["']([^"']+)["']/g;
+const SHIPPED_SOURCE_PATTERN = /\.(?:[cm]?js|[cm]?ts|css)$/;
+
+const listFiles = (entry) => {
+	if (!existsSync(entry)) return [];
+	if (!statSync(entry).isDirectory()) return [entry];
+	return readdirSync(entry, { withFileTypes: true }).flatMap((child) =>
+		listFiles(path.join(entry, child.name)),
+	);
+};
+
+/**
+ * The `dependencies` no shipped script, declaration or stylesheet names. A
+ * consumer installs every one, so a package the build inlines, or that nothing
+ * uses, belongs in `devDependencies`.
+ */
+export const findUnusedRuntimeDependencies = (dir, pkg) => {
+	const declared = Object.keys(pkg.dependencies || {});
+	if (declared.length === 0) return [];
+	const referenced = new Set();
+	const shippedFiles = (pkg.files || ["dist"]).flatMap((entry) =>
+		listFiles(path.join(dir, entry)),
+	);
+	for (const file of shippedFiles) {
+		if (!SHIPPED_SOURCE_PATTERN.test(file)) continue;
+		const content = readFileSync(file, "utf8");
+		const specifiers = [
+			...collectRuntimeImportSpecifiers(content),
+			...[...content.matchAll(CSS_IMPORT_PATTERN)].map((match) => match[1]),
+		];
+		for (const specifier of specifiers) {
+			if (isExternalSpecifier(specifier)) {
+				referenced.add(toPackageName(specifier));
+			}
+		}
+		for (const [, types] of content.matchAll(TYPE_REFERENCE_PATTERN)) {
+			referenced.add(`@types/${types}`);
+		}
+	}
+	return declared.filter((name) => !referenced.has(name));
+};
+
 const getPublishedEntryTargets = (pkg) => {
 	const targets = new Set();
 	collectTargets(pkg.exports, targets);
@@ -263,6 +307,15 @@ const run = () => {
 				);
 			}
 
+			const unusedDependencies = findUnusedRuntimeDependencies(dir, pkg);
+			if (unusedDependencies.length > 0) {
+				throw new Error(
+					`No shipped file imports these dependencies; move each to devDependencies if the build inlines it, or remove it:\n${unusedDependencies
+						.map((name) => `- ${name}`)
+						.join("\n")}`,
+				);
+			}
+
 			execSync("bunx publint .", {
 				cwd: dir,
 				stdio: "pipe",
@@ -298,4 +351,4 @@ const run = () => {
 	);
 };
 
-run();
+if (import.meta.main) run();

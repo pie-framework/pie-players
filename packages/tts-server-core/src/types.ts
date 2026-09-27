@@ -187,8 +187,11 @@ export interface SynthesizeRequest
  * Response from speech synthesis
  */
 export interface SynthesizeResponse {
-	/** Audio data (Buffer for server, base64 string for client) */
-	audio: Buffer | string;
+	/**
+	 * Audio bytes, or a base64 string. The bundled providers return a Node
+	 * `Buffer`, which is a `Uint8Array`.
+	 */
+	audio: Uint8Array | string;
 
 	/** MIME type of audio (e.g., 'audio/mpeg') */
 	contentType: string;

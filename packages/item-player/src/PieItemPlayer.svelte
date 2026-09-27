@@ -121,6 +121,7 @@
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
 		defineAuthoredPreloadedTags,
+		describeRegistrationFailures,
 		ensureHostSessionEntries,
 		ensureRegistered,
 		ItemController,
@@ -1146,6 +1147,7 @@
 				bundleRetryStatus = null;
 			});
 			logger.error("[pie-item-player] failed loading:", err);
+			const cause = describeRegistrationFailures(err);
 			handlePlayerEvent(
 				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, {
 					detail: {
@@ -1154,6 +1156,7 @@
 						stage,
 						strategy: normalizedStrategy,
 						mode: resolvedMode,
+						...(cause ? { cause } : {}),
 					},
 				}),
 			);

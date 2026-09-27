@@ -35,10 +35,7 @@
 	],
 	"license": "MIT",
 	"dependencies": {
-		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-section-player-tools-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*"
+		"@pie-players/pie-assessment-toolkit": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
@@ -51,6 +48,8 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"svelte": "^5.57.0",
 		"svelte-check": "^4.7.6",

@@ -559,3 +559,53 @@ test.describe("esm strategy — views a package does not publish", () => {
 		).toEqual([]);
 	});
 });
+
+test.describe("esm strategy — element modules that fail to load", () => {
+	test("the player reports the failed module at once, with its cause", async ({
+		page,
+	}) => {
+		await page.route(`${JSDELIVR}/${MC_BEFORE_RUNTIME}/**`, (route) =>
+			route.fulfill({ status: 404, body: "Not found" }),
+		);
+		await openHost(page);
+
+		const config = item(
+			"unreachable-element",
+			{
+				"multiple-choice": MC_BEFORE_RUNTIME,
+			},
+			[demoModel(multipleChoice, "mc", "multiple-choice")],
+		);
+		const { detail, elapsedMs } = await page.evaluate((config) => {
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "esm";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "unreachable-element-session", data: [] };
+			document.body.appendChild(player);
+			const startedAt = performance.now();
+			return new Promise<{ detail: any; elapsedMs: number }>((resolve) => {
+				player.addEventListener(
+					"player-error",
+					(event: CustomEvent) =>
+						resolve({
+							detail: event.detail,
+							elapsedMs: performance.now() - startedAt,
+						}),
+					{ once: true },
+				);
+				player.config = config;
+			});
+		}, config);
+
+		expect(detail).toMatchObject({
+			code: "ITEM_PLAYER_LOAD_ERROR",
+			stage: "esm-load",
+			strategy: "esm",
+		});
+		expect(detail.cause).toContain(
+			`(module-load-failed): ${JSDELIVR}/${MC_BEFORE_RUNTIME}/dist/browser/delivery/index.js failed to load:`,
+		);
+		// Registration waits 5 s for a tag whose load it cannot see fail.
+		expect(elapsedMs).toBeLessThan(4000);
+	});
+});

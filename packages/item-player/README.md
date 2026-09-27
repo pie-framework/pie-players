@@ -73,9 +73,8 @@ silently rendering unstyled content. Presence is detected through
 `--pie-content-styles`, a sentinel `components.css` declares; it carries no
 themeable value, so do not consume it for styling or depend on anything beyond it
 being non-empty. Declare `@pie-players/pie-theme` in your own
-`package.json` if you go this route: it is a dependency of this package, so the
-file is already on disk, but importing a subpath from a transitive dependency
-breaks on a dedupe change or a move to pnpm / Yarn PnP.
+`package.json` if you go this route: the player inlines its copy of the
+stylesheet at build time and does not install the package.
 
 This stylesheet is only the shared content styles. See
 [`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the
@@ -244,8 +243,11 @@ These are set via JavaScript, not HTML attributes.
   "page-hidden"`). A host that re-pushes `config` in response to this event
   should ignore a commit, since the commit exists to report a response the host
   is about to lose rather than to request a reload.
-- `player-error`: `{ code?, message?, stage?, strategy?, mode? }`. Error event,
-  for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
+- `player-error`: `{ code?, message?, stage?, strategy?, mode?, cause? }`. Error
+  event, for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
+  When elements fail to register, `cause` names each one and why, such as the
+  module URL that failed to load. The error is reported as soon as every missing
+  element's load has failed.
 - `model-updated`: emitted when a PIE element model is updated.
 - `model-loaded`: `{ models, configuration }`. Authoring lifecycle event
   emitted once per renderer initialization after configure elements receive

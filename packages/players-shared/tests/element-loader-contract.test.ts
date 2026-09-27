@@ -28,6 +28,7 @@ import {
 	ElementAssertionError,
 	ElementLoaderError,
 	assertRegistered,
+	describeRegistrationFailures,
 	ensureRegistered,
 	type ElementLoaderBackend,
 	type RegistrationFailureReason,
@@ -481,6 +482,138 @@ describe("ensureRegistered — primitive-level contract", () => {
 		).rejects.toMatchObject({
 			name: "ElementLoaderError",
 		});
+	});
+
+	test("rejects at once when the adapter reports a failed load for every missing tag", async () => {
+		const tags = ["pie-mc--version-11-0-1", "pie-passage--version-3-2-4"];
+		const fake: ElementLoaderBackend = {
+			async load() {
+				throw new AdapterFailure(
+					new Map(
+						tags.map((tag) => [
+							tag,
+							{
+								kind: "module-load-failed",
+								tag,
+								specifier: `https://cdn.example/${tag}.js`,
+								cause: "Failed to fetch dynamically imported module",
+							},
+						]),
+					),
+				);
+			},
+		};
+
+		const startedAt = Date.now();
+		const error = await ensureRegistered(
+			{
+				[tags[0]]: "@pie-element/multiple-choice@11.0.1",
+				[tags[1]]: "@pie-element/passage@3.2.4",
+			},
+			{
+				backend: fake,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 10_000,
+			},
+		).catch((err: unknown) => err as ElementLoaderError);
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		expect(error).toBeInstanceOf(ElementLoaderError);
+		expect([...error.unregisteredTags]).toEqual(tags);
+		expect([...error.reasons.values()].map((reason) => reason.kind)).toEqual([
+			"module-load-failed",
+			"module-load-failed",
+		]);
+	});
+
+	test("rejects at once when the adapter throws an error of its own", async () => {
+		const fake: ElementLoaderBackend = {
+			async load() {
+				throw new TypeError("Failed to fetch");
+			},
+		};
+
+		const startedAt = Date.now();
+		const error = await ensureRegistered(
+			{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+			{
+				backend: fake,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 10_000,
+			},
+		).catch((err: unknown) => err as ElementLoaderError);
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		expect(error.reasons.get("pie-mc--version-11-0-1")).toEqual({
+			kind: "backend-rejected",
+			tag: "pie-mc--version-11-0-1",
+			cause: "Failed to fetch",
+		});
+	});
+
+	test("waits only on the missing tags the adapter reports no failed load for", async () => {
+		const registry = installScriptedCustomElements();
+		const failed = "pie-mc--version-11-0-1";
+		const late = "pie-passage--version-3-2-4";
+		const fake: ElementLoaderBackend = {
+			async load() {
+				setTimeout(() => registry.define(late, createConstructorFor(late)), 20);
+				throw new AdapterFailure(
+					new Map([
+						[
+							failed,
+							{ kind: "define-failed", tag: failed, cause: "bad constructor" },
+						],
+					]),
+				);
+			},
+		};
+
+		const startedAt = Date.now();
+		const error = await ensureRegistered(
+			{
+				[failed]: "@pie-element/multiple-choice@11.0.1",
+				[late]: "@pie-element/passage@3.2.4",
+			},
+			{ backend: fake, doc: createMockDocument(), whenDefinedTimeoutMs: 5000 },
+		).catch((err: unknown) => err as ElementLoaderError);
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		expect(g.customElements?.get(late)).toBeDefined();
+		expect([...error.unregisteredTags]).toEqual([failed]);
+	});
+
+	test("describeRegistrationFailures names each tag's failure", async () => {
+		const fake: ElementLoaderBackend = {
+			async load() {
+				throw new AdapterFailure(
+					new Map<string, RegistrationFailureReason>([
+						[
+							"pie-mc--version-11-0-1",
+							{
+								kind: "module-load-failed",
+								tag: "pie-mc--version-11-0-1",
+								specifier: "https://cdn.example/mc/delivery.js",
+								cause: "Cannot find module",
+							},
+						],
+					]),
+				);
+			},
+		};
+		const error = await ensureRegistered(
+			{
+				"pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1",
+				"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
+			},
+			{ backend: fake, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		).catch((err: unknown) => err);
+
+		expect(describeRegistrationFailures(error)).toBe(
+			"pie-mc--version-11-0-1 (module-load-failed): https://cdn.example/mc/delivery.js failed to load: Cannot find module; " +
+				"pie-passage--version-3-2-4 (timeout): not defined within 25 ms",
+		);
+		expect(describeRegistrationFailures(new Error("other"))).toBeUndefined();
 	});
 
 	test("concurrent identical requests share one backend call (dedup)", async () => {
@@ -1136,6 +1269,50 @@ describe("ESM adapter — contract", () => {
 		expect(imported.some((specifier) => specifier.includes("+esm"))).toBe(
 			false,
 		);
+	});
+
+	test("a package.json request that fails is made again by the next player, and one that succeeds is reused", async () => {
+		const packageJsonUrl =
+			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/package.json";
+		const responses: Array<() => unknown> = [
+			() => {
+				throw new TypeError("Failed to fetch");
+			},
+			() => ({ ok: false, json: async () => ({}) }),
+			() => ({ ok: true, json: async () => ({}) }),
+		];
+		const fetched: string[] = [];
+		(g.window as { fetch?: unknown }).fetch = async (input: string) => {
+			fetched.push(input);
+			const respond = responses.shift();
+			if (!respond) throw new Error(`unexpected request for ${input}`);
+			return respond();
+		};
+		const ElementClass = createConstructorFor("pie-mc--version-13-2-0");
+		const loadInNewPlayer = () => {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			});
+			backend.__seams.replaceImporter(async () => ({ default: ElementClass }));
+			return backend.load(
+				{ "pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0" },
+				{ doc: createMockDocument(), whenDefinedTimeoutMs: 50 },
+			);
+		};
+
+		const originalError = console.error;
+		console.error = () => {};
+		try {
+			await expect(loadInNewPlayer()).rejects.toThrow("Failed to fetch");
+		} finally {
+			console.error = originalError;
+		}
+		await loadInNewPlayer();
+		await loadInNewPlayer();
+		await loadInNewPlayer();
+
+		expect(fetched).toEqual([packageJsonUrl, packageJsonUrl, packageJsonUrl]);
 	});
 
 	test("author view registers the requested versioned config tag without double suffixing", async () => {
@@ -3254,6 +3431,45 @@ describe("ESM adapter — shared editor runtime", () => {
 		expect(author.injected).toEqual([]);
 		expect(runtimeRequests(author.metadataRequests)).toEqual([]);
 		expect(warnings).toEqual([]);
+	});
+
+	test("standalone players on one page share one request for the runtime's package.json", async () => {
+		const metadataByUrl: Record<string, unknown> = {
+			[`${CDN}/${MC}/package.json`]: declaring("0.1.1-next.0"),
+			[`${CDN}/${EBSR}/package.json`]: declaring("0.1.1-next.0"),
+			[`${CDN}/${VENN}/package.json`]: declaring("0.1.1-next.0"),
+			[`${CDN}/${RUNTIME}@0.1.1-next.0/package.json`]: runtimePackage(),
+		};
+		const fetched: string[] = [];
+		(g.window as { fetch?: unknown }).fetch = async (input: string) => {
+			fetched.push(input);
+			const metadata = metadataByUrl[input];
+			return { ok: metadata !== undefined, json: async () => metadata };
+		};
+		const doc = createImportMapDocument();
+
+		await Promise.all(
+			[
+				[MC_TAG, MC],
+				[EBSR_TAG, EBSR],
+				[VENN_TAG, VENN],
+			].map(([tag, packageVersion]) => {
+				const backend = createEsmBackend({ kind: "esm", cdnBaseUrl: CDN });
+				backend.__seams.replaceImporter(async (specifier) => ({
+					default: createConstructorFor(specifier),
+				}));
+				return backend.load({ [tag]: packageVersion }, { doc });
+			}),
+		);
+
+		expect(runtimeRequests(fetched)).toEqual([
+			`${CDN}/${RUNTIME}@0.1.1-next.0/package.json`,
+		]);
+		expect(fetched).toHaveLength(4);
+		expect(mappedRuntimes(doc)).toEqual([`${RUNTIME}@0.1.1-next.0`]);
+		for (const tag of [MC_TAG, EBSR_TAG, VENN_TAG]) {
+			expect(g.customElements?.get(tag)).toBeDefined();
+		}
 	});
 
 	test("a custom provider addresses the runtime's metadata, modules and every variant", async () => {

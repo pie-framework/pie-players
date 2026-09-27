@@ -76,16 +76,52 @@ For calculators, the resolver params are:
 
 ```ts
 {
-  calculatorType: "basic" | "scientific";
-  availableTypes: Array<"basic" | "scientific">;
+  calculatorType: "basic" | "scientific" | "graphing";
+  availableTypes: Array<"basic" | "scientific" | "graphing">;
 }
 ```
 
 The packaged calculator reads these values through
 `toolbarContext.getToolRenderParams("calculator")` and applies them to the
-toolbar button plus calculator element. Content metadata therefore stays in
-host code, while PNP/profile restrictions remain framework-owned and higher
+toolbar button plus calculator element. With no resolver it opens basic,
+offers all three types and names itself "Calculator". Content metadata therefore stays in host
+code, while PNP/profile restrictions remain framework-owned and higher
 precedence.
+
+Which flavor a profile grants is the host's rule, read through
+`decideFeaturePolicy`. The `calculator` and `graphingCalculator` support ids both
+grant the one `calculator` tool; the flavor is a render param:
+
+```ts
+const toolContextResolvers = {
+  calculator: ({ toolbarContext }) => {
+    const granted = (featureId: string) =>
+      toolbarContext.toolkitCoordinator?.decideFeaturePolicy?.(featureId)
+        .granted === true;
+    if (granted("graphingCalculator")) {
+      return {
+        visible: true,
+        params: {
+          calculatorType: "graphing",
+          availableTypes: ["scientific", "graphing"],
+        },
+      };
+    }
+    if (granted("calculator")) {
+      return {
+        visible: true,
+        params: { calculatorType: "scientific", availableTypes: ["scientific"] },
+      };
+    }
+    return { visible: false, reason: "The profile grants no calculator." };
+  },
+};
+```
+
+Resolvers re-run on every policy change, so rebinding the assessment with a
+changed profile updates the button and an open calculator in place. The
+`calculator-pnp` section demo composes exactly this around one item with no
+section player.
 
 ## Backend Endpoints for Tool Providers
 

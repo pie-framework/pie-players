@@ -2,11 +2,10 @@
  * Subject-Specific Tools Registrations
  *
  * Registers tools for specific subject areas:
- * - Graph (graphing calculator/coordinate plane)
+ * - Graph (coordinate plane)
  * - Periodic Table (chemistry reference)
  *
  * Maps to QTI 3.0 standard access features:
- * - graphingCalculator (assessment tool)
  * - graph (assessment tool)
  * - periodicTable (assessment tool)
  */
@@ -26,25 +25,25 @@ import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 /**
  * Graph tool registration
  *
- * Provides graphing calculator and coordinate plane functionality.
+ * Provides a coordinate plane.
  * Context-smart: appears automatically for math content or when explicitly enabled.
  */
 export const graphToolRegistration: ToolRegistration = {
 	toolId: "graph",
 	name: "Graph",
-	description: "Graphing calculator and coordinate plane",
+	description: "Coordinate plane",
 	nameKey: "tools.graph.name",
 	descriptionKey: "tools.graph.description",
 	icon: "chart-bar",
 
-	// Graph is a section-level floating tool.
-	supportedLevels: ["section"],
+	// A floating tool, placed on a section toolbar or on an item toolbar where
+	// the toolkit runs without a section.
+	supportedLevels: ["section", "item"],
 
-	// PNP support IDs
-	// Maps to QTI 3.0 standard features: graph, graphingCalculator
+	// `graphingCalculator` grants the calculator, whose graphing type a host
+	// selects through render params; the coordinate plane is not that tool.
 	pnpSupportIds: [
 		"graph", // QTI 3.0 standard (assessment.graph)
-		"graphingCalculator", // QTI 3.0 standard (assessment.graphingCalculator)
 	],
 
 	/**
@@ -84,8 +83,9 @@ export const periodicTableToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.periodicTable.description",
 	icon: "beaker",
 
-	// Periodic table is a section-level floating tool.
-	supportedLevels: ["section"],
+	// A floating tool, placed on a section toolbar or on an item toolbar where
+	// the toolkit runs without a section.
+	supportedLevels: ["section", "item"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard feature: periodicTable

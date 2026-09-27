@@ -9,6 +9,7 @@ import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
 import { demoCortexCalculatorSection } from "./demo-cortex-calculators";
+import { demoCalculatorPnpSection } from "./demo-calculator-pnp";
 import { demoDesmosCalculatorSection } from "./demo-desmos-calculators";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
@@ -813,6 +814,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Serves basic, scientific, and graphing from one provider; graphing plots in JSXGraph and traces from the keyboard.",
 		],
 		section: demoCortexCalculatorSection,
+	},
+	"calculator-pnp": {
+		id: "calculator-pnp",
+		name: "Calculator by Profile",
+		description:
+			"The learner's profile decides whether the calculator shows and which flavor it opens in, with the toolkit composed around one item and no section player",
+		integrationLevel: 4,
+		integrationTheme: "Profile-driven tool selection",
+		focus:
+			"Composes `<pie-assessment-toolkit>` around an item toolbar and an item player, and changes the profile mid-session.",
+		whatMakesItTick: [
+			"No section player and no section controller: the toolkit owns its coordinator, and the toolbar and item player sit inside it.",
+			"The host's calculator resolver reads the profile through `decideFeaturePolicy`: `graphingCalculator` opens graphing with scientific one switch away, `calculator` opens scientific, and neither hides the button.",
+			"Changing the profile rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
+		],
+		section: demoCalculatorPnpSection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",

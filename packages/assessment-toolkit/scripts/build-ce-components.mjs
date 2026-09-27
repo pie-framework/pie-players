@@ -276,6 +276,14 @@ if (!result.success) {
 
 for (const entry of entries) {
 	rmSync(entry.generated, { force: true });
+	// The tsc-emitted `*-element.d.ts` keeps its `import "./<Name>.custom-element.js"`,
+	// so without a declaration beside the bundle a `checkJs` host resolves that
+	// import to the minified JS and type-checks it.
+	writeFileSync(
+		path.join(distComponents, `${entry.name}.custom-element.d.ts`),
+		"export {};\n",
+		"utf8",
+	);
 }
 
 // Remove stale copied Svelte sources from older build strategy.

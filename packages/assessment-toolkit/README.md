@@ -404,6 +404,43 @@ player.toolCoordinator = toolCoordinator;
 // ...
 ```
 
+### Without a Section Player
+
+`<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
+policy and services to the item toolbars and item players inside it, which is
+how the toolkit accompanies a plain item player:
+
+```html
+<pie-assessment-toolkit pnp-enforcement="on">
+  <pie-item-toolbar item-id="q1"></pie-item-toolbar>
+  <pie-item-player></pie-item-player>
+</pie-assessment-toolkit>
+```
+
+```typescript
+import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
+import '@pie-players/pie-item-player';
+
+toolkit.tools = { placement: { item: ['calculator'] } };
+toolkit.toolRegistry = toolRegistry;
+toolkit.toolContextResolvers = toolContextResolvers;
+toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
+
+toolbar.item = item;
+toolbar.toolRegistry = toolRegistry; // the toolbar does not read the toolkit's
+```
+
+A profile change is a new `assessment` value; the toolbars re-derive on the
+policy change it emits. Readiness events are section events: `toolkit-ready`,
+`section-ready` and every stage, `composed` included, wait for a bound section,
+and the toolkit builds its own coordinator only after it mounts. A host that needs a
+readiness point constructs the `ToolkitCoordinator`, passes it as
+`coordinator`, awaits `coordinator.waitUntilReady()`, and changes the profile
+with `coordinator.updateAssessment(...)`, since the toolkit applies its
+`assessment` property to a coordinator it owns. The `calculator-pnp` section
+demo composes the owned-coordinator form.
+
 ## Tool Configuration Model
 
 The toolkit uses one canonical `tools` model with three concerns:
@@ -510,7 +547,7 @@ tools: {
 
 **Available Floating Tools:**
 - **Calculator**: Scientific/graphing calculator with computation history
-- **Graph**: Graphing tool for plotting functions
+- **Graph**: Coordinate plane
 - **Periodic Table**: Interactive periodic table reference
 - **Protractor**: Angle measurement tool
 - **Ruler**: Linear measurement tool (metric/imperial)

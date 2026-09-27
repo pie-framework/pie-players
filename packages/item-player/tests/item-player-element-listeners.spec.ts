@@ -29,7 +29,7 @@ let server: Server;
 let origin: string;
 
 type HostSession = {
-	data?: Array<{ id?: string; value?: string[] }>;
+	data?: Array<{ id?: string; value?: string[]; shuffledValues?: string[] }>;
 } | null;
 
 type HostSessionEvent = {
@@ -49,6 +49,7 @@ declare global {
 		__announcedBeforeLoad: number | null;
 		__announcedBy: Record<string, number>;
 		__lastEventAt: number;
+		__writeBacks: number;
 	}
 }
 
@@ -109,7 +110,12 @@ const settle = (page: Page) =>
 
 async function mountPlayer(
 	page: Page,
-	options: { mode: "view" | "author"; session?: unknown },
+	options: {
+		mode: "view" | "author";
+		session?: unknown;
+		/** Probe ids whose controller writes a choice order back on a first render. */
+		shuffle?: string[];
+	},
 ): Promise<void> {
 	await page.route("**/*", (route) =>
 		new URL(route.request().url()).origin === origin
@@ -118,8 +124,9 @@ async function mountPlayer(
 	);
 	await page.goto(origin);
 	await page.evaluate(
-		async ({ mode, hostSession, probes }) => {
+		async ({ mode, hostSession, probes, shuffle }) => {
 			let announcements = 0;
+			window.__writeBacks = 0;
 			window.__sessionEvents = [];
 			window.__modelUpdates = [];
 			window.__announcedBeforeLoad = null;
@@ -177,6 +184,39 @@ async function mountPlayer(
 				customElements.define(tag, class extends DeliveryProbe {});
 				customElements.define(`${tag}-config`, class extends ConfigureProbe {});
 			}
+			// A controller that persists a choice order through `updateSession`
+			// when the session has none, as a shuffling element's does. Each call
+			// counts as a write-back.
+			const registry = ((window as any).PIE_REGISTRY ??= {});
+			for (const { id, tag, pkg } of probes) {
+				if (!shuffle.includes(id)) continue;
+				registry[tag] = {
+					package: pkg,
+					status: "loaded",
+					tagName: tag,
+					bundleType: "client-player.js",
+					controller: {
+						model: async (
+							model: Record<string, unknown>,
+							session: Record<string, any>,
+							_env: unknown,
+							updateSession?: (
+								id: string,
+								element: string,
+								properties: Record<string, unknown>,
+							) => Promise<void>,
+						) => {
+							if (!session?.shuffledValues && updateSession) {
+								window.__writeBacks += 1;
+								await updateSession(session.id, session.element, {
+									shuffledValues: ["2", "1"],
+								});
+							}
+							return { ...model };
+						},
+					},
+				};
+			}
 			const entry = "/dist/pie-item-player.js";
 			await import(entry);
 			const player = document.createElement("pie-item-player") as any;
@@ -218,7 +258,12 @@ async function mountPlayer(
 			};
 			document.querySelector("main")?.appendChild(player);
 		},
-		{ mode: options.mode, hostSession: options.session ?? null, probes },
+		{
+			mode: options.mode,
+			hostSession: options.session ?? null,
+			probes,
+			shuffle: options.shuffle ?? [],
+		},
 	);
 	await page.waitForFunction(() => window.__announcedBeforeLoad !== null);
 	await settle(page);
@@ -228,6 +273,18 @@ const valuesOf = (session: HostSession) =>
 	Object.fromEntries(
 		(session?.data ?? []).map((entry) => [entry.id, entry.value]),
 	);
+
+const ordersOf = (session: HostSession) =>
+	Object.fromEntries(
+		(session?.data ?? []).map((entry) => [entry.id, entry.shuffledValues]),
+	);
+
+const byElement = (events: HostSessionEvent[]) =>
+	events
+		.map(({ elementId, complete }) => ({ elementId, complete }))
+		.sort((left, right) =>
+			String(left.elementId).localeCompare(String(right.elementId)),
+		);
 
 test.describe("delivery", () => {
 	test("an element announcing from its session setter during load reaches the host only as a canonical event", async ({
@@ -349,6 +406,74 @@ test.describe("delivery", () => {
 			a: ["x"],
 			b: ["y"],
 		});
+	});
+
+	test("a controller write-back adds no event, at load or after a response", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			shuffle: ["a", "b"],
+			session: { id: "attempt-6", data: [] },
+		});
+		// The renderer's placeholder pass and its session pass each run the
+		// controllers.
+		expect(await page.evaluate(() => window.__writeBacks)).toBe(4);
+		const load = await page.evaluate(() => window.__sessionEvents);
+		expect(byElement(load)).toEqual([
+			{ elementId: "a", complete: false },
+			{ elementId: "b", complete: false },
+		]);
+		expect(
+			ordersOf(load.find((event) => event.session !== null)?.session ?? null),
+		).toEqual({ a: ["2", "1"], b: ["2", "1"] });
+
+		await page.evaluate(
+			({ tag }) => {
+				window.__sessionEvents.length = 0;
+				(document.querySelector(tag) as any).answer("x");
+			},
+			{ tag: probes[0].tag },
+		);
+		await settle(page);
+		expect(await page.evaluate(() => window.__writeBacks)).toBe(4);
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(byElement(events)).toEqual([{ elementId: "a", complete: true }]);
+		expect(valuesOf(events[0].session).a).toEqual(["x"]);
+		expect(ordersOf(events[0].session)).toEqual({
+			a: ["2", "1"],
+			b: ["2", "1"],
+		});
+	});
+
+	test("a write-back into a restored, answered session keeps every element complete for the host", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			shuffle: ["a"],
+			session: {
+				id: "attempt-7",
+				data: [
+					{ id: "a", element: "element-probe-a", value: ["x"] },
+					{ id: "b", element: "element-probe-b", value: ["y"] },
+				],
+			},
+		});
+		expect(await page.evaluate(() => window.__writeBacks)).toBe(2);
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(byElement(events)).toEqual([
+			{ elementId: "a", complete: true },
+			{ elementId: "b", complete: true },
+		]);
+		const carried = events.filter((event) => event.session !== null);
+		expect(carried).toHaveLength(1);
+		expect(valuesOf(carried[0].session)).toEqual({ a: ["x"], b: ["y"] });
+		expect(ordersOf(carried[0].session).a).toEqual(["2", "1"]);
+		const hostSession = await page.evaluate(
+			() => (document.querySelector("pie-item-player") as any).session,
+		);
+		expect(ordersOf(hostSession).a).toEqual(["2", "1"]);
 	});
 });
 

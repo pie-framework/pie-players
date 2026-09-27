@@ -826,9 +826,9 @@ it would store those three types' responses under the wrong field without an
 error. An error thrown in that handler reaches the host's global error handler,
 which ends the session, so once an item is displayed every `session-changed` it
 does not skip has to carry a string `component` and a non-empty `session.data`,
-and an event with `complete: true` has to carry them before display too. The
-controller write-back path dispatches `{ session }` alone, and it is unreachable
-there only because the preloaded build registers no client-side controller.
+and an event with `complete: true` has to carry them before display too. A
+controller write-back dispatches no event of its own; the next element event
+carries it.
 
 ## Controller and coordinator methods
 

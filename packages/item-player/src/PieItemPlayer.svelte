@@ -418,6 +418,9 @@
 	let sessionControllerItemId = $state("pie-item-player");
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
+	// A controller wrote derived state back that no `session-changed` has carried
+	// yet; see `handleElementSessionUpdate`.
+	let derivedStateUnannounced = false;
 	let latestLoadRequestToken = 0;
 	// The custom element itself, resolved while the player is still connected.
 	// `hostElement` is the inner `<div>`; by the time a removal reaches
@@ -590,6 +593,7 @@
 			});
 			sessionControllerItemId = itemId;
 			sessionSignature = JSON.stringify(sessionController.getSession());
+			derivedStateUnannounced = false;
 		}
 		return sessionController;
 	}
@@ -609,6 +613,9 @@
 		}
 		sessionSignature = nextSignature;
 		sessionRevision += 1;
+		// The host holds the session it set. A write-back that session lacks is
+		// written again by the render this starts.
+		derivedStateUnannounced = false;
 		return true;
 	}
 
@@ -1570,8 +1577,11 @@
 	}
 
 	// An element controller persisted derived, non-response state (e.g. a shuffled
-	// choice order). Write it back to the authoritative session and notify the host
-	// so future prop updates/remounts reuse it instead of regenerating it (PIE-631).
+	// choice order). Write it back to the authoritative session so future prop
+	// updates/remounts reuse it instead of regenerating it (PIE-631), and project it
+	// onto the host's container. It dispatches no event of its own, as under the
+	// legacy player, which gave controllers no `updateSession`: the next
+	// `session-changed` carries it, with the announcing element's own `complete`.
 	// Do not bump sessionRevision: the in-flight element already has the order, and
 	// forcing an immediate re-render would re-trigger the controller update path.
 	const handleElementSessionUpdate = (
@@ -1593,7 +1603,7 @@
 		}
 		sessionSignature = nextSignature;
 		publishSessionToHostProp(merged);
-		handlePlayerEvent(new CustomEvent("session-changed", { detail: { session: merged } }));
+		derivedStateUnannounced = true;
 	};
 
 	const handleSessionChanged = (detail: unknown) => {
@@ -1618,6 +1628,7 @@
 			});
 			sessionSignature = JSON.stringify(nextSession);
 			sessionRevision += 1;
+			derivedStateUnannounced = false;
 			publishSessionToHostProp(nextSession);
 			handlePlayerEvent(
 				new CustomEvent("session-changed", {
@@ -1625,6 +1636,17 @@
 				}),
 			);
 			backendOrchestrator.scheduleAutosave();
+			return;
+		}
+		if (derivedStateUnannounced) {
+			// The session changed since the host was last told, by a write-back alone.
+			derivedStateUnannounced = false;
+			const { intent: _intent, ...metadata } = forwarding.detail;
+			handlePlayerEvent(
+				new CustomEvent("session-changed", {
+					detail: { ...metadata, session: controller.getSession() },
+				}),
+			);
 			return;
 		}
 		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwarding.detail }));

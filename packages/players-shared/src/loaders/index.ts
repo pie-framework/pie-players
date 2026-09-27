@@ -56,6 +56,7 @@ export {
 	ElementAssertionError,
 	ElementLoaderError,
 	assertRegistered,
+	describeRegistrationFailures,
 	ensureRegistered,
 } from "./element-loader.js";
 export type {

@@ -28,6 +28,7 @@ import {
 	ElementAssertionError,
 	ElementLoaderError,
 	assertRegistered,
+	describeRegistrationFailures,
 	ensureRegistered,
 	type ElementLoaderBackend,
 	type RegistrationFailureReason,
@@ -481,6 +482,138 @@ describe("ensureRegistered — primitive-level contract", () => {
 		).rejects.toMatchObject({
 			name: "ElementLoaderError",
 		});
+	});
+
+	test("rejects at once when the adapter reports a failed load for every missing tag", async () => {
+		const tags = ["pie-mc--version-11-0-1", "pie-passage--version-3-2-4"];
+		const fake: ElementLoaderBackend = {
+			async load() {
+				throw new AdapterFailure(
+					new Map(
+						tags.map((tag) => [
+							tag,
+							{
+								kind: "module-load-failed",
+								tag,
+								specifier: `https://cdn.example/${tag}.js`,
+								cause: "Failed to fetch dynamically imported module",
+							},
+						]),
+					),
+				);
+			},
+		};
+
+		const startedAt = Date.now();
+		const error = await ensureRegistered(
+			{
+				[tags[0]]: "@pie-element/multiple-choice@11.0.1",
+				[tags[1]]: "@pie-element/passage@3.2.4",
+			},
+			{
+				backend: fake,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 10_000,
+			},
+		).catch((err: unknown) => err as ElementLoaderError);
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		expect(error).toBeInstanceOf(ElementLoaderError);
+		expect([...error.unregisteredTags]).toEqual(tags);
+		expect([...error.reasons.values()].map((reason) => reason.kind)).toEqual([
+			"module-load-failed",
+			"module-load-failed",
+		]);
+	});
+
+	test("rejects at once when the adapter throws an error of its own", async () => {
+		const fake: ElementLoaderBackend = {
+			async load() {
+				throw new TypeError("Failed to fetch");
+			},
+		};
+
+		const startedAt = Date.now();
+		const error = await ensureRegistered(
+			{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+			{
+				backend: fake,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 10_000,
+			},
+		).catch((err: unknown) => err as ElementLoaderError);
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		expect(error.reasons.get("pie-mc--version-11-0-1")).toEqual({
+			kind: "backend-rejected",
+			tag: "pie-mc--version-11-0-1",
+			cause: "Failed to fetch",
+		});
+	});
+
+	test("waits only on the missing tags the adapter reports no failed load for", async () => {
+		const registry = installScriptedCustomElements();
+		const failed = "pie-mc--version-11-0-1";
+		const late = "pie-passage--version-3-2-4";
+		const fake: ElementLoaderBackend = {
+			async load() {
+				setTimeout(() => registry.define(late, createConstructorFor(late)), 20);
+				throw new AdapterFailure(
+					new Map([
+						[
+							failed,
+							{ kind: "define-failed", tag: failed, cause: "bad constructor" },
+						],
+					]),
+				);
+			},
+		};
+
+		const startedAt = Date.now();
+		const error = await ensureRegistered(
+			{
+				[failed]: "@pie-element/multiple-choice@11.0.1",
+				[late]: "@pie-element/passage@3.2.4",
+			},
+			{ backend: fake, doc: createMockDocument(), whenDefinedTimeoutMs: 5000 },
+		).catch((err: unknown) => err as ElementLoaderError);
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		expect(g.customElements?.get(late)).toBeDefined();
+		expect([...error.unregisteredTags]).toEqual([failed]);
+	});
+
+	test("describeRegistrationFailures names each tag's failure", async () => {
+		const fake: ElementLoaderBackend = {
+			async load() {
+				throw new AdapterFailure(
+					new Map<string, RegistrationFailureReason>([
+						[
+							"pie-mc--version-11-0-1",
+							{
+								kind: "module-load-failed",
+								tag: "pie-mc--version-11-0-1",
+								specifier: "https://cdn.example/mc/delivery.js",
+								cause: "Cannot find module",
+							},
+						],
+					]),
+				);
+			},
+		};
+		const error = await ensureRegistered(
+			{
+				"pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1",
+				"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
+			},
+			{ backend: fake, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		).catch((err: unknown) => err);
+
+		expect(describeRegistrationFailures(error)).toBe(
+			"pie-mc--version-11-0-1 (module-load-failed): https://cdn.example/mc/delivery.js failed to load: Cannot find module; " +
+				"pie-passage--version-3-2-4 (timeout): not defined within 25 ms",
+		);
+		expect(describeRegistrationFailures(new Error("other"))).toBeUndefined();
 	});
 
 	test("concurrent identical requests share one backend call (dedup)", async () => {

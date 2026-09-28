@@ -141,7 +141,12 @@ export class AnswerEliminatorCore {
 		button.setAttribute("aria-label", `Toggle elimination for ${choiceLabel}`);
 		button.setAttribute("aria-pressed", "false");
 		button.setAttribute("data-choice-id", choiceId);
-		button.textContent = "⊗"; // Cross mark (use textContent instead of innerHTML for better security)
+		// The glyph is decoration: the button is named by its aria-label, and an
+		// exposed glyph is spoken by read-aloud after every choice.
+		const glyph = document.createElement("span");
+		glyph.setAttribute("aria-hidden", "true");
+		glyph.textContent = "⊗";
+		button.appendChild(glyph);
 
 		// Apply positioning based on alignment configuration
 		this.applyButtonAlignment(button);

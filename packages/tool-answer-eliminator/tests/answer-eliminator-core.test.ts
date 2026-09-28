@@ -47,3 +47,27 @@ test("elimination toggles expose an unpressed state before the first click", () 
 		"false",
 	]);
 });
+
+test("the toggle glyph is hidden from assistive technology and read-aloud", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+
+	core.initializeForQuestion(root);
+
+	const toggle = root.querySelector<HTMLButtonElement>(
+		"button.pie-answer-eliminator-toggle",
+	);
+	expect(toggle?.getAttribute("aria-label")).toBe(
+		"Toggle elimination for Alpha",
+	);
+	const exposedText = Array.from(toggle?.childNodes ?? []).filter(
+		(node) =>
+			node.nodeType === Node.TEXT_NODE ||
+			(node as Element).getAttribute?.("aria-hidden") !== "true",
+	);
+	expect(exposedText).toHaveLength(0);
+	expect(toggle?.textContent).toBe("⊗");
+});

@@ -153,7 +153,7 @@ Speech marks are fetched from the `word` URL and parsed as JSONL.
 
 ### Optional voices endpoint
 
-`GET ${apiEndpoint}/voices` remains optional and is only used when endpoint validation is configured with `endpointValidationMode: "voices"`.
+`GET ${apiEndpoint}/voices` remains optional and is only used when endpoint validation is configured with `endpointValidationMode: "voices"`. With `provider: "polly"` or `"google"` the probe tries `${apiEndpoint}/<provider>/voices` first and falls back to `${apiEndpoint}/voices` when that route returns 404. A failed probe makes the toolkit switch to browser TTS.
 
 ## SvelteKit Implementation Example
 

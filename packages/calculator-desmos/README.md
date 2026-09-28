@@ -34,11 +34,12 @@ Desmos's documented browser integration requires the key in the
 request. Fetching the key at runtime keeps it out of source and static bundles,
 but does not make it a server-only secret.
 
-For backwards compatibility, calling `initialize()` with no key still loads the
-historical unkeyed v1.12 URL when `window.Desmos` is absent. Existing clients
-therefore continue to work without new configuration. That technical fallback
-does not grant or imply a Desmos license; the deploying host remains responsible
-for obtaining the rights required for its application.
+Calling `initialize()` with no key still requests the historical unkeyed v1.12
+URL when `window.Desmos` is absent. Desmos's CDN answers that request with HTTP
+403 (`Missing or malformed required url parameter: apiKey`), so without a key or
+a preloaded `window.Desmos` the provider fails to initialize. The fallback does
+not grant or imply a Desmos license; the deploying host remains responsible for
+obtaining the rights required for its application.
 
 ## Provider loading
 

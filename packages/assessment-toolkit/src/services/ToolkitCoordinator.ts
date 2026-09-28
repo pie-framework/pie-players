@@ -893,6 +893,9 @@ export class ToolkitCoordinator {
 
 		// Initialize TTS service based on config
 		this.ttsService = new TTSService();
+		// Selection read-aloud speaks through this service without the inline TTS
+		// tool ever having run, so it cannot rely on that tool to attach highlights.
+		this.ttsService.setHighlightCoordinator(this.highlightCoordinator);
 		this.setupStatePersistenceHooks();
 
 		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with

@@ -138,6 +138,12 @@ const nlNL = {
 			closeA11y: "Hulpmiddel sluiten",
 		},
 
+		placement: {
+			controlsA11y: "Verplaatsen en draaien",
+			rotateClockwiseA11y: "{degrees}° rechtsom draaien",
+			rotateCounterclockwiseA11y: "{degrees}° linksom draaien",
+		},
+
 		announce: {
 			movedUp: "Omhoog verplaatst naar {position}",
 			movedDown: "Omlaag verplaatst naar {position}",

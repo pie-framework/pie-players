@@ -9,6 +9,7 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 - **180-degree scale**: Standard protractor with two opposing 0-180 degree scales
 - **Tick marks**: Every degree, with longer ticks every 5 degrees
 - **Labels**: Every 10 degrees on both scales, each with a radial guide line
+- **Tap controls**: While the protractor has focus, a strip below it moves and turns it without dragging
 - **Keyboard control**: Arrow keys move the protractor; Shift+Arrow keys and PageUp/PageDown rotate it
 - **Semi-transparent**: Allows viewing content underneath
 - **Z-index management**: Automatically brings to front when clicked
@@ -50,13 +51,14 @@ both: its button toggles the tool in the coordinator and its sync sets
 
 ### Moving
 - Drag the protractor with a mouse, pen or finger to move it
-- Arrow keys move it 10px per press
+- Arrow keys and the tap controls' arrow buttons move it 10px per press
 - It may overhang the card it opens on, but keeps 100px inside it
 - The cursor changes to indicate draggability
 
 ### Rotating
 - Drag the handle above the protractor to turn it about its vertex, the centre of its baseline
 - Shift+Arrow keys rotate it 5 degrees per press; PageUp/PageDown rotate it 1 degree
+- The tap controls' turn buttons rotate it 5 or 1 degrees either way
 - Useful for aligning with different angles in diagrams
 
 ### Bringing to Front
@@ -84,7 +86,8 @@ tool-protractor.svelte
     │           ├── Center point
     │           └── Baseline
     ├── Pivot marker on the vertex
-    └── Rotation line and 44px handle
+    ├── Rotation line and 44px handle
+    └── Tap controls, shown while the protractor has focus
 ```
 
 Drag and rotation run through `createPointerGesture`, `createPointerDragController`
@@ -94,7 +97,9 @@ and `createPointerRotateController` in `@pie-players/pie-players-shared`.
 
 - Placement: an offset from the centred position and a rotation about the
   vertex, held by the component and written to its CSS `transform` by
-  `applyPlacement`, which pointer and keyboard both go through
+  `applyPlacement`, which pointer, keyboard and tap controls all go through
+- The tap controls sit past the protractor's baseline edge, counter-rotated to
+  stay level; `applyPlacement` redocks them on every write
 
 ### Event Handling
 
@@ -116,6 +121,8 @@ The protractor uses:
 - `role="application"` with a localized `aria-label` and `aria-roledescription`
 - `tabindex="0"`; the protractor takes focus, without scrolling, when shown
 - Arrow keys move it; Shift+Arrow keys and PageUp/PageDown rotate it
+- Tap controls give every drag a single-pointer alternative (WCAG 2.5.7); a
+  press on one keeps focus on the protractor, so the strip stays up
 - A polite live region announces each move and rotation
 - The protractor image has localized `alt` text
 

@@ -125,6 +125,22 @@ export function rotationCentreShift(size: Size, origin: Point, degrees: number):
 }
 
 /**
+ * Where to centre a control strip docked past the bottom edge of a `box`
+ * turned by `degrees`, in the box's own coordinates from its top-left corner.
+ *
+ * The strip is drawn counter-rotated so it stays level on screen. Its reach
+ * along the box's downward normal is its projection onto that normal, which
+ * grows from its height at no turn to its width at a quarter turn, so a strip
+ * placed that far out clears the box at any rotation.
+ */
+export function uprightDockCentre(box: Size, strip: Size, degrees: number, gap: number): Point {
+	const radians = (degrees * Math.PI) / 180;
+	const reach =
+		strip.width * Math.abs(Math.sin(radians)) + strip.height * Math.abs(Math.cos(radians));
+	return { x: box.width / 2, y: box.height + gap + reach / 2 };
+}
+
+/**
  * Clamps an absolute centre point, in containing-block coordinates, so the box
  * it positions stays inside that block.
  *

@@ -15,7 +15,19 @@ test("pointer and keyboard placement share one transform writer", () => {
 	// Two writers of `style.transform` would let a drag and a nudge disagree
 	// about where the protractor is.
 	expect(source.match(/containerEl\.style\.transform =/g)?.length).toBe(1);
-	expect(source).toInclude("applyPlacement({ x, y, rotation })");
+	expect(source.match(/applyPlacement\(/g)?.length).toBeGreaterThan(1);
+});
+
+test("tap controls move and turn the tool without a drag", () => {
+	// WCAG 2.5.7: every drag has a single-pointer alternative, and the buttons
+	// take the same steps as the keys.
+	for (const call of ["nudge(direction as Nudge)", "rotateBy(degrees)"]) {
+		expect(source).toInclude(`onclick={() => ${call}}`);
+	}
+	expect(source).toInclude("const ROTATIONS = [-ROTATE_STEP, -FINE_ROTATE_STEP, FINE_ROTATE_STEP, ROTATE_STEP];");
+	// A press on a control keeps focus on the tool, which keeps them shown.
+	expect(source).toMatch(/__controls"[\s\S]*?e\.preventDefault\(\)/);
+	expect(ruleFor(`.pie-tool-protractor__control`)).toInclude("min-width: 32px");
 });
 
 test("the protractor carries no third-party drag library", () => {

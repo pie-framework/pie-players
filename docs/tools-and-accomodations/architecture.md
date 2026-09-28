@@ -927,12 +927,14 @@ Final Configuration:
 
 ✅ **Ruler Tool**
 - Drag and rotate by mouse, pen or touch
+- Tap controls to move and rotate without dragging (WCAG 2.5.7)
 - Metric/imperial units
 - Keyboard accessible
 
 ✅ **Protractor Tool**
 - 180° protractor with center origin
 - Drag and rotate by mouse, pen or touch
+- Tap controls to move and rotate without dragging (WCAG 2.5.7)
 - Keyboard rotation in 5° and 1° steps
 
 ✅ **Line Reader Tool**

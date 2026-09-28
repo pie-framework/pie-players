@@ -15,7 +15,6 @@ const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 
 /** Output module in `dist`, and the source bundled into it. */
 const VENDORED_MODULES = [
-	{ output: "moveable/index.js", source: path.join(packageDir, "src/moveable/index.ts") },
 	{ output: "loaders/module-shim.js", source: "es-module-shims" },
 ];
 

@@ -68,6 +68,63 @@ export function clampOffsetWithinBlock(
 }
 
 /**
+ * Clamps a translate offset applied to a box centred in its containing block so
+ * that at least `visible` pixels of the box stay inside the block on each axis.
+ *
+ * For an overlay that has to overhang its block to be useful — a ruler lined up
+ * against content near a card's edge — without ever being dragged out of reach
+ * behind that edge. A box or block narrower than `visible` keeps all of the
+ * smaller extent.
+ */
+export function clampOffsetOverlappingBlock(
+	offset: Point,
+	box: Size,
+	block: Size,
+	visible: number,
+): Point {
+	const clampAxis = (value: number, boxExtent: number, blockExtent: number) => {
+		const keep = Math.min(visible, boxExtent, blockExtent);
+		const travel = blockExtent / 2 + boxExtent / 2 - keep;
+		return Math.max(-travel, Math.min(travel, value));
+	};
+	return {
+		x: clampAxis(offset.x, box.width, block.width),
+		y: clampAxis(offset.y, box.height, block.height),
+	};
+}
+
+/** The axis-aligned extent of a `size` box turned by `degrees` about its centre. */
+export function rotatedExtent(size: Size, degrees: number): Size {
+	const radians = (degrees * Math.PI) / 180;
+	const cos = Math.abs(Math.cos(radians));
+	const sin = Math.abs(Math.sin(radians));
+	return {
+		width: size.width * cos + size.height * sin,
+		height: size.width * sin + size.height * cos,
+	};
+}
+
+/**
+ * How far a `size` box's centre moves when the box turns by `degrees` about
+ * `origin`, given in the box's own coordinates from its top-left corner.
+ *
+ * Zero for a box turned about its centre. An overlay turned about another
+ * point adds this to its translate offset to get the offset of its rotated
+ * extent's centre, which is what the centred clamps above bound.
+ */
+export function rotationCentreShift(size: Size, origin: Point, degrees: number): Point {
+	const radians = (degrees * Math.PI) / 180;
+	const cos = Math.cos(radians);
+	const sin = Math.sin(radians);
+	const dx = size.width / 2 - origin.x;
+	const dy = size.height / 2 - origin.y;
+	return {
+		x: dx * cos - dy * sin - dx,
+		y: dx * sin + dy * cos - dy,
+	};
+}
+
+/**
  * Clamps an absolute centre point, in containing-block coordinates, so the box
  * it positions stays inside that block.
  *

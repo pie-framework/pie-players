@@ -797,12 +797,6 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 
 ### Supporting Libraries
 
-**Moveable.js**
-- Drag, rotate, resize functionality
-- Used by ruler and protractor tools
-- Keyboard navigation support
-- Accessible interactions
-
 **Calculator provider suites**
 - The generic calculator contract (`@pie-players/pie-calculator`) and the
   toolkit's lifecycle surface do not import a vendor. The calculator toolbar
@@ -932,14 +926,14 @@ Final Configuration:
 - Tested and deployed
 
 ✅ **Ruler Tool**
-- Drag, rotate, snap
+- Drag and rotate by mouse, pen or touch
 - Metric/imperial units
 - Keyboard accessible
 
 ✅ **Protractor Tool**
 - 180° protractor with center origin
-- Drag and rotate
-- Snap to increments
+- Drag and rotate by mouse, pen or touch
+- Keyboard rotation in 5° and 1° steps
 
 ✅ **Line Reader Tool**
 - Transparent reading window with obscuring frame
@@ -1082,4 +1076,3 @@ The architecture is production-ready for core functionality, with clear paths fo
 - [GeoGebra Apps Embedding](https://geogebra.github.io/docs/reference/en/GeoGebra_Apps_Embedding/)
 - [GeoGebra Apps API](https://geogebra.github.io/docs/reference/en/GeoGebra_Apps_API/)
 - [GeoGebra License](https://www.geogebra.org/license)
-- [Moveable.js](https://daybrush.com/moveable/)

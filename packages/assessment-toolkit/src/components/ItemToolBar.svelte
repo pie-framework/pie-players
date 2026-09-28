@@ -76,6 +76,7 @@
 	import {
 		collectFocusable,
 		createFocusTrap,
+		createPointerGesture,
 		FOCUSABLE_SELECTOR,
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
@@ -1291,8 +1292,16 @@
 		const shellDeclaresNdsChrome = (): boolean =>
 			currentArgs.mounted.entry.shell?.ndsHeaderControls === true;
 		let mountedContentElement: HTMLElement | null = null;
-		let dragPointerId: number | null = null;
-		let resizePointerId: number | null = null;
+		// Drag and resize share one gesture, which ends on a cancelled touch as well
+		// as on release, so one iPadOS takes over for a system gesture does not stay
+		// stuck to the next touch. Move handling reads the mode it started in.
+		let shellGestureMode: 'drag' | 'resize' | null = null;
+		const shellGesture = createPointerGesture({
+			onMove: (event) => onShellPointerMove(event),
+			onEnd: () => {
+				shellGestureMode = null;
+			}
+		});
 		let dragOffsetX = 0;
 		let dragOffsetY = 0;
 		let resizeStartWidth = 0;
@@ -1900,10 +1909,10 @@
 			const target = event.target as HTMLElement;
 
 			if (target.closest('button') || !shellEl) return;
+			if (!shellGesture.begin(event, shellEl)) return;
 
-			event.preventDefault();
+			shellGestureMode = 'drag';
 			learnerSizedShell = true;
-			dragPointerId = event.pointerId;
 			dragOffsetX = event.clientX - x;
 			dragOffsetY = event.clientY - y;
 			shellEl.setPointerCapture(event.pointerId);
@@ -1912,10 +1921,10 @@
 
 		const createResizePointerDownHandler = (corner: 'se' | 'sw' | 'ne' | 'nw') => (event: PointerEvent) => {
 			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
-			event.preventDefault();
 			event.stopPropagation();
+			if (!shellGesture.begin(event, shellEl)) return;
+			shellGestureMode = 'resize';
 			learnerSizedShell = true;
-			resizePointerId = event.pointerId;
 			resizeCorner = corner;
 			resizeStartWidth = width;
 			resizeStartHeight = height;
@@ -1930,7 +1939,7 @@
 		const onShellPointerMove = (event: PointerEvent) => {
 			if (!shellEl) return;
 
-			if (dragPointerId === event.pointerId) {
+			if (shellGestureMode === 'drag') {
 				event.preventDefault();
 				const maxX = Math.max(0, window.innerWidth - width);
 				const maxY = Math.max(0, window.innerHeight - height);
@@ -1940,7 +1949,7 @@
 				return;
 			}
 
-			if (resizePointerId === event.pointerId) {
+			if (shellGestureMode === 'resize') {
 				event.preventDefault();
 				const shellConfig = currentArgs.mounted.entry.shell;
 				const configuredMinWidth = shellConfig?.minWidth ?? 320;
@@ -2006,18 +2015,6 @@
 				applyContentMinWidth();
 				applyContentLayout();
 				notifyHostedResize();
-			}
-		};
-
-		const onShellPointerUp = (event: PointerEvent) => {
-			if (!shellEl) return;
-			if (dragPointerId === event.pointerId) {
-				dragPointerId = null;
-				shellEl.releasePointerCapture(event.pointerId);
-			}
-			if (resizePointerId === event.pointerId) {
-				resizePointerId = null;
-				shellEl.releasePointerCapture(event.pointerId);
 			}
 		};
 
@@ -2439,8 +2436,6 @@
 
 
 			headerEl.addEventListener('pointerdown', onHeaderPointerDown);
-			shellEl.addEventListener('pointermove', onShellPointerMove);
-			shellEl.addEventListener('pointerup', onShellPointerUp);
 			shellEl.addEventListener('pointerdown', bringToFront);
 			window.addEventListener('resize', onWindowResize);
 			document.body.appendChild(shellEl);
@@ -2519,9 +2514,8 @@
 					headerEl.removeEventListener('pointerdown', onHeaderPointerDown);
 					headerEl.onkeydown = null;
 				}
+				shellGesture.release();
 				if (shellEl) {
-					shellEl.removeEventListener('pointermove', onShellPointerMove);
-					shellEl.removeEventListener('pointerup', onShellPointerUp);
 					shellEl.removeEventListener('pointerdown', bringToFront);
 				}
 				window.removeEventListener('resize', onWindowResize);

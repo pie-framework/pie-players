@@ -22,13 +22,13 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
-		clampOffsetWithinBlock,
-		resolveContainingBlockRect
+		clampOffsetOverlappingBlock,
+		createPointerDragController,
+		createPointerGesture,
+		createPointerRotateController,
+		resolveContainingBlockRect,
+		rotatedExtent
 	} from '@pie-players/pie-players-shared';
-	import {
-		createMoveable,
-		type MoveableInstance
-	} from '@pie-players/pie-players-shared/moveable';
 	import { onMount } from 'svelte';
 	import rulerCm from './ruler-cm.svg';
 	import rulerInches from './ruler-inches.svg';
@@ -50,7 +50,34 @@
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 	let unit = $state<'inches' | 'cm'>('inches');
-	let moveable: MoveableInstance | null = null;
+	let rotateHandleEl = $state<HTMLDivElement | undefined>();
+
+	/**
+	 * Where the ruler sits, as an offset from its centred position plus a rotation
+	 * about its centre. Plain `let`: the pointer and keyboard paths both write it
+	 * and `applyPlacement` pushes it to `style.transform`, so nothing renders from
+	 * it reactively.
+	 */
+	let placement = { x: 0, y: 0, rotation: 0 };
+
+	const dragController = createPointerDragController({
+		getPosition: () => ({ x: placement.x, y: placement.y }),
+		setPosition: (next) => applyPlacement({ ...placement, ...next })
+	});
+	const rotateController = createPointerRotateController({
+		getRotation: () => placement.rotation,
+		setRotation: (rotation) => applyPlacement({ ...placement, rotation })
+	});
+	const gesture = createPointerGesture({
+		onMove: (e) => {
+			dragController.handlePointerMove(e);
+			rotateController.handlePointerMove(e);
+		},
+		onEnd: () => {
+			dragController.endDragging();
+			rotateController.endRotating();
+		}
+	});
 
 	// The coordinator a registration was made against, and the id it used. Plain
 	// `let` rather than `$state`: this is bookkeeping the registration effect both
@@ -63,6 +90,8 @@
 	const MOVE_STEP = 10; // pixels
 	const ROTATE_STEP = 5; // degrees
 	const FINE_ROTATE_STEP = 1; // degrees
+	/** Pixels of the ruler kept inside its containing block on each axis. */
+	const MIN_VISIBLE = 100;
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -98,113 +127,71 @@
 			: 'tools.ruler.centimetersInSentence';
 	}
 
-	// Initialize Moveable.js (matching production configuration)
-	function initMoveable() {
-		if (!containerEl || !isBrowser) {
-			return;
-		}
-
-		// Clean up any existing instance first
-		if (moveable) {
-			moveable.destroy();
-			moveable = null;
-		}
-
-		coordinator?.bringToFront(containerEl);
-
-		moveable = createMoveable(document.body, {
-			target: containerEl,
-			draggable: true,
-			rotatable: true,
-			snappable: true,
-			originDraggable: true,
-			originRelative: true,
-			// A frameless overlay draws its own surface, so Moveable's frame lines go.
-			hideDefaultLines: $host().getAttribute('data-pie-tool-surface') === 'frameless',
-			keepRatio: false,
-			bounds: {
-				left: 0,
-				top: 0,
-				right: 0,
-				bottom: 0,
-				position: 'css'
-			}
-		});
-
-		// Associate the moveable instance with the tool ID
-		const controlBox = moveable.getControlBoxElement();
-		controlBox?.setAttribute('data-moveablejs-tool-control-box', toolId);
-
-		moveable.on('drag', ({ target, transform }) => {
-			if (target) {
-				target.style.transform = transform;
-			}
-		});
-
-		moveable.on('rotate', ({ target, transform }) => {
-			if (target) {
-				target.style.transform = transform;
-			}
-		});
+	/**
+	 * Writes a placement to `style.transform`, first keeping part of the turned
+	 * ruler inside the box it is positioned against. Pointer and keyboard both
+	 * land here, so they share one bound. It lets the ruler overhang: an item card
+	 * is barely wider than the ruler, and full containment would pin its zero mark
+	 * to the card's edge. The card clips what overhangs, so `MIN_VISIBLE` keeps
+	 * enough in view to grab it back.
+	 */
+	function applyPlacement(next: { x: number; y: number; rotation: number }) {
+		if (!containerEl) return;
+		const block = resolveContainingBlockRect(containerEl);
+		const box = rotatedExtent(
+			{ width: containerEl.offsetWidth, height: containerEl.offsetHeight },
+			next.rotation
+		);
+		const offset = block ? clampOffsetOverlappingBlock(next, box, block, MIN_VISIBLE) : next;
+		placement = { x: offset.x, y: offset.y, rotation: next.rotation };
+		containerEl.style.transform = `translate(-50%, -50%) translate(${placement.x}px, ${placement.y}px) rotate(${placement.rotation}deg)`;
 	}
 
-	function destroyMoveable() {
-		if (moveable) {
-			moveable.destroy();
-			moveable = null;
-		}
-	}
-
-	function updateBounds() {
-		if (moveable) {
-			moveable.bounds = {
-				left: 0,
-				top: 0,
-				right: 0,
-				bottom: 0,
-				position: 'css'
-			};
-			moveable.updateRect();
-		}
+	/** A resize can leave the ruler outside its shrunken containing block. */
+	function reapplyPlacement() {
+		applyPlacement(placement);
 	}
 
 	/**
-	 * Keeps a keyboard move inside the box this tool is positioned against. Pointer
-	 * drags are bounded by Moveable; a keyboard move writes `style.transform`
-	 * directly, so it needs the same bound applied here.
+	 * Claims a press for a drag or rotation. The claim's `preventDefault`
+	 * suppresses the press's default focus, so focus the ruler here: the
+	 * arrow-key alternatives act on it.
 	 */
-	function clampOffset(offset: { x: number; y: number }) {
-		const block = resolveContainingBlockRect(containerEl);
-		if (!block || !containerEl) return offset;
-		const box = containerEl.getBoundingClientRect();
-		return clampOffsetWithinBlock(offset, box, block);
+	function claimGesture(e: PointerEvent, target: HTMLElement) {
+		if (!gesture.begin(e, target)) return false;
+		containerEl?.focus({ preventScroll: true });
+		return true;
+	}
+
+	function handleDragStart(e: PointerEvent) {
+		if (!containerEl) return;
+		coordinator?.bringToFront(containerEl);
+		if (!claimGesture(e, containerEl)) return;
+		dragController.startDragging(e, containerEl);
+	}
+
+	function handleRotateStart(e: PointerEvent) {
+		// The handle sits inside the ruler; its press must not also start a drag.
+		e.stopPropagation();
+		if (!containerEl || !rotateHandleEl) return;
+		coordinator?.bringToFront(containerEl);
+		if (!claimGesture(e, rotateHandleEl)) return;
+		const rect = containerEl.getBoundingClientRect();
+		rotateController.startRotating(e, rotateHandleEl, {
+			x: rect.left + rect.width / 2,
+			y: rect.top + rect.height / 2
+		});
 	}
 
 	// Keyboard navigation (preserved for accessibility)
 	function handleKeyDown(e: KeyboardEvent) {
-		if (!moveable || !containerEl) return;
+		if (!containerEl) return;
 
 		let handled = false;
 		const isShift = e.shiftKey;
 
-		/*
-		 * Read the current placement from the computed transform rather than from the
-		 * inline string. `DOMMatrix` rejects a value it cannot resolve at parse time,
-		 * and the inline transform carries the `translate(-50%, -50%)` that centres
-		 * the tool, so parsing it threw on every press after the first. The computed
-		 * value is a resolved matrix.
-		 *
-		 * That matrix includes the centring, which is half the tool's own layout box,
-		 * so adding it back leaves the offset this tool has actually been moved by --
-		 * 0 before the first drag or nudge, and Moveable's offset after a drag. A
-		 * viewport-derived fallback here is what made the first arrow key a jump to
-		 * the middle of the screen.
-		 */
-		const computed = isBrowser ? getComputedStyle(containerEl).transform : 'none';
-		const matrix = new DOMMatrix(computed === 'none' ? undefined : computed);
-		let x = matrix.e + containerEl.offsetWidth / 2;
-		let y = matrix.f + containerEl.offsetHeight / 2;
-		let rotation = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
+		let { x, y } = placement;
+		let rotation = Math.round(placement.rotation);
 
 		switch (e.key) {
 			case 'ArrowUp':
@@ -272,22 +259,21 @@
 				break;
 		}
 
-		if (handled && moveable) {
+		if (handled) {
 			e.preventDefault();
-			// Apply new transform via Moveable
-			const contained = clampOffset({ x, y });
-			containerEl.style.transform = `translate(-50%, -50%) translate(${contained.x}px, ${contained.y}px) rotate(${rotation}deg)`;
-			moveable.updateRect();
+			applyPlacement({ x, y, rotation });
 		}
 	}
 
-	// Initialize Moveable when visible changes
+	// Each reveal mounts a fresh panel centred by its stylesheet, so the placement
+	// starts over with it.
 	$effect(() => {
 		if (visible && containerEl && isBrowser) {
 			// Wait for the next tick to ensure DOM is updated
-			setTimeout(initMoveable, 0);
+			setTimeout(() => containerEl && coordinator?.bringToFront(containerEl), 0);
 		} else {
-			destroyMoveable();
+			gesture.release();
+			placement = { x: 0, y: 0, rotation: 0 };
 		}
 	});
 
@@ -314,10 +300,10 @@
 	});
 
 	onMount(() => {
-		window.addEventListener('resize', updateBounds);
+		window.addEventListener('resize', reapplyPlacement);
 		return () => {
-			destroyMoveable();
-			window.removeEventListener('resize', updateBounds);
+			gesture.release();
+			window.removeEventListener('resize', reapplyPlacement);
 			// Unregister from the coordinator the registration was actually made
 			// against, which is not necessarily the one currently in context.
 			if (registeredCoordinator && registeredToolId) {
@@ -355,8 +341,8 @@
 	<div
 		bind:this={containerEl}
 		class="pie-tool-ruler"
-		data-moveablejs-tool-id={toolId}
-		onpointerdown={() => containerEl && coordinator?.bringToFront(containerEl)}
+		data-pie-tool-id={toolId}
+		onpointerdown={handleDragStart}
 		onkeydown={handleKeyDown}
 		role="application"
 		tabindex="0"
@@ -367,6 +353,7 @@
 		})}
 		aria-roledescription={interfaceI18n.t('tools.ruler.toolA11y')}
 	>
+		<div class="pie-tool-ruler__frame">
 		<div class="pie-tool-ruler__container">
 			<img
 				class="pie-tool-ruler__image"
@@ -420,6 +407,16 @@
 				</button>
 			</div>
 		</div>
+		</div>
+
+		<!-- Pointer-only affordance: Shift+arrows and Page Up/Down rotate from the keyboard. -->
+		<span class="pie-tool-ruler__rotate-line" aria-hidden="true"></span>
+		<div
+			bind:this={rotateHandleEl}
+			class="pie-tool-ruler__rotate-handle"
+			aria-hidden="true"
+			onpointerdown={handleRotateStart}
+		></div>
 	</div>
 {/if}
 
@@ -442,18 +439,71 @@
 		box-shadow: none;
 		cursor: move;
 		left: 50%;
-		overflow: hidden;
 		position: absolute;
 		top: 50%;
 		transform: translate(-50%, -50%);
-		user-select: none;
+		/* Touch drags move the ruler rather than scroll or zoom the page, and a
+		   long press on iOS opens no callout or selection on the image. */
 		touch-action: none;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
 		width: 540px; /* Matching production implementation frame width */
 	}
 
 	.pie-tool-ruler:focus-visible {
 		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
+	}
+
+	.pie-tool-ruler__frame {
+		box-shadow: 0 0 0 1px var(--pie-primary, #3f51b5);
+		overflow: hidden;
+	}
+
+	/* A frameless overlay draws its own surface, so the frame line goes. */
+	:host([data-pie-tool-surface='frameless']) .pie-tool-ruler__frame {
+		box-shadow: none;
+	}
+
+	.pie-tool-ruler__rotate-line {
+		background: var(--pie-primary, #3f51b5);
+		bottom: 100%;
+		height: 40px;
+		left: 50%;
+		pointer-events: none;
+		position: absolute;
+		transform: translateX(-50%);
+		width: 1px;
+	}
+
+	/* A 44px hit area centred on the 14px knob at the end of the line. */
+	.pie-tool-ruler__rotate-handle {
+		align-items: center;
+		bottom: calc(100% + 40px - 22px);
+		cursor: grab;
+		display: flex;
+		height: 44px;
+		justify-content: center;
+		left: 50%;
+		position: absolute;
+		touch-action: none;
+		transform: translateX(-50%);
+		width: 44px;
+	}
+
+	.pie-tool-ruler__rotate-handle:active {
+		cursor: grabbing;
+	}
+
+	.pie-tool-ruler__rotate-handle::after {
+		background: var(--pie-background, #fff);
+		border: 2px solid var(--pie-primary, #3f51b5);
+		border-radius: 50%;
+		box-sizing: border-box;
+		content: '';
+		height: 14px;
+		width: 14px;
 	}
 
 	.pie-tool-ruler__container {
@@ -521,7 +571,7 @@
 		line-height: 1.4;
 	}
 
-	:global([data-moveablejs-tool-id="ruler"]) {
+	:global([data-pie-tool-id="ruler"]) {
 		z-index: 2002; /* ZIndexLayer.MODAL */
 	}
 </style>

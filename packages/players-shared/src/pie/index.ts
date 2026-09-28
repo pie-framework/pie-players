@@ -116,6 +116,7 @@ export {
 	SESSION_COMMIT_METHOD,
 	bindPageLifecycleCommit,
 	commitPendingSessions,
+	flushPendingSessionNotifications,
 	noteSessionBaseline,
 	noteSessionObserved,
 } from "./session-commit.js";

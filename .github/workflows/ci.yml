@@ -108,9 +108,10 @@ jobs:
             browsers: chromium
           # Firefox runs the esm strategy's specs: it rejects import maps other
           # engines apply, and the player loads through es-module-shims there.
+          # Firefox and WebKit run the focus-order spec.
           - name: item-player-critical
             command: test:e2e:item-player:critical
-            browsers: chromium firefox
+            browsers: chromium firefox webkit
           - name: players-shared-sanitizer
             command: test:e2e:players-shared
             browsers: chromium
@@ -199,10 +200,10 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
 
-      # Firefox runs the esm strategy's specs.
+      # Firefox runs the esm strategy's specs; Firefox and WebKit the focus-order one.
       - name: Install Playwright Browsers
         if: env.RUN_HEAVY == 'true'
-        run: bunx playwright install --with-deps chromium firefox
+        run: bunx playwright install --with-deps chromium firefox webkit
 
       - name: Run Section Player E2E
         if: env.RUN_HEAVY == 'true'

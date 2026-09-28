@@ -17,6 +17,10 @@ import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
 import { demoPreloadedBundledElementsSection } from "./demo-preloaded-bundled-elements";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
+import {
+	sectionSwitchCommitSectionOne,
+	sectionSwitchCommitSectionTwo,
+} from "./demo-section-switch-commit";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 import {
 	demoSignLanguageGrantedSection,
@@ -982,6 +986,33 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 				id: "pie-512-section-b",
 				name: "Section B (three items)",
 				section: pie512SectionB,
+			},
+		],
+	},
+	"section-switch-commit": {
+		id: "section-switch-commit",
+		name: "Host Section Navigation",
+		description:
+			"A host swaps sections on one section player element from its own navigation, mid-debounce.",
+		integrationLevel: 5,
+		integrationTheme: "Regression fixture",
+		focus:
+			"A response typed just before the host's section navigation reaches the host while its item is still current, and the section switch that follows commits nothing for it.",
+		whatMakesItTick: [
+			"The host's buttons sit outside the player: moving focus to them is the learner leaving the item.",
+			"On navigation the host updates its current item, sets the new section on the same element, then persists the previous section's controller.",
+			"`extended-text-entry` defers its `session-changed` for 1.5 seconds, so the navigation lands inside that window.",
+		],
+		sections: [
+			{
+				id: "section-switch-one",
+				name: "Section one",
+				section: sectionSwitchCommitSectionOne,
+			},
+			{
+				id: "section-switch-two",
+				name: "Section two",
+				section: sectionSwitchCommitSectionTwo,
 			},
 		],
 	},

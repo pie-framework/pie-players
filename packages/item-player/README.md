@@ -248,15 +248,21 @@ These are set via JavaScript, not HTML attributes.
     when it did not.
 
   `complete` is the announcing element's own, `component` its tag and
-  `elementId` its model id. State an element's controller derives and writes
+  `elementId` its model id. Every event carries both `complete` and
+  `component`: where the element supplied neither - an event synthesized for an
+  element that cannot commit itself, or correct responses the player populated
+  - `component` is the element's tag and `complete` is whether its session
+  record holds a response. State an element's controller derives and writes
   back, such as a shuffled choice order, dispatches no event of its own: the
-  `session` container holds it at once, and the next event carries it. A commit
-  at a teardown, navigation or page-hidden seam has the first shape plus
-  `sessionCommitReason` (`"teardown" | "navigate" | "page-hidden"`), and one
-  synthesized for an element that cannot commit itself carries no `complete`.
-  A host that re-pushes `config` in response to this event should ignore a
-  commit, since the commit exists to report a response the host is about to
-  lose rather than to request a reload.
+  `session` container holds it at once, and the next event carries it.
+
+  Focus leaving the player delivers any pending announcement at once, ahead of
+  the click or key that moved focus, so a host reacting to that click or key
+  already has the response. A commit at a teardown, navigation or page-hidden
+  seam has the first shape plus `sessionCommitReason`
+  (`"teardown" | "navigate" | "page-hidden"`). A host that re-pushes `config`
+  in response to this event should ignore a commit, since the commit exists to
+  report a response the host is about to lose rather than to request a reload.
 - `player-error`: `{ code?, message?, stage?, strategy?, mode?, cause? }`. Error
   event, for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
   When elements fail to register, `cause` names each one and why, such as the

@@ -116,7 +116,9 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 - `item-complete-changed` — an item's completion flipped. An item is complete
   when every element that has reported its completion is complete. A report
   without `elementId`, and a restored session's item-level `complete`, set the
-  item's completion directly.
+  item's completion directly. A session restored through `applySession`
+  without `complete` is complete when it holds a response. A passage's own
+  `session-changed` stays inside its shell: a passage holds no response.
 - `content-loaded` — passage / item / rubric finished loading. Carries
   `contentKind`, `itemId`, and `canonicalItemId`.
 - `section-loading-complete` — every renderable in the section finished

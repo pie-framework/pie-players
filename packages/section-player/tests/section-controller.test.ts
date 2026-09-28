@@ -656,6 +656,54 @@ describe("SectionController item completion", () => {
 		expect(changes).toEqual([false]);
 	});
 
+	test("derives completion from a response restored without complete", async () => {
+		const controller = await initializedController();
+		// An element announcing its placeholder at load describes the session the
+		// restore then replaces.
+		report(controller, "a", false);
+		await controller.applySession(
+			{
+				itemSessions: {
+					[itemId]: {
+						itemIdentifier: itemId,
+						pieSessionId: "restored",
+						session: { id: "", data: [{ id: "a", value: ["x"] }] },
+					},
+				},
+			} as never,
+			{ mode: "replace" },
+		);
+		expect(controller.getRuntimeState()?.completedCount).toBe(1);
+	});
+
+	test("reads a restored session without a response as incomplete", async () => {
+		const controller = await initializedController();
+		await controller.applySession(
+			{
+				itemSessions: {
+					[itemId]: {
+						itemIdentifier: itemId,
+						session: { id: "", data: [{ id: "a", element: "pie-a" }] },
+					},
+				},
+			},
+			{ mode: "replace" },
+		);
+		expect(controller.getRuntimeState()?.completedCount).toBe(0);
+	});
+
+	test("keeps an element's report across a re-initialize", async () => {
+		const controller = await initializedController();
+		report(controller, "a", false, [{ id: "a", value: ["partial"] }]);
+		await controller.updateInput({
+			section: makeSectionWithItems("section-completion", ["runtime-item-a"]),
+			sectionId: "section-completion",
+			assessmentId: "assessment-completion",
+			view: ["candidate"],
+		});
+		expect(controller.getRuntimeState()?.completedCount).toBe(0);
+	});
+
 	test("names the reporting element on its session events", async () => {
 		const controller = await initializedController();
 		const reported: Array<{ type: string; elementId?: string }> = [];

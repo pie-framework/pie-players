@@ -76,16 +76,18 @@ currently satisfies:
   it to `fetch`. Unforwarded, that save is an ordinary request the browser may
   drop as the document goes away, which is the case the flag exists for.
 - A host that **moves its navigation state on `item-session-data-changed`**
-  receives the commit for the item being left after its own navigation has
-  started. Host A's handler moves its current item to the event's item, so a
-  back or visited-section jump taken while an element still holds an
-  unannounced response puts the host back on the item just left, and the
-  committed response reaches the host's store after it has already submitted
-  that item on navigation. Such a handler should leave navigation state alone
-  for an event carrying `sessionCommitReason` and persist its session as usual;
-  `sectionId` names the section the item belongs to. Committing with
-  `persist()` before dispatching its own navigation also closes the gap. The
-  chain is traced through Host A's code; its runtime effect is inferred.
+  gets the response for the item being left before its own navigation runs,
+  when that navigation follows focus leaving the player: a click on or a key
+  press in the host's own controls. The item player delivers every pending
+  announcement on `focusout`, ahead of the click or key, as an ordinary event
+  with no `sessionCommitReason`, and the section switch that follows then
+  commits nothing for that item. Host A's handler moves its current item to the
+  event's item, which is why the order matters to it. A navigation that does
+  not move focus - a timer, or a shortcut handled while the editor keeps focus -
+  still receives the commit afterwards: such a handler should leave navigation
+  state alone for an event carrying `sessionCommitReason`, or call `persist()`
+  before dispatching its own navigation. `sectionId` names the section the item
+  belongs to.
 
 A host **migrating off `<pie-player>`** keeps its session read. On
 `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
@@ -826,9 +828,17 @@ it would store those three types' responses under the wrong field without an
 error. An error thrown in that handler reaches the host's global error handler,
 which ends the session, so once an item is displayed every `session-changed` it
 does not skip has to carry a string `component` and a non-empty `session.data`,
-and an event with `complete: true` has to carry them before display too. A
-controller write-back dispatches no event of its own; the next element event
-carries it.
+and an event with `complete: true` has to carry them before display too. The
+player fills a missing `component` with the element's tag and a missing
+`complete` from whether the element's record holds a response, so a synthesized
+or player-populated event meets both. A controller write-back dispatches no
+event of its own; the next element event carries it.
+
+It stores the response when its submit runs and then unmounts the player. The
+teardown commit runs after the player has left its container, where the
+container listener no longer hears it, so an answer inside an element's
+debounce reaches the host through the focus-leave flush: a click on, or a key
+press in, the host's submit control moves focus out of the player first.
 
 ## Controller and coordinator methods
 

@@ -511,15 +511,6 @@
       }
     }
 
-    // Clear existing session entries first by dispatching clear events for each existing entry
-    // This ensures the parent component clears its session state before we populate new responses
-    const existingIds = new Set(session.map((s: any) => s.id));
-    for (const id of existingIds) {
-      // Dispatch a session-changed event with null/empty to signal clearing
-      // The parent should handle this by removing the entry
-      dispatch("session-changed", { id, clear: true });
-    }
-
     // Update session with correct responses
     session.length = 0;
     session.push(...newSession);
@@ -562,10 +553,16 @@
         session
       );
 
-      // Dispatch session-changed events for each populated response
-      // This ensures the parent component can sync its session state
+      // One announcement per populated element, in the shape an element's own
+      // takes: the session is the whole array, so the first replaces the
+      // host's copy and the rest announce each element's `complete`.
       for (const sessionEntry of newSession) {
-        dispatch("session-changed", sessionEntry);
+        dispatch("session-changed", {
+          component: sessionEntry.element,
+          complete: true,
+          elementId: sessionEntry.id,
+          session: { id: "", data: session },
+        });
       }
 
       // Report that correct responses reached the session, so a host can detect

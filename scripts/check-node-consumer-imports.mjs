@@ -307,7 +307,8 @@ export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
  * `@types/node` is included in every compilation that can see it, so one pulled
  * in by a dependency breaks a consumer on an older TypeScript. The package
  * installs into a fixture of its own, since other fixture packages bring
- * `@types/node` in transitively.
+ * `@types/node` in transitively. The snippet encodes the bytes the way a route
+ * handler does, which the audio type has to keep compiling without Node types.
  */
 const typecheckTtsServerCore = (tarballPath) => {
 	const fixtureDir = createFixtureProject();
@@ -320,7 +321,10 @@ const typecheckTtsServerCore = (tarballPath) => {
 			fixtureDir,
 			`import type { SynthesizeResponse } from "${TTS_SERVER_CORE}";
 
-export type SynthesizedAudio = SynthesizeResponse["audio"];
+export const toBase64 = (response: SynthesizeResponse): string =>
+	typeof response.audio === "string"
+		? response.audio
+		: response.audio.toString("base64");
 `,
 			{ types: [] },
 		);

@@ -3,15 +3,15 @@ import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 
 /**
- * A coordinator registers tool providers only from its own `toolRegistry`, so
- * one built without it serves no packaged capability. The two warnings that say
- * so appear for a registry-less coordinator and not for one given the packaged
- * set.
+ * A coordinator registers tool providers only from its registry: its own
+ * `toolRegistry`, or, constructed without one, the registry of the toolkit it is
+ * bound to. The two warnings about a missing registry appear only once a
+ * coordinator is known to have none.
  */
 
 const FALLBACK_WARNING = "falls back to browser speech";
-const REGISTRY_UNAVAILABLE =
-	"[tool-config-validation:ToolkitCoordinator.init] tools - No tool registry was supplied";
+const REGISTRY_FAILURE_WARNING = "Failed to initialize TTS via registry";
+const REGISTRY_UNAVAILABLE = "No tool registry was supplied";
 
 // The server-backend configuration a host's section demos pass.
 const tools = {
@@ -80,14 +80,19 @@ afterEach(() => {
 
 const readyCoordinator = async (
 	toolRegistry?: ReturnType<typeof createPackagedToolRegistry>,
+	options: {
+		adopt?: ReturnType<typeof createPackagedToolRegistry> | null;
+		tools?: typeof tools;
+	} = {},
 ) => {
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: "missing-tool-registry-diagnostics",
 		toolConfigStrictness: "error",
 		lazyInit: true,
 		toolRegistry,
-		tools,
+		tools: options.tools ?? tools,
 	});
+	if (options.adopt !== undefined) coordinator.adoptToolRegistry(options.adopt);
 	const initProviders: unknown[] = [];
 	coordinator.subscribeTelemetry(({ eventName, payload }) => {
 		if (eventName === "pie-toolkit-tts-init-success") {
@@ -99,19 +104,69 @@ const readyCoordinator = async (
 };
 
 describe("a coordinator's tool registry and the warnings about its absence", () => {
-	test("without toolRegistry: browser fallback, both warnings", async () => {
+	test("without toolRegistry, bound to a toolkit carrying the packaged set: registry provider, neither warning", async () => {
+		const { coordinator, initProviders } = await readyCoordinator(undefined, {
+			adopt: createPackagedToolRegistry(),
+		});
+
+		expect(initProviders).toEqual(["registry"]);
+		expect(coordinator.toolProviderRegistry.has("tts")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator-desmos")).toBe(
+			true,
+		);
+		expect(countWarnings(FALLBACK_WARNING)).toBe(0);
+		expect(countWarnings(REGISTRY_UNAVAILABLE)).toBe(0);
+		expect(requests).toEqual([]);
+	});
+
+	test("bound after text-to-speech started: re-initialized through the registry", async () => {
 		const { coordinator, initProviders } = await readyCoordinator();
+		expect(initProviders).toEqual(["browser-fallback"]);
+
+		coordinator.adoptToolRegistry(createPackagedToolRegistry());
+		await coordinator.ensureTTSReady();
+
+		expect(initProviders).toEqual(["browser-fallback", "registry"]);
+		expect(countWarnings(FALLBACK_WARNING)).toBe(0);
+		expect(countWarnings(REGISTRY_UNAVAILABLE)).toBe(0);
+	});
+
+	test("bound to a toolkit without a registry: browser fallback, both warnings", async () => {
+		const { coordinator, initProviders } = await readyCoordinator(undefined, {
+			adopt: null,
+		});
 
 		expect(initProviders).toEqual(["browser-fallback"]);
 		expect(coordinator.toolProviderRegistry.getProviderIds()).toEqual([]);
 		expect(countWarnings(FALLBACK_WARNING)).toBe(1);
 		const unavailable = warnings().filter((line) =>
-			line.startsWith(REGISTRY_UNAVAILABLE),
+			line.includes(REGISTRY_UNAVAILABLE),
 		);
 		expect(unavailable).toHaveLength(1);
 		expect(unavailable[0]).toContain(
-			"a coordinator built without one registers no tool providers",
+			"a coordinator without one registers no tool providers",
 		);
+	});
+
+	test("an adopted server backend that fails validation falls back to browser speech", async () => {
+		const failing = {
+			...tools,
+			providers: {
+				textToSpeech: {
+					...tools.providers.textToSpeech,
+					endpointValidationMode: "endpoint" as const,
+				},
+			},
+		};
+		const { initProviders } = await readyCoordinator(undefined, {
+			adopt: createPackagedToolRegistry(),
+			tools: failing as unknown as typeof tools,
+		});
+
+		expect(requests.length).toBeGreaterThan(0);
+		expect(initProviders).toEqual(["browser-fallback"]);
+		expect(countWarnings(REGISTRY_FAILURE_WARNING)).toBe(1);
+		expect(countWarnings(FALLBACK_WARNING)).toBe(0);
 	});
 
 	test("with createPackagedToolRegistry(): registry provider, neither warning", async () => {

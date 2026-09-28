@@ -1,11 +1,12 @@
 /**
  * Placed tools whose provider a host-supplied coordinator has not registered.
  *
- * A coordinator registers tool providers only from its own `toolRegistry`, while
- * this player's toolbars render from the section player's registry. A host
- * coordinator built without that registry sits behind buttons nothing serves — a
- * calculator that never opens — and the only other trace is the provider
- * registry's error on each click.
+ * A coordinator constructed with a `toolRegistry` registers tool providers only
+ * from it, while this player's toolbars render from the section player's
+ * registry. One that lacks a placed tool's registration sits behind a button
+ * nothing serves — a calculator that never opens — and the only other trace is
+ * the provider registry's error on each click. A coordinator constructed without
+ * a registry adopts the section player's and is not affected.
  */
 
 import type {
@@ -66,7 +67,7 @@ export function reportMissingToolProviders(
 		}
 		reported.add(toolId);
 		console.warn(
-			`[pie-section-player] Placed tool "${toolId}" uses provider "${providerId}", which the host-supplied coordinator (runtime.coordinator) has not registered. A coordinator registers tool providers only from its own \`toolRegistry\`, never from the section player's: construct it with the registry the section player renders from — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per tool and coordinator.`,
+			`[pie-section-player] Placed tool "${toolId}" uses provider "${providerId}", which the host-supplied coordinator (runtime.coordinator) has not registered. That coordinator registers tool providers only from the \`toolRegistry\` it was constructed with: include this tool's registration there — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders" — or construct it without one to use the section player's. Reported once per tool and coordinator.`,
 		);
 	}
 }

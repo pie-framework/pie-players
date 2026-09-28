@@ -48,6 +48,7 @@ export type {
 	SpeechMark,
 	StandardTTSParameters,
 	SynthesizeMetadata,
+	SynthesizedAudioBytes,
 	SynthesizeRequest,
 	SynthesizeResponse,
 	TTSProviderExtensions,

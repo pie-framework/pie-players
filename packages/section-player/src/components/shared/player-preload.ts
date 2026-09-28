@@ -41,8 +41,10 @@ import {
 	type IifeBackendConfig,
 	type IifeBundleRetryStatus,
 	type ItemEntity,
+	type LoaderConfig,
 	createPieLogger,
 	isGlobalDebugEnabled,
+	resolveInstrumentationProvider,
 	resolveLoadControllers,
 	toViewTag,
 	validatePieConfigContract,
@@ -250,6 +252,18 @@ export function buildBackendConfigFromProps(args: {
 	const loaderOptions = args.resolvedPlayerProps?.loaderOptions as
 		| Record<string, unknown>
 		| undefined;
+	// The item players read the same `loaderConfig`, so a pre-warm load reports
+	// to the host's telemetry and retries as theirs do.
+	const loaderConfig = args.resolvedPlayerProps?.loaderConfig as
+		| LoaderConfig
+		| undefined;
+	const instrumentation = {
+		trackPageActions: loaderConfig?.trackPageActions,
+		instrumentationProvider: resolveInstrumentationProvider({
+			player: { loaderConfig },
+			component: "pie-section-player",
+		}),
+	};
 
 	if (args.strategy === "esm") {
 		const esmCdnProvider = readEsmCdnProvider(loaderOptions?.esmCdnProvider);
@@ -274,6 +288,7 @@ export function buildBackendConfigFromProps(args: {
 				author: isAuthorMode(args.resolvedPlayerProps, args.resolvedPlayerEnv),
 				hosted: args.resolvedPlayerProps?.hosted === true,
 			}),
+			...instrumentation,
 		};
 	}
 
@@ -297,7 +312,9 @@ export function buildBackendConfigFromProps(args: {
 		bundleType,
 		// A hosted player's server runs the controllers.
 		needsControllers: bundleType !== BundleType.player,
+		bundleRetry: loaderConfig?.iifeBundleRetry,
 		onBundleRetryStatus: args.onBundleRetryStatus,
+		...instrumentation,
 	};
 }
 

@@ -103,9 +103,9 @@ const DEFAULT_TOOLS: CanonicalToolsConfig = normalizeToolsConfig({
 });
 
 export class ToolPolicyEngine {
-	private readonly toolRegistry: ToolRegistry;
+	private toolRegistry: ToolRegistry;
 	private readonly contextId: string;
-	private readonly pnpPolicySource: PnpPolicySource;
+	private pnpPolicySource: PnpPolicySource;
 	private readonly customSources: PolicySource[];
 	private readonly listeners = new Set<ToolPolicyChangeListener>();
 
@@ -294,6 +294,22 @@ export class ToolPolicyEngine {
 				inputs: this.snapshotInputs(),
 			});
 		}
+	}
+
+	/**
+	 * Swap the registry PNP support ids resolve against, together with the tools
+	 * config validated against it, and emit an `"inputs"` change. For a
+	 * coordinator adopting its toolkit's registry.
+	 */
+	replaceToolRegistry(
+		toolRegistry: ToolRegistry,
+		tools: CanonicalToolsConfig,
+	): void {
+		this.assertNotDisposed();
+		this.toolRegistry = toolRegistry;
+		this.pnpPolicySource = new PnpPolicySource(toolRegistry);
+		this.tools = tools;
+		this.emit({ reason: "inputs", inputs: this.snapshotInputs() });
 	}
 
 	registerPolicySource(source: PolicySource): () => void {

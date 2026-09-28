@@ -271,6 +271,50 @@ describe("player-preload: backend config", () => {
 			throw new Error("expected esm backend");
 		}
 	});
+
+	test("both backends carry the host's loaderConfig as the item players do", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const instrumentationProvider = {
+			providerId: "host",
+			providerName: "Host",
+			initialize: async () => {},
+			trackEvent: () => {},
+			trackError: () => {},
+			isReady: () => true,
+			destroy: () => {},
+		};
+		const iifeBundleRetry = { enabled: false };
+		const resolvedPlayerProps = {
+			loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+			loaderConfig: {
+				trackPageActions: true,
+				instrumentationProvider,
+				iifeBundleRetry,
+			},
+		};
+		for (const strategy of ["iife", "esm"]) {
+			const backend = buildBackendConfigFromProps({
+				strategy,
+				resolvedPlayerProps,
+				resolvedPlayerEnv: {},
+			});
+			expect(backend.trackPageActions).toBe(true);
+			expect(backend.instrumentationProvider).toBe(instrumentationProvider);
+			if (backend.kind === "iife") {
+				expect(backend.bundleRetry).toBe(iifeBundleRetry);
+			}
+		}
+
+		const quiet = buildBackendConfigFromProps({
+			strategy: "iife",
+			resolvedPlayerProps: {
+				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+			},
+			resolvedPlayerEnv: {},
+		});
+		expect(quiet.trackPageActions).toBeUndefined();
+		expect(quiet.instrumentationProvider).toBeUndefined();
+	});
 });
 
 describe("player-preload: error helpers", () => {

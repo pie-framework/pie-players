@@ -338,7 +338,6 @@ The layout elements (`pie-section-player-splitpane`,
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
-- `section-id` (string, optional): the section's id in events, telemetry and the controller key. Unset, the section's `identifier` stands in.
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.

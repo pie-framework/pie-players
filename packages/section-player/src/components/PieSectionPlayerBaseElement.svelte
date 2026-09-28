@@ -60,7 +60,6 @@
 	import { onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
-	import { resolveSectionId } from "./shared/section-player-host-runtime.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
 	import {
@@ -176,7 +175,9 @@
 	const effectiveOnStageChange = $derived.by(
 		() => runtime?.onStageChange ?? onStageChange,
 	);
-	const effectiveSectionId = $derived(resolveSectionId(sectionId, section));
+	const effectiveSectionId = $derived.by(
+		() => sectionId || (section as any)?.identifier || "",
+	);
 
 	// The toolkit's events bubble out of this element on their own, which is
 	// the one channel they reach the layout host and `document` by. This element
@@ -432,7 +433,7 @@
 	bind:this={toolkitElement}
 	assessment-id={effectiveAssessmentId}
 	section={section}
-	section-id={effectiveSectionId}
+	section-id={sectionId}
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}
 	player={effectivePlayer}

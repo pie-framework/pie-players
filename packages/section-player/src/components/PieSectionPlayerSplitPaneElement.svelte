@@ -83,10 +83,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import {
-		mergeLayoutAttrsIntoRuntime,
-		resolveSectionId,
-	} from "./shared/section-player-host-runtime.js";
+	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import {
 		NULL_READS,
 		withHostMethods,
@@ -246,9 +243,6 @@
 	const kernelRuntime = $derived(
 		mergeLayoutAttrsIntoRuntime(runtime, { ndsIcons, locale }),
 	);
-	// The section's own identifier stands in for an unset `section-id`, so the
-	// kernel's engine has a cohort to emit the stage events for.
-	const effectiveSectionId = $derived(resolveSectionId(sectionId, section));
 
 	// Snapshot of the resolved prop at mount. Renders the divider in the
 	// right place on the first frame (so consumers don't see a 50% flash
@@ -423,7 +417,7 @@
 			staticAttributes: {
 				instrumentationLayer: "section",
 				assessmentId,
-				sectionId: effectiveSectionId,
+				sectionId,
 				attemptId: attemptId || undefined,
 			},
 			shouldTrackEvent: (event: Event) => event.target === localHost,
@@ -439,7 +433,7 @@
 	{assessmentId}
 	runtime={kernelRuntime}
 	{section}
-	sectionId={effectiveSectionId}
+	{sectionId}
 	{attemptId}
 	{iifeBundleHost}
 	{debug}

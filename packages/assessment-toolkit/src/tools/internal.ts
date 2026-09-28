@@ -137,6 +137,7 @@ export type {
 
 // Canonical tools config shapes a provider descriptor validates against.
 export type {
+	CalculatorToolProviderConfig,
 	ToolPlacementConfig,
 	ToolProviderConfig,
 } from "../services/tools-config-normalizer.js";

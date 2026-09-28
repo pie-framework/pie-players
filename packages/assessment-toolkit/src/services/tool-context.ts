@@ -443,21 +443,36 @@ export function hasMathContent(context: ToolContext): boolean {
 	return textIndicators.some((pattern) => pattern.test(text));
 }
 
+const CHOICE_INTERACTION_ELEMENTS = new Set([
+	"multiple-choice",
+	"inline-choice",
+	"select-text",
+	"ebsr",
+]);
+
+// Content names one interaction several ways: `multiple-choice`, `pie-multiple-choice`,
+// `pie-element-multiple-choice`, a runtime `--version-*` tag, or any tag the item's
+// `elements` map binds to `@pie-element/multiple-choice`.
+const baseElementName = (tag: string): string =>
+	tag
+		.toLowerCase()
+		.replace(/--version-[0-9a-z-]+$/, "")
+		.replace(/^pie-(element-)?/, "");
+
+function isChoiceElement(tag: string, elements: unknown): boolean {
+	if (CHOICE_INTERACTION_ELEMENTS.has(baseElementName(tag))) return true;
+	if (!elements || typeof elements !== "object") return false;
+	const map = elements as Record<string, unknown>;
+	const spec = map[tag] ?? map[tag.replace(/--version-[0-9A-Za-z-]+$/, "")];
+	if (typeof spec !== "string") return false;
+	const packageName = spec.match(/^@pie-element\/([^@]+)/)?.[1];
+	return !!packageName && CHOICE_INTERACTION_ELEMENTS.has(packageName);
+}
+
 /**
  * Helper to check if context contains choice-based interactions
  */
 export function hasChoiceInteraction(context: ToolContext): boolean {
-	const interactionTypes = [
-		"pie-multiple-choice",
-		"pie-inline-choice",
-		"pie-select-text",
-		"pie-ebsr",
-		"multiple-choice",
-		"inline-choice",
-		"select-text",
-		"ebsr",
-	];
-
 	if (isElementContext(context)) {
 		const config = context.item.config;
 		if (!config?.models) return false;
@@ -472,11 +487,12 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 		if (!model) return false;
 
 		const type = (model as any).element || "";
-		return interactionTypes.includes(type);
+		return isChoiceElement(type, config.elements);
 	}
 
 	if (isItemContext(context)) {
-		const modelsRaw = context.item.config?.models;
+		const config = context.item.config;
+		const modelsRaw = config?.models;
 		const models = Array.isArray(modelsRaw)
 			? modelsRaw
 			: modelsRaw && typeof modelsRaw === "object"
@@ -491,7 +507,7 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 			// `drag-in-the-blank` each hold their draggables there — so reading it on
 			// a named model showed the answer eliminator on items where the tool does
 			// nothing. The heuristic remains for configs that name no element.
-			if (type) return interactionTypes.includes(type);
+			if (type) return isChoiceElement(type, config?.elements);
 			return Array.isArray(m.choices) && m.choices.length > 0;
 		});
 	}

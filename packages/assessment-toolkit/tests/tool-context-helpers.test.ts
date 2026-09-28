@@ -151,6 +151,50 @@ describe("tool-context helpers", () => {
 		expect(hasChoiceInteraction(context)).toBe(true);
 	});
 
+	for (const element of [
+		"pie-element-multiple-choice",
+		"multiple-choice--version-13-4-0",
+		"pie-element-multiple-choice--version-13-4-0-next-18",
+	]) {
+		test(`detects ${element} as a choice interaction`, () => {
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: { config: { models: [{ element }] } } as any,
+			};
+
+			expect(hasChoiceInteraction(context)).toBe(true);
+		});
+	}
+
+	test("resolves a custom tag through the item's elements map", () => {
+		const item = {
+			config: {
+				elements: { "mc-1": "@pie-element/multiple-choice@13.4.0" },
+				models: [{ id: "q1", element: "mc-1" }],
+			},
+		} as any;
+
+		expect(
+			hasChoiceInteraction({
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item,
+			}),
+		).toBe(true);
+		expect(
+			hasChoiceInteraction({
+				level: "element",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item,
+				elementId: "q1",
+			} as any),
+		).toBe(true);
+	});
+
 	test("detects EBSR as a choice interaction (choices live under partA/partB)", () => {
 		const context: ToolContext = {
 			level: "item",

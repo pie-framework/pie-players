@@ -10,11 +10,13 @@
 			availableTypes: { type: 'Array', attribute: 'available-types' },
 			calculatorConfig: { type: 'Object' },
 			toolkitCoordinator: { type: 'Object' },
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type { AssessmentToolkitRuntimeContext } from '@pie-players/pie-assessment-toolkit';
 	import type {
 		CalculatorProviderConfig,

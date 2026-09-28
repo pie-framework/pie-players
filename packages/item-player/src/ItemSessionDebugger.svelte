@@ -11,10 +11,12 @@
 			locale: { attribute: "locale", type: "String" },
 			hosted: { attribute: "hosted", type: "Boolean" },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	// Content styles are installed by this component's entry point, not imported
 	// here — see the note in PieItemPlayer.svelte and pie-item-player.ts.
 	import {

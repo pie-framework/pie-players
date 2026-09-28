@@ -25,9 +25,8 @@ const MARKER_ATTRIBUTE = "data-pie-content-styles";
 
 /**
  * Declared by `components.css` itself, so it is observable no matter how the
- * stylesheet arrived — our injection or a host import. Diagnostics only: it
- * tells a host that opted out and then shipped nothing, and it spots a host copy
- * sitting alongside ours.
+ * stylesheet arrived — our injection or a host import. A host copy carrying it
+ * makes the player stand down, and an opted-out host with no copy is warned.
  */
 const SENTINEL_PROPERTY = "--pie-content-styles";
 
@@ -71,6 +70,7 @@ const OPT_OUT_VALUE = "host";
 export type ContentStylesResult =
 	| "installed"
 	| "already-installed"
+	| "host-supplied"
 	| "opted-out"
 	| "no-document";
 
@@ -113,7 +113,16 @@ export function contentStylesPresent(): boolean {
 }
 
 /**
- * Installs `cssText` as a document-level stylesheet, once per document.
+ * Installs `cssText` as a document-level stylesheet, once per document, unless
+ * the host already supplies one.
+ *
+ * A host copy is recognised by the sentinel wherever it sits, including one
+ * confined to the host's player subtree with `@scope`. Such a host scoped its
+ * copy because the stylesheet's bare element selectors would otherwise reach
+ * its own UI, so a global copy from the player would reintroduce exactly that.
+ * A host copy can also land after this runs — a lazily injected `<style>`, a
+ * `<link>` still loading — so the installed copy keeps watching and removes
+ * itself when one appears, as it does when the host sets the opt-out late.
  *
  * The stylesheet is **prepended** to `<head>` and deliberately left out of a
  * cascade layer. Prepending reproduces the placement hosts were told to use by
@@ -140,14 +149,61 @@ export function installContentStyles(
 		// the same stylesheet. Duplicating it would be harmless but pointless.
 		return "already-installed";
 	}
+	if (countHostContentStyleSheets() > 0) return "host-supplied";
 	if (!cssText) return "no-document";
 
 	const style = document.createElement("style");
 	style.setAttribute(MARKER_ATTRIBUTE, source);
 	style.textContent = cssText;
 	document.head.prepend(style);
+	watchForHostOwnership(style);
 	return "installed";
 }
+
+let stopWatchingHostOwnership: (() => void) | null = null;
+
+const watchForHostOwnership = (installed: HTMLStyleElement): void => {
+	stopWatchingHostOwnership?.();
+	if (typeof MutationObserver === "undefined") return;
+
+	const stop = () => {
+		observer.disconnect();
+		document.removeEventListener("load", onLoad, true);
+		if (stopWatchingHostOwnership === stop) stopWatchingHostOwnership = null;
+	};
+	const reconcile = () => {
+		if (!installed.isConnected) {
+			stop();
+			return;
+		}
+		if (contentStylesOptedOut() || countHostContentStyleSheets() > 0) {
+			installed.remove();
+			stop();
+		}
+	};
+	const observer = new MutationObserver((records) => {
+		const relevant = records.some(
+			(record) =>
+				record.type === "attributes" ||
+				Array.from(record.addedNodes).some(
+					(node) => node.nodeName === "STYLE" || node.nodeName === "LINK",
+				),
+		);
+		if (relevant) reconcile();
+	});
+	// `load` does not bubble, so a capturing listener is what sees a host
+	// `<link>` finish, including one already in flight when this runs.
+	const onLoad = (event: Event) => {
+		if ((event.target as Node | null)?.nodeName === "LINK") reconcile();
+	};
+	observer.observe(document.head, { childList: true });
+	observer.observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: [OPT_OUT_ATTRIBUTE],
+	});
+	document.addEventListener("load", onLoad, true);
+	stopWatchingHostOwnership = stop;
+};
 
 /**
  * Counts content stylesheets in the document, detected by the sentinel property
@@ -156,8 +212,8 @@ export function installContentStyles(
  * count to copies the host loaded itself.
  *
  * Cross-origin sheets throw on `cssRules` access and are skipped; a host copy
- * served from another origin therefore reads as absent. That only costs a
- * diagnostic, never correctness.
+ * served from another origin therefore reads as absent, and the player installs
+ * its own copy alongside it. Such a host sets the opt-out attribute instead.
  */
 const countContentStyleSheets = ({
 	excludeInstalled,
@@ -197,18 +253,10 @@ let auditWarningIssued = false;
 const pendingChecks: ReturnType<typeof setTimeout>[] = [];
 
 /**
- * Reports, once per page, the two ways content styling can go wrong. Neither is
- * detectable synchronously — a host copy may still be in flight as an async
- * `<link>` — so the check is deferred.
- *
- * - **Missing**: the host opted out and then loaded nothing, so authored content
- *   renders unstyled. This is the failure the old host-import contract produced
- *   silently.
- * - **Duplicated**: the host still imports `components.css` itself *and* the
- *   player installed a copy. Rendering is correct while the two agree, but the
- *   host's copy loads later and therefore wins ties at equal specificity — so a
- *   host copy pinned to an older `@pie-players/pie-theme` silently overrides the
- *   player's newer rules. Harmless today, a confusing override tomorrow.
+ * Reports, once per page, a host that opted out and then loaded no content
+ * stylesheet, so authored content renders unstyled — the failure the old
+ * host-import contract produced silently. Not detectable synchronously — a host
+ * copy may still be in flight as an async `<link>` — so the check is deferred.
  */
 export function auditContentStyles(source: string): void {
 	if (!isBrowser() || auditWarningIssued) return;
@@ -216,8 +264,7 @@ export function auditContentStyles(source: string): void {
 	const check = () => {
 		if (auditWarningIssued) return;
 
-		if (contentStylesOptedOut()) {
-			if (contentStylesPresent()) return;
+		if (contentStylesOptedOut() && !contentStylesPresent()) {
 			auditWarningIssued = true;
 			console.warn(
 				`[${source}] No PIE content stylesheet found. This document sets ` +
@@ -227,22 +274,6 @@ export function auditContentStyles(source: string): void {
 					`families, answer-eliminator styles) will render unstyled. Either ` +
 					`import "@pie-players/pie-theme/components.css" in the host app, or ` +
 					`drop the ${OPT_OUT_ATTRIBUTE} attribute to let the player install it.`,
-			);
-			return;
-		}
-
-		if (countHostContentStyleSheets() > 0) {
-			auditWarningIssued = true;
-			console.warn(
-				`[${source}] The PIE content stylesheet is loaded twice: ${source} ` +
-					`installs it, and this host also imports ` +
-					`"@pie-players/pie-theme/components.css". Rendering is unaffected ` +
-					`while both copies match, but the host copy loads later and wins ` +
-					`ties at equal specificity, so a copy pinned to an older ` +
-					`@pie-players/pie-theme will silently override newer player styles. ` +
-					`Remove the host import, or set ` +
-					`${OPT_OUT_ATTRIBUTE}="${OPT_OUT_VALUE}" on <html> to own the ` +
-					`stylesheet deliberately.`,
 			);
 		}
 	};
@@ -267,10 +298,12 @@ export function auditContentStyles(source: string): void {
 }
 
 /**
- * Test-only: clears the once-per-page warning latch and cancels any pending
- * deferred check, so a timer scheduled by one test cannot warn during the next.
+ * Test-only: clears the once-per-page warning latch, cancels any pending
+ * deferred check and stops watching for a host copy, so state from one test
+ * cannot act during the next.
  */
 export function resetContentStylesWarningForTesting(): void {
+	stopWatchingHostOwnership?.();
 	auditWarningIssued = false;
 	for (const handle of pendingChecks) clearTimeout(handle);
 	pendingChecks.length = 0;

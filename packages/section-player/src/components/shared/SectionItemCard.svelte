@@ -28,10 +28,12 @@
 			// media. The pane derives it; this card renders it.
 			timedMediaView: { attribute: "timed-media-view", type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";
 	import "../item-shell-element.js";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";

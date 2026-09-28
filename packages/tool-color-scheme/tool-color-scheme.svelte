@@ -5,7 +5,8 @@
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
@@ -21,6 +22,7 @@
 -->
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	const browser = typeof window !== "undefined";
 
 	import {

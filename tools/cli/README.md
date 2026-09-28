@@ -13,7 +13,10 @@ bun run cli --help
 Common command families:
 
 - `pie-packages:*` for preloaded-player package generation and local test
-  project creation.
+  project creation. Generated preloaded builds are transitional: hosts move to
+  pie-elements-ng packages installed from npm, all from one release with exact
+  pins, and registered as ESM with `registerPreloadedElements`
+  ([Registering elements from npm](../../docs/item-player/loading-strategies.md#registering-elements-from-npm)).
 - `pack:*` for local package packing workflows.
 
 ## Related Documentation

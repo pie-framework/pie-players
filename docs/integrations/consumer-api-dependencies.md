@@ -533,9 +533,9 @@ vocabulary is API and `engine-ready` in particular is the gate a host waits on.
 `show-toolbar` is declared `type: "String"`. A sets the attribute to the literal
 string `"false"`; R sets `{true}` on its demo and playground mounts and `"false"`
 on its preview mount, so both forms are live within one host as well as across
-two. Retyping it to `Boolean` inverts A's intent, since attribute presence would
-then read as `true`. Same trap for `debug` and any other `type: "String"`
-attribute a host sets to `"false"`.
+two. Boolean attributes read `"false"` as false, so a retype to `Boolean` would
+keep A's intent only through that parse; the same holds for `debug` and any
+other `type: "String"` attribute a host sets to `"false"`.
 
 Both hosts set a class of their own on the layout element: Host A a fixed one,
 Host R one toggled by a policy decision. Class attributes on the layout host must
@@ -906,7 +906,8 @@ Host R sets the same eleven-key TTS provider config, the same three-part
 unvalidated transport combination among them, and adds a twelfth key —
 `providerOptions`, an untyped object. The toolkit merges it into the provider's
 config; on the custom transport the request body is `{ text, speedRate, lang_id,
-cache }`, and only those three option names are read from it, so the host's
+langId, cache }`, `langId` repeating `lang_id` for servers that bind camelCase,
+and only three option names are read from it, so the host's
 other keys reach no request. So that path has two consumers rather than one, and the
 internally controlled one is where a tightening would surface first.
 `providerOptions` itself has one consumer and no type constraint on the host
@@ -1192,9 +1193,11 @@ The two disagree because 0.3.61 was published with the changeset held back, so
 item-player's 0.3.61 changelog shows only a lockstep dependency bump while that
 release's tree already contained the installing code. Version comparisons here
 use 0.3.61 as the threshold; a host reading only the changelog will over-pin
-to 0.3.62. `auditContentStyles` warns once per page when the host also loads
-its own copy, or when the host opts out and then loads nothing. The opt-out is
-`data-pie-content-styles="host"` on `<html>`.
+to 0.3.62. The player installs nothing when the host already loads a copy,
+recognised by the `--pie-content-styles` sentinel even inside `@scope`, and
+removes its own copy when the host's lands later. The explicit opt-out is
+`data-pie-content-styles="host"` on `<html>`; `auditContentStyles` warns once per
+page when a host sets it and then loads nothing.
 
 Consequences per host:
 
@@ -1202,10 +1205,13 @@ Consequences per host:
   importing the stylesheet text from `pie-theme` and re-injecting it wrapped in
   `@scope (.item-content)`. The scoping is deliberate: `components.css` carries
   bare `h1`–`h6`, `table`, `th`, `.table`, and `.text-center` selectors that
-  bleed onto a surrounding host UI if applied document-globally. On upgrading to
-  0.3.61 or later that host gets a *second, unscoped* copy installed by the
-  player, reintroducing exactly the bleed it scoped around, plus the duplicate
-  warning. It needs the opt-out attribute at the same time as the version bump.
+  bleed onto a surrounding host UI if applied document-globally. From 0.3.61
+  until the host-copy detection landed, upgrading gave that host a *second,
+  unscoped* copy installed by the player, reintroducing exactly the bleed it
+  scoped around, plus a duplicate warning. Its copy is injected alongside the
+  player import, so either can arrive first; the player now stands down in both
+  orders, and the host needs no attribute or code change on upgrade. Deleting its
+  own copy would bring the global copy, and the bleed, back.
 - **Host A** dropped its build-config `components.css` entry and now cedes
   ownership to the player entirely: no opt-out attribute, no stylesheet import
   of its own, so it is in the healthy configuration.
@@ -1216,10 +1222,10 @@ Consequences per host:
   the stylesheet and it is in the healthy configuration too. It styles no player
   DOM and sets no `--pie-*` token.
 
-Host V is the only host still in the duplicate-risk state, and it enters that
-state the moment it bumps to `0.3.61` or later without the opt-out. Any further
-change to how content styles are delivered has to account for it and for the
-opt-out attribute the other three now rely on implicitly by absence.
+Host V is the only host that supplies its own copy, and it relies on the
+sentinel detection to keep the player's copy out. Any further change to how
+content styles are delivered has to account for it, and for the other three
+relying on the player's copy by supplying none.
 
 Three rules were removed from it outright: a `#stimulus` / `#item` pair of
 50%-wide left floats, a `.lrn_feature h3` margin override and
@@ -1292,8 +1298,8 @@ shipping.**
 - Layering generated theme CSS, resolving Host A's tokens at build time, or
   otherwise preventing its outside `!important` declarations from winning
 - Changing how content styles are delivered, without accounting for Host V's
-  pinned-version workaround and the opt-out attribute Hosts A, P and R now
-  rely on implicitly by not setting it
+  scoped copy, which keeps the player's copy out only through sentinel
+  detection, and Hosts A, P and R relying on the player's copy
 - Renaming or removing a `pie-item-player` property Host P sets, taking one out
   of the element's declared `props` map, or renaming the `"preloaded"` strategy
 - Renaming `session-changed`, `load-complete`, `player-error` or any of the five
@@ -1516,8 +1522,9 @@ repo.
   and the tag is not one this repository ships. Three dead declarations against a
   dead selector, and the only `--pie-*` values that host declares at all.
 - Host P sets `show-bottom-border="false"` and `hosted="true"` as string
-  attributes on `Boolean` props, which read presence, so both come out `true`.
-  `hosted` gets the value the host means. The border stays off only because it
+  attributes on `Boolean` props. Boolean attributes read `"false"`, `"0"`,
+  `"off"` and `"no"` as false, so both come out as the host means. Before that
+  they read presence and the border came out `true`, invisible only because it
   draws in `evaluate` mode and that host always gathers.
 - Host P omits `render-stimulus` and `allowed-resize` on its `@pie-players`
   path, though `pie-item-player` declares both, so `renderStimulus` stays `true`

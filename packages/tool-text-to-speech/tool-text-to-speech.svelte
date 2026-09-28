@@ -7,11 +7,13 @@
 			toolId: { type: 'String', attribute: 'tool-id' },
 			coordinator: { type: 'Object' },
 			ttsService: { type: 'Object' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, createPointerDragController } from '@pie-players/pie-players-shared';

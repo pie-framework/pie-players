@@ -14,7 +14,7 @@ Related architecture:
 - [Capability Ownership Layers](../tools-and-accomodations/architecture.md#capability-ownership-layers) —
   why this capability ships as its own package and stays out of the packaged registry
 - [PIE Element Integration](../tools-and-accomodations/architecture.md#pie-element-integration) — the
-  data-attribute contract the dictation target extends
+  data-attribute mechanism the dictation target reuses
 - [Sign Language (ASL) Support](./sign-language-asl-support.md) and
   [Audio Accommodations](./audio-accommodations.md) — the two shipped accommodations whose shape this
   one deliberately breaks from
@@ -241,9 +241,8 @@ populations with different grants. Conflating them would make one grant deliver 
 
 ### Dictation Target: The Element's Half
 
-The element declares which of its surfaces accept dictated text, extending the existing
-data-attribute contract that `data-highlightable`, `data-readable`, and `data-eliminatable` already
-use:
+The element declares which of its surfaces accept dictated text through data attributes, the
+mechanism content already uses to steer tools with `data-catalog-idref` and `data-tts-suppress`:
 
 ```html
 <div

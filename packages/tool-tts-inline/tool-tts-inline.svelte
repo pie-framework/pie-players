@@ -9,11 +9,13 @@
 			speedOptions: { type: 'Array', attribute: 'speed-options' },
 			showSingleSpeedOption: { type: 'Boolean', attribute: 'show-single-speed-option' },
 			layoutMode: { type: 'String', attribute: 'layout-mode' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		catalogOwnerContextFor,
 		connectToolRegionScopeContext,

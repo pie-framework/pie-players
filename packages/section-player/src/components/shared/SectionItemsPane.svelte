@@ -27,10 +27,12 @@
 			preloadComponentTag: { attribute: "preload-component-tag", type: "String" },
 			preloadEnabled: { attribute: "preload-enabled", type: "Boolean" },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { createEventDispatcher, onMount, untrack } from "svelte";
 	import type {
 		AssessmentToolkitRuntimeContext,

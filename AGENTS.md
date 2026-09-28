@@ -111,7 +111,7 @@ registered under its own distinct tag.
 - If a failure may be stale-artifact related, rebuild and rerun once before
   deeper debugging.
 - For split-panel scrolling behavior, mirror
-  `packages/section-player/src/components/layouts/SplitPanelLayout.svelte`
+  `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
   unless intentionally redesigning: constrained parent layout, constrained split
   grid, scrollable panes with `min-height: 0`, `min-width: 0`, and contained
   vertical overflow.

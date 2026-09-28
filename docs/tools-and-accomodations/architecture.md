@@ -804,8 +804,10 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 - Accessible interactions
 
 **Calculator provider suites**
-- The generic calculator contract, lifecycle surface, toolbar registration, and
-  provider configuration do not import or name a vendor.
+- The generic calculator contract (`@pie-players/pie-calculator`) and the
+  toolkit's lifecycle surface do not import a vendor. The calculator toolbar
+  registration in `@pie-players/pie-default-tool-loaders` imports all three
+  provider adapters and selects one by `provider.id`.
 - Desmos remains the no-configuration default for compatibility and supports
   basic, scientific, and graphing modes.
 - GeoGebra is selected explicitly with `provider.id =

@@ -60,21 +60,21 @@ printed rather than hidden.
 
 ### Taking ownership of the stylesheet
 
-To load it yourself instead — to control its position in your cascade, or to ship
-a patched copy — declare that on the root element **before** the player script
-runs:
+A host that loads `components.css` itself — to control its position in the
+cascade, to ship a patched copy, or to confine it to the player's subtree with
+`@scope (…) { … }` — owns it. The player recognises the copy by
+`--pie-content-styles`, a sentinel the stylesheet declares, and installs nothing;
+when the host's copy lands after the player's, the player removes its own. A copy
+served from another origin cannot be read, so such a host declares ownership on
+the root element before the player script runs:
 
 ```html
 <html data-pie-content-styles="host"></html>
 ```
 
-```ts
-import "@pie-players/pie-theme/components.css"; // now your responsibility
-```
-
-The player then installs nothing. If no content stylesheet turns out to be
-present, it logs a one-time `console.warn` naming the missing import, rather than
-silently printing unstyled content. Declare `@pie-players/pie-theme` in your own
+With the attribute set, the player installs nothing, and if no content stylesheet
+turns out to be present it logs a one-time `console.warn` naming the missing
+import, rather than silently printing unstyled content. Declare `@pie-players/pie-theme` in your own
 `package.json` if you go this route: the player inlines its copy of the
 stylesheet at build time and does not install the package.
 

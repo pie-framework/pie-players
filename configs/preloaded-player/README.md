@@ -6,6 +6,13 @@ This folder contains configuration files used to build and publish variants of:
 
 Each config represents a set of PIE elements (package + version) bundled for `pie-item-player`.
 
+Generated builds are transitional, published for hosts that have not moved off
+them. A host integrating now, or moving, installs the pie-elements-ng packages
+as npm dependencies, every one from the same release and pinned exactly, and
+registers their ESM builds with `registerPreloadedElements`
+([Registering elements from npm](../../docs/item-player/loading-strategies.md#registering-elements-from-npm)).
+That path needs no config here.
+
 The file name is the set's name, in its published versions
 (`<loaderVersion>-<set>.<iteration>`) and as its npm dist-tag, so it uses
 lowercase letters, digits and hyphens and starts with a letter. Renaming a file

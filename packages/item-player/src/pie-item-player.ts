@@ -19,8 +19,8 @@ export { ensureItemPlayerMathRenderingReady } from "./math-rendering-ready.js";
 
 // Installed at import time, alongside element registration, so the stylesheet is
 // in the document before any instance renders — no unstyled first paint. A host
-// that sets <html data-pie-content-styles="host"> owns the stylesheet instead,
-// and gets warned if it then ships nothing.
+// that supplies its own copy, or sets <html data-pie-content-styles="host">,
+// owns the stylesheet instead.
 installContentStyles(contentStyles, "pie-item-player");
 auditContentStyles("pie-item-player");
 

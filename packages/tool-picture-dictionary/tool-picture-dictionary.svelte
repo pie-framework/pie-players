@@ -8,11 +8,13 @@
 			term: { type: 'String', attribute: 'term' },
 			endpoint: { type: 'String', attribute: 'endpoint' },
 			language: { type: 'String', attribute: 'language' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	/**
 	 * Picture dictionary panel.
 	 *

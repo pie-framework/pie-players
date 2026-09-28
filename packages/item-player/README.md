@@ -45,19 +45,17 @@ This applies to CDN hosts too: no extra `<link>` is needed.
 
 ### Upgrading from a manual import
 
-If your app already imports `@pie-players/pie-theme/components.css`, you do not
-have to remove it for this to work — installation is idempotent and two matching
-copies render identically. Removing it is still worth doing: your copy loads after
-the installed one and so wins ties at equal specificity, which means a copy pinned
-to an older `@pie-players/pie-theme` will quietly override newer player rules. The
-player logs a one-time warning naming the redundant import when it sees a second
-copy, so this does not have to be remembered.
+An app that already imports `@pie-players/pie-theme/components.css`, scoped or
+not, keeps working unchanged. The player detects a host copy by its
+`--pie-content-styles` sentinel: when one is present it installs nothing, and when
+one arrives after the player installed its own, the player removes its copy. The
+host's copy is therefore the only one in effect, in the position the host chose.
 
 ### Taking ownership of the stylesheet
 
-To load it yourself instead — to control its position in your cascade, or to ship
-a patched copy — declare that on the root element **before** the player script
-runs:
+The sentinel check covers any copy the page can read. A cross-origin `<link>`
+cannot be read, so a host loading the stylesheet that way declares ownership on
+the root element **before** the player script runs:
 
 ```html
 <html data-pie-content-styles="host"></html>

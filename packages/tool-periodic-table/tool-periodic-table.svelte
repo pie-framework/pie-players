@@ -5,11 +5,13 @@
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 
 	// The import attribute is required under `module: NodeNext` and is what the
 	// pre-adoption i18n catalogs omitted, which is how every non-English locale

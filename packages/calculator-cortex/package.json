@@ -53,7 +53,7 @@
 		"@axe-core/playwright": "^4.13.0",
 		"@biomejs/biome": "^2.5.14",
 		"@cortex-js/compute-engine": "0.130.0",
-		"@playwright/test": "^1.62.1",
+		"@playwright/test": "^1.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"jsxgraph": "1.13.2",
 		"mathlive": "0.110.0",

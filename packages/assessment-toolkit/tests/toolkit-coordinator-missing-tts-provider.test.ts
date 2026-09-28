@@ -7,9 +7,11 @@ import {
 } from "./fixtures/test-tool-registry.js";
 
 /**
- * A coordinator registers tool providers only from its own `toolRegistry`. One
- * built without it has no `tts` provider, so a server-backend text-to-speech
- * config falls back to browser speech; the fallback says so once.
+ * A coordinator registers tool providers only from its registry. One whose
+ * registry has no `tts` provider falls back to browser speech on a
+ * server-backend text-to-speech config; the fallback says so once, and a
+ * coordinator waiting for its toolkit's registry holds the warning until the
+ * toolkit turns out to have none.
  */
 
 const FALLBACK_WARNING = "falls back to browser speech";
@@ -60,6 +62,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "missing-tts-provider",
 			lazyInit: true,
+			toolRegistry: new ToolRegistry(),
 			tools: serverTTSTools,
 		});
 		const successProviders: unknown[] = [];
@@ -92,6 +95,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "missing-tts-provider-reconfigure",
 			lazyInit: true,
+			toolRegistry: new ToolRegistry(),
 			tools: serverTTSTools,
 		});
 		await coordinator.waitUntilReady();
@@ -102,6 +106,22 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 		await coordinator.ensureTTSReady();
 
 		expect(countWarnings(FALLBACK_WARNING)).toBe(1);
+	});
+
+	test("held until the bound toolkit turns out to have no registry", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "missing-tts-provider-unbound",
+			lazyInit: true,
+			tools: serverTTSTools,
+		});
+		await coordinator.waitUntilReady();
+		expect(countWarnings(FALLBACK_WARNING)).toBe(0);
+		expect(countWarnings("No tool registry was supplied")).toBe(0);
+
+		coordinator.adoptToolRegistry(null);
+
+		expect(countWarnings(FALLBACK_WARNING)).toBe(1);
+		expect(countWarnings("No tool registry was supplied")).toBe(1);
 	});
 
 	test("a browser backend stays silent", async () => {

@@ -26,8 +26,11 @@ Without it, TTS initialization reports a `provider-init` framework error and
 falls back to browser speech.
 
 A `ToolkitCoordinator` registers tool providers only from its `toolRegistry`.
-Built without one, it registers none, skips tool-id and placement validation,
-and warns once (`tools.registryUnavailable`).
+Built without one, it adopts the registry of the toolkit it is bound to, such as
+the section player's, which then validates its config and registers its
+providers. A registry passed at construction is never replaced. Bound to a
+toolkit that has none, it registers no providers, skips tool-id and placement
+validation, and warns once (`tools.registryUnavailable`).
 
 ## What's New: ToolkitCoordinator
 

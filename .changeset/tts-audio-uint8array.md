@@ -5,7 +5,7 @@
 "@pie-players/tts-server-sc": patch
 ---
 
-`SynthesizeResponse.audio` is typed `Uint8Array | string`, so the TTS
-declarations typecheck without Node's types. The providers still return a
-`Buffer`; code that calls `Buffer` methods on `audio` narrows it with
-`audio instanceof Buffer` first.
+`SynthesizeResponse.audio` is typed `SynthesizedAudioBytes | string`, a
+structural description of the `Buffer` the providers return, so the TTS
+declarations typecheck without Node's types and `audio.toString("base64")`
+still compiles.

@@ -31,6 +31,7 @@ import {
 	type ToolToolbarRenderResult,
 	type ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 /** A window's geometry. Absent for overlays that paint their own chrome. */
 export interface OverlayToolShell {
@@ -91,12 +92,17 @@ export function renderOverlayToolbar(
 	const componentOverrides =
 		(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ??
 		{};
-	const overlay = createToolElement(
-		toolId,
-		context,
+	const overlay = resolveOverlayElement(
 		toolbarContext,
-		componentOverrides,
-	) as OverlayElement;
+		visibility.fullToolId,
+		() =>
+			createToolElement(
+				toolId,
+				context,
+				toolbarContext,
+				componentOverrides,
+			) as OverlayElement,
+	);
 	overlay.setAttribute("tool-id", visibility.fullToolId);
 	if (options.surface === "frameless") {
 		applyOverlaySurface(overlay, "frameless");

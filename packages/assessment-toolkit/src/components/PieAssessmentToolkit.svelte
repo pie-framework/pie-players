@@ -629,6 +629,16 @@ const DEFAULT_ENV = {
 		);
 	});
 
+	// A host coordinator constructed without a registry takes this toolkit's, so
+	// its providers are the ones behind the toolbar's buttons.
+	$effect(() => {
+		const hostCoordinator = coordinator;
+		const registry = toolRegistry;
+		if (!hostCoordinator || effectiveCoordinator !== hostCoordinator) return;
+		if (typeof hostCoordinator.adoptToolRegistry !== "function") return;
+		untrack(() => hostCoordinator.adoptToolRegistry(registry));
+	});
+
 	$effect(() => {
 		if (!frameworkErrorModel) return;
 		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;

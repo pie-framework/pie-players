@@ -382,7 +382,7 @@ export function collectToolConfigDiagnostics(
 				severity: "warning",
 				path: "tools",
 				message:
-					'No tool registry was supplied, so tool ids, placement levels and provider config were not validated, and a coordinator built without one registers no tool providers. Pass `toolRegistry` — for the packaged capability set, `createPackagedToolRegistry()` from "@pie-players/pie-default-tool-loaders".',
+					'No tool registry was supplied, so tool ids, placement levels and provider config were not validated, and a coordinator without one registers no tool providers. Pass `toolRegistry` to the coordinator or the toolkit it is bound to — for the packaged capability set, `createPackagedToolRegistry()` from "@pie-players/pie-default-tool-loaders".',
 			}),
 		);
 	}

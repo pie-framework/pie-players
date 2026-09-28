@@ -184,14 +184,20 @@ export interface SynthesizeRequest
 		TTSProviderExtensions {}
 
 /**
+ * Audio bytes as the bundled providers return them: a Node `Buffer`, described
+ * structurally so these declarations need no Node types. `toString('base64')`
+ * encodes the bytes.
+ */
+export interface SynthesizedAudioBytes extends Uint8Array {
+	toString(encoding?: string): string;
+}
+
+/**
  * Response from speech synthesis
  */
 export interface SynthesizeResponse {
-	/**
-	 * Audio bytes, or a base64 string. The bundled providers return a Node
-	 * `Buffer`, which is a `Uint8Array`.
-	 */
-	audio: Uint8Array | string;
+	/** Audio bytes, or a base64 string. */
+	audio: SynthesizedAudioBytes | string;
 
 	/** MIME type of audio (e.g., 'audio/mpeg') */
 	contentType: string;

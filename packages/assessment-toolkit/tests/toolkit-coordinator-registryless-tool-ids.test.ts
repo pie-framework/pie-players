@@ -13,8 +13,8 @@ import { createTestToolRegistration } from "./fixtures/test-tool-registry.js";
  * into an exception — including the ones the coordinator provokes itself, so a
  * host could not read the config it had just passed in.
  *
- * The coordinator reports the missing registry once, as
- * `tools.registryUnavailable`. That is the diagnostic; this is the behaviour.
+ * The coordinator reports the missing registry once it is known to be missing,
+ * as `tools.registryUnavailable`. That is the diagnostic; this is the behaviour.
  */
 describe("ToolkitCoordinator tool ids without a registry", () => {
 	test("an empty registry means unvalidated, not invalid", () => {
@@ -64,7 +64,7 @@ describe("ToolkitCoordinator tool ids without a registry", () => {
 		expect(() => coordinator.isToolEnabled("")).toThrow(/non-empty string/);
 	});
 
-	test("the missing registry is reported once per coordinator", () => {
+	test("the missing registry is reported once per coordinator, once known", () => {
 		const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
 		try {
 			const reports = () =>
@@ -77,14 +77,19 @@ describe("ToolkitCoordinator tool ids without a registry", () => {
 				tools: { providers: { calculator: { enabled: true } } },
 			});
 			coordinator.updateToolConfig("calculator", { enabled: false });
+			// The toolkit it binds to may still supply one.
+			expect(reports()).toBe(0);
+			coordinator.adoptToolRegistry(null);
 			coordinator.updateToolConfig("calculator", { enabled: true });
 			coordinator.updateToolsPlacement({ item: ["calculator"] });
 			expect(reports()).toBe(1);
 
-			// A second coordinator is a second deployment gap.
+			// A second coordinator is a second deployment gap. An empty registry
+			// passed at construction is final.
 			const second = new ToolkitCoordinator({
 				assessmentId: "registryless-reports-second",
 				lazyInit: true,
+				toolRegistry: new ToolRegistry(),
 			});
 			second.updateToolConfig("calculator", { enabled: true });
 			second.updateToolConfig("calculator", { enabled: false });

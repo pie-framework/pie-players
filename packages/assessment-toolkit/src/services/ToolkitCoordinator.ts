@@ -231,9 +231,10 @@ export interface ToolkitCoordinatorConfig {
 	/**
 	 * Registry used for tool-config validation and the only source of tool
 	 * providers: the coordinator registers one per registration that carries a
-	 * provider descriptor. Omitted, it is empty, so nothing is validated and no
-	 * provider registers. For the packaged capability set, pass
-	 * `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`.
+	 * provider descriptor. Omitted, the coordinator takes the registry of the
+	 * toolkit it is bound to — the section player's, under a section player — and
+	 * until then validates nothing and registers no provider. A registry passed
+	 * here is never replaced.
 	 */
 	toolRegistry?: ToolRegistry | null;
 
@@ -624,7 +625,15 @@ export class ToolkitCoordinator {
 		string,
 		Promise<ToolProviderApi>
 	>();
-	private readonly toolRegistry: ToolRegistry;
+	private toolRegistry: ToolRegistry;
+	/** Whether the host passed `toolRegistry`, which then always stands. */
+	private readonly toolRegistrySupplied: boolean;
+	/**
+	 * Whether the registry is final: supplied at construction, or adopted from
+	 * the toolkit this coordinator is bound to. Until then the empty placeholder
+	 * reports no missing registry, since the toolkit will supply one.
+	 */
+	private toolRegistrySettled: boolean;
 	private readonly toolContextResolvers = new Map<
 		string,
 		ToolContextResolver
@@ -749,6 +758,12 @@ export class ToolkitCoordinator {
 	private reportedMissingTTSProvider = false;
 
 	/**
+	 * The backend of a fallback {@link reportMissingTTSProvider} held back while
+	 * the registry was unsettled, reported if the bound toolkit has no registry.
+	 */
+	private heldMissingTTSProviderBackend: string | null = null;
+
+	/**
 	 * Whether {@link validateToolsConfig} has already reported validating with
 	 * no registry (`tools.registryUnavailable`). Once per coordinator: every
 	 * {@link updateToolConfig} and {@link updateToolsPlacement} re-validates, and
@@ -762,11 +777,10 @@ export class ToolkitCoordinator {
 		const strictness = normalizeToolConfigStrictness(
 			config.toolConfigStrictness,
 		);
-		// An empty registry when the host supplies none. This package no longer
-		// holds the packaged capability set, so there is nothing to fall back to —
-		// a host that wants stock tools passes a registry from
-		// `@pie-players/pie-default-tool-loaders`. Tool-id validation is skipped
-		// against an empty registry (with a diagnostic saying so) rather than
+		// An empty placeholder when the host supplies none, replaced by the bound
+		// toolkit's registry in `adoptToolRegistry`. This package does not hold the
+		// packaged capability set, and importing it would be a dependency cycle.
+		// Tool-id validation is skipped against an empty registry rather than
 		// rejecting every configured id.
 		const toolRegistry = config.toolRegistry ?? new ToolRegistry();
 		const normalized =
@@ -822,11 +836,12 @@ export class ToolkitCoordinator {
 			tools,
 			options.toolRegistry,
 		);
-		const unreported = this.reportedRegistryUnavailable
-			? diagnostics.filter(
-					(entry) => entry.code !== "tools.registryUnavailable",
-				)
-			: diagnostics;
+		const unreported =
+			this.reportedRegistryUnavailable || !this.toolRegistrySettled
+				? diagnostics.filter(
+						(entry) => entry.code !== "tools.registryUnavailable",
+					)
+				: diagnostics;
 		reportToolConfigDiagnostics(unreported, options);
 		if (
 			options.strictness !== "off" &&
@@ -842,6 +857,8 @@ export class ToolkitCoordinator {
 			throw new Error("ToolkitCoordinator requires assessmentId in config");
 		}
 
+		this.toolRegistrySupplied = config.toolRegistry != null;
+		this.toolRegistrySettled = this.toolRegistrySupplied;
 		const resolvedConfig = this.resolveConfig(config);
 
 		this.assessmentId = resolvedConfig.assessmentId;
@@ -1128,6 +1145,80 @@ export class ToolkitCoordinator {
 			this.stateLoadPromise = undefined;
 		});
 		return this.stateLoadPromise;
+	}
+
+	private reportMissingTTSProvider(backend: string): void {
+		// The toolkit this coordinator binds to may still supply the provider.
+		if (!this.toolRegistrySettled) {
+			this.heldMissingTTSProviderBackend = backend;
+			return;
+		}
+		if (this.reportedMissingTTSProvider) return;
+		this.reportedMissingTTSProvider = true;
+		console.warn(
+			`[ToolkitCoordinator] Text-to-speech is configured for the "${backend}" backend but falls back to browser speech: no "tts" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, or from its toolkit's when constructed without one, so supply one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
+		);
+	}
+
+	/**
+	 * Take the registry of the toolkit this coordinator is bound to, when the host
+	 * constructed it without one: the config is validated against it, its
+	 * providers register, and text-to-speech re-initializes through it if it
+	 * already started. The toolkit elements call this on binding. A registry
+	 * passed at construction stands, and the first call wins; `null` records a
+	 * toolkit without one, which reports the registry as missing.
+	 *
+	 * @returns Whether `registry` was adopted.
+	 */
+	adoptToolRegistry(registry: ToolRegistry | null): boolean {
+		if (this.disposePromise !== null || this.toolRegistrySettled) return false;
+		this.toolRegistrySettled = true;
+		const heldBackend = this.heldMissingTTSProviderBackend;
+		this.heldMissingTTSProviderBackend = null;
+		const strictness = this.config.toolConfigStrictness ?? "error";
+		const source = "ToolkitCoordinator.adoptToolRegistry";
+		if (!registry) {
+			this.validateToolsConfig(this.config.tools as CanonicalToolsConfig, {
+				strictness,
+				source,
+				toolRegistry: this.toolRegistry,
+			});
+			if (heldBackend) this.reportMissingTTSProvider(heldBackend);
+			return false;
+		}
+		this.toolRegistry = registry;
+		this.config.toolRegistry = registry;
+		try {
+			// Warn at most: the config was accepted at construction, and a binding
+			// toolkit has no caller to throw to.
+			this.config.tools = this.validateToolsConfig(
+				this.config.tools as CanonicalToolsConfig,
+				{
+					strictness: strictness === "off" ? "off" : "warn",
+					source,
+					toolRegistry: registry,
+				},
+			);
+		} catch (err) {
+			console.warn(
+				"[ToolkitCoordinator] Tool config does not validate against the adopted tool registry:",
+				err,
+			);
+		}
+		this.policyEngine.replaceToolRegistry(
+			registry,
+			this.config.tools as CanonicalToolsConfig,
+		);
+		const ttsStarted =
+			this.ttsInitialized ||
+			this.ttsInitPromise !== undefined ||
+			this.ttsReconfigurePromise !== undefined;
+		for (const tool of this.getProviderDescriptorTools()) {
+			if (ttsStarted && tool.toolId === "textToSpeech") continue;
+			void this.registerProviderFromTool(tool);
+		}
+		if (ttsStarted) this.scheduleTTSReconfigure();
+		return true;
 	}
 
 	/**
@@ -2326,14 +2417,8 @@ export class ToolkitCoordinator {
 					normalized,
 				);
 			}
-		} else if (
-			resolvedBackend !== "browser" &&
-			!this.reportedMissingTTSProvider
-		) {
-			this.reportedMissingTTSProvider = true;
-			console.warn(
-				`[ToolkitCoordinator] Text-to-speech is configured for the "${resolvedBackend}" backend but falls back to browser speech: no "tts" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, so construct it with one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
-			);
+		} else if (resolvedBackend !== "browser") {
+			this.reportMissingTTSProvider(resolvedBackend);
 		}
 
 		// Fallback to browser provider
@@ -3044,23 +3129,9 @@ export class ToolkitCoordinator {
 		if (this.disposePromise !== null) return;
 		// Apply configuration changes based on tool
 		switch (toolId) {
-			case "textToSpeech": {
-				const reconfigurePromise = this._reconfigureTTSProvider();
-				this.ttsReconfigurePromise = reconfigurePromise;
-				void reconfigurePromise.finally(() => {
-					if (this.ttsReconfigurePromise === reconfigurePromise) {
-						this.ttsReconfigurePromise = undefined;
-					}
-				});
-				void reconfigurePromise.then(async () => {
-					if (this.disposePromise !== null) return;
-					const ttsConfig = this.getTTSConfigFromProviders();
-					if (!this.lazyInit && ttsConfig?.enabled !== false) {
-						await this.ensureTTSReady(ttsConfig);
-					}
-				});
+			case "textToSpeech":
+				this.scheduleTTSReconfigure();
 				break;
-			}
 
 			case "answerEliminator":
 				// Future: Could notify answer eliminator tools of strategy change
@@ -3108,6 +3179,32 @@ export class ToolkitCoordinator {
 				`[ToolkitCoordinator] Failed to unregister provider "${previousId}":`,
 				err,
 			);
+		});
+	}
+
+	/**
+	 * Re-register the `tts` provider for the current config and registry, then
+	 * re-initialize unless initialization is lazy. An initialization already
+	 * running finishes first: it would otherwise mark its provider ready after
+	 * the reset.
+	 */
+	private scheduleTTSReconfigure(): void {
+		const inFlight = this.ttsInitPromise;
+		const reconfigurePromise = inFlight
+			? inFlight.catch(() => {}).then(() => this._reconfigureTTSProvider())
+			: this._reconfigureTTSProvider();
+		this.ttsReconfigurePromise = reconfigurePromise;
+		void reconfigurePromise.finally(() => {
+			if (this.ttsReconfigurePromise === reconfigurePromise) {
+				this.ttsReconfigurePromise = undefined;
+			}
+		});
+		void reconfigurePromise.then(async () => {
+			if (this.disposePromise !== null) return;
+			const ttsConfig = this.getTTSConfigFromProviders();
+			if (!this.lazyInit && ttsConfig?.enabled !== false) {
+				await this.ensureTTSReady(ttsConfig);
+			}
 		});
 	}
 

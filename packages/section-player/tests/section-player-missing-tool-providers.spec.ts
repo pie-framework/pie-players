@@ -1,10 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
 
-// A coordinator registers tool providers only from its own `toolRegistry`, while
-// the toolbar renders from the section player's. Each test replaces the demo's
-// player (whose host coordinator shares the player's registry) with a fresh one
-// whose runtime either supplies a coordinator built without `toolRegistry`, as
-// Host R's section demos do, or none, so the player builds its own.
+// A coordinator constructed with a `toolRegistry` registers tool providers only
+// from it, while the toolbar renders from the section player's; one constructed
+// without adopts the player's. Each test replaces the demo's player (whose host
+// coordinator shares the player's registry) with a fresh one whose runtime
+// supplies a coordinator built with a registry that lacks the calculator, one
+// built without `toolRegistry`, as Host R's section demos do, or none, so the
+// player builds its own.
 const DEMO_PATH = "/three-questions?mode=candidate&layout=splitpane";
 const LAYOUT_TAG = "pie-section-player-splitpane";
 const PROVIDER_WARNING = "[pie-section-player] Placed tool";
@@ -27,12 +29,20 @@ const matching = (lines: string[], fragment: string) =>
 	lines.filter((line) => line.includes(fragment));
 
 async function openDemo(page: Page, player: string): Promise<void> {
-	await page.goto(`${DEMO_PATH}&player=${player}`, { waitUntil: "networkidle" });
+	await page.goto(`${DEMO_PATH}&player=${player}`, {
+		waitUntil: "networkidle",
+	});
 	await expect(calculatorButton(page)).toBeVisible({ timeout: 30_000 });
 }
 
-/** Replaces the demo's player; `bare` supplies a coordinator with no registry. */
-async function mountFreshPlayer(page: Page, coordinator: "bare" | "own") {
+/**
+ * Replaces the demo's player. `bare` supplies a coordinator with no registry,
+ * `narrow` one with an empty registry of its own.
+ */
+async function mountFreshPlayer(
+	page: Page,
+	coordinator: "bare" | "narrow" | "own",
+) {
 	await page.evaluate(
 		({ tag, mode }) => {
 			const existing = document.querySelector(tag) as
@@ -54,12 +64,18 @@ async function mountFreshPlayer(page: Page, coordinator: "bare" | "own") {
 			const toolContextResolvers = demoCoordinator.config.toolContextResolvers;
 			const section = existing.section as { personalNeedsProfile?: unknown };
 			let hostCoordinator: object | undefined;
-			if (mode === "bare") {
+			if (mode !== "own") {
+				const registry = existing.toolRegistry as {
+					constructor: new () => object;
+				};
 				const bare = new demoCoordinator.constructor({
 					assessmentId: "missing-providers-assessment",
 					toolConfigStrictness: "error",
 					tools: runtime.tools,
 					toolContextResolvers,
+					...(mode === "narrow"
+						? { toolRegistry: new registry.constructor() }
+						: {}),
 				});
 				bare.updateAssessment({
 					id: "missing-providers-assessment",
@@ -114,7 +130,7 @@ function calculatorButton(page: Page) {
 
 for (const player of ["iife", "esm"]) {
 	test.describe(`missing tool providers under the ${player} player`, () => {
-		test("a host coordinator without toolRegistry reports the calculator's provider once", async ({
+		test("a host coordinator whose registry lacks the calculator reports its provider once", async ({
 			page,
 		}) => {
 			const warnings = captureWarnings(page);
@@ -122,7 +138,7 @@ for (const player of ["iife", "esm"]) {
 			// The demo's own host coordinator shares the player's registry.
 			expect(matching(warnings, PROVIDER_WARNING)).toEqual([]);
 
-			await mountFreshPlayer(page, "bare");
+			await mountFreshPlayer(page, "narrow");
 			await expect
 				.poll(() => matching(warnings, CALCULATOR_WARNING).length, {
 					timeout: 30_000,
@@ -143,20 +159,24 @@ for (const player of ["iife", "esm"]) {
 			).toHaveCount(0);
 		});
 
-		test("the player's own coordinator reports nothing", async ({ page }) => {
-			const warnings = captureWarnings(page);
-			await openDemo(page, player);
+		for (const mode of ["bare", "own"] as const) {
+			test(`${mode === "bare" ? "a host coordinator without toolRegistry" : "the player's own coordinator"} serves the calculator and reports nothing`, async ({
+				page,
+			}) => {
+				const warnings = captureWarnings(page);
+				await openDemo(page, player);
 
-			await mountFreshPlayer(page, "own");
-			await calculatorButton(page).click();
-			await expect(
-				page.locator('[data-pie-tool-shell="calculator"]:visible'),
-			).toBeVisible({ timeout: 30_000 });
-			await page.waitForTimeout(500);
+				await mountFreshPlayer(page, mode);
+				await calculatorButton(page).click();
+				await expect(
+					page.locator('[data-pie-tool-shell="calculator"]:visible'),
+				).toBeVisible({ timeout: 30_000 });
+				await page.waitForTimeout(500);
 
-			for (const fragment of NEW_WARNINGS) {
-				expect(matching(warnings, fragment), fragment).toEqual([]);
-			}
-		});
+				for (const fragment of NEW_WARNINGS) {
+					expect(matching(warnings, fragment), fragment).toEqual([]);
+				}
+			});
+		}
 	});
 }

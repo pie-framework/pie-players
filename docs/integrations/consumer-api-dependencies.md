@@ -656,10 +656,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
   misconfiguration. `hooks` is no longer passed to the constructor. Only the
   section-preview route passes `toolRegistry`; the four section demos and the
   playground build a registry for `createToolsConfig` and omit it from the
-  constructor, so their coordinators register no tool providers. They speak
-  with browser speech whatever TTS backend they configure, a placed calculator
-  fails to open, and they log `tools.registryUnavailable`, a text-to-speech
-  fallback warning and one section-player warning per placed tool.
+  constructor, so their coordinators adopt the registry of the section player
+  they are bound to, which validates their config and registers the providers
+  behind their TTS backend and calculator. A coordinator that stops adopting
+  puts them back on browser speech with a calculator that fails to open.
 - `coordinator.setHooks({ onFrameworkError })`, with the handler reading the
   framework-error model as an opaque value
 - `coordinator.updateAssessment(entity)` — driven off a `$effect`, so it is

@@ -193,10 +193,10 @@
 		}
 	}
 
-	// A coordinator the host supplies registers tool providers from its own
-	// registry, so a tool this player's toolbars render can have none behind it.
-	// The player's own coordinator is built from `effectiveToolRegistry` and is not
-	// checked.
+	// A coordinator the host constructs with its own registry registers tool
+	// providers from it, so a tool this player's toolbars render can have none
+	// behind it. One constructed without a registry adopts `effectiveToolRegistry`
+	// through the toolkit, and the player's own coordinator is built from it.
 	$effect(() => {
 		const coordinator = activeToolkitCoordinator;
 		const registry = effectiveToolRegistry;

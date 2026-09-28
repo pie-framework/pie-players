@@ -8,6 +8,8 @@ A draggable and rotatable ruler measurement tool for PIE assessment players.
   It may overhang the card it opens on, but keeps 100px inside it.
 - **Rotatable**: Drag the handle above the ruler to turn it about its centre, or use
   the keyboard shortcuts
+- **Tap controls**: While the ruler has focus, a strip below it moves it 10px and
+  turns it 5° or 1° a press, so it can be placed without dragging
 - **Unit Toggle**: Switch between inches and centimeters
 - **Keyboard Navigation**:
   - Arrow keys: Move the ruler

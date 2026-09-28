@@ -4,6 +4,7 @@ import {
 	clampOffsetOverlappingBlock,
 	rotatedExtent,
 	rotationCentreShift,
+	uprightDockCentre,
 } from "../src/ui/overlay-containment.js";
 
 describe("rotationCentreShift", () => {
@@ -70,5 +71,23 @@ describe("clampOffsetOverlappingBlock", () => {
 			100,
 		);
 		expect(clamped.y).toBe(800 / 2 + 60 / 2 - 60);
+	});
+});
+
+describe("uprightDockCentre", () => {
+	const ruler = { width: 540, height: 100 };
+	const strip = { width: 300, height: 40 };
+
+	test("sits its height's half past the bottom edge unturned", () => {
+		expect(uprightDockCentre(ruler, strip, 0, 8)).toEqual({ x: 270, y: 100 + 8 + 20 });
+	});
+
+	test("moves out by half the strip's width at a quarter turn", () => {
+		// Turned a quarter, the box's bottom edge faces sideways on screen and the
+		// level strip meets it end on.
+		const quarter = uprightDockCentre(ruler, strip, 90, 8);
+		expect(quarter.x).toBe(270);
+		expect(quarter.y).toBeCloseTo(100 + 8 + 150);
+		expect(uprightDockCentre(ruler, strip, 270, 8).y).toBeCloseTo(quarter.y);
 	});
 });

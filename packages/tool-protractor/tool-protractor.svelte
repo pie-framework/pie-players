@@ -28,7 +28,8 @@
 		createPointerRotateController,
 		resolveContainingBlockRect,
 		rotatedExtent,
-		rotationCentreShift
+		rotationCentreShift,
+		uprightDockCentre
 	} from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
@@ -50,6 +51,7 @@
 	let announceText = $state('');
 	let pivotEl = $state<HTMLSpanElement | undefined>();
 	let rotateHandleEl = $state<HTMLDivElement | undefined>();
+	let controlsEl = $state<HTMLDivElement | undefined>();
 
 	/**
 	 * Where the protractor sits, as an offset from its centred position plus a
@@ -89,6 +91,24 @@
 	const MOVE_STEP = 10; // pixels
 	const ROTATE_STEP = 5; // degrees
 	const FINE_ROTATE_STEP = 1; // degrees
+	/** Space between the tool's bottom edge and its tap controls. */
+	const CONTROLS_GAP = 8;
+
+	type Nudge = 'up' | 'down' | 'left' | 'right';
+	const NUDGES = {
+		left: { dx: -1, dy: 0, glyph: '←', labelKey: 'toolkit.window.moveLeftA11y', announceKey: 'toolkit.announce.movedLeft' },
+		up: { dx: 0, dy: -1, glyph: '↑', labelKey: 'toolkit.window.moveUpA11y', announceKey: 'toolkit.announce.movedUp' },
+		down: { dx: 0, dy: 1, glyph: '↓', labelKey: 'toolkit.window.moveDownA11y', announceKey: 'toolkit.announce.movedDown' },
+		right: { dx: 1, dy: 0, glyph: '→', labelKey: 'toolkit.window.moveRightA11y', announceKey: 'toolkit.announce.movedRight' }
+	} as const;
+	const ARROW_KEYS: Record<string, Nudge> = {
+		ArrowLeft: 'left',
+		ArrowUp: 'up',
+		ArrowDown: 'down',
+		ArrowRight: 'right'
+	};
+	/** The tap controls' rotations, the keyboard's two steps each way. */
+	const ROTATIONS = [-ROTATE_STEP, -FINE_ROTATE_STEP, FINE_ROTATE_STEP, ROTATE_STEP];
 	/** Pixels of the protractor kept inside its containing block on each axis. */
 	const MIN_VISIBLE = 100;
 	/**
@@ -134,6 +154,24 @@
 			: centre;
 		placement = { x: bounded.x - shift.x, y: bounded.y - shift.y, rotation: next.rotation };
 		containerEl.style.transform = `translate(-50%, -50%) translate(${placement.x}px, ${placement.y}px) rotate(${placement.rotation}deg)`;
+		dockControls();
+	}
+
+	/**
+	 * Keeps the tap controls level on screen past the tool's bottom edge, the side
+	 * away from the rotation handle. They sit inside the tool, so they move and
+	 * stack with it; counter-rotating them keeps each arrow pointing the way its
+	 * button moves the tool.
+	 */
+	function dockControls() {
+		if (!containerEl || !controlsEl) return;
+		const centre = uprightDockCentre(
+			{ width: containerEl.offsetWidth, height: containerEl.offsetHeight },
+			{ width: controlsEl.offsetWidth, height: controlsEl.offsetHeight },
+			placement.rotation,
+			CONTROLS_GAP
+		);
+		controlsEl.style.transform = `translate(${centre.x}px, ${centre.y}px) translate(-50%, -50%) rotate(${-placement.rotation}deg)`;
 	}
 
 	/** A resize can leave the protractor outside its shrunken containing block. */
@@ -171,81 +209,40 @@
 		rotateController.startRotating(e, rotateHandleEl, { x: vertex.left, y: vertex.top });
 	}
 
-	// Keyboard navigation (preserved for accessibility)
+	/** Moves the protractor one step, as an arrow key or a move button does. */
+	function nudge(direction: Nudge) {
+		const { dx, dy, announceKey } = NUDGES[direction];
+		applyPlacement({
+			x: placement.x + dx * MOVE_STEP,
+			y: placement.y + dy * MOVE_STEP,
+			rotation: placement.rotation
+		});
+		announce(interfaceI18n.t(announceKey, { position: Math.round(dx ? placement.x : placement.y) }));
+	}
+
+	/** Turns the protractor by `degrees`, clockwise when positive, to a whole degree. */
+	function rotateBy(degrees: number) {
+		const rotation = (((Math.round(placement.rotation) + degrees) % 360) + 360) % 360;
+		applyPlacement({ ...placement, rotation });
+		announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
+	}
+
+	// Arrows move, Shift+arrows rotate 5°, Page Up/Down rotate 1°.
 	function handleKeyDown(e: KeyboardEvent) {
 		if (!containerEl) return;
-
-		let handled = false;
-		const isShift = e.shiftKey;
-
-		let { x, y } = placement;
-		let rotation = Math.round(placement.rotation);
-
-		switch (e.key) {
-			case 'ArrowUp':
-				if (isShift) {
-					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-				} else {
-					y -= MOVE_STEP;
-					announce(
-						interfaceI18n.t('toolkit.announce.movedUp', { position: Math.round(y) }),
-					);
-				}
-				handled = true;
-				break;
-			case 'ArrowDown':
-				if (isShift) {
-					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-				} else {
-					y += MOVE_STEP;
-					announce(
-						interfaceI18n.t('toolkit.announce.movedDown', { position: Math.round(y) }),
-					);
-				}
-				handled = true;
-				break;
-			case 'ArrowLeft':
-				if (isShift) {
-					rotation = (rotation - ROTATE_STEP + 360) % 360;
-					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-				} else {
-					x -= MOVE_STEP;
-					announce(
-						interfaceI18n.t('toolkit.announce.movedLeft', { position: Math.round(x) }),
-					);
-				}
-				handled = true;
-				break;
-			case 'ArrowRight':
-				if (isShift) {
-					rotation = (rotation + ROTATE_STEP) % 360;
-					announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-				} else {
-					x += MOVE_STEP;
-					announce(
-						interfaceI18n.t('toolkit.announce.movedRight', { position: Math.round(x) }),
-					);
-				}
-				handled = true;
-				break;
-			case 'PageUp':
-				rotation = (rotation - FINE_ROTATE_STEP + 360) % 360;
-				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-				handled = true;
-				break;
-			case 'PageDown':
-				rotation = (rotation + FINE_ROTATE_STEP) % 360;
-				announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-				handled = true;
-				break;
+		const direction = ARROW_KEYS[e.key];
+		if (direction && e.shiftKey) {
+			rotateBy(direction === 'up' || direction === 'left' ? -ROTATE_STEP : ROTATE_STEP);
+		} else if (direction) {
+			nudge(direction);
+		} else if (e.key === 'PageUp') {
+			rotateBy(-FINE_ROTATE_STEP);
+		} else if (e.key === 'PageDown') {
+			rotateBy(FINE_ROTATE_STEP);
+		} else {
+			return;
 		}
-
-		if (handled) {
-			e.preventDefault();
-			applyPlacement({ x, y, rotation });
-		}
+		e.preventDefault();
 	}
 
 	// Each reveal mounts a fresh panel centred by its stylesheet, so the placement
@@ -253,7 +250,11 @@
 	$effect(() => {
 		if (visible && containerEl && isBrowser) {
 			// Wait for the next tick to ensure DOM is updated
-			setTimeout(() => containerEl && coordinator?.bringToFront(containerEl), 0);
+			setTimeout(() => {
+				if (!containerEl) return;
+				coordinator?.bringToFront(containerEl);
+				applyPlacement(placement);
+			}, 0);
 		} else {
 			gesture.release();
 			placement = { x: 0, y: 0, rotation: 0 };
@@ -354,6 +355,42 @@
 			aria-hidden="true"
 			onpointerdown={handleRotateStart}
 		></div>
+
+		<!-- Tap alternatives to dragging (WCAG 2.5.7), shown while the protractor has
+		     focus. A press keeps focus on the protractor, so the controls stay up. -->
+		<div
+			bind:this={controlsEl}
+			class="pie-tool-protractor__controls"
+			role="group"
+			aria-label={interfaceI18n.t('toolkit.placement.controlsA11y')}
+			onpointerdown={(e) => {
+				e.stopPropagation();
+				e.preventDefault();
+			}}
+		>
+			{#each Object.entries(NUDGES) as [direction, control] (direction)}
+				<button
+					type="button"
+					class="pie-tool-protractor__control"
+					aria-label={interfaceI18n.t(control.labelKey)}
+					onclick={() => nudge(direction as Nudge)}
+				><span aria-hidden="true">{control.glyph}</span></button>
+			{/each}
+			<span class="pie-tool-protractor__controls-divider" aria-hidden="true"></span>
+			{#each ROTATIONS as degrees (degrees)}
+				<button
+					type="button"
+					class="pie-tool-protractor__control"
+					aria-label={interfaceI18n.t(
+						degrees > 0
+							? 'toolkit.placement.rotateClockwiseA11y'
+							: 'toolkit.placement.rotateCounterclockwiseA11y',
+						{ degrees: Math.abs(degrees) }
+					)}
+					onclick={() => rotateBy(degrees)}
+				><span aria-hidden="true">{degrees > 0 ? '↻' : '↺'}{Math.abs(degrees)}°</span></button>
+			{/each}
+		</div>
 	</div>
 {/if}
 
@@ -445,6 +482,62 @@
 		content: '';
 		height: 14px;
 		width: 14px;
+	}
+
+	/* Positioned by `dockControls`; laid out while hidden so it can be measured. */
+	.pie-tool-protractor__controls {
+		align-items: center;
+		background: var(--pie-background, #fff);
+		border: 1px solid var(--pie-border-light, #cbd5e0);
+		border-radius: 8px;
+		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-black, #000) 15%, transparent);
+		cursor: default;
+		/* Arrows and turn glyphs are physical directions, whatever the script. */
+		direction: ltr;
+		display: flex;
+		gap: 4px;
+		left: 0;
+		padding: 4px;
+		position: absolute;
+		top: 0;
+		visibility: hidden;
+		white-space: nowrap;
+	}
+
+	.pie-tool-protractor:focus-within .pie-tool-protractor__controls {
+		visibility: visible;
+	}
+
+	.pie-tool-protractor__control {
+		align-items: center;
+		background: var(--pie-button-bg, var(--pie-background, #fff));
+		border: 1px solid var(--pie-button-border, var(--pie-border, #94a3b8));
+		border-radius: 6px;
+		color: var(--pie-button-color, var(--pie-text, #111827));
+		cursor: pointer;
+		display: inline-flex;
+		font: inherit;
+		font-size: 14px;
+		justify-content: center;
+		min-height: 32px;
+		min-width: 32px;
+		padding: 0 6px;
+	}
+
+	.pie-tool-protractor__control:hover {
+		background: var(--pie-button-hover-bg, var(--pie-background-dark, #f3f5f7));
+	}
+
+	.pie-tool-protractor__control:focus-visible {
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #4a90e2));
+		outline-offset: 1px;
+	}
+
+	.pie-tool-protractor__controls-divider {
+		align-self: stretch;
+		background: var(--pie-border-light, #cbd5e0);
+		margin: 0 2px;
+		width: 1px;
 	}
 
 	.pie-tool-protractor__container {

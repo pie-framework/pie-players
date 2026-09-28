@@ -18,14 +18,22 @@ type Point = { x: number; y: number };
 async function openProtractor(page: Page, path: string) {
 	await page.goto(path, { waitUntil: "networkidle" });
 	await expectDemoChromeReady(page);
-	await page.getByRole("button", { name: "Protractor", exact: true }).first().click();
+	await page
+		.getByRole("button", { name: "Protractor", exact: true })
+		.first()
+		.click();
 	await expect(page.locator(PROTRACTOR)).toBeVisible();
 }
 
 function boxOf(page: Page, selector: string): Promise<Box> {
 	return page.locator(selector).evaluate((element) => {
 		const rect = element.getBoundingClientRect();
-		return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+		return {
+			left: rect.left,
+			top: rect.top,
+			right: rect.right,
+			bottom: rect.bottom,
+		};
 	});
 }
 
@@ -58,7 +66,9 @@ async function mouseDrag(page: Page, from: Point, to: Point) {
 /** Sweeps the rotation handle a quarter turn clockwise about the vertex. */
 async function quarterTurn(page: Page) {
 	const vertex = await vertexOf(page);
-	const handle = centreOf(await boxOf(page, ".pie-tool-protractor__rotate-handle"));
+	const handle = centreOf(
+		await boxOf(page, ".pie-tool-protractor__rotate-handle"),
+	);
 	const radius = vertex.y - handle.y;
 	await page.mouse.move(handle.x, handle.y);
 	await page.mouse.down();
@@ -73,7 +83,9 @@ async function quarterTurn(page: Page) {
 }
 
 test.describe("protractor pointer handling", () => {
-	test("a drag moves the protractor by the pointer's travel", async ({ page }) => {
+	test("a drag moves the protractor by the pointer's travel", async ({
+		page,
+	}) => {
 		await openProtractor(page, SECTION_DEMO);
 		const before = await boxOf(page, PROTRACTOR);
 		const grab = { x: before.left + 200, y: before.top + 150 };
@@ -117,8 +129,14 @@ test.describe("protractor pointer handling", () => {
 		expect(cardRight - stopped.left).toBeCloseTo(100, 0);
 	});
 
-	test("touch drags, and a cancelled touch lets go", async ({ page, browserName }) => {
-		test.skip(browserName !== "chromium", "touch input is dispatched through CDP");
+	test("touch drags, and a cancelled touch lets go", async ({
+		page,
+		browserName,
+	}) => {
+		test.skip(
+			browserName !== "chromium",
+			"touch input is dispatched through CDP",
+		);
 		await openProtractor(page, SECTION_DEMO);
 		const cdp = await page.context().newCDPSession(page);
 		await cdp.send("Emulation.setTouchEmulationEnabled", {
@@ -138,7 +156,9 @@ test.describe("protractor pointer handling", () => {
 		const grab = { x: before.left + 200, y: before.top + 150 };
 		await touch("touchStart", [grab]);
 		for (let step = 1; step <= 10; step++) {
-			await touch("touchMove", [{ x: grab.x + step * 10, y: grab.y + step * 5 }]);
+			await touch("touchMove", [
+				{ x: grab.x + step * 10, y: grab.y + step * 5 },
+			]);
 		}
 		await touch("touchEnd", []);
 		const dragged = await boxOf(page, PROTRACTOR);
@@ -152,5 +172,66 @@ test.describe("protractor pointer handling", () => {
 		const cancelled = await boxOf(page, PROTRACTOR);
 		await page.mouse.move(press.x + 300, press.y + 100);
 		expect(await boxOf(page, PROTRACTOR)).toEqual(cancelled);
+	});
+});
+
+test.describe("protractor tap controls", () => {
+	const CONTROLS = ".pie-tool-protractor__controls";
+	const press = (page: Page, name: string) =>
+		page.getByRole("button", { name, exact: true }).click();
+
+	test("show while the protractor has focus, and a press keeps them up", async ({
+		page,
+	}) => {
+		await openProtractor(page, SECTION_DEMO);
+		const controls = page.locator(CONTROLS);
+		await expect(page.locator(PROTRACTOR)).toBeFocused();
+		await expect(controls).toBeVisible();
+		await press(page, "Move tool right");
+		await expect(page.locator(PROTRACTOR)).toBeFocused();
+		await expect(controls).toBeVisible();
+		await page.getByText("Which greenhouse gas").click();
+		await expect(controls).toBeHidden();
+	});
+
+	test("move by 10px and turn by 5° and 1° without a drag", async ({
+		page,
+	}) => {
+		await openProtractor(page, SECTION_DEMO);
+		const before = await boxOf(page, PROTRACTOR);
+		await press(page, "Move tool right");
+		await press(page, "Move tool down");
+		const moved = await boxOf(page, PROTRACTOR);
+		expect(moved.left - before.left).toBeCloseTo(10, 0);
+		expect(moved.top - before.top).toBeCloseTo(10, 0);
+		await press(page, "Rotate 5° clockwise");
+		expect(await rotationOf(page)).toBeCloseTo(5, 0);
+		await press(page, "Rotate 1° counterclockwise");
+		expect(await rotationOf(page)).toBeCloseTo(4, 0);
+		await press(page, "Rotate 5° counterclockwise");
+		expect(await rotationOf(page)).toBeCloseTo(359, 0);
+	});
+
+	test("stay level and clear of the protractor at a quarter turn", async ({
+		page,
+	}) => {
+		await openProtractor(page, SECTION_DEMO);
+		const upright = await boxOf(page, CONTROLS);
+		expect(upright.top).toBeGreaterThan((await boxOf(page, PROTRACTOR)).bottom);
+		for (let step = 0; step < 18; step++)
+			await press(page, "Rotate 5° clockwise");
+		expect(await rotationOf(page)).toBeCloseTo(90, 0);
+		const turned = await boxOf(page, CONTROLS);
+		// Level: the strip's screen box keeps its upright shape.
+		expect(turned.right - turned.left).toBeCloseTo(
+			upright.right - upright.left,
+			0,
+		);
+		expect(turned.bottom - turned.top).toBeCloseTo(
+			upright.bottom - upright.top,
+			0,
+		);
+		// Clear: a quarter turn puts the tool's bottom edge on its left.
+		expect(turned.right).toBeLessThan((await boxOf(page, PROTRACTOR)).left);
 	});
 });

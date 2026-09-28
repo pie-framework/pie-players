@@ -1009,6 +1009,10 @@
   let isUpdating = false;
   let updateQueued = false;
   function runElementUpdate() {
+    // The owning player's teardown commit changes the session this is driven
+    // by after the host has removed the player, when the elements have
+    // already unmounted.
+    if (!rootElement?.isConnected) return;
     if (isUpdating) {
       updateQueued = true;
       return;

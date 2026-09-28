@@ -2,7 +2,7 @@
  * Moveable, bundled once for every PIE tool that drags or rotates.
  *
  * The build bundles `moveable` and its dependencies into this module's `dist`
- * file (see `scripts/build-moveable.mjs`), so hosts install nothing for it and
+ * file (see `scripts/bundle-vendored-modules.mjs`), so hosts install nothing for it and
  * the ruler and protractor share one copy. `moveable` imports `framework-utils`
  * without declaring it, which strict installs (pnpm `hoist: false`, Yarn PnP)
  * cannot resolve from the host's `node_modules`.

@@ -425,7 +425,6 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 ### Supporting Libraries
 
-- **Moveable.js** - Drag, rotate, resize functionality for ruler and protractor tools
 - **Desmos API** - Graphing and scientific calculator integration
 
 ### Browser Support

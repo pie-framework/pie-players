@@ -16,7 +16,11 @@
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-	import { createFocusTrap, createPointerDragController } from '@pie-players/pie-players-shared';
+	import {
+		createFocusTrap,
+		createPointerDragController,
+		createPointerGesture
+	} from '@pie-players/pie-players-shared';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -113,6 +117,7 @@
 
 		return () => {
 			document.removeEventListener('selectionchange', handleSelectionChange);
+			gesture.release();
 			if (isSpeaking) {
 				speakRun += 1;
 				ttsService?.stop();
@@ -309,34 +314,23 @@
 		};
 	}
 
+	// Ends on a cancelled touch as well as on release, so a drag iPadOS takes over
+	// for a system gesture does not stay stuck to the next touch.
+	const gesture = createPointerGesture({
+		onMove: (e) => dragController.handlePointerMove(e),
+		onEnd: () => dragController.endDragging()
+	});
+
 	function startDragging(e: PointerEvent) {
-		if (!containerEl) return;
-
+		if (!containerEl || !gesture.begin(e, containerEl)) return;
 		dragController.startDragging(e, containerEl);
-
-		containerEl.addEventListener('pointermove', handlePointerMove);
-		containerEl.addEventListener('pointerup', handlePointerUp);
-
-		e.preventDefault();
 	}
 
-	function handlePointerMove(e: PointerEvent) {
-		if (!dragController.isDragging()) return;
-
-		dragController.handlePointerMove(e);
-
-		e.preventDefault();
-	}
-
-	function handlePointerUp(e: PointerEvent) {
-		if (dragController.isDragging() && containerEl) {
-			containerEl.releasePointerCapture(e.pointerId);
-			dragController.endDragging();
-
-			containerEl.removeEventListener('pointermove', handlePointerMove);
-			containerEl.removeEventListener('pointerup', handlePointerUp);
-		}
-	}
+	// A panel hidden mid-drag takes its element with it; free the gesture so the
+	// next reveal can start one.
+	$effect(() => {
+		if (!visible) gesture.release();
+	});
 
 	function handleClose() {
 		coordinator?.hideTool(toolId);
@@ -523,6 +517,11 @@
 		border-radius: 8px;
 		box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
 		cursor: move;
+		/* A touch drag moves the panel rather than scrolling the page, which would
+		   cancel it, and a long press on iOS opens no callout or selection. */
+		touch-action: none;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
 		user-select: none;
 		font-family: system-ui, -apple-system, sans-serif;
 	}

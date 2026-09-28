@@ -66,6 +66,7 @@ const toolkitCoordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
+      // Desmos needs an application key; see "Simple Default" below.
       calculator: { enabled: true }
     },
     placement: {
@@ -276,6 +277,7 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
+      // Desmos needs an application key; see "Simple Default" below.
       calculator: { enabled: true }
     },
     placement: {
@@ -572,6 +574,9 @@ tools: {
 }
 ```
 
+The section player renders the section toolbar only when its `show-toolbar`
+attribute is `true`; the attribute defaults to `false`.
+
 **Characteristics:**
 - **Scope**: Section-wide, shared across all questions
 - **Lifecycle**: Single instance initialized for entire section
@@ -676,12 +681,14 @@ const coordinator = new ToolkitCoordinator({
 ```
 
 The ToolkitCoordinator handles service initialization, provider management, and
-state coordination. With no calculator provider configuration, the existing
-Desmos implementation remains the default and preserves its legacy unkeyed load.
-That fallback is for client compatibility; it does not grant a Desmos license.
-Licensed deployments can supply `provider.init.apiKey` or
-`provider.runtime.authFetcher`. Runtime key delivery avoids committing the key
-but does not hide it from the browser's Desmos script request.
+state coordination. With no calculator provider configuration, the Desmos
+implementation remains the default. Desmos's CDN rejects a `calculator.js`
+request without an `apiKey` (HTTP 403), so the Desmos calculator opens only when
+the host supplies `provider.init.apiKey` or `provider.runtime.authFetcher`, or
+has already loaded `window.Desmos`; the adapter's keyless request grants no
+Desmos license either. Runtime key delivery avoids committing the key but does
+not hide it from the browser's Desmos script request. The bundled open-source
+implementation below needs no key.
 
 Select the separate GeoGebra implementation explicitly without changing the
 calculator capability, placement, or item policy:

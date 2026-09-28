@@ -88,8 +88,9 @@ none of them:
 PIE packages contain only PIE-authored adapters and are MIT licensed. They do
 not bundle Desmos or GeoGebra application code.
 
-- Desmos is separately licensed. The adapter preserves its legacy unkeyed URL
-  for backwards compatibility, but that does not grant or imply a license.
+- Desmos is separately licensed. The adapter still requests its legacy unkeyed
+  URL when no key is configured, which Desmos's CDN rejects with HTTP 403 and
+  which does not grant or imply a license.
 - GeoGebra's full application/web services are separately licensed and require
   attribution; commercial use requires an agreement with GeoGebra.
 

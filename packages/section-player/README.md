@@ -348,7 +348,7 @@ The layout elements (`pie-section-player-splitpane`,
 - `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
 - `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
 - `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
-- `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
+- `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`); default `false`, so tools placed at `section` level render only when it is `true`
 - `locale` (string, optional): BCP-47 locale for the player's own interface text. Mirrored onto `runtime.locale`, which wins when both are set. Unset renders `en-US`.
 - `nds-icons` (boolean): opt in to NDS icon buttons. Mirrored onto `runtime.ndsIcons`, which wins when both are set.
 - `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`. `runtime.toolConfigStrictness` wins when both are set.

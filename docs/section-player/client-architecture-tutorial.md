@@ -314,9 +314,10 @@ const tools = {
 };
 ```
 
-Desmos is the default if `provider.id` is omitted. Its adapter preserves the
-historical unkeyed URL for compatibility, but that does not grant or imply a
-license. A licensed deployment can provide its application key through
+Desmos is the default if `provider.id` is omitted. Its adapter still requests
+the historical unkeyed URL when no key is configured; Desmos's CDN rejects that
+request with HTTP 403, and it does not grant or imply a license. A licensed
+deployment provides its application key through
 `provider.runtime.authFetcher`; the documented browser integration includes the
 key in the script URL, so runtime delivery keeps it out of the static bundle but
 does not make it secret. See the current

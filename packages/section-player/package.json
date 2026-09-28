@@ -106,7 +106,7 @@
 		"@happy-dom/global-registrator": "^20.11.15",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
-		"@playwright/test": "^1.62.1",
+		"@playwright/test": "^1.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"@types/node": "^26.6.2",
 		"svelte": "^5.57.0",

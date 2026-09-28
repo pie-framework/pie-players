@@ -173,6 +173,7 @@ await import("@pie-players/pie-item-player");
 - `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package.
 - Install every pie-elements-ng package from one release, in one `npm install --save-exact` from the same dist-tag, and upgrade them together. A release pins exact versions of the `@pie-lib/*` and `@pie-element/shared-*` libraries its elements share, so packages from two releases install a second copy of each library. `npm ls @pie-lib/render-ui` lists one version for a consistent set.
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
+- `element` is the package's `./browser/delivery` module: `./browser/*` is the npm entry because it resolves React from the element package, so a host does not switch to `./delivery`.
 - `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.
 - The call is synchronous and validates every entry before registering any. A tag that is already defined keeps its definition.
 

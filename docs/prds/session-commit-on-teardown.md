@@ -212,10 +212,9 @@ they are still attached. Two paths per element:
   otherwise be recorded as delivered and skipped at every later seam. A commit
   that dispatches nothing falls through to the synthesized path below.
 - An older element gets a `session-changed` synthesized from its `session`
-  getter, carrying `component` and `sessionCommitReason` and omitting `complete`
-  — `complete` is element-specific knowledge the player does not have, and
-  `SectionController` leaves completion untouched when the field is absent
-  rather than regressing it.
+  getter, carrying `component` and `sessionCommitReason`. `pie-item-player`
+  fills `complete` from whether the element's record holds a response, the
+  same derivation a restore without `complete` gets.
 
 Both paths carry `detail.sessionCommitReason`. An element dispatching its own
 commit cannot set it — it knows nothing about the seam — so the sweep marks that
@@ -303,6 +302,7 @@ not, and cannot; see below.
 
 | Player | Seam |
 | --- | --- |
+| `pie-item-player` | `focusout` to a target outside the player, or to none: WebKit does not focus a clicked button. `flushPendingSessionNotifications` runs the same sweep with no reason, so the event is an ordinary one and lands before the host acts on the click or key that moved focus. Every seam below then finds nothing pending for that element |
 | `pie-api-player` | `disconnectedCallback` — sweep, then save when the session differs from what the backend last saw. Disconnection callbacks run in tree order, so this fires before `<pie-player>`'s and has to sweep itself; it cannot route the result through its own `@Listen`, because Stencil removes host listeners before the callback runs. The signature comparison also covers the debounced save that was still pending, which the `() => void` typing on the field had hidden `.flush()` behind |
 | `pie-player` | `watchConfig` before `elementsLoaded = false` triggers the markup replacement, plus a `disconnectedCallback` it did not have |
 | `pie-item-player` | `loadConfig`, past its no-op signature guard, which is where the rendered elements are about to be replaced and where they are still mounted and connected; plus the component's own `onDestroy` for a host that removes the element outright, and the imperative `commitPendingElementSessions()` for a host that wants `document` reach on an unmount it controls. Not the renderer's `onDestroy`: that component is the one a `{#key}` swap replaces on a config change, so a commit routed through its listener writes player state in the middle of that swap. The orchestrator's autosave timer is flushed instead of cleared, both on teardown and when the host repoints `backend.delivery` |
@@ -456,8 +456,8 @@ schemas, and validation ownership are unchanged.
 ## Accessibility
 
 No user-facing runtime change. No focus, keyboard, screen-reader, captions,
-reduced-motion, or high-contrast impact. The final dispatch happens after the
-editor has already lost focus.
+reduced-motion, or high-contrast impact. The focus-leave flush observes
+`focusout` and moves no focus.
 
 ## Standards Or Adapter Impact
 
@@ -512,10 +512,11 @@ advancing snapshots pre-commit state, silently. Because the listener is on
 `document`, the element-side unmount flush alone would not reach it; the
 player-side sweep, dispatching while attached, does. Such a host changes nothing.
 
-What this does not close is a host that persists on its own navigation before it
-feeds the new section to the player: PIE has no hook ahead of that. Such a host
-gets the guarantee on its next save, plus the shell teardown and page-lifecycle
-commits.
+A host that persists on its own navigation before it feeds the new section to the
+player gets the response from the focus-leave flush, ahead of its navigation,
+when that navigation is a click or key press in its own controls. A navigation
+that leaves focus in the editor still depends on the next save, the shell
+teardown and the page-lifecycle commits.
 
 Coverage lives with the code it pins: a per-element teardown test in
 `pie-elements-ng` (`packages/elements-react/*/tests/delivery-session-commit.test.ts`),

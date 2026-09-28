@@ -1,4 +1,5 @@
 import {
+	hasLearnerResponse,
 	hasResponseValue,
 	normalizeItemSessionChange,
 	type CanonicalItemSessionContainer,
@@ -153,5 +154,57 @@ export function resolveSessionChangedForwarding(args: {
 		metadataOnly,
 		session,
 		signature,
+	};
+}
+
+function elementEntry(
+	session: CanonicalItemSessionContainer | null | undefined,
+	elementId: unknown,
+): Record<string, unknown> | undefined {
+	if (!session || !Array.isArray(session.data)) return undefined;
+	const entries = session.data.filter(isRecord);
+	if (typeof elementId === "string" && elementId) {
+		return entries.find((entry) => entry.id === elementId);
+	}
+	return entries.length === 1 ? entries[0] : undefined;
+}
+
+/**
+ * Every canonical `session-changed` carries `component` and `complete`.
+ *
+ * An element's own event has both. A synthesized commit and a correct-response
+ * population have neither of the element's, so `component` comes from the
+ * element's session record or its model, and `complete` is whether the
+ * element's record holds a response: the one reading a player can make without
+ * element knowledge, and the one that keeps a host gating on `complete` from
+ * treating a committed response as unanswered.
+ */
+export function withContractMetadata(
+	detail: Record<string, unknown>,
+	session: CanonicalItemSessionContainer | null | undefined,
+	componentForElement: (elementId: string | undefined) => string | undefined,
+): Record<string, unknown> {
+	const hasComponent = typeof detail.component === "string";
+	const hasComplete = typeof detail.complete === "boolean";
+	if (hasComponent && hasComplete) return detail;
+	const elementId =
+		typeof detail.elementId === "string" && detail.elementId
+			? detail.elementId
+			: undefined;
+	const entry = elementEntry(session, elementId);
+	const entryId = typeof entry?.id === "string" ? entry.id : elementId;
+	return {
+		...detail,
+		...(hasComponent
+			? {}
+			: {
+					component:
+						(typeof entry?.element === "string" && entry.element) ||
+						componentForElement(entryId) ||
+						"",
+				}),
+		...(hasComplete
+			? {}
+			: { complete: hasLearnerResponse(entry ?? session?.data ?? null) }),
 	};
 }

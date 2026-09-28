@@ -29,6 +29,8 @@ type Observed = {
 	sessionIsNull: boolean;
 	intent: unknown;
 	value: unknown;
+	component: unknown;
+	complete: unknown;
 };
 
 declare global {
@@ -64,6 +66,8 @@ test.describe("item-player session-changed contract", () => {
 					hasSessionKey: "session" in detail,
 					sessionIsNull: session === null,
 					intent: detail.intent ?? null,
+					component: detail.component,
+					complete: detail.complete,
 					value: session?.data?.find(
 						(entry: { id?: string }) => entry?.id === "1",
 					)?.value,
@@ -98,6 +102,14 @@ test.describe("item-player session-changed contract", () => {
 				event.hasSessionKey,
 				`session-changed reached the host without a "session" key: ${JSON.stringify(event)}`,
 			).toBe(true);
+			expect(
+				typeof event.component,
+				`session-changed reached the host without a component: ${JSON.stringify(event)}`,
+			).toBe("string");
+			expect(
+				typeof event.complete,
+				`session-changed reached the host without complete: ${JSON.stringify(event)}`,
+			).toBe("boolean");
 			if (event.sessionIsNull) {
 				expect(
 					event.intent,

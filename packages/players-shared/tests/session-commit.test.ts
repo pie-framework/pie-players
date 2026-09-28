@@ -20,6 +20,7 @@ const {
 	SESSION_COMMIT_METHOD,
 	bindPageLifecycleCommit,
 	commitPendingSessions,
+	flushPendingSessionNotifications,
 	noteSessionBaseline,
 	noteSessionObserved,
 } = await import("../src/pie/session-commit.js");
@@ -518,6 +519,87 @@ describe("commitPendingSessions", () => {
 			synthesized: 0,
 			skipped: 0,
 		});
+	});
+});
+
+describe("flushPendingSessionNotifications", () => {
+	it("delivers an adopted element's own event, unmarked", () => {
+		const element = mount(defineCommittingElement()) as HTMLElement & {
+			change(v: unknown): void;
+		};
+		const observed = observeDocument();
+
+		element.change("answer");
+		const result = flushPendingSessionNotifications(document.body);
+		observed.stop();
+
+		expect(result.committed).toBe(1);
+		expect(observed.events).toHaveLength(1);
+		expect(observed.events[0]?.detail.complete).toBe(true);
+		expect("sessionCommitReason" in observed.events[0]!.detail).toBe(false);
+	});
+
+	it("announces an older element's pending session, unmarked", () => {
+		const element = mount(defineLegacyElement()) as HTMLElement & {
+			session: Record<string, unknown>;
+		};
+		noteSessionBaseline(document.body);
+		element.session = { id: "e1", value: "answer" };
+		const observed = observeDocument();
+
+		const result = flushPendingSessionNotifications(document.body);
+		observed.stop();
+
+		expect(result.synthesized).toBe(1);
+		expect(observed.events[0]?.detail.session).toEqual({
+			id: "e1",
+			value: "answer",
+		});
+		expect("sessionCommitReason" in observed.events[0]!.detail).toBe(false);
+	});
+
+	it("dispatches nothing when nothing is pending", () => {
+		mount(defineCommittingElement());
+		const legacy = mount(defineLegacyElement()) as HTMLElement & {
+			session: Record<string, unknown>;
+		};
+		legacy.session = { id: "e1", value: "answer" };
+		noteSessionBaseline(document.body);
+		const observed = observeDocument();
+
+		flushPendingSessionNotifications(document.body);
+		observed.stop();
+
+		expect(observed.events).toHaveLength(0);
+	});
+
+	it("leaves the next commit nothing to do", () => {
+		const element = mount(defineCommittingElement()) as HTMLElement & {
+			change(v: unknown): void;
+		};
+		element.addEventListener("session-changed", (event) =>
+			noteSessionObserved(event.target),
+		);
+
+		element.change("answer");
+		flushPendingSessionNotifications(document.body);
+
+		expect(commitPendingSessions(document.body)).toEqual({
+			committed: 0,
+			synthesized: 0,
+			skipped: 1,
+		});
+	});
+
+	it("keeps flushing past an element whose hook throws", () => {
+		mount(defineCommittingElement({ throwOnCommit: true }));
+		const element = mount(defineCommittingElement()) as HTMLElement & {
+			change(v: unknown): void;
+		};
+
+		element.change("answer");
+
+		expect(flushPendingSessionNotifications(document.body).committed).toBe(1);
 	});
 });
 

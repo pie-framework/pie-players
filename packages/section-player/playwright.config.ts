@@ -50,8 +50,14 @@ export default defineConfig({
 		// through es-module-shims there.
 		{
 			name: "firefox",
-			testMatch: /section-demos-esm\.spec\.ts/,
+			testMatch: /section-(demos-esm|player-host-section-switch)\.spec\.ts/,
 			use: { ...devices["Desktop Firefox"] },
+		},
+		// Focus order: WebKit does not focus a clicked button.
+		{
+			name: "webkit",
+			testMatch: /section-player-host-section-switch\.spec\.ts/,
+			use: { ...devices["Desktop Safari"] },
 		},
 	],
 });

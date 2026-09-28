@@ -124,6 +124,7 @@
 		describeRegistrationFailures,
 		ensureHostSessionEntries,
 		ensureRegistered,
+		flushPendingSessionNotifications,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -145,6 +146,7 @@
 	import type {
 		ElementPackagePolicy,
 		EsmBackendConfig,
+		CanonicalItemSessionContainer,
 		EsmCdnProviderOption,
 		IifeBackendConfig,
 	} from "@pie-players/pie-players-shared";
@@ -162,6 +164,7 @@
 	import {
 		asCommittedDetail,
 		resolveSessionChangedForwarding,
+		withContractMetadata,
 	} from "./session-forwarding.js";
 
 	type ItemSession = {
@@ -1405,6 +1408,25 @@
 		});
 	});
 
+	// Focus leaving the player is the learner moving on, and the last moment the
+	// item they answered is still the host's current one. A deferred notification
+	// delivered now reaches the host before whatever the learner clicked or keyed
+	// changes the host's state; left to a commit seam it would arrive after.
+	// WebKit reports no `relatedTarget` for a click on a button it does not
+	// focus, so a missing one counts as leaving.
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const onFocusOut = (event: FocusEvent) => {
+			const next = event.relatedTarget;
+			if (next instanceof Node && localHost.contains(next)) return;
+			flushPendingSessionNotifications(localHost, { logger });
+		};
+		localHost.addEventListener("focusout", onFocusOut);
+		return () => localHost.removeEventListener("focusout", onFocusOut);
+	});
+
 	/**
 	* The DOM half of a delivery model refresh: the orchestrator decides whether
 	* a result still applies, this commits it to the rendered elements.
@@ -1606,6 +1628,30 @@
 		derivedStateUnannounced = true;
 	};
 
+	function componentForElement(elementId: string | undefined): string | undefined {
+		const models = [
+			...((itemConfig?.models ?? []) as Array<{ id?: unknown; element?: unknown }>),
+			...((passageConfig?.models ?? []) as Array<{ id?: unknown; element?: unknown }>),
+		];
+		const model = elementId
+			? models.find((candidate) => candidate.id === elementId)
+			: models.length === 1
+				? models[0]
+				: undefined;
+		return typeof model?.element === "string" ? model.element : undefined;
+	}
+
+	const emitSessionChanged = (
+		detail: Record<string, unknown>,
+		session: CanonicalItemSessionContainer,
+	) => {
+		handlePlayerEvent(
+			new CustomEvent("session-changed", {
+				detail: withContractMetadata(detail, session, componentForElement),
+			}),
+		);
+	};
+
 	const handleSessionChanged = (detail: unknown) => {
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		const controller = ensureSessionController(
@@ -1630,11 +1676,7 @@
 			sessionRevision += 1;
 			derivedStateUnannounced = false;
 			publishSessionToHostProp(nextSession);
-			handlePlayerEvent(
-				new CustomEvent("session-changed", {
-					detail: { ...forwarding.detail, session: nextSession },
-				}),
-			);
+			emitSessionChanged({ ...forwarding.detail, session: nextSession }, nextSession);
 			backendOrchestrator.scheduleAutosave();
 			return;
 		}
@@ -1642,14 +1684,11 @@
 			// The session changed since the host was last told, by a write-back alone.
 			derivedStateUnannounced = false;
 			const { intent: _intent, ...metadata } = forwarding.detail;
-			handlePlayerEvent(
-				new CustomEvent("session-changed", {
-					detail: { ...metadata, session: controller.getSession() },
-				}),
-			);
+			const current = controller.getSession();
+			emitSessionChanged({ ...metadata, session: current }, current);
 			return;
 		}
-		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwarding.detail }));
+		emitSessionChanged(forwarding.detail, controller.getSession());
 	};
 </script>
 

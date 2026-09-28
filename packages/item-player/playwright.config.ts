@@ -55,5 +55,16 @@ export default defineConfig({
 			grep: /\besm\b/,
 			use: { ...devices["Desktop Firefox"] },
 		},
+		// Focus order: WebKit does not focus a clicked button.
+		{
+			name: "firefox-focus",
+			testMatch: /item-player-focus-leave-flush\.spec\.ts/,
+			use: { ...devices["Desktop Firefox"] },
+		},
+		{
+			name: "webkit",
+			testMatch: /item-player-focus-leave-flush\.spec\.ts/,
+			use: { ...devices["Desktop Safari"] },
+		},
 	],
 });

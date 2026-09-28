@@ -10,6 +10,7 @@
 
 import {
 	ToolRegistry,
+	type CalculatorToolProviderConfig,
 	type ToolComponentFactory,
 	type ToolComponentFactoryMap,
 	type ToolRegistration,
@@ -59,7 +60,7 @@ export interface PackagedCalculatorCompositionOptions {
 	 * Selects the matching packaged element and default loader. Omit it to retain
 	 * the existing Desmos delivery.
 	 */
-	calculatorProviderConfig?: ToolProviderConfig;
+	calculatorProviderConfig?: CalculatorToolProviderConfig;
 }
 
 export interface PackagedToolRegistryOptions

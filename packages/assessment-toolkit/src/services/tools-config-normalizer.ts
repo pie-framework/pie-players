@@ -1,3 +1,4 @@
+import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
 import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
 import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 
@@ -78,8 +79,23 @@ export interface TextToSpeechToolProviderConfig
 	settings?: TextToSpeechToolProviderSettings;
 }
 
+/**
+ * `tools.providers.calculator`, closed to the keys the calculator reads, so a
+ * misplaced key such as a top-level `authFetcher` fails to compile instead of
+ * being ignored. `Pick` keeps it assignable to the providers index signature,
+ * which an interface would not be.
+ */
+export type CalculatorToolProviderConfig = Pick<
+	CalculatorProviderConfig,
+	keyof CalculatorProviderConfig
+> & {
+	enabled?: boolean;
+	provider?: ToolRuntimeProviderConfig;
+};
+
 export interface ToolProvidersConfig {
 	textToSpeech?: TextToSpeechToolProviderConfig;
+	calculator?: CalculatorToolProviderConfig;
 	[key: string]:
 		| ToolProviderConfig
 		| TextToSpeechToolProviderConfig

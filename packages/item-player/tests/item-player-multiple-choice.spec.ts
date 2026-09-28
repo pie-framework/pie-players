@@ -603,7 +603,7 @@ test.describe("item-player demo multiple-choice", () => {
 		await expect(page.getByRole("radio").first()).toBeVisible();
 		expect(browserBuilds.length).toBeGreaterThan(0);
 		await expect(
-			page.locator('script[type="importmap"][data-pie-editor-runtime]'),
+			page.locator('script[data-pie-editor-runtime]'),
 		).toHaveAttribute(
 			"data-pie-editor-runtime",
 			/^@pie-element\/shared-editor-runtime@/,

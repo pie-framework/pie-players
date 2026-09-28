@@ -105,12 +105,18 @@ jobs:
         include:
           - name: assessment-player
             command: test:e2e:assessment-player
+            browsers: chromium
+          # Firefox runs the esm strategy's specs: it rejects import maps other
+          # engines apply, and the player loads through es-module-shims there.
           - name: item-player-critical
             command: test:e2e:item-player:critical
+            browsers: chromium firefox
           - name: players-shared-sanitizer
             command: test:e2e:players-shared
+            browsers: chromium
           - name: print-player-sanitizer
             command: test:e2e:print-player
+            browsers: chromium
     steps:
       - name: Checkout
         if: env.RUN_HEAVY == 'true'
@@ -134,9 +140,9 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright Browsers
         if: env.RUN_HEAVY == 'true'
-        run: bunx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps ${{ matrix.browsers }}
 
       - name: Run Critical E2E
         if: env.RUN_HEAVY == 'true'
@@ -193,9 +199,10 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
 
-      - name: Install Playwright Chromium
+      # Firefox runs the esm strategy's specs.
+      - name: Install Playwright Browsers
         if: env.RUN_HEAVY == 'true'
-        run: bunx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium firefox
 
       - name: Run Section Player E2E
         if: env.RUN_HEAVY == 'true'

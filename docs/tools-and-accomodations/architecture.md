@@ -798,10 +798,10 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 ### Supporting Libraries
 
 **Moveable.js**
-- Drag, rotate, resize functionality
-- Used by ruler and protractor tools
-- Keyboard navigation support
-- Accessible interactions
+- Drag and rotate for the protractor tool
+- The ruler drags and rotates through `createPointerDragController` and
+  `createPointerRotateController` in `@pie-players/pie-players-shared`
+- Keyboard alternatives are the tools' own
 
 **Calculator provider suites**
 - The generic calculator contract (`@pie-players/pie-calculator`) and the

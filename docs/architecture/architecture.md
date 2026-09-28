@@ -425,7 +425,7 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 ### Supporting Libraries
 
-- **Moveable.js** - Drag, rotate, resize functionality for ruler and protractor tools
+- **Moveable.js** - Drag and rotate for the protractor tool; the ruler uses the pointer controllers in `@pie-players/pie-players-shared`
 - **Desmos API** - Graphing and scientific calculator integration
 
 ### Browser Support

@@ -68,6 +68,43 @@ export function clampOffsetWithinBlock(
 }
 
 /**
+ * Clamps a translate offset applied to a box centred in its containing block so
+ * that at least `visible` pixels of the box stay inside the block on each axis.
+ *
+ * For an overlay that has to overhang its block to be useful — a ruler lined up
+ * against content near a card's edge — without ever being dragged out of reach
+ * behind that edge. A box or block narrower than `visible` keeps all of the
+ * smaller extent.
+ */
+export function clampOffsetOverlappingBlock(
+	offset: Point,
+	box: Size,
+	block: Size,
+	visible: number,
+): Point {
+	const clampAxis = (value: number, boxExtent: number, blockExtent: number) => {
+		const keep = Math.min(visible, boxExtent, blockExtent);
+		const travel = blockExtent / 2 + boxExtent / 2 - keep;
+		return Math.max(-travel, Math.min(travel, value));
+	};
+	return {
+		x: clampAxis(offset.x, box.width, block.width),
+		y: clampAxis(offset.y, box.height, block.height),
+	};
+}
+
+/** The axis-aligned extent of a `size` box turned by `degrees` about its centre. */
+export function rotatedExtent(size: Size, degrees: number): Size {
+	const radians = (degrees * Math.PI) / 180;
+	const cos = Math.abs(Math.cos(radians));
+	const sin = Math.abs(Math.sin(radians));
+	return {
+		width: size.width * cos + size.height * sin,
+		height: size.width * sin + size.height * cos,
+	};
+}
+
+/**
  * Clamps an absolute centre point, in containing-block coordinates, so the box
  * it positions stays inside that block.
  *

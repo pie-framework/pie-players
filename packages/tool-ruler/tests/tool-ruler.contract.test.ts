@@ -8,15 +8,40 @@ test("keyboard placement is wired to the panel", () => {
 	expect(source).toInclude("onkeydown={handleKeyDown}");
 });
 
-test("keyboard placement writes the channel Moveable reads", () => {
-	// Moveable derives geometry from `transform` and writes `style.transform`;
-	// a keyboard path writing anywhere else desynchronises the two.
-	expect(source).toInclude("containerEl.style.transform =");
-	expect(source).toInclude("target.style.transform = transform");
+test("pointer and keyboard placement share one transform writer", () => {
+	// Two writers of `style.transform` would let a drag and a nudge disagree
+	// about where the ruler is.
+	expect(source.match(/containerEl\.style\.transform =/g)?.length).toBe(1);
+	expect(source).toInclude("applyPlacement({ x, y, rotation })");
 });
 
-test("drag containment is declared against the CSS box", () => {
-	expect(source).toInclude("position: 'css'");
+test("the ruler carries no third-party drag library", () => {
+	expect(source).not.toInclude("pie-players-shared/moveable");
+	expect(source).not.toMatch(/moveable/i);
+});
+
+test("a gesture ends when the system cancels the pointer", () => {
+	// iPadOS cancels a touch it takes over for a system gesture; a drag that
+	// only listened for `pointerup` would stay attached to the finger.
+	expect(source).toInclude("'pointercancel', endGesture");
+	expect(source).toInclude("'lostpointercapture', endGesture");
+});
+
+test("touch drags neither scroll the page nor open the iOS callout", () => {
+	const rulerRule = source.match(/\.pie-tool-ruler \{[^}]*\}/)?.[0] ?? "";
+	expect(rulerRule).toInclude("touch-action: none");
+	expect(rulerRule).toInclude("-webkit-touch-callout: none");
+	expect(rulerRule).toInclude("-webkit-user-select: none");
+	const handleRule =
+		source.match(/\.pie-tool-ruler__rotate-handle \{[^}]*\}/)?.[0] ?? "";
+	expect(handleRule).toInclude("touch-action: none");
+});
+
+test("the rotation handle offers a 44px touch target", () => {
+	const handleRule =
+		source.match(/\.pie-tool-ruler__rotate-handle \{[^}]*\}/)?.[0] ?? "";
+	expect(handleRule).toInclude("width: 44px");
+	expect(handleRule).toInclude("height: 44px");
 });
 
 test("revealing the tool cannot scroll its pane", () => {
@@ -27,14 +52,8 @@ test("revealing the tool cannot scroll its pane", () => {
 	}
 });
 
-test("a frameless surface drops Moveable's frame lines", () => {
+test("a frameless surface drops the frame line", () => {
 	expect(source).toInclude(
-		"hideDefaultLines: $host().getAttribute('data-pie-tool-surface') === 'frameless'",
+		":host([data-pie-tool-surface='frameless']) .pie-tool-ruler__frame",
 	);
-});
-
-test("no shadow-scoped rule targets Moveable's document-level control box", () => {
-	// Moveable renders its control box into `document.body`, which this
-	// component's shadow-root styles cannot reach.
-	expect(source).not.toInclude(".moveable-control-box");
 });

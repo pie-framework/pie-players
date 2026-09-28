@@ -46,5 +46,14 @@ export default defineConfig({
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
 		},
+		// The esm strategy's import maps: Firefox rejects a map added after the
+		// page's first module load, or after another map, so the player loads
+		// through es-module-shims there.
+		{
+			name: "firefox",
+			testMatch: /item-player-(esm-editor-runtime|multiple-choice)\.spec\.ts/,
+			grep: /\besm\b/,
+			use: { ...devices["Desktop Firefox"] },
+		},
 	],
 });

@@ -344,6 +344,9 @@ belong to `playwright.backend.config.ts`, so the main config ignores them.
 
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
+The item-player and section-player configs run the esm strategy's specs in
+Firefox as well as Chromium, so a local run needs both:
+`bunx playwright install chromium firefox`.
 
 It reaches that gate through `scripts/pre-push-gate.mjs`, which skips it when the
 push carries no new commits — creating a branch at a commit already on the remote,

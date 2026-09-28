@@ -181,7 +181,7 @@ function mappedRuntimes(page: Page) {
 	return page.evaluate(() =>
 		[
 			...document.querySelectorAll(
-				'script[type="importmap"][data-pie-editor-runtime]',
+				'script[data-pie-editor-runtime]',
 			),
 		].map((script) => script.getAttribute("data-pie-editor-runtime")),
 	);

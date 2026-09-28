@@ -55,8 +55,6 @@ import {
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
 	type TTSRuntimeSettings,
-	type TTSSpeedOption,
-	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
 import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";

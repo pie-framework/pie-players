@@ -57,9 +57,6 @@
 	let infoCloseButtonEl = $state<HTMLButtonElement | null>(null);
 	let lastInfoFocusTarget = $state<HTMLElement | null>(null);
 	const availableItems = $derived(demoState.items || []);
-	const selectedItem = $derived(
-		availableItems.find((item) => item.id === selectedItemId) || null,
-	);
 
 	function defaultSessionIdForItem(itemId: string): string {
 		return `${itemId}-session-1`;

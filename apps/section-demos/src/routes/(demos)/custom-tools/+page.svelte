@@ -88,7 +88,6 @@
 	afterNavigate(() => {
 		routerReady = true;
 	});
-	let playerHostElement: HTMLElement | null = $state(null);
 
 	// Host integration pattern: register callbacks under section-player `hooks`
 	// as a JS property on the custom element. This keeps callback wiring in a
@@ -295,7 +294,6 @@
 		<div class="preload-status">Preloading section item bundles...</div>
 	{:else if layoutType === "vertical"}
 		<pie-section-player-vertical
-			bind:this={playerHostElement}
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
@@ -318,7 +316,6 @@
 		></pie-section-player-vertical>
 	{:else}
 		<pie-section-player-splitpane
-			bind:this={playerHostElement}
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}

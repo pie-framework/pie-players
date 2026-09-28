@@ -1480,6 +1480,16 @@ over a CDN with no typecheck at all.
   host's contrast list, but they resolve inside a section-player component rather
   than on the root element, so that host reads them as empty either way — the
   names are API there, the values reach nobody
+- Exports deleted as unused on 2026-09-28: the legacy tool types, the
+  `ToolCategory` enum and `responseDiscovery` on the toolkit's `./tools/client`
+  subpath, which keeps its calculator types; the `ToolCoordinator` and
+  `HighlightCoordinator` constructor argument; `isPassageEntity`, `isPrerelease`,
+  `formatVersion`, `SessionChangedEvent`, `LoadResponse`, the `Tracker` types,
+  `BUILDER_ORIGIN_URL`, `renderMath` and `initializeMathRendering`'s renderer
+  argument on `pie-players-shared`; `BackendScope` and `BackendEventDetail` on
+  the item player. No checkout imports any of them. Host R declares its own
+  types and math helpers under several of these names, none resolved from this
+  repository
 
 ## Consumer-side defects worth reporting upstream
 

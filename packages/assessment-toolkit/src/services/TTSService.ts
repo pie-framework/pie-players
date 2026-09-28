@@ -29,7 +29,6 @@ import {
 import type {
 	AccessibilityCatalogResolver,
 	CatalogLookupContext,
-	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
 import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import {

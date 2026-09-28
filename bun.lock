@@ -154,7 +154,6 @@
       "version": "0.1.0",
       "dependencies": {
         "es-module-lexer": "^2.3.2",
-        "svelte": "^5.57.0",
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
@@ -162,11 +161,9 @@
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
-        "@sveltejs/kit": "^2.57.1",
         "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
       },
       "optionalPeers": [
-        "@sveltejs/kit",
         "vite",
       ],
     },

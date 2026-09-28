@@ -109,8 +109,8 @@ export interface ItemEntity
 	/**
 	 * `null` as well as absent, because importers write it. JSON has no
 	 * `undefined`, so an item transformed from another format carries an explicit
-	 * `passage: null` for "no passage" — `isPassageEntity` has always tested for
-	 * null, so the runtime expected it while the type denied it. Excluding null
+	 * `passage: null` for "no passage" — the runtime has always tested for
+	 * null, so it expected it while the type denied it. Excluding null
 	 * only meant a host feeding real importer output through a typed path had to
 	 * cast it away.
 	 */
@@ -955,111 +955,8 @@ export class InsertSoundEvent extends CustomEvent<SoundHandler> {
 	}
 }
 
-export const isPassageEntity = (
-	passage: string | PassageEntity | null | undefined,
-): passage is PassageEntity => typeof passage === "object" && passage !== null;
-
-export function isPrerelease(version: any): version is SemVer {
-	return (
-		typeof version === "object" &&
-		version !== null &&
-		typeof version.major === "number" &&
-		typeof version.minor === "number" &&
-		typeof version.patch === "number" &&
-		!!version.prerelease && // Check if prerelease exists
-		typeof version.prerelease.tag === "string" &&
-		typeof version.prerelease.version === "number"
-	);
-}
-
-export function formatVersion(semVer: SemVer): string {
-	if (!semVer) return "";
-	const base = [semVer.major, semVer.minor, semVer.patch].join(".");
-	if (isPrerelease(semVer) && semVer.prerelease) {
-		const prerelease = [semVer.prerelease.tag, semVer.prerelease.version].join(
-			".",
-		);
-		return `${base}-${prerelease}`;
-	}
-	return base;
-}
-
 export interface PieElement extends HTMLElement {
 	model: PieModel;
 	configuration: any;
 	session: any[];
-}
-
-export type SessionChangedDetail = {
-	complete: boolean;
-	component: any;
-};
-
-export class SessionChangedEvent extends CustomEvent<SessionChangedDetail> {
-	static TYPE = "session-changed";
-
-	constructor(
-		readonly component: string,
-		readonly complete: boolean,
-	) {
-		super(SessionChangedEvent.TYPE, {
-			bubbles: true,
-			composed: true,
-			detail: { complete, component },
-		} as any);
-	}
-}
-
-interface ItemCfg extends ConfigEntity {}
-
-interface ItemWPassageCfg {
-	pie: ItemCfg;
-	passage: ConfigEntity;
-}
-
-export interface LoadResponse {
-	js: {
-		view: string[];
-	};
-	item: ItemCfg | ItemWPassageCfg;
-	session: {
-		id: string;
-		data: any[];
-	};
-}
-
-export interface Tracker {
-	track(message: string, ...args: any[]): void;
-
-	start(label: string): void;
-
-	end(label: string, metadata?: { [key: string]: any }): void;
-}
-
-/**
- * Interface for storing tracker messages with timestamps
- */
-/**
- * Interface for storing tracker messages with timestamps
- */
-export interface TrackerMessage {
-	timestamp: Date;
-	message: string;
-	args: any[];
-	formattedMessage: string; // Added formatted message with interpolated args
-}
-
-/**
- * Enhanced tracker that stores messages with timestamps
- */
-export interface EnhancedTracker extends Tracker {
-	/**
-	 * Get all raw tracker messages ordered by timestamp (ascending)
-	 */
-	getMessages(): TrackerMessage[];
-
-	/**
-	 * Get a formatted multi-line representation of all tracker messages
-	 */
-	getFormattedMessages(): string;
 }

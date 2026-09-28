@@ -20,7 +20,6 @@
 import type {
 	AccessibilityCatalog,
 	ConfigEntity,
-	PieModel,
 } from "@pie-players/pie-players-shared/types";
 
 /**

@@ -53,7 +53,6 @@ export type {
 } from "./authoring.js";
 export {
 	initializeMathRendering,
-	renderMath,
 	setMathRenderer,
 } from "./math-rendering.js";
 export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";

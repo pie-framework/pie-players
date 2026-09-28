@@ -4,8 +4,6 @@ import type {
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
 
-export type BackendScope = "delivery" | "authoring";
-
 export type BackendProvider = "custom" | "pie-api";
 
 export type BackendMethod = "POST" | "PUT" | "PATCH" | "DELETE";
@@ -205,12 +203,4 @@ export type BackendLoadResult = {
 	config: unknown;
 	session: unknown;
 	metadata?: Record<string, unknown>;
-};
-
-export type BackendEventDetail = {
-	scope: BackendScope;
-	operation: string;
-	message?: string;
-	error?: unknown;
-	[key: string]: unknown;
 };

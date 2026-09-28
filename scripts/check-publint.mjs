@@ -283,7 +283,7 @@ const run = () => {
 	}
 
 	for (const target of targets) {
-		const { dir, relativeDir, isToolWorkspace, pkg } = target;
+		const { dir, isToolWorkspace, pkg } = target;
 		checked += 1;
 		try {
 			const publishedTargets = getPublishedEntryTargets(pkg);

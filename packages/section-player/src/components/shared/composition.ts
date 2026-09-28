@@ -30,11 +30,6 @@ export const EMPTY_COMPOSITION: SectionCompositionModel = {
 	formative: null,
 };
 
-export function getEntityTitle(entity: unknown): string {
-	const title = (entity as { title?: unknown } | null)?.title;
-	return typeof title === "string" ? title.trim() : "";
-}
-
 export function getCanonicalItemIdForItem(
 	compositionModel: SectionCompositionModel,
 	item: ItemEntity,

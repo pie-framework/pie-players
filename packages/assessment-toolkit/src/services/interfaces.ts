@@ -34,7 +34,7 @@ import type {
 	ToolkitInitStatus,
 	TTSToolConfig,
 } from "./ToolkitCoordinator.js";
-import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
+import type { ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";

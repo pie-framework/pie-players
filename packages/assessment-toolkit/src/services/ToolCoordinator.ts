@@ -42,14 +42,7 @@ interface ToolRegistration {
 	mouseDownHandler?: (e: MouseEvent) => void;
 }
 
-/**
- * Configuration for ToolCoordinator
- * Currently empty but allows future extension without breaking changes
- */
-export type ToolCoordinatorConfig = Record<string, never>;
-
 export class ToolCoordinator implements ToolCoordinatorApi {
-	private config: ToolCoordinatorConfig;
 	private tools = new Map<string, ToolRegistration>();
 	private layerCounters = new Map<ZIndexLayer, number>();
 	private listeners = new Set<() => void>();
@@ -63,8 +56,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 */
 	private visibilityState = new Map<string, boolean>();
 
-	constructor(config: ToolCoordinatorConfig = {}) {
-		this.config = config;
+	constructor() {
 		// Initialize layer counters
 		this.layerCounters.set(ZIndexLayer.BASE, 0);
 		this.layerCounters.set(ZIndexLayer.TOOL, 0);

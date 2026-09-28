@@ -226,7 +226,7 @@ it is the only control on this path.
 
 The players load element bundles by injecting `<script>` tags
 ([`iife-adapter.ts`](../../packages/players-shared/src/loaders/iife-adapter.ts),
-`defaultLoadBundleScript`), and the ESM strategy in `import-map` mode injects a
+`defaultLoadBundleScript`), and the ESM strategy injects a
 `<script type="importmap">`
 ([`esm-adapter.ts`](../../packages/players-shared/src/loaders/esm-adapter.ts),
 `injectImportMap`). Neither carries a nonce. Nothing in this repo sets a CSP;
@@ -246,8 +246,9 @@ header-delivered policy:
 created by already-trusted script, which is exactly how both adapters inject.
 Without it, a host-source entry covers the IIFE bundle URL but not the import
 map, which is an inline script element that cannot be given a nonce from
-outside the adapter — bare specifiers then fail to resolve and the ESM load
-fails. Dynamic `import()` inherits the nonce of the script that initiated it,
+outside the adapter. The ESM strategy then loads through es-module-shims, as it
+does where Firefox rejects the map, but the policy still refuses MathJax's
+injected script. Dynamic `import()` inherits the nonce of the script that initiated it,
 which is why rows 2 and 3 load an unlisted origin and row 4, with no nonce in
 play, does not.
 
@@ -320,8 +321,12 @@ when it has no Roboto stylesheet. A page showing those toolbars adds
 `https://cdn.jsdelivr.net https://fonts.gstatic.com` to `font-src`, or supplies
 both stylesheets itself.
 
-`moduleResolution: "url"` is the ESM default and avoids the import-map
-constraint entirely.
+In Firefox the ESM strategy loads through es-module-shims whenever the browser
+rejects its import map (see
+[loading strategies](../item-player/loading-strategies.md#strategyesm)).
+es-module-shims fetches module sources, which `connect-src` already admits, and
+imports them as `blob:` URLs, which the nonce admits; measured in Firefox, the
+base policy plus the `esm` additions loads with no violations.
 
 ## Escape hatches
 

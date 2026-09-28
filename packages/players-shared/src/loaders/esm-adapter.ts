@@ -119,6 +119,16 @@ type PackageMetadata = {
 export type EsmModuleImporter = (specifier: string) => Promise<unknown>;
 /** @internal */
 export type EsmImportMapObserver = (json: string, doc: Document) => void;
+/**
+ * The slice of es-module-shims' shim-mode `importShim` this backend uses.
+ *
+ * @internal
+ */
+export type EsmImportShim = ((specifier: string) => Promise<unknown>) & {
+	addImportMap(importMap: { imports: Record<string, string> }): void;
+};
+/** @internal */
+export type EsmImportShimLoader = () => Promise<EsmImportShim>;
 /** @internal */
 export type EsmPackageMetadataLoader = (
 	packageVersion: string,
@@ -137,6 +147,7 @@ export type EsmBackendTestSeams = {
 	replaceImporter(fn: EsmModuleImporter): void;
 	observeImportMapInjection(cb: EsmImportMapObserver): void;
 	replacePackageMetadataLoader(fn: EsmPackageMetadataLoader): void;
+	replaceImportShimLoader(fn: EsmImportShimLoader): void;
 	restore(): void;
 };
 
@@ -165,6 +176,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	let packageMetadataLoader: EsmPackageMetadataLoader =
 		defaultPackageMetadataLoader;
 	let importMapObserver: EsmImportMapObserver | undefined;
+	let importShimLoader: EsmImportShimLoader = defaultImportShimLoader;
+	let importShimRequest: Promise<EsmImportShim> | undefined;
 
 	const __seams: EsmBackendTestSeams = {
 		replaceImporter(fn) {
@@ -176,9 +189,15 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		replacePackageMetadataLoader(fn) {
 			packageMetadataLoader = fn;
 		},
+		replaceImportShimLoader(fn) {
+			importShimLoader = fn;
+			importShimRequest = undefined;
+		},
 		restore() {
 			importer = defaultImporter;
 			packageMetadataLoader = defaultPackageMetadataLoader;
+			importShimLoader = defaultImportShimLoader;
+			importShimRequest = undefined;
 			importMapObserver = undefined;
 			injectedPackageVersions.clear();
 			importMappedPackageVersions.clear();
@@ -248,10 +267,15 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				{ ...importMapResult.imports, ...runtimePlan?.imports },
 				context.doc,
 			);
+			let injectedMap: HTMLScriptElement | undefined;
 			if (Object.keys(imports).length > 0) {
 				const json = JSON.stringify({ imports }, null, 2);
 				assertImportMapSupported();
-				injectImportMap(json, context.doc, runtimePlan?.mappedRuntime);
+				injectedMap = injectImportMap(
+					json,
+					context.doc,
+					runtimePlan?.mappedRuntime,
+				);
 				importMapObserver?.(json, context.doc);
 			}
 			for (const [pkg, variant] of runtimePlan?.served ?? []) {
@@ -263,6 +287,9 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				if (moduleResolution === "import-map") {
 					importMappedPackageVersions.set(parsePackageName(pkg).name, pkg);
 				}
+			}
+			if (injectedMap) {
+				await applyImportMap(imports, injectedMap, context.doc);
 			}
 		}
 
@@ -312,13 +339,14 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					ElementClass = await importVariantElementClass(
 						packageVersion,
 						variant,
+						context.doc,
 					);
 				}
 
 				if (!ElementClass) {
 					let module: any;
 					try {
-						module = await importer(specifier);
+						module = await importModule(specifier, context.doc);
 					} catch (err) {
 						if (viewConfig.fallback) {
 							const fallbackConfig =
@@ -332,7 +360,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 								viewConfig.fallback,
 							);
 							try {
-								module = await importer(fallbackSpecifier);
+								module = await importModule(fallbackSpecifier, context.doc);
 							} catch (fallbackErr) {
 								reasons.set(tag, {
 									kind: "module-load-failed",
@@ -397,8 +425,9 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					const variantController = servedVariant?.views.controller;
 					if (servedVariant && variantController) {
 						try {
-							const controllerModule: any = await importer(
+							const controllerModule: any = await importModule(
 								cdnProvider.browserViewUrl(packageVersion, variantController),
+								context.doc,
 							);
 							controller = controllerModule?.default ?? controllerModule;
 						} catch (err) {
@@ -418,7 +447,10 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 							cdnProvider,
 						);
 						try {
-							const controllerModule: any = await importer(controllerSpecifier);
+							const controllerModule: any = await importModule(
+								controllerSpecifier,
+								context.doc,
+							);
 							controller = controllerModule?.default ?? controllerModule;
 						} catch {
 							// Controllers are best-effort; element registration is what the
@@ -451,13 +483,17 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	async function importVariantElementClass(
 		packageVersion: string,
 		variant: EditorRuntimeVariant,
+		doc: Document,
 	): Promise<unknown> {
 		const specifier = cdnProvider.browserViewUrl(
 			packageVersion,
 			variant.views[browserView],
 		);
 		try {
-			const ElementClass = pickElementClass(await importer(specifier), view);
+			const ElementClass = pickElementClass(
+				await importModule(specifier, doc),
+				view,
+			);
 			if (isCustomElementConstructor(ElementClass)) return ElementClass;
 			throw new Error(`${specifier} exports no custom element class`);
 		} catch (err) {
@@ -470,6 +506,85 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			);
 			return undefined;
 		}
+	}
+
+	/**
+	 * Imports through the browser, or through es-module-shims once the document
+	 * has rejected an import map, after every map a backend added has settled.
+	 */
+	async function importModule(
+		specifier: string,
+		doc: Document,
+	): Promise<unknown> {
+		await importMapsSettled(doc);
+		if (!documentUsesImportShim(doc)) return importer(specifier);
+		return (await importShim(doc))(specifier);
+	}
+
+	/**
+	 * Settles the map this backend just added: es-module-shims takes it in a
+	 * document that already uses it, and otherwise the browser has either
+	 * applied it or rejected it.
+	 */
+	async function applyImportMap(
+		imports: Record<string, string>,
+		script: HTMLScriptElement,
+		doc: Document,
+	): Promise<void> {
+		let state: "applied" | "rejected" = "applied";
+		try {
+			if (script.type === SHIM_IMPORT_MAP_TYPE) {
+				(await importShim(doc)).addImportMap({ imports });
+			} else if (await importMapRejected(imports)) {
+				state = "rejected";
+				await importShim(doc);
+			}
+		} finally {
+			settleImportMap(script, state);
+		}
+	}
+
+	/**
+	 * Whether the browser rejected a map this backend added. Firefox rejects
+	 * every import map added after the page's first module load, so a specifier
+	 * the map defines fails to resolve while the module it maps to loads. When
+	 * that module fails too, the map is not the cause, and the element imports
+	 * report the failure.
+	 */
+	async function importMapRejected(
+		imports: Record<string, string>,
+	): Promise<boolean> {
+		const specifier = "react" in imports ? "react" : Object.keys(imports)[0];
+		try {
+			await importer(specifier);
+			return false;
+		} catch {
+			// Resolved below: the map, or the module it maps to.
+		}
+		try {
+			await importer(imports[specifier]);
+		} catch {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * es-module-shims, holding every map in `doc`: the rejected ones, and any
+	 * the browser applied before, so both resolve the same way.
+	 */
+	function importShim(doc: Document): Promise<EsmImportShim> {
+		importShimRequest ??= importShimLoader().then(
+			(shim) => {
+				shim.addImportMap({ imports: documentImports(doc) });
+				return shim;
+			},
+			(err) => {
+				importShimRequest = undefined;
+				throw err;
+			},
+		);
+		return importShimRequest;
 	}
 
 	/**
@@ -561,9 +676,9 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			const { target } = prepared;
 			let failure = target?.failure;
 			if (target?.modules) {
-				const taken = mappedImportSpecifiers(doc);
-				const mapped = Object.keys(target.modules).find((specifier) =>
-					taken.has(specifier),
+				const taken = documentImports(doc);
+				const mapped = Object.keys(target.modules).find(
+					(specifier) => specifier in taken,
 				);
 				if (mapped) failure = `the page already maps ${mapped}`;
 			}
@@ -863,7 +978,10 @@ function toRawEsmShBaseUrl(cdnBaseUrl: string): string {
 	return "https://raw.esm.sh";
 }
 
-function resolveEsmViewConfig(view: string, viewConfig?: ViewConfig): ViewConfig {
+function resolveEsmViewConfig(
+	view: string,
+	viewConfig?: ViewConfig,
+): ViewConfig {
 	return viewConfig ?? BUILT_IN_VIEWS[view] ?? BUILT_IN_VIEWS.delivery;
 }
 
@@ -1352,7 +1470,11 @@ function canServeEditorRuntime(
 
 function importMapScripts(doc: Document): Element[] {
 	return typeof doc.querySelectorAll === "function"
-		? Array.from(doc.querySelectorAll('script[type="importmap"]'))
+		? Array.from(
+				doc.querySelectorAll(
+					`script[type="importmap"], script[type="${SHIM_IMPORT_MAP_TYPE}"]`,
+				),
+			)
 		: [];
 }
 
@@ -1371,21 +1493,6 @@ function readMappedEditorRuntime(doc: Document): EditorRuntimeRef | null {
 	return null;
 }
 
-function mappedImportSpecifiers(doc: Document): Set<string> {
-	const mapped = new Set<string>();
-	for (const script of importMapScripts(doc)) {
-		try {
-			const existing = JSON.parse(script.textContent || "{}")?.imports;
-			if (existing && typeof existing === "object") {
-				for (const specifier of Object.keys(existing)) mapped.add(specifier);
-			}
-		} catch {
-			// The browser rejects a map it cannot parse, so it maps nothing.
-		}
-	}
-	return mapped;
-}
-
 function errorMessage(err: unknown): string {
 	return err instanceof Error ? err.message : String(err);
 }
@@ -1399,23 +1506,126 @@ function withoutMappedSpecifiers(
 	imports: Record<string, string>,
 	doc: Document,
 ): Record<string, string> {
-	const mapped = mappedImportSpecifiers(doc);
+	const mapped = documentImports(doc);
 	return Object.fromEntries(
-		Object.entries(imports).filter(([specifier]) => !mapped.has(specifier)),
+		Object.entries(imports).filter(([specifier]) => !(specifier in mapped)),
 	);
 }
+
+/**
+ * Whether the browser applied an import map this backend added, recorded on
+ * the map so every player and every copy of this module on the page reads the
+ * same answer: `pending` until the backend knows, then `applied` or
+ * `rejected`. A document with a rejected map loads elements through
+ * es-module-shims.
+ */
+const IMPORT_MAP_STATE_ATTRIBUTE = "data-pie-import-map";
+const IMPORT_MAP_SETTLED_EVENT = "pie-import-map-settled";
+const SHIM_IMPORT_MAP_TYPE = "importmap-shim";
 
 function injectImportMap(
 	json: string,
 	doc: Document,
 	editorRuntime?: string,
-): void {
+): HTMLScriptElement {
 	const script = doc.createElement("script") as HTMLScriptElement;
-	script.type = "importmap";
+	script.type = documentUsesImportShim(doc)
+		? SHIM_IMPORT_MAP_TYPE
+		: "importmap";
+	script.setAttribute(IMPORT_MAP_STATE_ATTRIBUTE, "pending");
 	if (editorRuntime)
 		script.setAttribute(EDITOR_RUNTIME_ATTRIBUTE, editorRuntime);
 	script.textContent = json;
 	doc.head.appendChild(script);
+	return script;
+}
+
+function settleImportMap(
+	script: HTMLScriptElement,
+	state: "applied" | "rejected",
+): void {
+	script.setAttribute(IMPORT_MAP_STATE_ATTRIBUTE, state);
+	script.dispatchEvent(new Event(IMPORT_MAP_SETTLED_EVENT));
+}
+
+function documentUsesImportShim(doc: Document): boolean {
+	return importMapScripts(doc).some(
+		(script) => script.getAttribute(IMPORT_MAP_STATE_ATTRIBUTE) === "rejected",
+	);
+}
+
+/** Resolves once no import map a PIE backend added to `doc` is pending. */
+async function importMapsSettled(doc: Document): Promise<void> {
+	const pending = importMapScripts(doc).filter(
+		(script) => script.getAttribute(IMPORT_MAP_STATE_ATTRIBUTE) === "pending",
+	);
+	await Promise.all(
+		pending.map(
+			(script) =>
+				new Promise<void>((resolve) =>
+					script.addEventListener(IMPORT_MAP_SETTLED_EVENT, () => resolve(), {
+						once: true,
+					}),
+				),
+		),
+	);
+}
+
+/**
+ * Every mapping the import maps in `doc` define, the first map's rule winning
+ * for a specifier as it does in the browser.
+ */
+function documentImports(doc: Document): Record<string, string> {
+	const imports: Record<string, string> = Object.create(null);
+	for (const script of importMapScripts(doc)) {
+		try {
+			const mapped = JSON.parse(script.textContent || "{}")?.imports;
+			if (!mapped || typeof mapped !== "object") continue;
+			for (const [specifier, url] of Object.entries(mapped)) {
+				if (typeof url === "string" && !(specifier in imports)) {
+					imports[specifier] = url;
+				}
+			}
+		} catch {
+			// The browser rejects a map it cannot parse, so it maps nothing.
+		}
+	}
+	return imports;
+}
+
+/**
+ * es-module-shims in shim mode: it resolves through the import maps this
+ * backend hands it and leaves the page's own scripts and load events alone.
+ * A page that already runs es-module-shims keeps its instance, which has to be
+ * in shim mode to take maps from this backend.
+ */
+async function defaultImportShimLoader(): Promise<EsmImportShim> {
+	const scope = globalThis as {
+		importShim?: unknown;
+		esmsInitOptions?: Record<string, unknown>;
+	};
+	if (!scope.importShim) {
+		scope.esmsInitOptions = {
+			...scope.esmsInitOptions,
+			shimMode: true,
+			noLoadEventRetriggers: true,
+		};
+		await import("./module-shim.js");
+	}
+	const shim = scope.importShim as EsmImportShim | undefined;
+	if (typeof shim !== "function" || typeof shim.addImportMap !== "function") {
+		throw new Error(
+			"es-module-shims did not initialize, so this browser cannot load browser ESM elements after the page's first module load. Use the iife or preloaded strategy.",
+		);
+	}
+	try {
+		shim.addImportMap({ imports: {} });
+	} catch {
+		throw new Error(
+			"This page runs es-module-shims in polyfill mode, and this browser rejects import maps added after the page's first module load. Load es-module-shims in shim mode, or use the iife or preloaded strategy.",
+		);
+	}
+	return shim;
 }
 
 function importMapsSupported(): boolean {

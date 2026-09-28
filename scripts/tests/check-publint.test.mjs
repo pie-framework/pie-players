@@ -3,7 +3,10 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { findUnusedRuntimeDependencies } from "../check-publint.mjs";
+import {
+	collectRuntimeImportSpecifiers,
+	findUnusedRuntimeDependencies,
+} from "../check-publint.mjs";
 
 function createPackage(files) {
 	const dir = mkdtempSync(path.join(tmpdir(), "pie-publint-unused-deps-"));
@@ -73,5 +76,16 @@ describe("findUnusedRuntimeDependencies", () => {
 		expect(
 			findUnusedRuntimeDependencies(dir, { name: "@pie-players/fixture" }),
 		).toEqual([]);
+	});
+});
+
+describe("collectRuntimeImportSpecifiers", () => {
+	test("skips specifiers inside a template literal the code builds", () => {
+		const content =
+			'import { a } from "js-dep";\nconst src = `import x from "${url}";`;\nconst l = () => import("lazy-dep");\n';
+		expect([...collectRuntimeImportSpecifiers(content)]).toEqual([
+			"js-dep",
+			"lazy-dep",
+		]);
 	});
 });

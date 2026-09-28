@@ -107,7 +107,7 @@
 		"semver": "^7.8.5"
 	},
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/build-moveable.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome lint .",
@@ -121,6 +121,7 @@
 		"@happy-dom/global-registrator": "^20.11.15",
 		"@playwright/test": "^1.62.1",
 		"@types/semver": "^7.8.0",
+		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
 		"moveable": "^0.53.0",

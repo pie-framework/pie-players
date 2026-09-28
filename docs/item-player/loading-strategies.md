@@ -110,6 +110,8 @@ player.loaderOptions = {
 
 The view defaults to `"delivery"` unless `mode="author"` (which resolves to `"author"`), or explicitly overridden via `loaderOptions.view`.
 
+In both modes the player injects an import map for the shared dependencies. Firefox applies one import map per page, and only before the page's first module load, so it rejects the player's map on a page that loaded a module first, and any map after the first. The player detects a rejected map by importing one of its specifiers, and from then on loads that page's elements through es-module-shims in shim mode, which `@pie-players/pie-players-shared` bundles and loads only on such a page. Browsers that apply the map load natively. A page that runs its own es-module-shims must run it in shim mode; the player reuses that instance, and fails the load with an error naming the cause when it runs in polyfill mode. The CSP base policy in [`../security/readme.md`](../security/readme.md#content-security-policy) covers both paths.
+
 #### Shared editor runtime
 
 A package that declares `pie.browserEditorRuntime` also publishes, for each view its `views` names, a variant that imports Tiptap and ProseMirror from a shared runtime package instead of bundling them. Under `moduleResolution: "url"` the player loads that variant, `dist/browser/<views[view]>/index.js`, and adds the runtime's `pie.browserModules` to the import map, each at `dist/browser/<module>/index.js` of the runtime package on the same CDN, so every editor on the page runs one engine. A view `views` does not name loads its `./browser/*` module, and so does every package under `moduleResolution: "import-map"` or without the declaration.

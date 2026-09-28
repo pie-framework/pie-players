@@ -173,14 +173,14 @@ function createMockDocument(): Document {
 				return el;
 			},
 		},
-		createElement: () => ({}),
+		createElement: () => createScriptStub(),
 		querySelector: () => null,
 		querySelectorAll: () => [] as unknown as NodeListOf<Element>,
 		_scripts: scripts,
 	} as unknown as Document;
 }
 
-type ScriptStub = {
+type ScriptStub = EventTarget & {
 	type?: string;
 	textContent?: string;
 	getAttribute(name: string): string | null;
@@ -191,13 +191,12 @@ function createScriptStub(
 	init: { type?: string; textContent?: string } = {},
 ): ScriptStub {
 	const attributes = new Map<string, string>();
-	return {
-		...init,
-		getAttribute: (name) => attributes.get(name) ?? null,
-		setAttribute: (name, value) => {
+	return Object.assign(new EventTarget(), init, {
+		getAttribute: (name: string) => attributes.get(name) ?? null,
+		setAttribute: (name: string, value: string) => {
 			attributes.set(name, value);
 		},
-	};
+	});
 }
 
 /** A document whose import maps `querySelectorAll` reports, the host's first. */
@@ -220,11 +219,20 @@ function createImportMapDocument(
 		createElement: () => createScriptStub(),
 		querySelector: () => null,
 		querySelectorAll: (selector: string) =>
-			(selector === 'script[type="importmap"]'
-				? maps.filter((script) => script.type === "importmap")
+			(selector.includes('script[type="importmap"]')
+				? maps.filter(
+						(script) =>
+							script.type === "importmap" || script.type === "importmap-shim",
+					)
 				: []) as unknown as NodeListOf<Element>,
 	} as unknown as Document;
 }
+
+/**
+ * The specifier the ESM backend imports after adding an import map, to learn
+ * whether the browser applied it.
+ */
+const IMPORT_MAP_PROBE = "react";
 
 const REACT_SHARED_SPECIFIERS = [
 	"react",
@@ -1263,6 +1271,7 @@ describe("ESM adapter — contract", () => {
 		);
 
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/delivery/index.js",
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
@@ -1345,6 +1354,7 @@ describe("ESM adapter — contract", () => {
 		);
 
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/author/index.js",
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
@@ -1493,6 +1503,7 @@ describe("ESM adapter — contract", () => {
 			"https://cdn.jsdelivr.net/npm/react-dom@18.2.0/client/+esm",
 		);
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/delivery/index.js",
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
@@ -1567,6 +1578,7 @@ describe("ESM adapter — contract", () => {
 			"https://esm.sh/react-dom@18.2.0/client",
 		);
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"https://raw.esm.sh/@pie-element/multiple-choice@13.2.0/dist/browser/delivery/index.js",
 			"https://raw.esm.sh/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
@@ -1634,6 +1646,7 @@ describe("ESM adapter — contract", () => {
 		);
 		expect(imports.react).toBe("https://cdn.pie.example/esm/react@18.2.0/+esm");
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"https://cdn.pie.example/esm/@pie-element/multiple-choice@13.2.0/dist/browser/delivery/index.js",
 			"https://cdn.pie.example/esm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
@@ -1716,6 +1729,7 @@ describe("ESM adapter — contract", () => {
 			"https://cdn.pie.example/npm/react@18.2.0/jsx-runtime",
 		);
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"https://cdn.pie.example/esm/@pie-element/multiple-choice@13.2.0/dist/browser/delivery/index.js",
 			"https://cdn.pie.example/esm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
 		]);
@@ -3224,6 +3238,278 @@ describe("ESM adapter — existing import maps", () => {
 	});
 });
 
+// ─── ESM adapter — import maps the browser rejects ──────────────────────────
+
+describe("ESM adapter — import maps the browser rejects", () => {
+	const REACT_URL = "https://cdn.jsdelivr.net/npm/react@18.2.0/+esm";
+	const elementUrl = (name: string) =>
+		`https://cdn.jsdelivr.net/npm/@pie-element/${name}@1.0.0/dist/browser/delivery/index.js`;
+	const tagOf = (name: string) => `pie-${name}--version-1-0-0`;
+
+	/**
+	 * A browser that has loaded a module, so it rejects every import map added
+	 * since: a bare specifier stays unresolvable, and an element module fails on
+	 * its own `react` import. `mapsApply` models one that applies them.
+	 */
+	function browserImporter(options: { mapsApply: boolean }) {
+		const imported: string[] = [];
+		const importer = async (specifier: string) => {
+			imported.push(specifier);
+			if (options.mapsApply || specifier === REACT_URL) {
+				return specifier.startsWith("https://")
+					? { default: createConstructorFor(specifier) }
+					: {};
+			}
+			throw new TypeError(
+				`The specifier "${specifier.startsWith("https://") ? "react" : specifier}" was a bare specifier, but was not remapped to anything.`,
+			);
+		};
+		return { importer, imported };
+	}
+
+	function fakeImportShim() {
+		const imported: string[] = [];
+		const maps: Array<Record<string, string>> = [];
+		const shim = Object.assign(
+			async (specifier: string) => {
+				imported.push(specifier);
+				const name = specifier.match(/@pie-element\/([^@]+)@/)?.[1] ?? "";
+				return { default: createConstructorFor(tagOf(name)) };
+			},
+			{
+				addImportMap: (map: { imports: Record<string, string> }) => {
+					maps.push({ ...map.imports });
+				},
+			},
+		);
+		return { shim, imported, maps };
+	}
+
+	function backendFor(
+		native: ReturnType<typeof browserImporter>,
+		loadShim: () => Promise<unknown>,
+	) {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			loadControllers: false,
+		});
+		backend.__seams.replacePackageMetadataLoader(async () => ({
+			pie: {
+				browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" },
+			},
+		}));
+		backend.__seams.replaceImporter(native.importer);
+		backend.__seams.replaceImportShimLoader(
+			loadShim as () => Promise<ReturnType<typeof fakeImportShim>["shim"]>,
+		);
+		return backend;
+	}
+
+	const pieMaps = (doc: Document) =>
+		Array.from(
+			doc.querySelectorAll('script[type="importmap"]') as ArrayLike<Element>,
+		).filter((script) => script.getAttribute("data-pie-import-map"));
+
+	test("a rejected map loads the elements through es-module-shims, which holds every map in the document", async () => {
+		const doc = createImportMapDocument([
+			{ "host-lib": "https://host.test/lib.js" },
+		]);
+		const native = browserImporter({ mapsApply: false });
+		const fake = fakeImportShim();
+		const backend = backendFor(native, async () => fake.shim);
+
+		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc });
+
+		expect(native.imported).toEqual([IMPORT_MAP_PROBE, REACT_URL]);
+		expect(fake.imported).toEqual([elementUrl("mc")]);
+		expect(fake.maps).toHaveLength(1);
+		expect(fake.maps[0]?.["host-lib"]).toBe("https://host.test/lib.js");
+		expect(fake.maps[0]?.react).toBe(REACT_URL);
+		expect(
+			pieMaps(doc).map((s) => s.getAttribute("data-pie-import-map")),
+		).toEqual(["rejected"]);
+		expect(g.customElements?.get(tagOf("mc"))).toBeDefined();
+	});
+
+	test("a browser that applies the map keeps loading natively", async () => {
+		const doc = createImportMapDocument();
+		const native = browserImporter({ mapsApply: true });
+		let shimLoads = 0;
+		const backend = backendFor(native, async () => {
+			shimLoads++;
+			return fakeImportShim().shim;
+		});
+
+		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc });
+
+		expect(native.imported).toEqual([IMPORT_MAP_PROBE, elementUrl("mc")]);
+		expect(shimLoads).toBe(0);
+		expect(
+			pieMaps(doc).map((s) => s.getAttribute("data-pie-import-map")),
+		).toEqual(["applied"]);
+	});
+
+	test("a map whose module fails to load as well stays with the browser, and the element reports its failure", async () => {
+		const doc = createImportMapDocument();
+		const imported: string[] = [];
+		const offline = {
+			imported,
+			importer: async (specifier: string) => {
+				imported.push(specifier);
+				throw new TypeError("error loading dynamically imported module");
+			},
+		};
+		let shimLoads = 0;
+		const backend = backendFor(offline, async () => {
+			shimLoads++;
+			return fakeImportShim().shim;
+		});
+
+		const failure = await backend
+			.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc })
+			.then(
+				() => null,
+				(err: unknown) => err,
+			);
+
+		expect(failure).toBeInstanceOf(AdapterFailure);
+		expect(imported).toEqual([IMPORT_MAP_PROBE, REACT_URL, elementUrl("mc")]);
+		expect(shimLoads).toBe(0);
+		expect(
+			pieMaps(doc).map((s) => s.getAttribute("data-pie-import-map")),
+		).toEqual(["applied"]);
+	});
+
+	test("a map added to a document that uses es-module-shims goes to the shim without asking the browser", async () => {
+		const rejected = createScriptStub({
+			type: "importmap",
+			textContent: JSON.stringify({
+				imports: {
+					"react-dom": "https://cdn.jsdelivr.net/npm/react-dom@18.2.0/+esm",
+				},
+			}),
+		});
+		rejected.setAttribute("data-pie-import-map", "rejected");
+		const doc = createImportMapDocument();
+		doc.head.appendChild(rejected as unknown as Node);
+		const native = browserImporter({ mapsApply: false });
+		const fake = fakeImportShim();
+		const backend = backendFor(native, async () => fake.shim);
+
+		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc });
+
+		expect(native.imported).toEqual([]);
+		expect(fake.imported).toEqual([elementUrl("mc")]);
+		const added = pieMaps(doc).filter(
+			(script) => (script as { type?: string }).type === "importmap-shim",
+		);
+		expect(added).toHaveLength(1);
+		expect(added[0]?.getAttribute("data-pie-import-map")).toBe("applied");
+		expect(fake.maps.some((map) => map.react === REACT_URL)).toBe(true);
+	});
+
+	test("a player that loads while another player's map is pending imports once the map has settled", async () => {
+		const doc = createImportMapDocument();
+		const fake = fakeImportShim();
+		let releaseProbe: () => void = () => {};
+		const probeGate = new Promise<void>((resolve) => {
+			releaseProbe = resolve;
+		});
+		const blocked = browserImporter({ mapsApply: false });
+		const first = backendFor(
+			{
+				imported: blocked.imported,
+				importer: async (specifier) => {
+					if (specifier === IMPORT_MAP_PROBE) await probeGate;
+					return blocked.importer(specifier);
+				},
+			},
+			async () => fake.shim,
+		);
+		const secondNative = browserImporter({ mapsApply: false });
+		const second = backendFor(secondNative, async () => fake.shim);
+
+		const firstLoad = first.load(
+			{ [tagOf("mc")]: "@pie-element/mc@1.0.0" },
+			{ doc },
+		);
+		while (pieMaps(doc).length === 0) await Promise.resolve();
+		const secondLoad = second.load(
+			{ [tagOf("passage")]: "@pie-element/passage@1.0.0" },
+			{ doc },
+		);
+		for (let i = 0; i < 20; i++) await Promise.resolve();
+		expect(fake.imported).toEqual([]);
+		expect(secondNative.imported).toEqual([]);
+
+		releaseProbe();
+		await Promise.all([firstLoad, secondLoad]);
+
+		expect(secondNative.imported).toEqual([]);
+		expect(fake.imported.sort()).toEqual(
+			[elementUrl("mc"), elementUrl("passage")].sort(),
+		);
+	});
+
+	describe("es-module-shims the page already runs", () => {
+		const scope = globalThis as { importShim?: unknown };
+		afterEach(() => {
+			delete scope.importShim;
+		});
+
+		function defaultShimBackend(native: ReturnType<typeof browserImporter>) {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				loadControllers: false,
+			});
+			backend.__seams.replacePackageMetadataLoader(async () => ({
+				pie: { browserSharedDependencies: { react: "18.2.0" } },
+			}));
+			backend.__seams.replaceImporter(native.importer);
+			return backend;
+		}
+
+		test("in shim mode, it keeps its instance and takes the document's maps", async () => {
+			const fake = fakeImportShim();
+			scope.importShim = fake.shim;
+			const doc = createImportMapDocument();
+
+			await defaultShimBackend(browserImporter({ mapsApply: false })).load(
+				{ [tagOf("mc")]: "@pie-element/mc@1.0.0" },
+				{ doc },
+			);
+
+			expect(fake.imported).toEqual([elementUrl("mc")]);
+			expect(fake.maps.some((map) => map.react === REACT_URL)).toBe(true);
+		});
+
+		test("in polyfill mode, the load fails with an error naming the fix", async () => {
+			scope.importShim = Object.assign(async () => ({}), {
+				addImportMap: () => {
+					throw new Error("Unsupported in polyfill mode.");
+				},
+			});
+			const doc = createImportMapDocument();
+
+			const failure = await defaultShimBackend(
+				browserImporter({ mapsApply: false }),
+			)
+				.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc })
+				.then(
+					() => null,
+					(err: unknown) => err,
+				);
+
+			expect(String(failure)).toContain("polyfill mode");
+			expect(
+				pieMaps(doc).map((s) => s.getAttribute("data-pie-import-map")),
+			).toEqual(["rejected"]);
+		});
+	});
+});
+
 // ─── ESM adapter — shared editor runtime ─────────────────────────────────────
 
 describe("ESM adapter — shared editor runtime", () => {
@@ -3394,6 +3680,7 @@ describe("ESM adapter — shared editor runtime", () => {
 
 		expect(delivery.imported.sort()).toEqual(
 			[
+				IMPORT_MAP_PROBE,
 				url(MC, "editor-runtime/delivery"),
 				url(MC, "editor-runtime/controller"),
 				url(VENN, "editor-runtime/delivery"),
@@ -3508,6 +3795,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			new Set(["react", "react-dom"]),
 		);
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			`https://files.test/${MC}/editor-runtime/delivery.mjs`,
 			`https://files.test/${MC}/editor-runtime/controller.mjs`,
 		]);
@@ -3526,6 +3814,7 @@ describe("ESM adapter — shared editor runtime", () => {
 		await backend.load({ [MC_TAG]: MC }, { doc });
 
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			"@pie-element/multiple-choice",
 			"@pie-element/multiple-choice/controller",
 		]);
@@ -3550,6 +3839,7 @@ describe("ESM adapter — shared editor runtime", () => {
 
 		expect(imported.sort()).toEqual(
 			[
+				IMPORT_MAP_PROBE,
 				url(MC, "editor-runtime/delivery"),
 				url(MC, "editor-runtime/controller"),
 				url(PASSAGE, "delivery"),
@@ -3747,7 +4037,11 @@ describe("ESM adapter — shared editor runtime", () => {
 
 		await backend.load({ [MC_TAG]: MC }, { doc });
 
-		expect(imported).toEqual([url(MC, "delivery"), url(MC, "controller")]);
+		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
+			url(MC, "delivery"),
+			url(MC, "controller"),
+		]);
 		expect(Object.keys(injectedImports(injected)).sort()).toEqual(
 			[...REACT_SHARED_SPECIFIERS].sort(),
 		);
@@ -3794,7 +4088,11 @@ describe("ESM adapter — shared editor runtime", () => {
 
 			await backend.load({ [MC_TAG]: MC }, { doc });
 
-			expect(imported).toEqual([url(MC, "delivery"), url(MC, "controller")]);
+			expect(imported).toEqual([
+				IMPORT_MAP_PROBE,
+				url(MC, "delivery"),
+				url(MC, "controller"),
+			]);
 			expect(g.customElements?.get(MC_TAG)).toBeDefined();
 			expect(Object.keys(injectedImports(injected)).sort()).toEqual(
 				[...REACT_SHARED_SPECIFIERS].sort(),
@@ -3818,6 +4116,7 @@ describe("ESM adapter — shared editor runtime", () => {
 		await backend.load({ [MC_TAG]: MC }, { doc });
 
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			variant,
 			url(MC, "delivery"),
 			url(MC, "controller"),
@@ -3846,6 +4145,7 @@ describe("ESM adapter — shared editor runtime", () => {
 		await backend.load({ [MC_TAG]: MC }, { doc });
 
 		expect(imported).toEqual([
+			IMPORT_MAP_PROBE,
 			url(MC, "editor-runtime/delivery"),
 			variantController,
 			url(MC, "controller"),
@@ -3879,7 +4179,11 @@ describe("ESM adapter — shared editor runtime", () => {
 
 			await backend.load({ [MC_TAG]: MC }, { doc });
 
-			expect(imported).toEqual([url(MC, "delivery"), url(MC, "controller")]);
+			expect(imported).toEqual([
+				IMPORT_MAP_PROBE,
+				url(MC, "delivery"),
+				url(MC, "controller"),
+			]);
 			expect(runtimeRequests(metadataRequests)).toEqual([]);
 			expect(warnings).toEqual([
 				fallbackWarning(

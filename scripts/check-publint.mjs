@@ -96,7 +96,9 @@ const isIgnoredSpecifier = (specifier) => {
 	);
 };
 
-const collectRuntimeImportSpecifiers = (content) => {
+// A match holding `${` lies in a template literal the code builds, such as the
+// module source es-module-shims generates, so it is text and not an import.
+export const collectRuntimeImportSpecifiers = (content) => {
 	const out = new Set();
 	const patterns = [
 		/import\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
@@ -108,7 +110,7 @@ const collectRuntimeImportSpecifiers = (content) => {
 	for (const pattern of patterns) {
 		let match;
 		while ((match = pattern.exec(content))) {
-			out.add(match[1]);
+			if (!match[1].includes("${")) out.add(match[1]);
 		}
 	}
 	return out;

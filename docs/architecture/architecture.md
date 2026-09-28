@@ -124,7 +124,7 @@ The ESM player supports loading different views/variants of elements through ESM
 **Purpose**: Elements resolved at the host's build time, with no runtime element loading.
 
 **Architecture**:
-- The host installs pie-elements-ng packages as npm dependencies; its build bundles their ESM builds
+- The host installs pie-elements-ng packages as npm dependencies, all from one release, and its build bundles their ESM builds. A release pins the shared `@pie-lib/*` versions its elements use, so a set from one release installs one copy of each
 - The host registers them with `registerPreloadedElements` before the player renders, and the player asserts they are registered
 - ESM only: runtime-loaded IIFE bundles are the `iife` strategy
 

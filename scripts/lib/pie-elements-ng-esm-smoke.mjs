@@ -280,19 +280,3 @@ export function createJsDelivrLocalMapper() {
 		},
 	};
 }
-
-export async function listSampleSlugs(pieElementsNgRoot) {
-	const sampleDir = path.join(
-		pieElementsNgRoot,
-		"apps",
-		"element-demo",
-		"src",
-		"lib",
-		"samples",
-	);
-	const entries = await readdir(sampleDir).catch(() => []);
-	return entries
-		.filter((entry) => entry.endsWith(".json"))
-		.map((entry) => entry.slice(0, -".json".length))
-		.sort();
-}

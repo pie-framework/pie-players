@@ -56,26 +56,6 @@ export const resolveHighlightTargetForBoundary = (
 	});
 };
 
-export const resolveMatchedHighlightTargetForBoundary = (
-	alignment: MathAwareAlignment,
-	args: {
-		position: number;
-		length?: number;
-		boundaryWord?: string;
-	},
-): HighlightTarget | null => {
-	const boundary = resolveBoundaryToSpeechToken({
-		tokenization: alignment.speech,
-		position: args.position,
-		length: args.length,
-		boundaryWord: args.boundaryWord,
-	});
-	return resolveMatchedTargetForBoundary({
-		alignment: alignment.result,
-		boundary,
-	});
-};
-
 export const resolveMatchedHighlightTargetForSpokenBoundary = (
 	alignment: MathAwareAlignment,
 	args: {

@@ -101,7 +101,6 @@
 	let playerInstanceKey = $state(0);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
-	let playerHostElement: HTMLElement | null = $state(null);
 
 	let showSessionPanel = $state(false);
 	let showEventPanel = $state(false);
@@ -297,7 +296,6 @@
 			<div class="preload-status">Preloading section item bundles...</div>
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
-				bind:this={playerHostElement}
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
@@ -316,7 +314,6 @@
 			></pie-section-player-vertical>
 		{:else}
 			<pie-section-player-splitpane
-				bind:this={playerHostElement}
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}

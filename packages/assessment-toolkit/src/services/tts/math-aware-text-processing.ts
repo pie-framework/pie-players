@@ -91,9 +91,6 @@ const findCanonicalMathML = (element: Element): string | null => {
 	return null;
 };
 
-const isMathContainer = (element: Element): boolean =>
-	Boolean(findCanonicalMathML(element));
-
 const TEXT_CHUNK_SOURCE_TAGS = new Set([
 	"P",
 	"H1",

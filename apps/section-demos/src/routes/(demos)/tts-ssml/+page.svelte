@@ -126,7 +126,6 @@
 	let playerInstanceKey = $state(0);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
-	let coordinatorReady = $state(false);
 	let playerHostElement: HTMLElement | null = $state(null);
 	// Untracked, since the effect that binds the subscription also writes it.
 	let unsubscribeController: (() => void) | null = null;
@@ -194,7 +193,6 @@ const sectionPlayerHooks = $derived.by(() =>
 		const detail = (event as CustomEvent<{ coordinator?: unknown }>).detail;
 		if (!coordinator) return;
 		if (detail?.coordinator !== coordinator) return;
-		coordinatorReady = true;
 		// Bind the profile so policy has an input to decide against; the section
 		// payload alone is invisible to `decideFeaturePolicy`.
 		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);

@@ -169,14 +169,12 @@
 	let showPnpPanel = $state(false);
 	let showTtsPanel = $state(false);
 	let showSessionDbPanel = $state(false);
-	let autoOpenedSessionDbPanel = $state(false);
 	let sessionDebuggerElement: any = $state(null);
 	let eventDebuggerElement: any = $state(null);
 	let instrumentationDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
 
 	let dbHydrateEnabled = $state(false);
-	let dbBootstrapAt = $state<number | null>(null);
 	let dbErrorMessage = $state<string | null>(null);
 	let suppressDemoDbAutoPersist = $state(false);
 	let suppressDemoDbAutoPersistUntilMs = $state(0);
@@ -258,7 +256,6 @@
 			reset
 		});
 		serverLoadedSection = response.section || data.section;
-		dbBootstrapAt = Date.now();
 	}
 
 	async function loadSnapshotFromDb(sectionId: string) {

@@ -800,13 +800,6 @@ const REQUIRED_SCHEME_TOKENS = Object.freeze(
 		.sort(),
 );
 
-const OPTIONAL_SCHEME_TOKENS = Object.freeze(
-	Object.entries(PIE_THEME_SCHEME_PARTICIPATION)
-		.filter(([, participation]) => participation === "optional")
-		.map(([token]) => token as ThemeTokenName)
-		.sort(),
-);
-
 /**
  * Named semantic relationships are the accessibility contract. Token names
  * alone do not say whether a color is text, a fill, or a boundary.
@@ -1174,10 +1167,6 @@ export function getSchemeParticipation(
 
 export function getRequiredSchemeTokens(): readonly ThemeTokenName[] {
 	return REQUIRED_SCHEME_TOKENS;
-}
-
-export function getOptionalSchemeTokens(): readonly ThemeTokenName[] {
-	return OPTIONAL_SCHEME_TOKENS;
 }
 
 export function createBuiltInColorSchemeDescriptor(

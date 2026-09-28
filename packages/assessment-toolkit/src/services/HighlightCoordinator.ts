@@ -56,14 +56,7 @@ export interface Annotation {
 	timestamp: number;
 }
 
-/**
- * Configuration for HighlightCoordinator
- * Currently empty but allows future extension without breaking changes
- */
-export type HighlightCoordinatorConfig = Record<string, never>;
-
 export class HighlightCoordinator implements HighlightCoordinatorApi {
-	private config: HighlightCoordinatorConfig;
 	private ttsWordHighlight: Highlight | null = null;
 	private ttsSentenceHighlight: Highlight | null = null;
 	private ttsWordElementHighlights = new Set<Element>();
@@ -78,8 +71,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private explicitTTSColorOverride: { color: string; opacity: number } | null =
 		null;
 
-	constructor(config: HighlightCoordinatorConfig = {}) {
-		this.config = config;
+	constructor() {
 		this.rangeSerializer = new RangeSerializer();
 
 		// SSR guard

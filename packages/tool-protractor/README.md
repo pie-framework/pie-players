@@ -4,8 +4,8 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 
 ## Features
 
-- **Draggable**: Click and drag anywhere on the protractor to move it
-- **Rotatable**: Drag the rotation handle above the protractor to rotate it
+- **Draggable**: Drag anywhere on the protractor with a mouse, pen or finger to move it; it may overhang the card it opens on but keeps 100px inside it
+- **Rotatable**: Drag the handle above the protractor to turn it about its vertex
 - **180-degree scale**: Standard protractor with two opposing 0-180 degree scales
 - **Tick marks**: Every degree, with longer ticks every 5 degrees
 - **Labels**: Every 10 degrees on both scales, each with a radial guide line
@@ -49,14 +49,14 @@ both: its button toggles the tool in the coordinator and its sync sets
 ## Interactions
 
 ### Moving
-- Click and drag the protractor to move it around the screen
+- Drag the protractor with a mouse, pen or finger to move it
 - Arrow keys move it 10px per press
+- It may overhang the card it opens on, but keeps 100px inside it
 - The cursor changes to indicate draggability
 
 ### Rotating
-- Drag the rotation handle above the protractor to rotate it
+- Drag the handle above the protractor to turn it about its vertex, the centre of its baseline
 - Shift+Arrow keys rotate it 5 degrees per press; PageUp/PageDown rotate it 1 degree
-- Rotation is continuous and smooth
 - Useful for aligning with different angles in diagrams
 
 ### Bringing to Front
@@ -64,7 +64,7 @@ both: its button toggles the tool in the coordinator and its sync sets
 - Managed automatically by the tool coordinator
 
 ### Closing
-- Setting `visible` to `false` closes the protractor and removes its drag and rotation controls
+- Setting `visible` to `false` closes the protractor and resets its placement
 - Under a coordinator, the host also hides `toolId` there, as the packaged toolbar does
 
 ## Implementation Details
@@ -75,31 +75,34 @@ both: its button toggles the tool in the coordinator and its sync sets
 tool-protractor.svelte
 ├── Status live region (screen reader announcements)
 └── Protractor (role="application", focusable)
-    └── Container
-        └── protractor.svg image
-            ├── Semicircular scale, 0-180 in both directions
-            ├── Tick marks (every 1°, longer every 5°)
-            ├── Degree labels and radial guide lines (every 10°)
-            ├── Center point
-            └── Baseline
+    ├── Frame (clips the semi-transparent backdrop)
+    │   └── Container
+    │       └── protractor.svg image
+    │           ├── Semicircular scale, 0-180 in both directions
+    │           ├── Tick marks (every 1°, longer every 5°)
+    │           ├── Degree labels and radial guide lines (every 10°)
+    │           ├── Center point
+    │           └── Baseline
+    ├── Pivot marker on the vertex
+    └── Rotation line and 44px handle
 ```
 
-Drag and rotation run through Moveable (`moveable`), which attaches its controls
-to `document.body`.
+Drag and rotation run through `createPointerGesture`, `createPointerDragController`
+and `createPointerRotateController` in `@pie-players/pie-players-shared`.
 
 ### State Management
 
-- Placement: the protractor's CSS `transform` (translate and rotate), written by
-  Moveable during a drag or rotation and by the keyboard handler
-- The keyboard handler reads the current position and angle back from the
-  computed transform matrix
+- Placement: an offset from the centred position and a rotation about the
+  vertex, held by the component and written to its CSS `transform` by
+  `applyPlacement`, which pointer and keyboard both go through
 
 ### Event Handling
 
-- Moveable `drag` and `rotate` events write the new transform
-- `pointerdown`: Brings the protractor to the front
+- `pointerdown` on the protractor: brings it to the front and starts a drag
+- `pointerdown` on the handle: starts a rotation
+- `pointercancel` and `lostpointercapture` end a gesture as `pointerup` does
 - `keydown`: Arrow keys, Shift+Arrow keys and PageUp/PageDown
-- `resize`: Updates Moveable's bounds
+- `resize`: Reapplies the bound to the current placement
 
 ## Styling
 

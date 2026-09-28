@@ -20,11 +20,11 @@ test("the ruler carries no third-party drag library", () => {
 	expect(source).not.toMatch(/moveable/i);
 });
 
-test("a gesture ends when the system cancels the pointer", () => {
-	// iPadOS cancels a touch it takes over for a system gesture; a drag that
-	// only listened for `pointerup` would stay attached to the finger.
-	expect(source).toInclude("'pointercancel', endGesture");
-	expect(source).toInclude("'lostpointercapture', endGesture");
+test("gestures run through the shared pointer lifecycle", () => {
+	// `createPointerGesture` ends a gesture on `pointercancel`, which iPadOS
+	// sends when it takes a touch over; hand-rolled listeners could miss it.
+	expect(source).toInclude("createPointerGesture(");
+	expect(source).not.toInclude("addEventListener('pointermove'");
 });
 
 test("touch drags neither scroll the page nor open the iOS callout", () => {

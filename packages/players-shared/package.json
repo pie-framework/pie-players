@@ -49,10 +49,6 @@
 			"types": "./dist/media/index.d.ts",
 			"import": "./dist/media/index.js"
 		},
-		"./moveable": {
-			"types": "./dist/moveable/index.d.ts",
-			"import": "./dist/moveable/index.js"
-		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"
@@ -128,7 +124,6 @@
 		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
-		"moveable": "^0.53.0",
 		"svelte": "^5.57.0",
 		"typescript": "^5.9.3"
 	},

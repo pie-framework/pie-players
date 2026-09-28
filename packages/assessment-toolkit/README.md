@@ -452,6 +452,15 @@ how the toolkit accompanies a plain item player:
 import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
 import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
 import '@pie-players/pie-item-player';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
+
+// With no section player, the registry's loaders are what define the tool elements.
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 
 toolkit.tools = { placement: { item: ['calculator'] } };
 toolkit.toolRegistry = toolRegistry;
@@ -460,7 +469,13 @@ toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'
 
 toolbar.item = item;
 toolbar.toolRegistry = toolRegistry; // the toolbar does not read the toolkit's
+toolbar.scopeElement = player; // the content answerEliminator acts on
 ```
+
+A registry built without `toolModuleLoaders` renders toolbar buttons whose tool
+elements never load. `textToSpeech` reads the region an item shell publishes,
+which only the section player's cards provide, so it has no reading target in
+this composition.
 
 A profile change is a new `assessment` value; the toolbars re-derive on the
 policy change it emits. Readiness events are section events: `toolkit-ready`,

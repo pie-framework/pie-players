@@ -4,6 +4,7 @@ import {
 	type ToolPlacementLevel,
 	type ToolProviderConfig,
 	type TextToSpeechToolProviderConfig,
+	type ToolsConfigInput,
 } from "./tools-config-normalizer.js";
 import {
 	frameworkErrorFromToolConfigDiagnostics,
@@ -344,7 +345,7 @@ function throwValidationError(
 }
 
 export function normalizeAndValidateToolsConfig(
-	input?: Partial<CanonicalToolsConfig> | null,
+	input?: ToolsConfigInput | null,
 	options: ToolConfigValidationOptions = {},
 ): ToolConfigValidationResult {
 	const result = collectToolConfigDiagnostics(input, options.toolRegistry);
@@ -357,7 +358,7 @@ export function normalizeAndValidateToolsConfig(
  * without reporting: nothing is printed or thrown.
  */
 export function collectToolConfigDiagnostics(
-	input: Partial<CanonicalToolsConfig> | null | undefined,
+	input: ToolsConfigInput | null | undefined,
 	toolRegistry: ToolRegistry | null | undefined,
 ): ToolConfigValidationResult {
 	const registryTools = getRegistryToolMap(toolRegistry);

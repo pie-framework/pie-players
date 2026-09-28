@@ -39,8 +39,7 @@
 	"jsdelivr": "./dist/tool-ruler.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"moveable": "^0.53.0"
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {

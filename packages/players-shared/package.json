@@ -49,6 +49,10 @@
 			"types": "./dist/media/index.d.ts",
 			"import": "./dist/media/index.js"
 		},
+		"./moveable": {
+			"types": "./dist/moveable/index.d.ts",
+			"import": "./dist/moveable/index.js"
+		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"
@@ -103,7 +107,7 @@
 		"semver": "^7.8.5"
 	},
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/build-moveable.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome lint .",
@@ -119,6 +123,7 @@
 		"@types/semver": "^7.8.0",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
+		"moveable": "^0.53.0",
 		"svelte": "^5.57.0",
 		"typescript": "^5.9.3"
 	},

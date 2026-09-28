@@ -23,40 +23,12 @@
 		clampOffsetWithinBlock,
 		resolveContainingBlockRect
 	} from '@pie-players/pie-players-shared';
-	import MoveableModule from 'moveable';
+	import {
+		createMoveable,
+		type MoveableInstance
+	} from '@pie-players/pie-players-shared/moveable';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
-
-	/**
-	 * The slice of Moveable's surface this tool uses.
-	 *
-	 * `moveable` publishes CJS with ESM-shaped declarations and no `exports` map, so
-	 * under `moduleResolution: NodeNext` TypeScript resolves the default import to
-	 * the module namespace rather than to the class: `new Moveable(...)` reads as
-	 * not constructable and `Moveable` cannot be used as a type. Vite loads the ESM
-	 * build, where the import *is* the class, so this describes runtime rather than
-	 * changing it.
-	 */
-	interface MoveableInstance {
-		bounds: {
-			left: number;
-			top: number;
-			right: number;
-			bottom: number;
-			position?: 'css' | 'client';
-		};
-		destroy(): void;
-		updateRect(): void;
-		getControlBoxElement(): HTMLElement;
-		on(
-			event: 'drag' | 'rotate',
-			handler: (payload: { target: HTMLElement; transform: string }) => void,
-		): void;
-	}
-	const MoveableCtor = MoveableModule as unknown as new (
-		container: HTMLElement,
-		options: Record<string, unknown>,
-	) => MoveableInstance;
 
 	// Props
 	let { visible = false, toolId = 'protractor' }: { visible?: boolean; toolId?: string } = $props();
@@ -113,7 +85,7 @@
 
 		coordinator?.bringToFront(containerEl);
 
-		moveable = new MoveableCtor(document.body, {
+		moveable = createMoveable(document.body, {
 			target: containerEl,
 			draggable: true,
 			rotatable: true,
@@ -130,7 +102,7 @@
 				bottom: -110,
 				position: 'css'
 			}
-		} as any); // Type assertion needed for Moveable.js config
+		});
 
 		// Associate the moveable instance with the tool ID
 		const controlBox = moveable.getControlBoxElement();

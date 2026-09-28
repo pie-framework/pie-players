@@ -33,14 +33,14 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			// The toolkit, players-shared, pie-context, speech-rule-engine and
-			// moveable resolve from the host's node_modules, so every PIE bundle a
-			// host loads shares one copy of each. Patterns, because an exact-string
-			// external still inlines the subpaths this tool imports.
+			// The toolkit, players-shared, pie-context and speech-rule-engine
+			// resolve from the host's node_modules, so every PIE bundle a host
+			// loads shares one copy of each; Moveable comes through players-shared.
+			// Patterns, because an exact-string external still inlines the
+			// subpaths this tool imports.
 			external: [
 				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
 				/^speech-rule-engine(?:\/|$)/,
-				/^moveable(?:\/|$)/,
 			],
 			onwarn(warning, warn) {
 				if (

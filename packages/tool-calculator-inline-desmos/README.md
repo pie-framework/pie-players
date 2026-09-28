@@ -4,102 +4,59 @@ Inline calculator toggle button for PIE assessment player question headers.
 
 ## Overview
 
-This package provides the existing `<pie-tool-calculator-inline>` compatibility
-element. It wraps the provider-neutral inline surface from
-`@pie-players/pie-tool-calculator-shared` and toggles a calculator tool instance.
+`<pie-tool-calculator-inline>` is a toggle button for the calculator an item
+toolbar renders. It wraps the provider-neutral inline surface from
+`@pie-players/pie-tool-calculator-shared`, which the GeoGebra and Cortex inline
+packages share.
 
 ## Features
 
 - **Web Component** - Custom element with an open shadow root
-- **Runtime Context** - Takes its ToolCoordinator from the toolkit runtime context
-- **Coordinator Integration** - Managed by ToolCoordinator for consistent state
+- **Toolkit context** - Takes its ToolCoordinator from the toolkit runtime context and its item from the enclosing item shell
+- **Shared state** - Opens the item toolbar's calculator instance, so the button and the toolbar stay in step
 - **Size Variants** - Supports sm, md, lg button sizes
 - **WCAG 2.2 Level AA** - Fully accessible with proper ARIA attributes
 - **Material Design Icon** - Calculator icon from Material Design
 
 ## Usage
 
-### Basic Setup
-
-The calculator surface this button toggles, `<pie-tool-calculator>`, comes from
-`@pie-players/pie-tool-calculator-desmos`. Neither this package nor
-`@pie-players/pie-default-tool-loaders` depends on it, so the host installs it:
-
-```bash
-bun add @pie-players/pie-tool-calculator-desmos
-```
-
-Both elements sit inside `<pie-assessment-toolkit>`, whose runtime context
-supplies the ToolCoordinator:
-
-```html
-<pie-assessment-toolkit>
-  <!-- Inline toggle button -->
-  <pie-tool-calculator-inline
-    tool-id="calculator-inline"
-    target-tool-id="calculator"
-    calculator-type="scientific"
-    available-types="basic,scientific,graphing"
-    size="md"
-  ></pie-tool-calculator-inline>
-
-  <!-- Calculator tool instance -->
-  <pie-tool-calculator tool-id="calculator"></pie-tool-calculator>
-</pie-assessment-toolkit>
-```
-
-`toggleTool` ignores an id the coordinator has not registered, and
-`<pie-tool-calculator>` shows on its `visible` property, so the host registers
-the target id and binds `visible` to it:
+The element renders inside `<pie-item-shell>` under `<pie-assessment-toolkit>`.
+The toolkit runtime context supplies the ToolCoordinator and the shell supplies
+the item; section players provide both.
 
 ```javascript
-import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
 import '@pie-players/pie-tool-calculator-inline-desmos';
-import '@pie-players/pie-tool-calculator-desmos';
 
-// toolkitCoordinator: the ToolkitCoordinator passed to <pie-assessment-toolkit> as `coordinator`
-const tools = toolkitCoordinator.toolCoordinator;
-const calculatorEl = document.querySelector('pie-tool-calculator');
-tools.registerTool('calculator', 'Calculator');
-
-// Subscribe to visibility changes
-tools.subscribe(() => {
-  calculatorEl.visible = tools.isToolVisible('calculator');
-});
+// itemHeader: an element inside <pie-item-shell>
+const calculatorButton = document.createElement('pie-tool-calculator-inline');
+calculatorButton.setAttribute('calculator-type', 'scientific');
+itemHeader.append(calculatorButton);
 ```
 
-The calculator surface's props are in the
-[Desmos calculator tool README](../tool-calculator-desmos/README.md).
+The calculator it opens is the item toolbar's: the toolkit's tool configuration
+places `calculator` in the item toolbar and names its provider, and the item
+toolbar renders that calculator. The button adds no calculator of its own, so
+an item whose tool policy leaves the calculator out has nothing for it to open.
 
 ### Props
 
 #### Attributes (String)
 
-- `tool-id` - Unique identifier for the tool (default: `'calculator-inline'`)
-- `target-tool-id` - Tool id the button toggles; empty toggles `tool-id` (default: `''`)
+- `target-tool-id` - Coordinator tool id the button toggles (default: `''`). Empty resolves the enclosing item's calculator, `calculator:item:<itemId>`; set it only to toggle a calculator registered under another id
 - `calculator-type` - Calculator type named in the button's label and announcements (default: `'basic'`); a type outside `available-types` falls back to `'basic'`
 - `available-types` - Comma-separated list of calculator types (default: `'basic,scientific,graphing'`)
 - `size` - Button size: `'sm' | 'md' | 'lg'` (default: `'md'`)
 
-The button is disabled until a toolkit runtime context supplies a
-ToolCoordinator.
+The button is disabled until the toolkit runtime context supplies a
+ToolCoordinator and a target resolves. With no item shell and no
+`target-tool-id`, it stays disabled and logs a console warning.
 
-## Calculator Tool Integration
+## Toggle behavior
 
-This component works in tandem with `@pie-players/pie-tool-calculator-desmos`. The flow is:
-
-1. **Button registers** - `pie-tool-calculator-inline` registers its `tool-id` with the context's ToolCoordinator
-2. **User clicks** - Button calls the coordinator's `toggleTool` with the target id
-3. **Calculator shows/hides** - the host sets `pie-tool-calculator`'s `visible` from the coordinator's visibility state
-4. **Button updates** - `aria-pressed`, the active style and a status announcement follow the target's visibility
-
-## Tool ID Convention
-
-The inline button uses a different tool ID than the calculator instance, which
-`target-tool-id` names:
-
-- Inline button: `calculator-inline`
-- Calculator tool: `calculator`, or a scoped instance id such as `calculator:item:question-1`
+1. The button resolves its target from the item shell context: `calculator:item:<canonicalItemId or itemId>`, the id the item toolbar uses.
+2. A click registers that id with the coordinator if the toolbar has not yet, then calls `toggleTool`.
+3. The item toolbar renders or hides its calculator from the coordinator's visibility state.
+4. `aria-pressed`, the active style and a status announcement follow the target's visibility, including changes made from the toolbar.
 
 ## Accessibility
 
@@ -175,7 +132,7 @@ bun run lint
 
 ## Dependencies
 
-- `@pie-players/pie-assessment-toolkit` - Core toolkit services
+- `@pie-players/pie-assessment-toolkit` - Toolkit contexts and scoped tool ids
 
 ## License
 

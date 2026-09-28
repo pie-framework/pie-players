@@ -1,7 +1,6 @@
 export const ASSESSMENT_PLAYER_PUBLIC_EVENTS = {
 	controllerReady: "assessment-controller-ready",
 	navigationRequested: "assessment-navigation-requested",
-	submitRequested: "assessment-submit-requested",
 	routeChanged: "assessment-route-changed",
 	sessionApplied: "assessment-session-applied",
 	sessionChanged: "assessment-session-changed",

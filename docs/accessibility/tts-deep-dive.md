@@ -51,7 +51,8 @@ classes are:
 play/pause controls in item and passage toolbars, finds the readable content
 region, and calls `ttsService.speak(...)`.
 
-`@pie-players/pie-tool-text-to-speech` is a floating text-selection TTS tool.
+`@pie-players/pie-tool-text-to-speech` is a floating text-selection TTS tool. It
+reads with the TTS service the host passes it, already initialized.
 Default section and item toolbars register `pie-tool-tts-inline`.
 
 `@pie-players/tts-client-server` provides `ServerTTSProvider`, the browser-side

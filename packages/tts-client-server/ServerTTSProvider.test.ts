@@ -508,6 +508,48 @@ describe("ServerTTSProvider", () => {
 		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/google/voices");
 	});
 
+	test("falls back to the generic voices endpoint when the provider route is absent", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === "/api/tts/voices") {
+				return createJSONResponse({ voices: [] }, 200);
+			}
+			return new Response("not-found", { status: 404 });
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "polly",
+			validateEndpoint: true,
+			endpointValidationMode: "voices",
+		} as any);
+
+		expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+			"/api/tts/polly/voices",
+			"/api/tts/voices",
+		]);
+	});
+
+	test("does not try the generic voices endpoint after a non-404 failure", async () => {
+		const fetchMock = vi.fn(
+			async () => new Response("unauthorized", { status: 401 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await expect(
+			provider.initialize({
+				apiEndpoint: "/api/tts",
+				provider: "google",
+				validateEndpoint: true,
+				endpointValidationMode: "voices",
+			} as any),
+		).rejects.toThrow();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
 	describe("getCapabilities supportsSSML", () => {
 		const capabilitiesFor = async (config: Record<string, unknown>) => {
 			const provider = new ServerTTSProvider();

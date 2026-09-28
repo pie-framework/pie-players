@@ -363,15 +363,17 @@ const resolveSupportsSSML = (
 
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
 
-const resolveVoicesValidationUrl = (
+// Polly and Google probe their provider route first, then the generic
+// `${apiEndpoint}/voices` the integration guides have hosts create.
+const resolveVoicesValidationUrls = (
 	config: ServerTTSProviderConfig,
-): string => {
+): string[] => {
 	const base = trimTrailingSlash(config.apiEndpoint);
 	const provider = (config.provider || "").toLowerCase();
 	if (provider === "polly" || provider === "google") {
-		return `${base}/${provider}/voices`;
+		return [`${base}/${provider}/voices`, `${base}/voices`];
 	}
-	return `${base}/voices`;
+	return [`${base}/voices`];
 };
 
 const resolveTransportMode = (
@@ -1235,21 +1237,26 @@ export class ServerTTSProvider implements ITTSProvider {
 				clearTimeout(timeoutId);
 				return true;
 			}
-			const validationUrl =
+			const validationUrls =
 				mode === "voices"
-					? resolveVoicesValidationUrl(this.config)
-					: this.adapter.resolveSynthesisUrl(this.config);
+					? resolveVoicesValidationUrls(this.config)
+					: [this.adapter.resolveSynthesisUrl(this.config)];
 			const method = mode === "voices" ? "GET" : "OPTIONS";
 			try {
-				const response = await fetch(validationUrl, {
-					method,
-					headers,
-					signal: controller.signal,
-					...fetchCredentials(this.config),
-				});
+				let reachable = false;
+				for (const validationUrl of validationUrls) {
+					const response = await fetch(validationUrl, {
+						method,
+						headers,
+						signal: controller.signal,
+						...fetchCredentials(this.config),
+					});
+					// Some endpoints may not accept OPTIONS; treat 405 as reachable.
+					reachable = response.ok || response.status === 405;
+					if (reachable || response.status !== 404) break;
+				}
 				clearTimeout(timeoutId);
-				// Some endpoints may not accept OPTIONS; treat 405 as reachable.
-				return response.ok || response.status === 405;
+				return reachable;
 			} catch {
 				clearTimeout(timeoutId);
 				return false;

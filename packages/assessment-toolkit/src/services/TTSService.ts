@@ -1259,12 +1259,18 @@ export class TTSService {
 		}
 	}
 
+	/**
+	 * `startOffset` indexes the spoken text; the position map indexes the whole
+	 * content element, which for a selection starts `activeWordBoundaryOffset`
+	 * characters earlier.
+	 */
 	private highlightSentenceSegment(startOffset: number, text: string): void {
 		if (!this.highlightCoordinator || typeof document === "undefined") return;
 		const length = text.trimEnd().length;
 		if (length <= 0) return;
-		const start = this.normalizedToDOM.get(startOffset);
-		const end = this.normalizedToDOM.get(startOffset + length - 1);
+		const mapStart = startOffset + this.activeWordBoundaryOffset;
+		const start = this.normalizedToDOM.get(mapStart);
+		const end = this.normalizedToDOM.get(mapStart + length - 1);
 		if (!start || !end) return;
 		const range = document.createRange();
 		range.setStart(start.node, start.offset);
@@ -2081,9 +2087,9 @@ export class TTSService {
 			length?: number,
 		) => {
 			const wordLength = length || word.length;
-			const globalIndex =
-				charIndex + this.currentBoundaryOffset + args.wordBoundaryOffset;
-			this.highlightSentenceForOffset(globalIndex);
+			const spokenIndex = charIndex + this.currentBoundaryOffset;
+			const globalIndex = spokenIndex + args.wordBoundaryOffset;
+			this.highlightSentenceForOffset(spokenIndex);
 			const highlightRange = this.findHighlightRange(globalIndex, wordLength);
 			if (highlightRange && this.highlightCoordinator) {
 				const highlightText =

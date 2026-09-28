@@ -176,6 +176,16 @@ const enUS = {
 		},
 
 		/**
+		 * The tap controls that move and turn the ruler and protractor without a
+		 * drag. The move buttons reuse the `window` labels above.
+		 */
+		placement: {
+			controlsA11y: "Move and rotate",
+			rotateClockwiseA11y: "Rotate {degrees}° clockwise",
+			rotateCounterclockwiseA11y: "Rotate {degrees}° counterclockwise",
+		},
+
+		/**
 		 * Live-region announcements shared by the draggable tools — ruler,
 		 * protractor, line reader. Keyboard movement and rotation read the same in
 		 * every one of them, so the strings live once here rather than per tool.

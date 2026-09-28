@@ -93,6 +93,15 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	assetOrigins?: string[];
 
 	/**
+	 * Fetch `credentials` mode for requests to the TTS server, so a
+	 * cookie-authenticated endpoint on another origin receives its cookies.
+	 * Speech-mark and audio fetches use it only for an origin trusted with auth
+	 * (see `assetOrigins`); others keep the browser default. Unset leaves every
+	 * fetch on the browser default, `"same-origin"`.
+	 */
+	credentials?: "omit" | "same-origin" | "include";
+
+	/**
 	 * Validate API endpoint availability during initialization (slower but safer)
 	 *
 	 * @extension Performance vs safety tradeoff
@@ -200,6 +209,19 @@ function scrubAuthHeaders(
 		cleaned[key] = value;
 	}
 	return cleaned;
+}
+
+/**
+ * The `credentials` init for a fetch, spread into it. A cookie leaves the page
+ * for an untrusted asset origin only as the browser default would send it.
+ */
+function fetchCredentials(
+	config: ServerTTSProviderConfig,
+	trustedForAuth = true,
+): Pick<RequestInit, "credentials"> {
+	if (!config.credentials) return {};
+	if (!trustedForAuth && config.credentials === "include") return {};
+	return { credentials: config.credentials };
 }
 
 /**
@@ -504,7 +526,9 @@ const customAdapter: TransportAdapter = {
 		return {
 			text,
 			speedRate: resolveSpeedRate(config),
+			// Both spellings: servers that bind JSON camelCase never see `lang_id`.
 			lang_id: langId,
+			langId,
 			cache,
 		};
 	},
@@ -518,11 +542,13 @@ const customAdapter: TransportAdapter = {
 		} else if (typeof data.word === "string" && data.word.length > 0) {
 			const marksUrl = parseAssetUrl(data.word, config);
 			if (marksUrl !== null) {
-				const effectiveMarksHeaders = isOriginTrustedForAuth(marksUrl, config)
+				const marksTrusted = isOriginTrustedForAuth(marksUrl, config);
+				const effectiveMarksHeaders = marksTrusted
 					? marksHeaders
 					: scrubAuthHeaders(marksHeaders);
 				const marksResponse = await fetch(marksUrl.toString(), {
 					headers: effectiveMarksHeaders,
+					...fetchCredentials(config, marksTrusted),
 					signal,
 					// Fail loud on redirects; the origin allow-list decision
 					// is made pre-redirect and a silent hop could leak auth
@@ -719,6 +745,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					headers,
 					body: JSON.stringify(requestBody),
 					signal,
+					...fetchCredentials(this.config),
 				});
 			} catch (error) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
@@ -830,10 +857,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				});
 				throw new Error("TTS asset URL rejected (non-http(s) or malformed)");
 			}
-			const effectiveAssetHeaders = isOriginTrustedForAuth(
-				parsedAssetUrl,
-				this.config,
-			)
+			const assetTrusted = isOriginTrustedForAuth(parsedAssetUrl, this.config);
+			const effectiveAssetHeaders = assetTrusted
 				? assetHeaders
 				: scrubAuthHeaders(assetHeaders);
 			const audioResponse = await (async () => {
@@ -841,6 +866,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					return await fetch(parsedAssetUrl.toString(), {
 						headers: effectiveAssetHeaders,
 						signal,
+						...fetchCredentials(this.config, assetTrusted),
 						redirect: "error",
 					});
 				} catch (error) {
@@ -1219,6 +1245,7 @@ export class ServerTTSProvider implements ITTSProvider {
 					method,
 					headers,
 					signal: controller.signal,
+					...fetchCredentials(this.config),
 				});
 				clearTimeout(timeoutId);
 				// Some endpoints may not accept OPTIONS; treat 405 as reachable.

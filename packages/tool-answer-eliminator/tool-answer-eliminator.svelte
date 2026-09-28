@@ -13,7 +13,8 @@
 			// Store integration (JS properties only)
 			elementToolStateStore: { type: 'Object', reflect: false },
 			globalElementId: { type: 'String', reflect: false }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
@@ -44,6 +45,7 @@
 -->
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	
 	import {
 		connectToolRuntimeContext,

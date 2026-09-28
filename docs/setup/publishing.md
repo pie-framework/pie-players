@@ -458,6 +458,10 @@ bun run release:with-version
 7. `bun run release` — `dotenvx run -f .env` wrapper around build +
    `changeset publish` (with workspace ranges resolved). This does **not**
    publish the preloaded-player bundle; see `docs/preloaded-player/readme.md`.
+   That generated package is transitional: hosts move to pie-elements-ng
+   packages installed from npm, all from one release with exact pins, and
+   registered as ESM with `registerPreloadedElements`
+   ([Registering elements from npm](../item-player/loading-strategies.md#registering-elements-from-npm)).
 8. `bun run restore:workspace-ranges` — restore `workspace:*` ranges in
    source manifests.
 

@@ -59,10 +59,12 @@
 			// is no longer observed.
 			isolation: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { untrack } from "svelte";
 	import {
 		ContextProvider,

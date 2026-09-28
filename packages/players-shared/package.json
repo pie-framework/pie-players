@@ -89,6 +89,10 @@
 			"types": "./dist/components/vendor/nds/nds-icon-button.d.ts",
 			"import": "./dist/components/vendor/nds/nds-icon-button.js"
 		},
+		"./ui/attribute-coercion": {
+			"types": "./dist/ui/attribute-coercion.d.ts",
+			"import": "./dist/ui/attribute-coercion.js"
+		},
 		"./ui/content-styles": {
 			"types": "./dist/ui/content-styles.d.ts",
 			"import": "./dist/ui/content-styles.js"

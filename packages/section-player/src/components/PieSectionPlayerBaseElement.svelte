@@ -31,10 +31,12 @@
 			// handler reaches the canonical stage emit point.
 			onStageChange: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
 		type FrameworkErrorModel,

@@ -839,6 +839,11 @@ and returned `headers` with every synthesis request, and under
 transport's speech-mark and audio fetches. A failed fetch falls back to browser
 speech and reports `pie-tool-init-error`.
 
+For a server that authenticates by cookie on another origin, set `credentials:
+"include"` in the `textToSpeech` provider settings, beside
+`includeAuthOnAssetFetch`. The cookie reaches speech-mark and audio fetches only
+for origins in `assetOrigins`; unset, every TTS fetch keeps the browser default.
+
 ### Custom Transport via Server Proxy (SC-style)
 
 For custom backends that return URL assets (for example `{ audioContent, word }`),

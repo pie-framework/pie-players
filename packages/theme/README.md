@@ -362,9 +362,9 @@ Use `@pie-players/pie-theme/components.css` for shared visual styles that are in
 not need a second copy. Existing hosts may still own the exported stylesheet;
 that published path remains supported. Mounting `<pie-theme>` does not load it —
 the element only writes `--pie-*` custom properties. The item player bundles the
-stylesheet as text and installs it once per document at import time; see
-[content styles](../item-player/README.md#content-styles) for the host-ownership
-opt-out.
+stylesheet as text and installs it once per document at import time, unless the
+host already loads a copy; see
+[content styles](../item-player/README.md#content-styles) for host ownership.
 
 Note for players adding this: a plain `import "…/components.css"` does **not**
 work in these packages' library builds. Vite extracts it to an unreferenced
@@ -374,8 +374,9 @@ with `?raw` and hand it to `installContentStyles` from
 `@pie-players/pie-players-shared`.
 
 `components.css` declares `--pie-content-styles` on `:root` as a presence
-sentinel so players can tell whether an opted-out host actually loaded it. It is
-not a themeable value; do not consume it for styling.
+sentinel so players can recognise a copy the host loaded itself, scoped or not,
+and install none of their own. It is not a themeable value; do not consume it for
+styling.
 
 - Theme-owned shared `pie-*` class families include:
   - `pie-section-player-tools-pnp-debugger*`

@@ -64,6 +64,8 @@ export interface TTSRuntimeSettings {
 	includeAuthOnAssetFetch?: boolean;
 	/** Origins trusted with the `Authorization` header on asset fetches. */
 	assetOrigins?: string[];
+	/** Fetch `credentials` mode for requests to the TTS server. */
+	credentials?: "omit" | "same-origin" | "include";
 	/** Headers sent with every request to the TTS server. */
 	headers?: Record<string, string>;
 	validateEndpoint?: boolean;
@@ -455,6 +457,7 @@ export type RuntimeTTSConfig = Pick<
 		| "endpointValidationMode"
 		| "includeAuthOnAssetFetch"
 		| "assetOrigins"
+		| "credentials"
 		| "headers"
 		| "validateEndpoint"
 	> & {
@@ -511,6 +514,7 @@ export const buildRuntimeTTSConfig = (
 		endpointValidationMode: config.endpointValidationMode,
 		includeAuthOnAssetFetch: config.includeAuthOnAssetFetch,
 		assetOrigins: config.assetOrigins,
+		credentials: config.credentials,
 		headers: config.headers,
 		validateEndpoint: config.validateEndpoint,
 		// Toolkit-level highlight setting carried through the config channel

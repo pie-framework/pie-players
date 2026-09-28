@@ -68,11 +68,13 @@
 			},
 		},
 		// The host methods, callable before the component mounts.
-		extend: withHostMethods(NULL_READS),
+		extend: (ElementClass) =>
+			coerceBooleanAttributes(withHostMethods(NULL_READS)(ElementClass)),
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,

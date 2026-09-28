@@ -217,6 +217,11 @@ Any `/api/...` route referenced by a toolkit provider must be:
 - `includeAuthOnAssetFetch: true` without a correct `assetOrigins` list
   → a compromised or misconfigured TTS server can return a cross-origin
   URL and exfiltrate the bearer token on the follow-up fetch.
+- `credentials: "include"` sends cookies to the TTS endpoint, and on
+  speech-mark and audio fetches to the origins trusted for the bearer token
+  (`assetOrigins`, or the endpoint's origin when that list is empty). A
+  cross-origin endpoint must answer with `Access-Control-Allow-Credentials` and
+  an exact origin.
 - Server-only vendor credentials in client bundles or client-side config →
   permanent leak via the shipped JavaScript; again, rotation is the only
   remediation. This does not describe Desmos's application key, which its
@@ -242,7 +247,7 @@ middleware, and use a key/tier licensed for the deployed application.
   — end-to-end TTS integration, including security considerations and a
   SvelteKit `hooks.server.ts` sketch
 - [`../../packages/tts-client-server/README.md`](../../packages/tts-client-server/README.md)
-  — `ServerTTSProvider` configuration, including `assetOrigins` and
-  `includeAuthOnAssetFetch`
+  — `ServerTTSProvider` configuration, including `assetOrigins`,
+  `includeAuthOnAssetFetch` and `credentials`
 - [`../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts`](../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts)
   — Desmos provider config (`apiKey`) and browser-delivery boundary

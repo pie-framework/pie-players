@@ -10,7 +10,11 @@ const API_ENDPOINT = "https://tts.example.test/synthesize";
 const MARKS_URL = "https://cdn.example.test/marks.jsonl";
 const AUDIO_URL = "https://cdn.example.test/audio.mp3";
 
-type RecordedRequest = { url: string; headers: Record<string, string> };
+type RecordedRequest = {
+	url: string;
+	headers: Record<string, string>;
+	credentials?: RequestCredentials;
+};
 
 class PlayingAudio {
 	onplay: (() => void) | null = null;
@@ -40,6 +44,7 @@ beforeEach(() => {
 		requests.push({
 			url,
 			headers: { ...((init?.headers as Record<string, string>) || {}) },
+			credentials: init?.credentials,
 		});
 		if (url === API_ENDPOINT) {
 			return Response.json({ audioContent: AUDIO_URL, word: MARKS_URL });
@@ -102,6 +107,24 @@ describe("runtime TTS config reaching ServerTTSProvider", () => {
 
 		expect(marks?.headers).toEqual({ Authorization: "Bearer host-token" });
 		expect(audio?.headers).toEqual({ Authorization: "Bearer host-token" });
+	});
+
+	test("sends the configured credentials mode with every fetch", async () => {
+		const { synthesis, marks, audio } = await speakWithSettings({
+			assetOrigins: ["https://cdn.example.test"],
+			credentials: "include",
+		});
+
+		expect(synthesis?.credentials).toBe("include");
+		expect(marks?.credentials).toBe("include");
+		expect(audio?.credentials).toBe("include");
+	});
+
+	test("leaves the credentials mode to the browser when unset", async () => {
+		const { synthesis, audio } = await speakWithSettings({});
+
+		expect(synthesis?.credentials).toBeUndefined();
+		expect(audio?.credentials).toBeUndefined();
 	});
 
 	test("keeps the authorization header off an asset origin outside the list", async () => {

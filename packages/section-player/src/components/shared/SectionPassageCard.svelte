@@ -21,10 +21,12 @@
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";

@@ -64,10 +64,12 @@
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import type {
 		ConfigEntity,
 		ConfigResource,

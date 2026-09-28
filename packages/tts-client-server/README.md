@@ -132,9 +132,13 @@ await ttsService.speak('Hello world, this is a test.', {
   "text": "Hello world",
   "speedRate": "medium",
   "lang_id": "en-US",
+  "langId": "en-US",
   "cache": true
 }
 ```
+
+The language travels under both `lang_id` and `langId`, so a server that binds
+JSON in camelCase reads it without a mapping of its own.
 
 ### Custom mode response
 
@@ -177,6 +181,7 @@ interface ServerTTSProviderConfig {
   authToken?: string;         // JWT or API key
   includeAuthOnAssetFetch?: boolean;
   assetOrigins?: string[];    // Trusted origins for Authorization header
+  credentials?: 'omit' | 'same-origin' | 'include'; // Fetch credentials mode
   headers?: Record<string, string>;  // Custom headers
   voice?: string;             // Voice ID, e.g. 'Joanna'
   engine?: 'standard' | 'neural';    // Polly engine
@@ -212,6 +217,13 @@ server that fall outside a trusted origin set.
   origins in `assetOrigins`; off-allow-list origins are fetched without
   auth. Leave at the default unless your CDN / storage backend actually
   requires the bearer token to read assets.
+- **`credentials`** — the fetch `credentials` mode, unset by default, which
+  leaves the browser default (`"same-origin"`). Set `"include"` when the TTS
+  server sits on another origin and authenticates by cookie; the server must
+  answer CORS with `Access-Control-Allow-Credentials: true` and an explicit
+  origin. Speech-mark and audio fetches to an origin outside `assetOrigins`
+  keep the browser default, so cookies follow the same allow-list as the
+  bearer token.
 
 See
 [`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers)

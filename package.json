@@ -172,7 +172,11 @@
 		"markdown-it": "^14.3.0",
 		"linkify-it": "^5.0.2",
 		"lodash": "^4.18.1",
-		"@xmldom/xmldom": "^0.9.12"
+		"@xmldom/xmldom": "^0.9.12",
+		"prosemirror-model": "^1.25.12",
+		"prosemirror-state": "^1.4.4",
+		"prosemirror-transform": "^1.12.2",
+		"prosemirror-view": "^1.42.6"
 	},
 	"resolutions": {
 		"picomatch": "4.0.4",
@@ -192,7 +196,11 @@
 		"markdown-it": "^14.3.0",
 		"linkify-it": "^5.0.2",
 		"lodash": "^4.18.1",
-		"@xmldom/xmldom": "^0.9.12"
+		"@xmldom/xmldom": "^0.9.12",
+		"prosemirror-model": "^1.25.12",
+		"prosemirror-state": "^1.4.4",
+		"prosemirror-transform": "^1.12.2",
+		"prosemirror-view": "^1.42.6"
 	},
 	"dependencies": {
 		"@sveltejs/kit": "^2.70.3",

@@ -409,6 +409,7 @@
         "@types/semver": "^7.8.0",
         "esbuild": "^0.28.2",
         "glob": "^13.0.0",
+        "moveable": "^0.53.0",
         "svelte": "^5.57.0",
         "typescript": "^5.9.3",
       },
@@ -832,7 +833,6 @@
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
-        "moveable": "^0.53.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.14",
@@ -850,7 +850,6 @@
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
-        "moveable": "^0.53.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.14",

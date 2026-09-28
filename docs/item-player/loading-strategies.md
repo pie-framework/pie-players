@@ -192,6 +192,18 @@ bun run cli pie-packages:preloaded-player-build-package \
 
 CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-player.yml`.
 
+## One MathJax version per page
+
+A page runs one MathJax major version. The `iife` strategy and generated `@pie-players/pie-preloaded-player` builds render math with MathJax 3.2.2; ESM element builds, under `esm` and `preloaded`, render with MathJax 4.1.3. ESM builds need MathJax 4 because MathJax 3 ships no ES modules and depends on the `window.MathJax` global; its last release is 3.2.2, from June 2022, and npm marks `mathjax-full` deprecated in favour of `@mathjax/src`. A page that runs both is unsupported: an `iife` item player next to an `esm` or `preloaded` one, or a host's own MathJax 3 next to ESM elements. The player still attempts to render such a page and guarantees nothing about the result, because the two versions share the `window.MathJax` global, both replace the `MJX-CHTML-styles` stylesheet in the document head, and both style the same `mjx-*` elements. Observed in Chromium:
+
+- An `iife` item loaded after MathJax 4 fails at its math-rendering step with `MathJax.loader.preLoad is not a function`, so the whole item fails to load.
+- MathJax 3 loaded after MathJax 4 overflows the stack during its startup, and later math stays untypeset.
+- ESM elements on a page that already runs MathJax 3 typeset with that MathJax and its configuration, so PIE's macros such as `\longdiv` render as errors. After an `iife` item player they typeset through its MathJax 3 renderer, which carries the macros.
+- MathJax 3 typesetting the page after ESM math rendered typesets MathJax 4's hidden MathML again, so formulas show twice.
+- The version that renders second removes the other's stylesheet, and math the first one rendered loses its layout.
+
+A host that runs MathJax 3 for its own content keeps PIE on `iife`. Testing and results are tracked in [PIE-1108](https://illuminate.atlassian.net/browse/PIE-1108).
+
 ## Section player integration
 
 The section player renders each item via `<pie-item-player>`. Hosts select the strategy through `runtime.playerType` on the section-player element, which maps directly onto the item player's `strategy`:

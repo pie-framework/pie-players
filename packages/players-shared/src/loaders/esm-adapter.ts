@@ -39,6 +39,7 @@ import {
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
 import { isExactSemver } from "./element-package-policy.js";
+import { forwardMathjaxVersionConflicts } from "./mathjax-version-conflict.js";
 
 /** View configuration: how a PIE package's subpath maps to a tag suffix. */
 export type ViewConfig = {
@@ -171,6 +172,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	const editorRuntimeVariants = new Map<string, EditorRuntimeVariant>();
 	/** Packages that do not publish the browser ESM exports this backend loads. */
 	const unpublishedPackages = new Map<string, string>();
+	/** Windows whose MathJax version conflicts this backend forwards. */
+	const mathjaxConflictViews = new WeakSet<Window>();
 	let sharedDependencyVersions: Record<string, string> = {};
 	let importer: EsmModuleImporter = defaultImporter;
 	let packageMetadataLoader: EsmPackageMetadataLoader =
@@ -215,6 +218,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		if (moduleResolution === "import-map") {
 			assertImportMapSupported();
 		}
+		forwardMathjaxVersionConflictsOf(context.doc);
 
 		const newEntries: ElementMap = {};
 		for (const [tag, pkg] of Object.entries(elements)) {
@@ -738,6 +742,13 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		if (!isInstrumentationProvider(provider)) return undefined;
 		if (!provider.isReady()) return undefined;
 		return provider;
+	}
+
+	function forwardMathjaxVersionConflictsOf(doc: Document): void {
+		const view = doc.defaultView;
+		if (!view || mathjaxConflictViews.has(view)) return;
+		mathjaxConflictViews.add(view);
+		forwardMathjaxVersionConflicts(view, getInstrumentationProvider);
 	}
 
 	function reportSharedDependencyConflict(

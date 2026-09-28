@@ -1280,6 +1280,100 @@ describe("ESM adapter — contract", () => {
 		);
 	});
 
+	test("forwards MathJax version conflicts from the window it loads into, once per provider", async () => {
+		const tracked: Array<{
+			provider: string;
+			name: string;
+			attributes: unknown;
+		}> = [];
+		const providerNamed = (providerId: string) => ({
+			providerId,
+			providerName: providerId,
+			async initialize() {},
+			trackError() {},
+			trackEvent(name: string, attributes: Record<string, unknown>) {
+				tracked.push({ provider: providerId, name, attributes });
+			},
+			destroy() {},
+			isReady() {
+				return true;
+			},
+		});
+		const shared = providerNamed("shared");
+		const view = new EventTarget();
+		const doc = Object.assign(createMockDocument(), { defaultView: view });
+		const loadWith = async (
+			config: Pick<EsmBackendConfig, "cdnBaseUrl" | "trackPageActions"> & {
+				instrumentationProvider: ReturnType<typeof providerNamed>;
+			},
+			tag: string,
+			pkg: string,
+		) => {
+			const backend = createEsmBackend({
+				kind: "esm",
+				view: "delivery",
+				...config,
+			});
+			(
+				backend as unknown as { __seams: EsmBackendTestSeams }
+			).__seams.replaceImporter(async () => ({
+				default: createConstructorFor(tag),
+			}));
+			await backend.load({ [tag]: pkg }, { doc, whenDefinedTimeoutMs: 50 });
+		};
+
+		// Two backends share a provider; a third does not track page actions.
+		await loadWith(
+			{
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				trackPageActions: true,
+				instrumentationProvider: shared,
+			},
+			"pie-mc--version-13-2-0",
+			"@pie-element/multiple-choice@13.2.0",
+		);
+		await loadWith(
+			{
+				cdnBaseUrl: "https://cdn.other.test/npm",
+				trackPageActions: true,
+				instrumentationProvider: shared,
+			},
+			"pie-ebsr--version-13-2-0",
+			"@pie-element/ebsr@13.2.0",
+		);
+		await loadWith(
+			{
+				cdnBaseUrl: "https://cdn.third.test/npm",
+				trackPageActions: false,
+				instrumentationProvider: providerNamed("untracked"),
+			},
+			"pie-match--version-13-2-0",
+			"@pie-element/match@13.2.0",
+		);
+
+		view.dispatchEvent(
+			new CustomEvent("pie-mathjax-version-conflict", {
+				detail: {
+					condition: "foreign-output-stylesheet",
+					message:
+						"[math-rendering] Unsupported page (foreign-output-stylesheet): ...",
+					docsUrl: "https://example.test/one-mathjax-version-per-page",
+				},
+			}),
+		);
+
+		expect(tracked).toEqual([
+			{
+				provider: "shared",
+				name: "pie-mathjax-version-conflict",
+				attributes: {
+					condition: "foreign-output-stylesheet",
+					docsUrl: "https://example.test/one-mathjax-version-per-page",
+				},
+			},
+		]);
+	});
+
 	test("a package.json request that fails is made again by the next player, and one that succeeds is reused", async () => {
 		const packageJsonUrl =
 			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/package.json";

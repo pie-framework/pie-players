@@ -289,11 +289,13 @@ export type {
 } from "./services/ToolkitCoordinator.js";
 export { ToolkitCoordinator } from "./services/ToolkitCoordinator.js";
 export type {
+	CalculatorToolProviderConfig,
 	CanonicalToolsConfig,
 	ToolPlacementConfig,
 	ToolPlacementLevel,
 	ToolPolicyConfig,
 	ToolProvidersConfig,
+	ToolsConfigInput,
 } from "./services/tools-config-normalizer.js";
 export type {
 	FrameworkErrorKind,

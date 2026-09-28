@@ -19,7 +19,6 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	import "@pie-players/pie-section-player-tools-session-debugger";
 	import { SessionDbPanel } from "@pie-players/pie-section-player-tools-shared";
 	import AssessmentDemoMenuBar from "$lib/demo-runtime/components/AssessmentDemoMenuBar.svelte";
-	import "@pie-players/pie-tool-text-to-speech";
 	import {
 		ASSESSMENT_PLAYER_PUBLIC_EVENTS,
 		type AssessmentPlayerHooks,

@@ -107,10 +107,6 @@
 		// Associate the moveable instance with the tool ID
 		const controlBox = moveable.getControlBoxElement();
 		controlBox?.setAttribute('data-moveablejs-tool-control-box', toolId);
-		const surface = containerEl.getAttribute('data-pie-tool-surface');
-		if (surface) {
-			controlBox?.setAttribute('data-pie-tool-surface', surface);
-		}
 
 		moveable.on('drag', ({ target, transform }) => {
 			if (target) {
@@ -408,12 +404,6 @@
 		position: relative;
 		z-index: 2;
 		display: block;
-	}
-
-	/* Moveable.js control styling (matching production implementation) */
-	:global(body .moveable-control-box[data-pie-tool-surface="frameless"]) {
-		--moveable-color: transparent;
-		z-index: 2003; /* ZIndexLayer.CONTROL */
 	}
 
 	:global([data-moveablejs-tool-id="protractor"]) {

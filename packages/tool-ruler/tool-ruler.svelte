@@ -117,6 +117,8 @@
 			snappable: true,
 			originDraggable: true,
 			originRelative: true,
+			// A frameless overlay draws its own surface, so Moveable's frame lines go.
+			hideDefaultLines: $host().getAttribute('data-pie-tool-surface') === 'frameless',
 			keepRatio: false,
 			bounds: {
 				left: 0,
@@ -130,10 +132,6 @@
 		// Associate the moveable instance with the tool ID
 		const controlBox = moveable.getControlBoxElement();
 		controlBox?.setAttribute('data-moveablejs-tool-control-box', toolId);
-		const surface = containerEl.getAttribute('data-pie-tool-surface');
-		if (surface) {
-			controlBox?.setAttribute('data-pie-tool-surface', surface);
-		}
 
 		moveable.on('drag', ({ target, transform }) => {
 			if (target) {
@@ -519,13 +517,6 @@
 		display: inline-block;
 		font-size: 12px;
 		line-height: 1.4;
-	}
-
-	/* Moveable.js control styling (matching production implementation) */
-	/* Production implementation uses black (--moveable-color: #000) globally, not red for ruler */
-	:global(body .moveable-control-box[data-pie-tool-surface="frameless"]) {
-		--moveable-color: transparent;
-		z-index: 2003; /* ZIndexLayer.CONTROL */
 	}
 
 	:global([data-moveablejs-tool-id="ruler"]) {

@@ -26,3 +26,15 @@ test("revealing the tool cannot scroll its pane", () => {
 		expect(call).toInclude("preventScroll");
 	}
 });
+
+test("a frameless surface drops Moveable's frame lines", () => {
+	expect(source).toInclude(
+		"hideDefaultLines: $host().getAttribute('data-pie-tool-surface') === 'frameless'",
+	);
+});
+
+test("no shadow-scoped rule targets Moveable's document-level control box", () => {
+	// Moveable renders its control box into `document.body`, which this
+	// component's shadow-root styles cannot reach.
+	expect(source).not.toInclude(".moveable-control-box");
+});

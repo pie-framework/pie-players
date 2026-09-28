@@ -17,7 +17,6 @@ import {
 	import "@pie-players/pie-section-player-tools-event-debugger";
 import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	import "@pie-players/pie-section-player-tools-session-debugger";
-	import "@pie-players/pie-tool-text-to-speech";
 	import AssessmentDemoMenuBar from "$lib/demo-runtime/components/AssessmentDemoMenuBar.svelte";
 	import {
 		ASSESSMENT_PLAYER_PUBLIC_EVENTS,

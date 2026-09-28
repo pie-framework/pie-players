@@ -5,14 +5,15 @@
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			coordinator: { type: 'Object' },
+			ttsService: { type: 'Object' }
 		}
 	}}
 />
 
 <script lang="ts">
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
-	import { BrowserTTSProvider, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, createPointerDragController } from '@pie-players/pie-players-shared';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
@@ -31,7 +32,7 @@
 		visible?: boolean;
 		toolId?: string;
 		coordinator?: ToolCoordinatorApi;
-		ttsService: TtsServiceApi;
+		ttsService?: TtsServiceApi;
 	} = $props();
 
 	// Check if running in browser
@@ -62,13 +63,15 @@
 	});
 
 	// TTS state
-	let isInitialized = $state(false);
 	let isSpeaking = $state(false);
 	let isPaused = $state(false);
 	let selectedText = $state('');
 	let rate = $state(1.0);
 	let hasSelection = $state(false);
-	let initError = $state<string | null>(null);
+	let speakError = $state<string | null>(null);
+	// Identifies the latest speak call, so an earlier call settling late cannot
+	// reset the state a newer one set.
+	let speakRun = 0;
 
 	// The coordinator a registration was made against, and the id it used. Plain
 	// `let` rather than `$state`: this is bookkeeping the registration effect both
@@ -100,26 +103,17 @@
 		}
 	});
 
-	// Initialize and handle lifecycle
-	onMount(async () => {
+	// The service is the host's: it arrives configured, and this tool never
+	// initializes it or stops playback it did not start.
+	onMount(() => {
 		if (!isBrowser) return;
-
-		try {
-			const provider = new BrowserTTSProvider();
-			await ttsService.initialize(provider);
-			isInitialized = true;
-		} catch (error) {
-			console.error('[TTSTool] Failed to initialize TTS:', error);
-			initError = error instanceof Error ? error.message : 'Failed to initialize TTS';
-		}
-
-		// Listen for text selection changes
 		document.addEventListener('selectionchange', handleSelectionChange);
 
 		return () => {
-			if (isBrowser) {
-				document.removeEventListener('selectionchange', handleSelectionChange);
-				ttsService.stop();
+			document.removeEventListener('selectionchange', handleSelectionChange);
+			if (isSpeaking) {
+				speakRun += 1;
+				ttsService?.stop();
 			}
 			cleanupFocusTrap?.();
 			cleanupFocusTrap = null;
@@ -215,55 +209,45 @@
 
 	// Speak selected text
 	async function speakSelection() {
-		if (!isInitialized || !hasSelection || !selectedText) return;
+		const service = ttsService;
+		if (!service || !hasSelection || !selectedText) return;
 
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return;
+		const ancestor = selection.getRangeAt(0).commonAncestorContainer;
+		const container = ancestor instanceof Element ? ancestor : ancestor.parentElement;
+		if (!container) return;
+
+		const run = ++speakRun;
+		speakError = null;
+		isSpeaking = true;
+		isPaused = false;
 		try {
-			const selection = window.getSelection();
-			if (!selection || selection.rangeCount === 0) return;
-
-			const range = selection.getRangeAt(0);
-			const container = range.commonAncestorContainer.parentElement;
-
-			if (!container) return;
-
-			isSpeaking = true;
-			isPaused = false;
-
-			// Set the root element for highlighting
-			ttsService.setRootElement(container);
-
 			// Detect catalog reference from selected content (for SSML lookup).
 			// Climbs past docked ancestors that hold no spoken card: the attribute
 			// names a whole card array, so a signing card docked on an inner node
 			// would otherwise shadow the authored SSML on an outer one and the
 			// selection would be read as generated speech instead.
-			const catalogId = findSpokenCatalogId(container);
-
-			await ttsService.speak(selectedText, {
-				catalogId,  // Pass catalog ID for SSML resolution
-				rate,
-				highlightWords: true
-			}, {
-				onEnd: () => {
-					isSpeaking = false;
-					isPaused = false;
-				},
-				onError: (error) => {
-					console.error('[TTSTool] TTS error:', error);
-					isSpeaking = false;
-					isPaused = false;
-				}
+			await service.speak(selectedText, {
+				catalogId: findSpokenCatalogId(container),
+				contentElement: container
 			});
 		} catch (error) {
 			console.error('[TTSTool] Failed to speak:', error);
-			isSpeaking = false;
-			isPaused = false;
+			if (run === speakRun) {
+				speakError = error instanceof Error ? error.message : String(error);
+			}
+		} finally {
+			if (run === speakRun) {
+				isSpeaking = false;
+				isPaused = false;
+			}
 		}
 	}
 
 	// Pause/Resume
 	function togglePause() {
-		if (!isSpeaking) return;
+		if (!isSpeaking || !ttsService) return;
 
 		if (isPaused) {
 			ttsService.resume();
@@ -276,15 +260,19 @@
 
 	// Stop
 	function stopSpeaking() {
-		ttsService.stop();
+		speakRun += 1;
+		ttsService?.stop();
 		isSpeaking = false;
 		isPaused = false;
 	}
 
-	// Update rate
+	// Update rate. The rate is the shared service's, so the slider sets it there.
 	function handleRateChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		rate = parseFloat(target.value);
+		ttsService?.setPlaybackRate(rate).catch((error) => {
+			console.error('[TTSTool] Failed to set speech rate:', error);
+		});
 	}
 
 	// Dragging
@@ -409,18 +397,19 @@
 
 		<!-- Content -->
 		<div class="pie-tool-text-to-speech__content">
-			{#if initError}
-				<div class="pie-tool-text-to-speech__error-message">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-						<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-					</svg>
-					<span>{initError}</span>
-				</div>
-			{:else if !isInitialized}
+			{#if !ttsService}
 				<div class="pie-tool-text-to-speech__loading-message">
 					<span>{interfaceI18n.t('tools.textToSpeech.initializing')}</span>
 				</div>
 			{:else}
+				{#if speakError}
+					<div class="pie-tool-text-to-speech__error-message">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+						</svg>
+						<span>{speakError}</span>
+					</div>
+				{/if}
 				<!-- Instructions -->
 				<div class="pie-tool-text-to-speech__instructions">
 					{#if hasSelection}

@@ -48,7 +48,7 @@ describe("packaged tool tag map", () => {
 		const overrides = { toolTagMap: PACKAGED_TOOL_TAG_MAP };
 		expect(resolveToolTag("calculator", overrides)).toBe("pie-tool-calculator");
 		expect(resolveToolTag("textToSpeech", overrides)).toBe(
-			"pie-tool-text-to-speech",
+			"pie-tool-tts-inline",
 		);
 		expect(resolveToolTag("annotationToolbar", overrides)).toBe(
 			"pie-tool-annotation-toolbar",

@@ -26,3 +26,13 @@ test("revealing the tool cannot scroll its pane", () => {
 		expect(call).toInclude("preventScroll");
 	}
 });
+
+test("Moveable draws no frame lines around the protractor", () => {
+	expect(source).toInclude("hideDefaultLines: true");
+});
+
+test("no shadow-scoped rule targets Moveable's document-level control box", () => {
+	// Moveable renders its control box into `document.body`, which this
+	// component's shadow-root styles cannot reach.
+	expect(source).not.toInclude(".moveable-control-box");
+});

@@ -134,8 +134,7 @@ function loadCalculatorElement(
 const loadDesmosCalculatorModule = () =>
 	loadCalculatorElement(
 		"pie-tool-calculator",
-		() =>
-			import("@pie-players/pie-tool-calculator-shared/calculator-element"),
+		() => import("@pie-players/pie-tool-calculator-shared/calculator-element"),
 	);
 const loadGeoGebraCalculatorModule = () =>
 	loadCalculatorElement(
@@ -210,7 +209,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 	},
 	{
 		registration: ttsToolRegistration,
-		tagName: "pie-tool-text-to-speech",
+		tagName: "pie-tool-tts-inline",
 		loadModule: loadTtsModule,
 		loaderTargets: ["item"],
 		placementOrder: { item: 10, passage: 10, rubric: 10, element: 30 },

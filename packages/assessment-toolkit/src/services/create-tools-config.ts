@@ -1,4 +1,4 @@
-import type { CanonicalToolsConfig } from "./tools-config-normalizer.js";
+import type { ToolsConfigInput } from "./tools-config-normalizer.js";
 import type { ToolRegistry } from "./ToolRegistry.js";
 import {
 	normalizeAndValidateToolsConfig,
@@ -7,7 +7,7 @@ import {
 } from "./tool-config-validation.js";
 
 export interface CreateToolsConfigArgs {
-	tools?: Partial<CanonicalToolsConfig> | null;
+	tools?: ToolsConfigInput | null;
 	toolRegistry?: ToolRegistry | null;
 	strictness?: ToolConfigStrictness;
 	source?: string;

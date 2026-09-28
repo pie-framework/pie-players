@@ -27,6 +27,7 @@ import {
 	type TextToSpeechToolProviderConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
+	type ToolsConfigInput,
 	normalizeToolsConfig,
 } from "./tools-config-normalizer.js";
 import {
@@ -214,7 +215,7 @@ export interface ToolkitCoordinatorConfig {
 	 * Tool availability and configuration.
 	 * Defaults: all tools enabled with default settings.
 	 */
-	tools?: Partial<CanonicalToolsConfig>;
+	tools?: ToolsConfigInput;
 
 	/**
 	 * Validation strictness for tool config contracts.
@@ -823,7 +824,7 @@ export class ToolkitCoordinator {
 	 * is reported once per coordinator, whichever call validates.
 	 */
 	private validateToolsConfig(
-		tools: Partial<CanonicalToolsConfig> | null | undefined,
+		tools: ToolsConfigInput | null | undefined,
 		options: {
 			strictness: ToolConfigStrictness;
 			source: string;

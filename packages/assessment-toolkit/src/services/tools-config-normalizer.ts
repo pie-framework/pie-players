@@ -131,6 +131,14 @@ export interface CanonicalToolsConfig {
 	pnpEnforcement?: ToolsPnpEnforcement;
 }
 
+/**
+ * The tools config a host supplies. Every part is optional, placement levels
+ * included: {@link normalizeToolsConfig} fills a missing level with its default.
+ */
+export type ToolsConfigInput = Omit<Partial<CanonicalToolsConfig>, "placement"> & {
+	placement?: ToolPlacementConfig;
+};
+
 const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
 	section: [...DEFAULT_TOOL_PLACEMENT.section],
 	item: [...DEFAULT_TOOL_PLACEMENT.item],
@@ -283,7 +291,7 @@ function assertPnpEnforcement(
 }
 
 export function normalizeToolsConfig(
-	input?: Partial<CanonicalToolsConfig> | null,
+	input?: ToolsConfigInput | null,
 ): CanonicalToolsConfig {
 	if (input != null && !isPlainObject(input)) {
 		throw new Error(

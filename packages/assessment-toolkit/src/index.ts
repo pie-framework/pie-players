@@ -295,6 +295,7 @@ export type {
 	ToolPlacementLevel,
 	ToolPolicyConfig,
 	ToolProvidersConfig,
+	ToolsConfigInput,
 } from "./services/tools-config-normalizer.js";
 export type {
 	FrameworkErrorKind,

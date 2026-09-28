@@ -132,11 +132,7 @@ shared browser dependencies are fetched from `esm.sh`.
 
 ### `strategy="preloaded"`
 
-The player assumes all required PIE custom elements are already defined in the browser. No bundle loading occurs. This is useful when:
-
-- A section player or host app preloads bundles at the page level
-- Using a static preloaded-player build (see below)
-- Running offline or in test environments
+The player assumes all required PIE custom elements are already defined in the browser and loads nothing. The host installs the pie-elements-ng packages it needs as npm dependencies, its own build bundles their ESM builds, and it registers them with `registerPreloadedElements` ([below](#registering-elements-from-npm)) before the player renders. Preloaded is ESM only, because the elements are resolved at the host's build time; IIFE bundles are the runtime-loaded `iife` strategy.
 
 ```html
 <pie-item-player
@@ -146,6 +142,8 @@ The player assumes all required PIE custom elements are already defined in the b
 ```
 
 Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`. The player replaces every authored spec of a recorded package with that version on its runtime copy of the config. Content can author a package under another base tag than the one it is registered under, so the player then defines each resulting versioned tag the page lacks from the element registered for the same package spec, with that registration's controller and bundle type (`defineAuthoredPreloadedTags`), and calls `assertRegistered` from the `ElementLoader` primitive for the versioned tags. A tag whose package spec the page did not register stays undefined and throws `ElementAssertionError`, naming each missing tag and the tags its package is registered as; there is no fall-back to bundle fetching.
+
+The player installs no math renderer under `preloaded`, as under `esm`: the elements load MathJax 4 once per page, on their first render.
 
 ### Registering elements from npm
 
@@ -176,6 +174,8 @@ await import("@pie-players/pie-item-player");
 - The call is synchronous and validates every entry before registering any. A tag that is already defined keeps its definition.
 
 ### Preloaded player builds
+
+Generated `@pie-players/pie-preloaded-player` builds predate npm registration. Each carries a PITS IIFE bundle of its elements and installs the math renderer that bundle reads in its own entry. They stay published for hosts that have not moved to npm registration; a new integration registers ESM builds instead.
 
 The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time through `registerPreloadedElements`, without controllers, so a hosted `<pie-item-player strategy="preloaded">` renders them without fetching bundles. See [`docs/preloaded-player/readme.md`](../preloaded-player/readme.md).
 

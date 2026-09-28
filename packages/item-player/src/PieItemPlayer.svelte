@@ -858,7 +858,7 @@
 	// strategy, loaderOptions)` producing `(resolvedConfig | error)`.
 	//
 	//     parse → validate → normalizePreloaded → makeUniqueTags
-	//       → collectRuntimeSupportHints → initializeMathRendering (not esm)
+	//       → collectRuntimeSupportHints → initializeMathRendering (iife)
 	//       → (preloaded: assertRegistered | iife|esm: ensureRegistered)
 	//       → setItemConfig
 	//
@@ -1085,9 +1085,9 @@
 					? ` Runtime support metadata indicates esm/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
 					: null;
 
-			// Only IIFE and preloaded elements need the renderer this installs on
-			// window; ESM element builds bring their own.
-			if (normalizedStrategy !== "esm") {
+			// IIFE bundles read the renderer this installs on window. Preloaded
+			// elements are ESM builds, which bring their own.
+			if (normalizedStrategy === "iife") {
 				stage = "math-rendering-init";
 				await initializeMathRendering();
 				if (!isCurrentLoadRequest(requestToken)) return false;

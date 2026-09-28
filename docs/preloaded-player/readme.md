@@ -1,5 +1,12 @@
 # Preloaded player (`@pie-players/pie-preloaded-player`)
 
+The generated package is transitional. `strategy="preloaded"` means ESM
+builds of pie-elements-ng that the host installs as npm dependencies and
+registers with `registerPreloadedElements`
+([Loading strategies](../item-player/loading-strategies.md#registering-elements-from-npm)),
+so a new integration needs no generated build. The package stays published for
+hosts that have not moved yet, and this page documents it for them.
+
 `@pie-players/pie-preloaded-player` is a build-time-generated package: a fixed
 set of PIE elements, pinned to specific versions, bundled together with
 `pie-item-player` into one importable package. It is the replacement for the

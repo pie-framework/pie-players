@@ -566,6 +566,30 @@ describe("warmupSectionElements", () => {
 		expect(ensureItemPlayerMathRenderingReady).not.toHaveBeenCalled();
 	});
 
+	test("preloaded strategy does not install the math renderer", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		definePreloadedTag("pie-mc-preloaded-math--version-1-0-0");
+		ensureItemPlayerMathRenderingReady.mockClear();
+		await warmupSectionElements({
+			strategy: "preloaded",
+			renderables: [
+				{
+					id: "item-1",
+					config: {
+						markup: '<pie-mc-preloaded-math id="m1"></pie-mc-preloaded-math>',
+						elements: {
+							"pie-mc-preloaded-math": "@pie-element/multiple-choice@1.0.0",
+						},
+						models: [{ id: "m1", element: "pie-mc-preloaded-math" }],
+					},
+				} as any,
+			],
+			resolvedPlayerProps: {},
+			resolvedPlayerEnv: {},
+		});
+		expect(ensureItemPlayerMathRenderingReady).not.toHaveBeenCalled();
+	});
+
 	test("iife strategy installs the math renderer", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
 		definePreloadedTag("pie-mc-iife--version-1-0-0");

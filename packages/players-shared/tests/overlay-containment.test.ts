@@ -3,7 +3,31 @@ import { describe, expect, test } from "bun:test";
 import {
 	clampOffsetOverlappingBlock,
 	rotatedExtent,
+	rotationCentreShift,
 } from "../src/ui/overlay-containment.js";
+
+describe("rotationCentreShift", () => {
+	const protractor = { width: 400, height: 210 };
+	const vertex = { x: 200, y: 200 };
+
+	test("is zero unturned and for a box turned about its centre", () => {
+		expect(rotationCentreShift(protractor, vertex, 0)).toEqual({ x: 0, y: 0 });
+		const aboutCentre = rotationCentreShift(protractor, { x: 200, y: 105 }, 37);
+		expect(aboutCentre.x).toBeCloseTo(0);
+		expect(aboutCentre.y).toBeCloseTo(0);
+	});
+
+	test("swings the centre around the origin", () => {
+		// The centre sits 95px above the vertex; a quarter turn clockwise on
+		// screen carries it 95px to the vertex's right, a half turn below it.
+		const quarter = rotationCentreShift(protractor, vertex, 90);
+		expect(quarter.x).toBeCloseTo(95);
+		expect(quarter.y).toBeCloseTo(95);
+		const half = rotationCentreShift(protractor, vertex, 180);
+		expect(half.x).toBeCloseTo(0);
+		expect(half.y).toBeCloseTo(190);
+	});
+});
 
 describe("rotatedExtent", () => {
 	test("is the box itself unturned and its transpose at a quarter turn", () => {

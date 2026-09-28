@@ -53,11 +53,12 @@ export default defineConfig({
 			testMatch: /section-(demos-esm|player-host-section-switch)\.spec\.ts/,
 			use: { ...devices["Desktop Firefox"] },
 		},
-		// Focus order: WebKit does not focus a clicked button. The ruler's pointer
-		// handling runs here too, since Safari's pointer capture is what iPads get.
+		// Focus order: WebKit does not focus a clicked button. The ruler's and
+		// protractor's pointer handling runs here too, since Safari's pointer
+		// capture is what iPads get.
 		{
 			name: "webkit",
-			testMatch: /section-(player-host-section-switch|ruler-pointer)\.spec\.ts/,
+			testMatch: /section-(player-host-section-switch|ruler-pointer|protractor-pointer)\.spec\.ts/,
 			use: { ...devices["Desktop Safari"] },
 		},
 	],

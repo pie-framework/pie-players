@@ -4,19 +4,51 @@ const source = await Bun.file(
 	new URL("../tool-protractor.svelte", import.meta.url),
 ).text();
 
+const ruleFor = (selector: string) =>
+	source.match(new RegExp(`${selector.replace(/[.]/g, "\\.")} \\{[^}]*\\}`))?.[0] ?? "";
+
 test("keyboard placement is wired to the panel", () => {
 	expect(source).toInclude("onkeydown={handleKeyDown}");
 });
 
-test("keyboard placement writes the channel Moveable reads", () => {
-	// Moveable derives geometry from `transform` and writes `style.transform`;
-	// a keyboard path writing anywhere else desynchronises the two.
-	expect(source).toInclude("containerEl.style.transform =");
-	expect(source).toInclude("target.style.transform = transform");
+test("pointer and keyboard placement share one transform writer", () => {
+	// Two writers of `style.transform` would let a drag and a nudge disagree
+	// about where the protractor is.
+	expect(source.match(/containerEl\.style\.transform =/g)?.length).toBe(1);
+	expect(source).toInclude("applyPlacement({ x, y, rotation })");
 });
 
-test("drag containment is declared against the CSS box", () => {
-	expect(source).toInclude("position: 'css'");
+test("the protractor carries no third-party drag library", () => {
+	expect(source).not.toMatch(/moveable/i);
+});
+
+test("gestures run through the shared pointer lifecycle", () => {
+	// `createPointerGesture` ends a gesture on `pointercancel`, which iPadOS
+	// sends when it takes a touch over; hand-rolled listeners could miss it.
+	expect(source).toInclude("createPointerGesture(");
+	expect(source).not.toInclude("addEventListener('pointermove'");
+});
+
+test("the vertex inset agrees across the bound, the pivot and the transform origin", () => {
+	expect(source).toInclude("const VERTEX_INSET = 10;");
+	expect(ruleFor(".pie-tool-protractor")).toInclude(
+		"transform-origin: 50% calc(100% - 10px)",
+	);
+	expect(ruleFor(".pie-tool-protractor__pivot")).toInclude("bottom: 10px");
+});
+
+test("touch drags neither scroll the page nor open the iOS callout", () => {
+	const protractorRule = ruleFor(".pie-tool-protractor");
+	expect(protractorRule).toInclude("touch-action: none");
+	expect(protractorRule).toInclude("-webkit-touch-callout: none");
+	expect(protractorRule).toInclude("-webkit-user-select: none");
+	expect(ruleFor(".pie-tool-protractor__rotate-handle")).toInclude("touch-action: none");
+});
+
+test("the rotation handle offers a 44px touch target", () => {
+	const handleRule = ruleFor(".pie-tool-protractor__rotate-handle");
+	expect(handleRule).toInclude("width: 44px");
+	expect(handleRule).toInclude("height: 44px");
 });
 
 test("revealing the tool cannot scroll its pane", () => {
@@ -25,14 +57,4 @@ test("revealing the tool cannot scroll its pane", () => {
 	for (const call of focusCalls) {
 		expect(call).toInclude("preventScroll");
 	}
-});
-
-test("Moveable draws no frame lines around the protractor", () => {
-	expect(source).toInclude("hideDefaultLines: true");
-});
-
-test("no shadow-scoped rule targets Moveable's document-level control box", () => {
-	// Moveable renders its control box into `document.body`, which this
-	// component's shadow-root styles cannot reach.
-	expect(source).not.toInclude(".moveable-control-box");
 });

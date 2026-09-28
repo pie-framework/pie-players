@@ -24,6 +24,7 @@
 	import {
 		clampOffsetOverlappingBlock,
 		createPointerDragController,
+		createPointerGesture,
 		createPointerRotateController,
 		resolveContainingBlockRect,
 		rotatedExtent
@@ -59,11 +60,6 @@
 	 */
 	let placement = { x: 0, y: 0, rotation: 0 };
 
-	// The pointer driving the current drag or rotation, and the element that
-	// captured it. A second finger landing mid-gesture is ignored.
-	let activePointerId: number | null = null;
-	let gestureTarget: HTMLElement | null = null;
-
 	const dragController = createPointerDragController({
 		getPosition: () => ({ x: placement.x, y: placement.y }),
 		setPosition: (next) => applyPlacement({ ...placement, ...next })
@@ -71,6 +67,16 @@
 	const rotateController = createPointerRotateController({
 		getRotation: () => placement.rotation,
 		setRotation: (rotation) => applyPlacement({ ...placement, rotation })
+	});
+	const gesture = createPointerGesture({
+		onMove: (e) => {
+			dragController.handlePointerMove(e);
+			rotateController.handlePointerMove(e);
+		},
+		onEnd: () => {
+			dragController.endDragging();
+			rotateController.endRotating();
+		}
 	});
 
 	// The coordinator a registration was made against, and the id it used. Plain
@@ -147,29 +153,21 @@
 	}
 
 	/**
-	 * Claims the pointer for a drag or rotation. Pointer capture keeps the moves
-	 * coming when a finger outruns the ruler, and `pointercancel` ends the gesture
-	 * when the system takes the touch over, so a drag cannot stay stuck on.
+	 * Claims a press for a drag or rotation. The claim's `preventDefault`
+	 * suppresses the press's default focus, so focus the ruler here: the
+	 * arrow-key alternatives act on it.
 	 */
-	function beginGesture(e: PointerEvent, target: HTMLElement) {
-		activePointerId = e.pointerId;
-		gestureTarget = target;
-		target.addEventListener('pointermove', handlePointerMove);
-		target.addEventListener('pointerup', endGesture);
-		target.addEventListener('pointercancel', endGesture);
-		target.addEventListener('lostpointercapture', endGesture);
-		// `preventDefault` suppresses the press's default focus, so claim it: the
-		// arrow-key alternatives act on the focused ruler.
+	function claimGesture(e: PointerEvent, target: HTMLElement) {
+		if (!gesture.begin(e, target)) return false;
 		containerEl?.focus({ preventScroll: true });
-		e.preventDefault();
+		return true;
 	}
 
 	function handleDragStart(e: PointerEvent) {
 		if (!containerEl) return;
 		coordinator?.bringToFront(containerEl);
-		if (e.button !== 0 || activePointerId !== null) return;
+		if (!claimGesture(e, containerEl)) return;
 		dragController.startDragging(e, containerEl);
-		beginGesture(e, containerEl);
 	}
 
 	function handleRotateStart(e: PointerEvent) {
@@ -177,39 +175,12 @@
 		e.stopPropagation();
 		if (!containerEl || !rotateHandleEl) return;
 		coordinator?.bringToFront(containerEl);
-		if (e.button !== 0 || activePointerId !== null) return;
+		if (!claimGesture(e, rotateHandleEl)) return;
 		const rect = containerEl.getBoundingClientRect();
 		rotateController.startRotating(e, rotateHandleEl, {
 			x: rect.left + rect.width / 2,
 			y: rect.top + rect.height / 2
 		});
-		beginGesture(e, rotateHandleEl);
-	}
-
-	function handlePointerMove(e: PointerEvent) {
-		if (e.pointerId !== activePointerId) return;
-		dragController.handlePointerMove(e);
-		rotateController.handlePointerMove(e);
-	}
-
-	function endGesture(e: PointerEvent) {
-		if (e.pointerId !== activePointerId) return;
-		releaseGesture();
-	}
-
-	function releaseGesture() {
-		const target = gestureTarget;
-		const pointerId = activePointerId;
-		activePointerId = null;
-		gestureTarget = null;
-		dragController.endDragging();
-		rotateController.endRotating();
-		if (!target || pointerId === null) return;
-		target.removeEventListener('pointermove', handlePointerMove);
-		target.removeEventListener('pointerup', endGesture);
-		target.removeEventListener('pointercancel', endGesture);
-		target.removeEventListener('lostpointercapture', endGesture);
-		if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
 	}
 
 	// Keyboard navigation (preserved for accessibility)
@@ -301,7 +272,7 @@
 			// Wait for the next tick to ensure DOM is updated
 			setTimeout(() => containerEl && coordinator?.bringToFront(containerEl), 0);
 		} else {
-			releaseGesture();
+			gesture.release();
 			placement = { x: 0, y: 0, rotation: 0 };
 		}
 	});
@@ -331,7 +302,7 @@
 	onMount(() => {
 		window.addEventListener('resize', reapplyPlacement);
 		return () => {
-			releaseGesture();
+			gesture.release();
 			window.removeEventListener('resize', reapplyPlacement);
 			// Unregister from the coordinator the registration was actually made
 			// against, which is not necessarily the one currently in context.

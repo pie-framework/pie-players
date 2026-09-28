@@ -121,11 +121,27 @@ async function hidePage(page: Page) {
 	await page.waitForTimeout(500);
 }
 
+// The element bundle loads cross-origin without CORS, so a window listener only
+// ever reads "Script error." for its throws. The protocol-level report keeps
+// the message and stack, and is what a failure prints.
+const unmaskedErrors = new WeakMap<Page, string[]>();
+
+test.beforeEach(({ page }) => {
+	const collected: string[] = [];
+	unmaskedErrors.set(page, collected);
+	page.on("pageerror", (error) => {
+		collected.push(error.stack ?? error.message);
+	});
+});
+
 async function readEvents(page: Page) {
+	const errors = await page.evaluate(() => window.__pieCommitErrors ?? []);
+	const unmasked = unmaskedErrors.get(page) ?? [];
 	return {
 		atDocument: await page.evaluate(() => window.__pieCommitEvents ?? []),
 		atPlayer: await page.evaluate(() => window.__pieElementEvents ?? []),
-		errors: await page.evaluate(() => window.__pieCommitErrors ?? []),
+		errors,
+		describeErrors: () => [...errors, ...unmasked].join("\n"),
 	};
 }
 
@@ -153,9 +169,9 @@ test.describe("item-player session commit", () => {
 		await stagePendingResponse(page, "jupiter");
 		await hidePage(page);
 
-		const { atDocument, errors } = await readEvents(page);
+		const { atDocument, errors, describeErrors } = await readEvents(page);
 
-		expect(errors, `the commit raised page errors: ${errors.join(", ")}`).toEqual(
+		expect(errors, `the commit raised page errors: ${describeErrors()}`).toEqual(
 			[],
 		);
 		assertContract(atDocument);
@@ -181,9 +197,9 @@ test.describe("item-player session commit", () => {
 		await gotoDelivery(page);
 		await hidePage(page);
 
-		const { atDocument, errors } = await readEvents(page);
+		const { atDocument, errors, describeErrors } = await readEvents(page);
 
-		expect(errors, `the commit raised page errors: ${errors.join(", ")}`).toEqual(
+		expect(errors, `the commit raised page errors: ${describeErrors()}`).toEqual(
 			[],
 		);
 		expect(
@@ -211,9 +227,9 @@ test.describe("item-player session commit", () => {
 		});
 		await page.waitForTimeout(500);
 
-		const { atDocument, errors } = await readEvents(page);
+		const { atDocument, errors, describeErrors } = await readEvents(page);
 
-		expect(errors, `the commit raised page errors: ${errors.join(", ")}`).toEqual(
+		expect(errors, `the commit raised page errors: ${describeErrors()}`).toEqual(
 			[],
 		);
 		assertContract(atDocument);
@@ -241,11 +257,11 @@ test.describe("item-player session commit", () => {
 		});
 		await page.waitForTimeout(1_000);
 
-		const { atPlayer, errors } = await readEvents(page);
+		const { atPlayer, errors, describeErrors } = await readEvents(page);
 
 		expect(
 			errors,
-			`teardown raised page errors: ${errors.join(", ")}`,
+			`teardown raised page errors: ${describeErrors()}`,
 		).toEqual([]);
 		assertContract(atPlayer);
 		expect(

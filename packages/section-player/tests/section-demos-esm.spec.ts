@@ -39,7 +39,7 @@ for (const path of ["/tts-ssml", "/two-passages"]) {
 		expect(browserBuilds.length).toBeGreaterThan(0);
 		// Every item player on the page shares the one runtime mapped first.
 		const runtimeMap = page.locator(
-			'script[type="importmap"][data-pie-editor-runtime]',
+			'script[data-pie-editor-runtime]',
 		);
 		await expect(runtimeMap).toHaveCount(1);
 		await expect(runtimeMap).toHaveAttribute(

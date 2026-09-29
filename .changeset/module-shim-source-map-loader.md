@@ -1,6 +1,7 @@
 ---
 "@pie-players/pie-players-shared": patch
 "@pie-players/pie-item-player": patch
+"@pie-players/pie-print-player": patch
 "@pie-players/pie-section-player": patch
 ---
 

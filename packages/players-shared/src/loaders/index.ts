@@ -77,7 +77,8 @@ export type {
 	IifeBackend,
 	IifeBundleRetryStatus,
 } from "./iife-adapter.js";
-export { createIifeBackend, DEFAULT_BUNDLE_HOST } from "./iife-adapter.js";
+export { DEFAULT_BUNDLE_HOST, DEFAULT_ESM_CDN_URL } from "./defaults.js";
+export { createIifeBackend } from "./iife-adapter.js";
 
 export { resolveLoadControllers } from "./controller-loading.js";
 

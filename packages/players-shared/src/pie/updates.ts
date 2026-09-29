@@ -105,6 +105,19 @@ const emitControllerError = (
 };
 
 /**
+ * Reports whether an element has left the document since its update started.
+ * A legacy element unmounts its React root when it is disconnected, and a
+ * write after that throws React error #409 in releases before PIE-703, or
+ * renders a tree nothing unmounts in later ones. The controller call is when a
+ * host can remove the player. An element that was never inserted still takes
+ * the update, so a caller can set one up before inserting it.
+ */
+const trackRemoval = (element: Element): (() => boolean) => {
+	const wasConnected = element.isConnected;
+	return () => wasConnected && !element.isConnected;
+};
+
+/**
  * Helper function to apply controller to element
  * Extracted to eliminate duplication and ensure consistent controller invocation
  */
@@ -115,6 +128,7 @@ const applyControllerToElement = async (
 	controller: unknown,
 	env: Env,
 	logPrefix: string,
+	wasRemoved: () => boolean,
 	onElementSessionUpdate?: (
 		elementId: string,
 		elementName: string,
@@ -179,6 +193,7 @@ const applyControllerToElement = async (
 			role: env.role,
 		});
 
+		if (wasRemoved()) return;
 		element.model = filteredModel;
 		element.session = elementSession;
 	} catch (err) {
@@ -286,6 +301,7 @@ const updateSinglePieElement = async (
 		// caller computes/emits the session signature; otherwise a late, async
 		// shuffle write lands after the cycle that read the session and the order
 		// never round-trips (PIE-631).
+		const wasRemoved = trackRemoval(pieElement);
 		try {
 			await applyControllerToElement(
 				pieElement,
@@ -294,6 +310,7 @@ const updateSinglePieElement = async (
 				controller,
 				env,
 				`${logContext}(${controllerLookupTag}#${pieElement.id})`,
+				wasRemoved,
 				onElementSessionUpdate,
 			);
 		} catch (err) {
@@ -316,6 +333,7 @@ const updateSinglePieElement = async (
 				cause: errorMessage,
 			});
 			// Fall back to raw model on controller error
+			if (wasRemoved()) return;
 			pieElement.model = model;
 			pieElement.session = elementSession;
 		}

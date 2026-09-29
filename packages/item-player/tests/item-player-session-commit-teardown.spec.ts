@@ -31,6 +31,7 @@ declare global {
 		__pieCommitEvents?: Observed[];
 		__pieElementEvents?: Observed[];
 		__pieCommitErrors?: string[];
+		__pieDetachedWrites?: string[];
 	}
 }
 
@@ -110,6 +111,46 @@ async function stagePendingResponse(page: Page, value: string) {
 	expect(staged, "the demo element exposes no session to stage").not.toBeNull();
 }
 
+/**
+ * Record each model or session write the element takes once it is out of the
+ * document. A legacy element unmounts its React root on disconnect, so such a
+ * write throws in releases before PIE-703, whichever build the CDN serves.
+ */
+async function watchDetachedWrites(page: Page) {
+	await page.evaluate(() => {
+		window.__pieDetachedWrites = [];
+		const element = Array.from(
+			document.querySelectorAll("pie-item-player *"),
+		).find(
+			(candidate) =>
+				candidate.tagName.includes("-") &&
+				"session" in candidate &&
+				"model" in candidate,
+		);
+		if (!element) return;
+		for (const property of ["model", "session"]) {
+			let owner = Object.getPrototypeOf(element);
+			while (owner && !Object.getOwnPropertyDescriptor(owner, property)) {
+				owner = Object.getPrototypeOf(owner);
+			}
+			const accessor = owner
+				? Object.getOwnPropertyDescriptor(owner, property)
+				: undefined;
+			if (!accessor?.set) continue;
+			Object.defineProperty(element, property, {
+				configurable: true,
+				get() {
+					return accessor.get?.call(this);
+				},
+				set(value) {
+					if (!this.isConnected) window.__pieDetachedWrites?.push(property);
+					accessor.set?.call(this, value);
+				},
+			});
+		}
+	});
+}
+
 async function hidePage(page: Page) {
 	await page.evaluate(() => {
 		Object.defineProperty(document, "visibilityState", {
@@ -121,11 +162,27 @@ async function hidePage(page: Page) {
 	await page.waitForTimeout(500);
 }
 
+// The element bundle loads cross-origin without CORS, so a window listener only
+// ever reads "Script error." for its throws. The protocol-level report keeps
+// the message and stack, and is what a failure prints.
+const unmaskedErrors = new WeakMap<Page, string[]>();
+
+test.beforeEach(({ page }) => {
+	const collected: string[] = [];
+	unmaskedErrors.set(page, collected);
+	page.on("pageerror", (error) => {
+		collected.push(error.stack ?? error.message);
+	});
+});
+
 async function readEvents(page: Page) {
+	const errors = await page.evaluate(() => window.__pieCommitErrors ?? []);
+	const unmasked = unmaskedErrors.get(page) ?? [];
 	return {
 		atDocument: await page.evaluate(() => window.__pieCommitEvents ?? []),
 		atPlayer: await page.evaluate(() => window.__pieElementEvents ?? []),
-		errors: await page.evaluate(() => window.__pieCommitErrors ?? []),
+		errors,
+		describeErrors: () => [...errors, ...unmasked].join("\n"),
 	};
 }
 
@@ -153,11 +210,12 @@ test.describe("item-player session commit", () => {
 		await stagePendingResponse(page, "jupiter");
 		await hidePage(page);
 
-		const { atDocument, errors } = await readEvents(page);
+		const { atDocument, errors, describeErrors } = await readEvents(page);
 
-		expect(errors, `the commit raised page errors: ${errors.join(", ")}`).toEqual(
-			[],
-		);
+		expect(
+			errors,
+			`the commit raised page errors: ${describeErrors()}`,
+		).toEqual([]);
 		assertContract(atDocument);
 		const committed = atDocument.filter(
 			(event) => event.commitReason === "page-hidden",
@@ -181,11 +239,12 @@ test.describe("item-player session commit", () => {
 		await gotoDelivery(page);
 		await hidePage(page);
 
-		const { atDocument, errors } = await readEvents(page);
+		const { atDocument, errors, describeErrors } = await readEvents(page);
 
-		expect(errors, `the commit raised page errors: ${errors.join(", ")}`).toEqual(
-			[],
-		);
+		expect(
+			errors,
+			`the commit raised page errors: ${describeErrors()}`,
+		).toEqual([]);
 		expect(
 			atDocument.filter((event) => event.commitReason !== null),
 			"an untouched item was announced",
@@ -211,11 +270,12 @@ test.describe("item-player session commit", () => {
 		});
 		await page.waitForTimeout(500);
 
-		const { atDocument, errors } = await readEvents(page);
+		const { atDocument, errors, describeErrors } = await readEvents(page);
 
-		expect(errors, `the commit raised page errors: ${errors.join(", ")}`).toEqual(
-			[],
-		);
+		expect(
+			errors,
+			`the commit raised page errors: ${describeErrors()}`,
+		).toEqual([]);
 		assertContract(atDocument);
 		const committed = atDocument.filter(
 			(event) => event.commitReason === "teardown",
@@ -235,17 +295,21 @@ test.describe("item-player session commit", () => {
 		await gotoDelivery(page);
 		await answer(page, "Mercury");
 		await stagePendingResponse(page, "jupiter");
+		await watchDetachedWrites(page);
 
 		await page.evaluate(() => {
 			document.querySelector("pie-item-player")?.remove();
 		});
 		await page.waitForTimeout(1_000);
 
-		const { atPlayer, errors } = await readEvents(page);
+		const { atPlayer, errors, describeErrors } = await readEvents(page);
 
+		expect(errors, `teardown raised page errors: ${describeErrors()}`).toEqual(
+			[],
+		);
 		expect(
-			errors,
-			`teardown raised page errors: ${errors.join(", ")}`,
+			await page.evaluate(() => window.__pieDetachedWrites),
+			"the player wrote into an element it had already removed",
 		).toEqual([]);
 		assertContract(atPlayer);
 		expect(

@@ -69,8 +69,10 @@ export {
 	connectToolRuntimeContext,
 	connectToolShellContext,
 	createCrossBoundaryEvent,
+	createToolCoordinatorRegistration,
 	dispatchCrossBoundaryEvent,
 	isContextValueDefined,
+	type ToolCoordinatorRegistration,
 } from "./runtime/tool-host-contract.js";
 
 // ============================================================================

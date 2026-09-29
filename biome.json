@@ -17,7 +17,6 @@
 			"!**/playwright-report",
 			"!**/test-results",
 			"!.claude",
-			"!tools/cli/oclif.manifest.json",
 			"!**/src/components/vendor"
 		]
 	},

@@ -6,6 +6,7 @@ node_modules/
 **/build/
 .svelte-kit/
 .turbo/
+tools/cli/oclif.manifest.json
 
 # local artifacts
 local-builds/

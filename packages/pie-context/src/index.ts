@@ -3,6 +3,7 @@ export {
 	ContextRequestEvent,
 } from "./events.js";
 export {
+	connectContextWithRetry,
 	consumeContext,
 	ContextConsumer,
 	requestContext,

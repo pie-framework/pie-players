@@ -11,6 +11,9 @@ so orchestration/runtime dependencies can be shared without prop drilling.
 - `ContextRequestEvent` and `ContextProviderEvent`
 - `ContextProvider` and `provideContext(...)`
 - `ContextConsumer`, `consumeContext(...)`, and `requestContext(...)`
+- `connectContextWithRetry(...)` for a consumer whose provider may connect
+  after it: it re-requests on `context-provider` and polls every 50 ms for
+  about 10 s
 - `ContextRoot` for late-provider replay of pending subscribing requests
 
 ## Design notes

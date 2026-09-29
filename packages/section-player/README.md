@@ -687,10 +687,10 @@ sectionPlayer.runtime = { ...sectionPlayer.runtime, playerType: "preloaded" };
   install can resolve to another release line: `^13.4.0-next.15` resolves to
   the legacy `13.4.4`, which has no `./browser/*` modules.
 - Install every pie-elements-ng package from one release, in one install from
-  the same dist-tag, and upgrade them together. A release pins exact versions
-  of the `@pie-lib/*` and `@pie-element/shared-*` libraries its elements share,
-  so packages from two releases install a second copy of each library.
-  `npm ls @pie-lib/render-ui` lists one version for a consistent set.
+  the same dist-tag, and upgrade them together. The elements on a page share
+  the MathJax the first of them loads, in the build and configuration of that
+  element's release, so in a mixed set an element can typeset with a MathJax
+  it was not built for.
 - Register one version per package. The players align every authored version
   of a package to the registered one, and registering a second version throws.
 - Register each package's `controller` unless the item players are hosted

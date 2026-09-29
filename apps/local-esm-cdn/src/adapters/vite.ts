@@ -1,6 +1,9 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
-import type { LocalEsmCdnConfig } from "../core/config.js";
+import { type LocalEsmCdnConfig, mergeConfig } from "../core/config.js";
+import { resolvePackageJson } from "../core/resolver.js";
+import { fileExists } from "../core/utils.js";
 import { createLocalEsmCdn } from "../embedded.js";
 
 const LOCAL_CDN_REQUEST = /^\/@pie-(?:element|lib|elements-ng)\//;
@@ -18,6 +21,41 @@ const EDITOR_RUNTIME_VARIANT_REQUEST =
 // module's id as a path on disk, which this URL space is not. Marked ignored,
 // the URL resolves in the browser against the module's URL, as from a CDN.
 const RELATIVE_ASSET_URL = /\bnew\s+URL\s*\(\s*(?=["'`]\.\.?\/)/g;
+// An element the app imports bare, as a preloaded host does: the package and
+// the `exports` subpath.
+const BARE_ELEMENT_IMPORT = /^(@pie-element\/[^/?#]+)(?:\/([^?#]+))?$/;
+
+/**
+ * The checkout's file for a bare element import, through the package's
+ * `exports` as npm resolution would take it. A package missing from the
+ * checkout, or a target not built, throws rather than fall back to npm.
+ */
+async function resolveCheckoutExport(
+	pieElementsNgRoot: string,
+	pkg: string,
+	subpath: string | undefined,
+): Promise<string> {
+	const packageJsonPath = await resolvePackageJson(pieElementsNgRoot, pkg);
+	if (!packageJsonPath) {
+		throw new Error(
+			`[vite-plugin-local-esm-cdn] ${pkg} is not in ${pieElementsNgRoot}`,
+		);
+	}
+	const key = subpath ? `./${subpath}` : ".";
+	const { exports } = JSON.parse(await readFile(packageJsonPath, "utf-8"));
+	const entry = exports?.[key];
+	const target = typeof entry === "string" ? entry : entry?.default;
+	if (typeof target !== "string") {
+		throw new Error(`[vite-plugin-local-esm-cdn] ${pkg} exports no "${key}"`);
+	}
+	const file = path.resolve(path.dirname(packageJsonPath), target);
+	if (!(await fileExists(file))) {
+		throw new Error(
+			`[vite-plugin-local-esm-cdn] ${file} not found; build ${pkg} in ${pieElementsNgRoot}`,
+		);
+	}
+	return file;
+}
 
 /**
  * Create a Vite plugin that serves local PIE packages as ESM modules
@@ -45,18 +83,29 @@ const RELATIVE_ASSET_URL = /\bnew\s+URL\s*\(\s*(?=["'`]\.\.?\/)/g;
  */
 export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 	const cdn = createLocalEsmCdn(config);
+	const { pieElementsNgRoot } = mergeConfig(config);
 	let server: ViteDevServer | undefined;
 
 	return {
 		name: "vite-plugin-local-esm-cdn",
 		enforce: "pre", // Run before other plugins
 
+		config() {
+			// Bare element imports resolve to files in the checkout, which the dev
+			// server serves over `/@fs/`.
+			return { server: { fs: { allow: [pieElementsNgRoot] } } };
+		},
+
 		resolveId(id) {
-			// Only this server's URL space, which the ESM loader and the served
-			// modules' rewritten imports address. A bare specifier in the app's own
-			// graph, such as players-shared's `@pie-lib/math-rendering-module`,
-			// resolves from node_modules as it does without the plugin.
+			// This server's URL space, which the ESM loader and the served modules'
+			// rewritten imports address.
 			if (LOCAL_CDN_REQUEST.test(id)) return { id, external: false };
+			// A bare `@pie-element/*` import takes the checkout's build. Other bare
+			// specifiers, such as players-shared's `@pie-lib/math-rendering-module`,
+			// resolve from node_modules as they do without the plugin.
+			const bare = BARE_ELEMENT_IMPORT.exec(id);
+			if (bare)
+				return resolveCheckoutExport(pieElementsNgRoot, bare[1], bare[2]);
 			return null;
 		},
 

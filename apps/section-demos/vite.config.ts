@@ -16,8 +16,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * `dev:cdn` (`LOCAL_ESM_CDN=true`) serves pie-elements-ng from this dev server,
- * so the ESM strategy loads the local ng build. The checkout is
- * `PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`.
+ * so the ESM strategy and the preloaded demo's `@pie-element/*` imports take
+ * the local ng build. The checkout is `PIE_ELEMENTS_NG_PATH`, else the sibling
+ * `../pie-elements-ng`.
  */
 async function createLocalEsmCdnPlugin() {
 	if (process.env.LOCAL_ESM_CDN !== "true") {

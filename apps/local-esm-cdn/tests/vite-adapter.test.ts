@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import path from "node:path";
 import { createVitePlugin } from "../src/adapters/vite.ts";
 import {
 	createTempFixture,
@@ -83,6 +84,31 @@ async function pluginForFixture() {
 		},
 	});
 
+	// An element a preloaded host imports bare, with a controller not built.
+	const bareImported = { ...pkg, name: "hotspot" };
+	await writePackageFile({
+		...bareImported,
+		relativePath: "browser/delivery/index.js",
+		content: "export default class Hotspot extends HTMLElement {}",
+	});
+	await writePackageJson({
+		...bareImported,
+		content: {
+			name: "@pie-element/hotspot",
+			version: "2.0.0",
+			exports: {
+				"./browser/delivery": {
+					types: "./dist/delivery/index.d.ts",
+					default: "./dist/browser/delivery/index.js",
+				},
+				"./browser/controller": {
+					default: "./dist/browser/controller/index.js",
+				},
+				"./package.json": "./package.json",
+			},
+		},
+	});
+
 	const plugin = createVitePlugin({
 		pieElementsNgRoot: fixture.pieElementsNgRoot,
 		piePlayersRoot: fixture.piePlayersRoot,
@@ -94,7 +120,7 @@ async function pluginForFixture() {
 		watcher: { add() {}, on() {} },
 	};
 	(plugin.configureServer as (s: unknown) => void)(server);
-	return { plugin, middlewares };
+	return { plugin, middlewares, pieElementsNgRoot: fixture.pieElementsNgRoot };
 }
 
 type Answer = {
@@ -188,7 +214,7 @@ describe("local-esm-cdn Vite adapter", () => {
 		);
 	});
 
-	it("resolves only its own URL space, so the app's bare imports stay in node_modules", async () => {
+	it("claims its own URL space and leaves other bare imports in node_modules", async () => {
 		const { plugin } = await pluginForFixture();
 		const resolveId = plugin.resolveId as (id: string) => unknown;
 
@@ -204,9 +230,46 @@ describe("local-esm-cdn Vite adapter", () => {
 		expect(
 			resolveId("@pie-lib/math-rendering-module/module/index.js"),
 		).toBeNull();
-		expect(
-			resolveId("@pie-element/mc-populated-blank/browser/delivery"),
-		).toBeNull();
+	});
+
+	it("resolves a bare element import to the checkout's file through the package's exports", async () => {
+		const { plugin, pieElementsNgRoot } = await pluginForFixture();
+		const resolveId = plugin.resolveId as (id: string) => Promise<string>;
+		const packageRoot = path.join(
+			pieElementsNgRoot,
+			"packages/elements-react/hotspot",
+		);
+
+		expect(await resolveId("@pie-element/hotspot/browser/delivery")).toBe(
+			path.join(packageRoot, "dist/browser/delivery/index.js"),
+		);
+		expect(await resolveId("@pie-element/hotspot/package.json")).toBe(
+			path.join(packageRoot, "package.json"),
+		);
+	});
+
+	it("fails a bare element import the checkout cannot answer instead of falling back to npm", async () => {
+		const { plugin } = await pluginForFixture();
+		const resolveId = plugin.resolveId as (id: string) => Promise<string>;
+
+		await expect(
+			resolveId("@pie-element/hotspot/browser/controller"),
+		).rejects.toThrow("not found; build @pie-element/hotspot");
+		await expect(
+			resolveId("@pie-element/hotspot/browser/author"),
+		).rejects.toThrow('exports no "./browser/author"');
+		await expect(
+			resolveId("@pie-element/match/browser/delivery"),
+		).rejects.toThrow("@pie-element/match is not in");
+	});
+
+	it("lets the dev server serve the checkout's files", async () => {
+		const { plugin, pieElementsNgRoot } = await pluginForFixture();
+		const config = plugin.config as () => {
+			server: { fs: { allow: string[] } };
+		};
+
+		expect(config().server.fs.allow).toEqual([pieElementsNgRoot]);
 	});
 
 	it("loads the npm layout's module URLs with chunk imports the resolver serves", async () => {

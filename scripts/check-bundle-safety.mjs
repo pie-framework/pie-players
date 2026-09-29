@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
 
 const ROOT = process.cwd();
 const EVAL_REQUIRE_PATTERN = /eval\((["'])require\1\)/;
@@ -390,6 +391,15 @@ export function newUrlTailLength(content) {
 	return match ? content.length - (match.index + match[0].length) : 0;
 }
 
+/**
+ * True when `content` carries text source-map-loader takes for a source-map
+ * comment. No dist ships a sourcemap, so any match is a literal the loader
+ * would strip, breaking the module.
+ */
+export function hasSourceMapCommentText(content) {
+	return new RegExp(SOURCE_MAP_COMMENT_TEXT.source).test(content);
+}
+
 function listPackageDistDirs() {
 	const absPackages = path.join(ROOT, PACKAGES_DIR);
 	if (!existsSync(absPackages)) return [];
@@ -680,6 +690,18 @@ function checkNewUrlTails(failures) {
 	}
 }
 
+function checkNoSourceMapCommentText(failures) {
+	for (const dir of listPackageDistDirs()) {
+		for (const filePath of collectJsFiles(dir)) {
+			if (hasSourceMapCommentText(readFileSync(filePath, "utf8"))) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} contains source-map comment text, which a host's source-map-loader strips even inside a string, leaving the module unparseable; list escapeSourceMapCommentTextInOutput() in the package's Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
@@ -692,6 +714,7 @@ function main() {
 	checkFullySpecifiedSubpaths(failures);
 	checkNoUnguardedCustomElementDefines(failures);
 	checkNewUrlTails(failures);
+	checkNoSourceMapCommentText(failures);
 
 	if (failures.length > 0) {
 		console.error(

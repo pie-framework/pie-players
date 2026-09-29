@@ -7,10 +7,12 @@ import {
 	findPublishedSourcemaps,
 	findUnguardedCustomElementDefines,
 	hasInlinedSpeechRuleEngine,
+	hasSourceMapCommentText,
 	hasSvelteDevRuntime,
 	looksUnminified,
 	newUrlTailLength,
 } from "../check-bundle-safety.mjs";
+import { escapeSourceMapCommentText } from "../../packages/players-shared/source-map-comment-text.mjs";
 
 // Roughly the shape the toolkit CE artifact had before it was minified:
 // ~40 bytes per line across tens of thousands of lines.
@@ -366,5 +368,32 @@ describe("newUrlTailLength", () => {
 		expect(
 			newUrlTailLength(`URL.createObjectURL(b);${"x".repeat(5_000_000)}`),
 		).toBe(0);
+	});
+});
+
+describe("source-map comment text", () => {
+	// The literal es-module-shims appends to the sources it rewrites.
+	const shimLiteral = "o0=`\n//# sourceMappingURL=`,K0=1";
+
+	test("flags the text source-map-loader strips, inside a literal too", () => {
+		expect(hasSourceMapCommentText(shimLiteral)).toBe(true);
+		expect(hasSourceMapCommentText("/*# sourceMappingURL=a.map */")).toBe(true);
+		expect(hasSourceMapCommentText("//@ sourceMappingURL=a.map")).toBe(true);
+	});
+
+	test("accepts code that only names the property or escapes the regex", () => {
+		expect(hasSourceMapCommentText("m.sourceMappingURL=u")).toBe(false);
+		expect(
+			hasSourceMapCommentText("s.replace(/\\/\\/# sourceMappingURL=.*$/m,'')"),
+		).toBe(false);
+	});
+
+	test("escaping keeps the runtime string and clears the check", () => {
+		const literal = "`\n//# sourceMappingURL=`";
+		const escaped = escapeSourceMapCommentText(literal);
+		expect(hasSourceMapCommentText(escaped)).toBe(false);
+		expect(new Function(`return ${escaped}`)()).toBe(
+			new Function(`return ${literal}`)(),
+		);
 	});
 });

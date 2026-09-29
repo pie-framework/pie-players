@@ -5,11 +5,13 @@ Status: Accepted for the pie-players and pie-elements-ng contracts
 Implementation status: landed in `pie-players` (`commitPendingSessions`,
 `bindPageLifecycleCommit`, the item-player and section-player
 wiring), in `pie-elements-ng` (`createSessionNotifier` and the five audited
-elements), and in both legacy players (`pie-player-components` `watchConfig` and
-`disconnectedCallback`; `pie-api-components` teardown and page-hidden commit plus
-the save flush). Outstanding: publishing the `pie-elements-ng` element versions,
-and whether any element still shipping from legacy `pie-elements` needs the
-inline flush — see Open Questions.
+elements, published on the `next` dist-tag), in legacy `pie-elements`
+(`extended-text-entry`), and in both legacy players (`pie-player-components`
+`watchConfig` and `disconnectedCallback`; `pie-api-components` teardown and
+page-hidden commit plus the save flush). Outstanding: whether any other element
+still shipping from legacy `pie-elements` needs the inline flush. The
+device-local session snapshot is implemented and parked on
+`feat/PIE-1058-session-snapshot`. See Open Questions for both.
 
 Owner:
 

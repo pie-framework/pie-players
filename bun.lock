@@ -279,12 +279,6 @@
         "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
       },
-      "peerDependencies": {
-        "@pie-players/tts-client-server": "workspace:*",
-      },
-      "optionalPeers": [
-        "@pie-players/tts-client-server",
-      ],
     },
     "packages/calculator": {
       "name": "@pie-players/pie-calculator",
@@ -358,6 +352,7 @@
         "@pie-players/pie-tool-ruler": "workspace:*",
         "@pie-players/pie-tool-theme": "workspace:*",
         "@pie-players/pie-tool-tts-inline": "workspace:*",
+        "@pie-players/tts-client-server": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.14",

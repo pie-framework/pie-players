@@ -40,6 +40,16 @@ export type TTSToolProviderConfig = RuntimeTTSConfig & {
 	) => void | Promise<void>;
 };
 
+/**
+ * Construction options. `loadServerProvider` resolves the server adapter's
+ * provider class; a server backend fails to initialize without it. The toolkit
+ * leaves the adapter to its caller so that a bundler building the toolkit never
+ * has to resolve `@pie-players/tts-client-server`.
+ */
+export type TTSToolProviderOptions = {
+	loadServerProvider?: () => Promise<new () => ITTSProvider>;
+};
+
 /** The part of `TTSToolProviderConfig` a server backend's provider reads. */
 type ServerBackendConfig = Omit<
 	TTSToolProviderConfig,
@@ -95,7 +105,9 @@ function bindServerBackendConfig(
  *
  * @example Server TTS
  * ```typescript
- * const provider = new TTSToolProvider('polly');
+ * const provider = new TTSToolProvider('polly', {
+ *   loadServerProvider: async () => ServerTTSProvider,
+ * });
  * await provider.initialize({
  *   backend: 'polly',
  *   apiEndpoint: '/api/tts',
@@ -114,6 +126,7 @@ export class TTSToolProvider
 
 	private ttsProvider: ITTSProvider | null = null;
 	private config: TTSToolProviderConfig | null = null;
+	private readonly loadServerProvider: TTSToolProviderOptions["loadServerProvider"];
 
 	private async emitTelemetry(
 		eventName: string,
@@ -130,9 +143,14 @@ export class TTSToolProvider
 	 * Create TTS tool provider
 	 *
 	 * @param backend TTS backend to use (default: 'browser')
+	 * @param options Loader for the server adapter, required by server backends
 	 */
-	constructor(backend: TTSBackend = "browser") {
+	constructor(
+		backend: TTSBackend = "browser",
+		options: TTSToolProviderOptions = {},
+	) {
 		this.requiresAuth = backend !== "browser";
+		this.loadServerProvider = options.loadServerProvider;
 	}
 
 	/**
@@ -202,18 +220,22 @@ export class TTSToolProvider
 			);
 		}
 
-		// Server backends are optional; load implementation only when requested.
+		const loadServerProvider = this.loadServerProvider;
+		if (!loadServerProvider) {
+			throw new Error(
+				"[TTSToolProvider] server-based TTS backends need the loadServerProvider option",
+			);
+		}
+
 		const moduleLoadStartedAt = Date.now();
 		await this.emitTelemetry("pie-tool-library-load-start", {
 			toolId: "textToSpeech",
 			operation: "server-provider-module-import",
 			backend: config.serverProvider || config.backend,
 		});
-		const serverModule = await (async () => {
+		const ServerProvider = await (async () => {
 			try {
-				const loaded = (await import("@pie-players/tts-client-server")) as {
-					ServerTTSProvider: new () => ITTSProvider;
-				};
+				const loaded = await loadServerProvider();
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "textToSpeech",
 					operation: "server-provider-module-import",
@@ -235,13 +257,13 @@ export class TTSToolProvider
 		})();
 		// The server adapter owns these fields. Picking them from its config type
 		// fails the build when one is renamed there or typed differently. The
-		// adapter is an optional peer, so it is named only in this body, which
-		// declaration emit leaves out (ADR 0002).
+		// adapter is only a dev dependency here, so it is named only in this body,
+		// which declaration emit leaves out (ADR 0002).
 		type ServerTTSProviderConfig =
 			import("@pie-players/tts-client-server").ServerTTSProviderConfig;
 		const { backend, serverProvider, onTelemetry, ...backendConfig } = config;
 		this.ttsProvider = bindServerBackendConfig(
-			new serverModule.ServerTTSProvider(),
+			new ServerProvider(),
 			backendConfig satisfies Partial<
 				Pick<ServerTTSProviderConfig, keyof ServerBackendConfig>
 			>,

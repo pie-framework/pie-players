@@ -278,6 +278,17 @@ first `new URL`; `check:bundle-safety` holds every dist module to 2M. Found by
 building Host R's committed checkout on 2026-09-26, so it does not advance the
 verification date. Hosts V and P install neither the loaders nor the toolkit.
 
+The server TTS adapter `tts-client-server` has since moved the same way, from an
+optional peer of the toolkit to a dependency of `pie-default-tool-loaders`,
+whose TTS registration holds its only import and passes it to `TTSToolProvider`
+as a loader. `TTSToolProvider` stays on `./tools/internal` and takes that loader
+as an optional second constructor argument; without it, a server backend fails
+to initialize and speech falls back to the browser. Checked against all four
+checkouts on 2026-09-28 as a targeted lookup, so it does not advance the
+verification date: no checkout constructs `TTSToolProvider` or imports the
+adapter. Hosts A and R both declare the adapter, so their installs are now
+redundant. Hosts V and P install neither the loaders nor the toolkit.
+
 Each tool package's root type entry now describes what its root runtime entry
 provides. `insertTypesEntry` derives that entry from the bundle entry — a
 `.svelte` component — and overwrites the `index.d.ts` emitted from `index.ts`, so

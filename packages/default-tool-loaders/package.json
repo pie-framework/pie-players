@@ -52,7 +52,8 @@
 		"@pie-players/pie-tool-protractor": "workspace:*",
 		"@pie-players/pie-tool-ruler": "workspace:*",
 		"@pie-players/pie-tool-theme": "workspace:*",
-		"@pie-players/pie-tool-tts-inline": "workspace:*"
+		"@pie-players/pie-tool-tts-inline": "workspace:*",
+		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

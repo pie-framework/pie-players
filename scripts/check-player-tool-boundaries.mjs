@@ -20,6 +20,13 @@ const TOOL_PACKAGE_STRING_PATTERN =
 const DIST_CONCRETE_CHUNK_PATTERN =
 	/(?:^|[/\\])(?:pie-tool-|tool-tts-inline|tool-calculator|calculator-(?:cortex|desmos|geogebra))[^/\\]*\.js$/i;
 const MATH_RENDERING_MARKER = "@pie-lib/math-rendering-module";
+// The server TTS adapter is imported only by the TTS registration in the
+// composition layer, so a bundler building the toolkit never has to resolve it.
+// The toolkit keeps it as a dev dependency for type-only drift checks and tests,
+// which leave no import in its dist.
+const SERVER_TTS_ADAPTER = "@pie-players/tts-client-server";
+const SERVER_TTS_ADAPTER_IMPORT_PATTERN =
+	/(?:from\s*|import\s*\(\s*|import\s+)["'](@pie-players\/tts-client-server)["']/g;
 
 const SOURCE_IMPORT_TARGETS = [
 	"packages/section-player/src",
@@ -123,6 +130,14 @@ function checkDistImports(root, failures) {
 					`[tool-boundary] ${relPath} imports concrete tool package ${packageName}; depend on @pie-players/pie-default-tool-loaders instead.`,
 				);
 			}
+			for (const packageName of collectImportMatches(
+				content,
+				SERVER_TTS_ADAPTER_IMPORT_PATTERN,
+			)) {
+				failures.push(
+					`[tool-boundary] ${relPath} imports ${packageName}; the TTS registration in @pie-players/pie-default-tool-loaders owns that import.`,
+				);
+			}
 			if (
 				isCheckedDistPath(relPath) &&
 				DIST_CONCRETE_CHUNK_PATTERN.test(relPath)
@@ -162,6 +177,11 @@ function checkManifest(root, relPath, failures) {
 			if (CONCRETE_TOOL_PACKAGE_PATTERN.test(packageName)) {
 				failures.push(
 					`[tool-boundary] ${relPath} declares ${packageName} in ${field}; section-player/toolkit must depend on @pie-players/pie-default-tool-loaders, not concrete tools.`,
+				);
+			}
+			if (packageName === SERVER_TTS_ADAPTER && field !== "devDependencies") {
+				failures.push(
+					`[tool-boundary] ${relPath} declares ${packageName} in ${field}; @pie-players/pie-default-tool-loaders depends on it for the TTS registration.`,
 				);
 			}
 		}

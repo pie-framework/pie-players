@@ -16,14 +16,10 @@ in its own dependencies. The section player depends on it too, but strict
 installers such as pnpm expose only the packages a host declares.
 
 Server-backed TTS (`backend: "polly"`, `"google"` or `"server"`) loads
-`@pie-players/tts-client-server`, an optional peer of this package:
-
-```bash
-npm install @pie-players/tts-client-server
-```
-
-Without it, TTS initialization reports a `provider-init` framework error and
-falls back to browser speech.
+`@pie-players/tts-client-server`, a dependency of
+`@pie-players/pie-default-tool-loaders` whose TTS registration imports it on
+first use. If it fails to load, TTS initialization reports a `provider-init`
+framework error and falls back to browser speech.
 
 A `ToolkitCoordinator` registers tool providers only from its `toolRegistry`.
 Built without one, it adopts the registry of the toolkit it is bound to, such as

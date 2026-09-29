@@ -89,14 +89,6 @@
 		"@pie-players/pie-tts": "workspace:*",
 		"speech-rule-engine": "5.0.0-rc.4"
 	},
-	"peerDependencies": {
-		"@pie-players/tts-client-server": "workspace:*"
-	},
-	"peerDependenciesMeta": {
-		"@pie-players/tts-client-server": {
-			"optional": true
-		}
-	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
 		"@happy-dom/global-registrator": "^20.14.5",

@@ -527,8 +527,8 @@ export const buildRuntimeTTSConfig = (
 	};
 	// The server adapter owns these fields. Picking them from its config type
 	// fails the build when a forwarded field is renamed there or typed
-	// differently. The adapter is an optional peer, so it is named only in this
-	// body, which declaration emit leaves out (ADR 0002).
+	// differently. The adapter is only a dev dependency here, so it is named only
+	// in this body, which declaration emit leaves out (ADR 0002).
 	type ServerTTSProviderConfig =
 		import("@pie-players/tts-client-server").ServerTTSProviderConfig;
 	return runtimeConfig satisfies Partial<

@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
+import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 
 const sanitizeChunkKey = (value: string) =>
 	value
@@ -90,6 +91,7 @@ export default defineConfig({
 			emitCss: false,
 		}),
 		guardSvelteCustomElementDefines(),
+		escapeSourceMapCommentTextInOutput(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",

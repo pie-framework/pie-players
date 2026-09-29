@@ -5,11 +5,13 @@
 //
 // Every dynamic `import()` in a bundle is marked for bundlers to leave alone:
 // a vendored module imports URLs it computes at runtime, and webpack would
-// otherwise replace `import(url)` with a lookup in its own module graph.
+// otherwise replace `import(url)` with a lookup in its own module graph. Its
+// source-map comment text is escaped; see `source-map-comment-text.mjs`.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { escapeSourceMapCommentText } from "../source-map-comment-text.mjs";
 
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -36,6 +38,11 @@ for (const { output, source } of VENDORED_MODULES) {
 		write: false,
 	});
 	for (const file of result.outputFiles) {
-		await writeFile(file.path, file.text.replace(DYNAMIC_IMPORT, RUNTIME_IMPORT));
+		await writeFile(
+			file.path,
+			escapeSourceMapCommentText(
+				file.text.replace(DYNAMIC_IMPORT, RUNTIME_IMPORT),
+			),
+		);
 	}
 }

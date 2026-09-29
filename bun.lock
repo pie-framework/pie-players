@@ -302,7 +302,7 @@
       "devDependencies": {
         "@axe-core/playwright": "^4.13.0",
         "@biomejs/biome": "^2.5.14",
-        "@cortex-js/compute-engine": "0.130.0",
+        "@cortex-js/compute-engine": "0.135.0",
         "@playwright/test": "^1.63.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "jsxgraph": "1.13.3",
@@ -1140,7 +1140,7 @@
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
 
-    "@cortex-js/compute-engine": ["@cortex-js/compute-engine@0.130.0", "", { "dependencies": { "@arnog/colors": "^0.7.0", "complex-esm": "^2.1.1-esm1" }, "bin": { "epsil": "dist/esm-min/cli/epsil.js" } }, "sha512-ydUquuxFmVwRYfQ6PdhdhLe9UNlKJZfrfTE6EgHwMDWx+08x+0MURYngeL9lBjOCMs8w+Og8ooOxDDxf2RRbYQ=="],
+    "@cortex-js/compute-engine": ["@cortex-js/compute-engine@0.135.0", "", { "dependencies": { "@arnog/colors": "^0.7.0", "complex-esm": "^2.1.1-esm1" }, "bin": { "epsil": "dist/esm-min/cli/epsil.js" } }, "sha512-ETDV1b63LgH1YlvzfDPwThTvTAgUjVSXW06ps0AqNooJDN1rY0ivPJKi7IeuRm+2p17VixRAN5egGDlwJ8cG0A=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 

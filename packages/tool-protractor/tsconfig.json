@@ -7,6 +7,11 @@
 		"declarationMap": false,
 		"composite": true,
 		"moduleResolution": "NodeNext",
+		"paths": {
+			"@pie-players/pie-players-shared/components/overlay-placement": [
+				"../players-shared/overlay-placement-components.types.d.ts"
+			]
+		},
 		// `vite/client` beside the root's `@types/bun`, for the `*.svg` module
 		// declaration the protractor image is imported through.
 		"types": ["@types/bun", "vite/client"]

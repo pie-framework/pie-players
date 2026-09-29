@@ -30,6 +30,11 @@ import {
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
+// This package owns the server adapter's import, so the toolkit never names it
+// and a bundler building the toolkit alone has nothing to resolve.
+const loadServerTTSProvider = async () =>
+	(await import("@pie-players/tts-client-server")).ServerTTSProvider;
+
 const inlineTTSControls = new Map<string, HTMLElement>();
 export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
 export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
@@ -53,7 +58,9 @@ export const ttsToolRegistration: ToolRegistration = {
 		getProviderId: () => "tts",
 		createProvider: (config) => {
 			const settings = resolveTTSRuntimeSettings(config);
-			return new TTSToolProvider(resolveTTSBackend(settings));
+			return new TTSToolProvider(resolveTTSBackend(settings), {
+				loadServerProvider: loadServerTTSProvider,
+			});
 		},
 		getInitConfig: (config) => {
 			const settings = resolveTTSRuntimeSettings(config);

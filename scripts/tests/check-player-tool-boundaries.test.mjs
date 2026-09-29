@@ -185,6 +185,37 @@ describe("check-player-tool-boundaries", () => {
 		]);
 	});
 
+	test("rejects the server TTS adapter in toolkit dist and runtime manifests", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/assessment-toolkit/dist/services/tool-providers/TTSToolProvider.js",
+			'const loaded = await import("@pie-players/tts-client-server");\n',
+		);
+		write(
+			root,
+			"packages/assessment-toolkit/package.json",
+			JSON.stringify({
+				name: "@pie-players/pie-assessment-toolkit",
+				peerDependencies: {
+					"@pie-players/tts-client-server": "workspace:*",
+				},
+				devDependencies: {
+					"@pie-players/tts-client-server": "workspace:*",
+				},
+			}),
+		);
+
+		expect(checkPlayerToolBoundaries(root)).toEqual([
+			expect.stringContaining(
+				"packages/assessment-toolkit/dist/services/tool-providers/TTSToolProvider.js imports @pie-players/tts-client-server",
+			),
+			expect.stringContaining(
+				"packages/assessment-toolkit/package.json declares @pie-players/tts-client-server in peerDependencies",
+			),
+		]);
+	});
+
 	test("rejects concrete tool dependencies in player and toolkit manifests", () => {
 		const root = createFixtureRoot();
 		write(

@@ -627,7 +627,7 @@ CSS.highlights.set('highlight-name', highlight);
 
 The service uses a pluggable provider pattern:
 - **BrowserTTSProvider** - Uses Web Speech API (the `browser` backend)
-- **ServerTTSProvider** - From `@pie-players/tts-client-server`, an optional peer. The `polly`, `google` and `server` backends use it to play speech synthesized by a host TTS server, such as one built on `@pie-players/tts-server-polly` or `@pie-players/tts-server-google`
+- **ServerTTSProvider** - From `@pie-players/tts-client-server`, which the TTS registration in `@pie-players/pie-default-tool-loaders` loads and hands to `TTSToolProvider`. The `polly`, `google` and `server` backends use it to play speech synthesized by a host TTS server, such as one built on `@pie-players/tts-server-polly` or `@pie-players/tts-server-google`
 - Provider registration is descriptor-driven from tool registrations.
 - `tools.providers[toolId]` is generic for every tool (`enabled`, `provider`, `settings`).
 - Runtime hooks (`provider.runtime`) support auth fetch, backend request bridging, and host event wiring.

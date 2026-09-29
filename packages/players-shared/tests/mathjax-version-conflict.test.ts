@@ -73,10 +73,10 @@ describe("forwardMathjaxVersionConflicts", () => {
 
 		view.dispatchEvent(conflictEvent("mathjax-3-global"));
 		current = provider;
-		view.dispatchEvent(conflictEvent("legacy-renderer-delegation"));
+		view.dispatchEvent(conflictEvent("foreign-output-stylesheet"));
 
 		expect(provider.trackedEvents.map((event) => event.attributes)).toEqual([
-			{ condition: "legacy-renderer-delegation", docsUrl: DOCS_URL },
+			{ condition: "foreign-output-stylesheet", docsUrl: DOCS_URL },
 		]);
 	});
 

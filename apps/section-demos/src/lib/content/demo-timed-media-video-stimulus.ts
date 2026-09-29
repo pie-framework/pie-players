@@ -1,6 +1,6 @@
 import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
-const VIDEO_STIMULUS_PACKAGE = "@pie-element/video-stimulus@0.1.0";
+const VIDEO_STIMULUS_PACKAGE = "@pie-element/video-stimulus@0.1.1-next.0";
 const VIDEO_SOURCE = "/video-stimulus/sample.webm";
 const VIDEO_POSTER = "/video-stimulus/poster.svg";
 const VIDEO_CAPTIONS = "/video-stimulus/captions-en.vtt";

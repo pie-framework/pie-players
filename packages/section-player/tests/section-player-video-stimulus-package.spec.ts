@@ -10,8 +10,8 @@ import {
 import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
 
-const PACKAGE_SPEC = "@pie-element/video-stimulus@0.1.0";
-const VERSIONED_ELEMENT = "video-stimulus--version-0-1-0";
+const PACKAGE_SPEC = "@pie-element/video-stimulus@0.1.1-next.0";
+const VERSIONED_ELEMENT = "video-stimulus--version-0-1-1-next-0";
 const PLAYERS_ROOT = resolve(import.meta.dirname, "../../..");
 const ELEMENTS_ROOT = resolve(PLAYERS_ROOT, "../pie-elements-ng");
 const SOURCE_PACKAGE_DIR = resolve(
@@ -198,7 +198,7 @@ test.describe("package-backed video stimulus timed media", () => {
 			readFileSync(resolve(extractedPackageRoot, "package.json"), "utf8"),
 		) as PackageManifest;
 		expect(manifest.name).toBe("@pie-element/video-stimulus");
-		expect(manifest.version).toBe("0.1.0");
+		expect(manifest.version).toBe("0.1.1-next.0");
 		const dependencyValues = [
 			...Object.values(manifest.dependencies ?? {}),
 			...Object.values(manifest.optionalDependencies ?? {}),

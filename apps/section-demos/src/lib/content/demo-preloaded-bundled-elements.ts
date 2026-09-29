@@ -1,11 +1,12 @@
+import elementManifest from "@pie-element/mc-populated-blank/package.json";
 import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 export const MC_POPULATED_BLANK_PACKAGE = "@pie-element/mc-populated-blank";
 /**
- * The route registers the installed package under this version, so it equals
- * the exact version section-demos depends on.
+ * The version of the build the route imports and registers: the installed
+ * package, or the local pie-elements-ng checkout's under `dev:cdn`.
  */
-export const MC_POPULATED_BLANK_VERSION = "0.3.0-next.17";
+export const MC_POPULATED_BLANK_VERSION = elementManifest.version;
 
 export const demoPreloadedBundledElementsSection: AssessmentSection = {
 	identifier: "preloaded-bundled-elements",

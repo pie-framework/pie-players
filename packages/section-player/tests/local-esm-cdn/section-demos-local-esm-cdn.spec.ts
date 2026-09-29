@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 // Under `dev:section:cdn` the demos point the ESM loader at their own origin,
@@ -91,15 +92,21 @@ test("/tts-ssml loads the MathQuill font from the dev server under esm", async (
 	).toEqual([]);
 });
 
-// Only the ESM loader's URLs are the checkout's. A bare import in the app keeps
-// resolving from node_modules, so this demo bundles the installed element.
-test("/preloaded-bundled-elements bundles the installed element", async ({
+// The app's bare `@pie-element/*` imports take the checkout's build, which the
+// dev server serves from disk, so the demo registers the checkout's version.
+test("/preloaded-bundled-elements imports the checkout's element", async ({
 	page,
 	baseURL,
 }) => {
+	const { version } = JSON.parse(
+		await readFile(
+			`${CHECKOUT}packages/elements-svelte/mc-populated-blank/package.json`,
+			"utf-8",
+		),
+	);
 	const fromCheckout: string[] = [];
 	page.on("request", (request) => {
-		if (request.url().startsWith(`${baseURL}/@pie-element/`)) {
+		if (request.url().startsWith(`${baseURL}/@fs${CHECKOUT}`)) {
 			fromCheckout.push(request.url());
 		}
 	});
@@ -110,8 +117,10 @@ test("/preloaded-bundled-elements bundles the installed element", async ({
 	);
 	await expect(
 		page
-			.locator("mc-populated-blank--version-0-3-0-next-17")
+			.locator(`mc-populated-blank--version-${version.replaceAll(".", "-")}`)
 			.getByRole("radio", { name: "teapot" }),
 	).toBeVisible({ timeout: 30_000 });
-	expect(fromCheckout).toEqual([]);
+	expect(fromCheckout).toContainEqual(
+		expect.stringContaining("/mc-populated-blank/dist/browser/delivery/"),
+	);
 });

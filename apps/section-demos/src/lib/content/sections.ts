@@ -524,7 +524,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows the preloaded path for an element that ships a browser ESM build: the host's bundler resolves the package, and the players load nothing.",
 		whatMakesItTick: [
-			"Imports `@pie-element/mc-populated-blank/browser/delivery` and `/browser/controller` from the version section-demos installs.",
+			"Imports `@pie-element/mc-populated-blank/browser/delivery` and `/browser/controller` from the version section-demos installs, or from the local pie-elements-ng checkout under `dev:section:cdn`.",
 			"Registers both with `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`, which defines the versioned tag the player asserts and records the controller whose `model()` the player runs.",
 			'Renders the section-player with `player-type="preloaded"`, so no bundle or CDN request is made for the element.',
 		],

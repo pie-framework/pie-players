@@ -5,8 +5,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
 
+import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
+
 const ROOT = process.cwd();
-const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const BUNDLED_IMPORT_PROTOCOLS = ["node:", "bun:", "virtual:", "vite/"];
 const BUILTIN_SPECIFIERS = new Set(
@@ -31,34 +32,6 @@ const allowedUndeclaredRuntimeImportsByPackage = new Map(
 );
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
-
-const getWorkspaceDirs = () => {
-	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces)
-		? rootPkg.workspaces
-		: [];
-	const dirs = new Set();
-
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string") continue;
-		if (!workspace.startsWith("packages/") && !workspace.startsWith("tools/")) {
-			continue;
-		}
-		if (workspace.endsWith("/*")) {
-			const parent = path.join(ROOT, workspace.slice(0, -2));
-			if (!existsSync(parent)) continue;
-			for (const entry of readdirSync(parent, { withFileTypes: true })) {
-				if (entry.isDirectory()) {
-					dirs.add(path.join(parent, entry.name));
-				}
-			}
-			continue;
-		}
-		dirs.add(path.join(ROOT, workspace));
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
 
 const collectTargets = (value, out) => {
 	if (!value) return;

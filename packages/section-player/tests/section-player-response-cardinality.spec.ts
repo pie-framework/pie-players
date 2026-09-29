@@ -204,11 +204,22 @@ function recording(page: Page): Promise<Recording> {
 	);
 }
 
-/** The entries recorded after the first `from`, once a second passes quietly. */
+/**
+ * The entries recorded after the first `from`, once there is one and a second
+ * passes quietly. An IIFE element dispatches its response a task after the
+ * click, so quiet alone can be the quiet before it.
+ */
 async function settledSince(page: Page, from = 0): Promise<Entry[]> {
 	await page.waitForFunction(
-		() => performance.now() - (window.__pieCardinality?.lastAt ?? 0) > 1_000,
-		undefined,
+		(from) => {
+			const recording = window.__pieCardinality;
+			return (
+				!!recording &&
+				recording.entries.length > from &&
+				performance.now() - recording.lastAt > 1_000
+			);
+		},
+		from,
 		{ timeout: 30_000 },
 	);
 	return (await recording(page)).entries.slice(from);

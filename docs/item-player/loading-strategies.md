@@ -155,7 +155,7 @@ A host that installs element packages registers them with `registerPreloadedElem
 import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
 import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
-import manifest from "../package.json"; // pins "@pie-element/multiple-choice": "13.4.0-next.15"
+import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
 registerPreloadedElements([
   {
@@ -169,7 +169,7 @@ registerPreloadedElements([
 await import("@pie-players/pie-item-player");
 ```
 
-- `tag` is the base tag to register. The element registers under its versioned form, `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors the package under another base tag, such as `multiple-choice`, renders through the versioned tag the player defines from this registration.
+- `tag` is the base tag to register. The element registers under its versioned form, which encodes the version: 13.4.0-next.15 registers as `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors the package under another base tag, such as `multiple-choice`, renders through the versioned tag the player defines from this registration.
 - `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package.
 - Install every pie-elements-ng package from one release, in one `npm install --save-exact` from the same dist-tag, and upgrade them together. Each element's `./browser/*` build carries its own math renderer, and the elements on a page share the MathJax the first of them loads, in the build and configuration of that element's release. Releases change both, so in a mixed set an element can typeset with a MathJax it was not built for: `@pie-element/multiple-choice` 13.4.0-next.15 loads a build without MathML input, 13.4.0-next.16 one with it.
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.

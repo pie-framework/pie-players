@@ -14,6 +14,7 @@
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		connectToolRuntimeContext,
+		createToolCoordinatorRegistration,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
@@ -69,12 +70,7 @@
 		announce: (key, params) => announce(interfaceI18n.t(key, params)),
 	});
 
-	// The coordinator a registration was made against, and the id it used. Plain
-	// `let` rather than `$state`: this is bookkeeping the registration effect both
-	// reads and writes, and a reactive write inside a tracked effect body is what
-	// AGENTS.md's Svelte Subscription Safety rules out.
-	let registeredCoordinator: ToolCoordinatorApi | null = null;
-	let registeredToolId: string | null = null;
+	const registration = createToolCoordinatorRegistration('Protractor', ZIndexLayer.TOOL);
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -99,39 +95,14 @@
 		}
 	});
 
-	// Re-register whenever the coordinator identity or the tool id changes. The
-	// coordinator arrives through a republished runtime context, so a new instance
-	// replaces the old one mid-session; a one-shot registration would leave
-	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
-	$effect(() => {
-		if (!coordinator || !toolId) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredCoordinator) {
-			coordinator.registerTool(toolId, 'Protractor', undefined, ZIndexLayer.TOOL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
+	// Re-registers when a republished context brings a new coordinator.
+	$effect(() => registration.sync(coordinator, toolId));
 
 	onMount(() => {
 		const disconnect = placement.connect();
 		return () => {
 			disconnect();
-			// Unregister from the coordinator the registration was actually made
-			// against, which is not necessarily the one currently in context.
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
+			registration.release();
 		};
 	});
 

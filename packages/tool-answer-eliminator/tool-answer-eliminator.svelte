@@ -50,6 +50,7 @@
 	import {
 		connectToolRuntimeContext,
 		connectToolShellContext,
+		createToolCoordinatorRegistration,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
@@ -93,12 +94,7 @@
 	let core = $state<AnswerEliminatorCore | null>(null);
 	let lastShellContextVersion = $state<number | null>(null);
 
-	// The coordinator a registration was made against, and the id it used. Plain
-	// `let` rather than `$state`: this is bookkeeping the registration effect both
-	// reads and writes, and a reactive write inside a tracked effect body is what
-	// AGENTS.md's Svelte Subscription Safety rules out.
-	let registeredCoordinator: ToolCoordinatorApi | null = null;
-	let registeredToolId: string | null = null;
+	const registration = createToolCoordinatorRegistration('Answer Eliminator', ZIndexLayer.MODAL);
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);
@@ -141,27 +137,8 @@
 		});
 	}
 
-	// Re-register whenever the coordinator identity or the tool id changes. The
-	// coordinator arrives through a republished runtime context, so a new instance
-	// replaces the old one mid-session; a one-shot registration would leave
-	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
-	$effect(() => {
-		if (!coordinator || !toolId) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredCoordinator) {
-			coordinator.registerTool(toolId, 'Answer Eliminator', undefined, ZIndexLayer.MODAL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
+	// Re-registers when a republished context brings a new coordinator.
+	$effect(() => registration.sync(coordinator, toolId));
 
 	// Update store integration when store props change
 	$effect(() => {
@@ -190,11 +167,7 @@
 		return () => {
 			core?.destroy();
 			core = null;
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
+			registration.release();
 		};
 	});
 

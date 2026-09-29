@@ -15,6 +15,7 @@
 	
 	import {
 		connectToolRuntimeContext,
+		createToolCoordinatorRegistration,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
@@ -78,12 +79,7 @@ import { onMount, untrack } from 'svelte';
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 
-	// The coordinator a registration was made against, and the id it used. Plain
-	// `let` rather than `$state`: this is bookkeeping the registration effect both
-	// reads and writes, and a reactive write inside a tracked effect body is what
-	// AGENTS.md's Svelte Subscription Safety rules out.
-	let registeredCoordinator: ToolCoordinatorApi | null = null;
-	let registeredToolId: string | null = null;
+	const registration = createToolCoordinatorRegistration('Line Reader', ZIndexLayer.TOOL);
 
 	// Geometry constants
 	const FRAME_SIDE_WIDTH = 12; // pixels of obscuring frame left and right of the pane
@@ -446,38 +442,13 @@ import { onMount, untrack } from 'svelte';
 		}
 	}
 
-	// Re-register whenever the coordinator identity or the tool id changes. The
-	// coordinator arrives through a republished runtime context, so a new instance
-	// replaces the old one mid-session; a one-shot registration would leave
-	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
-	$effect(() => {
-		if (!coordinator || !toolId) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredCoordinator) {
-			coordinator.registerTool(toolId, 'Line Reader', undefined, ZIndexLayer.TOOL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
+	// Re-registers when a republished context brings a new coordinator.
+	$effect(() => registration.sync(coordinator, toolId));
 
 	onMount(() => {
 		return () => {
 			gesture.release();
-			// Unregister from the coordinator the registration was actually made
-			// against, which is not necessarily the one currently in context.
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
+			registration.release();
 		};
 	});
 

@@ -133,26 +133,21 @@ async function tryRewriteWithEsModuleLexer(
 	try {
 		// Optional dependency: present via workspace deps in many setups.
 		// If it's missing, we'll fall back to a simple regex approach.
-		const mod = (await import("es-module-lexer")) as unknown as {
-			init: Promise<void>;
-			parse: (
-				source: string,
-			) => [{ s: number; e: number; d: number }[], unknown];
-		};
+		const mod = await import("es-module-lexer");
 
-		await mod.init;
+		await mod.init();
 		const [imports] = mod.parse(code);
 
 		let out = "";
 		let last = 0;
 		for (const i of imports) {
-			// `import.meta` (d === -2) carries no specifier.
-			if (i.d === -2) continue;
-			const spec = code.slice(i.s, i.e);
+			// `import.meta` carries no specifier.
+			if (i.type === "import-meta") continue;
+			const spec = code.slice(i.start, i.end);
 
-			// Skip if this is a dynamic import with a variable/expression (not a string literal)
-			// Dynamic imports have d >= 0. Static imports have d === -1.
-			if (i.d >= 0) {
+			// Skip if this is a dynamic import with a variable/expression (not a string literal).
+			// A dynamic import's range spans its whole argument, quotes included.
+			if (i.type === "dynamic") {
 				// Check if the specifier is actually a string literal
 				const isStringLiteral =
 					(spec.startsWith('"') && spec.endsWith('"')) ||
@@ -169,17 +164,17 @@ async function tryRewriteWithEsModuleLexer(
 				const unquoted = spec.slice(1, -1);
 				const next = rewriteSpecifier(unquoted, opts);
 				if (next !== unquoted) {
-					out += code.slice(last, i.s);
+					out += code.slice(last, i.start);
 					out += `${quote}${next}${quote}`; // Re-wrap in same quotes
-					last = i.e;
+					last = i.end;
 				}
 			} else {
 				// Static import - rewrite normally (specifier doesn't include quotes)
 				const next = rewriteSpecifier(spec, opts);
 				if (next !== spec) {
-					out += code.slice(last, i.s);
+					out += code.slice(last, i.start);
 					out += next;
-					last = i.e;
+					last = i.end;
 				}
 			}
 		}

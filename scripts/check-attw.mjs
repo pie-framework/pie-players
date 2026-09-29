@@ -7,11 +7,12 @@ import {
 	mkdtempSync,
 	openSync,
 	readFileSync,
-	readdirSync,
 	rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
@@ -34,22 +35,6 @@ const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
 const WORKSPACE_ROOTS = Array.isArray(policy.workspaceRoots)
 	? policy.workspaceRoots
 	: ["packages"];
-
-const getWorkspaceDirs = () => {
-	const dirs = new Set();
-
-	for (const rootDir of WORKSPACE_ROOTS) {
-		const absRoot = path.join(ROOT, rootDir);
-		if (!existsSync(absRoot)) continue;
-		for (const entry of readdirSync(absRoot, { withFileTypes: true })) {
-			if (entry.isDirectory()) {
-				dirs.add(path.join(absRoot, entry.name));
-			}
-		}
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
 
 const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 	const text = typeof value === "string" ? value : String(value || "");
@@ -179,7 +164,7 @@ const shouldSuppressProblem = (problem) => {
 };
 
 const run = () => {
-	const packageDirs = getWorkspaceDirs();
+	const packageDirs = getWorkspaceDirs({ workspaceRoots: WORKSPACE_ROOTS });
 	const failures = [];
 	let checked = 0;
 	const suppressedCounts = new Map();

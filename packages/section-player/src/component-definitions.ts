@@ -1,4 +1,8 @@
 import "@pie-players/pie-item-player";
+import {
+	DEFAULT_BUNDLE_HOST,
+	DEFAULT_ESM_CDN_URL,
+} from "@pie-players/pie-players-shared";
 
 export type ComponentModuleLoader = () => Promise<unknown>;
 
@@ -20,7 +24,7 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 		},
 		props: {
 			loaderOptions: {
-				bundleHost: "https://proxy.pie-api.com/bundles",
+				bundleHost: DEFAULT_BUNDLE_HOST,
 			},
 		},
 	},
@@ -32,7 +36,7 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 		},
 		props: {
 			loaderOptions: {
-				esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+				esmCdnUrl: DEFAULT_ESM_CDN_URL,
 			},
 		},
 	},

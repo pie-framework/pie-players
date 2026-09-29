@@ -5,6 +5,7 @@ import {
 	registerPreloadedElements,
 } from "@pie-players/pie-item-player/preloaded";
 import { DEFAULT_IIFE_BUNDLE_RETRY_CONFIG } from "@pie-players/pie-players-shared/loader-config";
+import { DEFAULT_BUNDLE_HOST } from "@pie-players/pie-players-shared/loaders";
 import {
 	encodeElementPackageSpecs,
 	parsePackageName,
@@ -21,7 +22,6 @@ import semver from "semver";
  * are not hosted.
  */
 
-const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";
 const NPM_REGISTRY = "https://registry.npmjs.org";
 
 type ElementMap = Readonly<Record<string, string>>;

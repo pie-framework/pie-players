@@ -28,8 +28,15 @@
  * whose `tsconfig` treats repo files as CommonJS cannot type-check.
  */
 
-/** Subpath -> path relative to the players-shared package root. */
+/**
+ * Subpath -> path relative to the players-shared package root.
+ *
+ * A Vite alias also matches every subpath beneath its key and takes the first
+ * match, so a nested subpath precedes its parent.
+ */
 export const PLAYERS_SHARED_SVELTE_SOURCE_RELATIVE: Record<string, string> = {
+	"@pie-players/pie-players-shared/components/overlay-placement":
+		"src/components/overlay-placement/index.ts",
 	"@pie-players/pie-players-shared/components": "src/components/index.ts",
 	"@pie-players/pie-players-shared/ui/use-promise": "src/ui/use-promise.svelte.ts",
 };

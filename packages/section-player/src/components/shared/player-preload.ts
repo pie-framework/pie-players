@@ -43,6 +43,7 @@ import {
 	type ItemEntity,
 	type LoaderConfig,
 	createPieLogger,
+	DEFAULT_ESM_CDN_URL,
 	isGlobalDebugEnabled,
 	resolveInstrumentationProvider,
 	resolveLoadControllers,
@@ -273,9 +274,7 @@ export function buildBackendConfigFromProps(args: {
 		);
 		return {
 			kind: "esm",
-			cdnBaseUrl: String(
-				loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
-			),
+			cdnBaseUrl: String(loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL),
 			cdnProvider: esmCdnProvider,
 			moduleResolution:
 				loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url",
@@ -299,12 +298,14 @@ export function buildBackendConfigFromProps(args: {
 		throw new Error("Missing iifeBundleHost for element preloading");
 	}
 
-	const bundleType: BundleType =
-		isAuthorMode(args.resolvedPlayerProps, args.resolvedPlayerEnv)
-			? BundleType.editor
-			: args.resolvedPlayerProps?.hosted === true
-				? BundleType.player
-				: BundleType.clientPlayer;
+	const bundleType: BundleType = isAuthorMode(
+		args.resolvedPlayerProps,
+		args.resolvedPlayerEnv,
+	)
+		? BundleType.editor
+		: args.resolvedPlayerProps?.hosted === true
+			? BundleType.player
+			: BundleType.clientPlayer;
 
 	return {
 		kind: "iife",

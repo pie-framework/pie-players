@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
+	import { DEFAULT_BUNDLE_HOST } from '@pie-players/pie-players-shared/loaders';
 	import { makeUniqueTags, parsePackageName } from '@pie-players/pie-players-shared/pie';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
@@ -273,7 +274,7 @@
 					playerEl.configuration = currentConfig.configuration ?? {};
 					playerEl.authoringBackend = 'required';
 					playerEl.loaderOptions = {
-						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						bundleHost: DEFAULT_BUNDLE_HOST,
 						runtimeSupportCheck: 'on'
 					};
 					if (!missingAuthoringBackend) {

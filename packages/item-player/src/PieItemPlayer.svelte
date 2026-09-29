@@ -121,6 +121,7 @@
 		commitPendingSessions,
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
+		DEFAULT_ESM_CDN_URL,
 		DEFAULT_LOADER_CONFIG,
 		defineAuthoredPreloadedTags,
 		describeRegistrationFailures,
@@ -255,7 +256,7 @@
 			DEFAULT_BUNDLE_HOST,
 	);
 	const resolvedEsmCdnUrl = $derived(
-		loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
+		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
 	);
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),

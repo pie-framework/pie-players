@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+
+import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
@@ -21,43 +23,15 @@ const isValidBugs = (bugs) => {
 	return typeof bugs.url === "string" && bugs.url.startsWith("http");
 };
 
-const getWorkspaceDirs = (rootPackage, workspaceRoots) => {
-	const workspaces = Array.isArray(rootPackage.workspaces)
-		? rootPackage.workspaces
-		: [];
-	const dirs = new Set();
-
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string") continue;
-		const root = workspace.endsWith("/*") ? workspace.slice(0, -2) : workspace;
-		if (!workspaceRoots.includes(root)) continue;
-
-		if (workspace.endsWith("/*")) {
-			const parent = path.join(ROOT, root);
-			if (!existsSync(parent)) continue;
-			for (const entry of readdirSync(parent, { withFileTypes: true })) {
-				if (entry.isDirectory()) {
-					dirs.add(path.join(parent, entry.name));
-				}
-			}
-		} else {
-			dirs.add(path.join(ROOT, workspace));
-		}
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
-
 const run = () => {
 	if (!existsSync(POLICY_PATH)) {
 		throw new Error(`Policy file missing: ${POLICY_PATH}`);
 	}
 	const policy = readJson(POLICY_PATH);
 	const rootPackage = readJson(ROOT_PACKAGE_JSON);
-	const workspaceDirs = getWorkspaceDirs(
-		rootPackage,
-		policy.workspaceRoots ?? ["packages"],
-	);
+	const workspaceDirs = getWorkspaceDirs({
+		workspaceRoots: policy.workspaceRoots ?? ["packages"],
+	});
 
 	const failures = [];
 	let checked = 0;

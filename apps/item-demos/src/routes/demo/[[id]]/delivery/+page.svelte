@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import {
 		CompositeInstrumentationProvider,
+		DEFAULT_BUNDLE_HOST,
 		DebugPanelInstrumentationProvider,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
@@ -92,7 +93,7 @@
 					playerEl.env = currentEnv;
 					playerEl.session = currentSession;
 					playerEl.loaderOptions = {
-						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						bundleHost: DEFAULT_BUNDLE_HOST,
 						runtimeSupportCheck: 'on'
 					};
 					playerEl.loaderConfig = {

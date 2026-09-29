@@ -48,12 +48,6 @@ import {
 } from "./element-loader-types.js";
 
 /**
- * Default PIE bundle service base URL. Exported so widgets can use it as
- * the fallback when the host does not supply `loaderOptions.bundleHost`.
- */
-export const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";
-
-/**
  * Bundle-build retry status emitted while a bundle is being built or after
  * it completes. Hosts that display a "bundle is building…" UI subscribe via
  * `onBundleRetryStatus` and read each transition.

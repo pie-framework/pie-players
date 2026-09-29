@@ -21,16 +21,11 @@
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { createOverlayPlacement } from '@pie-players/pie-players-shared';
 	import {
-		clampOffsetOverlappingBlock,
-		createPointerDragController,
-		createPointerGesture,
-		createPointerRotateController,
-		resolveContainingBlockRect,
-		rotatedExtent,
-		rotationCentreShift,
-		uprightDockCentre
-	} from '@pie-players/pie-players-shared';
+		OverlayPlacementControls,
+		OverlayRotateHandle,
+	} from '@pie-players/pie-players-shared/components/overlay-placement';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
 
@@ -50,34 +45,28 @@
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 	let pivotEl = $state<HTMLSpanElement | undefined>();
-	let rotateHandleEl = $state<HTMLDivElement | undefined>();
 	let controlsEl = $state<HTMLDivElement | undefined>();
 
 	/**
-	 * Where the protractor sits, as an offset from its centred position plus a
-	 * rotation about its vertex. Plain `let`: the pointer and keyboard paths both
-	 * write it and `applyPlacement` pushes it to `style.transform`, so nothing
-	 * renders from it reactively.
+	 * The vertex the protractor turns about sits this far above its bottom edge,
+	 * on the baseline of the scale. `transform-origin` and the pivot marker in the
+	 * stylesheet use the same inset.
 	 */
-	let placement = { x: 0, y: 0, rotation: 0 };
+	const VERTEX_INSET = 10;
 
-	const dragController = createPointerDragController({
-		getPosition: () => ({ x: placement.x, y: placement.y }),
-		setPosition: (next) => applyPlacement({ ...placement, ...next })
-	});
-	const rotateController = createPointerRotateController({
-		getRotation: () => placement.rotation,
-		setRotation: (rotation) => applyPlacement({ ...placement, rotation })
-	});
-	const gesture = createPointerGesture({
-		onMove: (e) => {
-			dragController.handlePointerMove(e);
-			rotateController.handlePointerMove(e);
+	/** Where the protractor sits; it turns about its vertex. */
+	const placement = createOverlayPlacement({
+		getElement: () => containerEl,
+		getControls: () => controlsEl,
+		pivot: (size) => ({ x: size.width / 2, y: size.height - VERTEX_INSET }),
+		// The marker sits on the vertex, which a turn about the vertex leaves in
+		// place, so its box is the pivot on screen at any rotation.
+		getScreenPivot: () => {
+			const vertex = pivotEl?.getBoundingClientRect();
+			return vertex && { x: vertex.left, y: vertex.top };
 		},
-		onEnd: () => {
-			dragController.endDragging();
-			rotateController.endRotating();
-		}
+		bringToFront: (element) => coordinator?.bringToFront(element),
+		announce: (key, params) => announce(interfaceI18n.t(key, params)),
 	});
 
 	// The coordinator a registration was made against, and the id it used. Plain
@@ -86,37 +75,6 @@
 	// AGENTS.md's Svelte Subscription Safety rules out.
 	let registeredCoordinator: ToolCoordinatorApi | null = null;
 	let registeredToolId: string | null = null;
-
-	// Keyboard navigation constants
-	const MOVE_STEP = 10; // pixels
-	const ROTATE_STEP = 5; // degrees
-	const FINE_ROTATE_STEP = 1; // degrees
-	/** Space between the tool's bottom edge and its tap controls. */
-	const CONTROLS_GAP = 8;
-
-	type Nudge = 'up' | 'down' | 'left' | 'right';
-	const NUDGES = {
-		left: { dx: -1, dy: 0, glyph: '←', labelKey: 'toolkit.window.moveLeftA11y', announceKey: 'toolkit.announce.movedLeft' },
-		up: { dx: 0, dy: -1, glyph: '↑', labelKey: 'toolkit.window.moveUpA11y', announceKey: 'toolkit.announce.movedUp' },
-		down: { dx: 0, dy: 1, glyph: '↓', labelKey: 'toolkit.window.moveDownA11y', announceKey: 'toolkit.announce.movedDown' },
-		right: { dx: 1, dy: 0, glyph: '→', labelKey: 'toolkit.window.moveRightA11y', announceKey: 'toolkit.announce.movedRight' }
-	} as const;
-	const ARROW_KEYS: Record<string, Nudge> = {
-		ArrowLeft: 'left',
-		ArrowUp: 'up',
-		ArrowDown: 'down',
-		ArrowRight: 'right'
-	};
-	/** The tap controls' rotations, the keyboard's two steps each way. */
-	const ROTATIONS = [-ROTATE_STEP, -FINE_ROTATE_STEP, FINE_ROTATE_STEP, ROTATE_STEP];
-	/** Pixels of the protractor kept inside its containing block on each axis. */
-	const MIN_VISIBLE = 100;
-	/**
-	 * The vertex the protractor turns about sits this far above its bottom edge,
-	 * on the baseline of the scale. `transform-origin` and the pivot marker in the
-	 * stylesheet use the same inset.
-	 */
-	const VERTEX_INSET = 10;
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -130,134 +88,14 @@
 		setTimeout(() => announceText = '', 1000);
 	}
 
-	/**
-	 * Writes a placement to `style.transform`, first keeping part of the turned
-	 * protractor inside the box it is positioned against. Pointer and keyboard
-	 * both land here, so they share one bound, which lets the protractor overhang
-	 * its card while `MIN_VISIBLE` keeps enough in view to grab it back.
-	 *
-	 * The protractor turns about its vertex, so its turned extent is centred off
-	 * its translate offset by `rotationCentreShift`; the clamp bounds that centre.
-	 */
-	function applyPlacement(next: { x: number; y: number; rotation: number }) {
-		if (!containerEl) return;
-		const block = resolveContainingBlockRect(containerEl);
-		const size = { width: containerEl.offsetWidth, height: containerEl.offsetHeight };
-		const shift = rotationCentreShift(
-			size,
-			{ x: size.width / 2, y: size.height - VERTEX_INSET },
-			next.rotation
-		);
-		const centre = { x: next.x + shift.x, y: next.y + shift.y };
-		const bounded = block
-			? clampOffsetOverlappingBlock(centre, rotatedExtent(size, next.rotation), block, MIN_VISIBLE)
-			: centre;
-		placement = { x: bounded.x - shift.x, y: bounded.y - shift.y, rotation: next.rotation };
-		containerEl.style.transform = `translate(-50%, -50%) translate(${placement.x}px, ${placement.y}px) rotate(${placement.rotation}deg)`;
-		dockControls();
-	}
-
-	/**
-	 * Keeps the tap controls level on screen past the tool's bottom edge, the side
-	 * away from the rotation handle. They sit inside the tool, so they move and
-	 * stack with it; counter-rotating them keeps each arrow pointing the way its
-	 * button moves the tool.
-	 */
-	function dockControls() {
-		if (!containerEl || !controlsEl) return;
-		const centre = uprightDockCentre(
-			{ width: containerEl.offsetWidth, height: containerEl.offsetHeight },
-			{ width: controlsEl.offsetWidth, height: controlsEl.offsetHeight },
-			placement.rotation,
-			CONTROLS_GAP
-		);
-		controlsEl.style.transform = `translate(${centre.x}px, ${centre.y}px) translate(-50%, -50%) rotate(${-placement.rotation}deg)`;
-	}
-
-	/** A resize can leave the protractor outside its shrunken containing block. */
-	function reapplyPlacement() {
-		applyPlacement(placement);
-	}
-
-	/**
-	 * Claims a press for a drag or rotation. The claim's `preventDefault`
-	 * suppresses the press's default focus, so focus the protractor here: the
-	 * arrow-key alternatives act on it.
-	 */
-	function claimGesture(e: PointerEvent, target: HTMLElement) {
-		if (!gesture.begin(e, target)) return false;
-		containerEl?.focus({ preventScroll: true });
-		return true;
-	}
-
-	function handleDragStart(e: PointerEvent) {
-		if (!containerEl) return;
-		coordinator?.bringToFront(containerEl);
-		if (!claimGesture(e, containerEl)) return;
-		dragController.startDragging(e, containerEl);
-	}
-
-	function handleRotateStart(e: PointerEvent) {
-		// The handle sits inside the protractor; its press must not also start a drag.
-		e.stopPropagation();
-		if (!containerEl || !rotateHandleEl || !pivotEl) return;
-		coordinator?.bringToFront(containerEl);
-		if (!claimGesture(e, rotateHandleEl)) return;
-		// The marker sits on the vertex, which a turn about the vertex leaves in
-		// place, so its box is the pivot on screen at any rotation.
-		const vertex = pivotEl.getBoundingClientRect();
-		rotateController.startRotating(e, rotateHandleEl, { x: vertex.left, y: vertex.top });
-	}
-
-	/** Moves the protractor one step, as an arrow key or a move button does. */
-	function nudge(direction: Nudge) {
-		const { dx, dy, announceKey } = NUDGES[direction];
-		applyPlacement({
-			x: placement.x + dx * MOVE_STEP,
-			y: placement.y + dy * MOVE_STEP,
-			rotation: placement.rotation
-		});
-		announce(interfaceI18n.t(announceKey, { position: Math.round(dx ? placement.x : placement.y) }));
-	}
-
-	/** Turns the protractor by `degrees`, clockwise when positive, to a whole degree. */
-	function rotateBy(degrees: number) {
-		const rotation = (((Math.round(placement.rotation) + degrees) % 360) + 360) % 360;
-		applyPlacement({ ...placement, rotation });
-		announce(interfaceI18n.t('toolkit.announce.rotatedTo', { degrees: rotation }));
-	}
-
-	// Arrows move, Shift+arrows rotate 5°, Page Up/Down rotate 1°.
-	function handleKeyDown(e: KeyboardEvent) {
-		if (!containerEl) return;
-		const direction = ARROW_KEYS[e.key];
-		if (direction && e.shiftKey) {
-			rotateBy(direction === 'up' || direction === 'left' ? -ROTATE_STEP : ROTATE_STEP);
-		} else if (direction) {
-			nudge(direction);
-		} else if (e.key === 'PageUp') {
-			rotateBy(-FINE_ROTATE_STEP);
-		} else if (e.key === 'PageDown') {
-			rotateBy(FINE_ROTATE_STEP);
-		} else {
-			return;
-		}
-		e.preventDefault();
-	}
-
 	// Each reveal mounts a fresh panel centred by its stylesheet, so the placement
 	// starts over with it.
 	$effect(() => {
 		if (visible && containerEl && isBrowser) {
 			// Wait for the next tick to ensure DOM is updated
-			setTimeout(() => {
-				if (!containerEl) return;
-				coordinator?.bringToFront(containerEl);
-				applyPlacement(placement);
-			}, 0);
+			setTimeout(() => placement.show(), 0);
 		} else {
-			gesture.release();
-			placement = { x: 0, y: 0, rotation: 0 };
+			placement.reset();
 		}
 	});
 
@@ -284,10 +122,9 @@
 	});
 
 	onMount(() => {
-		window.addEventListener('resize', reapplyPlacement);
+		const disconnect = placement.connect();
 		return () => {
-			gesture.release();
-			window.removeEventListener('resize', reapplyPlacement);
+			disconnect();
 			// Unregister from the coordinator the registration was actually made
 			// against, which is not necessarily the one currently in context.
 			if (registeredCoordinator && registeredToolId) {
@@ -326,8 +163,8 @@
 		bind:this={containerEl}
 		class="pie-tool-protractor"
 		data-pie-tool-id={toolId}
-		onpointerdown={handleDragStart}
-		onkeydown={handleKeyDown}
+		onpointerdown={placement.startDrag}
+		onkeydown={placement.handleKeyDown}
 		role="application"
 		tabindex="0"
 		lang={interfaceI18n.getLocale()}
@@ -347,50 +184,13 @@
 		</div>
 
 		<span bind:this={pivotEl} class="pie-tool-protractor__pivot" aria-hidden="true"></span>
-		<!-- Pointer-only affordance: Shift+arrows and Page Up/Down rotate from the keyboard. -->
-		<span class="pie-tool-protractor__rotate-line" aria-hidden="true"></span>
-		<div
-			bind:this={rotateHandleEl}
-			class="pie-tool-protractor__rotate-handle"
-			aria-hidden="true"
-			onpointerdown={handleRotateStart}
-		></div>
-
-		<!-- Tap alternatives to dragging (WCAG 2.5.7), shown while the protractor has
-		     focus. A press keeps focus on the protractor, so the controls stay up. -->
-		<div
-			bind:this={controlsEl}
-			class="pie-tool-protractor__controls"
-			role="group"
-			aria-label={interfaceI18n.t('toolkit.placement.controlsA11y')}
-			onpointerdown={(e) => {
-				e.stopPropagation();
-				e.preventDefault();
-			}}
-		>
-			{#each Object.entries(NUDGES) as [direction, control] (direction)}
-				<button
-					type="button"
-					class="pie-tool-protractor__control"
-					aria-label={interfaceI18n.t(control.labelKey)}
-					onclick={() => nudge(direction as Nudge)}
-				><span aria-hidden="true">{control.glyph}</span></button>
-			{/each}
-			<span class="pie-tool-protractor__controls-divider" aria-hidden="true"></span>
-			{#each ROTATIONS as degrees (degrees)}
-				<button
-					type="button"
-					class="pie-tool-protractor__control"
-					aria-label={interfaceI18n.t(
-						degrees > 0
-							? 'toolkit.placement.rotateClockwiseA11y'
-							: 'toolkit.placement.rotateCounterclockwiseA11y',
-						{ degrees: Math.abs(degrees) }
-					)}
-					onclick={() => rotateBy(degrees)}
-				><span aria-hidden="true">{degrees > 0 ? '↻' : '↺'}{Math.abs(degrees)}°</span></button>
-			{/each}
-		</div>
+		<OverlayRotateHandle controller={placement} classPrefix="pie-tool-protractor" />
+		<OverlayPlacementControls
+			controller={placement}
+			i18n={interfaceI18n}
+			classPrefix="pie-tool-protractor"
+			bind:element={controlsEl}
+		/>
 	</div>
 {/if}
 
@@ -442,102 +242,6 @@
 		pointer-events: none;
 		position: absolute;
 		width: 0;
-	}
-
-	.pie-tool-protractor__rotate-line {
-		background: var(--pie-primary, #3f51b5);
-		bottom: 100%;
-		height: 40px;
-		left: 50%;
-		pointer-events: none;
-		position: absolute;
-		transform: translateX(-50%);
-		width: 1px;
-	}
-
-	/* A 44px hit area centred on the 14px knob at the end of the line. */
-	.pie-tool-protractor__rotate-handle {
-		align-items: center;
-		bottom: calc(100% + 40px - 22px);
-		cursor: grab;
-		display: flex;
-		height: 44px;
-		justify-content: center;
-		left: 50%;
-		position: absolute;
-		touch-action: none;
-		transform: translateX(-50%);
-		width: 44px;
-	}
-
-	.pie-tool-protractor__rotate-handle:active {
-		cursor: grabbing;
-	}
-
-	.pie-tool-protractor__rotate-handle::after {
-		background: var(--pie-background, #fff);
-		border: 2px solid var(--pie-primary, #3f51b5);
-		border-radius: 50%;
-		box-sizing: border-box;
-		content: '';
-		height: 14px;
-		width: 14px;
-	}
-
-	/* Positioned by `dockControls`; laid out while hidden so it can be measured. */
-	.pie-tool-protractor__controls {
-		align-items: center;
-		background: var(--pie-background, #fff);
-		border: 1px solid var(--pie-border-light, #cbd5e0);
-		border-radius: 8px;
-		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-black, #000) 15%, transparent);
-		cursor: default;
-		/* Arrows and turn glyphs are physical directions, whatever the script. */
-		direction: ltr;
-		display: flex;
-		gap: 4px;
-		left: 0;
-		padding: 4px;
-		position: absolute;
-		top: 0;
-		visibility: hidden;
-		white-space: nowrap;
-	}
-
-	.pie-tool-protractor:focus-within .pie-tool-protractor__controls {
-		visibility: visible;
-	}
-
-	.pie-tool-protractor__control {
-		align-items: center;
-		background: var(--pie-button-bg, var(--pie-background, #fff));
-		border: 1px solid var(--pie-button-border, var(--pie-border, #94a3b8));
-		border-radius: 6px;
-		color: var(--pie-button-color, var(--pie-text, #111827));
-		cursor: pointer;
-		display: inline-flex;
-		font: inherit;
-		font-size: 14px;
-		justify-content: center;
-		min-height: 32px;
-		min-width: 32px;
-		padding: 0 6px;
-	}
-
-	.pie-tool-protractor__control:hover {
-		background: var(--pie-button-hover-bg, var(--pie-background-dark, #f3f5f7));
-	}
-
-	.pie-tool-protractor__control:focus-visible {
-		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #4a90e2));
-		outline-offset: 1px;
-	}
-
-	.pie-tool-protractor__controls-divider {
-		align-self: stretch;
-		background: var(--pie-border-light, #cbd5e0);
-		margin: 0 2px;
-		width: 1px;
 	}
 
 	.pie-tool-protractor__container {

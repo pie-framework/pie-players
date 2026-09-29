@@ -3,8 +3,17 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
+import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 
 export default defineConfig({
+	// The rotate handle and tap controls compile into this bundle from
+	// players-shared source; see svelte-source-aliases.ts.
+	resolve: {
+		alias: playersSharedSvelteSourceAliases(
+			resolve(__dirname, "../players-shared"),
+			resolve,
+		),
+	},
 	plugins: [
 		svelte({
 			compilerOptions: {
@@ -37,9 +46,10 @@ export default defineConfig({
 			// resolve from the host's node_modules, so every PIE bundle a host
 			// loads shares one copy of each.
 			// Patterns, because an exact-string external still inlines the
-			// subpaths this tool imports.
+			// subpaths this tool imports. Rollup tests the specifier before the
+			// alias resolves it, so the aliased components are excluded here.
 			external: [
-				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared(?!\/components\/)|context)(?:\/|$)/,
 				/^speech-rule-engine(?:\/|$)/,
 			],
 			onwarn(warning, warn) {

@@ -188,3 +188,73 @@ export function legibleColorAgainst(args: {
 	// theme guarantees against this surface.
 	return text;
 }
+
+const STATE_FILL_WEIGHT_STEP = 1;
+
+/**
+ * A state fill behind text that keeps its ink: the given fill if it already
+ * clears `minimum` against `background`, otherwise the largest share of it,
+ * mixed toward `text`, that does -- but never past the share where `text` on
+ * the fill drops under `textMinimum`.
+ *
+ * The two pairs trade off. Moving the fill toward the ink separates it from the
+ * page and brings it closer to the ink, so where text on the page is under
+ * `minimum x textMinimum` no fill clears both, and the text wins: an unreadable
+ * hover is worse than a faint one. It steps by 1% rather than 5% because the
+ * window between the two floors is narrow; 5% steps overshoot it in `dark`,
+ * `black` and `dracula`.
+ *
+ * Unmeasured, the fill comes back verbatim. No fixed share holds the text floor
+ * across DaisyUI's shipped themes -- 90% already leaves `valentine` at 4.16:1 --
+ * so the pessimistic answer here is no correction at all.
+ */
+export function legibleStateFillAgainst(args: {
+	fill?: string;
+	text?: string;
+	background?: string;
+	measure?: ColorMeasure | null;
+	minimum?: number;
+	textMinimum?: number;
+}): string | undefined {
+	const { fill, text, background, measure } = args;
+	if (!fill) {
+		return undefined;
+	}
+	if (!text || !background || !measure) {
+		return fill;
+	}
+	const minimum = args.minimum ?? LEGIBLE_NON_TEXT_MINIMUM;
+	const textMinimum = args.textMinimum ?? LEGIBLE_TEXT_MINIMUM;
+	const surface = measure(background);
+	const ink = measure(text);
+	const raw = measure(fill);
+	if (
+		!surface ||
+		!ink ||
+		!raw ||
+		surface.a < 1 ||
+		ink.a < 1 ||
+		raw.a < 1 ||
+		contrastRatio(raw, surface) >= minimum ||
+		contrastRatio(ink, raw) < textMinimum
+	) {
+		return fill;
+	}
+	let best = fill;
+	for (
+		let weight = 100 - STATE_FILL_WEIGHT_STEP;
+		weight >= STATE_FILL_WEIGHT_STEP;
+		weight -= STATE_FILL_WEIGHT_STEP
+	) {
+		const candidate = mixTowards(fill, text, weight);
+		const resolved = measure(candidate);
+		if (!resolved || contrastRatio(ink, resolved) < textMinimum) {
+			return best;
+		}
+		best = candidate;
+		if (contrastRatio(resolved, surface) >= minimum) {
+			return candidate;
+		}
+	}
+	return best;
+}

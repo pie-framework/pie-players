@@ -21,6 +21,7 @@ import {
 	UNMEASURED_NON_TEXT_HUE_WEIGHT,
 	type ColorMeasure,
 	legibleColorAgainst,
+	legibleStateFillAgainst,
 } from "./contrast.js";
 
 /** The DaisyUI slots this mapping reads. Not all of DaisyUI's palette. */
@@ -76,7 +77,13 @@ export type DaisyMappingEntry =
 			from: DaisySlot;
 			minimum: number;
 			fallbackWeight: number;
-	  };
+	  }
+	/**
+	 * A fill painted behind text that keeps the page's ink: moved toward that ink
+	 * until it clears 3:1 against the page, but never so far that the ink on it
+	 * drops under 4.5:1.
+	 */
+	| { token: string; kind: "state-fill"; from: DaisySlot };
 
 const legible = (token: string, from: DaisySlot): DaisyMappingEntry => ({
 	token,
@@ -162,7 +169,10 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	direct("--pie-focus-unchecked", "base200"),
 	direct("--pie-focus-unchecked-border", "base300"),
 	direct("--pie-blue-grey-100", "base100"),
-	direct("--pie-blue-grey-300", "base200"),
+	// The select-text hover fill. `--color-base-200` is the next surface tint
+	// after the page, 1.03:1 (`night`) to 1.37:1 (`aqua`) against it, so a hovered
+	// token was indistinguishable from its neighbours.
+	{ token: "--pie-blue-grey-300", kind: "state-fill", from: "base200" },
 	direct("--pie-blue-grey-600", "base300"),
 	direct("--pie-blue-grey-900", "baseContent"),
 	direct("--pie-black", "neutralContent"),
@@ -214,6 +224,13 @@ export function resolveDaisyPieVariables(args: {
 			value = towards
 				? `color-mix(in srgb, ${from} ${entry.weight}%, ${towards})`
 				: undefined;
+		} else if (entry.kind === "state-fill") {
+			value = legibleStateFillAgainst({
+				fill: from,
+				text: read("baseContent"),
+				background: read("base100"),
+				measure,
+			});
 		} else {
 			value = legibleColorAgainst({
 				hue: from,

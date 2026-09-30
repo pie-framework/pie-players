@@ -36,7 +36,7 @@
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"semver": "^7.8.5",
-		"svelte": "^5.57.0"
+		"svelte": "^5.57.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",

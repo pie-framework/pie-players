@@ -148,5 +148,8 @@ replacing the section. In-place branching without a remount is what
 is for; it is a latency and continuity improvement over a mechanism that already
 works, not the thing that makes adaptivity possible.
 
-Unverified: whether setting a new section input on a live element rebuilds
-cleanly. Remount-and-hydrate is the supported path.
+Setting a section with a new identifier on a live element is supported, since
+hosts with their own section navigation swap sections that way;
+`section-player-host-section-switch.spec.ts` covers it. Unverified: whether a
+revised section under the same identifier rebuilds cleanly on a live element.
+Remount-and-hydrate is the supported path for that.

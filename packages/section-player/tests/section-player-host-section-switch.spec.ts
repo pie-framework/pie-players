@@ -137,16 +137,22 @@ test.describe("host section navigation mid-debounce", () => {
 });
 
 // A swap on the live element has to show the new section's items and none of
-// the previous section's, in both directions. The page sets `section-id` before
-// `section`, the order that froze the section player under Svelte 5.57.0: the
-// new section reached `<pie-section-player-base>` and never its toolkit.
+// the previous section's, in both directions and in either order of the two
+// inputs. `section-id` then `section` froze the section player under Svelte
+// 5.57.0: the new section reached `<pie-section-player-base>` and never its
+// toolkit. `section` then `section-id` is the order an Angular host's
+// `[section]` and `[attr.section-id]` bindings produce.
 test.describe("host section navigation renders the new section", () => {
 	const FIRST_PROMPT = "Describe the first thing you noticed.";
 	const SECOND_PROMPT = "Describe the second thing you noticed.";
 
-	for (const player of ["iife", "esm"] as const) {
-		test(`${player}: next, then previous`, async ({ page }) => {
-			await page.goto(`${DEMO}?player=${player}`, {
+	const cases = ["iife", "esm"].flatMap((player) =>
+		["section-id-first", "section-first"].map((order) => ({ player, order })),
+	);
+
+	for (const { player, order } of cases) {
+		test(`${player}, ${order}: next, then previous`, async ({ page }) => {
+			await page.goto(`${DEMO}?player=${player}&order=${order}`, {
 				waitUntil: "domcontentloaded",
 			});
 			const sectionPlayer = page.locator("pie-section-player-splitpane");

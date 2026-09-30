@@ -124,7 +124,11 @@ test.describe("host section navigation mid-debounce", () => {
 		// WebKit tabs only to text fields unless Option is held.
 		const tab = browserName === "webkit" ? "Alt+Tab" : "Tab";
 		let focused = "";
-		for (let presses = 0; presses < 40 && focused !== "host-next-section"; presses += 1) {
+		for (
+			let presses = 0;
+			presses < 40 && focused !== "host-next-section";
+			presses += 1
+		) {
 			await page.keyboard.press(tab);
 			focused = await page.evaluate(() => document.activeElement?.id ?? "");
 		}
@@ -140,8 +144,10 @@ test.describe("host section navigation mid-debounce", () => {
 // the previous section's, in both directions and in either order of the two
 // inputs. `section-id` then `section` froze the section player under Svelte
 // 5.57.0: the new section reached `<pie-section-player-base>` and never its
-// toolkit. `section` then `section-id` is the order an Angular host's
-// `[section]` and `[attr.section-id]` bindings produce.
+// toolkit. Svelte 5.57.1 fixes it with
+// https://github.com/sveltejs/svelte/pull/18508. `section` then `section-id` is
+// the order an Angular host's `[section]` and `[attr.section-id]` bindings
+// produce.
 test.describe("host section navigation renders the new section", () => {
 	const FIRST_PROMPT = "Describe the first thing you noticed.";
 	const SECOND_PROMPT = "Describe the second thing you noticed.";

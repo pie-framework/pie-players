@@ -4,4 +4,4 @@ import type { PageLoad } from "./$types";
 export const ssr = false;
 
 export const load: PageLoad = ({ url }) =>
-	loadDemoRouteDataById("preloaded-bundled-elements", url);
+	loadDemoRouteDataById("preloaded-npm-elements", url);

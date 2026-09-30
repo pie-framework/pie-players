@@ -8,11 +8,16 @@
  * `updateSession` as a write-back.
  */
 
+import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
 
 const LAYOUT = "pie-section-player-splitpane";
-const BLANK_TAG = "mc-populated-blank--version-0-3-0-next-17";
-const BLANK_SPEC = "@pie-element/mc-populated-blank@0.3.0-next.17";
+// The version section-demos installs, which its preloaded demo registers.
+const { version: BLANK_VERSION } = createRequire(
+	new URL("../../../apps/section-demos/package.json", import.meta.url),
+)("@pie-element/mc-populated-blank/package.json") as { version: string };
+const BLANK_TAG = `mc-populated-blank--version-${BLANK_VERSION.replace(/[.+]/g, "-")}`;
+const BLANK_SPEC = `@pie-element/mc-populated-blank@${BLANK_VERSION}`;
 const MC_PROMPT = "Which field fixes the multiple-choice package version";
 
 type Entry = {
@@ -258,11 +263,13 @@ test.describe("section player response cardinality", () => {
 		page,
 	}) => {
 		await page.goto(
-			"/preloaded-bundled-elements?mode=candidate&layout=splitpane",
+			"/preloaded-npm-elements?mode=candidate&layout=splitpane",
 			{ waitUntil: "networkidle" },
 		);
 		await expect(
-			page.locator(BLANK_TAG).getByRole("radio", { name: "teapot" }),
+			page
+				.locator(`${BLANK_TAG}#npm-mc-populated-blank-element`)
+				.getByRole("radio", { name: "teapot" }),
 		).toBeVisible({ timeout: 30_000 });
 		await mountRecordingLayout(page, TWO_BLANKS_SECTION);
 		const choice = (elementId: string, name: string) =>

@@ -92,18 +92,31 @@ test("/tts-ssml loads the MathQuill font from the dev server under esm", async (
 	).toEqual([]);
 });
 
-// The app's bare `@pie-element/*` imports take the checkout's build, which the
-// dev server serves from disk, so the demo registers the checkout's version.
-test("/preloaded-bundled-elements imports the checkout's element", async ({
+// The app's bare `@pie-element/*` imports take the checkout's builds, which the
+// dev server serves from disk, so the demo registers the checkout's versions.
+const PRELOADED_NPM_ELEMENTS = {
+	categorize: "elements-react",
+	"drag-in-the-blank": "elements-react",
+	ebsr: "elements-react",
+	hotspot: "elements-react",
+	"image-cloze-association": "elements-react",
+	"mc-populated-blank": "elements-svelte",
+	"multiple-choice": "elements-react",
+	passage: "elements-react",
+} as const;
+
+test("/preloaded-npm-elements imports the checkout's elements", async ({
 	page,
 	baseURL,
 }) => {
-	const { version } = JSON.parse(
-		await readFile(
-			`${CHECKOUT}packages/elements-svelte/mc-populated-blank/package.json`,
+	const versions: Record<string, string> = {};
+	for (const [name, dir] of Object.entries(PRELOADED_NPM_ELEMENTS)) {
+		const manifest = await readFile(
+			`${CHECKOUT}packages/${dir}/${name}/package.json`,
 			"utf-8",
-		),
-	);
+		);
+		versions[`@pie-element/${name}`] = `@pie-element/${name}@${JSON.parse(manifest).version}`;
+	}
 	const fromCheckout: string[] = [];
 	page.on("request", (request) => {
 		if (request.url().startsWith(`${baseURL}/@fs${CHECKOUT}`)) {
@@ -112,15 +125,22 @@ test("/preloaded-bundled-elements imports the checkout's element", async ({
 	});
 
 	await page.goto(
-		"/preloaded-bundled-elements?mode=candidate&layout=splitpane",
+		"/preloaded-npm-elements?mode=candidate&layout=splitpane",
 		{ waitUntil: "networkidle" },
 	);
 	await expect(
 		page
-			.locator(`mc-populated-blank--version-${version.replaceAll(".", "-")}`)
+			.locator("#npm-mc-populated-blank-element")
 			.getByRole("radio", { name: "teapot" }),
 	).toBeVisible({ timeout: 30_000 });
-	expect(fromCheckout).toContainEqual(
-		expect.stringContaining("/mc-populated-blank/dist/browser/delivery/"),
-	);
+	expect(
+		await page.evaluate(
+			() => (window as { PIE_PRELOADED_ELEMENTS?: unknown }).PIE_PRELOADED_ELEMENTS,
+		),
+	).toEqual(versions);
+	for (const name of Object.keys(PRELOADED_NPM_ELEMENTS)) {
+		expect(fromCheckout).toContainEqual(
+			expect.stringContaining(`/${name}/dist/browser/delivery/`),
+		);
+	}
 });

@@ -98,7 +98,7 @@ consistent monorepo startup behavior.
 ### Element Loading
 `?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos load the pie-elements-ng versions in [`element-versions.ts`](../demo-ui/src/element-versions.ts). `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [demo workspace resolution](../../docs/development/demo-workspace-resolution.md).
 
-`?player=preloaded` loads one PITS bundle for the page's elements and registers each element, with its controller, through `registerPreloadedElements` before the player mounts. The `preloaded-bundled-elements` demo registers an element its bundler resolved from the installed package instead.
+`?player=preloaded` loads one PITS bundle for the page's elements and registers each element, with its controller, through `registerPreloadedElements` before the player mounts. The `preloaded-npm-elements` demo registers the elements its bundler resolved from installed packages instead: every element the generated preloaded-player builds carried, from one pie-elements-ng release.
 
 ### Content Standards
 All content is:

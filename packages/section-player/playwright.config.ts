@@ -47,10 +47,11 @@ export default defineConfig({
 		},
 		// The esm strategy's import maps: Firefox rejects a map added after the
 		// page's first module load, or after another map, so the player loads
-		// through es-module-shims there.
+		// through es-module-shims there. The preloaded npm demo runs in every
+		// engine, as a host's pages do.
 		{
 			name: "firefox",
-			testMatch: /section-(demos-esm|player-host-section-switch)\.spec\.ts/,
+			testMatch: /section-(demos-esm|player-host-section-switch|player-preloaded-npm)\.spec\.ts/,
 			use: { ...devices["Desktop Firefox"] },
 		},
 		// Focus order: WebKit does not focus a clicked button. The ruler's and
@@ -58,7 +59,7 @@ export default defineConfig({
 		// capture is what iPads get.
 		{
 			name: "webkit",
-			testMatch: /section-(player-host-section-switch|ruler-pointer|protractor-pointer)\.spec\.ts/,
+			testMatch: /section-(player-host-section-switch|player-preloaded-npm|ruler-pointer|protractor-pointer)\.spec\.ts/,
 			use: { ...devices["Desktop Safari"] },
 		},
 	],

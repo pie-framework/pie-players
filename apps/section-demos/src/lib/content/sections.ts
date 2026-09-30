@@ -15,7 +15,7 @@ import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
-import { demoPreloadedBundledElementsSection } from "./demo-preloaded-bundled-elements";
+import { demoPreloadedNpmElementsSection } from "./demo-preloaded-npm-elements";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import {
 	sectionSwitchCommitSectionOne,
@@ -514,22 +514,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		allowElementVersionOverrides: false,
 		section: demo9Section,
 	},
-	"preloaded-bundled-elements": {
-		id: "preloaded-bundled-elements",
-		name: "Preloaded Bundled Elements",
+	"preloaded-npm-elements": {
+		id: "preloaded-npm-elements",
+		name: "Preloaded npm Elements",
 		description:
-			"Section whose PIE element the host bundles from npm and registers for the preloaded player",
+			"Every element the generated preloaded-player builds carried, installed from npm and registered by the host for the preloaded player",
 		integrationLevel: 3,
 		integrationTheme: "Preloaded fixed versions",
 		focus:
-			"Shows the preloaded path for an element that ships a browser ESM build: the host's bundler resolves the package, and the players load nothing.",
+			"Shows the preloaded path as a host runs it: the host installs pie-elements-ng packages from one release, its bundler resolves their browser builds, and the players load no element code.",
 		whatMakesItTick: [
-			"Imports `@pie-element/mc-populated-blank/browser/delivery` and `/browser/controller` from the version section-demos installs, or from the local pie-elements-ng checkout under `dev:section:cdn`.",
-			"Registers both with `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`, which defines the versioned tag the player asserts and records the controller whose `model()` the player runs.",
-			'Renders the section-player with `player-type="preloaded"`, so no bundle or CDN request is made for the element.',
+			"Imports `./browser/delivery` and `./browser/controller` of categorize, drag-in-the-blank, hotspot, image-cloze-association, multiple-choice, mc-populated-blank, passage and ebsr at the versions section-demos installs, or from the local pie-elements-ng checkout under `dev:section:cdn`.",
+			"Registers all eight in one `registerPreloadedElements` call, under the base tags `configs/preloaded-player/*.json` use, with each version read from the package's own `package.json`.",
+			"Authors one item under another base tag, one at an older version and one at a newer version, so the players align each to the registered element.",
+			"`?hosted=1` (or the toggle) runs no controller in the browser; the host's own navigation swaps to a second section on the same player element.",
 		],
 		allowElementVersionOverrides: false,
-		section: demoPreloadedBundledElementsSection,
+		section: demoPreloadedNpmElementsSection,
 	},
 	"metadata-session-forwarding": {
 		id: "metadata-session-forwarding",

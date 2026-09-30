@@ -23,7 +23,7 @@ const { sectionDemos } = await import("./sections");
 // Served from the pie-elements-ng checkout by its own spec; not on npm.
 const UNPINNED_PACKAGES = new Set(["@pie-element/video-stimulus"]);
 // Renders under the preloaded strategy only, registering the installed version.
-const PRELOADED_ONLY_DEMOS = new Set(["preloaded-bundled-elements"]);
+const PRELOADED_ONLY_DEMOS = new Set(["preloaded-npm-elements"]);
 
 function elementSpecs(value: unknown, out: string[] = []): string[] {
 	if (typeof value === "string") {

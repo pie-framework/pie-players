@@ -186,8 +186,9 @@ test.describe("section player preloaded strategy", () => {
 		expect(controllerWarnings).toEqual([]);
 	});
 
-	// The demo imports pie-elements-ng's `mc-populated-blank` browser build and
-	// registers it with its controller, so no request fetches element code.
+	// The demo imports pie-elements-ng's browser builds and registers each with
+	// its controller, so no request fetches element code. The full check of
+	// that demo is section-player-preloaded-npm.spec.ts.
 	test("host-bundled element renders with no element request", async ({
 		page,
 		baseURL,
@@ -205,12 +206,12 @@ test.describe("section player preloaded strategy", () => {
 		const controllerWarnings = collectMissingControllerWarnings(page);
 
 		await page.goto(
-			"/preloaded-bundled-elements?mode=candidate&layout=splitpane",
+			"/preloaded-npm-elements?mode=candidate&layout=splitpane",
 			{ waitUntil: "networkidle" },
 		);
 		await expect(page.locator(".preload-status")).toHaveCount(0);
 		const choice = page
-			.locator("mc-populated-blank--version-0-3-0-next-17")
+			.locator("#npm-mc-populated-blank-element")
 			.getByRole("radio", { name: "teapot" });
 		await expect(choice).toBeVisible({ timeout: 30_000 });
 		await choice.click();

@@ -180,6 +180,28 @@ describe("resolveDaisyPieVariables", () => {
 		expect(resolve(LIGHT)["--pie-primary"]).toBe("#422ad5");
 	});
 
+	test("separates the select-text hover fill from the page", () => {
+		// `base-200` verbatim is 1.12:1 against the page under `light`.
+		const vars = resolve(LIGHT);
+		expect(
+			ratio(vars["--pie-blue-grey-300"], vars["--pie-background"]),
+		).toBeGreaterThanOrEqual(3);
+		expect(
+			ratio(vars["--pie-text"], vars["--pie-blue-grey-300"]),
+		).toBeGreaterThanOrEqual(4.5);
+	});
+
+	test("keeps hover text legible where the page leaves no room for 3:1", () => {
+		const vars = resolve(VALENTINE);
+		expect(
+			ratio(vars["--pie-text"], vars["--pie-blue-grey-300"]),
+		).toBeGreaterThanOrEqual(4.5);
+	});
+
+	test("leaves the hover fill alone without a measurer", () => {
+		expect(resolve(LIGHT, false)["--pie-blue-grey-300"]).toBe("#f2f2f2");
+	});
+
 	test("leaves the divider token alone", () => {
 		// Card edges and pane dividers, which 1.4.11 exempts. Correcting it would
 		// put a hard outline around every item card.

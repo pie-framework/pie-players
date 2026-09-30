@@ -6,7 +6,7 @@
 		demoName: string;
 		demoPackage: string;
 		activeView: 'delivery' | 'author' | 'source' | 'controller';
-		loaderStrategy: 'iife' | 'esm';
+		loaderStrategy: 'iife' | 'esm' | 'preloaded';
 		deliveryHref: string;
 		authorHref: string;
 		controllerHref: string;
@@ -18,7 +18,7 @@
 		showSessionPanel: boolean;
 		showInstrumentationPanel: boolean;
 		showSessionToggle: boolean;
-		onSwitchLoaderStrategy: (next: 'iife' | 'esm') => void;
+		onSwitchLoaderStrategy: (next: 'iife' | 'esm' | 'preloaded') => void;
 		onSwitchViewMode?: (next: 'student' | 'scorer', href: string) => void;
 		onToggleSessionPanel: () => void;
 		onToggleInstrumentationPanel: () => void;
@@ -109,12 +109,26 @@
 				<button
 					type="button"
 					class="btn btn-sm join-item"
-					class:btn-active={loaderStrategy === 'esm'}
+					class:btn-active={loaderStrategy !== 'iife'}
 					onclick={() => onSwitchLoaderStrategy('esm')}
 				>
 					ESM
 				</button>
 			</div>
+			<!-- Preloading registers the ESM builds, so it is an ESM option. -->
+			{#if activeView === 'delivery' && loaderStrategy !== 'iife'}
+				<button
+					type="button"
+					class="btn btn-sm"
+					class:btn-active={loaderStrategy === 'preloaded'}
+					aria-pressed={loaderStrategy === 'preloaded'}
+					title="Register the installed ESM builds before the player mounts"
+					onclick={() =>
+						onSwitchLoaderStrategy(loaderStrategy === 'preloaded' ? 'esm' : 'preloaded')}
+				>
+					Preloaded
+				</button>
+			{/if}
 		{/if}
 
 		{#if activeView === 'delivery'}

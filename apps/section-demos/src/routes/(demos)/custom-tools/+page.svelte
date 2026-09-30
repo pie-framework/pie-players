@@ -289,7 +289,7 @@
 	bind:pnpDebuggerElement
 >
 	{#if preloadedError}
-		<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+		<div class="preload-status error">Preloading elements failed: {preloadedError}</div>
 	{:else if selectedPlayerType === "preloaded" && !preloadedReady}
 		<div class="preload-status">Preloading section item bundles...</div>
 	{:else if layoutType === "vertical"}

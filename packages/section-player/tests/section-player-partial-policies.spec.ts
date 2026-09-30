@@ -1,8 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
+import {
+	MC_PROMPT,
+	openPreloadedBase,
+	PRELOADED_SECTION,
+} from "./fixtures/preloaded-section";
 
 // A host sets only the policy fields it changes; the rest take their defaults.
-const DEMO_PATH = "/preloaded-fixed-elements?mode=candidate&layout=splitpane";
-const MC_PROMPT = "Which field fixes the multiple-choice package version";
 
 declare global {
 	interface Window {
@@ -16,17 +19,13 @@ async function mountWithPolicies(
 ): Promise<string[]> {
 	const pageErrors: string[] = [];
 	page.on("pageerror", (error) => pageErrors.push(error.message));
-	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
+	await openPreloadedBase(page);
 
-	await page.evaluate((hostPolicies) => {
-		const existing = document.querySelector("pie-section-player-splitpane") as
-			| (HTMLElement & { section?: unknown })
-			| null;
+	await page.evaluate(({ hostPolicies, section }) => {
+		const existing = document.querySelector("pie-section-player-splitpane");
 		if (!existing?.parentElement) {
 			throw new Error("demo section player not found");
 		}
-		const section = JSON.parse(JSON.stringify(existing.section));
 		const parent = existing.parentElement;
 		existing.remove();
 
@@ -55,7 +54,7 @@ async function mountWithPolicies(
 		};
 		fresh.section = section;
 		parent.appendChild(fresh);
-	}, policies);
+	}, { hostPolicies: policies, section: PRELOADED_SECTION });
 
 	await expect(
 		page.locator("pie-section-player-splitpane").getByText(MC_PROMPT),

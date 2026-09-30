@@ -1,10 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
+import {
+	MC_PROMPT,
+	openPreloadedBase,
+	PRELOADED_SECTION,
+} from "./fixtures/preloaded-section";
 
 // Each test replaces the preloaded demo's player with a fresh layout element it
 // configures itself, so the fresh player owns its coordinator and no assessment
 // is bound to it.
-const DEMO_PATH = "/preloaded-fixed-elements?mode=candidate&layout=splitpane";
-const MC_PROMPT = "Which field fixes the multiple-choice package version";
 const LAYOUT_TAGS = [
 	"pie-section-player-splitpane",
 	"pie-section-player-vertical",
@@ -59,23 +62,13 @@ type MountOptions = {
 	runtime?: Record<string, unknown>;
 };
 
-async function openPreloadedDemo(page: Page): Promise<void> {
-	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
-}
-
 async function mountFreshLayout(page: Page, options: MountOptions) {
 	await page.evaluate(
-		({ tag, late, probeMethods, extraRuntime, methods }) => {
-			const existing = document.querySelector(
-				"pie-section-player-splitpane",
-			) as (HTMLElement & { section?: { identifier?: string } }) | null;
+		({ tag, late, probeMethods, extraRuntime, methods, section }) => {
+			const existing = document.querySelector("pie-section-player-splitpane");
 			if (!existing?.parentElement) {
 				throw new Error("demo section player not found");
 			}
-			const section = JSON.parse(JSON.stringify(existing.section)) as {
-				identifier: string;
-			};
 			const parent = existing.parentElement;
 			existing.remove();
 
@@ -188,6 +181,7 @@ async function mountFreshLayout(page: Page, options: MountOptions) {
 			probeMethods: options.probeMethods === true,
 			extraRuntime: options.runtime ?? {},
 			methods: HOST_METHODS,
+			section: PRELOADED_SECTION,
 		},
 	);
 }
@@ -229,7 +223,7 @@ test.describe("section player host API", () => {
 		test(`${tag} answers its host methods before it mounts`, async ({
 			page,
 		}) => {
-			await openPreloadedDemo(page);
+			await openPreloadedBase(page);
 			await mountFreshLayout(page, { tag, probeMethods: true });
 
 			const kernelHost = tag === "pie-section-player-kernel-host";
@@ -280,7 +274,7 @@ test.describe("section player host API", () => {
 	test("an owned coordinator reports no unbound assessment while enforcement is unset", async ({
 		page,
 	}) => {
-		await openPreloadedDemo(page);
+		await openPreloadedBase(page);
 		const warnings = collectWarnings(page);
 		await mountFreshLayout(page, { tag: "pie-section-player-splitpane" });
 		await waitForLoadingComplete(page);
@@ -297,7 +291,7 @@ test.describe("section player host API", () => {
 	test("an owned coordinator reports an unbound assessment once when enforcement is on", async ({
 		page,
 	}) => {
-		await openPreloadedDemo(page);
+		await openPreloadedBase(page);
 		const warnings = collectWarnings(page);
 		await mountFreshLayout(page, {
 			tag: "pie-section-player-splitpane",
@@ -313,7 +307,7 @@ test.describe("section player host API", () => {
 		test(`a runtime set ${late ? "a tick after mount" : "before mount"} configures the owned coordinator`, async ({
 			page,
 		}) => {
-			await openPreloadedDemo(page);
+			await openPreloadedBase(page);
 			const warnings = collectWarnings(page);
 			const pageErrors = collectPageErrors(page);
 			await mountFreshLayout(page, {
@@ -348,7 +342,7 @@ test.describe("section player host API", () => {
 	test("a tools change after the section initialized is reported once", async ({
 		page,
 	}) => {
-		await openPreloadedDemo(page);
+		await openPreloadedBase(page);
 		const warnings = collectWarnings(page);
 		await mountFreshLayout(page, {
 			tag: "pie-section-player-splitpane",

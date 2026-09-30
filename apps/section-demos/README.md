@@ -93,12 +93,12 @@ consistent monorepo startup behavior.
 - **Framework:** SvelteKit with static adapter
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
 - **Player:** PIE Section Player (QTI 3.0)
-- **Elements:** PITS bundles under `iife` and `preloaded`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`
+- **Elements:** PITS bundles under `iife`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`, the installed pie-elements-ng packages under `preloaded`
 
 ### Element Loading
-`?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos load the pie-elements-ng versions in [`element-versions.ts`](../demo-ui/src/element-versions.ts). `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [demo workspace resolution](../../docs/development/demo-workspace-resolution.md).
+`?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos rewrite content to the pie-elements-ng versions [`demo-ui`](../demo-ui/package.json) installs. demo-ui depends on each package at the `next` dist-tag, where pie-elements-ng publishes; `bun.lock` pins the versions, and `bun update` in `apps/demo-ui` moves them together to the newest release. `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [demo workspace resolution](../../docs/development/demo-workspace-resolution.md).
 
-`?player=preloaded` loads one PITS bundle for the page's elements and registers each element, with its controller, through `registerPreloadedElements` before the player mounts. The `preloaded-npm-elements` demo registers the elements its bundler resolved from installed packages instead: every element the generated preloaded-player builds carried, from one pie-elements-ng release.
+`?player=preloaded` is the ESM builds as a host bundles them: before the player mounts, the page imports each element's `./browser/delivery` and `./browser/controller` from those installed packages and registers them through `registerPreloadedElements`, and the players load no element code. The players align each authored version to the installed one. The `preloaded-npm-elements` demo does the same with static imports of its own dependencies, as a host's page is written.
 
 ### Content Standards
 All content is:

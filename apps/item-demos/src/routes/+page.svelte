@@ -37,6 +37,11 @@
 			Item Player &middot; IIFE
 		</p>
 		<h1 class="text-5xl font-bold tracking-tight text-secondary">PIE Item Player Demos</h1>
+		<p class="text-base-content/70">
+			<a class="link link-primary" href="/preloaded-npm">Preloaded npm elements</a>: the
+			preloaded strategy with elements the host's bundler resolves from installed pie-elements-ng
+			packages.
+		</p>
 	</header>
 
 	<div class="space-y-12">

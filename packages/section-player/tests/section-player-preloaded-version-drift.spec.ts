@@ -1,16 +1,20 @@
 import { expect, type Page, test } from "@playwright/test";
+import {
+	MC_PROMPT,
+	MC_REF,
+	MC_SPEC,
+	MC_TAG,
+	openPreloadedBase,
+	PRELOADED_SECTION,
+	REGISTERED_SPECS,
+	versionedTag,
+} from "./fixtures/preloaded-section";
 
-// The demo registers these versions from one PITS bundle before mounting its
-// section player, and authors the same versions, so it never exercises drift.
+// The fixture authors the registered versions, so it never exercises drift.
 // Each test mounts a fresh section player over the demo's registrations with
 // authored versions that differ from them.
-const DEMO_PATH = "/preloaded-fixed-elements?mode=candidate&layout=splitpane";
-const REGISTERED_SPECS = {
-	"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3",
-	"@pie-element/categorize": "@pie-element/categorize@11.3.2",
-	"@pie-element/passage": "@pie-element/passage@5.3.3",
-};
-const MC_PROMPT = "Which field fixes the multiple-choice package version";
+const REGISTERED_MC_TAG = versionedTag(MC_TAG, MC_SPEC);
+const OTHER_MC_TAG = "multiple-choice";
 const LOADING_SECTION = "Loading section content";
 
 type Recorded = {
@@ -35,18 +39,15 @@ async function mountFreshSplitpane(
 		missingItem?: boolean;
 	},
 ): Promise<void> {
-	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
+	await openPreloadedBase(page);
 
 	await page.evaluate(
-		({ registeredSpecs, elementOverrides, authoredTags, missingItem }) => {
-			const existing = document.querySelector("pie-section-player-splitpane") as
-				| (HTMLElement & { section?: unknown })
-				| null;
+		({ registeredSpecs, elementOverrides, authoredTags, missingItem, fixture }) => {
+			const existing = document.querySelector("pie-section-player-splitpane");
 			if (!existing?.parentElement) {
 				throw new Error("demo section player not found");
 			}
-			const section = JSON.parse(JSON.stringify(existing.section)) as {
+			const section = fixture as {
 				assessmentItemRefs: Array<{
 					identifier: string;
 					item: {
@@ -139,6 +140,7 @@ async function mountFreshSplitpane(
 			elementOverrides: options.elementOverrides,
 			authoredTags: options.authoredTags ?? {},
 			missingItem: options.missingItem === true,
+			fixture: PRELOADED_SECTION,
 		},
 	);
 }
@@ -153,8 +155,8 @@ test.describe("section player preloaded version drift", () => {
 	}) => {
 		await mountFreshSplitpane(page, {
 			elementOverrides: {
-				"preloaded-fixed-multiple-choice-ref": {
-					"multiple-choice": "@pie-element/multiple-choice@11.4.2",
+				[MC_REF]: {
+					[MC_TAG]: "@pie-element/multiple-choice@11.4.2",
 				},
 			},
 		});
@@ -162,9 +164,7 @@ test.describe("section player preloaded version drift", () => {
 		const fresh = page.locator("pie-section-player-splitpane");
 		await expect(fresh.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
 		await expect(fresh.getByText(LOADING_SECTION)).toHaveCount(0);
-		await expect(fresh.locator("multiple-choice--version-11-4-3")).toHaveCount(
-			1,
-		);
+		await expect(fresh.locator(REGISTERED_MC_TAG)).toHaveCount(1);
 		await expect
 			.poll(async () =>
 				(await recordedEvents(page)).map((event) => event.stage ?? event.type),
@@ -178,7 +178,7 @@ test.describe("section player preloaded version drift", () => {
 		expect(events.map((event) => event.stage)).toContain("interactive");
 		// Alignment rewrites the runtime copy only.
 		const authoredSpec = await fresh.evaluate(
-			(element) =>
+			(element, { ref, tag }) =>
 				(
 					element as HTMLElement & {
 						section?: {
@@ -189,8 +189,9 @@ test.describe("section player preloaded version drift", () => {
 						};
 					}
 				).section?.assessmentItemRefs.find(
-					(ref) => ref.identifier === "preloaded-fixed-multiple-choice-ref",
-				)?.item.config.elements["multiple-choice"],
+					(candidate) => candidate.identifier === ref,
+				)?.item.config.elements[tag],
+			{ ref: MC_REF, tag: MC_TAG },
 		);
 		expect(authoredSpec).toBe("@pie-element/multiple-choice@11.4.2");
 	});
@@ -198,22 +199,16 @@ test.describe("section player preloaded version drift", () => {
 	test("renders an item authoring another base tag than the registered one", async ({
 		page,
 	}) => {
-		// The demo registers multiple-choice under its own `multiple-choice` tag.
 		await mountFreshSplitpane(page, {
 			elementOverrides: {},
-			authoredTags: {
-				"preloaded-fixed-multiple-choice-ref": {
-					"multiple-choice": "pie-element-multiple-choice",
-				},
-			},
+			authoredTags: { [MC_REF]: { [MC_TAG]: OTHER_MC_TAG } },
 		});
 
 		const fresh = page.locator("pie-section-player-splitpane");
 		await expect(fresh.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
-		await expect(
-			fresh.locator("pie-element-multiple-choice--version-11-4-3"),
-		).toHaveCount(1);
-		await expect(fresh.locator("multiple-choice--version-11-4-3")).toHaveCount(0);
+		const otherTag = versionedTag(OTHER_MC_TAG, MC_SPEC);
+		await expect(fresh.locator(otherTag)).toHaveCount(1);
+		await expect(fresh.locator(REGISTERED_MC_TAG)).toHaveCount(0);
 		await expect
 			.poll(async () =>
 				(await recordedEvents(page)).map((event) => event.stage ?? event.type),
@@ -227,19 +222,20 @@ test.describe("section player preloaded version drift", () => {
 		expect(events.map((event) => event.stage)).toContain("interactive");
 		// The section's items are not hosted, so the registration's controller
 		// comes along with the tag.
-		const controllers = await page.evaluate(() => {
-			const registry = (
-				window as unknown as {
-					PIE_REGISTRY: Record<string, { controller?: unknown }>;
-				}
-			).PIE_REGISTRY;
-			return {
-				registered: !!registry["multiple-choice--version-11-4-3"]?.controller,
-				same:
-					registry["pie-element-multiple-choice--version-11-4-3"]?.controller ===
-					registry["multiple-choice--version-11-4-3"]?.controller,
-			};
-		});
+		const controllers = await page.evaluate(
+			({ registeredTag, otherTag }) => {
+				const registry = (
+					window as unknown as {
+						PIE_REGISTRY: Record<string, { controller?: unknown }>;
+					}
+				).PIE_REGISTRY;
+				return {
+					registered: !!registry[registeredTag]?.controller,
+					same: registry[otherTag]?.controller === registry[registeredTag]?.controller,
+				};
+			},
+			{ registeredTag: REGISTERED_MC_TAG, otherTag },
+		);
 		expect(controllers).toEqual({ registered: true, same: true });
 	});
 

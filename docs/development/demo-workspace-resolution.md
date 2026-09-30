@@ -12,7 +12,7 @@ Publishable `@pie-players/*` packages expose runtime code through `package.json`
 [`apps/section-demos/vite.config.ts`](../../apps/section-demos/vite.config.ts) maps many workspace imports to **concrete files under each package’s `dist/`** (for example tool packages). That matches **npm + Vite resolve** behavior for those entrypoints: the dev server uses the same bundled artifacts consumers get.
 
 - **Why:** Reduces “works in monorepo dev, breaks from the registry” drift for those modules.
-- **Local pie-elements-ng:** **`bun run dev:section:cdn`** serves a built pie-elements-ng checkout (`PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`) from the dev server. `?player=esm` loads its elements from there, and the preloaded demo's `@pie-element/*` imports resolve to its builds, so the demo registers the checkout's version.
+- **Local pie-elements-ng:** **`bun run dev:section:cdn`** serves a built pie-elements-ng checkout (`PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`) from the dev server. `?player=esm` loads its elements from there, and under `?player=preloaded` the `@pie-element/*` imports resolve to its builds, so the pages register the checkout's version.
 
 Packages **not** listed in that alias block still resolve through normal **`workspace:*` → `exports` → `dist/`**, so they also require an up-to-date build.
 

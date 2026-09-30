@@ -26,6 +26,9 @@
 		<p class="text-xl text-base-content/70 max-w-2xl mx-auto">
 			Progressive client-integration recipes from CE defaults to JS API persistence
 		</p>
+		<p class="text-sm">
+			<a class="link link-primary" href="/hover-contrast">Select-text hover contrast across every scheme</a>
+		</p>
 	</header>
 
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">

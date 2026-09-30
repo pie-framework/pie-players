@@ -124,7 +124,7 @@
 		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
-		"svelte": "^5.57.0",
+		"svelte": "^5.57.1",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",

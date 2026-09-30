@@ -124,7 +124,11 @@ test.describe("host section navigation mid-debounce", () => {
 		// WebKit tabs only to text fields unless Option is held.
 		const tab = browserName === "webkit" ? "Alt+Tab" : "Tab";
 		let focused = "";
-		for (let presses = 0; presses < 40 && focused !== "host-next-section"; presses += 1) {
+		for (
+			let presses = 0;
+			presses < 40 && focused !== "host-next-section";
+			presses += 1
+		) {
 			await page.keyboard.press(tab);
 			focused = await page.evaluate(() => document.activeElement?.id ?? "");
 		}
@@ -134,4 +138,45 @@ test.describe("host section navigation mid-debounce", () => {
 		await page.keyboard.press("Enter");
 		assertHostOrdering(await readHostLog(page), typedAt);
 	});
+});
+
+// A swap on the live element has to show the new section's items and none of
+// the previous section's, in both directions and in either order of the two
+// inputs. `section-id` then `section` froze the section player under Svelte
+// 5.57.0: the new section reached `<pie-section-player-base>` and never its
+// toolkit. Svelte 5.57.1 fixes it with
+// https://github.com/sveltejs/svelte/pull/18508. `section` then `section-id` is
+// the order an Angular host's `[section]` and `[attr.section-id]` bindings
+// produce.
+test.describe("host section navigation renders the new section", () => {
+	const FIRST_PROMPT = "Describe the first thing you noticed.";
+	const SECOND_PROMPT = "Describe the second thing you noticed.";
+
+	const cases = ["iife", "esm"].flatMap((player) =>
+		["section-id-first", "section-first"].map((order) => ({ player, order })),
+	);
+
+	for (const { player, order } of cases) {
+		test(`${player}, ${order}: next, then previous`, async ({ page }) => {
+			await page.goto(`${DEMO}?player=${player}&order=${order}`, {
+				waitUntil: "domcontentloaded",
+			});
+			const sectionPlayer = page.locator("pie-section-player-splitpane");
+			await expect(sectionPlayer.getByText(FIRST_PROMPT)).toBeVisible({
+				timeout: 45_000,
+			});
+
+			await page.locator("#host-next-section").click();
+			await expect(sectionPlayer.getByText(SECOND_PROMPT)).toBeVisible({
+				timeout: 15_000,
+			});
+			await expect(sectionPlayer.getByText(FIRST_PROMPT)).toHaveCount(0);
+
+			await page.locator("#host-previous-section").click();
+			await expect(sectionPlayer.getByText(FIRST_PROMPT)).toBeVisible({
+				timeout: 15_000,
+			});
+			await expect(sectionPlayer.getByText(SECOND_PROMPT)).toHaveCount(0);
+		});
+	}
 });

@@ -34,10 +34,15 @@
 		subscribe?: (listener: (event: Record<string, unknown>) => void) => () => void;
 	};
 	type SectionPlayerElement = HTMLElement & { section?: unknown };
+	const SWAP_ORDER_OPTIONS = ['section-id-first', 'section-first'] as const;
 
 	let { data }: { data: PageData } = $props();
 
 	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, 'iife');
+	// Which of `section-id` and `section` the host sets first. Angular applies
+	// property bindings before attribute bindings, so `[section]` with
+	// `[attr.section-id]` lands as `section` first.
+	const swapOrder = getUrlEnumParam('order', SWAP_ORDER_OPTIONS, 'section-id-first');
 	const versions = strategyElementVersions(playerType);
 	// The page swaps sections itself, so it reads the route data once.
 	const sections = untrack(() =>
@@ -127,8 +132,13 @@
 		record('host:current-item', { itemId: currentItemId });
 		sectionIndex = target;
 		record('host:section-input', { sectionId: sectionIdAt(target) });
-		playerElement.setAttribute('section-id', sectionIdAt(target));
-		playerElement.section = sections[target];
+		if (swapOrder === 'section-first') {
+			playerElement.section = sections[target];
+			playerElement.setAttribute('section-id', sectionIdAt(target));
+		} else {
+			playerElement.setAttribute('section-id', sectionIdAt(target));
+			playerElement.section = sections[target];
+		}
 		const previous = coordinator.getSectionController({ sectionId: previousSectionId });
 		record('host:persist', { sectionId: previousSectionId });
 		void previous?.persist?.();

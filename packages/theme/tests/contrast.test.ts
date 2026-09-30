@@ -6,6 +6,7 @@ import {
 	UNMEASURED_HUE_WEIGHT,
 	contrastRatio,
 	legibleColorAgainst,
+	legibleStateFillAgainst,
 	mixTowards,
 	relativeLuminance,
 } from "../src/contrast.js";
@@ -214,3 +215,88 @@ describe("legibleColorAgainst", () => {
 		).toBe("#4ade80");
 	});
 });
+
+describe("legibleStateFillAgainst", () => {
+	test("leaves a fill that already clears 3:1 against the page untouched", () => {
+		expect(
+			legibleStateFillAgainst({
+				fill: "#81848f",
+				text: "#000000",
+				background: "#ffffff",
+				measure,
+			}),
+		).toBe("#81848f");
+	});
+
+	test("moves a faint fill toward the ink until it clears 3:1, text intact", () => {
+		const fill = legibleStateFillAgainst({
+			fill: "#f2f2f2",
+			text: "#1f1f1f",
+			background: "#ffffff",
+			measure,
+		});
+		expect(ratioAgainst(fill, "#ffffff")).toBeGreaterThanOrEqual(3);
+		expect(ratioAgainst("#1f1f1f", measuredHex(fill))).toBeGreaterThanOrEqual(
+			4.5,
+		);
+		// The first 1% step that clears it, not a coarser one.
+		const weight = hueWeightOf(fill);
+		expect(
+			ratioAgainst(mixTowards("#f2f2f2", "#1f1f1f", weight + 1), "#ffffff"),
+		).toBeLessThan(3);
+	});
+
+	test("stops at the text floor when the page leaves no room for both", () => {
+		// 5.45:1 of ink on the page: 3:1 on one side leaves 1.8:1 on the other.
+		const fill = legibleStateFillAgainst({
+			fill: "#f9e4f0",
+			text: "#c5005a",
+			background: "#fcf2f8",
+			measure,
+		});
+		expect(ratioAgainst(fill, "#fcf2f8")).toBeLessThan(3);
+		expect(ratioAgainst("#c5005a", measuredHex(fill))).toBeGreaterThanOrEqual(
+			4.5,
+		);
+		const weight = hueWeightOf(fill);
+		expect(
+			ratioAgainst(
+				"#c5005a",
+				measuredHex(mixTowards("#f9e4f0", "#c5005a", weight - 1)),
+			),
+		).toBeLessThan(4.5);
+	});
+
+	test("returns the fill verbatim when it cannot be measured", () => {
+		expect(
+			legibleStateFillAgainst({
+				fill: "#f2f2f2",
+				text: "#1f1f1f",
+				background: "#ffffff",
+				measure: null,
+			}),
+		).toBe("#f2f2f2");
+	});
+
+	test("does not trade away text that is already under the floor", () => {
+		expect(
+			legibleStateFillAgainst({
+				// Black on #555555 is 2.82:1 before any correction.
+				fill: "#555555",
+				text: "#000000",
+				background: "#666666",
+				measure,
+			}),
+		).toBe("#555555");
+	});
+});
+
+function measuredHex(value: string | undefined): string {
+	const color = measure(value ?? "");
+	if (!color) {
+		throw new Error(`unmeasurable: ${value}`);
+	}
+	return `#${[color.r, color.g, color.b]
+		.map((channel) => channel.toString(16).padStart(2, "0"))
+		.join("")}`;
+}

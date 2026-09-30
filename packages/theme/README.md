@@ -212,17 +212,21 @@ its background sits from white:
 
 | Background | Tokens | Why |
 | --- | --- | --- |
-| white | 2 | ink and page; every base colour already holds |
-| white, with a mid-tone ink | 5 | the ink misses the tinted recessed and raised surfaces |
-| `#000000` | 19 | inverted page; borrow the dark base theme's inks and control family |
-| mid-tone (blue, red, green, dark gray) | 26 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
+| white | 3 | ink, page, and the select-text hover fill (`--pie-blue-grey-300`), which the light base chose for black ink |
+| white, with a mid-tone ink | 6 | the ink misses the tinted recessed and raised surfaces |
+| `#000000` | 20 | inverted page; borrow the dark base theme's inks and control family |
+| mid-tone (blue, red, green, dark gray) | 27 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
 
 ```ts
 registerPieColorSchemes([
   {
     id: "sc-blue-on-white",
     name: "Blue on White",
-    variables: { "--pie-text": "#0028a1", "--pie-background": "#ffffff" },
+    variables: {
+      "--pie-text": "#0028a1",
+      "--pie-background": "#ffffff",
+      "--pie-blue-grey-300": "#75a2ff",
+    },
   },
 ]);
 ```

@@ -9,6 +9,7 @@ import {
 	listBuiltInColorSchemeDefinitions,
 } from "../src/theme-definitions.js";
 import { renderPieThemeCss } from "../src/theme-css.js";
+import { contrastRatio } from "../src/contrast.js";
 
 describe("canonical theme definitions", () => {
 	test("passes its build-time invariant check", () => {
@@ -72,6 +73,47 @@ describe("canonical theme definitions", () => {
 		}
 		for (const scheme of listBuiltInColorSchemeDefinitions()) {
 			expect(diagnoseThemeContrast(scheme.variables, scheme.id)).toEqual([]);
+		}
+	});
+
+	test("the selectable hover fill clears 3:1 against the page wherever the text allows", () => {
+		/*
+		 * A hover fill that keeps the page's ink has to clear 4.5:1 under the text
+		 * and 3:1 against the page, which multiply to 13.5:1 of text on the page.
+		 * Below that a palette cannot have both, so the fill must spend the text
+		 * pair down to the floor instead: the closest to 3:1 it can get.
+		 */
+		const hex = (value: string) => {
+			const normalized = value === "black" ? "#000000" : value;
+			const channel = (offset: number) =>
+				Number.parseInt(normalized.slice(offset, offset + 2), 16);
+			return { r: channel(1), g: channel(3), b: channel(5), a: 1 };
+		};
+		const palettes = [
+			["light-base", getBaseThemeVariables("light")],
+			["dark-base", getBaseThemeVariables("dark")],
+			...listBuiltInColorSchemeDefinitions().map(
+				(scheme) => [scheme.id, scheme.variables] as const,
+			),
+		] as const;
+		for (const [id, variables] of palettes) {
+			const text = hex(variables["--pie-text"] as string);
+			const page = hex(variables["--pie-background"] as string);
+			const fill = hex(variables["--pie-blue-grey-300"] as string);
+			const textOnPage = contrastRatio(text, page);
+			const fillOnPage = contrastRatio(fill, page);
+			const textOnFill = contrastRatio(text, fill);
+			if (textOnPage >= 13.5) {
+				expect({ id, fillOnPage: fillOnPage >= 3 }).toEqual({
+					id,
+					fillOnPage: true,
+				});
+			} else {
+				expect({ id, textOnFill: textOnFill < 4.75 }).toEqual({
+					id,
+					textOnFill: true,
+				});
+			}
 		}
 	});
 

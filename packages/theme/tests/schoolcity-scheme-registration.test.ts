@@ -57,6 +57,10 @@ const SC = {
 const BLUE_ON_WHITE = {
 	"--pie-text": SC.blue,
 	"--pie-background": SC.white,
+	// The light base's hover fill is chosen for black ink; under blue it is
+	// 1.27:1. A tint of the ink keeps it 4.5:1 and as far from the page as that
+	// allows (2.51:1 -- blue on white is 13.1:1, under the 13.5:1 both need).
+	"--pie-blue-grey-300": "#75a2ff",
 };
 
 /**
@@ -72,6 +76,9 @@ const GREEN_ON_WHITE = {
 	"--pie-background-dark": SC.white,
 	"--pie-surface": SC.white,
 	"--pie-incorrect-secondary": SC.white,
+	// At 4.73:1 the ink leaves the hover fill almost no room: 4.5:1 under the
+	// text holds only 1.03:1 from the page.
+	"--pie-blue-grey-300": "#f0fffb",
 };
 
 /**
@@ -100,6 +107,7 @@ const YELLOW_ON_BLACK = {
 	"--pie-incorrect": "#ff3333",
 	"--pie-missing": "#ff6666",
 	"--pie-annotation-underline": "#9c89ec",
+	"--pie-blue-grey-300": "#5f5f5f",
 };
 
 /**
@@ -130,6 +138,7 @@ const WHITE_ON_BLUE = {
 	"--pie-focus-unchecked-border": SC.white,
 	"--pie-button-border": "#dfe4ff",
 	"--pie-button-hover-border": "#dfe4ff",
+	"--pie-blue-grey-300": "#386ee9",
 };
 
 describe("SchoolCity's schemes that PIE already ships", () => {
@@ -151,10 +160,10 @@ describe("SchoolCity's schemes that PIE already ships", () => {
 
 describe("registering the rest as host palettes", () => {
 	test.each([
-		["blue-on-white", BLUE_ON_WHITE, 2],
-		["green-on-white", GREEN_ON_WHITE, 5],
-		["yellow-on-black", YELLOW_ON_BLACK, 19],
-		["white-on-blue", WHITE_ON_BLUE, 26],
+		["blue-on-white", BLUE_ON_WHITE, 3],
+		["green-on-white", GREEN_ON_WHITE, 6],
+		["yellow-on-black", YELLOW_ON_BLACK, 20],
+		["white-on-blue", WHITE_ON_BLUE, 27],
 	] as const)(
 		"%s validates with no diagnostics at all, from %#",
 		(id, variables, tokenCount) => {

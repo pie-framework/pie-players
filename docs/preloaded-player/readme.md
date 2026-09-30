@@ -244,10 +244,9 @@ section-player consumer today. Getting elements registered before setting
 `playerType: "preloaded"` is left to the host, exactly as it is for a bare
 `<pie-item-player>`: import the package, or register the elements with
 `registerPreloadedElements`, before mounting the section player. The
-`preloaded-fixed-elements` demo
-(`apps/section-demos/src/routes/(demos)/preloaded-fixed-elements/+page.svelte`)
-shows the pattern, though it fetches the PITS bundle itself rather than
-consuming the published package.
+`preloaded-npm-elements` demo
+(`apps/section-demos/src/routes/(demos)/preloaded-npm-elements/+page.svelte`)
+shows the pattern with installed pie-elements-ng packages.
 
 ## Upgrading from `pie-fixed-player`
 

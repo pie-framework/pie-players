@@ -8,7 +8,6 @@ const DEMO_PAGES: ReadonlyArray<{ path: string; store: "local" | "db" }> = [
 	// Rendered through `SectionDemoRuntimePage`.
 	{ path: "/three-questions", store: "local" },
 	{ path: "/heading-accessibility", store: "local" },
-	{ path: "/preloaded-fixed-elements", store: "local" },
 	{ path: "/question-passage", store: "local" },
 	{ path: "/quiz-engine-nds-icon", store: "local" },
 	{ path: "/resource-observability", store: "local" },

@@ -194,13 +194,13 @@
 				<div class="text-base-content/60">Loading item configuration...</div>
 			{/if}
 			{#if selectedPlayerType === 'preloaded' && !preloadedReady}
-				<div class="text-base-content/60 mt-2">Preloading item bundle...</div>
+				<div class="text-base-content/60 mt-2">Preloading item elements...</div>
 			{/if}
 			{#if selectedPlayerType === 'esm' && esmLoadPending}
 				<div class="text-base-content/60 mt-2">Loading item player using ESM strategy...</div>
 			{/if}
 			{#if preloadedError}
-				<div class="text-error mt-2">Preloaded bundle failed: {preloadedError}</div>
+				<div class="text-error mt-2">Preloading elements failed: {preloadedError}</div>
 			{/if}
 		</div>
 	</div>

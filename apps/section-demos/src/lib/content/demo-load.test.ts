@@ -55,7 +55,7 @@ function loadedSpecs(player: string): Array<[string, string]> {
 }
 
 describe("loadDemoRouteDataById", () => {
-	test("loads every pie-elements-ng package at its pinned version under esm", () => {
+	test("loads every pie-elements-ng package at its installed version under esm", () => {
 		const specs = loadedSpecs("esm");
 		const unpinned = specs.filter(([, spec]) => {
 			const { name, version } = parsePackageName(spec);

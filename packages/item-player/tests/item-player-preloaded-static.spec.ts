@@ -136,7 +136,7 @@ test.describe("item-player strategy regressions", () => {
 	test("ignores stale iife failures after newer iife config succeeds", async ({
 		page,
 	}) => {
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
@@ -233,15 +233,19 @@ test.describe("item-player strategy regressions", () => {
 		expect(staleState.renderedPrompt).toBe("fresh");
 	});
 
-	test("renders and updates session using preloaded bundles", async ({
+	test("renders and updates session using preloaded elements", async ({
 		page,
+		baseURL,
 	}) => {
-		const bundleRequests: string[] = [];
-		const esmRequests: string[] = [];
+		const elementRequests: string[] = [];
 		page.on("request", (request) => {
 			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
-			if (url.includes("esm.sh")) esmRequests.push(url);
+			if (
+				!url.startsWith(`${baseURL}/`) &&
+				/\/bundles\/|\/(?:npm\/)?@pie-(?:element|lib|elements-ng)\/|esm\.sh\//.test(url)
+			) {
+				elementRequests.push(url);
+			}
 		});
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
@@ -259,8 +263,7 @@ test.describe("item-player strategy regressions", () => {
 		const session = await readSessionState(page);
 		const entry = session.data?.find((item) => item.id === SESSION_ENTRY_ID);
 		expect(entry?.value?.[0]).toBeTruthy();
-		expect(bundleRequests.length).toBeGreaterThan(0);
-		expect(esmRequests.length).toBe(0);
+		expect(elementRequests).toEqual([]);
 	});
 
 	test("preloaded emits media-retry-ready after first audio load failure", async ({
@@ -269,7 +272,7 @@ test.describe("item-player strategy regressions", () => {
 		await assertMediaRetryBridge(page, PRELOADED_DELIVERY_PATH);
 	});
 
-	test("preloaded rewrites stale content element versions to bundled versions", async ({
+	test("preloaded rewrites stale content element versions to registered versions", async ({
 		page,
 	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
@@ -277,21 +280,21 @@ test.describe("item-player strategy regressions", () => {
 			timeout: 20_000,
 		});
 
-		const bundledVersionTag = await page.evaluate(() => {
+		const registeredVersionTag = await page.evaluate(() => {
 			const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS as
 				| Record<string, string>
 				| undefined;
-			const bundledSpec = preloadedElements?.["@pie-element/multiple-choice"];
-			if (!bundledSpec) {
+			const registeredSpec = preloadedElements?.["@pie-element/multiple-choice"];
+			if (!registeredSpec) {
 				throw new Error(
 					"Expected preloaded mapping for @pie-element/multiple-choice",
 				);
 			}
-			const match = bundledSpec.match(/@(\d+\.\d+\.\d+)$/);
+			const match = registeredSpec.match(/@(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?)$/);
 			if (!match?.[1]) {
-				throw new Error(`Unexpected preloaded mapping format: ${bundledSpec}`);
+				throw new Error(`Unexpected preloaded mapping format: ${registeredSpec}`);
 			}
-			return `multiple-choice--version-${match[1].replaceAll(".", "-")}`;
+			return `multiple-choice--version-${match[1].replace(/[.+]/g, "-")}`;
 		});
 		const staleTag = "multiple-choice--version-0-0-1";
 		const authoredConfig = {
@@ -328,13 +331,13 @@ test.describe("item-player strategy regressions", () => {
 		}, authoredConfig);
 
 		const versionRewriteState = await page.evaluate(
-			({ expectedBundledTag, staleTag }) => {
+			({ expectedRegisteredTag, staleTag }) => {
 				const fixture = document.getElementById(
 					"pie-preloaded-version-normalization-fixture",
 				);
 				if (!fixture) {
 					return {
-						hasBundledVersionTag: false,
+						hasRegisteredVersionTag: false,
 						hasStaleVersionTag: false,
 						authoredConfig: null,
 						errorText: "missing-fixture",
@@ -344,17 +347,17 @@ test.describe("item-player strategy regressions", () => {
 				const errorText =
 					host?.querySelector(".pie-player-error p")?.textContent || null;
 				return {
-					hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
+					hasRegisteredVersionTag: !!fixture.querySelector(expectedRegisteredTag),
 					hasStaleVersionTag: !!fixture.querySelector(staleTag),
 					authoredConfig: (window as any).__pieAuthoredNormalizationConfig,
 					errorText,
 				};
 			},
-			{ expectedBundledTag: bundledVersionTag, staleTag },
+			{ expectedRegisteredTag: registeredVersionTag, staleTag },
 		);
 
 		expect(versionRewriteState.errorText).toBeNull();
-		expect(versionRewriteState.hasBundledVersionTag).toBe(true);
+		expect(versionRewriteState.hasRegisteredVersionTag).toBe(true);
 		expect(versionRewriteState.hasStaleVersionTag).toBe(false);
 		expect(versionRewriteState.authoredConfig).toEqual(authoredConfig);
 	});

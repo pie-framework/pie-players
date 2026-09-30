@@ -1,19 +1,18 @@
 import { expect, type Page, test } from "@playwright/test";
+import {
+	MC_PROMPT,
+	openPreloadedBase,
+	PRELOADED_SECTION,
+	REGISTERED_SPECS,
+} from "./fixtures/preloaded-section";
 
 // Each test mounts a fresh layout element over the preloaded demo's element
 // registrations and counts, per event, what the toolkit dispatched against what
 // a listener on the layout element and a bubbling listener on `document`
 // received. The demo's own player is removed first, so the fresh player's
 // toolkit is the only one on the page.
-const DEMO_PATH = "/preloaded-fixed-elements?mode=candidate&layout=splitpane";
 const HOST_COORDINATOR_DEMO_PATH =
 	"/three-questions?mode=candidate&layout=splitpane";
-const REGISTERED_SPECS = {
-	"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3",
-	"@pie-element/categorize": "@pie-element/categorize@11.3.2",
-	"@pie-element/passage": "@pie-element/passage@5.3.3",
-};
-const MC_PROMPT = "Which field fixes the multiple-choice package version";
 const LAYOUT_TAGS = [
 	"pie-section-player-splitpane",
 	"pie-section-player-vertical",
@@ -100,7 +99,7 @@ async function mountFreshLayout(
 	},
 ): Promise<void> {
 	await page.evaluate(
-		({ tag, existingTag, hostCoordinator, missingItem, observed, specs }) => {
+		({ tag, existingTag, hostCoordinator, missingItem, observed, specs, fixture }) => {
 			const existing = document.querySelector(existingTag) as
 				| (HTMLElement & {
 						section?: unknown;
@@ -137,11 +136,7 @@ async function mountFreshLayout(
 				return originalDispatch.call(this, event);
 			};
 
-			const section = hostCoordinator
-				? existing.section
-				: (JSON.parse(JSON.stringify(existing.section)) as {
-						assessmentItemRefs: unknown[];
-					});
+			const section = hostCoordinator ? existing.section : fixture;
 			if (missingItem) {
 				(section as { assessmentItemRefs: unknown[] }).assessmentItemRefs.push({
 					identifier: "delivery-missing-ref",
@@ -226,6 +221,7 @@ async function mountFreshLayout(
 			missingItem: options.missingItem === true,
 			observed: OBSERVED_EVENTS,
 			specs: REGISTERED_SPECS,
+			fixture: PRELOADED_SECTION,
 		},
 	);
 }
@@ -263,11 +259,6 @@ async function waitForCount(
 		.toBeGreaterThanOrEqual(minimum);
 }
 
-async function openPreloadedDemo(page: Page): Promise<void> {
-	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-	await expect(page.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
-}
-
 /** Selects the first choice of the fresh player's multiple-choice item. */
 async function answerFirstChoice(page: Page, tag: string): Promise<void> {
 	const fresh = page.locator(tag);
@@ -293,7 +284,7 @@ function reportProbeError(
 test.describe("section player event delivery", () => {
 	for (const tag of LAYOUT_TAGS) {
 		test(`delivers each toolkit event to ${tag} once`, async ({ page }) => {
-			await openPreloadedDemo(page);
+			await openPreloadedBase(page);
 			await mountFreshLayout(page, { tag });
 			await waitForCount(page, "host", "pie-loading-complete");
 
@@ -436,7 +427,7 @@ test.describe("section player event delivery", () => {
 		page,
 	}) => {
 		const tag = "pie-section-player-splitpane";
-		await openPreloadedDemo(page);
+		await openPreloadedBase(page);
 		await mountFreshLayout(page, { tag });
 		await waitForCount(page, "host", "pie-loading-complete");
 		await answerFirstChoice(page, tag);
@@ -460,7 +451,7 @@ test.describe("section player event delivery", () => {
 
 	test("answering does not re-register the item shells", async ({ page }) => {
 		const tag = "pie-section-player-splitpane";
-		await openPreloadedDemo(page);
+		await openPreloadedBase(page);
 		await mountFreshLayout(page, { tag });
 		await waitForCount(page, "host", "pie-loading-complete");
 		await page.waitForTimeout(1_000);
@@ -487,7 +478,7 @@ test.describe("section player event delivery", () => {
 
 	test("reports a rejected element warmup once", async ({ page }) => {
 		const tag = "pie-section-player-splitpane";
-		await openPreloadedDemo(page);
+		await openPreloadedBase(page);
 		await mountFreshLayout(page, { tag, missingItem: true });
 		await expect
 			.poll(async () => (await deliveryLog(page)).onFrameworkError, {
@@ -523,11 +514,9 @@ test.describe("section player event delivery", () => {
 	test("forwards the same answer from two players rendering the same item", async ({
 		page,
 	}) => {
-		await openPreloadedDemo(page);
-		await page.evaluate((specs) => {
-			const existing = document.querySelector("pie-section-player-splitpane") as
-				| (HTMLElement & { section?: unknown })
-				| null;
+		await openPreloadedBase(page);
+		await page.evaluate(({ specs, fixture }) => {
+			const existing = document.querySelector("pie-section-player-splitpane");
 			if (!existing?.parentElement) {
 				throw new Error("demo section player not found");
 			}
@@ -535,7 +524,7 @@ test.describe("section player event delivery", () => {
 				window as unknown as { PIE_PRELOADED_ELEMENTS?: Record<string, string> }
 			).PIE_PRELOADED_ELEMENTS = { ...specs };
 			const parent = existing.parentElement;
-			const section = JSON.stringify(existing.section);
+			const section = JSON.stringify(fixture);
 			existing.remove();
 			const answers: Record<string, number> = { first: 0, second: 0 };
 			(window as unknown as { __pieTwinAnswers?: Counts }).__pieTwinAnswers =
@@ -562,7 +551,7 @@ test.describe("section player event delivery", () => {
 				});
 				parent.appendChild(player);
 			}
-		}, REGISTERED_SPECS);
+		}, { specs: REGISTERED_SPECS, fixture: PRELOADED_SECTION });
 		const first = page.locator("#delivery-first");
 		const second = page.locator("#delivery-second");
 		await expect(first.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });

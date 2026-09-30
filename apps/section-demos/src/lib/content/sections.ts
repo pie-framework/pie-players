@@ -11,7 +11,6 @@ import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
 import { demoCortexCalculatorSection } from "./demo-cortex-calculators";
 import { demoCalculatorPnpSection } from "./demo-calculator-pnp";
 import { demoDesmosCalculatorSection } from "./demo-desmos-calculators";
-import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
@@ -495,24 +494,6 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Useful for exercising layout and toolbar behavior when more than one passage is present.",
 		],
 		section: demoTwoPassagesSection,
-	},
-	"preloaded-fixed-elements": {
-		id: "preloaded-fixed-elements",
-		name: "Preloaded Fixed Element Versions",
-		description:
-			"Section with a PIE passage, multiple-choice item, and categorize item loaded through one fixed preloaded bundle",
-		integrationLevel: 3,
-		integrationTheme: "Preloaded fixed versions",
-		focus:
-			"Shows how a host can preload the exact PIE element bundle set a section needs and render the section-player with fixed item-player versions instead of `@latest`.",
-		whatMakesItTick: [
-			"Pins `@pie-element/passage@5.3.3`, `@pie-element/multiple-choice@11.4.3`, and `@pie-element/categorize@11.3.2` directly in `config.elements`.",
-			'Defaults the demo route to `player-type="preloaded"`, so the host loads one bundle before rendering the section-player.',
-			"Keeps authored markup IDs and logical tag names stable; the player derives runtime versioned custom-element tags from the pinned package specs.",
-			"Disables section-demos element-version URL overrides so the pinned package specs remain the demo's source of truth.",
-		],
-		allowElementVersionOverrides: false,
-		section: demo9Section,
 	},
 	"preloaded-npm-elements": {
 		id: "preloaded-npm-elements",

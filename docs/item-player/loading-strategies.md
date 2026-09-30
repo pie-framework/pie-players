@@ -6,7 +6,7 @@
 | -------- | ------- | ------ | -------- |
 | `iife` | IIFE backend | Bundle host (script injection) | Production deployments using PIE bundle infrastructure |
 | `esm` | ESM backend | ESM CDN (URL or import-map resolution) | Modern ESM-compatible element packages |
-| `preloaded` | _none_ (uses `assertRegistered`) | Host-preloaded bundles | Section-level preloading, static builds, offline use |
+| `preloaded` | _none_ (uses `assertRegistered`) | Elements the host registers | Section-level preloading, static builds, offline use |
 
 ## Standalone usage
 

@@ -120,8 +120,8 @@
 		return `/demo/${data.demoId}/${view}?${$page.url.searchParams}`;
 	}
 
-	function coerceLoaderStrategy(value: string | null): 'iife' | 'esm' {
-		return value === 'esm' ? 'esm' : 'iife';
+	function coerceLoaderStrategy(value: string | null): 'iife' | 'esm' | 'preloaded' {
+		return value === 'esm' || value === 'preloaded' ? value : 'iife';
 	}
 
 	const loaderStrategy = $derived(
@@ -218,7 +218,7 @@
 		await goto(targetUrl, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
-	async function updateLoaderStrategy(nextStrategy: 'iife' | 'esm') {
+	async function updateLoaderStrategy(nextStrategy: 'iife' | 'esm' | 'preloaded') {
 		if (loaderStrategy === nextStrategy) return;
 		const url = new URL($page.url);
 		const nextParams = new URLSearchParams(url.searchParams);

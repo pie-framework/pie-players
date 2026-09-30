@@ -10,6 +10,7 @@
 
 import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
+import { MC_ELEMENT_ID, MC_PROMPT, MC_REF } from "./fixtures/preloaded-section";
 
 const LAYOUT = "pie-section-player-splitpane";
 // The version section-demos installs, which its preloaded demo registers.
@@ -18,7 +19,6 @@ const { version: BLANK_VERSION } = createRequire(
 )("@pie-element/mc-populated-blank/package.json") as { version: string };
 const BLANK_TAG = `mc-populated-blank--version-${BLANK_VERSION.replace(/[.+]/g, "-")}`;
 const BLANK_SPEC = `@pie-element/mc-populated-blank@${BLANK_VERSION}`;
-const MC_PROMPT = "Which field fixes the multiple-choice package version";
 
 type Entry = {
 	channel: "host" | "controller";
@@ -91,6 +91,41 @@ const TWO_BLANKS_SECTION = {
 	],
 };
 
+// One multiple-choice item at a release PITS bundles.
+const IIFE_SECTION = {
+	identifier: "cardinality-iife-section",
+	title: "IIFE multiple choice",
+	keepTogether: true,
+	assessmentItemRefs: [
+		{
+			identifier: MC_REF,
+			required: true,
+			item: {
+				id: "cardinality-iife-mc",
+				name: "Multiple choice",
+				baseId: "cardinality-iife-mc",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: `<multiple-choice id="${MC_ELEMENT_ID}"></multiple-choice>`,
+					elements: { "multiple-choice": "@pie-element/multiple-choice@11.4.3" },
+					models: [
+						{
+							id: MC_ELEMENT_ID,
+							element: "multiple-choice",
+							prompt: MC_PROMPT,
+							choiceMode: "radio",
+							choices: [
+								{ value: "a", label: "A", correct: true },
+								{ value: "b", label: "B", correct: false },
+							],
+						},
+					],
+				},
+			},
+		},
+	],
+};
+
 /**
  * Installs the recorders, then replaces the demo's player with a fresh one
  * rendering `section`, or a copy of the demo's section.
@@ -98,9 +133,10 @@ const TWO_BLANKS_SECTION = {
 async function mountRecordingLayout(
 	page: Page,
 	section?: unknown,
+	playerType: "preloaded" | "iife" = "preloaded",
 ): Promise<void> {
 	await page.evaluate(
-		({ layout, section }) => {
+		({ layout, section, playerType }) => {
 			const recording: Recording = { entries: [], writeBacks: 0, lastAt: 0 };
 			window.__pieCardinality = recording;
 			const record = (entry: Entry) => {
@@ -193,13 +229,13 @@ async function mountRecordingLayout(
 				});
 			});
 			fresh.runtime = {
-				playerType: "preloaded",
+				playerType,
 				env: { mode: "gather", role: "student" },
 			};
 			fresh.section = rendered;
 			parent.appendChild(fresh);
 		},
-		{ layout: LAYOUT, section: section ?? null },
+		{ layout: LAYOUT, section: section ?? null, playerType },
 	);
 }
 
@@ -335,18 +371,19 @@ test.describe("section player response cardinality", () => {
 	test("an element from an IIFE bundle: it loads once, and one response reaches each channel once", async ({
 		page,
 	}) => {
-		await page.goto(
-			"/preloaded-fixed-elements?mode=candidate&layout=splitpane",
-			{ waitUntil: "networkidle" },
-		);
-		await expect(page.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
-		await mountRecordingLayout(page);
+		await page.goto("/single-question?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.locator(`${LAYOUT} input[type="radio"]`).first()).toBeVisible({
+			timeout: 30_000,
+		});
+		await mountRecordingLayout(page, IIFE_SECTION, "iife");
 		const fresh = page.locator(LAYOUT);
 		await expect(fresh.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
 
 		const load = await settledSince(page);
 		expect(reports(load)).toEqual([
-			{ elementId: "preloaded-mc", complete: false },
+			{ elementId: MC_ELEMENT_ID, complete: false },
 		]);
 		expect(tally(load)).toEqual({
 			"controller item-session-meta-changed": 1,
@@ -362,7 +399,7 @@ test.describe("section player response cardinality", () => {
 			"host item-session-changed": 1,
 		});
 		expect(reports(answer)).toEqual([
-			{ elementId: "preloaded-mc", complete: true },
+			{ elementId: MC_ELEMENT_ID, complete: true },
 		]);
 		expect((await recording(page)).writeBacks).toBe(0);
 	});

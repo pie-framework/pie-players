@@ -24,7 +24,7 @@ function elementSpecsUnder(query: string): Array<[string, string]> {
 }
 
 describe("demoElementOverrides", () => {
-	test("loads every pie-elements-ng package at its pinned version under esm", () => {
+	test("loads every pie-elements-ng package at its installed version under esm", () => {
 		const specs = elementSpecsUnder("player=esm");
 		const unpinned = specs.filter(([, spec]) => {
 			const { name, version } = parsePackageName(spec);

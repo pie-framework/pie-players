@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
 import categorizeMath from "../../../apps/item-demos/src/lib/content/categorize-math-equations";
 import ebsr from "../../../apps/item-demos/src/lib/content/ebsr-default";
@@ -23,6 +24,11 @@ const MC_BEFORE_RUNTIME = "@pie-element/multiple-choice@13.4.0-next.14";
 const JSDELIVR = "https://cdn.jsdelivr.net/npm";
 /** jsDelivr under another host: a CDN base URL that gets a backend of its own. */
 const MIRROR = "https://fastly.jsdelivr.net/npm";
+
+// The version demo-ui installs, which the demo pages load under esm.
+const { version: MATCH_LIST_VERSION } = createRequire(
+	new URL("../../../apps/demo-ui/package.json", import.meta.url),
+)("@pie-element/match-list/package.json") as { version: string };
 
 // match-list declares no editor runtime, so the page maps none until a test
 // mounts a player of its own.
@@ -550,7 +556,7 @@ test.describe("esm strategy — views a package does not publish", () => {
 		await expect
 			.poll(() => messages, { timeout: 30_000 })
 			.toContain(
-				"error: [pie-esm] @pie-element/match-list@7.1.2-next.18 does not publish browser ESM export ./browser/author; use IIFE/preloaded mode or publish browser ESM artifacts first",
+				`error: [pie-esm] @pie-element/match-list@${MATCH_LIST_VERSION} does not publish browser ESM export ./browser/author; use IIFE/preloaded mode or publish browser ESM artifacts first`,
 			);
 		expect(
 			messages.filter((message) =>

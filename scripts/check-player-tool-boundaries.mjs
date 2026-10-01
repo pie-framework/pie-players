@@ -91,6 +91,13 @@ function isCheckedDistPath(relPath) {
 	return DIST_IMPORT_TARGETS.some((target) => relPath.startsWith(`${target}/`));
 }
 
+// The section player's self-contained browser build bundles the packaged tools
+// so a page loads it with no import map or bundler. The npm build is the one that
+// keeps them behind `@pie-players/pie-default-tool-loaders`.
+function isBrowserBuildPath(relPath) {
+	return relPath.startsWith("packages/section-player/dist/browser/");
+}
+
 function checkSourceImports(root, failures) {
 	for (const relDir of SOURCE_IMPORT_TARGETS) {
 		const absDir = path.join(root, relDir);
@@ -140,6 +147,7 @@ function checkDistImports(root, failures) {
 			}
 			if (
 				isCheckedDistPath(relPath) &&
+				!isBrowserBuildPath(relPath) &&
 				DIST_CONCRETE_CHUNK_PATTERN.test(relPath)
 			) {
 				failures.push(

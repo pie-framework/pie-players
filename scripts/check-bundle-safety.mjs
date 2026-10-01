@@ -11,6 +11,7 @@ const EVAL_REQUIRE_PATTERN = /eval\((["'])require\1\)/;
 const TARGET_DIRS = [
 	"packages/item-player/dist",
 	"packages/section-player/dist",
+	"packages/section-player/dist/browser",
 ];
 
 /**
@@ -44,7 +45,7 @@ const MATH_SPEECH_MARKER = "speech-rule-engine did not expose toSpeech";
 const SRE_LOCALE_TABLE_KEY_PATTERN =
 	/["']([a-z]+)\/(?:characters|functions|messages|rules|si|symbols|units)\/[\w-]+\.min["']/g;
 
-function collectFiles(dir, predicate) {
+function collectFiles(dir, predicate, skipDirs = new Set()) {
 	const entries = readdirSync(dir);
 	const files = [];
 
@@ -52,7 +53,8 @@ function collectFiles(dir, predicate) {
 		const absPath = path.join(dir, entry);
 		const stats = statSync(absPath);
 		if (stats.isDirectory()) {
-			files.push(...collectFiles(absPath, predicate));
+			if (skipDirs.has(absPath)) continue;
+			files.push(...collectFiles(absPath, predicate, skipDirs));
 			continue;
 		}
 		if (predicate(entry)) {
@@ -63,8 +65,21 @@ function collectFiles(dir, predicate) {
 	return files;
 }
 
+/**
+ * A package's self-contained browser build, nested in its `dist` (see
+ * `vite.config.browser.ts` in the section player). It bundles what the npm
+ * build leaves to the host, so the npm-shaped checks, which assert that those
+ * dependencies stay external, do not apply to it: `collectJsFiles` leaves it
+ * out, and `checkBrowserBuilds` holds it to its own contract.
+ */
+const BROWSER_BUILD_DIRNAME = "browser";
+
 const collectJsFiles = (dir) =>
-	collectFiles(dir, (name) => name.endsWith(".js"));
+	collectFiles(
+		dir,
+		(name) => name.endsWith(".js"),
+		new Set([path.join(dir, BROWSER_BUILD_DIRNAME)]),
+	);
 
 /**
  * True when a bundle looks like it skipped minification.
@@ -474,6 +489,68 @@ function checkToolkitCustomElements(failures) {
  * carries math speech: the toolkit itself and each Vite bundle that inlines it.
  * Returns how many packages carry math speech.
  */
+/** Every directory whose output ships as a bundle: the npm `dist`s and the browser builds in them. */
+function listBundleRoots() {
+	return listPackageDistDirs().flatMap((dir) => {
+		const browserDir = path.join(dir, BROWSER_BUILD_DIRNAME);
+		return existsSync(browserDir) ? [dir, browserDir] : [dir];
+	});
+}
+
+function listBrowserBuildDirs() {
+	return listBundleRoots().filter(
+		(dir) => path.basename(dir) === BROWSER_BUILD_DIRNAME,
+	);
+}
+
+/**
+ * The specifiers a browser build's modules import that a bare browser cannot
+ * resolve. The build bundles every dependency, so each import is a relative path
+ * into the build itself. A specifier holding `${` lies in a template literal the
+ * code builds, such as the module source es-module-shims generates, so it is
+ * text. `allowed` holds the other specifiers that only appear inside bundled
+ * text, such as the install hint in an error message.
+ */
+export function findUnresolvableBrowserSpecifiers(content, allowed = []) {
+	const specifiers = findModuleSpecifiers(content);
+	return [...new Set([...specifiers.static, ...specifiers.dynamic])]
+		.filter((specifier) => !/^\.\.?\//.test(specifier))
+		.filter((specifier) => !specifier.includes("${"))
+		.filter((specifier) => !allowed.includes(specifier))
+		.sort();
+}
+
+function readAllowedUndeclaredRuntimeImports(packageName) {
+	const policyPath = path.join(ROOT, "scripts", "publish-policy.json");
+	if (!existsSync(policyPath)) return [];
+	const policy = JSON.parse(readFileSync(policyPath, "utf8"));
+	return policy.allowedUndeclaredRuntimeImports?.[packageName] ?? [];
+}
+
+/**
+ * Holds each browser build to its contract: a page loads it by URL with no
+ * import map and no bundler, so every import stays inside the build. Returns how
+ * many browser builds it checked.
+ */
+function checkBrowserBuilds(failures) {
+	const dirs = listBrowserBuildDirs();
+	for (const dir of dirs) {
+		const packageName = readManifest(path.dirname(path.dirname(dir))).name;
+		const allowed = readAllowedUndeclaredRuntimeImports(packageName);
+		for (const file of readDistFiles(dir)) {
+			for (const specifier of findUnresolvableBrowserSpecifiers(
+				file.content,
+				allowed,
+			)) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, which a page cannot resolve without an import map; the browser build bundles every dependency (external: [])`,
+				);
+			}
+		}
+	}
+	return dirs.length;
+}
+
 function checkSpeechRuleEngineBoundaries(failures) {
 	const toolkitDist = path.posix.dirname(TOOLKIT_CE_DIR);
 	const componentsPrefix = `${path.posix.basename(TOOLKIT_CE_DIR)}/`;
@@ -562,7 +639,7 @@ function checkNoPublishedSourcemaps(failures) {
 function checkNoSvelteDevRuntime(failures) {
 	let filesChecked = 0;
 
-	for (const dir of listPackageDistDirs()) {
+	for (const dir of listBundleRoots()) {
 		for (const filePath of collectJsFiles(dir)) {
 			filesChecked += 1;
 			if (hasSvelteDevRuntime(readFileSync(filePath, "utf8"))) {
@@ -665,7 +742,7 @@ function checkFullySpecifiedSubpaths(failures) {
 }
 
 function checkNoUnguardedCustomElementDefines(failures) {
-	for (const dir of listPackageDistDirs()) {
+	for (const dir of listBundleRoots()) {
 		for (const filePath of collectJsFiles(dir)) {
 			const content = readFileSync(filePath, "utf8");
 			for (const tag of findUnguardedCustomElementDefines(content)) {
@@ -691,7 +768,7 @@ function checkNewUrlTails(failures) {
 }
 
 function checkNoSourceMapCommentText(failures) {
-	for (const dir of listPackageDistDirs()) {
+	for (const dir of listBundleRoots()) {
 		for (const filePath of collectJsFiles(dir)) {
 			if (hasSourceMapCommentText(readFileSync(filePath, "utf8"))) {
 				failures.push(
@@ -713,8 +790,11 @@ function main() {
 	checkToolsImportHostSharedPackages(failures);
 	checkFullySpecifiedSubpaths(failures);
 	checkNoUnguardedCustomElementDefines(failures);
+	// Not the browser builds: no host bundler transforms a build a page loads by
+	// URL, and they hold the whole calculator runtime in one chunk.
 	checkNewUrlTails(failures);
 	checkNoSourceMapCommentText(failures);
+	const browserBuilds = checkBrowserBuilds(failures);
 
 	if (failures.length > 0) {
 		console.error(
@@ -727,7 +807,7 @@ function main() {
 	}
 
 	console.log(
-		`[check-bundle-safety] OK: validated ${filesChecked} JS bundle file(s) and the speech-rule-engine boundary in ${mathSpeechPackages} package(s)`,
+		`[check-bundle-safety] OK: validated ${filesChecked} JS bundle file(s) the speech-rule-engine boundary in ${mathSpeechPackages} package(s) and ${browserBuilds} browser build(s)`,
 	);
 }
 

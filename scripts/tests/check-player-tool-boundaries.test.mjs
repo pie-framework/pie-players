@@ -159,6 +159,29 @@ describe("check-player-tool-boundaries", () => {
 		);
 	});
 
+	test("allows tool chunks in the section player's browser build, not beside it", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/section-player/dist/browser/chunks/pie-tool-calculator-cortex-abcd.js",
+			"export {};\n",
+		);
+
+		expect(checkPlayerToolBoundaries(root)).toEqual([]);
+
+		write(
+			root,
+			"packages/section-player/dist/chunks/pie-tool-calculator-cortex-abcd.js",
+			"export {};\n",
+		);
+
+		expect(checkPlayerToolBoundaries(root)).toEqual([
+			expect.stringContaining(
+				"concrete tool chunk: packages/section-player/dist/chunks/pie-tool-calculator-cortex-abcd.js",
+			),
+		]);
+	});
+
 	test("rejects calculator engines in toolkit manifests, optional peers included", () => {
 		const root = createFixtureRoot();
 		write(

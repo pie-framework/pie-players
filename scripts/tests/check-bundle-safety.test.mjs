@@ -6,6 +6,7 @@ import {
 	findModuleSpecifiers,
 	findPublishedSourcemaps,
 	findUnguardedCustomElementDefines,
+	findUnresolvableBrowserSpecifiers,
 	hasInlinedSpeechRuleEngine,
 	hasSourceMapCommentText,
 	hasSvelteDevRuntime,
@@ -395,5 +396,30 @@ describe("source-map comment text", () => {
 		expect(new Function(`return ${escaped}`)()).toBe(
 			new Function(`return ${literal}`)(),
 		);
+	});
+});
+
+describe("findUnresolvableBrowserSpecifiers", () => {
+	test("accepts relative imports, static and dynamic", () => {
+		expect(
+			findUnresolvableBrowserSpecifiers(
+				'import { a } from "./chunks/a.js";import("../b.js");export * from "./c.js";',
+			),
+		).toEqual([]);
+	});
+
+	test("flags a bare package and an absolute URL", () => {
+		expect(
+			findUnresolvableBrowserSpecifiers(
+				'import "@pie-players/pie-default-tool-loaders";import("https://cdn.example/x.js");',
+			),
+		).toEqual(["@pie-players/pie-default-tool-loaders", "https://cdn.example/x.js"]);
+	});
+
+	test("skips text in a template literal and specifiers the policy allows", () => {
+		const content =
+			'const s=`import "${r.s}"`;console.error(`Load it: import "canvas.js"`);';
+		expect(findUnresolvableBrowserSpecifiers(content)).toEqual(["canvas.js"]);
+		expect(findUnresolvableBrowserSpecifiers(content, ["canvas.js"])).toEqual([]);
 	});
 });

@@ -21,6 +21,10 @@
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
+		"./browser": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/browser/pie-section-player.js"
+		},
 		"./components/section-player-splitpane-element": {
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
@@ -86,7 +90,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && vite build --config vite.config.browser.ts",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",

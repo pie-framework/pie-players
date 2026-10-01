@@ -1138,6 +1138,14 @@ and a `version` string usable as a directory name. The generated package has no
 browser, as a failed import before any player exists, and ends in the host's load
 timeout.
 
+`@pie-players/pie-section-player@<version>/dist/browser/pie-section-player.js`,
+exported as `./browser`, is a self-contained build that no host loads yet. It
+becomes API in the same way once one does: the entry filename, and `dist/browser/`
+as a tree whose imports are all relative — `chunks/` and `assets/`, the Cortex
+calculator's worker file among them — so a host that copies it needs the whole
+directory, one per version. The npm entry `dist/pie-section-player.js` is
+byte-identical with and without it.
+
 ## Single-file bundle (Host A)
 
 Verified against the checkout on 2026-09-24.

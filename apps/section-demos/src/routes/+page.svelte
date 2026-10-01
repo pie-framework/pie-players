@@ -29,6 +29,9 @@
 		<p class="text-sm">
 			<a class="link link-primary" href="/hover-contrast">Select-text hover contrast across every scheme</a>
 		</p>
+		<p class="text-sm">
+			<a class="link link-primary" href="/content-styles">Content stylesheet confinement and table grid contrast</a>
+		</p>
 	</header>
 
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">

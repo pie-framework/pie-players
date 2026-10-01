@@ -597,10 +597,11 @@ table.KdsTable02 > tbody > tr > td {
 /* The grid rules below paint the ink, as every other authored grid in this
    file does and as pie-lib's table grid falls back to: --pie-text is held to
    4.5:1 against the page, so the rules clear SC 1.4.11's 3:1 wherever the text
-   is legible. They were a 15% mix holding the weight #dee2e6 had on white,
-   1.41:1. A lighter fixed share cannot be certified: the share that clears 3:1
-   depends on the palette, 62% on grey-on-light-grey, and is unknown for a
-   host's own. --pie-border-light is no substitute either; the DaisyUI mapping
+   is legible. They were a 15% mix, as faint as the fixed light grey
+   (#dee2e6) they first shipped with: 1.41:1 on white. A lighter fixed share
+   cannot be certified: the share that clears 3:1 depends on the palette, 62%
+   on the Grey on Light Grey scheme, and is unknown for a host's own.
+   --pie-border-light is no substitute either; the DaisyUI mapping
    fills it from base-200, a surface. */
 .table {
 	width: 100%;

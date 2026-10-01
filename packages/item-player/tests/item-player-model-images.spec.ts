@@ -1,11 +1,12 @@
 /**
- * Model strings reach PIE elements as authored, even when they carry images.
+ * Model strings reach PIE elements as authored, even when they carry images or
+ * tables.
  *
  * Elements copy model strings into the session and resolve offsets against
  * them: image-cloze-association stores the dragged response's markup and scores
  * it against the authored key, select-text slices `text` at authored token
- * offsets. Overwide images still get the `pie-image-scroll` reflow wrapper, in
- * the rendered DOM.
+ * offsets. Images and tables still get their `pie-image-scroll` and
+ * `pie-table-scroll` reflow wrappers, in the rendered DOM.
  */
 
 import { expect, test, type Page } from "@playwright/test";
@@ -33,7 +34,22 @@ const SENTENCES = [
 	"Maya reread the chapter before class discussion.",
 	"She highlighted two details that showed the narrator was unreliable.",
 ];
-const TEXT = `<p>${IMAGE}</p><p>${SENTENCES.join(" ")}</p>`;
+// Authored as real content is: offsets into the raw string, and a table without
+// the `<tbody>` an HTML parser adds when it re-serializes one.
+const SELECT_TEXT_CASES = [
+	{
+		holds: "an image",
+		text: `<p>${IMAGE}</p><p>${SENTENCES.join(" ")}</p>`,
+		wrapped: 'img[alt="Reading log"]',
+		wrapper: /pie-image-scroll/,
+	},
+	{
+		holds: "a table",
+		text: `<table><tr><td><p>${SENTENCES.join(" ")}</p></td></tr></table>`,
+		wrapped: "table",
+		wrapper: /pie-table-scroll/,
+	},
+];
 // Selectable tokens; index -1 marks the element's hidden style primers.
 const TOKEN = '[data-indexkey]:not([data-indexkey="-1"])';
 
@@ -154,80 +170,99 @@ test.describe("item-player model images", () => {
 		).toHaveClass(/pie-image-scroll/);
 	});
 
-	test("select-text renders the authored tokens when its text holds an image", async ({
-		page,
-	}) => {
-		await serveImages(page);
-		await page.goto(
-			"/demo/select-text-default/delivery?mode=gather&role=student&player=iife",
-			{ waitUntil: "domcontentloaded" },
-		);
-		await expect(page.locator(`pie-item-player [id="1"] ${TOKEN}`).first()).toBeVisible({
-			timeout: 30_000,
-		});
+	for (const { holds, text, wrapped, wrapper } of SELECT_TEXT_CASES) {
+		test(`select-text renders the authored tokens when its text holds ${holds}`, async ({
+			page,
+		}) => {
+			await serveImages(page);
+			await page.goto(
+				"/demo/select-text-default/delivery?mode=gather&role=student&player=iife",
+				{ waitUntil: "domcontentloaded" },
+			);
+			await expect(page.locator(`pie-item-player [id="1"] ${TOKEN}`).first()).toBeVisible({
+				timeout: 30_000,
+			});
 
-		const model = {
-			...(selectTextDemo.item.config.models[0] as Record<string, any>),
-			id: PROBE_MODEL_ID,
-			maxSelections: 1,
-			partialScoring: false,
-			prompt: "Select the sentence that shows the narrator is unreliable.",
-			text: TEXT,
-			tokens: SENTENCES.map((text, index) => ({
+			const authored = SENTENCES.map((sentence) => ({
+				start: text.indexOf(sentence),
+				end: text.indexOf(sentence) + sentence.length,
+			}));
+			const model = {
+				...(selectTextDemo.item.config.models[0] as Record<string, any>),
+				id: PROBE_MODEL_ID,
+				maxSelections: 1,
+				partialScoring: false,
+				prompt: "Select the sentence that shows the narrator is unreliable.",
 				text,
-				start: TEXT.indexOf(text),
-				end: TEXT.indexOf(text) + text.length,
-				correct: index === 1,
-			})),
-		};
-		await page.evaluate(
-			({ id, config }) => {
-				const player = document.createElement("pie-item-player") as any;
-				player.id = id;
-				document.body.appendChild(player);
-				player.strategy = "iife";
-				player.loaderOptions = { bundleHost: "https://proxy.pie-api.com/bundles/" };
-				player.env = { mode: "gather", role: "student" };
-				player.session = { id: `${id}-session`, data: [] };
-				player.config = config;
-			},
-			{
-				id: PROBE_ID,
-				config: {
-					id: PROBE_ID,
-					markup: `<select-text id="${PROBE_MODEL_ID}"></select-text>`,
-					elements: { "select-text": "@pie-element/select-text@latest" },
-					models: [model],
+				tokens: SENTENCES.map((sentence, index) => ({
+					text: sentence,
+					...authored[index],
+					correct: index === 1,
+				})),
+			};
+			await page.evaluate(
+				({ id, config }) => {
+					const player = document.createElement("pie-item-player") as any;
+					player.id = id;
+					document.body.appendChild(player);
+					player.strategy = "iife";
+					player.loaderOptions = { bundleHost: "https://proxy.pie-api.com/bundles/" };
+					player.env = { mode: "gather", role: "student" };
+					player.session = { id: `${id}-session`, data: [] };
+					player.config = config;
 				},
-			},
-		);
+				{
+					id: PROBE_ID,
+					config: {
+						id: PROBE_ID,
+						markup: `<select-text id="${PROBE_MODEL_ID}"></select-text>`,
+						elements: { "select-text": "@pie-element/select-text@latest" },
+						models: [model],
+					},
+				},
+			);
 
-		const tokens = page.locator(`#${PROBE_ID} ${TOKEN}`);
-		await expect(tokens).toHaveCount(SENTENCES.length, { timeout: 30_000 });
-		await expect(tokens).toHaveText(SENTENCES);
-		await expect(
-			page.locator(`#${PROBE_ID} img[alt="Reading log"]`).locator(".."),
-		).toHaveClass(/pie-image-scroll/);
+			const tokens = page.locator(`#${PROBE_ID} ${TOKEN}`);
+			await expect(tokens).toHaveCount(SENTENCES.length, { timeout: 30_000 });
+			await expect(tokens).toHaveText(SENTENCES);
+			await expect(
+				page.locator(`#${PROBE_ID} ${wrapped}`).locator(".."),
+			).toHaveClass(wrapper);
 
-		await recordSessions(page, `#${PROBE_ID}`);
-		await tokens.filter({ hasText: SENTENCES[1] }).click();
-		await expect
-			.poll(
-				() =>
-					page.evaluate(
-						(modelId) =>
-							window.__pieLastSession?.data?.find((entry) => entry.id === modelId)
-								?.selectedTokens?.length ?? 0,
-						PROBE_MODEL_ID,
-					),
-				{ timeout: 10_000 },
-			)
-			.toBe(1);
+			await recordSessions(page, `#${PROBE_ID}`);
+			await tokens.filter({ hasText: SENTENCES[1] }).click();
+			await expect
+				.poll(
+					() =>
+						page.evaluate(
+							(modelId) =>
+								window.__pieLastSession?.data?.find((entry) => entry.id === modelId)
+									?.selectedTokens?.length ?? 0,
+							PROBE_MODEL_ID,
+						),
+					{ timeout: 10_000 },
+				)
+				.toBe(1);
 
-		const results = await page.evaluate(async (id) => {
-			const player = document.getElementById(id) as any;
-			return player.provideScore();
-		}, PROBE_ID);
-		expect(results?.[0]?.score).toBe(1);
-	});
+			// select-text re-serializes `text` and moves `start`/`end` to match the
+			// result, so the authored offsets it scores against are `oldStart`/`oldEnd`.
+			const selected = await page.evaluate(
+				(modelId) =>
+					window.__pieLastSession?.data?.find((entry) => entry.id === modelId)
+						?.selectedTokens?.[0],
+				PROBE_MODEL_ID,
+			);
+			expect(selected).toMatchObject({
+				text: SENTENCES[1],
+				oldStart: authored[1].start,
+				oldEnd: authored[1].end,
+			});
+
+			const results = await page.evaluate(async (id) => {
+				const player = document.getElementById(id) as any;
+				return player.provideScore();
+			}, PROBE_ID);
+			expect(results?.[0]?.score).toBe(1);
+		});
+	}
 });

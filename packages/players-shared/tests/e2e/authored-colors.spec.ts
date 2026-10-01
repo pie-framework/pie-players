@@ -44,6 +44,17 @@ const CONTENT = `
 	</tr>
 </table>`;
 
+// A Learnosity data table with a filled header row, whose grid comes from the
+// stylesheet's `.table` rules rather than from the author.
+const DATA_TABLE = `
+<table class="table table-bordered">
+	<thead><tr>
+		<th id="grid-shade" data-pie-authored-fill="shade" style="background-color: rgb(221, 221, 221)">A</th>
+		<th data-pie-authored-fill="shade" style="background-color: rgb(221, 221, 221)">B</th>
+	</tr></thead>
+	<tbody><tr><td id="grid-cell">1</td><td>2</td></tr></tbody>
+</table>`;
+
 // `#probe` reads the scheme's tokens where no fill swaps them.
 const PROBE =
 	'<div id="probe" style="color: var(--pie-text); background-color: var(--pie-background); border: 1px solid var(--pie-border)"></div>';
@@ -112,6 +123,23 @@ test.describe("authored colours under a color scheme (real browser)", () => {
 				background: TRANSPARENT,
 			});
 			expect(p["row-border"].border).toBe(paper);
+		});
+	}
+
+	for (const scheme of SCHEMES) {
+		test(`paints the data-table grid in ${scheme}'s ink, and its page inside a fill`, async ({
+			page,
+		}) => {
+			// Each grid rule reads --pie-text itself, so a shade fill's swap reaches
+			// it and adjacent filled header cells stay apart.
+			await load(
+				page,
+				`<div data-pie-content>${DATA_TABLE}</div>${PROBE}`,
+				`data-color-scheme="${scheme}"`,
+			);
+			const p = await paints(page);
+			expect(p["grid-cell"].border).toBe(p.probe.color);
+			expect(p["grid-shade"].border).toBe(p.probe.background);
 		});
 	}
 

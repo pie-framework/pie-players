@@ -1,4 +1,5 @@
 import { CortexCalculatorError } from "./errors.js";
+import { startModuleWorker } from "./module-worker.js";
 import type { ResolvedCortexSettings } from "./settings.js";
 import type { CortexGraphViewport } from "./types.js";
 import {
@@ -96,12 +97,12 @@ export class EvaluationClient {
 			);
 		}
 		try {
-			const worker = new Worker(
-				new URL("./evaluation-worker.ts", import.meta.url),
-				{
-					type: "module",
-					name: "pie-calculator-cortex",
-				},
+			const worker = startModuleWorker(
+				(Worker) =>
+					new Worker(new URL("./evaluation-worker.ts", import.meta.url), {
+						type: "module",
+						name: "pie-calculator-cortex",
+					}),
 			);
 			worker.addEventListener("message", this.handleMessage);
 			worker.addEventListener("error", this.handleWorkerError);

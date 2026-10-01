@@ -22,7 +22,7 @@
 			"import": "./dist/pie-section-player.js"
 		},
 		"./browser": {
-			"types": "./dist/pie-section-player.d.ts",
+			"types": "./dist/browser.d.ts",
 			"import": "./dist/browser/pie-section-player.js"
 		},
 		"./components/section-player-splitpane-element": {

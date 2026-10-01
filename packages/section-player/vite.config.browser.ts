@@ -9,8 +9,8 @@ import {
 
 /**
  * The self-contained ES module build behind the `./browser` export: the npm
- * build with nothing external, so a page loads `dist/browser/` by full URL with
- * no import map and no bundler. It sits next to `dist/`, which `vite.config.ts`
+ * build with nothing external, plus the registry exports `src/browser.ts` adds,
+ * so a page loads `dist/browser/` by full URL with no import map and no bundler. It sits next to `dist/`, which `vite.config.ts`
  * owns and empties first; this config owns `dist/browser/` and empties only that.
  *
  * Chunks stay split, so each lazily loaded tool downloads on first use. Chunk
@@ -42,7 +42,7 @@ export default defineConfig({
 		modulePreload: false,
 		rollupOptions: {
 			input: {
-				"pie-section-player": resolve(__dirname, "src/pie-section-player.ts"),
+				"pie-section-player": resolve(__dirname, "src/browser.ts"),
 			},
 			preserveEntrySignatures: "strict",
 			external: [],

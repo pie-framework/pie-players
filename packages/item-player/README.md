@@ -41,6 +41,16 @@ document, at import time, before any instance renders. It is prepended to
 placement hosts used to be told to set up by hand. Installation is idempotent, so
 loading several player packages, or several copies of one, yields a single copy.
 
+The installed copy keeps its generic rules inside player content. The bare
+`table`, `th` and `h1`–`h6` rules and framework-style names such as `.table*`,
+`.text-center`, `.h1`–`.h6`, `.center` and `.indent` apply only inside the
+`.pie-item-container` and `.pie-passage-container` the player mounts authored
+markup into, or a `<pie-print>`, so they do not restyle host UI that shares
+those names. Rules keyed on PIE, KDS or MathJax names, and on legacy content
+classes such as `.frac` or `.numbered-paragraph`, stay document-wide, because an
+element can portal authored content to `<body>` in a menu, popover or modal.
+Confinement adds no specificity.
+
 This applies to CDN hosts too: no extra `<link>` is needed.
 
 ### Upgrading from a manual import

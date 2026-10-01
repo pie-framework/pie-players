@@ -1218,6 +1218,18 @@ removes its own copy when the host's lands later. The explicit opt-out is
 `data-pie-content-styles="host"` on `<html>`; `auditContentStyles` warns once per
 page when a host sets it and then loads nothing.
 
+Since 2026-10-01 the player's copy confines its generic rules to the containers
+it mounts authored markup into, under
+`:where(.pie-item-container, .pie-passage-container, pie-print)`, which adds no
+specificity. Confined are the bare `h1`–`h6`, `table` and `th` rules and the
+framework-style names `.table*`, `.text-center`, `.h1`–`.h6`, `.center`, `.indent`
+and `.under`, so they no longer reach host UI. Until then the copy applied
+document-wide, and a host UI library's own `.table` — DaisyUI's and Bootstrap's
+share the name — took the content grid rules. Rules keyed on PIE, KDS or MathJax
+names and on legacy content classes stay document-wide, so content an element
+portals to `<body>` keeps them. A host whose own markup leaned on a confined rule
+from the player's copy loses it; the recorded rows show none doing so on purpose.
+
 Consequences per host:
 
 - **Host V** pins `0.3.53`, before the fix, and works around its absence by
@@ -1229,14 +1241,18 @@ Consequences per host:
   unscoped* copy installed by the player, reintroducing exactly the bleed it
   scoped around, plus a duplicate warning. Its copy is injected alongside the
   player import, so either can arrive first; the player now stands down in both
-  orders, and the host needs no attribute or code change on upgrade. Deleting its
-  own copy would bring the global copy, and the bleed, back.
+  orders, and the host needs no attribute or code change on upgrade. Its copy is
+  now redundant rather than load-bearing: deleting it hands delivery to the
+  player's copy, whose confined rules do not reintroduce the bleed.
 - **Host A** dropped its build-config `components.css` entry and now cedes
   ownership to the player entirely: no opt-out attribute, no stylesheet import
   of its own, so it is in the healthy configuration.
 - **Host R** imports no copy of its own either, so it is also in the healthy
   configuration. Re-derived: it references `components.css` only in a comment
-  recording that importing it there made the stylesheet load twice.
+  recording that importing it there made the stylesheet load twice. Its own
+  pages use DaisyUI's `.table` in some 26 places, which the player's copy
+  restyled while it applied document-wide; the confined rules no longer reach
+  them.
 - **Host P** imports no copy and sets no opt-out, so its preloaded build installs
   the stylesheet and it is in the healthy configuration too. It styles no player
   DOM and sets no `--pie-*` token.
@@ -1261,6 +1277,14 @@ already rendered, with one visible exception: legacy `kds-*` table headers take
 `--pie-background-dark`, so their fill lightens from `#d3d3d3` to `#ecedf1`.
 Hosts V and A both load a copy of this stylesheet and neither sets `--pie-text`
 or `--pie-white`, so both see it on upgrade.
+
+The `.table` family's grid rules now paint `--pie-text` in place of a 15%
+mix of it, which measured 1.41:1 on white against SC 1.4.11's 3:1. Every host's
+item and passage `.table`, `.table-bordered` and `thead` rules turn from a faint
+grey to the text colour, black on the base light theme. Host V sees it through
+its own copy once it upgrades `pie-theme`, scoped to `.item-content` as before;
+on `0.3.53` it keeps the fixed `#dee2e6` grey `pie-theme` painted these rules
+with before `0.3.66`.
 
 ## Host-served endpoint contracts
 

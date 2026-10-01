@@ -43,10 +43,20 @@ test.beforeAll(async () => {
 	bundledCode = result.outputFiles[0].text;
 });
 
+// `.table` stands in for a host UI library's own table class (DaisyUI and
+// Bootstrap both ship one), which the stylesheet's `.table` family shares.
 const PAGE = `<!doctype html><html><head></head><body>
-<table id="host-table"><tr><td>Host</td></tr></table>
+<table id="host-table" class="table"><tr><td id="host-cell">Host</td></tr></table>
 <h5 id="host-h5">Host heading</h5>
 <div class="item-content"><h5 id="item-h5">Item heading</h5></div>
+<div class="pie-item-player"><div class="pie-item-container">
+<table id="player-table" class="table"><tr><td id="player-cell">Item</td></tr></table>
+<h5 id="player-h5">Player heading</h5>
+</div></div>
+<pie-print><p class="noprint" id="print-noprint">Not printed</p></pie-print>
+<div id="portal"><table class="kds-fraction"><tbody><tr>
+<td class="kds-numerator" id="portal-numerator">1</td>
+</tr></tbody></table></div>
 </body></html>`;
 
 async function load(page: Page, { optOut = false } = {}) {
@@ -91,10 +101,25 @@ const state = (page: Page) =>
 		hostH5Size: getComputedStyle(
 			document.getElementById("host-h5") as HTMLElement,
 		).fontSize,
+		hostCellRule: getComputedStyle(
+			document.getElementById("host-cell") as HTMLElement,
+		).borderTopStyle,
+		playerTableCollapse: getComputedStyle(
+			document.getElementById("player-table") as HTMLElement,
+		).borderCollapse,
+		playerCellRule: getComputedStyle(
+			document.getElementById("player-cell") as HTMLElement,
+		).borderTopStyle,
+		playerH5Size: getComputedStyle(
+			document.getElementById("player-h5") as HTMLElement,
+		).fontSize,
+		portalNumeratorRule: getComputedStyle(
+			document.getElementById("portal-numerator") as HTMLElement,
+		).borderBottomStyle,
 	}));
 
 test.describe("content stylesheet ownership (real browser)", () => {
-	test("installs a global copy when the host supplies none", async ({
+	test("confines the generic rules to player content when the host supplies none", async ({
 		page,
 	}) => {
 		await load(page);
@@ -102,7 +127,38 @@ test.describe("content stylesheet ownership (real browser)", () => {
 
 		const result = await state(page);
 		expect(result.installed).toBe(1);
-		expect(result.hostTableCollapse).toBe("collapse");
+		expect(result.playerTableCollapse).toBe("collapse");
+		expect(result.playerCellRule).toBe("solid");
+		expect(result.playerH5Size).not.toBe(result.hostH5Size);
+		// The host's own table and heading keep the browser's defaults.
+		expect(result.hostTableCollapse).toBe("separate");
+		expect(result.hostCellRule).toBe("none");
+	});
+
+	test("keeps content an element portals to <body> styled", async ({
+		page,
+	}) => {
+		// MUI menus, popovers and modals render outside every player container.
+		await load(page);
+		expect(await install(page)).toBe("installed");
+
+		expect((await state(page)).portalNumeratorRule).toBe("solid");
+	});
+
+	test("hides print-player .noprint content when printing", async ({
+		page,
+	}) => {
+		await load(page);
+		expect(await install(page)).toBe("installed");
+
+		await page.emulateMedia({ media: "print" });
+		const display = await page.evaluate(
+			() =>
+				getComputedStyle(
+					document.getElementById("print-noprint") as HTMLElement,
+				).display,
+		);
+		expect(display).toBe("none");
 	});
 
 	test("stands down when the host's scoped copy is already present", async ({
@@ -123,7 +179,7 @@ test.describe("content stylesheet ownership (real browser)", () => {
 	}) => {
 		await load(page);
 		expect(await install(page)).toBe("installed");
-		expect((await state(page)).hostTableCollapse).toBe("collapse");
+		expect((await state(page)).installed).toBe(1);
 
 		await injectScopedHostCopy(page);
 		await expect.poll(async () => (await state(page)).installed).toBe(0);

@@ -7,7 +7,9 @@
  * `div.passage-title`), the legacy `kds-*` families, the `@media print`
  * `.noprint` rules, and the answer-eliminator classes. Players render into
  * light DOM, so those rules have to exist as a document-level stylesheet —
- * there is no shadow root to scope them to.
+ * there is no shadow root to scope them to. The installed copy confines its
+ * generic rules to the players' content containers instead (see
+ * `CONTENT_ROOTS`).
  *
  * Hosts used to be required to import that stylesheet themselves. Nothing
  * enforced it and nothing failed loudly when they didn't: the item rendered,
@@ -19,6 +21,8 @@
  * plain `tsc`, so it cannot inline a stylesheet. Bundler-built player packages
  * import it with Vite's `?raw` and hand the text over.
  */
+
+import { scopeStylesheetCss } from "./scope-css.js";
 
 /** Marks a `<style>` element this module owns, and keeps installs idempotent. */
 const MARKER_ATTRIBUTE = "data-pie-content-styles";
@@ -61,6 +65,99 @@ const declaresContentStylesSentinel = (rule: CSSRule): boolean => {
 		if (declaresContentStylesSentinel(child)) return true;
 	}
 	return false;
+};
+
+/**
+ * The containers the players mount authored markup into: the item player's
+ * item and passage containers, which also carry every section-player item and
+ * passage, and the print player's own element. One installed copy serves every
+ * player package in the document, so this is their union rather than the
+ * installing package's own.
+ *
+ * `:where()` adds no specificity, which keeps the cascade the stylesheet had
+ * unscoped: a host or element rule of equal specificity still wins on order.
+ */
+const CONTENT_ROOTS =
+	":where(.pie-item-container, .pie-passage-container, pie-print)";
+
+/**
+ * Prefixes of names that belong to PIE content and its renderers: PIE's own
+ * classes and `data-pie-*` hooks, the legacy `kds-*` and `KdsTable*` families,
+ * and MathJax's `mjx-*` and `TEX-*` glyph classes.
+ */
+const CONTENT_OWNED_PREFIXES = ["pie-", "data-pie-", "kds-", "Kds", "mjx-", "TEX-"];
+
+/**
+ * Unprefixed legacy content classes. They name content semantics — a book
+ * title, a stacked fraction, a numbered paragraph — rather than presentation,
+ * so no host UI library ships them. Presentational names a framework would
+ * ship (`.table*`, `.text-center`, `.h1`–`.h6`, `.center`, `.indent`,
+ * `.under`) are deliberately absent, and confined.
+ */
+const LEGACY_CONTENT_CLASSES = new Set([
+	"abs",
+	"block-quote",
+	"book-title",
+	"book-title-k5",
+	"content-emphasis",
+	"embedded-error",
+	"equation-block",
+	"evaluate-bottom-border",
+	"fillin",
+	"frac",
+	"newradical",
+	"noprint",
+	"numbered-paragraph",
+	"p-number",
+	"passage-author",
+	"passage-subtitle",
+	"passage-title",
+	"proper-name",
+	"relative-emphasis",
+	"short-quote",
+	"text-block",
+	"variable",
+	"Verdana2t",
+	"whole",
+	"word-callout",
+]);
+
+const isContentOwnedName = (name: string): boolean =>
+	LEGACY_CONTENT_CLASSES.has(name) ||
+	CONTENT_OWNED_PREFIXES.some((prefix) => name.startsWith(prefix));
+
+/** Removes functional pseudo-class arguments, innermost first. */
+const withoutPseudoArguments = (selector: string): string => {
+	let current = selector;
+	let previous: string;
+	do {
+		previous = current;
+		current = current.replace(/\([^()]*\)/g, "");
+	} while (current !== previous);
+	return current;
+};
+
+/**
+ * Whether a content-stylesheet selector is confined to `CONTENT_ROOTS`, which
+ * is the default: only a selector that requires a content-owned class or
+ * attribute stays global, because only such a selector cannot match host UI.
+ *
+ * Keeping those global is what styles content an element portals to `<body>` —
+ * an MUI menu, popover or modal holding authored choices — outside every
+ * player container: KDS fractions and the MathJax glyph fixes still apply
+ * there. Bare `h1`–`h6`, `table` and `th` rules and framework-style names such
+ * as DaisyUI's and Bootstrap's `.table` are confined, so a document-wide copy
+ * no longer restyles the host's own chrome, and so is any rule added later
+ * unless it names content-owned markup. Arguments of `:is()`, `:not()` and the
+ * like are not counted, since they do not require a match. `:root` carries the
+ * presence sentinel and stays on the document root.
+ */
+const confinesContentStyleSelector = (selector: string): boolean => {
+	if (selector === ":root") return false;
+	const names = withoutPseudoArguments(selector).match(
+		/(?<=\.)-?[_a-zA-Z][\w-]*|(?<=\[\s*)[\w-]+/g,
+	);
+	return !names?.some(isContentOwnedName);
 };
 
 /** `<html data-pie-content-styles="host">` opts a host out of installation. */
@@ -114,7 +211,13 @@ export function contentStylesPresent(): boolean {
 
 /**
  * Installs `cssText` as a document-level stylesheet, once per document, unless
- * the host already supplies one.
+ * the host already supplies one. Every selector that could match host UI is
+ * confined to `CONTENT_ROOTS` (see `confinesContentStyleSelector`).
+ *
+ * The rules are rewritten with `scopeStylesheetCss` rather than wrapped in
+ * `@scope`: a browser without `@scope` drops the whole block, which would leave
+ * authored content unstyled, while a `:where()` descendant selector parses
+ * everywhere the players run.
  *
  * A host copy is recognised by the sentinel wherever it sits, including one
  * confined to the host's player subtree with `@scope`. Such a host scoped its
@@ -154,7 +257,9 @@ export function installContentStyles(
 
 	const style = document.createElement("style");
 	style.setAttribute(MARKER_ATTRIBUTE, source);
-	style.textContent = cssText;
+	style.textContent = scopeStylesheetCss(cssText, CONTENT_ROOTS, {
+		shouldScope: confinesContentStyleSelector,
+	});
 	document.head.prepend(style);
 	watchForHostOwnership(style);
 	return "installed";

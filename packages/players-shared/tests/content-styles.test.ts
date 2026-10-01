@@ -8,6 +8,8 @@ import {
 	test,
 } from "bun:test";
 
+import { readFileSync } from "node:fs";
+
 import {
 	contentStylesOptedOut,
 	contentStylesPresent,
@@ -40,6 +42,22 @@ afterEach(() => {
 	resetContentStylesWarningForTesting();
 });
 
+const COMPONENTS_CSS = readFileSync(
+	new URL("../../theme/src/components.css", import.meta.url),
+	"utf8",
+);
+
+const CONTENT_ROOTS =
+	":where(.pie-item-container, .pie-passage-container, pie-print)";
+
+/** Selectors of the installed text's style rules that are not confined. */
+const globalSelectors = (text: string): string[] =>
+	Array.from(text.matchAll(/(?:^|\n)([^@\n{}][^{}\n]*)\{/g))
+		.flatMap(([, prelude]) => (prelude ?? "").split(", "))
+		.map((selector) => selector.trim())
+		.filter((selector) => selector && !selector.startsWith(CONTENT_ROOTS))
+		.filter((selector) => !/^\d+%$/.test(selector));
+
 const installedStyles = () =>
 	Array.from(document.querySelectorAll("style[data-pie-content-styles]"));
 
@@ -53,6 +71,74 @@ describe("installContentStyles", () => {
 			"pie-item-player",
 		);
 		expect(styles[0]?.textContent).toContain(".numbered-paragraph");
+	});
+
+	test("confines the generic rules of the real stylesheet to player content", () => {
+		// The bare `table` / `th` / `h1`-`h6` rules and the framework-style names
+		// share names with host UI libraries — DaisyUI's and Bootstrap's `.table` —
+		// so a document-wide copy restyled the host's own chrome.
+		installContentStyles(COMPONENTS_CSS, "pie-item-player");
+
+		const text = installedStyles()[0]?.textContent ?? "";
+		for (const selector of [
+			"table",
+			"th",
+			"h1",
+			"h6",
+			".h5",
+			".table",
+			".table thead th",
+			".table-bordered td",
+			".table-striped tbody tr:nth-of-type(odd)",
+			".text-center",
+			".center",
+			".indent",
+		]) {
+			expect(text).toContain(`${CONTENT_ROOTS} ${selector}`);
+			expect(globalSelectors(text)).not.toContain(selector);
+		}
+	});
+
+	test("keeps content-owned rules global, so portaled content stays styled", () => {
+		// Elements portal menus, popovers and modals to <body>, outside every
+		// player container; authored choices rendered there still need KDS
+		// fractions and the MathJax glyph fixes.
+		installContentStyles(COMPONENTS_CSS, "pie-item-player");
+
+		const global = globalSelectors(installedStyles()[0]?.textContent ?? "");
+		for (const selector of [
+			":root",
+			"table.kds-fraction > tbody > tr > td.kds-numerator",
+			"table.KdsTable01 > tbody > tr > th",
+			".frac .nu",
+			".numbered-paragraph",
+			".TEX-S1",
+			"mjx-c.mjx-c22",
+			".pie-answer-eliminator-toggle",
+			'[data-pie-answer-eliminated="true"]',
+		]) {
+			expect(global).toContain(selector);
+		}
+	});
+
+	test("confines a rule added later unless it names content-owned markup", () => {
+		// Confinement is the default: a new rule reaches portaled content only by
+		// requiring a PIE, KDS or MathJax name, and a name inside `:is()` or
+		// `:not()` does not count because the selector does not require it.
+		installContentStyles(
+			`${CSS}\n.new-utility { color: red; }\nsection p { margin: 0; }\n` +
+				":is(.kds-center, td) { padding: 0; }\n" +
+				"td:not(.kds-numerator) { padding: 0; }\n" +
+				".kds-new-family td { padding: 0; }",
+			"pie-item-player",
+		);
+
+		const text = installedStyles()[0]?.textContent ?? "";
+		expect(text).toContain(`${CONTENT_ROOTS} .new-utility {`);
+		expect(text).toContain(`${CONTENT_ROOTS} section p {`);
+		expect(text).toContain(`${CONTENT_ROOTS} :is(.kds-center, td) {`);
+		expect(text).toContain(`${CONTENT_ROOTS} td:not(.kds-numerator) {`);
+		expect(globalSelectors(text)).toContain(".kds-new-family td");
 	});
 
 	test("is idempotent across repeated calls and multiple player packages", () => {

@@ -317,3 +317,24 @@ describe("scopeSelector", () => {
 		expect(scopeSelector(SCOPE, SCOPE)).toBe(SCOPE);
 	});
 });
+
+describe("shouldScope", () => {
+	const scopeSome = (css: string) =>
+		norm(
+			scopeStylesheetCss(css, SCOPE, {
+				shouldScope: (selector) => !selector.startsWith(".keep"),
+			}),
+		);
+
+	test("leaves rejected selectors as authored, per selector in a list", () => {
+		expect(scopeSome(".keep, .a { color: red; }")).toBe(
+			`.keep, ${SCOPE} .a { color: red; }`,
+		);
+	});
+
+	test("applies inside nested at-rules too", () => {
+		expect(scopeSome("@media print { .keep-me { x: 1; } .a { x: 1; } }")).toBe(
+			`@media print { .keep-me { x: 1; } ${SCOPE} .a { x: 1; } }`,
+		);
+	});
+});

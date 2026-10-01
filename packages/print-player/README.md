@@ -52,6 +52,13 @@ document, at import time, before any instance renders. It is prepended to
 Installation is idempotent, so a page that loads both this player and
 `@pie-players/pie-item-player` ends up with a single copy.
 
+The installed copy keeps its generic rules inside player content: the bare
+`table`, `th` and `h1`–`h6` rules and framework-style names such as `.table*`,
+`.text-center` and `.center` apply only inside `<pie-print>` or an item player's
+content containers, so they do not restyle host UI. Rules keyed on PIE, KDS or
+MathJax names and on legacy content classes, `.noprint` among them, stay
+document-wide. Confinement adds no specificity.
+
 This applies to CDN hosts too: no extra `<link>` is needed.
 
 Without it, printed output regresses in two ways: authored passage titles and

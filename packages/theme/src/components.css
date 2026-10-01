@@ -1,6 +1,11 @@
 /* Content classes for authored assessment content, installed as a
    document-level stylesheet by every player (see players-shared
-   ui/content-styles.ts).
+   ui/content-styles.ts). The installed copy confines every rule that could
+   match host UI to the players' content containers — the bare table and
+   heading rules, the .table family and other framework-style names — and so
+   will any rule added here unless it requires a PIE, KDS or MathJax name or a
+   listed legacy content class. A host loading this file itself has to confine
+   those rules on its own.
 
    Colour values resolve through the canonical --pie-* tokens with the original
    literal kept as the no-theme last resort. The literals came from content

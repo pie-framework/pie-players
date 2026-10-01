@@ -199,6 +199,12 @@ const mountSection = (page: Page) =>
     { runtime, section },
   );
 
+const calculatorButton = (page: Page) =>
+  page
+    .locator("pie-section-player-item-card")
+    .first()
+    .getByRole("button", { name: /^(basic |scientific )?calculator$/i });
+
 test("a page on another origin loads the browser build with no import map, renders the section and evaluates in the Cortex calculator", async ({
   page,
 }) => {
@@ -221,13 +227,9 @@ test("a page on another origin loads the browser build with no import map, rende
   await expect(page.getByText("Read the passage before answering.")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("What is 7 × 8?")).toBeVisible();
 
-  const calculatorButton = page
-    .locator("pie-section-player-item-card")
-    .first()
-    .getByRole("button", { name: /^(basic |scientific )?calculator$/i });
-  await expect(calculatorButton).toBeVisible({ timeout: 60_000 });
+  await expect(calculatorButton(page)).toBeVisible({ timeout: 60_000 });
   expect(workerUrls).toEqual([]);
-  await calculatorButton.click();
+  await calculatorButton(page).click();
   const calculator = page.locator('[data-pie-tool-shell="calculator"]').first();
   await expect(calculator).toBeVisible();
 
@@ -280,6 +282,67 @@ test("a CDN item player loaded first, or a second section player copy, leaves th
 
   await mountSection(page);
   await expect(page.getByText("What is 7 × 8?")).toBeVisible({ timeout: 60_000 });
+  expect(failures).toEqual([]);
+});
+
+test("a host adds its own tool to the packaged set from the build's exports, and the packaged tools still load from the build", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const { failures } = watch(page);
+  const packageRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().startsWith(`${packageOrigin}/`)) packageRequests.push(request.url());
+  });
+  await page.goto(hostOrigin);
+
+  await page.evaluate(
+    async ({ url, runtime, section }) => {
+      const build = await import(/* @vite-ignore */ url);
+      const toolRegistry = build.createPackagedToolRegistry({
+        toolModuleLoaders: build.DEFAULT_TOOL_MODULE_LOADERS,
+      });
+      const icon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>';
+      toolRegistry.register({
+        toolId: "hostTool",
+        name: "Host tool",
+        description: "A toolbar tool the host registers",
+        icon,
+        supportedLevels: ["item"],
+        isVisibleInContext: () => true,
+        renderToolbar: () => ({
+          toolId: "hostTool",
+          button: { toolId: "hostTool", label: "Host tool", ariaLabel: "Host tool", icon, onClick() {} },
+        }),
+      });
+      const player = document.createElement("pie-section-player-splitpane") as HTMLElement & {
+        runtime: unknown;
+        section: unknown;
+        toolRegistry: unknown;
+      };
+      player.setAttribute("show-toolbar", "true");
+      player.toolRegistry = toolRegistry;
+      player.runtime = {
+        ...runtime,
+        tools: { ...runtime.tools, placement: { ...runtime.tools.placement, item: ["calculator", "hostTool"] } },
+      };
+      player.section = section;
+      document.getElementById("host")?.appendChild(player);
+    },
+    { url: `${packageOrigin}${SECTION_ENTRY}`, runtime, section },
+  );
+
+  const itemCard = page.locator("pie-section-player-item-card").first();
+  await expect(itemCard.getByRole("button", { name: "Host tool" })).toBeVisible({ timeout: 60_000 });
+  await expect(calculatorButton(page)).toBeVisible();
+  await calculatorButton(page).click();
+  await expect(page.locator('[data-pie-tool-shell="calculator"]').first()).toBeVisible();
+
+  // The calculator's packaged loader imports this module on first use.
+  expect(packageRequests).toContainEqual(
+    expect.stringMatching(/\/section-player\/dist\/browser\/chunks\/calculator-element-\w+\.js$/),
+  );
+  expect(packageRequests.filter((url) => !url.includes("/section-player/dist/browser/"))).toEqual([]);
   expect(failures).toEqual([]);
 });
 

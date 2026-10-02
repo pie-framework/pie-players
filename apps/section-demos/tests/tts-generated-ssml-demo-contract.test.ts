@@ -7,8 +7,10 @@ import { demo10TtsGeneratedSsmlSection } from "../src/lib/content/demo10-tts-gen
 const collectVisibleMarkup = (): string[] => {
 	const visible: string[] = [];
 	for (const block of demo10TtsGeneratedSsmlSection.rubricBlocks ?? []) {
-		const passage = block.passage;
-		if (passage?.config?.markup) visible.push(passage.config.markup);
+		// The passage element renders the texts its model carries.
+		for (const model of block.passage?.config?.models ?? []) {
+			for (const entry of model.passages ?? []) visible.push(entry.text);
+		}
 	}
 	for (const itemRef of demo10TtsGeneratedSsmlSection.assessmentItemRefs ??
 		[]) {

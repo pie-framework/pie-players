@@ -64,6 +64,12 @@ test.describe("section player preloaded strategy", () => {
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
 		).toHaveCount(2, { timeout: 30_000 });
+		// The passage's math is typeset by its passage element.
+		await expect(
+			page
+				.getByRole("complementary", { name: "Passages" })
+				.locator("p.formula mjx-container"),
+		).toBeVisible({ timeout: 30_000 });
 
 		const playerAttrs = await page
 			.locator("pie-item-player")

@@ -31,11 +31,10 @@ import selectText from "@pie-element/select-text/package.json";
  * The pie-elements-ng packages the demos install, and the versions they load
  * under the `esm` and `preloaded` strategies.
  *
- * npm `latest` of `@pie-element/*` is the legacy line, which publishes no
- * browser ESM; pie-elements-ng publishes to the `next` dist-tag. demo-ui
- * depends on each package at `next`, `bun.lock` pins the version, and
- * `bun update` moves them all to the newest release together. Under `dev:cdn`
- * each manifest, and so each version, is the local pie-elements-ng checkout's.
+ * demo-ui depends on each package at the `next` dist-tag, `bun.lock` pins the
+ * version, and `bun update` moves them all to the newest release together.
+ * Under `dev:cdn` each manifest, and so each version, is the local
+ * pie-elements-ng checkout's.
  */
 const MANIFESTS: ReadonlyArray<{ name: string; version: string }> = [
 	categorize,

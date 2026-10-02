@@ -572,7 +572,7 @@ describe("TTS highlight pipeline", () => {
 		).toBe("mjx-container");
 	});
 
-	test("prefers a precise prose range over a coarse MathJax expression fallback", () => {
+	test("paints the rendered equation, never its hidden source MathML, for a catalog word", () => {
 		const root = document.createElement("div");
 		root.innerHTML = `
 			<mjx-container>
@@ -585,8 +585,8 @@ describe("TTS highlight pipeline", () => {
 			</mjx-container>
 		`;
 		const math = root.querySelector("math")!;
-		const visibleX = math.querySelector("mi")!.firstChild as Text;
-		const visibleMap = new Map([[0, { node: visibleX, offset: 0 }]]);
+		const sourceX = math.querySelector("mi")!.firstChild as Text;
+		const visibleMap = new Map([[0, { node: sourceX, offset: 0 }]]);
 		const alignment = createMathAwareAlignment({
 			mathElement: math,
 			speechText: "x plus x",
@@ -615,10 +615,13 @@ describe("TTS highlight pipeline", () => {
 			providerOffsetSpace: "plain-spoken-text",
 		});
 
-		expect(decision.activeTarget).toMatchObject({ type: "range" });
-		expect((decision.activeTarget as { range: Range }).range.toString()).toBe(
-			"x",
-		);
+		// The glyphs have no geometry here, so the equation is expression-mode.
+		expect(decision.activeTarget?.type).toBe("element");
+		expect(decision.activeTarget?.quality).toBe("expression");
+		expect(
+			(decision.activeTarget as { element: Element }).element ===
+				root.querySelector("mjx-container"),
+		).toBe(true);
 	});
 
 	test("maps simple MathJax CHTML tokens by structural position", () => {
@@ -772,6 +775,98 @@ describe("TTS highlight pipeline", () => {
 		expect((second.activeTarget as { element: Element }).element).toBe(
 			renderedX[1],
 		);
+	});
+
+	test("tracks an authored catalog read token by token over MathJax CHTML", () => {
+		// As MathJax renders it: glyphs come from CSS, so no `mjx-c` has text.
+		const glyph = (tag: string) => `<mjx-${tag}><mjx-c></mjx-c></mjx-${tag}>`;
+		const root = document.createElement("div");
+		root.innerHTML = `<p>In standard form
+			<mjx-container class="MathJax" jax="CHTML"><mjx-math aria-hidden="true"><mjx-mrow>${glyph("mi")}${glyph("mo")}<mjx-msup>${glyph("mi")}<mjx-script>${glyph("mn")}</mjx-script></mjx-msup>${glyph("mo")}${glyph("mi")}${glyph("mo")}${glyph("mi")}${glyph("mo")}${glyph("mn")}</mjx-mrow></mjx-math><mjx-assistive-mml><math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>a</mi><mo>&#x2062;</mo><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mi>b</mi><mo>&#x2062;</mo><mi>x</mi><mo>=</mo><mn>0</mn></mrow></math></mjx-assistive-mml></mjx-container>, solve for <em>x</em>.</p>`;
+		const glyphs = Array.from(
+			root.querySelectorAll("mjx-mi,mjx-mo,mjx-mn"),
+		) as HTMLElement[];
+		for (const element of glyphs) {
+			element.getBoundingClientRect = () =>
+				({
+					x: 0,
+					y: 0,
+					width: 10,
+					height: 10,
+					top: 0,
+					right: 10,
+					bottom: 10,
+					left: 0,
+					toJSON: () => ({}),
+				}) as DOMRect;
+		}
+		const speechText = `<speak>In standard form <prosody rate="slow">A X squared, plus B X, equals zero,</prosody> solve for x.</speak>`;
+		const collected = collectMathAwareTextAndMap(root);
+		const [chunk] = normalizeSpeechChunks({
+			contentRoot: root,
+			chunks: [
+				{
+					speechText,
+					visibleText: collected.visibleText,
+					sourceElement: root,
+					regionElement: root,
+					alignment: createCatalogSpanAlignment({
+						speechText,
+						visibleText: collected.visibleText,
+					}),
+					mathAlignments: Array.from(root.querySelectorAll("math")).map(
+						(element) => ({
+							element,
+							alignment: createMathAwareAlignment({
+								mathElement: element,
+								speechText,
+							}),
+						}),
+					),
+					visibleMap: collected.map,
+				},
+			],
+		});
+		const plan = createTTSHighlightPlan({ chunks: [chunk] });
+		let searchFrom = 0;
+		const targetFor = (word: string) => {
+			const position = speechText.indexOf(word, searchFrom);
+			searchFrom = position + word.length;
+			return plan.resolveBoundary({
+				chunkId: chunk.id,
+				word,
+				position,
+				length: word.length,
+				providerOffsetSpace: "raw-ssml",
+			}).activeTarget;
+		};
+
+		// Glyph indexes in document order: a ⁢ x 2 + b ⁢ x = 0.
+		const expected: Array<[string, number]> = [
+			["A", 0],
+			["X", 2],
+			["squared", 3],
+			["plus", 4],
+			["B", 5],
+			["X", 7],
+			["equals", 8],
+			["zero", 9],
+		];
+		const describeTarget = (target: ReturnType<typeof targetFor>) =>
+			target?.type === "element"
+				? `${target.quality} glyph ${glyphs.indexOf(target.element as HTMLElement)}`
+				: target?.type === "range"
+					? `range in ${target.range.startContainer.parentElement?.localName}`
+					: String(target?.type);
+		expect(describeTarget(targetFor("form"))).toBe("range in p");
+		expect(
+			expected.map(([word]) => `${word}: ${describeTarget(targetFor(word))}`),
+		).toEqual(
+			expected.map(
+				([word, index]) => `${word}: semantic-token glyph ${index}`,
+			),
+		);
+		expect(describeTarget(targetFor("x"))).toBe("range in em");
 	});
 
 	test("uses only the MathML expression intersecting a mixed visible boundary", () => {

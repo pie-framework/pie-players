@@ -78,7 +78,19 @@ export const demo10TtsGeneratedSsmlSection: AssessmentSection = {
 				baseId: "passage-quadratic-generated",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
-					markup: `<div class="passage">
+					// In a passage element, as production passages are: no player
+					// typesets markup outside an element, so its MathML would render natively.
+					markup: '<passage-element id="quadratic-passage"></passage-element>',
+					elements: {
+						"passage-element": "@pie-element/passage@latest",
+					},
+					models: [
+						{
+							id: "quadratic-passage",
+							element: "passage-element",
+							passages: [
+								{
+									text: `<div class="passage">
             <div class="subsection">
               <h3>The Quadratic Formula</h3>
 
@@ -111,8 +123,10 @@ export const demo10TtsGeneratedSsmlSection: AssessmentSection = {
               </div>
             </div>
           </div>`,
-					elements: {},
-					models: [],
+								},
+							],
+						},
+					],
 				},
 			},
 		},

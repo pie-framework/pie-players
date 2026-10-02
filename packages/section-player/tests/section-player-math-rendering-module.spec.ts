@@ -37,24 +37,12 @@ test.describe("section player math rendering module", () => {
 
 	test("an ESM section fetches no MathJax module", async ({ page }) => {
 		const requests = collectMathJaxChunkRequests(page);
-		// The demo's elements publish no browser ESM, so the load fails after the
-		// preload has skipped the renderer; items rendering settles it as well.
-		let esmLoadFailed = false;
-		page.on("console", (message) => {
-			if (message.text().includes("Error loading elements (esm-load)")) {
-				esmLoadFailed = true;
-			}
-		});
 		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=esm", {
 			waitUntil: "networkidle",
 		});
-		await expect
-			.poll(
-				async () =>
-					esmLoadFailed || (await page.locator(ITEM_SHELLS).count()) === 2,
-				{ timeout: 30_000 },
-			)
-			.toBe(true);
+		await expect(page.locator(ITEM_SHELLS)).toHaveCount(2, {
+			timeout: 30_000,
+		});
 
 		expect(requests).toEqual([]);
 	});

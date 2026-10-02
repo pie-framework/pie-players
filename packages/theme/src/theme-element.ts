@@ -493,3 +493,9 @@ export function definePieTheme(tagName = "pie-theme") {
 
 	defineThemeElementSafely(tagName, PieThemeElement);
 }
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-theme": PieThemeElement;
+	}
+}

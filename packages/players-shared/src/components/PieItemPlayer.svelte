@@ -61,6 +61,7 @@
     Env,
     ImageHandler,
     ModelUpdatedEvent,
+    PieItemPlayerErrorDetail,
     SoundHandler,
   } from "../types/index.js";
 
@@ -151,7 +152,7 @@
     onDeleteSound?: (src: string, done: (err?: Error) => void) => void;
     // Event callbacks
     onLoadComplete?: (detail?: any) => void;
-    onPlayerError?: (detail?: any) => void;
+    onPlayerError?: (detail: PieItemPlayerErrorDetail) => void;
     onSessionChanged?: (detail?: any) => void;
     onModelUpdated?: (detail?: any) => void;
     onModelLoaded?: (detail?: any) => void;
@@ -276,10 +277,11 @@
     return applySanitizer(raw, passageAllowList);
   });
 
+  /** A detail that does not say it is recoverable is reported as unrecoverable. */
   function normalizePlayerErrorDetail(
     detail: unknown,
     fallbackCode = "ITEM_PLAYER_RUNTIME_ERROR"
-  ) {
+  ): PieItemPlayerErrorDetail {
     if (detail && typeof detail === "object") {
       const detailObject = detail as Record<string, unknown>;
       const message =
@@ -290,31 +292,26 @@
         typeof detailObject.code === "string" && detailObject.code.trim().length > 0
           ? detailObject.code
           : fallbackCode;
-      return { ...detailObject, message, code };
+      const recoverable = detailObject.recoverable === true;
+      return { ...detailObject, message, code, recoverable };
     }
     const message =
       typeof detail === "string" && detail.trim().length > 0
         ? detail
         : "Unknown PIE runtime error";
-    return { code: fallbackCode, message };
+    return { code: fallbackCode, message, recoverable: false };
   }
 
-  function trackPlayerError(detail: Record<string, unknown>) {
+  function trackPlayerError(detail: PieItemPlayerErrorDetail) {
     const resolvedProvider = resolveInstrumentationProvider({
       player: { loaderConfig },
       component: "pie-item-player",
       debug: isGlobalDebugEnabled(),
     });
     if (!isInstrumentationProvider(resolvedProvider) || !resolvedProvider.isReady()) return;
-    const message =
-      typeof detail.message === "string" ? detail.message : "Unknown PIE runtime error";
-    const code =
-      typeof detail.code === "string" && detail.code.length > 0
-        ? detail.code
-        : "ITEM_PLAYER_RUNTIME_ERROR";
-    resolvedProvider.trackError(new Error(message), {
+    resolvedProvider.trackError(new Error(detail.message), {
       component: "pie-item-player",
-      errorType: code,
+      errorType: detail.code,
       ...detail,
     });
   }
@@ -1044,6 +1041,7 @@
             {
               code: "ITEM_PLAYER_UPDATE_ERROR",
               message: e instanceof Error ? e.message : String(e),
+              recoverable: true,
               cause: e instanceof Error ? e.stack || e.message : String(e),
             },
             "ITEM_PLAYER_UPDATE_ERROR"

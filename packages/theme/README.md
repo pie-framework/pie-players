@@ -110,6 +110,11 @@ const myProvider: ThemeProviderAdapter = {
 registerPieThemeProvider(myProvider);
 ```
 
+Every copy of this package on a page shares one provider registry, held on
+`window.PIE_THEME_PROVIDERS`. A host and a remote that bundle their own copies
+register into it alike, and `<pie-theme>` sees each provider whichever copy
+defined the element.
+
 ## Runtime theme interface
 
 The package exposes four operations:
@@ -369,6 +374,8 @@ the element only writes `--pie-*` custom properties. The item player bundles the
 stylesheet as text and installs it once per document at import time, unless the
 host already loads a copy; see
 [content styles](../item-player/README.md#content-styles) for host ownership.
+Its rules apply inside a `[data-pie-content]` element only, the root each player
+renders content into.
 
 Note for players adding this: a plain `import "…/components.css"` does **not**
 work in these packages' library builds. Vite extracts it to an unreferenced

@@ -14,8 +14,26 @@ export interface ThemeProviderAdapter {
 	read(target: HTMLElement): ThemeVariables;
 }
 
-const themeProviderRegistry = new Map<string, ThemeProviderAdapter>();
-const themeProviderObservers = new Set<() => void>();
+/**
+ * The page's provider registry, shared by every copy of this package.
+ *
+ * Remotes and hosts bundle their own copies, while `<pie-theme>` is defined once
+ * per page, by whichever copy loads first. A registry private to each copy left
+ * a later copy's providers invisible to that element. The shape is a contract
+ * between copies of any version, so it only grows.
+ */
+interface PieThemeProviderState {
+	readonly adapters: Map<string, ThemeProviderAdapter>;
+	readonly observers: Set<() => void>;
+}
+
+declare global {
+	var PIE_THEME_PROVIDERS: PieThemeProviderState | undefined;
+}
+
+globalThis.PIE_THEME_PROVIDERS ??= { adapters: new Map(), observers: new Set() };
+const themeProviderRegistry = globalThis.PIE_THEME_PROVIDERS.adapters;
+const themeProviderObservers = globalThis.PIE_THEME_PROVIDERS.observers;
 
 function notifyThemeProviderObservers(): void {
 	for (const listener of [...themeProviderObservers]) {
@@ -87,10 +105,13 @@ export const DAISYUI_THEME_PROVIDER_ADAPTER: ThemeProviderAdapter = {
 	},
 };
 
-themeProviderRegistry.set(
-	DAISYUI_THEME_PROVIDER_ADAPTER.id,
-	DAISYUI_THEME_PROVIDER_ADAPTER,
-);
+// The first copy's adapter stays, so `auto` resolution keeps its order.
+if (!themeProviderRegistry.has(DAISYUI_THEME_PROVIDER_ADAPTER.id)) {
+	themeProviderRegistry.set(
+		DAISYUI_THEME_PROVIDER_ADAPTER.id,
+		DAISYUI_THEME_PROVIDER_ADAPTER,
+	);
+}
 
 export function registerPieThemeProvider(adapter: ThemeProviderAdapter): void {
 	if (!adapter?.id) {

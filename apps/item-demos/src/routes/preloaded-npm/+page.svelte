@@ -48,12 +48,12 @@
 		registrationError = error instanceof Error ? error.message : String(error);
 	}
 
-	type ItemConfig = {
-		markup: string;
-		elements: Record<string, string>;
-		models: Array<Record<string, unknown>>;
+	type DemoItem = {
+		id: string;
+		heading: string;
+		note: string;
+		config: HTMLElementTagNameMap['pie-item-player']['config'];
 	};
-	type DemoItem = { id: string; heading: string; note: string; config: ItemConfig };
 
 	const ITEMS: DemoItem[] = [
 		{
@@ -62,6 +62,7 @@
 			// Content written against the legacy line, under its own base tag.
 			note: 'Authored as `multiple-choice` at 11.4.3; the player aligns it to the registration.',
 			config: {
+				id: 'npm-multiple-choice',
 				markup: '<multiple-choice id="npm-multiple-choice-element"></multiple-choice>',
 				elements: { 'multiple-choice': '@pie-element/multiple-choice@11.4.3' },
 				models: [
@@ -87,6 +88,7 @@
 			heading: 'Populated blank',
 			note: 'Authored at the registered version.',
 			config: {
+				id: 'npm-mc-populated-blank',
 				markup: '<mc-populated-blank id="npm-mc-populated-blank-element"></mc-populated-blank>',
 				elements: {
 					'mc-populated-blank': `${REGISTERED.mcPopulatedBlank.package}@${REGISTERED.mcPopulatedBlank.version}`
@@ -116,7 +118,7 @@
 		}
 	];
 
-	let players = $state<Record<string, HTMLElement & Record<string, unknown>>>({});
+	let players = $state<Record<string, HTMLElementTagNameMap['pie-item-player']>>({});
 	let sessions = $state<Record<string, unknown>>({});
 
 	$effect(() => {

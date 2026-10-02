@@ -6,6 +6,7 @@ import type {
 	ImageHandler,
 	ItemConfig,
 	ItemSession,
+	PieItemPlayerErrorDetail,
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
@@ -21,7 +22,7 @@ import type {
 	ElementPackagePolicy,
 } from "@pie-players/pie-players-shared";
 
-export type { DeleteDone, ImageHandler, SoundHandler };
+export type { DeleteDone, ImageHandler, PieItemPlayerErrorDetail, SoundHandler };
 export type * from "./backend/types.js";
 
 /**

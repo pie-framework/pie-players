@@ -52,7 +52,9 @@ document, at import time, before any instance renders. It is prepended to
 Installation is idempotent, so a page that loads both this player and
 `@pie-players/pie-item-player` ends up with a single copy.
 
-This applies to CDN hosts too: no extra `<link>` is needed.
+This applies to CDN hosts too: no extra `<link>` is needed. Its rules apply
+inside the `[data-pie-content]` root `<pie-print>` renders into; see
+[content styles](../item-player/README.md#content-styles).
 
 Without it, printed output regresses in two ways: authored passage titles and
 `kds-*` markup render unstyled, and content the author marked `.noprint` is

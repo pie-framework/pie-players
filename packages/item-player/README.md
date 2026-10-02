@@ -43,6 +43,13 @@ loading several player packages, or several copies of one, yields a single copy.
 
 This applies to CDN hosts too: no extra `<link>` is needed.
 
+Every rule applies inside a `[data-pie-content]` element only. The player sets
+the attribute on the root it renders into, so the stylesheet's bare `h1`–`h6`,
+`table`, `th`, `.table` and `.center` selectors no longer restyle the page around
+it. Each selector is wrapped in `:where()`, which keeps its specificity. A host
+that renders authored markup itself, outside a player, puts `data-pie-content` on
+that container to give it the same styles.
+
 ### Upgrading from a manual import
 
 An app that already imports `@pie-players/pie-theme/components.css`, scoped or
@@ -273,8 +280,14 @@ These are set via JavaScript, not HTML attributes.
   (`"teardown" | "navigate" | "page-hidden"`). A host that re-pushes `config`
   in response to this event should ignore a commit, since the commit exists to
   report a response the host is about to lose rather than to request a reload.
-- `player-error`: `{ code?, message?, stage?, strategy?, mode?, cause? }`. Error
+- `player-error`: `PieItemPlayerErrorDetail`,
+  `{ code, message, recoverable, stage?, strategy?, mode?, cause? }`. Error
   event, for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
+  `recoverable` is `true` when the item stays usable: a failed update leaves it
+  as it was, and a failed controller falls back to the authored model
+  (`ITEM_PLAYER_UPDATE_ERROR`, `PIE_CONTROLLER_RUNTIME_ERROR`,
+  `PIE_CONTROLLER_CONTRACT_ERROR`). It is `false` when the player has no item to
+  show, so a host can treat the error as fatal on `recoverable` alone.
   When elements fail to register, `cause` names each one and why, such as the
   module URL that failed to load. The error is reported as soon as every missing
   element's load has failed.

@@ -27,6 +27,8 @@ const logger = createPieLogger("pie-updates", () => isGlobalDebugEnabled());
 type ControllerErrorDetail = {
 	code: "PIE_CONTROLLER_CONTRACT_ERROR" | "PIE_CONTROLLER_RUNTIME_ERROR";
 	message: string;
+	/** The element falls back to its authored model. */
+	recoverable: true;
 	elementName: string;
 	elementId: string;
 	controllerShape?: string;
@@ -327,6 +329,7 @@ const updateSinglePieElement = async (
 					? "PIE_CONTROLLER_CONTRACT_ERROR"
 					: "PIE_CONTROLLER_RUNTIME_ERROR",
 				message: `${controllerLookupTag} controller failed while applying model for ${pieElement.id}. ${errorMessage}`,
+				recoverable: true,
 				elementName: controllerLookupTag,
 				elementId: pieElement.id,
 				controllerShape: describeControllerShape(controller),

@@ -764,6 +764,28 @@ export interface Env {
 	partialScoring?: boolean;
 }
 
+/** The `detail` of the `player-error` event `pie-item-player` dispatches. */
+export interface PieItemPlayerErrorDetail {
+	/** The failure, e.g. `ITEM_PLAYER_LOAD_ERROR` or `PIE_CONTROLLER_RUNTIME_ERROR`. */
+	code: string;
+	message: string;
+	/**
+	 * True when the item stays usable: a failed update leaves it as it was, and
+	 * a failed controller falls back to the authored model. False when the
+	 * player has no item to show.
+	 */
+	recoverable: boolean;
+	/** On a load error, the loading step that failed, and the strategy and mode it loaded under. */
+	stage?: string;
+	strategy?: string;
+	mode?: string;
+	cause?: unknown;
+	/** On a controller error, the element's tag and id, and what the controller looked like. */
+	elementName?: string;
+	elementId?: string;
+	controllerShape?: string;
+}
+
 export interface OutcomeResponse {
 	id: string;
 	element: string;

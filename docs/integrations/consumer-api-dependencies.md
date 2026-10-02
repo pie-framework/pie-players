@@ -38,6 +38,20 @@ precedence is covered by local browser tests. This is an impact assessment, not
 a downstream refresh: those checkouts remain unavailable and all row
 verification dates above remain unchanged.
 
+The 2026-10-02 scoping of `components.css` to `[data-pie-content]`, the root each
+player renders content into, was checked against all four checkouts. Host V's
+`@scope` root is an ancestor of `pie-item-player`, so its copy still matches and
+still keeps the player's copy out. Hosts A and P render authored content only
+through players. Host R renders authored item and passage markup in its own
+components, outside any player; those got content styles only on a page where a
+player had installed the sheet globally, and get none until the host marks their
+containers with `data-pie-content`. Host R's own `.table` markup stops picking up
+the sheet's rules. The same day `player-error` gained `recoverable`; Host P exits
+on every `player-error`, and can now stay on the three recoverable codes without a
+change being required. The pie-theme provider registry became page-wide; each
+host loads one copy, so none sees a difference. Row verification dates are
+unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -1319,7 +1333,9 @@ shipping.**
   otherwise preventing its outside `!important` declarations from winning
 - Changing how content styles are delivered, without accounting for Host V's
   scoped copy, which keeps the player's copy out only through sentinel
-  detection, and Hosts A, P and R relying on the player's copy
+  detection and matches only while its scope root contains the player, and
+  Hosts A, P and R relying on the player's copy
+- Renaming `data-pie-content`, or moving it off a player's content root
 - Renaming or removing a `pie-item-player` property Host P sets, taking one out
   of the element's declared `props` map, or renaming the `"preloaded"` strategy
 - Renaming `session-changed`, `load-complete`, `player-error` or any of the five

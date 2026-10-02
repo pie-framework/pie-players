@@ -43,10 +43,12 @@ test.beforeAll(async () => {
 	bundledCode = result.outputFiles[0].text;
 });
 
+// `.item-content` is the host's wrapper around a player; `[data-pie-content]` is
+// the root the player renders content into.
 const PAGE = `<!doctype html><html><head></head><body>
 <table id="host-table"><tr><td>Host</td></tr></table>
 <h5 id="host-h5">Host heading</h5>
-<div class="item-content"><h5 id="item-h5">Item heading</h5></div>
+<div class="item-content"><div data-pie-content><h5 id="item-h5">Item heading</h5></div></div>
 </body></html>`;
 
 async function load(page: Page, { optOut = false } = {}) {
@@ -94,7 +96,7 @@ const state = (page: Page) =>
 	}));
 
 test.describe("content stylesheet ownership (real browser)", () => {
-	test("installs a global copy when the host supplies none", async ({
+	test("installs a copy that styles player content only when the host supplies none", async ({
 		page,
 	}) => {
 		await load(page);
@@ -102,7 +104,8 @@ test.describe("content stylesheet ownership (real browser)", () => {
 
 		const result = await state(page);
 		expect(result.installed).toBe(1);
-		expect(result.hostTableCollapse).toBe("collapse");
+		expect(result.hostTableCollapse).toBe("separate");
+		expect(result.itemH5Size).not.toBe(result.hostH5Size);
 	});
 
 	test("stands down when the host's scoped copy is already present", async ({
@@ -123,7 +126,6 @@ test.describe("content stylesheet ownership (real browser)", () => {
 	}) => {
 		await load(page);
 		expect(await install(page)).toBe("installed");
-		expect((await state(page)).hostTableCollapse).toBe("collapse");
 
 		await injectScopedHostCopy(page);
 		await expect.poll(async () => (await state(page)).installed).toBe(0);

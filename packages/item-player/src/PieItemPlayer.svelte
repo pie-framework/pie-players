@@ -161,6 +161,7 @@
 		SessionSnapshotConfig,
 		SessionSnapshotRecord,
 	} from "@pie-players/pie-players-shared";
+	import type { PieItemPlayerErrorDetail } from "@pie-players/pie-players-shared/types";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import {
 		createPieI18n,
@@ -1181,11 +1182,12 @@
 					detail: {
 						code: "ITEM_PLAYER_LOAD_ERROR",
 						message,
+						recoverable: false,
 						stage,
 						strategy: normalizedStrategy,
 						mode: resolvedMode,
 						...(cause ? { cause } : {}),
-					},
+					} satisfies PieItemPlayerErrorDetail,
 				}),
 			);
 			return false;
@@ -1800,6 +1802,7 @@
 
 <div
 	class="pie-item-player {scopeClass} {additionalStylesheetScopeClass}"
+	data-pie-content
 	bind:this={hostElement}
 >
 	{#if error}
@@ -1862,7 +1865,7 @@
 						seedHostSessionEntriesForItem();
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
 					}}
-					onPlayerError={(detail: unknown) =>
+					onPlayerError={(detail: PieItemPlayerErrorDetail) =>
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 						)}

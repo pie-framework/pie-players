@@ -300,7 +300,7 @@ export class PiePrint extends LitElement {
 
 	render() {
 		return html`
-      <div>
+      <div data-pie-content>
         <div class="${ALTERNATES_CLASS}"></div>
         ${unsafeHTML(this._printItem.markup)}
         <br />

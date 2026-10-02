@@ -2,6 +2,13 @@
    document-level stylesheet by every player (see players-shared
    ui/content-styles.ts).
 
+   Every rule applies inside a `[data-pie-content]` element only, which each
+   player sets on the root it renders content into. Several selectors are bare
+   (`h1`-`h6`, `table`, `th`, `.table`, `.center`), and unscoped they restyled
+   the host page around the player. `:where()` keeps each selector's
+   specificity, and a host that renders authored markup itself marks its
+   container with the attribute. The `:root` sentinel below stays unscoped.
+
    Colour values resolve through the canonical --pie-* tokens with the original
    literal kept as the no-theme last resort. The literals came from content
    authored against a white page: `black` borders, `lightgray` table headers and
@@ -10,7 +17,7 @@
    --pie-text (DaisyUI base-content, the one family guaranteed against the
    surface), page-coloured fills take --pie-white, and one-step-off-the-page
    fills take --pie-background-dark. */
-.pie-loading {
+:where([data-pie-content]) .pie-loading {
 	/* The Figma indigo is --pie-primary at 90%, so the ring follows the theme's
 	   primary instead of pinning MD indigo on every page. */
 	--pie-loading-accent: color-mix(
@@ -30,11 +37,11 @@
 	opacity: 0.4;
 }
 
-.pie-loading.fixed {
+:where([data-pie-content]) .pie-loading.fixed {
 	position: fixed;
 }
 
-.pie-loading:before {
+:where([data-pie-content]) .pie-loading:before {
 	content: "";
 	background-color: rgba(0, 0, 0, 0);
 	border: 5px solid var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
@@ -53,7 +60,7 @@
 	left: 50%;
 }
 
-.pie-loading:after {
+:where([data-pie-content]) .pie-loading:after {
 	content: "";
 	background-color: rgba(0, 0, 0, 0);
 	border: 5px solid var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
@@ -97,7 +104,7 @@
 	}
 }
 
-.pie-api-player img {
+:where([data-pie-content]) .pie-api-player img {
 	max-width: inherit !important;
 	max-height: inherit !important;
 }
@@ -111,20 +118,20 @@
  * wrapper — not the passage or section layout — provides the sideways scroll
  * needed to satisfy WCAG 1.4.10 Reflow at 400% zoom.
  */
-.pie-image-scroll {
+:where([data-pie-content]) .pie-image-scroll {
 	display: block;
 	max-width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
 }
 
-.pie-image-scroll > img {
+:where([data-pie-content]) .pie-image-scroll > img {
 	display: block;
 	max-width: none;
 	height: auto;
 }
 
-.pie-image-scroll:focus-visible {
+:where([data-pie-content]) .pie-image-scroll:focus-visible {
 	outline: 2px solid
 		var(
 			--pie-focus-ring-color,
@@ -141,18 +148,18 @@
  * scroll needed to satisfy WCAG 1.4.10 Reflow at 400% zoom instead of forcing
  * the section layout to scroll horizontally.
  */
-.pie-table-scroll {
+:where([data-pie-content]) .pie-table-scroll {
 	display: block;
 	max-width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
 }
 
-.pie-table-scroll > table {
+:where([data-pie-content]) .pie-table-scroll > table {
 	max-width: none;
 }
 
-.pie-table-scroll:focus-visible {
+:where([data-pie-content]) .pie-table-scroll:focus-visible {
 	outline: 2px solid
 		var(
 			--pie-focus-ring-color,
@@ -163,15 +170,15 @@
 
 /* These styles are used in the body content of an item -- they also appear in the item body editor. */
 
-.book-title-k5 {
+:where([data-pie-content]) .book-title-k5 {
 	text-decoration: underline;
 }
 
-.book-title {
+:where([data-pie-content]) .book-title {
 	font-style: italic;
 }
 
-.block-quote {
+:where([data-pie-content]) .block-quote {
 	font-family: serif;
 	margin-left: 20%;
 	margin-right: 20%;
@@ -183,7 +190,7 @@
 	display: block;
 }
 
-.text-block {
+:where([data-pie-content]) .text-block {
 	font-family: serif;
 	margin-left: 20%;
 	margin-right: 20%;
@@ -195,23 +202,23 @@
 	display: block;
 }
 
-.short-quote {
+:where([data-pie-content]) .short-quote {
 	font-weight: bold;
 }
 
-span.short-quote:before {
+:where([data-pie-content]) span.short-quote:before {
 	content: open-quote;
 }
 
-span.short-quote:after {
+:where([data-pie-content]) span.short-quote:after {
 	content: close-quote;
 }
 
-.word-callout {
+:where([data-pie-content]) .word-callout {
 	text-decoration: underline;
 }
 
-.relative-emphasis {
+:where([data-pie-content]) .relative-emphasis {
 	text-transform: uppercase;
 }
 
@@ -219,28 +226,28 @@ span.short-quote:after {
    slot through the legible correction, so it clears 4.5:1 against the page on
    every shipped theme; the `red` literal it replaces measures 4:1 on white and
    fails SC 1.4.3 before any theme is involved. */
-.content-emphasis {
+:where([data-pie-content]) .content-emphasis {
 	font-weight: bold;
 	color: var(--pie-content-emphasis, #b00000);
 }
 
-span.passage-title:before {
+:where([data-pie-content]) span.passage-title:before {
 	content: open-quote;
 }
 
-span.passage-title:after {
+:where([data-pie-content]) span.passage-title:after {
 	content: close-quote;
 }
 
-.proper-name {
+:where([data-pie-content]) .proper-name {
 	font-style: italic;
 }
 
-.variable {
+:where([data-pie-content]) .variable {
 	font-style: italic;
 }
 
-.equation-block {
+:where([data-pie-content]) .equation-block {
 	text-align: center;
 	margin-left: 20%;
 	margin-right: 20%;
@@ -251,7 +258,7 @@ span.passage-title:after {
 	display: block;
 }
 
-.embedded-error {
+:where([data-pie-content]) .embedded-error {
 	font-style: italic;
 }
 
@@ -261,9 +268,9 @@ span.passage-title:after {
  * instead — SC 1.4.10 Reflow.
  */
 @media (max-width: 30rem) {
-	.block-quote,
-	.text-block,
-	.equation-block {
+	:where([data-pie-content]) .block-quote,
+	:where([data-pie-content]) .text-block,
+	:where([data-pie-content]) .equation-block {
 		margin-left: 0;
 		margin-right: 0;
 		width: auto;
@@ -281,22 +288,22 @@ span.passage-title:after {
 
 /* PASSAGES */
 
-div.passage-title,
-div.passage-subtitle {
+:where([data-pie-content]) div.passage-title,
+:where([data-pie-content]) div.passage-subtitle {
 	font-weight: bold;
 	text-align: center;
 }
 
-div.passage-author {
+:where([data-pie-content]) div.passage-author {
 	text-align: center;
 }
 
-.p-number {
+:where([data-pie-content]) .p-number {
 	float: left;
 	font-size: 0.85em;
 }
 
-.numbered-paragraph {
+:where([data-pie-content]) .numbered-paragraph {
 	margin-left: 36px;
 }
 
@@ -304,82 +311,82 @@ div.passage-author {
 /* Inspect Styles */
 
 @media print {
-	.kds-noprint {
+	:where([data-pie-content]) .kds-noprint {
 		display: none;
 	}
 
-	.noprint {
+	:where([data-pie-content]) .noprint {
 		display: none;
 	}
 }
 
-.kds-absolute {
+:where([data-pie-content]) .kds-absolute {
 	border-left: 1px solid var(--pie-text, black);
 	border-right: 1px solid var(--pie-text, black);
 	padding: 0px 0.3em 0px 0.3em;
 }
 
-.abs {
+:where([data-pie-content]) .abs {
 	border-left: var(--pie-text, #000000) 1px solid;
 	border-right: var(--pie-text, #000000) 1px solid;
 	padding: 0px 0.3em 0px 0.3em;
 }
 
-.kds-border-1 {
+:where([data-pie-content]) .kds-border-1 {
 	border: 1px solid var(--pie-text, black);
 }
 
-.kds-border-2 {
+:where([data-pie-content]) .kds-border-2 {
 	border: 2px solid var(--pie-text, black);
 }
 
-.kds-center {
+:where([data-pie-content]) .kds-center {
 	margin: 0px;
 	text-align: center;
 }
 
-.center {
+:where([data-pie-content]) .center {
 	text-align: center;
 	margin: 0;
 }
 
-.kds-exponent {
+:where([data-pie-content]) .kds-exponent {
 	font-size: 85%;
 	margin-left: -0.4em;
 	position: relative;
 	top: -1.4em;
 }
 
-sup.frac {
+:where([data-pie-content]) sup.frac {
 	position: relative;
 	top: -1.4em;
 	font-size: 70%;
 	margin-left: -0.4em;
 }
 
-.kds-fillin {
+:where([data-pie-content]) .kds-fillin {
 	border: 1px solid var(--pie-text, black);
 	display: inline-block;
 	margin: 0em 0.2em;
 	padding-left: 1em;
 }
 
-.fillin {
+:where([data-pie-content]) .fillin {
 	margin: 0em 0.2em;
 	padding-left: 1em;
 	border: var(--pie-text, #000000) 1px solid;
 	display: inline-block;
 }
 
-.kds-font-larger {
+:where([data-pie-content]) .kds-font-larger {
 	font-size: larger;
 }
 
-.kds-font-smaller {
+:where([data-pie-content]) .kds-font-smaller {
 	font-size: smaller;
 }
 
-table.kds-fraction {
+:where([data-pie-content]) table.kds-fraction {
 	border: 0px;
 	display: inline-block;
 	font-size: 85%;
@@ -388,7 +395,7 @@ table.kds-fraction {
 	vertical-align: middle;
 }
 
-table.kds-fraction > tbody > tr > td.kds-numerator {
+:where([data-pie-content]) table.kds-fraction > tbody > tr > td.kds-numerator {
 	border-bottom: 1px solid var(--pie-text, black);
 	border-left: 0px;
 	border-right: 0px;
@@ -396,12 +403,12 @@ table.kds-fraction > tbody > tr > td.kds-numerator {
 	text-align: center;
 }
 
-table.kds-fraction > tbody > tr > td.kds-denominator {
+:where([data-pie-content]) table.kds-fraction > tbody > tr > td.kds-denominator {
 	border: 0px;
 	text-align: center;
 }
 
-table.frac {
+:where([data-pie-content]) table.frac {
 	display: inline-block;
 	vertical-align: middle;
 	font-size: 85%;
@@ -410,7 +417,7 @@ table.frac {
 	padding: 0px;
 }
 
-.frac .nu {
+:where([data-pie-content]) .frac .nu {
 	border-left: 0px;
 	border-top: 0px;
 	border-right: 0px;
@@ -418,50 +425,50 @@ table.frac {
 	text-align: center;
 }
 
-.frac .de {
+:where([data-pie-content]) .frac .de {
 	border: 0px;
 	text-align: center;
 }
 
-.kds-hanging-indent {
+:where([data-pie-content]) .kds-hanging-indent {
 	margin: 0px;
 	padding-left: 3em;
 	text-indent: -3em;
 }
 
-.kds-image-caption {
+:where([data-pie-content]) .kds-image-caption {
 	font-family: Verdana, Arial, sans-serif;
 	text-align: center;
 }
 
-.kds-image-left {
+:where([data-pie-content]) .kds-image-left {
 	float: left;
 	margin-right: 5px;
 }
 
-.kds-image-right {
+:where([data-pie-content]) .kds-image-right {
 	float: right;
 	margin-left: 5px;
 }
 
-.kds-indent {
+:where([data-pie-content]) .kds-indent {
 	text-indent: 3em;
 }
 
-.indent {
+:where([data-pie-content]) .indent {
 	text-indent: 3em;
 }
 
-.kds-nowrap {
+:where([data-pie-content]) .kds-nowrap {
 	display: inline-block;
 	white-space: nowrap;
 }
 
-.kds-overline {
+:where([data-pie-content]) .kds-overline {
 	text-decoration: overline;
 }
 
-.kds-parentheses {
+:where([data-pie-content]) .kds-parentheses {
 	font-family: "Arial Narrow", Arial, sans-serif;
 	font-size: 300%;
 	font-weight: normal;
@@ -469,7 +476,7 @@ table.frac {
 	top: 8px;
 }
 
-b.frac {
+:where([data-pie-content]) b.frac {
 	font-weight: normal;
 	font-size: 300%;
 	font-family: arial narrow;
@@ -477,77 +484,77 @@ b.frac {
 	top: +8px;
 }
 
-.kds-pi {
+:where([data-pie-content]) .kds-pi {
 	font-family: "Times New Roman", serif;
 	font-size: 1.2em;
 }
 
-.newradical {
+:where([data-pie-content]) .newradical {
 	border-collapse: collapse;
 	display: inline-block;
 	vertical-align: middle;
 }
 
-.newradical td {
+:where([data-pie-content]) .newradical td {
 	border: 0px;
 	padding: 0px;
 	vertical-align: top;
 }
 
-.newradical td.vinculum {
+:where([data-pie-content]) .newradical td.vinculum {
 	border-top: 1px solid var(--pie-text, black);
 	padding: 0px;
 	vertical-align: top;
 }
 
-.newradical div.exp {
+:where([data-pie-content]) .newradical div.exp {
 	font-size: 0.7em;
 	position: relative;
 	left: 7px;
 	bottom: 5px;
 }
 
-.kds-underline {
+:where([data-pie-content]) .kds-underline {
 	text-decoration: underline;
 }
 
-.under {
+:where([data-pie-content]) .under {
 	text-decoration: underline;
 }
 
-.kds-verdana2t {
+:where([data-pie-content]) .kds-verdana2t {
 	border: 1px solid var(--pie-white, white);
 	text-align: left;
 	text-decoration: none;
 	vertical-align: top;
 }
 
-.Verdana2t {
+:where([data-pie-content]) .Verdana2t {
 	vertical-align: top;
 	text-align: left;
 	text-decoration: none;
 	border: 1px solid var(--pie-white, white);
 }
 
-.kds-whole-number {
+:where([data-pie-content]) .kds-whole-number {
 	display: inline-block;
 	font-size: 120%;
 	margin: 0em 0em 0em 0.2em;
 }
 
-.whole {
+:where([data-pie-content]) .whole {
 	display: inline-block;
 	margin: 0em 0em 0em 0.2em;
 	font-size: 120%;
 }
 
-table.KdsTable01 {
+:where([data-pie-content]) table.KdsTable01 {
 	border: 1px solid var(--pie-text, black);
 	border-collapse: collapse;
 	border-spacing: 0px;
 }
 
-table.KdsTable01 > tbody > tr > th {
+:where([data-pie-content]) table.KdsTable01 > tbody > tr > th {
 	background-color: var(--pie-background-dark, #d3d3d3);
 	border: 1px solid var(--pie-text, black);
 	font-weight: normal;
@@ -555,7 +562,7 @@ table.KdsTable01 > tbody > tr > th {
 	text-align: center;
 }
 
-table.KdsTable01 > tbody > tr > th.bold {
+:where([data-pie-content]) table.KdsTable01 > tbody > tr > th.bold {
 	background-color: var(--pie-background-dark, #d3d3d3);
 	border: 1px solid var(--pie-text, black);
 	font-weight: bold;
@@ -563,33 +570,33 @@ table.KdsTable01 > tbody > tr > th.bold {
 	text-align: center;
 }
 
-table.KdsTable01 > tbody > tr > td {
+:where([data-pie-content]) table.KdsTable01 > tbody > tr > td {
 	border: 1px solid var(--pie-text, black);
 	padding: 2px;
 	text-align: center;
 }
 
-table.KdsTable01 > tbody > tr > td.bold {
+:where([data-pie-content]) table.KdsTable01 > tbody > tr > td.bold {
 	border: 1px solid var(--pie-text, black);
 	font-weight: bold;
 	padding: 2px;
 	text-align: center;
 }
 
-table.KdsTable02 {
+:where([data-pie-content]) table.KdsTable02 {
 	border: 1px solid var(--pie-text, black);
 	border-collapse: collapse;
 	border-spacing: 0px;
 }
 
-table.KdsTable02 > tbody > tr > th {
+:where([data-pie-content]) table.KdsTable02 > tbody > tr > th {
 	background-color: var(--pie-background-dark, #d3d3d3);
 	border: 1px solid var(--pie-text, black);
 	font-weight: normal;
 	padding: 2px;
 }
 
-table.KdsTable02 > tbody > tr > td {
+:where([data-pie-content]) table.KdsTable02 > tbody > tr > td {
 	border: 1px solid var(--pie-text, black);
 	padding: 2px;
 }
@@ -601,84 +608,84 @@ table.KdsTable02 > tbody > tr > td {
    on a dark surface. Mixed inline, not hoisted to a custom property: a custom
    property substitutes var(--pie-text) where it is declared, so a scoped
    <pie-theme scope="self"> below :root would not reach it. */
-.table {
+:where([data-pie-content]) .table {
 	width: 100%;
 	margin-bottom: 1em;
 	background-color: transparent;
 	border-collapse: collapse;
 }
 
-.table th,
-.table td {
+:where([data-pie-content]) .table th,
+:where([data-pie-content]) .table td {
 	padding: 0.75em;
 	vertical-align: top;
 	border-top: 1px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-.table tbody + tbody {
+:where([data-pie-content]) .table tbody + tbody {
 	border-top: 2px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-.table thead th {
+:where([data-pie-content]) .table thead th {
 	vertical-align: bottom;
 	border-bottom: 2px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-th {
+:where([data-pie-content]) th {
 	text-align: inherit;
 }
 
-.table-bordered,
-.table-bordered th,
-.table-bordered td {
+:where([data-pie-content]) .table-bordered,
+:where([data-pie-content]) .table-bordered th,
+:where([data-pie-content]) .table-bordered td {
 	border: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-.table-bordered thead td,
-.table-bordered thead th {
+:where([data-pie-content]) .table-bordered thead td,
+:where([data-pie-content]) .table-bordered thead th {
 	border-bottom-width: 2px;
 }
 
-.table-striped tbody tr:nth-of-type(odd) {
+:where([data-pie-content]) .table-striped tbody tr:nth-of-type(odd) {
 	background-color: color-mix(in srgb, var(--pie-text, #000) 5%, transparent);
 }
 
-.text-center {
+:where([data-pie-content]) .text-center {
 	text-align: center !important;
 }
 
-.h5,
-h5 {
+:where([data-pie-content]) .h5,
+:where([data-pie-content]) h5 {
 	font-size: 1.25em;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+:where([data-pie-content]) h1,
+:where([data-pie-content]) h2,
+:where([data-pie-content]) h3,
+:where([data-pie-content]) h4,
+:where([data-pie-content]) h5,
+:where([data-pie-content]) h6 {
 	margin-top: 0;
 }
 
 /* Spacing and inheritance only: `font-weight: 500` used to sit here and flatten
    every authored heading to lighter-than-bold, weakening the visual hierarchy
    a screen-reader user gets from the heading level. */
-.h1,
-.h2,
-.h3,
-.h4,
-.h5,
-.h6,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+:where([data-pie-content]) .h1,
+:where([data-pie-content]) .h2,
+:where([data-pie-content]) .h3,
+:where([data-pie-content]) .h4,
+:where([data-pie-content]) .h5,
+:where([data-pie-content]) .h6,
+:where([data-pie-content]) h1,
+:where([data-pie-content]) h2,
+:where([data-pie-content]) h3,
+:where([data-pie-content]) h4,
+:where([data-pie-content]) h5,
+:where([data-pie-content]) h6 {
 	margin-bottom: 0.5em;
 	font-family: inherit;
 	line-height: 1.2;
@@ -695,36 +702,36 @@ h6 {
  * rather than patched.
  */
 
-.TEX-S3 {
+:where([data-pie-content]) .TEX-S3 {
 	font-family: MJXZERO, MJXTEX-S3 !important;
 }
 
-.TEX-S2 {
+:where([data-pie-content]) .TEX-S2 {
 	font-family: MJXZERO, MJXTEX-S2 !important;
 }
 
-.TEX-S1 {
+:where([data-pie-content]) .TEX-S1 {
 	font-family: MJXZERO, MJXTEX-S1 !important;
 }
 
-.TEX-I {
+:where([data-pie-content]) .TEX-I {
 	font-family: MJXZERO, MJXTEX-I !important;
 }
 
-mjx-c.mjx-c2032 {
+:where([data-pie-content]) mjx-c.mjx-c2032 {
 	font-family: "CerebriSans", serif !important;
 }
 
-mjx-c.mjx-c22,
-mjx-c.mjx-c27 {
+:where([data-pie-content]) mjx-c.mjx-c22,
+:where([data-pie-content]) mjx-c.mjx-c27 {
 	font-family: MJXZERO, serif !important;
 }
 
-table {
+:where([data-pie-content]) table {
 	border-collapse: collapse;
 }
 
-.evaluate-bottom-border > :first-child::after {
+:where([data-pie-content]) .evaluate-bottom-border > :first-child::after {
 	content: "";
 	display: block;
 	border-bottom: 1px solid
@@ -733,7 +740,7 @@ table {
 
 /* ANSWER ELIMINATOR */
 
-.pie-answer-eliminator-toggle {
+:where([data-pie-content]) .pie-answer-eliminator-toggle {
 	/* em, not px: PNP font scaling raises the surrounding text size without
 	   touching px boxes, which left a fixed 28px control under grown text. The
 	   box is 1.75x the surrounding text and the glyph 1.125x — the 28px/18px the
@@ -761,20 +768,20 @@ table {
 	z-index: 10;
 }
 
-.pie-answer-eliminator-toggle:hover {
+:where([data-pie-content]) .pie-answer-eliminator-toggle:hover {
 	background: var(--pie-secondary-background, #f0f0f0);
 	border-color: var(--pie-border-dark, #999);
 	color: var(--pie-text, #333);
 }
 
-.pie-answer-eliminator-toggle--active,
-.pie-answer-eliminator-toggle--active:hover {
+:where([data-pie-content]) .pie-answer-eliminator-toggle--active,
+:where([data-pie-content]) .pie-answer-eliminator-toggle--active:hover {
 	background: var(--pie-incorrect, #ff9800);
 	border-color: var(--pie-incorrect, #ff9800);
 	color: var(--pie-white, #fff);
 }
 
-.pie-answer-eliminator-eliminated-fallback {
+:where([data-pie-content]) .pie-answer-eliminator-eliminated-fallback {
 	text-decoration: line-through;
 	text-decoration-thickness: 2px;
 	text-decoration-color: var(
@@ -795,11 +802,11 @@ table {
  * at all — declaring it there dimmed nothing, so the modern path shipped the
  * strike as its only cue.
  */
-[data-pie-answer-eliminated="true"] {
+:where([data-pie-content]) [data-pie-answer-eliminated="true"] {
 	opacity: 0.6;
 }
 
-.pie-answer-eliminator-image-strike {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike {
 	position: relative;
 	display: inline-block;
 	max-width: 100%;
@@ -812,7 +819,7 @@ table {
 	line-height: 0;
 }
 
-.pie-answer-eliminator-image-strike-overlay {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike-overlay {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -820,7 +827,7 @@ table {
 	pointer-events: none;
 }
 
-.pie-answer-eliminator-image-strike-line {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike-line {
 	stroke: var(
 		--pie-answer-eliminator-strike-color,
 		var(--pie-incorrect, #ff9800)
@@ -830,7 +837,7 @@ table {
 }
 
 /* Wider light line under each diagonal so the X stays legible on dark imagery. */
-.pie-answer-eliminator-image-strike-casing {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike-casing {
 	stroke: var(
 		--pie-answer-eliminator-image-strike-casing-color,
 		rgba(255, 255, 255, 0.85)
@@ -847,7 +854,7 @@ table {
  * strike. Which mark it gets depends on the shape of the expression — the tool
  * measures the box and picks `--line` or `--cross`.
  */
-.pie-answer-eliminator-math-strike {
+:where([data-pie-content]) .pie-answer-eliminator-math-strike {
 	position: relative;
 	/*
 	 * Internal: the resolved strike paint, so the rules below need not repeat the
@@ -860,7 +867,7 @@ table {
 }
 
 /* A single row of symbols takes the same line-through as the surrounding prose. */
-.pie-answer-eliminator-math-strike--line::after {
+:where([data-pie-content]) .pie-answer-eliminator-math-strike--line::after {
 	content: "";
 	position: absolute;
 	left: 0;
@@ -878,7 +885,7 @@ table {
  * each gradient's transition run exactly corner to corner at any aspect ratio,
  * with a 1px feather either side of the 1px core for a smooth 2px line.
  */
-.pie-answer-eliminator-math-strike--cross::after {
+:where([data-pie-content]) .pie-answer-eliminator-math-strike--cross::after {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -900,12 +907,12 @@ table {
 		);
 }
 
-.pie-answer-masked-fallback {
+:where([data-pie-content]) .pie-answer-masked-fallback {
 	opacity: 0.2;
 	filter: blur(2px);
 }
 
-.pie-answer-eliminator-sr-announcement {
+:where([data-pie-content]) .pie-answer-eliminator-sr-announcement {
 	position: absolute;
 	left: -10000px;
 	width: 1px;

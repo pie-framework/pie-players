@@ -13,6 +13,7 @@ import {
 // library mode — dead weight in the package that a host could mistake for
 // something it needs to link. `?raw` reads the authored stylesheet verbatim.
 import contentStyles from "@pie-players/pie-theme/components.css?raw";
+import type { PieItemPlayerElement } from "./types.js";
 
 export type * from "./types.js";
 export { ensureItemPlayerMathRenderingReady } from "./math-rendering-ready.js";
@@ -55,3 +56,9 @@ export function definePieItemPlayer(tagName = PIE_ITEM_PLAYER_TAG): void {
 }
 
 definePieItemPlayer();
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-item-player": PieItemPlayerElement;
+	}
+}

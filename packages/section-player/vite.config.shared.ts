@@ -1,7 +1,7 @@
 import { svelte, vitePreprocess } from "@sveltejs/vite-plugin-svelte";
-import { createHash } from "node:crypto";
 import { resolve } from "path";
 import type { PluginOption } from "vite";
+import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
@@ -32,41 +32,9 @@ export const sharedSveltePlugins = (): PluginOption[] => [
 	escapeSourceMapCommentTextInOutput(),
 ];
 
-const sanitizeChunkKey = (value: string) =>
-	value
-		.replace(/\\/g, "/")
-		.replace(/^.*\/node_modules\//, "npm/")
-		.replace(/^.*\/src\//, "src/")
-		.replace(/-[a-f0-9]{8,}(?=\.js($|[/.]))/gi, "")
-		.replace(/-[a-f0-9]{8,}(?=\/|$)/gi, "")
-		.replace(/[^a-zA-Z0-9/_-]/g, "-")
-		.replace(/\/+/g, "/")
-		.replace(/^\/+/, "")
-		.replace(/\/$/, "")
-		.replace(/\//g, "__");
-
-const getChunkSourceKey = (chunkInfo: {
-	name: string;
-	facadeModuleId?: string | null;
-	moduleIds?: string[];
-}) => {
-	const moduleSource =
-		chunkInfo.facadeModuleId ??
-		(Array.isArray(chunkInfo.moduleIds) ? chunkInfo.moduleIds[0] : undefined);
-	const sourceKey = sanitizeChunkKey(moduleSource || chunkInfo.name || "chunk");
-	const chunkName = sanitizeChunkKey(chunkInfo.name || "chunk");
-	const sourceHash = createHash("sha1")
-		.update(sourceKey)
-		.digest("hex")
-		.slice(0, 8);
-	return `${chunkName}-${sourceHash}`;
-};
-
-export const sharedChunkFileNames = (chunkInfo: {
-	name: string;
-	facadeModuleId?: string | null;
-	moduleIds?: string[];
-}) => `chunks/${getChunkSourceKey(chunkInfo)}.js`;
+export const sharedChunkFileNames = chunkFileNamesFromSource(
+	resolve(__dirname, "../.."),
+);
 
 export const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",

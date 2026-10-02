@@ -127,7 +127,7 @@ without its context. `docs/adr/README.md` sets the bar and the numbering; record
 are append-only, so a superseded one keeps its number and gains a `Superseded by`
 line rather than being edited into agreement.
 
-Two rules from those records bind new code directly, both from ADR 0002:
+Rules from those records bind new code directly. From ADR 0002:
 
 - A public interface takes no type parameter that appears only in argument
   position. TypeScript compares method parameters bivariantly, so such a parameter
@@ -141,6 +141,21 @@ Two rules from those records bind new code directly, both from ADR 0002:
   peer required for any consumer type-checking without `skipLibCheck`. Type the
   public surface with the contract package's own interface and confine the peer to
   a method body.
+
+From ADR 0003, for every host and element:
+
+- An element learns the student's accessibility settings only from the
+  `Symbol.for("pie.accessibility")` context, whose key and type live in
+  `@pie-players/pie-context`, and never imports `@pie-players/pie-assessment-toolkit`.
+  A setting that changes rendering travels through that context; `env` keeps the
+  settings that change the model.
+- The mapping from a profile to support ids lives in the host, which resolves it
+  through the toolkit's policy precedence. An element maps a fixed support id to a
+  fixed behaviour, because item configs pin element versions and a rule inside an
+  element is frozen into each of them.
+- The context value only grows: fields are added, never removed or redefined.
+  Consumers ignore support ids they do not recognize, and an unanswered request
+  means defaults, never a wait for a provider.
 
 ### Domain Language
 

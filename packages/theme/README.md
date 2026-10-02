@@ -366,8 +366,8 @@ Use `@pie-players/pie-theme/components.css` for shared visual styles that are in
 not need a second copy. Existing hosts may still own the exported stylesheet;
 that published path remains supported. Mounting `<pie-theme>` does not load it —
 the element only writes `--pie-*` custom properties. The item player bundles the
-stylesheet as text and installs it once per document at import time, unless the
-host already loads a copy; see
+stylesheet as text and installs it once per document at import time, with its
+generic rules confined to player content, unless the host already loads a copy; see
 [content styles](../item-player/README.md#content-styles) for host ownership.
 
 Note for players adding this: a plain `import "…/components.css"` does **not**

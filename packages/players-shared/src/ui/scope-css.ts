@@ -73,9 +73,17 @@ type StyleNode =
 	/** Trailing text with no rule in it, kept so nothing is silently dropped. */
 	| { kind: "trailing"; text: string; end: number };
 
+export interface ScopeStylesheetOptions {
+	/**
+	 * Decides per selector whether it is confined; a selector it rejects is
+	 * emitted unchanged. Every selector is confined when omitted.
+	 */
+	shouldScope?: (selector: string) => boolean;
+}
+
 /**
  * Rewrite `cssText` so every selector it contains is confined to
- * `scopeSelector`.
+ * `scopeSelector`, or every selector `options.shouldScope` accepts.
  *
  * Returns `cssText` unchanged when there is no scope selector to apply, and
  * `""` for empty or non-string input.
@@ -83,11 +91,13 @@ type StyleNode =
 export function scopeStylesheetCss(
 	cssText: unknown,
 	scopeSelector: string,
+	options: ScopeStylesheetOptions = {},
 ): string {
 	if (typeof cssText !== "string" || cssText.length === 0) return "";
 	const scope = scopeSelector?.trim();
 	if (!scope) return cssText;
-	return scopeRuleList(stripComments(cssText), scope);
+	const shouldScope = options.shouldScope ?? (() => true);
+	return scopeRuleList(stripComments(cssText), scope, shouldScope);
 }
 
 /**
@@ -121,19 +131,29 @@ export function scopeSelector(selector: string, scopeSelector: string): string {
 	return `${scope} ${sel}`;
 }
 
-function scopeRuleList(css: string, scope: string): string {
+type ShouldScope = (selector: string) => boolean;
+
+function scopeRuleList(
+	css: string,
+	scope: string,
+	shouldScope: ShouldScope,
+): string {
 	let out = "";
 	let index = 0;
 	while (index < css.length) {
 		const node = readNode(css, index);
 		if (node.end <= index) break;
-		out += renderNode(node, scope);
+		out += renderNode(node, scope, shouldScope);
 		index = node.end;
 	}
 	return out;
 }
 
-function renderNode(node: StyleNode, scope: string): string {
+function renderNode(
+	node: StyleNode,
+	scope: string,
+	shouldScope: ShouldScope,
+): string {
 	if (node.kind === "statement") {
 		const text = node.text.trim();
 		// A stray `;` at rule-list level carries nothing worth re-emitting.
@@ -149,14 +169,18 @@ function renderNode(node: StyleNode, scope: string): string {
 	if (prelude.startsWith("@")) {
 		const name = AT_RULE_NAME.exec(prelude)?.[1]?.toLowerCase();
 		if (name && NESTED_RULE_AT_RULES.has(name)) {
-			const inner = scopeRuleList(node.block, scope);
+			const inner = scopeRuleList(node.block, scope, shouldScope);
 			if (!inner.trim()) return "";
 			return `${prelude} {\n${inner}}\n`;
 		}
 		return `${prelude} {${node.block}}\n`;
 	}
 	const selectors = splitTopLevel(prelude, ",")
-		.map((selector) => scopeSelector(selector, scope))
+		.map((selector) =>
+			shouldScope(selector.trim())
+				? scopeSelector(selector, scope)
+				: selector.trim(),
+		)
 		.filter(Boolean);
 	if (selectors.length === 0) return "";
 	return `${selectors.join(", ")} {${node.block}}\n`;

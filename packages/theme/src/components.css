@@ -1,6 +1,11 @@
 /* Content classes for authored assessment content, installed as a
    document-level stylesheet by every player (see players-shared
-   ui/content-styles.ts).
+   ui/content-styles.ts). The installed copy confines every rule that could
+   match host UI to the players' content containers — the bare table and
+   heading rules, the .table family and other framework-style names — and so
+   will any rule added here unless it requires a PIE, KDS or MathJax name or a
+   listed legacy content class. A host loading this file itself has to confine
+   those rules on its own.
 
    Colour values resolve through the canonical --pie-* tokens with the original
    literal kept as the no-theme last resort. The literals came from content
@@ -594,13 +599,15 @@ table.KdsTable02 > tbody > tr > td {
 	padding: 2px;
 }
 
-/* The grid rules below are mixed from the ink instead of taken from
-   --pie-border-light, which the DaisyUI mapping fills from base-200 — a surface,
-   so a border set from it disappears into the page. The 15% mix keeps the
-   near-invisible weight #dee2e6 had on white and inverts to a faint light rule
-   on a dark surface. Mixed inline, not hoisted to a custom property: a custom
-   property substitutes var(--pie-text) where it is declared, so a scoped
-   <pie-theme scope="self"> below :root would not reach it. */
+/* The grid rules below paint the ink, as every other authored grid in this
+   file does and as pie-lib's table grid falls back to: --pie-text is held to
+   4.5:1 against the page, so the rules clear SC 1.4.11's 3:1 wherever the text
+   is legible. They were a 15% mix, as faint as the fixed light grey
+   (#dee2e6) they first shipped with: 1.41:1 on white. A lighter fixed share
+   cannot be certified: the share that clears 3:1 depends on the palette, 62%
+   on the Grey on Light Grey scheme, and is unknown for a host's own.
+   --pie-border-light is no substitute either; the DaisyUI mapping
+   fills it from base-200, a surface. */
 .table {
 	width: 100%;
 	margin-bottom: 1em;
@@ -612,19 +619,16 @@ table.KdsTable02 > tbody > tr > td {
 .table td {
 	padding: 0.75em;
 	vertical-align: top;
-	border-top: 1px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 1px solid var(--pie-text, black);
 }
 
 .table tbody + tbody {
-	border-top: 2px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 2px solid var(--pie-text, black);
 }
 
 .table thead th {
 	vertical-align: bottom;
-	border-bottom: 2px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-bottom: 2px solid var(--pie-text, black);
 }
 
 th {
@@ -634,7 +638,7 @@ th {
 .table-bordered,
 .table-bordered th,
 .table-bordered td {
-	border: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border: 1px solid var(--pie-text, black);
 }
 
 .table-bordered thead td,

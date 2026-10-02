@@ -55,6 +55,10 @@
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
 			backend: { type: "Object", reflect: false },
+			// `type: "Object"` so the attribute form parses both the boolean opt-in
+			// (`session-snapshot="true"`) and a JSON config; a host-supplied store
+			// is a function and can only arrive as a property.
+			sessionSnapshot: { attribute: "session-snapshot", type: "Object" },
 			allowedStyleOrigins: { attribute: "allowed-style-origins", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
 			trustMarkup: { attribute: "trust-markup", type: "Boolean" },
@@ -120,6 +124,7 @@
 		bindPageLifecycleCommit,
 		commitPendingSessions,
 		createPieLogger,
+		createSessionSnapshot,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_ESM_CDN_URL,
 		DEFAULT_LOADER_CONFIG,
@@ -152,6 +157,9 @@
 		CanonicalItemSessionContainer,
 		EsmCdnProviderOption,
 		IifeBackendConfig,
+		SessionSnapshot,
+		SessionSnapshotConfig,
+		SessionSnapshotRecord,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import {
@@ -220,6 +228,10 @@
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
 		backend = null as BackendConfig | null,
+		// Off by default: PIE writes a learner response to the device only when a
+		// host asks for it. A recovered draft is offered through
+		// `session-snapshot-available`, never applied.
+		sessionSnapshot = null as SessionSnapshotConfig | null,
 		allowedStyleOrigins = "",
 		loaderOptions = {} as UnifiedLoaderOptions,
 		trustMarkup = false,
@@ -428,6 +440,9 @@
 	// yet; see `handleElementSessionUpdate`.
 	let derivedStateUnannounced = false;
 	let latestLoadRequestToken = 0;
+	let activeSessionSnapshot: SessionSnapshot | null = null;
+	let offeredSnapshotKey = "";
+	let pendingSessionSnapshot: SessionSnapshotRecord | null = null;
 	// The custom element itself, resolved while the player is still connected.
 	// `hostElement` is the inner `<div>`; by the time a removal reaches
 	// `onDestroy` that div can already be detached from the custom element, and
@@ -1333,6 +1348,11 @@
 	});
 
 	const handlePlayerEvent = (event: CustomEvent) => {
+		// A durable save supersedes the device-local draft.
+		if (event.type === "backend-session-saved") {
+			activeSessionSnapshot?.clear();
+			pendingSessionSnapshot = null;
+		}
 		const newEvent = new CustomEvent(event.type, {
 			detail: event.detail,
 			bubbles: true,
@@ -1389,6 +1409,77 @@
 		return sessionController.getSession() as { id: string; data: unknown[] };
 	}
 
+	/**
+	 * Identity a snapshot is keyed by. `backend.delivery` owns it, so a draft is
+	 * only ever offered back to the sitting that wrote it. Without a delivery
+	 * `sessionId` there is no snapshot at all: the item id alone is the same for
+	 * every learner, and a shared device would offer one student's draft to the
+	 * next. A host driving the player by props opts in with an explicit
+	 * `sessionSnapshot.key`.
+	 */
+	function snapshotIdentity(): {
+		itemId: string;
+		sessionId: string;
+		assignmentId: string;
+	} {
+		const delivery = (
+			backend as {
+				delivery?: {
+					itemId?: string;
+					sessionId?: string;
+					assignmentId?: string;
+				};
+			} | null
+		)?.delivery;
+		return {
+			itemId: delivery?.itemId || itemConfig?.id || "",
+			sessionId: delivery?.sessionId || "",
+			assignmentId: delivery?.assignmentId || "",
+		};
+	}
+
+	function writeSessionSnapshot(): void {
+		if (!activeSessionSnapshot) return;
+		try {
+			activeSessionSnapshot.write(currentSessionContainer());
+		} catch (errorValue) {
+			logger.warn("[pie-item-player] session snapshot write failed", errorValue);
+		}
+	}
+
+	// A crash or an OS kill fires nothing, so the snapshot is the only recovery
+	// path left. It is offered, never applied: a shared device makes a stored
+	// draft indistinguishable from a previous student's, and only the host can
+	// tell those apart.
+	$effect(() => {
+		const snapshotConfig = sessionSnapshot;
+		const identity = snapshotIdentity();
+		untrack(() => {
+			const snapshot = createSessionSnapshot({
+				config: snapshotConfig,
+				identity,
+			});
+			activeSessionSnapshot = snapshot;
+			if (!snapshot || snapshot.key === offeredSnapshotKey) return;
+			offeredSnapshotKey = snapshot.key;
+			const stored = snapshot.read();
+			if (!stored) return;
+			// Held as well as announced: the event fires once, and a host that
+			// binds its listener a tick after setting the attribute would
+			// otherwise lose the recovery with nothing to ask.
+			pendingSessionSnapshot = stored;
+			handlePlayerEvent(
+				new CustomEvent("session-snapshot-available", {
+					detail: {
+						key: stored.key,
+						session: stored.session,
+						timestamp: stored.timestamp,
+					},
+				}),
+			);
+		});
+	});
+
 	// The seams above only fire when something replaces or removes the player.
 	// Closing the tab, navigating away or an OS reclaiming a backgrounded tab
 	// removes nothing, so the commit has to hang off the page lifecycle as well.
@@ -1399,6 +1490,7 @@
 		return bindPageLifecycleCommit({
 			root: () => localHost,
 			onHidden: () => {
+				writeSessionSnapshot();
 				// The session is snapshotted synchronously here; the request itself
 				// goes out one queue turn later, which `keepalive` is what makes
 				// survivable - it is allowed to outlive the document. The built-in
@@ -1473,6 +1565,16 @@
 	 * still in the document, the events reach a `document`-level listener, which
 	 * the player's own teardown cannot do.
 	 */
+	/**
+	 * The snapshot offered by `session-snapshot-available`, if one was found.
+	 *
+	 * Still held after the event fires, so a host that attached its listener
+	 * late can still recover. Applying it is the host's decision.
+	 */
+	export function getPendingSessionSnapshot(): SessionSnapshotRecord | null {
+		return pendingSessionSnapshot;
+	}
+
 	export function commitPendingElementSessions(): void {
 		commitPendingSessions(hostElement, { reason: "teardown", logger });
 	}
@@ -1680,6 +1782,7 @@
 			derivedStateUnannounced = false;
 			publishSessionToHostProp(nextSession);
 			emitSessionChanged({ ...forwarding.detail, session: nextSession }, nextSession);
+			writeSessionSnapshot();
 			backendOrchestrator.scheduleAutosave();
 			return;
 		}

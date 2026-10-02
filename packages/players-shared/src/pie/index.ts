@@ -125,6 +125,22 @@ export type {
 	CommitPendingSessionsResult,
 	SessionCommitReason,
 } from "./session-commit.js";
+// Opt-in device-local snapshot of a committed session, offered back to the host
+// after a crash rather than applied.
+export {
+	createSessionSnapshot,
+	isSessionSnapshotEnabled,
+	isSnapshotIdentitySpecific,
+	sessionSnapshotKey,
+	sessionStorageSnapshotStore,
+} from "./session-snapshot.js";
+export type {
+	SessionSnapshot,
+	SessionSnapshotConfig,
+	SessionSnapshotIdentity,
+	SessionSnapshotRecord,
+	SessionSnapshotStore,
+} from "./session-snapshot.js";
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";

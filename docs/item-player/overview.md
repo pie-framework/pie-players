@@ -147,6 +147,14 @@ An element that has adopted `createSessionNotifier` (`@pie-element/shared-player
 
 Nothing is announced unless it changed since the host last heard. The discriminant is a comparison against the session the player last observed for that element, recorded on the element itself — seeded when the item loads, updated on every forwarded `session-changed`. That makes a restored response the learner never touched silent, an erased response announced, and a response the learner returns to after changing it announced again. An element the player never observed falls back to `hasLearnerResponse`, which asks whether the session holds anything outside identity, dispatch metadata and controller-written shuffle order.
 
+### Session snapshot
+
+`sessionSnapshot` (property, or the `session-snapshot` attribute) opts into a device-local copy of each committed session, keyed by the `backend.delivery` identity and stored in `sessionStorage` by default. A crash or an OS kill fires no lifecycle event, so nothing else survives it.
+
+There is no snapshot without a delivery `sessionId`. The item id alone is the same for every learner, so on a shared device a snapshot keyed by it would offer one student's draft to the next — and the offer is the disclosure, whether or not the host applies it. A host driving the player by props alone opts in with an explicit `sessionSnapshot.key` and owns the uniqueness of that key.
+
+The snapshot is offered, never applied: on load, a matching snapshot raises `session-snapshot-available` with `{ key, session, timestamp }` and the host decides. School devices are shared, and the player cannot tell a legitimate recovery from a previous student's draft. The record stays available from `getPendingSessionSnapshot()` after the event fires, for a host that binds its listener late. A host that wants recovery across a full browser restart supplies a `localStorage`-backed `store` and owns the retention consequences. The snapshot is cleared on a successful backend save.
+
 ## External styles
 
 The player supports two external style mechanisms:

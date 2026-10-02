@@ -20,6 +20,9 @@ export interface MathRenderingAPI {
 
 const GLOBAL_KEY = "@pie-lib/math-rendering";
 const GLOBAL_DLL_KEY = "_dll_pie_lib__math_rendering";
+// Every copy of @pie-lib/math-rendering on a page typesets through the MathJax
+// instance kept here, and the first copy to typeset creates it.
+const SHARED_INSTANCE_KEY = "@pie-lib/math-rendering@2";
 let initPromise: Promise<void> | null = null;
 const logger = createPieLogger("math-rendering", () => isGlobalDebugEnabled());
 
@@ -40,6 +43,32 @@ const setWindowRenderer = (renderer: MathRenderingAPI): void => {
 	if (typeof window === "undefined") return;
 	(window as any)[GLOBAL_KEY] = renderer;
 	(window as any)[GLOBAL_DLL_KEY] = renderer;
+};
+
+/**
+ * Creates the shared MathJax instance from `renderer`, unless the page already
+ * holds one.
+ *
+ * Legacy element bundles carry their own copy of math-rendering. A copy that
+ * predates the assistive-MathML guard, such as the one in multiple-choice
+ * 9.9.1, re-typesets the hidden `<math>` inside `mjx-assistive-mml` on every
+ * pass, so if it creates the instance, each re-render nests the expression
+ * again for every element on the page. Typesetting a detached element makes the
+ * guarded module create it first. Failure leaves the instance to the first
+ * element, as before, so it is logged and never fails initialization.
+ */
+const createSharedInstance = (renderer: MathRenderingAPI): void => {
+	if ((window as any)[SHARED_INSTANCE_KEY]?.instance) return;
+	if (typeof document === "undefined" || !document.body) return;
+	const warn = (error: unknown) =>
+		logger.warn("Could not create the shared MathJax instance:", error);
+	try {
+		Promise.resolve(renderer.renderMath(document.createElement("div"))).catch(
+			warn,
+		);
+	} catch (error) {
+		warn(error);
+	}
 };
 
 /**
@@ -92,6 +121,7 @@ export async function initializeMathRendering(): Promise<void> {
 			// The explicit renderer remains authoritative when that happens.
 			if (!getMathRenderer()) {
 				setWindowRenderer(renderer as MathRenderingAPI);
+				createSharedInstance(renderer as MathRenderingAPI);
 				logger.debug("Math rendering module initialized (both globals set)");
 			}
 		} catch (error) {

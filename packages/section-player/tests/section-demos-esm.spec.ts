@@ -1,8 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
-// npm `latest` of `@pie-element/*` is the legacy line, which ships no browser
-// ESM, so `?player=esm` loads the demos' pinned pie-elements-ng builds. Each
-// declares the shared editor runtime, so its variant loads.
+// `?player=esm` loads the demos' pinned pie-elements-ng builds. Each declares
+// the shared editor runtime, so its variant loads.
 const BROWSER_BUILD =
 	/\/@pie-element\/[^/]+@[^/]+\/dist\/browser\/editor-runtime\/delivery\//;
 const ITEM_RADIO =
@@ -61,6 +60,11 @@ test("/tts-ssml typesets math under the esm player", async ({ page }) => {
 	await expect(page.locator(ITEM_RADIO).first()).toBeVisible({
 		timeout: 30_000,
 	});
+	await expect(
+		page
+			.getByRole("complementary", { name: "Passages" })
+			.locator("p.formula mjx-container"),
+	).toBeVisible({ timeout: 30_000 });
 	await expect
 		.poll(
 			() =>

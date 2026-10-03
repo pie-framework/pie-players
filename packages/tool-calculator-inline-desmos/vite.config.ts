@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 import { calculatorSharedSvelteSourceAliases } from "../tool-calculator-shared/svelte-source-aliases.js";
 
 export default defineConfig({
@@ -17,6 +18,7 @@ export default defineConfig({
 		svelte({
 			compilerOptions: {
 				customElement: true,
+				rootDir: svelteRootDir(import.meta.dirname),
 			},
 			emitCss: false,
 		}),

@@ -7,6 +7,7 @@ import {
 	findPublishedSourcemaps,
 	findUnguardedCustomElementDefines,
 	findUnresolvableBrowserSpecifiers,
+	hasEagerMathJax3,
 	hasInlinedSpeechRuleEngine,
 	hasSourceMapCommentText,
 	hasSvelteDevRuntime,
@@ -396,6 +397,34 @@ describe("source-map comment text", () => {
 		expect(new Function(`return ${escaped}`)()).toBe(
 			new Function(`return ${literal}`)(),
 		);
+	});
+});
+
+describe("hasEagerMathJax3", () => {
+	const setup =
+		'typeof MathJax<"u"&&MathJax.loader&&MathJax.loader.preLoad("[tex]/ams")';
+
+	test("flags MathJax 3 exported as the renderer", () => {
+		expect(
+			hasEagerMathJax3(`${setup};export{rz as _dll_pie_lib__math_rendering};`),
+		).toBe(true);
+	});
+
+	test("accepts MathJax 3 behind the deferred factory, minified or not", () => {
+		expect(
+			hasEagerMathJax3(
+				`function k(){${setup}}export{j as evaluateMathRenderingModule};`,
+			),
+		).toBe(false);
+		expect(
+			hasEagerMathJax3(
+				`function k() {\n  ${setup};\n}\nexport {\n  kW as evaluateMathRenderingModule\n};\n`,
+			),
+		).toBe(false);
+	});
+
+	test("accepts a chunk without MathJax 3", () => {
+		expect(hasEagerMathJax3('export{a as renderMath};')).toBe(false);
 	});
 });
 

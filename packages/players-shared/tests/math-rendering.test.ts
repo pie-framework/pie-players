@@ -10,6 +10,18 @@ const makeRenderer = (): MathRenderingAPI => ({
 	renderMath: () => {},
 });
 
+// Either shape of the module. bun updates an imported mock in place and keeps
+// the export names it first had, so every mock names both.
+const moduleShape = (
+	exports:
+		| { _dll_pie_lib__math_rendering: MathRenderingAPI }
+		| { evaluateMathRenderingModule: () => MathRenderingAPI },
+) => ({
+	_dll_pie_lib__math_rendering: undefined,
+	evaluateMathRenderingModule: undefined,
+	...exports,
+});
+
 describe("initializeMathRendering", () => {
 	const originalWindow = (globalThis as any).window;
 
@@ -24,9 +36,9 @@ describe("initializeMathRendering", () => {
 
 		mock.module("@pie-lib/math-rendering-module/module/index.js", () => {
 			importCount += 1;
-			return {
+			return moduleShape({
 				_dll_pie_lib__math_rendering: makeRenderer(),
-			};
+			});
 		});
 
 		const windowStub: Record<string, unknown> = {};
@@ -54,12 +66,34 @@ describe("initializeMathRendering", () => {
 		expect(setCount).toBe(1);
 	});
 
+	test("evaluates a deferred module and installs its renderer", async () => {
+		const renderer = makeRenderer();
+		let evaluations = 0;
+		mock.module("@pie-lib/math-rendering-module/module/index.js", () =>
+			moduleShape({
+				evaluateMathRenderingModule: () => {
+					evaluations += 1;
+					return renderer;
+				},
+			}),
+		);
+
+		const windowStub: Record<string, unknown> = {};
+		(globalThis as any).window = windowStub;
+
+		await initializeMathRendering();
+
+		expect(evaluations).toBe(1);
+		expect(windowStub["@pie-lib/math-rendering"]).toBe(renderer);
+		expect(windowStub._dll_pie_lib__math_rendering).toBe(renderer);
+	});
+
 	test("does not replace a custom renderer installed while the default import is in flight", async () => {
 		const defaultRenderer = makeRenderer();
 		const customRenderer = makeRenderer();
-		mock.module("@pie-lib/math-rendering-module/module/index.js", () => ({
-			_dll_pie_lib__math_rendering: defaultRenderer,
-		}));
+		mock.module("@pie-lib/math-rendering-module/module/index.js", () =>
+			moduleShape({ _dll_pie_lib__math_rendering: defaultRenderer }),
+		);
 
 		const windowStub: Record<string, unknown> = {};
 		(globalThis as any).window = windowStub;

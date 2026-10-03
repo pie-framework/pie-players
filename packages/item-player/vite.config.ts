@@ -6,6 +6,7 @@ import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-sourc
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
+import { deferMathRenderingModuleEvaluation } from "../players-shared/math-rendering-module-deferral.mjs";
 
 const sanitizeChunkKey = (value: string) =>
 	value
@@ -37,24 +38,6 @@ const getChunkSourceKey = (chunkInfo: {
 	return `${chunkName}-${sourceHash}`;
 };
 
-const patchMathRenderingModuleEval = {
-	name: "patch-math-rendering-module-eval",
-	enforce: "pre" as const,
-	transform(code: string, id: string) {
-		if (!id.includes("@pie-lib/math-rendering-module/module/index.js")) {
-			return null;
-		}
-
-		return {
-			code: code.replace(
-				/return\s+eval\((["'])require\1\);/g,
-				"return commonjsRequire;",
-			),
-			map: null,
-		};
-	},
-};
-
 const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",
 	generateBundle(_options: unknown, bundle: Record<string, any>) {
@@ -83,7 +66,7 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		patchMathRenderingModuleEval,
+		deferMathRenderingModuleEvaluation(),
 		svelte({
 			compilerOptions: {
 				customElement: true,

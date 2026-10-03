@@ -75,13 +75,18 @@ export async function initializeMathRendering(): Promise<void> {
 			// The package has no exports map, so the file is named in full for
 			// resolvers that do not complete a directory, such as webpack's
 			// fully-specified ESM resolution.
-			const { _dll_pie_lib__math_rendering } = await import(
+			const mathRenderingModule = await import(
 				"@pie-lib/math-rendering-module/module/index.js"
 			);
+			// The player builds defer the module's evaluation to this call (see
+			// math-rendering-module-deferral.mjs); unbundled, it evaluated on import.
+			const renderer = mathRenderingModule.evaluateMathRenderingModule
+				? mathRenderingModule.evaluateMathRenderingModule()
+				: mathRenderingModule._dll_pie_lib__math_rendering;
 			// A host may install its renderer while the default module is in flight.
 			// The explicit renderer remains authoritative when that happens.
 			if (!getWindowRenderer()) {
-				setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
+				setWindowRenderer(renderer as MathRenderingAPI);
 				logger.debug("Math rendering module initialized (both globals set)");
 			}
 		} catch (error) {

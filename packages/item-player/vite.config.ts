@@ -6,27 +6,10 @@ import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-sourc
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
+import { deferMathRenderingModuleEvaluation } from "../players-shared/math-rendering-module-deferral.mjs";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
 const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
-
-const patchMathRenderingModuleEval = {
-	name: "patch-math-rendering-module-eval",
-	enforce: "pre" as const,
-	transform(code: string, id: string) {
-		if (!id.includes("@pie-lib/math-rendering-module/module/index.js")) {
-			return null;
-		}
-
-		return {
-			code: code.replace(
-				/return\s+eval\((["'])require\1\);/g,
-				"return commonjsRequire;",
-			),
-			map: null,
-		};
-	},
-};
 
 const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",
@@ -56,7 +39,7 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		patchMathRenderingModuleEval,
+		deferMathRenderingModuleEvaluation(),
 		svelte({
 			compilerOptions: {
 				customElement: true,

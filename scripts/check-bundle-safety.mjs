@@ -3,6 +3,10 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import {
+	MATH_RENDERING_MODULE_FACTORY,
+	MATHJAX_3_SETUP_TEXT,
+} from "../packages/players-shared/math-rendering-module-deferral.mjs";
 import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
 
 const ROOT = process.cwd();
@@ -767,6 +771,34 @@ function checkNewUrlTails(failures) {
 	}
 }
 
+const MATH_RENDERING_FACTORY_EXPORT = new RegExp(
+	`\\bexport\\s*\\{[^}]*\\b${MATH_RENDERING_MODULE_FACTORY}\\s*[,}]`,
+);
+
+/**
+ * True when `content` carries the MathJax 3 math-rendering module without the
+ * deferral that `math-rendering-module-deferral.mjs` applies, so a host build
+ * inlining the chunk would set MathJax 3 up on the page at startup.
+ */
+export function hasEagerMathJax3(content) {
+	return (
+		content.includes(MATHJAX_3_SETUP_TEXT) &&
+		!MATH_RENDERING_FACTORY_EXPORT.test(content)
+	);
+}
+
+function checkMathJax3Deferred(failures) {
+	for (const dir of listBundleRoots()) {
+		for (const filePath of collectJsFiles(dir)) {
+			if (hasEagerMathJax3(readFileSync(filePath, "utf8"))) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} carries the MathJax 3 math-rendering module without deferring its evaluation, so a host build that inlines it sets MathJax 3 up on load; list deferMathRenderingModuleEvaluation() in the package's Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function checkNoSourceMapCommentText(failures) {
 	for (const dir of listBundleRoots()) {
 		for (const filePath of collectJsFiles(dir)) {
@@ -794,6 +826,7 @@ function main() {
 	// URL, and they hold the whole calculator runtime in one chunk.
 	checkNewUrlTails(failures);
 	checkNoSourceMapCommentText(failures);
+	checkMathJax3Deferred(failures);
 	const browserBuilds = checkBrowserBuilds(failures);
 
 	if (failures.length > 0) {

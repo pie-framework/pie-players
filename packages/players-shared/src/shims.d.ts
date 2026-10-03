@@ -6,7 +6,12 @@ declare module "@pie-lib/math-rendering-module/module/index.js" {
 		unWrapMath?: (wrapped: string) => string;
 		mmlToLatex?: (mathml: string) => string;
 	}
-	export const _dll_pie_lib__math_rendering: MathRenderingAPI;
+	// The module as published exports the renderer; the player builds' deferred
+	// module exports only the factory (see math-rendering-module-deferral.mjs).
+	export const _dll_pie_lib__math_rendering: MathRenderingAPI | undefined;
+	export const evaluateMathRenderingModule:
+		| (() => MathRenderingAPI)
+		| undefined;
 	const mod: any;
 	export default mod;
 }

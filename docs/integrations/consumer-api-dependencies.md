@@ -23,6 +23,10 @@ line still runs the predecessor player with the same listeners. The dated
 assessments below record when each change was first checked; the rows they
 touch now carry this date.
 
+Host M was added on **2026-10-02**, derived from its checkout and checked against
+`origin/develop` the same day; its rows carry that date. Its checkout is
+uncommitted work on its default branch.
+
 The theme-token rows were re-derived on their own once before, on 2026-08-28,
 when the light Base Theme's `--pie-background` became opaque; that sweep found
 the Host A token set one entry shorter than recorded.
@@ -386,6 +390,7 @@ The 2026-09-26 re-derivation found neither surface in any host.
 | **Host V** | Vue 3 + Vite | One item at a time, read-only instructor rendering, behind a host feature flag; migrating off `@pie-framework/pie-player-components` | High — external client-facing |
 | **Host A** | Angular + webpack | Full fixed-form delivery: one layout CE, the toolkit coordinator via `toolkit-ready`, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
 | **Host P** | Angular + webpack, packaged as a custom element that an outer page mounts | One item at a time in learner delivery, through the preloaded build of `pie-item-player`, which it serves from its own static assets; migrating off `@pie-framework/pie-fixed-player-static` behind a host-side player-type switch | High — external client-facing; the `@pie-players` path is live wherever that switch selects it |
+| **Host M** | Framework-free TypeScript custom element, built by Vite into one ES module and loaded as a micro-frontend remote by an Angular shell | One item at a time through `pie-item-player` on the `preloaded` strategy, with the element and its controller bundled and registered by the host so evaluation runs in the browser; themed through a provider adapter of its own | High once shipped — mounted on a development route only so far, and the base a client-facing product is building on |
 | **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it constructs `ToolkitCoordinator` itself, drives the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
@@ -400,6 +405,9 @@ Packages consumed:
   by name to render items, so that package reaches Host A as its dependency.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
+- **Host M** — `pie-item-player` and its `preloaded` subpath, `pie-theme` and its
+  `components.css` subpath. `pie-players-shared` is held to the same build by an
+  override and imported nowhere.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
   `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath, two
   `pie-section-player/components/*-element` subpaths, `pie-theme` plus its
@@ -427,6 +435,13 @@ patch reaches them on their next install** — a
 lockstep patch that changes behavior lands in live delivery without a code change
 on their side.
 
+Host M pins a prerelease build exactly (`0.3.74-dev.1` at last read) of
+`pie-item-player`, `pie-theme` and `pie-players-shared`, installed from tarballs,
+because the `./preloaded` subpath and its `controller` field are in no release
+yet (`latest` is `0.3.73`). That build predates the 2026-10-02 embed fixes —
+content-style scoping, `recoverable`, the tag-name map and the page-wide provider
+registry — so its move to a release takes all four at once.
+
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
 and to fix it there in the same push.
@@ -435,11 +450,12 @@ and to fix it there in the same push.
 
 | Specifier | Consumers | Note |
 | --- | --- | --- |
-| `@pie-players/pie-item-player` | V | Dynamic `import()`, registration by side effect. R loads the same file from a CDN by version instead |
+| `@pie-players/pie-item-player` | V, M | Registration by side effect: V through a dynamic `import()`, M through a static import bundled into its single file, alongside the `PieItemPlayerElement` type. R loads the same file from a CDN by version instead |
+| `@pie-players/pie-item-player/preloaded` | M | `registerPreloadedElements`, called before the player module evaluates; see the item-player section |
 | `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references. R loads the same `dist/index.js` from a CDN by version |
-| `@pie-players/pie-theme` | A, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere |
+| `@pie-players/pie-theme` | A, M, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere. M relies on the same side effect and imports `registerPieThemeProvider` with the `ThemeProviderAdapter`, `ThemeVariables` and `PieThemeElement` types |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
-| `@pie-players/pie-theme/components.css` | V | Imported as text and re-injected under `@scope`, see below |
+| `@pie-players/pie-theme/components.css` | V, M | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | Imported unlayered so tokens are present in the first paint, ahead of the theme element upgrading |
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
@@ -454,7 +470,7 @@ and to fix it there in the same push.
 
 The self-registration asymmetry between `pie-theme` and
 `pie-theme/theme-element` is load-bearing in both directions: V depends on
-`theme-element` staying side-effect-free, A and R depend on the index entry
+`theme-element` staying side-effect-free, A, M and R depend on the index entry
 keeping its module-scope `definePieTheme()` call. Moving the call, or adding one
 to `theme-element`, breaks one of them.
 
@@ -464,7 +480,7 @@ call disappears silently from Host R rather than failing to build.
 
 ## Custom-element surface
 
-### `pie-item-player` (Hosts V, P, R)
+### `pie-item-player` (Hosts V, P, M, R)
 
 Host V sets properties imperatively: `config`, `env`, `addCorrectResponse`,
 `baseHeadingLevel`. Attributes are never used. No events are consumed — the host
@@ -529,6 +545,40 @@ adopts a pre-upgrade value only for a name in the element's declared `props`
 map, so every property Host P sets has to stay declared there; one that leaves
 the map drops its pre-upgrade value without an error.
 
+Host M creates the element itself and sets four properties: `strategy` to
+`"preloaded"`, `config`, `session` and `env`. `env` is `{ mode, role: "student" }`,
+and a host control toggles `mode` between `"gather"` and `"evaluate"` by assigning
+a new object. `session` is set once, to `{ id, data: [] }`, and never replaced.
+The host persists nothing and reads no `session-changed`; it listens on the
+element for `load-complete`, its readiness signal, and `player-error`.
+
+Host M builds its element tree once and keeps it across a detach, relying with no
+build signal on `pie-item-player` tearing down while
+out of the document and on the response surviving the reconnect and every `env`
+swap. That holds because the player projects onto the host's `session.data` in
+place (see the migration note above). A player that copied the session, or reset
+the response on reconnect or on an `env` change, loses the learner's answer on a
+move or a mode toggle.
+
+Its `player-error` handler classifies by `code`. `ITEM_PLAYER_UPDATE_ERROR`,
+`PIE_CONTROLLER_RUNTIME_ERROR` and `PIE_CONTROLLER_CONTRACT_ERROR` go to telemetry
+and the item stays on screen; every other code, any added later included, ends
+the remote. Those three strings are API there, and a recoverable failure reported
+under a new code takes the remote down. It reads `code`, `message` and `stage`.
+
+The element reaches the player through `registerPreloadedElements` from the
+`./preloaded` subpath: one entry, `{ tag, package, version, element, controller }`,
+with `element` and `controller` passed as the module namespaces of the element
+package's browser delivery and controller entries. `version` is the host's exact
+pin, while its authored config names another version of the same package, so it
+depends on the player aligning authored specs to the registered one and rendering
+under that version's tag. `controller` is what makes evaluate mode work: a player
+that is not `hosted` runs the controller's `model()` in the browser.
+Registration validates synchronously and throws, and Host M calls it as its
+bundle evaluates, so renaming an entry field or no longer accepting a module
+namespace for `element` or `controller` stops the remote loading. Skipping
+alignment for a registered package fails that item's load.
+
 ### `pie-section-player-splitpane` and `-vertical` (Hosts A, R)
 
 Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
@@ -571,7 +621,7 @@ The vertical layout is exercised only by Host R, which is exactly why a
 splitpane-only change that skips it stays invisible until someone opens the
 reference app.
 
-### `pie-theme` (Hosts V, A, R)
+### `pie-theme` (Hosts V, A, M, R)
 
 Attributes used: `theme`, `scope`, and V's `variables` (see theme tokens below).
 V uses `theme="light" scope="self"`. A uses `scope="document"` and binds `theme`
@@ -613,6 +663,26 @@ and maps each descriptor's `id` and `name` into its picker, so every registered
 scheme reaches that picker without a host edit. It calls neither
 `resolvePieTheme()` nor `observePieColorSchemes()`. The migration debt this pad
 carried against that call is discharged.
+
+Host M creates one `<pie-theme>` around the player and its own controls, and sets
+`scope` to `"self"` and `provider` to its adapter's id as properties. It sets no
+`theme`, so the element resolves light. Naming the provider keeps `auto`
+resolution, and with it the DaisyUI adapter, off that subtree; a named provider
+that declines `canRead` on the element is retried against the root element and
+otherwise resolves nothing.
+
+It is the first client-facing host to implement a provider adapter, so
+`registerPieThemeProvider` and the `ThemeProviderAdapter` shape — `id`,
+`canRead(target)`, `read(target)` — are client-facing API; until now only Host R
+read them, through `listPieThemeProviders()`. Its `read` returns an empty string
+for any source value the shell lacks and relies on normalization dropping it, so
+that token keeps PIE's default.
+
+It registers through its own bundled copy of `pie-theme`, while `<pie-theme>` is
+defined by whichever copy loads first. On its vendored build each copy keeps a
+private registry, so an earlier PIE remote on the same page leaves Host M on
+default colours. The page-wide registry of 2026-10-02 removes that once every
+copy on the page carries it.
 
 ### Internal layout CEs as style selectors (Host A)
 
@@ -790,8 +860,8 @@ API**.
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
 | `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
-| `load-complete` | DOM event out of `pie-item-player`, bubbling | P | Half of the item display gate |
-| `player-error` | DOM event out of `pie-item-player`, bubbling | P | Fatal: exits the delivery session |
+| `load-complete` | DOM event out of `pie-item-player`, bubbling | P, M | Half of P's item display gate. M's readiness signal to its shell, which times the remote out without it |
+| `player-error` | DOM event out of `pie-item-player`, bubbling | P, M | Fatal for P: exits the delivery session. M classifies it by `code`; see the item-player section |
 | `pie-resource-load-success`, `pie-resource-retry-success` | Resource monitor, bubbling out of `pie-item-player` | P | The other half of the display gate |
 | `pie-resource-load-error` | Resource monitor, bubbling out of `pie-item-player` | P | Fatal: exits the delivery session, recording `detail.url` |
 | `pie-resource-load-failed`, `pie-resource-retry-failed` | Resource monitor, bubbling out of `pie-item-player` | P | Logged with the serialized `detail` |
@@ -1102,6 +1172,19 @@ rows pairing against it report a measured ratio where they previously reported a
 unmeasurable one. Its own comment naming `--pie-background` as the reason for the
 backdrop is stale.
 
+Host M sets thirteen, all `canonical-semantic`, through its provider adapter, so
+they land as values on its `<pie-theme>` element rather than through a
+stylesheet. Eleven are read from the shell's palette properties —
+`--pie-text`, `--pie-background`, `--pie-background-dark`,
+`--pie-secondary-background`, `--pie-primary`, `--pie-primary-light`,
+`--pie-border`, `--pie-border-gray`, `--pie-border-light`, `--pie-border-dark`,
+`--pie-incorrect` — and `--pie-primary-dark` and `--pie-faded-primary` are mixed
+from three of those. Its own control inside `<pie-theme>` reads `--pie-background`
+and `--pie-primary`. Renaming one of the thirteen leaves PIE's light default in
+place of the host's value with no build signal, and a canonical token the player
+starts reading that the adapter does not supply resolves from the light base
+there.
+
 ## Direct `dist` path references
 
 Host A lists three stylesheets in its build config by literal path:
@@ -1214,6 +1297,31 @@ toolkit, the section player and the item player among them, all on subpaths of
 `pie-players-shared` or the toolkit. Moving Host A to `bundler` resolution
 removes the constraint.
 
+## Bundle evaluation order (Host M)
+
+Verified against the checkout on 2026-10-02.
+
+Host M bundles `pie-item-player`, `pie-theme` and its element into one ES module
+with nothing external and every dynamic import inlined, so each of those modules
+evaluates as that file does. Three modules of its own evaluate ahead of the
+player: one hides the page's `MathJax` global, one sets the content-style opt-out
+and installs its copy, and one registers its preloaded element.
+
+The first works around the vendored `0.3.74-dev.1` build. The math renderer
+`pie-players-shared` depends on, `@pie-lib/math-rendering-module`, carries
+MathJax 3, whose TeX setup calls `MathJax.loader.preLoad` on any page-global
+`MathJax` with a loader, and Rollup evaluates an inlined dynamic import at
+startup. The shell installs MathJax 4 once a view has typeset LaTeX; its loader
+has no `preLoad`, so the throw stopped the remote loading. Host M deletes the
+global and restores it in a microtask.
+
+The item-player build now defers that module's evaluation until the IIFE
+strategy first sets math rendering up, which Host M's `preloaded` strategy never
+does, so the workaround is dead once Host M takes a release with the deferral.
+`check:bundle-safety` fails on a published chunk that carries MathJax 3 without
+it, and `item-player-host-mathjax.spec.ts` bundles the player the same way
+against a MathJax 4 global.
+
 ## Content stylesheet delivery
 
 The most fragile shared surface, because it changed underneath the hosts.
@@ -1255,11 +1363,20 @@ Consequences per host:
 - **Host P** imports no copy and sets no opt-out, so its preloaded build installs
   the stylesheet and it is in the healthy configuration too. It styles no player
   DOM and sets no `--pie-*` token.
+- **Host M** sets the `data-pie-content-styles="host"` opt-out and installs its
+  own copy, imported as text and wrapped in `@scope (pie-item-player)`, from a
+  module that evaluates before the player's. It did so against bare rules
+  restyling the shell around it, on a build that predates the
+  `[data-pie-content]` scoping. On the scoped release its copy still matches,
+  since the player's content root sits inside its scope root, and duplicates
+  what the player's own copy would now do. The opt-out is page-wide, so every
+  other player on that page gets content styles only through Host M's copy,
+  which reaches `pie-item-player` alone.
 
-Host V is the only host that supplies its own copy, and it relies on the
-sentinel detection to keep the player's copy out. Any further change to how
-content styles are delivered has to account for it, and for the other three
-relying on the player's copy by supplying none.
+Hosts V and M supply their own copies: V keeps the player's copy out through
+sentinel detection, M through the opt-out. Any further change to how content
+styles are delivered has to account for both, and for the other three relying on
+the player's copy by supplying none.
 
 Three rules were removed from it outright: a `#stimulus` / `#item` pair of
 50%-wide left floats, a `.lrn_feature h3` margin override and
@@ -1307,7 +1424,7 @@ Grouped by who breaks, not by how hard the change is. Host R is ours and
 refactoring it is expected, so a surface only it touches is not a constraint —
 change it and fix Host R in the same push.
 
-**Silent breakage in a client-facing host (V, A or P). Coordinate before
+**Silent breakage in a client-facing host (V, A, P or M). Coordinate before
 shipping.**
 
 - Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`,
@@ -1333,8 +1450,9 @@ shipping.**
   otherwise preventing its outside `!important` declarations from winning
 - Changing how content styles are delivered, without accounting for Host V's
   scoped copy, which keeps the player's copy out only through sentinel
-  detection and matches only while its scope root contains the player, and
-  Hosts A, P and R relying on the player's copy
+  detection and matches only while its scope root contains the player, Host M's
+  scoped copy behind the `data-pie-content-styles="host"` opt-out, and Hosts A, P
+  and R relying on the player's copy
 - Renaming `data-pie-content`, or moving it off a player's content root
 - Renaming or removing a `pie-item-player` property Host P sets, taking one out
   of the element's declared `props` map, or renaming the `"preloaded"` strategy
@@ -1351,8 +1469,15 @@ shipping.**
   `dist/` a runtime import from outside that tree
 - Changing what the implicit instrumentation default sends, in volume or in
   attribute names, which lands in Host P's observability account
+- Copying the host's `session` instead of projecting onto it, or resetting the
+  response on a reconnect or an `env` change, which Host M's set-once session
+  relies on
+- Changing `registerPieThemeProvider` or the `ThemeProviderAdapter` `id` /
+  `canRead` / `read` shape, letting a named provider fall through to `auto`, or
+  keeping the empty values a provider returns
+- Renaming any of the thirteen tokens Host M's adapter supplies
 
-**Build or runtime failure in a client-facing host (A). Coordinate before
+**Build or runtime failure in a client-facing host (A, M). Coordinate before
 shipping.**
 
 - Adding weight behind an `import()` in any package Host A bundles, a new entry
@@ -1365,6 +1490,17 @@ shipping.**
 - Importing an `exports`-only subpath from any declaration `pie-theme`'s root
   reaches: Host A type-checks those declarations under `node10`, which cannot
   resolve one
+- Renaming a `registerPreloadedElements` entry field, or no longer accepting a
+  module namespace for `element` or `controller`: Host M registers as its bundle
+  evaluates, so the throw stops the remote loading. Skipping alignment for a
+  registered package fails its item's load
+- Renaming `ITEM_PLAYER_UPDATE_ERROR`, `PIE_CONTROLLER_RUNTIME_ERROR` or
+  `PIE_CONTROLLER_CONTRACT_ERROR`, or reporting a recoverable failure under a new
+  `player-error` code: Host M treats every other code as fatal
+- Renaming `load-complete`, without which Host M's shell times the remote out
+- Evaluating the bundled MathJax 3 at module load or on the `preloaded` path:
+  its `MathJax.loader.preLoad` call throws on the shell's MathJax 4, at load once
+  Host M drops its workaround and at first render regardless
 
 **Host R only. Change freely; land the internally controlled host fix in the
 same push.** Its checkout was available for the 2026-08-19 refresh, so these are
@@ -1388,9 +1524,9 @@ re-derived rather than remembered.
 - `pie-stage-change`'s stage vocabulary, and the `engine-ready` transition
   arriving before the zero-arg `getSectionController()` can answer
 - The theme token registry — six of its nine entry fields and four of its five
-  types — the provider-adapter `id` / `canRead` shape, the registration order
-  that adapter list is returned in, `resolveProviderVariables`' key set, and the
-  `tts-server-*` provider classes
+  types — the registration order `listPieThemeProviders()` returns adapters in,
+  `resolveProviderVariables`' key set, and the `tts-server-*` provider classes.
+  The adapter shape itself is Host M's too, above
 - The `ColorSchemeSnapshot` return of `listPieColorSchemes()` and the `id` /
   `name` fields on its descriptors
 - `dist/pie-item-player.js` as a CDN filename, and `render-stimulus`,
@@ -1583,6 +1719,16 @@ repo.
   off the root element. They are `component-public` and resolve inside a
   section-player component, so those four rows measure an empty value regardless
   of theme. Four of its twenty contrast rows are therefore always uninformative.
+- Host M hard-codes the three recoverable `player-error` codes and declares the
+  event detail locally without `recoverable`. From the release carrying that
+  field, `detail.recoverable` replaces the list and the exported
+  `PieItemPlayerErrorDetail` replaces the local type.
+- Host M declares `HTMLElementTagNameMap` entries for `pie-item-player` and
+  `pie-theme`, which both packages declare from that release too. The types are
+  identical, so the local entries become redundant without conflicting.
+- Host M's comment on registering its provider says an earlier PIE remote leaves
+  it on default colours. True on its vendored build, stale once every
+  `pie-theme` copy on the page carries the page-wide registry.
 
 ## Refresh procedure
 

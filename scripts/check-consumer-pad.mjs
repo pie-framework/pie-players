@@ -189,6 +189,42 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"preloaded registration a host calls as its bundle evaluates: the entry fields, the module-namespace form of `element` and `controller`, and the alignment of authored versions to the registered one",
+		match: (file) =>
+			[
+				"packages/item-player/src/preloaded.ts",
+				"packages/players-shared/src/loaders/preloaded-registration.ts",
+				"packages/players-shared/src/loaders/preloaded-alignment.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"the pie-theme provider adapter a host implements: `registerPieThemeProvider`, the adapter shape, named-provider resolution, the page-wide registry, or the normalization that drops a provider's empty values",
+		match: (file) =>
+			file === "packages/theme/src/providers.ts" ||
+			file === "packages/theme/src/theme-types.ts",
+	},
+	{
+		reason:
+			"the `player-error` codes and `load-complete` a host classifies failures and readiness by, or the in-place projection of responses onto the host's `session`",
+		match: (file) =>
+			[
+				"packages/players-shared/src/components/PieItemPlayer.svelte",
+				"packages/players-shared/src/pie/updates.ts",
+				"packages/players-shared/src/pie/item-session-contract.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"when the bundled MathJax 3 setup evaluates, which a host inlining the player's dynamic imports on a page running MathJax 4 depends on",
+		match: (file) =>
+			[
+				"packages/players-shared/src/pie/math-rendering.ts",
+				"packages/players-shared/math-rendering-module-deferral.mjs",
+			].includes(file),
+	},
+	{
+		reason:
 			"published type surface of a provider adapter package: the owner of a vendor's configuration types",
 		match: (file) =>
 			/^packages\/(calculator-desmos|tts-client-server|tts-server-[a-z]+)\/(src\/)?index\.ts$/.test(

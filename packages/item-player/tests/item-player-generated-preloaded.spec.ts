@@ -5,26 +5,24 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
 import demo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio-simple";
+import mathDemo from "../../../apps/item-demos/src/lib/content/multiple-choice-math-algebra-quadratic";
 
 const workspace = resolve(import.meta.dirname, "../../..");
 const packageName = "@pie-element/multiple-choice";
-const packageSpec = `${packageName}@11.4.3`;
+const packageSpec = `${packageName}@14.0.0`;
 // The build registers the base tag the published configs give the package, and
 // the items author `multiple-choice`, so each player defines the tag it renders.
-const registeredTag = "pie-element-multiple-choice--version-11-4-3";
-const runtimeTag = "multiple-choice--version-11-4-3";
+const registeredTag = "pie-element-multiple-choice--version-14-0-0";
+const runtimeTag = "multiple-choice--version-14-0-0";
 let scratch: string;
 let server: Server;
 let origin: string;
 
-// Executable modules and player assets must come entirely from the tarball. The
-// existing math renderer fetches these two data files separately.
+// Executable modules, player assets, and MathJax with its fonts and speech data
+// must come entirely from the tarball.
 const serveFromTarballOnly = (page: Page) =>
-  page.route("**/*", (route) => {
-    const url = route.request().url();
-    const mathMap = /^https:\/\/cdn\.jsdelivr\.net\/npm\/speech-rule-engine@4\.1\.2\/lib\/mathmaps\/(base|en)\.json$/;
-    return new URL(url).origin === origin || mathMap.test(url) ? route.continue() : route.abort();
-  });
+  page.route("**/*", (route) =>
+    new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
 
 test.beforeAll(async () => {
   test.setTimeout(180_000);
@@ -32,10 +30,10 @@ test.beforeAll(async () => {
   const generated = join(scratch, "generated");
   const packed = join(scratch, "preloaded.tgz");
   const served = join(scratch, "served");
-  // Exercise the production generator, including its actual PITS bundle fetch
-  // and package build. The browser will receive only the extracted tarball.
+  // Exercise the production generator, including its install and bundling of
+  // the published element. The browser will receive only the extracted tarball.
   execFileSync("bun", ["-e", `
-    import { buildPreloadedPlayerStaticPackage } from "./tools/cli/src/utils/pie-packages/fixed-static.ts";
+    import { buildPreloadedPlayerStaticPackage } from "./tools/cli/src/utils/pie-packages/preloaded-static.ts";
     await buildPreloadedPlayerStaticPackage(${JSON.stringify({
       elements: [packageSpec],
       elementTags: { [packageName]: "pie-element-multiple-choice" },
@@ -70,7 +68,12 @@ test.beforeAll(async () => {
       }
       try {
         const data = await readFile(filename);
-        const mime: Record<string, string> = { ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
+        const mime: Record<string, string> = {
+          ".js": "text/javascript",
+          ".css": "text/css",
+          ".json": "application/json",
+          ".woff2": "font/woff2",
+        };
         response.writeHead(200, { "content-type": mime[extname(filename)] ?? "application/octet-stream" });
         response.end(data);
       } catch {
@@ -159,6 +162,43 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   await expect(page.locator('input[type="radio"][value="mars"]')).toBeChecked();
   await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["mars"]);
   expect(loadedChunks.length).toBeGreaterThan(0);
+  expect(failedRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+});
+
+test("renders math with the MathJax the build ships, its fonts included", async ({ page }) => {
+  const failedRequests: string[] = [];
+  const browserErrors: string[] = [];
+  const mathjaxFiles: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("requestfailed", (request) => failedRequests.push(request.url()));
+  page.on("response", (response) => {
+    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
+    const { pathname } = new URL(response.url());
+    if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
+  });
+  await serveFromTarballOnly(page);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+  });
+
+  await page.evaluate((config) => {
+    const player = document.createElement("pie-item-player") as any;
+    player.strategy = "preloaded";
+    player.hosted = true;
+    player.config = config;
+    player.env = { mode: "gather", role: "student" };
+    player.session = { id: "math-attempt", data: [] };
+    document.body.appendChild(player);
+  }, structuredClone(mathDemo.item.config));
+  await expect(page.locator(`${runtimeTag} mjx-container`).first()).toBeVisible();
+  await expect.poll(() => mathjaxFiles.some((file) => file.startsWith("/package/dist/mathjax/fonts/mathjax-newcm-font/chtml/"))).toBe(true);
+  expect(mathjaxFiles).toContain("/package/dist/mathjax/load.js");
+  expect(mathjaxFiles).toContain("/package/dist/mathjax/tex-mml-chtml.js");
+  expect(await page.evaluate(() => (window as any).MathJax?.version)).toMatch(/^4\./);
   expect(failedRequests).toEqual([]);
   expect(browserErrors).toEqual([]);
 });
@@ -293,10 +333,10 @@ test("a second item-player copy loading after the build leaves the build's copy 
   expect(browserErrors).toEqual([]);
 });
 
-test("import rejects when the fetched bundle is missing its promised element", async ({ page }) => {
-  await page.route("**/pie-elements-bundle-*.js", (route) => route.fulfill({
+test("import rejects when the element module is missing its promised element", async ({ page }) => {
+  await page.route("**/dist/elements/index.js", (route) => route.fulfill({
     contentType: "text/javascript",
-    body: "window.pie = { default: {} };",
+    body: "export const elements = {}; export function startMathRendering() {}",
   }));
   await page.goto(origin);
   const result = await page.evaluate(async () => {
@@ -310,7 +350,7 @@ test("import rejects when the fetched bundle is missing its promised element", a
       return { message: error instanceof Error ? error.message : String(error), loadStates };
     }
   });
-  expect(result.message).toContain("No element class found in bundle for @pie-element/multiple-choice");
+  expect(result.message).toContain("No element class found in build for @pie-element/multiple-choice");
   // The legacy package reported a failed load on the same event.
   expect(result.loadStates).toEqual(["PIE-Fixed-Player-Load-Failed"]);
   expect(await page.evaluate(() => !!customElements.get("pie-item-player"))).toBe(false);

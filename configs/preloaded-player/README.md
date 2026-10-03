@@ -5,6 +5,8 @@ This folder contains configuration files used to build and publish variants of:
 - `@pie-players/pie-preloaded-player`
 
 Each config represents a set of PIE elements (package + version) bundled for `pie-item-player`.
+Every element must be a pie-elements-ng package with an ESM browser build
+(`./browser/delivery`); the build refuses any other.
 
 Generated builds are transitional, published for hosts that have not moved off
 them. A host integrating now, or moving, installs the pie-elements-ng packages

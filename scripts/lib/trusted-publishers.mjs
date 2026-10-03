@@ -23,8 +23,8 @@ export const RELEASE_WORKFLOW = "release.yml";
  *
  * `@pie-players/pie-preloaded-player` is generated at build time by the CLI from the
  * manifests in configs/preloaded-player/ (see tools/cli/src/utils/pie-packages/
- * fixed-static.ts), so there is no package.json in the workspace to discover it from. It
- * also carries its own version scheme — `{loaderVersion}-{configHash}.{iteration}` —
+ * preloaded-static.ts), so there is no package.json in the workspace to discover it from. It
+ * also carries its own version scheme — `{loaderVersion}-{setName}.{iteration}` —
  * independent of the fixed workspace version.
  *
  * npm permits exactly ONE trusted publisher per package, so the workflow named here must

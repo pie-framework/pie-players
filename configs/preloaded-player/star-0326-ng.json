@@ -1,4 +1,5 @@
 {
+	"latest": true,
 	"elements": [
 		{
 			"package": "@pie-element/categorize",

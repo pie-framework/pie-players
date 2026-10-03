@@ -13,7 +13,7 @@ import {
 	minifyPlayerModules,
 	parseElementsInput,
 	readElementSet,
-} from "./fixed-static.js";
+} from "./preloaded-static.js";
 
 const writeConfig = async (name: string, content: unknown): Promise<string> => {
 	const dir = await mkdtemp(join(os.tmpdir(), "pie-preloaded-static-"));
@@ -100,7 +100,12 @@ const elementClasses = {
 	"@pie-element/multiple-choice": class extends HTMLElementStub {},
 	"@pie-element/mc-populated-blank": class extends HTMLElementStub {},
 };
-let page: { order: string[]; loadStates: string[]; defined: Map<string, unknown> };
+let page: {
+	order: string[];
+	loadStates: string[];
+	defined: Map<string, unknown>;
+	mathSrc?: string;
+};
 
 /** A document with only what the generated entry and the helper touch. */
 function installPage(): void {
@@ -124,25 +129,25 @@ function installPage(): void {
 	g.__generatedEntry = { page, elementClasses };
 }
 
-/** The generated entry beside stand-ins for the files the build copies next to it. */
-async function writeBuild(): Promise<string> {
+/** The generated entry beside stand-ins for the files the build writes next to it. */
+async function writeBuild({ mathjax = true } = {}): Promise<string> {
 	const dir = await mkdtemp(join(os.tmpdir(), "pie-preloaded-index-"));
 	const loaders = import.meta.resolve("@pie-players/pie-players-shared/loaders");
 	await writeFile(
 		join(dir, "preloaded.js"),
 		`export { registerPreloadedElements } from ${JSON.stringify(loaders)};
-export async function ensureItemPlayerMathRenderingReady() {
-  globalThis.__generatedEntry.page.order.push("math");
-}
 `,
 	);
+	await mkdir(join(dir, "elements"));
 	await writeFile(
-		join(dir, "pie-elements-bundle-test.js"),
+		join(dir, "elements", "index.js"),
 		`const { page, elementClasses } = globalThis.__generatedEntry;
-page.order.push("bundle");
-window.pie = { default: Object.fromEntries(
-  Object.entries(elementClasses).map(([name, Element]) => [name, { Element }]),
-) };
+page.order.push("elements");
+export const elements = elementClasses;
+export function startMathRendering(srcUrl) {
+  page.order.push("math");
+  page.mathSrc = srcUrl;
+}
 `,
 	);
 	await writeFile(
@@ -153,7 +158,7 @@ customElements.define("pie-item-player", class extends HTMLElement {});
 	);
 	await writeFile(
 		join(dir, "index.js"),
-		generateIndex("pie-elements-bundle-test.js", ELEMENTS, ELEMENT_TAGS),
+		generateIndex(ELEMENTS, ELEMENT_TAGS, { mathjax }),
 	);
 	return pathToFileURL(join(dir, "index.js")).href;
 }
@@ -198,17 +203,24 @@ describe("generated preloaded entry", () => {
 		]);
 	});
 
-	test("installs the math renderer before the bundle evaluates, and loads the player last", async () => {
-		await import(await writeBuild());
-		expect(page.order).toEqual(["math", "bundle", "player"]);
+	test("starts MathJax from the build's copy before registering, and loads the player last", async () => {
+		const entry = await writeBuild();
+		await import(entry);
+		expect(page.order).toEqual(["elements", "math", "player"]);
+		expect(page.mathSrc).toBe(new URL("./mathjax/load.js", entry).href);
 		expect(page.loadStates).toEqual(["PIE-Fixed-Player-Load-Complete"]);
 		expect(g.pieFixedPlayerLoaded).toBe(true);
+	});
+
+	test("starts no MathJax for a build that ships none", async () => {
+		await import(await writeBuild({ mathjax: false }));
+		expect(page.order).toEqual(["elements", "player"]);
 	});
 
 	test("renders through a pie-item-player the page already holds", async () => {
 		g.customElements.define("pie-item-player", class {});
 		await import(await writeBuild());
-		expect(page.order).toEqual(["math", "bundle"]);
+		expect(page.order).toEqual(["elements", "math"]);
 	});
 
 	test("fails the load when the page registered another version of a package", async () => {

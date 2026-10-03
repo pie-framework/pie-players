@@ -109,7 +109,10 @@ const TRIGGERS = [
 		reason:
 			"generated `@pie-players/pie-preloaded-player` package: the `dist/` entry name and layout a host copies and loads by path, or the `pie` block of its package.json a host lists builds from",
 		match: (file) =>
-			file === "tools/cli/src/utils/pie-packages/fixed-static.ts",
+			[
+				"tools/cli/src/utils/pie-packages/preloaded-static.ts",
+				"tools/cli/src/utils/pie-packages/preloaded-elements-build.ts",
+			].includes(file),
 	},
 	{
 		reason:

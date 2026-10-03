@@ -5,9 +5,10 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 import { assertElementPackagesAllowed } from "@pie-players/pie-players-shared/loaders";
-import { encodeElementPackageSpecs, parsePackageName } from "@pie-players/pie-players-shared/pie";
+import { parsePackageName } from "@pie-players/pie-players-shared/pie";
 import { transform } from "esbuild";
 
+import { buildElementModules, MATHJAX_LOADER_FILE } from "./preloaded-elements-build.js";
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
@@ -16,9 +17,7 @@ export interface BuildStaticConfig {
 	iteration?: number;
 	loaderVersion?: string;
 	setName?: string; // Names a published version; local builds use the element hash
-	pitsBaseUrl?: string;
 	outputDir?: string;
-	overwriteBundle?: boolean;
 	publish?: boolean;
 	monorepoDir: string;
 }
@@ -49,7 +48,6 @@ export async function readElementSet(elementsFile: string): Promise<ElementSet> 
 	return { name, distTag: parsed?.latest === true ? "latest" : name };
 }
 
-const DEFAULT_PITS_BASE_URL = "https://proxy.pie-api.com";
 const STATIC_PACKAGE_NAME = "@pie-players/pie-preloaded-player";
 
 export function generateHash(elements: string[]): string {
@@ -171,50 +169,13 @@ function generateVersion(config: BuildStaticConfig): string {
 	return generateVersionFromParts(loaderVersion, label, iteration);
 }
 
-async function sleep(ms: number) {
-	await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchBundle(
-	elements: string[],
-	pitsBaseUrl: string,
-	overwriteBundle: boolean,
-): Promise<string> {
-	// Per-spec encoding, joined with the literal `+` the route uses as its
-	// package separator. A raw join lets a malformed spec restructure the URL:
-	// `?` moves `overwrite=true` inside an earlier query, `#` truncates the
-	// path, and either misroutes the fetch into a confusing HTTP error or a
-	// bundle built from the wrong element list.
-	const elementString = encodeElementPackageSpecs(elements);
-	const overwriteParam = overwriteBundle ? "?overwrite=true" : "";
-	const bundleUrl = `${pitsBaseUrl}/bundles/${elementString}/player.js${overwriteParam}`;
-
-	let attempt = 0;
-	const maxRetries = 10;
-	const retryDelay = 10_000;
-
-	while (attempt < maxRetries) {
-		attempt++;
-		const res = await fetch(bundleUrl);
-		if (res.ok) return await res.text();
-		if (res.status === 503) {
-			await sleep(retryDelay);
-			continue;
-		}
-		throw new Error(
-			`Failed to fetch bundle: HTTP ${res.status} ${res.statusText}`,
-		);
-	}
-	throw new Error(`Failed to fetch bundle after ${maxRetries} attempts`);
-}
-
 function generatePackageJson(config: BuildStaticConfig, version: string): any {
 	const hash = generateHash(config.elements);
 	const elements = parseElements(config.elements);
 	const elementNames = Object.keys(elements)
 		.map((pkg) => pkg.replace("@pie-element/", ""))
 		.join(", ");
-	const description = `PIE preloaded item-player static bundle containing: ${elementNames}. Production-ready package with pre-bundled elements (hash: ${hash.substring(0, 7)}).`;
+	const description = `PIE item player with these elements preloaded: ${elementNames}. One ES module tree with every dependency included (hash: ${hash.substring(0, 7)}).`;
 	const elementKeywords = Object.keys(elements)
 		.map((pkg) => pkg.replace("@pie-element/", ""))
 		.slice(0, 10);
@@ -259,21 +220,27 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 }
 
 /**
- * The build's browser entry. It installs the math renderer, which the PITS
- * bundle's legacy elements read as they evaluate, then loads the bundle,
- * registers its elements through the item player's `registerPreloadedElements`,
- * and loads the item player. The top-level await makes `await import()` of
- * the entry resolve once every element is registered.
+ * The build's browser entry. It loads the bundled element modules, starts the
+ * page's MathJax load from the copy beside it, registers the elements through
+ * the item player's `registerPreloadedElements`, and loads the item player. The
+ * top-level await makes `await import()` of the entry resolve once every
+ * element is registered.
  */
 export function generateIndex(
-	bundleFilename: string,
 	elements: string[],
 	elementTags: Record<string, string> = {},
+	{ mathjax = false }: { mathjax?: boolean } = {},
 ): string {
 	const entries = JSON.stringify(preloadedEntries(elements, elementTags), null, 2).replace(
 		/\n/g,
 		"\n  ",
 	);
+	const startMath = mathjax
+		? `
+    // Before any element renders: the first adapter copy to render starts the
+    // page's one MathJax load, and this one loads it from the build.
+    startMathRendering(new URL('./mathjax/${MATHJAX_LOADER_FILE}', import.meta.url).href);`
+		: "";
 
 	return `// Auto-generated entry point for pie-preloaded-player
 await (async function initializePieItemPlayerStatic() {
@@ -316,23 +283,16 @@ await (async function initializePieItemPlayerStatic() {
   };
 
   try {
-    const { ensureItemPlayerMathRenderingReady, registerPreloadedElements } =
-      await importWithRetry('./preloaded.js');
-    // Keeps a renderer the page already installed.
-    await withRetry(() => ensureItemPlayerMathRenderingReady());
-    await importWithRetry('./${bundleFilename}');
-    const pieModule = typeof window !== 'undefined' && window.pie && window.pie.default;
-    if (!pieModule) {
-      throw new Error('[pie-preloaded-player] window.pie.default missing after bundle load');
-    }
-    // PITS exposes raw constructors; the build registers them without
-    // controllers, for hosted players.
+    const { registerPreloadedElements } = await importWithRetry('./preloaded.js');
+    const { elements: elementClasses, startMathRendering } =
+      await importWithRetry('./elements/index.js');${startMath}
+    // Registered without controllers, for hosted players.
     registerPreloadedElements(elements.map((entry) => {
-      const elementData = pieModule[entry.package];
-      if (!elementData || !elementData.Element) {
-        throw new Error('[pie-preloaded-player] No element class found in bundle for ' + entry.package);
+      const element = elementClasses[entry.package];
+      if (!element) {
+        throw new Error('[pie-preloaded-player] No element class found in build for ' + entry.package);
       }
-      return { ...entry, element: elementData.Element };
+      return { ...entry, element };
     }));
     // A page that already registered \`pie-item-player\` — anything importing
     // @pie-players/pie-section-player — renders these elements through that
@@ -376,6 +336,7 @@ function generateReadme(
 	config: BuildStaticConfig,
 	version: string,
 	hash: string,
+	mathjaxVersion?: string,
 ): string {
 	const parsedElements = parseElements(config.elements);
 	const sortedElements = Object.entries(parsedElements).sort(([a], [b]) =>
@@ -402,6 +363,8 @@ Version: \`${version}\`
 Pre-bundled PIE item-player package with static element versions for production use.
 
 **Note:** This package registers a predefined set of PIE elements for the preloaded strategy. Required tags must be registered before mounting the player. Missing registrations produce a readiness error.
+
+\`dist/\` is one ES module tree with every dependency included: the item player, the elements' ESM browser builds with one shared React, and${mathjaxVersion ? ` MathJax ${mathjaxVersion} with its fonts and speech data under \`dist/mathjax/\`` : " no MathJax, since no element in it renders math"}. A page loads nothing from outside \`dist/\`, and every import in it is relative, so the tree can be served from any path.
 
 ## Included PIE elements
 
@@ -478,7 +441,7 @@ Options:
 
 This package includes retry behavior for:
 
-- Module imports (registration, math renderer, preloaded bundle, player module): up to 4 attempts with exponential backoff
+- Module imports (registration, element modules, player module): up to 4 attempts with exponential backoff
 - Runtime resources (images/audio/video): configurable retries via \`loader-config\`
 
 ## Events
@@ -586,16 +549,6 @@ export async function buildPreloadedPlayerStaticPackage(
 	await rm(outputDir, { recursive: true, force: true });
 	await mkdir(join(outputDir, "dist"), { recursive: true });
 
-	let pitsBaseUrl =
-		config.pitsBaseUrl || process.env.BUNDLE_BASE_URL || DEFAULT_PITS_BASE_URL;
-	if (pitsBaseUrl.endsWith("/bundles")) pitsBaseUrl = pitsBaseUrl.slice(0, -8);
-
-	const bundleJs = await fetchBundle(
-		config.elements,
-		pitsBaseUrl,
-		!!config.overwriteBundle,
-	);
-
 	// Build required workspace outputs from this monorepo.
 	// For publish flows we do a full package rebuild, matching regular publish expectations.
 	// For local package generation we keep a narrower build for speed.
@@ -617,8 +570,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
 	await minifyPlayerModules(outputDistDir);
 
-	const bundleFilename = `pie-elements-bundle-${hash}.js`;
-	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);
+	const { mathjaxVersion } = await buildElementModules(config.elements, outputDistDir);
 
 	const packageJson = generatePackageJson(config, version);
 	await writeFile(
@@ -627,12 +579,12 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename, config.elements, config.elementTags),
+		generateIndex(config.elements, config.elementTags, { mathjax: !!mathjaxVersion }),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(
 		join(outputDir, "README.md"),
-		generateReadme(config, version, hash),
+		generateReadme(config, version, hash, mathjaxVersion),
 	);
 
 	return { outputDir, version };

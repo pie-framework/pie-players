@@ -34,7 +34,7 @@ describe("shouldRebuildAll", () => {
 			"packages/item-player/src/pie-item-player.ts",
 			"packages/item-player/vite.config.ts",
 			"packages/players-shared/src/pie/element-observer.ts",
-			"tools/cli/src/utils/pie-packages/fixed-static.ts",
+			"tools/cli/src/utils/pie-packages/preloaded-static.ts",
 			"scripts/preloaded-player/publish-changed.mjs",
 		]) {
 			expect(shouldRebuildAll([file])).toBe(true);

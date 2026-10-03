@@ -1,42 +1,15 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { createHash } from "node:crypto";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 import { deferMathRenderingModuleEvaluation } from "../players-shared/math-rendering-module-deferral.mjs";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
-const sanitizeChunkKey = (value: string) =>
-	value
-		.replace(/\\/g, "/")
-		.replace(/^.*\/node_modules\//, "npm/")
-		.replace(/^.*\/src\//, "src/")
-		.replace(/-[a-f0-9]{8,}(?=\.js($|[/.]))/gi, "")
-		.replace(/-[a-f0-9]{8,}(?=\/|$)/gi, "")
-		.replace(/[^a-zA-Z0-9/_-]/g, "-")
-		.replace(/\/+/g, "/")
-		.replace(/^\/+/, "")
-		.replace(/\/$/, "")
-		.replace(/\//g, "__");
-
-const getChunkSourceKey = (chunkInfo: {
-	name: string;
-	facadeModuleId?: string | null;
-	moduleIds?: string[];
-}) => {
-	const moduleSource =
-		chunkInfo.facadeModuleId ??
-		(Array.isArray(chunkInfo.moduleIds) ? chunkInfo.moduleIds[0] : undefined);
-	const sourceKey = sanitizeChunkKey(moduleSource || chunkInfo.name || "chunk");
-	const chunkName = sanitizeChunkKey(chunkInfo.name || "chunk");
-	const sourceHash = createHash("sha1")
-		.update(sourceKey)
-		.digest("hex")
-		.slice(0, 8);
-	return `${chunkName}-${sourceHash}`;
-};
+const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
 
 const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",
@@ -70,6 +43,7 @@ export default defineConfig({
 		svelte({
 			compilerOptions: {
 				customElement: true,
+				rootDir: svelteRootDir(__dirname),
 			},
 			emitCss: false,
 		}),
@@ -107,8 +81,7 @@ export default defineConfig({
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",
-				chunkFileNames: (chunkInfo) =>
-					`chunks/${getChunkSourceKey(chunkInfo)}.js`,
+				chunkFileNames,
 				assetFileNames: "assets/[name][extname]",
 			},
 		},

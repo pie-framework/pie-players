@@ -8,7 +8,7 @@ import {
 	type ElementSet,
 	parseElementsInput,
 	readElementSet,
-} from "../../utils/pie-packages/fixed-static.js";
+} from "../../utils/pie-packages/preloaded-static.js";
 import { createNpmAuthEnvironment } from "@pie-players/pie-players-cli/npm-auth-env";
 import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
@@ -41,11 +41,6 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 			description:
 				"Override loader version used in the static package version string (default: pie-item-player version in this repo)",
 		}),
-		overwriteBundle: Flags.boolean({
-			description:
-				"Force rebuild of bundle even if it exists in cache (adds ?overwrite=true)",
-			default: false,
-		}),
 		publish: Flags.boolean({
 			char: "p",
 			description: "Publish package to npm after building",
@@ -54,10 +49,6 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 		dryRun: Flags.boolean({
 			description: "Dry run (build but do not publish)",
 			default: false,
-		}),
-		pitsBaseUrl: Flags.string({
-			description:
-				"Bundle builder base URL (default: https://proxy.pie-api.com)",
 		}),
 		publishTag: Flags.string({
 			description:
@@ -172,9 +163,7 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 			iteration: flags.publish ? flags.iteration : undefined,
 			loaderVersion: flags.loaderVersion,
 			setName: elementSet?.name,
-			pitsBaseUrl: flags.pitsBaseUrl,
 			monorepoDir,
-			overwriteBundle: flags.overwriteBundle,
 			publish: flags.publish,
 		});
 

@@ -1,95 +1,27 @@
-import { expect, test, type Page } from "@playwright/test";
-import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readdir, readFile, rm } from "node:fs/promises";
-import { createServer, type Server } from "node:http";
-import { tmpdir } from "node:os";
-import { extname, join, resolve, sep } from "node:path";
+import { expect, test } from "@playwright/test";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import demo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio-simple";
 import mathDemo from "../../../apps/item-demos/src/lib/content/multiple-choice-math-algebra-quadratic";
+import { type ServedPackage, serveFromTarballOnly, serveGeneratedPackage, workspace } from "./generated-preloaded-package";
 
-const workspace = resolve(import.meta.dirname, "../../..");
 const packageName = "@pie-element/multiple-choice";
 const packageSpec = `${packageName}@14.0.0`;
 // The build registers the base tag the published configs give the package, and
 // the items author `multiple-choice`, so each player defines the tag it renders.
 const registeredTag = "pie-element-multiple-choice--version-14-0-0";
 const runtimeTag = "multiple-choice--version-14-0-0";
-let scratch: string;
-let server: Server;
+let built: ServedPackage;
 let origin: string;
-
-// Executable modules, player assets, and MathJax with its fonts and speech data
-// must come entirely from the tarball.
-const serveFromTarballOnly = (page: Page) =>
-  page.route("**/*", (route) =>
-    new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
 
 test.beforeAll(async () => {
   test.setTimeout(180_000);
-  scratch = await mkdtemp(join(tmpdir(), "pie-generated-preload-"));
-  const generated = join(scratch, "generated");
-  const packed = join(scratch, "preloaded.tgz");
-  const served = join(scratch, "served");
-  // Exercise the production generator, including its install and bundling of
-  // the published element. The browser will receive only the extracted tarball.
-  execFileSync("bun", ["-e", `
-    import { buildPreloadedPlayerStaticPackage } from "./tools/cli/src/utils/pie-packages/preloaded-static.ts";
-    await buildPreloadedPlayerStaticPackage(${JSON.stringify({
-      elements: [packageSpec],
-      elementTags: { [packageName]: "pie-element-multiple-choice" },
-      monorepoDir: workspace,
-      outputDir: generated,
-      iteration: 1,
-    })});
-  `], { cwd: workspace, timeout: 150_000, maxBuffer: 32 * 1024 * 1024 });
-  execFileSync("bun", ["pm", "pack", "--filename", packed], { cwd: generated });
-  await mkdir(served);
-  execFileSync("tar", ["-xzf", packed, "-C", served]);
-  server = createServer((request, response) => {
-    void (async () => {
-      const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
-      if (pathname === "/") {
-        response.writeHead(200, { "content-type": "text/html" });
-        response.end(`<!doctype html><html lang="en"><meta charset="utf-8">
-          <title>Generated preloaded package</title><link rel="icon" href="data:,">
-          <h1>Generated preloaded package</h1></html>`);
-        return;
-      }
-      // The build's files again under a second path, which the browser loads as
-      // separate modules: a second copy of the item player, as a page running
-      // the section player holds one.
-      const servedPath = pathname.startsWith("/host-copy/")
-        ? `/package/dist/${pathname.slice("/host-copy/".length)}`
-        : pathname;
-      const filename = resolve(served, `.${decodeURIComponent(servedPath)}`);
-      if (!filename.startsWith(`${served}${sep}`)) {
-        response.writeHead(404).end();
-        return;
-      }
-      try {
-        const data = await readFile(filename);
-        const mime: Record<string, string> = {
-          ".js": "text/javascript",
-          ".css": "text/css",
-          ".json": "application/json",
-          ".woff2": "font/woff2",
-        };
-        response.writeHead(200, { "content-type": mime[extname(filename)] ?? "application/octet-stream" });
-        response.end(data);
-      } catch {
-        response.writeHead(404).end();
-      }
-    })().catch(() => response.writeHead(500).end());
-  });
-  await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
-  const address = server.address();
-  if (!address || typeof address === "string") throw new Error("Static server did not bind");
-  origin = `http://127.0.0.1:${address.port}`;
+  built = await serveGeneratedPackage([packageSpec], { [packageName]: "pie-element-multiple-choice" });
+  origin = built.origin;
 });
 
 test.afterAll(async () => {
-  if (server) await new Promise<void>((done) => server.close(() => done()));
-  if (scratch) await rm(scratch, { recursive: true, force: true });
+  await built?.close();
 });
 
 test("packed preloaded output registers authored tags, loads chunks, and records a real answer", async ({ page }) => {
@@ -103,7 +35,7 @@ test("packed preloaded output registers authored tags, loads chunks, and records
     if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
     if (response.ok() && response.url().includes("/dist/chunks/")) loadedChunks.push(response.url());
   });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
   const readyAtImport = await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
@@ -178,7 +110,7 @@ test("renders math with the MathJax the build ships, its fonts included", async 
     const { pathname } = new URL(response.url());
     if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
   });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
   await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
@@ -215,7 +147,7 @@ test("typesets mhchem chemistry with the font extension the build ships", async 
     const { pathname } = new URL(response.url());
     if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
   });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
   await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
@@ -243,7 +175,7 @@ test("typesets mhchem chemistry with the font extension the build ships", async 
 
 test("ships every item-player module with its whitespace stripped", async () => {
   const playerDist = join(workspace, "packages/item-player/dist");
-  const shipped = join(scratch, "served/package/dist");
+  const shipped = join(built.served, "package/dist");
   const modules = (await readdir(playerDist, { recursive: true })).filter((file) => file.endsWith(".js"));
   expect(modules).toContain("pie-item-player.js");
   for (const file of modules) {
@@ -263,7 +195,7 @@ test("renders an item authoring another base tag than the build, hosted and not 
     if (message.type() === "error") browserErrors.push(message.text());
     if (message.type() === "warning" && message.text().includes("without a controller")) warnings.push(message.text());
   });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
   await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
@@ -306,7 +238,7 @@ test("imports into a page whose own item player holds pie-item-player, and rende
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
   page.on("request", (request) => requested.push(new URL(request.url()).pathname));
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
 
   // What a host running the section player presents: its own item player holds
@@ -350,7 +282,7 @@ test("a second item-player copy loading after the build leaves the build's copy 
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
 
   // A host that imports the build before the section player: the build's copy

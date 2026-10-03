@@ -40,12 +40,23 @@ imports are all relative, with every dependency included:
   `startMathRendering`. React is the one dependency the elements' browser builds
   leave to the page (`pie.browserSharedDependencies`); the bundle holds a single
   copy, and the generator refuses elements that share different versions of it.
-- `dist/mathjax/` — the MathJax 4 the elements' math adapter expects, with its
-  extensions, speech data, and the New Computer Modern font and the mhchem font
-  extension for both output renderers, plus `load.js`, which points MathJax's
-  `mathjax` and `fonts` paths at this directory. A set whose elements render no
-  math ships none. The generator refuses a build whose adapter copies expect
-  another MathJax version, or one that predates the shared page-wide load.
+- `dist/mathjax/` — what the elements render math with. An element's copy of
+  the math adapter either renders on the page's MathJax or bundles a private
+  MathJax that never reads `window.MathJax`; the generator tells them apart by
+  the bundled copy's `@pie-element/shared-math-rendering-mathjax/bundled` marker.
+  - For elements on the page's MathJax: the MathJax 4 their adapter expects,
+    with its extensions, speech data, and the New Computer Modern font and the
+    mhchem font extension for both output renderers, plus `load.js`, which
+    points MathJax's `mathjax` and `fonts` paths at this directory. The
+    generator refuses a build whose adapter copies expect another MathJax
+    version, or one that predates the shared page-wide load.
+  - For elements that bundle MathJax: `npm/<package>@<version>/`, holding the
+    font files and speech worker each bundled MathJax loads. The bundled copy
+    names them by jsDelivr URL; the generator rewrites each such string literal
+    in the output to the build's copy, resolved from the chunk's own URL, and
+    refuses a build in which a jsDelivr `@mathjax/` URL survives.
+
+  A set whose elements render no math ships neither.
 - `dist/index.js` — the entry point actually imported by consumers (see below).
 - `package.json` with a `pie` metadata block (`set` on a published build,
   `bundleHash`, `iteration`, `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
@@ -55,10 +66,12 @@ Importing `dist/index.js` is a side-effecting module load, not an API call. It
 runs four steps in order, each import with retry/backoff:
 
 1. It imports `preloaded.js`, then `elements/index.js`.
-2. It starts the page's MathJax load from `dist/mathjax/load.js`. Each
-   element's copy of the adapter finds that load in flight and waits on it, so
-   no MathJax, font or speech file comes from a CDN. A page that installed its
-   own `window["@pie-lib/math-rendering"]` renderer keeps it, and nothing loads.
+2. When an element renders on the page's MathJax, it starts that load from
+   `dist/mathjax/load.js`. Each such element's copy of the adapter finds the
+   load in flight and waits on it, so no MathJax, font or speech file comes from
+   a CDN. A page that installed its own `window["@pie-lib/math-rendering"]`
+   renderer keeps it, and nothing loads. Elements that bundle MathJax start
+   their own, which loads fonts and speech from `dist/mathjax/npm/`.
 3. It registers the element classes, without controllers, under the configured
    versioned tags through `registerPreloadedElements`, which records each
    package's spec in `window.PIE_PRELOADED_ELEMENTS`
@@ -312,12 +325,15 @@ version, an authored base tag other than the build's in hosted and client
 players, import readiness, repeated registration, unchanged authored content,
 actual answer updates, and math rendered by the shipped MathJax with its
 fonts, mhchem's `\ce` included. A missing-element fault verifies import
-rejection. Every request must reach that server. Workspace imports and runtime
+rejection. `item-player-generated-preloaded-bundled-mathjax.spec.ts` builds a
+multiple-choice version that bundles MathJax and verifies it renders with no
+page MathJax, loading its fonts, mhchem's font extension and the speech worker
+from the build. Every request must reach that server. Workspace imports and runtime
 bundle fetching cannot conceal an incomplete package.
 
 ```bash
 bun run build:e2e:item-player
-bunx playwright test packages/item-player/tests/item-player-generated-preloaded.spec.ts --config packages/item-player/playwright.config.ts
+bunx playwright test packages/item-player/tests/item-player-generated-preloaded.spec.ts packages/item-player/tests/item-player-generated-preloaded-bundled-mathjax.spec.ts --config packages/item-player/playwright.config.ts
 ```
 
 Workflow: [`.github/workflows/publish-preloaded-player.yml`](../../.github/workflows/publish-preloaded-player.yml)

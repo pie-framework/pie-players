@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 
 import { parsePackageName } from "@pie-players/pie-players-shared/pie";
-import { build, type Rollup } from "vite";
+import { build, type Plugin, type Rollup } from "vite";
 
 /** The MathJax adapter pie-elements-ng bundles into every element that renders math. */
 const MATH_ADAPTER = "@pie-element/shared-math-rendering-mathjax";
@@ -16,8 +16,26 @@ const MATH_ADAPTER = "@pie-element/shared-math-rendering-mathjax";
  */
 const MATH_LOAD_REGISTRY = `${MATH_ADAPTER}/loading`;
 
+/**
+ * Names the copy of the adapter that bundles its own MathJax, which never reads
+ * `window.MathJax` and needs no page MathJax.
+ */
+const BUNDLED_ENGINE = `${MATH_ADAPTER}/bundled`;
+
 /** The adapter's default MathJax script, which names the MathJax version it expects. */
 const MATHJAX_CDN_URL = /https:\/\/cdn\.jsdelivr\.net\/npm\/mathjax@([0-9][0-9A-Za-z.+-]*)\/tex-mml-chtml\.js/g;
+
+/** Where a bundled MathJax loads its font files and speech worker from. */
+const BUNDLED_ASSET_CDN = "https://cdn.jsdelivr.net/npm/@mathjax/";
+
+/**
+ * A string literal holding one of those URLs: the package, its version, and the
+ * path in it. A template literal that interpolates is not matched.
+ */
+const BUNDLED_ASSET_URL = /(["'`])https:\/\/cdn\.jsdelivr\.net\/npm\/(@mathjax\/[a-z0-9-]+)@([0-9][0-9A-Za-z.+-]*)\/([^"'`\s${}]*)\1/g;
+
+/** Under `dist/mathjax/`: the asset packages bundled MathJax copies load from, by `package@version`. */
+const BUNDLED_ASSETS_DIR = "npm";
 
 /** The default MathJax 4 font, which MathJax loads from its `[fonts]` path. */
 const MATHJAX_FONT = "@mathjax/mathjax-newcm-font";
@@ -75,8 +93,16 @@ interface InstalledElement {
 }
 
 export interface ElementModulesBuild {
-	/** The MathJax version shipped under `dist/mathjax/`, when an element renders math. */
+	/**
+	 * The MathJax version shipped under `dist/mathjax/`, when an element renders
+	 * math on the page's MathJax.
+	 */
 	mathjaxVersion?: string;
+	/**
+	 * The `package@version` of each package shipped under `dist/mathjax/npm/` for
+	 * elements that bundle their MathJax: its fonts and speech worker.
+	 */
+	bundledMathjaxAssets: string[];
 }
 
 async function writeManifest(workDir: string, dependencies: Record<string, string>): Promise<void> {
@@ -183,7 +209,10 @@ ${entries}
 `;
 }
 
-/** The MathJax version each chunk's copy of the adapter loads, and whether it shares the load. */
+/**
+ * The MathJax version each chunk's copy of the adapter loads, and whether it
+ * shares the load. A copy that bundles its MathJax loads none.
+ */
 export function mathjaxUse(chunks: Array<{ fileName: string; code: string }>): {
 	versions: Set<string>;
 	unshared: string[];
@@ -191,6 +220,7 @@ export function mathjaxUse(chunks: Array<{ fileName: string; code: string }>): {
 	const versions = new Set<string>();
 	const unshared: string[] = [];
 	for (const { fileName, code } of chunks) {
+		if (code.includes(BUNDLED_ENGINE)) continue;
 		const found = [...code.matchAll(MATHJAX_CDN_URL)].map((match) => match[1]);
 		if (!found.length) continue;
 		for (const version of found) versions.add(version);
@@ -231,11 +261,93 @@ export async function copyMathjax(modulesDir: string, mathjaxDir: string): Promi
 }
 
 /**
+ * Points each bundled MathJax asset URL in `code`, the chunk at `fileName` in
+ * `dist/elements/`, at the build's copy under `dist/mathjax/npm/`, resolved from
+ * the chunk's own URL, and adds the `package@version/path` to `assets`.
+ */
+export function rewriteBundledAssetUrls(code: string, fileName: string, assets: Set<string>): string {
+	const from = posix.join("elements", posix.dirname(fileName));
+	return code.replace(BUNDLED_ASSET_URL, (_literal, _quote, name: string, version: string, path: string) => {
+		const asset = `${name}@${version}/${path}`;
+		assets.add(asset);
+		const target = posix.relative(from, posix.join("mathjax", BUNDLED_ASSETS_DIR, asset));
+		return `new URL(${JSON.stringify(target)}, import.meta.url).href`;
+	});
+}
+
+function bundledAssetUrls(assets: Set<string>): Plugin {
+	return {
+		name: "pie-preloaded-bundled-mathjax-assets",
+		renderChunk(code, chunk) {
+			const rewritten = rewriteBundledAssetUrls(code, chunk.fileName, assets);
+			return rewritten === code ? null : { code: rewritten, map: null };
+		},
+	};
+}
+
+/** Whether the installed package at `dir` carries a copy of the adapter that bundles its MathJax. */
+async function bundlesMathjax(dir: string): Promise<boolean> {
+	const files = (await readdir(dir, { recursive: true })).filter(
+		(file) => file.endsWith(".js") && !file.split(/[\\/]/).includes("node_modules"),
+	);
+	for (const file of files) {
+		if ((await readFile(join(dir, file), "utf-8")).includes(BUNDLED_ENGINE)) return true;
+	}
+	return false;
+}
+
+/** Groups `package@version/path` assets by package version. */
+export function assetPackages(assets: Iterable<string>): Map<string, { name: string; version: string; paths: string[] }> {
+	const packages = new Map<string, { name: string; version: string; paths: string[] }>();
+	for (const asset of assets) {
+		const [, name, version, path] = /^(@[^/]+\/[^@]+)@([^/]+)\/(.*)$/.exec(asset) ?? [];
+		if (!name) throw new Error(`${asset} names no package version`);
+		const key = `${name}@${version}`;
+		const entry = packages.get(key) ?? { name, version, paths: [] };
+		if (!entry.paths.includes(path)) entry.paths.push(path);
+		packages.set(key, entry);
+	}
+	return packages;
+}
+
+/**
+ * Installs each package version `assets` name, under an alias so that two
+ * versions of one package can sit side by side, and copies the paths named, with
+ * its manifest and license, to `mathjaxDir/npm/<package>@<version>/`.
+ */
+async function copyBundledMathjaxAssets(
+	workDir: string,
+	dependencies: Record<string, string>,
+	assets: Set<string>,
+	mathjaxDir: string,
+): Promise<string[]> {
+	const packages = [...assetPackages(assets)];
+	const aliases = packages.map((_, index) => `pie-mathjax-asset-${index}`);
+	await installDependencies(workDir, {
+		...dependencies,
+		...Object.fromEntries(packages.map(([key], index) => [aliases[index], `npm:${key}`])),
+	});
+	for (const [index, [key, { paths }]] of packages.entries()) {
+		const installed = join(workDir, "node_modules", aliases[index]);
+		const license = existsSync(join(installed, "LICENSE")) ? ["LICENSE"] : [];
+		const entries = paths.map((path) => path.replace(/\/$/, "")).filter(Boolean);
+		if (entries.length < paths.length) throw new Error(`${key} is named without a path in it`);
+		await copyEntries(installed, join(mathjaxDir, BUNDLED_ASSETS_DIR, key), [
+			"package.json",
+			...license,
+			...entries,
+		]);
+	}
+	return packages.map(([key]) => key);
+}
+
+/**
  * Bundles each element's ESM browser build into `<distDir>/elements/`, with one
- * React for all of them and every other dependency included, and ships the
- * MathJax those elements render with under `<distDir>/mathjax/`. The elements
- * are installed into a scratch project, because each config pins its own
- * versions of the same packages.
+ * React for all of them and every other dependency included, and ships what the
+ * elements render math with under `<distDir>/mathjax/`: the page's MathJax for
+ * elements whose adapter copy loads it, and the fonts and speech worker of each
+ * MathJax an element bundles. The elements are installed into a scratch
+ * project, because each config pins its own versions of the same packages.
  */
 export async function buildElementModules(
 	elements: string[],
@@ -259,9 +371,13 @@ export async function buildElementModules(
 
 		const shared = sharedBrowserDependencies(installed);
 		const dependencies: Record<string, string> = { ...requested, ...shared };
-		const adapterVersions = installed
-			.map(({ manifest }) => manifest?.dependencies?.[MATH_ADAPTER])
-			.filter((version): version is string => typeof version === "string");
+		const adapterVersions: string[] = [];
+		for (const { name, manifest } of installed) {
+			const version = manifest?.dependencies?.[MATH_ADAPTER];
+			if (typeof version !== "string") continue;
+			if (await bundlesMathjax(join(workDir, "node_modules", name))) continue;
+			adapterVersions.push(version);
+		}
 		const withMath = adapterVersions.length > 0;
 		let mathjaxVersion: string | undefined;
 		if (withMath) {
@@ -284,6 +400,7 @@ export async function buildElementModules(
 		await writeFile(entry, generateElementsModule(Object.keys(requested), withMath));
 
 		const outDir = join(distDir, "elements");
+		const assets = new Set<string>();
 		const output = await build({
 			root: workDir,
 			configFile: false,
@@ -291,6 +408,7 @@ export async function buildElementModules(
 			publicDir: false,
 			logLevel: "warn",
 			base: "./",
+			plugins: [bundledAssetUrls(assets)],
 			resolve: { dedupe: Object.keys(shared) },
 			// A browser has no `process` to read it from.
 			define: { "process.env.NODE_ENV": JSON.stringify("production") },
@@ -338,10 +456,22 @@ export async function buildElementModules(
 			);
 		}
 
+		const unrewritten = chunks
+			.filter(({ code }) => code.includes(BUNDLED_ASSET_CDN))
+			.map(({ fileName }) => fileName);
+		if (unrewritten.length) {
+			throw new Error(
+				`${unrewritten.join(", ")} would load MathJax fonts or speech from jsDelivr: a URL to it is not a plain string`,
+			);
+		}
+
 		if (mathjaxVersion) {
 			await copyMathjax(join(workDir, "node_modules"), join(distDir, "mathjax"));
 		}
-		return { mathjaxVersion };
+		const bundledMathjaxAssets = assets.size
+			? await copyBundledMathjaxAssets(workDir, dependencies, assets, join(distDir, "mathjax"))
+			: [];
+		return { mathjaxVersion, bundledMathjaxAssets };
 	} finally {
 		await rm(workDir, { recursive: true, force: true });
 	}

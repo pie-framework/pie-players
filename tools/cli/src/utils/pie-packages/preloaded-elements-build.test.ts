@@ -5,18 +5,21 @@ import { dirname, join } from "node:path";
 
 import {
 	assertEsmElement,
+	assetPackages,
 	compareVersions,
 	copyMathjax,
 	generateElementsModule,
 	MATHJAX_LOADER,
 	mathjaxDependencies,
 	mathjaxUse,
+	rewriteBundledAssetUrls,
 	sharedBrowserDependencies,
 } from "./preloaded-elements-build.js";
 
 const element = (name: string, manifest: unknown) => ({ name, version: "1.0.0", manifest });
 const CDN = (version: string) => `https://cdn.jsdelivr.net/npm/mathjax@${version}/tex-mml-chtml.js`;
 const REGISTRY = "@pie-element/shared-math-rendering-mathjax/loading";
+const BUNDLED = "@pie-element/shared-math-rendering-mathjax/bundled";
 
 describe("element packages", () => {
 	test("rejects a package without an ESM browser build", () => {
@@ -87,6 +90,64 @@ describe("MathJax use in the bundled output", () => {
 				{ fileName: "chunks/c.js", code: "no math" },
 			]),
 		).toEqual({ versions: new Set(["4.1.3", "4.1.4"]), unshared: ["chunks/b.js"] });
+	});
+
+	test("skips a copy that bundles its MathJax, whose default script is never loaded", () => {
+		expect(
+			mathjaxUse([{ fileName: "chunks/a.js", code: `const s="${CDN("4.1.3")}";Symbol.for("${BUNDLED}")` }]),
+		).toEqual({ versions: new Set(), unshared: [] });
+	});
+});
+
+describe("bundled MathJax assets", () => {
+	const FONT = "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2";
+	const SRE = "https://cdn.jsdelivr.net/npm/@mathjax/src@4.1.3/bundle/sre";
+	const local = (path: string) => `new URL(${JSON.stringify(path)}, import.meta.url).href`;
+
+	test("points each asset URL at the build's copy, resolved from the chunk", () => {
+		const assets = new Set<string>();
+		expect(rewriteBundledAssetUrls(`L8="${FONT}",nu='${SRE}'`, "chunks/Radio-B_mH.js", assets)).toBe(
+			`L8=${local("../../mathjax/npm/@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2")},nu=${local("../../mathjax/npm/@mathjax/src@4.1.3/bundle/sre")}`,
+		);
+		expect(rewriteBundledAssetUrls(`f=\`${FONT}\``, "index.js", assets)).toBe(
+			`f=${local("../mathjax/npm/@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2")}`,
+		);
+		expect([...assets]).toEqual(["@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2", "@mathjax/src@4.1.3/bundle/sre"]);
+	});
+
+	test("leaves URLs built at runtime and those of the page's MathJax", () => {
+		const code = [
+			"u=`https://cdn.jsdelivr.net/npm/@mathjax/src@${v}/bundle/sre`",
+			"w=`https://cdn.jsdelivr.net/npm/@mathjax/src@4.1.3/${path}`",
+			`s="${CDN("4.1.3")}"`,
+			'p="https://cdn.jsdelivr.net/npm/@mathjax"',
+		].join(";");
+		const assets = new Set<string>();
+		expect(rewriteBundledAssetUrls(code, "index.js", assets)).toBe(code);
+		expect(assets.size).toBe(0);
+	});
+
+	test("groups assets by package version", () => {
+		expect(
+			assetPackages([
+				"@mathjax/src@4.1.3/bundle/sre",
+				"@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2",
+				"@mathjax/src@4.1.3/bundle/sre",
+				"@mathjax/mathjax-newcm-font@4.1.4/chtml/woff2",
+			]),
+		).toEqual(
+			new Map([
+				["@mathjax/src@4.1.3", { name: "@mathjax/src", version: "4.1.3", paths: ["bundle/sre"] }],
+				[
+					"@mathjax/mathjax-newcm-font@4.1.3",
+					{ name: "@mathjax/mathjax-newcm-font", version: "4.1.3", paths: ["chtml/woff2"] },
+				],
+				[
+					"@mathjax/mathjax-newcm-font@4.1.4",
+					{ name: "@mathjax/mathjax-newcm-font", version: "4.1.4", paths: ["chtml/woff2"] },
+				],
+			]),
+		);
 	});
 });
 

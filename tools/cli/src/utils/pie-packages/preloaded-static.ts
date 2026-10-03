@@ -8,7 +8,7 @@ import { assertElementPackagesAllowed } from "@pie-players/pie-players-shared/lo
 import { parsePackageName } from "@pie-players/pie-players-shared/pie";
 import { transform } from "esbuild";
 
-import { buildElementModules, MATHJAX_LOADER_FILE } from "./preloaded-elements-build.js";
+import { buildElementModules, type ElementModulesBuild, MATHJAX_LOADER_FILE } from "./preloaded-elements-build.js";
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
@@ -332,11 +332,19 @@ function generateTypes(): string {
 `;
 }
 
+/** What `dist/mathjax/` holds, for the README. */
+function describeMath(mathjaxVersion: string | undefined, bundledMathjaxAssets: string[]): string {
+	const page = mathjaxVersion && `MathJax ${mathjaxVersion} with its fonts and speech data under \`dist/mathjax/\``;
+	if (!bundledMathjaxAssets.length) return page || "no MathJax, since no element in it renders math";
+	const bundled = `the font and speech files for the MathJax bundled into ${page ? "the other elements" : "each element that renders math"}, under \`dist/mathjax/npm/\` (${bundledMathjaxAssets.map((asset) => `\`${asset}\``).join(", ")})`;
+	return page ? `${page} for elements that render on the page's MathJax, and ${bundled}` : bundled;
+}
+
 function generateReadme(
 	config: BuildStaticConfig,
 	version: string,
 	hash: string,
-	mathjaxVersion?: string,
+	{ mathjaxVersion, bundledMathjaxAssets }: ElementModulesBuild,
 ): string {
 	const parsedElements = parseElements(config.elements);
 	const sortedElements = Object.entries(parsedElements).sort(([a], [b]) =>
@@ -364,7 +372,7 @@ Pre-bundled PIE item-player package with static element versions for production 
 
 **Note:** This package registers a predefined set of PIE elements for the preloaded strategy. Required tags must be registered before mounting the player. Missing registrations produce a readiness error.
 
-\`dist/\` is one ES module tree with every dependency included: the item player, the elements' ESM browser builds with one shared React, and${mathjaxVersion ? ` MathJax ${mathjaxVersion} with its fonts and speech data under \`dist/mathjax/\`` : " no MathJax, since no element in it renders math"}. A page loads nothing from outside \`dist/\`, and every import in it is relative, so the tree can be served from any path.
+\`dist/\` is one ES module tree with every dependency included: the item player, the elements' ESM browser builds with one shared React, and ${describeMath(mathjaxVersion, bundledMathjaxAssets)}. A page loads nothing from outside \`dist/\`, and every import in it is relative, so the tree can be served from any path.
 
 ## Included PIE elements
 
@@ -570,7 +578,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
 	await minifyPlayerModules(outputDistDir);
 
-	const { mathjaxVersion } = await buildElementModules(config.elements, outputDistDir);
+	const math = await buildElementModules(config.elements, outputDistDir);
 
 	const packageJson = generatePackageJson(config, version);
 	await writeFile(
@@ -579,12 +587,12 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(config.elements, config.elementTags, { mathjax: !!mathjaxVersion }),
+		generateIndex(config.elements, config.elementTags, { mathjax: !!math.mathjaxVersion }),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(
 		join(outputDir, "README.md"),
-		generateReadme(config, version, hash, mathjaxVersion),
+		generateReadme(config, version, hash, math),
 	);
 
 	return { outputDir, version };

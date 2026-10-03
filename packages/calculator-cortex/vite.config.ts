@@ -2,11 +2,15 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
 export default defineConfig({
 	base: "./",
 	plugins: [
-		svelte({ emitCss: false }),
+		svelte({
+			compilerOptions: { rootDir: svelteRootDir(import.meta.dirname) },
+			emitCss: false,
+		}),
 		dts({
 			tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 			outDirs: "dist",

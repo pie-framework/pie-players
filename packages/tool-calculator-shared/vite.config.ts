@@ -2,6 +2,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
 /**
  * Builds `./calculator-element`, the one published entry. Hosts resolve it at
@@ -13,7 +14,13 @@ import dts from "vite-plugin-dts";
  */
 export default defineConfig({
 	plugins: [
-		svelte({ compilerOptions: { customElement: true }, emitCss: false }),
+		svelte({
+			compilerOptions: {
+				customElement: true,
+				rootDir: svelteRootDir(import.meta.dirname),
+			},
+			emitCss: false,
+		}),
 		dts({
 			tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 			outDirs: "dist",

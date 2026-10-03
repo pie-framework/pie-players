@@ -6,6 +6,7 @@ import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-sourc
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
 const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
 
@@ -59,6 +60,7 @@ export default defineConfig({
 		svelte({
 			compilerOptions: {
 				customElement: true,
+				rootDir: svelteRootDir(__dirname),
 			},
 			emitCss: false,
 		}),

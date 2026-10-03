@@ -5,6 +5,7 @@ import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js"
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
 /**
  * What the npm build (`vite.config.ts`) and the browser build
@@ -25,6 +26,7 @@ export const sharedSveltePlugins = (): PluginOption[] => [
 		preprocess: vitePreprocess(),
 		compilerOptions: {
 			customElement: true,
+			rootDir: svelteRootDir(__dirname),
 		},
 		emitCss: false,
 	}),

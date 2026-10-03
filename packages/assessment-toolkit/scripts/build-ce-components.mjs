@@ -12,6 +12,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "svelte/compiler";
+import { svelteRootDir } from "../../players-shared/svelte-root-dir.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -170,6 +171,7 @@ for (const entry of entries) {
 	const source = readFileSync(entry.source, "utf8");
 	const compiled = compile(source, {
 		filename: entry.source,
+		rootDir: svelteRootDir(packageRoot),
 		generate: "client",
 		customElement: true,
 		css: "injected",

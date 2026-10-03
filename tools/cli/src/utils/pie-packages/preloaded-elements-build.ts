@@ -23,13 +23,22 @@ const MATHJAX_CDN_URL = /https:\/\/cdn\.jsdelivr\.net\/npm\/mathjax@([0-9][0-9A-
 const MATHJAX_FONT = "@mathjax/mathjax-newcm-font";
 
 /**
+ * The font extensions MathJax loads from `[fonts]` when TeX autoloads a package
+ * that needs one: mhchem for `\ce` and `\pu`. No content on the live installs
+ * uses bbm, bboldx or dsfont (`\mathbbm`, `\mathbbb`, `\mathds`), so their
+ * extensions are not shipped.
+ */
+const MATHJAX_FONT_EXTENSIONS = ["@mathjax/mathjax-mhchem-font-extension"];
+
+/**
  * The parts of the `mathjax` package a page can request: the combined component,
  * the extensions and data it loads by path, and both output renderers, which
- * MathJax's menu lets a student switch between. The font package ships its
- * license in its manifest.
+ * MathJax's menu lets a student switch between. The font packages ship their
+ * licenses in their manifests; an extension's SVG glyphs are inside its `svg.js`.
  */
 const MATHJAX_FILES = ["tex-mml-chtml.js", "a11y", "input", "output", "ui", "sre", "LICENSE"];
 const MATHJAX_FONT_FILES = ["chtml.js", "chtml", "svg.js", "svg", "package.json"];
+const MATHJAX_FONT_EXTENSION_FILES = ["chtml.js", "chtml", "svg.js", "package.json"];
 
 /** Published under `dist/mathjax/`: the script the adapter loads in place of jsDelivr's. */
 export const MATHJAX_LOADER_FILE = "load.js";
@@ -199,6 +208,28 @@ async function copyEntries(fromDir: string, toDir: string, entries: string[]): P
 	}
 }
 
+/** The packages a build installs to ship MathJax `version`, each pinned to it. */
+export function mathjaxDependencies(version: string): Record<string, string> {
+	return Object.fromEntries(
+		["mathjax", MATHJAX_FONT, ...MATHJAX_FONT_EXTENSIONS].map((name) => [name, version]),
+	);
+}
+
+/**
+ * Copies MathJax, its font and the font extensions from `modulesDir` into
+ * `mathjaxDir`, each font under the `[fonts]` path the loader sets, and writes
+ * the loader beside them.
+ */
+export async function copyMathjax(modulesDir: string, mathjaxDir: string): Promise<void> {
+	const fontDir = (name: string) => join(mathjaxDir, "fonts", name.split("/")[1]);
+	await copyEntries(join(modulesDir, "mathjax"), mathjaxDir, MATHJAX_FILES);
+	await copyEntries(join(modulesDir, MATHJAX_FONT), fontDir(MATHJAX_FONT), MATHJAX_FONT_FILES);
+	for (const extension of MATHJAX_FONT_EXTENSIONS) {
+		await copyEntries(join(modulesDir, extension), fontDir(extension), MATHJAX_FONT_EXTENSION_FILES);
+	}
+	await writeFile(join(mathjaxDir, MATHJAX_LOADER_FILE), MATHJAX_LOADER);
+}
+
 /**
  * Bundles each element's ESM browser build into `<distDir>/elements/`, with one
  * React for all of them and every other dependency included, and ships the
@@ -244,8 +275,7 @@ export async function buildElementModules(
 				);
 			}
 			mathjaxVersion = [...versions][0];
-			dependencies.mathjax = mathjaxVersion;
-			dependencies[MATHJAX_FONT] = mathjaxVersion;
+			Object.assign(dependencies, mathjaxDependencies(mathjaxVersion));
 		}
 		await installDependencies(workDir, dependencies);
 
@@ -309,14 +339,7 @@ export async function buildElementModules(
 		}
 
 		if (mathjaxVersion) {
-			const mathjaxDir = join(distDir, "mathjax");
-			await copyEntries(join(workDir, "node_modules", "mathjax"), mathjaxDir, MATHJAX_FILES);
-			await copyEntries(
-				join(workDir, "node_modules", MATHJAX_FONT),
-				join(mathjaxDir, "fonts", MATHJAX_FONT.split("/")[1]),
-				MATHJAX_FONT_FILES,
-			);
-			await writeFile(join(mathjaxDir, MATHJAX_LOADER_FILE), MATHJAX_LOADER);
+			await copyMathjax(join(workDir, "node_modules"), join(distDir, "mathjax"));
 		}
 		return { mathjaxVersion };
 	} finally {

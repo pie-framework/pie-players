@@ -41,11 +41,11 @@ imports are all relative, with every dependency included:
   leave to the page (`pie.browserSharedDependencies`); the bundle holds a single
   copy, and the generator refuses elements that share different versions of it.
 - `dist/mathjax/` — the MathJax 4 the elements' math adapter expects, with its
-  extensions, speech data, and the New Computer Modern font for both output
-  renderers, plus `load.js`, which points MathJax's `mathjax` and `fonts` paths
-  at this directory. A set whose elements render no math ships none. The
-  generator refuses a build whose adapter copies expect another MathJax version,
-  or one that predates the shared page-wide load.
+  extensions, speech data, and the New Computer Modern font and the mhchem font
+  extension for both output renderers, plus `load.js`, which points MathJax's
+  `mathjax` and `fonts` paths at this directory. A set whose elements render no
+  math ships none. The generator refuses a build whose adapter copies expect
+  another MathJax version, or one that predates the shared page-wide load.
 - `dist/index.js` — the entry point actually imported by consumers (see below).
 - `package.json` with a `pie` metadata block (`set` on a published build,
   `bundleHash`, `iteration`, `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
@@ -311,9 +311,9 @@ It verifies chunk delivery, full package specs, authored tags with a stale
 version, an authored base tag other than the build's in hosted and client
 players, import readiness, repeated registration, unchanged authored content,
 actual answer updates, and math rendered by the shipped MathJax with its
-fonts. A missing-element fault verifies import rejection. Every request must
-reach that server. Workspace imports and runtime bundle fetching cannot conceal an
-incomplete package.
+fonts, mhchem's `\ce` included. A missing-element fault verifies import
+rejection. Every request must reach that server. Workspace imports and runtime
+bundle fetching cannot conceal an incomplete package.
 
 ```bash
 bun run build:e2e:item-player

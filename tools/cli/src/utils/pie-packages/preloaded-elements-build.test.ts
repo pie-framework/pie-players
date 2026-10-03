@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import { dirname, join } from "node:path";
 
 import {
 	assertEsmElement,
 	compareVersions,
+	copyMathjax,
 	generateElementsModule,
 	MATHJAX_LOADER,
+	mathjaxDependencies,
 	mathjaxUse,
 	sharedBrowserDependencies,
 } from "./preloaded-elements-build.js";
@@ -82,6 +87,46 @@ describe("MathJax use in the bundled output", () => {
 				{ fileName: "chunks/c.js", code: "no math" },
 			]),
 		).toEqual({ versions: new Set(["4.1.3", "4.1.4"]), unshared: ["chunks/b.js"] });
+	});
+});
+
+describe("shipped MathJax", () => {
+	const MHCHEM = "@mathjax/mathjax-mhchem-font-extension";
+
+	test("pins the font and its extensions to the MathJax version", () => {
+		expect(mathjaxDependencies("4.1.3")).toEqual({
+			mathjax: "4.1.3",
+			"@mathjax/mathjax-newcm-font": "4.1.3",
+			[MHCHEM]: "4.1.3",
+		});
+	});
+
+	test("puts each font under the fonts path the loader sets", async () => {
+		const scratch = await mkdtemp(join(os.tmpdir(), "pie-mathjax-copy-"));
+		try {
+			const modules = join(scratch, "node_modules");
+			const files = {
+				mathjax: ["tex-mml-chtml.js", "a11y/x.js", "input/x.js", "output/x.js", "ui/x.js", "sre/x.js", "LICENSE"],
+				"@mathjax/mathjax-newcm-font": ["chtml.js", "chtml/woff2/a.woff2", "svg.js", "svg/a.js", "package.json"],
+				[MHCHEM]: ["chtml.js", "chtml/woff2/mjx-mhc-n.woff2", "svg.js", "package.json", "mjs/chtml.js"],
+			};
+			for (const [name, paths] of Object.entries(files)) {
+				for (const path of paths) {
+					await mkdir(dirname(join(modules, name, path)), { recursive: true });
+					await writeFile(join(modules, name, path), "");
+				}
+			}
+			const out = join(scratch, "mathjax");
+			await copyMathjax(modules, out);
+			const shipped = (await readdir(join(out, "fonts", "mathjax-mhchem-font-extension"), { recursive: true })).sort();
+			expect(shipped).toEqual(["chtml", "chtml.js", "chtml/woff2", "chtml/woff2/mjx-mhc-n.woff2", "package.json", "svg.js"]);
+			expect(await readdir(join(out, "fonts"))).toEqual(
+				expect.arrayContaining(["mathjax-newcm-font", "mathjax-mhchem-font-extension"]),
+			);
+			expect(await readdir(out)).toContain("load.js");
+		} finally {
+			await rm(scratch, { recursive: true, force: true });
+		}
 	});
 });
 

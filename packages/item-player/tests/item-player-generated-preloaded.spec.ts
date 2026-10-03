@@ -203,6 +203,44 @@ test("renders math with the MathJax the build ships, its fonts included", async 
   expect(browserErrors).toEqual([]);
 });
 
+test("typesets mhchem chemistry with the font extension the build ships", async ({ page }) => {
+  const failedRequests: string[] = [];
+  const browserErrors: string[] = [];
+  const mathjaxFiles: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("requestfailed", (request) => failedRequests.push(request.url()));
+  page.on("response", (response) => {
+    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
+    const { pathname } = new URL(response.url());
+    if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
+  });
+  await serveFromTarballOnly(page);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+  });
+
+  const config = structuredClone(mathDemo.item.config);
+  config.models[0].prompt = "<p>Water is \\(\\ce{H2O}\\).</p>";
+  await page.evaluate((config) => {
+    const player = document.createElement("pie-item-player") as any;
+    player.strategy = "preloaded";
+    player.hosted = true;
+    player.config = config;
+    player.env = { mode: "gather", role: "student" };
+    player.session = { id: "chemistry-attempt", data: [] };
+    document.body.appendChild(player);
+  }, config);
+  const water = page.locator(`${runtimeTag} mjx-container`, { has: page.locator("mjx-msub") }).first();
+  await expect(water).toBeVisible();
+  await expect.poll(() => mathjaxFiles).toContain("/package/dist/mathjax/fonts/mathjax-mhchem-font-extension/chtml.js");
+  await expect(page.locator(`${runtimeTag} mjx-merror`)).toHaveCount(0);
+  expect(failedRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+});
+
 test("ships every item-player module with its whitespace stripped", async () => {
   const playerDist = join(workspace, "packages/item-player/dist");
   const shipped = join(scratch, "served/package/dist");

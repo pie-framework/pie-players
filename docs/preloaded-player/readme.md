@@ -19,37 +19,51 @@ from a config in `configs/preloaded-player/*.json` (an array, or
 `{elements: [...]}`, of `{package, version}` pairs — see
 [`configs/preloaded-player/README.md`](../../configs/preloaded-player/README.md))
 by the generator in
-[`tools/cli/src/utils/pie-packages/fixed-static.ts`](../../tools/cli/src/utils/pie-packages/fixed-static.ts).
+[`tools/cli/src/utils/pie-packages/preloaded-static.ts`](../../tools/cli/src/utils/pie-packages/preloaded-static.ts),
+which bundles the elements with
+[`preloaded-elements-build.ts`](../../tools/cli/src/utils/pie-packages/preloaded-elements-build.ts).
+Every element must be a pie-elements-ng package with an ESM browser build
+(`./browser/delivery`); the generator refuses any other.
 
 ## What the generated package contains
 
-`buildPreloadedPlayerStaticPackage` (`fixed-static.ts:524`) assembles:
+`buildPreloadedPlayerStaticPackage` assembles one ES module tree whose runtime
+imports are all relative, with every dependency included:
 
 - `dist/pie-item-player.js`, `dist/preloaded.js` and their sibling chunks and
   assets — the complete `packages/item-player` build, so relative imports work
   from a static server. `preloaded.js` is the player's registration entry,
   `@pie-players/pie-item-player/preloaded`.
-- `dist/pie-elements-bundle-<hash>.js` — one IIFE bundle fetched from the PITS
-  bundle service at `https://proxy.pie-api.com/bundles/<pkg@ver>+<pkg@ver>.../player.js`,
-  containing every element listed in the config, at the pinned versions.
+- `dist/elements/index.js` and its chunks and assets — every element in the
+  config at its pinned version, bundled by Vite from a scratch install of the
+  packages. It exports the element classes by package and
+  `startMathRendering`. React is the one dependency the elements' browser builds
+  leave to the page (`pie.browserSharedDependencies`); the bundle holds a single
+  copy, and the generator refuses elements that share different versions of it.
+- `dist/mathjax/` — the MathJax 4 the elements' math adapter expects, with its
+  extensions, speech data, and the New Computer Modern font and the mhchem font
+  extension for both output renderers, plus `load.js`, which points MathJax's
+  `mathjax` and `fonts` paths at this directory. A set whose elements render no
+  math ships none. The generator refuses a build whose adapter copies expect
+  another MathJax version, or one that predates the shared page-wide load.
 - `dist/index.js` — the entry point actually imported by consumers (see below).
 - `package.json` with a `pie` metadata block (`set` on a published build,
   `bundleHash`, `iteration`, `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
   `Window.PIE_PRELOADED_ELEMENTS`.
 
 Importing `dist/index.js` is a side-effecting module load, not an API call. It
-runs three steps in order, each import with retry/backoff:
+runs four steps in order, each import with retry/backoff:
 
-1. It imports `preloaded.js` and installs the item player's math renderer with
-   `ensureItemPlayerMathRenderingReady()`, because the bundle's elements read
-   `window["@pie-lib/math-rendering"]` as they evaluate. A renderer the page
-   already installed stays.
-2. It imports the elements bundle and registers the raw PITS constructors,
-   without controllers, under the configured versioned tags through
-   `registerPreloadedElements`, which records each package's spec in
-   `window.PIE_PRELOADED_ELEMENTS`
-   (`{"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3", ...}`).
-3. It imports `pie-item-player.js` unless the page already registered
+1. It imports `preloaded.js`, then `elements/index.js`.
+2. It starts the page's MathJax load from `dist/mathjax/load.js`. Each
+   element's copy of the adapter finds that load in flight and waits on it, so
+   no MathJax, font or speech file comes from a CDN. A page that installed its
+   own `window["@pie-lib/math-rendering"]` renderer keeps it, and nothing loads.
+3. It registers the element classes, without controllers, under the configured
+   versioned tags through `registerPreloadedElements`, which records each
+   package's spec in `window.PIE_PRELOADED_ELEMENTS`
+   (`{"@pie-element/multiple-choice": "@pie-element/multiple-choice@14.0.0", ...}`).
+4. It imports `pie-item-player.js` unless the page already registered
    `pie-item-player` ([below](#the-builds-own-item-player)).
    `pie-item-player.js` runs its readiness assertion (below) against whatever
    is already registered, so it loads last.
@@ -71,12 +85,12 @@ version of a package to the registered one.
 
 ## Version scheme
 
-`<loaderVersion>-<set>.<iteration>`, e.g. `0.3.74-star-0326.2`.
+`<loaderVersion>-<set>.<iteration>`, e.g. `0.3.74-star-0326-ng.2`.
 
 - `loaderVersion` defaults to the current `packages/item-player` version
   (`resolveDefaultLoaderVersion`).
-- `set` is the config's file name: `configs/preloaded-player/star-0326.json`
-  publishes the `star-0326` set. `readElementSet` requires lowercase letters,
+- `set` is the config's file name: `configs/preloaded-player/star-0326-ng.json`
+  publishes the `star-0326-ng` set. `readElementSet` requires lowercase letters,
   digits and hyphens, starting with a letter, because the name is both a semver
   prerelease identifier and an npm dist-tag.
 - `iteration` auto-increments per set and loader version: when publishing, the
@@ -121,22 +135,24 @@ stay as authored.
 Each set publishes under its own name, so
 `@pie-players/pie-preloaded-player@knowledge-checks` installs the newest
 knowledge-checks build. The config that sets `"latest": true` publishes under
-`latest` in place of its name, which today is `star-0326`, and
+`latest` in place of its name, which today is `star-0326-ng`, and
 `publish-changed.mjs` requires exactly one such config. A publish carries one
 dist-tag because the workflow publishes through npm's OIDC trusted publishing,
 which authorizes `npm publish` and not `npm dist-tag`. `next`, the tag every
-build carried under the previous scheme, no longer moves.
+build carried under the previous scheme, no longer moves. Neither do
+`knowledge-checks` and `star-0326`: those sets bundled legacy IIFE elements, so
+their configs are gone, and their published builds stay installable.
 
 ## Local usage
 
 ```bash
 bun run cli pie-packages:preloaded-player-build-package \
-  --elementsFile configs/preloaded-player/knowledge-checks.json
+  --elementsFile configs/preloaded-player/star-0326-ng.json
 ```
 
 ```bash
 bun run cli pie-packages:preloaded-player-build-and-test-package \
-  --elementsFile configs/preloaded-player/knowledge-checks.json \
+  --elementsFile configs/preloaded-player/star-0326-ng.json \
   --generateTestProject
 ```
 
@@ -161,7 +177,8 @@ package, through `registerPreloadedElements` from
 `@pie-players/pie-item-player/preloaded`; see
 [`strategy="preloaded"`](../item-player/loading-strategies.md#strategypreloaded).
 A host that evaluates a PITS IIFE bundle itself first awaits
-`ensureItemPlayerMathRenderingReady()` from that entry, as step 1 above does.
+`ensureItemPlayerMathRenderingReady()` from that entry, because IIFE elements
+read `window["@pie-lib/math-rendering"]` as they evaluate.
 
 ```html
 <script type="module">
@@ -189,8 +206,8 @@ register stays undefined, and `assertRegistered` reports it.
 
 ### Models and scoring
 
-A generated build registers view elements only: the PITS `player.js` bundle
-carries no controllers. The player rendering them has to be hosted (`hosted`,
+A generated build registers view elements only: it bundles each element's
+`./browser/delivery` build, which carries no controller. The player rendering them has to be hosted (`hosted`,
 or `backend.delivery` enabled), so its models arrive server-processed and
 scoring happens on the server. A player that is not hosted renders each model as
 authored, without running `model()`, and warns once per tag that it has no
@@ -287,16 +304,16 @@ against the packed tarball.
 ## CI/CD
 
 The critical item-player suite includes a generated-package browser regression.
-It fetches the pinned multiple-choice PITS bundle through the real generator,
-packs the output with Bun, and serves only the extracted tarball over HTTP.
+It installs and bundles the pinned multiple-choice package through the real
+generator, packs the output with Bun, and serves only the extracted tarball
+over HTTP.
 It verifies chunk delivery, full package specs, authored tags with a stale
 version, an authored base tag other than the build's in hosted and client
 players, import readiness, repeated registration, unchanged authored content,
-and actual answer updates. A missing-element fault verifies import rejection.
-Executable modules and player assets must come from that server; the
-existing math renderer's separate Speech Rule Engine JSON data requests are
-allowed. Workspace imports and runtime bundle fetching cannot conceal an
-incomplete package.
+actual answer updates, and math rendered by the shipped MathJax with its
+fonts, mhchem's `\ce` included. A missing-element fault verifies import
+rejection. Every request must reach that server. Workspace imports and runtime
+bundle fetching cannot conceal an incomplete package.
 
 ```bash
 bun run build:e2e:item-player

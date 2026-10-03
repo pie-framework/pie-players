@@ -29,7 +29,7 @@ class TestCommand extends PreloadedPlayerBuildPackage {
 	}
 
 	protected override async resolveElementSet(): Promise<any> {
-		return { name: "star-0326", distTag: "latest" };
+		return { name: "star-0326-ng", distTag: "latest" };
 	}
 
 	protected override async buildPackage(): Promise<any> {
@@ -56,7 +56,7 @@ describe("preloaded-player-build-package command", () => {
 	test("runs build flow and dry-run publish under the set's dist-tag", async () => {
 		const command = new TestCommand([], {} as any);
 		command.flags = {
-			elementsFile: "configs/preloaded-player/star-0326.json",
+			elementsFile: "configs/preloaded-player/star-0326-ng.json",
 			publish: true,
 			dryRun: true,
 		};

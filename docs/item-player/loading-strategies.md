@@ -179,7 +179,7 @@ await import("@pie-players/pie-item-player");
 
 ### Preloaded player builds
 
-Generated `@pie-players/pie-preloaded-player` builds bundle a fixed set of pie-elements-ng elements from their ESM browser builds together with the item player, and ship the MathJax, fonts and speech data those elements render with, so nothing loads from the bundle service or a CDN. They stay published for hosts that have not moved to npm registration; a new integration registers ESM builds instead.
+Generated `@pie-players/pie-preloaded-player` builds bundle a fixed set of pie-elements-ng elements from their ESM browser builds together with the item player, and ship the MathJax 4, fonts and speech data those elements render with, so nothing loads from the bundle service or a CDN and the entry installs no `window["@pie-lib/math-rendering"]` renderer. They stay published for hosts that have not moved to npm registration; a new integration registers ESM builds instead. A build published before the generator moved to ESM elements carries a PITS IIFE bundle of its elements, and its entry installs the MathJax 3 renderer that bundle reads ([below](#one-mathjax-version-per-page)).
 
 The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time through `registerPreloadedElements`, without controllers, so a hosted `<pie-item-player strategy="preloaded">` renders them without fetching bundles. See [`docs/preloaded-player/readme.md`](../preloaded-player/readme.md).
 

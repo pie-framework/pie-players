@@ -335,8 +335,8 @@ function generateTypes(): string {
 /** What `dist/mathjax/` holds, for the README. */
 function describeMath(mathjaxVersion: string | undefined, bundledMathjaxAssets: string[]): string {
 	const page = mathjaxVersion && `MathJax ${mathjaxVersion} with its fonts and speech data under \`dist/mathjax/\``;
-	if (!bundledMathjaxAssets.length) return page || "no MathJax, since no element in it renders math";
-	const bundled = `the font and speech files for the MathJax bundled into ${page ? "the other elements" : "each element that renders math"}, under \`dist/mathjax/npm/\` (${bundledMathjaxAssets.map((asset) => `\`${asset}\``).join(", ")})`;
+	if (!bundledMathjaxAssets.length) return page || "no MathJax, since nothing in it renders math";
+	const bundled = `the font and speech files for the MathJax bundled into the item player and ${page ? "the other elements" : "each element that renders math"}, under \`dist/mathjax/npm/\` (${bundledMathjaxAssets.map((asset) => `\`${asset}\``).join(", ")})`;
 	return page ? `${page} for elements that render on the page's MathJax, and ${bundled}` : bundled;
 }
 

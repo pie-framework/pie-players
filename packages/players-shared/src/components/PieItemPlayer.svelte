@@ -46,6 +46,7 @@
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
   import { typesetMarkupMath } from "../pie/markup-math.js";
   import { getMathRenderer } from "../pie/math-rendering.js";
+  import { renderPrivateMath } from "./private-math-renderer.js";
   import { resolveInstrumentationProvider } from "../pie/instrumentation-provider-resolution.js";
   import { findPieController } from "../pie/scoring.js";
   import {
@@ -1224,11 +1225,11 @@
   });
 
   // Math in the item's own markup, outside every element. Each element
-  // typesets its own subtree, so the page's math renderer gets only the markup
-  // around them (see markup-math.ts): the renderer the IIFE strategy installs,
-  // or a host's, which ESM elements hand their math to as well. On a page with
-  // neither, every element brings its own MathJax and the markup's math stays
-  // as authored.
+  // typesets its own subtree, so a renderer gets only the markup around them
+  // (see markup-math.ts): the page's, which the IIFE strategy installs or a
+  // host sets and ESM elements hand their math to as well. On a page with
+  // neither, every element brings its own MathJax and the player brings one
+  // for the markup (see private-math-renderer.ts).
   //
   // Runs once the elements are initialized and again when a markup block is
   // replaced, and never holds `load-complete` back. Passes are chained, so none
@@ -1249,16 +1250,12 @@
     markupMathPass = markupMathPass
       .then(() => {
         const renderer = getMathRenderer();
-        if (typeof renderer?.renderMath !== "function") {
-          logger.debug(
-            "[PieItemPlayer] The page has no math renderer; the markup's math stays as authored"
-          );
-          return;
-        }
         return typesetMarkupMath(
           containers.filter((container) => container.isConnected),
           pieTags,
-          (root) => renderer.renderMath(root)
+          typeof renderer?.renderMath === "function"
+            ? (root) => renderer.renderMath(root)
+            : renderPrivateMath
         );
       })
       .catch((error: unknown) => {

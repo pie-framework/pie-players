@@ -315,6 +315,22 @@ version. The source of truth is the `fixed` block in `.changeset/config.json`.
 - Because release verification can trigger Playwright, invoke local publish with
   `required_permissions: ["all"]`.
 
+### Documentation-Only Changes
+
+A change made only of documentation gets no Jira ticket and no branch or pull
+request of its own. `scripts/lib/change-scope.mjs` defines documentation:
+Markdown and images under `docs/`, Markdown at the root, and `.claude/`. Package
+READMEs and changesets are not documentation.
+
+- Commit it to `develop` and push. The pre-push gate runs only `check:docs` for
+  such a push. `develop` requires status checks, so a direct push needs a
+  maintainer who can bypass them; anyone else uses the next option.
+- When a pull request is wanted — review, or no bypass — collect the pending
+  documentation in one `docs/` branch and merge it as one pull request. CI runs
+  only `Docs` for it and reports the other required checks as skipped.
+- A documentation edit that belongs to a code change stays in that change's
+  branch.
+
 ### Playwright And Sandboxed Execution
 
 Playwright cannot reliably install browsers, spawn dev servers, or launch
@@ -365,8 +381,10 @@ Firefox as well as Chromium, so a local run needs both:
 
 It reaches that gate through `scripts/pre-push-gate.mjs`, which skips it when the
 push carries no new commits — creating a branch at a commit already on the remote,
-or deleting a ref, transfers nothing for the gate to validate. Every uncertain
-case still runs the gate, so this only ever removes provably wasted work. Do not
+or deleting a ref, transfers nothing for the gate to validate. A push whose new
+commits change documentation only runs `check:docs` instead (see
+Documentation-Only Changes). Every uncertain case still runs the gate, so this
+only ever removes provably wasted work. Do not
 reach for `--no-verify` when a push feels like it should have been skipped: report
 the case instead, because a skip the wrapper misses is a bug in
 `scripts/lib/push-scope.mjs`.

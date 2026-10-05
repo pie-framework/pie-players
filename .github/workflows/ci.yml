@@ -20,9 +20,40 @@ env:
   TURBO_CACHE_DIR: .turbo/cache
 
 jobs:
+  # Decides which jobs this run skips: everything but Docs for a documentation-only pull
+  # request, everything heavy for a release or `skip-heavy-ci` one. See
+  # scripts/lib/change-scope.mjs. Every other job runs on `!cancelled()` and skips only on
+  # an explicit 'true', because a job skipped by a failed `needs` satisfies a required
+  # check: a broken classifier must run the suite, not pass it.
+  change-scope:
+    name: Change Scope
+    runs-on: ubuntu-latest
+    outputs:
+      skip_code: ${{ steps.scope.outputs.skip_code }}
+      skip_docs: ${{ steps.scope.outputs.skip_docs }}
+      skip_audit: ${{ steps.scope.outputs.skip_audit }}
+      skip_cortex: ${{ steps.scope.outputs.skip_cortex }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Classify Changes
+        id: scope
+        env:
+          SKIP_HEAVY: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci')) }}
+        run: bun ./scripts/ci-change-scope.mjs
+
   lint-and-typecheck:
     name: Lint & Typecheck
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_code != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,7 +79,8 @@ jobs:
 
   build:
     name: Build
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_code != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -96,9 +128,11 @@ jobs:
     # the five per-suite names develop's branch protection requires would never report
     # and the pull request would wait on them forever. Guarding the steps keeps the
     # matrix expanded, so every required name reports on every run.
+    needs: change-scope
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
-      RUN_HEAVY: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+      RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -170,9 +204,11 @@ jobs:
   # count, and `strategy.job-total` keeps the divisor in step with the matrix.
   section-player-e2e:
     name: Section Player E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: change-scope
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
-      RUN_HEAVY: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+      RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -232,41 +268,25 @@ jobs:
   # The Cortex calculator's own browser suite, in parallel with the critical legs.
   # Not a required check: a pull request runs it only when it touches Cortex, the
   # calculator contract it depends on, or the toolchain, and every push to master
-  # runs it.
+  # runs it. The Change Scope job decides which.
   cortex-e2e:
     name: Cortex Calculator E2E
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_cortex != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
-
-      # A pull request checks out its merge commit, whose first parent is the base
-      # branch tip, so that diff is the pull request's change.
-      - name: Detect Cortex Changes
-        id: changes
-        run: |
-          if [ "${{ github.event_name }}" != "pull_request" ] ||
-            git diff --name-only HEAD^1 HEAD | grep -qE '^(packages/calculator-cortex/|packages/calculator/|package\.json$|bun\.lock$|\.github/workflows/ci\.yml$)'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Setup Bun
-        if: steps.changes.outputs.run == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
 
       - name: Install Dependencies
-        if: steps.changes.outputs.run == 'true'
         run: bun install --frozen-lockfile
 
       - name: Restore Turbo Cache
-        if: steps.changes.outputs.run == 'true'
         uses: actions/cache/restore@v6
         with:
           path: .turbo/cache
@@ -274,19 +294,16 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
 
       - name: Install Playwright Chromium
-        if: steps.changes.outputs.run == 'true'
         run: bunx playwright install --with-deps chromium
 
       - name: Build Cortex Dependencies
-        if: steps.changes.outputs.run == 'true'
         run: bunx turbo build --filter='@pie-players/pie-calculator-cortex^...'
 
       - name: Run Cortex Calculator E2E
-        if: steps.changes.outputs.run == 'true'
         run: bun run --cwd packages/calculator-cortex test:e2e
 
       - name: Upload E2E Failure Artifacts
-        if: failure() && steps.changes.outputs.run == 'true'
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: e2e-failure-cortex
@@ -298,11 +315,14 @@ jobs:
     name: Dependency Audit
     # Deliberately not carrying the `skip-heavy-ci` guard the other jobs use. It
     # is a ~2s check on top of install, and the release path is exactly when a
-    # known-vulnerable dependency should not slip through unexamined.
+    # known-vulnerable dependency should not slip through unexamined. Only a
+    # documentation-only pull request skips it, since it cannot change a dependency.
     #
     # Not part of `verify:pre-commit`/`verify:pre-push` either: it needs network
     # access and its result changes with advisory data rather than with the diff,
     # so it does not belong in a local hook. See scripts/check-audit.mjs.
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_audit != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -321,7 +341,8 @@ jobs:
 
   docs:
     name: Docs
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_docs != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -342,7 +363,8 @@ jobs:
   # hoisted-linker build in the one job that exists to build under isolation.
   isolated-linker-validation:
     name: Isolated Linker Validation
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_code != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

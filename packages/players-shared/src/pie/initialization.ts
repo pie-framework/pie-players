@@ -203,32 +203,15 @@ const registerPieElementsFromBundle = (
 			},
 		);
 
-		// Validate controller presence based on bundle type
-		if (!elementData.controller) {
-			if (options.bundleType === BundleType.clientPlayer) {
-				logger.error(
-					`[registerPieElementsFromBundle] ❌ CRITICAL: No controller found for ${pkgStripped}!`,
-				);
-				logger.error(
-					`[registerPieElementsFromBundle] Bundle type: ${options.bundleType} (controllers required)`,
-				);
-				throw new Error(
-					`No controller found for ${pkgStripped}. client-player.js bundles MUST include controllers!`,
-				);
-			} else {
-				logger.debug(
-					`[registerPieElementsFromBundle] ℹ️ No controller found for ${pkgStripped} - using server-processed models (player.js bundle)`,
-				);
-			}
-		}
-
 		{
-			// Register the element in our registry
+			// Register the element in our registry. A package without a
+			// controller, such as a legacy `@pie-element/protractor`, renders
+			// the model it is given under client-player.js too.
 			logger.debug(
 				`[registerPieElementsFromBundle] Registering ${elName} in registry${
 					elementData.controller
 						? " with controller"
-						: " (no controller - server-processed models)"
+						: " (no controller; its model is used as given)"
 				}`,
 			);
 			writeRegistryEntry({
@@ -464,9 +447,8 @@ export const loadPieModule = async (
 					Promise.all(registrationPromises).then(succeed, fail);
 				} catch (error) {
 					// `registerPieElementsFromBundle` throws synchronously for a
-					// package missing from the bundle and for a client-player
-					// bundle with no controller. Inside a DOM event handler that
-					// throw reaches the window instead of the caller.
+					// package missing from the bundle. Inside a DOM event handler
+					// that throw reaches the window instead of the caller.
 					fail(error instanceof Error ? error : new Error(String(error)));
 				}
 			});

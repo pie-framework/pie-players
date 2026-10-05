@@ -132,7 +132,7 @@ The ESM player supports loading different views/variants of elements through ESM
 - Hosts that fix their element set and versions at build time
 - Offline and test environments
 
-Generated `@pie-players/pie-preloaded-player` builds, which carry a PITS IIFE bundle, predate npm registration and stay published for hosts that have not moved; see [docs/preloaded-player/readme.md](../preloaded-player/readme.md).
+Generated `@pie-players/pie-preloaded-player` builds predate npm registration and stay published for hosts that have not moved. Builds from the current generator bundle ESM elements; earlier ones carry a PITS IIFE bundle. See [docs/preloaded-player/readme.md](../preloaded-player/readme.md).
 
 ---
 

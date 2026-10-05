@@ -12,6 +12,14 @@ const line = ({ ref = "refs/heads/topic", localSha = LOCAL, remoteSha }) =>
 /** Counts commits without consulting git. */
 const counting = (count) => () => count;
 
+/** Lists the paths a ref update changes without consulting git. */
+const listing =
+	(...paths) =>
+	() =>
+		paths;
+
+const CODE = "packages/item-player/src/index.ts";
+
 describe("classifyPush", () => {
 	test("skips a new branch pointing at history the remote already has", () => {
 		const result = classifyPush({
@@ -30,6 +38,7 @@ describe("classifyPush", () => {
 		const result = classifyPush({
 			stdin: line({ remoteSha: ZERO_SHA }),
 			countNewCommits: counting(3),
+			listChangedPaths: listing(CODE),
 		});
 
 		expect(result.verdict).toBe("run");
@@ -40,6 +49,7 @@ describe("classifyPush", () => {
 		const result = classifyPush({
 			stdin: line({ remoteSha: REMOTE }),
 			countNewCommits: counting(1),
+			listChangedPaths: listing(CODE),
 		});
 
 		expect(result.verdict).toBe("run");
@@ -75,6 +85,7 @@ describe("classifyPush", () => {
 				`(delete) ${ZERO_SHA} refs/heads/gone ${REMOTE}\n` +
 				line({ remoteSha: REMOTE }),
 			countNewCommits: counting(2),
+			listChangedPaths: listing(CODE),
 		});
 
 		expect(result.verdict).toBe("run");
@@ -88,6 +99,7 @@ describe("classifyPush", () => {
 				line({ ref: "refs/heads/b", remoteSha: REMOTE }) +
 				line({ ref: "refs/heads/c", remoteSha: REMOTE }),
 			countNewCommits: () => counts.shift(),
+			listChangedPaths: listing(CODE),
 		});
 
 		expect(result.verdict).toBe("run");
@@ -112,6 +124,56 @@ describe("classifyPush", () => {
 		});
 
 		expect(result.verdict).toBe("skip");
+	});
+});
+
+describe("classifyPush with documentation-only commits", () => {
+	test("runs only the documentation checks when every path is documentation", () => {
+		const result = classifyPush({
+			stdin: line({ ref: "refs/heads/develop", remoteSha: REMOTE }),
+			countNewCommits: counting(2),
+			listChangedPaths: listing(
+				"docs/item-player/loading-strategies.md",
+				"AGENTS.md",
+			),
+		});
+
+		expect(result.verdict).toBe("docs");
+		expect(result.reason).toContain("documentation only");
+	});
+
+	test("runs the full gate when one ref brings code", () => {
+		const paths = [["docs/readme.md"], [CODE]];
+		const result = classifyPush({
+			stdin:
+				line({ ref: "refs/heads/a", remoteSha: REMOTE }) +
+				line({ ref: "refs/heads/b", remoteSha: ZERO_SHA }),
+			countNewCommits: counting(1),
+			listChangedPaths: () => paths.shift(),
+		});
+
+		expect(result.verdict).toBe("run");
+	});
+
+	test("lists paths only for a ref update that adds commits", () => {
+		const counts = [0, 1];
+		const listed = [];
+		const result = classifyPush({
+			stdin:
+				line({
+					ref: "refs/heads/a",
+					localSha: "1".repeat(40),
+					remoteSha: REMOTE,
+				}) + line({ ref: "refs/heads/b", remoteSha: REMOTE }),
+			countNewCommits: () => counts.shift(),
+			listChangedPaths: ({ localSha }) => {
+				listed.push(localSha);
+				return ["docs/readme.md"];
+			},
+		});
+
+		expect(result.verdict).toBe("docs");
+		expect(listed).toEqual([LOCAL]);
 	});
 });
 
@@ -147,6 +209,27 @@ describe("classifyPush fails safe", () => {
 
 		expect(result.verdict).toBe("run");
 		expect(result.reason).toContain("could not count");
+	});
+
+	test("runs when git could not list the changed paths", () => {
+		const result = classifyPush({
+			stdin: line({ remoteSha: REMOTE }),
+			countNewCommits: counting(1),
+			listChangedPaths: () => null,
+		});
+
+		expect(result.verdict).toBe("run");
+		expect(result.reason).toContain("could not list");
+	});
+
+	test("runs when the commits list no paths, e.g. an empty commit", () => {
+		const result = classifyPush({
+			stdin: line({ remoteSha: REMOTE }),
+			countNewCommits: counting(1),
+			listChangedPaths: listing(),
+		});
+
+		expect(result.verdict).toBe("run");
 	});
 
 	test("runs when a count comes back nonsensical", () => {

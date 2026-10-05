@@ -8,6 +8,13 @@ on:
   push:
     branches:
       - develop
+    # A documentation-only push leaves every build input unchanged, so the cache saved
+    # by the previous push still serves it. A coarser copy of the definition in
+    # scripts/lib/change-scope.mjs; where they differ, a pull request only misses cache.
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".claude/**"
 
 concurrency:
   group: turbo-cache

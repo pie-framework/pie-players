@@ -44,6 +44,8 @@
   } from "../pie/correct-response-env.js";
   import { initializePiesFromLoadedBundle } from "../pie/initialization.js";
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
+  import { typesetMarkupMath } from "../pie/markup-math.js";
+  import { getMathRenderer } from "../pie/math-rendering.js";
   import { resolveInstrumentationProvider } from "../pie/instrumentation-provider-resolution.js";
   import { findPieController } from "../pie/scoring.js";
   import {
@@ -670,6 +672,8 @@
 
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
+  let passageContainer: HTMLDivElement | null = $state(null);
+  let itemContainer: HTMLDivElement | null = $state(null);
 
   // `dispatch()` only calls the owning player's callbacks, and that player
   // emits from above this root, so the one re-entry left is the same event
@@ -1219,6 +1223,49 @@
     };
   });
 
+  // Math in the item's own markup, outside every element. Each element
+  // typesets its own subtree, so the page's math renderer gets only the markup
+  // around them (see markup-math.ts): the renderer the IIFE strategy installs,
+  // or a host's, which ESM elements hand their math to as well. On a page with
+  // neither, every element brings its own MathJax and the markup's math stays
+  // as authored.
+  //
+  // Runs once the elements are initialized and again when a markup block is
+  // replaced, and never holds `load-complete` back. Passes are chained, so none
+  // walks a root another is still typesetting.
+  const markupMathTags = $derived(
+    [...new Set([...itemAllowList, ...passageAllowList])].join(" ")
+  );
+  let markupMathPass: Promise<void> = Promise.resolve();
+  $effect(() => {
+    if (!initialized || mode === "author") return;
+    const containers = [passageContainer, itemContainer].filter(
+      (container): container is HTMLDivElement => container !== null
+    );
+    // Read here so that a replaced block is typeset again.
+    const markup = passageMarkup + itemMarkup;
+    if (!markup || containers.length === 0) return;
+    const pieTags = new Set(markupMathTags.split(" ").filter(Boolean));
+    markupMathPass = markupMathPass
+      .then(() => {
+        const renderer = getMathRenderer();
+        if (typeof renderer?.renderMath !== "function") {
+          logger.debug(
+            "[PieItemPlayer] The page has no math renderer; the markup's math stays as authored"
+          );
+          return;
+        }
+        return typesetMarkupMath(
+          containers.filter((container) => container.isConnected),
+          pieTags,
+          (root) => renderer.renderMath(root)
+        );
+      })
+      .catch((error: unknown) => {
+        logger.warn("[PieItemPlayer] Typesetting the markup's math failed:", error);
+      });
+  });
+
   // Note: Resource monitor cleanup is handled automatically by useResourceMonitor's onDestroy
 </script>
 
@@ -1251,13 +1298,13 @@
       <p style="margin: 0">{authoringBlockedError}</p>
     </div>
   {:else if passageMarkup}
-    <div class={passageContainerClassFinal}>
+    <div class={passageContainerClassFinal} bind:this={passageContainer}>
       {@html passageMarkup}
     </div>
   {/if}
 
   {#if !authoringBlockedError && itemMarkup}
-    <div class={itemContainerClassFinal}>
+    <div class={itemContainerClassFinal} bind:this={itemContainer}>
       {@html itemMarkup}
     </div>
   {/if}

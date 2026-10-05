@@ -118,7 +118,7 @@ A package that declares `pie.browserEditorRuntime` also publishes, for each view
 
 The runtime is a page singleton. The first load that needs it maps the highest version among the packages it loads and records it as `data-pie-editor-runtime` on the import map script; later loads on the page, from any player, use that version. It serves a package that declares the same runtime at a version in its caret range at or below its own: the same major, and below 1.0.0 the same minor. A lower version it serves is reported as a resolved shared-dependency conflict, as React is. A package it cannot serve loads `./browser/*` and is reported the same way: a `[pie-esm]` console warning and, with instrumentation, a `pie-esm-shared-dependency-conflict` event. The player also loads `./browser/*` and reports it when the runtime's `package.json`, its modules or the variant fail to load, when the page already maps one of the runtime's specifiers, and in a browser without import maps.
 
-ESM element builds bring their own math rendering, so the player installs no renderer and never fetches its MathJax module. An ESM element still uses a renderer the host installs on `window["@pie-lib/math-rendering"]`.
+ESM element builds bring their own math rendering, so the player installs no renderer and never fetches its MathJax module. An ESM element still uses a renderer the host installs on `window["@pie-lib/math-rendering"]`, and so does the player for the math in the item's own markup ([below](#item-markup-math)).
 
 For esm.sh, pass both the provider name and base URL:
 
@@ -191,6 +191,10 @@ bun run cli pie-packages:preloaded-player-build-package \
 ```
 
 CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-player.yml`.
+
+## Item markup math
+
+Each element typesets the math in its own subtree. The player typesets the math in the rest of the item and passage markup with the page's renderer, `window["@pie-lib/math-rendering"]`, handing it only the parts that hold math and no element, so no element's content is typeset twice. It does so once the elements are initialized and again when a markup block is replaced, and does not hold `load-complete` back. Under `iife` the renderer is the one the player installs. Under `esm` and `preloaded` it is one the host installs, which ESM elements render with as well; on a page without one the markup's math stays as authored. The player installs none there because its renderer runs MathJax 3 and ESM elements run MathJax 4.
 
 ## One MathJax version per page
 

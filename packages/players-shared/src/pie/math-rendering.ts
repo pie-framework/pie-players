@@ -23,7 +23,12 @@ const GLOBAL_DLL_KEY = "_dll_pie_lib__math_rendering";
 let initPromise: Promise<void> | null = null;
 const logger = createPieLogger("math-rendering", () => isGlobalDebugEnabled());
 
-const getWindowRenderer = (): MathRenderingAPI | null => {
+/**
+ * The page's renderer: the one `initializeMathRendering` installed, or a
+ * host's. IIFE elements render with it, and so do ESM elements when the page
+ * has one.
+ */
+export const getMathRenderer = (): MathRenderingAPI | null => {
 	if (typeof window === "undefined") {
 		return null;
 	}
@@ -62,7 +67,7 @@ export async function initializeMathRendering(): Promise<void> {
 	}
 
 	// Already initialized - skip.
-	if (getWindowRenderer()) {
+	if (getMathRenderer()) {
 		return;
 	}
 	if (initPromise) {
@@ -85,7 +90,7 @@ export async function initializeMathRendering(): Promise<void> {
 				: mathRenderingModule._dll_pie_lib__math_rendering;
 			// A host may install its renderer while the default module is in flight.
 			// The explicit renderer remains authoritative when that happens.
-			if (!getWindowRenderer()) {
+			if (!getMathRenderer()) {
 				setWindowRenderer(renderer as MathRenderingAPI);
 				logger.debug("Math rendering module initialized (both globals set)");
 			}

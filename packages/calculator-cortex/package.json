@@ -52,7 +52,7 @@
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
 		"@biomejs/biome": "^2.5.14",
-		"@cortex-js/compute-engine": "0.135.0",
+		"@cortex-js/compute-engine": "0.146.0",
 		"@playwright/test": "^1.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"jsxgraph": "1.13.3",

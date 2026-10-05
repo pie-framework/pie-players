@@ -233,9 +233,21 @@ async function openDemo(
  * pointer waits there, and over the target before the drop.
  */
 async function drag(page: Page, source: Locator, target: Locator) {
-	// Centred in its scroll pane: a pointer near the pane's edge starts
-	// @dnd-kit's auto-scroll, which moves the target away mid-drag.
+	// The source and the target centred in their scroll pane together: a
+	// pointer near the pane's edge starts @dnd-kit's auto-scroll, which moves
+	// the target away mid-drag.
 	await source.evaluate((element) => element.scrollIntoView({ block: "center" }));
+	const sourceBox = await source.boundingBox();
+	const targetBox = await target.boundingBox();
+	if (sourceBox && targetBox) {
+		const middle = (sourceBox.y + sourceBox.height / 2 + targetBox.y + targetBox.height / 2) / 2;
+		const offset = middle - (page.viewportSize()?.height ?? 720) / 2;
+		if (Math.abs(offset) > 20) {
+			await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+			await page.mouse.wheel(0, offset);
+			await page.waitForTimeout(200);
+		}
+	}
 	const box = await source.boundingBox();
 	if (!box) throw new Error("drag source has no box");
 	// Near the chip's edge, off any formula it holds: MathJax handles the
@@ -254,8 +266,12 @@ async function drag(page: Page, source: Locator, target: Locator) {
 }
 
 const draggables = (element: Locator) => element.locator('[aria-roledescription="draggable"]');
+// A button that is not a draggable, or, in a categorize build that groups its
+// drop zones instead, a category's group.
 const dropTargets = (element: Locator) =>
-	element.locator('[role="button"]:not([aria-roledescription="draggable"])');
+	element.locator(
+		'[role="button"]:not([aria-roledescription="draggable"]), [data-category-id] > [role="group"]',
+	);
 
 /** Click a choice, then wait for the element's re-render to check it. */
 async function choose(choice: Locator) {
@@ -297,8 +313,11 @@ for (const layout of LAYOUTS) {
 	test.describe(`preloaded npm elements, ${layout}`, () => {
 		// Ten items and a passage, each answered by a real pointer or keyboard.
 		test.describe.configure({ timeout: 120_000 });
+		// Tall enough for an image-cloze item's drop zones and chips together: the
+		// pointer cannot reach a target scrolled out of the window mid-drag.
+		test.use({ viewport: { width: 1280, height: 1100 } });
 
-		test("renders every item and the passage from the page's own modules, with MathJax 4 alone", async ({
+		test("renders every item and the passage from the page's own modules, each typesetting with its own MathJax 4", async ({
 			page,
 			baseURL,
 		}) => {
@@ -329,20 +348,21 @@ for (const layout of LAYOUTS) {
 			);
 			expect(otherBaseTag, "the other base tag is not defined from the registered element").toBe(true);
 
-			// Math typesets with MathJax 4, loaded once, and nothing loads MathJax 3.
+			// Each element typesets with the MathJax 4 its build carries: none is
+			// fetched or installed on the page, and nothing loads MathJax 3.
 			await expect(player.locator("#npm-multiple-choice-element mjx-container").first()).toBeVisible({
 				timeout: 30_000,
 			});
 			await expect(player.locator("#npm-categorize-element mjx-container").first()).toBeVisible();
-			expect(await page.evaluate(() => (window as { MathJax?: { version?: string } }).MathJax?.version)).toMatch(/^4\./);
+			expect(await page.evaluate(() => typeof (window as Record<string, unknown>).MathJax)).toBe("undefined");
 			expect(await page.evaluate(() => typeof (window as Record<string, unknown>)["@pie-lib/math-rendering"])).toBe(
 				"undefined",
 			);
-			expect(new Set(traffic.mathJax4Scripts).size).toBe(1);
+			expect(traffic.mathJax4Scripts).toEqual([]);
 			expect(
 				await page.locator('script[src*="tex-mml-chtml"]').count(),
-				"MathJax was added to the page more than once",
-			).toBe(1);
+				"an element added MathJax to the page",
+			).toBe(0);
 			expect(traffic.legacyMath).toEqual([]);
 
 			// Past networkidle, so a late element load would have been seen.
@@ -551,15 +571,18 @@ for (const layout of LAYOUTS) {
 	});
 }
 
-// The control for "no conflict event": with MathJax 3 on the page first, the
-// elements' MathJax 4 adapter reports the conflict, so the listener above is live.
-test("a page already running MathJax 3 reports pie-mathjax-version-conflict", async ({ page }) => {
+// An element's MathJax 4 is its own, so a page already running MathJax 3 is
+// left as it is: no conflict is reported and the elements still typeset.
+test("a page already running MathJax 3 keeps it, and the elements still typeset", async ({ page }) => {
 	await recordPage(page);
 	await page.addInitScript(() => {
 		(window as unknown as { MathJax: unknown }).MathJax = { version: "3.2.2" };
 	});
-	await page.goto(`${PATH}?mode=candidate&layout=splitpane`, { waitUntil: "domcontentloaded" });
-	await expect
-		.poll(async () => (await recorded(page)).mathJaxConflicts.length, { timeout: 45_000 })
-		.toBeGreaterThan(0);
+	const player = await openDemo(page, "splitpane");
+	await expect(player.locator("#npm-multiple-choice-element mjx-container").first()).toBeVisible({
+		timeout: 30_000,
+	});
+	await page.waitForLoadState("networkidle");
+	expect(await page.evaluate(() => (window as { MathJax?: { version?: string } }).MathJax?.version)).toBe("3.2.2");
+	expect((await recorded(page)).mathJaxConflicts).toEqual([]);
 });

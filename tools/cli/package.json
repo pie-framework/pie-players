@@ -42,7 +42,7 @@
 	},
 	"dependencies": {
 		"@oclif/core": "^5.1.2",
-		"@oclif/plugin-help": "^6.3.0",
+		"@oclif/plugin-help": "^7.0.2",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"esbuild": "^0.28.2",
 		"vite": "8.3.1"

@@ -437,6 +437,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.14",
         "@happy-dom/global-registrator": "^20.14.5",
+        "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149",
         "@playwright/test": "^1.63.0",
         "@types/semver": "^7.8.0",
         "es-module-shims": "^2.8.4",
@@ -1465,7 +1466,7 @@
 
     "@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.1-next.3", "", {}, "sha512-kzyfQn701JXyRcZnpTMis7AJSuw0REbEXzWuVR7dJHBO69thB4uH4qPVfD50P3fdRPAX9goEl1jbpJ+yJIc8WQ=="],
 
-    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.1.1-next.3", "", {}, "sha512-PaA70MXZgxg3NLsAzgMj+9Cc8U9Rdyn8IhLftXvKr7Ewz/pizRpsd+YJQtKansSeOZm5KP7qdDerlUgc7elzvw=="],
 
@@ -3371,9 +3372,69 @@
 
     "@oclif/plugin-warn-if-update-available/@oclif/core": ["@oclif/core@5.0.0", "", { "dependencies": { "ansi-escapes": "^4.3.2", "ansis": "^3.17.0", "clean-stack": "^3.0.1", "cli-spinners": "^2.9.2", "debug": "^4.4.3", "ejs": "^6", "get-package-type": "^0.1.0", "indent-string": "^4.0.0", "lilconfig": "^3.1.3", "minimatch": "^10.2.5", "semver": "^7.8.1", "string-width": "^4.2.3", "supports-color": "^8", "tinyglobby": "^0.2.17", "widest-line": "^3.1.0", "wordwrap": "^1.0.0", "wrap-ansi": "^7.0.0", "wsl-utils": "^0.4.0" } }, "sha512-24ZsN528VButCtvqjBoHw7cEpqXZZILH7Zp0d8oFKrWbqU2BqYrxLd5aGU8LyqRev7CCjAHg+/m1Bewz4V7AmQ=="],
 
+    "@pie-element/categorize/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/drag-in-the-blank/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/drawing-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/explicit-constructed-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/extended-text-entry/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/fraction-model/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/graphing/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/graphing-solution-set/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/hotspot/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/image-cloze-association/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/inline-dropdown/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/likert/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/match/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/match-list/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/math-inline/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/math-templated/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/matrix/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/multi-trait-rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/multiple-choice/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/number-line/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/passage/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/placement-ordering/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-element/select-text/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
     "@pie-framework/math-validation/mathjs": ["mathjs@9.5.2", "", { "dependencies": { "@babel/runtime": "^7.15.4", "complex.js": "^2.0.15", "decimal.js": "^10.3.1", "escape-latex": "^1.2.0", "fraction.js": "^4.1.1", "javascript-natural-sort": "^0.7.1", "seedrandom": "^3.0.5", "tiny-emitter": "^2.1.0", "typed-function": "^2.0.0" }, "bin": { "mathjs": "bin/cli.js" } }, "sha512-c0erTq0GP503/Ch2OtDOAn50GIOsuxTMjmE00NI/vKJFSWrDaQHRjx6ai+16xYv70yBSnnpUgHZGNf9FR9IwmA=="],
 
+    "@pie-lib/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-lib/drag/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-lib/editable-html-tip-tap/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
     "@pie-lib/editable-html-tip-tap/react-jss": ["react-jss@8.6.1", "", { "dependencies": { "hoist-non-react-statics": "^2.5.0", "jss": "^9.7.0", "jss-preset-default": "^4.3.0", "prop-types": "^15.6.0", "theming": "^1.3.0" }, "peerDependencies": { "react": ">=0.13" } }, "sha512-SH6XrJDJkAphp602J14JTy3puB2Zxz1FkM3bKVE8wON+va99jnUTKWnzGECb3NfIn9JPR5vHykge7K3/A747xQ=="],
+
+    "@pie-lib/mask-markup/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
+
+    "@pie-lib/render-ui/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.1-next.6", "", {}, "sha512-8ZGR5F+PS3/uz4tm1TOOPMepS7oLJFP0mMTC/w1jt1QLNbf8fdVX2jjjRPQrIxst8KEFr5cMvcZZI43zZCJCYg=="],
 
     "@pnpm/network.ca-file/graceful-fs": ["graceful-fs@4.2.10", "", {}, "sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA=="],
 

@@ -1,6 +1,6 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
-import { defineConfig } from "vite";
+import { defaultClientConditions, defineConfig } from "vite";
 import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
@@ -30,6 +30,9 @@ const assertNoEvalRequireInOutput = {
 
 export default defineConfig({
 	resolve: {
+		// The MathJax adapter's browser build, which bundles a MathJax of its
+		// own; see players-shared's private-math-renderer.ts.
+		conditions: ["pie-browser-esm", ...defaultClientConditions],
 		alias: {
 			// Declared once in players-shared; see svelte-source-aliases.ts.
 			...playersSharedSvelteSourceAliases(

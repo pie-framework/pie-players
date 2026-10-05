@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
-import { join, posix } from "node:path";
+import { join, posix, sep } from "node:path";
 
 import { parsePackageName } from "@pie-players/pie-players-shared/pie";
 import { build, type Plugin, type Rollup } from "vite";
@@ -100,7 +100,8 @@ export interface ElementModulesBuild {
 	mathjaxVersion?: string;
 	/**
 	 * The `package@version` of each package shipped under `dist/mathjax/npm/` for
-	 * elements that bundle their MathJax: its fonts and speech worker.
+	 * the item player and the elements that bundle their MathJax: its fonts and
+	 * speech worker.
 	 */
 	bundledMathjaxAssets: string[];
 }
@@ -261,12 +262,12 @@ export async function copyMathjax(modulesDir: string, mathjaxDir: string): Promi
 }
 
 /**
- * Points each bundled MathJax asset URL in `code`, the chunk at `fileName` in
- * `dist/elements/`, at the build's copy under `dist/mathjax/npm/`, resolved from
- * the chunk's own URL, and adds the `package@version/path` to `assets`.
+ * Points each bundled MathJax asset URL in `code`, the module at `fileName` in
+ * `dist/`, at the build's copy under `dist/mathjax/npm/`, resolved from the
+ * module's own URL, and adds the `package@version/path` to `assets`.
  */
 export function rewriteBundledAssetUrls(code: string, fileName: string, assets: Set<string>): string {
-	const from = posix.join("elements", posix.dirname(fileName));
+	const from = posix.dirname(fileName);
 	return code.replace(BUNDLED_ASSET_URL, (_literal, _quote, name: string, version: string, path: string) => {
 		const asset = `${name}@${version}/${path}`;
 		assets.add(asset);
@@ -279,7 +280,7 @@ function bundledAssetUrls(assets: Set<string>): Plugin {
 	return {
 		name: "pie-preloaded-bundled-mathjax-assets",
 		renderChunk(code, chunk) {
-			const rewritten = rewriteBundledAssetUrls(code, chunk.fileName, assets);
+			const rewritten = rewriteBundledAssetUrls(code, posix.join("elements", chunk.fileName), assets);
 			return rewritten === code ? null : { code: rewritten, map: null };
 		},
 	};
@@ -346,8 +347,10 @@ async function copyBundledMathjaxAssets(
  * React for all of them and every other dependency included, and ships what the
  * elements render math with under `<distDir>/mathjax/`: the page's MathJax for
  * elements whose adapter copy loads it, and the fonts and speech worker of each
- * MathJax an element bundles. The elements are installed into a scratch
- * project, because each config pins its own versions of the same packages.
+ * MathJax an element bundles. The item player's modules, already in `distDir`,
+ * bundle a MathJax for the item's own markup, and are pointed at the same copies.
+ * The elements are installed into a scratch project, because each config pins
+ * its own versions of the same packages.
  */
 export async function buildElementModules(
 	elements: string[],
@@ -456,7 +459,11 @@ export async function buildElementModules(
 			);
 		}
 
-		const unrewritten = chunks
+		const playerModules = await rewritePlayerAssetUrls(distDir, assets);
+		const unrewritten = [
+			...chunks.map((chunk) => ({ ...chunk, fileName: posix.join("elements", chunk.fileName) })),
+			...playerModules,
+		]
 			.filter(({ code }) => code.includes(BUNDLED_ASSET_CDN))
 			.map(({ fileName }) => fileName);
 		if (unrewritten.length) {
@@ -480,6 +487,30 @@ export async function buildElementModules(
 async function readChunks(dir: string): Promise<Array<{ fileName: string; code: string }>> {
 	const files = (await readdir(dir, { recursive: true })).filter((file) => file.endsWith(".js"));
 	return Promise.all(
-		files.map(async (fileName) => ({ fileName, code: await readFile(join(dir, fileName), "utf-8") })),
+		files.map(async (fileName) => ({
+			fileName: fileName.split(sep).join(posix.sep),
+			code: await readFile(join(dir, fileName), "utf-8"),
+		})),
+	);
+}
+
+/**
+ * Points the bundled MathJax asset URLs in the item player's modules in
+ * `distDir`, every module outside `elements/` and `mathjax/`, at the build's
+ * copies, in place, and returns the modules as rewritten.
+ */
+async function rewritePlayerAssetUrls(
+	distDir: string,
+	assets: Set<string>,
+): Promise<Array<{ fileName: string; code: string }>> {
+	const modules = (await readChunks(distDir)).filter(
+		({ fileName }) => !/^(?:elements|mathjax)\//.test(fileName),
+	);
+	return Promise.all(
+		modules.map(async ({ fileName, code }) => {
+			const rewritten = rewriteBundledAssetUrls(code, fileName, assets);
+			if (rewritten !== code) await writeFile(join(distDir, fileName), rewritten);
+			return { fileName, code: rewritten };
+		}),
 	);
 }

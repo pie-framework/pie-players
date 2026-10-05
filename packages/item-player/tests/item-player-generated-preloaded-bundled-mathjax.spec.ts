@@ -77,6 +77,19 @@ test("typesets mhchem chemistry with the font extension the build ships", async 
   expect(loaded.browserErrors).toEqual([]);
 });
 
+test("typesets the item's own markup on the player's MathJax, its fonts from the build", async ({ page }) => {
+  const loaded = await openBuild(page);
+  const config = structuredClone(mathDemo.item.config);
+  config.markup = String.raw`<p class="stem">Solve \(ax^2 + bx + c = 0\).</p>${config.markup}`;
+  await mount(page, config, "markup-attempt");
+  await expect(page.locator("pie-item-player .stem mjx-container")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  expect(await page.evaluate(() => ["MathJax", "@pie-lib/math-rendering"].filter((key) => key in window))).toEqual([]);
+  expect(loaded.mathjaxFiles.filter((file) => !file.startsWith(assets))).toEqual([]);
+  expect(loaded.failedRequests).toEqual([]);
+  expect(loaded.browserErrors).toEqual([]);
+});
+
 test("speaks math from the speech worker the build ships once a student turns enrichment on", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("PIE-MathJax-Menu-Settings", JSON.stringify({ enrich: true })));
   const loaded = await openBuild(page);

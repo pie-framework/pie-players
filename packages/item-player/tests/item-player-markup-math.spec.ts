@@ -53,11 +53,8 @@ function markupMath(block: Locator) {
 	}, ELEMENT);
 }
 
-test("iife typesets math in the item's own markup", async ({ page }) => {
-	const errors: string[] = [];
-	page.on("pageerror", (error) => errors.push(error.message));
-	const demo = await openDemo(page, "iife");
-	const player = await mountBeside(page, "iife");
+/** Every block of `player`'s markup typeset, and its element's math typeset once, as in `demo`. */
+async function expectMarkupTypeset(demo: Locator, player: Locator) {
 	const element = player.locator(ELEMENT);
 	await expect(element.locator("mjx-container").first()).toBeVisible({
 		timeout: 30_000,
@@ -88,8 +85,37 @@ test("iife typesets math in the item's own markup", async ({ page }) => {
 			"mjx-container mjx-container, mjx-assistive-mml mjx-container",
 		),
 	).toHaveCount(0);
+}
+
+test("iife typesets math in the item's own markup", async ({ page }) => {
+	const errors: string[] = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	const demo = await openDemo(page, "iife");
+	await expectMarkupTypeset(demo, await mountBeside(page, "iife"));
 	expect(errors).toEqual([]);
 });
+
+// On a page with no renderer the player typesets the markup on a MathJax of its
+// own, and leaves `window.MathJax` and the page renderer as they were.
+for (const strategy of ["esm", "preloaded"] as const) {
+	test(`${strategy} typesets the item's own markup with no math renderer on the page`, async ({
+		page,
+	}) => {
+		const errors: string[] = [];
+		page.on("pageerror", (error) => errors.push(error.message));
+		const demo = await openDemo(page, strategy);
+		const globals = () =>
+			page.evaluate(() => ({
+				renderer: typeof (window as any)["@pie-lib/math-rendering"],
+				mathjax: typeof (window as any).MathJax,
+			}));
+		const before = await globals();
+		expect(before.renderer).toBe("undefined");
+		await expectMarkupTypeset(demo, await mountBeside(page, strategy));
+		expect(await globals()).toEqual(before);
+		expect(errors).toEqual([]);
+	});
+}
 
 // ESM elements render with the page's renderer when the host installed one,
 // and the markup's math goes to it too: one root per block of markup, and none

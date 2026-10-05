@@ -1322,6 +1322,13 @@ does, so the workaround is dead once Host M takes a release with the deferral.
 it, and `item-player-host-mathjax.spec.ts` bundles the player the same way
 against a MathJax 4 global.
 
+The item player's own MathJax 4, the browser build of
+`@pie-element/shared-math-rendering-mathjax` it imports for markup math on a
+page with no math renderer, is a dynamic import as well, so in Host M it
+evaluates at startup with its font chunks, about 2.9 MB. Like the copies in the
+`browser/delivery` element builds Host M bundles (checked 2026-10-05), it neither
+reads nor writes `window.MathJax`, and the shell's MathJax 4 is left alone.
+
 ## Content stylesheet delivery
 
 The most fragile shared surface, because it changed underneath the hosts.

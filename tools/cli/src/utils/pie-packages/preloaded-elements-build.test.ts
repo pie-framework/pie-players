@@ -106,10 +106,13 @@ describe("bundled MathJax assets", () => {
 
 	test("points each asset URL at the build's copy, resolved from the chunk", () => {
 		const assets = new Set<string>();
-		expect(rewriteBundledAssetUrls(`L8="${FONT}",nu='${SRE}'`, "chunks/Radio-B_mH.js", assets)).toBe(
+		expect(rewriteBundledAssetUrls(`L8="${FONT}",nu='${SRE}'`, "elements/chunks/Radio-B_mH.js", assets)).toBe(
 			`L8=${local("../../mathjax/npm/@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2")},nu=${local("../../mathjax/npm/@mathjax/src@4.1.3/bundle/sre")}`,
 		);
-		expect(rewriteBundledAssetUrls(`f=\`${FONT}\``, "index.js", assets)).toBe(
+		expect(rewriteBundledAssetUrls(`f=\`${FONT}\``, "elements/index.js", assets)).toBe(
+			`f=${local("../mathjax/npm/@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2")}`,
+		);
+		expect(rewriteBundledAssetUrls(`f="${FONT}"`, "chunks/npm__mathjax-1a2b3c4d.js", assets)).toBe(
 			`f=${local("../mathjax/npm/@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2")}`,
 		);
 		expect([...assets]).toEqual(["@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2", "@mathjax/src@4.1.3/bundle/sre"]);

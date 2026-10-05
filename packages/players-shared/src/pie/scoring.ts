@@ -71,27 +71,14 @@ export const findPieController = (
 		bundleType: entry.bundleType,
 	});
 
-	const controller = entry.controller;
+	// Registration writes `null` for a package without a controller.
+	const controller = entry.controller ?? undefined;
 	if (!controller) {
-		// Check if missing controller is expected based on bundle type
-		if (entry.bundleType === BundleType.clientPlayer) {
-			// client-player.js MUST have controllers
-			logger.error(
-				`[findPieController] ❌ CRITICAL: Registry entry exists for ${elementName} but controller is missing!`,
-			);
-			logger.error(
-				`[findPieController] Bundle type: ${entry.bundleType} (controllers required)`,
-			);
-			logger.error(`[findPieController] Entry:`, entry);
-			throw new Error(
-				`No controller found for ${elementName}. client-player.js bundles MUST include controllers. Check bundle loading and registration.`,
-			);
-		} else {
-			// player.js doesn't have controllers - this is expected
-			logger.debug(
-				`[findPieController] ℹ️ No controller for ${elementName} - using server-processed models (player.js bundle)`,
-			);
-		}
+		// A package without one, such as a legacy `@pie-element/protractor`,
+		// renders the model it is given, as `<pie-player>` passed it through.
+		logger.debug(
+			`[findPieController] ℹ️ No controller for ${elementName}; its model is used as given`,
+		);
 	} else {
 		logger.debug(
 			`[findPieController] ✅ Controller found for ${elementName} with functions:`,

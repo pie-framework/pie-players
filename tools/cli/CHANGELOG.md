@@ -1,5 +1,108 @@
 # @pie-players/pie-players-cli
 
+## 0.3.7
+
+### Patch Changes
+
+- 69f0b76: Load a generated `@pie-players/pie-preloaded-player` build into a page that
+  already registered `pie-item-player`, which is what a host running the section
+  player presents (PIE-1070).
+  
+  The build's own copy of the item player redefined the tag, threw
+  `NotSupportedError` and rejected the build's initialization. The item player
+  now registers only through `definePieItemPlayer`, which leaves a registered tag
+  alone, and the generated entry skips fetching its copy when the tag is taken.
+  Whichever copy registered `pie-item-player` first renders the build's elements.
+  `definePieItemPlayer(tagName)` also registers a working element under a custom
+  tag.
+- 542032b: A generated `@pie-players/pie-preloaded-player` build serves the fonts and speech
+  worker of a MathJax bundled into an element from `dist/mathjax/npm/`, and ships
+  the page's MathJax only for elements that render on it.
+- 8c3d142: A generated `@pie-players/pie-preloaded-player` build bundles its elements with
+  Vite from their pie-elements-ng ESM browser builds, and ships the MathJax they
+  render with, so no element, MathJax, font or speech file comes from the PITS
+  bundle service or a CDN. The generator refuses an element without an ESM browser
+  build. The `knowledge-checks` and `star-0326` sets bundled legacy IIFE elements
+  and no longer publish; their published builds stay installable.
+- 538c2bb: A generated `@pie-players/pie-preloaded-player` build ships MathJax's mhchem font
+  extension, which MathJax loads from the build's font path when content uses `\ce`
+  or `\pu`.
+- ffc7b3e: A generated `@pie-players/pie-preloaded-player` build ships the item player's
+  modules with their whitespace stripped. A host that bundles the build loses the
+  modules' pure annotations and the `webpackIgnore` hints on the `esm` strategy's
+  runtime imports, which the `preloaded` strategy never runs.
+- 0e1338b: Stop advertising `window.PIE_LOADER_CONFIG` in generated
+  `@pie-players/pie-preloaded-player` builds. The README offered it as a global
+  alternative to `loader-config` and the types declared it on `Window`, but no code
+  reads it, so configuration set there was ignored. Configure loading on the
+  element through `loader-config` or `loaderConfig`.
+- 2be7868: Add `registerPreloadedElements` (PIE-1070): a host that bundles the
+  `./browser/delivery` modules of pie-elements-ng ESM builds registers them for
+  the `preloaded` strategy without a generated `@pie-players/pie-preloaded-player`
+  build, passing each package's `./browser/controller` module for a player that
+  is not hosted. Only pie-elements-ng ESM builds publish those subpaths. It is
+  exported from `@pie-players/pie-players-shared/loaders` and from the new
+  `@pie-players/pie-item-player/preloaded`, which also exports
+  `ensureItemPlayerMathRenderingReady` without defining the player. Registration
+  takes exact versions only and one version per package, and a player that is not
+  hosted warns about each preloaded tag registered without a controller.
+  `ElementAssertionError` names the tags each missing tag's package is registered
+  as.
+  
+  Generated preloaded builds register through that entry and install the item
+  player's own math renderer, keeping one the page already has, so a build's
+  `dist/` tree carries `preloaded.js` in place of `math-rendering.js`. The
+  session debugger takes `hosted`, `runtimeSupportCheck` probes only under
+  `strategy="esm"` through the configured CDN provider, and the ESM import map
+  skips specifiers the page already maps.
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [8b24361]
+- Updated dependencies [377146f]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [05845a3]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [ec632eb]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [22bcd83]
+  - @pie-players/pie-players-shared@0.3.74
+
 ## 0.3.6
 
 ### Patch Changes

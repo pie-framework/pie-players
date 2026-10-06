@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/backend-demos",
-	"version": "0.1.31",
+	"version": "0.1.32",
 	"description": "Backend integration demos for PIE players",
 	"type": "module",
 	"private": true,

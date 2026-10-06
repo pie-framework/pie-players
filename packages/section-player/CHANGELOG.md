@@ -1,5 +1,356 @@
 # @pie-players/pie-section-player
 
+## 0.3.74
+
+### Patch Changes
+
+- 8b24361: Boolean attributes on the custom elements read `"false"`, `"0"`, `"off"` and
+  `"no"` as false instead of treating any present value as true, so
+  `trust-markup="false"` no longer skips sanitization.
+- cbfd88f: Chunks built from other workspace packages are named the same whichever
+  checkout builds them.
+- 2127eaa: `components.css` rules keyed on KDS classes, MathJax output or legacy content
+  classes such as `.frac` and `.noprint` apply document-wide again, so authored
+  markup an element portals to `<body>`, such as an inline-dropdown's choices,
+  keeps its KDS fractions and MathJax glyph fixes. Bare tag and framework-class
+  rules stay inside `[data-pie-content]`.
+- 549de08: `components.css` styles authored content inside a `[data-pie-content]` element
+  only, which `pie-item-player` and `pie-print` set on the root they render into.
+  Its bare `h1`–`h6`, `table`, `th`, `.table` and `.center` rules no longer
+  restyle the host page. A host that renders authored markup outside a player
+  adds `data-pie-content` to that container to keep the styles there. A host
+  copy confined with `@scope (…)` keeps working when its scope root contains the
+  player.
+- 377146f: An item holding an element whose package has no controller, such as a legacy
+  `@pie-element/protractor`, loads under `client-player.js`, where it failed with a
+  player error. The element renders the model it is given, as `<pie-player>` passed
+  it through.
+- 3e88cac: A `ToolkitCoordinator` constructed without `toolRegistry` adopts the registry of the toolkit it is bound to, such as the section player's, so its config is validated and its tool providers register: server text-to-speech and a placed calculator work without passing the registry to the coordinator. A registry passed at construction is never replaced, and the missing-registry warnings appear only once a coordinator is known to have none.
+- 17afe85: A coordinator built without `toolRegistry` prints `tools.registryUnavailable`
+  once, instead of again on every `updateToolConfig()` and
+  `updateToolsPlacement()`. A provider descriptor that throws is reported as a
+  `provider-register` framework error with a console warning, where it was an
+  unhandled rejection. `updateToolConfig()` registers the provider a tool's new
+  config names, and unregisters the previous one when the provider id changed, as
+  a text-to-speech reconfigure does.
+- 3ccab31: The `esm` strategy loads in Firefox on pages where it rejects the player's
+  import map: after the page's first module load, or when the page already has
+  one. The player detects the rejected map and loads the elements through a
+  bundled es-module-shims in shim mode; browsers that apply the map load natively
+  as before. A page that runs its own es-module-shims must run it in shim mode.
+- b072a44: `strategy="esm"` works in a webpack-built host. Webpack compiled the runtime
+  `import()` of each element, controller, runtime-support and print-element URL
+  into an empty module context, so every load failed with
+  `ITEM_PLAYER_LOAD_ERROR` and the build warned "Critical dependency: the request
+  of a dependency is an expression". Those imports now carry
+  `/* webpackIgnore: true */` beside `/* @vite-ignore */`.
+- 0e8e8df: Under esm URL resolution, an element that declares `pie.browserEditorRuntime`
+  loads its editor-runtime variant, and the page's editors share one Tiptap and
+  ProseMirror from `@pie-element/shared-editor-runtime`, mapped once per page. An
+  element that runtime cannot serve, or whose variant fails to load, loads
+  `./browser/*` and is reported as a shared-dependency conflict. A package that
+  does not publish the requested view, such as match-list's `./browser/author`,
+  now fails alone with that missing export, and the other elements in the load
+  still register.
+- 223f00a: With the ESM strategy, the players on a page share one request for each element
+  package's `package.json`. A request that fails is dropped, so the next load
+  retries it.
+- 9a932d5: `strategy="esm"` and `strategy="preloaded"` no longer load the MathJax 3
+  math-rendering module (PIE-1096). Preloaded elements are ESM builds, which bring
+  their own renderer, so the item player and the section player's preload install
+  `window["@pie-lib/math-rendering"]` only for IIFE bundles. A generated
+  `@pie-players/pie-preloaded-player` build now bundles ESM elements too and
+  installs none; builds already published carry IIFE elements and still install it
+  in their own entry. Importing `@pie-players/pie-item-player` no longer starts
+  that load either, so a host that loads IIFE element bundles itself must await
+  `ensureItemPlayerMathRenderingReady()` before the first bundle evaluates.
+  
+  Under `esm` and `preloaded` the elements therefore typeset with MathJax 4, which,
+  outside a generated build, loads with its New Computer Modern fonts from
+  `cdn.jsdelivr.net` whatever `esmCdnUrl` names,
+  where the player's MathJax 3 took its fonts from `unpkg.com`. A page that cannot
+  reach jsDelivr renders no math. A CSP lists that origin in `font-src`, and in
+  `script-src` unless it uses `'strict-dynamic'`.
+- 25fd8d8: Loading a second copy of a player or tool into a page that already registered
+  its custom elements no longer throws. The copy that registered a tag first keeps
+  rendering it, the rule `pie-item-player` and the toolkit's elements already
+  follow.
+- adc3da6: A hosted item player no longer runs element controllers in the browser
+  (PIE-1070). It rendered and scored through any controller in the shared
+  registry, so with the `esm` strategy, which loaded controllers whether or not
+  the player was hosted, `model()`, `createCorrectResponseSession()` and
+  `provideScore()` ran client-side; a registered controller also ran over the
+  models a backend refresh or `updateElementModel()` handed a hosted player. A
+  hosted player now renders the server's models and scores nothing locally, as it
+  already did with `iife`, and hosted `esm` loads no controllers. A
+  `<pie-item-player>` with `backend.delivery` enabled defaults `hosted` to true,
+  as the section player already did. A host that runs `hosted` with `esm` and
+  relied on browser-side models has to supply server-processed ones.
+- e40a2a6: IIFE math no longer nests on re-render when a legacy element bundle shares the
+  page (PIE-1142). Installing the default math renderer now also creates the
+  MathJax 3 instance that every copy of `@pie-lib/math-rendering` typesets
+  through, so a bundled copy without the assistive-MathML guard, such as the one
+  in `@pie-element/multiple-choice` 9.9.1, can no longer create it. A renderer set
+  with `setMathRenderer`, or an instance already on the page, is left alone.
+- 39b2c16: On a page with no math renderer, under `esm` and `preloaded`, the item player
+  typesets the math in an item's and a passage's own markup on a MathJax 4.1.3 of
+  its own, where that math had stayed as authored. It is the browser build of
+  `@pie-element/shared-math-rendering-mathjax`, imported on the first markup that
+  holds math, and leaves `window.MathJax` and `window["@pie-lib/math-rendering"]`
+  alone. Its chunks add about 2.9 MB to the item player and to the section
+  player's browser build; Host M, which inlines every dynamic import into one
+  module, carries them and evaluates them at startup, as it does the elements'
+  copies. Generated `@pie-players/pie-preloaded-player` builds serve the engine's
+  fonts and speech data from `dist/mathjax/npm/`, so Host P renders that math with
+  nothing loaded from jsDelivr.
+- dba059f: The item player typesets the math in an item's and a passage's own markup,
+  outside every element, which `<pie-player>` typeset and `<pie-item-player>` left
+  as raw TeX. It hands the page's math renderer only the markup around the
+  elements, so no element's content is typeset twice: under `iife` the renderer
+  the player installs, under `esm` and `preloaded` one the host installs.
+- 0d36cde: The item player's own MathJax takes the explorer highlight, the selection outline and the
+  speech, braille, magnifier and tooltip regions from the `--pie-*` theme tokens, as the
+  elements' copies of `@pie-element/shared-math-rendering-mathjax` 0.1.2 do.
+- aa58883: A host build that inlines dynamic imports, as Vite through 7 does with
+  `inlineDynamicImports`, no longer sets the player's bundled MathJax 3 up as the
+  bundle loads. That setup threw on a page already running MathJax 4, and on a
+  page without MathJax it left a MathJax 3 global that PIE's MathJax 4 renderer
+  reports as a version conflict. MathJax 3 now sets up when the IIFE strategy
+  first needs it, as it does when the chunk loads separately.
+- 6859fb7: With `trackPageActions` on, the ESM loader forwards the `pie-mathjax-version-conflict`
+  event that PIE's MathJax 4 renderer dispatches when a page also runs MathJax 3 to the
+  instrumentation provider, as a `pie-mathjax-version-conflict` event carrying `condition`
+  and `docsUrl`. Each provider tracks an event once however many players load on the page.
+- 435bb29: A coordinator built without `toolRegistry` registers no tool providers, and its
+  console now says so. The registry-unavailable validation warning names that
+  consequence; a text-to-speech config with a non-browser backend warns once
+  when, with no `tts` provider registered, it falls back to browser speech; and
+  the section player warns once per placed tool whose provider a host-supplied
+  `runtime.coordinator` has not registered. Each warning names
+  `createPackagedToolRegistry()` as the remedy. `./tools/internal` exports
+  `resolveToolProviderId`.
+- fa3ade0: The vendored module shim no longer breaks webpack builds that run source-map-loader over node_modules, such as Angular development builds.
+- cadfcf9: With `strategy="preloaded"`, content can author a package under another base tag
+  than the page registered it under, such as `multiple-choice` for a package
+  registered as `pie-element-multiple-choice`. Before asserting, the item player
+  and the section player's pre-warm define each such versioned tag from the
+  registered element, with its controller and bundle type, through
+  `defineAuthoredPreloadedTags` in `@pie-players/pie-players-shared/loaders`. A tag
+  whose package the page did not register still fails `assertRegistered`.
+- 0eb3943: The README's reason for installing every pie-elements-ng package from one
+  release is now the MathJax the elements share on a page. The `npm ls` check it
+  replaces inspected library copies the `./browser/*` builds never import.
+- 5c5481e: The README's one-release rule now says only elements that typeset on
+  `window.MathJax` share the page's MathJax; elements that bundle their own share
+  none.
+- 2be7868: Add `registerPreloadedElements` (PIE-1070): a host that bundles the
+  `./browser/delivery` modules of pie-elements-ng ESM builds registers them for
+  the `preloaded` strategy without a generated `@pie-players/pie-preloaded-player`
+  build, passing each package's `./browser/controller` module for a player that
+  is not hosted. Only pie-elements-ng ESM builds publish those subpaths. It is
+  exported from `@pie-players/pie-players-shared/loaders` and from the new
+  `@pie-players/pie-item-player/preloaded`, which also exports
+  `ensureItemPlayerMathRenderingReady` without defining the player. Registration
+  takes exact versions only and one version per package, and a player that is not
+  hosted warns about each preloaded tag registered without a controller.
+  `ElementAssertionError` names the tags each missing tag's package is registered
+  as.
+  
+  Generated preloaded builds register through that entry and install the item
+  player's own math renderer, keeping one the page already has, so a build's
+  `dist/` tree carries `preloaded.js` in place of `math-rendering.js`. The
+  session debugger takes `hosted`, `runtimeSupportCheck` probes only under
+  `strategy="esm"` through the configured CDN provider, and the ESM import map
+  skips specifiers the page already maps.
+- 771def2: A commit is now marked with `sessionCommitReason` on `item-session-changed`, on
+  the toolkit's `session-changed`, and on the section controller's
+  `item-session-data-changed` and `item-session-meta-changed`, and the
+  controller's two events carry `sectionId`. A commit at navigation reports the
+  item being left, so a host that sets its current item from these events should
+  leave that state alone on a commit and still persist its session.
+- 8a8b932: An item in a section is complete when every element of it that has reported its
+  completion is complete; the element that reported last used to decide.
+  `<pie-item-player>`'s `session-changed` carries the announcing element's model
+  id as `elementId`, and the section controller's `item-session-data-changed` and
+  `item-session-meta-changed` carry it too.
+- e3e2a6a: `@pie-players/pie-section-player/browser` is a self-contained ES module build in
+  `dist/browser/`. A page loads it by full file path from jsDelivr, with no import
+  map and no bundler. It also exports `createPackagedToolRegistry` and
+  `DEFAULT_TOOL_MODULE_LOADERS`, so a host that adds its own tool registration
+  builds the packaged set from the same build.
+- 7bc44f3: A listener on a section-player layout element now receives each toolkit event
+  once: `session-changed`, `composition-changed`, `runtime-owned` and
+  `runtime-inherited` used to arrive three times and `framework-error` twice.
+  Errors reported by a coordinator passed as `runtime.coordinator` now also
+  reach the layout's `framework-error` event and
+  `onFrameworkError`, without the toolkit's initialization banner. The runtime's
+  internal registration and session events stop at the toolkit, and an answer no
+  longer re-registers every item shell. A second item shell's identical response
+  is no longer dropped; apart from that response, `document` listeners receive
+  what they did before.
+- dae9198: The layout elements' host methods are defined as soon as the element is created,
+  so a host can call them before it mounts: `waitForSectionController()` waits for
+  the controller, and the other methods return what they return while the player
+  loads.
+- ec632eb: The section player's pre-warm now loads and asserts the view its item players
+  render. The `preloaded` pre-warm aligns authored element versions to the page's
+  registrations before asserting them, as the item player does, and a preloaded
+  author section asserts the `-config` tags; the ESM pre-warm honours
+  `loaderOptions.view`, `loaderOptions.loadControllers` and author `mode`; and a
+  hosted IIFE player's pre-warm skips controllers. A failed `preloaded` pre-warm
+  reports an `element-preload` framework error, and a rejected pre-warm shows an
+  error in place of the loading message. The `interactive` stage and
+  `pie-loading-complete` wait for the pre-warm, and a partial `policies` object
+  takes defaults for its unset fields. Both players share
+  `alignPreloadedElementVersions` and `resolveLoadControllers`, exported from
+  `@pie-players/pie-players-shared`.
+- 3e88cac: The section player's element pre-warm passes the host's `loaderConfig` (`trackPageActions`, the instrumentation provider and IIFE bundle retry) to the loader, as the item players do.
+- 7c4b13d: A section player given a new `section-id` and then a new `section` on the same
+  element now renders the new section. Under the bundled Svelte 5.57.0 the player
+  stopped updating after that sequence and kept showing the previous section's
+  items, while `pie-stage-change` reported the new section as composed. The
+  packages now bundle Svelte 5.57.1, which fixes it with
+  https://github.com/sveltejs/svelte/pull/18508.
+- 3ddbe89: A rejected element warmup, which leaves a section's items unmounted, is now also
+  reported once as the section controller's `section-error`, with source
+  `section-runtime`, next to the `element-preload` framework error.
+- ff7c2bc: Deliver a pending `session-changed` when focus leaves `pie-item-player`, so a host acting on the click or key that moved focus already has the response and the section-switch commit finds nothing left for that item. Every item-player `session-changed` now carries `component` and `complete`; a passage shell keeps its raw `session-changed` inside, like the item shell; and a session restored without `complete` is complete when it holds a response.
+- 5a0bcb1: The `pie-tool-*` bundles import the toolkit and `pie-players-shared` from the
+  host's `node_modules` instead of inlining them, and the section player imports
+  `@pie-players/pie-item-player`, so a page with both players defines one
+  `pie-item-player` and fetches one MathJax module. The toolkit's `sideEffects`
+  lists only its custom elements.
+  
+  The section player's `./contracts/*` and `./policies` subpaths register no
+  element and import in Node. Each exports only its own module's names, so import
+  anything else from the package root. `pie-players-shared` drops
+  `./server/npm-registry` and `./server/npm-auth-env`.
+  `pie-tool-calculator-shared`'s root entry no longer exports the calculator
+  shells: it registers `<pie-tool-calculator>`, as `./calculator-element` does,
+  and the package no longer depends on `svelte`. `speech-rule-engine` is pinned to
+  `5.0.0-rc.4`, whose locale tables the toolkit imports by file path, and math
+  rendering imports `@pie-lib/math-rendering-module/module/index.js`, which
+  webpack's fully-specified ESM resolution finds.
+- 0bd34af: The toolkit's math speech no longer fetches speech-rule-engine's locale tables
+  from jsDelivr. In a browser the toolkit hands SRE a loader over the `base`, `en`
+  and `es` tables from `speech-rule-engine/lib/mathmaps`, which the host's bundler
+  emits as lazy chunks served from its own origin. Math in any other locale is
+  spoken with English words, and SRE logs `Unable to load locale`, unless
+  `mathSpeech.engineOptions.json` or `.custom` names a source for its table.
+  Either option now also covers `base` and `en`, the two tables SRE loads at
+  start-up, which had come from jsDelivr regardless. The MathJax 3 renderer that
+  IIFE and preloaded elements use still loads the tables of its own SRE copy from
+  jsDelivr.
+  
+  The toolkit and the section player import `speech-rule-engine` from the host's
+  `node_modules` and share one copy. A build that inlines every dynamic import
+  into one file gains the three tables, about 0.8 MB.
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- a0e15b9: The toolkit's custom elements, which the section player bundles, now ship
+  production Svelte. Players no longer patch `Array.prototype` on the host page or
+  run Svelte's dev-only checks.
+- b2476be: These packages no longer declare dependencies that their builds inline or never
+  import, so installing them installs fewer packages. A host that imports one of
+  those packages itself, such as `@pie-players/pie-theme`'s stylesheets, declares
+  it in its own `package.json`.
+- Updated dependencies [7361295]
+- Updated dependencies [040299f]
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [498f937]
+- Updated dependencies [2825bf5]
+- Updated dependencies [cbfd88f]
+- Updated dependencies [8b24361]
+- Updated dependencies [2127eaa]
+- Updated dependencies [549de08]
+- Updated dependencies [377146f]
+- Updated dependencies [3e88cac]
+- Updated dependencies [17afe85]
+- Updated dependencies [6d49601]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [549de08]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [9a932d5]
+- Updated dependencies [a3e721c]
+- Updated dependencies [05845a3]
+- Updated dependencies [25fd8d8]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [937fd1c]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [435bb29]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [3e88cac]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [69f0b76]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [2084d88]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [7bc44f3]
+- Updated dependencies [ec632eb]
+- Updated dependencies [7c4b13d]
+- Updated dependencies [3ddbe89]
+- Updated dependencies [a8c0d7f]
+- Updated dependencies [8f4b1da]
+- Updated dependencies [8b24361]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [0bd34af]
+- Updated dependencies [8e13d3d]
+- Updated dependencies [598ac56]
+- Updated dependencies [799b592]
+- Updated dependencies [976c4d3]
+- Updated dependencies [45bec78]
+- Updated dependencies [6e6f883]
+- Updated dependencies [6cc239a]
+- Updated dependencies [05845a3]
+- Updated dependencies [2cd3d03]
+- Updated dependencies [3be570a]
+- Updated dependencies [b7c9382]
+- Updated dependencies [a0e15b9]
+- Updated dependencies [60077c2]
+- Updated dependencies [22bcd83]
+- Updated dependencies [326f382]
+- Updated dependencies [4369286]
+- Updated dependencies [3d8bb9a]
+- Updated dependencies [e25ebc5]
+- Updated dependencies [3a01d9b]
+- Updated dependencies [799b592]
+- Updated dependencies [b2476be]
+  - @pie-players/pie-assessment-toolkit@0.3.74
+  - @pie-players/pie-players-shared@0.3.74
+  - @pie-players/pie-item-player@0.3.74
+  - @pie-players/pie-default-tool-loaders@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

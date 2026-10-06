@@ -1,5 +1,17 @@
 # @pie-players/tts-server-polly
 
+## 0.3.74
+
+### Patch Changes
+
+- c8e9e58: `SynthesizeResponse.audio` is typed `SynthesizedAudioBytes | string`, a
+  structural description of the `Buffer` the providers return, so the TTS
+  declarations typecheck without Node's types and `audio.toString("base64")`
+  still compiles.
+- 93f7a4f: `@aws-sdk/client-polly` moves to `^3.1137.0`, up from `^3.1033.0`.
+- Updated dependencies [c8e9e58]
+  - @pie-players/tts-server-core@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

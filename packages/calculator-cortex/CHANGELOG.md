@@ -1,5 +1,37 @@
 # @pie-players/pie-calculator-cortex
 
+## 0.3.74
+
+### Patch Changes
+
+- bfaf1be: Installing `@pie-players/pie-calculator-cortex` no longer installs
+  `@cortex-js/compute-engine`, `mathlive` and `jsxgraph`, which its build bundles.
+- e3e2a6a: The Cortex calculator starts when its script is served from another origin, such
+  as a CDN. It starts its worker from a same-origin `blob:` module that imports the
+  worker file, so a page's CSP needs `blob:` in `worker-src`.
+- 93f7a4f: The Cortex calculator bundles Compute Engine 0.130.0, up from 0.120.0.
+- d39e451: MathLive and the Compute Engine now ship as chunks of their own. In one 6 MB
+  runtime chunk they failed a large Vite 7 build on Node 26 with
+  `Maximum call stack size exceeded`.
+- 2bc32e8: The Cortex calculator starts its worker when it opens and times a calculation
+  from the worker's ready signal, so a slow machine's first calculation no longer
+  times out while the worker loads; a worker not ready within 20 s reports
+  `worker-unavailable`. Keypad presses made while the calculator re-renders are
+  kept, and leaving an edited expression no longer calculates it.
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- 598ac56: Published type declarations no longer import `svelte`, which a host without
+  Svelte cannot resolve: under `skipLibCheck: false` its type-check failed with
+  TS2307.
+  
+  The section-player debugger and TTS settings panels, `tool-answer-eliminator`,
+  the inline calculators and `tool-tts-inline` now declare nothing from their root
+  entry, because importing one only registers its element. A TypeScript import of
+  the Svelte component that entry default-exports no longer type-checks.
+  `section-player-tools-shared` and `tool-calculator-shared` declare their
+  exported components without Svelte.
+- @pie-players/pie-calculator@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

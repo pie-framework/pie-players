@@ -1,5 +1,37 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 0.3.74
+
+### Patch Changes
+
+- 25fd8d8: Loading a second copy of a player or tool into a page that already registered
+  its custom elements no longer throws. The copy that registered a tag first keeps
+  rendering it, the rule `pie-item-player` and the toolkit's elements already
+  follow.
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- 598ac56: Published type declarations no longer import `svelte`, which a host without
+  Svelte cannot resolve: under `skipLibCheck: false` its type-check failed with
+  TS2307.
+  
+  The section-player debugger and TTS settings panels, `tool-answer-eliminator`,
+  the inline calculators and `tool-tts-inline` now declare nothing from their root
+  entry, because importing one only registers its element. A TypeScript import of
+  the Svelte component that entry default-exports no longer type-checks.
+  `section-player-tools-shared` and `tool-calculator-shared` declare their
+  exported components without Svelte.
+- 22bcd83: TTS tool settings accept `headers` and `assetOrigins` and pass them to
+  `ServerTTSProvider`. `pie-tool-tts-inline` fires `pie-tool-active-change` only
+  when its active state changes. Answer-eliminator toggles carry
+  `aria-pressed="false"` from creation. The TTS settings panel uses the shared
+  focus trap, so Tab order reaches controls inside a provider's shadow root and
+  closing the panel returns focus to an opener inside one.
+  `@pie-players/pie-players-shared/pie/tag-names` exports `parseVersionedTagName`.
+- b2476be: These packages no longer declare dependencies that their builds inline or never
+  import, so installing them installs fewer packages. A host that imports one of
+  those packages itself, such as `@pie-players/pie-theme`'s stylesheets, declares
+  it in its own `package.json`.
+
 ## 0.3.73
 
 ### Patch Changes

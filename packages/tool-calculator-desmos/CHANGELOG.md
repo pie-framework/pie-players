@@ -1,5 +1,24 @@
 # @pie-players/pie-tool-calculator
 
+## 0.3.74
+
+### Patch Changes
+
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- b2476be: These packages no longer declare dependencies that their builds inline or never
+  import, so installing them installs fewer packages. A host that imports one of
+  those packages itself, such as `@pie-players/pie-theme`'s stylesheets, declares
+  it in its own `package.json`.
+- Updated dependencies [8b24361]
+- Updated dependencies [c4bfe09]
+- Updated dependencies [799b592]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [8e13d3d]
+- Updated dependencies [598ac56]
+  - @pie-players/pie-tool-calculator-shared@0.3.74
+  - @pie-players/pie-calculator@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

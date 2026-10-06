@@ -1,5 +1,48 @@
 # @pie-players/pie-theme
 
+## 0.3.74
+
+### Patch Changes
+
+- 8b24361: The players install no global content stylesheet when the host already loads
+  its own copy, scoped or not, and remove theirs when a host copy arrives after
+  them. `<html data-pie-content-styles="host">` still opts out explicitly.
+- 2127eaa: `components.css` rules keyed on KDS classes, MathJax output or legacy content
+  classes such as `.frac` and `.noprint` apply document-wide again, so authored
+  markup an element portals to `<body>`, such as an inline-dropdown's choices,
+  keeps its KDS fractions and MathJax glyph fixes. Bare tag and framework-class
+  rules stay inside `[data-pie-content]`.
+- 549de08: `components.css` styles authored content inside a `[data-pie-content]` element
+  only, which `pie-item-player` and `pie-print` set on the root they render into.
+  Its bare `h1`–`h6`, `table`, `th`, `.table` and `.center` rules no longer
+  restyle the host page. A host that renders authored markup outside a player
+  adds `data-pie-content` to that container to keep the styles there. A host
+  copy confined with `@scope (…)` keeps working when its scope root contains the
+  player.
+- 549de08: `pie-item-player`, `pie-item-player-session-debugger` and `pie-theme` are in
+  `HTMLElementTagNameMap`, so `document.createElement` returns them typed.
+- 36203fd: Separate the select-text hover fill (`--pie-blue-grey-300`) from the page. It
+  sat at 1.19:1 to 2.82:1 against `--pie-background` across the base themes and
+  built-in schemes, and at 1.03:1 (`night`) to 1.37:1 (`aqua`) under the DaisyUI
+  provider, so a hovered token was indistinguishable from its neighbours.
+  
+  The fill keeps the page's own ink, so it has to clear 3:1 against the page and
+  leave 4.5:1 for the text on it, which together need 13.5:1 of text on the page.
+  Both base themes and Black on White, White on Black, Rose on Green, Yellow on
+  Blue and Black on Rose now clear 3:1. Light Gray on Dark Gray, Grey on Light
+  Grey, Purple on Light Green, Black on Violet and Yellow on Navy are under 13.5:1,
+  so their fill moves as far from the page as 4.5:1 text allows. The DaisyUI
+  provider corrects `base-200` the same way, measured per theme.
+  
+  The contract adds a `selectable hover text` relationship (`--pie-text` on
+  `--pie-blue-grey-300`, 4.5:1). A registered palette that changes `--pie-text`
+  without also supplying `--pie-blue-grey-300` now gets a contrast warning for it,
+  because the base fill is chosen for the base ink.
+- 549de08: Every copy of `@pie-players/pie-theme` on a page shares one provider registry,
+  on `window.PIE_THEME_PROVIDERS`, so `<pie-theme>` sees providers registered
+  through a copy other than the one that defined it. Copies before this release
+  keep a registry of their own.
+
 ## 0.3.73
 
 No changes in this release.

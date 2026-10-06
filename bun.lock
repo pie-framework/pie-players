@@ -437,7 +437,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@happy-dom/global-registrator": "^20.14.5",
-        "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149",
+        "@pie-element/shared-math-rendering-mathjax": "0.1.2",
         "@playwright/test": "^1.63.0",
         "@types/semver": "^7.8.0",
         "es-module-shims": "^2.8.4",
@@ -1466,7 +1466,7 @@
 
     "@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261005190856", "", {}, "sha512-cM+wAJGqS1uUMQ1DkiUJ5d/n2/mW1GCjFTxjqWTsbTNCQeUTqlHMKbcz3QoV944ke6AYM9t2Dz+q2p1DQ0v0FQ=="],
 
-    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2", "", {}, "sha512-zxDXCYn214h/VyaEdW5oPFGyoYhfE+bfyQy4awaoCuRDlYUhVuEU4f16RtnmW86uvUxAquc65gG6m1QH6t9lZw=="],
 
     "@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.1.2-next.20261002215153", "", {}, "sha512-PdeNv6XRTF2eticQ99xSr6ENKr/sNKEzaBnzd+Pq3CEuKoTLb8wUkVkJeRNtnC3c9zi+ZQj9/PJRqN5AhnRarg=="],
 
@@ -3400,9 +3400,69 @@
 
     "@oclif/plugin-warn-if-update-available/@oclif/core": ["@oclif/core@5.0.0", "", { "dependencies": { "ansi-escapes": "^4.3.2", "ansis": "^3.17.0", "clean-stack": "^3.0.1", "cli-spinners": "^2.9.2", "debug": "^4.4.3", "ejs": "^6", "get-package-type": "^0.1.0", "indent-string": "^4.0.0", "lilconfig": "^3.1.3", "minimatch": "^10.2.5", "semver": "^7.8.1", "string-width": "^4.2.3", "supports-color": "^8", "tinyglobby": "^0.2.17", "widest-line": "^3.1.0", "wordwrap": "^1.0.0", "wrap-ansi": "^7.0.0", "wsl-utils": "^0.4.0" } }, "sha512-24ZsN528VButCtvqjBoHw7cEpqXZZILH7Zp0d8oFKrWbqU2BqYrxLd5aGU8LyqRev7CCjAHg+/m1Bewz4V7AmQ=="],
 
+    "@pie-element/categorize/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/drag-in-the-blank/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/drawing-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/explicit-constructed-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/extended-text-entry/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/fraction-model/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/graphing/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/graphing-solution-set/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/hotspot/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/image-cloze-association/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/inline-dropdown/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/likert/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/match/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/match-list/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/math-inline/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/math-templated/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/matrix/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/multi-trait-rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/multiple-choice/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/number-line/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/passage/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/placement-ordering/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-element/select-text/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
     "@pie-framework/math-validation/mathjs": ["mathjs@9.5.2", "", { "dependencies": { "@babel/runtime": "^7.15.4", "complex.js": "^2.0.15", "decimal.js": "^10.3.1", "escape-latex": "^1.2.0", "fraction.js": "^4.1.1", "javascript-natural-sort": "^0.7.1", "seedrandom": "^3.0.5", "tiny-emitter": "^2.1.0", "typed-function": "^2.0.0" }, "bin": { "mathjs": "bin/cli.js" } }, "sha512-c0erTq0GP503/Ch2OtDOAn50GIOsuxTMjmE00NI/vKJFSWrDaQHRjx6ai+16xYv70yBSnnpUgHZGNf9FR9IwmA=="],
 
+    "@pie-lib/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-lib/drag/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-lib/editable-html-tip-tap/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
     "@pie-lib/editable-html-tip-tap/react-jss": ["react-jss@8.6.1", "", { "dependencies": { "hoist-non-react-statics": "^2.5.0", "jss": "^9.7.0", "jss-preset-default": "^4.3.0", "prop-types": "^15.6.0", "theming": "^1.3.0" }, "peerDependencies": { "react": ">=0.13" } }, "sha512-SH6XrJDJkAphp602J14JTy3puB2Zxz1FkM3bKVE8wON+va99jnUTKWnzGECb3NfIn9JPR5vHykge7K3/A747xQ=="],
+
+    "@pie-lib/mask-markup/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
+    "@pie-lib/render-ui/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-players/section-demos/@pie-element/categorize": ["@pie-element/categorize@14.0.1-next.20261005143122", "", { "dependencies": { "@dnd-kit/core": "6.3.1", "@dnd-kit/modifiers": "9.0.0", "@emotion/react": "^11.14.0", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-configure-events": "0.1.2-next.20261002215153", "@pie-element/shared-controller-utils": "0.1.2-next.20261002215153", "@pie-element/shared-feedback": "0.1.2-next.20261002215153", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149", "@pie-element/shared-player-events": "0.1.2-next.20261002215153", "@pie-lib/categorize": "3.0.1-next.20261002233132", "@pie-lib/config-ui": "14.0.1-next.20261005143122", "@pie-lib/correct-answer-toggle": "5.0.1-next.20261005143122", "@pie-lib/drag": "5.0.1-next.20261005143122", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "@pie-lib/translator": "5.0.1-next.20261005075357", "debug": "^4.1.1", "prop-types": "^15.8.1", "react": "^18.2.0", "react-dom": "^18.2.0" } }, "sha512-DqrdG5ev7t4S52xp7cUMU61flQuAZxphEYOQQH2g/W+s1UQifsWQd0LrqLI+6qA5ZQMGERY2HMCRZ0KnAmlugA=="],
 
@@ -3662,6 +3722,8 @@
 
     "@pie-players/section-demos/@pie-element/categorize/@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261002215153", "", {}, "sha512-2+pixY0WW2SA0DbEPmNbgKYJCbLAznkOTTkNP9BKnWxpHZMcdT2/uQ2vAJv3oVD/M9VcLvJii8FqmFUjJRgQXw=="],
 
+    "@pie-players/section-demos/@pie-element/categorize/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
     "@pie-players/section-demos/@pie-element/categorize/@pie-lib/categorize": ["@pie-lib/categorize@3.0.1-next.20261002233132", "", { "dependencies": { "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "debug": "^4.1.1" } }, "sha512-4TqVCxem4UTbzwNfWqXRo25PvE4nci6qMuOsxu9KzRPZpyT+WWMq627oSREiCSmOd1d9tZ8UhuT+E3oA6HLoag=="],
 
     "@pie-players/section-demos/@pie-element/categorize/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "assert": "^1.4.1", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-kHGCyIP7wFgpIn3WBcnPfN0evph1Wy70dk9g+UfdQyeoNgMxy2H+I0E02tEQACgSPMGeJvrZ6W0zTqiju8v6cQ=="],
@@ -3675,6 +3737,8 @@
     "@pie-players/section-demos/@pie-element/categorize/@pie-lib/render-ui": ["@pie-lib/render-ui@8.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/translator": "5.0.1-next.20261005075357", "debug": "^4.1.1", "prop-types": "^15.7.2", "react-transition-group": "^4.4.5" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-+TOPQ8h3k2Cm7jJ4OGqYf1+AfI7hV7PdiPHUeAN3o1PYRFhdUWDPV6uraOJWwOvlmULYSnuSdgATaRhv7iXYpw=="],
 
     "@pie-players/section-demos/@pie-element/drag-in-the-blank/@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261002215153", "", {}, "sha512-2+pixY0WW2SA0DbEPmNbgKYJCbLAznkOTTkNP9BKnWxpHZMcdT2/uQ2vAJv3oVD/M9VcLvJii8FqmFUjJRgQXw=="],
+
+    "@pie-players/section-demos/@pie-element/drag-in-the-blank/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-players/section-demos/@pie-element/drag-in-the-blank/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "assert": "^1.4.1", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-kHGCyIP7wFgpIn3WBcnPfN0evph1Wy70dk9g+UfdQyeoNgMxy2H+I0E02tEQACgSPMGeJvrZ6W0zTqiju8v6cQ=="],
 
@@ -3696,6 +3760,8 @@
 
     "@pie-players/section-demos/@pie-element/hotspot/@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261002215153", "", {}, "sha512-2+pixY0WW2SA0DbEPmNbgKYJCbLAznkOTTkNP9BKnWxpHZMcdT2/uQ2vAJv3oVD/M9VcLvJii8FqmFUjJRgQXw=="],
 
+    "@pie-players/section-demos/@pie-element/hotspot/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
     "@pie-players/section-demos/@pie-element/hotspot/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "assert": "^1.4.1", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-kHGCyIP7wFgpIn3WBcnPfN0evph1Wy70dk9g+UfdQyeoNgMxy2H+I0E02tEQACgSPMGeJvrZ6W0zTqiju8v6cQ=="],
 
     "@pie-players/section-demos/@pie-element/hotspot/@pie-lib/correct-answer-toggle": ["@pie-lib/correct-answer-toggle@5.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "@pie-lib/translator": "5.0.1-next.20261005075357", "prop-types": "^15.6.2", "react-transition-group": "^4.4.5" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-Y9lO4JOfL8wtBrIK6uGb2w6dKo5GIkF8yVjBciJQ7Uu55nNQVDiUJT+1PJ+QMe2270Obr7M4TrBRge5IbQNjGA=="],
@@ -3705,6 +3771,8 @@
     "@pie-players/section-demos/@pie-element/hotspot/@pie-lib/render-ui": ["@pie-lib/render-ui@8.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/translator": "5.0.1-next.20261005075357", "debug": "^4.1.1", "prop-types": "^15.7.2", "react-transition-group": "^4.4.5" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-+TOPQ8h3k2Cm7jJ4OGqYf1+AfI7hV7PdiPHUeAN3o1PYRFhdUWDPV6uraOJWwOvlmULYSnuSdgATaRhv7iXYpw=="],
 
     "@pie-players/section-demos/@pie-element/image-cloze-association/@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261002215153", "", {}, "sha512-2+pixY0WW2SA0DbEPmNbgKYJCbLAznkOTTkNP9BKnWxpHZMcdT2/uQ2vAJv3oVD/M9VcLvJii8FqmFUjJRgQXw=="],
+
+    "@pie-players/section-demos/@pie-element/image-cloze-association/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-players/section-demos/@pie-element/image-cloze-association/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "assert": "^1.4.1", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-kHGCyIP7wFgpIn3WBcnPfN0evph1Wy70dk9g+UfdQyeoNgMxy2H+I0E02tEQACgSPMGeJvrZ6W0zTqiju8v6cQ=="],
 
@@ -3718,6 +3786,8 @@
 
     "@pie-players/section-demos/@pie-element/multiple-choice/@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261002215153", "", {}, "sha512-2+pixY0WW2SA0DbEPmNbgKYJCbLAznkOTTkNP9BKnWxpHZMcdT2/uQ2vAJv3oVD/M9VcLvJii8FqmFUjJRgQXw=="],
 
+    "@pie-players/section-demos/@pie-element/multiple-choice/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
+
     "@pie-players/section-demos/@pie-element/multiple-choice/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "assert": "^1.4.1", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-kHGCyIP7wFgpIn3WBcnPfN0evph1Wy70dk9g+UfdQyeoNgMxy2H+I0E02tEQACgSPMGeJvrZ6W0zTqiju8v6cQ=="],
 
     "@pie-players/section-demos/@pie-element/multiple-choice/@pie-lib/correct-answer-toggle": ["@pie-lib/correct-answer-toggle@5.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "@pie-lib/translator": "5.0.1-next.20261005075357", "prop-types": "^15.6.2", "react-transition-group": "^4.4.5" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-Y9lO4JOfL8wtBrIK6uGb2w6dKo5GIkF8yVjBciJQ7Uu55nNQVDiUJT+1PJ+QMe2270Obr7M4TrBRge5IbQNjGA=="],
@@ -3727,6 +3797,8 @@
     "@pie-players/section-demos/@pie-element/multiple-choice/@pie-lib/render-ui": ["@pie-lib/render-ui@8.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/translator": "5.0.1-next.20261005075357", "debug": "^4.1.1", "prop-types": "^15.7.2", "react-transition-group": "^4.4.5" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-+TOPQ8h3k2Cm7jJ4OGqYf1+AfI7hV7PdiPHUeAN3o1PYRFhdUWDPV6uraOJWwOvlmULYSnuSdgATaRhv7iXYpw=="],
 
     "@pie-players/section-demos/@pie-element/passage/@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.2-next.20261002215153", "", {}, "sha512-2+pixY0WW2SA0DbEPmNbgKYJCbLAznkOTTkNP9BKnWxpHZMcdT2/uQ2vAJv3oVD/M9VcLvJii8FqmFUjJRgQXw=="],
+
+    "@pie-players/section-demos/@pie-element/passage/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-players/section-demos/@pie-element/passage/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.1-next.20261005143122", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-lib/editable-html-tip-tap": "3.0.1-next.20261005143122", "@pie-lib/icons": "5.0.1-next.20261004165705", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "assert": "^1.4.1", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-kHGCyIP7wFgpIn3WBcnPfN0evph1Wy70dk9g+UfdQyeoNgMxy2H+I0E02tEQACgSPMGeJvrZ6W0zTqiju8v6cQ=="],
 
@@ -3937,6 +4009,8 @@
     "@pie-players/section-demos/@pie-element/ebsr/@pie-lib/config-ui/@pie-lib/editable-html-tip-tap": ["@pie-lib/editable-html-tip-tap@3.0.1-next.20261005143122", "", { "dependencies": { "@dnd-kit/core": "6.3.1", "@dnd-kit/modifiers": "9.0.0", "@dnd-kit/utilities": "3.2.2", "@floating-ui/dom": "^1.7.6", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149", "@pie-lib/drag": "5.0.1-next.20261005143122", "@pie-lib/math-input": "9.0.1-next.20261005143122", "@pie-lib/math-toolbar": "4.0.1-next.20261005143122", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "@pie-lib/translator": "5.0.1-next.20261005075357", "@tiptap/core": "3.31.3", "@tiptap/extension-bubble-menu": "3.31.3", "@tiptap/extension-character-count": "3.31.3", "@tiptap/extension-color": "3.31.3", "@tiptap/extension-floating-menu": "3.31.3", "@tiptap/extension-image": "3.31.3", "@tiptap/extension-list": "3.31.3", "@tiptap/extension-list-item": "3.31.3", "@tiptap/extension-placeholder": "3.31.3", "@tiptap/extension-subscript": "3.31.3", "@tiptap/extension-superscript": "3.31.3", "@tiptap/extension-table": "3.31.3", "@tiptap/extension-table-cell": "3.31.3", "@tiptap/extension-table-header": "3.31.3", "@tiptap/extension-table-row": "3.31.3", "@tiptap/extension-text-align": "3.31.3", "@tiptap/extension-text-style": "3.31.3", "@tiptap/extensions": "3.31.3", "@tiptap/pm": "3.31.3", "@tiptap/react": "3.31.3", "@tiptap/starter-kit": "3.31.3", "@types/react": "^18.2.0", "@types/react-dom": "^18.2.0", "clsx": "^2.1.1", "debug": "^4.1.1", "immutable": "^4.0.0-rc.12", "keycode": "^2.2.0", "prop-types": "^15.6.2", "prosemirror-state": "^1.4.4", "react-attr-converter": "^0.3.1", "react-jss": "^8.6.1", "react-portal": "^4.2.0", "tippy.js": "latest", "to-style": "^1.3.3" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-UV1cRXfGftzAH2UpOtpB+LgrMweZDXQmOMlexd5XN9emR2TsumpoB6z/jbMkEaCf+78NeGBOEjoOE+7tluC4Hw=="],
 
     "@pie-players/section-demos/@pie-element/ebsr/@pie-lib/config-ui/assert": ["assert@1.5.1", "", { "dependencies": { "object.assign": "^4.1.4", "util": "^0.10.4" } }, "sha512-zzw1uCAgLbsKwBfFc8CX78DDg+xZeBksSO3vwVIDDN5i94eOrPsSSyiVhmsSABFDM/OcpE2aagCat9dnWQLG1A=="],
+
+    "@pie-players/section-demos/@pie-element/ebsr/@pie-lib/render-ui/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-players/section-demos/@pie-element/hotspot/@pie-lib/config-ui/assert": ["assert@1.5.1", "", { "dependencies": { "object.assign": "^4.1.4", "util": "^0.10.4" } }, "sha512-zzw1uCAgLbsKwBfFc8CX78DDg+xZeBksSO3vwVIDDN5i94eOrPsSSyiVhmsSABFDM/OcpE2aagCat9dnWQLG1A=="],
 
@@ -4253,6 +4327,8 @@
     "@pie-players/section-demos/@pie-element/drag-in-the-blank/@pie-lib/editable-html-tip-tap/react-jss/jss-preset-default": ["jss-preset-default@4.5.0", "", { "dependencies": { "jss-camel-case": "^6.1.0", "jss-compose": "^5.0.0", "jss-default-unit": "^8.0.2", "jss-expand": "^5.3.0", "jss-extend": "^6.2.0", "jss-global": "^3.0.0", "jss-nested": "^6.0.1", "jss-props-sort": "^6.0.0", "jss-template": "^1.0.1", "jss-vendor-prefixer": "^7.0.0" }, "peerDependencies": { "jss": "^9.7.0" } }, "sha512-qZbpRVtHT7hBPpZEBPFfafZKWmq3tA/An5RNqywDsZQGrlinIF/mGD9lmj6jGqu8GrED2SMHZ3pPKLmjCZoiaQ=="],
 
     "@pie-players/section-demos/@pie-element/drag-in-the-blank/@pie-lib/editable-html-tip-tap/react-jss/theming": ["theming@1.3.0", "", { "dependencies": { "brcast": "^3.0.1", "is-function": "^1.0.1", "is-plain-object": "^2.0.1", "prop-types": "^15.5.8" }, "peerDependencies": { "react": ">=0.15" } }, "sha512-ya5Ef7XDGbTPBv5ENTwrwkPUexrlPeiAg/EI9kdlUAZhNlRbCdhMKRgjNX1IcmsmiPcqDQZE6BpSaH+cr31FKw=="],
+
+    "@pie-players/section-demos/@pie-element/ebsr/@pie-lib/config-ui/@pie-lib/editable-html-tip-tap/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.2-next.20261003161149", "", {}, "sha512-QHiNIHTfiBPN/Cy4Torxo93x1e5/jt0obQDRA/6dDfe23WRLDN/WTA8WaScGLWszu4yk38AS8xGckiFbW28OXg=="],
 
     "@pie-players/section-demos/@pie-element/ebsr/@pie-lib/config-ui/@pie-lib/editable-html-tip-tap/@pie-lib/drag": ["@pie-lib/drag@5.0.1-next.20261005143122", "", { "dependencies": { "@dnd-kit/core": "6.3.1", "@dnd-kit/sortable": "10.0.0", "@dnd-kit/utilities": "3.2.2", "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.2-next.20261002215153", "@pie-element/shared-math-rendering-mathjax": "0.1.2-next.20261003161149", "@pie-lib/render-ui": "8.0.1-next.20261005143122", "clsx": "^2.1.1", "prop-types": "^15.7.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-Vbjr2hmTyhGfn+kPT81tjSdjFrrzc+LEoBTMS70cpvPwRMV+TjQhFnj07vHkZJ6CZRUSbGFwy/9kV6QZIfzLrg=="],
 

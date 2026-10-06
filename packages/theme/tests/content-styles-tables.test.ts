@@ -48,4 +48,13 @@ describe("Bootstrap table classes", () => {
 			);
 		}
 	});
+
+	test("size a Learnosity auto-width table to its content", () => {
+		const autoWidth = rules.find((rule) =>
+			rule.selectors.some((selector) =>
+				selector.includes(".table.lrn_width_auto"),
+			),
+		);
+		expect(autoWidth?.body).toBe("width: auto;");
+	});
 });

@@ -375,7 +375,9 @@ stylesheet as text and installs it once per document at import time, unless the
 host already loads a copy; see
 [content styles](../item-player/README.md#content-styles) for host ownership.
 Its rules apply inside a `[data-pie-content]` element only, the root each player
-renders content into.
+renders content into, except rules keyed on KDS or MathJax names or legacy
+content classes, which stay document-wide so authored markup an element portals
+to `<body>` keeps them.
 
 Note for players adding this: a plain `import "…/components.css"` does **not**
 work in these packages' library builds. Vite extracts it to an unreferenced

@@ -56,6 +56,16 @@ change being required. The pie-theme provider registry became page-wide; each
 host loads one copy, so none sees a difference. Row verification dates are
 unchanged.
 
+On 2026-10-05 the rules whose selector requires a KDS class, MathJax output or a
+legacy content class went back to applying document-wide, so authored markup an
+element portals to `<body>`, such as inline-dropdown choices, keeps them. Hosts A
+and P get those rules on portaled menus again. Host R's own authored-markup
+components get them again on any page where a player has installed the sheet,
+with or without `data-pie-content`; its `.table` and heading markup stays
+outside the sheet. Hosts V and M are unchanged: their copies sit inside `@scope`,
+which still bounds every rule to the scope root. Row verification dates are
+unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

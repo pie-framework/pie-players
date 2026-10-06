@@ -44,11 +44,13 @@ test.beforeAll(async () => {
 });
 
 // `.item-content` is the host's wrapper around a player; `[data-pie-content]` is
-// the root the player renders content into.
+// the root the player renders content into. `#portal` stands for the menu an
+// element portals to <body>, holding an authored choice.
 const PAGE = `<!doctype html><html><head></head><body>
 <table id="host-table"><tr><td>Host</td></tr></table>
 <h5 id="host-h5">Host heading</h5>
 <div class="item-content"><div data-pie-content><h5 id="item-h5">Item heading</h5></div></div>
+<div id="portal"><span class="kds-nowrap" id="portal-kds">a choice</span><h5 id="portal-h5">Portal heading</h5></div>
 </body></html>`;
 
 async function load(page: Page, { optOut = false } = {}) {
@@ -106,6 +108,25 @@ test.describe("content stylesheet ownership (real browser)", () => {
 		expect(result.installed).toBe(1);
 		expect(result.hostTableCollapse).toBe("separate");
 		expect(result.itemH5Size).not.toBe(result.hostH5Size);
+	});
+
+	test("styles authored markup an element portals outside the player", async ({
+		page,
+	}) => {
+		await load(page);
+		expect(await install(page)).toBe("installed");
+
+		const portal = await page.evaluate(() => ({
+			kdsWhiteSpace: getComputedStyle(
+				document.getElementById("portal-kds") as HTMLElement,
+			).whiteSpace,
+			h5Size: getComputedStyle(
+				document.getElementById("portal-h5") as HTMLElement,
+			).fontSize,
+		}));
+		const result = await state(page);
+		expect(portal.kdsWhiteSpace).toBe("nowrap");
+		expect(portal.h5Size).toBe(result.hostH5Size);
 	});
 
 	test("stands down when the host's scoped copy is already present", async ({

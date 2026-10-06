@@ -73,8 +73,13 @@ it showed bare under the legacy player; it now shows them bare again, with no
 rule above the first row and no cell padding pushing tiles apart. Bordered data
 tables keep the grid. Hosts V and M see the same once their copies come from a
 release carrying the change; Host A gets it through the player's copy. A host
-whose content carries none of these classes sees no difference. Row verification
-dates are unchanged.
+whose content carries none of these classes sees no difference. The same day the
+`.pie-image-scroll` wrapper went from `display: block` to `inline-block`: every
+host rendering content through a player had each image on a line of its own,
+which stacked rows of images into columns and added a line to every image
+choice, and gets them back in the line. An image an element lays out as a
+block gets a block wrapper, carrying `pie-image-scroll-block`, so no gap opens
+below it. Row verification dates are unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes

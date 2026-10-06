@@ -1,5 +1,364 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.74
+
+### Patch Changes
+
+- 7361295: The answer eliminator is offered on multiple-choice items authored with the
+  `pie-element-*` tag, a versioned runtime tag, or any tag the item's `elements`
+  map binds to a choice element package.
+- 040299f: Read-aloud from an authored `spoken` catalog card now highlights MathJax-typeset
+  math token by token, as it already did for native MathML and generated speech.
+  Before, each spoken math word highlighted a blank spot in the text before the
+  equation. Equations whose layout cannot be tracked per token (fractions,
+  radicals, tables) highlight as one block.
+- 8b24361: Boolean attributes on the custom elements read `"false"`, `"0"`, `"off"` and
+  `"no"` as false instead of treating any present value as true, so
+  `trust-markup="false"` no longer skips sanitization.
+- 498f937: The calculator engines `@pie-players/pie-calculator-cortex`, `-desmos` and
+  `-geogebra` are now dependencies of `@pie-players/pie-default-tool-loaders`,
+  which holds their adapters, and no longer optional peers of the toolkit. A
+  webpack 5 host that installed only the section player failed its build on the
+  three missing engines, and a Vite host shipped modules that threw when a
+  calculator opened. `CortexToolProvider`, `DesmosToolProvider` and
+  `GeoGebraToolProvider` left the toolkit's `./tools/internal` subpath, which now
+  exports the `ToolProviderApi` and `ToolProviderCapabilities` types instead. A
+  host that installs `@pie-players/pie-default-tool-loaders`, directly or through
+  the section player, now installs all three engine packages; one that installed
+  them itself can drop them, and an alias that stubs the Cortex engine still
+  applies.
+- 2825bf5: `tools.providers.calculator` is now typed as `CalculatorToolProviderConfig`, closed to the keys the calculator reads, so a misplaced key such as a top-level `authFetcher` fails to compile instead of being ignored. The key belongs at `provider.runtime.authFetcher`.
+- 3e88cac: A `ToolkitCoordinator` constructed without `toolRegistry` adopts the registry of the toolkit it is bound to, such as the section player's, so its config is validated and its tool providers register: server text-to-speech and a placed calculator work without passing the registry to the coordinator. A registry passed at construction is never replaced, and the missing-registry warnings appear only once a coordinator is known to have none.
+- 17afe85: A coordinator built without `toolRegistry` prints `tools.registryUnavailable`
+  once, instead of again on every `updateToolConfig()` and
+  `updateToolsPlacement()`. A provider descriptor that throws is reported as a
+  `provider-register` framework error with a console warning, where it was an
+  unhandled rejection. `updateToolConfig()` registers the provider a tool's new
+  config names, and unregisters the previous one when the provider id changed, as
+  a text-to-speech reconfigure does.
+- a3e721c: The item toolbar and the read-aloud button add Roboto and the `/_fa-pro/`
+  FontAwesome Pro stylesheets only when they render NDS icon buttons
+  (`ndsIcons: true`), and request each once per page: a stylesheet that fails to
+  load is no longer copied into every shadow root. Without `ndsIcons`, on a page
+  that links no FontAwesome, the toolbar adds no stylesheet and the read-aloud
+  button adds FA Free alone.
+- 435bb29: A coordinator built without `toolRegistry` registers no tool providers, and its
+  console now says so. The registry-unavailable validation warning names that
+  consequence; a text-to-speech config with a non-browser backend warns once
+  when, with no `tts` provider registered, it falls back to browser speech; and
+  the section player warns once per placed tool whose provider a host-supplied
+  `runtime.coordinator` has not registered. Each warning names
+  `createPackagedToolRegistry()` as the remedy. `./tools/internal` exports
+  `resolveToolProviderId`.
+- 9d51813: Add `@pie-players/pie-players-shared/media`, a side-effect-free entry holding
+  the media validation helpers: `isSafeMediaSrc`, `normalizeMediaSources`,
+  `normalizeMediaFragment`, `isUnsupportedMediaAssetVersion`,
+  `SUPPORTED_MEDIA_ASSET_VERSION`, `applyMediaFragment`, `enforceMediaFragment`
+  and `trimmedOrUndefined`. A PIE element can now validate authored media URLs
+  without importing the assessment toolkit, whose root entry brings TTS and the
+  calculator with it. The toolkit root re-exports the same names from the new
+  entry.
+- 2084d88: `ToolkitCoordinatorApi` no longer declares `config`, so code typed against the
+  interface that reads `config.tools.providers` stops compiling; call
+  `getToolConfig(toolId)` instead. `ToolkitCoordinator` keeps its public `config`.
+- cd183fa: Removes public surface that no package or known host uses: from the
+  players-shared root, the player-initializer helpers (`initializePiePlayer`,
+  `fetchItemData` and the rest of that module, which also left `./pie`), the
+  debug-panel persistence helpers and `QuestionEntity`; from its `./types`, the
+  CMS-era types (`QuestionEntity`, sessions and scores, organizations and users,
+  sanctioned versions, standards and blueprints); from the assessment toolkit, `loadAssessmentSession`,
+  `saveAssessmentSession` and `getAssessmentSessionStorageKey`; and the unused
+  `item-name` attribute of `<pie-item-player-session-debugger>`. The section
+  instrumentation map drops `pie-section-session-changed` and
+  `pie-section-composition-changed`, which never fired. `PieController.model()`
+  now declares the `updateSession` argument the player passes, typed as
+  `PieUpdateSession`.
+- a38056b: Unused exports are removed. The toolkit's `./tools/client` subpath keeps only the
+  calculator types: the legacy tool, accommodation, item-variant and
+  response-component types, the `ToolCategory` enum and `responseDiscovery` are
+  gone, and the `ToolCoordinator` and `HighlightCoordinator` constructors take no
+  argument. `pie-players-shared` drops `isPassageEntity`, `isPrerelease`,
+  `formatVersion`, `SessionChangedEvent`, `SessionChangedDetail`, `LoadResponse`,
+  the `Tracker` types, `BUILDER_ORIGIN_URL`, `renderMath`, the sanitizer test
+  resets and the renderer argument of `initializeMathRendering`; `setMathRenderer`
+  is the way to supply a renderer. The item player drops the `BackendScope` and
+  `BackendEventDetail` types.
+- 771def2: A commit is now marked with `sessionCommitReason` on `item-session-changed`, on
+  the toolkit's `session-changed`, and on the section controller's
+  `item-session-data-changed` and `item-session-meta-changed`, and the
+  controller's two events carry `sectionId`. A commit at navigation reports the
+  item being left, so a host that sets its current item from these events should
+  leave that state alone on a commit and still persist its session.
+- 8a8b932: An item in a section is complete when every element of it that has reported its
+  completion is complete; the element that reported last used to decide.
+  `<pie-item-player>`'s `session-changed` carries the announcing element's model
+  id as `elementId`, and the section controller's `item-session-data-changed` and
+  `item-session-meta-changed` carry it too.
+- 7bc44f3: A listener on a section-player layout element now receives each toolkit event
+  once: `session-changed`, `composition-changed`, `runtime-owned` and
+  `runtime-inherited` used to arrive three times and `framework-error` twice.
+  Errors reported by a coordinator passed as `runtime.coordinator` now also
+  reach the layout's `framework-error` event and
+  `onFrameworkError`, without the toolkit's initialization banner. The runtime's
+  internal registration and session events stop at the toolkit, and an answer no
+  longer re-registers every item shell. A second item shell's identical response
+  is no longer dropped; apart from that response, `document` listeners receive
+  what they did before.
+- ec632eb: The section player's pre-warm now loads and asserts the view its item players
+  render. The `preloaded` pre-warm aligns authored element versions to the page's
+  registrations before asserting them, as the item player does, and a preloaded
+  author section asserts the `-config` tags; the ESM pre-warm honours
+  `loaderOptions.view`, `loaderOptions.loadControllers` and author `mode`; and a
+  hosted IIFE player's pre-warm skips controllers. A failed `preloaded` pre-warm
+  reports an `element-preload` framework error, and a rejected pre-warm shows an
+  error in place of the loading message. The `interactive` stage and
+  `pie-loading-complete` wait for the pre-warm, and a partial `policies` object
+  takes defaults for its unset fields. Both players share
+  `alignPreloadedElementVersions` and `resolveLoadControllers`, exported from
+  `@pie-players/pie-players-shared`.
+- 7c4b13d: A section player given a new `section-id` and then a new `section` on the same
+  element now renders the new section. Under the bundled Svelte 5.57.0 the player
+  stopped updating after that sequence and kept showing the previous section's
+  items, while `pie-stage-change` reported the new section as composed. The
+  packages now bundle Svelte 5.57.1, which fixes it with
+  https://github.com/sveltejs/svelte/pull/18508.
+- 3ddbe89: A rejected element warmup, which leaves a section's items unmounted, is now also
+  reported once as the section controller's `section-error`, with source
+  `section-runtime`, next to the `element-preload` framework error.
+- a8c0d7f: Reading a selection aloud no longer splits it mid-word at structural boundaries elsewhere in the passage, and word highlights stay aligned after a paragraph break inside the selection.
+- 8f4b1da: Reading a selection aloud highlights its words and sentences from the first use; before, nothing was highlighted until the inline read-aloud had run, and the sentence highlight then landed at the start of the passage.
+- 8b24361: The custom TTS transport sends the language as `langId` beside `lang_id`, so
+  servers that bind camelCase JSON receive it. A new `credentials` setting on the
+  server TTS provider sets the fetch credentials mode, letting a cross-origin TTS
+  endpoint authenticate by cookie.
+- 5a0bcb1: The `pie-tool-*` bundles import the toolkit and `pie-players-shared` from the
+  host's `node_modules` instead of inlining them, and the section player imports
+  `@pie-players/pie-item-player`, so a page with both players defines one
+  `pie-item-player` and fetches one MathJax module. The toolkit's `sideEffects`
+  lists only its custom elements.
+  
+  The section player's `./contracts/*` and `./policies` subpaths register no
+  element and import in Node. Each exports only its own module's names, so import
+  anything else from the package root. `pie-players-shared` drops
+  `./server/npm-registry` and `./server/npm-auth-env`.
+  `pie-tool-calculator-shared`'s root entry no longer exports the calculator
+  shells: it registers `<pie-tool-calculator>`, as `./calculator-element` does,
+  and the package no longer depends on `svelte`. `speech-rule-engine` is pinned to
+  `5.0.0-rc.4`, whose locale tables the toolkit imports by file path, and math
+  rendering imports `@pie-lib/math-rendering-module/module/index.js`, which
+  webpack's fully-specified ESM resolution finds.
+- 0bd34af: The toolkit's math speech no longer fetches speech-rule-engine's locale tables
+  from jsDelivr. In a browser the toolkit hands SRE a loader over the `base`, `en`
+  and `es` tables from `speech-rule-engine/lib/mathmaps`, which the host's bundler
+  emits as lazy chunks served from its own origin. Math in any other locale is
+  spoken with English words, and SRE logs `Unable to load locale`, unless
+  `mathSpeech.engineOptions.json` or `.custom` names a source for its table.
+  Either option now also covers `base` and `en`, the two tables SRE loads at
+  start-up, which had come from jsDelivr regardless. The MathJax 3 renderer that
+  IIFE and preloaded elements use still loads the tables of its own SRE copy from
+  jsDelivr.
+  
+  The toolkit and the section player import `speech-rule-engine` from the host's
+  `node_modules` and share one copy. A build that inlines every dynamic import
+  into one file gains the three tables, about 0.8 MB.
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- 799b592: `<pie-tool-text-to-speech>` speaks the selection. It reads through the
+  `ttsService` property as the host configured it, where it used to re-initialize
+  that service with the browser provider on mount and then fail on every Play.
+  Hosts pass an initialized service. The speed slider sets the service's playback
+  rate, the controls reset when speech ends or fails, and removing the element
+  removes its selection listener. `TtsServiceApi` declares the optional
+  `hasSpokenAlternate` the panel already calls.
+- 976c4d3: Dragging the line reader, the text-to-speech panel or a floating tool shell
+  now ends when the browser cancels the touch, as iPadOS does when it takes a
+  touch over for a system gesture, and a second finger landing mid-drag no
+  longer moves the panel. The text-to-speech panel also claims touch drags, which
+  previously scrolled the page instead.
+- 45bec78: `ToolProviderRegistry.getProvider` no longer logs to the console on every call.
+- 6e6f883: Toolbars and tools now follow the toolkit's coordinator when it changes after
+  they connect. They kept using the first coordinator they received.
+- 6cc239a: A failed `toolContextResolvers` update on `<pie-assessment-toolkit>` now
+  reports its `framework-error` with `source: "pie-assessment-toolkit"`; the
+  source was `undefined`.
+- 05845a3: The custom-element bundles ship with declarations, so a workspace host that type-checks JavaScript no longer checks the minified toolkit bundles its element imports resolve to.
+- 2cd3d03: A section player given its `runtime` a tick after mount now applies that runtime's
+  tools and assessment id. A change to those inputs after the section has
+  initialized is reported once in the console, since the coordinator keeps the
+  values it was built with.
+- 3be570a: The coordinator a toolkit or section player builds for itself no longer warns
+  that feature policy was asked with no assessment bound, unless PNP enforcement is
+  `on`.
+- b7c9382: `createToolsConfig` and `ToolkitCoordinator` take `tools` as the new `ToolsConfigInput`, where each placement level is optional, matching the normalizer, which fills a missing level with its default. A config naming only `item` placement no longer needs empty `section` and `passage` arrays to compile. `coordinator.config.tools` is typed as that input, so its placement levels read as possibly undefined.
+- a0e15b9: The toolkit's custom elements, which the section player bundles, now ship
+  production Svelte. Players no longer patch `Array.prototype` on the host page or
+  run Svelte's dev-only checks.
+- 60077c2: Adds `createToolCoordinatorRegistration`, which keeps a tool registered with whichever coordinator its runtime context currently carries.
+- 22bcd83: TTS tool settings accept `headers` and `assetOrigins` and pass them to
+  `ServerTTSProvider`. `pie-tool-tts-inline` fires `pie-tool-active-change` only
+  when its active state changes. Answer-eliminator toggles carry
+  `aria-pressed="false"` from creation. The TTS settings panel uses the shared
+  focus trap, so Tab order reaches controls inside a provider's shadow root and
+  closing the panel returns focus to an opener inside one.
+  `@pie-players/pie-players-shared/pie/tag-names` exports `parseVersionedTagName`.
+- 326f382: What a TTS `provider.runtime.authFetcher` returns reaches `ServerTTSProvider`:
+  its `authToken` or `headers` go with every synthesis request, where before they
+  were dropped. Under `includeAuthOnAssetFetch` the audio fetch carries the
+  synthesis request's `Authorization` header, as the speech-mark fetch does; it
+  read only `authToken` before.
+  
+  For a server backend, the tool's registered config and the authFetcher's result
+  now win over the config passed to `ensureTTSReady(config)`, and a `voice` or
+  `pitch` the registration leaves unset clears the argument's. A host that changes
+  TTS settings at runtime calls `updateToolConfig` before `ensureTTSReady`.
+- 4369286: `@pie-players/tts-client-server` is now a dependency of
+  `@pie-players/pie-default-tool-loaders`, whose TTS registration imports it, and
+  no longer an optional peer of the toolkit. A webpack host that installed the
+  toolkit without the adapter failed to build, because webpack resolves the
+  toolkit's `import()` of it at build time. `TTSToolProvider` now receives the
+  adapter's provider class through a `loadServerProvider` option, and a server
+  backend constructed without one fails to initialize. A host that installed the
+  adapter only for the toolkit can drop it.
+- 3d8bb9a: `getToolConfig("textToSpeech")` now returns `TTSToolConfig | null` on
+  `ToolkitCoordinator` and `ToolkitCoordinatorApi`, and `ToolkitCoordinatorApi`
+  gains the `textToSpeech` overload of `updateToolConfig` the class already had.
+  `TTSToolConfig.provider` admits the runtime provider object the tools config
+  accepts as well as the `"polly" | "google" | "custom"` id, and
+  `resolveTTSRuntimeSettings` accepts the `textToSpeech` tools-config entry. Code
+  that reads `provider.runtime` off `getToolConfig("textToSpeech")` has to narrow
+  `provider` to an object first.
+- e25ebc5: `buildRuntimeTTSConfig` passes the host's `providerOptions` through to the TTS
+  provider; the fields derived from the settings, such as `locale` and the Polly
+  engine, win over them. The host's object was dropped before.
+- 3a01d9b: `resolveTTSRuntimeSettings` keeps `provider` only when it is a provider id. A
+  runtime provider object there, the form that carries `provider.runtime.authFetcher`,
+  reached `ServerTTSProvider` as its provider id, so a `backend: "server"` config
+  without `serverProvider` failed endpoint validation before sending a request and
+  fell back to browser TTS. `TTSToolConfig.authFetcher` is removed: nothing read it,
+  and credentials reach the provider through `provider.runtime.authFetcher`.
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [8b24361]
+- Updated dependencies [377146f]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [05845a3]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [fe5557f]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [ec632eb]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [22bcd83]
+  - @pie-players/pie-players-shared@0.3.74
+  - @pie-players/pie-context@0.3.74
+  - @pie-players/pie-calculator@0.3.74
+  - @pie-players/pie-tts@0.3.74
+
+## 0.3.73
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/tts-client-server@0.3.73
+  - @pie-players/pie-calculator@0.3.73
+  - @pie-players/pie-calculator-cortex@0.3.73
+  - @pie-players/pie-calculator-desmos@0.3.73
+  - @pie-players/pie-calculator-geogebra@0.3.73
+  - @pie-players/pie-context@0.3.73
+  - @pie-players/pie-tts@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.72
+  - @pie-players/pie-calculator-cortex@0.3.72
+  - @pie-players/pie-calculator-desmos@0.3.72
+  - @pie-players/pie-calculator-geogebra@0.3.72
+  - @pie-players/pie-context@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+  - @pie-players/pie-tts@0.3.72
+  - @pie-players/tts-client-server@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- 181b124: Resolve Speech Rule Engine's XML dependency to `@xmldom/xmldom` 0.9.12 for
+  workspace builds, fixing GHSA-6gmq-8vp8-gcm6. Keep the existing Speech Rule Engine
+  version and math-speech API. The workspace override prevents future installs
+  from selecting an affected XML version, and rebuilt player/tool bundles use
+  the patched dependency.
+  
+  Consumers resolving Speech Rule Engine as an external dependency must also
+  refresh their own lockfile to `@xmldom/xmldom` 0.9.12 or newer on the 0.9 line;
+  workspace overrides are not inherited from the published toolkit package.
+- 6c089fd: Keep tabs, read-aloud buttons, calculator controls, and scroll hints usable in
+  narrow delivery hosts. Stop estimating browser zoom from outer/inner window
+  widths: a normal 320px host could render the plain read-aloud trigger at 3.66px.
+  Controls now follow browser scaling; plain and NDS triggers keep matching sizes.
+  Item and passage toolbars wrap when enlarged text needs more space. Section
+  toolbar buttons retain their size and scroll fully into view on keyboard focus.
+  Calculator headers wrap while the tool content scrolls independently. Reading
+  panels fit beside or below their trigger, remain reachable in a short magnified
+  viewport, and paint above the question pane's scroll hint.
+  Assessment demos scroll their diagnostic chrome when magnified instead of
+  squeezing the nested player to zero height.
+  
+  Remove the `@pie-players/pie-players-shared/ui/zoom-compensation` export
+  and its internal Svelte wrapper. Retain `--pie-section-player-tab-zoom-comp` in
+  the registry as deprecated; it no longer affects layout. Hosts A and R use the
+  affected delivery surfaces in the consumer inventory. Their controls change
+  size under constrained layouts and magnification; recorded imports name neither
+  retired surface, with a fresh checkout check still pending.
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-players-shared@0.3.71
+  - @pie-players/tts-client-server@0.3.71
+  - @pie-players/pie-calculator@0.3.71
+  - @pie-players/pie-calculator-cortex@0.3.71
+  - @pie-players/pie-calculator-desmos@0.3.71
+  - @pie-players/pie-calculator-geogebra@0.3.71
+  - @pie-players/pie-context@0.3.71
+  - @pie-players/pie-tts@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

@@ -1,5 +1,65 @@
 # @pie-players/pie-section-player-tools-event-debugger
 
+## 0.3.74
+
+### Patch Changes
+
+- 25fd8d8: Loading a second copy of a player or tool into a page that already registered
+  its custom elements no longer throws. The copy that registered a tag first keeps
+  rendering it, the rule `pie-item-player` and the toolkit's elements already
+  follow.
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- 598ac56: Published type declarations no longer import `svelte`, which a host without
+  Svelte cannot resolve: under `skipLibCheck: false` its type-check failed with
+  TS2307.
+  
+  The section-player debugger and TTS settings panels, `tool-answer-eliminator`,
+  the inline calculators and `tool-tts-inline` now declare nothing from their root
+  entry, because importing one only registers its element. A TypeScript import of
+  the Svelte component that entry default-exports no longer type-checks.
+  `section-player-tools-shared` and `tool-calculator-shared` declare their
+  exported components without Svelte.
+- b2476be: These packages no longer declare dependencies that their builds inline or never
+  import, so installing them installs fewer packages. A host that imports one of
+  those packages itself, such as `@pie-players/pie-theme`'s stylesheets, declares
+  it in its own `package.json`.
+
+## 0.3.73
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-section-player-tools-shared@0.3.73
+  - @pie-players/pie-theme@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- Updated dependencies [249af7f]
+  - @pie-players/pie-theme@0.3.72
+  - @pie-players/pie-section-player-tools-shared@0.3.72
+  - @pie-players/pie-assessment-toolkit@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- Updated dependencies [181b124]
+- Updated dependencies [10b34c8]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-assessment-toolkit@0.3.71
+  - @pie-players/pie-theme@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+  - @pie-players/pie-section-player-tools-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

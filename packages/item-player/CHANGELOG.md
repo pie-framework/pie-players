@@ -1,5 +1,433 @@
 # @pie-players/pie-item-player
 
+## 0.3.74
+
+### Patch Changes
+
+- 30a037f: `validateModels()` handles the field → message map PIE controllers return
+  (PIE-1083). Each validated model is `{ ...model, errors }`, where the map's
+  messages used to overwrite model fields such as `prompt`; `hasErrors` is true when
+  any map is non-empty, with ebsr's `partA` and `partB` checked separately; and each
+  configure element receives the errors as `model.errors`, so its inline messages
+  render. `validatedModels` entries no longer carry a `validation` field.
+- 8b24361: Boolean attributes on the custom elements read `"false"`, `"0"`, `"off"` and
+  `"no"` as false instead of treating any present value as true, so
+  `trust-markup="false"` no longer skips sanitization.
+- cbfd88f: Chunks built from other workspace packages are named the same whichever
+  checkout builds them.
+- 8b24361: The players install no global content stylesheet when the host already loads
+  its own copy, scoped or not, and remove theirs when a host copy arrives after
+  them. `<html data-pie-content-styles="host">` still opts out explicitly.
+- 2127eaa: `components.css` rules keyed on KDS classes, MathJax output or legacy content
+  classes such as `.frac` and `.noprint` apply document-wide again, so authored
+  markup an element portals to `<body>`, such as an inline-dropdown's choices,
+  keeps its KDS fractions and MathJax glyph fixes. Bare tag and framework-class
+  rules stay inside `[data-pie-content]`.
+- 549de08: `components.css` styles authored content inside a `[data-pie-content]` element
+  only, which `pie-item-player` and `pie-print` set on the root they render into.
+  Its bare `h1`–`h6`, `table`, `th`, `.table` and `.center` rules no longer
+  restyle the host page. A host that renders authored markup outside a player
+  adds `data-pie-content` to that container to keep the styles there. A host
+  copy confined with `@scope (…)` keeps working when its scope root contains the
+  player.
+- 377146f: An item holding an element whose package has no controller, such as a legacy
+  `@pie-element/protractor`, loads under `client-player.js`, where it failed with a
+  player error. The element renders the model it is given, as `<pie-player>` passed
+  it through.
+- 5fb7902: When the elements that did not register all failed to load, the item player
+  reports `player-error` at once instead of after the registration timeout. The
+  error's detail carries a `cause` that names each element and why it failed, such
+  as the module URL that did not load.
+- 549de08: `pie-item-player`, `pie-item-player-session-debugger` and `pie-theme` are in
+  `HTMLElementTagNameMap`, so `document.createElement` returns them typed.
+- 3ccab31: The `esm` strategy loads in Firefox on pages where it rejects the player's
+  import map: after the page's first module load, or when the page already has
+  one. The player detects the rejected map and loads the elements through a
+  bundled es-module-shims in shim mode; browsers that apply the map load natively
+  as before. A page that runs its own es-module-shims must run it in shim mode.
+- b072a44: `strategy="esm"` works in a webpack-built host. Webpack compiled the runtime
+  `import()` of each element, controller, runtime-support and print-element URL
+  into an empty module context, so every load failed with
+  `ITEM_PLAYER_LOAD_ERROR` and the build warned "Critical dependency: the request
+  of a dependency is an expression". Those imports now carry
+  `/* webpackIgnore: true */` beside `/* @vite-ignore */`.
+- 0e8e8df: Under esm URL resolution, an element that declares `pie.browserEditorRuntime`
+  loads its editor-runtime variant, and the page's editors share one Tiptap and
+  ProseMirror from `@pie-element/shared-editor-runtime`, mapped once per page. An
+  element that runtime cannot serve, or whose variant fails to load, loads
+  `./browser/*` and is reported as a shared-dependency conflict. A package that
+  does not publish the requested view, such as match-list's `./browser/author`,
+  now fails alone with that missing export, and the other elements in the load
+  still register.
+- 223f00a: With the ESM strategy, the players on a page share one request for each element
+  package's `package.json`. A request that fails is dropped, so the next load
+  retries it.
+- 9a932d5: `strategy="esm"` and `strategy="preloaded"` no longer load the MathJax 3
+  math-rendering module (PIE-1096). Preloaded elements are ESM builds, which bring
+  their own renderer, so the item player and the section player's preload install
+  `window["@pie-lib/math-rendering"]` only for IIFE bundles. A generated
+  `@pie-players/pie-preloaded-player` build now bundles ESM elements too and
+  installs none; builds already published carry IIFE elements and still install it
+  in their own entry. Importing `@pie-players/pie-item-player` no longer starts
+  that load either, so a host that loads IIFE element bundles itself must await
+  `ensureItemPlayerMathRenderingReady()` before the first bundle evaluates.
+  
+  Under `esm` and `preloaded` the elements therefore typeset with MathJax 4, which,
+  outside a generated build, loads with its New Computer Modern fonts from
+  `cdn.jsdelivr.net` whatever `esmCdnUrl` names,
+  where the player's MathJax 3 took its fonts from `unpkg.com`. A page that cannot
+  reach jsDelivr renders no math. A CSP lists that origin in `font-src`, and in
+  `script-src` unless it uses `'strict-dynamic'`.
+- 25fd8d8: Loading a second copy of a player or tool into a page that already registered
+  its custom elements no longer throws. The copy that registered a tag first keeps
+  rendering it, the rule `pie-item-player` and the toolkit's elements already
+  follow.
+- adc3da6: A hosted item player no longer runs element controllers in the browser
+  (PIE-1070). It rendered and scored through any controller in the shared
+  registry, so with the `esm` strategy, which loaded controllers whether or not
+  the player was hosted, `model()`, `createCorrectResponseSession()` and
+  `provideScore()` ran client-side; a registered controller also ran over the
+  models a backend refresh or `updateElementModel()` handed a hosted player. A
+  hosted player now renders the server's models and scores nothing locally, as it
+  already did with `iife`, and hosted `esm` loads no controllers. A
+  `<pie-item-player>` with `backend.delivery` enabled defaults `hosted` to true,
+  as the section player already did. A host that runs `hosted` with `esm` and
+  relied on browser-side models has to supply server-processed ones.
+- e40a2a6: IIFE math no longer nests on re-render when a legacy element bundle shares the
+  page (PIE-1142). Installing the default math renderer now also creates the
+  MathJax 3 instance that every copy of `@pie-lib/math-rendering` typesets
+  through, so a bundled copy without the assistive-MathML guard, such as the one
+  in `@pie-element/multiple-choice` 9.9.1, can no longer create it. A renderer set
+  with `setMathRenderer`, or an instance already on the page, is left alone.
+- 39b2c16: On a page with no math renderer, under `esm` and `preloaded`, the item player
+  typesets the math in an item's and a passage's own markup on a MathJax 4.1.3 of
+  its own, where that math had stayed as authored. It is the browser build of
+  `@pie-element/shared-math-rendering-mathjax`, imported on the first markup that
+  holds math, and leaves `window.MathJax` and `window["@pie-lib/math-rendering"]`
+  alone. Its chunks add about 2.9 MB to the item player and to the section
+  player's browser build; Host M, which inlines every dynamic import into one
+  module, carries them and evaluates them at startup, as it does the elements'
+  copies. Generated `@pie-players/pie-preloaded-player` builds serve the engine's
+  fonts and speech data from `dist/mathjax/npm/`, so Host P renders that math with
+  nothing loaded from jsDelivr.
+- dba059f: The item player typesets the math in an item's and a passage's own markup,
+  outside every element, which `<pie-player>` typeset and `<pie-item-player>` left
+  as raw TeX. It hands the page's math renderer only the markup around the
+  elements, so no element's content is typeset twice: under `iife` the renderer
+  the player installs, under `esm` and `preloaded` one the host installs.
+- 937fd1c: A controller's write-back of derived session state, such as a shuffled choice
+  order, no longer dispatches a `session-changed` of its own without `complete`,
+  `component` or `elementId`, so it no longer reaches a section as an
+  `item-session-data-changed` without `complete`. The player's `session`
+  container holds it at once, and the next `session-changed` carries it with the
+  announcing element's `complete`.
+- 7d99003: `<pie-item-player>` forwards an element's `session-changed` only when its
+  `complete` or its session changed since that element last announced. An element
+  that announces whenever it is handed its session no longer produces a second
+  event at load, and no longer re-announces its unchanged `complete` after another
+  element's response, which let a multi-element item's completion follow whichever
+  element announced last.
+- 580cc7b: `<pie-item-player>` forwards the `session-changed` an element dispatches from its
+  `session` setter during load as its own canonical event; the element's raw event
+  used to reach the host. A second element's `session-changed`, or a second
+  `model.updated`, in the same task is no longer dropped.
+- 0d36cde: The item player's own MathJax takes the explorer highlight, the selection outline and the
+  speech, braille, magnifier and tooltip regions from the `--pie-*` theme tokens, as the
+  elements' copies of `@pie-element/shared-math-rendering-mathjax` 0.1.2 do.
+- a4f73f6: New opt-in `sessionSnapshot` config on `pie-item-player` writes each committed session to device storage and offers it back through `session-snapshot-available` and `getPendingSessionSnapshot()`. A snapshot is never applied, since on a shared device a stored draft is indistinguishable from a previous student's. It requires a delivery `sessionId` or an explicit host-supplied `key`.
+- aa58883: A host build that inlines dynamic imports, as Vite through 7 does with
+  `inlineDynamicImports`, no longer sets the player's bundled MathJax 3 up as the
+  bundle loads. That setup threw on a page already running MathJax 4, and on a
+  page without MathJax it left a MathJax 3 global that PIE's MathJax 4 renderer
+  reports as a version conflict. MathJax 3 now sets up when the IIFE strategy
+  first needs it, as it does when the chunk loads separately.
+- 6859fb7: With `trackPageActions` on, the ESM loader forwards the `pie-mathjax-version-conflict`
+  event that PIE's MathJax 4 renderer dispatches when a page also runs MathJax 3 to the
+  instrumentation provider, as a `pie-mathjax-version-conflict` event carrying `condition`
+  and `docsUrl`. Each provider tracks an event once however many players load on the page.
+- fa3ade0: The vendored module shim no longer breaks webpack builds that run source-map-loader over node_modules, such as Angular development builds.
+- a0408d4: The New Relic provider looks the browser agent's API up on every call, on
+  `window.newrelic` or `window.NREUM`, instead of once in `initialize()`, so a
+  provider initialized before the agent loads sends once it arrives. A
+  `window.newrelic` whose `noticeError` or `addPageAction` is not a function no
+  longer counts as the agent.
+  
+  This adds volume for a host that enables `trackPageActions` without naming a
+  provider and whose agent can load after the first player: on those pages the
+  item player's runtime errors, and the resource page actions and errors of items
+  started before the agent, now reach its New Relic account from the agent's
+  arrival on.
+- f5d1b01: A removed `pie-item-player` no longer writes a model or session into its
+  elements. The teardown commit re-ran the element update after the elements had
+  unmounted, and elements released before PIE-703 threw React error #409 on that
+  write, which a host on another origin sees as "Script error.".
+- 63b75e6: The overwide image and table wrap no longer runs in author mode, and leaves
+  content inside a `contenteditable` editing host alone. In a ProseMirror editor
+  holding an image, such as a configure editor or extended-text-entry's response,
+  the wrap and the editor undid each other continuously, logging over a thousand
+  DOM mutations a second on an idle page.
+- 549de08: `player-error` carries `recoverable`, `true` when the item stays usable after a
+  failed update or controller, and its detail is exported as
+  `PieItemPlayerErrorDetail`.
+- cadfcf9: With `strategy="preloaded"`, content can author a package under another base tag
+  than the page registered it under, such as `multiple-choice` for a package
+  registered as `pie-element-multiple-choice`. Before asserting, the item player
+  and the section player's pre-warm define each such versioned tag from the
+  registered element, with its controller and bundle type, through
+  `defineAuthoredPreloadedTags` in `@pie-players/pie-players-shared/loaders`. A tag
+  whose package the page did not register still fails `assertRegistered`.
+- 69f0b76: Load a generated `@pie-players/pie-preloaded-player` build into a page that
+  already registered `pie-item-player`, which is what a host running the section
+  player presents (PIE-1070).
+  
+  The build's own copy of the item player redefined the tag, threw
+  `NotSupportedError` and rejected the build's initialization. The item player
+  now registers only through `definePieItemPlayer`, which leaves a registered tag
+  alone, and the generated entry skips fetching its copy when the tag is taken.
+  Whichever copy registered `pie-item-player` first renders the build's elements.
+  `definePieItemPlayer(tagName)` also registers a working element under a custom
+  tag.
+- 2be7868: Add `registerPreloadedElements` (PIE-1070): a host that bundles the
+  `./browser/delivery` modules of pie-elements-ng ESM builds registers them for
+  the `preloaded` strategy without a generated `@pie-players/pie-preloaded-player`
+  build, passing each package's `./browser/controller` module for a player that
+  is not hosted. Only pie-elements-ng ESM builds publish those subpaths. It is
+  exported from `@pie-players/pie-players-shared/loaders` and from the new
+  `@pie-players/pie-item-player/preloaded`, which also exports
+  `ensureItemPlayerMathRenderingReady` without defining the player. Registration
+  takes exact versions only and one version per package, and a player that is not
+  hosted warns about each preloaded tag registered without a controller.
+  `ElementAssertionError` names the tags each missing tag's package is registered
+  as.
+  
+  Generated preloaded builds register through that entry and install the item
+  player's own math renderer, keeping one the page already has, so a build's
+  `dist/` tree carries `preloaded.js` in place of `math-rendering.js`. The
+  session debugger takes `hosted`, `runtimeSupportCheck` probes only under
+  `strategy="esm"` through the configured CDN provider, and the ESM import map
+  skips specifiers the page already maps.
+- cd183fa: Removes public surface that no package or known host uses: from the
+  players-shared root, the player-initializer helpers (`initializePiePlayer`,
+  `fetchItemData` and the rest of that module, which also left `./pie`), the
+  debug-panel persistence helpers and `QuestionEntity`; from its `./types`, the
+  CMS-era types (`QuestionEntity`, sessions and scores, organizations and users,
+  sanctioned versions, standards and blueprints); from the assessment toolkit, `loadAssessmentSession`,
+  `saveAssessmentSession` and `getAssessmentSessionStorageKey`; and the unused
+  `item-name` attribute of `<pie-item-player-session-debugger>`. The section
+  instrumentation map drops `pie-section-session-changed` and
+  `pie-section-composition-changed`, which never fired. `PieController.model()`
+  now declares the `updateSession` argument the player passes, typed as
+  `PieUpdateSession`.
+- a38056b: Unused exports are removed. The toolkit's `./tools/client` subpath keeps only the
+  calculator types: the legacy tool, accommodation, item-variant and
+  response-component types, the `ToolCategory` enum and `responseDiscovery` are
+  gone, and the `ToolCoordinator` and `HighlightCoordinator` constructors take no
+  argument. `pie-players-shared` drops `isPassageEntity`, `isPrerelease`,
+  `formatVersion`, `SessionChangedEvent`, `SessionChangedDetail`, `LoadResponse`,
+  the `Tracker` types, `BUILDER_ORIGIN_URL`, `renderMath`, the sanitizer test
+  resets and the renderer argument of `initializeMathRendering`; `setMathRenderer`
+  is the way to supply a renderer. The item player drops the `BackendScope` and
+  `BackendEventDetail` types.
+- 140d39b: `resolveInstrumentationProvider()` from `@pie-players/pie-players-shared/pie`
+  declares the `InstrumentationProvider | undefined` it always returned, in place
+  of `unknown`, so a caller can use the result without a cast or a structural
+  `isInstrumentationProvider` check.
+- da9e2f7: `LoaderConfig.instrumentationProvider` accepts `null`, the documented way to
+  disable instrumentation, so a TypeScript host can write it without a cast. The
+  item player's resource monitor now sends to the provider its player resolves
+  from `loaderConfig`: `null`, or a value that fails the `InstrumentationProvider`
+  contract, turns its reporting off, and with `trackPageActions: true` and no
+  provider named it shares the default New Relic provider. It built a New Relic
+  provider of its own before, so with `trackPageActions: true` a `null` or invalid
+  provider still reported resource loads and failures through `window.newrelic`.
+- 8a8b932: An item in a section is complete when every element of it that has reported its
+  completion is complete; the element that reported last used to decide.
+  `<pie-item-player>`'s `session-changed` carries the announcing element's model
+  id as `elementId`, and the section controller's `item-session-data-changed` and
+  `item-session-meta-changed` carry it too.
+- ec632eb: The section player's pre-warm now loads and asserts the view its item players
+  render. The `preloaded` pre-warm aligns authored element versions to the page's
+  registrations before asserting them, as the item player does, and a preloaded
+  author section asserts the `-config` tags; the ESM pre-warm honours
+  `loaderOptions.view`, `loaderOptions.loadControllers` and author `mode`; and a
+  hosted IIFE player's pre-warm skips controllers. A failed `preloaded` pre-warm
+  reports an `element-preload` framework error, and a rejected pre-warm shows an
+  error in place of the loading message. The `interactive` stage and
+  `pie-loading-complete` wait for the pre-warm, and a partial `policies` object
+  takes defaults for its unset fields. Both players share
+  `alignPreloadedElementVersions` and `resolveLoadControllers`, exported from
+  `@pie-players/pie-players-shared`.
+- ff7c2bc: Deliver a pending `session-changed` when focus leaves `pie-item-player`, so a host acting on the click or key that moved focus already has the response and the section-switch commit finds nothing left for that item. Every item-player `session-changed` now carries `component` and `complete`; a passage shell keeps its raw `session-changed` inside, like the item shell; and a session restored without `complete` is complete when it holds a response.
+- 8e13d3d: Scoped CSS class names, and the identifiers the minifier derives alongside
+  them, are the same whichever checkout builds the package.
+- 598ac56: Published type declarations no longer import `svelte`, which a host without
+  Svelte cannot resolve: under `skipLibCheck: false` its type-check failed with
+  TS2307.
+  
+  The section-player debugger and TTS settings panels, `tool-answer-eliminator`,
+  the inline calculators and `tool-tts-inline` now declare nothing from their root
+  entry, because importing one only registers its element. A TypeScript import of
+  the Svelte component that entry default-exports no longer type-checks.
+  `section-player-tools-shared` and `tool-calculator-shared` declare their
+  exported components without Svelte.
+- b2476be: These packages no longer declare dependencies that their builds inline or never
+  import, so installing them installs fewer packages. A host that imports one of
+  those packages itself, such as `@pie-players/pie-theme`'s stylesheets, declares
+  it in its own `package.json`.
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [8b24361]
+- Updated dependencies [377146f]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [05845a3]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [ec632eb]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [22bcd83]
+  - @pie-players/pie-players-shared@0.3.74
+
+## 0.3.73
+
+### Patch Changes
+
+- e2fd6b8: Guarantee that a committed response reaches the host before its element stops
+  existing (PIE-1058).
+  
+  A delivery element coalesces its `session-changed` dispatch, so a response the
+  learner had finished entering could be dropped when the element was discarded
+  inside that window, with no event at all for a host to detect.
+  
+  `pie-players-shared` adds `commitPendingSessions(root)`,
+  `bindPageLifecycleCommit()` and `noteSessionBaseline`/`noteSessionObserved`. The
+  item player commits on a `config` change, on `visibilitychange` to `hidden`, on
+  `pagehide` and on destroy; the section player commits on shell teardown and
+  before navigation, `updateInput()` and `persist()`. Every commit carries
+  `detail.sessionCommitReason`, and nothing is announced unless it changed since
+  the host last heard. No element version is required.
+  
+  Hosts listening on `<pie-item-player>` or `document` need no change, except when
+  they unmount the player themselves, which calls
+  `commitPendingElementSessions()` first. A host supplying its own
+  `backend.delivery` client forwards `requestOptions.keepalive` to `fetch`. Hosts
+  that added DOM-level dirty-tracking workarounds can remove them.
+  
+  `docs/prds/session-commit-on-teardown.md` records the contract.
+- 83d30e3: Restore two behaviours hosts had from the legacy players, so moving from
+  `<pie-player>` or the fixed player to `<pie-item-player>` and
+  `@pie-players/pie-preloaded-player` changes nothing but the server support.
+  
+  The `session` property is live again. `<pie-player>` pushed an entry per model
+  into the host's own `session.data` through `findOrAddSession` as the item
+  rendered, and the element then mutated that entry in place, so a host read the
+  response off its own object. `ItemController` owns the session here, so the
+  player projects onto the host's container instead: an entry per model at
+  `load-complete`, then each change written into that entry before
+  `session-changed` is dispatched, so a host reading the property inside its own
+  handler sees the response. The projection runs one way and never reads the
+  container back after the first load. The array and the entry objects keep their
+  identity, for a host holding a reference into `data`, and entries the player did
+  not produce are left alone, so a section-level container spanning several items
+  stays intact. `detail.session` is unchanged and remains the authoritative
+  payload. `pie-players-shared` exports `projectSessionIntoHostContainer` and
+  `ensureHostSessionEntries` for a player that owns its own host contract.
+  
+  Quiz Engine's PIE item element read `session.data` this way and saw an empty
+  array after its move to the preloaded player, on plain `multiple-choice`.
+  
+  The preloaded player announces its load the way
+  `@pie-framework/pie-fixed-player-static` did: `PiePlayerLoadEvent` on
+  `document` with detail `PIE-Fixed-Player-Load-Complete`, a matching
+  `performance.mark`, and `window.pieFixedPlayerLoaded` for a host that
+  initializes after the player and misses the dispatch. A failed initialization
+  dispatches `PIE-Fixed-Player-Load-Failed` before the error propagates, as it did
+  there. Star listens for this signal.
+  
+  `resolveUrl` in the built-in `pie-api` client now collapses a doubled `/api`.
+  `<pie-api-player>` carried that segment in its `host` and left it out of its
+  paths; this client does the reverse, so a host pasting its old `host` into
+  `baseUrl` requested `/api/api/player/load`. A base ending in `/api` and a path
+  starting with `/api/` resolve to one. A backend that really serves `/api/api`
+  leaves `baseUrl` at the origin and puts the whole path in `endpoints`.
+  
+  The section player hands each embedded item player a copy of the item session
+  rather than the composition's object, and `EMPTY_ITEM_SESSION` — the one object
+  that stands in for every item with no session yet — is frozen. Without both, a
+  live host container would write one item's entries into another item's session
+  and into what `persist()` saves. `projectSessionIntoHostContainer` and
+  `ensureHostSessionEntries` refuse a frozen container or a frozen `data` array for
+  the same reason.
+  
+  One legacy behaviour is deliberately not restored: `<pie-player>`'s
+  `responseCompleted` event, which that component declares and never emits.
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-theme@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- Updated dependencies [249af7f]
+  - @pie-players/pie-theme@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- 181b124: Resolve Speech Rule Engine's XML dependency to `@xmldom/xmldom` 0.9.12 for
+  workspace builds, fixing GHSA-6gmq-8vp8-gcm6. Keep the existing Speech Rule Engine
+  version and math-speech API. The workspace override prevents future installs
+  from selecting an affected XML version, and rebuilt player/tool bundles use
+  the patched dependency.
+  
+  Consumers resolving Speech Rule Engine as an external dependency must also
+  refresh their own lockfile to `@xmldom/xmldom` 0.9.12 or newer on the 0.9 line;
+  workspace overrides are not inherited from the published toolkit package.
+- Updated dependencies [10b34c8]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-theme@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

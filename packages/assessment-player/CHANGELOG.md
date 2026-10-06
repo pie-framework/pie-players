@@ -1,5 +1,185 @@
 # @pie-players/pie-assessment-player
 
+## 0.3.74
+
+### Patch Changes
+
+- 799b592: `ASSESSMENT_PLAYER_PUBLIC_EVENTS` no longer lists `submitRequested`. The player
+  never dispatched `assessment-submit-requested`, so a listener on it never ran.
+- d895048: `assessment-session-changed` fires once per response in the active section. It
+  fired twice, once for the section's `session-changed` and once for the item's
+  `item-session-changed`.
+- 0eb3943: The README's reason for installing every pie-elements-ng package from one
+  release is now the MathJax the elements share on a page. The `npm ls` check it
+  replaces inspected library copies the `./browser/*` builds never import.
+- 5c5481e: The README's one-release rule now says only elements that typeset on
+  `window.MathJax` share the page's MathJax; elements that bundle their own share
+  none.
+- 140d39b: `resolveInstrumentationProvider()` from `@pie-players/pie-players-shared/pie`
+  declares the `InstrumentationProvider | undefined` it always returned, in place
+  of `unknown`, so a caller can use the result without a cast or a structural
+  `isInstrumentationProvider` check.
+- Updated dependencies [7361295]
+- Updated dependencies [040299f]
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [498f937]
+- Updated dependencies [2825bf5]
+- Updated dependencies [cbfd88f]
+- Updated dependencies [8b24361]
+- Updated dependencies [2127eaa]
+- Updated dependencies [549de08]
+- Updated dependencies [377146f]
+- Updated dependencies [3e88cac]
+- Updated dependencies [17afe85]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [9a932d5]
+- Updated dependencies [a3e721c]
+- Updated dependencies [05845a3]
+- Updated dependencies [25fd8d8]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [435bb29]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [0eb3943]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [5c5481e]
+- Updated dependencies [2be7868]
+- Updated dependencies [2084d88]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [e3e2a6a]
+- Updated dependencies [7bc44f3]
+- Updated dependencies [dae9198]
+- Updated dependencies [ec632eb]
+- Updated dependencies [3e88cac]
+- Updated dependencies [7c4b13d]
+- Updated dependencies [3ddbe89]
+- Updated dependencies [a8c0d7f]
+- Updated dependencies [8f4b1da]
+- Updated dependencies [8b24361]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [0bd34af]
+- Updated dependencies [8e13d3d]
+- Updated dependencies [799b592]
+- Updated dependencies [976c4d3]
+- Updated dependencies [45bec78]
+- Updated dependencies [6e6f883]
+- Updated dependencies [6cc239a]
+- Updated dependencies [05845a3]
+- Updated dependencies [2cd3d03]
+- Updated dependencies [3be570a]
+- Updated dependencies [b7c9382]
+- Updated dependencies [a0e15b9]
+- Updated dependencies [60077c2]
+- Updated dependencies [22bcd83]
+- Updated dependencies [326f382]
+- Updated dependencies [4369286]
+- Updated dependencies [3d8bb9a]
+- Updated dependencies [e25ebc5]
+- Updated dependencies [3a01d9b]
+- Updated dependencies [b2476be]
+  - @pie-players/pie-assessment-toolkit@0.3.74
+  - @pie-players/pie-players-shared@0.3.74
+  - @pie-players/pie-section-player@0.3.74
+
+## 0.3.73
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-section-player@0.3.73
+  - @pie-players/pie-assessment-toolkit@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/pie-section-player@0.3.72
+  - @pie-players/pie-assessment-toolkit@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- 69f354e: Preserve assessment answers when returning to a section. Capture the outgoing
+  section's complete snapshot before replacing its DOM, including navigation
+  through the assessment controller. Wait for the section's canonical engine-ready
+  event and apply its saved session before accepting input or replacement-session
+  updates. Cancel listeners and readiness waits when navigation or disconnection
+  retires the section; late restoration results cannot update its replacement.
+  
+  A failed restore or controller-readiness timeout preserves saved answers and
+  reports the existing assessment error event and navigation error hook. Provide
+  localized, keyboard-accessible Retry and mark the section busy until restoration
+  succeeds. Keep the section event-contract import external in the assessment
+  bundle so it shares the existing custom-element registration.
+  
+  The recorded consumer inventory lists no external assessment-player host;
+  downstream checkout verification is still pending. Public real-content fixtures
+  cover both section layouts, navigation, reload, delayed readiness/restoration,
+  failure, timeout, retry, and disconnection. Standalone section, toolkit, and
+  item-player contracts are unchanged. Persistence ordering and submission
+  acknowledgement remain a separate repair.
+- ee795c8: Make assessment-player mounting follow its documented public property contract.
+  Connect-then-assign hosts now initialize without a private bootstrap call. Batch
+  assessment/attempt/hook changes, retire superseded or disconnected controllers,
+  and publish a ready controller only after initialization and hydration succeed.
+  Each successful initialization invokes the ready hook and ready event once.
+  
+  Load failures reject at the controller boundary and leave the element unavailable
+  with a localized, accessible retry action. Controller waiters resolve to null
+  when their active initialization fails or is retired. Assessment controllers now
+  provide idempotent `dispose()`; nested toolkit coordinators keep their existing
+  ownership rules, so borrowed coordinators are not disposed by the assessment.
+  Locale, navigation visibility, and runtime property updates preserve the active
+  assessment controller. Package entrypoints and event names/flags are unchanged.
+  
+  The recorded consumer pad lists no external assessment-player host. Its downstream
+  checkout verification remains pending; the accompanying public host fixture
+  validates the built package's documented contract. Section, Quiz Engine,
+  knowledge-check, and item-player APIs are unchanged.
+- Updated dependencies [181b124]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-assessment-toolkit@0.3.71
+  - @pie-players/pie-section-player@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

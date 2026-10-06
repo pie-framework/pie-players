@@ -1,5 +1,109 @@
 # @pie-players/item-demos
 
+## 0.1.81
+
+### Patch Changes
+
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [cbfd88f]
+- Updated dependencies [8b24361]
+- Updated dependencies [2127eaa]
+- Updated dependencies [549de08]
+- Updated dependencies [377146f]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [549de08]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [9a932d5]
+- Updated dependencies [05845a3]
+- Updated dependencies [25fd8d8]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [937fd1c]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [69f0b76]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [ec632eb]
+- Updated dependencies [36203fd]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [8e13d3d]
+- Updated dependencies [598ac56]
+- Updated dependencies [549de08]
+- Updated dependencies [22bcd83]
+- Updated dependencies [b2476be]
+  - @pie-players/pie-players-shared@0.3.74
+  - @pie-players/pie-item-player@0.3.74
+  - @pie-players/pie-theme@0.3.74
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.74
+  - @pie-players/demo-ui@0.1.1
+
+## 0.1.80
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-item-player@0.3.73
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.73
+  - @pie-players/pie-theme@0.3.73
+
+## 0.1.79
+
+### Patch Changes
+
+- Updated dependencies [249af7f]
+  - @pie-players/pie-theme@0.3.72
+  - @pie-players/pie-item-player@0.3.72
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+
+## 0.1.78
+
+### Patch Changes
+
+- Updated dependencies [181b124]
+- Updated dependencies [10b34c8]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-item-player@0.3.71
+  - @pie-players/pie-theme@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.71
+
 ## 0.1.77
 
 ### Patch Changes

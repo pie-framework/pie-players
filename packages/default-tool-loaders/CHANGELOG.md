@@ -1,5 +1,229 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.74
+
+### Patch Changes
+
+- 498f937: The calculator engines `@pie-players/pie-calculator-cortex`, `-desmos` and
+  `-geogebra` are now dependencies of `@pie-players/pie-default-tool-loaders`,
+  which holds their adapters, and no longer optional peers of the toolkit. A
+  webpack 5 host that installed only the section player failed its build on the
+  three missing engines, and a Vite host shipped modules that threw when a
+  calculator opened. `CortexToolProvider`, `DesmosToolProvider` and
+  `GeoGebraToolProvider` left the toolkit's `./tools/internal` subpath, which now
+  exports the `ToolProviderApi` and `ToolProviderCapabilities` types instead. A
+  host that installs `@pie-players/pie-default-tool-loaders`, directly or through
+  the section player, now installs all three engine packages; one that installed
+  them itself can drop them, and an alias that stubs the Cortex engine still
+  applies.
+- 2825bf5: `tools.providers.calculator` is now typed as `CalculatorToolProviderConfig`, closed to the keys the calculator reads, so a misplaced key such as a top-level `authFetcher` fails to compile instead of being ignored. The key belongs at `provider.runtime.authFetcher`.
+- 6d49601: `@pie-players/pie-tool-calculator-desmos` is no longer a dependency. The packaged
+  calculator loader has registered `pie-tool-calculator` from
+  `@pie-players/pie-tool-calculator-shared/calculator-element` since 0.3.69, and
+  nothing else here imported the Desmos package. A host that imports it without
+  declaring it, having received it through this package, `pie-section-player` or
+  `pie-print-player`, has to add it to its own dependencies.
+- 05845a3: The graph and periodic table tools can be placed on an item toolbar, so a toolkit composed without a section player can offer them. A `graphingCalculator` profile support no longer also grants the graph tool: it grants the calculator, whose graphing type the host selects through render params, and the graph tool's name and description now call it a coordinate plane.
+- 3e88cac: Overlay tools (ruler, protractor, line reader, graph, periodic table, theme, highlighter, dictionaries, answer eliminator and calculator) keep their element across toolbar re-renders, so an open tool no longer loses its position, unit, points or eliminations when the coordinator's policy changes or the interface locale switches.
+- 4369286: `@pie-players/tts-client-server` is now a dependency of
+  `@pie-players/pie-default-tool-loaders`, whose TTS registration imports it, and
+  no longer an optional peer of the toolkit. A webpack host that installed the
+  toolkit without the adapter failed to build, because webpack resolves the
+  toolkit's `import()` of it at build time. `TTSToolProvider` now receives the
+  adapter's provider class through a `loadServerProvider` option, and a server
+  backend constructed without one fails to initialize. A host that installed the
+  adapter only for the toolkit can drop it.
+- 799b592: `PACKAGED_TOOL_TAG_MAP.textToSpeech` is `pie-tool-tts-inline`, the element the
+  packaged `textToSpeech` capability mounts. It named `pie-tool-text-to-speech`,
+  which the capability never loads.
+- Updated dependencies [7965cbd]
+- Updated dependencies [35bdf63]
+- Updated dependencies [7361295]
+- Updated dependencies [040299f]
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [bfaf1be]
+- Updated dependencies [e3e2a6a]
+- Updated dependencies [c4bfe09]
+- Updated dependencies [498f937]
+- Updated dependencies [799b592]
+- Updated dependencies [2825bf5]
+- Updated dependencies [8b24361]
+- Updated dependencies [377146f]
+- Updated dependencies [3e88cac]
+- Updated dependencies [17afe85]
+- Updated dependencies [93f7a4f]
+- Updated dependencies [d39e451]
+- Updated dependencies [2bc32e8]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [a3e721c]
+- Updated dependencies [05845a3]
+- Updated dependencies [25fd8d8]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [435bb29]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [2084d88]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [799b592]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [7bc44f3]
+- Updated dependencies [ec632eb]
+- Updated dependencies [7c4b13d]
+- Updated dependencies [3ddbe89]
+- Updated dependencies [a8c0d7f]
+- Updated dependencies [8f4b1da]
+- Updated dependencies [8b24361]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [0bd34af]
+- Updated dependencies [8e13d3d]
+- Updated dependencies [598ac56]
+- Updated dependencies [799b592]
+- Updated dependencies [976c4d3]
+- Updated dependencies [799b592]
+- Updated dependencies [45bec78]
+- Updated dependencies [6e6f883]
+- Updated dependencies [6cc239a]
+- Updated dependencies [05845a3]
+- Updated dependencies [2cd3d03]
+- Updated dependencies [3be570a]
+- Updated dependencies [b7c9382]
+- Updated dependencies [a0e15b9]
+- Updated dependencies [60077c2]
+- Updated dependencies [22bcd83]
+- Updated dependencies [326f382]
+- Updated dependencies [4369286]
+- Updated dependencies [3d8bb9a]
+- Updated dependencies [e25ebc5]
+- Updated dependencies [3a01d9b]
+- Updated dependencies [27a70d9]
+- Updated dependencies [b2476be]
+  - @pie-players/pie-tool-answer-eliminator@0.3.74
+  - @pie-players/pie-assessment-toolkit@0.3.74
+  - @pie-players/pie-players-shared@0.3.74
+  - @pie-players/pie-tool-annotation-toolbar@0.3.74
+  - @pie-players/pie-tool-calculator-cortex@0.3.74
+  - @pie-players/pie-tool-calculator-geogebra@0.3.74
+  - @pie-players/pie-tool-calculator-shared@0.3.74
+  - @pie-players/pie-tool-theme@0.3.74
+  - @pie-players/pie-tool-dictionary@0.3.74
+  - @pie-players/pie-tool-graph@0.3.74
+  - @pie-players/pie-tool-line-reader@0.3.74
+  - @pie-players/pie-tool-periodic-table@0.3.74
+  - @pie-players/pie-tool-picture-dictionary@0.3.74
+  - @pie-players/pie-tool-protractor@0.3.74
+  - @pie-players/pie-tool-ruler@0.3.74
+  - @pie-players/pie-tool-tts-inline@0.3.74
+  - @pie-players/pie-calculator-cortex@0.3.74
+  - @pie-players/tts-client-server@0.3.74
+  - @pie-players/pie-calculator@0.3.74
+  - @pie-players/pie-calculator-desmos@0.3.74
+  - @pie-players/pie-calculator-geogebra@0.3.74
+
+## 0.3.73
+
+### Patch Changes
+
+- Updated dependencies [e2fd6b8]
+- Updated dependencies [83d30e3]
+  - @pie-players/pie-players-shared@0.3.73
+  - @pie-players/pie-assessment-toolkit@0.3.73
+  - @pie-players/pie-tool-annotation-toolbar@0.3.73
+  - @pie-players/pie-tool-answer-eliminator@0.3.73
+  - @pie-players/pie-tool-calculator-desmos@0.3.73
+  - @pie-players/pie-tool-calculator-shared@0.3.73
+  - @pie-players/pie-tool-theme@0.3.73
+  - @pie-players/pie-tool-dictionary@0.3.73
+  - @pie-players/pie-tool-graph@0.3.73
+  - @pie-players/pie-tool-line-reader@0.3.73
+  - @pie-players/pie-tool-periodic-table@0.3.73
+  - @pie-players/pie-tool-picture-dictionary@0.3.73
+  - @pie-players/pie-tool-protractor@0.3.73
+  - @pie-players/pie-tool-ruler@0.3.73
+  - @pie-players/pie-tool-tts-inline@0.3.73
+  - @pie-players/pie-tool-calculator-cortex@0.3.73
+  - @pie-players/pie-tool-calculator-geogebra@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/pie-tool-theme@0.3.72
+  - @pie-players/pie-assessment-toolkit@0.3.72
+  - @pie-players/pie-players-shared@0.3.72
+  - @pie-players/pie-tool-annotation-toolbar@0.3.72
+  - @pie-players/pie-tool-answer-eliminator@0.3.72
+  - @pie-players/pie-tool-calculator-cortex@0.3.72
+  - @pie-players/pie-tool-calculator-desmos@0.3.72
+  - @pie-players/pie-tool-calculator-geogebra@0.3.72
+  - @pie-players/pie-tool-calculator-shared@0.3.72
+  - @pie-players/pie-tool-dictionary@0.3.72
+  - @pie-players/pie-tool-graph@0.3.72
+  - @pie-players/pie-tool-line-reader@0.3.72
+  - @pie-players/pie-tool-periodic-table@0.3.72
+  - @pie-players/pie-tool-picture-dictionary@0.3.72
+  - @pie-players/pie-tool-protractor@0.3.72
+  - @pie-players/pie-tool-ruler@0.3.72
+  - @pie-players/pie-tool-tts-inline@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- Updated dependencies [181b124]
+- Updated dependencies [69f354e]
+- Updated dependencies [6c089fd]
+- Updated dependencies [ee795c8]
+  - @pie-players/pie-assessment-toolkit@0.3.71
+  - @pie-players/pie-players-shared@0.3.71
+  - @pie-players/pie-tool-tts-inline@0.3.71
+  - @pie-players/pie-tool-annotation-toolbar@0.3.71
+  - @pie-players/pie-tool-answer-eliminator@0.3.71
+  - @pie-players/pie-tool-calculator-cortex@0.3.71
+  - @pie-players/pie-tool-calculator-desmos@0.3.71
+  - @pie-players/pie-tool-calculator-geogebra@0.3.71
+  - @pie-players/pie-tool-calculator-shared@0.3.71
+  - @pie-players/pie-tool-theme@0.3.71
+  - @pie-players/pie-tool-graph@0.3.71
+  - @pie-players/pie-tool-line-reader@0.3.71
+  - @pie-players/pie-tool-periodic-table@0.3.71
+  - @pie-players/pie-tool-protractor@0.3.71
+  - @pie-players/pie-tool-ruler@0.3.71
+  - @pie-players/pie-tool-dictionary@0.3.71
+  - @pie-players/pie-tool-picture-dictionary@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

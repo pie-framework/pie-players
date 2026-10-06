@@ -1,5 +1,17 @@
 # @pie-players/pie-calculator
 
+## 0.3.74
+
+No changes in this release.
+
+## 0.3.73
+
+No changes in this release.
+
+## 0.3.72
+
+## 0.3.71
+
 ## 0.3.70
 
 ## 0.3.69

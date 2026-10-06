@@ -1,5 +1,34 @@
 # @pie-players/tts-server-sc
 
+## 0.3.74
+
+### Patch Changes
+
+- c8e9e58: `SynthesizeResponse.audio` is typed `SynthesizedAudioBytes | string`, a
+  structural description of the `Buffer` the providers return, so the TTS
+  declarations typecheck without Node's types and `audio.toString("base64")`
+  still compiles.
+- Updated dependencies [c8e9e58]
+  - @pie-players/tts-server-core@0.3.74
+
+## 0.3.73
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.73
+
+## 0.3.72
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.72
+
+## 0.3.71
+
+### Patch Changes
+
+- @pie-players/tts-server-core@0.3.71
+
 ## 0.3.70
 
 ### Patch Changes

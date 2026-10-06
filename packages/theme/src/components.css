@@ -126,12 +126,23 @@
  * column the scrollbar stays hidden (overflow-x: auto); when it doesn't, the
  * wrapper — not the passage or section layout — provides the sideways scroll
  * needed to satisfy WCAG 1.4.10 Reflow at 400% zoom.
+ *
+ * The wrapper is inline-block so an image keeps its place in the line: a block
+ * wrapper put every image on a line of its own, stacking a row of picture-graph
+ * icons into a column and adding a line to every image choice. Its baseline is
+ * its bottom edge, as an inline image's is, so the image sits where it did. An
+ * image laid out as a block gets `pie-image-scroll-block` from the player, so
+ * its wrapper adds no line box below it.
  */
 :where([data-pie-content]) .pie-image-scroll {
-	display: block;
+	display: inline-block;
 	max-width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
+}
+
+:where([data-pie-content]) .pie-image-scroll.pie-image-scroll-block {
+	display: block;
 }
 
 :where([data-pie-content]) .pie-image-scroll > img {

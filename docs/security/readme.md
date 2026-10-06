@@ -282,10 +282,13 @@ Measured in Chromium against items with math, each strategy renders its math
 and assistive MathML with no violations under the base policy plus its
 additions.
 
-**`iife` and generated preloaded-player builds.** The element bundles carry
-MathJax 3, which loads its fonts from `unpkg.com` and the speech rule engine's
-mathmaps from `cdn.jsdelivr.net`. `iife` bundles arrive from the bundle host by
-`<script src>`, which `'strict-dynamic'` admits.
+**`iife`, and generated preloaded-player builds that carry an IIFE bundle.**
+The element bundles render with MathJax 3, which loads its fonts from
+`unpkg.com` and the speech rule engine's mathmaps from `cdn.jsdelivr.net`.
+`iife` bundles arrive from the bundle host by `<script src>`, which
+`'strict-dynamic'` admits. Builds from the current generator bundle ESM elements
+and serve MathJax, its fonts and its speech data from their own `dist/mathjax/`,
+so their math adds no origin.
 
 ```
 connect-src 'self' https://cdn.jsdelivr.net;
@@ -296,9 +299,11 @@ font-src 'self' data: https://unpkg.com;
 host's own bundle. Under `esm`, element modules and their dependencies load from
 `cdn.jsdelivr.net`, or from `loaderOptions.esmCdnUrl`, and the loader fetches
 package metadata from the same origin, so `connect-src` lists the `esmCdnUrl`
-origin when one is set. The elements load MathJax 4 and its fonts from
-`cdn.jsdelivr.net` whatever `esmCdnUrl` names, so a page that cannot reach that
-origin renders no math.
+origin when one is set. Whatever `esmCdnUrl` names, elements that typeset on
+`window.MathJax` load MathJax 4 and its fonts from `cdn.jsdelivr.net`, so a page
+that cannot reach that origin renders no math with them. Elements that bundle
+their own MathJax, and the player's renderer for item markup math, load fonts
+and speech data from the same origin.
 
 ```
 connect-src 'self' https://cdn.jsdelivr.net;
@@ -306,8 +311,9 @@ font-src 'self' data: https://cdn.jsdelivr.net;
 ```
 
 Without `'strict-dynamic'`, each injected `<script src>` needs its origin in
-`script-src`: the bundle host for `iife`, and `cdn.jsdelivr.net` for MathJax 4
-under `esm` and `preloaded`.
+`script-src`: the bundle host for `iife`, and `cdn.jsdelivr.net` for the
+MathJax 4 that page-global element builds inject under `esm` and `preloaded`.
+Elements that bundle MathJax inject none.
 
 The tools add their own. `data:` in `font-src` carries the Cortex calculator's
 bundled MathLive fonts. Its evaluation worker is a script the host's bundler

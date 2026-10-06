@@ -225,10 +225,12 @@ registerPreloadedElements([
   install can resolve to another release line: `^13.4.0-next.15` resolves to
   the legacy `13.4.4`, which has no `./browser/*` modules.
 - Install every pie-elements-ng package from one release, in one install from
-  the same dist-tag, and upgrade them together. The elements on a page share
-  the MathJax the first of them loads, in the build and configuration of that
-  element's release, so in a mixed set an element can typeset with a MathJax
-  it was not built for.
+  the same dist-tag, and upgrade them together. Elements whose `./browser/*`
+  builds typeset on `window.MathJax` share the MathJax the first of them loads,
+  in the build and configuration of that element's release, so in a mixed set
+  an element can typeset with a MathJax it was not built for. Elements that
+  bundle their own MathJax share none
+  ([One MathJax version per page](../../docs/item-player/loading-strategies.md#one-mathjax-version-per-page)).
 - Register one version per package; registering a second version throws.
 - Register each package's `controller` unless the item players are hosted
   (`sectionPlayerRuntime.player.hosted`, or an enabled

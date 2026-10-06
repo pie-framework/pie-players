@@ -13,8 +13,8 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@pie-element/mc-populated-blank": "next",
-		"@pie-element/multiple-choice": "next",
+		"@pie-element/mc-populated-blank": "0.3.1-next.20261005073957",
+		"@pie-element/multiple-choice": "14.0.1-next.20261005143122",
 		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",

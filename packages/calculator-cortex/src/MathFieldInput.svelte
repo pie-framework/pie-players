@@ -34,6 +34,14 @@
 	const settingsOwner = Symbol('pie-cortex-mathfield');
 	let releaseSettings: (() => void) | null = null;
 	let commitTimer: ReturnType<typeof setTimeout> | null = null;
+	/*
+	 * The value the field and the controller last agreed on. The controller
+	 * republishes for resizes, focus requests and calculation state as well as for
+	 * edits, and MathLive reports an edit in the task after it makes it, so the
+	 * field is written only when the controller's value moves: a republish in
+	 * between would otherwise put the previous value back over the edit.
+	 */
+	let synced = '';
 
 	MathfieldElement.fontsDirectory = null;
 	MathfieldElement.soundsDirectory = null;
@@ -57,7 +65,9 @@
 	}
 
 	$effect(() => {
-		if (field && field.value !== value) field.value = value;
+		if (!field || value === synced) return;
+		synced = value;
+		if (field.value !== value) field.value = value;
 	});
 
 	$effect(() => {
@@ -70,6 +80,7 @@
 		ensureMathLiveStyles();
 		const mathfield = new MathfieldElement();
 		mathfield.value = value;
+		synced = value;
 		mathfield.className = 'pie-cortex-mathfield';
 		host.append(mathfield);
 		configureMathfield(mathfield, label, restrictedMode);
@@ -82,12 +93,18 @@
 			'[part="keyboard-sink"]',
 		);
 		keyboardSink?.setAttribute('aria-label', label);
-		const handleInput = () => onInput(mathfield.value);
+		const handleInput = () => {
+			synced = mathfield.value;
+			onInput(mathfield.value);
+		};
 		// MathLive emits its composed `change` event when Return commits a
 		// single-line mathfield. Its matching line-break input notifications may
 		// finish asynchronously, so commit in the next task after they have updated
 		// the controller instead of letting an unchanged input supersede the worker.
+		// It also emits `change` on blur when the value moved since focus. That is no
+		// request to calculate, and MathLive marks the field blurred before emitting it.
 		const handleChange = () => {
+			if (!mathfield.hasFocus()) return;
 			if (commitTimer) clearTimeout(commitTimer);
 			commitTimer = setTimeout(() => {
 				commitTimer = null;

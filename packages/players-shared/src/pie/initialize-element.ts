@@ -5,7 +5,6 @@
  * `element-observer.ts` can reuse it without importing the bundle loaders.
  */
 
-import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { pieRegistry } from "./registry.js";
@@ -34,9 +33,11 @@ export const initializePieElement = (
 		session: any[];
 		env?: Env;
 		eventListeners?: EventListeners;
+		/** The delivering player's bundle type, see `findPieController`. */
+		bundleType?: BundleType;
 	},
 ): boolean => {
-	const { config, session, env, eventListeners } = options;
+	const { config, session, env, eventListeners, bundleType } = options;
 	if ((element as any).__pieInitialized) {
 		return true;
 	}
@@ -70,7 +71,7 @@ export const initializePieElement = (
 	);
 
 	// Set model - use controller if available (client-player.js), or use server-processed model (player.js)
-	const controller = findPieController(tagName);
+	const controller = findPieController(tagName, bundleType);
 
 	if (!env) {
 		logger.error(
@@ -95,7 +96,7 @@ export const initializePieElement = (
 		});
 
 		// Set model directly - server already processed it
-		element.model = wrapModelRichContent(model);
+		element.model = model;
 	} else {
 		// Controller available - run client-side processing (client-player.js bundle)
 		// Note: updatePieElementWithRef handles controller invocation

@@ -4,8 +4,8 @@
  * What a package outside this one needs to write a `ToolRegistration`: the
  * registration types, the context predicates a tool answers `isVisibleInContext`
  * with, scoped-id and element-creation helpers, the toolbar button/overlay
- * helpers, and the provider descriptors for the two capabilities that ship a
- * provider.
+ * helpers, the provider contract a registration's descriptor creates, and the
+ * TTS provider.
  *
  * A separate entry point rather than additions to `.` for the same reason
  * `runtime/internal` and `policy/internal` exist: this is a surface for sibling
@@ -40,7 +40,10 @@ export type {
 	ToolWindowShellConfig,
 	ToolbarContext,
 } from "../services/ToolRegistry.js";
-export { ToolRegistry } from "../services/ToolRegistry.js";
+export {
+	resolveToolProviderId,
+	ToolRegistry,
+} from "../services/ToolRegistry.js";
 // A registration's own display name in the interface locale. A tool window's
 // title is the registration's name, so the shell needs the same `nameKey`-then-
 // `name` precedence the toolbar uses rather than the raw English field.
@@ -134,21 +137,22 @@ export type {
 
 // Canonical tools config shapes a provider descriptor validates against.
 export type {
+	CalculatorToolProviderConfig,
 	ToolPlacementConfig,
 	ToolProviderConfig,
 } from "../services/tools-config-normalizer.js";
 export type { ToolConfigDiagnostic } from "../services/tool-config-validation.js";
 
-// Provider descriptors for the two packaged capabilities that ship one. These
-// stay here rather than moving with the registrations because they are written
-// against the `pie-calculator` and `pie-tts` contract packages, which the
-// toolkit's own `TTSService` and provider registry also depend on.
-export {
-	CortexToolProvider,
-	DesmosToolProvider,
-	GeoGebraToolProvider,
-	TTSToolProvider,
-} from "../services/tool-providers/index.js";
+// The contract a descriptor's `createProvider` returns, for a package writing its
+// own provider. The calculator adapters are written against it in the composition
+// layer, which owns their engine imports.
+export type {
+	ToolProviderApi,
+	ToolProviderCapabilities,
+} from "../services/tool-providers/ToolProviderApi.js";
+// The TTS provider stays here because it is written against the `pie-tts`
+// contract package, which the toolkit's own `TTSService` also depends on.
+export { TTSToolProvider } from "../services/tool-providers/index.js";
 
 // TTS runtime config resolution, used by the TTS registration to turn host
 // config into element props.

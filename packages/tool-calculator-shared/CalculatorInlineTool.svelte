@@ -1,9 +1,10 @@
 <script lang="ts">
 	import {
 		connectToolRuntimeContext,
-		toOverlayToolId,
-		ZIndexLayer,
+		connectToolShellContext,
+		createScopedToolId,
 		type AssessmentToolkitRuntimeContext,
+		type AssessmentToolkitShellContext,
 		type ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
@@ -11,13 +12,11 @@
 	import { untrack } from 'svelte';
 
 	let {
-		toolId = 'calculator-inline',
 		targetToolId = '',
 		calculatorType = 'basic',
 		availableTypes = 'basic,scientific,graphing',
 		size = 'md' as 'sm' | 'md' | 'lg',
 	}: {
-		toolId?: string;
 		targetToolId?: string;
 		calculatorType?: string;
 		availableTypes?: string;
@@ -25,6 +24,8 @@
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
+	const CALCULATOR_TOOL_ID = 'calculator';
+	const UNRESOLVED_TARGET_WARNING_DELAY_MS = 1000;
 	const CALCULATOR_VARIANTS = ['basic', 'scientific', 'graphing'] as const;
 	type CalculatorVariant = (typeof CALCULATOR_VARIANTS)[number];
 	const CALCULATOR_KEYS: Record<
@@ -50,10 +51,9 @@
 
 	let containerElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let calculatorVisible = $state(false);
 	let statusMessage = $state('');
-	let registeredCoordinator: ToolCoordinatorApi | null = null;
-	let registeredToolId: string | null = null;
 
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	const coordinator = $derived(
@@ -77,7 +77,14 @@
 	);
 	const variantKeys = $derived(CALCULATOR_KEYS[variant]);
 	const calculatorName = $derived(interfaceI18n.t(variantKeys.name));
-	const effectiveTargetToolId = $derived(targetToolId || toOverlayToolId(toolId));
+	// The item toolbar registers its calculator under the item's scoped id, the
+	// same scope ItemToolBar derives from the enclosing shell.
+	const effectiveTargetToolId = $derived.by((): string | null => {
+		if (targetToolId) return targetToolId;
+		if (shellContext?.kind !== 'item') return null;
+		const scopeId = shellContext.canonicalItemId || shellContext.itemId;
+		return scopeId ? createScopedToolId(CALCULATOR_TOOL_ID, 'item', scopeId) : null;
+	});
 	const sizeClass = $derived(
 		size === 'sm'
 			? 'pie-tool-calculator-inline__button--sm'
@@ -88,55 +95,40 @@
 
 	$effect(() => {
 		if (!containerElement) return;
-		return connectToolRuntimeContext(
+		const disconnectRuntime = connectToolRuntimeContext(
 			containerElement,
 			(value: AssessmentToolkitRuntimeContext) => {
 				runtimeContext = value;
 			},
 		);
+		const disconnectShell = connectToolShellContext(
+			containerElement,
+			(value: AssessmentToolkitShellContext) => {
+				shellContext = value;
+			},
+		);
+		return () => {
+			disconnectShell();
+			disconnectRuntime();
+		};
 	});
 
+	// Context values arrive through provider retries, so a missing target is
+	// reported only once it has had time to resolve.
 	$effect(() => {
-		const nextCoordinator = coordinator;
-		const nextToolId = toolId;
-		const element = containerElement;
-		if (!nextCoordinator || !nextToolId || !element) return;
-
-		untrack(() => {
-			if (
-				registeredCoordinator &&
-				registeredToolId &&
-				(registeredCoordinator !== nextCoordinator || registeredToolId !== nextToolId)
-			) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
-			if (!registeredCoordinator) {
-				nextCoordinator.registerTool(
-					nextToolId,
-					'Calculator Inline',
-					element,
-					ZIndexLayer.TOOL,
-				);
-				registeredCoordinator = nextCoordinator;
-				registeredToolId = nextToolId;
-			}
-		});
-
-		return () => {
-			if (registeredCoordinator === nextCoordinator && registeredToolId === nextToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
-		};
+		if (!isBrowser || !coordinator || effectiveTargetToolId) return;
+		const timer = setTimeout(() => {
+			console.warn(
+				'[pie-tool-calculator-inline] No calculator to toggle: place the button inside <pie-item-shell>, or set target-tool-id to the calculator tool id.',
+			);
+		}, UNRESOLVED_TARGET_WARNING_DELAY_MS);
+		return () => clearTimeout(timer);
 	});
 
 	$effect(() => {
 		const nextCoordinator = coordinator;
 		const nextTargetToolId = effectiveTargetToolId;
-		if (!isBrowser || !nextCoordinator) return;
+		if (!isBrowser || !nextCoordinator || !nextTargetToolId) return;
 
 		const update = () => {
 			calculatorVisible = nextCoordinator.isToolVisible(nextTargetToolId);
@@ -147,8 +139,13 @@
 	});
 
 	function handleToggle(): void {
-		if (!coordinator) return;
+		if (!coordinator || !effectiveTargetToolId) return;
 		const wasVisible = coordinator.isToolVisible(effectiveTargetToolId);
+		// The item toolbar registers its calculator on first activation, without an
+		// element; registering the same way lets this button be the first to open it.
+		if (!coordinator.getToolState(effectiveTargetToolId)) {
+			coordinator.registerTool(effectiveTargetToolId, effectiveTargetToolId.split(':')[0]);
+		}
 		coordinator.toggleTool(effectiveTargetToolId);
 		statusMessage = interfaceI18n.t(
 			wasVisible ? variantKeys.closed : variantKeys.opened,
@@ -167,7 +164,7 @@
 			aria-pressed={calculatorVisible}
 			title={calculatorName}
 			data-calculator-type={effectiveCalculatorType}
-			disabled={!coordinator}
+			disabled={!coordinator || !effectiveTargetToolId}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

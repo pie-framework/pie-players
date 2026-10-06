@@ -5,6 +5,7 @@ import {
 } from "./range-resolver.js";
 import { alignSpeechToMath } from "./sequence-aligner.js";
 import {
+	normalizeBoundaryWord,
 	resolveBoundaryToSpeechToken,
 	resolveSpokenOffsetToSpeechToken,
 	tokenizeSpeechSource,
@@ -55,26 +56,6 @@ export const resolveHighlightTargetForBoundary = (
 	});
 };
 
-export const resolveMatchedHighlightTargetForBoundary = (
-	alignment: MathAwareAlignment,
-	args: {
-		position: number;
-		length?: number;
-		boundaryWord?: string;
-	},
-): HighlightTarget | null => {
-	const boundary = resolveBoundaryToSpeechToken({
-		tokenization: alignment.speech,
-		position: args.position,
-		length: args.length,
-		boundaryWord: args.boundaryWord,
-	});
-	return resolveMatchedTargetForBoundary({
-		alignment: alignment.result,
-		boundary,
-	});
-};
-
 export const resolveMatchedHighlightTargetForSpokenBoundary = (
 	alignment: MathAwareAlignment,
 	args: {
@@ -101,20 +82,13 @@ export const resolveUniqueMathTargetForBoundaryWord = (
 		boundaryWord?: string;
 	},
 ): HighlightTarget | null => {
-	if (!args.boundaryWord || /^<[^>]+>$/.test(args.boundaryWord.trim())) {
-		return null;
-	}
-	const boundaryToken = tokenizeSpeechSource({
-		speechText: args.boundaryWord,
-	}).tokens[0];
-	if (!boundaryToken) return null;
-	const matches = alignment.math.tokens.filter((token) => {
-		const normalized = boundaryToken.normalized.toLowerCase();
-		return (
+	const normalized = normalizeBoundaryWord(args.boundaryWord);
+	if (!normalized) return null;
+	const matches = alignment.math.tokens.filter(
+		(token) =>
 			token.normalized.toLowerCase() === normalized ||
-			token.spokenAliases.some((alias) => alias.toLowerCase() === normalized)
-		);
-	});
+			token.spokenAliases.some((alias) => alias.toLowerCase() === normalized),
+	);
 	return matches.length === 1 ? matches[0].target : null;
 };
 

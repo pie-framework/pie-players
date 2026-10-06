@@ -7,6 +7,7 @@
 
 import { define, status, whenDefined } from "./ce-registry.js";
 import {
+	DEFAULT_ESM_CDN_URL,
 	ensureRegistered,
 	type EsmCdnProviderOption,
 	type ViewConfig,
@@ -17,7 +18,6 @@ import type {
 	ResolverFn,
 } from "./types.js";
 
-const DEFAULT_CDN_BASE_URL = "https://cdn.jsdelivr.net/npm";
 const BROWSER_PRINT_VIEW_CONFIG: ViewConfig = {
 	subpath: "/print",
 	tagSuffix: "",
@@ -37,10 +37,10 @@ export const defaultResolve: ResolverFn = (
 	return Promise.resolve({
 		tagName,
 		pkg,
-		url: `${DEFAULT_CDN_BASE_URL}/${pkg}/dist/browser/print/index.js`,
+		url: `${DEFAULT_ESM_CDN_URL}/${pkg}/dist/browser/print/index.js`,
 		module: true,
 		loader: "browser-esm",
-		cdnBaseUrl: DEFAULT_CDN_BASE_URL,
+		cdnBaseUrl: DEFAULT_ESM_CDN_URL,
 		cdnProvider: "jsdelivr",
 	});
 };
@@ -100,7 +100,7 @@ export const defaultLoadResolution = async (
 				{
 					backend: {
 						kind: "esm",
-						cdnBaseUrl: r.cdnBaseUrl || DEFAULT_CDN_BASE_URL,
+						cdnBaseUrl: r.cdnBaseUrl || DEFAULT_ESM_CDN_URL,
 						cdnProvider: (r.cdnProvider || "jsdelivr") as EsmCdnProviderOption,
 						moduleResolution: "url",
 						view: "print",
@@ -123,7 +123,7 @@ export const defaultLoadResolution = async (
 
 	if (r.module) {
 		try {
-			const mod = await import(/* @vite-ignore */ r.url);
+			const mod = await import(/* webpackIgnore: true */ /* @vite-ignore */ r.url);
 			const ElementClass = mod.default || mod;
 			define(r.printTagName, ElementClass);
 			return whenDefined(r.printTagName).then(() => ({

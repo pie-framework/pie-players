@@ -1,7 +1,6 @@
 export {
 	buildAuthoringAllowList,
 	createDefaultItemMarkupSanitizer,
-	resetPurifierForTesting,
 	sanitizeItemMarkup,
 	type ItemMarkupSanitizer,
 	type SanitizeItemMarkupOptions,
@@ -14,17 +13,13 @@ export {
 	type StyleUrlValidationOptions,
 	type StyleUrlValidationResult,
 } from "./validate-style-url.js";
-export {
-	resetSvgSanitizerForTesting,
-	sanitizeSvgIcon,
-} from "./sanitize-svg-icon.js";
+export { sanitizeSvgIcon } from "./sanitize-svg-icon.js";
 export { sanitizeStyleAttribute } from "./sanitize-style-attribute.js";
 export {
 	isOverwideImageWrapMutation,
 	wrapOverwideImages,
 	wrapOverwideImagesInElement,
 } from "./wrap-overwide-images.js";
-export { wrapModelRichContent } from "./wrap-model-rich-content.js";
 export {
 	isOverwideTableWrapMutation,
 	wrapOverwideTables,

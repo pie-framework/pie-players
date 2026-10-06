@@ -3,7 +3,6 @@
 		tag: 'pie-tool-calculator-inline-cortex',
 		shadow: 'open',
 		props: {
-			toolId: { type: 'String', attribute: 'tool-id' },
 			targetToolId: { type: 'String', attribute: 'target-tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
 			availableTypes: { type: 'String', attribute: 'available-types' },
@@ -13,16 +12,14 @@
 />
 
 <script lang="ts">
-	import { CalculatorInlineTool } from '@pie-players/pie-tool-calculator-shared';
+	import { CalculatorInlineTool } from '@pie-players/pie-tool-calculator-shared/components';
 
 	let {
-		toolId = 'calculator-inline-cortex',
-		targetToolId = 'calculator',
+		targetToolId = '',
 		calculatorType = 'basic',
 		availableTypes = 'basic,scientific,graphing',
 		size = 'md' as 'sm' | 'md' | 'lg',
 	}: {
-		toolId?: string;
 		targetToolId?: string;
 		calculatorType?: string;
 		availableTypes?: string;
@@ -31,7 +28,6 @@
 </script>
 
 <CalculatorInlineTool
-	{toolId}
 	{targetToolId}
 	{calculatorType}
 	{availableTypes}

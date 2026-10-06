@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
 
+import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
+
 const ROOT = process.cwd();
-const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const BUNDLED_IMPORT_PROTOCOLS = ["node:", "bun:", "virtual:", "vite/"];
 const BUILTIN_SPECIFIERS = new Set(
@@ -31,34 +32,6 @@ const allowedUndeclaredRuntimeImportsByPackage = new Map(
 );
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
-
-const getWorkspaceDirs = () => {
-	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces)
-		? rootPkg.workspaces
-		: [];
-	const dirs = new Set();
-
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string") continue;
-		if (!workspace.startsWith("packages/") && !workspace.startsWith("tools/")) {
-			continue;
-		}
-		if (workspace.endsWith("/*")) {
-			const parent = path.join(ROOT, workspace.slice(0, -2));
-			if (!existsSync(parent)) continue;
-			for (const entry of readdirSync(parent, { withFileTypes: true })) {
-				if (entry.isDirectory()) {
-					dirs.add(path.join(parent, entry.name));
-				}
-			}
-			continue;
-		}
-		dirs.add(path.join(ROOT, workspace));
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
 
 const collectTargets = (value, out) => {
 	if (!value) return;
@@ -96,7 +69,9 @@ const isIgnoredSpecifier = (specifier) => {
 	);
 };
 
-const collectRuntimeImportSpecifiers = (content) => {
+// A match holding `${` lies in a template literal the code builds, such as the
+// module source es-module-shims generates, so it is text and not an import.
+export const collectRuntimeImportSpecifiers = (content) => {
 	const out = new Set();
 	const patterns = [
 		/import\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
@@ -108,7 +83,7 @@ const collectRuntimeImportSpecifiers = (content) => {
 	for (const pattern of patterns) {
 		let match;
 		while ((match = pattern.exec(content))) {
-			out.add(match[1]);
+			if (!match[1].includes("${")) out.add(match[1]);
 		}
 	}
 	return out;
@@ -187,6 +162,50 @@ const validateRuntimeImportClosure = (dir, pkg) => {
 	return failures;
 };
 
+const TYPE_REFERENCE_PATTERN =
+	/\/\/\/\s*<reference\s+types\s*=\s*["']([^"']+)["']/g;
+const CSS_IMPORT_PATTERN = /@import\s+(?:url\(\s*)?["']([^"']+)["']/g;
+const SHIPPED_SOURCE_PATTERN = /\.(?:[cm]?js|[cm]?ts|css)$/;
+
+const listFiles = (entry) => {
+	if (!existsSync(entry)) return [];
+	if (!statSync(entry).isDirectory()) return [entry];
+	return readdirSync(entry, { withFileTypes: true }).flatMap((child) =>
+		listFiles(path.join(entry, child.name)),
+	);
+};
+
+/**
+ * The `dependencies` no shipped script, declaration or stylesheet names. A
+ * consumer installs every one, so a package the build inlines, or that nothing
+ * uses, belongs in `devDependencies`.
+ */
+export const findUnusedRuntimeDependencies = (dir, pkg) => {
+	const declared = Object.keys(pkg.dependencies || {});
+	if (declared.length === 0) return [];
+	const referenced = new Set();
+	const shippedFiles = (pkg.files || ["dist"]).flatMap((entry) =>
+		listFiles(path.join(dir, entry)),
+	);
+	for (const file of shippedFiles) {
+		if (!SHIPPED_SOURCE_PATTERN.test(file)) continue;
+		const content = readFileSync(file, "utf8");
+		const specifiers = [
+			...collectRuntimeImportSpecifiers(content),
+			...[...content.matchAll(CSS_IMPORT_PATTERN)].map((match) => match[1]),
+		];
+		for (const specifier of specifiers) {
+			if (isExternalSpecifier(specifier)) {
+				referenced.add(toPackageName(specifier));
+			}
+		}
+		for (const [, types] of content.matchAll(TYPE_REFERENCE_PATTERN)) {
+			referenced.add(`@types/${types}`);
+		}
+	}
+	return declared.filter((name) => !referenced.has(name));
+};
+
 const getPublishedEntryTargets = (pkg) => {
 	const targets = new Set();
 	collectTargets(pkg.exports, targets);
@@ -237,7 +256,7 @@ const run = () => {
 	}
 
 	for (const target of targets) {
-		const { dir, relativeDir, isToolWorkspace, pkg } = target;
+		const { dir, isToolWorkspace, pkg } = target;
 		checked += 1;
 		try {
 			const publishedTargets = getPublishedEntryTargets(pkg);
@@ -259,6 +278,15 @@ const run = () => {
 				throw new Error(
 					`Runtime import closure check failed:\n${runtimeImportFailures
 						.map((entry) => `- ${entry}`)
+						.join("\n")}`,
+				);
+			}
+
+			const unusedDependencies = findUnusedRuntimeDependencies(dir, pkg);
+			if (unusedDependencies.length > 0) {
+				throw new Error(
+					`No shipped file imports these dependencies; move each to devDependencies if the build inlines it, or remove it:\n${unusedDependencies
+						.map((name) => `- ${name}`)
 						.join("\n")}`,
 				);
 			}
@@ -298,4 +326,4 @@ const run = () => {
 	);
 };
 
-run();
+if (import.meta.main) run();

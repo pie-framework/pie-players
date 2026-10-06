@@ -7,13 +7,19 @@
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
 	"svelteRuntimeDependencyRange": "^5.57.0",
-	"allowedSvelteRuntimeDependencies": {
-		"@pie-players/pie-tool-calculator-shared": "Provider-neutral Svelte components externalize the runtime so vendor custom-element wrappers compile against one shared Svelte instance."
+	"pinnedRuntimeDependencies": {
+		"speech-rule-engine": "5.0.0-rc.4"
 	},
+	"allowedSvelteRuntimeDependencies": {},
 	"allowedUndeclaredRuntimeImports": {
 		"@pie-players/pie-calculator-cortex": [
 			"https://esm.run/@cortex-js/compute-engine",
 			"canvas.js"
+		],
+		"@pie-players/pie-section-player": [
+			"https://esm.run/@cortex-js/compute-engine",
+			"canvas.js",
+			"@pie-players/pie-theme/components.css"
 		]
 	},
 	"workspaceRoots": ["packages"],
@@ -24,7 +30,8 @@
 			"./i18n/use-i18n",
 			"./i18n/use-i18n-standalone",
 			"./ui/use-promise"
-		]
+		],
+		"@pie-players/pie-tool-calculator-shared": ["./components"]
 	},
 	"nodeConsumerImportTargets": {
 		"nodeSafe": [
@@ -39,7 +46,13 @@
 			"@pie-players/tts-client-server",
 			"@pie-players/tts-server-core",
 			"@pie-players/tts-server-google",
-			"@pie-players/tts-server-polly"
+			"@pie-players/tts-server-polly",
+			"@pie-players/pie-section-player/contracts/layout-contract",
+			"@pie-players/pie-section-player/contracts/public-events",
+			"@pie-players/pie-section-player/contracts/runtime-host-contract",
+			"@pie-players/pie-section-player/contracts/layout-parity-metadata",
+			"@pie-players/pie-section-player/contracts/host-hooks",
+			"@pie-players/pie-section-player/policies"
 		],
 		"browserOnly": [
 			"@pie-players/pie-item-player",

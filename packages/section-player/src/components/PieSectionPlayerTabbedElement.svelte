@@ -67,10 +67,14 @@
 				type: "String",
 			},
 		},
+		// The host methods, callable before the component mounts.
+		extend: (ElementClass) =>
+			coerceBooleanAttributes(withHostMethods(NULL_READS)(ElementClass)),
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,
@@ -82,6 +86,10 @@
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
 	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
+	import {
+		NULL_READS,
+		withHostMethods,
+	} from "./shared/layout-host-methods.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
@@ -107,7 +115,6 @@
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
 		getShellHostElement,
-		resolveConfiguredPx,
 		resolveContentMaxWidths,
 	} from "./shared/section-player-shell-layout.svelte.js";
 
@@ -129,7 +136,7 @@
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
-		policies = undefined as SectionPlayerPolicies | undefined,
+		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		onFrameworkError = undefined as
@@ -231,13 +238,6 @@
 		return kernelRef?.getSectionController?.() || null;
 	}
 
-	export async function waitForSectionController(
-		timeoutMs = 5000,
-	) {
-		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
-		return controller || null;
-	}
-
 	$effect(() => {
 		if (!hostElement) return;
 		// `policies.telemetry.enabled === false` skips instrumentation bridge
@@ -291,10 +291,6 @@
 		stateKey: "__tabbedAppliedParams",
 		includeSessionRefInState: false,
 	}}
-	on:runtime-owned={forward}
-	on:runtime-inherited={forward}
-	on:session-changed={forward}
-	on:composition-changed={forward}
 	on:element-preload-retry={forward}
 	on:element-preload-error={forward}
 	let:layoutModel

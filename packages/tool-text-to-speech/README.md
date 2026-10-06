@@ -8,58 +8,88 @@ focuses on the floating tool custom element API.
 
 ## Features
 
-- ✅ **Text Selection**: Automatically detects selected text on the page
-- ✅ **Word Highlighting**: Highlights each word as it's spoken (yellow background + underline)
-- ✅ **Speed Control**: Adjustable speech rate from 0.5x (Slow) to 2.0x (Very Fast)
-- ✅ **Playback Controls**: Play, Pause/Resume, and Stop buttons
-- ✅ **Visual Feedback**: Status indicator shows speaking/paused state
-- ✅ **Draggable**: Move the tool anywhere on screen
-- ✅ **Accessibility**: Full keyboard support and screen reader compatible
+- **Text Selection**: Detects selected text on the page
+- **Word Highlighting**: Highlights each word as it is spoken, when the service has a highlight coordinator
+- **Speed Control**: Sets the service's speech rate from 0.5x (Slow) to 2.0x (Very Fast)
+- **Playback Controls**: Play, Pause/Resume, and Stop buttons
+- **Visual Feedback**: Status indicator shows speaking/paused state
+- **Draggable**: Move the tool anywhere on screen
+- **Accessibility**: Full keyboard support and screen reader compatible
 
 ## Usage
 
+The element reads with the host's TTS service. The service arrives initialized:
+the element never calls `initialize`, so the provider, voice and highlighting
+the host configured stay as they are. Under `<pie-assessment-toolkit>` that
+service is the toolkit coordinator's `ttsService`, which
+`toolkitCoordinator.ensureTTSReady()` initializes from the `textToSpeech` tool
+configuration.
+
 ### As Web Component
 
+With a `coordinator`, the coordinator displays the panel only while `toolId` is
+visible there, so the host shows the tool through the coordinator and binds
+`visible` to it:
+
 ```html
-<pie-tool-text-to-speech
-  visible="true"
-  tool-id="textToSpeech"
-></pie-tool-text-to-speech>
+<pie-tool-text-to-speech tool-id="textToSpeech"></pie-tool-text-to-speech>
+
+<script type="module">
+  import '@pie-players/pie-tool-text-to-speech';
+
+  // toolkitCoordinator: the ToolkitCoordinator passed to <pie-assessment-toolkit>
+  await toolkitCoordinator.ensureTTSReady();
+  const tools = toolkitCoordinator.toolCoordinator;
+  tools.registerTool('textToSpeech', 'Text-to-Speech');
+
+  const tts = document.querySelector('pie-tool-text-to-speech');
+  tts.ttsService = toolkitCoordinator.ttsService;
+  tts.coordinator = tools;
+  tools.subscribe(() => {
+    tts.visible = tools.isToolVisible('textToSpeech');
+  });
+  tools.showTool('textToSpeech');
+</script>
 ```
 
-### As Svelte Component
+### Standalone
+
+Without a `coordinator`, `visible` alone controls the panel, and the close
+button and Escape do nothing, so the host closes the panel through `visible`:
 
 ```svelte
 <script>
   import '@pie-players/pie-tool-text-to-speech';
-  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
+  import { BrowserTTSProvider, TTSService } from '@pie-players/pie-assessment-toolkit';
 
+  const ttsService = new TTSService();
+  const ready = ttsService.initialize(new BrowserTTSProvider());
   let visible = $state(false);
 </script>
 
-<pie-tool-text-to-speech
-  {visible}
-  toolId="textToSpeech"
-  coordinator={toolCoordinator}
-/>
+{#await ready then}
+  <pie-tool-text-to-speech {visible} toolId="textToSpeech" {ttsService} />
+{/await}
 ```
 
-### Via Tool Toolbar
+### Toolkit Toolbars
 
-The TTS tool is automatically included when using `<pie-tool-toolbar>`:
-
-```html
-<pie-tool-toolbar tools="protractor,ruler,textToSpeech"></pie-tool-toolbar>
-```
+The packaged `textToSpeech` capability in `@pie-players/pie-default-tool-loaders`
+mounts `<pie-tool-tts-inline>` from `@pie-players/pie-tool-tts-inline` in item
+and passage toolbars. A host that wants this floating panel mounts it itself.
 
 ## How It Works
 
 1. **Select Text**: User selects any text on the page
-2. **Click Play**: Tool reads the selected text aloud
-3. **Word Highlighting**: Each word is highlighted with yellow background and underline as it's spoken
-4. **Adjust Speed**: Use the slider to change speech rate (0.5x - 2.0x)
+2. **Click Play**: The tool calls `ttsService.speak(selection, { catalogId, contentElement })`, where `contentElement` is the element holding the selection and `catalogId` is the nearest docked catalog with spoken content
+3. **Word Highlighting**: The service highlights each word inside `contentElement` as it is spoken
+4. **Adjust Speed**: The slider calls `ttsService.setPlaybackRate`, which changes the rate for every reader of that service
 5. **Pause/Resume**: Pause and resume playback at any time
 6. **Stop**: Stop playback and clear highlights
+
+Play stays disabled while speech is in progress and re-enables when the promise
+`speak` returns settles. A rejected `speak` shows its message above the
+controls. Removing the element stops playback only when this panel started it.
 
 ## Props
 
@@ -67,53 +97,57 @@ The TTS tool is automatically included when using `<pie-tool-toolbar>`:
 |------|------|---------|-------------|
 | `visible` | `Boolean` | `false` | Show/hide the tool |
 | `toolId` | `String` | `'textToSpeech'` | Unique identifier for the tool |
-| `coordinator` | `ToolCoordinator` | Required | Tool coordination service |
+| `ttsService` | `TtsServiceApi` | unset | Initialized TTS service the tool reads with; the panel shows a loading message until it is set |
+| `coordinator` | `ToolCoordinatorApi` | unset | Tool coordinator for registration, z-order and closing |
+
+`ttsService` and `coordinator` are JavaScript properties. The element registers
+`toolId` with `coordinator` on `ZIndexLayer.MODAL`, brings the panel to the
+front when it is pressed or dragged, and hides `toolId` there from the close
+button and Escape.
 
 ## TTS Service Integration
 
-The tool uses the shared `TTSService` from `@pie-players/pie-assessment-toolkit`:
+`ttsService` takes a `TtsServiceApi`, such as `TTSService` from
+`@pie-players/pie-assessment-toolkit`. The element calls `speak`, `pause`,
+`resume`, `stop` and `setPlaybackRate`, and `hasSpokenAlternate` when the
+service provides it. A host building its own service initializes it before
+passing it:
 
 ```typescript
-import { ttsService } from '@pie-players/pie-assessment-toolkit';
+import {
+  BrowserTTSProvider,
+  HighlightCoordinator,
+  TTSService,
+} from '@pie-players/pie-assessment-toolkit';
 
-// Initialize
-await ttsService.initialize();
+const ttsService = new TTSService();
+await ttsService.initialize(new BrowserTTSProvider());
 
-// Set root element for highlighting
-ttsService.setRootElement(containerElement);
-
-// Speak with options
-await ttsService.speak(text, {
-  rate: 1.0,
-  highlightWords: true
-}, {
-  onEnd: () => { /* cleanup */ },
-  onError: (error) => { /* handle error */ }
-});
+// Word highlighting needs a highlight coordinator
+ttsService.setHighlightCoordinator(new HighlightCoordinator());
 ```
 
 ## Browser Support
 
+Speech support is the provider's. With `BrowserTTSProvider`:
+
 ### Text-to-Speech (Web Speech API)
-- ✅ Chrome 33+
-- ✅ Safari 7+
-- ✅ Edge 14+
-- ✅ Firefox 49+
-- ✅ Mobile: iOS 7+, Android 4.4+
-- **Coverage**: 97%+ of users
+- Chrome 33+
+- Safari 7+
+- Edge 14+
+- Firefox 49+
+- Mobile: iOS 7+, Android 4.4+
 
 ### Word Highlighting (CSS Custom Highlight API)
-- ✅ Chrome 105+
-- ✅ Safari 17.2+
-- ✅ Edge 105+
-- ✅ Firefox 128+
-- **Coverage**: 85-90% of users
+- Chrome 105+
+- Safari 17.2+
+- Edge 105+
+- Firefox 128+
 
-The tool gracefully degrades: TTS works everywhere, highlighting only on modern browsers.
+Speech works without highlighting on browsers that lack the Custom Highlight API.
 
 ## Accessibility
 
-- **Screen Reader Compatible**: Uses Web Speech API which doesn't interfere with screen readers
 - **Keyboard Navigation**: Tool can be moved with keyboard (when focused)
 - **High Contrast**: Works with high contrast mode
 - **Reduced Motion**: Respects `prefers-reduced-motion` setting
@@ -141,34 +175,35 @@ The tool features:
 
 ## Error Handling
 
-The tool handles these error scenarios:
-
-1. **TTS Not Supported**: Shows error message if browser doesn't support Web Speech API
+1. **No Service**: Shows a loading message until `ttsService` is set
 2. **No Text Selected**: Disables play button until text is selected
-3. **Speech Errors**: Shows error message and stops playback
-4. **Network Issues**: Gracefully handles offline scenarios (Web Speech API works offline)
+3. **Speech Errors**: Shows the error from `speak` and resets the controls
 
 ## Performance
 
-- **Lightweight**: ~15KB minified
-- **No Dependencies**: Uses browser-native APIs
-- **Efficient**: Only highlights visible text, no DOM mutation
-- **Memory Safe**: Cleans up event listeners on unmount
+- **Dependencies**: Imports `@pie-players/pie-assessment-toolkit` and
+  `@pie-players/pie-players-shared`, which stay external to its bundle
+- **Memory Safe**: Removes its selection listener and coordinator registration on unmount
 
 ## Example: Complete Integration
 
 ```svelte
 <script>
   import '@pie-players/pie-tool-text-to-speech';
-  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-  let showTTS = $derived(
-    toolCoordinator.getToolState('textToSpeech')?.isVisible ?? false
+  // toolkitCoordinator: the ToolkitCoordinator passed to <pie-assessment-toolkit>
+  let { toolkitCoordinator } = $props();
+  const toolCoordinator = toolkitCoordinator.toolCoordinator;
+  const ready = toolkitCoordinator.ensureTTSReady();
+  toolCoordinator.registerTool('textToSpeech', 'Text-to-Speech');
+
+  let showTTS = $state(false);
+
+  $effect(() =>
+    toolCoordinator.subscribe(() => {
+      showTTS = toolCoordinator.isToolVisible('textToSpeech');
+    })
   );
-
-  $effect(() => {
-    toolCoordinator.registerTool('textToSpeech', 'Text-to-Speech');
-  });
 </script>
 
 <!-- Assessment content -->
@@ -178,15 +213,18 @@ The tool handles these error scenarios:
 
 <!-- TTS button -->
 <button onclick={() => toolCoordinator.toggleTool('textToSpeech')}>
-  🔊 Text-to-Speech
+  Text-to-Speech
 </button>
 
 <!-- TTS tool -->
-<pie-tool-text-to-speech
-  visible={showTTS}
-  toolId="textToSpeech"
-  coordinator={toolCoordinator}
-/>
+{#await ready then}
+  <pie-tool-text-to-speech
+    visible={showTTS}
+    toolId="textToSpeech"
+    ttsService={toolkitCoordinator.ttsService}
+    coordinator={toolCoordinator}
+  />
+{/await}
 ```
 
 ## Future Enhancements

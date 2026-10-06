@@ -56,6 +56,7 @@ export {
 	ElementAssertionError,
 	ElementLoaderError,
 	assertRegistered,
+	describeRegistrationFailures,
 	ensureRegistered,
 } from "./element-loader.js";
 export type {
@@ -70,9 +71,24 @@ export {
 	BUILT_IN_VIEWS,
 	createEsmBackend,
 	mapEsmViewElements,
+	resolveEsmRuntimeSupportUrl,
 } from "./esm-adapter.js";
 export type {
 	IifeBackend,
 	IifeBundleRetryStatus,
 } from "./iife-adapter.js";
-export { createIifeBackend, DEFAULT_BUNDLE_HOST } from "./iife-adapter.js";
+export { DEFAULT_BUNDLE_HOST, DEFAULT_ESM_CDN_URL } from "./defaults.js";
+export { createIifeBackend } from "./iife-adapter.js";
+
+export { resolveLoadControllers } from "./controller-loading.js";
+
+// Host-side registration for the `preloaded` strategy, which only asserts, and
+// the version alignment and authored tags both players apply before asserting.
+export type {
+	PreloadedController,
+	PreloadedElement,
+} from "./preloaded-registration.js";
+export { registerPreloadedElements } from "./preloaded-registration.js";
+export type { PreloadedElementSpecs } from "./preloaded-alignment.js";
+export { alignPreloadedElementVersions } from "./preloaded-alignment.js";
+export { defineAuthoredPreloadedTags } from "./preloaded-authored-tags.js";

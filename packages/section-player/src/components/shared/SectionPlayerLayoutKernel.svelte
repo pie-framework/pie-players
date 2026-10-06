@@ -34,7 +34,7 @@
 	} from "../../contracts/runtime-host-contract.js";
 	import {
 		DEFAULT_SECTION_PLAYER_POLICIES,
-		isPreloadEnabled,
+		resolveSectionPlayerPolicies,
 	} from "../../policies/index.js";
 	import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
@@ -65,19 +65,17 @@
 	};
 
 	type KernelEvents = {
-		// Non-engine Svelte events the kernel still dispatches up to the
-		// hosting layout CE. The canonical M6 vocabulary
-		// (`pie-stage-change` / `pie-loading-complete`) and
-		// `framework-error` are not dispatched here — the section
-		// runtime engine bridges those onto DOM events fired directly
-		// on the layout CE host. The readiness aliases
-		// (`readiness-change` / `interaction-ready` / `ready`) and
-		// their DOM-event bridge were removed in the broad
-		// architecture review compat sweep.
-		"runtime-owned": Record<string, unknown>;
-		"runtime-inherited": Record<string, unknown>;
-		"session-changed": Record<string, unknown>;
-		"composition-changed": { composition: unknown };
+		// The only Svelte events the kernel dispatches up to the hosting
+		// layout CE, which re-dispatches them on its host. The toolkit's own
+		// events (`session-changed`, `composition-changed`, `runtime-owned`,
+		// `runtime-inherited`, `toolkit-ready`, `section-ready`) reach the
+		// layout host by bubbling from the toolkit, and the canonical M6
+		// vocabulary (`pie-stage-change` / `pie-loading-complete`) and
+		// `framework-error` are fired on it by the section runtime engine.
+		// Re-dispatching a bubbled event here delivered it to the host a
+		// second and third time. The readiness aliases (`readiness-change` /
+		// `interaction-ready` / `ready`) and their DOM-event bridge were
+		// removed in the broad architecture review compat sweep.
 		"element-preload-retry": Record<string, unknown>;
 		"element-preload-error": Record<string, unknown>;
 	};
@@ -105,7 +103,7 @@
 			stateKey: "__sectionPlayerAppliedParams",
 			includeSessionRefInState: false,
 		} satisfies PlayerActionConfig,
-		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
+		policies = DEFAULT_SECTION_PLAYER_POLICIES as Partial<SectionPlayerPolicies>,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		onFrameworkError = undefined as
 			| undefined
@@ -162,7 +160,16 @@
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
-	let paneElementsLoaded = $state(false);
+	// The items pane reports whether its element pre-warm has resolved, with the
+	// renderables signature the report was made for. It counts only for the
+	// composition the kernel holds, and only once the toolkit has published one:
+	// before that the pane renders no items and reports its empty pre-warm as
+	// resolved.
+	let paneReport = $state<{
+		elementsLoaded: boolean;
+		renderablesSignature: string;
+	} | null>(null);
+	let compositionReceived = $state(false);
 	let scaffoldRef = $state<{
 		navigateToItem?: (index: number) => boolean;
 		getCompositionModelSnapshot?: () => unknown;
@@ -225,6 +232,11 @@
 	const preloadedRenderables = $derived(compositionSnapshot.renderables);
 	const preloadedRenderablesSignature = $derived(
 		compositionSnapshot.renderablesSignature,
+	);
+	const paneElementsLoaded = $derived(
+		compositionReceived &&
+			paneReport?.elementsLoaded === true &&
+			paneReport.renderablesSignature === preloadedRenderablesSignature,
 	);
 	const runtimeState = $derived.by(() =>
 		resolveSectionPlayerRuntimeState({
@@ -299,28 +311,42 @@
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
-	const preloadEnabled = $derived(isPreloadEnabled(policies));
+	const effectivePolicies = $derived(resolveSectionPlayerPolicies(policies));
+	const preloadEnabled = $derived(effectivePolicies.preload.enabled);
+	// Interaction waits for the items to mount, so the progressive and strict
+	// modes coincide on these signals.
 	const readinessDetail = $derived.by(() =>
 		createReadinessDetail({
-			mode: policies.readiness.mode,
+			mode: effectivePolicies.readiness.mode,
 			signals: {
 				sectionReady,
-				interactionReady: sectionReady,
+				interactionReady: sectionReady && paneElementsLoaded,
 				allLoadingComplete: paneElementsLoaded,
 				runtimeError: runtimeErrorState,
 			},
-			reason: `policy:${policies.readiness.mode}`,
+			reason: `policy:${effectivePolicies.readiness.mode}`,
 		}),
 	);
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
-		dispatch("composition-changed", (event as CustomEvent<{ composition: unknown }>).detail);
+		compositionReceived = true;
 	}
 
 	function handleItemsPaneElementsLoaded(event: Event) {
-		const detail = (event as CustomEvent<{ elementsLoaded?: unknown }>).detail;
-		paneElementsLoaded = detail?.elementsLoaded === true;
+		const detail = (
+			event as CustomEvent<{
+				elementsLoaded?: unknown;
+				renderablesSignature?: unknown;
+			}>
+		).detail;
+		paneReport = {
+			elementsLoaded: detail?.elementsLoaded === true,
+			renderablesSignature:
+				typeof detail?.renderablesSignature === "string"
+					? detail.renderablesSignature
+					: "",
+		};
 	}
 
 	function handleItemsPanePreloadRetry(event: Event) {
@@ -366,15 +392,12 @@
 		// The wrapped `<pie-assessment-toolkit>` still dispatches its
 		// own `framework-error` (with `bubbles: true, composed: true`)
 		// for direct toolkit consumers — that emit is captured here
-		// mid-bubble at `<pie-section-player-base>`. To collapse the
-		// previously dual-emitted layout-host surface to a single
-		// canonical `framework-error` per error, we stop further
-		// propagation after re-feeding the engine: the bubbled toolkit
-		// emit no longer reaches the layout CE host, but the engine
-		// bridge fires its own (non-bubbling) `framework-error` on the
-		// layout host directly. Direct listeners on the toolkit host
-		// itself are unaffected because the event was already
-		// delivered to them before this listener runs.
+		// mid-bubble at `<pie-section-player-base>`. Propagation stops
+		// after re-feeding the engine, so the layout CE host receives
+		// the engine's (non-bubbling) `framework-error` alone, once per
+		// error. Direct listeners on the toolkit host itself are
+		// unaffected because the event was already delivered to them
+		// before this listener runs.
 		//
 		// `onFrameworkError` is still delivered exactly once by the
 		// underlying `pie-assessment-toolkit` (two-tier precedence:
@@ -382,24 +405,11 @@
 		// `resolveRuntime`); the kernel intentionally does not invoke
 		// any handler here to avoid double-firing.
 		//
-		// The collapse is pinned by
-		// `tests/section-player-framework-error-dual-emit.test.ts`,
-		// which now asserts the single canonical emit on the layout host.
+		// Both counts are pinned by
+		// `tests/section-player-event-delivery.spec.ts`.
 		if (!detail) return;
 		event.stopPropagation();
 		engine.dispatchInput({ kind: "framework-error", error: detail });
-	}
-
-	function handleSessionChanged(event: Event) {
-		dispatch("session-changed", (event as CustomEvent<Record<string, unknown>>).detail || {});
-	}
-
-	function handleRuntimeOwned(event: Event) {
-		dispatch("runtime-owned", (event as CustomEvent<Record<string, unknown>>).detail || {});
-	}
-
-	function handleRuntimeInherited(event: Event) {
-		dispatch("runtime-inherited", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
 
 	function notifySectionControllerResolved(_controller: SectionControllerHandle) {
@@ -585,7 +595,7 @@
 		void sectionReady;
 		void paneElementsLoaded;
 		void runtimeErrorState;
-		void policies.readiness.mode;
+		void effectivePolicies.readiness.mode;
 		untrack(() => {
 			if (!host) return;
 			engine.attachHost({
@@ -631,7 +641,7 @@
 			if (lastCohort !== null) {
 				const signals: EngineReadinessSignals = {
 					sectionReady,
-					interactionReady: sectionReady,
+					interactionReady: sectionReady && paneElementsLoaded,
 					allLoadingComplete: paneElementsLoaded,
 					runtimeError: runtimeErrorState,
 				};
@@ -640,7 +650,7 @@
 					signals,
 					loadedCount: itemCount,
 					itemCount,
-					mode: policies.readiness.mode,
+					mode: effectivePolicies.readiness.mode,
 				});
 			}
 		});
@@ -703,9 +713,6 @@
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
 	onFrameworkErrorEvent={handleFrameworkError}
-	onSessionChanged={handleSessionChanged}
-	onRuntimeOwned={handleRuntimeOwned}
-	onRuntimeInherited={handleRuntimeInherited}
 	onToolkitReady={handleToolkitReady}
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}

@@ -93,3 +93,5 @@ export const toPrintHashedTag = (
 	const hash = Math.abs(hashFn(hashSource));
 	return `${baseTag}-print-${hash}`;
 };
+
+export { parseVersionedTagName } from "./versioned-tag.js";

@@ -3,13 +3,15 @@
 Status: Accepted for the pie-players and pie-elements-ng contracts
 
 Implementation status: landed in `pie-players` (`commitPendingSessions`,
-`bindPageLifecycleCommit`, the item-player and section-player
+`bindPageLifecycleCommit`, the snapshot, the item-player and section-player
 wiring), in `pie-elements-ng` (`createSessionNotifier` and the five audited
-elements), and in both legacy players (`pie-player-components` `watchConfig` and
-`disconnectedCallback`; `pie-api-components` teardown and page-hidden commit plus
-the save flush). Outstanding: publishing the `pie-elements-ng` element versions,
-and whether any element still shipping from legacy `pie-elements` needs the
-inline flush — see Open Questions.
+elements, published on the `next` dist-tag), in legacy `pie-elements`
+(`extended-text-entry`), and in both legacy players (`pie-player-components`
+`watchConfig` and `disconnectedCallback`; `pie-api-components` teardown and
+page-hidden commit plus the save flush). Outstanding: whether any other element
+still shipping from legacy `pie-elements` needs the inline flush. The
+device-local session snapshot is opt-in and implemented. See Open Questions for
+both.
 
 Owner:
 
@@ -52,12 +54,11 @@ In the players:
 The learner-visible failure: type a constructed response, click Next, and the
 host destroys the question view inside the element's debounce window. No
 `session-changed` is dispatched, so the host cannot detect the loss — there is no
-event that failed to arrive. DNAFORM-1097 and DNAFORM-2207 are closed customer
-defects on this symptom.
+event that failed to arrive. Two closed customer defects report this symptom.
 
-Online Testing works around it today by listening for `keyup` on
-`.tiptap.ProseMirror` and locking navigation until their own save completes. That
-selector is PIE's suggestion, the lock is a race they have to win, and `keyup`
+A host can work around it by listening for `keyup` on
+`.tiptap.ProseMirror` and locking navigation until its own save completes. That
+selector is PIE's suggestion, the lock is a race the host has to win, and `keyup`
 misses context-menu paste and drag-and-drop, which ProseMirror handles by
 `preventDefault()` plus a transaction and which therefore emit no input event
 either.
@@ -72,8 +73,8 @@ either.
   and `<pie-player>` are the ones hitting this now.
 - The section player inherits the guarantee from the item player it already
   mounts, and needs additions only for boundaries it alone owns.
-- Quiz Engine's existing `document`-level listener starts receiving the final
-  event without Quiz Engine changing anything.
+- A host's existing `document`-level `session-changed` listener starts receiving
+  the final event with no change on the host's side.
 - A commit on the page going away — tab close, navigation, mobile freeze — not
   only on the player being removed from the page.
 - A recoverable draft after a crash, offered to the host rather than applied.
@@ -94,7 +95,10 @@ either.
 - A host-called flush method. The guarantee belongs inside the library.
 - Guaranteeing that a *network* save completes on a hard kill. No API can promise
   that. The commit reaches the host and, where PIE owns the save, is sent with
-  `keepalive`. A device-local recovery draft beyond that is an open question.
+  `keepalive`; beyond that the snapshot is the recovery path.
+- Silently restoring a snapshot over a server-loaded session. School devices are
+  shared, so a recovered draft is surfaced for the host to accept, never applied
+  behind its back.
 
 ## Package And Export Ownership
 
@@ -113,8 +117,9 @@ either.
   migrated away from is the cheaper trade.
 - Owning package, player side: `@pie-players/pie-players-shared`, exporting
   `commitPendingSessions`, `bindPageLifecycleCommit`,
-  `noteSessionBaseline`/`noteSessionObserved` and `hasLearnerResponse`. One
-  document-level lifecycle listener per player, never one per element.
+  `noteSessionBaseline`/`noteSessionObserved`, `hasLearnerResponse`, and the
+  snapshot store contract. One document-level lifecycle listener per player,
+  never one per element.
 - Consuming packages: `pie-elements` and `pie-elements-ng` delivery elements;
   `pie-player-components`; `pie-api-components`; `@pie-players/pie-item-player`;
   `@pie-players/pie-section-player`.
@@ -213,17 +218,16 @@ they are still attached. Two paths per element:
   otherwise be recorded as delivered and skipped at every later seam. A commit
   that dispatches nothing falls through to the synthesized path below.
 - An older element gets a `session-changed` synthesized from its `session`
-  getter, carrying `component` and `sessionCommitReason` and omitting `complete`
-  — `complete` is element-specific knowledge the player does not have, and
-  `SectionController` leaves completion untouched when the field is absent
-  rather than regressing it.
+  getter, carrying `component` and `sessionCommitReason`. `pie-item-player`
+  fills `complete` from whether the element's record holds a response, the
+  same derivation a restore without `complete` gets.
 
 Both paths carry `detail.sessionCommitReason`. An element dispatching its own
 commit cannot set it — it knows nothing about the seam — so the sweep marks that
 event from a capture listener on its root, held for the length of the sweep. The
 marker is the field every guard in a `session-changed`'s way keys on to let a
 commit past: the Stencil player's 150 ms model-set blocker, the item renderer's
-duplicate-payload suppression, the section shells' cross-shell dedupe, and
+duplicate-payload suppression, the item shell's repeat suppression, and
 `<pie-api-player>`'s decision to save now instead of debouncing. Leaving it to
 the synthesized path only was implemented and corrected: the guards exempted a
 commit from the path that never needed exempting and dropped the one from the
@@ -304,6 +308,7 @@ not, and cannot; see below.
 
 | Player | Seam |
 | --- | --- |
+| `pie-item-player` | `focusout` to a target outside the player, or to none: WebKit does not focus a clicked button. `flushPendingSessionNotifications` runs the same sweep with no reason, so the event is an ordinary one and lands before the host acts on the click or key that moved focus. Every seam below then finds nothing pending for that element |
 | `pie-api-player` | `disconnectedCallback` — sweep, then save when the session differs from what the backend last saw. Disconnection callbacks run in tree order, so this fires before `<pie-player>`'s and has to sweep itself; it cannot route the result through its own `@Listen`, because Stencil removes host listeners before the callback runs. The signature comparison also covers the debounced save that was still pending, which the `() => void` typing on the field had hidden `.flush()` behind |
 | `pie-player` | `watchConfig` before `elementsLoaded = false` triggers the markup replacement, plus a `disconnectedCallback` it did not have |
 | `pie-item-player` | `loadConfig`, past its no-op signature guard, which is where the rendered elements are about to be replaced and where they are still mounted and connected; plus the component's own `onDestroy` for a host that removes the element outright, and the imperative `commitPendingElementSessions()` for a host that wants `document` reach on an unmount it controls. Not the renderer's `onDestroy`: that component is the one a `{#key}` swap replaces on a config change, so a commit routed through its listener writes player state in the middle of that swap. The orchestrator's autosave timer is flushed instead of cleared, both on teardown and when the host repoints `backend.delivery` |
@@ -369,7 +374,8 @@ owns a backend save sends it with `fetch(url, { keepalive: true })` rather than
 `navigator.sendBeacon`, because beacon requests cannot carry the
 `Authorization` header that `backend.auth` supplies. `keepalive` bodies are
 capped at 64KB across all in-flight keepalive requests, which bounds a very long
-constructed response.
+constructed response and is the reason the snapshot below is not merely belt and
+braces.
 
 `keepalive` reaches `fetch` through `BackendRequestOptions.keepalive`, so a
 custom `delivery.client` can honour it too, and the request timeout is skipped on
@@ -383,10 +389,78 @@ cap `fetch` rejects, so the save is lost outright on the one path that exists as
 a last resort; an ordinary request the unload may cut short is a worse chance
 than a small body gets and a better one than none.
 
-For a host that persists from its own listener — Online Testing and Quiz Engine
-both do — PIE guarantees the event arrives, not that the host's request
-completes. Hosts wanting the unload case covered end to end either move their
-save onto `backend.delivery` or make their own handler `keepalive`.
+For a host that persists from its own listener, PIE guarantees the event
+arrives, not that the host's request completes. Hosts wanting the unload case covered end to end either move their
+save onto `backend.delivery` or make their own handler `keepalive`. An enabled
+`backend.delivery` also makes the player hosted, running no element controller in
+the browser, so a host moving only its save sets `hosted` to `false`.
+
+### Session snapshot
+
+A crash or an OS kill fires nothing at all, so the only state that survives is
+state already written before it. The snapshot writes each committed session to
+device storage and offers it back on the next load.
+
+```ts
+// Documentation sketch only.
+export interface SessionSnapshotStore {
+  read(key: string): string | null;
+  write(key: string, value: string): void;
+  clear(key: string): void;
+}
+
+export type SessionSnapshotConfig =
+  | boolean
+  | {
+      enabled?: boolean;
+      /** Defaults to `sessionStorage`. */
+      store?: SessionSnapshotStore;
+      /** Defaults to the `backend.delivery` identity. */
+      key?: string;
+    };
+
+export function createSessionSnapshot(args: {
+  config: SessionSnapshotConfig | null | undefined;
+  identity: { itemId?: string; sessionId?: string; assignmentId?: string };
+}): SessionSnapshot | null;   // null without an opt-in, or without a sessionId
+```
+
+The item player takes it as the `sessionSnapshot` property, with a
+`session-snapshot` attribute for the boolean opt-in; a host-supplied `store` is a
+function and can only arrive as a property. Every store access is wrapped,
+including a host-injected one: private mode and blocked site data make the
+accessor throw, and the player keeps working without a snapshot.
+
+The shape follows `BackendAutosaveConfig` in
+`packages/item-player/src/backend/types.ts:34-39`, and the default key is built
+from `BackendDeliveryIdentity` (`:41-45`) so no new identity concept appears.
+
+A delivery `sessionId` is required, and without one there is no snapshot. It is
+the only field that distinguishes one learner's attempt from another's: keyed by
+item id alone — which is what a host driving the player by props has — a shared
+device offers the previous student's draft to the next, and the offer is the
+disclosure whether or not the host applies it. Such a host opts in with an
+explicit `key` and owns its uniqueness.
+
+`sessionStorage` is the default, matching
+`packages/tool-annotation-toolbar/tool-annotation-toolbar.svelte:283-306`, which
+already persists learner annotations this way. It is tab-scoped and cleared when
+the tab closes, so a response does not outlive the sitting on a shared device,
+and browser session restore brings it back after a crash. A host wanting recovery
+across a full browser restart injects a `localStorage`-backed `store` and owns
+the retention consequences of that choice.
+
+Writes happen on each committed session and are synchronous, so the same write
+also covers the lifecycle path. The snapshot is cleared on a successful backend
+save and when the session ends.
+
+On load, a snapshot whose key matches is not applied. The player emits
+`session-snapshot-available` with the stored session and its timestamp, and the
+host decides. Auto-restoring risks reviving a previous student's draft on a
+shared machine, and the player has no way to tell that case from a legitimate
+recovery. The record stays readable from `getPendingSessionSnapshot()`, since a
+one-shot event loses the recovery for a host that binds its listener a tick
+late.
 
 ## Compatibility
 
@@ -395,10 +469,11 @@ Surfaces touched:
 - PIE element runtime/controller contracts — yes. The element rule changes when
   `_session` is updated relative to the dispatch. It does not change the
   `session-changed` payload, the property names, or the dispatch's timing floor.
-- `pie-item-player` properties, events, or imperative methods — one new
-  imperative method, `commitPendingElementSessions()`. `session-changed` gains a
-  guaranteed final emission; nothing is renamed. The lifecycle commit is on by
-  default, since it emits an event the host already handles and stores nothing.
+- `pie-item-player` properties, events, or imperative methods — one new event,
+  `session-snapshot-available`, and one new opt-in config branch for the
+  snapshot. `session-changed` gains a guaranteed final emission; nothing is
+  renamed. The lifecycle commit is on by default, since it emits an event the
+  host already handles and stores nothing.
 - `section-player` session/completion state — unchanged. The section player
   receives the same normalized events it does now, and one more of them at
   teardown.
@@ -425,8 +500,9 @@ Notes:
   overwriting a newer one. What it cannot do is recover text the editor has not
   committed; only the element-side fix reaches that.
 - The player-side changes therefore stand on their own value rather than on
-  element adoption: the `pie-api-player` flush and the lifecycle commit both
-  act on sessions the player already holds, whatever version produced them.
+  element adoption: the `pie-api-player` flush, the lifecycle commit, and the
+  snapshot all act on sessions the player already holds, whatever version
+  produced them. The snapshot in particular is entirely version-independent.
 - A host listening on `document` receives the final event only via the
   player-side sweep, which is why both halves ship rather than the element flush
   alone.
@@ -440,10 +516,15 @@ PIE owns:
   before the page goes away.
 - Flushing its own pending backend save in players that own one, with
   `keepalive` on the unload path.
+- Offering a recovered snapshot, when the host enabled one.
 
 Hosts own:
 
 - Durable persistence.
+- Whether a snapshot is written at all, where it is stored, and how long it
+  lives. PIE writes learner responses to the device only when a host enables it,
+  and the default store is tab-scoped for that reason.
+- Deciding whether to accept a recovered snapshot.
 - Identity and authorization.
 - Storage, retention, privacy, and product policy.
 - Reporting, gradebooks, workflow, and standards certification.
@@ -456,8 +537,8 @@ schemas, and validation ownership are unchanged.
 ## Accessibility
 
 No user-facing runtime change. No focus, keyboard, screen-reader, captions,
-reduced-motion, or high-contrast impact. The final dispatch happens after the
-editor has already lost focus.
+reduced-motion, or high-contrast impact. The focus-leave flush observes
+`focusout` and moves no focus.
 
 ## Standards Or Adapter Impact
 
@@ -470,12 +551,12 @@ The section player mounts items through `pie-item-player`
 the item-player guarantee without changes of its own.
 
 Intra-section navigation is already safe, and for a structural reason rather than
-by timing: `SectionItemsPane.svelte:656` renders every item in the section —
+by timing: `SectionItemsPane.svelte` renders every item in the section —
 `{#each items as item, itemIndex (item.id || itemIndex)}` — and navigation only
-flips `isCurrent={itemIndex === currentItemIndex}` at :672. The editor is never
-unmounted between questions, so the debounce always completes. This is why Quiz
-Engine, which persists off these same events, has not hit the defect that Online
-Testing has.
+flips `isCurrent={itemIndex === currentItemIndex}`. The editor is never
+unmounted between questions, so the debounce always completes, and a host that
+persists off these same events does not hit the defect between items of one
+section.
 
 What the section player alone owns is the boundary where a section does go away:
 section change and submit. `SectionController.navigateToItem()` is synchronous,
@@ -495,27 +576,28 @@ registers a commit keeps its current behaviour.
 A raw `session-changed` does not leave a section: `<pie-item-shell>` stops it and
 re-dispatches the normalized `PIE_ITEM_SESSION_CHANGED_EVENT`. So inside a
 section the commit's reach is the controller, and a host persists from the
-controller's events or its session snapshot. A commit is exempt from both of the
-shell's dedupes, because a shell being replaced for the same item otherwise
-falls inside the cross-shell window and the outgoing shell's last response is
-dropped.
+controller's events or its session snapshot. A commit is exempt from the shell's
+repeat suppression, because it is the response's last chance to reach the
+controller. The shell also had a 500 ms cross-shell window, which dropped a
+replaced shell's last response until commits were exempted; it was removed in
+2026-09, when a measurement across the three layouts, the IIFE and preloaded
+strategies, re-mounts and section reassignment found nothing for it to suppress.
 
 The commit sits in `updateInput()` rather than `initialize()` because
 `updateInput()` snapshots the session before delegating, so a commit inside
 `initialize()` would land in state that snapshot had already taken.
 
-Quiz Engine is the host this matters to. Its wrapper listens with
-`@HostListener('document:session-changed')` and persists with
-`void this.persistSection(previousSectionId)` — fire-and-forget, no lock, no
-await. A student typing in the last question of a section and immediately
+This matters to a host that listens for `session-changed` on `document` and
+persists fire-and-forget, with no lock and no await. A student typing in the last question of a section and immediately
 advancing snapshots pre-commit state, silently. Because the listener is on
 `document`, the element-side unmount flush alone would not reach it; the
-player-side sweep, dispatching while attached, does. Quiz Engine changes nothing.
+player-side sweep, dispatching while attached, does. Such a host changes nothing.
 
-What this does not close is a host that persists on its own navigation before it
-feeds the new section to the player: PIE has no hook ahead of that. Such a host
-gets the guarantee on its next save, plus the shell teardown and page-lifecycle
-commits.
+A host that persists on its own navigation before it feeds the new section to the
+player gets the response from the focus-leave flush, ahead of its navigation,
+when that navigation is a click or key press in its own controls. A navigation
+that leaves focus in the editor still depends on the next save, the shell
+teardown and the page-lifecycle commits.
 
 Coverage lives with the code it pins: a per-element teardown test in
 `pie-elements-ng` (`packages/elements-react/*/tests/delivery-session-commit.test.ts`),
@@ -535,12 +617,9 @@ render on the deferred path at the 200ms cadence it already had.
 
 - Which legacy `pie-elements` elements need the inline flush at all, which
   depends on what still ships from there when this lands.
-- Whether PIE writes a device-local recovery draft at all, and whether it would
-  also cover the section-level session `SectionController` owns, which no item
-  player can see. Implemented and parked on
-  `feat/PIE-1058-session-snapshot`: it is the only piece carrying a host-facing
-  storage decision, and no reported defect turns on it. The connectivity case
-  George Schneiderman raised for Online Testing is what would justify it.
+- Whether a snapshot should also cover the section-level session that
+  `SectionController` owns, which no item player can see. The item-level
+  snapshot is opt-in and offers a draft without applying it.
 - Whether `multiple-choice`'s zero-delay debounce is worth touching at all, or
   should simply become a direct dispatch.
 - Whether `extended-text-entry`'s 1500ms is worth keeping now that it is on the

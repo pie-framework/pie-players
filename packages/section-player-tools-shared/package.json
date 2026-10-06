@@ -31,10 +31,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"dependencies": {
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*"
-	},
 	"types": "./dist/index.types.d.ts",
 	"scripts": {
 		"build": "vite build",
@@ -42,16 +38,17 @@
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"test": "bun test tests",
-		"lint": "biome check PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte SessionDbPanel.svelte DebugPanelToggles.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json tests"
+		"lint": "biome lint PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte SessionDbPanel.svelte DebugPanelToggles.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json tests"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"svelte": "^5.57.0",
+		"@biomejs/biome": "^2.5.15",
+		"@pie-players/pie-players-shared": "workspace:*",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite": "^8.3.2",
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-shared#readme",
 	"bugs": {

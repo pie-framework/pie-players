@@ -129,3 +129,33 @@ export function collectOwnerCatalogRegistrations(
 	}
 	return registrations;
 }
+
+/**
+ * The catalogs an owner registration of `entity` would file, as a string equal
+ * for any two entities that register the same catalogs. A shell holding new
+ * content under an unchanged identity compares it to decide whether the runtime
+ * has anything new to register. It is derived from the registration walk, so it
+ * cannot disagree with the registration about what counts as a catalog.
+ *
+ * `null` when the catalogs do not serialize: nothing can be concluded, and the
+ * caller registers again.
+ */
+export function catalogSourceSignature(
+	entity: CatalogSourceEntity | null | undefined,
+	kind: CatalogOwnerIdentity["kind"],
+): string | null {
+	const registrations = collectOwnerCatalogRegistrations(entity, {
+		kind,
+		itemId: "",
+	});
+	try {
+		return JSON.stringify(
+			registrations.map((registration) => [
+				registration.context.modelId ?? null,
+				registration.catalogs,
+			]),
+		);
+	} catch {
+		return null;
+	}
+}

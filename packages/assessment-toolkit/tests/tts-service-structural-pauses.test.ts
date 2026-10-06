@@ -106,6 +106,27 @@ const waitForSettingsUpdateCount = async (
 	throw new Error(`TTS provider did not receive ${count} settings update(s)`);
 };
 
+// Stubs the visible text the generated-speech path collects from the content
+// element. The guard fails the test when the seam is renamed, so the stub cannot
+// silently miss.
+const stubGeneratedVisibleText = (
+	service: TTSService,
+	visibleText: string,
+): void => {
+	expect(typeof (service as any).resolveGeneratedSpeechContent).toBe(
+		"function",
+	);
+	(service as any).resolveGeneratedSpeechContent = async () => ({
+		contentToSpeak: visibleText,
+		speechText: visibleText,
+		visibleText,
+		highlightText: visibleText,
+		normalizedText: visibleText,
+		containsMathMarkup: false,
+		speechMatchesVisibleText: true,
+	});
+};
+
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId: string;
 	readonly providerName = "Mock Provider";
@@ -362,7 +383,7 @@ describe("TTSService structural pauses", () => {
 		(impl as any).speakSegments = undefined;
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "browser"));
-		(service as any).extractVisibleText = () => "First sentence.";
+		stubGeneratedVisibleText(service, "First sentence.");
 		(service as any).buildPositionMap = () => {
 			const textNode = { textContent: "First sentence." } as Text;
 			(service as any).normalizedToDOM = new Map();
@@ -435,7 +456,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "browser"));
-		(service as any).extractVisibleText = () => "First segment Second segment";
+		stubGeneratedVisibleText(service, "First segment Second segment");
 		(service as any).buildPositionMap = () => {
 			const textA = { textContent: "First segment" } as Text;
 			const textB = { textContent: "Second segment" } as Text;
@@ -609,7 +630,7 @@ describe("TTSService structural pauses", () => {
 		});
 
 		expect((service as any).currentBoundaryOffset).toBe(16);
-		expect((service as any).currentSeekSegmentIndex).toBe(1);
+		expect((service as any).getCurrentSeekSegmentIndex()).toBe(1);
 	});
 
 	test("seekForward uses boundary-updated position after segmented playback", async () => {
@@ -1014,8 +1035,7 @@ describe("TTSService structural pauses", () => {
 		};
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		(service as any).extractVisibleText = () =>
-			"First segment. Second segment.";
+		stubGeneratedVisibleText(service, "First segment. Second segment.");
 		(service as any).buildPositionMap = () => {
 			const node = { textContent: "First segment. Second segment." } as Text;
 			(service as any).normalizedToDOM = new Map();
@@ -1079,8 +1099,10 @@ describe("TTSService structural pauses", () => {
 		};
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		(service as any).extractVisibleText = () =>
-			"Photosynthesis The process converts light to energy";
+		stubGeneratedVisibleText(
+			service,
+			"Photosynthesis The process converts light to energy",
+		);
 		(service as any).buildPositionMap = () => {
 			const node = {
 				textContent: "Photosynthesis The process converts light to energy",
@@ -1144,7 +1166,6 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		(service as any).extractVisibleText = () => "A. Chlorophyll B. Oxygen";
 		(service as any).createSpeechPlan = () =>
 			[
 				{ text: "A. Chlorophyll", startOffset: 0, pauseMsAfter: 0 },
@@ -1159,7 +1180,8 @@ describe("TTSService structural pauses", () => {
 			}),
 		} as any);
 
-		await service.speak("unused", {
+		// With no DOM to walk, the catalog path takes the visible text from the input.
+		await service.speak("A. Chlorophyll B. Oxygen", {
 			contentElement: {} as Element,
 			catalogId: "choices",
 		});

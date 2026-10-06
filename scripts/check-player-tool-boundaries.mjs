@@ -9,13 +9,24 @@ import {
 import path from "node:path";
 
 const DEFAULT_ROOT = process.cwd();
-const CONCRETE_TOOL_PACKAGE_PATTERN = /^@pie-players\/pie-tool-/;
+// Concrete packages are the `pie-tool-*` packages and the calculator engines
+// (`pie-calculator-<engine>`). The engine-neutral `@pie-players/pie-calculator`
+// contract carries no `-` suffix, so the toolkit may keep depending on it.
+const CONCRETE_TOOL_PACKAGE_PATTERN = /^@pie-players\/pie-(?:tool|calculator)-/;
 const TOOL_IMPORT_PATTERN =
-	/(?:from\s*|import\s*\(\s*|import\s+)["'](@pie-players\/pie-tool-[^"']+)["']/g;
-const TOOL_PACKAGE_STRING_PATTERN = /["'](@pie-players\/pie-tool-[^"']+)["']/g;
+	/(?:from\s*|import\s*\(\s*|import\s+)["'](@pie-players\/pie-(?:tool|calculator)-[^"']+)["']/g;
+const TOOL_PACKAGE_STRING_PATTERN =
+	/["'](@pie-players\/pie-(?:tool|calculator)-[^"']+)["']/g;
 const DIST_CONCRETE_CHUNK_PATTERN =
-	/(?:^|[/\\])(?:pie-tool-|tool-tts-inline|tool-calculator|calculator-desmos)[^/\\]*\.js$/i;
+	/(?:^|[/\\])(?:pie-tool-|tool-tts-inline|tool-calculator|calculator-(?:cortex|desmos|geogebra))[^/\\]*\.js$/i;
 const MATH_RENDERING_MARKER = "@pie-lib/math-rendering-module";
+// The server TTS adapter is imported only by the TTS registration in the
+// composition layer, so a bundler building the toolkit never has to resolve it.
+// The toolkit keeps it as a dev dependency for type-only drift checks and tests,
+// which leave no import in its dist.
+const SERVER_TTS_ADAPTER = "@pie-players/tts-client-server";
+const SERVER_TTS_ADAPTER_IMPORT_PATTERN =
+	/(?:from\s*|import\s*\(\s*|import\s+)["'](@pie-players\/tts-client-server)["']/g;
 
 const SOURCE_IMPORT_TARGETS = [
 	"packages/section-player/src",
@@ -80,6 +91,13 @@ function isCheckedDistPath(relPath) {
 	return DIST_IMPORT_TARGETS.some((target) => relPath.startsWith(`${target}/`));
 }
 
+// The section player's self-contained browser build bundles the packaged tools
+// so a page loads it with no import map or bundler. The npm build is the one that
+// keeps them behind `@pie-players/pie-default-tool-loaders`.
+function isBrowserBuildPath(relPath) {
+	return relPath.startsWith("packages/section-player/dist/browser/");
+}
+
 function checkSourceImports(root, failures) {
 	for (const relDir of SOURCE_IMPORT_TARGETS) {
 		const absDir = path.join(root, relDir);
@@ -119,8 +137,17 @@ function checkDistImports(root, failures) {
 					`[tool-boundary] ${relPath} imports concrete tool package ${packageName}; depend on @pie-players/pie-default-tool-loaders instead.`,
 				);
 			}
+			for (const packageName of collectImportMatches(
+				content,
+				SERVER_TTS_ADAPTER_IMPORT_PATTERN,
+			)) {
+				failures.push(
+					`[tool-boundary] ${relPath} imports ${packageName}; the TTS registration in @pie-players/pie-default-tool-loaders owns that import.`,
+				);
+			}
 			if (
 				isCheckedDistPath(relPath) &&
+				!isBrowserBuildPath(relPath) &&
 				DIST_CONCRETE_CHUNK_PATTERN.test(relPath)
 			) {
 				failures.push(
@@ -158,6 +185,11 @@ function checkManifest(root, relPath, failures) {
 			if (CONCRETE_TOOL_PACKAGE_PATTERN.test(packageName)) {
 				failures.push(
 					`[tool-boundary] ${relPath} declares ${packageName} in ${field}; section-player/toolkit must depend on @pie-players/pie-default-tool-loaders, not concrete tools.`,
+				);
+			}
+			if (packageName === SERVER_TTS_ADAPTER && field !== "devDependencies") {
+				failures.push(
+					`[tool-boundary] ${relPath} declares ${packageName} in ${field}; @pie-players/pie-default-tool-loaders depends on it for the TTS registration.`,
 				);
 			}
 		}

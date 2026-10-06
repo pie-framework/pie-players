@@ -6,10 +6,9 @@
  * @packageDocumentation
  */
 
-// Imported from the narrow `ui/content-styles` subpath rather than the package
-// root: `@pie-players/pie-players-shared` sets `sideEffects: true` and this
-// package externalizes nothing, so pulling the root barrel in would bundle all
-// of players-shared into print-player.js.
+// Imported from the narrow `ui/content-styles` subpath: this package
+// externalizes nothing, and the subpath brings in only the content-style
+// helpers.
 import {
 	installContentStyles,
 	auditContentStyles,
@@ -26,9 +25,9 @@ import contentStyles from "@pie-players/pie-theme/components.css?raw";
 
 // Installed at import time, alongside the element registration that
 // `./pie-print.js` performs, so the stylesheet is in the document before any
-// instance renders — no unstyled first paint. A host that sets
-// <html data-pie-content-styles="host"> owns the stylesheet instead, and gets
-// warned if it then ships nothing, or ships a second copy.
+// instance renders — no unstyled first paint. A host that supplies its own
+// copy, or sets <html data-pie-content-styles="host">, owns the stylesheet
+// instead.
 //
 // `@media print { .noprint, .kds-noprint { display: none } }` lives in this
 // stylesheet, so for the print player a missing copy does not merely render

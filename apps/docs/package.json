@@ -14,16 +14,16 @@
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.70.3",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/typography": "^0.5.20",
 		"@tailwindcss/vite": "^4.3.3",
-		"@types/node": "^26.5.1",
-		"daisyui": "^5.7.22",
-		"svelte": "^5.57.0",
+		"@types/node": "^26.6.4",
+		"daisyui": "^5.7.46",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2"
+		"vite": "^8.3.2"
 	},
 	"license": "MIT"
 }

@@ -4,7 +4,7 @@ import {
 	DEFAULT_CALCULATOR_PROVIDER_ID,
 	resolveCalculatorProviderId,
 } from "../src/registrations/calculator.js";
-import { PACKAGED_TOOL_TAG_MAP } from "../src/tool-tag-map.js";
+import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
@@ -277,18 +277,15 @@ describe("calculator tool registration", () => {
 			i18n: resolveInterfaceI18n(null),
 			toolCoordinator: null,
 			toolkitCoordinator: {
-				config: {
-					tools: {
-						providers: {
-							calculator: {
+				getToolConfig: (toolId: string) =>
+					toolId === "calculator"
+						? {
 								provider: { id: "calculator-geogebra" },
 								settings: { showResetIcon: true },
 								restrictedMode: true,
 								locale: "nl-NL",
-							},
-						},
-					},
-				},
+							}
+						: null,
 			},
 			toggleTool: () => {},
 			isToolVisible: () => false,

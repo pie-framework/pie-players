@@ -18,10 +18,7 @@ import type {
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	hasChoiceInteraction,
-	hasReadableText,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
@@ -30,6 +27,7 @@ import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 /**
  * Answer Eliminator tool registration
@@ -87,19 +85,24 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 			(toolbarContext.componentOverrides as
 				| ToolComponentOverrides
 				| undefined) ?? {};
-		const overlay = createToolElement(
-			this.toolId,
-			context,
+		const overlay = resolveOverlayElement(
 			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-			coordinator?: unknown;
-			elementToolStateStore?: unknown;
-			globalElementId?: string;
-			scopeElement?: HTMLElement | null;
-		};
+			visibility.fullToolId,
+			() =>
+				createToolElement(
+					this.toolId,
+					context,
+					toolbarContext,
+					componentOverrides,
+				) as HTMLElement & {
+					visible?: boolean;
+					toolId?: string;
+					coordinator?: unknown;
+					elementToolStateStore?: unknown;
+					globalElementId?: string;
+					scopeElement?: HTMLElement | null;
+				},
+		);
 		overlay.setAttribute("tool-id", visibility.fullToolId);
 		overlay.setAttribute("strategy", "strikethrough");
 		overlay.setAttribute("button-alignment", "inline");

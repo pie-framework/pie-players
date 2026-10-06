@@ -6,12 +6,11 @@
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
+	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import {
-		BundleType,
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
-		NewRelicInstrumentationProvider,
-		Status
+		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
@@ -23,6 +22,7 @@
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
 	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import type { PageData } from './$types';
 
@@ -66,12 +66,12 @@
 			});
 		})
 		.catch(() => {});
-	const sectionPlayerConfig = {
+	const sectionPlayerConfig = withDemoLoaderOptions({
 		loaderConfig: {
 			trackPageActions: true,
 			instrumentationProvider: sectionInstrumentationProvider
 		}
-	};
+	});
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
 		toolRegistry,
@@ -176,29 +176,18 @@
 		};
 	}
 
-	function registerFixtureRegistryEntry(tagName: string) {
-		const runtimeWindow = window as unknown as {
-			PIE_REGISTRY?: Record<string, Record<string, unknown>>;
-		};
-		const registry = (runtimeWindow.PIE_REGISTRY ||= {});
-		registry[tagName] ||= {
-			package: '@pie-players/metadata-session-fixture@1.0.0',
-			status: Status.loaded,
-			tagName,
-			bundleType: BundleType.player
-		};
-	}
-
 	$effect(() => {
 		if (!browser) return;
-		if (!customElements.get(FIXTURE_TAG)) {
-			customElements.define(FIXTURE_TAG, createFixtureElementClass());
-		}
-		if (!customElements.get(FIXTURE_VERSIONED_TAG)) {
-			customElements.define(FIXTURE_VERSIONED_TAG, createFixtureElementClass());
-		}
-		registerFixtureRegistryEntry(FIXTURE_TAG);
-		registerFixtureRegistryEntry(FIXTURE_VERSIONED_TAG);
+		registerPreloadedElements([
+			{
+				tag: FIXTURE_TAG,
+				package: '@pie-players/metadata-session-fixture',
+				version: '1.0.0',
+				element: createFixtureElementClass(),
+				// The fixture renders its authored model as is.
+				controller: { model: async (model: unknown) => model }
+			}
+		]);
 		fixtureRegistered = true;
 	});
 </script>

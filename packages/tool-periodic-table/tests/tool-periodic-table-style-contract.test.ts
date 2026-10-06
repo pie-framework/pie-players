@@ -43,23 +43,6 @@ const relativeLuminance = ([red, green, blue]: [number, number, number]) => {
 	);
 };
 
-/** Composites translucent text onto its fill, the way the compositor does. */
-const flatten = (
-	foreground: string,
-	background: string,
-	alpha: number,
-): string => {
-	const fg = hexToRgb(foreground);
-	const bg = hexToRgb(background);
-	return `#${fg
-		.map((channel, index) =>
-			Math.round(channel * alpha + bg[index] * (1 - alpha))
-				.toString(16)
-				.padStart(2, "0"),
-		)
-		.join("")}`;
-};
-
 const contrastRatio = (foreground: string, background: string): number => {
 	const fg = relativeLuminance(hexToRgb(foreground));
 	const bg = relativeLuminance(hexToRgb(background));

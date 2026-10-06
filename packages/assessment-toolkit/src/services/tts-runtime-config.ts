@@ -1,5 +1,5 @@
 import type { TTSConfig } from "./TTSService.js";
-import type { ToolProviderConfig } from "./tools-config-normalizer.js";
+import type { TextToSpeechToolProviderConfig } from "./tools-config-normalizer.js";
 import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
@@ -62,6 +62,12 @@ export interface TTSRuntimeSettings {
 	endpointMode?: "synthesizePath" | "rootPost";
 	endpointValidationMode?: "voices" | "endpoint" | "none";
 	includeAuthOnAssetFetch?: boolean;
+	/** Origins trusted with the `Authorization` header on asset fetches. */
+	assetOrigins?: string[];
+	/** Fetch `credentials` mode for requests to the TTS server. */
+	credentials?: "omit" | "same-origin" | "include";
+	/** Headers sent with every request to the TTS server. */
+	headers?: Record<string, string>;
 	validateEndpoint?: boolean;
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
@@ -95,6 +101,11 @@ export interface TTSRuntimeSettings {
 	 * instead of relying on toolkit-specific speech rewrites.
 	 */
 	mathSpeech?: SREMathSpeechOptions;
+	/**
+	 * Options passed through to the provider. The fields derived from the
+	 * settings above, such as `locale` and the Polly engine, win over these.
+	 */
+	providerOptions?: Record<string, unknown>;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -395,13 +406,16 @@ const applyRuntimeDefaults = (
 };
 
 export const resolveTTSRuntimeSettings = (
-	config: ToolProviderConfig | TTSRuntimeSettings | undefined,
+	config: TextToSpeechToolProviderConfig | TTSRuntimeSettings | undefined,
 ): TTSRuntimeSettings => {
 	const configRecord = toRecord(config);
 	const settingsRecord = toRecord(configRecord.settings);
+	const { provider, ...merged } = { ...configRecord, ...settingsRecord };
+	// A runtime provider object in `provider` is for the tool registration; the
+	// runtime settings carry only a server provider id.
 	return applyRuntimeDefaults({
-		...configRecord,
-		...settingsRecord,
+		...merged,
+		...(typeof provider === "string" ? { provider } : {}),
 	} as TTSRuntimeSettings);
 };
 
@@ -426,18 +440,43 @@ export const resolveTransportMode = (
 ): NonNullable<TTSRuntimeSettings["transportMode"]> =>
 	config.transportMode || (runtimeProvider === "custom" ? "custom" : "pie");
 
+/**
+ * The provider configuration built from host settings: the contract's portable
+ * fields plus the server adapter's, under the adapter's names.
+ */
+export type RuntimeTTSConfig = Pick<
+	TTSConfig,
+	"voice" | "rate" | "pitch" | "providerOptions" | "mathTokenHighlighting"
+> &
+	Pick<
+		TTSRuntimeSettings,
+		| "apiEndpoint"
+		| "language"
+		| "transportMode"
+		| "endpointMode"
+		| "endpointValidationMode"
+		| "includeAuthOnAssetFetch"
+		| "assetOrigins"
+		| "credentials"
+		| "headers"
+		| "validateEndpoint"
+	> & {
+		provider?: TTSRuntimeSettings["serverProvider"];
+	};
+
 export const buildRuntimeTTSConfig = (
 	config: TTSRuntimeSettings,
-): Partial<TTSConfig> => {
+): RuntimeTTSConfig => {
 	const backend = resolveTTSBackend(config);
 	const runtimeProvider = resolveRuntimeProvider(config, backend);
 	const transportMode = resolveTransportMode(config, runtimeProvider);
 	const mathSpeech = normalizeSREMathSpeechOptions(config.mathSpeech);
-	return {
+	const runtimeConfig: RuntimeTTSConfig = {
 		voice: config.defaultVoice,
 		rate: config.rate,
 		pitch: config.pitch,
 		providerOptions: {
+			...toRecord(config.providerOptions),
 			...(config.language ? { locale: config.language } : {}),
 			...(backend === "polly" && config.engine
 				? { engine: config.engine }
@@ -474,6 +513,9 @@ export const buildRuntimeTTSConfig = (
 		endpointMode: config.endpointMode,
 		endpointValidationMode: config.endpointValidationMode,
 		includeAuthOnAssetFetch: config.includeAuthOnAssetFetch,
+		assetOrigins: config.assetOrigins,
+		credentials: config.credentials,
+		headers: config.headers,
 		validateEndpoint: config.validateEndpoint,
 		// Toolkit-level highlight setting carried through the config channel
 		// (like apiEndpoint/transportMode); consumed by the highlight pipeline,
@@ -482,7 +524,16 @@ export const buildRuntimeTTSConfig = (
 		...(typeof config.mathTokenHighlighting === "boolean"
 			? { mathTokenHighlighting: config.mathTokenHighlighting }
 			: {}),
-	} as Partial<TTSConfig>;
+	};
+	// The server adapter owns these fields. Picking them from its config type
+	// fails the build when a forwarded field is renamed there or typed
+	// differently. The adapter is only a dev dependency here, so it is named only
+	// in this body, which declaration emit leaves out (ADR 0002).
+	type ServerTTSProviderConfig =
+		import("@pie-players/tts-client-server").ServerTTSProviderConfig;
+	return runtimeConfig satisfies Partial<
+		Pick<ServerTTSProviderConfig, keyof RuntimeTTSConfig>
+	>;
 };
 
 export const resolveTTSLayoutMode = (

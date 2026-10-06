@@ -334,6 +334,89 @@ test("keeps the keypad to a single tab stop and writes through the mathfield", a
 	}
 });
 
+test("answers the first calculation when the worker starts slower than the time limit", async ({
+	page,
+}) => {
+	/*
+	 * The time limit bounds a calculation, so it starts when the worker reports
+	 * ready. Fetching and compiling the worker takes 0.7s on a fast machine and
+	 * several seconds on a slow one; the delay here stands in for that.
+	 */
+	let delayed = 0;
+	await page.context().route("**/evaluation-worker-*.js", async (route) => {
+		delayed += 1;
+		await new Promise((resolve) => setTimeout(resolve, 2_500));
+		await route.continue();
+	});
+	await page.goto("/");
+	await page.waitForFunction(() => window.__cortexReady === true, undefined, {
+		timeout: 15_000,
+	});
+	expect(await page.evaluate(() => window.__cortexResult)).toBe("4");
+	expect(delayed).toBe(1);
+});
+
+test("keeps a keypad press made while the calculator republishes", async ({
+	page,
+}) => {
+	/*
+	 * MathLive reports an edit in the task after it makes it, and a resize or focus
+	 * request republishes the calculator's state in between. The tool shell resizes
+	 * a calculator 60, 250 and 1000ms after opening it.
+	 */
+	await page.goto("/");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	await page.evaluate(() => window.__cortexCalculator?.clear());
+
+	const values = await page.evaluate(async () => {
+		const calculator = window.__cortexCalculator;
+		document.querySelector<HTMLElement>('[data-key-id="digit-7"]')?.click();
+		calculator?.resize?.();
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		return {
+			field: document.querySelector<HTMLElement & { value: string }>(
+				"math-field",
+			)?.value,
+			calculator: calculator?.getValue(),
+		};
+	});
+	expect(values).toEqual({ field: "7", calculator: "7" });
+});
+
+test("calculates on request only, not when focus leaves an edited expression", async ({
+	page,
+}) => {
+	/*
+	 * MathLive fires `change` on blur as well as on Return. Clear takes focus from
+	 * the field, which started a calculation of the cleared input.
+	 */
+	await page.goto("/");
+	await page.waitForFunction(() => window.__cortexReady === true);
+	await page.evaluate(() => window.__cortexCalculator?.clear());
+	await page.getByRole("button", { name: "7", exact: true }).click();
+	await page.getByRole("button", { name: "Plus" }).click();
+	await page.getByRole("button", { name: "3", exact: true }).click();
+	await expect
+		.poll(() => page.evaluate(() => window.__cortexCalculator?.getValue()))
+		.toBe("7+3");
+
+	const started = () =>
+		page.evaluate(
+			() =>
+				(window.__cortexTelemetry ?? []).filter(
+					(entry) => entry.eventName === "pie-tool-operation-start",
+				).length,
+		);
+	const before = await started();
+	await page.getByRole("button", { name: "Clear", exact: true }).click();
+	await expect
+		.poll(() => page.evaluate(() => window.__cortexCalculator?.getValue()))
+		.toBe("");
+	await page.waitForTimeout(300);
+	expect(await started()).toBe(before);
+	await expect(page.locator(".pie-cortex-error")).toBeHidden();
+});
+
 test("fits every shipped panel size without clipping anything", async ({
 	page,
 }) => {

@@ -24,13 +24,16 @@ import {
 	type ToolPlacementConfig,
 	type ToolPlacementLevel,
 	type ToolPolicyConfig,
+	type TextToSpeechToolProviderConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
+	type ToolsConfigInput,
 	normalizeToolsConfig,
 } from "./tools-config-normalizer.js";
 import {
-	normalizeAndValidateToolsConfig,
+	collectToolConfigDiagnostics,
 	normalizeToolConfigStrictness,
+	reportToolConfigDiagnostics,
 	type ToolConfigStrictness,
 } from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
@@ -53,15 +56,12 @@ import {
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
 	type TTSRuntimeSettings,
-	type TTSSpeedOption,
-	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
 import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
-import type { TTSToolProviderConfig } from "./tool-providers/index.js";
 
-import { ToolRegistry } from "./ToolRegistry.js";
+import { resolveToolProviderId, ToolRegistry } from "./ToolRegistry.js";
 import type {
 	ResolvedToolContext,
 	ToolContextResolver,
@@ -144,19 +144,20 @@ export interface ToolConfig {
  *
  * The field set is `TTSRuntimeSettings`, which the runtime resolver owns: the two
  * were declared separately and had already drifted in both directions, so a field
- * the runtime honoured could not be named here. What this adds is the two things
- * only a host-facing config has — a place to stash unrecognised keys, and a
- * callback for fetching provider credentials, neither of which the resolved
- * runtime settings carry.
+ * the runtime honoured could not be named here. What this adds is the one thing
+ * only a host-facing config has — a place to stash unrecognised keys, which the
+ * resolved runtime settings do not carry.
  *
- * An intersection rather than an interface: `ToolConfig.provider` is `unknown`
- * where the runtime settings narrow it to the three provider ids, and an interface
- * cannot inherit a member from two parents that type it differently.
+ * `provider` is typed from the `textToSpeech` tools-config entry instead: a host
+ * gives either a server provider id or a runtime provider object, whose
+ * `runtime.authFetcher` the TTS registration reads, and `TTSRuntimeSettings`
+ * names only the id. The entry is therefore assignable to this type, which is
+ * what `getToolConfig("textToSpeech")` returns.
  */
 export type TTSToolConfig = ToolConfig &
-	TTSRuntimeSettings & {
+	Omit<TTSRuntimeSettings, "provider"> & {
+		provider?: TextToSpeechToolProviderConfig["provider"];
 		settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
-		authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 	};
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
@@ -214,7 +215,7 @@ export interface ToolkitCoordinatorConfig {
 	 * Tool availability and configuration.
 	 * Defaults: all tools enabled with default settings.
 	 */
-	tools?: Partial<CanonicalToolsConfig>;
+	tools?: ToolsConfigInput;
 
 	/**
 	 * Validation strictness for tool config contracts.
@@ -227,8 +228,12 @@ export interface ToolkitCoordinatorConfig {
 	toolConfigStrictness?: ToolConfigStrictness;
 
 	/**
-	 * Optional registry used for tool-config validation and provider descriptor resolution.
-	 * Defaults to packaged PIE tools when omitted.
+	 * Registry used for tool-config validation and the only source of tool
+	 * providers: the coordinator registers one per registration that carries a
+	 * provider descriptor. Omitted, the coordinator takes the registry of the
+	 * toolkit it is bound to — the section player's, under a section player — and
+	 * until then validates nothing and registers no provider. A registry passed
+	 * here is never replaced.
 	 */
 	toolRegistry?: ToolRegistry | null;
 
@@ -271,6 +276,16 @@ export interface ToolkitCoordinatorConfig {
 	 * @internal
 	 */
 	deferToolConfigValidation?: boolean;
+
+	/**
+	 * Set by `<pie-assessment-toolkit>` on the coordinator it builds for itself.
+	 * That toolkit binds only the `assessment` its host passes, and a section
+	 * player passes none, so feature policy reports an unbound assessment only
+	 * while PNP enforcement is explicitly `"on"`.
+	 *
+	 * @internal
+	 */
+	assessmentOptional?: boolean;
 
 	/**
 	 * Optional pre-constructed framework-error bus.
@@ -554,9 +569,13 @@ export interface ToolkitServiceBundle {
  *
  * @example
  * ```typescript
+ * // createPackagedToolRegistry is exported by @pie-players/pie-default-tool-loaders
+ * const toolRegistry = createPackagedToolRegistry();
+ *
  * // Create coordinator with configuration
  * const coordinator = new ToolkitCoordinator({
  *   assessmentId: 'demo-three-questions',
+ *   toolRegistry,
  *   tools: {
  *     providers: {
  *       textToSpeech: { enabled: true, backend: 'browser' },
@@ -569,7 +588,7 @@ export interface ToolkitServiceBundle {
  * });
  *
  * // Pass to section player
- * player.toolkitCoordinator = coordinator;
+ * player.runtime = { ...(player.runtime ?? {}), coordinator };
  *
  * // Access services directly
  * const ttsService = coordinator.ttsService;
@@ -605,7 +624,15 @@ export class ToolkitCoordinator {
 		string,
 		Promise<ToolProviderApi>
 	>();
-	private readonly toolRegistry: ToolRegistry;
+	private toolRegistry: ToolRegistry;
+	/** Whether the host passed `toolRegistry`, which then always stands. */
+	private readonly toolRegistrySupplied: boolean;
+	/**
+	 * Whether the registry is final: supplied at construction, or adopted from
+	 * the toolkit this coordinator is bound to. Until then the empty placeholder
+	 * reports no missing registry, since the toolkit will supply one.
+	 */
+	private toolRegistrySettled: boolean;
 	private readonly toolContextResolvers = new Map<
 		string,
 		ToolContextResolver
@@ -721,27 +748,48 @@ export class ToolkitCoordinator {
 	 */
 	private reportedUnboundFeaturePolicy = false;
 
-	private static resolveConfig(
+	/**
+	 * Whether {@link _initializeTTS} has already reported a non-browser backend
+	 * falling back to browser speech because no `tts` provider is registered.
+	 * Once per coordinator: a text-to-speech config change re-runs
+	 * initialization, and the missing provider is the same gap each time.
+	 */
+	private reportedMissingTTSProvider = false;
+
+	/**
+	 * The backend of a fallback {@link reportMissingTTSProvider} held back while
+	 * the registry was unsettled, reported if the bound toolkit has no registry.
+	 */
+	private heldMissingTTSProviderBackend: string | null = null;
+
+	/**
+	 * Whether {@link validateToolsConfig} has already reported validating with
+	 * no registry (`tools.registryUnavailable`). Once per coordinator: every
+	 * {@link updateToolConfig} and {@link updateToolsPlacement} re-validates, and
+	 * the missing registry is the same gap each time.
+	 */
+	private reportedRegistryUnavailable = false;
+
+	private resolveConfig(
 		config: ToolkitCoordinatorConfig,
 	): ToolkitCoordinatorConfig {
 		const strictness = normalizeToolConfigStrictness(
 			config.toolConfigStrictness,
 		);
-		// An empty registry when the host supplies none. This package no longer
-		// holds the packaged capability set, so there is nothing to fall back to —
-		// a host that wants stock tools passes a registry from
-		// `@pie-players/pie-default-tool-loaders`. Tool-id validation is skipped
-		// against an empty registry (with a diagnostic saying so) rather than
+		// An empty placeholder when the host supplies none, replaced by the bound
+		// toolkit's registry in `adoptToolRegistry`. This package does not hold the
+		// packaged capability set, and importing it would be a dependency cycle.
+		// Tool-id validation is skipped against an empty registry rather than
 		// rejecting every configured id.
 		const toolRegistry = config.toolRegistry ?? new ToolRegistry();
 		const normalized =
 			config.deferToolConfigValidation === true
 				? normalizeToolsConfig(config.tools as any)
-				: normalizeAndValidateToolsConfig(config.tools as any, {
+				: this.validateToolsConfig(config.tools as any, {
 						strictness,
 						source: "ToolkitCoordinator.init",
 						toolRegistry,
-					}).config;
+					});
 		const defaultProviders: ToolkitToolsConfig["providers"] = {
 			textToSpeech: {
 				enabled: true,
@@ -771,12 +819,46 @@ export class ToolkitCoordinator {
 		};
 	}
 
+	/**
+	 * `normalizeAndValidateToolsConfig`, except that `tools.registryUnavailable`
+	 * is reported once per coordinator, whichever call validates.
+	 */
+	private validateToolsConfig(
+		tools: ToolsConfigInput | null | undefined,
+		options: {
+			strictness: ToolConfigStrictness;
+			source: string;
+			toolRegistry: ToolRegistry;
+		},
+	): CanonicalToolsConfig {
+		const { config, diagnostics } = collectToolConfigDiagnostics(
+			tools,
+			options.toolRegistry,
+		);
+		const unreported =
+			this.reportedRegistryUnavailable || !this.toolRegistrySettled
+				? diagnostics.filter(
+						(entry) => entry.code !== "tools.registryUnavailable",
+					)
+				: diagnostics;
+		reportToolConfigDiagnostics(unreported, options);
+		if (
+			options.strictness !== "off" &&
+			unreported.some((entry) => entry.code === "tools.registryUnavailable")
+		) {
+			this.reportedRegistryUnavailable = true;
+		}
+		return config;
+	}
+
 	constructor(config: ToolkitCoordinatorConfig) {
 		if (!config.assessmentId) {
 			throw new Error("ToolkitCoordinator requires assessmentId in config");
 		}
 
-		const resolvedConfig = ToolkitCoordinator.resolveConfig(config);
+		this.toolRegistrySupplied = config.toolRegistry != null;
+		this.toolRegistrySettled = this.toolRegistrySupplied;
+		const resolvedConfig = this.resolveConfig(config);
 
 		this.assessmentId = resolvedConfig.assessmentId;
 		this.config = resolvedConfig;
@@ -810,6 +892,9 @@ export class ToolkitCoordinator {
 
 		// Initialize TTS service based on config
 		this.ttsService = new TTSService();
+		// Selection read-aloud speaks through this service without the inline TTS
+		// tool ever having run, so it cannot rely on that tool to attach highlights.
+		this.ttsService.setHighlightCoordinator(this.highlightCoordinator);
 		this.setupStatePersistenceHooks();
 
 		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
@@ -1064,6 +1149,80 @@ export class ToolkitCoordinator {
 		return this.stateLoadPromise;
 	}
 
+	private reportMissingTTSProvider(backend: string): void {
+		// The toolkit this coordinator binds to may still supply the provider.
+		if (!this.toolRegistrySettled) {
+			this.heldMissingTTSProviderBackend = backend;
+			return;
+		}
+		if (this.reportedMissingTTSProvider) return;
+		this.reportedMissingTTSProvider = true;
+		console.warn(
+			`[ToolkitCoordinator] Text-to-speech is configured for the "${backend}" backend but falls back to browser speech: no "tts" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, or from its toolkit's when constructed without one, so supply one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
+		);
+	}
+
+	/**
+	 * Take the registry of the toolkit this coordinator is bound to, when the host
+	 * constructed it without one: the config is validated against it, its
+	 * providers register, and text-to-speech re-initializes through it if it
+	 * already started. The toolkit elements call this on binding. A registry
+	 * passed at construction stands, and the first call wins; `null` records a
+	 * toolkit without one, which reports the registry as missing.
+	 *
+	 * @returns Whether `registry` was adopted.
+	 */
+	adoptToolRegistry(registry: ToolRegistry | null): boolean {
+		if (this.disposePromise !== null || this.toolRegistrySettled) return false;
+		this.toolRegistrySettled = true;
+		const heldBackend = this.heldMissingTTSProviderBackend;
+		this.heldMissingTTSProviderBackend = null;
+		const strictness = this.config.toolConfigStrictness ?? "error";
+		const source = "ToolkitCoordinator.adoptToolRegistry";
+		if (!registry) {
+			this.validateToolsConfig(this.config.tools as CanonicalToolsConfig, {
+				strictness,
+				source,
+				toolRegistry: this.toolRegistry,
+			});
+			if (heldBackend) this.reportMissingTTSProvider(heldBackend);
+			return false;
+		}
+		this.toolRegistry = registry;
+		this.config.toolRegistry = registry;
+		try {
+			// Warn at most: the config was accepted at construction, and a binding
+			// toolkit has no caller to throw to.
+			this.config.tools = this.validateToolsConfig(
+				this.config.tools as CanonicalToolsConfig,
+				{
+					strictness: strictness === "off" ? "off" : "warn",
+					source,
+					toolRegistry: registry,
+				},
+			);
+		} catch (err) {
+			console.warn(
+				"[ToolkitCoordinator] Tool config does not validate against the adopted tool registry:",
+				err,
+			);
+		}
+		this.policyEngine.replaceToolRegistry(
+			registry,
+			this.config.tools as CanonicalToolsConfig,
+		);
+		const ttsStarted =
+			this.ttsInitialized ||
+			this.ttsInitPromise !== undefined ||
+			this.ttsReconfigurePromise !== undefined;
+		for (const tool of this.getProviderDescriptorTools()) {
+			if (ttsStarted && tool.toolId === "textToSpeech") continue;
+			void this.registerProviderFromTool(tool);
+		}
+		if (ttsStarted) this.scheduleTTSReconfigure();
+		return true;
+	}
+
 	/**
 	 * Register tool providers in the registry
 	 */
@@ -1078,42 +1237,52 @@ export class ToolkitCoordinator {
 		return this.toolRegistry.getAllTools().filter((tool) => !!tool.provider);
 	}
 
+	/**
+	 * Register the provider `tool`'s descriptor creates for the tool's current
+	 * config, unless the tool is disabled or that provider id is registered. A
+	 * descriptor that throws is reported the way a failed registration is.
+	 */
 	private async registerProviderFromTool(
 		tool: ToolRegistration,
 	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
-		const toolConfig = this.getToolConfig(tool.toolId) || undefined;
-		if (toolConfig?.enabled === false) return;
-		const providerId =
-			descriptor.getProviderId?.(toolConfig) ??
-			toolConfig?.provider?.id ??
-			tool.toolId;
-		if (this.toolProviderRegistry.has(providerId)) return;
-		const provider = descriptor.createProvider(toolConfig);
-		const initConfig =
-			descriptor.getInitConfig?.(toolConfig) ??
-			toolConfig?.provider?.init ??
-			{};
-		const initConfigWithTelemetry = this.addToolTelemetryReporter({
-			toolId: tool.toolId,
-			providerId,
-			initConfig,
-		});
-		const registryTelemetry = this.createToolTelemetryForwarder({
-			toolId: tool.toolId,
-			providerId,
-		});
-		const authFetcher =
-			descriptor.getAuthFetcher?.(toolConfig) ??
-			toolConfig?.provider?.runtime?.authFetcher;
-		await this.registerProvider(providerId, {
-			provider,
-			config: initConfigWithTelemetry,
-			lazy: descriptor.lazy ?? true,
-			authFetcher,
-			onTelemetry: registryTelemetry,
-		});
+		let providerId: string | null = null;
+		let registration: Parameters<ToolProviderRegistry["register"]>[1];
+		try {
+			const toolConfig = this.getToolConfig(tool.toolId) || undefined;
+			if (toolConfig?.enabled === false) return;
+			providerId = resolveToolProviderId(tool, toolConfig);
+			if (!providerId || this.toolProviderRegistry.has(providerId)) return;
+			const provider = descriptor.createProvider(toolConfig);
+			const initConfig =
+				descriptor.getInitConfig?.(toolConfig) ??
+				toolConfig?.provider?.init ??
+				{};
+			const initConfigWithTelemetry = this.addToolTelemetryReporter({
+				toolId: tool.toolId,
+				providerId,
+				initConfig,
+			});
+			const registryTelemetry = this.createToolTelemetryForwarder({
+				toolId: tool.toolId,
+				providerId,
+			});
+			const authFetcher =
+				descriptor.getAuthFetcher?.(toolConfig) ??
+				toolConfig?.provider?.runtime?.authFetcher;
+			registration = {
+				provider,
+				config: initConfigWithTelemetry,
+				lazy: descriptor.lazy ?? true,
+				authFetcher,
+				onTelemetry: registryTelemetry,
+			};
+		} catch (err) {
+			this.reportProviderRegisterFailure(err, providerId, tool.toolId);
+			return;
+		}
+		await this.registerProvider(providerId, registration);
 	}
 
 	private createToolTelemetryForwarder(args: {
@@ -1177,12 +1346,29 @@ export class ToolkitCoordinator {
 				providerName: config.provider.providerName,
 			});
 		} catch (err) {
-			console.warn(
-				`[ToolkitCoordinator] Failed to register provider "${providerId}":`,
-				err,
-			);
-			this.handleError(err, { phase: "provider-register", providerId });
+			this.reportProviderRegisterFailure(err, providerId);
 		}
+	}
+
+	/**
+	 * A console warning and a `provider-register` framework error. `providerId`
+	 * is null when resolving it is what failed; the warning names the tool then.
+	 */
+	private reportProviderRegisterFailure(
+		err: unknown,
+		providerId: string | null,
+		toolId?: string,
+	): void {
+		console.warn(
+			providerId
+				? `[ToolkitCoordinator] Failed to register provider "${providerId}":`
+				: `[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
+			err,
+		);
+		this.handleError(err, {
+			phase: "provider-register",
+			providerId: providerId ?? undefined,
+		});
 	}
 
 	public async ensureProviderReady(
@@ -2233,6 +2419,8 @@ export class ToolkitCoordinator {
 					normalized,
 				);
 			}
+		} else if (resolvedBackend !== "browser") {
+			this.reportMissingTTSProvider(resolvedBackend);
 		}
 
 		// Fallback to browser provider
@@ -2432,13 +2620,7 @@ export class ToolkitCoordinator {
 	}
 
 	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
-		const providers =
-			(
-				this.config.tools as {
-					providers?: Record<string, ToolProviderConfig | undefined>;
-				}
-			)?.providers || {};
-		return providers.textToSpeech as TTSToolConfig | undefined;
+		return this.config.tools?.providers?.textToSpeech;
 	}
 
 	private assertCanonicalToolId(toolId: string): void {
@@ -2455,8 +2637,8 @@ export class ToolkitCoordinator {
 		// host's every tool-config call into an exception — including the calls
 		// this coordinator's own default-provider block provokes, which is how a
 		// host that passes no registry ended up unable to read its own config.
-		// `normalizeAndValidateToolsConfig` already reports the missing registry
-		// once, as `tools.registryUnavailable`; a second report per call is noise.
+		// Validation reports the missing registry once per coordinator, as
+		// `tools.registryUnavailable`; a report per call would be noise.
 		if (this.toolRegistry.getAllToolIds().length === 0) return;
 		if (!this.toolRegistry.get(toolId)) {
 			throw new Error(`Unknown tool id "${toolId}".`);
@@ -2509,7 +2691,7 @@ export class ToolkitCoordinator {
 	 */
 	isToolEnabled(toolId: string): boolean {
 		this.assertCanonicalToolId(toolId);
-		const toolConfig = (this.config.tools as any)?.providers?.[toolId];
+		const toolConfig = this.config.tools?.providers?.[toolId];
 		// Enabled by default unless explicitly set to false
 		return toolConfig?.enabled !== false;
 	}
@@ -2520,15 +2702,11 @@ export class ToolkitCoordinator {
 	 * @param toolId Tool identifier
 	 * @returns Tool configuration or null if not configured
 	 */
-	getToolConfig(toolId: string): ToolProviderConfig | null {
+	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
+	getToolConfig(toolId: string): ToolProviderConfig | null;
+	getToolConfig(toolId: string): ToolProviderConfig | TTSToolConfig | null {
 		this.assertCanonicalToolId(toolId);
-		return (
-			((
-				this.config.tools as {
-					providers?: Record<string, ToolProviderConfig | undefined>;
-				}
-			)?.providers?.[toolId] as ToolProviderConfig | undefined) || null
-		);
+		return this.config.tools?.providers?.[toolId] || null;
 	}
 
 	/**
@@ -2551,11 +2729,11 @@ export class ToolkitCoordinator {
 		this.assertCanonicalToolId(toolId);
 		const current = this.getToolConfig(toolId) || {};
 		if (!this.config.tools) {
-			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+			this.config.tools = this.validateToolsConfig(undefined, {
 				strictness: this.config.toolConfigStrictness ?? "error",
 				source: "ToolkitCoordinator.updateToolConfig",
 				toolRegistry: this.toolRegistry,
-			}).config;
+			});
 		}
 		if (!(this.config.tools as any).providers) {
 			(this.config.tools as any).providers = {};
@@ -2564,7 +2742,7 @@ export class ToolkitCoordinator {
 			...((this.config.tools as any).providers || {}),
 			[toolId]: mergeToolConfigUpdate(toolId, current, updates),
 		};
-		const validated = normalizeAndValidateToolsConfig(
+		this.config.tools = this.validateToolsConfig(
 			{
 				...(this.config.tools as CanonicalToolsConfig),
 				providers: nextProviders,
@@ -2575,7 +2753,6 @@ export class ToolkitCoordinator {
 				toolRegistry: this.toolRegistry,
 			},
 		);
-		this.config.tools = validated.config;
 		// M8 PR 2 — keep the policy engine's tools input in lockstep
 		// with the validated coordinator config. The engine emits an
 		// `inputs` change event so subscribers (e.g. PR 3 toolbars) can
@@ -2586,7 +2763,7 @@ export class ToolkitCoordinator {
 		void this.emitTelemetry("pie-toolkit-tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
-		this._applyToolConfigChange(toolId, updates);
+		this._applyToolConfigChange(toolId, current);
 	}
 
 	/**
@@ -2606,11 +2783,11 @@ export class ToolkitCoordinator {
 	 */
 	updateToolsPlacement(partial: ToolPlacementConfig): void {
 		if (!this.config.tools) {
-			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+			this.config.tools = this.validateToolsConfig(undefined, {
 				strictness: this.config.toolConfigStrictness ?? "error",
 				source: "ToolkitCoordinator.updateToolsPlacement",
 				toolRegistry: this.toolRegistry,
-			}).config;
+			});
 		}
 		const currentPlacement = this.config.tools?.placement ?? {
 			section: [],
@@ -2622,7 +2799,7 @@ export class ToolkitCoordinator {
 			item: [...(partial.item ?? currentPlacement.item ?? [])],
 			passage: [...(partial.passage ?? currentPlacement.passage ?? [])],
 		};
-		const validated = normalizeAndValidateToolsConfig(
+		const validated = this.validateToolsConfig(
 			{
 				...(this.config.tools as CanonicalToolsConfig),
 				placement: nextPlacement,
@@ -2633,8 +2810,8 @@ export class ToolkitCoordinator {
 				toolRegistry: this.toolRegistry,
 			},
 		);
-		validated.config.placement = nextPlacement;
-		this.config.tools = validated.config;
+		validated.placement = nextPlacement;
+		this.config.tools = validated;
 		this.policyEngine.updateInputs({
 			tools: this.config.tools as CanonicalToolsConfig,
 		});
@@ -2662,10 +2839,22 @@ export class ToolkitCoordinator {
 	 * capability it asks about, which is indistinguishable from a student who was
 	 * properly declined — so without this, forgetting {@link updateAssessment}
 	 * presents as an accommodation that silently never appears.
+	 *
+	 * A coordinator built with `assessmentOptional` reports only while PNP
+	 * enforcement is explicitly `"on"`. Its toolkit binds whatever assessment the
+	 * host gave, usually none, and a host that passes no profile and leaves
+	 * enforcement unset or `"off"` has asked for no accommodation.
 	 */
 	decideFeaturePolicy(featureId: string): FeaturePolicyDecision {
 		const decision = this.policyEngine.decideFeature(featureId);
-		if (!decision.assessmentBound && !this.reportedUnboundFeaturePolicy) {
+		const unboundIsMisconfigured =
+			this.config.assessmentOptional !== true ||
+			this.pnpEnforcementOverride === "on";
+		if (
+			!decision.assessmentBound &&
+			unboundIsMisconfigured &&
+			!this.reportedUnboundFeaturePolicy
+		) {
 			this.reportedUnboundFeaturePolicy = true;
 			console.warn(
 				`[ToolkitCoordinator] Feature policy was asked about "${featureId}" with no assessment bound, so every capability will be declined for want of a profile to read. Call updateAssessment(...) with the assessment (its personalNeedsProfile, settings.districtPolicy and settings.testAdministration are what policy reads) before relying on any accommodation. Reported once per coordinator.`,
@@ -2933,39 +3122,92 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Apply tool configuration changes to underlying services.
-	 * Called after updateToolConfig().
+	 * Called after updateToolConfig() with the tool's config before the update.
 	 */
 	private _applyToolConfigChange(
 		toolId: string,
-		_updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
+		previousConfig: ToolProviderConfig,
 	): void {
 		if (this.disposePromise !== null) return;
 		// Apply configuration changes based on tool
 		switch (toolId) {
-			case "textToSpeech": {
-				const reconfigurePromise = this._reconfigureTTSProvider();
-				this.ttsReconfigurePromise = reconfigurePromise;
-				void reconfigurePromise.finally(() => {
-					if (this.ttsReconfigurePromise === reconfigurePromise) {
-						this.ttsReconfigurePromise = undefined;
-					}
-				});
-				void reconfigurePromise.then(async () => {
-					if (this.disposePromise !== null) return;
-					const ttsConfig = this.getTTSConfigFromProviders();
-					if (!this.lazyInit && ttsConfig?.enabled !== false) {
-						await this.ensureTTSReady(ttsConfig);
-					}
-				});
+			case "textToSpeech":
+				this.scheduleTTSReconfigure();
 				break;
-			}
 
 			case "answerEliminator":
 				// Future: Could notify answer eliminator tools of strategy change
 				break;
 
-			// Add cases for other tools as needed
+			default:
+				this._registerChangedToolProvider(toolId, previousConfig);
 		}
+	}
+
+	/**
+	 * Register the provider a tool's updated config names, and unregister the
+	 * one its previous config named when the provider id changed, as
+	 * {@link _reconfigureTTSProvider} does for `tts`. Registration completes
+	 * before this returns, so a check on the policy change the update dispatched
+	 * finds the new provider.
+	 */
+	private _registerChangedToolProvider(
+		toolId: string,
+		previousConfig: ToolProviderConfig,
+	): void {
+		const registration = this.getProviderDescriptorTools().find(
+			(tool) => tool.toolId === toolId,
+		);
+		if (!registration) return;
+		void this.registerProviderFromTool(registration);
+		const resolveQuietly = (config: ToolProviderConfig | undefined) => {
+			try {
+				return resolveToolProviderId(registration, config);
+			} catch {
+				return null;
+			}
+		};
+		const previousId = resolveQuietly(previousConfig);
+		const nextId = resolveQuietly(this.getToolConfig(toolId) || undefined);
+		if (
+			!previousId ||
+			previousId === nextId ||
+			!this.toolProviderRegistry.has(previousId)
+		) {
+			return;
+		}
+		void this.toolProviderRegistry.unregister(previousId).catch((err) => {
+			console.warn(
+				`[ToolkitCoordinator] Failed to unregister provider "${previousId}":`,
+				err,
+			);
+		});
+	}
+
+	/**
+	 * Re-register the `tts` provider for the current config and registry, then
+	 * re-initialize unless initialization is lazy. An initialization already
+	 * running finishes first: it would otherwise mark its provider ready after
+	 * the reset.
+	 */
+	private scheduleTTSReconfigure(): void {
+		const inFlight = this.ttsInitPromise;
+		const reconfigurePromise = inFlight
+			? inFlight.catch(() => {}).then(() => this._reconfigureTTSProvider())
+			: this._reconfigureTTSProvider();
+		this.ttsReconfigurePromise = reconfigurePromise;
+		void reconfigurePromise.finally(() => {
+			if (this.ttsReconfigurePromise === reconfigurePromise) {
+				this.ttsReconfigurePromise = undefined;
+			}
+		});
+		void reconfigurePromise.then(async () => {
+			if (this.disposePromise !== null) return;
+			const ttsConfig = this.getTTSConfigFromProviders();
+			if (!this.lazyInit && ttsConfig?.enabled !== false) {
+				await this.ensureTTSReady(ttsConfig);
+			}
+		});
 	}
 
 	private async _reconfigureTTSProvider(): Promise<void> {

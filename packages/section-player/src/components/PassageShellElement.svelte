@@ -148,6 +148,13 @@
 	 */
 	$effect(() => {
 		if (!host) return;
+		// Raw item-player session events stay inside the shell, as they do in
+		// the item shell. A passage carries no response, so nothing is forwarded:
+		// a passage id on the section's session stream names no item a host has.
+		const onSessionChanged = (event: Event) => {
+			event.stopPropagation();
+		};
+		host.addEventListener("session-changed", onSessionChanged);
 		const onLoadComplete = (event: Event) => {
 			event.stopPropagation();
 			dispatchLoaded((event as CustomEvent).detail);
@@ -160,6 +167,7 @@
 		host.addEventListener("player-error", onPlayerError);
 
 		return () => {
+			host?.removeEventListener("session-changed", onSessionChanged);
 			host?.removeEventListener("load-complete", onLoadComplete);
 			host?.removeEventListener("player-error", onPlayerError);
 			registration.retire();

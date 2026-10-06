@@ -3,7 +3,8 @@
 Composition layer for the packaged PIE assessment tools: which capabilities exist
 in a deployment, and how a program tiers them.
 
-It owns the concrete `pie-tool-*` dependencies so toolkit core can stay
+It owns the concrete `pie-tool-*` dependencies and the calculator engines
+(`pie-calculator-cortex`, `-desmos` and `-geogebra`) so toolkit core can stay
 dependency-light and cycle-safe, and it is the layer above core — core knows
 `featureId`, placement levels, activation kinds and precedence rules, and knows
 no capability ids.
@@ -89,23 +90,30 @@ For an offline-capable calculator with no API key or runtime CDN, use
 history, evaluation limit, allowed functions, clipboard policy, and graph
 viewport options documented by `@pie-players/pie-calculator-cortex`.
 
-`createDefaultToolRegistry()` in the toolkit is the other end of that choice: it
-builds an empty registry, and a host composing its own set registers into it.
+The toolkit's `ToolRegistry` is the other end of that choice: it starts empty,
+and a host composing its own set registers into it and installs the tag map its
+registrations create elements from.
 
 ```ts
-import { createDefaultToolRegistry } from "@pie-players/pie-assessment-toolkit";
+import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
 import {
 	calculatorToolRegistration,
-	registerSectionToolModuleLoaders,
+	PACKAGED_TOOL_TAG_MAP,
+	registerDefaultToolModuleLoaders,
 	ttsToolRegistration,
 } from "@pie-players/pie-default-tool-loaders";
 
-const registry = createDefaultToolRegistry({
-	registrations: [calculatorToolRegistration, ttsToolRegistration],
-});
-// Section-only loaders, for section toolbar bootstrap points.
-registerSectionToolModuleLoaders(registry);
+const registry = new ToolRegistry();
+registry.register(calculatorToolRegistration);
+registry.register(ttsToolRegistration);
+registry.setComponentOverrides({ toolTagMap: PACKAGED_TOOL_TAG_MAP });
+registerDefaultToolModuleLoaders(registry);
 ```
+
+`registerDefaultToolModuleLoaders` installs a loader for every packaged tool.
+`registerSectionToolModuleLoaders` installs only the section-bootstrap subset,
+which has no text-to-speech loader, so a registry that places item-level text to
+speech needs the full set.
 
 ## Content-dependent capabilities require an explicit packaging decision
 

@@ -2,9 +2,27 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	createCatalogSpanAlignment,
-	resolveSpokenBoundaryOffset,
 	resolveVisibleSpanForBoundary,
 } from "../src/services/tts/catalog-span-alignment";
+import {
+	resolveBoundaryToSpeechToken,
+	tokenizeSpeechSource,
+} from "../src/services/tts/math-alignment/speech-tokenizer";
+
+const resolveBoundary = (
+	alignment: ReturnType<typeof createCatalogSpanAlignment>,
+	position: number,
+	length: number,
+	boundaryWord?: string,
+) => {
+	const boundary = resolveBoundaryToSpeechToken({
+		tokenization: alignment.speech,
+		position,
+		length,
+		boundaryWord,
+	});
+	return boundary && { start: boundary.start, length: boundary.length };
+};
 
 describe("catalog span alignment", () => {
 	test("maps raw SSML word offsets to plain spoken text offsets", () => {
@@ -17,20 +35,12 @@ describe("catalog span alignment", () => {
 		});
 
 		expect(alignment.playbackMode).toBe("exact-word");
-		expect(alignment.spokenText).toBe("Hello world");
+		expect(alignment.speech.spokenText).toBe("Hello world");
 		expect(
-			resolveSpokenBoundaryOffset(
-				alignment,
-				speechText.indexOf("Hello"),
-				"Hello".length,
-			),
+			resolveBoundary(alignment, speechText.indexOf("Hello"), "Hello".length),
 		).toEqual({ start: 0, length: 5 });
 		expect(
-			resolveSpokenBoundaryOffset(
-				alignment,
-				speechText.indexOf("world"),
-				"world".length,
-			),
+			resolveBoundary(alignment, speechText.indexOf("world"), "world".length),
 		).toEqual({ start: 6, length: 5 });
 	});
 
@@ -42,11 +52,7 @@ describe("catalog span alignment", () => {
 		});
 
 		expect(
-			resolveSpokenBoundaryOffset(
-				alignment,
-				speechText.indexOf("Hello"),
-				"Hello".length,
-			),
+			resolveBoundary(alignment, speechText.indexOf("Hello"), "Hello".length),
 		).toEqual({ start: 0, length: 5 });
 	});
 
@@ -57,16 +63,11 @@ describe("catalog span alignment", () => {
 			visibleText: "X < 2 & Y > 1",
 		});
 
-		expect(alignment.spokenText).toBe("X < 2 & Y > 1");
+		expect(alignment.speech.spokenText).toBe("X < 2 & Y > 1");
 		expect(alignment.playbackMode).toBe("exact-word");
 		expect(
-			resolveSpokenBoundaryOffset(
-				alignment,
-				speechText.indexOf("Y"),
-				"Y".length,
-				"Y",
-			),
-		).toEqual({ start: alignment.spokenText.indexOf("Y"), length: 1 });
+			resolveBoundary(alignment, speechText.indexOf("Y"), "Y".length, "Y"),
+		).toEqual({ start: alignment.speech.spokenText.indexOf("Y"), length: 1 });
 	});
 
 	test("uses boundary word to accept plain offsets for raw SSML chunks", () => {
@@ -80,11 +81,41 @@ describe("catalog span alignment", () => {
 			visibleText:
 				"Based on the passage, which method should you use to solve x2-5\u2062x+6=0?",
 		});
-		const plainOffset = alignment.spokenText.indexOf("X");
+		const plainOffset = alignment.speech.spokenText.indexOf("X");
 
-		expect(resolveSpokenBoundaryOffset(alignment, plainOffset, 1, "X")).toEqual(
-			{ start: plainOffset, length: 1 },
-		);
+		expect(resolveBoundary(alignment, plainOffset, 1, "X")).toEqual({
+			start: plainOffset,
+			length: 1,
+		});
+	});
+
+	test("tokenizes speech with the shared speech tokenizer", () => {
+		const speechText =
+			"<speak>Pick <emphasis>two</emphasis> of the ten\n   answers.</speak>";
+		const alignment = createCatalogSpanAlignment({
+			speechText,
+			visibleText: "Pick 2 of the 10 answers.",
+		});
+
+		expect(alignment.speech).toEqual(tokenizeSpeechSource({ speechText }));
+		expect(
+			alignment.anchors.map((anchor) =>
+				alignment.visibleText.slice(anchor.visibleStart, anchor.visibleEnd),
+			),
+		).toEqual(["Pick", "2", "of", "the", "10", "answers"]);
+	});
+
+	test("checks the boundary word for plain catalog chunks", () => {
+		const alignment = createCatalogSpanAlignment({
+			speechText: "Hello world",
+			visibleText: "Hello world",
+		});
+
+		expect(resolveBoundary(alignment, 0, "world".length, "world")).toBeNull();
+		expect(resolveBoundary(alignment, 6, "world".length, "world")).toEqual({
+			start: 6,
+			length: 5,
+		});
 	});
 
 	test("falls back to region highlighting for unsupported semantic SSML", () => {
@@ -94,7 +125,7 @@ describe("catalog span alignment", () => {
 		});
 
 		expect(alignment.playbackMode).toBe("region-fallback");
-		expect(alignment.boundaryOffsetMode).toBe("unsupported");
+		expect(alignment.speech.boundaryOffsetSpace).toBe("unsupported");
 		expect(alignment.anchors).toEqual([]);
 	});
 
@@ -112,7 +143,7 @@ describe("catalog span alignment", () => {
 
 		expect(alignment.playbackMode).toBe("exact-word");
 		expect(
-			resolveSpokenBoundaryOffset(
+			resolveBoundary(
 				alignment,
 				speechText.indexOf('<break time="600ms"/>'),
 				'<break time="600ms"/>'.length,
@@ -175,7 +206,7 @@ describe("catalog span alignment", () => {
 		});
 		const timesSpan = resolveVisibleSpanForBoundary(
 			choiceAlignment,
-			choiceAlignment.spokenText.indexOf("times"),
+			choiceAlignment.speech.spokenText.indexOf("times"),
 		);
 		expect(timesSpan).not.toBeNull();
 		expect(
@@ -196,7 +227,7 @@ describe("catalog span alignment", () => {
 		expect(alignment.playbackMode).toBe("exact-word");
 		const cafeSpan = resolveVisibleSpanForBoundary(
 			alignment,
-			alignment.spokenText.indexOf("café"),
+			alignment.speech.spokenText.indexOf("café"),
 		);
 		expect(cafeSpan).not.toBeNull();
 		expect(visibleText.slice(cafeSpan!.start, cafeSpan!.end)).toBe("café");

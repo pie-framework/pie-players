@@ -22,7 +22,7 @@ Pre-v1 policy applies: **no compatibility aliases** and **no transitional re-exp
 | Symbol(s) | Canonical owner | Status |
 | --- | --- | --- |
 | `DeleteDone`, `ImageHandler`, `SoundHandler` | `@pie-players/pie-players-shared/types` | Unified and consumed from shared owner |
-| `ToolProviderApi`, `ToolProviderCapabilities`, `ToolCategory` | `assessment-toolkit` tool-provider contracts | Unified under single provider contract file |
+| `ToolProviderApi`, `ToolProviderCapabilities`, `ToolCategory` | `assessment-toolkit` tool-provider contracts | Owned by `ToolProviderApi.ts` |
 | Section controller runtime/session contracts | `assessment-toolkit/services/section-controller-types.ts` | Owner is established; section-player convergence remains follow-up |
 
 ## Utility Ownership

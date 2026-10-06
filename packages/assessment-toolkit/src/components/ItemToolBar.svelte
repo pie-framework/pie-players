@@ -76,6 +76,7 @@
 	import {
 		collectFocusable,
 		createFocusTrap,
+		createPointerGesture,
 		FOCUSABLE_SELECTOR,
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
@@ -131,16 +132,28 @@
 	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
 	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
+	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
+	// without that path, stays in <head> marked `data-pie-load-failed`: no later
+	// call requests it again, and no shadow root copies it.
+	const appendHeadStylesheet = (href: string) => {
+		if (document.querySelector(`link[href="${href}"]`)) return;
+		const link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.href = href;
+		link.addEventListener(
+			'error',
+			() => {
+				link.dataset.pieLoadFailed = '';
+			},
+			{ once: true }
+		);
+		document.head.appendChild(link);
+	};
 	let ndsAssetsInstalled = false;
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
 		ndsAssetsInstalled = true;
-		if (!document.querySelector('link[href*="Roboto"]')) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = ROBOTO_HREF;
-			document.head.appendChild(link);
-		}
+		if (!document.querySelector('link[href*="Roboto"]')) appendHeadStylesheet(ROBOTO_HREF);
 		// Only inject our FA stylesheets when the host page hasn't already
 		// loaded one. If we always appended Free, it would land later in the
 		// document cascade than the host's FA Pro and override Pro's
@@ -153,19 +166,8 @@
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
-		if (!document.querySelector(`link[href="${FA_FREE_HREF}"]`)) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = FA_FREE_HREF;
-			document.head.appendChild(link);
-		}
-		for (const href of FA_PRO_HREFS) {
-			if (document.querySelector(`link[href="${href}"]`)) continue;
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = href;
-			document.head.appendChild(link);
-		}
+		appendHeadStylesheet(FA_FREE_HREF);
+		for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
@@ -194,7 +196,24 @@
 		const documentFaLinks = Array.from(
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
 		).filter((link) => FA_HREF_PATTERN.test(link.href));
-		for (const link of documentFaLinks) appendLink(link.href);
+		// A stylesheet still loading is copied once it loads, so the copy comes from
+		// the cache; one that fails is not copied, since every copy would request
+		// it again. Chromium gives a link a `sheet` even when its load fails, so a
+		// failed one is known by its mark.
+		for (const link of documentFaLinks) {
+			if ('pieLoadFailed' in link.dataset) continue;
+			if (link.sheet) {
+				appendLink(link.href);
+				continue;
+			}
+			const settle = (event: Event) => {
+				link.removeEventListener('load', settle);
+				link.removeEventListener('error', settle);
+				if (event.type === 'load') appendLink(link.href);
+			};
+			link.addEventListener('load', settle);
+			link.addEventListener('error', settle);
+		}
 	};
 	const ndsIconButtonAction = (node: HTMLElement) => {
 		ensureNdsAssets();
@@ -989,9 +1008,10 @@
 	// Prefetch FA + Roboto into document head as soon as we know an NDS icon will
 	// render. The shadow-root injection in `ndsIconButtonAction` clones whatever
 	// <link>s are already on the page; running this first means the prod-host's FA
-	// stylesheet is guaranteed to be present by the time the button mounts.
+	// stylesheet is guaranteed to be present by the time the button mounts. Plain
+	// buttons render no FA glyphs, so without `ndsIcons` nothing is loaded.
 	$effect(() => {
-		if (!isBrowser) return;
+		if (!isBrowser || !useNdsIcons) return;
 		if (toolbarItems.some((item) => !!resolveFaIconName(item))) {
 			ensureNdsAssets();
 		}
@@ -1258,7 +1278,6 @@
 		// HTMLElement (not HTMLButtonElement) so the calculator branch can use
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
-		let resizeHandleEl: HTMLDivElement | null = null;
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
 		let focusGuardRedirecting = false;
@@ -1273,8 +1292,16 @@
 		const shellDeclaresNdsChrome = (): boolean =>
 			currentArgs.mounted.entry.shell?.ndsHeaderControls === true;
 		let mountedContentElement: HTMLElement | null = null;
-		let dragPointerId: number | null = null;
-		let resizePointerId: number | null = null;
+		// Drag and resize share one gesture, which ends on a cancelled touch as well
+		// as on release, so one iPadOS takes over for a system gesture does not stay
+		// stuck to the next touch. Move handling reads the mode it started in.
+		let shellGestureMode: 'drag' | 'resize' | null = null;
+		const shellGesture = createPointerGesture({
+			onMove: (event) => onShellPointerMove(event),
+			onEnd: () => {
+				shellGestureMode = null;
+			}
+		});
 		let dragOffsetX = 0;
 		let dragOffsetY = 0;
 		let resizeStartWidth = 0;
@@ -1882,10 +1909,10 @@
 			const target = event.target as HTMLElement;
 
 			if (target.closest('button') || !shellEl) return;
+			if (!shellGesture.begin(event, shellEl)) return;
 
-			event.preventDefault();
+			shellGestureMode = 'drag';
 			learnerSizedShell = true;
-			dragPointerId = event.pointerId;
 			dragOffsetX = event.clientX - x;
 			dragOffsetY = event.clientY - y;
 			shellEl.setPointerCapture(event.pointerId);
@@ -1894,10 +1921,10 @@
 
 		const createResizePointerDownHandler = (corner: 'se' | 'sw' | 'ne' | 'nw') => (event: PointerEvent) => {
 			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
-			event.preventDefault();
 			event.stopPropagation();
+			if (!shellGesture.begin(event, shellEl)) return;
+			shellGestureMode = 'resize';
 			learnerSizedShell = true;
-			resizePointerId = event.pointerId;
 			resizeCorner = corner;
 			resizeStartWidth = width;
 			resizeStartHeight = height;
@@ -1912,7 +1939,7 @@
 		const onShellPointerMove = (event: PointerEvent) => {
 			if (!shellEl) return;
 
-			if (dragPointerId === event.pointerId) {
+			if (shellGestureMode === 'drag') {
 				event.preventDefault();
 				const maxX = Math.max(0, window.innerWidth - width);
 				const maxY = Math.max(0, window.innerHeight - height);
@@ -1922,7 +1949,7 @@
 				return;
 			}
 
-			if (resizePointerId === event.pointerId) {
+			if (shellGestureMode === 'resize') {
 				event.preventDefault();
 				const shellConfig = currentArgs.mounted.entry.shell;
 				const configuredMinWidth = shellConfig?.minWidth ?? 320;
@@ -1988,18 +2015,6 @@
 				applyContentMinWidth();
 				applyContentLayout();
 				notifyHostedResize();
-			}
-		};
-
-		const onShellPointerUp = (event: PointerEvent) => {
-			if (!shellEl) return;
-			if (dragPointerId === event.pointerId) {
-				dragPointerId = null;
-				shellEl.releasePointerCapture(event.pointerId);
-			}
-			if (resizePointerId === event.pointerId) {
-				resizePointerId = null;
-				shellEl.releasePointerCapture(event.pointerId);
 			}
 		};
 
@@ -2421,8 +2436,6 @@
 
 
 			headerEl.addEventListener('pointerdown', onHeaderPointerDown);
-			shellEl.addEventListener('pointermove', onShellPointerMove);
-			shellEl.addEventListener('pointerup', onShellPointerUp);
 			shellEl.addEventListener('pointerdown', bringToFront);
 			window.addEventListener('resize', onWindowResize);
 			document.body.appendChild(shellEl);
@@ -2501,9 +2514,8 @@
 					headerEl.removeEventListener('pointerdown', onHeaderPointerDown);
 					headerEl.onkeydown = null;
 				}
+				shellGesture.release();
 				if (shellEl) {
-					shellEl.removeEventListener('pointermove', onShellPointerMove);
-					shellEl.removeEventListener('pointerup', onShellPointerUp);
 					shellEl.removeEventListener('pointerdown', bringToFront);
 				}
 				window.removeEventListener('resize', onWindowResize);
@@ -2568,6 +2580,7 @@
 					     `reflectToggleState` mirrors the pressed state onto that inner
 					     button since nds has no native aria-pressed. -->
 					<span class="item-toolbar__nds-button-zoom">
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 						<nds-icon-button
 							use:ndsIconButtonAction
 							use:reflectToggleState={isToolbarItemActive(item)}

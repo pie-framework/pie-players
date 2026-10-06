@@ -55,6 +55,10 @@
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
 			backend: { type: "Object", reflect: false },
+			// `type: "Object"` so the attribute form parses both the boolean opt-in
+			// (`session-snapshot="true"`) and a JSON config; a host-supplied store
+			// is a function and can only arrive as a property.
+			sessionSnapshot: { attribute: "session-snapshot", type: "Object" },
 			allowedStyleOrigins: { attribute: "allowed-style-origins", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
 			trustMarkup: { attribute: "trust-markup", type: "Boolean" },
@@ -64,10 +68,12 @@
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import type {
 		ConfigEntity,
 		ConfigResource,
@@ -91,6 +97,10 @@
 		SoundHandler,
 	} from "./types.js";
 	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
+	import {
+		missingControllerWarning,
+		takeTagsWithoutController,
+	} from "./preloaded-controllers.js";
 	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
 	import {
 		acquireScopedExternalStyle,
@@ -102,20 +112,27 @@
 		callbackIdentityForKey,
 		createBackendOrchestrator,
 	} from "./backend/orchestrator.svelte.js";
+	import { isDeliveryBackendEnabled } from "./backend/delivery.js";
 	import { stableStringifyForKey } from "./utils/stable-stringify.js";
 	import { ITEM_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 	import {
 		BundleType,
+		alignPreloadedElementVersions,
 		assertElementPackagesAllowed,
 		assertPieConfigContract,
 		assertRegistered,
 		bindPageLifecycleCommit,
 		commitPendingSessions,
 		createPieLogger,
+		createSessionSnapshot,
 		DEFAULT_BUNDLE_HOST,
+		DEFAULT_ESM_CDN_URL,
 		DEFAULT_LOADER_CONFIG,
+		defineAuthoredPreloadedTags,
+		describeRegistrationFailures,
 		ensureHostSessionEntries,
 		ensureRegistered,
+		flushPendingSessionNotifications,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -127,6 +144,8 @@
 		parsePackageName,
 		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
+		resolveEsmRuntimeSupportUrl,
+		resolveLoadControllers,
 		attachInstrumentationEventBridge,
 		ITEM_INSTRUMENTATION_EVENT_MAP,
 		scorePieItem,
@@ -135,9 +154,14 @@
 	import type {
 		ElementPackagePolicy,
 		EsmBackendConfig,
+		CanonicalItemSessionContainer,
 		EsmCdnProviderOption,
 		IifeBackendConfig,
+		SessionSnapshot,
+		SessionSnapshotConfig,
+		SessionSnapshotRecord,
 	} from "@pie-players/pie-players-shared";
+	import type { PieItemPlayerErrorDetail } from "@pie-players/pie-players-shared/types";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import {
 		createPieI18n,
@@ -152,6 +176,7 @@
 	import {
 		asCommittedDetail,
 		resolveSessionChangedForwarding,
+		withContractMetadata,
 	} from "./session-forwarding.js";
 
 	type ItemSession = {
@@ -181,7 +206,7 @@
 		env = { mode: "gather", role: "student" } as Env,
 		addCorrectResponse = false,
 		showBottomBorder = false,
-		hosted = false,
+		hosted = undefined as boolean | undefined,
 		debug = "" as string | boolean,
 		customClassName = "",
 		customClassname = "",
@@ -204,6 +229,10 @@
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
 		backend = null as BackendConfig | null,
+		// Off by default: PIE writes a learner response to the device only when a
+		// host asks for it. A recovered draft is offered through
+		// `session-snapshot-available`, never applied.
+		sessionSnapshot = null as SessionSnapshotConfig | null,
 		allowedStyleOrigins = "",
 		loaderOptions = {} as UnifiedLoaderOptions,
 		trustMarkup = false,
@@ -240,7 +269,7 @@
 			DEFAULT_BUNDLE_HOST,
 	);
 	const resolvedEsmCdnUrl = $derived(
-		loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
+		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
 	);
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
@@ -267,12 +296,11 @@
 		return fallback;
 	}
 
-	function resolveRuntimeSupportUrl(packageVersion: string): string {
-		const isJsDelivr = resolvedEsmCdnUrl.includes("cdn.jsdelivr.net/npm");
-		if (isJsDelivr) {
-			return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support/+esm`;
-		}
-		return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support`;
+	function resolveRuntimeSupportUrl(packageVersion: string): string | undefined {
+		return resolveEsmRuntimeSupportUrl(packageVersion, {
+			cdnBaseUrl: resolvedEsmCdnUrl,
+			cdnProvider: loaderOptions?.esmCdnProvider,
+		});
 	}
 
 	function isStrategySupportedForView(
@@ -325,9 +353,13 @@
 		if (missingAt && Date.now() - missingAt < RUNTIME_SUPPORT_NEGATIVE_CACHE_MS) {
 			return undefined;
 		}
+		const url = resolveRuntimeSupportUrl(packageVersion);
+		if (!url) {
+			return undefined;
+		}
 		try {
 			// @vite-ignore
-			const module = await import(/* @vite-ignore */ resolveRuntimeSupportUrl(packageVersion));
+			const module = await import(/* webpackIgnore: true */ /* @vite-ignore */ url);
 			const runtimeSupport = module.default || module.runtimeSupport || module;
 			if (!runtimeSupport || typeof runtimeSupport !== "object") {
 				throw new Error(`Invalid runtime-support export for ${packageVersion}`);
@@ -346,13 +378,10 @@
 
 	async function collectRuntimeSupportHints(
 		elements: Record<string, string>,
-		strategy: "iife" | "esm" | "preloaded",
 		view: "delivery" | "author" | "print",
 		mode: "off" | "on",
 	): Promise<{ unsupportedPackages: string[] }> {
 		if (mode !== "on") return { unsupportedPackages: [] };
-		const strategyForChecks: "esm" | "iife" =
-			strategy === "iife" || strategy === "preloaded" ? "iife" : "esm";
 		const unsupportedPackages: string[] = [];
 
 		for (const packageVersion of Object.values(elements || {})) {
@@ -360,7 +389,7 @@
 			if (!runtimeSupport) {
 				continue;
 			}
-			const supported = isStrategySupportedForView(runtimeSupport, strategyForChecks, view);
+			const supported = isStrategySupportedForView(runtimeSupport, "esm", view);
 			if (supported) {
 				continue;
 			}
@@ -389,13 +418,12 @@
 	});
 
 	const logger = createPieLogger("pie-item-player", () => debugEnabled);
-	const resolvedInstrumentationProvider = $derived.by(
-		() =>
-			resolveInstrumentationProvider({
-				player: { loaderConfig },
-				component: "pie-item-player",
-				debug: debugEnabled,
-			}) as LoaderConfig["instrumentationProvider"],
+	const resolvedInstrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			player: { loaderConfig },
+			component: "pie-item-player",
+			debug: debugEnabled,
+		}),
 	);
 
 	let loading = $state(true);
@@ -409,7 +437,13 @@
 	let sessionControllerItemId = $state("pie-item-player");
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
+	// A controller wrote derived state back that no `session-changed` has carried
+	// yet; see `handleElementSessionUpdate`.
+	let derivedStateUnannounced = false;
 	let latestLoadRequestToken = 0;
+	let activeSessionSnapshot: SessionSnapshot | null = null;
+	let offeredSnapshotKey = "";
+	let pendingSessionSnapshot: SessionSnapshotRecord | null = null;
 	// The custom element itself, resolved while the player is still connected.
 	// `hostElement` is the inner `<div>`; by the time a removal reaches
 	// `onDestroy` that div can already be detached from the custom element, and
@@ -581,6 +615,7 @@
 			});
 			sessionControllerItemId = itemId;
 			sessionSignature = JSON.stringify(sessionController.getSession());
+			derivedStateUnannounced = false;
 		}
 		return sessionController;
 	}
@@ -600,6 +635,9 @@
 		}
 		sessionSignature = nextSignature;
 		sessionRevision += 1;
+		// The host holds the session it set. A write-back that session lacks is
+		// written again by the render this starts.
+		derivedStateUnannounced = false;
 		return true;
 	}
 
@@ -694,45 +732,13 @@
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
-		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
-			return configEntity;
+		const aligned = alignPreloadedElementVersions(configEntity);
+		if (aligned !== configEntity) {
+			logger.debug(
+				"[pie-item-player] Normalized preloaded config.elements to bundled versions",
+			);
 		}
-		const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS;
-		if (!preloadedElements || typeof preloadedElements !== "object") {
-			return configEntity;
-		}
-
-		let changed = false;
-		const normalizedElements = Object.entries(configEntity.elements).reduce(
-			(acc, [tagName, packageSpec]) => {
-				const packageSpecStr = String(packageSpec);
-				try {
-					const packageName = parsePackageName(packageSpecStr).name;
-					const bundledSpec = preloadedElements[packageName];
-					if (typeof bundledSpec === "string" && bundledSpec.length > 0) {
-						acc[tagName] = bundledSpec;
-						if (bundledSpec !== packageSpecStr) {
-							changed = true;
-						}
-						return acc;
-					}
-				} catch {
-					// Keep original packageSpec when parsing fails.
-				}
-				acc[tagName] = packageSpecStr;
-				return acc;
-			},
-			{} as Record<string, string>,
-		);
-
-		if (!changed) return configEntity;
-		logger.debug(
-			"[pie-item-player] Normalized preloaded config.elements to bundled versions",
-		);
-		return {
-			...configEntity,
-			elements: normalizedElements,
-		};
+		return aligned;
 	}
 
 	type NormalizedItemPlayerConfigInput = {
@@ -874,7 +880,7 @@
 	// strategy, loaderOptions)` producing `(resolvedConfig | error)`.
 	//
 	//     parse → validate → normalizePreloaded → makeUniqueTags
-	//       → collectRuntimeSupportHints → initializeMathRendering
+	//       → collectRuntimeSupportHints → initializeMathRendering (iife)
 	//       → (preloaded: assertRegistered | iife|esm: ensureRegistered)
 	//       → setItemConfig
 	//
@@ -887,9 +893,21 @@
 	//   - a manual "all elements already registered" shortcut (the primitive
 	//     short-circuits when every tag is in `customElements` already)
 
+	// A delivery backend serves server-processed models, so it implies hosted
+	// unless the host says otherwise.
+	const resolvedHosted = $derived(hosted ?? isDeliveryBackendEnabled(backend));
+
 	function resolveBundleType(): BundleType {
 		if (resolvedMode === "author") return BundleType.editor;
-		return hosted ? BundleType.player : BundleType.clientPlayer;
+		return resolvedHosted ? BundleType.player : BundleType.clientPlayer;
+	}
+
+	function resolveEsmLoadControllers(): boolean {
+		return resolveLoadControllers({
+			loadControllers: loaderOptions?.loadControllers,
+			author: resolvedMode === "author",
+			hosted: resolvedHosted,
+		});
 	}
 
 	function buildIifeBackendConfig(
@@ -898,7 +916,7 @@
 	): IifeBackendConfig {
 		const needsControllers =
 			bundleType === BundleType.editor ||
-			(bundleType === BundleType.clientPlayer && !hosted);
+			(bundleType === BundleType.clientPlayer && !resolvedHosted);
 		return {
 			kind: "iife",
 			bundleHost: resolvedIifeBundleHost,
@@ -932,7 +950,7 @@
 			cdnProvider: loaderOptions?.esmCdnProvider,
 			moduleResolution,
 			view: view || "delivery",
-			loadControllers: loaderOptions?.loadControllers ?? true,
+			loadControllers: resolveEsmLoadControllers(),
 			trackPageActions: loaderConfig?.trackPageActions,
 			instrumentationProvider: resolvedInstrumentationProvider,
 		};
@@ -940,18 +958,6 @@
 
 	function resolveEffectiveEsmView(): string {
 		return loaderOptions?.view || (resolvedMode === "author" ? "author" : "delivery");
-	}
-
-	function tagsForConfig(
-		transformedConfig: any,
-		context: { strategy: string; view: string; bundleType: BundleType },
-	): string[] {
-		if (!transformedConfig?.elements) return [];
-		const isEditor =
-			context.bundleType === BundleType.editor || context.view === "author";
-		return Object.keys(transformedConfig.elements).map((el) =>
-			isEditor ? `${el}-config` : el,
-		);
 	}
 
 	function mapExpectedRegistrationElements(
@@ -971,7 +977,7 @@
 		const loaderOptionsSignature = JSON.stringify({
 			bundleHost: resolvedIifeBundleHost,
 			esmCdnUrl: resolvedEsmCdnUrl,
-			loadControllers: loaderOptions?.loadControllers ?? true,
+			loadControllers: resolveEsmLoadControllers(),
 			moduleResolution: loaderOptions?.moduleResolution ?? "url",
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,
@@ -1092,34 +1098,39 @@
 			);
 			const runtimeSupportHints = await collectRuntimeSupportHints(
 				elementMap,
-				normalizedStrategy,
 				runtimeSupportView as "delivery" | "author" | "print",
 				effectiveRuntimeSupportCheck,
 			);
 			if (!isCurrentLoadRequest(requestToken)) return false;
-			const strategyForChecks: "esm" | "iife" =
-				normalizedStrategy === "esm" ? "esm" : "iife";
 			runtimeSupportErrorHint =
 				runtimeSupportHints.unsupportedPackages.length > 0
-					? ` Runtime support metadata indicates ${strategyForChecks}/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
+					? ` Runtime support metadata indicates esm/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
 					: null;
 
-			stage = "math-rendering-init";
-			await initializeMathRendering();
-			if (!isCurrentLoadRequest(requestToken)) return false;
+			// IIFE bundles read the renderer this installs on window. Preloaded
+			// elements are ESM builds, which bring their own.
+			if (normalizedStrategy === "iife") {
+				stage = "math-rendering-init";
+				await initializeMathRendering();
+				if (!isCurrentLoadRequest(requestToken)) return false;
+			}
 
 			if (normalizedStrategy === "preloaded") {
 				stage = "preloaded-readiness";
 				const bundleType = resolveBundleType();
-				const tags = tagsForConfig({ ...transformedConfig, elements: elementMap }, {
-					strategy: normalizedStrategy,
-					view: runtimeSupportView,
-					bundleType,
-				});
-				// `assertRegistered` throws `ElementAssertionError` with a
-				// diagnostic message (expected, missing, currently-registered)
-				// when any tag is missing. No loading, no fallback.
-				assertRegistered(tags);
+				const expectedElements = mapExpectedRegistrationElements(
+					elementMap,
+					runtimeSupportView === "author" ? BundleType.editor : bundleType,
+				);
+				defineAuthoredPreloadedTags(expectedElements);
+				// Throws `ElementAssertionError` naming each missing tag and the tags
+				// its package is registered as. No loading, no fallback.
+				assertRegistered(expectedElements);
+				if (bundleType === BundleType.clientPlayer) {
+					for (const tag of takeTagsWithoutController(Object.keys(expectedElements))) {
+						logger.warn(missingControllerWarning(tag));
+					}
+				}
 			} else if (normalizedStrategy === "iife") {
 				stage = "iife-load";
 				const bundleType = resolveBundleType();
@@ -1165,15 +1176,18 @@
 				bundleRetryStatus = null;
 			});
 			logger.error("[pie-item-player] failed loading:", err);
+			const cause = describeRegistrationFailures(err);
 			handlePlayerEvent(
 				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, {
 					detail: {
 						code: "ITEM_PLAYER_LOAD_ERROR",
 						message,
+						recoverable: false,
 						stage,
 						strategy: normalizedStrategy,
 						mode: resolvedMode,
-					},
+						...(cause ? { cause } : {}),
+					} satisfies PieItemPlayerErrorDetail,
 				}),
 			);
 			return false;
@@ -1336,6 +1350,11 @@
 	});
 
 	const handlePlayerEvent = (event: CustomEvent) => {
+		// A durable save supersedes the device-local draft.
+		if (event.type === "backend-session-saved") {
+			activeSessionSnapshot?.clear();
+			pendingSessionSnapshot = null;
+		}
 		const newEvent = new CustomEvent(event.type, {
 			detail: event.detail,
 			bubbles: true,
@@ -1392,6 +1411,77 @@
 		return sessionController.getSession() as { id: string; data: unknown[] };
 	}
 
+	/**
+	 * Identity a snapshot is keyed by. `backend.delivery` owns it, so a draft is
+	 * only ever offered back to the sitting that wrote it. Without a delivery
+	 * `sessionId` there is no snapshot at all: the item id alone is the same for
+	 * every learner, and a shared device would offer one student's draft to the
+	 * next. A host driving the player by props opts in with an explicit
+	 * `sessionSnapshot.key`.
+	 */
+	function snapshotIdentity(): {
+		itemId: string;
+		sessionId: string;
+		assignmentId: string;
+	} {
+		const delivery = (
+			backend as {
+				delivery?: {
+					itemId?: string;
+					sessionId?: string;
+					assignmentId?: string;
+				};
+			} | null
+		)?.delivery;
+		return {
+			itemId: delivery?.itemId || itemConfig?.id || "",
+			sessionId: delivery?.sessionId || "",
+			assignmentId: delivery?.assignmentId || "",
+		};
+	}
+
+	function writeSessionSnapshot(): void {
+		if (!activeSessionSnapshot) return;
+		try {
+			activeSessionSnapshot.write(currentSessionContainer());
+		} catch (errorValue) {
+			logger.warn("[pie-item-player] session snapshot write failed", errorValue);
+		}
+	}
+
+	// A crash or an OS kill fires nothing, so the snapshot is the only recovery
+	// path left. It is offered, never applied: a shared device makes a stored
+	// draft indistinguishable from a previous student's, and only the host can
+	// tell those apart.
+	$effect(() => {
+		const snapshotConfig = sessionSnapshot;
+		const identity = snapshotIdentity();
+		untrack(() => {
+			const snapshot = createSessionSnapshot({
+				config: snapshotConfig,
+				identity,
+			});
+			activeSessionSnapshot = snapshot;
+			if (!snapshot || snapshot.key === offeredSnapshotKey) return;
+			offeredSnapshotKey = snapshot.key;
+			const stored = snapshot.read();
+			if (!stored) return;
+			// Held as well as announced: the event fires once, and a host that
+			// binds its listener a tick after setting the attribute would
+			// otherwise lose the recovery with nothing to ask.
+			pendingSessionSnapshot = stored;
+			handlePlayerEvent(
+				new CustomEvent("session-snapshot-available", {
+					detail: {
+						key: stored.key,
+						session: stored.session,
+						timestamp: stored.timestamp,
+					},
+				}),
+			);
+		});
+	});
+
 	// The seams above only fire when something replaces or removes the player.
 	// Closing the tab, navigating away or an OS reclaiming a backgrounded tab
 	// removes nothing, so the commit has to hang off the page lifecycle as well.
@@ -1402,6 +1492,7 @@
 		return bindPageLifecycleCommit({
 			root: () => localHost,
 			onHidden: () => {
+				writeSessionSnapshot();
 				// The session is snapshotted synchronously here; the request itself
 				// goes out one queue turn later, which `keepalive` is what makes
 				// survivable - it is allowed to outlive the document. The built-in
@@ -1412,6 +1503,25 @@
 			},
 			logger,
 		});
+	});
+
+	// Focus leaving the player is the learner moving on, and the last moment the
+	// item they answered is still the host's current one. A deferred notification
+	// delivered now reaches the host before whatever the learner clicked or keyed
+	// changes the host's state; left to a commit seam it would arrive after.
+	// WebKit reports no `relatedTarget` for a click on a button it does not
+	// focus, so a missing one counts as leaving.
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const onFocusOut = (event: FocusEvent) => {
+			const next = event.relatedTarget;
+			if (next instanceof Node && localHost.contains(next)) return;
+			flushPendingSessionNotifications(localHost, { logger });
+		};
+		localHost.addEventListener("focusout", onFocusOut);
+		return () => localHost.removeEventListener("focusout", onFocusOut);
 	});
 
 	/**
@@ -1431,6 +1541,7 @@
 				parseEnvValue(env),
 				hostElement ?? undefined,
 				handleElementSessionUpdate,
+				resolveBundleType(),
 			);
 		}
 		if (refresh.passageChanged && passageConfig) {
@@ -1440,6 +1551,7 @@
 				parseEnvValue(env),
 				hostElement ?? undefined,
 				handleElementSessionUpdate,
+				resolveBundleType(),
 			);
 		}
 	}
@@ -1455,6 +1567,16 @@
 	 * still in the document, the events reach a `document`-level listener, which
 	 * the player's own teardown cannot do.
 	 */
+	/**
+	 * The snapshot offered by `session-snapshot-available`, if one was found.
+	 *
+	 * Still held after the event fires, so a host that attached its listener
+	 * late can still recover. Applying it is the host's decision.
+	 */
+	export function getPendingSessionSnapshot(): SessionSnapshotRecord | null {
+		return pendingSessionSnapshot;
+	}
+
 	export function commitPendingElementSessions(): void {
 		commitPendingSessions(hostElement, { reason: "teardown", logger });
 	}
@@ -1497,6 +1619,7 @@
 			},
 			outcomeArguments: "model-session-env",
 			includeMissingResults: true,
+			bundleType: resolveBundleType(),
 		});
 		return results;
 	}
@@ -1550,6 +1673,7 @@
 			parseEnvValue(env),
 			hostElement ?? undefined,
 			handleElementSessionUpdate,
+			resolveBundleType(),
 		);
 	}
 
@@ -1582,8 +1706,11 @@
 	}
 
 	// An element controller persisted derived, non-response state (e.g. a shuffled
-	// choice order). Write it back to the authoritative session and notify the host
-	// so future prop updates/remounts reuse it instead of regenerating it (PIE-631).
+	// choice order). Write it back to the authoritative session so future prop
+	// updates/remounts reuse it instead of regenerating it (PIE-631), and project it
+	// onto the host's container. It dispatches no event of its own, as under the
+	// legacy player, which gave controllers no `updateSession`: the next
+	// `session-changed` carries it, with the announcing element's own `complete`.
 	// Do not bump sessionRevision: the in-flight element already has the order, and
 	// forcing an immediate re-render would re-trigger the controller update path.
 	const handleElementSessionUpdate = (
@@ -1605,7 +1732,31 @@
 		}
 		sessionSignature = nextSignature;
 		publishSessionToHostProp(merged);
-		handlePlayerEvent(new CustomEvent("session-changed", { detail: { session: merged } }));
+		derivedStateUnannounced = true;
+	};
+
+	function componentForElement(elementId: string | undefined): string | undefined {
+		const models = [
+			...((itemConfig?.models ?? []) as Array<{ id?: unknown; element?: unknown }>),
+			...((passageConfig?.models ?? []) as Array<{ id?: unknown; element?: unknown }>),
+		];
+		const model = elementId
+			? models.find((candidate) => candidate.id === elementId)
+			: models.length === 1
+				? models[0]
+				: undefined;
+		return typeof model?.element === "string" ? model.element : undefined;
+	}
+
+	const emitSessionChanged = (
+		detail: Record<string, unknown>,
+		session: CanonicalItemSessionContainer,
+	) => {
+		handlePlayerEvent(
+			new CustomEvent("session-changed", {
+				detail: withContractMetadata(detail, session, componentForElement),
+			}),
+		);
 	};
 
 	const handleSessionChanged = (detail: unknown) => {
@@ -1630,21 +1781,28 @@
 			});
 			sessionSignature = JSON.stringify(nextSession);
 			sessionRevision += 1;
+			derivedStateUnannounced = false;
 			publishSessionToHostProp(nextSession);
-			handlePlayerEvent(
-				new CustomEvent("session-changed", {
-					detail: { ...forwarding.detail, session: nextSession },
-				}),
-			);
+			emitSessionChanged({ ...forwarding.detail, session: nextSession }, nextSession);
+			writeSessionSnapshot();
 			backendOrchestrator.scheduleAutosave();
 			return;
 		}
-		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwarding.detail }));
+		if (derivedStateUnannounced) {
+			// The session changed since the host was last told, by a write-back alone.
+			derivedStateUnannounced = false;
+			const { intent: _intent, ...metadata } = forwarding.detail;
+			const current = controller.getSession();
+			emitSessionChanged({ ...metadata, session: current }, current);
+			return;
+		}
+		emitSessionChanged(forwarding.detail, controller.getSession());
 	};
 </script>
 
 <div
 	class="pie-item-player {scopeClass} {additionalStylesheetScopeClass}"
+	data-pie-content
 	bind:this={hostElement}
 >
 	{#if error}
@@ -1690,7 +1848,7 @@
 					baseHeadingLevel={resolvedBaseHeadingLevel}
 					{includeSrHeading}
 					i18n={interfaceMessages}
-					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
+					bundleType={resolveBundleType()}
 					{loaderConfig}
 					mode={resolvedMode}
 					authoringBackend={authoringBackend}
@@ -1707,7 +1865,7 @@
 						seedHostSessionEntriesForItem();
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
 					}}
-					onPlayerError={(detail: unknown) =>
+					onPlayerError={(detail: PieItemPlayerErrorDetail) =>
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 						)}

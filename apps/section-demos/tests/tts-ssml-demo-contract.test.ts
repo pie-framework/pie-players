@@ -2,13 +2,21 @@
 
 import { describe, expect, test } from "bun:test";
 
+import type { PassageEntity } from "@pie-players/pie-players-shared/types";
+
 import { demo4Section } from "../src/lib/content/demo4-tts-ssml";
+
+// The passage element renders the texts its model carries.
+const passageText = (passage: PassageEntity): string =>
+	(passage.config?.models ?? [])
+		.flatMap((model) => model.passages ?? [])
+		.map((entry: { text?: string }) => entry.text ?? "")
+		.join("\n");
 
 const collectVisibleMarkup = (): string[] => {
 	const visible: string[] = [];
 	for (const block of demo4Section.rubricBlocks ?? []) {
-		const passage = block.passage;
-		if (passage?.config?.markup) visible.push(passage.config.markup);
+		if (block.passage) visible.push(passageText(block.passage));
 	}
 	for (const itemRef of demo4Section.assessmentItemRefs ?? []) {
 		for (const model of itemRef.item?.config?.models ?? []) {
@@ -70,7 +78,7 @@ describe("tts-ssml demo catalog contract", () => {
 					(catalog) => catalog.identifier,
 				),
 			);
-			for (const idref of collectIdRefs(passage.config?.markup ?? "")) {
+			for (const idref of collectIdRefs(passageText(passage))) {
 				expect(passageCatalogIds.has(idref)).toBe(true);
 			}
 		}

@@ -8,6 +8,7 @@ import {
 	type MathHighlightCapability,
 	type RenderedMathTargetResolver,
 } from "./rendered-math-target-resolver.js";
+import { isNodeHiddenForTTS } from "../text-processing.js";
 import type {
 	HighlightDecision,
 	RenderableHighlightTarget,
@@ -136,6 +137,32 @@ const wouldEscalateInsideTokenMath = (
 	);
 };
 
+// A prose range in hidden content paints nothing. Catalog words over MathJax
+// math land in its clipped source MathML, so they select the equation, and a
+// range over one source token resolves to that token's rendered glyph — the
+// fill-in a single-text-node range gives native MathML.
+const isHiddenRange = (
+	target: RenderableHighlightTarget | null,
+): target is Extract<RenderableHighlightTarget, { type: "range" }> =>
+	target?.type === "range" && isNodeHiddenForTTS(target.range.startContainer);
+
+const renderHiddenProseTarget = (
+	planned: PlannedChunk,
+	target: RenderableHighlightTarget | null,
+): RenderableHighlightTarget | null => {
+	if (!isHiddenRange(target)) return null;
+	const { startContainer, endContainer, startOffset, endOffset } = target.range;
+	if (startContainer !== endContainer || startContainer.nodeType !== TEXT_NODE)
+		return null;
+	return planned.renderedMathTargetResolver({
+		type: "text-range",
+		quality: "exact-word",
+		node: startContainer as Text,
+		startOffset,
+		endOffset,
+	});
+};
+
 const createPlannedChunk = (
 	chunk: TTSHighlightChunk,
 	mathTokenHighlighting: boolean,
@@ -209,7 +236,7 @@ export const createTTSHighlightPlan = (
 			const normalized = normalizeBoundaryEvent(chunk, event);
 			const proseTarget = resolveProseBoundaryTarget(chunk, normalized);
 			const mathCandidates = mathCandidatesForTarget(proseTarget, chunk);
-			const mathTarget =
+			const resolvedMathTarget =
 				(!proseTarget || mathCandidates.length > 0
 					? resolveMathBoundaryTarget(
 							chunk,
@@ -219,6 +246,11 @@ export const createTTSHighlightPlan = (
 							planned.renderedMathTargetResolver,
 						)
 					: null) || null;
+			const mathTarget =
+				resolvedMathTarget?.quality === "semantic-token"
+					? resolvedMathTarget
+					: (renderHiddenProseTarget(planned, proseTarget) ??
+						resolvedMathTarget);
 			const mathTokenTarget =
 				mathTokenHighlighting &&
 				mathTarget &&
@@ -254,6 +286,7 @@ export const createTTSHighlightPlan = (
 			// formula is likewise rejected so the formula stays a single block.
 			if (
 				proseTarget &&
+				!isHiddenRange(proseTarget) &&
 				(mathTokenHighlighting
 					? !wouldEscalateInsideTokenMath(planned, proseTarget, mathCandidates)
 					: mathCandidates.length === 0)

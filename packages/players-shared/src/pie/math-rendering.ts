@@ -4,7 +4,7 @@
  * PIE elements expect @pie-lib/math-rendering to be available on window.
  * This module ensures required globals are populated from the upstream
  * @pie-lib/math-rendering-module package, and also supports overriding with
- * a custom renderer object when needed.
+ * a custom renderer object through setMathRenderer().
  */
 
 /// <reference path="../shims.d.ts" />
@@ -20,10 +20,18 @@ export interface MathRenderingAPI {
 
 const GLOBAL_KEY = "@pie-lib/math-rendering";
 const GLOBAL_DLL_KEY = "_dll_pie_lib__math_rendering";
+// Every copy of @pie-lib/math-rendering on a page typesets through the MathJax
+// instance kept here, and the first copy to typeset creates it.
+const SHARED_INSTANCE_KEY = "@pie-lib/math-rendering@2";
 let initPromise: Promise<void> | null = null;
 const logger = createPieLogger("math-rendering", () => isGlobalDebugEnabled());
 
-const getWindowRenderer = (): MathRenderingAPI | null => {
+/**
+ * The page's renderer: the one `initializeMathRendering` installed, or a
+ * host's. IIFE elements render with it, and so do ESM elements when the page
+ * has one.
+ */
+export const getMathRenderer = (): MathRenderingAPI | null => {
 	if (typeof window === "undefined") {
 		return null;
 	}
@@ -38,47 +46,57 @@ const setWindowRenderer = (renderer: MathRenderingAPI): void => {
 };
 
 /**
- * Initialize math rendering with optional custom renderer
+ * Creates the shared MathJax instance from `renderer`, unless the page already
+ * holds one.
  *
- * If no custom renderer is provided, defaults to MathJax.
+ * Legacy element bundles carry their own copy of math-rendering. A copy that
+ * predates the assistive-MathML guard, such as the one in multiple-choice
+ * 9.9.1, re-typesets the hidden `<math>` inside `mjx-assistive-mml` on every
+ * pass, so if it creates the instance, each re-render nests the expression
+ * again for every element on the page. Typesetting a detached element makes the
+ * guarded module create it first. Failure leaves the instance to the first
+ * element, as before, so it is logged and never fails initialization.
+ */
+const createSharedInstance = (renderer: MathRenderingAPI): void => {
+	if ((window as any)[SHARED_INSTANCE_KEY]?.instance) return;
+	if (typeof document === "undefined" || !document.body) return;
+	const warn = (error: unknown) =>
+		logger.warn("Could not create the shared MathJax instance:", error);
+	try {
+		Promise.resolve(renderer.renderMath(document.createElement("div"))).catch(
+			warn,
+		);
+	} catch (error) {
+		warn(error);
+	}
+};
+
+/**
+ * Initialize math rendering, defaulting to MathJax.
  * For custom renderers, use setMathRenderer() before calling this function.
  *
  * Sets TWO window globals that PIE elements expect:
  * - window["@pie-lib/math-rendering"] (standard key)
  * - window["_dll_pie_lib__math_rendering"] (SystemJS/DLL key for IIFE bundles)
  *
- * @param customRenderer - Optional custom renderer to use instead of default MathJax
- *
  * @example
  * ```typescript
  * // Default MathJax
  * await initializeMathRendering();
  *
- * // Custom renderer instance implementing MathRenderingAPI
- * const customRenderer = await createCustomRenderer();
- * await initializeMathRendering(customRenderer);
- *
- * // Or use setMathRenderer first
+ * // Custom renderer: install it first
  * setMathRenderer(katexRenderer);
  * await initializeMathRendering();
  * ```
  */
-export async function initializeMathRendering(
-	customRenderer?: MathRenderingAPI,
-): Promise<void> {
+export async function initializeMathRendering(): Promise<void> {
 	// Only run in browser
 	if (typeof window === "undefined") {
 		return;
 	}
 
-	// Explicit override always wins.
-	if (customRenderer) {
-		setWindowRenderer(customRenderer);
-		return;
-	}
-
 	// Already initialized - skip.
-	if (getWindowRenderer()) {
+	if (getMathRenderer()) {
 		return;
 	}
 	if (initPromise) {
@@ -88,13 +106,22 @@ export async function initializeMathRendering(
 
 	initPromise = (async () => {
 		try {
-			const { _dll_pie_lib__math_rendering } = await import(
-				"@pie-lib/math-rendering-module/module"
+			// The package has no exports map, so the file is named in full for
+			// resolvers that do not complete a directory, such as webpack's
+			// fully-specified ESM resolution.
+			const mathRenderingModule = await import(
+				"@pie-lib/math-rendering-module/module/index.js"
 			);
+			// The player builds defer the module's evaluation to this call (see
+			// math-rendering-module-deferral.mjs); unbundled, it evaluated on import.
+			const renderer = mathRenderingModule.evaluateMathRenderingModule
+				? mathRenderingModule.evaluateMathRenderingModule()
+				: mathRenderingModule._dll_pie_lib__math_rendering;
 			// A host may install its renderer while the default module is in flight.
 			// The explicit renderer remains authoritative when that happens.
-			if (!getWindowRenderer()) {
-				setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
+			if (!getMathRenderer()) {
+				setWindowRenderer(renderer as MathRenderingAPI);
+				createSharedInstance(renderer as MathRenderingAPI);
 				logger.debug("Math rendering module initialized (both globals set)");
 			}
 		} catch (error) {
@@ -130,19 +157,4 @@ export async function initializeMathRendering(
  */
 export function setMathRenderer(renderer: MathRenderingAPI): void {
 	setWindowRenderer(renderer);
-}
-
-/**
- * Render math in the given element
- *
- * Convenience wrapper that calls the active renderer's renderMath() function.
- * Typically called after PIE elements are rendered.
- *
- * @param element - The element to render math within
- */
-export function renderMath(element: HTMLElement): void {
-	const renderer = getWindowRenderer();
-	if (renderer && typeof renderer.renderMath === "function") {
-		renderer.renderMath(element);
-	}
 }

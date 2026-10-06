@@ -194,6 +194,83 @@ describe("TTSService catalog speech composition", () => {
 		expect(impl.speakCalls).toEqual(["these"]);
 	});
 
+	test("selection speech is not split at structural boundaries outside the selection", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("div");
+		root.innerHTML =
+			"<h3>Mars</h3><p>Mars is the fourth planet from the Sun.</p><p>It has two small moons.</p>";
+		document.body.append(root);
+		const textNode = root.querySelectorAll("p")[0]?.firstChild as Text;
+		const range = document.createRange();
+		range.setStart(textNode, "Mars is the ".length);
+		range.setEnd(textNode, "Mars is the fourth planet".length);
+
+		await service.speakRange(range, { contentRoot: root });
+
+		expect(impl.speakCalls).toEqual(["fourth planet"]);
+		root.remove();
+	});
+
+	test("selection speech keeps structural pauses inside the selection", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("div");
+		root.innerHTML =
+			"<h3>The Red Planet</h3><p>Mars is the fourth planet from the Sun.</p><p>It has two small moons.</p>";
+		document.body.append(root);
+		const paragraphs = root.querySelectorAll("p");
+		const range = document.createRange();
+		range.setStart(paragraphs[0]?.firstChild as Text, "Mars is the ".length);
+		range.setEnd(paragraphs[1]?.firstChild as Text, "It has".length);
+
+		await service.speakRange(range, { contentRoot: root });
+
+		expect(impl.speakCalls).toEqual([
+			"fourth planet from the Sun.",
+			"It has",
+		]);
+		root.remove();
+	});
+
+	test("selection speech highlights words and sentences inside the selection", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("div");
+		root.innerHTML =
+			"<h3>The Red Planet</h3><p>Mars is the fourth planet from the Sun.</p><p>It has two small moons.</p>";
+		document.body.append(root);
+		const paragraphs = root.querySelectorAll("p");
+		const range = document.createRange();
+		range.setStart(paragraphs[0]?.firstChild as Text, "Mars is the ".length);
+		range.setEnd(paragraphs[1]?.firstChild as Text, "It has".length);
+		const words: string[] = [];
+		const sentences: string[] = [];
+		service.setHighlightCoordinator({
+			highlightTTSWord: (node: Text, start: number, end: number) => {
+				words.push(node.textContent?.slice(start, end) || "");
+			},
+			highlightTTSSentence: (ranges: Range[]) => {
+				sentences.push(ranges.map((r) => r.toString()).join(""));
+			},
+			clearTTS: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		await service.speakRange(range, { contentRoot: root });
+
+		expect(words).toEqual(["fourth", "It"]);
+		expect(sentences.length).toBeGreaterThan(0);
+		for (const sentence of sentences) {
+			expect(["fourth planet from the Sun.", "It has"]).toContain(sentence);
+		}
+		root.remove();
+	});
+
 	test("selection speech keeps word highlighting while ignoring catalogs", async () => {
 		const impl = new MockTTSImpl();
 		const service = new TTSService();

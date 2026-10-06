@@ -4,126 +4,59 @@ Inline calculator toggle button for PIE assessment player question headers.
 
 ## Overview
 
-This package provides the existing `<pie-tool-calculator-inline>` compatibility
-element. It wraps the provider-neutral inline surface from
-`@pie-players/pie-tool-calculator-shared` and toggles a calculator tool instance.
+`<pie-tool-calculator-inline>` is a toggle button for the calculator an item
+toolbar renders. It wraps the provider-neutral inline surface from
+`@pie-players/pie-tool-calculator-shared`, which the GeoGebra and Cortex inline
+packages share.
 
 ## Features
 
-- **Web Component** - Custom element with no shadow DOM for better integration
-- **Imperative API** - Services passed as JavaScript properties
-- **Coordinator Integration** - Managed by ToolCoordinator for consistent state
+- **Web Component** - Custom element with an open shadow root
+- **Toolkit context** - Takes its ToolCoordinator from the toolkit runtime context and its item from the enclosing item shell
+- **Shared state** - Opens the item toolbar's calculator instance, so the button and the toolbar stay in step
 - **Size Variants** - Supports sm, md, lg button sizes
 - **WCAG 2.2 Level AA** - Fully accessible with proper ARIA attributes
 - **Material Design Icon** - Calculator icon from Material Design
 
 ## Usage
 
-### Basic Setup
+The element renders inside `<pie-item-shell>` under `<pie-assessment-toolkit>`.
+The toolkit runtime context supplies the ToolCoordinator and the shell supplies
+the item; section players provide both.
 
-```svelte
-<!-- Import the component -->
-<script>
-  import '@pie-players/pie-tool-calculator-inline-desmos';
-  import '@pie-players/pie-tool-calculator-desmos';
-  import { ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+```javascript
+import '@pie-players/pie-tool-calculator-inline-desmos';
 
-  const coordinator = new ToolCoordinator();
-  let calculatorInlineEl;
-  let calculatorEl;
-  let calculatorVisible = false;
-
-  // Bind services imperatively (after element creation)
-  $effect(() => {
-    if (calculatorInlineEl) {
-      calculatorInlineEl.coordinator = coordinator;
-    }
-    if (calculatorEl) {
-      calculatorEl.coordinator = coordinator;
-    }
-  });
-
-  // Subscribe to visibility changes
-  $effect(() => {
-    if (coordinator) {
-      const unsubscribe = coordinator.subscribe(() => {
-        calculatorVisible = coordinator.isToolVisible('calculator');
-      });
-      return unsubscribe;
-    }
-  });
-</script>
-
-<!-- Inline toggle button -->
-<pie-tool-calculator-inline
-  bind:this={calculatorInlineEl}
-  tool-id="calculator-inline"
-  calculator-type="scientific"
-  available-types="basic,scientific,graphing"
-  size="md"
-></pie-tool-calculator-inline>
-
-<!-- Calculator tool instance (hidden/shown by coordinator) -->
-<pie-tool-calculator
-  bind:this={calculatorEl}
-  visible={calculatorVisible}
-  tool-id="calculator"
-></pie-tool-calculator>
+// itemHeader: an element inside <pie-item-shell>
+const calculatorButton = document.createElement('pie-tool-calculator-inline');
+calculatorButton.setAttribute('calculator-type', 'scientific');
+itemHeader.append(calculatorButton);
 ```
 
-### In ItemToolBar
-
-The component is designed to work with `pie-item-toolbar`:
-
-```svelte
-<pie-item-toolbar
-  item-id="question-1"
-  tools="tts,answerEliminator,calculator"
-  size="md"
-></pie-item-toolbar>
-```
-
-The toolbar will automatically:
-1. Render the calculator inline button
-2. Bind the coordinator imperatively
-3. Manage the calculator visibility state
+The calculator it opens is the item toolbar's: the toolkit's tool configuration
+places `calculator` in the item toolbar and names its provider, and the item
+toolbar renders that calculator. The button adds no calculator of its own, so
+an item whose tool policy leaves the calculator out has nothing for it to open.
 
 ### Props
 
 #### Attributes (String)
 
-- `tool-id` - Unique identifier for the tool (default: `'calculator-inline'`)
-- `calculator-type` - Default calculator type (default: `'scientific'`)
+- `target-tool-id` - Coordinator tool id the button toggles (default: `''`). Empty resolves the enclosing item's calculator, `calculator:item:<itemId>`; set it only to toggle a calculator registered under another id
+- `calculator-type` - Calculator type named in the button's label and announcements (default: `'basic'`); a type outside `available-types` falls back to `'basic'`
 - `available-types` - Comma-separated list of calculator types (default: `'basic,scientific,graphing'`)
 - `size` - Button size: `'sm' | 'md' | 'lg'` (default: `'md'`)
 
-#### JavaScript Properties
+The button is disabled until the toolkit runtime context supplies a
+ToolCoordinator and a target resolves. With no item shell and no
+`target-tool-id`, it stays disabled and logs a console warning.
 
-- `coordinator` - IToolCoordinator instance (required)
+## Toggle behavior
 
-**Important:** The `coordinator` property must be set via JavaScript, not as an attribute:
-
-```javascript
-element.coordinator = coordinatorInstance;
-```
-
-## Calculator Tool Integration
-
-This component works in tandem with `@pie-players/pie-tool-calculator-desmos`. The flow is:
-
-1. **Button renders** - `pie-tool-calculator-inline` shows a toggle button
-2. **User clicks** - Button calls `coordinator.toggleTool('calculator')`
-3. **Calculator shows/hides** - `pie-tool-calculator` reacts to visibility state
-4. **Button updates** - Active state reflects calculator visibility
-
-## Tool ID Convention
-
-The inline button typically uses a different tool ID than the calculator instance:
-
-- Inline button: `calculator-inline` or `calculator-inline-{itemId}`
-- Calculator tool: `calculator` or `calculator-{itemId}`
-
-The component automatically strips `-inline` suffix when checking calculator visibility.
+1. The button resolves its target from the item shell context: `calculator:item:<canonicalItemId or itemId>`, the id the item toolbar uses.
+2. A click registers that id with the coordinator if the toolbar has not yet, then calls `toggleTool`.
+3. The item toolbar renders or hides its calculator from the coordinator's visibility state.
+4. `aria-pressed`, the active style and a status announcement follow the target's visibility, including changes made from the toolbar.
 
 ## Accessibility
 
@@ -199,8 +132,7 @@ bun run lint
 
 ## Dependencies
 
-- `@pie-players/pie-assessment-toolkit` - Core toolkit services
-- `svelte` - Framework (peer dependency)
+- `@pie-players/pie-assessment-toolkit` - Toolkit contexts and scoped tool ids
 
 ## License
 

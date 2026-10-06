@@ -2,7 +2,9 @@
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
-	import { makeUniqueTags } from '@pie-players/pie-players-shared/pie';
+	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
+	import { DEFAULT_BUNDLE_HOST } from '@pie-players/pie-players-shared/loaders';
+	import { makeUniqueTags, parsePackageName } from '@pie-players/pie-players-shared/pie';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
@@ -272,7 +274,7 @@
 					playerEl.configuration = currentConfig.configuration ?? {};
 					playerEl.authoringBackend = 'required';
 					playerEl.loaderOptions = {
-						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						bundleHost: DEFAULT_BUNDLE_HOST,
 						runtimeSupportCheck: 'on'
 					};
 					if (!missingAuthoringBackend) {
@@ -316,46 +318,43 @@
 	}
 
 	function defineAuthoringContractFixture(currentConfig: any) {
-		const versionedConfig = makeUniqueTags({ config: currentConfig }).config;
-		const runtimeTag = Object.keys(versionedConfig?.elements ?? {})[0];
-		const packageSpec = versionedConfig?.elements?.[runtimeTag];
-		const modelId = versionedConfig?.models?.[0]?.id;
-		if (!runtimeTag || !packageSpec || !modelId) return;
-		const configTag = `${runtimeTag}-config`;
+		const [tag, packageSpec] = Object.entries(currentConfig?.elements ?? {})[0] ?? [];
+		const runtimeTag = Object.keys(
+			makeUniqueTags({ config: currentConfig }).config?.elements ?? {}
+		)[0];
+		const modelId = currentConfig?.models?.[0]?.id;
+		if (!tag || typeof packageSpec !== 'string' || !runtimeTag || !modelId) return;
+		const { name, version } = parsePackageName(packageSpec);
+		const controller = {
+			model: async (model: any) => model,
+			outcome: async () => ({
+				id: modelId,
+				element: runtimeTag,
+				score: 1,
+			}),
+		};
+		registerPreloadedElements([
+			{ tag, package: name, version, element: AuthoringFixtureElement, controller },
+		]);
 
-		if (!customElements.get(runtimeTag)) {
-			customElements.define(runtimeTag, AuthoringFixtureElement);
-		}
+		// Preloaded registration covers delivery elements only, so the authoring
+		// element's definition and registry entry are written here.
+		const configTag = `${runtimeTag}-config`;
 		if (!customElements.get(configTag)) {
 			customElements.define(configTag, AuthoringFixtureConfigElement);
 		}
-
 		const registry = ((window as any).PIE_REGISTRY ??= {});
-		registry[runtimeTag] = {
-			package: packageSpec,
-			status: 'loaded',
-			tagName: runtimeTag,
-			element: AuthoringFixtureElement,
-			controller: {
-				model: async (model: any) => model,
-				outcome: async () => ({
-					id: modelId,
-					element: runtimeTag,
-					score: 1,
-				}),
-			},
-			bundleType: 'client-player.js',
-		};
 		registry[configTag] = {
 			package: packageSpec,
 			status: 'loaded',
 			tagName: configTag,
 			element: AuthoringFixtureConfigElement,
 			controller: {
-				validate: (model: any, config: any) => ({
-					errors: config?.requirePrompt && model?.prompt ? [] : ['prompt is required'],
-					authoringOnly: config?.authoringOnly,
-				}),
+				// PIE controllers return a field → message map, empty when valid.
+				validate: (model: any, config: any) =>
+					config?.requirePrompt && !model?.prompt
+						? { prompt: 'This field is required.' }
+						: {},
 			},
 			bundleType: 'editor.js',
 		};

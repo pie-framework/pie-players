@@ -39,8 +39,8 @@ export abstract class BaseInstrumentationProvider
 	/**
 	 * Initialize the provider with configuration
 	 *
-	 * Concrete providers should override this method to perform provider-specific
-	 * initialization (e.g., loading SDK, checking global objects, etc.)
+	 * Concrete providers store their configuration here and set `initialized`.
+	 * Whether the backend is available belongs in `isReady()`.
 	 *
 	 * @param config Optional configuration
 	 */
@@ -49,8 +49,9 @@ export abstract class BaseInstrumentationProvider
 	/**
 	 * Check if provider is ready to track events
 	 *
-	 * Concrete providers should override this method to check provider-specific
-	 * readiness (e.g., SDK loaded, global object available, etc.)
+	 * Concrete providers conjoin `initialized` with a check of their backend
+	 * made on every call (e.g., the agent's global is on the page now), so a
+	 * backend that arrives after `initialize()` is picked up.
 	 *
 	 * @returns true if provider is ready
 	 */

@@ -436,14 +436,15 @@ async function mockSynthesizeWithWordMarks(page: Page): Promise<void> {
  * Wrap the live HighlightCoordinator so every highlight call is recorded
  * non-transiently. Each highlight is classified by where it lands:
  *
- *  - A per-token math highlight paints a token *inside* a rendered `<math>`
- *    element — either a CSS range over a token text node (`highlightTTSWord`,
- *    e.g. `<mi>x</mi>`) or the token element itself (`highlightTTSWordElement`,
- *    e.g. an `<msup>` superscript). We record its `visible` geometry so the
+ *  - A per-token math highlight paints a token *inside* rendered math, a
+ *    `<math>` or MathJax's `<mjx-container>` — either a CSS range over a token
+ *    text node (`highlightTTSWord`, e.g. `<mi>x</mi>`) or the token element
+ *    itself (`highlightTTSWordElement`, e.g. an `<msup>` superscript or its
+ *    `<mjx-msup>` glyph). We record its `visible` geometry so the
  *    test only counts highlights the student can actually see — a highlight on
  *    a clipped/assistive math node would not count.
- *  - A prose word highlight paints a CSS range over a text node *outside* any
- *    `<math>` element.
+ *  - A prose word highlight paints a CSS range over a text node *outside*
+ *    rendered math.
  *  - A region/expression highlight (`highlightTTSSentence`) paints a whole
  *    block; counting these separately lets us prove math is tracked per token
  *    rather than only as a single block.
@@ -463,7 +464,11 @@ async function installHighlightRecorder(page: Page): Promise<void> {
 		(window as any).__hl = store;
 		if (!hc) return false;
 		const insideMath = (el: any): boolean =>
-			Boolean(el && typeof el.closest === "function" && el.closest("math"));
+			Boolean(
+				el &&
+					typeof el.closest === "function" &&
+					el.closest("math, mjx-container"),
+			);
 		const isVisible = (el: any): boolean => {
 			try {
 				const rect = el?.getBoundingClientRect?.();
@@ -495,6 +500,10 @@ async function installHighlightRecorder(page: Page): Promise<void> {
 			else store.proseWords.push(record);
 		});
 		wrap("highlightTTSWordElement", (el: any) => {
+			// A whole-expression fallback paints the equation itself, not a token.
+			if (el?.localName === "math" || el?.localName === "mjx-container") {
+				return;
+			}
 			const record = {
 				text: String(el?.localName || "unknown"),
 				visible: isVisible(el),
@@ -551,7 +560,7 @@ async function readPassageAndRecordHighlights(
 	await expectDemoChromeReady(page);
 
 	const passageRegion = page.getByRole("complementary", { name: "Passages" });
-	await expect(passageRegion.locator("p.formula math")).toBeVisible({
+	await expect(passageRegion.locator("p.formula mjx-container")).toBeVisible({
 		timeout: 15_000,
 	});
 
@@ -753,7 +762,7 @@ test.describe("section player demo tts-generated-ssml", () => {
 
 		// Sanity: the quadratic-formula passage and its MathML render.
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
-		await expect(passageRegion.locator("p.formula math")).toBeVisible({
+		await expect(passageRegion.locator("p.formula mjx-container")).toBeVisible({
 			timeout: 15_000,
 		});
 

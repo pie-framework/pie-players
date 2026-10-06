@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { strategyElementVersions } from '@pie-players/demo-ui/element-versions';
 	import type { PieItemSessionDebuggerElement } from '@pie-players/pie-item-player/components/item-session-debugger-element';
 	import {
 		applyElementVersionOverridesPreserveTags,
@@ -17,6 +18,7 @@
 		session as sessionStore,
 	} from '$lib/stores/demo-state';
 	import { getDemoSessionSeed } from '$lib/demo-session-seeds';
+	import { demoElementOverrides } from '$lib/utils/demo-element-versions';
 	import { demoViewFromPath } from '$lib/utils/demo-view';
 	import {
 		initializeDemoState,
@@ -75,7 +77,7 @@
 	$effect(() => {
 		const demoId = data?.demoId ?? null;
 		const baseConfig = data?.demo?.item?.config ?? null;
-		const overrides = parseElementOverridesFromUrl($page.url.searchParams);
+		const overrides = demoElementOverrides($page.url.searchParams);
 		const overrideSignature = stableStringifyOverrides(overrides);
 		if (!demoId) return;
 		if (initializedDemoId !== demoId) {
@@ -118,8 +120,8 @@
 		return `/demo/${data.demoId}/${view}?${$page.url.searchParams}`;
 	}
 
-	function coerceLoaderStrategy(value: string | null): 'iife' | 'esm' {
-		return value === 'esm' ? 'esm' : 'iife';
+	function coerceLoaderStrategy(value: string | null): 'iife' | 'esm' | 'preloaded' {
+		return value === 'esm' || value === 'preloaded' ? value : 'iife';
 	}
 
 	const loaderStrategy = $derived(
@@ -150,7 +152,10 @@
 		return demoViewFromPath($page.url.pathname);
 	});
 	const catalogElements = $derived(
-		(data?.demo?.item?.config?.elements ?? {}) as Record<string, string>,
+		(applyElementVersionOverridesPreserveTags(
+			data?.demo?.item?.config,
+			strategyElementVersions($page.url.searchParams.get('player')),
+		)?.elements ?? {}) as Record<string, string>,
 	);
 	const elementOverrides = $derived(parseElementOverridesFromUrl($page.url.searchParams));
 
@@ -213,7 +218,7 @@
 		await goto(targetUrl, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
-	async function updateLoaderStrategy(nextStrategy: 'iife' | 'esm') {
+	async function updateLoaderStrategy(nextStrategy: 'iife' | 'esm' | 'preloaded') {
 		if (loaderStrategy === nextStrategy) return;
 		const url = new URL($page.url);
 		const nextParams = new URLSearchParams(url.searchParams);
@@ -283,7 +288,6 @@
 </div>
 
 <DemoOverlays
-	demoName={demoHeading}
 	demoId={data.demoId || ''}
 	config={$configStore}
 	{showSessionPanel}

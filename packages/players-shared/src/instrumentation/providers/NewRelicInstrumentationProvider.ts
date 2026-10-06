@@ -3,8 +3,9 @@
  *
  * Default provider for existing New Relic Browser Agent instrumentation.
  *
- * This provider wraps the global `window.newrelic` object provided by
- * the New Relic Browser Agent.
+ * Sends through the New Relic Browser Agent's API on `window.newrelic` or
+ * `window.NREUM`, looked up on every call, so an agent that loads after
+ * `initialize()` receives everything tracked from then on.
  *
  * @example
  * ```typescript
@@ -20,6 +21,7 @@
  * ```
  */
 
+import { probeNewRelicAgent } from "../new-relic-agent.js";
 import type { InstrumentationConfig } from "../types.js";
 import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider.js";
 
@@ -30,49 +32,36 @@ export class NewRelicInstrumentationProvider extends BaseInstrumentationProvider
 	/**
 	 * Initialize the New Relic provider
 	 *
-	 * Checks if the New Relic Browser Agent is available via `window.newrelic`.
-	 * If not available, initialization succeeds but `isReady()` will return false.
+	 * Configures the provider. The agent does not have to be on the page yet:
+	 * `isReady()` turns true when it arrives.
 	 *
 	 * @param config Optional configuration
 	 */
 	async initialize(config?: InstrumentationConfig): Promise<void> {
 		this.config = config;
-
-		// Check if New Relic is available
-		if (typeof window !== "undefined" && (window as any).newrelic) {
-			this.initialized = true;
-			if (this.config?.debug) {
-				console.log("[NewRelicProvider] Initialized successfully");
-			}
-		} else {
-			if (this.config?.debug) {
-				console.warn(
-					"[NewRelicProvider] New Relic not available (window.newrelic not found)",
-				);
-			}
-			// Don't throw - allow graceful degradation
-			this.initialized = false;
+		this.initialized = true;
+		if (this.config?.debug) {
+			console.log(
+				probeNewRelicAgent()
+					? "[NewRelicProvider] Initialized successfully"
+					: "[NewRelicProvider] Initialized; sends once the New Relic agent is on the page",
+			);
 		}
 	}
 
 	/**
 	 * Check if provider is ready
 	 *
-	 * @returns true if New Relic is available and initialized
+	 * @returns true once initialized, while the New Relic agent's API is on the page
 	 */
 	isReady(): boolean {
-		return (
-			this.initialized &&
-			typeof window !== "undefined" &&
-			!!(window as any).newrelic
-		);
+		return this.initialized && probeNewRelicAgent() !== undefined;
 	}
 
 	/**
 	 * Cleanup provider resources
 	 *
-	 * Marks provider as uninitialized. The global `window.newrelic` object
-	 * is not modified.
+	 * Marks provider as uninitialized. The agent's globals are not modified.
 	 */
 	destroy(): void {
 		this.initialized = false;
@@ -90,8 +79,7 @@ export class NewRelicInstrumentationProvider extends BaseInstrumentationProvider
 	 * @param attributes Transformed attributes (already filtered and transformed by base class)
 	 */
 	protected doTrackError(error: Error, attributes: Record<string, any>): void {
-		const newrelic = (window as any).newrelic;
-		newrelic.noticeError(error, attributes);
+		probeNewRelicAgent()?.noticeError(error, attributes);
 	}
 
 	/**
@@ -106,8 +94,7 @@ export class NewRelicInstrumentationProvider extends BaseInstrumentationProvider
 		eventName: string,
 		attributes: Record<string, any>,
 	): void {
-		const newrelic = (window as any).newrelic;
-		newrelic.addPageAction(eventName, attributes);
+		probeNewRelicAgent()?.addPageAction(eventName, attributes);
 	}
 
 	/**
@@ -122,15 +109,15 @@ export class NewRelicInstrumentationProvider extends BaseInstrumentationProvider
 		userId: string,
 		attributes?: Record<string, any>,
 	): void {
-		const newrelic = (window as any).newrelic;
+		const newrelic = probeNewRelicAgent();
 
 		// Set user ID if method exists
-		if (newrelic.setUserId) {
+		if (typeof newrelic?.setUserId === "function") {
 			newrelic.setUserId(userId);
 		}
 
 		// Set custom attributes for user
-		if (attributes && newrelic.setCustomAttribute) {
+		if (attributes && typeof newrelic?.setCustomAttribute === "function") {
 			for (const [key, value] of Object.entries(attributes)) {
 				newrelic.setCustomAttribute(key, value);
 			}
@@ -145,9 +132,9 @@ export class NewRelicInstrumentationProvider extends BaseInstrumentationProvider
 	 * @param attributes Attributes to set globally
 	 */
 	protected doSetGlobalAttributes(attributes: Record<string, any>): void {
-		const newrelic = (window as any).newrelic;
+		const newrelic = probeNewRelicAgent();
 
-		if (newrelic.setCustomAttribute) {
+		if (typeof newrelic?.setCustomAttribute === "function") {
 			for (const [key, value] of Object.entries(attributes)) {
 				newrelic.setCustomAttribute(key, value);
 			}

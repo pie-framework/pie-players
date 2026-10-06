@@ -209,7 +209,3 @@ export function resolveCortexSettings(
 		}),
 	});
 }
-
-export function isCortexFunctionId(value: unknown): value is CortexFunctionId {
-	return typeof value === "string" && SCIENTIFIC_FUNCTIONS.includes(value as CortexFunctionId);
-}

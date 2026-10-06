@@ -1,8 +1,9 @@
 # Calculator providers
 
-The toolkit registers calculator providers behind the provider-neutral
-`@pie-players/pie-calculator` contract. Desmos remains the no-configuration
-default; GeoGebra is an explicit alternative.
+Calculator providers sit behind the provider-neutral `@pie-players/pie-calculator`
+contract, and the calculator registration in `@pie-players/pie-default-tool-loaders`
+selects one from the toolkit's tools config. Desmos remains the no-configuration
+default; GeoGebra and Cortex are explicit alternatives.
 
 ## Toolkit configuration
 
@@ -72,21 +73,24 @@ reached the vendor and are dropped. `proxyEndpoint` on `initialize()` is the
 canonical production path: it keeps a key out of static source, though the
 browser still receives it in Desmos's calculator script URL.
 
-## Direct adapters
+## Adapters
 
-The toolkit exports `DesmosToolProvider` and `GeoGebraToolProvider`. Their
-underlying calculator adapters are published separately:
+`@pie-players/pie-default-tool-loaders` depends on the three calculator adapters
+and imports the selected one when its provider initializes, so a host installs
+none of them:
 
 - `@pie-players/pie-calculator-desmos`
 - `@pie-players/pie-calculator-geogebra`
+- `@pie-players/pie-calculator-cortex`
 
 ## Licensing
 
 PIE packages contain only PIE-authored adapters and are MIT licensed. They do
 not bundle Desmos or GeoGebra application code.
 
-- Desmos is separately licensed. The adapter preserves its legacy unkeyed URL
-  for backwards compatibility, but that does not grant or imply a license.
+- Desmos is separately licensed. The adapter still requests its legacy unkeyed
+  URL when no key is configured, which Desmos's CDN rejects with HTTP 403 and
+  which does not grant or imply a license.
 - GeoGebra's full application/web services are separately licensed and require
   attribution; commercial use requires an agreement with GeoGebra.
 

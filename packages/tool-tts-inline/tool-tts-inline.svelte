@@ -9,11 +9,13 @@
 			speedOptions: { type: 'Array', attribute: 'speed-options' },
 			showSingleSpeedOption: { type: 'Boolean', attribute: 'show-single-speed-option' },
 			layoutMode: { type: 'String', attribute: 'layout-mode' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		catalogOwnerContextFor,
 		connectToolRegionScopeContext,
@@ -73,33 +75,36 @@
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
-	let ndsAssetsInstalled = false;
-	const ensureNdsAssets = () => {
-		if (!isBrowser || ndsAssetsInstalled) return;
-		ndsAssetsInstalled = true;
-		if (!document.querySelector('link[href*="Roboto"]')) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = ROBOTO_HREF;
-			document.head.appendChild(link);
+	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
+	// without that path, stays in <head> marked `data-pie-load-failed`: no later
+	// call requests it again, and no shadow root copies it.
+	const appendHeadStylesheet = (href: string) => {
+		if (document.querySelector(`link[href="${href}"]`)) return;
+		const link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.href = href;
+		link.addEventListener(
+			'error',
+			() => {
+				link.dataset.pieLoadFailed = '';
+			},
+			{ once: true },
+		);
+		document.head.appendChild(link);
+	};
+	// The plain trigger and the panel render `fa-solid` glyphs, which FA Free
+	// carries. Roboto and the FA Pro Light probe serve <nds-icon-button> only.
+	const ensureFaAssets = (forNdsButton: boolean) => {
+		if (!isBrowser) return;
+		if (forNdsButton && !document.querySelector('link[href*="Roboto"]')) {
+			appendHeadStylesheet(ROBOTO_HREF);
 		}
 		const hostHasFa = Array.from(
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
-		if (!document.querySelector(`link[href="${FA_FREE_HREF}"]`)) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = FA_FREE_HREF;
-			document.head.appendChild(link);
-		}
-		for (const href of FA_PRO_HREFS) {
-			if (document.querySelector(`link[href="${href}"]`)) continue;
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = href;
-			document.head.appendChild(link);
-		}
+		appendHeadStylesheet(FA_FREE_HREF);
+		if (forNdsButton) for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 	const FA_SHADOW_INSTALLED = '__pieFaTtsShadowInstalled';
 	const installFaInShadow = (node: HTMLElement) => {
@@ -120,7 +125,24 @@
 		const documentFaLinks = Array.from(
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
 		).filter((link) => FA_HREF_PATTERN.test(link.href));
-		for (const link of documentFaLinks) appendLink(link.href);
+		// A stylesheet still loading is copied once it loads, so the copy comes from
+		// the cache; one that fails is not copied, since every copy would request
+		// it again. Chromium gives a link a `sheet` even when its load fails, so a
+		// failed one is known by its mark.
+		for (const link of documentFaLinks) {
+			if ('pieLoadFailed' in link.dataset) continue;
+			if (link.sheet) {
+				appendLink(link.href);
+				continue;
+			}
+			const settle = (event: Event) => {
+				link.removeEventListener('load', settle);
+				link.removeEventListener('error', settle);
+				if (event.type === 'load') appendLink(link.href);
+			};
+			link.addEventListener('load', settle);
+			link.addEventListener('error', settle);
+		}
 	};
 	// Svelte action applied to every <nds-icon-button>: install the FA assets its
 	// glyphs need (into <head> and this component's shadow root), and force the
@@ -129,7 +151,7 @@
 	// Solid is the weight FA Free ships, so it renders even without FA Pro. The
 	// swap re-applies whenever Lit rewrites the icon class (e.g. play↔pause).
 	const ndsIconButtonAction = (node: HTMLElement) => {
-		ensureNdsAssets();
+		ensureFaAssets(true);
 		installFaInShadow(node);
 		const applySolid = () => {
 			for (const icon of node.querySelectorAll<HTMLElement>('i.fa-light')) {
@@ -191,7 +213,7 @@
 	// NDS trigger), but skip the fa-light→fa-solid swap since the fallback
 	// authors its glyphs as `fa-solid` directly.
 	const faAssetsAction = (node: HTMLElement) => {
-		ensureNdsAssets();
+		ensureFaAssets(false);
 		installFaInShadow(node);
 		return {};
 	};
@@ -1043,7 +1065,12 @@
 		const host = resolveHostElement();
 		if (!host) return;
 		const active = controlsVisible === true;
-		host.setAttribute('data-active', active ? 'true' : 'false');
+		// `data-active` is the state last announced from this host; absent reads as
+		// inactive, which is what a subscriber assumes before any event. Only a
+		// change is announced. The record lives on the host, so a remount compares
+		// against what the previous instance announced, and it is written with the
+		// event, so a cancelled announcement leaves it unchanged.
+		if ((host.getAttribute('data-active') === 'true') === active) return;
 		// Defer the broadcast so listeners (e.g. the parent toolbar's
 		// `subscribeActive` callback) never run inside our own mount /
 		// update flush. Without this, a parent that synchronously creates
@@ -1056,6 +1083,7 @@
 		let cancelled = false;
 		queueMicrotask(() => {
 			if (cancelled) return;
+			host.setAttribute('data-active', active ? 'true' : 'false');
 			host.dispatchEvent(
 				new CustomEvent('pie-tool-active-change', {
 					detail: { active },

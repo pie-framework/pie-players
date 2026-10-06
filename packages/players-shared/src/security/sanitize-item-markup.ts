@@ -206,8 +206,3 @@ export function buildAuthoringAllowList(
 	}
 	return [...out];
 }
-
-/** Reset the memoised DOMPurify instance. Only intended for tests. */
-export function resetPurifierForTesting() {
-	purifierInstance = null;
-}

@@ -399,9 +399,12 @@ The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through
 ```javascript
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  toolRegistry,
   accessibility: {
     catalogs: assessment.accessibilityCatalogs ?? [],
     language: 'en-US',
@@ -487,13 +490,13 @@ An integration can:
     models: [{
       id: 'q1',
       element: 'multiple-choice',
-      prompt: `<div data-catalog-idref="auto-prompt-q1">
+      prompt: `<div data-catalog-idref="auto-prompt-q1-0">
         <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
       </div>`
     }],
     extractedCatalogs: [
       {
-        identifier: 'auto-prompt-q1',
+        identifier: 'auto-prompt-q1-0',
         cards: [{
           catalog: 'spoken',
           language: 'en-US',

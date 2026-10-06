@@ -2,6 +2,7 @@ import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
 import { toItemSessionsRecord } from "@pie-players/pie-assessment-toolkit";
 import {
 	createPieLogger,
+	hasLearnerResponse,
 	isGlobalDebugEnabled,
 } from "@pie-players/pie-players-shared";
 import {
@@ -99,6 +100,7 @@ interface PendingApplyReplay {
 	revision: number;
 	mode: "replace" | "merge";
 	session: SectionControllerSessionState;
+	restore: boolean;
 }
 
 interface NormalizedApplySession {
@@ -167,6 +169,15 @@ export class SectionController implements SectionControllerHandle {
 	private readonly trackedRenderables = new Map<string, TrackedRenderable>();
 	private readonly loadedRenderableKeys = new Set<string>();
 	private readonly itemCompletionByCanonicalId = new Map<string, boolean>();
+	// Each element's own `complete`, by canonical item id and element id. An
+	// item is complete when every element that has reported is.
+	private readonly elementCompletionByCanonicalId = new Map<
+		string,
+		Map<string, boolean>
+	>();
+	// Items whose completion an element has reported, which a restore must not
+	// overwrite with a derived one.
+	private readonly reportedCompletionIds = new Set<string>();
 	private sectionLoadingComplete = false;
 	private totalRegistered = 0;
 	private totalLoaded = 0;
@@ -317,7 +328,9 @@ export class SectionController implements SectionControllerHandle {
 		const previousSession = this.getSession();
 		await this.initialize(input);
 		if (previousSession) {
-			await this.applySession(previousSession, { mode: "replace" });
+			// The controller's own state carried across, not a host restore: the
+			// completion its elements reported still describes it.
+			this.applySessionState(previousSession, "replace", false);
 		}
 	}
 
@@ -1277,6 +1290,12 @@ export class SectionController implements SectionControllerHandle {
 				? result.eventDetail.complete
 				: this.readCompleteFromSession(result.eventDetail.session);
 
+		const { elementId, sessionCommitReason } = result.eventDetail;
+		const reporting = {
+			...(elementId ? { elementId } : {}),
+			sectionId: this.state.input?.sectionId || "",
+			...(sessionCommitReason ? { sessionCommitReason } : {}),
+		};
 		if (intent === "metadata-only") {
 			const metaEvent: ItemSessionMetaChangedEvent = {
 				type: "item-session-meta-changed",
@@ -1284,6 +1303,7 @@ export class SectionController implements SectionControllerHandle {
 				canonicalItemId,
 				complete: result.eventDetail.complete,
 				component: result.eventDetail.component,
+				...reporting,
 				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 				timestamp,
 			};
@@ -1297,6 +1317,7 @@ export class SectionController implements SectionControllerHandle {
 				intent: result.eventDetail.intent,
 				complete: result.eventDetail.complete,
 				component: result.eventDetail.component,
+				...reporting,
 				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 				timestamp,
 			};
@@ -1304,10 +1325,15 @@ export class SectionController implements SectionControllerHandle {
 		}
 
 		if (typeof completeFromEvent === "boolean") {
+			this.reportedCompletionIds.add(canonicalItemId);
 			this.updateItemCompleteState({
 				itemId: result.eventDetail.itemId,
 				canonicalItemId,
-				complete: completeFromEvent,
+				complete: this.recordElementCompletion(
+					canonicalItemId,
+					elementId,
+					completeFromEvent,
+				),
 				timestamp,
 			});
 		}
@@ -1319,10 +1345,20 @@ export class SectionController implements SectionControllerHandle {
 		options?: { mode?: "replace" | "merge" },
 	): Promise<void> {
 		if (!this.state.testAttemptSession || !session) return;
-		const mode = options?.mode || "replace";
+		this.applySessionState(session, options?.mode || "replace", true);
+	}
+
+	private applySessionState(
+		session: SectionControllerSessionState,
+		mode: "replace" | "merge",
+		restore: boolean,
+	): void {
+		if (!this.state.testAttemptSession) return;
 		const normalized = this.normalizeApplySession(session);
 		this.applyNormalizedSessionToState(normalized, mode);
-		this.bootstrapCompletionFromSessions();
+		this.bootstrapCompletionFromSessions(
+			restore ? new Set(Object.keys(normalized.itemSessions)) : undefined,
+		);
 		// Hydration restores Try state, so a subscriber that attaches after
 		// `hydrate()` still sees the rollup it is restoring into.
 		this.emitMasteryIfChanged(Date.now());
@@ -1336,6 +1372,7 @@ export class SectionController implements SectionControllerHandle {
 				revision: applyRevision,
 				mode,
 				session: this.cloneForRead(session),
+				restore,
 			};
 		}
 		const event: SectionSessionAppliedEvent = {
@@ -1528,6 +1565,8 @@ export class SectionController implements SectionControllerHandle {
 		this.trackedRenderables.clear();
 		this.loadedRenderableKeys.clear();
 		this.itemCompletionByCanonicalId.clear();
+		this.elementCompletionByCanonicalId.clear();
+		this.reportedCompletionIds.clear();
 		this.sectionLoadingComplete = false;
 		this.totalRegistered = 0;
 		this.totalLoaded = 0;
@@ -1562,18 +1601,66 @@ export class SectionController implements SectionControllerHandle {
 		return typeof value === "boolean" ? value : undefined;
 	}
 
-	private bootstrapCompletionFromSessions(): void {
+	private sessionHoldsResponse(session: unknown): boolean {
+		if (!session || typeof session !== "object") return false;
+		const data = (session as { data?: unknown }).data;
+		return hasLearnerResponse(Array.isArray(data) ? data : session);
+	}
+
+	/**
+	 * `restored` names the items a host session was just applied to: what their
+	 * elements reported before it describes the session the restore replaced.
+	 */
+	private bootstrapCompletionFromSessions(
+		restored: ReadonlySet<string> = new Set(),
+	): void {
 		const items = this.getItemViewModels();
 		for (const item of items) {
+			const id = item.canonicalItemId;
 			const complete = this.readCompleteFromSession(item.session);
 			if (typeof complete === "boolean") {
-				this.itemCompletionByCanonicalId.set(item.canonicalItemId, complete);
-			} else if (!this.itemCompletionByCanonicalId.has(item.canonicalItemId)) {
-				this.itemCompletionByCanonicalId.set(item.canonicalItemId, false);
+				// A persisted item completion replaces what its elements reported.
+				this.elementCompletionByCanonicalId.delete(id);
+				this.itemCompletionByCanonicalId.set(id, complete);
+			} else if (restored.has(id) || !this.reportedCompletionIds.has(id)) {
+				// A session restored without `complete` announces nothing until the
+				// learner changes it, so its completion is read off the response,
+				// the same reading a commit without the element's own gets.
+				this.elementCompletionByCanonicalId.delete(id);
+				this.reportedCompletionIds.delete(id);
+				this.itemCompletionByCanonicalId.set(
+					id,
+					this.sessionHoldsResponse(item.session),
+				);
 			}
 		}
 		this.emitSectionItemsCompleteIfChanged(Date.now());
 		this.notifyTimedMediaDeliveryChanged();
+	}
+
+	/**
+	 * The item's completion after one element reports its own. A report that
+	 * names no element is the item's completion itself.
+	 */
+	private recordElementCompletion(
+		canonicalItemId: string,
+		elementId: string | undefined,
+		complete: boolean,
+	): boolean {
+		if (!elementId) {
+			this.elementCompletionByCanonicalId.delete(canonicalItemId);
+			return complete;
+		}
+		let elements = this.elementCompletionByCanonicalId.get(canonicalItemId);
+		if (!elements) {
+			elements = new Map();
+			this.elementCompletionByCanonicalId.set(canonicalItemId, elements);
+		}
+		elements.set(elementId, complete);
+		for (const elementComplete of elements.values()) {
+			if (!elementComplete) return false;
+		}
+		return true;
 	}
 
 	private updateItemCompleteState(args: {
@@ -1671,7 +1758,9 @@ export class SectionController implements SectionControllerHandle {
 		const normalized = this.normalizeApplySession(pending.session);
 		if (!this.state.testAttemptSession) return;
 		this.applyNormalizedSessionToState(normalized, pending.mode);
-		this.bootstrapCompletionFromSessions();
+		this.bootstrapCompletionFromSessions(
+			pending.restore ? new Set(Object.keys(normalized.itemSessions)) : undefined,
+		);
 		this.lastReplayedApplyRevision = pending.revision;
 		const replayEvent: SectionSessionAppliedEvent = {
 			type: "section-session-applied",

@@ -1,89 +1,27 @@
-import { expect, test, type Page } from "@playwright/test";
-import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
-import { createServer, type Server } from "node:http";
-import { tmpdir } from "node:os";
-import { extname, join, resolve, sep } from "node:path";
+import { expect, test } from "@playwright/test";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import demo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio-simple";
+import mathDemo from "../../../apps/item-demos/src/lib/content/multiple-choice-math-algebra-quadratic";
+import { type ServedPackage, serveFromTarballOnly, serveGeneratedPackage, workspace } from "./generated-preloaded-package";
 
-const workspace = resolve(import.meta.dirname, "../../..");
 const packageName = "@pie-element/multiple-choice";
-const packageSpec = `${packageName}@11.4.3`;
-const runtimeTag = "multiple-choice--version-11-4-3";
-let scratch: string;
-let server: Server;
+const packageSpec = `${packageName}@14.0.0`;
+// The build registers the base tag the published configs give the package, and
+// the items author `multiple-choice`, so each player defines the tag it renders.
+const registeredTag = "pie-element-multiple-choice--version-14-0-0";
+const runtimeTag = "multiple-choice--version-14-0-0";
+let built: ServedPackage;
 let origin: string;
-
-// Executable modules and player assets must come entirely from the tarball. The
-// existing math renderer fetches these two data files separately.
-const serveFromTarballOnly = (page: Page) =>
-  page.route("**/*", (route) => {
-    const url = route.request().url();
-    const mathMap = /^https:\/\/cdn\.jsdelivr\.net\/npm\/speech-rule-engine@4\.1\.2\/lib\/mathmaps\/(base|en)\.json$/;
-    return new URL(url).origin === origin || mathMap.test(url) ? route.continue() : route.abort();
-  });
 
 test.beforeAll(async () => {
   test.setTimeout(180_000);
-  scratch = await mkdtemp(join(tmpdir(), "pie-generated-preload-"));
-  const generated = join(scratch, "generated");
-  const packed = join(scratch, "preloaded.tgz");
-  const served = join(scratch, "served");
-  // Exercise the production generator, including its actual PITS bundle fetch
-  // and package build. The browser will receive only the extracted tarball.
-  execFileSync("bun", ["-e", `
-    import { buildPreloadedPlayerStaticPackage } from "./tools/cli/src/utils/pie-packages/fixed-static.ts";
-    await buildPreloadedPlayerStaticPackage(${JSON.stringify({
-      elements: [packageSpec],
-      elementTags: { [packageName]: "multiple-choice" },
-      monorepoDir: workspace,
-      outputDir: generated,
-      iteration: 1,
-    })});
-  `], { cwd: workspace, timeout: 150_000, maxBuffer: 32 * 1024 * 1024 });
-  execFileSync("bun", ["pm", "pack", "--filename", packed], { cwd: generated });
-  await mkdir(served);
-  execFileSync("tar", ["-xzf", packed, "-C", served]);
-  server = createServer((request, response) => {
-    void (async () => {
-      const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
-      if (pathname === "/") {
-        response.writeHead(200, { "content-type": "text/html" });
-        response.end(`<!doctype html><html lang="en"><meta charset="utf-8">
-          <title>Generated preloaded package</title><link rel="icon" href="data:,">
-          <h1>Generated preloaded package</h1></html>`);
-        return;
-      }
-      // The build's files again under a second path, which the browser loads as
-      // separate modules: a second copy of the item player, as a page running
-      // the section player holds one.
-      const servedPath = pathname.startsWith("/host-copy/")
-        ? `/package/dist/${pathname.slice("/host-copy/".length)}`
-        : pathname;
-      const filename = resolve(served, `.${decodeURIComponent(servedPath)}`);
-      if (!filename.startsWith(`${served}${sep}`)) {
-        response.writeHead(404).end();
-        return;
-      }
-      try {
-        const data = await readFile(filename);
-        const mime: Record<string, string> = { ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
-        response.writeHead(200, { "content-type": mime[extname(filename)] ?? "application/octet-stream" });
-        response.end(data);
-      } catch {
-        response.writeHead(404).end();
-      }
-    })().catch(() => response.writeHead(500).end());
-  });
-  await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
-  const address = server.address();
-  if (!address || typeof address === "string") throw new Error("Static server did not bind");
-  origin = `http://127.0.0.1:${address.port}`;
+  built = await serveGeneratedPackage([packageSpec], { [packageName]: "pie-element-multiple-choice" });
+  origin = built.origin;
 });
 
 test.afterAll(async () => {
-  if (server) await new Promise<void>((done) => server.close(() => done()));
-  if (scratch) await rm(scratch, { recursive: true, force: true });
+  await built?.close();
 });
 
 test("packed preloaded output registers authored tags, loads chunks, and records a real answer", async ({ page }) => {
@@ -97,7 +35,7 @@ test("packed preloaded output registers authored tags, loads chunks, and records
     if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
     if (response.ok() && response.url().includes("/dist/chunks/")) loadedChunks.push(response.url());
   });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
   const readyAtImport = await page.evaluate(async () => {
     const entry = "/package/dist/index.js";
@@ -112,7 +50,8 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   expect(await page.evaluate(() => (window as any).loadStates)).toEqual(["PIE-Fixed-Player-Load-Complete"]);
   expect(await page.evaluate(() => (window as any).pieFixedPlayerLoaded)).toBe(true);
   expect(await page.evaluate(() => performance.getEntriesByName("PIE-Fixed-Player-Load-Complete").length)).toBe(1);
-  expect(await page.evaluate((tag) => !!customElements.get(tag), runtimeTag)).toBe(true);
+  expect(await page.evaluate((tag) => !!customElements.get(tag), registeredTag)).toBe(true);
+  expect(await page.evaluate((tag) => !!customElements.get(tag), runtimeTag)).toBe(false);
   expect(await page.evaluate(() => (window as any).PIE_PRELOADED_ELEMENTS)).toEqual({ [packageName]: packageSpec });
 
   const staleTag = "multiple-choice--version-0-0-1";
@@ -159,13 +98,147 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   expect(browserErrors).toEqual([]);
 });
 
+test("renders math with the MathJax the build ships, its fonts included", async ({ page }) => {
+  const failedRequests: string[] = [];
+  const browserErrors: string[] = [];
+  const mathjaxFiles: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("requestfailed", (request) => failedRequests.push(request.url()));
+  page.on("response", (response) => {
+    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
+    const { pathname } = new URL(response.url());
+    if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
+  });
+  await serveFromTarballOnly(page, origin);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+  });
+
+  await page.evaluate((config) => {
+    const player = document.createElement("pie-item-player") as any;
+    player.strategy = "preloaded";
+    player.hosted = true;
+    player.config = config;
+    player.env = { mode: "gather", role: "student" };
+    player.session = { id: "math-attempt", data: [] };
+    document.body.appendChild(player);
+  }, structuredClone(mathDemo.item.config));
+  await expect(page.locator(`${runtimeTag} mjx-container`).first()).toBeVisible();
+  await expect.poll(() => mathjaxFiles.some((file) => file.startsWith("/package/dist/mathjax/fonts/mathjax-newcm-font/chtml/"))).toBe(true);
+  expect(mathjaxFiles).toContain("/package/dist/mathjax/load.js");
+  expect(mathjaxFiles).toContain("/package/dist/mathjax/tex-mml-chtml.js");
+  expect(await page.evaluate(() => (window as any).MathJax?.version)).toMatch(/^4\./);
+  expect(failedRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+});
+
+test("typesets mhchem chemistry with the font extension the build ships", async ({ page }) => {
+  const failedRequests: string[] = [];
+  const browserErrors: string[] = [];
+  const mathjaxFiles: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("requestfailed", (request) => failedRequests.push(request.url()));
+  page.on("response", (response) => {
+    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
+    const { pathname } = new URL(response.url());
+    if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
+  });
+  await serveFromTarballOnly(page, origin);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+  });
+
+  const config = structuredClone(mathDemo.item.config);
+  config.models[0].prompt = "<p>Water is \\(\\ce{H2O}\\).</p>";
+  await page.evaluate((config) => {
+    const player = document.createElement("pie-item-player") as any;
+    player.strategy = "preloaded";
+    player.hosted = true;
+    player.config = config;
+    player.env = { mode: "gather", role: "student" };
+    player.session = { id: "chemistry-attempt", data: [] };
+    document.body.appendChild(player);
+  }, config);
+  const water = page.locator(`${runtimeTag} mjx-container`, { has: page.locator("mjx-msub") }).first();
+  await expect(water).toBeVisible();
+  await expect.poll(() => mathjaxFiles).toContain("/package/dist/mathjax/fonts/mathjax-mhchem-font-extension/chtml.js");
+  await expect(page.locator(`${runtimeTag} mjx-merror`)).toHaveCount(0);
+  expect(failedRequests).toEqual([]);
+  expect(browserErrors).toEqual([]);
+});
+
+test("ships every item-player module with its whitespace stripped", async () => {
+  const playerDist = join(workspace, "packages/item-player/dist");
+  const shipped = join(built.served, "package/dist");
+  const modules = (await readdir(playerDist, { recursive: true })).filter((file) => file.endsWith(".js"));
+  expect(modules).toContain("pie-item-player.js");
+  for (const file of modules) {
+    const [source, output] = await Promise.all([
+      readFile(join(playerDist, file), "utf-8"),
+      readFile(join(shipped, file), "utf-8"),
+    ]);
+    expect(output.length, file).toBeLessThan(source.length);
+  }
+});
+
+test("renders an item authoring another base tag than the build, hosted and not hosted", async ({ page }) => {
+  const browserErrors: string[] = [];
+  const warnings: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+    if (message.type() === "warning" && message.text().includes("without a controller")) warnings.push(message.text());
+  });
+  await serveFromTarballOnly(page, origin);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.evaluate(async () => {
+    const entry = "/package/dist/index.js";
+    await import(entry);
+  });
+
+  // The demo item authors `multiple-choice` at `latest`.
+  const authored = structuredClone(demo.item.config);
+  for (const hosted of [true, false]) {
+    const id = hosted ? "hosted-player" : "client-player";
+    await page.evaluate(({ config, id, hosted }) => {
+      document.querySelector("pie-item-player")?.remove();
+      const player = document.createElement("pie-item-player") as any;
+      player.id = id;
+      player.strategy = "preloaded";
+      player.hosted = hosted;
+      player.config = config;
+      player.env = { mode: "gather", role: "student" };
+      player.session = { id: `${id}-attempt`, data: [] };
+      player.addEventListener("session-changed", (event: CustomEvent) => { (window as any).savedSession = event.detail.session; });
+      document.body.appendChild(player);
+    }, { config: authored, id, hosted });
+    await expect(page.locator(`#${id} ${runtimeTag}`)).toBeVisible();
+    await page.locator(`#${id} input[type="radio"][value="jupiter"]`).click();
+    await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["jupiter"]);
+  }
+  expect(await page.evaluate((tag) => {
+    const { package: spec, status, tagName, bundleType } = (window as any).PIE_REGISTRY[tag];
+    return { spec, status, tagName, bundleType };
+  }, runtimeTag)).toEqual({ spec: packageSpec, status: "loaded", tagName: runtimeTag, bundleType: "player.js" });
+  // The build registers no controllers, so the player that is not hosted warns once.
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0]).toContain(runtimeTag);
+  expect(browserErrors).toEqual([]);
+});
+
 test("imports into a page whose own item player holds pie-item-player, and renders through that copy", async ({ page }) => {
   const browserErrors: string[] = [];
   const requested: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
   page.on("request", (request) => requested.push(new URL(request.url()).pathname));
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
 
   // What a host running the section player presents: its own item player holds
@@ -209,7 +282,7 @@ test("a second item-player copy loading after the build leaves the build's copy 
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
-  await serveFromTarballOnly(page);
+  await serveFromTarballOnly(page, origin);
   await page.goto(origin, { waitUntil: "networkidle" });
 
   // A host that imports the build before the section player: the build's copy
@@ -230,10 +303,10 @@ test("a second item-player copy loading after the build leaves the build's copy 
   expect(browserErrors).toEqual([]);
 });
 
-test("import rejects when the fetched bundle is missing its promised element", async ({ page }) => {
-  await page.route("**/pie-elements-bundle-*.js", (route) => route.fulfill({
+test("import rejects when the element module is missing its promised element", async ({ page }) => {
+  await page.route("**/dist/elements/index.js", (route) => route.fulfill({
     contentType: "text/javascript",
-    body: "window.pie = { default: {} };",
+    body: "export const elements = {}; export function startMathRendering() {}",
   }));
   await page.goto(origin);
   const result = await page.evaluate(async () => {
@@ -247,7 +320,7 @@ test("import rejects when the fetched bundle is missing its promised element", a
       return { message: error instanceof Error ? error.message : String(error), loadStates };
     }
   });
-  expect(result.message).toContain("No element class found in bundle for @pie-element/multiple-choice");
+  expect(result.message).toContain("No element class found in build for @pie-element/multiple-choice");
   // The legacy package reported a failed load on the same event.
   expect(result.loadStates).toEqual(["PIE-Fixed-Player-Load-Failed"]);
   expect(await page.evaluate(() => !!customElements.get("pie-item-player"))).toBe(false);

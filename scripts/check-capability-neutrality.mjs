@@ -14,8 +14,8 @@
  * should not have had it.
  *
  * Scope is a named list of files, not the whole package. The toolkit legitimately
- * still contains TTS-specific code (`TTSService`, `services/tts/**`) and provider
- * descriptors for calculators and TTS, and moving those is separate, larger work.
+ * still contains TTS-specific code (`TTSService`, `services/tts/**`) and the TTS
+ * provider, and moving those is separate, larger work.
  * The files below are the ones whose whole job is to be capability-agnostic:
  * policy decisions, the registry, catalog resolution, tools-config validation and
  * the registry/tag factories.
@@ -82,14 +82,12 @@ const SCOPED_TARGETS = [
 	},
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-validation.ts") },
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-defaults.ts") },
-	{ file: path.join(TOOLKIT_SRC, "services", "createDefaultToolRegistry.ts") },
 	{
 		file: path.join(TOOLKIT_SRC, "services", "defaultPersonalNeedsProfile.ts"),
 	},
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
 	{ file: path.join(TOOLKIT_SRC, "components", "ItemToolBar.svelte") },
 	{ file: path.join(TOOLKIT_SRC, "components", "SectionToolBar.svelte") },
-	{ file: path.join(TOOLKIT_SRC, "components", "ToolButtonGroup.svelte") },
 	{
 		file: path.join(TOOLKIT_SRC, "tools", "content-capability-resolution.ts"),
 	},

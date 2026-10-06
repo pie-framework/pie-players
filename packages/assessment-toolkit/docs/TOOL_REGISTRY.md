@@ -25,14 +25,14 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     ORCHESTRATOR LAYER                       │
-│  (Assessment platform, PNP resolver, policies)              │
+│  (ToolkitCoordinator policy engine: PNP, policies)          │
 │                                                              │
 │  Pass 1: Determines allowedToolIds[]                        │
 │  - Reads QTI 3.0 PNP profile                                │
 │  - Applies institutional policies                           │
 │  - Maps accessFeature → toolIds via ToolRegistry            │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ allowedToolIds: ["calculator", "tts", ...]
+                       │ allowedToolIds: ["calculator", "textToSpeech", ...]
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    TOOL REGISTRY LAYER                       │
@@ -47,7 +47,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      UI LAYER                                │
-│  (ToolButtonGroup, ItemToolBar)                             │
+│  (ItemToolBar, SectionToolBar)                              │
 │                                                              │
 │  Renders: Buttons for visible tools only                    │
 └─────────────────────────────────────────────────────────────┘
@@ -61,6 +61,8 @@ Tools can **hide themselves** but cannot **override orchestrator's NO**:
 - ❌ Orchestrator says NO → Tool cannot say YES (tool not in `allowedToolIds`)
 
 This is enforced architecturally: `filterVisibleInContext()` only filters the `allowedToolIds` array.
+
+`<pie-item-toolbar>` skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. A registration can also declare `isApplicableToContent(context)`; below section level a `false` answer removes the tool from the toolbar even under a grant, unless a host resolver decided that tool's visibility. The answer eliminator declares it, answering `false` for content with no choice interaction.
 
 ### Refresh / Init Contract
 
@@ -83,7 +85,7 @@ The toolkit includes comprehensive QTI 3.0 / IMS Access for All (AfA) 3.0 standa
 ```typescript
 import { QTI_STANDARD_ACCESS_FEATURES } from '@pie-players/pie-assessment-toolkit';
 
-// 9 categories with 95+ standardized features:
+// 8 categories with 96 standardized features:
 QTI_STANDARD_ACCESS_FEATURES.visual          // magnification, contrast, display
 QTI_STANDARD_ACCESS_FEATURES.auditory        // TTS, captions, audio controls
 QTI_STANDARD_ACCESS_FEATURES.motor           // keyboard, timing, input
@@ -152,24 +154,33 @@ EXAMPLE_PNP_CONFIGURATIONS.adhd.features
 ### Registering a Tool
 
 ```typescript
-import type { ToolRegistration } from '@pie-players/pie-assessment-toolkit';
+import type {
+  ToolContext,
+  ToolRegistration,
+  ToolToolbarButtonDefinition,
+  ToolToolbarRenderResult,
+  ToolbarContext
+} from '@pie-players/pie-assessment-toolkit/tools/internal';
+import {
+  createScopedToolId,
+  createToolElement,
+  hasMathContent
+} from '@pie-players/pie-assessment-toolkit/tools/internal';
 
 export const calculatorToolRegistration: ToolRegistration = {
   toolId: "calculator",
   name: "Calculator",
-  description: "Multi-type calculator",
+  description: "Multi-type calculator (basic, scientific, graphing)",
   icon: "calculator",
 
   // Which context levels support this tool
-  supportedLevels: ["item", "element"],
+  supportedLevels: ["item"],
 
   // QTI 3.0 PNP support IDs that enable this tool
   // Maps to standard features from pnp-standard-features.ts
   pnpSupportIds: [
     "calculator",           // QTI 3.0 standard (cognitive.calculator)
-    "graphingCalculator",   // QTI 3.0 standard (assessment.graphingCalculator)
-    "basicCalculator",      // Common variant
-    "scientificCalculator"  // Common variant
+    "graphingCalculator"    // QTI 3.0 standard (assessment.graphingCalculator)
   ],
 
   // Pass 2: Is this tool relevant in the current context?
@@ -178,42 +189,56 @@ export const calculatorToolRegistration: ToolRegistration = {
     return hasMathContent(context);
   },
 
-  // Create toolbar button
-  createButton(context, options): ToolButtonDefinition {
-    return {
-      toolId: this.toolId,
-      label: this.name,
-      icon: this.icon,
-      disabled: options.disabled || false,
-      ariaLabel: "Calculator",
-      tooltip: "Calculator",
-      onClick: options.onClick || (() => {}),
-      className: options.className
-    };
-  },
-
-  // Create tool instance (web component)
-  createToolInstance(context, options): HTMLElement {
+  // Toolbar button and the floating element it toggles
+  renderToolbar(
+    context: ToolContext,
+    toolbarContext: ToolbarContext
+  ): ToolToolbarRenderResult {
+    const fullToolId = createScopedToolId(
+      this.toolId,
+      toolbarContext.scope.level,
+      toolbarContext.scope.scopeId
+    );
     const calculator = createToolElement(
       this.toolId,
       context,
-      options,
-      options.componentOverrides
-    );
-    calculator.visible = true;
+      toolbarContext,
+      toolbarContext.componentOverrides
+    ) as HTMLElement & { visible?: boolean };
+    calculator.setAttribute("tool-id", fullToolId);
 
-    if (options.config?.toolkitCoordinator) {
-      calculator.toolkitCoordinator = options.config.toolkitCoordinator;
-    }
+    const button: ToolToolbarButtonDefinition = {
+      toolId: this.toolId,
+      label: this.name,
+      icon: "calculator",
+      ariaLabel: "Calculator",
+      tooltip: "Calculator",
+      onClick: () => toolbarContext.toggleTool(this.toolId),
+      active: toolbarContext.isToolVisible(fullToolId)
+    };
+    calculator.visible = button.active;
 
-    if (options.onClose) {
-      calculator.addEventListener('close', options.onClose);
-    }
-
-    return calculator;
+    return {
+      toolId: this.toolId,
+      button,
+      elements: [
+        {
+          element: calculator,
+          mount: "after-buttons",
+          shell: { title: "Calculator", draggable: true, resizable: true, closeable: true }
+        }
+      ],
+      // Called by the toolbar on render and on every tool visibility change
+      sync: () => {
+        button.active = toolbarContext.isToolVisible(fullToolId);
+        calculator.visible = button.active;
+      }
+    };
   }
 };
 ```
+
+The packaged registration in `@pie-players/pie-default-tool-loaders` adds provider selection (Desmos, GeoGebra or Cortex), calculator-type render params and per-type window sizes.
 
 ### Tool Context
 
@@ -225,7 +250,7 @@ type ToolLevel = "assessment" | "section" | "item" | "passage" | "rubric" | "ele
 interface ItemToolContext {
   level: "item";
   assessment: AssessmentEntity;
-  section: AssessmentSection;
+  section?: AssessmentSection;
   itemRef: AssessmentItemRef;
   item: ItemEntity;
   passage?: PassageEntity;
@@ -234,7 +259,7 @@ interface ItemToolContext {
 interface ElementToolContext {
   level: "element";
   assessment: AssessmentEntity;
-  section: AssessmentSection;
+  section?: AssessmentSection;
   itemRef: AssessmentItemRef;
   item: ItemEntity;
   elementId: string;
@@ -252,7 +277,7 @@ import {
   hasMathContent,
   hasScienceContent,
   hasChoiceInteraction
-} from '@pie-players/pie-assessment-toolkit';
+} from '@pie-players/pie-assessment-toolkit/tools/internal';
 
 // Check if context has readable text (10+ characters)
 isVisibleInContext(context: ToolContext): boolean {
@@ -310,46 +335,50 @@ import {
 } from '@pie-players/pie-default-tool-loaders';
 registerSectionToolModuleLoaders(customRegistry);
 
-// Or create custom registry
-const selectiveRegistry = new ToolRegistry();
-selectiveRegistry.register(calculatorToolRegistration);
-selectiveRegistry.register(ttsToolRegistration);
-// ... register only the tools you need
+// Or register only the packaged tools you need
+const selectiveRegistry = createPackagedToolRegistry({
+  toolIds: ["calculator", "textToSpeech"]
+});
 ```
 
 ### Default Tools
 
-The default registry includes 12 tools organized by purpose:
+`createPackagedToolRegistry()` registers 15 capabilities, organized by purpose:
 
 **Global Accessibility Tools** (assessment/section level):
-- Magnifier - zoom lens for visual accessibility
-- Color Scheme - accessible color themes and contrast
+- Theme (`theme`) - accessible themes and contrast
 
 **Context-Smart Tools** (auto-detect content):
-- Calculator - basic, scientific, graphing (math content)
-- Graph - graphing calculator (math content)
-- Periodic Table - chemistry reference (science content)
+- Calculator (`calculator`) - basic, scientific, graphing (math content)
+- Graph (`graph`) - coordinate plane (math content)
+- Periodic Table (`periodicTable`) - chemistry reference (science content)
 
 **Reading Support Tools** (text detection):
-- Text-to-Speech - read content aloud
-- Line Reader - reading guide overlay
-- Annotation Toolbar - text highlighting with CSS Custom Highlight API
-- Highlighter - text highlighting
+- Text-to-Speech (`textToSpeech`) - read content aloud
+- Line Reader (`lineReader`) - reading guide overlay
+- Highlighter (`annotationToolbar`) - highlight and annotate text with the CSS Custom Highlight API
+- Dictionary, Picture Dictionary, Spanish Dictionary, Spanish Picture Dictionary (`dictionary`, `pictureDictionary`, `dictionarySpanish`, `pictureDictionarySpanish`) - word definitions and pictures
 
 **Interaction-Specific Tools**:
-- Answer Eliminator - strike through choices (choice questions only)
+- Answer Eliminator (`answerEliminator`) - strike through choices (choice questions only)
 
-**Measurement Tools** (element level):
-- Ruler - on-screen ruler
-- Protractor - angle measurement
+**Measurement Tools** (section, item and element level):
+- Ruler (`ruler`) - on-screen ruler
+- Protractor (`protractor`) - angle measurement
+
+**Content Region** (no toolbar button):
+- Audio Transcript (`transcript`) - an item's or passage's audio transcript, rendered into the `content-lead` surface
 
 ### PNP Resolution
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  toolRegistry,
   tools: { placement: { item: ["calculator", "textToSpeech", "theme"] } }
 });
 coordinator.updateAssessment(assessment);
@@ -361,7 +390,7 @@ const allowedToolIds = coordinator
 // Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The policy engine reads QTI 3.0 `accessibilityInfo.accessFeature` arrays and maps them to tool IDs using the tool registry's PNP index.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and the current item ref's `settings`. It maps support ids to tool IDs using the tool registry's PNP index, which each registration's `pnpSupportIds` populates.
 
 ### Filtering by Context
 
@@ -384,84 +413,50 @@ const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context
 // Returns: ToolRegistration[] (only tools that passed both gates)
 ```
 
-### Creating Tool Buttons
+### Toolbar Rendering
 
 ```typescript
-// Create buttons for visible tools
-const buttons = visibleTools.map(tool =>
-  tool.createButton(context, {
-    onClick: () => handleToolClick(tool.toolId),
-    className: "custom-button-class"
-  })
-);
-
-// Render buttons
-buttons.forEach(button => {
-  // button.toolId, button.label, button.icon, button.onClick, etc.
-});
+// Render through the registry, which attaches its component overrides
+for (const tool of visibleTools) {
+  const result = toolRegistry.renderForToolbar(tool.toolId, context, toolbarContext);
+  if (!result) continue;
+  // result.button: toolId, label, icon, ariaLabel, onClick, active
+  // result.elements: tool elements to mount beside the buttons
+  // result.sync: re-applies state after a visibility change
+}
 ```
+
+`<pie-item-toolbar>` runs this loop with the `ToolbarContext` it builds for its scope.
 
 ## UI Components
 
-### ToolButtonGroup
-
-Generic toolbar component that implements the two-pass visibility model:
-
-```svelte
-<script lang="ts">
-  import { ToolButtonGroup } from '@pie-players/pie-assessment-toolkit';
-
-  let {
-    toolRegistry,      // ToolRegistry instance
-    allowedToolIds,    // Pass 1: from orchestrator
-    context,           // ToolContext for Pass 2
-    onToolClick        // Callback when tool clicked
-  } = $props();
-</script>
-
-<ToolButtonGroup
-  {toolRegistry}
-  {allowedToolIds}
-  {context}
-  {onToolClick}
-  orientation="horizontal"
-  compact={false}
-/>
-```
-
-### ToolButton
-
-Individual button component:
-
-```svelte
-<script lang="ts">
-  import { ToolButton } from '@pie-players/pie-assessment-toolkit';
-
-  let { button } = $props();  // ToolButtonDefinition
-</script>
-
-<ToolButton {button} />
-```
-
 ### ItemToolBar
 
-The `ItemToolBar` component supports registry-driven operation and explicit tool lists:
+`<pie-item-toolbar>` renders tool buttons only from its own `toolRegistry`; without one it renders none. Inside `<pie-assessment-toolkit>` it shows the coordinator's policy decision for its level and scope. The toolkit forwards its `assessment` and `currentItemRef` properties to the coordinator it builds; a host that passes its own `coordinator` binds them with `updateAssessment` and `updateCurrentItemRef`.
 
-**Registry-driven tools**:
 ```html
-<pie-item-toolbar
-  .toolRegistry={toolRegistry}
-  .pnpResolver={pnpResolver}
-  .assessment={assessment}
-  .itemRef={itemRef}
-  .item={item}
-></pie-item-toolbar>
+<pie-assessment-toolkit id="toolkit">
+  <pie-item-toolbar id="toolbar" item-id="question-1"></pie-item-toolbar>
+</pie-assessment-toolkit>
+<script>
+  const toolkit = document.getElementById("toolkit");
+  toolkit.tools = { placement: { item: ["calculator", "textToSpeech", "answerEliminator"] } };
+  toolkit.toolRegistry = toolRegistry;
+  toolkit.assessment = assessment;
+  toolkit.currentItemRef = itemRef;
+
+  const toolbar = document.getElementById("toolbar");
+  toolbar.toolRegistry = toolRegistry;
+  toolbar.item = item;
+</script>
 ```
 
-**Explicit tools list**:
+The toolkit README's [Without a Section Player](../README.md#without-a-section-player) section covers this form.
+
+**Explicit tools list** (test fixtures): the `tools` attribute applies only when no toolkit is in scope. Its ids still resolve against `toolRegistry`, and with no tool coordinator the buttons cannot open their tools.
 ```html
 <pie-item-toolbar
-  tools="calculator,tts,answerEliminator"
+  tools="calculator,textToSpeech,answerEliminator"
   item-id="question-1"
 ></pie-item-toolbar>
 ```
@@ -501,39 +496,52 @@ Example:
 
 ## Default Tool Placement
 
-The toolkit provides recommended tool placement by context level:
+`DEFAULT_TOOL_PLACEMENT` in `@pie-players/pie-assessment-toolkit` is empty at every level, so a coordinator with no `tools.placement` places no tools. The recommended placements name packaged capabilities, so they live in `@pie-players/pie-default-tool-loaders`:
 
 ```typescript
-import { DEFAULT_TOOL_PLACEMENT } from '@pie-players/pie-assessment-toolkit';
+import {
+  PACKAGED_TOOL_PLACEMENT,
+  SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
+} from '@pie-players/pie-default-tool-loaders';
 
-DEFAULT_TOOL_PLACEMENT.assessment  // ["theme"]
-DEFAULT_TOOL_PLACEMENT.section     // ["theme", "textToSpeech"]
-DEFAULT_TOOL_PLACEMENT.item        // ["calculator", "textToSpeech", "answerEliminator", ...]
-DEFAULT_TOOL_PLACEMENT.passage     // ["textToSpeech", "annotationToolbar", "lineReader"]
-DEFAULT_TOOL_PLACEMENT.rubric      // ["textToSpeech", "annotationToolbar", "lineReader"]
-DEFAULT_TOOL_PLACEMENT.element     // ["calculator", "textToSpeech", "ruler", "protractor", ...]
+PACKAGED_TOOL_PLACEMENT.assessment  // ["theme"]
+PACKAGED_TOOL_PLACEMENT.section     // ["theme"]
+PACKAGED_TOOL_PLACEMENT.item        // ["textToSpeech", "annotationToolbar", "graph", "periodicTable", ...]
+PACKAGED_TOOL_PLACEMENT.passage     // ["textToSpeech", "annotationToolbar", "lineReader"]
+PACKAGED_TOOL_PLACEMENT.rubric      // ["textToSpeech", "annotationToolbar", "lineReader"]
+PACKAGED_TOOL_PLACEMENT.element     // ["calculator", "answerEliminator", "textToSpeech", "ruler", "protractor", ...]
+
+SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.section  // ["theme", "graph", "periodicTable", "lineReader", "ruler", "protractor", ...]
+SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.item     // ["calculator", "textToSpeech", "answerEliminator", "annotationToolbar"]
+SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.passage  // ["textToSpeech", "annotationToolbar"]
 ```
 
-These are **recommendations**, not requirements. Integrators can customize placement based on their needs.
+`SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` has exactly the levels `tools.placement` takes (`section`, `item`, `passage`). These are **recommendations**, not requirements. Integrators can customize placement based on their needs.
 
 ## Tool Categories
 
 Tools are organized by purpose:
 
 ### Global Tools
-- **Magnifier** - Always visible when allowed, works across entire assessment
-- **Color Scheme** - Always visible when allowed, affects entire assessment
+- **Theme** - Always visible when allowed, affects entire assessment
 
 ### Context-Smart Tools
-- **Calculator** - Shows at section/item level, or when math content detected
-- **Graph** - Shows when math content detected
+- **Calculator** - Shows at item level when math content detected
+- **Graph** (coordinate plane) - Shows when math content detected
 - **Periodic Table** - Shows when science content detected
 
 ### Reading Support
 - **Text-to-Speech** - Shows when readable text exists (10+ characters)
 - **Line Reader** - Shows when readable text exists
-- **Annotation Toolbar** - Singleton selection gateway (section-scoped)
-- **Highlighter** - Shows when readable text exists
+- **Highlighter** (`annotationToolbar`) - Shows when readable text exists; runs as a section-scoped singleton selection gateway
+- **Dictionaries** - Show when readable text exists
+
+### Interaction-Specific
+- **Answer Eliminator** - Shows only on choice-based questions (MC, inline choice, select text, EBSR)
+
+### Measurement Tools
+- **Ruler** - Shows when math content detected
+- **Protractor** - Shows when math content detected
 
 ## Activation Models
 
@@ -672,13 +680,6 @@ Two independent things follow, and both were previously done by naming ids in co
 
 A registration declaring a content dependency must carry at least one `pnpSupportIds` entry — that is what a host filters on, so declaring the dependency with nothing to filter would silently drop the second guarantee. Registration rejects it.
 
-### Interaction-Specific
-- **Answer Eliminator** - Shows only on choice-based questions (MC, inline choice, select text)
-
-### Measurement Tools
-- **Ruler** - Shows at element level when math content detected
-- **Protractor** - Shows at element level when math content detected
-
 ## Creating Custom Tools
 
 To create a new tool:
@@ -686,7 +687,13 @@ To create a new tool:
 1. **Create registration file** (e.g., `my-tool.ts`):
 
 ```typescript
-import type { ToolRegistration } from '@pie-players/pie-assessment-toolkit';
+import type {
+  ToolContext,
+  ToolRegistration,
+  ToolToolbarRenderResult,
+  ToolbarContext
+} from '@pie-players/pie-assessment-toolkit/tools/internal';
+import { createToolElement } from '@pie-players/pie-assessment-toolkit/tools/internal';
 
 export const myToolRegistration: ToolRegistration = {
   toolId: "myTool",
@@ -696,29 +703,60 @@ export const myToolRegistration: ToolRegistration = {
   supportedLevels: ["item", "element"],
   pnpSupportIds: ["myToolFeature", "customFeature"],
 
-  isVisibleInContext(context) {
+  isVisibleInContext(context: ToolContext): boolean {
     // Custom visibility logic
     return true;
   },
 
-  createButton(context, options) {
-    // Return button definition
-  },
+  renderToolbar(
+    context: ToolContext,
+    toolbarContext: ToolbarContext
+  ): ToolToolbarRenderResult {
+    // The element tag comes from the registry's tool tag map (step 2)
+    const element = createToolElement(
+      this.toolId,
+      context,
+      toolbarContext,
+      toolbarContext.componentOverrides
+    ) as HTMLElement & { visible?: boolean };
+    const button = {
+      toolId: this.toolId,
+      label: this.name,
+      ariaLabel: this.name,
+      onClick: () => toolbarContext.toggleTool(this.toolId),
+      active: toolbarContext.isToolVisible(this.toolId)
+    };
+    element.visible = button.active;
 
-  createToolInstance(context, options) {
-    // Return web component instance
+    return {
+      toolId: this.toolId,
+      button,
+      elements: [{ element, mount: "after-buttons", shell: { title: this.name } }],
+      sync: () => {
+        button.active = toolbarContext.isToolVisible(this.toolId);
+        element.visible = button.active;
+      }
+    };
   }
 };
 ```
 
-2. **Register with tool registry**:
+2. **Register with tool registry** and map the tool id to the custom element you define:
 
 ```typescript
+import { ToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
 const registry = new ToolRegistry();
 registry.register(myToolRegistration);
+registry.setComponentOverrides({ toolTagMap: { myTool: "my-tool" } });
+
+// Beside the packaged tools; setComponentOverrides would replace their tag map
+const packagedRegistry = createPackagedToolRegistry({ toolTagMap: { myTool: "my-tool" } });
+packagedRegistry.register(myToolRegistration);
 ```
 
-3. **Add PNP mapping** (if using PNP resolver):
+3. **Add PNP mapping**:
 
 ```typescript
 // The pnpSupportIds in your registration automatically create the mapping
@@ -735,9 +773,9 @@ import type {
   ToolRegistration,
   ToolContext,
   ToolLevel,
-  ToolButtonDefinition,
-  ToolButtonOptions,
-  ToolInstanceOptions,
+  ToolToolbarButtonDefinition,
+  ToolToolbarRenderResult,
+  ToolbarContext,
   ItemToolContext,
   ElementToolContext,
   PassageToolContext,
@@ -758,11 +796,8 @@ import {
 ### Explicit Static Lists
 
 ```typescript
-// Hardcoded tool list
-const tools = "calculator,tts,answerEliminator";
-
-// PNPMapper with static mappings
-const toolIds = PNPMapper.mapPNPToTools(pnpProfile);
+// Hardcoded list for the toolbar's `tools` attribute, read only when no toolkit is in scope
+const tools = "calculator,textToSpeech,answerEliminator";
 ```
 
 ### Registry-Based
@@ -795,7 +830,7 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 
 **Standards-Based (from QTI 3.0):**
 
-- **PNP supports** (#6) - Student's documented accessibility needs (`accessibilityInfo.accessFeature`)
+- **PNP supports** (#6) - Student's documented accessibility needs (`personalNeedsProfile.supports`)
 - **Item-level settings** (#3, #4) - Per-item accessibility requirements/restrictions
 
 **Implementation-Specific (common practice):**
@@ -805,7 +840,7 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 
 ### Precedence Order
 
-The resolver applies these rules in order (highest to lowest priority):
+`PnpPolicySource` applies these rules in order (highest to lowest priority):
 
 1. **District block** (absolute veto)
    - **Purpose**: Legal/policy requirements
@@ -834,7 +869,7 @@ The resolver applies these rules in order (highest to lowest priority):
 
 6. **PNP supports** (student needs)
    - **Purpose**: QTI 3.0 standard student preferences
-   - **Example**: Student's IEP document specifies magnification support
+   - **Example**: Student's IEP document specifies a reading mask
    - **Effect**: Tool enabled based on student's accessibility profile
 
 ### Governance Rationale

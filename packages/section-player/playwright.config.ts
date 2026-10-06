@@ -9,11 +9,13 @@ const sectionDemosPort = Number(process.env.SECTION_DEMOS_PORT || "5300");
 const defaultBaseUrl = `http://${sectionDemosHost}:${sectionDemosPort}`;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || defaultBaseUrl;
 const parsedBaseUrl = new URL(baseURL);
-const webServerCommand = `bun run --cwd "${workspaceRootCwd}" dev:section -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"}`;
+const webServerCommand = `bun run --cwd "${workspaceRootCwd}" dev:section -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"} --strictPort`;
 
 export default defineConfig({
 	testDir: "./tests",
 	testMatch: /.*\.spec\.ts/,
+	// Needs a pie-elements-ng checkout: `playwright.local-esm-cdn.config.ts`.
+	testIgnore: /local-esm-cdn\//,
 	fullyParallel: false,
 	forbidOnly: false,
 	// One retry in CI, none locally. develop requires these suites, so a single
@@ -36,12 +38,29 @@ export default defineConfig({
 		timeout: 120_000,
 		// Suppress vite's dev-only crash overlay so it can't intercept clicks
 		// when a backing service (e.g. Polly auth) throws unhandled in CI.
-		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1" },
+		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1", BROWSER: "none" },
 	},
 	projects: [
 		{
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
+		},
+		// The esm strategy's import maps: Firefox rejects a map added after the
+		// page's first module load, or after another map, so the player loads
+		// through es-module-shims there. The preloaded npm demo runs in every
+		// engine, as a host's pages do.
+		{
+			name: "firefox",
+			testMatch: /section-(demos-esm|player-host-section-switch|player-preloaded-npm)\.spec\.ts/,
+			use: { ...devices["Desktop Firefox"] },
+		},
+		// Focus order: WebKit does not focus a clicked button. The ruler's and
+		// protractor's pointer handling runs here too, since Safari's pointer
+		// capture is what iPads get.
+		{
+			name: "webkit",
+			testMatch: /section-(player-host-section-switch|player-preloaded-npm|ruler-pointer|protractor-pointer)\.spec\.ts/,
+			use: { ...devices["Desktop Safari"] },
 		},
 	],
 });

@@ -1,57 +1,15 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { createHash } from "node:crypto";
 import { resolve } from "path";
-import { defineConfig } from "vite";
+import { defaultClientConditions, defineConfig } from "vite";
+import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
+import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
+import { deferMathRenderingModuleEvaluation } from "../players-shared/math-rendering-module-deferral.mjs";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
-const sanitizeChunkKey = (value: string) =>
-	value
-		.replace(/\\/g, "/")
-		.replace(/^.*\/node_modules\//, "npm/")
-		.replace(/^.*\/src\//, "src/")
-		.replace(/-[a-f0-9]{8,}(?=\.js($|[/.]))/gi, "")
-		.replace(/-[a-f0-9]{8,}(?=\/|$)/gi, "")
-		.replace(/[^a-zA-Z0-9/_-]/g, "-")
-		.replace(/\/+/g, "/")
-		.replace(/^\/+/, "")
-		.replace(/\/$/, "")
-		.replace(/\//g, "__");
-
-const getChunkSourceKey = (chunkInfo: {
-	name: string;
-	facadeModuleId?: string | null;
-	moduleIds?: string[];
-}) => {
-	const moduleSource =
-		chunkInfo.facadeModuleId ??
-		(Array.isArray(chunkInfo.moduleIds) ? chunkInfo.moduleIds[0] : undefined);
-	const sourceKey = sanitizeChunkKey(moduleSource || chunkInfo.name || "chunk");
-	const chunkName = sanitizeChunkKey(chunkInfo.name || "chunk");
-	const sourceHash = createHash("sha1")
-		.update(sourceKey)
-		.digest("hex")
-		.slice(0, 8);
-	return `${chunkName}-${sourceHash}`;
-};
-
-const patchMathRenderingModuleEval = {
-	name: "patch-math-rendering-module-eval",
-	enforce: "pre" as const,
-	transform(code: string, id: string) {
-		if (!id.includes("@pie-lib/math-rendering-module/module/index.js")) {
-			return null;
-		}
-
-		return {
-			code: code.replace(
-				/return\s+eval\((["'])require\1\);/g,
-				"return commonjsRequire;",
-			),
-			map: null,
-		};
-	},
-};
+const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
 
 const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",
@@ -72,6 +30,9 @@ const assertNoEvalRequireInOutput = {
 
 export default defineConfig({
 	resolve: {
+		// The MathJax adapter's browser build, which bundles a MathJax of its
+		// own; see players-shared's private-math-renderer.ts.
+		conditions: ["pie-browser-esm", ...defaultClientConditions],
 		alias: {
 			// Declared once in players-shared; see svelte-source-aliases.ts.
 			...playersSharedSvelteSourceAliases(
@@ -81,17 +42,23 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		patchMathRenderingModuleEval,
+		deferMathRenderingModuleEvaluation(),
 		svelte({
 			compilerOptions: {
 				customElement: true,
+				rootDir: svelteRootDir(__dirname),
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
+		escapeSourceMapCommentTextInOutput(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
 			insertTypesEntry: true,
+			// No `.svelte`: a component declares as a stub that imports `svelte`,
+			// which hosts do not install, and no type entry reaches one.
+			include: ["src/**/*.ts", "src/**/*.d.ts"],
 		}),
 		assertNoEvalRequireInOutput,
 	],
@@ -99,6 +66,7 @@ export default defineConfig({
 		lib: {
 			entry: {
 				"pie-item-player": resolve(__dirname, "src/pie-item-player.ts"),
+				preloaded: resolve(__dirname, "src/preloaded.ts"),
 				"components/item-session-debugger-element": resolve(
 					__dirname,
 					"src/components/item-session-debugger-element.ts",
@@ -116,8 +84,7 @@ export default defineConfig({
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",
-				chunkFileNames: (chunkInfo) =>
-					`chunks/${getChunkSourceKey(chunkInfo)}.js`,
+				chunkFileNames,
 				assetFileNames: "assets/[name][extname]",
 			},
 		},

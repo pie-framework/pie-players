@@ -36,8 +36,11 @@ import "@pie-players/pie-section-player";
 If hosts need explicit registration control, keep using documented component
 entrypoints under `@pie-players/pie-section-player/components/*`.
 
-Standalone browser variants for this package are intentionally deferred; the
-current supported contract is the default bundler entrypoints under `dist`.
+The entries are bundler-only: they import `@pie-players/pie-item-player`,
+`@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
+engine's JSON locale tables, by bare specifier and without import attributes.
+Items render through the host's one `@pie-players/pie-item-player`, which this
+package depends on at its own version.
 
 ## SectionController
 
@@ -59,13 +62,21 @@ the per-method contract.
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 ```
 
 `waitForSectionController(timeoutMs)` resolves when the layout CE has wired
 its controller (the same anchor `pie-stage-change` reaches with
-`detail.stage === "engine-ready"`). Use `getSectionController()` if you've
-already passed the readiness anchor synchronously.
+`detail.stage === "engine-ready"`), or with `null` once `timeoutMs` passes.
+Use `getSectionController()` if you've already passed the readiness anchor
+synchronously.
+
+The layout elements define their host methods from the moment they are
+created, so a host can call them before the element mounts. Until it mounts,
+`waitForSectionController` waits, `getSectionController()` returns `null`, the
+navigation methods return `false`, and `getSnapshot()` and the `select*` reads
+return `null` (`pie-section-player-kernel-host` returns its bootstrapping
+snapshot).
 
 ### Session lifecycle
 
@@ -97,12 +108,25 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
 
 - `item-selected` — item navigation within the current section.
 - `item-session-data-changed` / `item-session-meta-changed` — per-item
-  session updates the persistence layer should observe.
+  session updates the persistence layer should observe. `sectionId` names the
+  section. `elementId` names the reporting element when the change carries one,
+  and `complete` is then that element's own. A commit carries
+  `sessionCommitReason` (see [Commit at a section
+  boundary](#commit-at-a-section-boundary)).
+- `item-complete-changed` — an item's completion flipped. An item is complete
+  when every element that has reported its completion is complete. A report
+  without `elementId`, and a restored session's item-level `complete`, set the
+  item's completion directly. A session restored through `applySession`
+  without `complete` is complete when it holds a response. A passage's own
+  `session-changed` stays inside its shell: a passage holds no response.
 - `content-loaded` — passage / item / rubric finished loading. Carries
   `contentKind`, `itemId`, and `canonicalItemId`.
 - `section-loading-complete` — every renderable in the section finished
   loading.
 - `section-items-complete-changed` — aggregate completion flip.
+- `section-error` — an item player failed (`source: "item-player"`), or the
+  section runtime did (`source: "section-runtime"`), a rejected element warmup
+  included, which leaves the items unmounted.
 - `section-navigation-change` — the controller's section identity changed.
 - `formative-try-recorded` — a learner checked an answer.
 - `formative-reveal-changed` — the reveal state changed without a Try: a learner
@@ -119,6 +143,11 @@ policy](#js-api-example-for-advanced-host-policy). Key event types:
   playback policy, so it is advisory from here.
 - `timed-media-invalid` — authored `timedMedia` that cannot be delivered; the
   section renders without cue behavior.
+
+The helpers' default event sets leave out `formative-try-recorded`,
+`formative-reveal-changed`, `section-mastery-changed` and
+`timed-media-audio-started`. Name them in `subscribeItemEvents({ eventTypes })`,
+or subscribe through `subscribeSectionEvents`.
 
 Item-scoped events carry both id forms, and both are always populated.
 `itemId` is the bare `item.id` — the form the map returned by
@@ -160,7 +189,7 @@ Read the resolved state from `getFormativeProjection()`, or off
 same handle:
 
 ```ts
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 // The learner's actions, budget-respecting.
 controller?.recordFormativeTry?.({ itemId, outcomes }); // outcomes from provideScore()
 controller?.retryFormativeItem?.({ itemId });
@@ -235,7 +264,7 @@ with its own player registers its own port instead, and that port outranks the
 card's discovery for as long as it is attached:
 
 ```ts
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 // No `renderableId`: a host is asserting its own port, where a renderable's adapter
 // has to name itself and is ignored unless it is the resolved stimulus.
 controller?.attachMediaTimeSource?.(myThirdPartyPort);
@@ -290,15 +319,27 @@ Render in HTML/Svelte/JSX:
 <pie-section-player-splitpane></pie-section-player-splitpane>
 ```
 
-Set complex values (`runtime`, `section`, `env`) as JS properties.
+Set complex values (`runtime`, `section`) as JS properties. `env` is a
+`runtime` field (`runtime.env`); the layout elements have no `env` property.
+
+Set `runtime` no later than `section`. When the player builds its own
+coordinator, the section's arrival rebuilds that coordinator from the current
+`runtime`, so both can be set a tick after the element mounts. Once the section
+has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
+`runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
+`toolRegistry` is reported once in the console and does not reach that
+coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
+coordinator through the one `toolkit-ready` delivers, with
+`updateToolConfig(...)` or `updateToolsPlacement(...)`, or pass your own as
+`runtime.coordinator`.
 
 ## Runtime Inputs
 
-Both layout elements support:
+The layout elements (`pie-section-player-splitpane`,
+`pie-section-player-vertical`, `pie-section-player-tabbed`) support:
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
-- `env` (object): optional top-level override for `{ mode, role }`
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
@@ -307,7 +348,12 @@ Both layout elements support:
 - `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
 - `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
 - `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
-- `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
+- `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`); default `false`, so tools placed at `section` level render only when it is `true`
+- `locale` (string, optional): BCP-47 locale for the player's own interface text. Mirrored onto `runtime.locale`, which wins when both are set. Unset renders `en-US`.
+- `nds-icons` (boolean): opt in to NDS icon buttons. Mirrored onto `runtime.ndsIcons`, which wins when both are set.
+- `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`. `runtime.toolConfigStrictness` wins when both are set.
+- `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50.
+- `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
 When viewport width is within the collapsed range (~1100px and below), splitpane and
@@ -544,9 +590,9 @@ Advanced runtime configuration is supplied through the `runtime` object. Set pla
 
 Hosts can configure item-player backend delivery once at the section-player
 runtime level. Section-player derives a concrete `backend` prop for each
-embedded item player before it renders the item. This is intended for hosts such
-as Quiz Engine that need server-processed PIE models and server scoring without
-querying every nested `<pie-item-player>`.
+embedded item player before it renders the item. This is intended for hosts
+that need server-processed PIE models and server scoring without querying every
+nested `<pie-item-player>`.
 
 ```ts
 import type {
@@ -587,6 +633,10 @@ each embedded item player. Static delivery fields such as `baseUrl`, `auth`,
 `endpoints`, `assignmentId`, and `autosave` are preserved. Use `assignmentId`
 for shared attempt/player identity.
 
+An enabled `backend.delivery` also sets `hosted: true` on each embedded item
+player unless `runtime.player.hosted` is set, so the item players load no
+element controllers and render the models the server returns.
+
 `runtime.player.resolveBackend` is a section-player-reserved key. It is called
 with `{ itemId, canonicalItemId, item, itemIndex, itemSession, sectionId, env,
 baseBackend }` and is stripped before props reach `<pie-item-player>`. Use it
@@ -604,12 +654,66 @@ backend config is preserved.
 This backend delivery config is separate from the element-loader backend used
 for IIFE/ESM bundle preloading.
 
+### Preloaded elements
+
+With `runtime.playerType: "preloaded"` the section player loads no element
+code. Its pre-warm asserts that every tag the section's items and passages name
+is registered, so the host registers the elements first:
+
+```ts
+import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
+import * as delivery from "@pie-element/multiple-choice/browser/delivery";
+import * as controller from "@pie-element/multiple-choice/browser/controller";
+import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
+
+registerPreloadedElements([
+  {
+    tag: "pie-element-multiple-choice",
+    package: "@pie-element/multiple-choice",
+    version: manifest.dependencies["@pie-element/multiple-choice"],
+    element: delivery,
+    controller,
+  },
+]);
+
+sectionPlayer.runtime = { ...sectionPlayer.runtime, playerType: "preloaded" };
+```
+
+- Register before the section player mounts. A tag missing at pre-warm leaves
+  the items unmounted and raises a non-recoverable `element-preload` framework
+  error.
+- Install element packages with `npm install --save-exact`. npm otherwise saves
+  a caret range, which registration rejects as a `version`, and which a fresh
+  install can resolve to another release line: `^13.4.0-next.15` resolves to
+  the legacy `13.4.4`, which has no `./browser/*` modules.
+- Install every pie-elements-ng package from one release, in one install from
+  the same dist-tag, and upgrade them together. Elements whose `./browser/*`
+  builds typeset on `window.MathJax` share the MathJax the first of them loads,
+  in the build and configuration of that element's release, so in a mixed set
+  an element can typeset with a MathJax it was not built for. Elements that
+  bundle their own MathJax share none
+  ([One MathJax version per page](../../docs/item-player/loading-strategies.md#one-mathjax-version-per-page)).
+- Register one version per package. The players align every authored version
+  of a package to the registered one, and registering a second version throws.
+- Register each package's `controller` unless the item players are hosted
+  (`runtime.player.hosted`, or an enabled `runtime.player.backend.delivery`).
+  A player that is not hosted runs `model()` in the browser and warns for each
+  tag registered without one.
+- Only `@pie-element/*` builds from pie-elements-ng publish
+  `./browser/delivery` and `./browser/controller`.
+- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
+  package version that ships no declarations for `./browser/*` needs a
+  `declare module` shim for those subpaths.
+
+See [`strategy="preloaded"`](../../docs/item-player/loading-strategies.md#strategypreloaded)
+for the registration contract.
+
 ### Host-owned focus
 
 Section-player does not move focus on behalf of host-level affordances such
 as "Skip to Main", nor does it make passage/question containers tab stops.
 Hosts own page chrome, skip links, landmarks, and any special focus placement.
-For example, Quiz Engine's Fixed Player shell can focus its own
+For example, a host shell can focus its own
 `main#main-content`; the next Tab then follows the browser's natural order
 into the first actionable control rendered inside the section player.
 
@@ -625,11 +729,16 @@ sequential keyboard navigation.
 </main>
 ```
 
-**Wired policy toggles.** Each `SectionPlayerPolicies` field has a real
-runtime effect; nothing in this surface is decorative.
+**Policy fields.** The layout accepts a partial `policies` object: every
+unset field, a missing section included, takes its value from
+`DEFAULT_SECTION_PLAYER_POLICIES`.
 
-- `readiness.mode` (`"progressive"` | `"strict"`) — drives readiness-event
-  emission via `createReadinessDetail` in `SectionPlayerLayoutKernel`.
+- `readiness.mode` (`"progressive"` | `"strict"`) — the mode
+  `SectionPlayerLayoutKernel` passes to `createReadinessDetail`. Both modes
+  hold the `interactive` stage and `pie-loading-complete` until the section's
+  element pre-warm resolves and the item cards can mount. The kernel has no
+  later loading signal, so the two modes currently emit the same sequence.
+  Default: `"progressive"`.
 - `preload.enabled` — when `false`, `SectionItemsPane` short-circuits the
   section-level element warmup pipeline (`warmupSectionElements`). Items
   still mount and item-players register their own elements on demand. Use
@@ -737,7 +846,7 @@ Minimal pattern for package layout components:
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 let sectionComplete = false;
 
 const unsubscribe = controller?.subscribe?.((event: any) => {
@@ -825,20 +934,21 @@ Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
 - `pie-stage-change` — single typed transition stream covering
   `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
   `StageChangeDetail`.
-- `pie-loading-complete` — fires once per cohort when every item has
-  loaded (kernel-routed; gated on `interactive`).
+- `pie-loading-complete` — fires once per cohort, when the section's element
+  pre-warm resolves for the current composition and the item cards can mount
+  (kernel-routed).
 - `framework-error` — canonical error event for any failure crossing the
   framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
   package-internal `FrameworkErrorBus` and the `onFrameworkError`
   callback prop deliver each error exactly once regardless of wrapper
-  depth. The `framework-error` *DOM event* on the outer layout CE
-  also delivers each error exactly once: the kernel listener at
-  `<pie-section-player-base>` intercepts the toolkit's bubbled emit
-  and calls `event.stopPropagation()`, leaving only the canonical
-  engine-bridge emit on the layout host. The single-emit contract is
-  pinned by `tests/section-player-framework-error-dual-emit.test.ts`.
-  Direct listeners attached to `<pie-assessment-toolkit>` itself
-  still see the toolkit's own emit.
+  depth, including errors from a coordinator the host passes as
+  `runtime.coordinator`. The `framework-error` *DOM event* on the outer
+  layout CE also delivers each error exactly once: the kernel listener at
+  `<pie-section-player-base>` stops the toolkit's bubbled emit, and the
+  engine dispatches the error on the layout host without bubbling, so it
+  does not reach `document`. `tests/section-player-event-delivery.spec.ts`
+  pins these counts. Direct listeners attached to `<pie-assessment-toolkit>`
+  itself still see the toolkit's own emit.
 
 Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
 the top-level prop):
@@ -857,9 +967,9 @@ Section-player owned instrumentation stream:
 
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
-- `pie-section-session-changed`
-- `pie-section-composition-changed`
 - `pie-section-framework-error`
+- `pie-section-element-preload-retry`
+- `pie-section-element-preload-error`
 
 Build consumers against these canonical lifecycle events:
 
@@ -890,7 +1000,7 @@ Section session data can be managed either through persistence hooks or directly
 
 ```ts
 const host = document.querySelector("pie-section-player-splitpane") as any;
-const controller = await host.waitForSectionController?.(5000);
+const controller = await host.waitForSectionController(5000);
 
 // Read current section session snapshot.
 const currentSession = controller?.getSession?.();
@@ -927,12 +1037,22 @@ controller commits pending element sessions before item navigation, before
 The player also commits when an item shell tears down and when the page goes
 hidden.
 
-The commit reaches the controller, and the controller's own
-`PIE_ITEM_SESSION_CHANGED_EVENT` is what reaches a host. A raw `session-changed`
-does not leave a section: `<pie-item-shell>` stops it and re-dispatches the
-normalized event, so a host listening on `document` for `session-changed`
-receives nothing from inside a section player, before this change or after it.
+A committed response travels like any other. A raw element `session-changed`
+does not leave its `<pie-item-shell>`, which re-dispatches it as the normalized
+`item-session-changed` (`PIE_ITEM_SESSION_CHANGED_EVENT`); the toolkit then
+publishes the section's canonical `session-changed`. Both bubble through the
+layout element to `document`, and a listener on either receives each dispatch
+once.
 Host code persists from the controller's events or from its session snapshot.
+
+Each of those events marks a commit with `sessionCommitReason`
+(`"teardown" | "navigate" | "page-hidden"`): `item-session-changed`, the
+toolkit's `session-changed`, and the controller's `item-session-data-changed`
+and `item-session-meta-changed`. A commit at a section swap or item navigation
+reports the item being left, which the host may already have moved past, so a
+handler that sets its current item or navigation state from these events leaves
+that state alone on a commit and persists the commit's session as usual. The
+controller's events also carry `sectionId`, the section the item belongs to.
 
 Navigation inside a section keeps every item mounted, so nothing is discarded
 and the element's own debounce would complete on its own. The commit still runs
@@ -951,8 +1071,9 @@ pending response at those boundaries.
 ## Content trust boundary
 
 Section-player layouts embed `<pie-item-player>` elements for each item.
-Item and passage markup is sanitized by default via DOMPurify; see
-[pie-item-player README](./README.md#content-trust-boundary)
+Item and passage markup is sanitized by default via DOMPurify; see the
+[pie-item-player README](../item-player/README.md#content-trust-boundary)
+for the allow-list, the `trust-markup` opt-out and the `sanitizeMarkup`
 property. Hosts can forward those settings through the section-player
 `runtime.player` overrides — the runtime flattens these onto the embedded
 `<pie-item-player>` instance, so any field not recognized by the kernel is

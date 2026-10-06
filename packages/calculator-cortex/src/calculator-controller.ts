@@ -106,6 +106,9 @@ export class CortexCalculatorController {
 		this.mainEngine.recursionLimit = 64;
 		this.mainEngine.maxCollectionSize = 1_200;
 		this.evaluationClient = new EvaluationClient(this.effectiveSettings());
+		// Opening the calculator starts its worker, so the first calculation does
+		// not wait on the worker's cold start.
+		this.evaluationClient.start();
 		this.graph =
 			settings.type === "graphing"
 				? {

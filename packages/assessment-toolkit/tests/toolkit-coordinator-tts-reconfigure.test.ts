@@ -4,6 +4,17 @@ import { createTestToolRegistry } from "./fixtures/test-tool-registry.js";
 import type { ToolRegistration } from "../src/services/ToolRegistry.js";
 
 describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
+	test("the TTS service highlights through the coordinator's highlighter from construction", () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-highlight-wiring-test",
+			lazyInit: true,
+			toolRegistry: createTestToolRegistry(),
+		});
+		expect((coordinator.ttsService as any).highlightCoordinator).toBe(
+			coordinator.highlightCoordinator,
+		);
+	});
+
 	test("browser readiness waits for voiceschanged when voices are initially empty", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-prewarm-test",
@@ -172,7 +183,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		} as any);
 
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(initializedAfterReconfigure).toBe(true);
@@ -344,7 +355,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
@@ -394,7 +405,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(capturedConfig?.rate).toBe(1.25);
@@ -448,7 +459,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") as any,
+			coordinator.getToolConfig("textToSpeech") ?? undefined,
 		);
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({

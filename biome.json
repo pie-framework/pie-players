@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.8/schema.json",
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -17,7 +17,6 @@
 			"!**/playwright-report",
 			"!**/test-results",
 			"!.claude",
-			"!tools/cli/oclif.manifest.json",
 			"!**/src/components/vendor"
 		]
 	},

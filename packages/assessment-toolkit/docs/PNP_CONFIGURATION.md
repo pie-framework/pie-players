@@ -28,7 +28,7 @@ AssessmentEntity
     │   ├── mode: "practice" | "test" | "benchmark"
     │   └── toolOverrides: Record<string, boolean>
     │
-    └── toolConfigs                # Tool-specific settings
+    └── toolConfigs                # Feature parameters by support id
         ├── calculator: {...}
         └── textToSpeech: {...}
 
@@ -192,10 +192,10 @@ const itemRef: AssessmentItemRef = {
       "calculator"      // Mental math question - calculator would invalidate
     ],
 
-    // Item-specific tool configuration
+    // Feature parameters by support id; these override assessment `toolConfigs`
     toolParameters: {
       calculator: {
-        type: "basic",                    // Only basic calculator, not scientific
+        type: "basic",
         allowedFunctions: ["+", "-", "*", "/"]
       },
       graph: {
@@ -233,15 +233,23 @@ import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loader
 // 1. Create tool registry
 const toolRegistry = createPackagedToolRegistry();
 
-// 2. Create coordinator with the registry and configured placements
+// 2. Create coordinator with the registry, configured placements and tool providers
 const coordinator = new ToolkitCoordinator({
   assessmentId: "spring-2024-ela",
   toolRegistry,
   tools: {
     placement: {
       item: ["calculator", "textToSpeech", "annotationToolbar"],
-      section: ["theme", "textToSpeech"],
+      section: ["theme"],
       passage: ["textToSpeech", "lineReader"]
+    },
+    providers: {
+      textToSpeech: {
+        backend: "polly",
+        defaultVoice: "Matthew",
+        rate: 1.0,
+        engine: "neural"
+      }
     }
   }
 });
@@ -280,52 +288,41 @@ const assessment: AssessmentEntity = {
       toolOverrides: {
         // Proctor can make session-specific adjustments
       }
-    },
-
-    // Tool provider configurations
-    toolConfigs: {
-      textToSpeech: {
-        backend: "polly",
-        serverProvider: "polly",
-        voice: "Matthew",
-        rate: 1.0,
-        providerOptions: {
-          engine: "neural"
-        }
-      }
     }
-  },
-
-  sections: [{
-    identifier: "section-1",
-    items: [{
-      identifier: "item-1",
-      href: "items/reading-passage.json",
-
-      // Item-specific rules
-      settings: {
-        restrictedTools: [
-          "textToSpeech"  // Reading comprehension - no TTS
-        ]
-      }
-    }]
-  }]
+  }
 };
 
 // 4. Resolve tools for an item
-const currentItem = assessment.sections[0].items[0];
-const allowedToolIds = pnpResolver.getAllowedToolIds(assessment, currentItem);
+const currentItem: AssessmentItemRef = {
+  identifier: "item-1",
+
+  // Item-specific rules
+  settings: {
+    restrictedTools: [
+      "textToSpeech"  // Reading comprehension - no TTS
+    ]
+  }
+};
+coordinator.updateAssessment(assessment);
+coordinator.updateCurrentItemRef(currentItem);
+
+const allowedToolIds = coordinator
+  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: currentItem.identifier } })
+  .visibleTools.map((tool) => tool.toolId);
 
 console.log('Allowed tools:', allowedToolIds);
-// Output: ["magnification", "highlighting", "readingMask"]
+// Output: ["annotationToolbar"]
 //
 // Why?
 // - calculator: Blocked by district policy (#1)
-// - textToSpeech: Restricted for this item (#3)
-// - magnification: Allowed (no restrictions)
-// - highlighting: Allowed (no restrictions)
-// - readingMask: Allowed (no restrictions)
+// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#5)
+// - annotationToolbar: Placed at item level; the "highlighting" support maps to it
+// - magnification: No registered tool claims it; the decision carries a
+//   `tool-policy.unknownSupportId` diagnostic
+// - readingMask: Maps to lineReader, which this configuration places at passage level only
 ```
+
+`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support or a requirement carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The server backends (`polly`, `google`, `server`) send requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
 ## Precedence Resolution Examples
 
@@ -445,14 +442,16 @@ const context: ItemToolContext = {
 // 4. Filter by relevance (Pass 2)
 const visibleTools = registry.filterVisibleInContext(allowedToolIds, context);
 
-// 5. Render toolbar
-<ToolButtonGroup
-  {registry}
-  {allowedToolIds}
-  {context}
-  onToolClick={handleToolClick}
-/>
+// 5. Render toolbar: it takes the coordinator from the enclosing toolkit
+<pie-assessment-toolkit .coordinator={coordinator}>
+  <pie-item-toolbar
+    .toolRegistry={registry}
+    .item={itemData}
+  ></pie-item-toolbar>
+</pie-assessment-toolkit>
 ```
+
+Policy inputs reach the toolbar through the coordinator. A toolkit that builds its own coordinator forwards its `assessment` and `currentItemRef` properties to it; a host that passes `coordinator`, as here, binds them with `updateAssessment` and `updateCurrentItemRef`.
 
 ### Data Sources
 
@@ -467,7 +466,7 @@ ToolPolicyEngine → allowedToolIds
     ↓
 ToolRegistry → visibleTools
     ↓
-ToolButtonGroup → rendered buttons
+pie-item-toolbar → rendered buttons
 ```
 
 ### Admin Interfaces
@@ -528,9 +527,9 @@ Check:
 
 ### "Need custom policy rules"
 
-Register a custom `PolicySource` with the coordinator:
+Register a custom `PolicySource` with the coordinator; the call returns a function that unregisters it:
 ```typescript
-coordinator.addPolicySource({
+const unregister = coordinator.registerPolicySource({
   id: "district-window",
   refine({ candidates }) {
     return {

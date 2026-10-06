@@ -2,28 +2,34 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
+/**
+ * Builds `./calculator-element`, the one published entry. Hosts resolve it at
+ * runtime through the packaged tool loaders and the Desmos package, so Svelte
+ * is bundled and nothing resolves against a host copy.
+ *
+ * The shells in `components.ts` are not built here: the vendor wrappers compile
+ * them from source (see `svelte-source-aliases.ts`).
+ */
 export default defineConfig({
 	plugins: [
-		svelte({ compilerOptions: { customElement: true }, emitCss: false }),
+		svelte({
+			compilerOptions: {
+				customElement: true,
+				rootDir: svelteRootDir(import.meta.dirname),
+			},
+			emitCss: false,
+		}),
 		dts({
 			tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 			outDirs: "dist",
-			insertTypesEntry: true,
-			include: [
-				"index.ts",
-				"CalculatorTool.svelte",
-				"CalculatorInlineTool.svelte",
-				"CalculatorElement.svelte",
-				"calculator-element.ts",
-				"svelte-shims.d.ts",
-			],
+			include: ["calculator-element.ts", "svelte-shims.d.ts"],
 		}),
 	],
 	build: {
 		lib: {
 			entry: {
-				index: resolve(import.meta.dirname, "index.ts"),
 				"calculator-element": resolve(
 					import.meta.dirname,
 					"calculator-element.ts",
@@ -38,13 +44,11 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
+			// The toolkit, players-shared and pie-context resolve from the
+			// host's node_modules, so every PIE bundle a host loads shares one
+			// copy of each.
 			external: [
-				/^svelte(?:\/.*)?$/,
-				"@pie-players/pie-assessment-toolkit",
-				"@pie-players/pie-assessment-toolkit/tools/client",
-				"@pie-players/pie-players-shared",
-				"@pie-players/pie-players-shared/i18n/provider",
-				"@pie-players/pie-players-shared/i18n/types",
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
 			],
 			output: { format: "es" },
 		},

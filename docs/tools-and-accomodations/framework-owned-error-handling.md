@@ -86,7 +86,7 @@ Primary file:
 - Emit `framework-error` (canonical event).
 - Render built-in fallback UI when the error is a fatal bootstrap kind
   (`coordinator-init`, `runtime-init`, `tool-config`) and is not flagged
-  recoverable. Non-bootstrap kinds (e.g. `tool-runtime`, `provider-init`,
+  recoverable. Non-bootstrap kinds (e.g. `provider-init`, `provider-register`,
   `tts-init`) still fire the canonical event/prop but keep the default
   slot active.
 
@@ -160,7 +160,7 @@ tool IDs now typically fail when the toolkit builds/initializes its coordinator.
 
 ## 4) `framework-error` propagation across wrappers
 
-`framework-error` is re-emitted through section-player wrapper layers so host listeners work consistently regardless of integration depth.
+A section-player layout element dispatches one non-bubbling `framework-error` per error on its own host. The kernel stops the toolkit's bubbling event at the section-player base and routes it through the section runtime engine, so a listener belongs on the layout element; listeners on `document` or other ancestors receive nothing.
 
 Updated files:
 
@@ -194,9 +194,10 @@ The e2e test verifies:
 ### Canonical event
 
 - `framework-error` — payload is a `FrameworkErrorModel`. Emitted by
-  `<pie-assessment-toolkit>` and re-emitted by every section-player
-  wrapper layer (base, scaffold, kernel, layout custom elements). The
-  toolkit is the single source of truth; the canonical
+  `<pie-assessment-toolkit>` with `bubbles: true, composed: true`. Inside a
+  section player the kernel stops that event at the section-player base, and
+  the layout custom element dispatches one non-bubbling `framework-error` on
+  its own host. The toolkit is the single source of truth; the canonical
   `onFrameworkError` callback is delivered exactly once per error,
   regardless of wrapper depth.
 

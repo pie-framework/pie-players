@@ -2,6 +2,22 @@
    document-level stylesheet by every player (see players-shared
    ui/content-styles.ts).
 
+   A rule applies inside a `[data-pie-content]` element only, which each player
+   sets on the root it renders content into. Several selectors are bare
+   (`h1`-`h6`, `table`, `th`, `.table`, `.center`), and unscoped they restyled
+   the host page around the player. `:where()` keeps each selector's
+   specificity, and a host that renders authored markup itself marks its
+   container with the attribute.
+
+   The exception is a rule whose selector requires a name only authored
+   content carries: a KDS class (`kds-*`, `Kds*`), MathJax output (`mjx-*`,
+   `TEX-*`) or a legacy content class (`.frac`, `.noprint`, `.passage-title`
+   and the rest tests/content-styles-confinement.test.ts lists). Those stay
+   document-wide, because elements portal menus and popovers holding authored
+   markup to `<body>`, outside every `[data-pie-content]` root: an
+   inline-dropdown's choices keep their KDS fractions and MathJax glyph fixes
+   there. The `:root` sentinel below stays unscoped too.
+
    Colour values resolve through the canonical --pie-* tokens with the original
    literal kept as the no-theme last resort. The literals came from content
    authored against a white page: `black` borders, `lightgray` table headers and
@@ -10,7 +26,7 @@
    --pie-text (DaisyUI base-content, the one family guaranteed against the
    surface), page-coloured fills take --pie-white, and one-step-off-the-page
    fills take --pie-background-dark. */
-.pie-loading {
+:where([data-pie-content]) .pie-loading {
 	/* The Figma indigo is --pie-primary at 90%, so the ring follows the theme's
 	   primary instead of pinning MD indigo on every page. */
 	--pie-loading-accent: color-mix(
@@ -30,11 +46,11 @@
 	opacity: 0.4;
 }
 
-.pie-loading.fixed {
+:where([data-pie-content]) .pie-loading.fixed {
 	position: fixed;
 }
 
-.pie-loading:before {
+:where([data-pie-content]) .pie-loading:before {
 	content: "";
 	background-color: rgba(0, 0, 0, 0);
 	border: 5px solid var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
@@ -53,7 +69,7 @@
 	left: 50%;
 }
 
-.pie-loading:after {
+:where([data-pie-content]) .pie-loading:after {
 	content: "";
 	background-color: rgba(0, 0, 0, 0);
 	border: 5px solid var(--pie-loading-accent, rgba(63, 81, 181, 0.9));
@@ -97,7 +113,7 @@
 	}
 }
 
-.pie-api-player img {
+:where([data-pie-content]) .pie-api-player img {
 	max-width: inherit !important;
 	max-height: inherit !important;
 }
@@ -111,20 +127,20 @@
  * wrapper — not the passage or section layout — provides the sideways scroll
  * needed to satisfy WCAG 1.4.10 Reflow at 400% zoom.
  */
-.pie-image-scroll {
+:where([data-pie-content]) .pie-image-scroll {
 	display: block;
 	max-width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
 }
 
-.pie-image-scroll > img {
+:where([data-pie-content]) .pie-image-scroll > img {
 	display: block;
 	max-width: none;
 	height: auto;
 }
 
-.pie-image-scroll:focus-visible {
+:where([data-pie-content]) .pie-image-scroll:focus-visible {
 	outline: 2px solid
 		var(
 			--pie-focus-ring-color,
@@ -141,18 +157,18 @@
  * scroll needed to satisfy WCAG 1.4.10 Reflow at 400% zoom instead of forcing
  * the section layout to scroll horizontally.
  */
-.pie-table-scroll {
+:where([data-pie-content]) .pie-table-scroll {
 	display: block;
 	max-width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
 }
 
-.pie-table-scroll > table {
+:where([data-pie-content]) .pie-table-scroll > table {
 	max-width: none;
 }
 
-.pie-table-scroll:focus-visible {
+:where([data-pie-content]) .pie-table-scroll:focus-visible {
 	outline: 2px solid
 		var(
 			--pie-focus-ring-color,
@@ -338,7 +354,7 @@ div.passage-author {
 	text-align: center;
 }
 
-.center {
+:where([data-pie-content]) .center {
 	text-align: center;
 	margin: 0;
 }
@@ -448,7 +464,7 @@ table.frac {
 	text-indent: 3em;
 }
 
-.indent {
+:where([data-pie-content]) .indent {
 	text-indent: 3em;
 }
 
@@ -511,7 +527,7 @@ b.frac {
 	text-decoration: underline;
 }
 
-.under {
+:where([data-pie-content]) .under {
 	text-decoration: underline;
 }
 
@@ -601,84 +617,84 @@ table.KdsTable02 > tbody > tr > td {
    on a dark surface. Mixed inline, not hoisted to a custom property: a custom
    property substitutes var(--pie-text) where it is declared, so a scoped
    <pie-theme scope="self"> below :root would not reach it. */
-.table {
+:where([data-pie-content]) .table {
 	width: 100%;
 	margin-bottom: 1em;
 	background-color: transparent;
 	border-collapse: collapse;
 }
 
-.table th,
-.table td {
+:where([data-pie-content]) .table th,
+:where([data-pie-content]) .table td {
 	padding: 0.75em;
 	vertical-align: top;
 	border-top: 1px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-.table tbody + tbody {
+:where([data-pie-content]) .table tbody + tbody {
 	border-top: 2px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-.table thead th {
+:where([data-pie-content]) .table thead th {
 	vertical-align: bottom;
 	border-bottom: 2px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-th {
+:where([data-pie-content]) th {
 	text-align: inherit;
 }
 
-.table-bordered,
-.table-bordered th,
-.table-bordered td {
+:where([data-pie-content]) .table-bordered,
+:where([data-pie-content]) .table-bordered th,
+:where([data-pie-content]) .table-bordered td {
 	border: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-.table-bordered thead td,
-.table-bordered thead th {
+:where([data-pie-content]) .table-bordered thead td,
+:where([data-pie-content]) .table-bordered thead th {
 	border-bottom-width: 2px;
 }
 
-.table-striped tbody tr:nth-of-type(odd) {
+:where([data-pie-content]) .table-striped tbody tr:nth-of-type(odd) {
 	background-color: color-mix(in srgb, var(--pie-text, #000) 5%, transparent);
 }
 
-.text-center {
+:where([data-pie-content]) .text-center {
 	text-align: center !important;
 }
 
-.h5,
-h5 {
+:where([data-pie-content]) .h5,
+:where([data-pie-content]) h5 {
 	font-size: 1.25em;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+:where([data-pie-content]) h1,
+:where([data-pie-content]) h2,
+:where([data-pie-content]) h3,
+:where([data-pie-content]) h4,
+:where([data-pie-content]) h5,
+:where([data-pie-content]) h6 {
 	margin-top: 0;
 }
 
 /* Spacing and inheritance only: `font-weight: 500` used to sit here and flatten
    every authored heading to lighter-than-bold, weakening the visual hierarchy
    a screen-reader user gets from the heading level. */
-.h1,
-.h2,
-.h3,
-.h4,
-.h5,
-.h6,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+:where([data-pie-content]) .h1,
+:where([data-pie-content]) .h2,
+:where([data-pie-content]) .h3,
+:where([data-pie-content]) .h4,
+:where([data-pie-content]) .h5,
+:where([data-pie-content]) .h6,
+:where([data-pie-content]) h1,
+:where([data-pie-content]) h2,
+:where([data-pie-content]) h3,
+:where([data-pie-content]) h4,
+:where([data-pie-content]) h5,
+:where([data-pie-content]) h6 {
 	margin-bottom: 0.5em;
 	font-family: inherit;
 	line-height: 1.2;
@@ -720,7 +736,7 @@ mjx-c.mjx-c27 {
 	font-family: MJXZERO, serif !important;
 }
 
-table {
+:where([data-pie-content]) table {
 	border-collapse: collapse;
 }
 
@@ -733,7 +749,7 @@ table {
 
 /* ANSWER ELIMINATOR */
 
-.pie-answer-eliminator-toggle {
+:where([data-pie-content]) .pie-answer-eliminator-toggle {
 	/* em, not px: PNP font scaling raises the surrounding text size without
 	   touching px boxes, which left a fixed 28px control under grown text. The
 	   box is 1.75x the surrounding text and the glyph 1.125x — the 28px/18px the
@@ -761,20 +777,20 @@ table {
 	z-index: 10;
 }
 
-.pie-answer-eliminator-toggle:hover {
+:where([data-pie-content]) .pie-answer-eliminator-toggle:hover {
 	background: var(--pie-secondary-background, #f0f0f0);
 	border-color: var(--pie-border-dark, #999);
 	color: var(--pie-text, #333);
 }
 
-.pie-answer-eliminator-toggle--active,
-.pie-answer-eliminator-toggle--active:hover {
+:where([data-pie-content]) .pie-answer-eliminator-toggle--active,
+:where([data-pie-content]) .pie-answer-eliminator-toggle--active:hover {
 	background: var(--pie-incorrect, #ff9800);
 	border-color: var(--pie-incorrect, #ff9800);
 	color: var(--pie-white, #fff);
 }
 
-.pie-answer-eliminator-eliminated-fallback {
+:where([data-pie-content]) .pie-answer-eliminator-eliminated-fallback {
 	text-decoration: line-through;
 	text-decoration-thickness: 2px;
 	text-decoration-color: var(
@@ -795,11 +811,11 @@ table {
  * at all — declaring it there dimmed nothing, so the modern path shipped the
  * strike as its only cue.
  */
-[data-pie-answer-eliminated="true"] {
+:where([data-pie-content]) [data-pie-answer-eliminated="true"] {
 	opacity: 0.6;
 }
 
-.pie-answer-eliminator-image-strike {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike {
 	position: relative;
 	display: inline-block;
 	max-width: 100%;
@@ -812,7 +828,7 @@ table {
 	line-height: 0;
 }
 
-.pie-answer-eliminator-image-strike-overlay {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike-overlay {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -820,7 +836,7 @@ table {
 	pointer-events: none;
 }
 
-.pie-answer-eliminator-image-strike-line {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike-line {
 	stroke: var(
 		--pie-answer-eliminator-strike-color,
 		var(--pie-incorrect, #ff9800)
@@ -830,7 +846,7 @@ table {
 }
 
 /* Wider light line under each diagonal so the X stays legible on dark imagery. */
-.pie-answer-eliminator-image-strike-casing {
+:where([data-pie-content]) .pie-answer-eliminator-image-strike-casing {
 	stroke: var(
 		--pie-answer-eliminator-image-strike-casing-color,
 		rgba(255, 255, 255, 0.85)
@@ -847,7 +863,7 @@ table {
  * strike. Which mark it gets depends on the shape of the expression — the tool
  * measures the box and picks `--line` or `--cross`.
  */
-.pie-answer-eliminator-math-strike {
+:where([data-pie-content]) .pie-answer-eliminator-math-strike {
 	position: relative;
 	/*
 	 * Internal: the resolved strike paint, so the rules below need not repeat the
@@ -860,7 +876,7 @@ table {
 }
 
 /* A single row of symbols takes the same line-through as the surrounding prose. */
-.pie-answer-eliminator-math-strike--line::after {
+:where([data-pie-content]) .pie-answer-eliminator-math-strike--line::after {
 	content: "";
 	position: absolute;
 	left: 0;
@@ -878,7 +894,7 @@ table {
  * each gradient's transition run exactly corner to corner at any aspect ratio,
  * with a 1px feather either side of the 1px core for a smooth 2px line.
  */
-.pie-answer-eliminator-math-strike--cross::after {
+:where([data-pie-content]) .pie-answer-eliminator-math-strike--cross::after {
 	content: "";
 	position: absolute;
 	inset: 0;
@@ -900,12 +916,12 @@ table {
 		);
 }
 
-.pie-answer-masked-fallback {
+:where([data-pie-content]) .pie-answer-masked-fallback {
 	opacity: 0.2;
 	filter: blur(2px);
 }
 
-.pie-answer-eliminator-sr-announcement {
+:where([data-pie-content]) .pie-answer-eliminator-sr-announcement {
 	position: absolute;
 	left: -10000px;
 	width: 1px;

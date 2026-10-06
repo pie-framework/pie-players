@@ -555,3 +555,228 @@ describe("SectionController external contract", () => {
 		]);
 	});
 });
+
+describe("SectionController item completion", () => {
+	const itemId = "canonical-1";
+
+	async function initializedController(): Promise<SectionController> {
+		const controller = new SectionController();
+		await controller.initialize({
+			section: makeSectionWithItems("section-completion", ["runtime-item-a"]),
+			sectionId: "section-completion",
+			assessmentId: "assessment-completion",
+			view: ["candidate"],
+		});
+		return controller;
+	}
+
+	function recordCompletion(controller: SectionController): boolean[] {
+		const changes: boolean[] = [];
+		controller.subscribe((event) => {
+			if (event.type === "item-complete-changed") changes.push(event.complete);
+		});
+		return changes;
+	}
+
+	const report = (
+		controller: SectionController,
+		elementId: string | undefined,
+		complete: boolean,
+		data: unknown[] = [],
+	) =>
+		controller.updateItemSession(itemId, {
+			complete,
+			component: "multiple-choice",
+			...(elementId ? { elementId } : {}),
+			session: { id: "", data },
+		});
+
+	test("is complete once every element that reported is complete", async () => {
+		const controller = await initializedController();
+		const changes = recordCompletion(controller);
+
+		report(controller, "a", false);
+		report(controller, "b", false);
+		report(controller, "a", true, [{ id: "a", value: ["x"] }]);
+		// The unanswered sibling reporting again does not complete the item.
+		report(controller, "b", false, [{ id: "a", value: ["x"] }]);
+		expect(changes).toEqual([]);
+		expect(controller.getRuntimeState()?.completedCount).toBe(0);
+
+		report(controller, "b", true, [
+			{ id: "a", value: ["x"] },
+			{ id: "b", value: ["y"] },
+		]);
+		// A complete element reporting again leaves the item complete.
+		report(controller, "a", true, [
+			{ id: "a", value: ["x"] },
+			{ id: "b", value: ["y"] },
+		]);
+		expect(changes).toEqual([true]);
+		expect(controller.getRuntimeState()?.completedCount).toBe(1);
+
+		report(controller, "a", false, [{ id: "b", value: ["y"] }]);
+		expect(changes).toEqual([true, false]);
+	});
+
+	test("takes a report that names no element as the item's completion", async () => {
+		const controller = await initializedController();
+		const changes = recordCompletion(controller);
+
+		report(controller, "a", false);
+		report(controller, undefined, true, [{ id: "a", value: ["x"] }]);
+		expect(changes).toEqual([true]);
+	});
+
+	test("starts from a persisted item completion, and its elements' reports then decide", async () => {
+		const controller = await initializedController();
+		report(controller, "a", false);
+		await controller.applySession(
+			{
+				itemSessions: {
+					[itemId]: {
+						itemIdentifier: itemId,
+						isCompleted: true,
+						session: {
+							id: "restored",
+							data: [{ id: "a", value: ["x"] }],
+							complete: true,
+						},
+					},
+				},
+			},
+			{ mode: "replace" },
+		);
+		expect(controller.getRuntimeState()?.completedCount).toBe(1);
+		const changes = recordCompletion(controller);
+
+		report(controller, "b", true, [{ id: "a", value: ["x"] }]);
+		expect(changes).toEqual([]);
+		report(controller, "b", false, [{ id: "a", value: ["x"] }]);
+		expect(changes).toEqual([false]);
+	});
+
+	test("derives completion from a response restored without complete", async () => {
+		const controller = await initializedController();
+		// An element announcing its placeholder at load describes the session the
+		// restore then replaces.
+		report(controller, "a", false);
+		await controller.applySession(
+			{
+				itemSessions: {
+					[itemId]: {
+						itemIdentifier: itemId,
+						pieSessionId: "restored",
+						session: { id: "", data: [{ id: "a", value: ["x"] }] },
+					},
+				},
+			} as never,
+			{ mode: "replace" },
+		);
+		expect(controller.getRuntimeState()?.completedCount).toBe(1);
+	});
+
+	test("reads a restored session without a response as incomplete", async () => {
+		const controller = await initializedController();
+		await controller.applySession(
+			{
+				itemSessions: {
+					[itemId]: {
+						itemIdentifier: itemId,
+						session: { id: "", data: [{ id: "a", element: "pie-a" }] },
+					},
+				},
+			},
+			{ mode: "replace" },
+		);
+		expect(controller.getRuntimeState()?.completedCount).toBe(0);
+	});
+
+	test("keeps an element's report across a re-initialize", async () => {
+		const controller = await initializedController();
+		report(controller, "a", false, [{ id: "a", value: ["partial"] }]);
+		await controller.updateInput({
+			section: makeSectionWithItems("section-completion", ["runtime-item-a"]),
+			sectionId: "section-completion",
+			assessmentId: "assessment-completion",
+			view: ["candidate"],
+		});
+		expect(controller.getRuntimeState()?.completedCount).toBe(0);
+	});
+
+	test("names the reporting element on its session events", async () => {
+		const controller = await initializedController();
+		const reported: Array<{ type: string; elementId?: string }> = [];
+		controller.subscribe((event) => {
+			if (
+				event.type === "item-session-data-changed" ||
+				event.type === "item-session-meta-changed"
+			) {
+				reported.push({ type: event.type, elementId: event.elementId });
+			}
+		});
+
+		report(controller, "a", false);
+		report(controller, "a", false);
+		report(controller, "a", true, [{ id: "a", value: ["x"] }]);
+		// A commit read off the element carries its record, whose id names it.
+		controller.updateItemSession(itemId, {
+			component: "multiple-choice",
+			session: { id: "a", value: ["y"] },
+			sessionCommitReason: "teardown",
+		});
+		expect(reported).toEqual([
+			{ type: "item-session-data-changed", elementId: "a" },
+			{ type: "item-session-meta-changed", elementId: "a" },
+			{ type: "item-session-data-changed", elementId: "a" },
+			{ type: "item-session-data-changed", elementId: "a" },
+		]);
+	});
+
+	test("names the section on its session events, and marks a commit", async () => {
+		const controller = await initializedController();
+		const reported: Array<Record<string, unknown>> = [];
+		controller.subscribe((event) => {
+			if (
+				event.type === "item-session-data-changed" ||
+				event.type === "item-session-meta-changed"
+			) {
+				reported.push({
+					type: event.type,
+					sectionId: event.sectionId,
+					commit: "sessionCommitReason" in event,
+					sessionCommitReason: event.sessionCommitReason,
+				});
+			}
+		});
+
+		report(controller, "a", false);
+		report(controller, "a", false);
+		controller.updateItemSession(itemId, {
+			component: "multiple-choice",
+			elementId: "a",
+			session: { id: "", data: [{ id: "a", value: ["y"] }] },
+			sessionCommitReason: "navigate",
+		});
+		expect(reported).toEqual([
+			{
+				type: "item-session-data-changed",
+				sectionId: "section-completion",
+				commit: false,
+				sessionCommitReason: undefined,
+			},
+			{
+				type: "item-session-meta-changed",
+				sectionId: "section-completion",
+				commit: false,
+				sessionCommitReason: undefined,
+			},
+			{
+				type: "item-session-data-changed",
+				sectionId: "section-completion",
+				commit: true,
+				sessionCommitReason: "navigate",
+			},
+		]);
+	});
+});

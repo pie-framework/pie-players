@@ -15,8 +15,8 @@ contract intact.
 
 The implementation is a deep provider module. Hosts see the existing
 `CalculatorProvider`/`Calculator` seam plus typed Cortex configuration and state.
-MathLive, Compute Engine, JSXGraph, worker scheduling, graph sampling, and global
-keyboard coordination remain internal details.
+MathLive, Compute Engine, JSXGraph, worker scheduling, graph sampling, and the
+MathLive settings lease remain internal details.
 
 ## Architectural Constraints
 
@@ -26,10 +26,11 @@ keyboard coordination remain internal details.
   create a network request or require an API key.
 - `@pie-players/pie-calculator` remains provider-neutral and names no vendor or
   implementation.
-- `@pie-players/pie-assessment-toolkit` remains capability-neutral; it owns a
-  provider adapter but not packaged provider-selection policy.
+- `@pie-players/pie-assessment-toolkit` remains capability-neutral and holds no
+  calculator adapter or provider-selection policy.
 - `@pie-players/pie-default-tool-loaders` remains the composition layer that
-  names the packaged provider IDs.
+  names the packaged provider IDs and holds the calculator adapters, which
+  lazy-import their engines.
 - The existing generic calculator custom element remains stable. Direct Cortex
   custom elements are additive.
 - No learner input is executed as JavaScript. Do not use `eval`, `Function`,
@@ -51,12 +52,9 @@ keyboard coordination remain internal details.
     MathLive + Compute Engine + JSXGraph implementation
              ^
              |
-@pie-players/pie-assessment-toolkit
-    CortexToolProvider registration adapter
-             ^
-             |
 @pie-players/pie-default-tool-loaders
-    calculator-cortex composition and lazy loading
+    CortexToolProvider registration adapter, calculator-cortex composition
+    and lazy loading
 
 @pie-players/pie-tool-calculator-shared
     generic shell, inline shell, neutral generic-element registration
@@ -83,11 +81,10 @@ All three packages join the fixed Changesets release block.
 
 ### Existing packages changed
 
-- `@pie-players/pie-assessment-toolkit` adds `CortexToolProvider`, following the
-  final GeoGebra adapter shape and lazy-importing
-  `@pie-players/pie-calculator-cortex`.
-- `@pie-players/pie-default-tool-loaders` recognizes
-  `"calculator-cortex"`, maps it to the Cortex adapter, and preserves
+- `@pie-players/pie-default-tool-loaders` adds `CortexToolProvider`, following
+  the final GeoGebra adapter shape and lazy-importing
+  `@pie-players/pie-calculator-cortex`, which it declares as a dependency. It
+  recognizes `"calculator-cortex"`, maps it to the Cortex adapter, and preserves
   `"calculator-desmos"` as the omission default.
 - `@pie-players/pie-tool-calculator-shared` gains a provider-neutral
   registration entry for the generic `<pie-tool-calculator>` element.
@@ -101,42 +98,53 @@ this topology once in the PRD/spec before implementation.
 
 ## Provider Module Design
 
-Proposed source layout for `packages/calculator-cortex/src/`:
+Source layout of `packages/calculator-cortex/src/`:
 
 ```text
 index.ts
 cortex-provider.ts
+runtime.ts
+calculator-controller.ts
 settings.ts
+localization.ts
 function-policy.ts
 state-codec.ts
+errors.ts
+types.ts
 evaluation-client.ts
+evaluation-engine.ts
 evaluation-worker.ts
 worker-protocol.ts
-calculator-view.svelte
-graph-view.svelte
-graph-series.ts
 mathlive-runtime.ts
-errors.ts
+mathlive-browser.d.ts
+CalculatorView.svelte
+MathFieldInput.svelte
+Keypad.svelte
+keypad-layouts.ts
+GraphView.svelte
+Icon.svelte
+icons.ts
 ```
 
 ### `cortex-provider.ts`
 
-Owns `CortexCalculatorProvider` and the concrete `Calculator` implementation.
-It coordinates lifecycle and delegates all specialized work:
+Owns `CortexCalculatorProvider`; the concrete `Calculator` is in `runtime.ts`,
+which the provider loads on the first `createCalculator()`. The provider
+coordinates lifecycle and delegates all specialized work:
 
-- `initialize()` verifies browser support and dependency assets without
-  mounting UI.
+- `initialize()` verifies browser and module-worker support without mounting
+  UI.
 - `createCalculator()` validates settings, creates one instance owner, mounts
   the Svelte view, starts its evaluation client, and returns only after the
   primary input is ready.
 - `destroy()` prevents new instances and releases provider-level resources. An
   instance has its own idempotent `destroy()` for view, board, worker, event,
-  observer, and keyboard cleanup.
+  observer, and MathLive settings-lease cleanup.
 - `getCapabilities()` reports history, expressions, graphing, export, and
   keyboard/mouse/touch support with a maximum precision of 21.
 
-The provider uses `providerId = "cortex"`. Toolkit and loader selection use the
-separate registration ID `"calculator-cortex"`.
+The provider uses `providerId = "cortex"`. Loader selection uses the separate
+registration ID `"calculator-cortex"`.
 
 ### `settings.ts`
 
@@ -156,9 +164,9 @@ Locale resolution creates one immutable package-owned localization module used
 by every view. It selects the English or Dutch catalog by primary language,
 merges typed per-instance message overrides, derives or applies writing
 direction, configures locale-aware graph-number formatting, and maps the generic
-locale to MathLive labels and virtual-keyboard decimal-separator behavior while
-retaining locale-independent canonical numbers. The rest of the implementation
-consumes only immutable `ResolvedCortexSettings`.
+locale to MathLive's locale and decimal separator, which the keypad's decimal key
+shares, while retaining locale-independent canonical numbers. The rest of the
+implementation consumes only immutable `ResolvedCortexSettings`.
 
 ### `function-policy.ts`
 
@@ -237,9 +245,11 @@ MathLive edit / paste / setValue / imported state
 
 MathLive owns mathematical editing and presentation. PIE listens to its input
 events, reads LaTeX, and applies the same policy used by public methods. The view
-provides mode-specific virtual-keyboard layers and removes general CAS or
-transformation actions from the context menu. Physical keyboard access remains
-available for every visible operation.
+renders its own mode-specific keypad (`Keypad.svelte`, with layouts in
+`keypad-layouts.ts`) as real buttons, empties MathLive's context menu, and hides
+MathLive's menu and keyboard toggles. MathLive's virtual keyboard stays off: it
+contains no focusable element, so keyboard and switch users could not operate
+it. Physical keyboard access remains available for every visible operation.
 
 The main thread may use Compute Engine to parse a length-bounded edit for
 immediate policy feedback and synchronous `Calculator` methods. It must not
@@ -271,6 +281,10 @@ request still matches the active input generation.
 bundler-owned URL. Consumers do not configure a worker CDN. The package artifact
 test verifies that the worker and its dependent chunks are present.
 
+The provider creates the worker when it creates a calculator, so fetching,
+compiling and running the worker's module overlaps the learner's first edit. The
+worker posts `ready` once its module has run.
+
 ### Protocol
 
 ```ts
@@ -301,6 +315,12 @@ type WorkerResponse =
   | (WorkerEnvelope & { kind: "result"; result: EvaluationResult })
   | (WorkerEnvelope & { kind: "series"; series: SampledSeries[] })
   | (WorkerEnvelope & { kind: "error"; error: SerializedCortexError });
+
+// Posted once, after the worker's module has run.
+interface WorkerReadyMessage {
+  protocolVersion: 1;
+  kind: "ready";
+}
 ```
 
 The protocol is internal but versioned so stale chunks fail closed with
@@ -310,10 +330,15 @@ The protocol is internal but versioned so stale chunks fail closed with
 
 - Set Compute Engine's evaluation time limit for every request.
 - Start a main-thread watchdog for the configured limit plus a small fixed
-  message-delivery allowance.
+  message-delivery allowance. It runs from the worker's `ready`, so a request
+  made while the worker starts waits for it and the start is never charged to a
+  calculation.
 - On watchdog expiry, terminate the worker, reject outstanding requests with
   `evaluation-timeout`, create a fresh worker for later requests, and never
   reuse the timed-out engine.
+- Allow a new worker 20 s to post `ready`. Past that, terminate it and reject
+  outstanding requests with `worker-unavailable`; the next request creates a
+  fresh worker.
 - Superseded graph requests are logically cancelled by generation. Their
   responses are ignored even if the worker finishes them.
 - Destroy rejects pending requests, removes listeners, and terminates the
@@ -327,9 +352,9 @@ The worker applies the same hard range and does not trust the request.
 JSXGraph is loaded only when a graphing calculator is created. Basic and
 scientific bundles must not initialize it.
 
-`graph-series.ts` converts worker results to JSXGraph point-series data. It does
-not construct a callable function from learner input. The graph board receives
-numeric `x`/`y` arrays and fixed PIE-owned styling only.
+`GraphView.svelte` turns worker results into JSXGraph curves built from numeric
+`x`/`y` arrays. It does not construct a callable function from learner input.
+The graph board receives those arrays and fixed PIE-owned styling only.
 
 Sampling behavior:
 
@@ -345,7 +370,7 @@ Sampling behavior:
 - Ignore stale generations and preserve the last valid viewport if a new sample
   times out.
 
-`graph-view.svelte` owns the JSXGraph board, resize, controls, expression-to-style
+`GraphView.svelte` owns the JSXGraph board, resize, controls, expression-to-style
 mapping, accessible summary, and trace UI. A `ResizeObserver` schedules board
 resize without creating reactive update loops. Board and observer cleanup are
 idempotent.
@@ -355,27 +380,31 @@ points. It exposes labeled previous/next controls and announces expression, x,
 and y. It is an alternative representation, not a claim that JSXGraph's canvas
 or SVG output alone is accessible.
 
-## MathLive Global Resource Ownership
+## MathLive Settings Ownership
 
-MathLive's virtual keyboard is a shared browser resource. Each mounted
-calculator receives a unique ownership token. `mathlive-runtime.ts` stores a
-lease record on `globalThis` under a PIE-owned `Symbol.for(...)` key so separate
-bundled copies still coordinate.
+`MathfieldElement.locale` and `MathfieldElement.decimalSeparator` are static
+properties, shared with every other mathfield on the page. Each mounted math
+field holds its own ownership token. `mathlive-runtime.ts` stores a lease record
+on `globalThis` under a PIE-owned `Symbol.for(...)` key so separate bundled
+copies still coordinate.
 
-On focus:
+On its first focus, a field acquires the lease:
 
-1. Capture the keyboard configuration that existed before the lease.
-2. Record the calculator token as current owner.
-3. Apply the selected mode's PIE keyboard layers and locale options.
+1. The first acquirer captures the page's locale and decimal separator; a later
+   acquirer takes ownership and keeps that capture.
+2. The lease records the field's token as current owner.
+3. The calculator's locale and decimal separator are applied.
 
-On blur, mode change, or destroy, restore the previous configuration only if
-the lease record still names that calculator token. A stale instance must never
-hide or reconfigure a keyboard now owned by another calculator.
+On unmount, a field's release restores the captured settings only if the lease
+still names its token, so a former owner's release is inert. A static property
+holds one locale, so two calculators open at different locales share whichever
+acquired last.
 
-The runtime listens only while an instance is mounted. It removes global
-listeners and releases references during idempotent destroy. Contract tests
-mount two calculators, alternate focus, destroy them in both orders, and verify
-that the surviving owner retains its configuration.
+MathLive's virtual keyboard is never shown: every field sets
+`mathVirtualKeyboardPolicy = "manual"`. Unit tests in
+`calculator-cortex-mathlive-keyboard.test.ts` cover the restoration, a second
+owner making the first release inert, and re-acquisition keeping the captured
+page settings.
 
 MathLive fonts, sounds used by the chosen UI, and other required assets are
 packaged locally. Unsupported optional assets are disabled rather than fetched
@@ -383,7 +412,7 @@ from a default CDN.
 
 ## UI And Accessibility Structure
 
-`calculator-view.svelte` uses Svelte 5 runes and PIE-specific class/data hooks.
+`CalculatorView.svelte` uses Svelte 5 runes and PIE-specific class/data hooks.
 It provides:
 
 - A named primary math input.
@@ -450,6 +479,7 @@ Telemetry callback failures are contained and never break calculator behavior.
 | Compute Engine limit/watchdog | `evaluation-timeout` | Keep input and prior valid result/graph | Worker recreated |
 | Invalid persisted state | `invalid-state` | Preserve live calculator unchanged | Host discards or replaces state |
 | Worker creation/protocol failure | `worker-unavailable` | Tool-level error state | Remount or deployment fix |
+| Worker not ready within 20 s | `worker-unavailable` | Tool-level error state | Next request starts a fresh worker |
 
 Dependency exceptions are translated at the package boundary. Hosts do not need
 to recognize MathLive, Compute Engine, JSXGraph, or worker-native error shapes.
@@ -511,13 +541,13 @@ round-trip state, and recover from a forced timeout.
 
 ### Slice 4: Basic and scientific UI
 
-- Implement the Svelte/MathLive view and mode-specific keyboard layers.
+- Implement the Svelte/MathLive view and mode-specific keypad layers.
 - Add result, error, history, angle mode, focus, resize, theme, locale, reflow,
-  and global-keyboard lease behavior.
+  and MathLive settings-lease behavior.
 - Complete automated and manual accessibility evidence for these modes.
 
 Exit evidence: basic and scientific acceptance tests pass with physical
-keyboard, virtual keyboard, touch-sized controls, and screen-reader flows.
+keyboard, on-screen keypad, touch-sized controls, and screen-reader flows.
 
 ### Slice 5: Graphing
 
@@ -532,8 +562,8 @@ without interpreting the visual graph alone.
 
 ### Slice 6: Toolkit and direct integration
 
-- Add `CortexToolProvider` to the assessment toolkit.
-- Add provider recognition and lazy composition to default tool loaders.
+- Add `CortexToolProvider`, provider recognition and lazy composition to
+  default tool loaders.
 - Add shelled and inline direct custom-element packages and demos.
 - Update calculator, provider-system, package, attribution, and consumer-impact
   documentation.

@@ -4,6 +4,7 @@ import {
 	type ToolPlacementLevel,
 	type ToolProviderConfig,
 	type TextToSpeechToolProviderConfig,
+	type ToolsConfigInput,
 } from "./tools-config-normalizer.js";
 import {
 	frameworkErrorFromToolConfigDiagnostics,
@@ -344,19 +345,30 @@ function throwValidationError(
 }
 
 export function normalizeAndValidateToolsConfig(
-	input?: Partial<CanonicalToolsConfig> | null,
+	input?: ToolsConfigInput | null,
 	options: ToolConfigValidationOptions = {},
 ): ToolConfigValidationResult {
-	const strictness = normalizeToolConfigStrictness(options.strictness);
-	const source = options.source ?? "tools";
-	const registryTools = getRegistryToolMap(options.toolRegistry);
+	const result = collectToolConfigDiagnostics(input, options.toolRegistry);
+	reportToolConfigDiagnostics(result.diagnostics, options);
+	return result;
+}
+
+/**
+ * The normalization and diagnostics of {@link normalizeAndValidateToolsConfig},
+ * without reporting: nothing is printed or thrown.
+ */
+export function collectToolConfigDiagnostics(
+	input: ToolsConfigInput | null | undefined,
+	toolRegistry: ToolRegistry | null | undefined,
+): ToolConfigValidationResult {
+	const registryTools = getRegistryToolMap(toolRegistry);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
 
 	// Tool-id and provider checks need a registry to check against, and every
 	// collector below returns early without one. Say so: this package no longer
 	// falls back to a packaged registry, so a caller that used to get id
-	// validation for free now gets none, and a silent downgrade from "your ids are
+	// validation for free now gets none, and a silent downgrade of "your ids are
 	// valid" to "nobody looked" is the kind of change that surfaces as a typo
 	// reaching a learner.
 	const hasConfiguredTools =
@@ -371,7 +383,7 @@ export function normalizeAndValidateToolsConfig(
 				severity: "warning",
 				path: "tools",
 				message:
-					'No tool registry was supplied, so tool ids, placement levels and provider config were not validated. Pass `toolRegistry` — for the packaged capability set, `createPackagedToolRegistry()` from "@pie-players/pie-default-tool-loaders".',
+					'No tool registry was supplied, so tool ids, placement levels and provider config were not validated, and a coordinator without one registers no tool providers. Pass `toolRegistry` to the coordinator or the toolkit it is bound to — for the packaged capability set, `createPackagedToolRegistry()` from "@pie-players/pie-default-tool-loaders".',
 			}),
 		);
 	}
@@ -413,21 +425,39 @@ export function normalizeAndValidateToolsConfig(
 		hasRemovedTtsKey,
 		diagnostics,
 	);
-	if (hasRemovedTtsKey) {
-		throwValidationError(
-			diagnostics.filter((entry) => entry.code === "tools.removedProviderKey"),
-			source,
-		);
+
+	return {
+		config: nextConfig,
+		diagnostics,
+	};
+}
+
+/**
+ * Report diagnostics as {@link normalizeAndValidateToolsConfig} does: a removed
+ * provider key throws at every strictness, `"warn"` prints every diagnostic, and
+ * `"error"` throws the blocking ones or, when there are none, prints the rest.
+ */
+export function reportToolConfigDiagnostics(
+	diagnostics: ToolConfigDiagnostic[],
+	options: Pick<ToolConfigValidationOptions, "strictness" | "source"> = {},
+): void {
+	const strictness = normalizeToolConfigStrictness(options.strictness);
+	const source = options.source ?? "tools";
+	const removedKeys = diagnostics.filter(
+		(entry) => entry.code === "tools.removedProviderKey",
+	);
+	if (removedKeys.length > 0) {
+		throwValidationError(removedKeys, source);
 	}
 
 	if (strictness === "warn") {
 		emitWarnings(diagnostics, source);
 	}
-	// Severity decides what `strictness: "error"` rejects. Every diagnostic this
-	// function raised was `"error"` until `tools.registryUnavailable`, which
-	// reports that validation could not run rather than that the config is wrong —
-	// throwing on it would turn "no registry supplied" from a host's existing,
-	// working setup into a construction failure.
+	// Severity decides what `strictness: "error"` rejects. Every diagnostic was
+	// `"error"` until `tools.registryUnavailable`, which reports that validation
+	// could not run rather than that the config is wrong — throwing on it would
+	// turn "no registry supplied" from a host's existing, working setup into a
+	// construction failure.
 	const blocking = diagnostics.filter((entry) => entry.severity === "error");
 	if (strictness === "error" && blocking.length > 0) {
 		throwValidationError(blocking, source);
@@ -435,9 +465,4 @@ export function normalizeAndValidateToolsConfig(
 	if (strictness === "error" && blocking.length === 0) {
 		emitWarnings(diagnostics, source);
 	}
-
-	return {
-		config: nextConfig,
-		diagnostics,
-	};
 }

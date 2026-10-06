@@ -1,7 +1,9 @@
 import {
 	PIE_REGISTER_EVENT,
 	PIE_UNREGISTER_EVENT,
+	catalogSourceSignature,
 	dispatchCrossBoundaryEvent,
+	type CatalogSourceEntity,
 	type RuntimeRegistrationDetail,
 } from "@pie-players/pie-assessment-toolkit";
 
@@ -38,13 +40,9 @@ export type ShellRegistrationIdentity = {
 };
 
 /**
- * `item` by identity rather than by content. The churn being guarded against
- * re-applies the same object, which identity catches; a genuinely new item
- * object means content whose catalogs may differ, which has to register again.
- * Deep-comparing an item on every parent render would cost more than the
- * registration it saves.
+ * Everything a registration says except the item's catalogs.
  */
-function sameIdentity(
+function sameOwner(
 	a: ShellRegistrationIdentity,
 	b: ShellRegistrationIdentity,
 ): boolean {
@@ -53,8 +51,20 @@ function sameIdentity(
 		a.host === b.host &&
 		a.itemId === b.itemId &&
 		a.canonicalItemId === b.canonicalItemId &&
-		a.contentKind === b.contentKind &&
-		a.item === b.item
+		a.contentKind === b.contentKind
+	);
+}
+
+/**
+ * The item's part of a registration is its catalogs, which is all the runtime
+ * reads from it. Object identity is no guide: the toolkit and the layout kernel
+ * hold the composition in deep reactive state, so every republish, each answer
+ * included, hands a shell a new proxy of unchanged content.
+ */
+function catalogsOf(identity: ShellRegistrationIdentity): string | null {
+	return catalogSourceSignature(
+		identity.item as CatalogSourceEntity | null | undefined,
+		identity.kind,
 	);
 }
 
@@ -99,16 +109,19 @@ export type ShellRegistrationDispatcher = {
 
 export function createShellRegistrationDispatcher(): ShellRegistrationDispatcher {
 	/**
-	 * What the runtime was last told. Deliberately not reactive: it is read to
-	 * decide whether to dispatch, and making it reactive would put that decision
-	 * inside the graph it exists to keep quiet.
+	 * What the runtime was last told, and the catalogs it was told about.
+	 * Deliberately not reactive: it is read to decide whether to dispatch, and
+	 * making it reactive would put that decision inside the graph it exists to
+	 * keep quiet.
 	 */
 	let dispatched: ShellRegistrationIdentity | null = null;
+	let dispatchedCatalogs: string | null = null;
 
 	function retire(): void {
 		const previous = dispatched;
 		if (!previous) return;
 		dispatched = null;
+		dispatchedCatalogs = null;
 		dispatch(PIE_UNREGISTER_EVENT, previous);
 	}
 
@@ -117,8 +130,22 @@ export function createShellRegistrationDispatcher(): ShellRegistrationDispatcher
 			retire();
 			return;
 		}
-		if (dispatched && sameIdentity(dispatched, identity)) return;
+		if (dispatched && sameOwner(dispatched, identity)) {
+			// A re-render re-applies the object last seen, so identity settles most
+			// runs without serializing anything.
+			if (dispatched.item === identity.item) return;
+			const catalogs = catalogsOf(identity);
+			if (catalogs !== null && catalogs === dispatchedCatalogs) {
+				dispatched = identity;
+				return;
+			}
+			dispatched = identity;
+			dispatchedCatalogs = catalogs;
+			dispatch(PIE_REGISTER_EVENT, identity);
+			return;
+		}
 		dispatched = identity;
+		dispatchedCatalogs = catalogsOf(identity);
 		dispatch(PIE_REGISTER_EVENT, identity);
 	}
 

@@ -12,9 +12,8 @@
  *   its own chunk.
  * - **Tools** import `./types.js` as `import type` (fully erased) plus
  *   `getDefaultI18n` from `./provider.js` for the no-publisher default. That
- *   path never reaches `./catalogs.js`, so no locale chunk is emitted into a
- *   tool bundle — which matters because every tool `vite.config.ts` sets
- *   `external: []`.
+ *   path never reaches `./catalogs.js`, so a host that bundles tools against
+ *   its own players-shared emits no locale chunk for them.
  *
  * @module @pie-players/pie-players-shared/i18n
  */

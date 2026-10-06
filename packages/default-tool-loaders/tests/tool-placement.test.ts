@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { createToolsConfig } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "../src/packaged-tool-registry";
+import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 import {
 	PACKAGED_TOOL_PLACEMENT,
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
-} from "../src/tool-placement";
+} from "../src/packaged-capability-composition.js";
 
 describe("packaged tool placement", () => {
 	test("keeps packaged placement unchanged for exhaustive hosts", () => {

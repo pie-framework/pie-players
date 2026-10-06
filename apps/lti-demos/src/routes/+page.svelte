@@ -2,6 +2,7 @@
 	import { tick } from "svelte";
 	import { onMount } from "svelte";
 	import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 	import {
 		ASSESSMENT_PLAYER_PUBLIC_EVENTS,
 		type AssessmentPlayerHooks,
@@ -41,6 +42,8 @@
 	function createCoordinator(assessmentId: string): ToolkitCoordinator {
 		return new ToolkitCoordinator({
 			assessmentId,
+			// The registry the assessment player's section player renders from.
+			toolRegistry: createPackagedToolRegistry(),
 			hooks: {
 				onFrameworkError: (model) => {
 					console.warn("[LTI demo] toolkit framework error:", model);

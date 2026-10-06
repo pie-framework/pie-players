@@ -16,10 +16,9 @@ know that more than one backend exists.
 A real deployment shows why the seam sits there. One assessment vendor's dictionary
 fronts two corpora behind a single host, path-selected by language, each answering a
 different payload — one the vendor's own shape, the other an upstream dictionary API's,
-proxied verbatim. Neither is this panel's contract, so the host route normalises both. A
-reference implementation of that mapping, including how the upstream service is
-authorised, lives with the host rather than here; in Renaissance's case that is
-`pie-api-aws`, whose PIEOneer container carries it.
+proxied verbatim. Neither is this panel's contract, so the host route normalises both.
+The reference implementation of that mapping, including how the upstream service is
+authorised, lives with the host.
 
 An endpoint-per-language map on the element would move that dispatch into the package
 and buy nothing: the host already knows its corpora, and the panel would then need to
@@ -77,7 +76,7 @@ language the host names in the tool's render params still wins over both.
 
 Another language is `createDictionaryToolRegistration` or
 `createPictureDictionaryToolRegistration` with a `toolId`, its own `pnpSupportIds` and a
-`lookupLanguage`, registered through the `configureToolRegistry` hook a host already has.
+`lookupLanguage`, registered on the tool registry the host passes to its coordinator.
 Catalogue keys derive from the capability id; a host with its own catalogue passes
 `messageKeyPrefix`, and a key that does not resolve falls back to the registration's
 literal name, so a missing key is a plain label rather than a broken button.

@@ -1,7 +1,6 @@
 import PieItemPlayer from "./PieItemPlayer.svelte";
 import {
 	attemptCustomElementDefine,
-	initializeMathRendering,
 	installContentStyles,
 	auditContentStyles,
 } from "@pie-players/pie-players-shared";
@@ -14,33 +13,15 @@ import {
 // library mode — dead weight in the package that a host could mistake for
 // something it needs to link. `?raw` reads the authored stylesheet verbatim.
 import contentStyles from "@pie-players/pie-theme/components.css?raw";
+import type { PieItemPlayerElement } from "./types.js";
 
 export type * from "./types.js";
-
-let itemPlayerMathReadyPromise: Promise<void> | null = null;
-
-export function ensureItemPlayerMathRenderingReady(): Promise<void> {
-	if (typeof window === "undefined") {
-		return Promise.resolve();
-	}
-	if (!itemPlayerMathReadyPromise) {
-		itemPlayerMathReadyPromise = initializeMathRendering();
-	}
-	return itemPlayerMathReadyPromise;
-}
-
-void ensureItemPlayerMathRenderingReady().catch((error) => {
-	console.error(
-		"[pie-item-player] Failed to initialize math rendering:",
-		error,
-	);
-	itemPlayerMathReadyPromise = null;
-});
+export { ensureItemPlayerMathRenderingReady } from "./math-rendering-ready.js";
 
 // Installed at import time, alongside element registration, so the stylesheet is
 // in the document before any instance renders — no unstyled first paint. A host
-// that sets <html data-pie-content-styles="host"> owns the stylesheet instead,
-// and gets warned if it then ships nothing.
+// that supplies its own copy, or sets <html data-pie-content-styles="host">,
+// owns the stylesheet instead.
 installContentStyles(contentStyles, "pie-item-player");
 auditContentStyles("pie-item-player");
 
@@ -75,3 +56,9 @@ export function definePieItemPlayer(tagName = PIE_ITEM_PLAYER_TAG): void {
 }
 
 definePieItemPlayer();
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-item-player": PieItemPlayerElement;
+	}
+}

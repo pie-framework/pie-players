@@ -21,10 +21,12 @@
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
@@ -448,6 +450,9 @@
 	   nests the player deeper got an unstyled title. */
 	.pie-section-player-content-card-header :is(h1, h2, h3, h4, h5, h6) {
 		position: relative;
+		/* Was supplied by the content stylesheet's heading reset, which now
+		   applies inside a player's content root only. */
+		line-height: 1.2;
 		min-width: 0;
 		overflow-wrap: anywhere;
 		z-index: 0;

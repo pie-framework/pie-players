@@ -11,7 +11,7 @@ The tool-provider system is centered on `ToolkitCoordinator`.
 - The host creates one `ToolkitCoordinator` for the assessment surface.
 - Tool placement lives under `tools.placement`.
 - Tool-specific runtime config lives under `tools.providers`.
-- The section player receives the coordinator through the `coordinator` property.
+- The section player receives the coordinator as `runtime.coordinator`.
 - Item- and passage-level tool rendering is derived from the section-player runtime, not wired manually per card.
 
 Use this document together with:
@@ -75,9 +75,12 @@ Use the current semantic tool IDs in docs and examples:
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo-assessment",
+  toolRegistry,
   tools: {
     placement: {
       section: ["theme", "graph", "periodicTable", "lineReader", "ruler"],
@@ -99,7 +102,7 @@ const sectionPlayer = document.querySelector(
   "pie-section-player-splitpane",
 ) as any;
 
-sectionPlayer.coordinator = coordinator;
+sectionPlayer.runtime = { coordinator };
 sectionPlayer.section = section;
 ```
 
@@ -184,6 +187,7 @@ in the pipeline.
 ```ts
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo",
+  toolRegistry,
   tools: {
     placement: {
       item: ["textToSpeech"],
@@ -202,7 +206,7 @@ const coordinator = new ToolkitCoordinator({
 });
 ```
 
-`layoutMode` can be configured directly on `tools.providers.textToSpeech` (either top-level or inside `settings`). When omitted, the default is **`expanding-row`**. Supported values are:
+`layoutMode` can be configured directly on `tools.providers.textToSpeech` (either top-level or inside `settings`). When omitted, the toolkit uses **`left-aligned`**; a standalone `<pie-tool-tts-inline>` without a `layoutMode` uses `expanding-row`. Supported values are:
 
 - `reserved-row`
 - `expanding-row`
@@ -230,9 +234,9 @@ The `@pie-players/pie-section-player-tools-tts-settings` package is optional and
 ```ts
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo",
+  toolRegistry,
   tools: {
     placement: {
-      section: ["calculator"],
       item: ["calculator"],
     },
     providers: {
@@ -269,20 +273,22 @@ The toolkit and section-player runtime own:
 
 ## Section-Player Boundary
 
-The modern host boundary is:
+The host boundary is the `runtime` object:
 
 ```ts
-sectionPlayer.coordinator = coordinator;
+sectionPlayer.runtime = { ...sectionPlayer.runtime, coordinator };
 ```
 
-Assign the coordinator through the canonical `coordinator` property.
+The section player has no top-level `coordinator` property; it reads the
+coordinator from `runtime.coordinator`.
 
 The public layout custom elements are:
 
 - `pie-section-player-splitpane`
 - `pie-section-player-vertical`
+- `pie-section-player-tabbed`
 
-Prefer those elements and the `coordinator` property over older orchestration patterns.
+Prefer those elements and `runtime.coordinator` over older orchestration patterns.
 
 ## Advanced Host Access
 
@@ -326,9 +332,9 @@ tier licensed for the application, and proxy or self-host Desmos only when a
 partner agreement grants that right.
 
 The calculator capability defaults to `calculator-desmos` when no provider id
-is configured. The adapter preserves the historical unkeyed request in that
-case so existing clients are not broken; this compatibility behavior does not
-grant or imply a Desmos license. Select the separate GeoGebra suite explicitly:
+is configured. The adapter still sends the historical unkeyed request in that
+case; Desmos's CDN rejects it with HTTP 403, and it does not grant or imply a
+Desmos license. Select the separate GeoGebra suite explicitly:
 
 ```ts
 calculator: {

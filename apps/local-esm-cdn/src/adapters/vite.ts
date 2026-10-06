@@ -1,7 +1,61 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
-import type { LocalEsmCdnConfig } from "../core/config.js";
+import { type LocalEsmCdnConfig, mergeConfig } from "../core/config.js";
+import { resolvePackageJson } from "../core/resolver.js";
+import { fileExists } from "../core/utils.js";
 import { createLocalEsmCdn } from "../embedded.js";
+
+const LOCAL_CDN_REQUEST = /^\/@pie-(?:element|lib|elements-ng)\//;
+// Requests Vite's module transform does not answer: the package.json an ESM
+// loader reads for a package's exports, and the fonts a build's stylesheet
+// addresses by URL.
+const FILE_REQUEST =
+	/^\/@pie-(?:element|lib|elements-ng)\/[^?#]+(?:\/package\.json|\.woff2)(?:[?#]|$)/;
+// An element's editor-runtime variant imports the runtime's specifiers bare,
+// for the page's import map to resolve. Vite's import analysis would resolve
+// them from node_modules, so these modules bypass the transform.
+const EDITOR_RUNTIME_VARIANT_REQUEST =
+	/^\/@pie-element\/[^/?#]+\/(?:dist\/)?browser\/editor-runtime\/[^?#]+\.m?js(?:[?#]|$)/;
+// Vite resolves a module's `new URL("./asset", import.meta.url)` against the
+// module's id as a path on disk, which this URL space is not. Marked ignored,
+// the URL resolves in the browser against the module's URL, as from a CDN.
+const RELATIVE_ASSET_URL = /\bnew\s+URL\s*\(\s*(?=["'`]\.\.?\/)/g;
+// An element the app imports bare, as a preloaded host does: the package and
+// the `exports` subpath.
+const BARE_ELEMENT_IMPORT = /^(@pie-element\/[^/?#]+)(?:\/([^?#]+))?$/;
+
+/**
+ * The checkout's file for a bare element import, through the package's
+ * `exports` as npm resolution would take it. A package missing from the
+ * checkout, or a target not built, throws rather than fall back to npm.
+ */
+async function resolveCheckoutExport(
+	pieElementsNgRoot: string,
+	pkg: string,
+	subpath: string | undefined,
+): Promise<string> {
+	const packageJsonPath = await resolvePackageJson(pieElementsNgRoot, pkg);
+	if (!packageJsonPath) {
+		throw new Error(
+			`[vite-plugin-local-esm-cdn] ${pkg} is not in ${pieElementsNgRoot}`,
+		);
+	}
+	const key = subpath ? `./${subpath}` : ".";
+	const { exports } = JSON.parse(await readFile(packageJsonPath, "utf-8"));
+	const entry = exports?.[key];
+	const target = typeof entry === "string" ? entry : entry?.default;
+	if (typeof target !== "string") {
+		throw new Error(`[vite-plugin-local-esm-cdn] ${pkg} exports no "${key}"`);
+	}
+	const file = path.resolve(path.dirname(packageJsonPath), target);
+	if (!(await fileExists(file))) {
+		throw new Error(
+			`[vite-plugin-local-esm-cdn] ${file} not found; build ${pkg} in ${pieElementsNgRoot}`,
+		);
+	}
+	return file;
+}
 
 /**
  * Create a Vite plugin that serves local PIE packages as ESM modules
@@ -29,42 +83,34 @@ import { createLocalEsmCdn } from "../embedded.js";
  */
 export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 	const cdn = createLocalEsmCdn(config);
+	const { pieElementsNgRoot } = mergeConfig(config);
 	let server: ViteDevServer | undefined;
 
 	return {
 		name: "vite-plugin-local-esm-cdn",
 		enforce: "pre", // Run before other plugins
 
+		config() {
+			// Bare element imports resolve to files in the checkout, which the dev
+			// server serves over `/@fs/`.
+			return { server: { fs: { allow: [pieElementsNgRoot] } } };
+		},
+
 		resolveId(id) {
-			// Only intercept packages from pie-elements-ng (@pie-element, @pie-lib, @pie-elements-ng)
-			// Let Vite handle @pie-players packages normally (they're workspace deps)
-			if (
-				id.startsWith("@pie-element") ||
-				id.startsWith("/@pie-element") ||
-				id.startsWith("@pie-lib") ||
-				id.startsWith("/@pie-lib") ||
-				id.startsWith("@pie-elements-ng") ||
-				id.startsWith("/@pie-elements-ng")
-			) {
-				// Normalize to always have the leading slash
-				const normalizedId = id.startsWith("/@") ? id : `/${id}`;
-				console.log(
-					`[vite-plugin-local-esm-cdn] resolveId: ${id} -> ${normalizedId}`,
-				);
-				return { id: normalizedId, external: false };
-			}
+			// This server's URL space, which the ESM loader and the served modules'
+			// rewritten imports address.
+			if (LOCAL_CDN_REQUEST.test(id)) return { id, external: false };
+			// A bare `@pie-element/*` import takes the checkout's build. Other bare
+			// specifiers, such as players-shared's `@pie-lib/math-rendering-module`,
+			// resolve from node_modules as they do without the plugin.
+			const bare = BARE_ELEMENT_IMPORT.exec(id);
+			if (bare)
+				return resolveCheckoutExport(pieElementsNgRoot, bare[1], bare[2]);
 			return null;
 		},
 
 		async load(id) {
-			// Only handle pie-elements-ng package requests
-			if (
-				!id.startsWith("/@pie-element") &&
-				!id.startsWith("/@pie-lib") &&
-				!id.startsWith("/@pie-elements-ng")
-			) {
-				return null;
-			}
+			if (!LOCAL_CDN_REQUEST.test(id)) return null;
 
 			try {
 				console.log(`[vite-plugin-local-esm-cdn] Loading: ${id}`);
@@ -87,7 +133,10 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 					);
 				}
 
-				const code = await response.text();
+				const code = (await response.text()).replace(
+					RELATIVE_ASSET_URL,
+					"$&/* @vite-ignore */ ",
+				);
 				return { code, map: null };
 			} catch (error) {
 				console.error("[vite-plugin-local-esm-cdn] Error:", error);
@@ -97,6 +146,28 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 
 		configureServer(serverInstance) {
 			server = serverInstance;
+
+			serverInstance.middlewares.use((req, res, next) => {
+				if (
+					!req.url ||
+					!(
+						FILE_REQUEST.test(req.url) ||
+						EDITOR_RUNTIME_VARIANT_REQUEST.test(req.url)
+					)
+				) {
+					return next();
+				}
+				cdn
+					.handler(new Request(`http://localhost${req.url}`))
+					.then(async (response) => {
+						res.statusCode = response.status;
+						response.headers.forEach((value, key) => {
+							res.setHeader(key, value);
+						});
+						res.end(Buffer.from(await response.arrayBuffer()));
+					})
+					.catch(next);
+			});
 
 			// Only set up file watching in dev mode
 			if (!config.pieElementsNgRoot && !config.piePlayersRoot) {

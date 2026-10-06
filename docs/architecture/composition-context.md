@@ -59,7 +59,7 @@ player sets two properties on a PIE element:
 ```ts
 // packages/players-shared/src/pie/updates.ts
 const controllerResult = await modelFunction(model, elementSession, env, updateSession);
-element.model = wrapModelRichContent({ id: model.id, element: model.element, ...controllerResult });
+element.model = { id: model.id, element: model.element, ...controllerResult };
 element.session = elementSession;
 ```
 

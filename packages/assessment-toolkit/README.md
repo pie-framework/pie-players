@@ -4,6 +4,30 @@
 
 This is not an opinionated framework or monolithic "player" - it's a toolkit that solves specific problems through centralized service management.
 
+## Install
+
+```bash
+npm install @pie-players/pie-assessment-toolkit @pie-players/pie-default-tool-loaders
+```
+
+The examples build their tool registry with `createPackagedToolRegistry()` from
+`@pie-players/pie-default-tool-loaders`, so a host that imports it declares it
+in its own dependencies. The section player depends on it too, but strict
+installers such as pnpm expose only the packages a host declares.
+
+Server-backed TTS (`backend: "polly"`, `"google"` or `"server"`) loads
+`@pie-players/tts-client-server`, a dependency of
+`@pie-players/pie-default-tool-loaders` whose TTS registration imports it on
+first use. If it fails to load, TTS initialization reports a `provider-init`
+framework error and falls back to browser speech.
+
+A `ToolkitCoordinator` registers tool providers only from its `toolRegistry`.
+Built without one, it adopts the registry of the toolkit it is bound to, such as
+the section player's, which then validates its config and registers its
+providers. A registry passed at construction is never replaced. Bound to a
+toolkit that has none, it registers no providers, skips tool-id and placement
+validation, and warns once (`tools.registryUnavailable`).
+
 ## What's New: ToolkitCoordinator
 
 ✨ **Centralized Service Management**: The new `ToolkitCoordinator` provides a single entry point for all toolkit services, simplifying initialization and configuration.
@@ -28,16 +52,21 @@ player.toolCoordinator = toolCoordinator;
 
 **After** (coordinator orchestrates):
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
 // Create one coordinator with configuration
+const toolRegistry = createPackagedToolRegistry();
 const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
+  toolRegistry,
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
+      // Desmos needs an application key; see "Simple Default" below.
       calculator: { enabled: true }
     },
     placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech']
     }
@@ -84,6 +113,7 @@ provider path is the item-player loader config:
 
 ### Toolkit-Owned Canonical Event Stream
 
+- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
@@ -141,8 +171,12 @@ tier; the choice is about ergonomics, not capability.
   object passed by reference. Example:
 
   ```ts
+  import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: "my-assessment",
+    toolRegistry,
     toolConfigStrictness: "warn",
     tools: {
       providers: { calculator: { enabled: true } },
@@ -229,17 +263,21 @@ Otherwise expose it through the configuration object only.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // Create coordinator with configuration
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
+  toolRegistry,
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
+      // Desmos needs an application key; see "Simple Default" below.
       calculator: { enabled: true }
     },
     placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech']
     }
@@ -393,12 +431,78 @@ player.toolCoordinator = toolCoordinator;
 // ...
 ```
 
+### Without a Section Player
+
+`<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
+policy and services to the item toolbars and item players inside it, which is
+how the toolkit accompanies a plain item player:
+
+```html
+<pie-assessment-toolkit pnp-enforcement="on">
+  <pie-item-toolbar item-id="q1"></pie-item-toolbar>
+  <pie-item-player></pie-item-player>
+</pie-assessment-toolkit>
+```
+
+```typescript
+import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
+import '@pie-players/pie-item-player';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
+
+// With no section player, the registry's loaders are what define the tool elements.
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
+
+toolkit.tools = { placement: { item: ['calculator'] } };
+toolkit.toolRegistry = toolRegistry;
+toolkit.toolContextResolvers = toolContextResolvers;
+toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
+
+toolbar.item = item;
+toolbar.toolRegistry = toolRegistry; // the toolbar does not read the toolkit's
+toolbar.scopeElement = player; // the content answerEliminator acts on
+```
+
+A registry built without `toolModuleLoaders` renders toolbar buttons whose tool
+elements never load. `textToSpeech` reads the region an item shell publishes,
+which only the section player's cards provide, so it has no reading target in
+this composition.
+
+A profile change is a new `assessment` value; the toolbars re-derive on the
+policy change it emits. Readiness events are section events: `toolkit-ready`,
+`section-ready` and every stage, `composed` included, wait for a bound section,
+and the toolkit builds its own coordinator only after it mounts. A host that needs a
+readiness point constructs the `ToolkitCoordinator`, passes it as
+`coordinator`, awaits `coordinator.waitUntilReady()`, and changes the profile
+with `coordinator.updateAssessment(...)`, since the toolkit applies its
+`assessment` property to a coordinator it owns. The `calculator-pnp` section
+demo composes the owned-coordinator form.
+
+The toolkit builds its own coordinator at mount from `tools`, `enabled-tools`,
+`assessment-id`, `accessibility`, `lazy-init`, `tool-config-strictness` and
+`toolRegistry`. A section that arrives after one of those changed initializes
+with a coordinator rebuilt from the current values, and the toolbars move to
+it. After a section has initialized, a change to them is reported once in the
+console and does not reach the coordinator; `pnp-enforcement`, `assessment`,
+`currentItemRef` and `toolContextResolvers` apply to it at any time. That
+coordinator reports feature policy asked with no assessment bound only while
+`pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
+has asked for no accommodation.
+
 ## Tool Configuration Model
 
 The toolkit uses one canonical `tools` model with three concerns:
 
 - `policy`: allow/block constraints (global gates)
-- `placement`: where tools appear (`assessment`, `section`, `item`, `passage`, `rubric`, plus custom registered levels)
+- `placement`: where tools appear (`section`, `item`, `passage`). Each tool
+  declares the levels it supports; `calculator` is item-only, and a tool placed
+  at a level it does not support fails validation, which throws under the
+  default `toolConfigStrictness: "error"`.
 - `providers`: provider/runtime options (calculator, textToSpeech, etc.)
 
 Example:
@@ -410,11 +514,9 @@ tools: {
     blocked: ['graph']
   },
   placement: {
-    assessment: [],
-    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+    section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
     item: ['calculator', 'textToSpeech', 'answerEliminator'],
-    passage: ['textToSpeech'],
-    rubric: []
+    passage: ['textToSpeech']
   },
   providers: {
     calculator: {
@@ -465,7 +567,8 @@ tools: {
 **Available Item-Level Tools:**
 - **TTS (Text-to-Speech)**: Reads the specific question/passage text
 - **Answer Eliminator**: Strikes through answer choices for that question
-- **Highlighter**: Highlights text within the item (future)
+- **Calculator**: Basic, scientific or graphing calculator
+- **Highlighter** (`annotationToolbar`): Highlights and annotates selected text; it opens from a text selection, outside the toolbars
 
 **Example Use Case:**
 A student uses answer eliminator on Question 3 to cross out choices B and D. When they navigate to Question 4, they see fresh, uneliminated choices. When they return to Question 3, their eliminations are restored.
@@ -477,38 +580,31 @@ Tools that **float above the entire assessment** and persist across questions:
 ```typescript
 tools: {
   placement: {
-    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
-  },
-  providers: {
-    calculator: {
-      enabled: true,
-      provider: {
-        runtime: { authFetcher: async () => { /* ... */ } }
-      }
-    }
+    section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
   }
 }
 ```
 
+The section player renders the section toolbar only when its `show-toolbar`
+attribute is `true`; the attribute defaults to `false`.
+
 **Characteristics:**
 - **Scope**: Section-wide, shared across all questions
 - **Lifecycle**: Single instance initialized for entire section
-- **State**: Persistent (calculator history remains as you navigate)
+- **State**: Persistent (a tool stays open and in place as you navigate)
 - **UI Pattern**: Draggable floating panels/overlays with z-index management
 - **State Persistence**: Global state maintained throughout section
 
 **Available Floating Tools:**
-- **Calculator**: Scientific/graphing calculator with computation history
-- **Graph**: Graphing tool for plotting functions
+- **Graph**: Coordinate plane
 - **Periodic Table**: Interactive periodic table reference
 - **Protractor**: Angle measurement tool
 - **Ruler**: Linear measurement tool (metric/imperial)
 - **Line Reader**: Reading guide/masking overlay
-- **Magnifier**: Screen magnification tool
-- **Color Scheme**: High-contrast color adjustments
+- **Color Scheme** (`theme`): High-contrast color adjustments
 
 **Example Use Case:**
-A student opens the calculator on Question 2, computes 45 × 12 = 540. They navigate to Question 7, and the calculator still shows their computation history. They can reference previous calculations across multiple questions without losing context.
+A student opens the periodic table on Question 2 and moves it beside the passage. When they navigate to Question 7, it is still open where they left it.
 
 ### When to Use Each
 
@@ -529,15 +625,19 @@ Use **floating tools** when:
 Complete example showing both types:
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
+  toolRegistry,
   tools: {
     placement: {
       // Contextual placement
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech'],
       // Section-level utilities
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
     },
     providers: {
       calculator: {
@@ -566,11 +666,15 @@ const coordinator = new ToolkitCoordinator({
 For most use cases, simply enable all available tools:
 
 ```typescript
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
+  toolRegistry,
   tools: {
     placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech']
     },
@@ -588,12 +692,14 @@ const coordinator = new ToolkitCoordinator({
 ```
 
 The ToolkitCoordinator handles service initialization, provider management, and
-state coordination. With no calculator provider configuration, the existing
-Desmos implementation remains the default and preserves its legacy unkeyed load.
-That fallback is for client compatibility; it does not grant a Desmos license.
-Licensed deployments can supply `provider.init.apiKey` or
-`provider.runtime.authFetcher`. Runtime key delivery avoids committing the key
-but does not hide it from the browser's Desmos script request.
+state coordination. With no calculator provider configuration, the Desmos
+implementation remains the default. Desmos's CDN rejects a `calculator.js`
+request without an `apiKey` (HTTP 403), so the Desmos calculator opens only when
+the host supplies `provider.init.apiKey` or `provider.runtime.authFetcher`, or
+has already loaded `window.Desmos`; the adapter's keyless request grants no
+Desmos license either. Runtime key delivery avoids committing the key but does
+not hide it from the browser's Desmos script request. The bundled open-source
+implementation below needs no key.
 
 Select the separate GeoGebra implementation explicitly without changing the
 calculator capability, placement, or item policy:
@@ -747,6 +853,18 @@ tools: {
 }
 ```
 
+The fetch completes before the first TTS request, and its result merges over the
+provider config: a returned `authToken` is sent as `Authorization: Bearer <token>`
+and returned `headers` with every synthesis request, and under
+`includeAuthOnAssetFetch` the `Authorization` header also reaches the custom
+transport's speech-mark and audio fetches. A failed fetch falls back to browser
+speech and reports `pie-tool-init-error`.
+
+For a server that authenticates by cookie on another origin, set `credentials:
+"include"` in the `textToSpeech` provider settings, beside
+`includeAuthOnAssetFetch`. The cookie reaches speech-mark and audio fetches only
+for origins in `assetOrigins`; unset, every TTS fetch keeps the browser default.
+
 ### Custom Transport via Server Proxy (SC-style)
 
 For custom backends that return URL assets (for example `{ audioContent, word }`),
@@ -838,9 +956,9 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 ### ✅ QTI 3.0 Standard Access Features
 
 - **95+ Standardized Features**: Complete QTI 3.0 / IMS AfA 3.0 accessibility features
-- **9 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
+- **8 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
 - **Example Configurations**: Illustrative PNP profile examples (low vision, dyslexia, ADHD, etc.)
-- **Tool Mappings**: All 12 default tools map to standard QTI 3.0 features
+- **Tool Mappings**: Every packaged tool registration maps to standard QTI 3.0 features
 
 ### ✅ Section Player Integration
 
@@ -865,11 +983,9 @@ export interface ToolkitCoordinatorConfig {
       blocked?: string[];
     };
     placement?: {
-      assessment?: string[];
       section?: string[];
       item?: string[];
       passage?: string[];
-      rubric?: string[];
     };
     providers?: {
       textToSpeech?: {
@@ -1189,8 +1305,8 @@ that could not parse the markup left the video in the visible content, showing t
 accommodation to every learner regardless of eligibility.
 
 This package resolves and registers those cards through
-`AccessibilityCatalogResolver` and the generic media helpers in
-`catalog-media.ts`. Which card types mean what belongs to the capability that
+`AccessibilityCatalogResolver` and the generic media helpers it re-exports
+from `@pie-players/pie-players-shared/media`. Which card types mean what belongs to the capability that
 needs them — signing's card validators and its resolution rules live in
 `@pie-players/pie-tool-sign-language`, behind that capability's
 `requiresAuthoredContent`.
@@ -1232,18 +1348,21 @@ mounted surface elements immediately.
 The section player provides automatic ToolkitCoordinator integration:
 
 ```html
-<pie-section-player id="player"></pie-section-player>
+<pie-section-player-splitpane id="player" section-id="section-1"></pie-section-player-splitpane>
 
 <script type="module">
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
   // Create coordinator
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
+    toolRegistry,
     tools: {
       providers: { textToSpeech: { enabled: true, backend: 'browser' } },
       placement: {
-        section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+        section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
         item: ['calculator', 'textToSpeech', 'answerEliminator'],
         passage: ['textToSpeech']
       }
@@ -1257,7 +1376,7 @@ The section player provides automatic ToolkitCoordinator integration:
 
   // Player automatically:
   // - Extracts services from coordinator
-  // - Generates section ID
+  // - Scopes its runtime engine to `section-id`
   // - Provides runtime context to child components
   // - Manages SSML extraction
   // - Handles catalog lifecycle
@@ -1303,15 +1422,9 @@ player.section = mySection;
 
 // Internally creates:
 // new ToolkitCoordinator({
-//   assessmentId: 'anon_...',  // auto-generated
-//   tools: {
-//     providers: { textToSpeech: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
-//     placement: {
-//       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-//       item: ['calculator', 'textToSpeech', 'answerEliminator'],
-//       passage: ['textToSpeech']
-//     }
-//   }
+//   assessmentId: 'section-demo-direct', // or the assessment-id attribute
+//   toolRegistry,                        // the player's toolRegistry, else the packaged registry
+//   tools: player.runtime?.tools         // no tools are placed when this is unset
 // })
 ```
 
@@ -1409,8 +1522,9 @@ pick the stability surface that matches their use case:
 ## Writing a capability package
 
 `@pie-players/pie-assessment-toolkit/tools/internal` is what a capability
-package imports: the `ToolRegistration` contract, the surface and content
-dependency types, `resolveToolTag` and the toolbar registration helpers. Same
+package imports: the `ToolRegistration` contract, the `ToolProviderApi` its
+provider descriptor creates, the surface and content dependency types,
+`resolveToolTag` and the toolbar registration helpers. Same
 stability contract as the other `*/internal` entry points — symbols may change
 between minor versions with a changeset note.
 
@@ -1540,8 +1654,9 @@ section-player kernel intercepts the toolkit's bubbled emit at
 layout host sees only the canonical engine-bridge emit. Direct
 listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
 own emit (the toolkit dispatch reaches them before the kernel listener
-runs). The single-emit contract is pinned by
-`packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`.
+runs). A coordinator the host passes in reports through the same
+surfaces. `packages/section-player/tests/section-player-event-delivery.spec.ts`
+pins these counts.
 The layout host emits one `framework-error` DOM event per framework error.
 
 Hosts should listen to `pie-stage-change` (with the readiness detail also
@@ -1608,8 +1723,8 @@ Full TypeScript definitions included:
 
 ```typescript
 import type {
-  IToolkitCoordinator,
-  IElementToolStateStore,
+  ToolkitCoordinatorApi,
+  ElementToolStateStoreApi,
   ToolkitCoordinatorConfig,
   ToolkitServiceBundle
 } from '@pie-players/pie-assessment-toolkit';
@@ -1623,7 +1738,7 @@ from tool configuration. Two sanitization layers apply:
 
 - **Item / passage markup** - sanitized by default in
   `pie-item-player`. See
-  [pie-item-player README](./README.md#content-trust-boundary)
+  [pie-item-player README](../item-player/README.md#content-trust-boundary)
   for the `trust-markup` opt-out and the `sanitizeMarkup` override.
   As a post-sanitization step, every authored `<img>` outside a `pie-*`
   custom element is wrapped in `<span class="pie-image-scroll">` so

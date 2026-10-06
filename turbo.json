@@ -1,5 +1,6 @@
 {
 	"$schema": "https://turbo.build/schema.json",
+	"agentGuidance": false,
 	"globalDependencies": [
 		"package.json",
 		"bun.lock",
@@ -10,7 +11,7 @@
 	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],
-			"outputs": ["dist/**", "build/**", ".svelte-kit/**"],
+			"outputs": ["dist/**", "build/**", ".svelte-kit/**", "oclif.manifest.json"],
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/tsconfig.json",

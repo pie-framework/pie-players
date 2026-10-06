@@ -110,6 +110,11 @@ const myProvider: ThemeProviderAdapter = {
 registerPieThemeProvider(myProvider);
 ```
 
+Every copy of this package on a page shares one provider registry, held on
+`window.PIE_THEME_PROVIDERS`. A host and a remote that bundle their own copies
+register into it alike, and `<pie-theme>` sees each provider whichever copy
+defined the element.
+
 ## Runtime theme interface
 
 The package exposes four operations:
@@ -212,17 +217,21 @@ its background sits from white:
 
 | Background | Tokens | Why |
 | --- | --- | --- |
-| white | 2 | ink and page; every base colour already holds |
-| white, with a mid-tone ink | 5 | the ink misses the tinted recessed and raised surfaces |
-| `#000000` | 19 | inverted page; borrow the dark base theme's inks and control family |
-| mid-tone (blue, red, green, dark gray) | 26 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
+| white | 3 | ink, page, and the select-text hover fill (`--pie-blue-grey-300`), which the light base chose for black ink |
+| white, with a mid-tone ink | 6 | the ink misses the tinted recessed and raised surfaces |
+| `#000000` | 20 | inverted page; borrow the dark base theme's inks and control family |
+| mid-tone (blue, red, green, dark gray) | 27 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
 
 ```ts
 registerPieColorSchemes([
   {
     id: "sc-blue-on-white",
     name: "Blue on White",
-    variables: { "--pie-text": "#0028a1", "--pie-background": "#ffffff" },
+    variables: {
+      "--pie-text": "#0028a1",
+      "--pie-background": "#ffffff",
+      "--pie-blue-grey-300": "#75a2ff",
+    },
   },
 ]);
 ```
@@ -316,9 +325,8 @@ The scale is applied as `calc(1rem * var(--pie-font-scale))` rather than an `em`
 factor because the content hosts nest — an `em` factor would compound, turning a
 requested 1.25 into 1.56 wherever an item shell sits inside a themed region.
 
-There is no student-facing control here. The picker is host chrome, which in the
-Renaissance context is Quiz Engine's surface; this package owns the token, the
-presets, and the rules that consume them.
+There is no student-facing control here. The picker is host chrome; this package
+owns the token, the presets, and the rules that consume them.
 
 ## Token registry
 
@@ -363,9 +371,13 @@ Use `@pie-players/pie-theme/components.css` for shared visual styles that are in
 not need a second copy. Existing hosts may still own the exported stylesheet;
 that published path remains supported. Mounting `<pie-theme>` does not load it —
 the element only writes `--pie-*` custom properties. The item player bundles the
-stylesheet as text and installs it once per document at import time; see
-[content styles](../item-player/README.md#content-styles) for the host-ownership
-opt-out.
+stylesheet as text and installs it once per document at import time, unless the
+host already loads a copy; see
+[content styles](../item-player/README.md#content-styles) for host ownership.
+Its rules apply inside a `[data-pie-content]` element only, the root each player
+renders content into, except rules keyed on KDS or MathJax names or legacy
+content classes, which stay document-wide so authored markup an element portals
+to `<body>` keeps them.
 
 Note for players adding this: a plain `import "…/components.css"` does **not**
 work in these packages' library builds. Vite extracts it to an unreferenced
@@ -375,8 +387,9 @@ with `?raw` and hand it to `installContentStyles` from
 `@pie-players/pie-players-shared`.
 
 `components.css` declares `--pie-content-styles` on `:root` as a presence
-sentinel so players can tell whether an opted-out host actually loaded it. It is
-not a themeable value; do not consume it for styling.
+sentinel so players can recognise a copy the host loaded itself, scoped or not,
+and install none of their own. It is not a themeable value; do not consume it for
+styling.
 
 - Theme-owned shared `pie-*` class families include:
   - `pie-section-player-tools-pnp-debugger*`

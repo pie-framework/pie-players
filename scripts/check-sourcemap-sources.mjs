@@ -1,45 +1,16 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { parsePackJson } from "./lib/pack-inspection.mjs";
+import { getWorkspaceDirs, parsePackJson } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
-const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const MAX_DETAILS_PER_PACKAGE = 12;
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 const toPosix = (value) => value.replaceAll(path.sep, "/");
-
-const getWorkspaceDirs = () => {
-	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces)
-		? rootPkg.workspaces
-		: [];
-	const dirs = new Set();
-
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string") continue;
-		if (!workspace.startsWith("packages/") && !workspace.startsWith("tools/")) {
-			continue;
-		}
-		if (workspace.endsWith("/*")) {
-			const parent = path.join(ROOT, workspace.slice(0, -2));
-			if (!existsSync(parent)) continue;
-			for (const entry of readdirSync(parent, { withFileTypes: true })) {
-				if (entry.isDirectory()) {
-					dirs.add(path.join(parent, entry.name));
-				}
-			}
-			continue;
-		}
-		dirs.add(path.join(ROOT, workspace));
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
 
 const isVirtualSource = (sourcePath) =>
 	/^(?:dep:|browser-external:|virtual:|data:)|\0/.test(sourcePath);

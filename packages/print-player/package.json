@@ -25,19 +25,19 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-theme": "workspace:*",
 		"lit": "^3.3.3"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^20.11.15",
-		"@playwright/test": "^1.62.1",
-		"@types/node": "^26.5.1",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
+		"@playwright/test": "^1.63.0",
+		"@types/node": "^26.6.4",
 		"esbuild": "^0.28.2",
-		"svelte": "^5.57.0",
+		"svelte": "^5.57.1",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2"
+		"vite": "^8.3.2"
 	},
 	"keywords": [
 		"pie",

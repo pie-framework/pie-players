@@ -7,7 +7,7 @@
  * loud without costing the learner the content.
  */
 
-import type { MediaFragmentRange } from "../types/index.js";
+import { normalizeMediaFragment } from "../media/index.js";
 import type {
 	ResolvedTimedMediaCue,
 	TimedMediaItemTryBudget,
@@ -62,19 +62,6 @@ function isCorrectnessCondition(condition: TimedMediaGateCondition): boolean {
 
 function trimmed(value: unknown): string {
 	return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizeRange(value: unknown): MediaFragmentRange | null {
-	if (!value || typeof value !== "object") return null;
-	const raw = value as Partial<MediaFragmentRange>;
-	const start = Number(raw.startSeconds);
-	if (!Number.isFinite(start) || start < 0) return null;
-	const end = Number(raw.endSeconds);
-	// An end at or before the start is a window that can never contain a
-	// position, so it is treated as no end — the same rule
-	// `normalizeMediaFragment` applies in the toolkit, kept identical on purpose.
-	if (!Number.isFinite(end) || end <= start) return { startSeconds: start };
-	return { startSeconds: start, endSeconds: end };
 }
 
 function normalizePlaybackPolicy(value: unknown): {
@@ -227,7 +214,10 @@ export function normalizeTimedMediaSectionData(args: {
 		}
 		seenIdentifiers.add(identifier);
 
-		const range = normalizeRange(cue.range);
+		// The same rule as every other authored media range: an end at or before
+		// the start is a window that can never contain a position, so it is
+		// treated as no end.
+		const range = normalizeMediaFragment(cue.range);
 		if (!range) {
 			errors.push({
 				code: "invalid-cue-range",

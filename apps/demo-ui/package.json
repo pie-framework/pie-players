@@ -11,21 +11,67 @@
 			"svelte": "./src/index.ts",
 			"default": "./src/index.ts"
 		},
+		"./element-versions": {
+			"types": "./src/element-versions.ts",
+			"default": "./src/element-versions.ts"
+		},
+		"./preloaded": {
+			"types": "./src/preloaded-elements.ts",
+			"default": "./src/preloaded-elements.ts"
+		},
 		"./server": {
 			"types": "./src/server/tts-error-response.ts",
 			"default": "./src/server/tts-error-response.ts"
+		},
+		"./server/npm-registry": {
+			"types": "./src/server/npm-registry.ts",
+			"default": "./src/server/npm-registry.ts"
 		}
 	},
 	"scripts": {
 		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"lint": "biome check src"
+		"lint": "biome lint src",
+		"test": "bun test src"
 	},
 	"dependencies": {
-		"svelte": "^5.57.0"
+		"@pie-element/categorize": "next",
+		"@pie-element/charting": "next",
+		"@pie-element/complex-rubric": "next",
+		"@pie-element/drag-in-the-blank": "next",
+		"@pie-element/drawing-response": "next",
+		"@pie-element/ebsr": "next",
+		"@pie-element/explicit-constructed-response": "next",
+		"@pie-element/extended-text-entry": "next",
+		"@pie-element/fraction-model": "next",
+		"@pie-element/graphing": "next",
+		"@pie-element/graphing-solution-set": "next",
+		"@pie-element/hotspot": "next",
+		"@pie-element/image-cloze-association": "next",
+		"@pie-element/inline-dropdown": "next",
+		"@pie-element/likert": "next",
+		"@pie-element/match": "next",
+		"@pie-element/match-list": "next",
+		"@pie-element/math-inline": "next",
+		"@pie-element/math-templated": "next",
+		"@pie-element/matrix": "next",
+		"@pie-element/mc-populated-blank": "next",
+		"@pie-element/multi-trait-rubric": "next",
+		"@pie-element/multiple-choice": "next",
+		"@pie-element/number-line": "next",
+		"@pie-element/passage": "next",
+		"@pie-element/placement-ordering": "next",
+		"@pie-element/rubric": "next",
+		"@pie-element/select-text": "next",
+		"@pie-players/pie-item-player": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
+		"semver": "^7.8.5",
+		"svelte": "^5.57.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.15",
+		"@types/semver": "^7.8.0",
 		"svelte-check": "^4.7.6",
-		"typescript": "^5.9.3"
+		"typescript": "^5.9.3",
+		"@types/bun": "^1.4.2"
 	}
 }

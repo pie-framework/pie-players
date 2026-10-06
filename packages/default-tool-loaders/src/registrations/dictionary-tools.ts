@@ -31,6 +31,7 @@ import {
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
+import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 /** The element props these panels read for their host-supplied lookup. */
 type DictionaryPanelElement = HTMLElement & {
@@ -133,12 +134,17 @@ function renderDictionaryPanel(args: {
 	const componentOverrides =
 		(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ??
 		{};
-	const overlay = createToolElement(
-		registration.toolId,
-		context,
+	const overlay = resolveOverlayElement(
 		toolbarContext,
-		componentOverrides,
-	) as DictionaryPanelElement;
+		visibility.fullToolId,
+		() =>
+			createToolElement(
+				registration.toolId,
+				context,
+				toolbarContext,
+				componentOverrides,
+			) as DictionaryPanelElement,
+	);
 	overlay.setAttribute("tool-id", visibility.fullToolId);
 	applyLookupParams(
 		overlay,

@@ -11,6 +11,10 @@
  * That push transfers zero objects — it only makes a new ref point at history the remote
  * already has and already gated — yet the hook still ran the whole suite.
  *
+ * A push whose new commits change documentation only gets the documentation checks instead
+ * (`check:docs`), so a doc fix can go straight to develop without the Playwright suites.
+ * scripts/lib/change-scope.mjs defines documentation, for this gate and for CI.
+ *
  * The classification is deliberately conservative: every uncertain case resolves to "run".
  * A gate that runs when it did not need to costs minutes; a gate that skips when it was
  * needed lets unvalidated code onto a shared branch, so the two errors are not symmetric.
@@ -20,6 +24,8 @@
  * Extracted from the hook entry point so the sequencing rules are testable without a
  * remote, a push, or a multi-minute gate run.
  */
+
+import { isDocumentationOnly } from "./change-scope.mjs";
 
 /** git's sentinel for "this ref does not exist", used for branch creation and deletion. */
 export const ZERO_SHA = "0".repeat(40);
@@ -37,9 +43,13 @@ const isZeroSha = (sha) => /^0+$/.test(sha);
  *   args.countNewCommits
  *   Returns how many commits this ref update would add to the remote, or null when that
  *   could not be determined. Injected so the decision stays free of git.
- * @returns {{verdict: "run" | "skip", reason: string}}
+ * @param {(refUpdate: {localSha: string, remoteSha: string}) => string[] | null}
+ *   args.listChangedPaths
+ *   Returns every path the new commits of this ref update touch, or null when they could
+ *   not be listed. Called only for a ref update that adds commits.
+ * @returns {{verdict: "run" | "docs" | "skip", reason: string}}
  */
-export function classifyPush({ stdin, countNewCommits }) {
+export function classifyPush({ stdin, countNewCommits, listChangedPaths }) {
 	if (typeof stdin !== "string") {
 		return {
 			verdict: "run",
@@ -63,6 +73,7 @@ export function classifyPush({ stdin, countNewCommits }) {
 
 	let newCommits = 0;
 	let deletions = 0;
+	const changedPaths = [];
 
 	for (const line of lines) {
 		const fields = line.split(/\s+/);
@@ -91,9 +102,26 @@ export function classifyPush({ stdin, countNewCommits }) {
 		}
 
 		newCommits += count;
+
+		if (count > 0) {
+			const paths = listChangedPaths({ localSha, remoteSha });
+			if (!Array.isArray(paths)) {
+				return {
+					verdict: "run",
+					reason: `could not list the paths ${localSha.slice(0, 9)} changes`,
+				};
+			}
+			changedPaths.push(...paths);
+		}
 	}
 
 	if (newCommits > 0) {
+		if (isDocumentationOnly(changedPaths)) {
+			return {
+				verdict: "docs",
+				reason: `the ${newCommits} commit(s) being pushed change documentation only`,
+			};
+		}
 		return {
 			verdict: "run",
 			reason: `${newCommits} commit(s) are being pushed`,

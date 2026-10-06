@@ -74,8 +74,9 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	endpointValidationMode?: "voices" | "endpoint" | "none";
 
 	/**
-	 * Include auth headers when fetching custom-transport speech marks and audio URLs.
-	 * Defaults to false for compatibility.
+	 * Send the synthesis request's `Authorization` header, whether it comes from
+	 * `headers` or `authToken`, with the custom-transport speech-mark and audio
+	 * fetches. Defaults to false for compatibility.
 	 */
 	includeAuthOnAssetFetch?: boolean;
 
@@ -90,6 +91,15 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	 * responses keep working without explicit configuration.
 	 */
 	assetOrigins?: string[];
+
+	/**
+	 * Fetch `credentials` mode for requests to the TTS server, so a
+	 * cookie-authenticated endpoint on another origin receives its cookies.
+	 * Speech-mark and audio fetches use it only for an origin trusted with auth
+	 * (see `assetOrigins`); others keep the browser default. Unset leaves every
+	 * fetch on the browser default, `"same-origin"`.
+	 */
+	credentials?: "omit" | "same-origin" | "include";
 
 	/**
 	 * Validate API endpoint availability during initialization (slower but safer)
@@ -199,6 +209,38 @@ function scrubAuthHeaders(
 		cleaned[key] = value;
 	}
 	return cleaned;
+}
+
+/**
+ * The `credentials` init for a fetch, spread into it. A cookie leaves the page
+ * for an untrusted asset origin only as the browser default would send it.
+ */
+function fetchCredentials(
+	config: ServerTTSProviderConfig,
+	trustedForAuth = true,
+): Pick<RequestInit, "credentials"> {
+	if (!config.credentials) return {};
+	if (!trustedForAuth && config.credentials === "include") return {};
+	return { credentials: config.credentials };
+}
+
+/**
+ * The headers a custom-transport speech-mark or audio fetch starts from: the
+ * synthesis request's `Authorization` header under `includeAuthOnAssetFetch`,
+ * nothing otherwise.
+ */
+function assetFetchHeaders(
+	requestHeaders: Record<string, string>,
+	config: ServerTTSProviderConfig,
+): Record<string, string> {
+	const assetHeaders: Record<string, string> = {};
+	if (!config.includeAuthOnAssetFetch) return assetHeaders;
+	for (const [key, value] of Object.entries(requestHeaders)) {
+		if (key.toLowerCase() === "authorization") {
+			assetHeaders[key] = value;
+		}
+	}
+	return assetHeaders;
 }
 
 const getTelemetryReporter = (
@@ -321,15 +363,17 @@ const resolveSupportsSSML = (
 
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
 
-const resolveVoicesValidationUrl = (
+// Polly and Google probe their provider route first, then the generic
+// `${apiEndpoint}/voices` the integration guides have hosts create.
+const resolveVoicesValidationUrls = (
 	config: ServerTTSProviderConfig,
-): string => {
+): string[] => {
 	const base = trimTrailingSlash(config.apiEndpoint);
 	const provider = (config.provider || "").toLowerCase();
 	if (provider === "polly" || provider === "google") {
-		return `${base}/${provider}/voices`;
+		return [`${base}/${provider}/voices`, `${base}/voices`];
 	}
-	return `${base}/voices`;
+	return [`${base}/voices`];
 };
 
 const resolveTransportMode = (
@@ -484,20 +528,15 @@ const customAdapter: TransportAdapter = {
 		return {
 			text,
 			speedRate: resolveSpeedRate(config),
+			// Both spellings: servers that bind JSON camelCase never see `lang_id`.
 			lang_id: langId,
+			langId,
 			cache,
 		};
 	},
 	parseResponse: async (response, config, headers, signal, text) => {
 		const data: CustomTransportResponse = await response.json();
-		const marksHeaders: Record<string, string> = {};
-		if (config.includeAuthOnAssetFetch) {
-			for (const [key, value] of Object.entries(headers)) {
-				if (key.toLowerCase() === "authorization") {
-					marksHeaders[key] = value;
-				}
-			}
-		}
+		const marksHeaders = assetFetchHeaders(headers, config);
 		let speechMarks: NormalizedSynthesisResult["speechMarks"] = [];
 		const inlineSpeechMarks = parseInlineSpeechMarks(data.speechMarks);
 		if (inlineSpeechMarks.length > 0) {
@@ -505,11 +544,13 @@ const customAdapter: TransportAdapter = {
 		} else if (typeof data.word === "string" && data.word.length > 0) {
 			const marksUrl = parseAssetUrl(data.word, config);
 			if (marksUrl !== null) {
-				const effectiveMarksHeaders = isOriginTrustedForAuth(marksUrl, config)
+				const marksTrusted = isOriginTrustedForAuth(marksUrl, config);
+				const effectiveMarksHeaders = marksTrusted
 					? marksHeaders
 					: scrubAuthHeaders(marksHeaders);
 				const marksResponse = await fetch(marksUrl.toString(), {
 					headers: effectiveMarksHeaders,
+					...fetchCredentials(config, marksTrusted),
 					signal,
 					// Fail loud on redirects; the origin allow-list decision
 					// is made pre-redirect and a silent hop could leak auth
@@ -706,6 +747,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					headers,
 					body: JSON.stringify(requestBody),
 					signal,
+					...fetchCredentials(this.config),
 				});
 			} catch (error) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
@@ -804,12 +846,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				backend: this.config.provider || "server",
 				operation: "fetch-synthesized-audio-asset",
 			});
-			const assetHeaders: Record<string, string> = {};
-			if (this.config.includeAuthOnAssetFetch) {
-				if (this.config.authToken) {
-					assetHeaders["Authorization"] = `Bearer ${this.config.authToken}`;
-				}
-			}
+			const assetHeaders = assetFetchHeaders(headers, this.config);
 			const parsedAssetUrl = parseAssetUrl(audioAssetUrl, this.config);
 			if (parsedAssetUrl === null) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
@@ -822,10 +859,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				});
 				throw new Error("TTS asset URL rejected (non-http(s) or malformed)");
 			}
-			const effectiveAssetHeaders = isOriginTrustedForAuth(
-				parsedAssetUrl,
-				this.config,
-			)
+			const assetTrusted = isOriginTrustedForAuth(parsedAssetUrl, this.config);
+			const effectiveAssetHeaders = assetTrusted
 				? assetHeaders
 				: scrubAuthHeaders(assetHeaders);
 			const audioResponse = await (async () => {
@@ -833,6 +868,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					return await fetch(parsedAssetUrl.toString(), {
 						headers: effectiveAssetHeaders,
 						signal,
+						...fetchCredentials(this.config, assetTrusted),
 						redirect: "error",
 					});
 				} catch (error) {
@@ -1201,20 +1237,26 @@ export class ServerTTSProvider implements ITTSProvider {
 				clearTimeout(timeoutId);
 				return true;
 			}
-			const validationUrl =
+			const validationUrls =
 				mode === "voices"
-					? resolveVoicesValidationUrl(this.config)
-					: this.adapter.resolveSynthesisUrl(this.config);
+					? resolveVoicesValidationUrls(this.config)
+					: [this.adapter.resolveSynthesisUrl(this.config)];
 			const method = mode === "voices" ? "GET" : "OPTIONS";
 			try {
-				const response = await fetch(validationUrl, {
-					method,
-					headers,
-					signal: controller.signal,
-				});
+				let reachable = false;
+				for (const validationUrl of validationUrls) {
+					const response = await fetch(validationUrl, {
+						method,
+						headers,
+						signal: controller.signal,
+						...fetchCredentials(this.config),
+					});
+					// Some endpoints may not accept OPTIONS; treat 405 as reachable.
+					reachable = response.ok || response.status === 405;
+					if (reachable || response.status !== 404) break;
+				}
 				clearTimeout(timeoutId);
-				// Some endpoints may not accept OPTIONS; treat 405 as reachable.
-				return response.ok || response.status === 405;
+				return reachable;
 			} catch {
 				clearTimeout(timeoutId);
 				return false;

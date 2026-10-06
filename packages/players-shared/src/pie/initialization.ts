@@ -13,7 +13,7 @@ import { editorPostFix } from "../types/index.js";
 import { initializePieElement } from "./initialize-element.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { initializeMathRendering } from "./math-rendering.js";
-import { pieRegistry } from "./registry.js";
+import { pieRegistry, writeRegistryEntry } from "./registry.js";
 import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import type {
@@ -70,6 +70,7 @@ const updateRegisteredElement = (
 		config,
 		session,
 		...(omitEnv ? {} : { env: options.env }),
+		bundleType: options.bundleType,
 		container: options.container,
 		...(options.eventListeners?.[elementTagName] && {
 			eventListeners: options.eventListeners[elementTagName],
@@ -202,42 +203,25 @@ const registerPieElementsFromBundle = (
 			},
 		);
 
-		// Validate controller presence based on bundle type
-		if (!elementData.controller) {
-			if (options.bundleType === BundleType.clientPlayer) {
-				logger.error(
-					`[registerPieElementsFromBundle] ❌ CRITICAL: No controller found for ${pkgStripped}!`,
-				);
-				logger.error(
-					`[registerPieElementsFromBundle] Bundle type: ${options.bundleType} (controllers required)`,
-				);
-				throw new Error(
-					`No controller found for ${pkgStripped}. client-player.js bundles MUST include controllers!`,
-				);
-			} else {
-				logger.debug(
-					`[registerPieElementsFromBundle] ℹ️ No controller found for ${pkgStripped} - using server-processed models (player.js bundle)`,
-				);
-			}
-		}
-
 		{
-			// Register the element in our registry
+			// Register the element in our registry. A package without a
+			// controller, such as a legacy `@pie-element/protractor`, renders
+			// the model it is given under client-player.js too.
 			logger.debug(
 				`[registerPieElementsFromBundle] Registering ${elName} in registry${
 					elementData.controller
 						? " with controller"
-						: " (no controller - server-processed models)"
+						: " (no controller; its model is used as given)"
 				}`,
 			);
-			registry[elementTagName] = {
+			writeRegistryEntry({
 				package: pkg as string,
 				status: Status.loading,
 				tagName: elementTagName,
 				controller: elementData.controller || null,
 				config: elementData.config,
 				bundleType: options.bundleType,
-			};
+			});
 
 			if (isCustomElementConstructor(elementData.Element)) {
 				defineCustomElementSafely(
@@ -259,14 +243,14 @@ const registerPieElementsFromBundle = (
 						session,
 						env: options.env,
 						eventListeners: options.eventListeners?.[elementTagName],
+						bundleType: options.bundleType,
 					});
 				});
 
-				// Update registry status
-				registry[elementTagName] = {
+				writeRegistryEntry({
 					...registry[elementTagName],
 					status: Status.loaded,
-				};
+				});
 
 				promises.push(
 					customElements.whenDefined(elementTagName).then(() => {
@@ -463,9 +447,8 @@ export const loadPieModule = async (
 					Promise.all(registrationPromises).then(succeed, fail);
 				} catch (error) {
 					// `registerPieElementsFromBundle` throws synchronously for a
-					// package missing from the bundle and for a client-player
-					// bundle with no controller. Inside a DOM event handler that
-					// throw reaches the window instead of the caller.
+					// package missing from the bundle. Inside a DOM event handler
+					// that throw reaches the window instead of the caller.
 					fail(error instanceof Error ? error : new Error(String(error)));
 				}
 			});

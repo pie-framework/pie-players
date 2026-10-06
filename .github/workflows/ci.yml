@@ -13,10 +13,47 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Jobs restore the Turbo cache that turbo-cache.yml saves from develop, so a pull
+# request replays the builds its change leaves untouched. Restore-only: a pull
+# request's cache is readable by that pull request alone.
+env:
+  TURBO_CACHE_DIR: .turbo/cache
+
 jobs:
+  # Decides which jobs this run skips: everything but Docs for a documentation-only pull
+  # request, everything heavy for a release or `skip-heavy-ci` one. See
+  # scripts/lib/change-scope.mjs. Every other job runs on `!cancelled()` and skips only on
+  # an explicit 'true', because a job skipped by a failed `needs` satisfies a required
+  # check: a broken classifier must run the suite, not pass it.
+  change-scope:
+    name: Change Scope
+    runs-on: ubuntu-latest
+    outputs:
+      skip_code: ${{ steps.scope.outputs.skip_code }}
+      skip_docs: ${{ steps.scope.outputs.skip_docs }}
+      skip_audit: ${{ steps.scope.outputs.skip_audit }}
+      skip_cortex: ${{ steps.scope.outputs.skip_cortex }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Classify Changes
+        id: scope
+        env:
+          SKIP_HEAVY: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci')) }}
+        run: bun ./scripts/ci-change-scope.mjs
+
   lint-and-typecheck:
     name: Lint & Typecheck
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_code != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,13 +66,21 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
 
       - name: Verify CI Lint & Typecheck Gate
         run: bun run verify:ci-lint-typecheck
 
   build:
     name: Build
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_code != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,6 +93,13 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
 
       - name: Build All Packages
         run: bun run build
@@ -76,26 +128,30 @@ jobs:
     # the five per-suite names develop's branch protection requires would never report
     # and the pull request would wait on them forever. Guarding the steps keeps the
     # matrix expanded, so every required name reports on every run.
+    needs: change-scope
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
-      RUN_HEAVY: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+      RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: assessment-player
             command: test:e2e:assessment-player
+            browsers: chromium
+          # Firefox runs the esm strategy's specs: it rejects import maps other
+          # engines apply, and the player loads through es-module-shims there.
+          # Firefox and WebKit run the focus-order spec.
           - name: item-player-critical
             command: test:e2e:item-player:critical
-          # The whole section-player suite, not a subset. The four critical specs
-          # were the only ones CI ran, and three stale specs and two real product
-          # defects sat undetected for months behind that gap.
-          - name: section-player
-            command: test:e2e:section-player
+            browsers: chromium firefox webkit
           - name: players-shared-sanitizer
             command: test:e2e:players-shared
+            browsers: chromium
           - name: print-player-sanitizer
             command: test:e2e:print-player
+            browsers: chromium
     steps:
       - name: Checkout
         if: env.RUN_HEAVY == 'true'
@@ -111,9 +167,17 @@ jobs:
         if: env.RUN_HEAVY == 'true'
         run: bun install --frozen-lockfile
 
-      - name: Install Playwright Chromium
+      - name: Restore Turbo Cache
         if: env.RUN_HEAVY == 'true'
-        run: bunx playwright install --with-deps chromium
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Install Playwright Browsers
+        if: env.RUN_HEAVY == 'true'
+        run: bunx playwright install --with-deps ${{ matrix.browsers }}
 
       - name: Run Critical E2E
         if: env.RUN_HEAVY == 'true'
@@ -133,15 +197,132 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The whole section-player suite, not a subset. The four critical specs were the
+  # only ones CI ran, and three stale specs and two real product defects sat
+  # undetected for months behind that gap. Sharded because on one worker it was
+  # the slowest leg by a factor of five; Playwright splits the spec files by test
+  # count, and `strategy.job-total` keeps the divisor in step with the matrix.
+  section-player-e2e:
+    name: Section Player E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: change-scope
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    env:
+      RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        if: env.RUN_HEAVY == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        if: env.RUN_HEAVY == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      # Firefox runs the esm strategy's specs; Firefox and WebKit the focus-order one.
+      - name: Install Playwright Browsers
+        if: env.RUN_HEAVY == 'true'
+        run: bunx playwright install --with-deps chromium firefox webkit
+
+      - name: Run Section Player E2E
+        if: env.RUN_HEAVY == 'true'
+        run: bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+      - name: Upload E2E Failure Artifacts
+        if: failure() && env.RUN_HEAVY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-section-player-${{ matrix.shard }}
+          path: packages/section-player/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The check develop's branch protection requires for the section-player suite:
+  # it passes only when every shard passed.
+  section-player-e2e-result:
+    name: Critical E2E (section-player)
+    needs: section-player-e2e
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Shard Results
+        run: test "${{ needs.section-player-e2e.result }}" = success
+
+  # The Cortex calculator's own browser suite, in parallel with the critical legs.
+  # Not a required check: a pull request runs it only when it touches Cortex, the
+  # calculator contract it depends on, or the toolchain, and every push to master
+  # runs it. The Change Scope job decides which.
+  cortex-e2e:
+    name: Cortex Calculator E2E
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_cortex != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build Cortex Dependencies
+        run: bunx turbo build --filter='@pie-players/pie-calculator-cortex^...'
+
+      - name: Run Cortex Calculator E2E
+        run: bun run --cwd packages/calculator-cortex test:e2e
+
+      - name: Upload E2E Failure Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-cortex
+          path: packages/calculator-cortex/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
   dependency-audit:
     name: Dependency Audit
     # Deliberately not carrying the `skip-heavy-ci` guard the other jobs use. It
     # is a ~2s check on top of install, and the release path is exactly when a
-    # known-vulnerable dependency should not slip through unexamined.
+    # known-vulnerable dependency should not slip through unexamined. Only a
+    # documentation-only pull request skips it, since it cannot change a dependency.
     #
     # Not part of `verify:pre-commit`/`verify:pre-push` either: it needs network
     # access and its result changes with advisory data rather than with the diff,
     # so it does not belong in a local hook. See scripts/check-audit.mjs.
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_audit != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -160,7 +341,8 @@ jobs:
 
   docs:
     name: Docs
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_docs != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -177,9 +359,12 @@ jobs:
       - name: Check Documentation
         run: bun run check:docs
 
+  # No Turbo cache here: Turbo's hash ignores the linker, so a hit would replay a
+  # hoisted-linker build in the one job that exists to build under isolation.
   isolated-linker-validation:
     name: Isolated Linker Validation
-    if: ${{ !(github.event_name == 'pull_request' && (startsWith(github.head_ref, 'changeset-release/') || contains(github.event.pull_request.title, '[skip-heavy-ci]') || contains(join(github.event.pull_request.labels.*.name, ','), 'skip-heavy-ci'))) }}
+    needs: change-scope
+    if: ${{ !cancelled() && needs.change-scope.outputs.skip_code != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

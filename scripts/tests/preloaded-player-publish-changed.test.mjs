@@ -1,6 +1,32 @@
 import { describe, expect, test } from "bun:test";
 
-import { shouldRebuildAll } from "../preloaded-player/publish-changed.mjs";
+import {
+	shouldRebuildAll,
+	validateLatestConfig,
+} from "../preloaded-player/publish-changed.mjs";
+
+describe("validateLatestConfig", () => {
+	const config = (file, latest) => ({
+		file,
+		parsed: latest ? { latest: true, elements: [] } : [],
+	});
+
+	test("accepts exactly one config marked latest", () => {
+		expect(() =>
+			validateLatestConfig([config("star-0326.json", true), config("knowledge-checks.json")]),
+		).not.toThrow();
+	});
+
+	test("rejects a set of configs with none marked latest", () => {
+		expect(() => validateLatestConfig([config("knowledge-checks.json")])).toThrow("found none");
+	});
+
+	test("rejects two configs marked latest, naming both", () => {
+		expect(() =>
+			validateLatestConfig([config("a.json", true), config("b.json", true)]),
+		).toThrow("found a.json, b.json");
+	});
+});
 
 describe("shouldRebuildAll", () => {
 	test("rebuilds for a source change in anything every build bundles or runs", () => {
@@ -8,7 +34,7 @@ describe("shouldRebuildAll", () => {
 			"packages/item-player/src/pie-item-player.ts",
 			"packages/item-player/vite.config.ts",
 			"packages/players-shared/src/pie/element-observer.ts",
-			"tools/cli/src/utils/pie-packages/fixed-static.ts",
+			"tools/cli/src/utils/pie-packages/preloaded-static.ts",
 			"scripts/preloaded-player/publish-changed.mjs",
 		]) {
 			expect(shouldRebuildAll([file])).toBe(true);

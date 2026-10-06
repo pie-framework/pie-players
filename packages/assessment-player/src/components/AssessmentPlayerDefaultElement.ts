@@ -1,7 +1,10 @@
 import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 import "@pie-players/pie-section-player/components/section-player-vertical-element";
 import { SECTION_PLAYER_PUBLIC_EVENTS } from "@pie-players/pie-section-player/contracts/public-events";
-import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+import {
+	coerceBooleanLike,
+	type InstrumentationProvider,
+} from "@pie-players/pie-players-shared";
 import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {
 	frameworkErrorFromUnknown,
@@ -476,7 +479,7 @@ export class AssessmentPlayerDefaultElement
 		}
 	}
 
-	private resolveInstrumentationProvider(): unknown {
+	private resolveInstrumentationProvider(): InstrumentationProvider | undefined {
 		return resolveInstrumentationProvider({
 			runtimePlayer: this.sectionPlayerRuntime?.player,
 			component: "pie-assessment-player-default",
@@ -778,12 +781,13 @@ export class AssessmentPlayerDefaultElement
 		const onSessionChanged = () => {
 			if (isCurrent()) this.syncCurrentSectionSessionIntoAssessment();
 		};
+		// The toolkit's `session-changed` alone: it follows every item session change
+		// the section controller records, and `item-session-changed` repeats the
+		// responses among them.
 		target.addEventListener("session-changed", onSessionChanged);
-		target.addEventListener("item-session-changed", onSessionChanged);
 		this.detachSectionListeners = () => {
 			cancelReadiness();
 			target.removeEventListener("session-changed", onSessionChanged);
-			target.removeEventListener("item-session-changed", onSessionChanged);
 		};
 	}
 

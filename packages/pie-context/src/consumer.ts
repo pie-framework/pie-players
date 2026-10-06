@@ -1,4 +1,4 @@
-import { ContextRequestEvent } from "./events.js";
+import { type ContextProviderEvent, ContextRequestEvent } from "./events.js";
 import type { ContextType, UnknownContext } from "./types.js";
 
 export interface ContextConsumerOptions<T extends UnknownContext> {
@@ -89,4 +89,53 @@ export const requestContext = <T extends UnknownContext>(
 		),
 	);
 	return value;
+};
+
+const PROVIDER_RETRY_INTERVAL_MS = 50;
+const PROVIDER_RETRY_MAX_ATTEMPTS = 200;
+
+/**
+ * Subscribe `host` to `context` for a provider that may connect after it.
+ * The consumer requests again when a matching `context-provider` event
+ * reaches `host`, and every 50 ms until it has a value, for up to 200
+ * attempts (about 10 s). Returns a cleanup that stops retrying and
+ * disconnects.
+ */
+export const connectContextWithRetry = <T extends UnknownContext>(
+	host: Element,
+	context: T,
+	onValue: (value: ContextType<T>) => void,
+): (() => void) => {
+	let hasValue = false;
+	const consumer = new ContextConsumer(host, {
+		context,
+		subscribe: true,
+		onValue: (value) => {
+			hasValue = true;
+			onValue(value);
+		},
+	});
+	consumer.connect();
+
+	const onContextProvider = (event: Event) => {
+		if ((event as ContextProviderEvent).context !== context) return;
+		consumer.requestValue();
+	};
+	host.addEventListener("context-provider", onContextProvider);
+
+	let attempts = 0;
+	const retryTimer = globalThis.setInterval(() => {
+		if (hasValue || attempts >= PROVIDER_RETRY_MAX_ATTEMPTS) {
+			globalThis.clearInterval(retryTimer);
+			return;
+		}
+		attempts += 1;
+		consumer.requestValue();
+	}, PROVIDER_RETRY_INTERVAL_MS);
+
+	return () => {
+		globalThis.clearInterval(retryTimer);
+		host.removeEventListener("context-provider", onContextProvider);
+		consumer.disconnect();
+	};
 };

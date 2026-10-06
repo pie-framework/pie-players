@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	collectDeclaredTargets,
+	getImportTarget,
 	getNodeConsumerImportTargets,
 	isPackedMatch,
 	parsePackJson,
 	packedFilesFromPackData,
+	splitPackageSpecifier,
 	toPosix,
 } from "../lib/pack-inspection.mjs";
 
@@ -104,6 +106,39 @@ describe("pack inspection helpers", () => {
 
 	test("normalizes platform separators to package paths", () => {
 		expect(toPosix("dist\\nested\\index.js")).toBe("dist/nested/index.js");
+	});
+
+	test("splits a specifier into its package name and exports key", () => {
+		expect(splitPackageSpecifier("@pie-players/pie-section-player")).toEqual({
+			name: "@pie-players/pie-section-player",
+			subpath: ".",
+		});
+		expect(
+			splitPackageSpecifier(
+				"@pie-players/pie-section-player/contracts/host-hooks",
+			),
+		).toEqual({
+			name: "@pie-players/pie-section-player",
+			subpath: "./contracts/host-hooks",
+		});
+		expect(splitPackageSpecifier("semver/functions/parse")).toEqual({
+			name: "semver",
+			subpath: "./functions/parse",
+		});
+	});
+
+	test("resolves the ESM target of the root and of a subpath", () => {
+		const pkg = {
+			main: "./dist/main.js",
+			exports: {
+				".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
+				"./policies": { default: "./dist/policies/index.js" },
+			},
+		};
+		expect(getImportTarget(pkg)).toBe("./dist/index.js");
+		expect(getImportTarget(pkg, "./policies")).toBe("./dist/policies/index.js");
+		expect(getImportTarget(pkg, "./missing")).toBeNull();
+		expect(getImportTarget({ main: "./dist/main.js" })).toBe("./dist/main.js");
 	});
 
 	test("rejects malformed node consumer import target policy", () => {

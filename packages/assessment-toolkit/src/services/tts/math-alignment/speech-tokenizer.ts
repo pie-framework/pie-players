@@ -1,6 +1,10 @@
 import { extractSpokenText } from "../ssml/spoken-text.js";
-import type { BoundaryOffsetSpace, SpeechAlignmentToken } from "./types.js";
 import { createSpeechAlignmentTokenPattern } from "../text-processing.js";
+import type {
+	AlignmentTextToken,
+	BoundaryOffsetSpace,
+	SpeechAlignmentToken,
+} from "./types.js";
 
 export interface SpeechSourceTokenization {
 	speechText: string;
@@ -19,9 +23,9 @@ export interface ResolvedSpeechBoundary {
 	confidence: number;
 }
 
-// Shared Unicode-aware tokenizer, identical to the catalog span aligner's, so
-// spoken text tokenizes the same way on both paths (see
-// `createSpeechAlignmentTokenPattern`).
+// The one tokenizer and normalization table for TTS alignment. Spoken text,
+// visible catalog text and provider boundary words all tokenize here, so a word
+// normalizes the same way on the catalog, math and generated-speech paths.
 const TOKEN_PATTERN = createSpeechAlignmentTokenPattern();
 
 const NUMERIC_WORDS = new Map<string, string>([
@@ -43,24 +47,29 @@ const normalizedTokenValue = (value: string): string => {
 	return NUMERIC_WORDS.get(normalized) || normalized;
 };
 
-const tokenizeSpokenText = (spokenText: string): SpeechAlignmentToken[] => {
-	const tokens: SpeechAlignmentToken[] = [];
-	for (const match of spokenText.matchAll(TOKEN_PATTERN)) {
-		const text = match[0];
+export const tokenizeAlignmentText = (text: string): AlignmentTextToken[] => {
+	const tokens: AlignmentTextToken[] = [];
+	for (const match of text.matchAll(TOKEN_PATTERN)) {
+		const value = match[0];
 		const start = match.index ?? 0;
 		tokens.push({
-			id: `speech-token-${tokens.length}`,
-			text,
-			normalized: normalizedTokenValue(text),
+			text: value,
+			normalized: normalizedTokenValue(value),
 			start,
-			end: start + text.length,
-			sourceStart: start,
-			sourceEnd: start + text.length,
-			coordinateSystem: "normalized-speech",
+			end: start + value.length,
 		});
 	}
 	return tokens;
 };
+
+const tokenizeSpokenText = (spokenText: string): SpeechAlignmentToken[] =>
+	tokenizeAlignmentText(spokenText).map((token, index) => ({
+		...token,
+		id: `speech-token-${index}`,
+		sourceStart: token.start,
+		sourceEnd: token.end,
+		coordinateSystem: "normalized-speech",
+	}));
 
 export const tokenizeSpeechSource = (args: {
 	speechText: string;
@@ -81,12 +90,20 @@ export const tokenizeSpeechSource = (args: {
 	};
 };
 
-const normalizeBoundaryWord = (word?: string): string | null => {
-	if (!word) return null;
-	if (/^<[^>]+>$/.test(word.trim())) return null;
-	const match = word.match(TOKEN_PATTERN);
-	if (!match?.[0]) return null;
-	return normalizedTokenValue(match[0]);
+const isControlTagWord = (word?: string): boolean =>
+	Boolean(word && /^<[^>]+>$/.test(word.trim()));
+
+/**
+ * A provider boundary word in the form spoken tokens compare in, or null when
+ * the word carries no token (empty, a control tag, punctuation). The word goes
+ * through the same SSML extraction as the chunk, so an entity-encoded word
+ * normalizes to the text it encodes.
+ */
+export const normalizeBoundaryWord = (word?: string): string | null => {
+	if (!word || isControlTagWord(word)) return null;
+	return (
+		tokenizeSpeechSource({ speechText: word }).tokens[0]?.normalized ?? null
+	);
 };
 
 const findTokenAtOffset = (
@@ -131,15 +148,13 @@ const candidateForOffset = (
 
 const candidateMatchesWord = (
 	candidate: ResolvedSpeechBoundary | null,
-	boundaryWord?: string,
-): boolean => {
-	const normalizedBoundary = normalizeBoundaryWord(boundaryWord);
-	return Boolean(
+	normalizedWord: string | null,
+): candidate is ResolvedSpeechBoundary =>
+	Boolean(
 		candidate &&
-			normalizedBoundary &&
-			candidate.token.normalized === normalizedBoundary,
+			normalizedWord &&
+			candidate.token.normalized === normalizedWord,
 	);
-};
 
 export const resolveBoundaryToSpeechToken = (args: {
 	tokenization: SpeechSourceTokenization;
@@ -150,7 +165,7 @@ export const resolveBoundaryToSpeechToken = (args: {
 	if (
 		args.tokenization.boundaryOffsetSpace === "unsupported" ||
 		!Number.isFinite(args.position) ||
-		(args.boundaryWord && /^<[^>]+>$/.test(args.boundaryWord.trim()))
+		isControlTagWord(args.boundaryWord)
 	) {
 		return null;
 	}
@@ -158,6 +173,7 @@ export const resolveBoundaryToSpeechToken = (args: {
 		1,
 		Number.isFinite(args.length) ? args.length! : 1,
 	);
+	const normalizedWord = normalizeBoundaryWord(args.boundaryWord);
 	const rawCandidate = candidateForOffset(
 		args.tokenization,
 		mapRawOffsetToSpokenOffset(args.tokenization, args.position),
@@ -171,15 +187,13 @@ export const resolveBoundaryToSpeechToken = (args: {
 		safeLength,
 	);
 
-	if (candidateMatchesWord(rawCandidate, args.boundaryWord)) {
-		return { ...rawCandidate!, confidence: 1 };
+	if (candidateMatchesWord(rawCandidate, normalizedWord)) {
+		return { ...rawCandidate, confidence: 1 };
 	}
-	if (candidateMatchesWord(plainCandidate, args.boundaryWord)) {
-		return { ...plainCandidate!, confidence: 1 };
+	if (candidateMatchesWord(plainCandidate, normalizedWord)) {
+		return { ...plainCandidate, confidence: 1 };
 	}
-	if (args.boundaryWord && normalizeBoundaryWord(args.boundaryWord)) {
-		return null;
-	}
+	if (normalizedWord) return null;
 
 	return args.tokenization.boundaryOffsetSpace === "raw-ssml"
 		? rawCandidate || plainCandidate
@@ -195,7 +209,7 @@ export const resolveSpokenOffsetToSpeechToken = (args: {
 	if (
 		args.tokenization.boundaryOffsetSpace === "unsupported" ||
 		!Number.isFinite(args.position) ||
-		(args.boundaryWord && /^<[^>]+>$/.test(args.boundaryWord.trim()))
+		isControlTagWord(args.boundaryWord)
 	) {
 		return null;
 	}
@@ -203,6 +217,7 @@ export const resolveSpokenOffsetToSpeechToken = (args: {
 		1,
 		Number.isFinite(args.length) ? args.length! : 1,
 	);
+	const normalizedWord = normalizeBoundaryWord(args.boundaryWord);
 	const spokenCandidate = candidateForOffset(
 		args.tokenization,
 		args.position >= 0 && args.position < args.tokenization.spokenText.length
@@ -210,11 +225,9 @@ export const resolveSpokenOffsetToSpeechToken = (args: {
 			: null,
 		safeLength,
 	);
-	if (candidateMatchesWord(spokenCandidate, args.boundaryWord)) {
-		return { ...spokenCandidate!, confidence: 1 };
+	if (candidateMatchesWord(spokenCandidate, normalizedWord)) {
+		return { ...spokenCandidate, confidence: 1 };
 	}
-	if (args.boundaryWord && normalizeBoundaryWord(args.boundaryWord)) {
-		return null;
-	}
+	if (normalizedWord) return null;
 	return spokenCandidate;
 };

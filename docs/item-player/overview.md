@@ -31,7 +31,7 @@ All loader, controller, and type code lives in `@pie-players/pie-players-shared`
 
 **PieItemRenderer** (`players-shared/src/components/PieItemPlayer.svelte`) -- A Svelte component that takes a loaded `ConfigEntity`, renders the item markup, binds models and sessions to PIE custom elements, and forwards lifecycle events (`load-complete`, `session-changed`, `player-error`, `model-updated`, `model-loaded`). In authoring mode it delegates configure initialization, validation, and media event wiring to shared authoring helpers.
 
-**ElementLoader primitive** (`players-shared/src/loaders/element-loader.ts`) -- The single entry point for registering PIE custom elements. Exposes `ensureRegistered(elements, { backend, ... })` (async, truthful-promise contract: resolves iff every requested tag is in `customElements`) and `assertRegistered(tags)` (sync, throws `ElementAssertionError` with a diagnostic message if any tag is missing). The primitive owns the post-load `customElements.whenDefined` verification pass; backends cannot silently under-register.
+**ElementLoader primitive** (`players-shared/src/loaders/element-loader.ts`) -- The single entry point for registering PIE custom elements. Exposes `ensureRegistered(elements, { backend, ... })` (async, truthful-promise contract: resolves iff every requested tag is in `customElements`) and `assertRegistered(tags)` (sync, throws `ElementAssertionError` naming each missing tag and the tags its package is registered as). The primitive owns the post-load `customElements.whenDefined` verification pass; backends cannot silently under-register.
 
 **IIFE backend** (`players-shared/src/loaders/iife-adapter.ts`) -- Loads IIFE bundles from a bundle host by injecting `<script>` tags. Supports bundle types `player` (elements only, hosted mode), `clientPlayer` (elements + controllers), and `editor` (authoring elements). Registers loaded elements in the global `window.PIE_REGISTRY`. Includes a configurable retry policy (`bundleRetry`, `onBundleRetryStatus`) for the bundle service's "still building" lifecycle.
 
@@ -41,7 +41,9 @@ static browser ESM package surface defined by the producer-side
 injected import map plus dynamic `import()`. It supports `delivery`, `author`,
 and `print` views through
 `dist/browser/<view>/index.js` entries and resolves shared browser singletons
-from exact `pie.browserSharedDependencies` metadata.
+from exact `pie.browserSharedDependencies` metadata. Under URL resolution it
+loads the variant a package declares in `pie.browserEditorRuntime`, against one
+[shared editor runtime](./loading-strategies.md#shared-editor-runtime) per page.
 
 ## Modes
 
@@ -74,7 +76,10 @@ Hosts can listen for:
 
 Hosts can call `validateModels()` on the `<pie-item-player>` element to run each
 rendered configure element's controller `validate(model, configuration)` method.
-The method returns `{ hasErrors, validatedModels }`.
+The method returns `{ hasErrors, validatedModels }`. Each validated model is
+`{ ...model, errors }`, where `errors` is the controller's field → message map, and
+each configure element receives the same map as `model.errors` to render its
+inline messages.
 
 For media, `authoring-backend="demo"` installs demo handlers. Use
 `authoring-backend="required"` when production hosts must provide all four
@@ -141,6 +146,14 @@ On the page-hidden path a scheduled `backend.delivery` autosave is flushed rathe
 An element that has adopted `createSessionNotifier` (`@pie-element/shared-player-events`) dispatches its own event with its own `complete` semantics. An older element gets a `session-changed` synthesized from its `session` getter, carrying `detail.sessionCommitReason`. No element version is required for the player-side guarantee.
 
 Nothing is announced unless it changed since the host last heard. The discriminant is a comparison against the session the player last observed for that element, recorded on the element itself — seeded when the item loads, updated on every forwarded `session-changed`. That makes a restored response the learner never touched silent, an erased response announced, and a response the learner returns to after changing it announced again. An element the player never observed falls back to `hasLearnerResponse`, which asks whether the session holds anything outside identity, dispatch metadata and controller-written shuffle order.
+
+### Session snapshot
+
+`sessionSnapshot` (property, or the `session-snapshot` attribute) opts into a device-local copy of each committed session, keyed by the `backend.delivery` identity and stored in `sessionStorage` by default. A crash or an OS kill fires no lifecycle event, so nothing else survives it.
+
+There is no snapshot without a delivery `sessionId`. The item id alone is the same for every learner, so on a shared device a snapshot keyed by it would offer one student's draft to the next — and the offer is the disclosure, whether or not the host applies it. A host driving the player by props alone opts in with an explicit `sessionSnapshot.key` and owns the uniqueness of that key.
+
+The snapshot is offered, never applied: on load, a matching snapshot raises `session-snapshot-available` with `{ key, session, timestamp }` and the host decides. School devices are shared, and the player cannot tell a legitimate recovery from a previous student's draft. The record stays available from `getPendingSessionSnapshot()` after the event fires, for a host that binds its listener late. A host that wants recovery across a full browser restart supplies a `localStorage`-backed `store` and owns the retention consequences. The snapshot is cleared on a successful backend save.
 
 ## External styles
 

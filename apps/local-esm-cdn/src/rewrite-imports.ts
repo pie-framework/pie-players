@@ -1,7 +1,16 @@
+import path from "node:path";
+
 export type RewriteOptions = {
 	esmShBaseUrl: string;
-	pkg?: string; // e.g., "@pie-lib/render-ui"
-	subpath?: string; // e.g., "controller/index" or empty
+	/** The package the module belongs to, e.g. "@pie-lib/render-ui". */
+	pkg?: string;
+	/**
+	 * The module's file path inside the package's `dist`, e.g.
+	 * "browser/delivery/index.js". Relative imports resolve against it.
+	 */
+	modulePath?: string;
+	/** Specifiers left bare, for the page's import map to resolve. */
+	bareSpecifiers?: ReadonlySet<string>;
 };
 
 function shouldRewriteToEsmSh(specifier: string): boolean {
@@ -72,6 +81,8 @@ function parseBunNodeModulesSpecifier(
 }
 
 function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
+	if (opts.bareSpecifiers?.has(specifier)) return specifier;
+
 	// Rewrite PIE packages to use /@pie- prefix for local serving
 	if (
 		specifier.startsWith("@pie-element/") ||
@@ -102,30 +113,14 @@ function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
 			return specifier;
 		}
 
-		// For relative imports, convert to absolute package path
-		// e.g., "./feedback.js" in @pie-lib/render-ui becomes "/@pie-lib/render-ui/feedback.js"
-
-		// Remove leading ./ or ../
-		let cleaned = specifier;
-		if (cleaned.startsWith("./")) {
-			cleaned = cleaned.slice(2);
-		} else if (cleaned.startsWith("../")) {
-			// Handle ../ by going up in the subpath
-			// For now, just remove the ../
-			cleaned = cleaned.slice(3);
-		}
-
-		// Construct absolute path
-		if (opts.subpath) {
-			// If we're in a subpath, go up one level
-			const parts = opts.subpath.split("/");
-			parts.pop(); // Remove the file part
-			if (parts.length > 0) {
-				return `/${opts.pkg}/${parts.join("/")}/${cleaned}`;
-			}
-		}
-
-		return `/${opts.pkg}/${cleaned}`;
+		// The package's URL space mirrors its `dist`, so a relative import
+		// resolves against the importing file as the browser would resolve it.
+		const resolved = path.posix.join(
+			path.posix.dirname(opts.modulePath ?? ""),
+			specifier,
+		);
+		if (resolved === ".." || resolved.startsWith("../")) return specifier;
+		return `/${opts.pkg}/${resolved}`;
 	}
 
 	return specifier;
@@ -138,24 +133,21 @@ async function tryRewriteWithEsModuleLexer(
 	try {
 		// Optional dependency: present via workspace deps in many setups.
 		// If it's missing, we'll fall back to a simple regex approach.
-		const mod = (await import("es-module-lexer")) as unknown as {
-			init: Promise<void>;
-			parse: (
-				source: string,
-			) => [{ s: number; e: number; d: number }[], unknown];
-		};
+		const mod = await import("es-module-lexer");
 
-		await mod.init;
+		await mod.init();
 		const [imports] = mod.parse(code);
 
 		let out = "";
 		let last = 0;
 		for (const i of imports) {
-			const spec = code.slice(i.s, i.e);
+			// `import.meta` carries no specifier.
+			if (i.type === "import-meta") continue;
+			const spec = code.slice(i.start, i.end);
 
-			// Skip if this is a dynamic import with a variable/expression (not a string literal)
-			// Dynamic imports have d >= 0. Static imports have d === -1.
-			if (i.d >= 0) {
+			// Skip if this is a dynamic import with a variable/expression (not a string literal).
+			// A dynamic import's range spans its whole argument, quotes included.
+			if (i.type === "dynamic") {
 				// Check if the specifier is actually a string literal
 				const isStringLiteral =
 					(spec.startsWith('"') && spec.endsWith('"')) ||
@@ -172,17 +164,17 @@ async function tryRewriteWithEsModuleLexer(
 				const unquoted = spec.slice(1, -1);
 				const next = rewriteSpecifier(unquoted, opts);
 				if (next !== unquoted) {
-					out += code.slice(last, i.s);
+					out += code.slice(last, i.start);
 					out += `${quote}${next}${quote}`; // Re-wrap in same quotes
-					last = i.e;
+					last = i.end;
 				}
 			} else {
 				// Static import - rewrite normally (specifier doesn't include quotes)
 				const next = rewriteSpecifier(spec, opts);
 				if (next !== spec) {
-					out += code.slice(last, i.s);
+					out += code.slice(last, i.start);
 					out += next;
-					last = i.e;
+					last = i.end;
 				}
 			}
 		}

@@ -9,94 +9,85 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
+import type { ITTSProvider } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
+import type {
+	RuntimeTTSConfig,
+	TTSRuntimeSettings,
+} from "../tts-runtime-config.js";
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
 } from "./ToolProviderApi.js";
 
-/**
- * TTS backend type
- */
-export type TTSBackend = "browser" | "polly" | "google" | "server";
+export type TTSBackend = NonNullable<TTSRuntimeSettings["backend"]>;
 
 /**
- * TTS tool provider configuration
+ * The runtime provider config plus the backend selection and instrumentation
+ * this tool provider reads.
  */
-export interface TTSToolProviderConfig extends Partial<TTSConfig> {
-	/**
-	 * TTS backend to use
-	 */
+export type TTSToolProviderConfig = RuntimeTTSConfig & {
 	backend: TTSBackend;
-
+	serverProvider?: TTSRuntimeSettings["serverProvider"];
 	/**
-	 * Server API endpoint (for server backends)
-	 * @example '/api/tts/synthesize'
-	 * @example 'https://api.example.com/tts/synthesize'
-	 */
-	apiEndpoint?: string;
-
-	/**
-	 * Provider to use on server ('polly', 'google')
-	 * Only used when backend is 'server', 'polly', or 'google'
-	 */
-	serverProvider?: "polly" | "google" | "custom";
-
-	/**
-	 * Explicit transport mode for server provider payload translation.
-	 */
-	transportMode?: "pie" | "custom";
-
-	/**
-	 * Endpoint style used by the server-backed provider.
-	 */
-	endpointMode?: "synthesizePath" | "rootPost";
-
-	/**
-	 * Endpoint validation strategy when validateEndpoint=true.
-	 */
-	endpointValidationMode?: "voices" | "endpoint" | "none";
-
-	/**
-	 * Include auth header when fetching remote audio/speech-mark assets.
-	 */
-	includeAuthOnAssetFetch?: boolean;
-
-	/**
-	 * Auth token (if required)
-	 * Typically fetched via authFetcher in ToolProviderRegistry
+	 * Bearer token for a server backend, sent as `Authorization`. A host supplies
+	 * it through `provider.runtime.authFetcher`.
 	 */
 	authToken?: string;
-
-	/**
-	 * Organization ID for multi-tenant applications
-	 */
-	organizationId?: string;
-
-	/**
-	 * Default voice to use
-	 */
-	voice?: string;
-
-	/**
-	 * Speech rate (0.25 to 4.0, default 1.0)
-	 */
-	rate?: number;
-
-	/**
-	 * Speech pitch (0 to 2, default 1.0)
-	 * Note: Only browser backend supports pitch
-	 */
-	pitch?: number;
-
-	/**
-	 * Optional telemetry callback for tool/backend instrumentation.
-	 */
 	onTelemetry?: (
 		eventName: string,
 		payload?: Record<string, unknown>,
 	) => void | Promise<void>;
+};
+
+/**
+ * Construction options. `loadServerProvider` resolves the server adapter's
+ * provider class; a server backend fails to initialize without it. The toolkit
+ * leaves the adapter to its caller so that a bundler building the toolkit never
+ * has to resolve `@pie-players/tts-client-server`.
+ */
+export type TTSToolProviderOptions = {
+	loadServerProvider?: () => Promise<new () => ITTSProvider>;
+};
+
+/** The part of `TTSToolProviderConfig` a server backend's provider reads. */
+type ServerBackendConfig = Omit<
+	TTSToolProviderConfig,
+	"backend" | "serverProvider" | "onTelemetry"
+>;
+
+/**
+ * Binds a server backend's provider to the config the registry initialized this
+ * tool provider with, including what `provider.runtime.authFetcher` returned.
+ * The bound config wins over the runtime config the TTS service initializes the
+ * provider with; `headers` and `providerOptions` merge key by key, keeping the
+ * host's headers and the service's telemetry reporter.
+ */
+function bindServerBackendConfig(
+	provider: ITTSProvider,
+	bound: ServerBackendConfig,
+): ITTSProvider {
+	return {
+		providerId: provider.providerId,
+		providerName: provider.providerName,
+		version: provider.version,
+		initialize: (config) => {
+			const runtime = config as ServerBackendConfig;
+			const merged: ServerBackendConfig = {
+				...runtime,
+				...bound,
+				headers: { ...runtime.headers, ...bound.headers },
+				providerOptions: {
+					...runtime.providerOptions,
+					...bound.providerOptions,
+				},
+			};
+			return provider.initialize(merged);
+		},
+		supportsFeature: (feature) => provider.supportsFeature(feature),
+		getCapabilities: () => provider.getCapabilities(),
+		destroy: () => provider.destroy(),
+	};
 }
 
 /**
@@ -112,13 +103,14 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
  * const ttsProvider = await provider.createInstance();
  * ```
  *
- * @example Server TTS (with auth)
+ * @example Server TTS
  * ```typescript
- * const provider = new TTSToolProvider();
+ * const provider = new TTSToolProvider('polly', {
+ *   loadServerProvider: async () => ServerTTSProvider,
+ * });
  * await provider.initialize({
  *   backend: 'polly',
- *   apiEndpoint: '/api/tts/synthesize',
- *   authToken: 'bearer-token', // Fetched via authFetcher
+ *   apiEndpoint: '/api/tts',
  * });
  * const ttsProvider = await provider.createInstance();
  * ```
@@ -134,6 +126,7 @@ export class TTSToolProvider
 
 	private ttsProvider: ITTSProvider | null = null;
 	private config: TTSToolProviderConfig | null = null;
+	private readonly loadServerProvider: TTSToolProviderOptions["loadServerProvider"];
 
 	private async emitTelemetry(
 		eventName: string,
@@ -150,9 +143,14 @@ export class TTSToolProvider
 	 * Create TTS tool provider
 	 *
 	 * @param backend TTS backend to use (default: 'browser')
+	 * @param options Loader for the server adapter, required by server backends
 	 */
-	constructor(backend: TTSBackend = "browser") {
+	constructor(
+		backend: TTSBackend = "browser",
+		options: TTSToolProviderOptions = {},
+	) {
 		this.requiresAuth = backend !== "browser";
+		this.loadServerProvider = options.loadServerProvider;
 	}
 
 	/**
@@ -222,18 +220,22 @@ export class TTSToolProvider
 			);
 		}
 
-		// Server backends are optional; load implementation only when requested.
+		const loadServerProvider = this.loadServerProvider;
+		if (!loadServerProvider) {
+			throw new Error(
+				"[TTSToolProvider] server-based TTS backends need the loadServerProvider option",
+			);
+		}
+
 		const moduleLoadStartedAt = Date.now();
 		await this.emitTelemetry("pie-tool-library-load-start", {
 			toolId: "textToSpeech",
 			operation: "server-provider-module-import",
 			backend: config.serverProvider || config.backend,
 		});
-		const serverModule = await (async () => {
+		const ServerProvider = await (async () => {
 			try {
-				const loaded = (await import("@pie-players/tts-client-server")) as {
-					ServerTTSProvider: new () => ITTSProvider;
-				};
+				const loaded = await loadServerProvider();
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "textToSpeech",
 					operation: "server-provider-module-import",
@@ -253,7 +255,19 @@ export class TTSToolProvider
 				throw error;
 			}
 		})();
-		this.ttsProvider = new serverModule.ServerTTSProvider();
+		// The server adapter owns these fields. Picking them from its config type
+		// fails the build when one is renamed there or typed differently. The
+		// adapter is only a dev dependency here, so it is named only in this body,
+		// which declaration emit leaves out (ADR 0002).
+		type ServerTTSProviderConfig =
+			import("@pie-players/tts-client-server").ServerTTSProviderConfig;
+		const { backend, serverProvider, onTelemetry, ...backendConfig } = config;
+		this.ttsProvider = bindServerBackendConfig(
+			new ServerProvider(),
+			backendConfig satisfies Partial<
+				Pick<ServerTTSProviderConfig, keyof ServerBackendConfig>
+			>,
+		);
 
 		console.log(
 			`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,

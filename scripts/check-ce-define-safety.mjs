@@ -11,6 +11,7 @@ const ALLOWED_DIRECT_DEFINE_FILES = new Set([
 	"packages/print-player/src/ce-registry.ts",
 	"packages/theme/src/theme-element.ts",
 	"packages/assessment-toolkit/scripts/build-ce-components.mjs",
+	"packages/players-shared/svelte-custom-element-guard.ts",
 	// Vendored 3rd-party prebuilt bundle from nextComponentLibrary. We don't own
 	// the source so it can't be routed through defineCustomElementSafely. It is
 	// the single shared source of truth for <nds-icon-button> (consumed via the

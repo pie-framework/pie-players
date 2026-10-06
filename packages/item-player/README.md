@@ -43,21 +43,32 @@ loading several player packages, or several copies of one, yields a single copy.
 
 This applies to CDN hosts too: no extra `<link>` is needed.
 
+Content rules apply inside a `[data-pie-content]` element only. The player sets
+the attribute on the root it renders into, so the stylesheet's bare `h1`–`h6`,
+`table`, `th`, `.table` and `.center` selectors no longer restyle the page around
+it. Each selector is wrapped in `:where()`, which keeps its specificity. A host
+that renders authored markup itself, outside a player, puts `data-pie-content` on
+that container to give it the same styles.
+
+Rules whose selector requires a KDS class (`kds-*`, `Kds*`), MathJax output
+(`mjx-*`, `TEX-*`) or a legacy content class such as `.frac` or `.noprint` are
+the exception and stay document-wide. Elements portal menus and popovers holding
+authored markup to `<body>`, outside the player: an inline-dropdown's choices
+keep their KDS fractions and MathJax glyph fixes there.
+
 ### Upgrading from a manual import
 
-If your app already imports `@pie-players/pie-theme/components.css`, you do not
-have to remove it for this to work — installation is idempotent and two matching
-copies render identically. Removing it is still worth doing: your copy loads after
-the installed one and so wins ties at equal specificity, which means a copy pinned
-to an older `@pie-players/pie-theme` will quietly override newer player rules. The
-player logs a one-time warning naming the redundant import when it sees a second
-copy, so this does not have to be remembered.
+An app that already imports `@pie-players/pie-theme/components.css`, scoped or
+not, keeps working unchanged. The player detects a host copy by its
+`--pie-content-styles` sentinel: when one is present it installs nothing, and when
+one arrives after the player installed its own, the player removes its copy. The
+host's copy is therefore the only one in effect, in the position the host chose.
 
 ### Taking ownership of the stylesheet
 
-To load it yourself instead — to control its position in your cascade, or to ship
-a patched copy — declare that on the root element **before** the player script
-runs:
+The sentinel check covers any copy the page can read. A cross-origin `<link>`
+cannot be read, so a host loading the stylesheet that way declares ownership on
+the root element **before** the player script runs:
 
 ```html
 <html data-pie-content-styles="host"></html>
@@ -73,9 +84,8 @@ silently rendering unstyled content. Presence is detected through
 `--pie-content-styles`, a sentinel `components.css` declares; it carries no
 themeable value, so do not consume it for styling or depend on anything beyond it
 being non-empty. Declare `@pie-players/pie-theme` in your own
-`package.json` if you go this route: it is a dependency of this package, so the
-file is already on disk, but importing a subpath from a transitive dependency
-breaks on a dedupe change or a move to pnpm / Yarn PnP.
+`package.json` if you go this route: the player inlines its copy of the
+stylesheet at build time and does not install the package.
 
 This stylesheet is only the shared content styles. See
 [`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the
@@ -99,9 +109,12 @@ import "@pie-players/pie-item-player";
 
 Use explicit component subpath exports only when you need targeted registration
 control (for example the session debugger element export).
+`@pie-players/pie-item-player/preloaded` exports `registerPreloadedElements` and
+`ensureItemPlayerMathRenderingReady`, and defines no element.
 
-Standalone browser variants for this package are intentionally deferred; current
-support targets default bundler entrypoints under `dist`.
+The root entry imports no bare specifier, so it loads raw from a CDN as under
+[Install](#install) as well as through a bundler. It is the only player that
+does: the section and assessment players are bundler-only.
 
 ## Quick start
 
@@ -121,7 +134,9 @@ support targets default bundler entrypoints under `dist`.
   - Description: main player element
 - `pie-item-player-session-debugger`
   - Export: `@pie-players/pie-item-player/components/item-session-debugger-element`
-  - Description: floating debug panel showing live session and filtered model data
+  - Description: floating debug panel showing live session and filtered model data.
+    Set its `hosted` to the player's: the panel runs no controller over a hosted
+    player's models.
 
 ## Attributes
 
@@ -144,8 +159,9 @@ support targets default bundler entrypoints under `dist`.
 - `mode`: `String`, default `"view"`. Player mode: `"view"` or `"author"`.
 - `authoring-backend`: `String`, default `"demo"`. `"demo"` uses built-in
   stubs; `"required"` requires host-provided handlers.
-- `hosted`: `Boolean`, default `false`. Whether running in hosted mode; affects
-  IIFE bundle type.
+- `hosted`: `Boolean`, default `false`, or `true` when `backend.delivery` is
+  enabled. A hosted player renders server-processed models and runs no element
+  controller in the browser; under `iife` it loads the `player.js` bundle.
 - `add-correct-response`: `Boolean`, default `false`. Populate correct
   responses on models.
 - `show-bottom-border`: `Boolean`, default `false`. Add bottom border in
@@ -180,16 +196,25 @@ support targets default bundler entrypoints under `dist`.
   Use `configuration.authoring` for authoring-only settings.
 - `trust-markup`: `Boolean`, default `false`. Skip the built-in markup
   sanitizer. See [Content trust boundary](#content-trust-boundary).
+- `session-snapshot`: `Object` or `Boolean`, default off. Opt into a
+  device-local copy of each committed session, offered back after a crash. See
+  [Session snapshot](../../docs/item-player/overview.md#session-snapshot). A
+  snapshot requires a `backend.delivery` `sessionId`, or an explicit
+  `sessionSnapshot.key`: the item id alone is the same for every learner, so on
+  a shared device it would offer one student's draft to the next.
 
 ## Properties (JS only)
 
 These are set via JavaScript, not HTML attributes.
 
-- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on" }`.
+- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on", elementPackagePolicy?: { allowedPackages: string[], requireExactVersions?: boolean } }`.
   Strategy-specific loader options. For ESM, the default provider is jsDelivr
   (`https://cdn.jsdelivr.net/npm`); use `esmCdnProvider: "esm.sh"` with
   `esmCdnUrl: "https://esm.sh"` for esm.sh, or pass a provider object when
   package artifacts and shared dependencies use custom routes.
+  `elementPackagePolicy` limits the `config.elements` packages that may execute
+  to exact names or `name@version` specs; see
+  [Escape hatches](../../docs/security/readme.md#escape-hatches).
 - `sanitizeMarkup`: `(markup: string) => string`. Replace the built-in
   DOMPurify sanitizer with a host-supplied function. Ignored when
   `trust-markup` is set.
@@ -202,12 +227,16 @@ These are set via JavaScript, not HTML attributes.
   `context.requestOptions.keepalive` on the unload-path save and has to forward
   it to `fetch`. Without that the save is an ordinary request the browser may
   drop as the document goes away.
+- `sessionSnapshot`: `boolean | { enabled?: boolean, store?: SessionSnapshotStore, key?: string }`.
+  The property form of `session-snapshot`. `store` replaces the default
+  `sessionStorage` backing and owns the retention consequences.
 
 ## Methods
 
 - `provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>`
   returns one result slot per scored model for legacy-compatible local browser
-  scoring.
+  scoring. A hosted player, including one with `backend.delivery` enabled and
+  `hosted` unset, runs no controllers and leaves every slot `undefined`.
 - `updateElementModel(update): Promise<void>` applies a legacy-compatible
   preview update for a single loaded PIE model.
 - `validateModels(): Promise<AuthoringValidationResult>` runs authoring-mode
@@ -224,18 +253,50 @@ These are set via JavaScript, not HTML attributes.
   `session-changed` now. A host that unmounts the player itself calls this
   first: the player's own destroy runs after the element is detached, so the
   event it produces reaches the player element but not `document`.
+- `getPendingSessionSnapshot(): SessionSnapshotRecord | null` returns the
+  snapshot `session-snapshot-available` announced, for a host that attached its
+  listener after the event fired.
 
 ## Events
 
 - `load-complete`: emitted when PIE elements finish loading.
-- `session-changed`: `{ session, ... }`. Emitted when the student interacts and
-  session data changes. A commit at a teardown, navigation or page-hidden seam
-  carries `detail.sessionCommitReason` (`"teardown" | "navigate" |
-  "page-hidden"`). A host that re-pushes `config` in response to this event
-  should ignore a commit, since the commit exists to report a response the host
-  is about to lose rather than to request a reload.
-- `player-error`: `{ code?, message?, stage?, strategy?, mode? }`. Error event,
-  for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
+- `session-changed`: emitted when an element's session or completion changes.
+  An element's own announcement is forwarded when its `complete` or its session
+  differs from what that element last announced, so each element reaches the
+  host once at load and one response produces one event. The detail has one of
+  two shapes:
+  - `{ complete, component, elementId, session: { id, data } }` when the item
+    session changed. `session` is the whole item session.
+  - `{ complete, component, elementId, session: null, intent: "metadata-only" }`
+    when it did not.
+
+  `complete` is the announcing element's own, `component` its tag and
+  `elementId` its model id. Every event carries both `complete` and
+  `component`: where the element supplied neither - an event synthesized for an
+  element that cannot commit itself, or correct responses the player populated
+  - `component` is the element's tag and `complete` is whether its session
+  record holds a response. State an element's controller derives and writes
+  back, such as a shuffled choice order, dispatches no event of its own: the
+  `session` container holds it at once, and the next event carries it.
+
+  Focus leaving the player delivers any pending announcement at once, ahead of
+  the click or key that moved focus, so a host reacting to that click or key
+  already has the response. A commit at a teardown, navigation or page-hidden
+  seam has the first shape plus `sessionCommitReason`
+  (`"teardown" | "navigate" | "page-hidden"`). A host that re-pushes `config`
+  in response to this event should ignore a commit, since the commit exists to
+  report a response the host is about to lose rather than to request a reload.
+- `player-error`: `PieItemPlayerErrorDetail`,
+  `{ code, message, recoverable, stage?, strategy?, mode?, cause? }`. Error
+  event, for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
+  `recoverable` is `true` when the item stays usable: a failed update leaves it
+  as it was, and a failed controller falls back to the authored model
+  (`ITEM_PLAYER_UPDATE_ERROR`, `PIE_CONTROLLER_RUNTIME_ERROR`,
+  `PIE_CONTROLLER_CONTRACT_ERROR`). It is `false` when the player has no item to
+  show, so a host can treat the error as fatal on `recoverable` alone.
+  When elements fail to register, `cause` names each one and why, such as the
+  module URL that failed to load. The error is reported as soon as every missing
+  element's load has failed.
 - `model-updated`: emitted when a PIE element model is updated.
 - `model-loaded`: `{ models, configuration }`. Authoring lifecycle event
   emitted once per renderer initialization after configure elements receive
@@ -246,6 +307,10 @@ These are set via JavaScript, not HTML attributes.
   persists successfully.
 - `backend-score-complete`: emitted after server-backed `score()` completes.
 - `backend-error`: emitted when backend load/save/score fails.
+- `session-snapshot-available`: `{ key, session, timestamp }`. Emitted on load
+  when `session-snapshot` is enabled and device storage holds a snapshot for
+  this sitting. The player never applies it; the host decides. Also readable
+  afterwards through `getPendingSessionSnapshot()`.
 - `correct-responses-populated`:
   `{ itemId?, mode?, role?, bundleType?, populatedCount, elements }`. Emitted
   when correct responses were written into the session. `elements` holds the
@@ -259,10 +324,12 @@ These are set via JavaScript, not HTML attributes.
   (`mode="view"`, `role="student"`, controllers client-side) is indistinguishable
   from a tampered delivery from inside the player. The event firing at all is the
   signal, because population needs a controller with
-  `createCorrectResponseSession` in the browser, which only a
-  `client-player.js` bundle provides. `hosted="true"` — which selects the
-  `player.js` bundle and leaves controllers to the host — is the actual boundary
-  for proctored delivery. See [Loading strategies](../../docs/item-player/loading-strategies.md).
+  `createCorrectResponseSession` in the browser. A player that is not hosted
+  gets one from a `client-player.js` bundle under `iife`, from the controller
+  modules `esm` loads, or from a controller registered with
+  `registerPreloadedElements`. `hosted="true"` — under which the player runs no
+  controller in the browser and leaves them to the host — is the actual
+  boundary for proctored delivery. See [Loading strategies](../../docs/item-player/loading-strategies.md).
 
   Also forwarded to a configured instrumentation provider as
   `pie-item-correct-responses-populated`. It is the only item-player event on
@@ -313,12 +380,20 @@ The canonical producer-side contract for `@pie-element/*` packages lives in the
 - React-backed browser ESM packages declare exact shared browser singleton
   versions in `package.json` under `pie.browserSharedDependencies`; dependency
   and peer-dependency ranges are not used as fallback runtime contracts.
+- A package may declare `pie.browserEditorRuntime`: an exact version of the
+  shared editor runtime and the variant path of each view it covers. Under URL
+  resolution the player loads those variants against one runtime per page; see
+  [Shared editor runtime](../../docs/item-player/loading-strategies.md#shared-editor-runtime).
 - `./runtime-support` metadata is optional for ESM-capable packages unless they
   need to disable a runtime strategy or view. Set
   `loaderOptions.runtimeSupportCheck = "on"` when you want the player to read
   those hints before loading.
-- `strategy="preloaded"` is not a separate package shape. It means the host has
-  already registered the versioned custom element tag before the player renders.
+- `strategy="preloaded"` means the host installs pie-elements-ng packages as
+  npm dependencies and registers their ESM builds with
+  `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
+  before the player renders. Generated `@pie-players/pie-preloaded-player`
+  builds register the same way and remain for hosts that have not moved. See
+  [Loading strategies](../../docs/item-player/loading-strategies.md#strategypreloaded).
 
 ## Authoring configuration
 

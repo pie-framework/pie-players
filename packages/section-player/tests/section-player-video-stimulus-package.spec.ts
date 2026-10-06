@@ -10,8 +10,8 @@ import {
 import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
 
-const PACKAGE_SPEC = "@pie-element/video-stimulus@0.1.0";
-const VERSIONED_ELEMENT = "video-stimulus--version-0-1-0";
+const PACKAGE_SPEC = "@pie-element/video-stimulus@0.1.1-next.0";
+const VERSIONED_ELEMENT = "video-stimulus--version-0-1-1-next-0";
 const PLAYERS_ROOT = resolve(import.meta.dirname, "../../..");
 const ELEMENTS_ROOT = resolve(PLAYERS_ROOT, "../pie-elements-ng");
 const SOURCE_PACKAGE_DIR = resolve(
@@ -163,6 +163,11 @@ function sourceTranscript(): string {
 }
 
 test.describe("package-backed video stimulus timed media", () => {
+	// Opt-in: `beforeAll` builds the element inside the sibling checkout.
+	test.skip(
+		process.env.PIE_VIDEO_STIMULUS_PACKAGE_E2E !== "1",
+		"set PIE_VIDEO_STIMULUS_PACKAGE_E2E=1 to build and test the sibling pie-elements-ng package",
+	);
 	test.skip(
 		!existsSync(SOURCE_PACKAGE_DIR) || !existsSync(SOURCE_FIXTURE_DIR),
 		"requires the sibling pie-elements-ng checkout and its original video fixtures",
@@ -193,7 +198,7 @@ test.describe("package-backed video stimulus timed media", () => {
 			readFileSync(resolve(extractedPackageRoot, "package.json"), "utf8"),
 		) as PackageManifest;
 		expect(manifest.name).toBe("@pie-element/video-stimulus");
-		expect(manifest.version).toBe("0.1.0");
+		expect(manifest.version).toBe("0.1.1-next.0");
 		const dependencyValues = [
 			...Object.values(manifest.dependencies ?? {}),
 			...Object.values(manifest.optionalDependencies ?? {}),

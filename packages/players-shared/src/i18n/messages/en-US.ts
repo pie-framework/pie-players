@@ -75,6 +75,7 @@ const enUS = {
 		items: "Items",
 		section: "Section",
 		loadingSection: "Loading section content…",
+		sectionLoadError: "Section content could not be loaded.",
 		loadingPassage: "Loading passage content…",
 		configurationError: "Configuration Error",
 		playerError: "Player Error",
@@ -175,6 +176,16 @@ const enUS = {
 		},
 
 		/**
+		 * The tap controls that move and turn the ruler and protractor without a
+		 * drag. The move buttons reuse the `window` labels above.
+		 */
+		placement: {
+			controlsA11y: "Move and rotate",
+			rotateClockwiseA11y: "Rotate {degrees}° clockwise",
+			rotateCounterclockwiseA11y: "Rotate {degrees}° counterclockwise",
+		},
+
+		/**
 		 * Live-region announcements shared by the draggable tools — ruler,
 		 * protractor, line reader. Keyboard movement and rotation read the same in
 		 * every one of them, so the strings live once here rather than per tool.
@@ -219,8 +230,8 @@ const enUS = {
 		},
 		graph: {
 			name: "Graph",
-			description: "Graphing calculator and coordinate plane",
-			buttonA11y: "Graph, graphing calculator",
+			description: "Coordinate plane",
+			buttonA11y: "Graph, coordinate plane",
 			tooltip: "Graph",
 			toolA11y: "Graph tool — draw points and lines on a coordinate grid",
 			canvasA11y: "Graph canvas — use tools to add points and draw lines",

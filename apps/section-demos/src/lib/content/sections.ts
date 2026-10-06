@@ -9,12 +9,17 @@ import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
 import { demoCortexCalculatorSection } from "./demo-cortex-calculators";
+import { demoCalculatorPnpSection } from "./demo-calculator-pnp";
 import { demoDesmosCalculatorSection } from "./demo-desmos-calculators";
-import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
 import { metadataSessionForwardingSection } from "./demo-metadata-session-forwarding";
+import { demoPreloadedNpmElementsSection } from "./demo-preloaded-npm-elements";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
+import {
+	sectionSwitchCommitSectionOne,
+	sectionSwitchCommitSectionTwo,
+} from "./demo-section-switch-commit";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 import {
 	demoSignLanguageGrantedSection,
@@ -490,23 +495,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demoTwoPassagesSection,
 	},
-	"preloaded-fixed-elements": {
-		id: "preloaded-fixed-elements",
-		name: "Preloaded Fixed Element Versions",
+	"preloaded-npm-elements": {
+		id: "preloaded-npm-elements",
+		name: "Preloaded npm Elements",
 		description:
-			"Section with a PIE passage, multiple-choice item, and categorize item loaded through one fixed preloaded bundle",
+			"Every element the generated preloaded-player builds carried, installed from npm and registered by the host for the preloaded player",
 		integrationLevel: 3,
 		integrationTheme: "Preloaded fixed versions",
 		focus:
-			"Shows how a host can preload the exact PIE element bundle set a section needs and render the section-player with fixed item-player versions instead of `@latest`.",
+			"Shows the preloaded path as a host runs it: the host installs pie-elements-ng packages from one release, its bundler resolves their browser builds, and the players load no element code.",
 		whatMakesItTick: [
-			"Pins `@pie-element/passage@5.3.3`, `@pie-element/multiple-choice@11.4.3`, and `@pie-element/categorize@11.3.2` directly in `config.elements`.",
-			'Defaults the demo route to `player-type="preloaded"`, so the host loads one bundle before rendering the section-player.',
-			"Keeps authored markup IDs and logical tag names stable; the player derives runtime versioned custom-element tags from the pinned package specs.",
-			"Disables section-demos element-version URL overrides so the pinned package specs remain the demo's source of truth.",
+			"Imports `./browser/delivery` and `./browser/controller` of categorize, drag-in-the-blank, hotspot, image-cloze-association, multiple-choice, mc-populated-blank, passage and ebsr at the versions section-demos installs, or from the local pie-elements-ng checkout under `dev:section:cdn`.",
+			"Registers all eight in one `registerPreloadedElements` call, under the base tags `configs/preloaded-player/*.json` use, with each version read from the package's own `package.json`.",
+			"Authors one item under another base tag, one at an older version and one at a newer version, so the players align each to the registered element.",
+			"`?hosted=1` (or the toggle) runs no controller in the browser; the host's own navigation swaps to a second section on the same player element.",
 		],
 		allowElementVersionOverrides: false,
-		section: demo9Section,
+		section: demoPreloadedNpmElementsSection,
 	},
 	"metadata-session-forwarding": {
 		id: "metadata-session-forwarding",
@@ -796,6 +801,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demoCortexCalculatorSection,
 	},
+	"calculator-pnp": {
+		id: "calculator-pnp",
+		name: "Calculator by Profile",
+		description:
+			"The learner's profile decides whether the calculator shows and which flavor it opens in, with the toolkit composed around one item and no section player",
+		integrationLevel: 4,
+		integrationTheme: "Profile-driven tool selection",
+		focus:
+			"Composes `<pie-assessment-toolkit>` around an item toolbar and an item player, and changes the profile mid-session.",
+		whatMakesItTick: [
+			"No section player and no section controller: the toolkit owns its coordinator, and the toolbar and item player sit inside it.",
+			"The host's calculator resolver reads the profile through `decideFeaturePolicy`: `graphingCalculator` opens graphing with scientific one switch away, `calculator` opens scientific, and neither hides the button.",
+			"Changing the profile rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
+		],
+		section: demoCalculatorPnpSection,
+	},
 	"tts-ssml": {
 		id: "tts-ssml",
 		name: "TTS with SSML",
@@ -947,6 +968,33 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 				id: "pie-512-section-b",
 				name: "Section B (three items)",
 				section: pie512SectionB,
+			},
+		],
+	},
+	"section-switch-commit": {
+		id: "section-switch-commit",
+		name: "Host Section Navigation",
+		description:
+			"A host swaps sections on one section player element from its own navigation, mid-debounce.",
+		integrationLevel: 5,
+		integrationTheme: "Regression fixture",
+		focus:
+			"A response typed just before the host's section navigation reaches the host while its item is still current, and the section switch that follows commits nothing for it.",
+		whatMakesItTick: [
+			"The host's buttons sit outside the player: moving focus to them is the learner leaving the item.",
+			"On navigation the host updates its current item, sets the new section on the same element, then persists the previous section's controller.",
+			"`extended-text-entry` defers its `session-changed` for 1.5 seconds, so the navigation lands inside that window.",
+		],
+		sections: [
+			{
+				id: "section-switch-one",
+				name: "Section one",
+				section: sectionSwitchCommitSectionOne,
+			},
+			{
+				id: "section-switch-two",
+				name: "Section two",
+				section: sectionSwitchCommitSectionTwo,
 			},
 		],
 	},

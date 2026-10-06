@@ -53,7 +53,6 @@ export type {
 } from "./authoring.js";
 export {
 	initializeMathRendering,
-	renderMath,
 	setMathRenderer,
 } from "./math-rendering.js";
 export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";
@@ -116,6 +115,7 @@ export {
 	SESSION_COMMIT_METHOD,
 	bindPageLifecycleCommit,
 	commitPendingSessions,
+	flushPendingSessionNotifications,
 	noteSessionBaseline,
 	noteSessionObserved,
 } from "./session-commit.js";
@@ -125,23 +125,25 @@ export type {
 	CommitPendingSessionsResult,
 	SessionCommitReason,
 } from "./session-commit.js";
+// Opt-in device-local snapshot of a committed session, offered back to the host
+// after a crash rather than applied.
+export {
+	createSessionSnapshot,
+	isSessionSnapshotEnabled,
+	isSnapshotIdentitySpecific,
+	sessionSnapshotKey,
+	sessionStorageSnapshotStore,
+} from "./session-snapshot.js";
+export type {
+	SessionSnapshot,
+	SessionSnapshotConfig,
+	SessionSnapshotIdentity,
+	SessionSnapshotRecord,
+	SessionSnapshotStore,
+} from "./session-snapshot.js";
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
-// Player bootstrap helpers (used by inline/preloaded players)
-export type {
-	ItemData,
-	PiePlayerConfig,
-	PiePlayerElements,
-} from "./player-initializer.js";
-export {
-	buildApiParams,
-	buildEventListenersMap,
-	ensurePiePlayerLoaded,
-	extractPassageMarkup,
-	fetchItemData,
-	initializePiePlayer,
-} from "./player-initializer.js";
 // Registry
 export { pieRegistry } from "./registry.js";
 // Scoring

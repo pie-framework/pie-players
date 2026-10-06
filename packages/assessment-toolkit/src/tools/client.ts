@@ -2,17 +2,19 @@
  * Client-only tool system exports
  *
  * This entry point exports only browser-safe code for use in custom elements.
- * It excludes server-side services like accommodationResolver, variantResolver, etc.
  *
  * Tools should import from '@pie-players/pie-assessment-toolkit/tools/client' instead of
  * '@pie-players/pie-assessment-toolkit' to ensure
  * they don't accidentally pull in server-side dependencies.
  */
 
-// Response discovery (client-safe, browser-only)
-export {
-	ResponseDiscoveryServiceImpl,
-	responseDiscovery,
-} from "./response-discovery.js";
-// Core types (client-safe)
-export * from "./types.js";
+// Calculator types from @pie-players/pie-calculator
+export type {
+	CalculationHistoryEntry,
+	Calculator,
+	CalculatorProvider,
+	CalculatorProviderCapabilities,
+	CalculatorProviderConfig,
+	CalculatorState,
+	CalculatorType,
+} from "@pie-players/pie-calculator";

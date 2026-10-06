@@ -21,25 +21,6 @@ export const SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER = {
 };
 
 /**
- * SchoolCity-style custom transport via local server proxy.
- * Secrets stay server-side in `/api/tts/sc`.
- */
-export const SECTION_DEMOS_SC_TTS_TOOL_PROVIDER = {
-	enabled: true,
-	backend: "server" as const,
-	serverProvider: "custom" as const,
-	transportMode: "custom" as const,
-	endpointMode: "rootPost" as const,
-	endpointValidationMode: "none" as const,
-	apiEndpoint: "/api/tts/sc",
-	lang_id: "en-US" as const,
-	speedRate: "medium" as const,
-	cache: true,
-	// Keep auth server-side; asset URLs are expected to be public CloudFront links.
-	includeAuthOnAssetFetch: false,
-};
-
-/**
  * Default for section demos: browser-backed Web Speech API.
  * Server transports remain explicit opt-ins because their proxy routes require
  * host-owned credentials.

@@ -45,7 +45,8 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 		// instrumentation bridge forwards the same names to telemetry. The
 		// readiness alias mappings (`readiness-change`, `interaction-ready`,
 		// `ready`) and the `section-controller-ready` mapping were removed
-		// alongside their DOM-event surfaces.
+		// alongside their DOM-event surfaces. `session-changed` stays off the
+		// bridge for the reason the item map gives below.
 		{
 			sourceEventName: "pie-stage-change",
 			instrumentationEventName: "pie-section-stage-change",
@@ -53,14 +54,6 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 		{
 			sourceEventName: "pie-loading-complete",
 			instrumentationEventName: "pie-section-loading-complete",
-		},
-		{
-			sourceEventName: "session-changed",
-			instrumentationEventName: "pie-section-session-changed",
-		},
-		{
-			sourceEventName: "composition-changed",
-			instrumentationEventName: "pie-section-composition-changed",
 		},
 		{
 			sourceEventName: "framework-error",

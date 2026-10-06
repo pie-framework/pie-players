@@ -4,7 +4,7 @@
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",
-	"types": "./dist/tool-tts-inline.svelte.d.ts",
+	"types": "./dist/index.d.ts",
 	"unpkg": "./dist/tool-tts-inline.js",
 	"jsdelivr": "./dist/tool-tts-inline.js",
 	"publishConfig": {
@@ -17,7 +17,7 @@
 	},
 	"exports": {
 		".": {
-			"types": "./dist/tool-tts-inline.svelte.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-tts-inline.js"
 		}
 	},
@@ -27,24 +27,24 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"test": "bun test tests",
+		"test": "bun run build && bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"svelte": "^5.57.0",
+		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite": "^8.3.2",
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-tts-inline#readme",
 	"bugs": {

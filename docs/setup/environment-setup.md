@@ -63,32 +63,11 @@ AWS_SECRET_ACCESS_KEY=wJalr...
 
 **Setup guide**: See [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md)
 
-### Redis Caching (Optional, but recommended)
+### Redis caching
 
-```bash
-REDIS_URL=redis://localhost:6379
-```
-
-**Benefits**:
-
-- Caches TTS synthesis results for 24 hours
-- Reduces AWS Polly API costs by 70-90%
-- Faster response times for repeated content
-
-**Setup**:
-
-```bash
-# macOS
-brew install redis
-brew services start redis
-
-# Ubuntu/Debian
-sudo apt install redis-server
-sudo systemctl start redis
-
-# Docker
-docker run -d -p 6379:6379 redis:alpine
-```
+Nothing in this repository reads `REDIS_URL`. The Polly SvelteKit example
+(`packages/tts-server-polly/examples/sveltekit/synthesize-server.ts`) carries a
+commented-out Redis cache for synthesis results that a deployment can adapt.
 
 ## How It Works
 
@@ -110,7 +89,7 @@ Demo entrypoints run through `dotenvx run --` so local `.env` values are availab
 ### ✅ Safe to Commit
 
 - `.env.example` - Template file (no secrets)
-- `docs/aws-polly-iam-policy.json` - Public IAM policy
+- `docs/accessibility/aws-polly-iam-policy.json` - Public IAM policy
 
 ### ❌ NEVER Commit
 
@@ -181,30 +160,6 @@ AWS_SECRET_ACCESS_KEY=wJalr...
 ```
 
 **Fix**: See [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md)
-
-### Redis connection errors
-
-**Check**: Is Redis running?
-
-```bash
-redis-cli ping
-# Should return: PONG
-```
-
-**Fix**:
-
-```bash
-# macOS
-brew services restart redis
-
-# Ubuntu
-sudo systemctl restart redis
-
-# Docker
-docker restart <redis-container-id>
-```
-
-**Note**: The app works without Redis, but caching is disabled.
 
 ## Adding New Environment Variables
 

@@ -20,10 +20,14 @@ against the embedding page.
 **Authored content is untrusted.** `config.markup`, `passage.markup`, the
 `style` attributes inside them, the rich-content fields of `config.models[]`,
 and `config.resources.stylesheets[].url` all arrive from an authoring pipeline
-whose authors are not engineers of the delivering product.
-[`sanitizeItemMarkup`](../../packages/players-shared/src/security/sanitize-item-markup.ts)
-is the boundary they cross. Tool icons supplied as inline SVG cross the same
-boundary through
+whose authors are not engineers of the delivering product. Markup and its
+`style` attributes cross
+[`sanitizeItemMarkup`](../../packages/players-shared/src/security/sanitize-item-markup.ts).
+Models reach their elements verbatim, so each element owns how it renders its
+model's rich-content fields. Stylesheet URLs cross
+[`validateExternalStyleUrl`](../../packages/players-shared/src/security/validate-style-url.ts)
+(see [External stylesheets](#external-stylesheets)). Tool icons supplied as
+inline SVG cross
 [`sanitizeSvgIcon`](../../packages/players-shared/src/security/sanitize-svg-icon.ts).
 
 **Element packages are trusted by default.** `config.elements` names executable
@@ -36,7 +40,7 @@ closes that when a host opts in.
 ## Light DOM and the absence of containment
 
 `pie-item-player` declares `shadow: "none"`
-([`PieItemPlayer.svelte:5`](../../packages/item-player/src/PieItemPlayer.svelte)),
+([`PieItemPlayer.svelte:10`](../../packages/item-player/src/PieItemPlayer.svelte)),
 so host styles reach rendered assessment content: theme tokens, colour schemes,
 `--pie-font-scale` and the rest of the accommodation chain apply to authored
 markup because no shadow boundary intercepts them. `AGENTS.md` records the mixed
@@ -147,7 +151,7 @@ reachable, and for light-DOM custom elements those class names are public API.
 `role` and `mode` are not a security boundary.
 `add-correct-response`, `env` and `mode` are public observed attributes on
 `<pie-item-player>`
-([`PieItemPlayer.svelte:10`](../../packages/item-player/src/PieItemPlayer.svelte)),
+([`PieItemPlayer.svelte:11`](../../packages/item-player/src/PieItemPlayer.svelte)),
 so any script on the page sets any of them.
 [`populateCorrectResponses`](../../packages/players-shared/src/components/PieItemPlayer.svelte)
 then escalates deliberately: `getCorrectResponseEnv` forces `role: "instructor"`
@@ -157,18 +161,22 @@ player asks every element controller for its correct-response session in the
 learner's browser.
 
 The precondition is client-side controllers, and that is the default.
-`resolveBundleType()` returns `clientPlayer` whenever `hosted` is false
-([`PieItemPlayer.svelte:790`](../../packages/item-player/src/PieItemPlayer.svelte)),
-and `hosted` defaults to false. `clientPlayer` bundles carry the controllers, so
-in the default configuration the answer key and the scoring logic are both in
-the browser, and an attribute flip is not the exposure — the bundle type is.
+`resolveBundleType()` returns `clientPlayer` whenever the player is not hosted
+([`PieItemPlayer.svelte:869`](../../packages/item-player/src/PieItemPlayer.svelte)).
+`hosted` is unset by default and resolves as
+`hosted ?? isDeliveryBackendEnabled(backend)`, so a player is hosted only when
+the host sets `hosted` or enables `backend.delivery`. `clientPlayer` bundles
+carry the controllers, so in the default configuration the answer key and the
+scoring logic are both in the browser, and an attribute flip is not the
+exposure — the bundle type is.
 Removing `add-correct-response` from a page changes nothing about what the
 loaded controllers can compute.
 
 A proctored or high-stakes delivery therefore needs all three of:
 
-1. `hosted=true`, so `resolveBundleType()` selects `player` bundles — elements
-   only, no controllers. See
+1. `hosted=true`, or `backend.delivery`, which implies it, so
+   `resolveBundleType()` selects `player` bundles — elements only, no
+   controllers. See
    [`loading-strategies.md`](../item-player/loading-strategies.md#strategyiife)
    for the bundle-type selection per strategy.
 2. `config.models[]` stripped of key-bearing and rationale fields before it
@@ -200,10 +208,11 @@ reaches this path through `itemConfig.resources.stylesheets[].url`, alongside
 the host-controlled `external-style-urls` attribute.
 
 The two origin classes are then handled asymmetrically
-([`PieItemPlayer.svelte:1144`](../../packages/item-player/src/PieItemPlayer.svelte)):
+([`PieItemPlayer.svelte:1225`](../../packages/item-player/src/PieItemPlayer.svelte)):
 
 - **Same-origin** CSS is fetched, passed through `scopeStylesheetCss`, and
-  appended to `document.head` scoped to `.pie-item-player.<scope>`.
+  appended to `document.head` scoped to `.pie-item-player.<scope>`
+  ([`external-styles.ts:108`](../../packages/item-player/src/utils/external-styles.ts)).
 - **Cross-origin** CSS is appended to `document.head` as a bare
   `<link rel="stylesheet">` with no scoping at all, because a cross-origin
   fetch without CORS headers cannot be read to scope it. Its rules apply
@@ -217,7 +226,7 @@ it is the only control on this path.
 
 The players load element bundles by injecting `<script>` tags
 ([`iife-adapter.ts`](../../packages/players-shared/src/loaders/iife-adapter.ts),
-`defaultLoadBundleScript`), and the ESM strategy in `import-map` mode injects a
+`defaultLoadBundleScript`), and the ESM strategy injects a
 `<script type="importmap">`
 ([`esm-adapter.ts`](../../packages/players-shared/src/loaders/esm-adapter.ts),
 `injectImportMap`). Neither carries a nonce. Nothing in this repo sets a CSP;
@@ -237,12 +246,13 @@ header-delivered policy:
 created by already-trusted script, which is exactly how both adapters inject.
 Without it, a host-source entry covers the IIFE bundle URL but not the import
 map, which is an inline script element that cannot be given a nonce from
-outside the adapter — bare specifiers then fail to resolve and the ESM load
-fails. Dynamic `import()` inherits the nonce of the script that initiated it,
+outside the adapter. The ESM strategy then loads through es-module-shims, as it
+does where Firefox rejects the map, but the policy still refuses MathJax's
+injected script. Dynamic `import()` inherits the nonce of the script that initiated it,
 which is why rows 2 and 3 load an unlisted origin and row 4, with no nonce in
 play, does not.
 
-A starting policy that works with every loading strategy:
+Every strategy starts from this base policy:
 
 ```
 default-src 'self';
@@ -264,26 +274,79 @@ silently. `'strict-dynamic'` is script-only and does not help here; a nonce
 cannot help either, because the injected `<style>` carries none. `img-src` and
 `media-src` cover authored media and TTS audio. `object-src 'none'` and
 `base-uri 'none'` cost nothing, since the sanitizer already forbids `<object>`,
-`<embed>` and `<base>`. `connect-src` needs whatever endpoints the deployment
-uses — the TTS server, a scoring API, the same-origin stylesheet fetch — and no
-default is claimed for them here.
+`<embed>` and `<base>`. `connect-src` also lists the deployment's own
+endpoints — the TTS server, a scoring API — which no default here covers.
 
-`moduleResolution: "url"` is the ESM default and avoids the import-map
-constraint entirely.
+Each strategy then adds the origins its element code and math rendering reach.
+Measured in Chromium against items with math, each strategy renders its math
+and assistive MathML with no violations under the base policy plus its
+additions.
+
+**`iife`, and generated preloaded-player builds that carry an IIFE bundle.**
+The element bundles render with MathJax 3, which loads its fonts from
+`unpkg.com` and the speech rule engine's mathmaps from `cdn.jsdelivr.net`.
+`iife` bundles arrive from the bundle host by `<script src>`, which
+`'strict-dynamic'` admits. Builds from the current generator bundle ESM elements
+and serve MathJax, its fonts and its speech data from their own `dist/mathjax/`,
+so their math adds no origin.
+
+```
+connect-src 'self' https://cdn.jsdelivr.net;
+font-src 'self' data: https://unpkg.com;
+```
+
+**`esm` and `preloaded`.** Under `preloaded` the element modules come from the
+host's own bundle. Under `esm`, element modules and their dependencies load from
+`cdn.jsdelivr.net`, or from `loaderOptions.esmCdnUrl`, and the loader fetches
+package metadata from the same origin, so `connect-src` lists the `esmCdnUrl`
+origin when one is set. Whatever `esmCdnUrl` names, elements that typeset on
+`window.MathJax` load MathJax 4 and its fonts from `cdn.jsdelivr.net`, so a page
+that cannot reach that origin renders no math with them. Elements that bundle
+their own MathJax, and the player's renderer for item markup math, load fonts
+and speech data from the same origin.
+
+```
+connect-src 'self' https://cdn.jsdelivr.net;
+font-src 'self' data: https://cdn.jsdelivr.net;
+```
+
+Without `'strict-dynamic'`, each injected `<script src>` needs its origin in
+`script-src`: the bundle host for `iife`, and `cdn.jsdelivr.net` for the
+MathJax 4 that page-global element builds inject under `esm` and `preloaded`.
+Elements that bundle MathJax inject none.
+
+The tools add their own. `data:` in `font-src` carries the Cortex calculator's
+bundled MathLive fonts. Its evaluation worker is a script the host's bundler
+emits among the host's own assets. The base policy sets no `worker-src`, so
+`'strict-dynamic'` in `script-src` admits the worker; a policy that sets
+`worker-src` or `child-src` lists `'self'` there. Toolbars that
+render Font Awesome icons load Font Awesome Free from `cdn.jsdelivr.net` when
+the page has no Font Awesome stylesheet, and Roboto from `fonts.googleapis.com`
+when it has no Roboto stylesheet. A page showing those toolbars adds
+`https://cdn.jsdelivr.net https://fonts.googleapis.com` to `style-src` and
+`https://cdn.jsdelivr.net https://fonts.gstatic.com` to `font-src`, or supplies
+both stylesheets itself.
+
+In Firefox the ESM strategy loads through es-module-shims whenever the browser
+rejects its import map (see
+[loading strategies](../item-player/loading-strategies.md#strategyesm)).
+es-module-shims fetches module sources, which `connect-src` already admits, and
+imports them as `blob:` URLs, which the nonce admits; measured in Firefox, the
+base policy plus the `esm` additions loads with no violations.
 
 ## Escape hatches
 
 Each of these moves a guarantee from the framework to the host that enables it.
 
 **`trust-markup`** skips sanitization completely
-([`PieItemPlayer.svelte:217`](../../packages/players-shared/src/components/PieItemPlayer.svelte)).
+([`PieItemPlayer.svelte:245`](../../packages/players-shared/src/components/PieItemPlayer.svelte)).
 It is an observed attribute, so a script on the page can set it on a live
 player; a host that renders content it does not fully control should not ship a
 page where that attribute is reachable. Accepting it means accepting that
 authored markup is host-trusted code.
 
 **`sanitizeMarkup`** replaces the default sanitizer with a caller-supplied
-function (same file, line 218). It is a property with no attribute binding, so
+function (same file, line 246). It is a property with no attribute binding, so
 only host script sets it. A custom sanitizer owns everything on this page: the
 forbid-lists, the custom-element contract, and the `id` preservation that model
 lookup depends on.
@@ -292,13 +355,14 @@ lookup depends on.
 trusted-application behaviour: authored `config.elements` decides which
 executable packages load. Supplying it restricts execution to exact package
 names or `name@version` specs, with exact-semver enforcement on by default.
-A deployment whose authoring tier is less trusted than its delivery tier owes
-this policy.
+Hosts pass it as `loaderOptions.elementPackagePolicy`. A deployment whose
+authoring tier is less trusted than its delivery tier owes this policy.
 
 ## Host obligations
 
 1. Set `allowed-style-origins`.
-2. Ship a CSP with `'strict-dynamic'` and inline style permitted.
+2. Ship a CSP with `'strict-dynamic'`, inline style permitted, and the origins
+   the loading strategy and tools reach.
 3. For high-stakes delivery: `hosted=true`, redacted models, host-computed
    outcomes.
 4. Keep `trust-markup` unreachable from page script where content is not

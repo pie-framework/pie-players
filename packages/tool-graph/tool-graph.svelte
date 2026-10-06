@@ -5,11 +5,13 @@
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -361,30 +363,29 @@
 	// ResizeObserver for dynamic viewBox width (matching production implementation)
 	let resizeObserver: ResizeObserver | null = null;
 	$effect(() => {
-		if (canvasWrapperEl) {
-			if (!resizeObserver) {
-				resizeObserver = new ResizeObserver((entries) => {
-					const entry = entries[0];
-					const { width: wrapperWidth, height: wrapperHeight } = entry.contentRect;
+		if (!canvasWrapperEl) return;
+		if (!resizeObserver) {
+			resizeObserver = new ResizeObserver((entries) => {
+				const entry = entries[0];
+				const { width: wrapperWidth, height: wrapperHeight } = entry.contentRect;
 
-					// Update pixel dimensions only if they actually changed
-					if (
-						Math.abs(containerPixelWidth - wrapperWidth) > 0.1 ||
-						Math.abs(containerPixelHeight - wrapperHeight) > 0.1
-					) {
-						containerPixelWidth = wrapperWidth;
-						containerPixelHeight = wrapperHeight;
-					}
-				});
-			}
-			resizeObserver.observe(canvasWrapperEl);
-
-			return () => {
-				if (resizeObserver) {
-					resizeObserver.disconnect();
+				// Update pixel dimensions only if they actually changed
+				if (
+					Math.abs(containerPixelWidth - wrapperWidth) > 0.1 ||
+					Math.abs(containerPixelHeight - wrapperHeight) > 0.1
+				) {
+					containerPixelWidth = wrapperWidth;
+					containerPixelHeight = wrapperHeight;
 				}
-			};
+			});
 		}
+		resizeObserver.observe(canvasWrapperEl);
+
+		return () => {
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+		};
 	});
 
 </script>

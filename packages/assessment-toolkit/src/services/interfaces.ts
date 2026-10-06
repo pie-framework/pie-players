@@ -32,8 +32,9 @@ import type {
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
 	ToolkitInitStatus,
+	TTSToolConfig,
 } from "./ToolkitCoordinator.js";
-import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
+import type { ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
@@ -349,6 +350,13 @@ export interface TtsServiceApi {
 	getCurrentText(): string | null;
 
 	/**
+	 * Whether a catalog holds spoken content this service could speak.
+	 * Optional: a service without one resolves a selection to the nearest
+	 * docked catalog id.
+	 */
+	hasSpokenAlternate?(catalogId: string, language?: string): boolean;
+
+	/**
 	 * Subscribe to state changes
 	 */
 	onStateChange(id: string, callback: (state: PlaybackState) => void): void;
@@ -581,15 +589,6 @@ export interface ToolkitCoordinatorApi {
 	readonly assessmentId: string;
 
 	/**
-	 * Configuration
-	 */
-	readonly config: {
-		tools?: {
-			providers?: Record<string, ToolProviderConfig | undefined>;
-		};
-	};
-
-	/**
 	 * TTS service
 	 */
 	readonly ttsService: TtsServiceApi;
@@ -664,11 +663,16 @@ export interface ToolkitCoordinatorApi {
 	/**
 	 * Get tool configuration
 	 */
+	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
 	getToolConfig(toolId: string): ToolProviderConfig | null;
 
 	/**
 	 * Update tool configuration
 	 */
+	updateToolConfig(
+		toolId: "textToSpeech",
+		updates: Partial<TTSToolConfig>,
+	): void;
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
 	/**

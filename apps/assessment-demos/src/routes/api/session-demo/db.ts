@@ -266,23 +266,6 @@ function normalizeItemEntry(
 	};
 }
 
-function isMeaningfulItemSessionEntry(entry: {
-	sessionPayload: Record<string, unknown>;
-	complete: number;
-	persistWhenEmpty?: boolean;
-}): boolean {
-	if (entry.persistWhenEmpty) return true;
-	if (entry.complete === 1) return true;
-	const payload = entry.sessionPayload;
-	const values = Array.isArray(payload.data) ? payload.data : [];
-	if (values.length === 0) return false;
-	return values.some((candidate) => {
-		if (!candidate || typeof candidate !== "object") return false;
-		const value = (candidate as Record<string, unknown>).value;
-		return value !== null && value !== undefined && value !== "";
-	});
-}
-
 function withEnsuredSessionId(
 	payload: Record<string, unknown>,
 	fallbackId: string,

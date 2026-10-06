@@ -15,17 +15,18 @@
 		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-player": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.70.3",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"@types/node": "^26.5.1",
-		"svelte": "^5.57.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/node": "^26.6.4",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2"
+		"vite": "^8.3.2"
 	},
 	"license": "MIT"
 }

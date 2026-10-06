@@ -26,7 +26,7 @@ import {
 	type IifeBundleRetryConfig,
 } from "../loader-config.js";
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
-import { pieRegistry } from "../pie/registry.js";
+import { writeRegistryEntry } from "../pie/registry.js";
 import { validateCustomElementTag } from "../pie/tag-names.js";
 import {
 	BundleType,
@@ -46,12 +46,6 @@ import {
 	type ElementTag,
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
-
-/**
- * Default PIE bundle service base URL. Exported so widgets can use it as
- * the fallback when the host does not supply `loaderOptions.bundleHost`.
- */
-export const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";
 
 /**
  * Bundle-build retry status emitted while a bundle is being built or after
@@ -374,7 +368,6 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 
 		const reasons = new Map<ElementTag, RegistrationFailureReason>();
 		const isEditorBundle = bundleType === BundleType.editor;
-		const registry = pieRegistry();
 
 		for (const [tag, packageVersion] of Object.entries(elements)) {
 			const packageName = getPackageWithoutVersion(packageVersion);
@@ -441,7 +434,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 				continue;
 			}
 
-			registry[actualTag] = {
+			writeRegistryEntry({
 				package: packageVersion,
 				status: Status.loaded,
 				tagName: actualTag,
@@ -449,7 +442,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 				controller: needsControllers ? (elementData.controller ?? null) : null,
 				config: elementData.config ?? null,
 				bundleType,
-			};
+			});
 		}
 
 		if (reasons.size > 0) {

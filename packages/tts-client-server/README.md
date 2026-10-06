@@ -39,27 +39,20 @@ const ttsService = new TTSService();
 await ttsService.initialize(provider, {
   apiEndpoint: '/api/tts',  // Your SvelteKit API route
   provider: 'polly',         // Server-side provider to use
-  voiceId: 'Joanna',
+  voice: 'Joanna',
   language: 'en-US',
 });
-
-// Note: `apiEndpoint`, `provider`, and `voiceId` are server-provider-specific
-// options. When using TTSConfig, pass these inside `providerOptions` rather
-// than as top-level fields:
-//
-//   const config: TTSConfig = {
-//     providerOptions: {
-//       apiEndpoint: '/api/tts',
-//       provider: 'polly',
-//       voiceId: 'Joanna',
-//     },
-//     language: 'en-US',
-//   };
 ```
 
-`apiEndpoint` is required when using `ServerTTSProvider` directly. Toolkit-level
-`tools.providers.textToSpeech` integration may provide a default endpoint for
-server-backed backends, but direct client usage should pass this explicitly.
+`apiEndpoint`, `provider`, `voice` and `language` are top-level fields; the
+provider reads none of them from `providerOptions`. `providerOptions` carries
+request extras: the PIE transport forwards its `engine` (when no top-level
+`engine` is set), `sampleRate`, `format` and `speechMarkTypes`, and the custom
+transport reads its `speedRate`.
+
+`apiEndpoint` is required when using `ServerTTSProvider` directly, and
+`initialize` throws without it. Toolkit-level `tools.providers.textToSpeech`
+integration defaults it to `/api/tts` for server-backed backends.
 
 ### With Authentication
 
@@ -67,8 +60,7 @@ server-backed backends, but direct client usage should pass this explicitly.
 await ttsService.initialize(provider, {
   apiEndpoint: '/api/tts',
   provider: 'polly',
-  authToken: 'your-jwt-token',
-  organizationId: 'org-123',
+  authToken: 'your-jwt-token', // sent as `Authorization: Bearer <token>`
 });
 ```
 
@@ -140,9 +132,13 @@ await ttsService.speak('Hello world, this is a test.', {
   "text": "Hello world",
   "speedRate": "medium",
   "lang_id": "en-US",
+  "langId": "en-US",
   "cache": true
 }
 ```
+
+The language travels under both `lang_id` and `langId`, so a server that binds
+JSON in camelCase reads it without a mapping of its own.
 
 ### Custom mode response
 
@@ -157,7 +153,7 @@ Speech marks are fetched from the `word` URL and parsed as JSONL.
 
 ### Optional voices endpoint
 
-`GET ${apiEndpoint}/voices` remains optional and is only used when endpoint validation is configured with `endpointValidationMode: "voices"`.
+`GET ${apiEndpoint}/voices` remains optional and is only used when endpoint validation is configured with `endpointValidationMode: "voices"`. With `provider: "polly"` or `"google"` the probe tries `${apiEndpoint}/<provider>/voices` first and falls back to `${apiEndpoint}/voices` when that route returns 404. A failed probe makes the toolkit switch to browser TTS.
 
 ## SvelteKit Implementation Example
 
@@ -181,15 +177,18 @@ interface ServerTTSProviderConfig {
   transportMode?: 'pie' | 'custom';
   endpointMode?: 'synthesizePath' | 'rootPost';
   endpointValidationMode?: 'voices' | 'endpoint' | 'none';
+  validateEndpoint?: boolean; // Probe the endpoint during initialize()
   authToken?: string;         // JWT or API key
   includeAuthOnAssetFetch?: boolean;
   assetOrigins?: string[];    // Trusted origins for Authorization header
-  organizationId?: string;    // For multi-tenant setups
+  credentials?: 'omit' | 'same-origin' | 'include'; // Fetch credentials mode
   headers?: Record<string, string>;  // Custom headers
-  voiceId?: string;           // Voice ID
+  voice?: string;             // Voice ID, e.g. 'Joanna'
+  engine?: 'standard' | 'neural';    // Polly engine
   language?: string;          // Language code
   rate?: number;              // Speech rate (0.25-4.0)
   volume?: number;            // Volume (0-1)
+  providerOptions?: Record<string, unknown>; // Request extras (see Basic Setup)
 }
 ```
 
@@ -218,6 +217,13 @@ server that fall outside a trusted origin set.
   origins in `assetOrigins`; off-allow-list origins are fetched without
   auth. Leave at the default unless your CDN / storage backend actually
   requires the bearer token to read assets.
+- **`credentials`** — the fetch `credentials` mode, unset by default, which
+  leaves the browser default (`"same-origin"`). Set `"include"` when the TTS
+  server sits on another origin and authenticates by cookie; the server must
+  answer CORS with `Access-Control-Allow-Credentials: true` and an explicit
+  origin. Speech-mark and audio fetches to an origin outside `assetOrigins`
+  keep the browser default, so cookies follow the same allow-list as the
+  bearer token.
 
 See
 [`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers)

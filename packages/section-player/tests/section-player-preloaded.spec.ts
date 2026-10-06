@@ -1,26 +1,55 @@
-import { expect, test } from "@playwright/test";
+import { createRequire } from "node:module";
+import { expect, type Page, test } from "@playwright/test";
+import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";
+import {
+	openPreloadedBase,
+	PRELOADED_SECTION,
+	REGISTERED_SPECS,
+} from "./fixtures/preloaded-section";
 
 const SPLITPANE_PRELOADED_PATH =
 	"/tts-ssml?mode=candidate&layout=splitpane&player=preloaded";
 const VERTICAL_PRELOADED_PATH =
 	"/tts-ssml?mode=candidate&layout=vertical&player=preloaded";
-const FIXED_PRELOADED_EXPECTED_TAGS = [
-	"passage-element--version-5-3-3",
-	"multiple-choice--version-11-4-3",
-	"categorize-element--version-11-3-2",
-];
+// Off-origin element code: PITS bundles, or a CDN's pie package.
+const ELEMENT_CODE_REQUEST =
+	/\/bundles\/|\/(?:npm\/)?@pie-(?:element|lib|elements-ng)\/|esm\.sh\//;
+// The demo pages register the packages demo-ui installs.
+const requireFromDemoUi = createRequire(
+	new URL("../../../apps/demo-ui/package.json", import.meta.url),
+);
+function installedSpec(name: string): string {
+	const { version } = requireFromDemoUi(`${name}/package.json`) as {
+		version: string;
+	};
+	return `${name}@${version}`;
+}
+
+// The demo players are not hosted, so each registered element needs the
+// controller whose `model()` the player runs.
+function collectMissingControllerWarnings(page: Page): string[] {
+	const warnings: string[] = [];
+	page.on("console", (message) => {
+		if (message.text().includes("is registered without a controller")) {
+			warnings.push(message.text());
+		}
+	});
+	return warnings;
+}
 
 test.describe("section player preloaded strategy", () => {
 	test("splitpane renders item shells with preloaded strategy", async ({
 		page,
+		baseURL,
 	}) => {
-		const bundleRequests: string[] = [];
-		const esmRequests: string[] = [];
+		const elementRequests: string[] = [];
 		page.on("request", (request) => {
 			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
-			if (url.includes("esm.sh")) esmRequests.push(url);
+			if (!url.startsWith(`${baseURL}/`) && ELEMENT_CODE_REQUEST.test(url)) {
+				elementRequests.push(url);
+			}
 		});
+		const controllerWarnings = collectMissingControllerWarnings(page);
 
 		await page.goto(SPLITPANE_PRELOADED_PATH, { waitUntil: "networkidle" });
 		await expect(page.locator(".preload-status")).toHaveCount(0, {
@@ -35,6 +64,12 @@ test.describe("section player preloaded strategy", () => {
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
 		).toHaveCount(2, { timeout: 30_000 });
+		// The passage's math is typeset by its passage element.
+		await expect(
+			page
+				.getByRole("complementary", { name: "Passages" })
+				.locator("p.formula mjx-container"),
+		).toBeVisible({ timeout: 30_000 });
 
 		const playerAttrs = await page
 			.locator("pie-item-player")
@@ -48,8 +83,18 @@ test.describe("section player preloaded strategy", () => {
 			expect(attrs.strategy).toBe("preloaded");
 		}
 
-		expect(bundleRequests.length).toBeGreaterThan(0);
-		expect(esmRequests.length).toBe(0);
+		// The page registers each package at the version demo-ui installs.
+		const preloaded = await page.evaluate(
+			() =>
+				(window as { PIE_PRELOADED_ELEMENTS?: Record<string, string> })
+					.PIE_PRELOADED_ELEMENTS ?? {},
+		);
+		expect(Object.keys(preloaded).length).toBeGreaterThan(0);
+		for (const [name, spec] of Object.entries(preloaded)) {
+			expect(spec).toBe(installedSpec(name));
+		}
+		expect(elementRequests).toEqual([]);
+		expect(controllerWarnings).toEqual([]);
 	});
 
 	test("vertical layout renders with preloaded strategy", async ({ page }) => {
@@ -66,95 +111,116 @@ test.describe("section player preloaded strategy", () => {
 		).toHaveCount(2, { timeout: 30_000 });
 	});
 
-	test("fixed-version demo preloads pinned passage and item versions", async ({
+	// These pages host their own section player, so they preload its elements
+	// themselves.
+	for (const path of ["/custom-tools", "/tts-toggle-speed"]) {
+		test(`${path} renders under the preloaded player`, async ({ page }) => {
+			const controllerWarnings = collectMissingControllerWarnings(page);
+			await page.goto(
+				`${path}?mode=candidate&layout=splitpane&player=preloaded`,
+				{ waitUntil: "networkidle" },
+			);
+			await expect(
+				page
+					.locator(
+						'pie-section-player-splitpane pie-item-player input[type="radio"]',
+					)
+					.first(),
+			).toBeVisible({ timeout: 30_000 });
+			await expect(page.locator(".preload-status")).toHaveCount(0);
+			expect(controllerWarnings).toEqual([]);
+		});
+	}
+
+	// The demo imports pie-elements-ng's browser builds and registers each with
+	// its controller, so no request fetches element code. The full check of
+	// that demo is section-player-preloaded-npm.spec.ts.
+	test("host-bundled element renders with no element request", async ({
 		page,
+		baseURL,
 	}) => {
-		const bundleRequests: string[] = [];
+		const pageModules: string[] = [];
+		const elementRequests: string[] = [];
 		page.on("request", (request) => {
 			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
+			if (url.startsWith(`${baseURL}/`)) {
+				if (url.includes("mc-populated-blank")) pageModules.push(url);
+			} else if (/\/bundles\/|\/@pie-element\//.test(url)) {
+				elementRequests.push(url);
+			}
 		});
-		const fixedUrl = new URL(
-			"http://section-demos.local/preloaded-fixed-elements",
+		const controllerWarnings = collectMissingControllerWarnings(page);
+
+		await page.goto(
+			"/preloaded-npm-elements?mode=candidate&layout=splitpane",
+			{ waitUntil: "networkidle" },
 		);
-		fixedUrl.searchParams.set("mode", "candidate");
-		fixedUrl.searchParams.set("layout", "splitpane");
-		fixedUrl.searchParams.set(
-			"pie-overrides[@pie-element/multiple-choice]",
-			"latest",
-		);
-		fixedUrl.searchParams.set(
-			"pie-overrides[@pie-element/categorize]",
-			"latest",
-		);
-		fixedUrl.searchParams.set("pie-overrides[@pie-element/passage]", "latest");
+		await expect(page.locator(".preload-status")).toHaveCount(0);
+		const choice = page
+			.locator("#npm-mc-populated-blank-element")
+			.getByRole("radio", { name: "teapot" });
+		await expect(choice).toBeVisible({ timeout: 30_000 });
+		await choice.click();
+		await expect(choice).toBeChecked();
 
-		await page.goto(`${fixedUrl.pathname}${fixedUrl.search}`, {
-			waitUntil: "networkidle",
-		});
-		await expect(page.locator(".preload-status")).toHaveCount(0, {
-			timeout: 30_000,
-		});
-		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
-			timeout: 30_000,
-		});
-		await expect(page.getByText("Player Error")).toHaveCount(0);
-		await expect(
-			page.getByText("Which field fixes the multiple-choice package version"),
-		).toBeVisible();
-		await expect(
-			page.getByText(
-				"Sort each demo responsibility into the part of the preloaded flow",
-			),
-		).toBeVisible();
-
-		const strategyValues = await page
-			.locator("pie-item-player")
-			.evaluateAll((els) => els.map((el) => el.getAttribute("strategy")));
-		expect(strategyValues.length).toBeGreaterThan(0);
-		for (const strategy of strategyValues) {
-			expect(strategy).toBe("preloaded");
-		}
-
-		const renderedTags = await page.evaluate(() => {
-			const found = new Set<string>();
-			const visit = (root: Document | ShadowRoot) => {
-				root.querySelectorAll("*").forEach((element) => {
-					found.add(element.localName);
-					if (element.shadowRoot) visit(element.shadowRoot);
-				});
-			};
-			visit(document);
-			return [...found].sort();
-		});
-		for (const tag of FIXED_PRELOADED_EXPECTED_TAGS) {
-			expect(renderedTags).toContain(tag);
-		}
-
-		expect(bundleRequests.length).toBe(1);
-		const decodedBundleUrl = decodeURIComponent(bundleRequests[0] || "");
-		expect(decodedBundleUrl).toContain("@pie-element/categorize@11.3.2");
-		expect(decodedBundleUrl).toContain("@pie-element/multiple-choice@11.4.3");
-		expect(decodedBundleUrl).toContain("@pie-element/passage@5.3.3");
+		// The element came with the page's own modules, and from nowhere else.
+		expect(pageModules.length).toBeGreaterThan(0);
+		expect(elementRequests).toEqual([]);
+		expect(controllerWarnings).toEqual([]);
 	});
 
-	// The demo binds the universal personal needs profile, so answer masking is a
-	// granted accommodation on both items. A grant skips the relevance gate, which
-	// is why the eliminator used to reach `categorize` — an interaction whose
-	// `choices` hold draggables the tool cannot strike through (PIE-935). The
-	// applicability gate is the one a grant does not survive.
+	// The universal personal needs profile makes answer masking a granted
+	// accommodation on both items. A grant skips the relevance gate, which is why
+	// the eliminator used to reach `categorize` — an interaction whose `choices`
+	// hold draggables the tool cannot strike through (PIE-935). The applicability
+	// gate is the one a grant does not survive.
 	test("answer eliminator reaches the choice item and not the categorize item", async ({
 		page,
 	}) => {
-		await page.goto("/preloaded-fixed-elements?mode=candidate&layout=splitpane", {
-			waitUntil: "networkidle",
-		});
-		await expect(page.locator(".preload-status")).toHaveCount(0, {
-			timeout: 30_000,
-		});
-		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
-			timeout: 30_000,
-		});
+		await openPreloadedBase(page);
+		await page.evaluate(
+			({ section, specs, personalNeedsProfile }) => {
+				const existing = document.querySelector("pie-section-player-splitpane");
+				if (!existing?.parentElement) {
+					throw new Error("demo section player not found");
+				}
+				(
+					window as { PIE_PRELOADED_ELEMENTS?: Record<string, string> }
+				).PIE_PRELOADED_ELEMENTS = { ...specs };
+				const fresh = document.createElement(
+					"pie-section-player-splitpane",
+				) as HTMLElement & { runtime?: unknown; section?: unknown };
+				fresh.setAttribute("assessment-id", "eliminator-assessment");
+				fresh.setAttribute("section-id", "eliminator-section");
+				fresh.setAttribute("attempt-id", `eliminator-${Date.now()}`);
+				fresh.addEventListener("toolkit-ready", (event) => {
+					(
+						event as CustomEvent<{
+							coordinator?: { updateAssessment(assessment: object): void };
+						}>
+					).detail?.coordinator?.updateAssessment({
+						id: "eliminator-assessment",
+						personalNeedsProfile,
+					});
+				});
+				fresh.runtime = {
+					playerType: "preloaded",
+					env: { mode: "gather", role: "student" },
+					tools: {
+						placement: { section: [], item: ["answerEliminator"], passage: [] },
+					},
+				};
+				fresh.section = section;
+				const parent = existing.parentElement;
+				existing.remove();
+				parent.appendChild(fresh);
+			},
+			{
+				section: PRELOADED_SECTION,
+				specs: REGISTERED_SPECS,
+				personalNeedsProfile: createUniversalPersonalNeedsProfile(),
+			},
+		);
 
 		const itemShells = page.locator(
 			'pie-item-shell[data-pie-shell-root="item"]',

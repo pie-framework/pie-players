@@ -76,16 +76,52 @@ For calculators, the resolver params are:
 
 ```ts
 {
-  calculatorType: "basic" | "scientific";
-  availableTypes: Array<"basic" | "scientific">;
+  calculatorType: "basic" | "scientific" | "graphing";
+  availableTypes: Array<"basic" | "scientific" | "graphing">;
 }
 ```
 
 The packaged calculator reads these values through
 `toolbarContext.getToolRenderParams("calculator")` and applies them to the
-toolbar button plus calculator element. Content metadata therefore stays in
-host code, while PNP/profile restrictions remain framework-owned and higher
+toolbar button plus calculator element. With no resolver it opens basic,
+offers all three types and names itself "Calculator". Content metadata therefore stays in host
+code, while PNP/profile restrictions remain framework-owned and higher
 precedence.
+
+Which flavor a profile grants is the host's rule, read through
+`decideFeaturePolicy`. The `calculator` and `graphingCalculator` support ids both
+grant the one `calculator` tool; the flavor is a render param:
+
+```ts
+const toolContextResolvers = {
+  calculator: ({ toolbarContext }) => {
+    const granted = (featureId: string) =>
+      toolbarContext.toolkitCoordinator?.decideFeaturePolicy?.(featureId)
+        .granted === true;
+    if (granted("graphingCalculator")) {
+      return {
+        visible: true,
+        params: {
+          calculatorType: "graphing",
+          availableTypes: ["scientific", "graphing"],
+        },
+      };
+    }
+    if (granted("calculator")) {
+      return {
+        visible: true,
+        params: { calculatorType: "scientific", availableTypes: ["scientific"] },
+      };
+    }
+    return { visible: false, reason: "The profile grants no calculator." };
+  },
+};
+```
+
+Resolvers re-run on every policy change, so rebinding the assessment with a
+changed profile updates the button and an open calculator in place. The
+`calculator-pnp` section demo composes exactly this around one item with no
+section player.
 
 ## Backend Endpoints for Tool Providers
 
@@ -181,6 +217,11 @@ Any `/api/...` route referenced by a toolkit provider must be:
 - `includeAuthOnAssetFetch: true` without a correct `assetOrigins` list
   → a compromised or misconfigured TTS server can return a cross-origin
   URL and exfiltrate the bearer token on the follow-up fetch.
+- `credentials: "include"` sends cookies to the TTS endpoint, and on
+  speech-mark and audio fetches to the origins trusted for the bearer token
+  (`assetOrigins`, or the endpoint's origin when that list is empty). A
+  cross-origin endpoint must answer with `Access-Control-Allow-Credentials` and
+  an exact origin.
 - Server-only vendor credentials in client bundles or client-side config →
   permanent leak via the shipped JavaScript; again, rotation is the only
   remediation. This does not describe Desmos's application key, which its
@@ -192,9 +233,9 @@ The routes in `apps/section-demos/src/routes/api/` are intentionally
 unauthenticated and exist for local development and e2e specs. In
 particular, `GET /api/tools/desmos/auth` returns the configured
 `DESMOS_API_KEY` with no session check. When it is absent, the demo returns an
-empty compatibility response and the adapter preserves the historical unkeyed
-load. That behavior keeps existing local clients running; it does not grant or
-imply a Desmos license. Do not copy this route verbatim into a production
+empty compatibility response and the adapter falls back to the historical
+unkeyed load, which Desmos's CDN rejects with HTTP 403; the fallback does not
+grant or imply a Desmos license. Do not copy this route verbatim into a production
 deployment — use it only as a shape reference, require the host's auth
 middleware, and use a key/tier licensed for the deployed application.
 
@@ -206,7 +247,7 @@ middleware, and use a key/tier licensed for the deployed application.
   — end-to-end TTS integration, including security considerations and a
   SvelteKit `hooks.server.ts` sketch
 - [`../../packages/tts-client-server/README.md`](../../packages/tts-client-server/README.md)
-  — `ServerTTSProvider` configuration, including `assetOrigins` and
-  `includeAuthOnAssetFetch`
-- [`../../packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts`](../../packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts)
+  — `ServerTTSProvider` configuration, including `assetOrigins`,
+  `includeAuthOnAssetFetch` and `credentials`
+- [`../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts`](../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts)
   — Desmos provider config (`apiKey`) and browser-delivery boundary

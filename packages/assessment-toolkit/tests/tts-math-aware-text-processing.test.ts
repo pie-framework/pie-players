@@ -116,6 +116,42 @@ describe("math-aware TTS text processing", () => {
 		});
 	});
 
+	test("maps MathJax fallback text onto the source MathML it keeps", () => {
+		// CHTML glyphs are CSS-painted, so `mjx-c` carries no text.
+		const root = render(`
+			<p>
+				Solve
+				<mjx-container class="MathJax" jax="CHTML">
+					<mjx-math aria-hidden="true"><mjx-mi><mjx-c></mjx-c></mjx-mi><mjx-mo><mjx-c></mjx-c></mjx-mo><mjx-mn><mjx-c></mjx-c></mjx-mn></mjx-math>
+					<mjx-assistive-mml>
+						<math><mi>x</mi><mo>+</mo><mn>12</mn></math>
+					</mjx-assistive-mml>
+				</mjx-container>
+				now.
+			</p>
+		`);
+		const leaves = Array.from(root.querySelectorAll("mjx-assistive-mml mi, mjx-assistive-mml mo, mjx-assistive-mml mn"));
+
+		const result = collectMathAwareTextAndMap(root);
+		const mappedTo = (character: string) => {
+			const mapping = result.map.get(result.visibleText.indexOf(character));
+			const parent = mapping?.node.parentElement ?? null;
+			const leaf = parent ? leaves.indexOf(parent) : -1;
+			return leaf >= 0
+				? `leaf ${leaf} offset ${mapping?.offset}`
+				: parent?.localName;
+		};
+
+		expect(result.visibleText).toBe("Solve x + 12 now.");
+		expect(["x", "+", "1", "2", "n"].map(mappedTo)).toEqual([
+			"leaf 0 offset 0",
+			"leaf 1 offset 0",
+			"leaf 2 offset 0",
+			"leaf 2 offset 1",
+			"p",
+		]);
+	});
+
 	test("uses data-mathml when rendered math exposes it", () => {
 		const root = render(`
 			<p>

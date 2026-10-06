@@ -1,22 +1,34 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { calculatorSharedSvelteSourceAliases } from "../tool-calculator-shared/svelte-source-aliases.js";
 
 export default defineConfig({
+	// Declared once in tool-calculator-shared; see svelte-source-aliases.ts.
+	resolve: {
+		alias: calculatorSharedSvelteSourceAliases(
+			resolve(import.meta.dirname, "../tool-calculator-shared"),
+			resolve,
+		),
+	},
 	plugins: [
 		svelte({
 			compilerOptions: {
 				customElement: true,
+				rootDir: svelteRootDir(import.meta.dirname),
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
+		// The build entry is the component, whose declaration is a stub that
+		// imports `svelte`, which hosts do not install; `index.ts` is the type
+		// entry instead.
 		dts({
 			bundleTypes: false,
-			// This package has no `.ts` source — `vite.config.ts` is the only file in
-			// its tsconfig program, so it cannot be excluded there without emptying it.
-			// Name the component instead, so the config's declaration stops being
-			// emitted into the published `dist`.
-			include: ["tool-calculator-inline.svelte"],
+			include: ["index.ts"],
 		}),
 	],
 	build: {
@@ -32,7 +44,13 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@pie-players/pie-assessment-toolkit"],
+			// The toolkit, players-shared and pie-context resolve from the
+			// host's node_modules, so every PIE bundle a host loads shares one
+			// copy of each. A pattern, because an exact-string external still
+			// inlines the subpaths the calculator shells import.
+			external: [
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
+			],
 		},
 	},
 });

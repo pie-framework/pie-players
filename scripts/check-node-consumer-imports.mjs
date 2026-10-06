@@ -13,9 +13,11 @@ import {
 import os from "node:os";
 import path from "node:path";
 import {
+	getImportTarget,
 	getNodeConsumerImportTargets,
 	parsePackJson,
 	readPublishPolicy,
+	splitPackageSpecifier,
 } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
@@ -26,6 +28,7 @@ const policy = readPublishPolicy(ROOT);
 const { nodeSafe: NODE_IMPORT_TARGETS, browserOnly: BROWSER_ONLY_TARGETS } =
 	getNodeConsumerImportTargets(policy);
 const ALL_TARGETS = [...NODE_IMPORT_TARGETS, ...BROWSER_ONLY_TARGETS];
+const TTS_SERVER_CORE = "@pie-players/tts-server-core";
 
 const isNodeEntryTargetShapeSafe = (target) =>
 	target.startsWith("./dist/") &&
@@ -55,17 +58,6 @@ const workspacePackageMap = () => {
 	}
 
 	return map;
-};
-
-const getRootImportTarget = (pkg) => {
-	const exp = pkg.exports?.["."] ?? pkg.exports;
-	if (typeof exp === "string") return exp;
-	if (exp && typeof exp === "object") {
-		if (typeof exp.import === "string") return exp.import;
-		if (typeof exp.default === "string") return exp.default;
-	}
-	if (typeof pkg.main === "string") return pkg.main;
-	return null;
 };
 
 const isLikelyBrowserGlobalError = (error) => {
@@ -241,29 +233,8 @@ try {
 	}
 };
 
-const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
-	for (const specifier of optionalPeers) {
-		rmSync(path.join(fixtureDir, "node_modules", ...specifier.split("/")), {
-			recursive: true,
-			force: true,
-		});
-	}
-
-	writeFileSync(
-		path.join(fixtureDir, "index.ts"),
-		`import type {
-	CortexToolProvider,
-	DesmosToolProvider,
-	GeoGebraToolProvider,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-
-export type CalculatorToolProviders = [
-	CortexToolProvider,
-	DesmosToolProvider,
-	GeoGebraToolProvider,
-];
-`,
-	);
+const typecheckFixture = (fixtureDir, source, compilerOptions) => {
+	writeFileSync(path.join(fixtureDir, "index.ts"), source);
 	writeFileSync(
 		path.join(fixtureDir, "tsconfig.json"),
 		`${JSON.stringify(
@@ -276,7 +247,7 @@ export type CalculatorToolProviders = [
 					skipLibCheck: false,
 					strict: true,
 					target: "ES2022",
-					types: [],
+					...compilerOptions,
 				},
 				include: ["index.ts"],
 			},
@@ -310,23 +281,76 @@ export type CalculatorToolProviders = [
 	}
 };
 
+const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
+	for (const specifier of optionalPeers) {
+		rmSync(path.join(fixtureDir, "node_modules", ...specifier.split("/")), {
+			recursive: true,
+			force: true,
+		});
+	}
+
+	return typecheckFixture(
+		fixtureDir,
+		`import type {
+	ToolProviderApi,
+	TTSToolProvider,
+} from "@pie-players/pie-assessment-toolkit/tools/internal";
+
+export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
+`,
+		{ types: [] },
+	);
+};
+
+/**
+ * The server TTS declarations use no Node types, and the package installs none:
+ * `@types/node` is included in every compilation that can see it, so one pulled
+ * in by a dependency breaks a consumer on an older TypeScript. The package
+ * installs into a fixture of its own, since other fixture packages bring
+ * `@types/node` in transitively. The snippet encodes the bytes the way a route
+ * handler does, which the audio type has to keep compiling without Node types.
+ */
+const typecheckTtsServerCore = (tarballPath) => {
+	const fixtureDir = createFixtureProject();
+	try {
+		installTarballs(fixtureDir, [tarballPath]);
+		if (existsSync(path.join(fixtureDir, "node_modules", "@types", "node"))) {
+			return { ok: false, message: "installing it installs @types/node" };
+		}
+		return typecheckFixture(
+			fixtureDir,
+			`import type { SynthesizeResponse } from "${TTS_SERVER_CORE}";
+
+export const toBase64 = (response: SynthesizeResponse): string =>
+	typeof response.audio === "string"
+		? response.audio
+		: response.audio.toString("base64");
+`,
+			{ types: [] },
+		);
+	} finally {
+		rmSync(fixtureDir, { recursive: true, force: true });
+	}
+};
+
 const run = async () => {
 	const packageMap = workspacePackageMap();
 	const failures = [];
 	for (const specifier of ALL_TARGETS) {
-		const entry = packageMap.get(specifier);
+		const { name, subpath } = splitPackageSpecifier(specifier);
+		const entry = packageMap.get(name);
 		if (!entry) {
-			failures.push(`[node-consumer] missing workspace package: ${specifier}`);
+			failures.push(`[node-consumer] missing workspace package: ${name}`);
 			continue;
 		}
-		const importTarget = getRootImportTarget(entry.pkg);
+		const importTarget = getImportTarget(entry.pkg, subpath);
 		if (!importTarget) {
-			failures.push(`[node-consumer] ${specifier} has no root import target`);
+			failures.push(`[node-consumer] ${specifier} has no import target`);
 			continue;
 		}
 		if (!isNodeEntryTargetShapeSafe(importTarget)) {
 			failures.push(
-				`[node-consumer] ${specifier} has non-node-safe root target shape: ${importTarget}`,
+				`[node-consumer] ${specifier} has non-node-safe target shape: ${importTarget}`,
 			);
 			continue;
 		}
@@ -349,12 +373,13 @@ const run = async () => {
 		process.exit(1);
 	}
 
-	const fixturePackageNames = collectFixturePackageNames(
-		packageMap,
-		ALL_TARGETS,
-	);
+	const fixturePackageNames = collectFixturePackageNames(packageMap, [
+		...ALL_TARGETS.map((specifier) => splitPackageSpecifier(specifier).name),
+		TTS_SERVER_CORE,
+	]);
 	const sourceTarballs = [];
 	const fixtureTarballs = [];
+	let ttsServerCoreTarball = "";
 	let fixtureDir = "";
 
 	try {
@@ -376,6 +401,9 @@ const run = async () => {
 				packageMap,
 			);
 			fixtureTarballs.push(patchedTarballPath);
+			if (packageName === TTS_SERVER_CORE) {
+				ttsServerCoreTarball = patchedTarballPath;
+			}
 		}
 
 		installTarballs(fixtureDir, fixtureTarballs);
@@ -402,6 +430,13 @@ const run = async () => {
 					`[node-consumer] ${specifier} failed with unexpected Node error from node_modules: ${result.message}`,
 				);
 			}
+		}
+
+		const ttsTypecheckResult = typecheckTtsServerCore(ttsServerCoreTarball);
+		if (!ttsTypecheckResult.ok) {
+			failures.push(
+				`[node-consumer] ${TTS_SERVER_CORE} failed TypeScript consumption without Node types: ${ttsTypecheckResult.message}`,
+			);
 		}
 
 		const toolkitPackageName = "@pie-players/pie-assessment-toolkit";

@@ -51,7 +51,8 @@ classes are:
 play/pause controls in item and passage toolbars, finds the readable content
 region, and calls `ttsService.speak(...)`.
 
-`@pie-players/pie-tool-text-to-speech` is a floating text-selection TTS tool.
+`@pie-players/pie-tool-text-to-speech` is a floating text-selection TTS tool. It
+reads with the TTS service the host passes it, already initialized.
 Default section and item toolbars register `pie-tool-tts-inline`.
 
 `@pie-players/tts-client-server` provides `ServerTTSProvider`, the browser-side
@@ -83,8 +84,10 @@ TTS provider:
 - `BrowserTTSProvider` for `backend: "browser"`
 - `ServerTTSProvider` for `backend: "server"`, `"polly"`, or `"google"`
 
-The server path dynamically imports `@pie-players/tts-client-server`, so
-browser-only deployments do not eagerly load that package.
+The server path loads `@pie-players/tts-client-server` through a dynamic import
+in the TTS registration of `@pie-players/pie-default-tool-loaders`, which passes
+it to `TTSToolProvider` as its `loadServerProvider` option. Browser-only
+deployments never load that package, and the toolkit never names it.
 
 If server-backed initialization fails, the toolkit can fall back to browser TTS.
 Browser TTS is the resilience path because it uses the platform Web Speech API

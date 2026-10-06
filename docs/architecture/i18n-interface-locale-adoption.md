@@ -120,9 +120,10 @@ statically bundled, so `t()` never returns a bare key even with no host, no
 player and no context. The catalog is 5.4 KB — smaller than any tool's own
 dependencies.
 
-**Locale catalogs never enter a tool bundle.** Every player and tool
-`vite.config.ts` sets `external: []`, so anything a tool imports at runtime
-inlines into its bundle. The module split enforces the boundary:
+**Locale catalogs never enter a tool bundle.** Most tool bundles import
+`players-shared` from the host; the item player, the print player and the
+dictionary tools set `external: []` and inline everything they reach. The
+module split enforces the boundary either way:
 
 | Module | Contents | Imported by |
 |---|---|---|

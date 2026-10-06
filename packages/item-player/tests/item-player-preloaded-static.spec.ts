@@ -136,7 +136,7 @@ test.describe("item-player strategy regressions", () => {
 	test("ignores stale iife failures after newer iife config succeeds", async ({
 		page,
 	}) => {
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
@@ -233,15 +233,19 @@ test.describe("item-player strategy regressions", () => {
 		expect(staleState.renderedPrompt).toBe("fresh");
 	});
 
-	test("renders and updates session using preloaded bundles", async ({
+	test("renders and updates session using preloaded elements", async ({
 		page,
+		baseURL,
 	}) => {
-		const bundleRequests: string[] = [];
-		const esmRequests: string[] = [];
+		const elementRequests: string[] = [];
 		page.on("request", (request) => {
 			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
-			if (url.includes("esm.sh")) esmRequests.push(url);
+			if (
+				!url.startsWith(`${baseURL}/`) &&
+				/\/bundles\/|\/(?:npm\/)?@pie-(?:element|lib|elements-ng)\/|esm\.sh\//.test(url)
+			) {
+				elementRequests.push(url);
+			}
 		});
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
@@ -259,8 +263,7 @@ test.describe("item-player strategy regressions", () => {
 		const session = await readSessionState(page);
 		const entry = session.data?.find((item) => item.id === SESSION_ENTRY_ID);
 		expect(entry?.value?.[0]).toBeTruthy();
-		expect(bundleRequests.length).toBeGreaterThan(0);
-		expect(esmRequests.length).toBe(0);
+		expect(elementRequests).toEqual([]);
 	});
 
 	test("preloaded emits media-retry-ready after first audio load failure", async ({
@@ -269,7 +272,7 @@ test.describe("item-player strategy regressions", () => {
 		await assertMediaRetryBridge(page, PRELOADED_DELIVERY_PATH);
 	});
 
-	test("preloaded rewrites stale content element versions to bundled versions", async ({
+	test("preloaded rewrites stale content element versions to registered versions", async ({
 		page,
 	}) => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
@@ -277,21 +280,21 @@ test.describe("item-player strategy regressions", () => {
 			timeout: 20_000,
 		});
 
-		const bundledVersionTag = await page.evaluate(() => {
+		const registeredVersionTag = await page.evaluate(() => {
 			const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS as
 				| Record<string, string>
 				| undefined;
-			const bundledSpec = preloadedElements?.["@pie-element/multiple-choice"];
-			if (!bundledSpec) {
+			const registeredSpec = preloadedElements?.["@pie-element/multiple-choice"];
+			if (!registeredSpec) {
 				throw new Error(
 					"Expected preloaded mapping for @pie-element/multiple-choice",
 				);
 			}
-			const match = bundledSpec.match(/@(\d+\.\d+\.\d+)$/);
+			const match = registeredSpec.match(/@(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?)$/);
 			if (!match?.[1]) {
-				throw new Error(`Unexpected preloaded mapping format: ${bundledSpec}`);
+				throw new Error(`Unexpected preloaded mapping format: ${registeredSpec}`);
 			}
-			return `multiple-choice--version-${match[1].replaceAll(".", "-")}`;
+			return `multiple-choice--version-${match[1].replace(/[.+]/g, "-")}`;
 		});
 		const staleTag = "multiple-choice--version-0-0-1";
 		const authoredConfig = {
@@ -328,13 +331,13 @@ test.describe("item-player strategy regressions", () => {
 		}, authoredConfig);
 
 		const versionRewriteState = await page.evaluate(
-			({ expectedBundledTag, staleTag }) => {
+			({ expectedRegisteredTag, staleTag }) => {
 				const fixture = document.getElementById(
 					"pie-preloaded-version-normalization-fixture",
 				);
 				if (!fixture) {
 					return {
-						hasBundledVersionTag: false,
+						hasRegisteredVersionTag: false,
 						hasStaleVersionTag: false,
 						authoredConfig: null,
 						errorText: "missing-fixture",
@@ -344,19 +347,382 @@ test.describe("item-player strategy regressions", () => {
 				const errorText =
 					host?.querySelector(".pie-player-error p")?.textContent || null;
 				return {
-					hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
+					hasRegisteredVersionTag: !!fixture.querySelector(expectedRegisteredTag),
 					hasStaleVersionTag: !!fixture.querySelector(staleTag),
 					authoredConfig: (window as any).__pieAuthoredNormalizationConfig,
 					errorText,
 				};
 			},
-			{ expectedBundledTag: bundledVersionTag, staleTag },
+			{ expectedRegisteredTag: registeredVersionTag, staleTag },
 		);
 
 		expect(versionRewriteState.errorText).toBeNull();
-		expect(versionRewriteState.hasBundledVersionTag).toBe(true);
+		expect(versionRewriteState.hasRegisteredVersionTag).toBe(true);
 		expect(versionRewriteState.hasStaleVersionTag).toBe(false);
 		expect(versionRewriteState.authoredConfig).toEqual(authoredConfig);
+	});
+
+	test("renders an item authoring another base tag than the registration, hosted and not hosted", async ({
+		page,
+	}) => {
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+		const warnings: string[] = [];
+		page.on("console", (message) => {
+			if (message.type() === "warning" && message.text().includes("without a controller")) {
+				warnings.push(message.text());
+			}
+		});
+
+		const registeredTag = "pie-element-authored-tag--version-1-0-0";
+		const authoredTag = "authored-tag--version-1-0-0";
+		await page.evaluate((registeredTag) => {
+			const calls: string[] = [];
+			(window as any).__pieAuthoredTagCalls = calls;
+			class Registered extends HTMLElement {
+				set model(value: any) {
+					this.textContent = String(value?.prompt ?? "");
+				}
+			}
+			customElements.define(registeredTag, Registered);
+			// What registerPreloadedElements records for an entry with a controller.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[registeredTag] = {
+				package: "@pie-element/authored-tag@1.0.0",
+				status: "loaded",
+				tagName: registeredTag,
+				element: Registered,
+				bundleType: "client-player.js",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+				},
+			};
+			(window as any).PIE_PRELOADED_ELEMENTS = {
+				...(window as any).PIE_PRELOADED_ELEMENTS,
+				"@pie-element/authored-tag": "@pie-element/authored-tag@1.0.0",
+			};
+			(window as any).__mountAuthoredTagPlayer = (id: string, hosted: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = id;
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				player.strategy = "preloaded";
+				player.hosted = hosted;
+				player.env = { mode: "gather", role: "student" };
+				// Authored at a stale version under its own base tag.
+				player.config = {
+					id,
+					markup: '<authored-tag id="authored-model"></authored-tag>',
+					elements: { "authored-tag": "@pie-element/authored-tag@0.9.0" },
+					models: [
+						{ id: "authored-model", element: "authored-tag", prompt: "server model" },
+					],
+				};
+				fixture.appendChild(player);
+			};
+			(window as any).__mountAuthoredTagPlayer("authored-tag-hosted", true);
+		}, registeredTag);
+
+		await expect(page.locator(`#authored-tag-hosted ${authoredTag}`)).toHaveText(
+			"server model",
+			{ timeout: 20_000 },
+		);
+		expect(await page.evaluate(() => (window as any).__pieAuthoredTagCalls)).toEqual(
+			[],
+		);
+
+		await page.evaluate(() =>
+			(window as any).__mountAuthoredTagPlayer("authored-tag-client", false),
+		);
+		await expect(page.locator(`#authored-tag-client ${authoredTag}`)).toHaveText(
+			"client model",
+			{ timeout: 20_000 },
+		);
+		const registration = await page.evaluate(
+			({ registeredTag, authoredTag }) => {
+				const entry = (window as any).PIE_REGISTRY[authoredTag];
+				const defined = customElements.get(authoredTag);
+				return {
+					package: entry?.package,
+					bundleType: entry?.bundleType,
+					sameController:
+						entry?.controller === (window as any).PIE_REGISTRY[registeredTag].controller,
+					subclass:
+						!!defined &&
+						defined !== customElements.get(registeredTag) &&
+						defined.prototype instanceof (customElements.get(registeredTag) as any),
+				};
+			},
+			{ registeredTag, authoredTag },
+		);
+		expect(registration).toEqual({
+			package: "@pie-element/authored-tag@1.0.0",
+			bundleType: "client-player.js",
+			sameController: true,
+			subclass: true,
+		});
+		expect(warnings).toEqual([]);
+	});
+
+	test("a hosted player never runs a controller another loader registered", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		const tag = "pie-hosted-gate--version-1-0-0";
+		await page.evaluate((tag) => {
+			const calls: string[] = [];
+			(window as any).__pieHostedGateCalls = calls;
+			customElements.define(
+				tag,
+				class extends HTMLElement {
+					private _model: any;
+
+					set model(value: any) {
+						this._model = value;
+						this.textContent = String(value?.prompt ?? "");
+					}
+
+					get model() {
+						return this._model;
+					}
+				},
+			);
+			// What a non-hosted ESM load leaves in the shared registry.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/hosted-gate@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "esm",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+					async outcome() {
+						calls.push("outcome");
+						return { score: 1 };
+					},
+					async createCorrectResponseSession() {
+						calls.push("createCorrectResponseSession");
+						return { value: ["a"] };
+					},
+				},
+			};
+			(window as any).__mountHostedGatePlayer = (hosted: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = hosted ? "hosted-gate-hosted" : "hosted-gate-client";
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				player.strategy = "preloaded";
+				player.hosted = hosted;
+				player.addCorrectResponse = true;
+				player.env = { mode: "gather", role: "instructor" };
+				player.config = {
+					id: `hosted-gate-${hosted}`,
+					markup: '<pie-hosted-gate id="gate-model"></pie-hosted-gate>',
+					elements: { "pie-hosted-gate": "@pie-element/hosted-gate@1.0.0" },
+					models: [
+						{ id: "gate-model", element: "pie-hosted-gate", prompt: "server model" },
+					],
+				};
+				fixture.appendChild(player);
+			};
+			(window as any).__mountHostedGatePlayer(true);
+		}, tag);
+
+		await expect(page.locator(`#hosted-gate-hosted ${tag}`)).toHaveText(
+			"server model",
+			{ timeout: 20_000 },
+		);
+		const hostedScore = await page.evaluate(async () => {
+			const results: unknown[] = await (
+				document.querySelector("#hosted-gate-hosted pie-item-player") as any
+			).provideScore();
+			return results.map((result) => result === undefined);
+		});
+		expect(hostedScore).toEqual([true]);
+		await page.evaluate(() =>
+			(
+				document.querySelector("#hosted-gate-hosted pie-item-player") as any
+			).updateElementModel({ id: "gate-model", prompt: "updated server model" }),
+		);
+		await expect(page.locator(`#hosted-gate-hosted ${tag}`)).toHaveText(
+			"updated server model",
+			{ timeout: 20_000 },
+		);
+		expect(await page.evaluate(() => (window as any).__pieHostedGateCalls)).toEqual(
+			[],
+		);
+
+		// The same registry entry drives a player that is not hosted.
+		await page.evaluate(() => (window as any).__mountHostedGatePlayer(false));
+		await expect(page.locator(`#hosted-gate-client ${tag}`)).toHaveText(
+			"client model",
+			{ timeout: 20_000 },
+		);
+		expect(
+			await page.evaluate(() => (window as any).__pieHostedGateCalls),
+		).toContain("model");
+	});
+
+	test("the session debugger runs no controller for a hosted player", async ({
+		page,
+	}) => {
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.waitForFunction(() =>
+			Boolean(customElements.get("pie-item-player-session-debugger")),
+		);
+
+		const tag = "pie-debugger-gate--version-1-0-0";
+		await page.evaluate((tag) => {
+			const calls: string[] = [];
+			(window as any).__pieDebuggerGateCalls = calls;
+			customElements.define(tag, class extends HTMLElement {});
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/debugger-gate@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "esm",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+				},
+			};
+			(window as any).__mountGateDebugger = (hosted: boolean) => {
+				const debuggerElement = document.createElement(
+					"pie-item-player-session-debugger",
+				) as any;
+				debuggerElement.id = hosted ? "debugger-gate-hosted" : "debugger-gate-client";
+				debuggerElement.hosted = hosted;
+				debuggerElement.env = { mode: "gather", role: "student" };
+				debuggerElement.session = { id: "debugger-gate-session", data: [] };
+				debuggerElement.config = {
+					id: "debugger-gate",
+					markup: '<pie-debugger-gate id="gate-model"></pie-debugger-gate>',
+					elements: { "pie-debugger-gate": "@pie-element/debugger-gate@1.0.0" },
+					models: [
+						{ id: "gate-model", element: "pie-debugger-gate", prompt: "server model" },
+					],
+				};
+				document.body.appendChild(debuggerElement);
+			};
+			(window as any).__mountGateDebugger(true);
+		}, tag);
+		const filteredModel = (id: string) =>
+			page.evaluate(async (id) => {
+				const panel = document.getElementById(id) as HTMLElement;
+				(
+					[...panel.querySelectorAll('[role="tab"]')].at(-1) as HTMLElement
+				).click();
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				return panel.querySelector(".pie-item-player-session-debugger__card-pre")
+					?.textContent;
+			}, id);
+
+		await expect
+			.poll(() => filteredModel("debugger-gate-hosted"))
+			.toContain("server model");
+		expect(
+			await page.evaluate(() => (window as any).__pieDebuggerGateCalls),
+		).toEqual([]);
+
+		await page.evaluate(() => (window as any).__mountGateDebugger(false));
+		await expect
+			.poll(() => filteredModel("debugger-gate-client"))
+			.toContain("client model");
+	});
+
+	test("a player that is not hosted warns about each preloaded tag without a controller", async ({
+		page,
+	}) => {
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+		const warnings: string[] = [];
+		page.on("console", (message) => {
+			if (message.type() === "warning" && message.text().includes("without a controller")) {
+				warnings.push(message.text());
+			}
+		});
+
+		const tag = "pie-no-controller--version-1-0-0";
+		await page.evaluate((tag) => {
+			customElements.define(
+				tag,
+				class extends HTMLElement {
+					set model(value: any) {
+						this.textContent = String(value?.prompt ?? "");
+					}
+				},
+			);
+			// What registerPreloadedElements records for an entry without a controller.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/no-controller@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "player.js",
+			};
+			(window as any).__mountNoControllerPlayer = (id: string, hosted: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = id;
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				player.strategy = "preloaded";
+				player.hosted = hosted;
+				player.env = { mode: "gather", role: "student" };
+				player.config = {
+					id,
+					markup: '<pie-no-controller id="no-controller-model"></pie-no-controller>',
+					elements: { "pie-no-controller": "@pie-element/no-controller@1.0.0" },
+					models: [
+						{ id: "no-controller-model", element: "pie-no-controller", prompt: "authored model" },
+					],
+				};
+				fixture.appendChild(player);
+			};
+			(window as any).__mountNoControllerPlayer("no-controller-hosted", true);
+		}, tag);
+		await expect(page.locator(`#no-controller-hosted ${tag}`)).toHaveText(
+			"authored model",
+			{ timeout: 20_000 },
+		);
+		expect(warnings).toEqual([]);
+
+		await page.evaluate(() => {
+			(window as any).__mountNoControllerPlayer("no-controller-client", false);
+			(window as any).__mountNoControllerPlayer("no-controller-client-2", false);
+		});
+		await expect(page.locator(`#no-controller-client ${tag}`)).toHaveText(
+			"authored model",
+			{ timeout: 20_000 },
+		);
+		await expect(page.locator(`#no-controller-client-2 ${tag}`)).toHaveText(
+			"authored model",
+			{ timeout: 20_000 },
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain(tag);
 	});
 
 	test("backend delivery refreshes rendered models when env changes", async ({
@@ -482,6 +848,126 @@ test.describe("item-player strategy regressions", () => {
 		expect(refreshState.callCount).toBe(1);
 		expect(refreshState.tagName).toBe("pie-model-refresh--version-1-0-0");
 		expect(refreshState.modelElement).toBe(refreshState.tagName);
+	});
+
+	test("backend delivery implies hosted, so a registered controller never runs over its models", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 20_000,
+		});
+
+		const tag = "pie-backend-gate--version-1-0-0";
+		await page.evaluate((tag) => {
+			const calls: string[] = [];
+			(window as any).__pieBackendGateCalls = calls;
+			customElements.define(
+				tag,
+				class extends HTMLElement {
+					private _model: any;
+
+					set model(value: any) {
+						this._model = value;
+						this.textContent = String(value?.prompt ?? "");
+					}
+
+					get model() {
+						return this._model;
+					}
+				},
+			);
+			// What a non-hosted ESM load leaves in the shared registry.
+			(window as any).PIE_REGISTRY ??= {};
+			(window as any).PIE_REGISTRY[tag] = {
+				package: "@pie-element/backend-gate@1.0.0",
+				status: "loaded",
+				tagName: tag,
+				bundleType: "esm",
+				controller: {
+					async model(model: any) {
+						calls.push("model");
+						return { ...model, prompt: "client model" };
+					},
+				},
+			};
+			(window as any).__mountBackendGatePlayer = async (hosted?: boolean) => {
+				const fixture = document.createElement("div");
+				fixture.id = `backend-gate-${hosted ?? "default"}`;
+				document.body.appendChild(fixture);
+				const player = document.createElement("pie-item-player") as any;
+				fixture.appendChild(player);
+				await customElements.whenDefined("pie-item-player");
+				player.strategy = "preloaded";
+				if (hosted !== undefined) player.hosted = hosted;
+				player.env = { mode: "gather", role: "student" };
+				player.backend = {
+					delivery: {
+						enabled: true,
+						itemId: `backend-gate-item-${hosted ?? "default"}`,
+						sessionId: `backend-gate-session-${hosted ?? "default"}`,
+						client: {
+							async load() {
+								return {
+									item: {
+										id: `backend-gate-config-${hosted ?? "default"}`,
+										markup:
+											'<pie-backend-gate id="backend-gate-model"></pie-backend-gate>',
+										elements: {
+											"pie-backend-gate": "@pie-element/backend-gate@1.0.0",
+										},
+										models: [
+											{
+												id: "backend-gate-model",
+												element: "pie-backend-gate",
+												prompt: "server model",
+											},
+										],
+									},
+									session: { id: "backend-gate-session", data: [] },
+								};
+							},
+							async model(context: any) {
+								return [
+									{
+										id: "backend-gate-model",
+										element: tag,
+										prompt: `server model for ${context.env.mode}`,
+									},
+								];
+							},
+						},
+					},
+				};
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				await player.loadFromBackend("delivery");
+			};
+		}, tag);
+
+		await page.evaluate(() => (window as any).__mountBackendGatePlayer());
+		const hostedByDefault = page.locator(`#backend-gate-default ${tag}`);
+		await expect(hostedByDefault).toHaveText("server model", { timeout: 20_000 });
+		await page.evaluate(() => {
+			(
+				document.querySelector("#backend-gate-default pie-item-player") as any
+			).env = { mode: "evaluate", role: "student" };
+		});
+		await expect(hostedByDefault).toHaveText("server model for evaluate", {
+			timeout: 20_000,
+		});
+		expect(await page.evaluate(() => (window as any).__pieBackendGateCalls)).toEqual(
+			[],
+		);
+
+		// A host that sets `hosted` false keeps browser controllers.
+		await page.evaluate(() => (window as any).__mountBackendGatePlayer(false));
+		await expect(page.locator(`#backend-gate-false ${tag}`)).toHaveText(
+			"client model",
+			{ timeout: 20_000 },
+		);
+		expect(
+			await page.evaluate(() => (window as any).__pieBackendGateCalls),
+		).toContain("model");
 	});
 
 	test("backend delivery refreshes rendered passage models when env changes", async ({
@@ -1224,8 +1710,9 @@ test.describe("item-player strategy regressions", () => {
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "missing-tags", data: [] };
 			player.config = {
+				// A package the page did not register, so its tag stays undefined.
 				elements: {
-					"pie-runtime-missing": "@pie-element/multiple-choice@11.4.3",
+					"pie-runtime-missing": "@pie-element/unregistered@1.0.0",
 				},
 				models: [
 					{
@@ -1275,8 +1762,9 @@ test.describe("item-player strategy regressions", () => {
 					markup: "<p>Item without elements</p>",
 				},
 				passage: {
+					// A package the page did not register, so its tag stays undefined.
 					elements: {
-						"pie-passage-missing": "@pie-element/multiple-choice@11.4.3",
+						"pie-passage-missing": "@pie-element/unregistered@1.0.0",
 					},
 					models: [
 						{
@@ -1326,8 +1814,9 @@ test.describe("item-player strategy regressions", () => {
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "disable-bundler", data: [] };
 			player.config = {
+				// A package the page did not register, so its tag stays undefined.
 				elements: {
-					"pie-disable-bundler-missing": "@pie-element/multiple-choice@11.4.3",
+					"pie-disable-bundler-missing": "@pie-element/unregistered@1.0.0",
 				},
 				models: [
 					{
@@ -1590,9 +2079,6 @@ test.describe("item-player strategy regressions", () => {
 		});
 		await page.waitForTimeout(400);
 		expect(runtimeSupportRequests).toBe(0);
-		await expect(
-			page.getByText("Missing runtime-support metadata"),
-		).not.toBeVisible();
 	});
 
 	test("off runtime support check does not request metadata", async ({
@@ -1651,15 +2137,20 @@ test.describe("item-player strategy regressions", () => {
 		expect(runtimeSupportRequests).toBe(0);
 	});
 
-	test("metadata unsupported does not alter unrelated load errors", async ({
+	test("on runtime support check does not probe metadata for preloaded", async ({
 		page,
 	}) => {
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		// The page supplies the player elements; the test registers its own tags.
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
 
-		await page.route("**/runtime-support*", async (route) => {
+		let runtimeSupportRequests = 0;
+		// Any metadata URL: a jsDelivr `/runtime-support/+esm` route as well as a
+		// package's `dist/runtime-support.js`.
+		await page.route((url) => url.pathname.includes("runtime-support"), async (route) => {
+			runtimeSupportRequests += 1;
 			await route.fulfill({
 				status: 200,
 				contentType: "application/javascript",
@@ -1715,8 +2206,7 @@ test.describe("item-player strategy regressions", () => {
 		await expect(
 			page.getByText("Error loading elements (preloaded-readiness):"),
 		).toBeVisible({ timeout: 20_000 });
-		await expect(
-			page.getByText("Missing runtime-support metadata"),
-		).not.toBeVisible();
+		await expect(page.getByText("Runtime support metadata")).not.toBeVisible();
+		expect(runtimeSupportRequests).toBe(0);
 	});
 });

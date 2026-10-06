@@ -37,9 +37,8 @@
  */
 
 import {
-	ContextConsumer,
+	connectContextWithRetry,
 	createContext,
-	type UnknownContext,
 } from "@pie-players/pie-context";
 
 /**
@@ -75,20 +74,10 @@ export type SectionRuntimeEngineHostContextListener = (
 	value: SectionRuntimeEngineHostContextValue,
 ) => void;
 
-type ContextProviderLikeEvent = Event & {
-	context?: unknown;
-};
-
 /**
- * Connect a DOM host to the cross-CE engine context with the same
- * provider-retry semantics used elsewhere in the toolkit (initial
- * synchronous request + `context-provider` re-request + 50 ms polling
- * fallback up to 200 attempts ≈ 10 s).
- *
- * The retry mirrors the existing
- * `connectAssessmentToolkitHostRuntimeContext` infrastructure so the
- * timing characteristics of cross-CE handshakes stay consistent across
- * the toolkit's contexts.
+ * Connect a DOM host to the cross-CE engine context through
+ * `connectContextWithRetry`, the provider-retry the toolkit's other
+ * contexts use.
  *
  * Returns a cleanup function that disconnects the consumer and clears
  * the retry interval. Standalone toolkits naturally exhaust the retry
@@ -99,42 +88,9 @@ export function connectSectionRuntimeEngineHostContext(
 	host: HTMLElement,
 	onValue: SectionRuntimeEngineHostContextListener,
 ): () => void {
-	let hasValue = false;
-	const consumer = new ContextConsumer(host, {
-		context: sectionRuntimeEngineHostContext,
-		subscribe: true,
-		onValue: (value) => {
-			hasValue = true;
-			onValue(value);
-		},
-	});
-	consumer.connect();
-
-	const onContextProvider = (event: ContextProviderLikeEvent) => {
-		if (
-			event.context !==
-			(sectionRuntimeEngineHostContext as unknown as UnknownContext)
-		) {
-			return;
-		}
-		consumer.requestValue();
-	};
-	host.addEventListener("context-provider", onContextProvider);
-
-	let attempts = 0;
-	const maxAttempts = 200;
-	const retryTimer = globalThis.setInterval(() => {
-		if (hasValue || attempts >= maxAttempts) {
-			globalThis.clearInterval(retryTimer);
-			return;
-		}
-		attempts += 1;
-		consumer.requestValue();
-	}, 50);
-
-	return () => {
-		globalThis.clearInterval(retryTimer);
-		host.removeEventListener("context-provider", onContextProvider);
-		consumer.disconnect();
-	};
+	return connectContextWithRetry(
+		host,
+		sectionRuntimeEngineHostContext,
+		onValue,
+	);
 }

@@ -1,3 +1,4 @@
+import type { SessionCommitReason } from "@pie-players/pie-players-shared/pie";
 import type { MediaTimeSource } from "@pie-players/pie-players-shared/timed-media";
 
 export const PIE_REGISTER_EVENT = "pie-register";
@@ -26,6 +27,8 @@ export interface ItemSessionChangedDetail {
 	canonicalItemId?: string;
 	session: unknown;
 	sourceRuntimeId?: string;
+	/** Set when the change is a commit at a teardown, navigation or page-hidden seam. */
+	sessionCommitReason?: SessionCommitReason;
 }
 
 export interface InternalItemSessionChangedDetail {

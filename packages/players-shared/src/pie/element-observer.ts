@@ -24,7 +24,7 @@ import type { ConfigEntity, Env } from "../types/index.js";
 import { initializePieElement } from "./initialize-element.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { pieRegistry } from "./registry.js";
-import type { EventListenersMap, PieElement } from "./types.js";
+import type { BundleType, EventListenersMap, PieElement } from "./types.js";
 
 const logger = createPieLogger("pie-element-observer", () =>
 	isGlobalDebugEnabled(),
@@ -38,6 +38,8 @@ export interface PieElementContext {
 	session: any[];
 	env?: Env;
 	eventListeners?: EventListenersMap;
+	/** The delivering player's bundle type, see `findPieController`. */
+	bundleType?: BundleType;
 }
 
 /**
@@ -85,6 +87,7 @@ const bindElement = (
 			session: context.session,
 			env: context.env,
 			eventListeners: context.eventListeners?.[tagName],
+			bundleType: context.bundleType,
 		});
 		if (bound) return;
 	}

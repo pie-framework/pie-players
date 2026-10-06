@@ -11,6 +11,9 @@ so orchestration/runtime dependencies can be shared without prop drilling.
 - `ContextRequestEvent` and `ContextProviderEvent`
 - `ContextProvider` and `provideContext(...)`
 - `ContextConsumer`, `consumeContext(...)`, and `requestContext(...)`
+- `connectContextWithRetry(...)` for a consumer whose provider may connect
+  after it: it re-requests on `context-provider` and polls every 50 ms for
+  about 10 s
 - `ContextRoot` for late-provider replay of pending subscribing requests
 
 ## Design notes
@@ -25,8 +28,7 @@ so orchestration/runtime dependencies can be shared without prop drilling.
 - `ContextRoot` only tracks subscribing requests to avoid unnecessary retention.
 - `ContextRoot` dedupes pending replay by `(requestor, callback)` pair.
 
-See `LIT_PARITY_CHECKLIST.md` for the parity checklist used to align semantics
-with `../lit/packages/context` core APIs.
+These semantics follow the core APIs of Lit's `@lit/context`.
 
 ## Svelte usage pattern
 

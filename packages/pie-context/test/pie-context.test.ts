@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	connectContextWithRetry,
 	ContextConsumer,
 	ContextProvider,
 	ContextProviderEvent,
@@ -306,5 +307,67 @@ describe("pie-context", () => {
 		rootHost.dispatchEvent(new ContextProviderEvent(runtimeContext, rootHost));
 
 		expect(replayed).toBe(1);
+	});
+
+	// A provider on the consumer's own host never answers it, so these tests
+	// answer `context-request` on the host once `value` is set.
+	const answerRequestsOnHost = (host: Element, context: unknown) => {
+		const state: { value?: string; requests: number } = { requests: 0 };
+		host.addEventListener("context-request", (event: Event) => {
+			const request = event as ContextRequestEvent;
+			if (request.context !== context) return;
+			state.requests += 1;
+			if (state.value !== undefined) request.callback(state.value, () => {});
+		});
+		return state;
+	};
+
+	test("connectContextWithRetry re-requests when a provider announces itself", () => {
+		const host = new EventTarget() as unknown as Element;
+		const runtimeContext = createContext<string>(Symbol("late-provider"));
+		const provider = answerRequestsOnHost(host, runtimeContext);
+		const seen: string[] = [];
+		const cleanup = connectContextWithRetry(host, runtimeContext, (value) =>
+			seen.push(value),
+		);
+		expect(seen).toEqual([]);
+
+		provider.value = "late";
+		host.dispatchEvent(new ContextProviderEvent(runtimeContext, host));
+
+		expect(seen).toEqual(["late"]);
+		cleanup();
+	});
+
+	test("connectContextWithRetry polls for a silent provider and stops once it has a value", async () => {
+		const host = new EventTarget() as unknown as Element;
+		const runtimeContext = createContext<string>(Symbol("silent-provider"));
+		const provider = answerRequestsOnHost(host, runtimeContext);
+		const seen: string[] = [];
+		const cleanup = connectContextWithRetry(host, runtimeContext, (value) =>
+			seen.push(value),
+		);
+
+		provider.value = "polled";
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		expect(seen).toEqual(["polled"]);
+		const requestsAfterValue = provider.requests;
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		expect(provider.requests).toBe(requestsAfterValue);
+		cleanup();
+	});
+
+	test("connectContextWithRetry stops polling on cleanup", async () => {
+		const host = new EventTarget() as unknown as Element;
+		const runtimeContext = createContext<string>(Symbol("absent-provider"));
+		const provider = answerRequestsOnHost(host, runtimeContext);
+		const cleanup = connectContextWithRetry(host, runtimeContext, () => {});
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		expect(provider.requests).toBeGreaterThan(1);
+
+		cleanup();
+		const requestsAtCleanup = provider.requests;
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		expect(provider.requests).toBe(requestsAtCleanup);
 	});
 });

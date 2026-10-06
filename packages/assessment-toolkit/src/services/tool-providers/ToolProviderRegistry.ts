@@ -71,18 +71,18 @@ export interface ToolProviderConfig<TConfig = any> {
  * const registry = new ToolProviderRegistry();
  *
  * // Register a provider with auth fetcher
- * registry.register('desmos-calculator', {
- *   provider: new DesmosToolProvider(),
+ * registry.register('example-provider', {
+ *   provider: new ExampleToolProvider(),
  *   config: {},
  *   lazy: true,
  *   authFetcher: async () => {
- *     const response = await fetch('/api/desmos/token');
+ *     const response = await fetch('/api/example/token');
  *     return response.json();
  *   },
  * });
  *
  * // Get provider (auto-initializes if lazy)
- * const desmosProvider = await registry.getProvider('desmos-calculator');
+ * const provider = await registry.getProvider('example-provider');
  * ```
  */
 export class ToolProviderRegistry {
@@ -299,14 +299,6 @@ export class ToolProviderRegistry {
 		providerId: string,
 		autoInitialize = true,
 	): Promise<T> {
-		console.log("[ToolProviderRegistry] getProvider called", {
-			providerId,
-			autoInitialize,
-			isRegistered: this.providers.has(providerId),
-			isInitialized: this.initialized.get(providerId),
-			allProviderIds: Array.from(this.providers.keys()),
-		});
-
 		const provider = this.providers.get(providerId);
 		if (!provider) {
 			console.error("[ToolProviderRegistry] Provider not found:", {
@@ -326,12 +318,6 @@ export class ToolProviderRegistry {
 			);
 			await this.initialize(providerId);
 		}
-
-		console.log("[ToolProviderRegistry] Returning provider:", {
-			providerId,
-			providerName: provider.providerName,
-			isReady: provider.isReady(),
-		});
 
 		return provider as T;
 	}

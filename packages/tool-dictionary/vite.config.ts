@@ -2,15 +2,19 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
+import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
 export default defineConfig({
 	plugins: [
 		svelte({
 			compilerOptions: {
 				customElement: true,
+				rootDir: svelteRootDir(__dirname),
 			},
 			emitCss: false,
 		}),
+		guardSvelteCustomElementDefines(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",

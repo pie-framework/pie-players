@@ -222,6 +222,167 @@ describe("ServerTTSProvider", () => {
 		expect(synthBody.cache).toBe(true);
 	});
 
+	test("sends the custom transport language as both lang_id and langId", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [
+							{ time: 0, type: "word", start: 0, end: 4, value: "Leer" },
+						],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.custom.example/v1",
+			transportMode: "custom",
+			endpointMode: "rootPost",
+			language: "en-US",
+			providerOptions: { lang_id: "es-MX" },
+		} as any);
+		await impl.speak("Leer");
+
+		const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+		const synthBody = JSON.parse(String(options.body));
+		expect(synthBody.lang_id).toBe("es-MX");
+		expect(synthBody.langId).toBe("es-MX");
+	});
+
+	describe("custom transport asset auth", () => {
+		const credentialsSeen: Record<string, RequestCredentials | undefined> = {};
+		const speakAndCaptureHeaders = async (
+			config: Record<string, unknown>,
+		): Promise<Record<string, Record<string, string>>> => {
+			const captured: Record<string, Record<string, string>> = {};
+			for (const key of Object.keys(credentialsSeen)) delete credentialsSeen[key];
+			const fetchMock = vi.fn(
+				async (input: RequestInfo | URL, init?: RequestInit) => {
+					const url = String(input);
+					const headers = { ...(init?.headers as Record<string, string>) };
+					credentialsSeen[new URL(url).pathname] = init?.credentials;
+					if (url === "https://tts.custom.example/v1") {
+						captured.synthesize = headers;
+						return createJSONResponse({
+							audioContent: "https://cdn.custom.example/audio.mp3",
+							word: "https://cdn.custom.example/marks.jsonl",
+						});
+					}
+					if (url === "https://cdn.custom.example/marks.jsonl") {
+						captured.marks = headers;
+						return new Response(
+							'{"time":0,"type":"word","start":0,"end":4,"value":"Read"}\n',
+							{ status: 200, headers: { "Content-Type": "text/plain" } },
+						);
+					}
+					if (url === "https://cdn.custom.example/audio.mp3") {
+						captured.audio = headers;
+						return new Response(new Blob(["mp3-bytes"]), { status: 200 });
+					}
+					return new Response("not-found", { status: 404 });
+				},
+			);
+			globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+			const provider = new ServerTTSProvider();
+			const impl = await provider.initialize({
+				apiEndpoint: "https://tts.custom.example/v1",
+				transportMode: "custom",
+				endpointMode: "rootPost",
+				assetOrigins: [
+					"https://tts.custom.example",
+					"https://cdn.custom.example",
+				],
+				...config,
+			} as any);
+			await impl.speak("Read this text");
+			return captured;
+		};
+
+		test("sends the Authorization header of the synthesize request with the marks and audio fetches", async () => {
+			const captured = await speakAndCaptureHeaders({
+				headers: { Authorization: "Bearer t", "X-Tenant": "district-7" },
+				includeAuthOnAssetFetch: true,
+			});
+
+			expect(captured.synthesize).toMatchObject({
+				Authorization: "Bearer t",
+				"X-Tenant": "district-7",
+			});
+			expect(captured.marks).toEqual({ Authorization: "Bearer t" });
+			expect(captured.audio).toEqual({ Authorization: "Bearer t" });
+		});
+
+		test("sends an authToken with the marks and audio fetches", async () => {
+			const captured = await speakAndCaptureHeaders({
+				authToken: "t",
+				includeAuthOnAssetFetch: true,
+			});
+
+			expect(captured.synthesize).toMatchObject({ Authorization: "Bearer t" });
+			expect(captured.marks).toEqual({ Authorization: "Bearer t" });
+			expect(captured.audio).toEqual({ Authorization: "Bearer t" });
+		});
+
+		test("keeps asset fetches unauthenticated without includeAuthOnAssetFetch", async () => {
+			const captured = await speakAndCaptureHeaders({
+				headers: { Authorization: "Bearer t" },
+				authToken: "t",
+			});
+
+			expect(captured.synthesize).toMatchObject({ Authorization: "Bearer t" });
+			expect(captured.marks).toEqual({});
+			expect(captured.audio).toEqual({});
+		});
+
+		test("scrubs auth from asset fetches to an origin outside assetOrigins", async () => {
+			const captured = await speakAndCaptureHeaders({
+				headers: { Authorization: "Bearer t" },
+				includeAuthOnAssetFetch: true,
+				assetOrigins: ["https://tts.custom.example"],
+			});
+
+			expect(captured.synthesize).toMatchObject({ Authorization: "Bearer t" });
+			expect(captured.marks).toEqual({});
+			expect(captured.audio).toEqual({});
+		});
+
+		test("applies the credentials mode to the synthesize, marks and audio fetches", async () => {
+			await speakAndCaptureHeaders({ credentials: "include" });
+
+			expect(credentialsSeen).toEqual({
+				"/v1": "include",
+				"/marks.jsonl": "include",
+				"/audio.mp3": "include",
+			});
+		});
+
+		test("sends no cookies to an asset origin outside assetOrigins", async () => {
+			await speakAndCaptureHeaders({
+				credentials: "include",
+				assetOrigins: ["https://tts.custom.example"],
+			});
+
+			expect(credentialsSeen).toEqual({
+				"/v1": "include",
+				"/marks.jsonl": undefined,
+				"/audio.mp3": undefined,
+			});
+		});
+
+		test("leaves the credentials mode to the browser when unset", async () => {
+			await speakAndCaptureHeaders({});
+
+			expect(Object.values(credentialsSeen)).toEqual([
+				undefined,
+				undefined,
+				undefined,
+			]);
+		});
+	});
+
 	test("updates custom transport speedRate for active inline speed changes", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
@@ -345,6 +506,48 @@ describe("ServerTTSProvider", () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/google/voices");
+	});
+
+	test("falls back to the generic voices endpoint when the provider route is absent", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === "/api/tts/voices") {
+				return createJSONResponse({ voices: [] }, 200);
+			}
+			return new Response("not-found", { status: 404 });
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "polly",
+			validateEndpoint: true,
+			endpointValidationMode: "voices",
+		} as any);
+
+		expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+			"/api/tts/polly/voices",
+			"/api/tts/voices",
+		]);
+	});
+
+	test("does not try the generic voices endpoint after a non-404 failure", async () => {
+		const fetchMock = vi.fn(
+			async () => new Response("unauthorized", { status: 401 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await expect(
+			provider.initialize({
+				apiEndpoint: "/api/tts",
+				provider: "google",
+				validateEndpoint: true,
+				endpointValidationMode: "voices",
+			} as any),
+		).rejects.toThrow();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	describe("getCapabilities supportsSSML", () => {

@@ -3,6 +3,7 @@ import { evaluateLatex, sampleLatex } from "../../src/evaluation-engine.js";
 import {
 	CORTEX_WORKER_PROTOCOL_VERSION,
 	type SerializedCortexError,
+	type WorkerReadyMessage,
 	type WorkerRequest,
 	type WorkerResponse,
 } from "../../src/worker-protocol.js";
@@ -19,10 +20,14 @@ import {
  *
  * `computing` mode routes requests through the same `evaluateLatex`/`sampleLatex`
  * the shipped worker calls, and serializes a throw the same way, so a controller
- * test exercises real arithmetic across a real protocol boundary.
+ * test exercises real arithmetic across a real protocol boundary. It reports ready
+ * a task after construction, as the shipped worker does once its module has run;
+ * a `manual` worker reports ready only when the test calls `ready()`.
  */
 
-type MessageListener = (event: { data: WorkerResponse }) => void;
+type MessageListener = (event: {
+	data: WorkerResponse | WorkerReadyMessage;
+}) => void;
 
 export interface FakeWorkerHandle {
 	/** Every request posted to this worker, in order. */
@@ -32,6 +37,8 @@ export interface FakeWorkerHandle {
 	respond(response: WorkerResponse): void;
 	/** Deliver a successful result echoing a request's envelope. */
 	respondWithResult(request: WorkerRequest, formatted: string): void;
+	/** Report that the worker has loaded, as the shipped worker does once. */
+	ready(): void;
 	/** Fire the `error` event a dying worker fires. */
 	emitError(): void;
 }
@@ -87,7 +94,9 @@ class FakeWorker implements FakeWorkerHandle {
 	private readonly messageListeners = new Set<MessageListener>();
 	private readonly errorListeners = new Set<() => void>();
 
-	constructor(private readonly autoRespond: boolean) {}
+	constructor(private readonly autoRespond: boolean) {
+		if (autoRespond) setTimeout(() => this.ready(), 0);
+	}
 
 	addEventListener(
 		kind: string,
@@ -119,10 +128,17 @@ class FakeWorker implements FakeWorkerHandle {
 		this.terminated = true;
 	}
 
-	respond(response: WorkerResponse): void {
+	respond(response: WorkerResponse | WorkerReadyMessage): void {
 		if (this.terminated) return;
 		for (const listener of [...this.messageListeners])
 			listener({ data: response });
+	}
+
+	ready(): void {
+		this.respond({
+			protocolVersion: CORTEX_WORKER_PROTOCOL_VERSION,
+			kind: "ready",
+		});
 	}
 
 	respondWithResult(request: WorkerRequest, formatted: string): void {

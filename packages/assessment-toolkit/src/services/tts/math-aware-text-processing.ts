@@ -91,9 +91,6 @@ const findCanonicalMathML = (element: Element): string | null => {
 	return null;
 };
 
-const isMathContainer = (element: Element): boolean =>
-	Boolean(findCanonicalMathML(element));
-
 const TEXT_CHUNK_SOURCE_TAGS = new Set([
 	"P",
 	"H1",
@@ -299,6 +296,50 @@ const textFallbackFromMathML = (mathml: string): string => {
 	return normalizeTextForSpeech(parts.join(" "));
 };
 
+// MathJax CHTML paints its glyphs from CSS, so a typeset equation's only text
+// nodes are the source MathML it keeps, clipped, in mjx-assistive-mml. Mapping
+// the fallback text onto them places a catalog word inside its equation, where
+// the rendered-math resolver finds the glyph. Any divergence between the two
+// texts leaves the fallback unmapped.
+const mapFallbackToAssistiveMath = (
+	element: Element,
+	fallbackText: string,
+): NormalizedTextMap => {
+	const map: NormalizedTextMap = new Map();
+	const sourceMath = isMathJaxElement(element)
+		? element.querySelector("mjx-assistive-mml math")
+		: null;
+	if (!sourceMath) return map;
+	const characters: Array<{ node: Text; offset: number }> = [];
+	const visit = (node: Node): void => {
+		if (node.nodeType === 3) {
+			const text = node.textContent || "";
+			for (let offset = 0; offset < text.length; offset++) {
+				if (!/\s/.test(text[offset])) {
+					characters.push({ node: node as Text, offset });
+				}
+			}
+			return;
+		}
+		if (node.nodeType !== 1 || isAnnotationElement(node as Element)) return;
+		for (const child of Array.from(node.childNodes)) {
+			visit(child);
+		}
+	};
+	visit(sourceMath);
+	let next = 0;
+	for (let index = 0; index < fallbackText.length; index++) {
+		if (/\s/.test(fallbackText[index])) continue;
+		const mapping = characters[next];
+		if (mapping?.node.textContent?.[mapping.offset] !== fallbackText[index]) {
+			return new Map();
+		}
+		map.set(index, mapping);
+		next++;
+	}
+	return next === characters.length ? map : new Map();
+};
+
 const collectVisibleMathFallback = (
 	element: Element,
 	canonicalMathML: string,
@@ -335,7 +376,7 @@ const collectVisibleMathFallback = (
 	}
 	return {
 		text: fallbackText,
-		map: new Map(),
+		map: mapFallbackToAssistiveMath(element, fallbackText),
 	};
 };
 

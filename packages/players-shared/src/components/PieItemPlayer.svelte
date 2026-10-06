@@ -33,6 +33,10 @@
   } from "../pie/authoring.js";
   import { transformMarkupForAuthoring } from "../pie/authoring-tag.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
+  import {
+    createElementAnnouncementFilter,
+    holdsPlaceholderSession,
+  } from "../pie/element-announcements.js";
   import { observePieElements } from "../pie/element-observer.js";
   import {
     canPopulateCorrectResponses,
@@ -40,6 +44,9 @@
   } from "../pie/correct-response-env.js";
   import { initializePiesFromLoadedBundle } from "../pie/initialization.js";
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
+  import { typesetMarkupMath } from "../pie/markup-math.js";
+  import { getMathRenderer } from "../pie/math-rendering.js";
+  import { renderPrivateMath } from "./private-math-renderer.js";
   import { resolveInstrumentationProvider } from "../pie/instrumentation-provider-resolution.js";
   import { findPieController } from "../pie/scoring.js";
   import {
@@ -57,6 +64,7 @@
     Env,
     ImageHandler,
     ModelUpdatedEvent,
+    PieItemPlayerErrorDetail,
     SoundHandler,
   } from "../types/index.js";
 
@@ -147,7 +155,7 @@
     onDeleteSound?: (src: string, done: (err?: Error) => void) => void;
     // Event callbacks
     onLoadComplete?: (detail?: any) => void;
-    onPlayerError?: (detail?: any) => void;
+    onPlayerError?: (detail: PieItemPlayerErrorDetail) => void;
     onSessionChanged?: (detail?: any) => void;
     onModelUpdated?: (detail?: any) => void;
     onModelLoaded?: (detail?: any) => void;
@@ -272,10 +280,11 @@
     return applySanitizer(raw, passageAllowList);
   });
 
+  /** A detail that does not say it is recoverable is reported as unrecoverable. */
   function normalizePlayerErrorDetail(
     detail: unknown,
     fallbackCode = "ITEM_PLAYER_RUNTIME_ERROR"
-  ) {
+  ): PieItemPlayerErrorDetail {
     if (detail && typeof detail === "object") {
       const detailObject = detail as Record<string, unknown>;
       const message =
@@ -286,31 +295,26 @@
         typeof detailObject.code === "string" && detailObject.code.trim().length > 0
           ? detailObject.code
           : fallbackCode;
-      return { ...detailObject, message, code };
+      const recoverable = detailObject.recoverable === true;
+      return { ...detailObject, message, code, recoverable };
     }
     const message =
       typeof detail === "string" && detail.trim().length > 0
         ? detail
         : "Unknown PIE runtime error";
-    return { code: fallbackCode, message };
+    return { code: fallbackCode, message, recoverable: false };
   }
 
-  function trackPlayerError(detail: Record<string, unknown>) {
+  function trackPlayerError(detail: PieItemPlayerErrorDetail) {
     const resolvedProvider = resolveInstrumentationProvider({
       player: { loaderConfig },
       component: "pie-item-player",
       debug: isGlobalDebugEnabled(),
     });
     if (!isInstrumentationProvider(resolvedProvider) || !resolvedProvider.isReady()) return;
-    const message =
-      typeof detail.message === "string" ? detail.message : "Unknown PIE runtime error";
-    const code =
-      typeof detail.code === "string" && detail.code.length > 0
-        ? detail.code
-        : "ITEM_PLAYER_RUNTIME_ERROR";
-    resolvedProvider.trackError(new Error(message), {
+    resolvedProvider.trackError(new Error(detail.message), {
       component: "pie-item-player",
-      errorType: code,
+      errorType: detail.code,
       ...detail,
     });
   }
@@ -465,7 +469,7 @@
     const newSession: any[] = [];
 
     for (const model of itemConfig.models) {
-      const controller = findPieController(model.element);
+      const controller = findPieController(model.element, bundleType);
       logger.debug(
         "[PieItemPlayer] Controller lookup for %s: %s (createCorrectResponseSession=%s)",
         model.element,
@@ -507,15 +511,6 @@
       }
     }
 
-    // Clear existing session entries first by dispatching clear events for each existing entry
-    // This ensures the parent component clears its session state before we populate new responses
-    const existingIds = new Set(session.map((s: any) => s.id));
-    for (const id of existingIds) {
-      // Dispatch a session-changed event with null/empty to signal clearing
-      // The parent should handle this by removing the entry
-      dispatch("session-changed", { id, clear: true });
-    }
-
     // Update session with correct responses
     session.length = 0;
     session.push(...newSession);
@@ -533,7 +528,8 @@
           session,
           env,
           rootElement ?? undefined,
-          onElementSessionUpdate
+          onElementSessionUpdate,
+          bundleType
         );
         if (passageConfig) {
           void updatePieElements(
@@ -541,7 +537,8 @@
             session,
             env,
             rootElement ?? undefined,
-            onElementSessionUpdate
+            onElementSessionUpdate,
+            bundleType
           );
         }
       } catch (e) {
@@ -556,10 +553,16 @@
         session
       );
 
-      // Dispatch session-changed events for each populated response
-      // This ensures the parent component can sync its session state
+      // One announcement per populated element, in the shape an element's own
+      // takes: the session is the whole array, so the first replaces the
+      // host's copy and the rest announce each element's `complete`.
       for (const sessionEntry of newSession) {
-        dispatch("session-changed", sessionEntry);
+        dispatch("session-changed", {
+          component: sessionEntry.element,
+          complete: true,
+          elementId: sessionEntry.id,
+          session: { id: "", data: session },
+        });
       }
 
       // Report that correct responses reached the session, so a host can detect
@@ -574,10 +577,6 @@
       // the session entries: those hold the correct answers, and this payload
       // is forwarded to a host's telemetry provider by the instrumentation
       // bridge.
-      //
-      // Called directly rather than through `dispatch()`: that helper's DOM
-      // branch dispatches on `window`, and the custom element already owns DOM
-      // emission for every public event via `handlePlayerEvent`.
       onCorrectResponsesPopulated?.({
         itemId: itemConfig.id,
         mode: env?.mode,
@@ -617,14 +616,13 @@
   /**
    * Fold an element's own session record into this component's session array.
    *
-   * `updatePieElements` hands each element the array entry itself, so an element
-   * that mutates in place needs nothing here. One that assigns a fresh object
-   * breaks that aliasing, and the commit sweep's detail is then the only place
-   * the response exists.
+   * `updatePieElements` hands each element an entry of the array it was given,
+   * which the element mutates in place. That entry goes stale when the element
+   * assigns itself a fresh object, and when the owning player hands down a new
+   * array after a change, until the next update pass re-assigns the entries.
+   * The element's own record is then the only current copy.
    */
-  function mergeElementSessionDetail(detail: unknown): void {
-    if (!detail || typeof detail !== "object") return;
-    const incoming = (detail as { session?: unknown }).session;
+  function mergeElementSession(incoming: unknown): void {
     if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
       return;
     }
@@ -636,6 +634,7 @@
     const existing = session.find(
       (entry: any) => entry && typeof entry === "object" && entry.id === entryId
     );
+    if (existing === record) return;
     if (existing) {
       Object.assign(existing, record);
       return;
@@ -643,16 +642,165 @@
     session.push({ ...record });
   }
 
-  // Set up session-changed listener after DOM is ready
-  let sessionListenerAttached = $state(false);
-  let detachSessionChangedListener: (() => void) | null = $state(null);
+  /**
+   * The model id a dispatching element renders, or `""`. A part nested inside
+   * an element keeps a session of its own, which is no entry of this array.
+   */
+  function renderedModelId(target: EventTarget | null): string {
+    const element = target as { id?: unknown } | null;
+    const id = typeof element?.id === "string" ? element.id : "";
+    if (!id) return "";
+    const rendersModel = [itemConfig, passageConfig].some((config) =>
+      config?.models?.some((model) => model?.id === id)
+    );
+    return rendersModel ? id : "";
+  }
 
-  // Flag to prevent infinite loop when re-dispatching events
-  let isDispatching = $state(false);
-  let lastDispatchedSessionDetailSignature = $state("");
+  function heldSession(target: EventTarget | null): unknown {
+    try {
+      return (target as { session?: unknown } | null)?.session;
+    } catch {
+      // A getter that throws holds no session to read.
+      return undefined;
+    }
+  }
+
+  function sessionEntry(modelId: string): unknown {
+    return session.find(
+      (entry: any) => entry && typeof entry === "object" && entry.id === modelId
+    );
+  }
 
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
+  let passageContainer: HTMLDivElement | null = $state(null);
+  let itemContainer: HTMLDivElement | null = $state(null);
+
+  // `dispatch()` only calls the owning player's callbacks, and that player
+  // emits from above this root, so the one re-entry left is the same event
+  // delivered twice.
+  const forwardedEvents = new WeakSet<Event>();
+  // An update pass re-hands every element its session, and an element that
+  // announces from its `session` setter announces each time. Forwarding only
+  // what is new for the announcing element keeps one learner response at one
+  // event, and keeps a sibling's unchanged `complete` from reaching the host
+  // after another element's response.
+  const admitAnnouncement = createElementAnnouncementFilter();
+
+  function handleModelUpdated(event: Event) {
+    // Only edits are forwarded. While it initializes, a configure element can
+    // announce its own normalized model from its `configuration` setter.
+    if (!initialized || forwardedEvents.has(event)) return;
+    forwardedEvents.add(event);
+    logger.debug(
+      "[PieItemPlayer] model-updated event received from configure element"
+    );
+    dispatch("model-updated", (event as ModelUpdatedEvent).detail);
+  }
+
+  function handleSessionChanged(event: Event) {
+    // The element's own `session-changed` ends here. It carries the PIE
+    // element contract's metadata detail (`complete`, `component`) and no
+    // `session` at all, so a host that read `detail.session` off it got
+    // `undefined` — indistinguishable from the deliberate
+    // `session: null` + `intent: "metadata-only"` signal the player emits
+    // for a metadata-only change. The player re-emits a canonical
+    // `session-changed` from its own host below, which is the one that
+    // reaches hosts; letting the raw event past this point published two
+    // events per change with different contracts under one name.
+    // Section-player's ItemShellElement already dedupes what escapes,
+    // which is the cost this avoids rather than a reason to keep it.
+    // Stop before the re-entry check so the raw event never escapes on the
+    // early-return paths either.
+    event.stopPropagation();
+    if (forwardedEvents.has(event)) return;
+    forwardedEvents.add(event);
+
+    const customEvent = event as CustomEvent;
+    logger.debug(
+      "[PieItemPlayer] session-changed event received from PIE element",
+      customEvent.detail
+    );
+
+    const target = event.target;
+    const modelId = renderedModelId(target);
+    // A commit is the seam of last resort: a host that dropped the element's
+    // earlier event has no other chance to see this response.
+    const isCommit = Boolean(customEvent.detail?.sessionCommitReason);
+
+    // STEP 1 hands each element a placeholder and STEP 3 its entry of this
+    // array, so an element announcing from its `session` setter announces
+    // once for each. Its `complete` describes the placeholder, which STEP 3's
+    // announcement replaces.
+    if (
+      !initialized &&
+      !isCommit &&
+      modelId &&
+      holdsPlaceholderSession(heldSession(target), sessionEntry(modelId))
+    ) {
+      return;
+    }
+
+    // Fold the element's own record in before forwarding: the array can hold
+    // a stale copy of its entry, and forwarding that would drop the response
+    // with no event. A commit carries the record in its detail. The element
+    // itself is read only once initialized, because before STEP 3 it can
+    // still hold STEP 1's placeholder, which must not overwrite a restored
+    // response.
+    mergeElementSession(customEvent.detail?.session);
+    if (initialized && modelId) mergeElementSession(heldSession(target));
+
+    // Record what the host has been told, so a later commit can tell a
+    // pending response from one already announced.
+    noteSessionObserved(target);
+
+    const ownSession = modelId
+      ? (heldSession(target) ?? sessionEntry(modelId))
+      : (heldSession(target) ?? customEvent.detail?.session ?? session);
+    if (
+      !admitAnnouncement({
+        element: target,
+        complete: customEvent.detail?.complete,
+        session: ownSession,
+        commit: isCommit,
+      })
+    ) {
+      return;
+    }
+
+    // Forward event detail with the latest in-memory session snapshot.
+    // PIE elements often emit metadata-only details, while the actual response
+    // array is mutated in-place on the `session` prop. `elementId` names the
+    // announcing element, since `component` is shared by two elements of one
+    // type.
+    dispatch("session-changed", {
+      ...(customEvent.detail || {}),
+      ...(modelId ? { elementId: modelId } : {}),
+      session: { id: "", data: session },
+    });
+  }
+
+  // Attached as soon as the root exists, ahead of the first model or session
+  // assignment below: an element that announces from its `session` setter
+  // dispatches during that assignment, and reaches the host raw if nothing is
+  // listening yet. Bound to this instance's root, so each item of a stimulus
+  // layout forwards only its own elements.
+  $effect(() => {
+    if (!rootElement) return;
+    const root = rootElement;
+    if (mode === "author") {
+      // Capture phase ensures we receive author updates even when the event
+      // does not bubble from nested configure editors.
+      root.addEventListener("model.updated", handleModelUpdated, true);
+      return () => {
+        root.removeEventListener("model.updated", handleModelUpdated, true);
+      };
+    }
+    root.addEventListener("session-changed", handleSessionChanged);
+    return () => {
+      root.removeEventListener("session-changed", handleSessionChanged);
+    };
+  });
 
   // Resource monitor (handles initialization and cleanup automatically)
   useResourceMonitor(
@@ -782,7 +930,8 @@
             session,
             env,
             rootElement ?? undefined,
-            onElementSessionUpdate
+            onElementSessionUpdate,
+            bundleType
           );
 
           if (passageConfig) {
@@ -791,7 +940,8 @@
               session,
               env,
               rootElement ?? undefined,
-              onElementSessionUpdate
+              onElementSessionUpdate,
+              bundleType
             );
           }
 
@@ -802,157 +952,6 @@
         }
 
         initialized = true;
-
-        // Set up event listeners
-        if (!sessionListenerAttached) {
-          if (mode === "author") {
-            // AUTHORING MODE: Listen for model-updated events
-            const handleModelUpdated = (event: Event) => {
-              if (isDispatching) return;
-
-              const customEvent = event as ModelUpdatedEvent;
-              logger.debug(
-                "[PieItemPlayer] model-updated event received from configure element"
-              );
-
-              isDispatching = true;
-              try {
-                dispatch("model-updated", customEvent.detail);
-              } finally {
-                setTimeout(() => {
-                  isDispatching = false;
-                }, 0);
-              }
-            };
-
-            if (rootElement) {
-              // Capture phase ensures we receive author updates even when the event
-              // does not bubble from nested configure editors.
-              rootElement.addEventListener(
-                "model.updated",
-                handleModelUpdated,
-                true
-              );
-              sessionListenerAttached = true;
-              detachSessionChangedListener = () => {
-                try {
-                  rootElement?.removeEventListener(
-                    "model.updated",
-                    handleModelUpdated,
-                    true
-                  );
-                } catch {}
-              };
-              logger.debug(
-                "[PieItemPlayer] model-updated listener attached to root element"
-              );
-            }
-          } else {
-            // VIEW MODE: Listen for session-changed events from PIE elements
-            const handleSessionChanged = (event: Event) => {
-              // The element's own `session-changed` ends here. It carries the PIE
-              // element contract's metadata detail (`complete`, `component`) and no
-              // `session` at all, so a host that read `detail.session` off it got
-              // `undefined` — indistinguishable from the deliberate
-              // `session: null` + `intent: "metadata-only"` signal the player emits
-              // for a metadata-only change. The player re-emits a canonical
-              // `session-changed` from its own host below, which is the one that
-              // reaches hosts; letting the raw event past this point published two
-              // events per change with different contracts under one name.
-              // Section-player's ItemShellElement already dedupes what escapes,
-              // which is the cost this avoids rather than a reason to keep it.
-              // Stop before the re-entry guard so the raw event never escapes on the
-              // early-return paths either.
-              event.stopPropagation();
-
-              // CRITICAL: Prevent infinite loop
-              // When we dispatch, it triggers this listener again
-              // Use flag to detect and break the loop
-              if (isDispatching) {
-                return;
-              }
-
-              const customEvent = event as CustomEvent;
-              logger.debug(
-                "[PieItemPlayer] session-changed event received from PIE element",
-                customEvent.detail
-              );
-
-              // The commit sweep reads the element's session and announces it on
-              // the element's behalf, so the payload it carries is the one the
-              // host has to receive. An element that replaces its session object
-              // instead of mutating it leaves this component's array entry
-              // stale, and forwarding the array alone would then drop the
-              // committed response with no event.
-              mergeElementSessionDetail(customEvent.detail);
-
-              // Record what the host is about to be told, so a later commit can
-              // tell a pending response from one already announced.
-              noteSessionObserved(event.target);
-
-              // Forward event detail with the latest in-memory session snapshot.
-              // PIE elements often emit metadata-only details, while the actual response
-              // array is mutated in-place on the `session` prop.
-              const forwardedDetail = {
-                ...(customEvent.detail || {}),
-                session: { id: "", data: session },
-              };
-
-              // Ignore duplicate payloads that can occur during model wiring. A
-              // commit is exempt: it is the seam of last resort, and a host that
-              // dropped the element's earlier event has no other chance to see
-              // this response.
-              const isCommit = Boolean(
-                customEvent.detail?.sessionCommitReason
-              );
-              let detailSignature = "";
-              try {
-                detailSignature = JSON.stringify(forwardedDetail);
-              } catch {
-                detailSignature = String(customEvent.detail);
-              }
-              if (
-                !isCommit &&
-                detailSignature === lastDispatchedSessionDetailSignature
-              ) {
-                return;
-              }
-              lastDispatchedSessionDetailSignature = detailSignature;
-
-              // Set flag before dispatching
-              isDispatching = true;
-              try {
-                dispatch("session-changed", forwardedDetail);
-              } finally {
-                // Reset flag after dispatch (use setTimeout to ensure it happens after event propagation)
-                setTimeout(() => {
-                  isDispatching = false;
-                }, 0);
-              }
-            };
-
-            // Attach to THIS component instance's root element (critical for stimulus layouts)
-            // Using document.querySelector would only attach to the first instance on the page.
-            if (rootElement) {
-              rootElement.addEventListener(
-                "session-changed",
-                handleSessionChanged
-              );
-              sessionListenerAttached = true;
-              detachSessionChangedListener = () => {
-                try {
-                  rootElement?.removeEventListener(
-                    "session-changed",
-                    handleSessionChanged
-                  );
-                } catch {}
-              };
-              logger.debug(
-                "[PieItemPlayer] session-changed listener attached to root element"
-              );
-            }
-          }
-        }
 
         // Note: Resource monitor starts automatically via useResourceMonitor when rootElement is set
 
@@ -974,14 +973,13 @@
   });
 
   // No session commit here. This component is the one a `{#key}` swap replaces
-  // on a config change, and a commit routes through the listener below into the
-  // owning player's session state - a write landing in the middle of the swap,
+  // on a config change, and a commit routes through `handleSessionChanged` into
+  // the owning player's session state - a write landing in the middle of the swap,
   // which remounted the incoming renderer and raced its `load-complete`. The
   // owning player commits before it changes the config instead, while these
   // elements are still mounted and connected.
   onDestroy(() => {
     try {
-      detachSessionChangedListener?.();
       assetEventManager?.detach();
     } catch {}
   });
@@ -1013,6 +1011,10 @@
   let isUpdating = false;
   let updateQueued = false;
   function runElementUpdate() {
+    // The owning player's teardown commit changes the session this is driven
+    // by after the host has removed the player, when the elements have
+    // already unmounted.
+    if (!rootElement?.isConnected) return;
     if (isUpdating) {
       updateQueued = true;
       return;
@@ -1024,7 +1026,8 @@
         session,
         env,
         rootElement ?? undefined,
-        onElementSessionUpdate
+        onElementSessionUpdate,
+        bundleType
       )
         .then(() =>
           passageConfig
@@ -1033,7 +1036,8 @@
                 session,
                 env,
                 rootElement ?? undefined,
-                onElementSessionUpdate
+                onElementSessionUpdate,
+                bundleType
               )
             : undefined
         )
@@ -1042,6 +1046,7 @@
             {
               code: "ITEM_PLAYER_UPDATE_ERROR",
               message: e instanceof Error ? e.message : String(e),
+              recoverable: true,
               cause: e instanceof Error ? e.stack || e.message : String(e),
             },
             "ITEM_PLAYER_UPDATE_ERROR"
@@ -1106,8 +1111,12 @@
   // part the pass retriggers the observer that scheduled it, and converges only
   // because the wrap is idempotent — an element that re-renders over its own
   // subtree and drops the wrapper would loop.
+  //
+  // Author mode runs no pass: the wrapper is a delivery reflow affordance, and a
+  // configure element's DOM belongs to its editors and its framework. Delivery
+  // editors are covered by the wrap, which leaves editing-host content alone.
   $effect(() => {
-    if (!rootElement) return;
+    if (!rootElement || mode === "author") return;
     const root = rootElement;
 
     // A pass that wrapped nothing mutated nothing, so it queued no records of
@@ -1195,6 +1204,7 @@
           config: itemConfig,
           session,
           env,
+          bundleType,
         })),
       ];
       if (withPassage) {
@@ -1203,6 +1213,7 @@
             config: passageConfig as ConfigEntity,
             session,
             env,
+            bundleType,
           }))
         );
       }
@@ -1211,6 +1222,45 @@
     return () => {
       for (const release of releases) release();
     };
+  });
+
+  // Math in the item's own markup, outside every element. Each element
+  // typesets its own subtree, so a renderer gets only the markup around them
+  // (see markup-math.ts): the page's, which the IIFE strategy installs or a
+  // host sets and ESM elements hand their math to as well. On a page with
+  // neither, every element brings its own MathJax and the player brings one
+  // for the markup (see private-math-renderer.ts).
+  //
+  // Runs once the elements are initialized and again when a markup block is
+  // replaced, and never holds `load-complete` back. Passes are chained, so none
+  // walks a root another is still typesetting.
+  const markupMathTags = $derived(
+    [...new Set([...itemAllowList, ...passageAllowList])].join(" ")
+  );
+  let markupMathPass: Promise<void> = Promise.resolve();
+  $effect(() => {
+    if (!initialized || mode === "author") return;
+    const containers = [passageContainer, itemContainer].filter(
+      (container): container is HTMLDivElement => container !== null
+    );
+    // Read here so that a replaced block is typeset again.
+    const markup = passageMarkup + itemMarkup;
+    if (!markup || containers.length === 0) return;
+    const pieTags = new Set(markupMathTags.split(" ").filter(Boolean));
+    markupMathPass = markupMathPass
+      .then(() => {
+        const renderer = getMathRenderer();
+        return typesetMarkupMath(
+          containers.filter((container) => container.isConnected),
+          pieTags,
+          typeof renderer?.renderMath === "function"
+            ? (root) => renderer.renderMath(root)
+            : renderPrivateMath
+        );
+      })
+      .catch((error: unknown) => {
+        logger.warn("[PieItemPlayer] Typesetting the markup's math failed:", error);
+      });
   });
 
   // Note: Resource monitor cleanup is handled automatically by useResourceMonitor's onDestroy
@@ -1245,13 +1295,13 @@
       <p style="margin: 0">{authoringBlockedError}</p>
     </div>
   {:else if passageMarkup}
-    <div class={passageContainerClassFinal}>
+    <div class={passageContainerClassFinal} bind:this={passageContainer}>
       {@html passageMarkup}
     </div>
   {/if}
 
   {#if !authoringBlockedError && itemMarkup}
-    <div class={itemContainerClassFinal}>
+    <div class={itemContainerClassFinal} bind:this={itemContainer}>
       {@html itemMarkup}
     </div>
   {/if}

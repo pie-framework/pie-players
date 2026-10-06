@@ -17,14 +17,6 @@
 		"./adapters/vite": {
 			"types": "./dist/adapters/vite.d.ts",
 			"default": "./dist/adapters/vite.js"
-		},
-		"./adapters/sveltekit": {
-			"types": "./dist/adapters/sveltekit.d.ts",
-			"default": "./dist/adapters/sveltekit.js"
-		},
-		"./adapters/connect": {
-			"types": "./dist/adapters/connect.d.ts",
-			"default": "./dist/adapters/connect.js"
 		}
 	},
 	"files": [
@@ -38,24 +30,19 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"es-module-lexer": "^2.3.2",
-		"svelte": "^5.57.0"
+		"es-module-lexer": "^3.0.2"
 	},
 	"peerDependencies": {
-		"vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
-		"@sveltejs/kit": "^2.57.1"
+		"vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
 	},
 	"peerDependenciesMeta": {
 		"vite": {
-			"optional": true
-		},
-		"@sveltejs/kit": {
 			"optional": true
 		}
 	},
 	"devDependencies": {
 		"@types/bun": "^1.4.2",
-		"@types/node": "^26.5.1",
+		"@types/node": "^26.6.4",
 		"typescript": "^5.9.3"
 	},
 	"license": "MIT"

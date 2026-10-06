@@ -25,6 +25,12 @@ scoring half already ships: `scorePieItem(...)` in
 the delivery state around it — how many times a learner may submit one item, when
 its feedback becomes visible, and how a section reports how much was mastered.
 
+**Scope, 2026-09-27.** Browser scoring needs an unhosted player. Since adc3da63
+(2026-09-25), a hosted player — `hosted` set to `true`, or an enabled
+`backend.delivery` with `hosted` unset — runs no element controllers, so
+`provideScore()` returns `undefined` for every model and every Try lands on
+`"unknown"`.
+
 The three gaps are all at the section layer:
 
 - **No Try state.** `TestAttemptItemSession` carries `attemptCount`, but that
@@ -273,7 +279,7 @@ wrong, which keeps this rollup from asserting correctness it cannot know.
 
 ### Controller surface
 
-`SectionController` gains three methods, all optional on
+`SectionController` gains five methods, all optional on
 `SectionControllerHandle` in keeping with the rest of that interface:
 
 ```ts
@@ -301,7 +307,7 @@ upgrade every later reveal on that item.
 
 No new element surface. `getSectionController()` / `waitForSectionController()`
 on every layout already return this handle, which is where `getSession`,
-`applySession` and `updateItemSession` already live; forwarding four more methods
+`applySession` and `updateItemSession` already live; forwarding five more methods
 through layout → kernel → scaffold → base would be passthrough for nothing.
 
 ```ts
@@ -383,7 +389,7 @@ No compatibility shim is added. A `formative` slice with an unrecognized
 `version` is rejected rather than normalized.
 
 Every type member this adds is optional, `SectionCompositionModel.formative` and
-the four `SectionControllerHandle` methods included, so anything else assembling a
+the five `SectionControllerHandle` methods included, so anything else assembling a
 composition model or supplying a controller — a host layout, an adapter, a test
 double — omits what it does not use and absent reads as `null`. The one addition
 no default covers is the widened `SectionControllerEvent` union: a host switching

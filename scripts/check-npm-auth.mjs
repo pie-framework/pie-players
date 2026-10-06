@@ -1,5 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { createNpmAuthEnvironment } from "@pie-players/pie-players-shared/server/npm-auth-env";
+// By path: a root dependency on a workspace package enters Turbo's global
+// hash, so every change beneath it would miss every cached task.
+import { createNpmAuthEnvironment } from "../tools/cli/lib/npm-auth-env.mjs";
 
 const REGISTRY = "https://registry.npmjs.org/";
 const SCOPE = "pie-players";

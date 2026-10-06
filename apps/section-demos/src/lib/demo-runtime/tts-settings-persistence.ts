@@ -1,4 +1,7 @@
-import type { TTSToolConfig } from "@pie-players/pie-assessment-toolkit";
+import type {
+	ToolkitCoordinatorApi,
+	TTSToolConfig,
+} from "@pie-players/pie-assessment-toolkit";
 
 const TTS_SETTINGS_STORAGE_PREFIX = "pie:debug-panels:v1";
 const TTS_SETTINGS_PANEL_ID = "tts-settings";
@@ -11,14 +14,10 @@ const TTS_BACKENDS = new Set<TTSToolConfig["backend"]>([
 
 type StoredTTSSettings = Partial<TTSToolConfig> & Record<string, unknown>;
 
-export interface SectionDemoTtsSettingsCoordinator {
-	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
-	updateToolConfig(
-		toolId: "textToSpeech",
-		updates: Partial<TTSToolConfig>,
-	): void;
-	ensureTTSReady(config?: TTSToolConfig): Promise<void>;
-}
+export type SectionDemoTtsSettingsCoordinator = Pick<
+	ToolkitCoordinatorApi,
+	"getToolConfig" | "updateToolConfig" | "ensureTTSReady"
+>;
 
 export function createSectionDemoTtsSettingsStorageKey(
 	panelPersistenceScope: string,

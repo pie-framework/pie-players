@@ -27,6 +27,13 @@ export type FrameworkErrorKind =
 	 * — in the wrong language, which a host wants to know about.
 	 */
 	| "i18n-locale-load"
+	/**
+	 * A section player could not register the elements its items need before
+	 * mounting them: a renderable failed the config contract, an element bundle
+	 * or module failed to load, or a `preloaded` page lacks a registration the
+	 * content names. Not recoverable — the section's items stay unmounted.
+	 */
+	| "element-preload"
 	| "unknown";
 
 export type FrameworkErrorSeverity = "warning" | "error";

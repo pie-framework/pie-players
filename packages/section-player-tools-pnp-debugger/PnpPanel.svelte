@@ -9,11 +9,13 @@
 			toolkitCoordinator: { type: 'Object', attribute: 'toolkit-coordinator' },
 			persistenceScope: { type: 'String', attribute: 'persistence-scope' },
 			persistencePanelId: { type: 'String', attribute: 'persistence-panel-id' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,

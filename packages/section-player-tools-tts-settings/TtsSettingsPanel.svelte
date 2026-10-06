@@ -17,6 +17,7 @@
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { createFocusTrap } from "@pie-players/pie-players-shared";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
 		formatTTSSpeedOptionsAsText,
@@ -262,45 +263,6 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let dialogEl = $state<HTMLElement | null>(null);
 	let closeButtonEl = $state<HTMLButtonElement | null>(null);
 	let cleanupFocusTrap: (() => void) | null = null;
-
-	function createLocalFocusTrap(
-		container: HTMLElement,
-		options: { initialFocus?: HTMLElement | null; onEscape?: () => void } = {}
-	): () => void {
-		const focusable = () =>
-			Array.from(
-				container.querySelectorAll<HTMLElement>(
-					"button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
-				),
-			).filter((el) => el.offsetParent !== null || el.getClientRects().length > 0);
-		const previous = document.activeElement as HTMLElement | null;
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				options.onEscape?.();
-				return;
-			}
-			if (event.key !== "Tab") return;
-			const nodes = focusable();
-			if (!nodes.length) return;
-			const current = document.activeElement as HTMLElement | null;
-			const currentIndex = nodes.indexOf(current || nodes[0]);
-			if (event.shiftKey && currentIndex <= 0) {
-				event.preventDefault();
-				nodes[nodes.length - 1].focus();
-			} else if (!event.shiftKey && currentIndex === nodes.length - 1) {
-				event.preventDefault();
-				nodes[0].focus();
-			}
-		};
-		container.addEventListener("keydown", onKeyDown);
-		queueMicrotask(() => {
-			(options.initialFocus || focusable()[0] || container)?.focus?.();
-		});
-		return () => {
-			container.removeEventListener("keydown", onKeyDown);
-			previous?.focus?.();
-		};
-	}
 
 	const DEFAULT_PREVIEW_TEXT: Record<BackendTab, string> = {
 		browser:
@@ -1952,12 +1914,9 @@ function normalizePreviewSpeechMarkOffsets(
 	$effect(() => {
 		if (!dialogEl) return;
 		cleanupFocusTrap?.();
-		cleanupFocusTrap = createLocalFocusTrap(dialogEl, {
+		cleanupFocusTrap = createFocusTrap(dialogEl, {
 			initialFocus: closeButtonEl,
 			onEscape: requestClose
-		});
-		queueMicrotask(() => {
-			closeButtonEl?.focus?.();
 		});
 		return () => {
 			cleanupFocusTrap?.();

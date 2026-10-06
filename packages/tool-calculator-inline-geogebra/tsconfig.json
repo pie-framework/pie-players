@@ -6,8 +6,13 @@
 		"declaration": true,
 		"declarationMap": false,
 		"composite": true,
-		"moduleResolution": "NodeNext"
+		"moduleResolution": "NodeNext",
+		"paths": {
+			"@pie-players/pie-tool-calculator-shared/components": [
+				"../tool-calculator-shared/components.types.d.ts"
+			]
+		}
 	},
-	"include": ["tool-calculator-inline-geogebra.svelte"],
+	"include": ["index.ts", "tool-calculator-inline-geogebra.svelte"],
 	"exclude": ["node_modules", "dist", "tests"]
 }

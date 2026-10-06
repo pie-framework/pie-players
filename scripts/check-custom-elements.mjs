@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+// Two modes, split by precondition. The default checks package source and
+// metadata and needs no build, so it runs in `verify:pre-commit` and ahead of
+// the build in the PR gate. `--dist` checks the JS each package publishes and
+// must run after `bun run build`. A package with no built JS fails `--dist`
+// rather than being skipped: skipping is how the dist checks passed every CI
+// run without reading anything, since a fresh checkout has no `dist`.
+
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -39,11 +46,9 @@ const listFiles = (dir, predicate) => {
 };
 
 // Components whose tag is declared by the package entry rather than by
-// `svelte:options`. Svelte's own `customElements.define` runs at module scope
-// and is unguarded, so a package shipped as a second copy into a page that
-// already holds it — a generated `@pie-players/pie-preloaded-player` build
-// carries `packages/item-player` — has to register from a function it controls.
-// The tag stays discoverable, and the inventory reads it from the entry.
+// `svelte:options`, because the entry registers the class through a function
+// it exports: `definePieItemPlayer` also takes a host's own tag. The tag stays
+// discoverable, and the inventory reads it from the entry.
 const ENTRY_DECLARED_TAGS = {
 	"packages/item-player/src/PieItemPlayer.svelte": {
 		entry: "packages/item-player/src/pie-item-player.ts",
@@ -101,8 +106,7 @@ const discoverCustomElementPackages = () => {
 	return discovered.sort((a, b) => rel(a.pkgDir).localeCompare(rel(b.pkgDir)));
 };
 
-const validatePackage = (pkgInfo) => {
-	const pkg = readJson(pkgInfo.packageJsonPath);
+const validatePackageSource = (pkgInfo, pkg) => {
 	const failures = [];
 
 	const svelteConfigPath = path.join(pkgInfo.pkgDir, "svelte.config.js");
@@ -146,50 +150,59 @@ const validatePackage = (pkgInfo) => {
 		failures.push('"files" must include dist artifacts');
 	}
 
-	const distDir = path.join(pkgInfo.pkgDir, "dist");
-	if (existsSync(distDir)) {
-		const distJsFiles = listFiles(
-			distDir,
-			(filePath) => filePath.endsWith(".js") && !filePath.endsWith(".map"),
-		);
-		const ceSvelteImportViolations = distJsFiles
-			.filter((filePath) =>
-				readText(filePath).includes(".svelte?customElement"),
-			)
-			.map((filePath) => rel(filePath));
-		if (ceSvelteImportViolations.length > 0) {
-			failures.push(
-				`dist JS must not import ".svelte?customElement" (${ceSvelteImportViolations.join(", ")})`,
-			);
-		}
+	return failures;
+};
 
-		// The toolkit / section-player CE build scripts run `svelte.compile()`
-		// on each CE entry in isolation and do NOT recursively bundle or copy
-		// child `.svelte` imports. Any surviving `.svelte` import in the
-		// published dist JS therefore points at a file that does not exist at
-		// consumer install time, breaking downstream Vite dep-scan / import
-		// resolution. CEs are the primary consumer-facing surface, so guard
-		// against regressions here explicitly.
-		const danglingSvelteImportRegex =
-			/(?:from|import)\s*\(?\s*['"][^'"]+\.svelte(?:\?[^'"]*)?['"]/g;
-		const danglingSvelteViolations = [];
-		for (const filePath of distJsFiles) {
-			const src = readText(filePath);
-			const matches = src.match(danglingSvelteImportRegex);
-			if (matches && matches.length > 0) {
-				danglingSvelteViolations.push(
-					`${rel(filePath)} [${[...new Set(matches)].join(", ")}]`,
-				);
-			}
-		}
-		if (danglingSvelteViolations.length > 0) {
-			failures.push(
-				`dist JS must not reference ".svelte" sources at runtime (${danglingSvelteViolations.join("; ")})`,
+const validatePackageDist = (pkgInfo) => {
+	const failures = [];
+	const distDir = path.join(pkgInfo.pkgDir, "dist");
+	const distJsFiles = existsSync(distDir)
+		? listFiles(
+				distDir,
+				(filePath) => filePath.endsWith(".js") && !filePath.endsWith(".map"),
+			)
+		: [];
+	if (distJsFiles.length === 0) {
+		failures.push(
+			`no built JS under ${rel(distDir)}; run "bun run build" first`,
+		);
+	}
+
+	const ceSvelteImportViolations = distJsFiles
+		.filter((filePath) => readText(filePath).includes(".svelte?customElement"))
+		.map((filePath) => rel(filePath));
+	if (ceSvelteImportViolations.length > 0) {
+		failures.push(
+			`dist JS must not import ".svelte?customElement" (${ceSvelteImportViolations.join(", ")})`,
+		);
+	}
+
+	// The toolkit / section-player CE build scripts run `svelte.compile()`
+	// on each CE entry in isolation and do NOT recursively bundle or copy
+	// child `.svelte` imports. Any surviving `.svelte` import in the
+	// published dist JS therefore points at a file that does not exist at
+	// consumer install time, breaking downstream Vite dep-scan / import
+	// resolution. CEs are the primary consumer-facing surface, so guard
+	// against regressions here explicitly.
+	const danglingSvelteImportRegex =
+		/(?:from|import)\s*\(?\s*['"][^'"]+\.svelte(?:\?[^'"]*)?['"]/g;
+	const danglingSvelteViolations = [];
+	for (const filePath of distJsFiles) {
+		const src = readText(filePath);
+		const matches = src.match(danglingSvelteImportRegex);
+		if (matches && matches.length > 0) {
+			danglingSvelteViolations.push(
+				`${rel(filePath)} [${[...new Set(matches)].join(", ")}]`,
 			);
 		}
 	}
+	if (danglingSvelteViolations.length > 0) {
+		failures.push(
+			`dist JS must not reference ".svelte" sources at runtime (${danglingSvelteViolations.join("; ")})`,
+		);
+	}
 
-	return { pkg, failures };
+	return { failures, filesChecked: distJsFiles.length };
 };
 
 const writeInventory = (entries) => {
@@ -238,9 +251,23 @@ const run = () => {
 		throw new Error(`Packages directory missing: ${PACKAGES_DIR}`);
 	}
 
+	const distMode = hasArg("--dist");
 	const cePackages = discoverCustomElementPackages();
+	if (cePackages.length === 0) {
+		console.error(
+			"[check-custom-elements] Found no custom-element packages; nothing was validated",
+		);
+		process.exit(1);
+	}
+
+	let distFilesChecked = 0;
 	const results = cePackages.map((pkgInfo) => {
-		const { pkg, failures } = validatePackage(pkgInfo);
+		const pkg = readJson(pkgInfo.packageJsonPath);
+		if (!distMode) {
+			return { pkgInfo, pkg, failures: validatePackageSource(pkgInfo, pkg) };
+		}
+		const { failures, filesChecked } = validatePackageDist(pkgInfo);
+		distFilesChecked += filesChecked;
 		return { pkgInfo, pkg, failures };
 	});
 
@@ -268,7 +295,9 @@ const run = () => {
 	}
 
 	console.log(
-		`[check-custom-elements] OK: validated ${results.length} custom-element package(s)`,
+		distMode
+			? `[check-custom-elements] OK: validated ${distFilesChecked} dist JS file(s) across ${results.length} custom-element package(s)`
+			: `[check-custom-elements] OK: validated ${results.length} custom-element package(s)`,
 	);
 };
 

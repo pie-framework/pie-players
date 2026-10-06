@@ -255,11 +255,7 @@ describe("engine disposal", () => {
 		// adapter's `dispose` guard at
 		// `SectionEngineAdapter.dispatchInput` is what prevents the
 		// bridges from fanning out post-dispose. Pin that boundary
-		// here so a regression is caught at the unit level (the
-		// end-to-end coverage in
-		// `packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`
-		// also asserts this, but a unit-level signal is faster to
-		// diagnose).
+		// here.
 		const errorOutputs = adapter.dispatchInput({
 			kind: "framework-error",
 			error: {

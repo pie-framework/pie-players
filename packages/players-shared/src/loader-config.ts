@@ -29,13 +29,16 @@ export type LoaderConfig = {
 	/**
 	 * Instrumentation provider for tracking events and errors.
 	 *
-	 * Optional. If not provided, defaults to NewRelicInstrumentationProvider.
-	 * The provider handles instrumentation gracefully - if New Relic (or the configured
-	 * backend) is not available, it will simply not track events (no errors thrown).
+	 * - Unset or `undefined`: nothing is reported unless `trackPageActions` is
+	 *   `true`, in which case players fall back to a
+	 *   `NewRelicInstrumentationProvider`, which reports while the New Relic
+	 *   browser agent is on the page.
+	 * - A provider: players report to it. A value that fails the
+	 *   `InstrumentationProvider` contract is treated as `null`.
+	 * - `null`: disables instrumentation, whatever `trackPageActions` says.
 	 *
-	 * @example Using New Relic (default - no configuration needed)
+	 * @example Using New Relic (the fallback, no provider needed)
 	 * ```typescript
-	 * // Just enable tracking - will use New Relic if window.newrelic is available
 	 * const loaderConfig = {
 	 *   trackPageActions: true
 	 * };
@@ -52,8 +55,15 @@ export type LoaderConfig = {
 	 *   instrumentationProvider: provider
 	 * };
 	 * ```
+	 * @example Disabling instrumentation
+	 * ```typescript
+	 * const loaderConfig = {
+	 *   trackPageActions: true,
+	 *   instrumentationProvider: null
+	 * };
+	 * ```
 	 */
-	instrumentationProvider?: InstrumentationProvider;
+	instrumentationProvider?: InstrumentationProvider | null;
 
 	/**
 	 * Maximum number of retry attempts for failed resources (images/audio/video).

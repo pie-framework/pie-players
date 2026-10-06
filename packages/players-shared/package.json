@@ -45,6 +45,10 @@
 			"types": "./dist/timed-media/index.d.ts",
 			"import": "./dist/timed-media/index.js"
 		},
+		"./media": {
+			"types": "./dist/media/index.d.ts",
+			"import": "./dist/media/index.js"
+		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"
@@ -56,14 +60,6 @@
 		"./loaders": {
 			"types": "./dist/loaders/index.d.ts",
 			"import": "./dist/loaders/index.js"
-		},
-		"./server/npm-registry": {
-			"types": "./dist/server/npm-registry.d.ts",
-			"import": "./dist/server/npm-registry.js"
-		},
-		"./server/npm-auth-env": {
-			"types": "./dist/server/npm-auth-env.d.ts",
-			"import": "./dist/server/npm-auth-env.js"
 		},
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
@@ -89,6 +85,10 @@
 			"types": "./dist/components/vendor/nds/nds-icon-button.d.ts",
 			"import": "./dist/components/vendor/nds/nds-icon-button.js"
 		},
+		"./ui/attribute-coercion": {
+			"types": "./dist/ui/attribute-coercion.d.ts",
+			"import": "./dist/ui/attribute-coercion.js"
+		},
 		"./ui/content-styles": {
 			"types": "./dist/ui/content-styles.d.ts",
 			"import": "./dist/ui/content-styles.js"
@@ -103,27 +103,29 @@
 	],
 	"dependencies": {
 		"@pie-lib/math-rendering-module": "6.0.0",
-		"dompurify": "^3.4.14",
+		"dompurify": "^3.4.16",
 		"semver": "^7.8.5"
 	},
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
 		"check-i18n": "bun run src/i18n/scripts/check-coverage.ts",
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
-		"@happy-dom/global-registrator": "^20.11.15",
-		"@playwright/test": "^1.62.1",
+		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@pie-element/shared-math-rendering-mathjax": "0.1.2",
+		"@playwright/test": "^1.63.0",
 		"@types/semver": "^7.8.0",
+		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
-		"svelte": "^5.57.0",
+		"svelte": "^5.57.1",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",
@@ -133,5 +135,7 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"sideEffects": true
+	"sideEffects": [
+		"./dist/components/vendor/nds/*.js"
+	]
 }

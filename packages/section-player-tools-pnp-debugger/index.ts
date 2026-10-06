@@ -1,10 +1,9 @@
 /**
  * pie-section-player-tools-pnp-debugger
  *
- * Side-effect import that defines:
- * customElements.define('pie-section-player-tools-pnp-debugger', ...)
+ * Importing this package registers `<pie-section-player-tools-pnp-debugger>`.
+ * The build entry is the component, so this file is the type entry alone and
+ * declares nothing: a runtime export here would not exist in the built bundle.
  */
-
-import "./PnpPanel.svelte";
 
 export type {};

@@ -17,7 +17,7 @@ async function openPnpToolsEditor(page: Page): Promise<Locator> {
 }
 
 function graphButton(page: Page): Locator {
-	return page.getByRole("button", { name: "Graph, graphing calculator" });
+	return page.getByRole("button", { name: "Graph, coordinate plane" });
 }
 
 function firstItem(page: Page): Locator {

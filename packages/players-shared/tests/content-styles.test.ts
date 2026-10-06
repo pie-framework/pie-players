@@ -90,6 +90,53 @@ describe("installContentStyles", () => {
 		expect(installedStyles()).toHaveLength(0);
 	});
 
+	test("stands down when the host already supplies a scoped copy", () => {
+		// A host that confines its copy with `@scope` does so because the bare
+		// `h1`-`h6` / `table` / `th` selectors would otherwise reach its own UI; a
+		// global copy from the player would reintroduce exactly that.
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent = `@scope (.item-content) {\n${CSS}\n}`;
+		document.head.append(hostStyle);
+
+		expect(installContentStyles(CSS, "pie-item-player")).toBe("host-supplied");
+		expect(installedStyles()).toHaveLength(0);
+	});
+
+	test("removes its copy when a host copy lands after installation", async () => {
+		// The host injects its copy alongside the player import, so either can
+		// evaluate first.
+		expect(installContentStyles(CSS, "pie-item-player")).toBe("installed");
+
+		const hostStyle = document.createElement("style");
+		hostStyle.textContent = `@scope (.item-content) {\n${CSS}\n}`;
+		document.head.append(hostStyle);
+		await Promise.resolve();
+
+		expect(installedStyles()).toHaveLength(0);
+		expect(hostStyle.isConnected).toBe(true);
+		expect(installContentStyles(CSS, "pie-print-player")).toBe("host-supplied");
+	});
+
+	test("keeps its copy when later stylesheets carry no sentinel", async () => {
+		installContentStyles(CSS, "pie-item-player");
+
+		const appStyle = document.createElement("style");
+		appStyle.textContent = ".app { color: red; }";
+		document.head.append(appStyle);
+		await Promise.resolve();
+
+		expect(installedStyles()).toHaveLength(1);
+	});
+
+	test("removes its copy when the host opts out after installation", async () => {
+		installContentStyles(CSS, "pie-item-player");
+
+		document.documentElement.setAttribute("data-pie-content-styles", "host");
+		await Promise.resolve();
+
+		expect(installedStyles()).toHaveLength(0);
+	});
+
 	test("treats any other attribute value as not opted out", () => {
 		document.documentElement.setAttribute("data-pie-content-styles", "player");
 
@@ -224,32 +271,16 @@ describe("auditContentStyles", () => {
 		expect(await captureWarnings()).toEqual([]);
 	});
 
-	test("warns when a host copy sits alongside the installed copy", async () => {
-		// The upgrade path that matters: a host that keeps its manual import after
+	test("stays silent when a host copy lands after installation", async () => {
+		// The upgrade path that matters: a host that keeps its own copy after
 		// moving to a player version that installs the stylesheet itself.
-		installContentStyles(CSS, "pie-item-player");
-		const hostStyle = document.createElement("style");
-		hostStyle.textContent = CSS;
-		document.head.append(hostStyle);
-
-		const warnings = await captureWarnings();
-		expect(warnings).toHaveLength(1);
-		expect(warnings[0]).toContain("loaded twice");
-		expect(warnings[0]).toContain("Remove the host import");
-	});
-
-	test("warns when the alongside host copy is confined to a subtree", async () => {
-		// The duplicate is just as real when the host scopes its copy, and this is
-		// the shape a host reaches by following the bleed remedy. Detecting it needs
-		// the sentinel found inside the grouping rule, not only at the top level.
 		installContentStyles(CSS, "pie-item-player");
 		const hostStyle = document.createElement("style");
 		hostStyle.textContent = `@scope (.item-content) {\n${CSS}\n}`;
 		document.head.append(hostStyle);
 
-		const warnings = await captureWarnings();
-		expect(warnings).toHaveLength(1);
-		expect(warnings[0]).toContain("loaded twice");
+		expect(await captureWarnings()).toEqual([]);
+		expect(installedStyles()).toHaveLength(0);
 	});
 
 	test("treats an opted-out host's confined copy as correct, not missing", async () => {

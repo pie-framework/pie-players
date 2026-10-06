@@ -54,6 +54,15 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      # Group Tiptap: from 3.22.4 each @tiptap/* pins its peers exactly, so all must
+      # move to one version in one PR, majors included (hence no update-types)
+      tiptap-dependencies:
+        patterns:
+          - "@tiptap/*"
+      # Group ProseMirror: the root overrides keep a single copy under @tiptap/pm
+      prosemirror-dependencies:
+        patterns:
+          - "prosemirror-*"
 
     ignore:
       # Hold TypeScript at 5.x. The 7.0.2 bump was raised as #347 and closed

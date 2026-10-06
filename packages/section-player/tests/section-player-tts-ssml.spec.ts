@@ -1378,8 +1378,7 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(
 			passageRegion.getByText("The Quadratic Formula").first(),
 		).toBeVisible({ timeout: 15_000 });
-		await expect(passageRegion.locator("math").first()).toBeVisible();
-		await expect(passageRegion.locator("p.formula math")).toBeVisible();
+		await expect(passageRegion.locator("p.formula mjx-container")).toBeVisible();
 
 		// Two questions are rendered.
 		await expect(itemsRegion).toBeVisible();

@@ -39,12 +39,12 @@
 	},
 	"dependencies": {
 		"@pie-players/tts-server-core": "workspace:*",
-		"jose": "^6.2.10",
-		"tldts": "^7.4.10"
+		"jose": "^6.2.12",
+		"tldts": "^7.4.15"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",
-		"vitest": "^4.1.11"
+		"vitest": "^5.0.3"
 	},
 	"sideEffects": false,
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-server-sc#readme",

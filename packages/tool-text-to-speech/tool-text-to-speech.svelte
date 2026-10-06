@@ -5,15 +5,22 @@
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
-		}
+			coordinator: { type: 'Object' },
+			ttsService: { type: 'Object' }
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
-	import { BrowserTTSProvider, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-	import { createFocusTrap, createPointerDragController } from '@pie-players/pie-players-shared';
+	import { createToolCoordinatorRegistration, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		createFocusTrap,
+		createPointerDragController,
+		createPointerGesture
+	} from '@pie-players/pie-players-shared';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -31,7 +38,7 @@
 		visible?: boolean;
 		toolId?: string;
 		coordinator?: ToolCoordinatorApi;
-		ttsService: TtsServiceApi;
+		ttsService?: TtsServiceApi;
 	} = $props();
 
 	// Check if running in browser
@@ -62,74 +69,38 @@
 	});
 
 	// TTS state
-	let isInitialized = $state(false);
 	let isSpeaking = $state(false);
 	let isPaused = $state(false);
 	let selectedText = $state('');
 	let rate = $state(1.0);
 	let hasSelection = $state(false);
-	let initError = $state<string | null>(null);
+	let speakError = $state<string | null>(null);
+	// Identifies the latest speak call, so an earlier call settling late cannot
+	// reset the state a newer one set.
+	let speakRun = 0;
 
-	// The coordinator a registration was made against, and the id it used. Plain
-	// `let` rather than `$state`: this is bookkeeping the registration effect both
-	// reads and writes, and a reactive write inside a tracked effect body is what
-	// AGENTS.md's Svelte Subscription Safety rules out.
-	let registeredCoordinator: ToolCoordinatorApi | null = null;
-	let registeredToolId: string | null = null;
+	const registration = createToolCoordinatorRegistration('Text-to-Speech', ZIndexLayer.MODAL);
 	let cleanupFocusTrap: (() => void) | null = null;
 
-	// Re-register whenever the coordinator identity or the tool id changes. The
-	// coordinator arrives through a republished runtime context, so a new instance
-	// replaces the old one mid-session; a one-shot registration would leave
-	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
-	$effect(() => {
-		if (!coordinator || !toolId) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredCoordinator) {
-			coordinator.registerTool(toolId, 'Text-to-Speech', undefined, ZIndexLayer.MODAL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
+	// Re-registers when a republished context brings a new coordinator.
+	$effect(() => registration.sync(coordinator, toolId));
 
-	// Initialize and handle lifecycle
-	onMount(async () => {
+	// The service is the host's: it arrives configured, and this tool never
+	// initializes it or stops playback it did not start.
+	onMount(() => {
 		if (!isBrowser) return;
-
-		try {
-			const provider = new BrowserTTSProvider();
-			await ttsService.initialize(provider);
-			isInitialized = true;
-		} catch (error) {
-			console.error('[TTSTool] Failed to initialize TTS:', error);
-			initError = error instanceof Error ? error.message : 'Failed to initialize TTS';
-		}
-
-		// Listen for text selection changes
 		document.addEventListener('selectionchange', handleSelectionChange);
 
 		return () => {
-			if (isBrowser) {
-				document.removeEventListener('selectionchange', handleSelectionChange);
-				ttsService.stop();
+			document.removeEventListener('selectionchange', handleSelectionChange);
+			gesture.release();
+			if (isSpeaking) {
+				speakRun += 1;
+				ttsService?.stop();
 			}
 			cleanupFocusTrap?.();
 			cleanupFocusTrap = null;
-			// Unregister from the coordinator the registration was actually made
-			// against, which is not necessarily the one currently in context.
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
+			registration.release();
 		};
 	});
 
@@ -215,55 +186,45 @@
 
 	// Speak selected text
 	async function speakSelection() {
-		if (!isInitialized || !hasSelection || !selectedText) return;
+		const service = ttsService;
+		if (!service || !hasSelection || !selectedText) return;
 
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return;
+		const ancestor = selection.getRangeAt(0).commonAncestorContainer;
+		const container = ancestor instanceof Element ? ancestor : ancestor.parentElement;
+		if (!container) return;
+
+		const run = ++speakRun;
+		speakError = null;
+		isSpeaking = true;
+		isPaused = false;
 		try {
-			const selection = window.getSelection();
-			if (!selection || selection.rangeCount === 0) return;
-
-			const range = selection.getRangeAt(0);
-			const container = range.commonAncestorContainer.parentElement;
-
-			if (!container) return;
-
-			isSpeaking = true;
-			isPaused = false;
-
-			// Set the root element for highlighting
-			ttsService.setRootElement(container);
-
 			// Detect catalog reference from selected content (for SSML lookup).
 			// Climbs past docked ancestors that hold no spoken card: the attribute
 			// names a whole card array, so a signing card docked on an inner node
 			// would otherwise shadow the authored SSML on an outer one and the
 			// selection would be read as generated speech instead.
-			const catalogId = findSpokenCatalogId(container);
-
-			await ttsService.speak(selectedText, {
-				catalogId,  // Pass catalog ID for SSML resolution
-				rate,
-				highlightWords: true
-			}, {
-				onEnd: () => {
-					isSpeaking = false;
-					isPaused = false;
-				},
-				onError: (error) => {
-					console.error('[TTSTool] TTS error:', error);
-					isSpeaking = false;
-					isPaused = false;
-				}
+			await service.speak(selectedText, {
+				catalogId: findSpokenCatalogId(container),
+				contentElement: container
 			});
 		} catch (error) {
 			console.error('[TTSTool] Failed to speak:', error);
-			isSpeaking = false;
-			isPaused = false;
+			if (run === speakRun) {
+				speakError = error instanceof Error ? error.message : String(error);
+			}
+		} finally {
+			if (run === speakRun) {
+				isSpeaking = false;
+				isPaused = false;
+			}
 		}
 	}
 
 	// Pause/Resume
 	function togglePause() {
-		if (!isSpeaking) return;
+		if (!isSpeaking || !ttsService) return;
 
 		if (isPaused) {
 			ttsService.resume();
@@ -276,15 +237,19 @@
 
 	// Stop
 	function stopSpeaking() {
-		ttsService.stop();
+		speakRun += 1;
+		ttsService?.stop();
 		isSpeaking = false;
 		isPaused = false;
 	}
 
-	// Update rate
+	// Update rate. The rate is the shared service's, so the slider sets it there.
 	function handleRateChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		rate = parseFloat(target.value);
+		ttsService?.setPlaybackRate(rate).catch((error) => {
+			console.error('[TTSTool] Failed to set speech rate:', error);
+		});
 	}
 
 	// Dragging
@@ -319,34 +284,23 @@
 		};
 	}
 
+	// Ends on a cancelled touch as well as on release, so a drag iPadOS takes over
+	// for a system gesture does not stay stuck to the next touch.
+	const gesture = createPointerGesture({
+		onMove: (e) => dragController.handlePointerMove(e),
+		onEnd: () => dragController.endDragging()
+	});
+
 	function startDragging(e: PointerEvent) {
-		if (!containerEl) return;
-
+		if (!containerEl || !gesture.begin(e, containerEl)) return;
 		dragController.startDragging(e, containerEl);
-
-		containerEl.addEventListener('pointermove', handlePointerMove);
-		containerEl.addEventListener('pointerup', handlePointerUp);
-
-		e.preventDefault();
 	}
 
-	function handlePointerMove(e: PointerEvent) {
-		if (!dragController.isDragging()) return;
-
-		dragController.handlePointerMove(e);
-
-		e.preventDefault();
-	}
-
-	function handlePointerUp(e: PointerEvent) {
-		if (dragController.isDragging() && containerEl) {
-			containerEl.releasePointerCapture(e.pointerId);
-			dragController.endDragging();
-
-			containerEl.removeEventListener('pointermove', handlePointerMove);
-			containerEl.removeEventListener('pointerup', handlePointerUp);
-		}
-	}
+	// A panel hidden mid-drag takes its element with it; free the gesture so the
+	// next reveal can start one.
+	$effect(() => {
+		if (!visible) gesture.release();
+	});
 
 	function handleClose() {
 		coordinator?.hideTool(toolId);
@@ -409,18 +363,19 @@
 
 		<!-- Content -->
 		<div class="pie-tool-text-to-speech__content">
-			{#if initError}
-				<div class="pie-tool-text-to-speech__error-message">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-						<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-					</svg>
-					<span>{initError}</span>
-				</div>
-			{:else if !isInitialized}
+			{#if !ttsService}
 				<div class="pie-tool-text-to-speech__loading-message">
 					<span>{interfaceI18n.t('tools.textToSpeech.initializing')}</span>
 				</div>
 			{:else}
+				{#if speakError}
+					<div class="pie-tool-text-to-speech__error-message">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+						</svg>
+						<span>{speakError}</span>
+					</div>
+				{/if}
 				<!-- Instructions -->
 				<div class="pie-tool-text-to-speech__instructions">
 					{#if hasSelection}
@@ -532,6 +487,11 @@
 		border-radius: 8px;
 		box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
 		cursor: move;
+		/* A touch drag moves the panel rather than scrolling the page, which would
+		   cancel it, and a long press on iOS opens no callout or selection. */
+		touch-action: none;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
 		user-select: none;
 		font-family: system-ui, -apple-system, sans-serif;
 	}

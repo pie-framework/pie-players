@@ -80,9 +80,3 @@ export function sanitizeSvgIcon(icon: unknown): string {
 	stringCache.set(icon, str);
 	return str;
 }
-
-/** Reset sanitizer state. Intended for tests. */
-export function resetSvgSanitizerForTesting() {
-	svgPurifierInstance = null;
-	stringCache.clear();
-}

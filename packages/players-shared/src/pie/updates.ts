@@ -5,11 +5,19 @@
  */
 
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
-import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
-import type { ConfigEntity, Env, PieModel } from "../types/index.js";
+import type {
+	ConfigEntity,
+	Env,
+	PieModel,
+	PieUpdateSession,
+} from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { findPieController } from "./scoring.js";
-import type { PieElement, UpdatePieElementOptions } from "./types.js";
+import type {
+	BundleType,
+	PieElement,
+	UpdatePieElementOptions,
+} from "./types.js";
 import { defaultPieElementOptions } from "./types.js";
 import { findOrAddSession } from "./utils.js";
 
@@ -19,6 +27,8 @@ const logger = createPieLogger("pie-updates", () => isGlobalDebugEnabled());
 type ControllerErrorDetail = {
 	code: "PIE_CONTROLLER_CONTRACT_ERROR" | "PIE_CONTROLLER_RUNTIME_ERROR";
 	message: string;
+	/** The element falls back to its authored model. */
+	recoverable: true;
 	elementName: string;
 	elementId: string;
 	controllerShape?: string;
@@ -97,6 +107,19 @@ const emitControllerError = (
 };
 
 /**
+ * Reports whether an element has left the document since its update started.
+ * A legacy element unmounts its React root when it is disconnected, and a
+ * write after that throws React error #409 in releases before PIE-703, or
+ * renders a tree nothing unmounts in later ones. The controller call is when a
+ * host can remove the player. An element that was never inserted still takes
+ * the update, so a caller can set one up before inserting it.
+ */
+const trackRemoval = (element: Element): (() => boolean) => {
+	const wasConnected = element.isConnected;
+	return () => wasConnected && !element.isConnected;
+};
+
+/**
  * Helper function to apply controller to element
  * Extracted to eliminate duplication and ensure consistent controller invocation
  */
@@ -107,6 +130,7 @@ const applyControllerToElement = async (
 	controller: unknown,
 	env: Env,
 	logPrefix: string,
+	wasRemoved: () => boolean,
 	onElementSessionUpdate?: (
 		elementId: string,
 		elementName: string,
@@ -126,7 +150,7 @@ const applyControllerToElement = async (
 	// so subsequent renders reuse it instead of regenerating it. The write-back is
 	// keyed by the canonical model id/element (the entry findOrAddSession resolved),
 	// which also tolerates controllers that pass an undefined id/element.
-	const updateSession = (id: string, _elementName: string, properties: any) => {
+	const updateSession: PieUpdateSession = (id, _elementName, properties) => {
 		logger.debug(
 			`${logPrefix} updateSession called for ${id} with:`,
 			properties,
@@ -162,17 +186,17 @@ const applyControllerToElement = async (
 			element: model.element,
 			...controllerResultObject,
 		};
-		const wrappedModel = wrapModelRichContent(filteredModel);
 
 		logger.debug(`${logPrefix} ✅ Controller filtered model:`, {
-			id: wrappedModel.id,
-			element: wrappedModel.element,
-			hasCorrectResponse: "correctResponse" in wrappedModel,
+			id: filteredModel.id,
+			element: filteredModel.element,
+			hasCorrectResponse: "correctResponse" in filteredModel,
 			mode: env.mode,
 			role: env.role,
 		});
 
-		element.model = wrappedModel;
+		if (wasRemoved()) return;
+		element.model = filteredModel;
 		element.session = elementSession;
 	} catch (err) {
 		logger.error(`${logPrefix} ❌ Controller error:`, err);
@@ -187,6 +211,7 @@ type ResolvedUpdateOptions = Pick<
 	| "env"
 	| "eventListeners"
 	| "invokeControllerForModel"
+	| "bundleType"
 	| "onElementSessionUpdate"
 >;
 
@@ -199,6 +224,7 @@ const resolveAndValidateUpdateOptions = (
 		env,
 		eventListeners,
 		invokeControllerForModel,
+		bundleType,
 		onElementSessionUpdate,
 	} = mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
 	if (!env) {
@@ -216,6 +242,7 @@ const resolveAndValidateUpdateOptions = (
 		env,
 		eventListeners,
 		invokeControllerForModel,
+		bundleType,
 		onElementSessionUpdate,
 	};
 };
@@ -232,6 +259,7 @@ const updateSinglePieElement = async (
 		env,
 		eventListeners,
 		invokeControllerForModel,
+		bundleType,
 		onElementSessionUpdate,
 	} = options;
 	const model = config.models?.find((m) => m.id === pieElement.id) as
@@ -252,12 +280,12 @@ const updateSinglePieElement = async (
 	}
 
 	if (env && invokeControllerForModel) {
-		const controller = findPieController(controllerLookupTag);
+		const controller = findPieController(controllerLookupTag, bundleType);
 		if (!controller) {
 			logger.debug(
 				`${logContext} ℹ️ No controller for ${controllerLookupTag}, using server-processed model`,
 			);
-			pieElement.model = wrapModelRichContent(model);
+			pieElement.model = model;
 			pieElement.session = elementSession;
 			return;
 		}
@@ -275,6 +303,7 @@ const updateSinglePieElement = async (
 		// caller computes/emits the session signature; otherwise a late, async
 		// shuffle write lands after the cycle that read the session and the order
 		// never round-trips (PIE-631).
+		const wasRemoved = trackRemoval(pieElement);
 		try {
 			await applyControllerToElement(
 				pieElement,
@@ -283,6 +312,7 @@ const updateSinglePieElement = async (
 				controller,
 				env,
 				`${logContext}(${controllerLookupTag}#${pieElement.id})`,
+				wasRemoved,
 				onElementSessionUpdate,
 			);
 		} catch (err) {
@@ -299,20 +329,22 @@ const updateSinglePieElement = async (
 					? "PIE_CONTROLLER_CONTRACT_ERROR"
 					: "PIE_CONTROLLER_RUNTIME_ERROR",
 				message: `${controllerLookupTag} controller failed while applying model for ${pieElement.id}. ${errorMessage}`,
+				recoverable: true,
 				elementName: controllerLookupTag,
 				elementId: pieElement.id,
 				controllerShape: describeControllerShape(controller),
 				cause: errorMessage,
 			});
 			// Fall back to raw model on controller error
-			pieElement.model = wrapModelRichContent(model);
+			if (wasRemoved()) return;
+			pieElement.model = model;
 			pieElement.session = elementSession;
 		}
 	} else {
 		logger.debug(
 			`${logContext} Direct model assignment for ${controllerLookupTag}#${pieElement.id} (no controller invocation requested)`,
 		);
-		pieElement.model = wrapModelRichContent(model);
+		pieElement.model = model;
 		pieElement.session = elementSession;
 	}
 };
@@ -375,6 +407,7 @@ export const updatePieElements = (
 	env: Env,
 	container?: Element | Document,
 	onElementSessionUpdate?: UpdatePieElementOptions["onElementSessionUpdate"],
+	bundleType?: BundleType,
 ): Promise<void> => {
 	logger.debug("[updatePieElements] Updating all elements with env:", env);
 	return Promise.all(
@@ -385,6 +418,7 @@ export const updatePieElements = (
 				env,
 				container,
 				onElementSessionUpdate,
+				bundleType,
 			}),
 		),
 	).then(() => undefined);

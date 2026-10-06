@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	asCommittedDetail,
 	resolveSessionChangedForwarding,
+	withContractMetadata,
 } from "../src/session-forwarding";
 
 const responsefulSession = {
@@ -16,6 +17,24 @@ const responsefulSession = {
 };
 
 describe("resolveSessionChangedForwarding", () => {
+	test("names the element of a commit read off the element", () => {
+		const result = resolveSessionChangedForwarding({
+			currentSession: responsefulSession,
+			currentSignature: JSON.stringify(responsefulSession),
+			detail: {
+				component: "metadata-session-fixture--version-1-0-0",
+				session: { id: "metadata-choice", value: ["B"] },
+				sessionCommitReason: "teardown",
+			},
+			itemId: "metadata-session-item",
+		});
+
+		expect(result.action === "forward" ? result.detail : null).toMatchObject({
+			elementId: "metadata-choice",
+			sessionCommitReason: "teardown",
+		});
+	});
+
 	test("ignores unchanged non-metadata session details", () => {
 		const result = resolveSessionChangedForwarding({
 			currentSession: responsefulSession,
@@ -252,5 +271,64 @@ describe("asCommittedDetail", () => {
 		expect(
 			asCommittedDetail("session-changed", elementTarget, "teardown"),
 		).toBe("session-changed");
+	});
+});
+
+describe("withContractMetadata", () => {
+	const noModel = () => undefined;
+
+	test("leaves an element's own component and complete alone", () => {
+		const detail = {
+			component: "pie-choice",
+			complete: false,
+			elementId: "metadata-choice",
+			session: responsefulSession,
+		};
+		expect(withContractMetadata(detail, responsefulSession, noModel)).toBe(
+			detail,
+		);
+	});
+
+	test("fills a synthesized commit from the element's record", () => {
+		const detail = {
+			elementId: "metadata-choice",
+			session: responsefulSession,
+			sessionCommitReason: "teardown",
+		};
+		expect(
+			withContractMetadata(detail, responsefulSession, noModel),
+		).toMatchObject({
+			component: "metadata-session-fixture--version-1-0-0",
+			complete: true,
+		});
+	});
+
+	test("reads an unanswered record as incomplete", () => {
+		const session = { id: "s", data: [{ id: "a", element: "pie-a" }] };
+		expect(
+			withContractMetadata({ elementId: "a", session }, session, noModel),
+		).toMatchObject({ component: "pie-a", complete: false });
+	});
+
+	test("falls back to the element's model for the component", () => {
+		const session = { id: "s", data: [{ id: "a", value: "x" }] };
+		expect(
+			withContractMetadata({ elementId: "a", session }, session, (id) =>
+				id === "a" ? "pie-from-model" : undefined,
+			),
+		).toMatchObject({ component: "pie-from-model", complete: true });
+	});
+
+	test("judges only the announcing element's record", () => {
+		const session = {
+			id: "s",
+			data: [
+				{ id: "a", element: "pie-a" },
+				{ id: "b", element: "pie-b", value: "answered" },
+			],
+		};
+		expect(
+			withContractMetadata({ elementId: "a", session }, session, noModel),
+		).toMatchObject({ component: "pie-a", complete: false });
 	});
 });

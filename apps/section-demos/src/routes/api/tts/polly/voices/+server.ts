@@ -6,7 +6,7 @@
  */
 
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
-import { error, json } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import {
 	mapTtsFailure,

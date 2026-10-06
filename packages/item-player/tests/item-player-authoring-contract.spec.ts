@@ -171,39 +171,57 @@ test.describe("item-player authoring contract", () => {
 			})
 			.toBe(MODEL_ID);
 
-		await page.getByTestId("run-validation").click();
-		const validationResult = await readJson<{
-			hasErrors: boolean;
-			validatedModels: Array<{
-				id: string;
-				validation?: { authoringOnly?: string };
-			}>;
-		}>(page.getByTestId("validation-result"));
-		expect(validationResult.hasErrors).toBe(false);
-		expect(validationResult.validatedModels[0]).toMatchObject({
+		const updatePrompt = async (prompt: string) => {
+			await dispatchFromAuthoringRoot(page, "model.updated", {
+				update: { id: MODEL_ID, element: RUNTIME_TAG, prompt },
+				reset: false,
+			});
+			await expect
+				.poll(async () => {
+					const eventLog = await readJson<
+						Array<{ type: string; detail: any }>
+					>(page.getByTestId("event-log"));
+					return eventLog
+						.filter((entry) => entry.type === "model-updated")
+						.map((entry) => entry.detail?.update?.prompt);
+				})
+				.toContain(prompt);
+		};
+		const validate = async () => {
+			await page.getByTestId("run-validation").click();
+			return await readJson<{
+				hasErrors: boolean;
+				validatedModels: Array<Record<string, unknown>>;
+			}>(page.getByTestId("validation-result"));
+		};
+		const readConfigureErrors = () =>
+			page.evaluate(() => {
+				const configureElement = Array.from(
+					document.querySelectorAll("pie-item-player *"),
+				).find((element) => element.localName.endsWith("-config")) as any;
+				return configureElement?.model?.errors ?? null;
+			});
+
+		await updatePrompt("");
+		const invalid = await validate();
+		expect(invalid.hasErrors).toBe(true);
+		expect(invalid.validatedModels[0]).toMatchObject({
 			id: MODEL_ID,
-			validation: {
-				authoringOnly: "updated-authoring-value",
-			},
+			prompt: "",
+			errors: { prompt: "This field is required." },
+		});
+		expect(await readConfigureErrors()).toEqual({
+			prompt: "This field is required.",
 		});
 
-		await dispatchFromAuthoringRoot(page, "model.updated", {
-			update: {
-				id: MODEL_ID,
-				element: RUNTIME_TAG,
-				prompt: "Updated by authoring contract e2e",
-			},
-			reset: false,
+		await updatePrompt("Updated by authoring contract e2e");
+		await expect.poll(async () => (await validate()).hasErrors).toBe(false);
+		expect((await validate()).validatedModels[0]).toMatchObject({
+			id: MODEL_ID,
+			prompt: "Updated by authoring contract e2e",
+			errors: {},
 		});
-		await expect
-			.poll(async () => {
-				const eventLog = await readJson<Array<{ type: string; detail: any }>>(
-					page.getByTestId("event-log"),
-				);
-				return eventLog.find((entry) => entry.type === "model-updated")?.detail
-					?.update?.prompt;
-			})
-			.toBe("Updated by authoring contract e2e");
+		expect(await readConfigureErrors()).toEqual({});
 
 		await dispatchFromAuthoringRoot(page, "insert.image", {});
 		await dispatchFromAuthoringRoot(page, "delete.image", {

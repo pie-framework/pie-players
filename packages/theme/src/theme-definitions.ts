@@ -73,7 +73,7 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 	"--pie-focus-unchecked": "#e0e0e0",
 	"--pie-focus-unchecked-border": "#757575",
 	"--pie-blue-grey-100": "#f3f5f7",
-	"--pie-blue-grey-300": "#c0c3cf",
+	"--pie-blue-grey-300": "#81848f",
 	"--pie-blue-grey-600": "#7e8494",
 	"--pie-blue-grey-900": "#152452",
 	"--pie-font-scale": "1",
@@ -140,7 +140,7 @@ const DARK_BASE_THEME: ThemeVariables = {
 	"--pie-focus-unchecked": "#666666",
 	"--pie-focus-unchecked-border": "#ffffff",
 	"--pie-blue-grey-100": "#2a2a2a",
-	"--pie-blue-grey-300": "#555555",
+	"--pie-blue-grey-300": "#686868",
 	"--pie-blue-grey-600": "#999999",
 	"--pie-blue-grey-900": "#ffffff",
 	"--pie-font-scale": "1",
@@ -212,7 +212,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#cccccc",
 				"--pie-focus-unchecked-border": "#000000",
 				"--pie-blue-grey-100": "#f5f5f5",
-				"--pie-blue-grey-300": "#cccccc",
+				"--pie-blue-grey-300": "#848484",
 				"--pie-blue-grey-600": "#666666",
 				"--pie-blue-grey-900": "#000000",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -273,7 +273,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#666666",
 				"--pie-focus-unchecked-border": "#ffffff",
 				"--pie-blue-grey-100": "#2a2a2a",
-				"--pie-blue-grey-300": "#555555",
+				"--pie-blue-grey-300": "#686868",
 				"--pie-blue-grey-600": "#999999",
 				"--pie-blue-grey-900": "#ffffff",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -334,7 +334,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#aaddbb",
 				"--pie-focus-unchecked-border": "#3d0022",
 				"--pie-blue-grey-100": "#ccffdd",
-				"--pie-blue-grey-300": "#99ddbb",
+				"--pie-blue-grey-300": "#529475",
 				"--pie-blue-grey-600": "#668877",
 				"--pie-blue-grey-900": "#3d0022",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -395,7 +395,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#333366",
 				"--pie-focus-unchecked-border": "#ffff00",
 				"--pie-blue-grey-100": "#000055",
-				"--pie-blue-grey-300": "#333377",
+				"--pie-blue-grey-300": "#6064ad",
 				"--pie-blue-grey-600": "#6666aa",
 				"--pie-blue-grey-900": "#ffff00",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -456,7 +456,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#ffddee",
 				"--pie-focus-unchecked-border": "#000000",
 				"--pie-blue-grey-100": "#ffeef5",
-				"--pie-blue-grey-300": "#ffb3cc",
+				"--pie-blue-grey-300": "#a8637b",
 				"--pie-blue-grey-600": "#cc6688",
 				"--pie-blue-grey-900": "#000000",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -517,7 +517,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#555555",
 				"--pie-focus-unchecked-border": "#e0e0e0",
 				"--pie-blue-grey-100": "#2a2a2a",
-				"--pie-blue-grey-300": "#555555",
+				"--pie-blue-grey-300": "#626262",
 				"--pie-blue-grey-600": "#999999",
 				"--pie-blue-grey-900": "#e0e0e0",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -578,7 +578,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#e0e0e0",
 				"--pie-focus-unchecked-border": "#4a4a4a",
 				"--pie-blue-grey-100": "#f0f0f0",
-				"--pie-blue-grey-300": "#d0d0d0",
+				"--pie-blue-grey-300": "#bbbbbb",
 				"--pie-blue-grey-600": "#6f6f6f",
 				"--pie-blue-grey-900": "#2b2b2b",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -640,7 +640,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#dcefe2",
 				"--pie-focus-unchecked-border": "#8e2464",
 				"--pie-blue-grey-100": "#e2f2e7",
-				"--pie-blue-grey-300": "#a6d0b2",
+				"--pie-blue-grey-300": "#a3cdaf",
 				"--pie-blue-grey-600": "#5f7266",
 				"--pie-blue-grey-900": "#4f1237",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -701,7 +701,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#e2cbe8",
 				"--pie-focus-unchecked-border": "#000000",
 				"--pie-blue-grey-100": "#ece0f0",
-				"--pie-blue-grey-300": "#c795d3",
+				"--pie-blue-grey-300": "#94649f",
 				"--pie-blue-grey-600": "#6d5c73",
 				"--pie-blue-grey-900": "#000000",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -762,7 +762,7 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-focus-unchecked": "#243a63",
 				"--pie-focus-unchecked-border": "#ffff55",
 				"--pie-blue-grey-100": "#2b4576",
-				"--pie-blue-grey-300": "#4a6aa8",
+				"--pie-blue-grey-300": "#5070af",
 				"--pie-blue-grey-600": "#9aa4bd",
 				"--pie-blue-grey-900": "#ffff55",
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
@@ -796,13 +796,6 @@ const DEFAULT_SCHEME_DESCRIPTOR: PieColorSchemeDescriptor = deepFreeze({
 const REQUIRED_SCHEME_TOKENS = Object.freeze(
 	Object.entries(PIE_THEME_SCHEME_PARTICIPATION)
 		.filter(([, participation]) => participation === "required")
-		.map(([token]) => token as ThemeTokenName)
-		.sort(),
-);
-
-const OPTIONAL_SCHEME_TOKENS = Object.freeze(
-	Object.entries(PIE_THEME_SCHEME_PARTICIPATION)
-		.filter(([, participation]) => participation === "optional")
 		.map(([token]) => token as ThemeTokenName)
 		.sort(),
 );
@@ -904,6 +897,17 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-background",
 			minimum: 3,
 			role: "missing-response icon",
+		},
+		{
+			// The hover fill behind a selectable text token, which keeps the page's
+			// own ink. The fill is also meant to clear 3:1 against the page, but
+			// that is only reachable where text on the page clears 4.5 x 3 = 13.5:1;
+			// below it the two pairs trade off, so the table certifies the text and
+			// the contract test pins the fill as far toward the page as it allows.
+			foreground: "--pie-text",
+			background: "--pie-blue-grey-300",
+			minimum: 4.5,
+			role: "selectable hover text",
 		},
 		{
 			foreground: "--pie-border",
@@ -1174,10 +1178,6 @@ export function getSchemeParticipation(
 
 export function getRequiredSchemeTokens(): readonly ThemeTokenName[] {
 	return REQUIRED_SCHEME_TOKENS;
-}
-
-export function getOptionalSchemeTokens(): readonly ThemeTokenName[] {
-	return OPTIONAL_SCHEME_TOKENS;
 }
 
 export function createBuiltInColorSchemeDescriptor(

@@ -7,11 +7,13 @@
 			highlightCoordinator: { type: 'Object' },
 			ttsService: { type: 'Object' },
 			selectionActions: { type: 'Object' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import { tick, untrack } from 'svelte';
 	import type {
 		AssessmentToolkitRegionScopeContext,

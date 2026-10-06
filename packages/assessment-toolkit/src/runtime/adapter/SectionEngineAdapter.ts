@@ -39,9 +39,9 @@
  * `scripts/check-engine-core-purity.mjs` enforce the core's purity;
  * the adapter follows the same constraint by convention so it stays
  * usable from non-Svelte hosts (Node tests, Storybook, or future
- * non-Svelte consumers). `bun run check:custom-elements` already
- * blocks `.svelte` imports in published `dist`; adding a Svelte
- * dependency here would also leak through that gate.
+ * non-Svelte consumers). `bun run check:custom-elements:dist`
+ * already blocks `.svelte` imports in published `dist`; adding a
+ * Svelte dependency here would also leak through that gate.
  */
 
 import type { FrameworkErrorReporter } from "../../services/framework-error-bus.js";

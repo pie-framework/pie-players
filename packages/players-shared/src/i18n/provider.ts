@@ -2,11 +2,10 @@
  * The bundled i18n provider.
  *
  * Deliberately imports only the English catalog. The dynamic loader map for every
- * other locale lives in `./catalogs.js`, which players import and tools do not:
- * every player and tool `vite.config.ts` sets `external: []`, so anything
- * reachable from a tool's entry inlines into that tool's bundle. Keeping the
- * loader map out of this module is what stops a locale chunk from being emitted
- * into eighteen tool bundles that will never call `setLocale`.
+ * other locale lives in `./catalogs.js`, which players import and tools do not.
+ * Tools resolve players-shared from the host's node_modules, so keeping the
+ * loader map out of this module keeps locale chunks out of a host bundle that
+ * reaches players-shared only through tools.
  *
  * @module @pie-players/pie-players-shared/i18n/provider
  */

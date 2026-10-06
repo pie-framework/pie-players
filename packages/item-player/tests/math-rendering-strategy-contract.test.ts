@@ -1,0 +1,47 @@
+/**
+ * Only IIFE bundles need the math renderer the item player installs on window.
+ * ESM element builds, which the preloaded strategy renders, bring their own, so
+ * a page that only renders ESM elements never fetches the MathJax module the
+ * renderer comes from.
+ */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, test } from "bun:test";
+
+const readSource = (relativePath: string): string =>
+	readFileSync(join(import.meta.dir, relativePath), "utf8");
+
+describe("item-player math rendering contract", () => {
+	test.each([
+		"../src/pie-item-player.ts",
+		"../src/preloaded.ts",
+		"../src/math-rendering-ready.ts",
+	])("importing %s installs no math renderer", (path) => {
+		const source = readSource(path);
+
+		// Module-scope statements start in column 0; calls inside functions do not.
+		expect(source).not.toMatch(
+			/^(void\s+)?ensureItemPlayerMathRenderingReady\(/m,
+		);
+		expect(source).not.toMatch(
+			/^(void\s+)?(await\s+)?initializeMathRendering\(/m,
+		);
+	});
+
+	test("the load pipeline installs the math renderer for IIFE only", () => {
+		const source = readSource("../src/PieItemPlayer.svelte");
+		const call = source.indexOf("await initializeMathRendering()");
+		const guard = source.lastIndexOf(
+			'if (normalizedStrategy === "iife") {',
+			call,
+		);
+
+		expect(call).toBeGreaterThan(-1);
+		expect(source.indexOf("await initializeMathRendering()", call + 1)).toBe(
+			-1,
+		);
+		expect(guard).toBeGreaterThan(-1);
+		// No block closes between the guard and the call, so the call sits inside it.
+		expect(source.slice(guard, call)).not.toContain("}");
+	});
+});

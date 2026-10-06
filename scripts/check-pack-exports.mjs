@@ -1,11 +1,10 @@
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { parsePackJson } from "./lib/pack-inspection.mjs";
+import { getWorkspaceDirs, parsePackJson } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
-const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const HASH_ONLY_FILE_PATTERN = /^(?:module|chunk|index)?-?[a-f0-9]{8,}\.m?js$/i;
 const HASH_SUFFIX_FILE_PATTERN = /-[a-f0-9]{8,}\.m?js$/i;
 
@@ -64,33 +63,10 @@ const collectExportTargets = (value, out) => {
 	}
 };
 
-const getWorkspaceDirs = () => {
-	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces)
-		? rootPkg.workspaces
-		: [];
-	const dirs = new Set();
-
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string") continue;
-		if (workspace.endsWith("/*")) {
-			const parent = path.join(ROOT, workspace.slice(0, -2));
-			if (!existsSync(parent)) continue;
-			for (const entry of readdirSync(parent, { withFileTypes: true })) {
-				if (entry.isDirectory()) {
-					dirs.add(path.join(parent, entry.name));
-				}
-			}
-			continue;
-		}
-		dirs.add(path.join(ROOT, workspace));
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
-
 const run = () => {
-	const packageDirs = getWorkspaceDirs();
+	const packageDirs = getWorkspaceDirs({
+		workspaceRoots: ["packages", "apps", "tools"],
+	});
 	const failures = [];
 	let checked = 0;
 

@@ -28,6 +28,58 @@ export function findElementPackageDir(pieElementsNgRoot, slug) {
 	return null;
 }
 
+/** The checkout the smoke reads: `PIE_ELEMENTS_NG_PATH`, else `../pie-elements-ng`. */
+export function defaultPieElementsNgRoot(
+	env = process.env,
+	cwd = process.cwd(),
+) {
+	return path.resolve(
+		env.PIE_ELEMENTS_NG_PATH || path.resolve(cwd, "../pie-elements-ng"),
+	);
+}
+
+/** The `package.json` on disk that answers a package's metadata request. */
+export function findPackageJsonPath(pieElementsNgRoot, packageName) {
+	const [scope, name] = packageName.split("/");
+	const candidates = [];
+	if (scope === "@pie-element" && name.startsWith("shared-")) {
+		candidates.push(
+			path.join(pieElementsNgRoot, "packages", "shared", name.slice(7)),
+		);
+	} else if (scope === "@pie-element") {
+		const packageDir = findElementPackageDir(pieElementsNgRoot, name);
+		if (packageDir) candidates.push(packageDir);
+	} else if (scope === "@pie-lib") {
+		for (const workspace of ["lib-react", "lib-svelte"]) {
+			candidates.push(
+				path.join(pieElementsNgRoot, "packages", workspace, name),
+			);
+		}
+	} else if (scope === "@pie-elements-ng") {
+		candidates.push(
+			path.join(
+				pieElementsNgRoot,
+				"packages",
+				"shared",
+				name.replace(/^shared-/, ""),
+			),
+		);
+	}
+	for (const packageDir of candidates) {
+		const candidate = path.join(packageDir, "package.json");
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
+}
+
+/**
+ * The `dist/browser` path the ESM loader loads a view from: the element's
+ * editor-runtime variant when its declaration covers the view.
+ */
+export function loadedBrowserView(entry, view) {
+	return entry.editorRuntime?.views?.[view] ?? view;
+}
+
 export function inferElementKind(packageDir) {
 	const normalized = toPosix(packageDir);
 	if (normalized.includes("/packages/elements-svelte/")) return "svelte";
@@ -179,6 +231,7 @@ export async function buildEsmSmokeMatrix({ pieElementsNgRoot }) {
 			kind: inferElementKind(packageDir),
 			browserViews,
 			sharedDependencies: pkg.pie?.browserSharedDependencies ?? {},
+			editorRuntime: pkg.pie?.browserEditorRuntime ?? null,
 			fixtureId: sample.fixtureId,
 			elementTag: sample.elementTag,
 			model: sample.model,
@@ -223,31 +276,7 @@ export function createJsDelivrLocalMapper() {
 			if (parts[2] === "dist") {
 				return `/${parts[0]}/${parts[1]}/${parts.slice(3).join("/")}`;
 			}
-			if (
-				/^browser\/(delivery|author|print|controller)\/.+\.js$/.test(
-					parsed.subpath,
-				) &&
-				!parsed.subpath.endsWith("/index.js")
-			) {
-				return `/${parts[0]}/${parts[1]}/browser/${path.basename(parsed.subpath)}`;
-			}
 			return parsed.localPath;
 		},
 	};
-}
-
-export async function listSampleSlugs(pieElementsNgRoot) {
-	const sampleDir = path.join(
-		pieElementsNgRoot,
-		"apps",
-		"element-demo",
-		"src",
-		"lib",
-		"samples",
-	);
-	const entries = await readdir(sampleDir).catch(() => []);
-	return entries
-		.filter((entry) => entry.endsWith(".json"))
-		.map((entry) => entry.slice(0, -".json".length))
-		.sort();
 }

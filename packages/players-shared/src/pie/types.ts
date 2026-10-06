@@ -13,11 +13,6 @@ import type {
 } from "../types/index.js";
 
 /**
- * Player modes
- */
-export type PlayerMode = "gather" | "view" | "evaluate" | "author";
-
-/**
  * PIE custom element interface
  */
 export interface PieElement extends HTMLElement {
@@ -65,6 +60,7 @@ export enum BundleType {
 	player = "player.js", // Elements only (no controllers)
 	clientPlayer = "client-player.js", // Elements + controllers
 	editor = "editor.js", // Editor UI
+	esm = "esm", // Browser ESM modules; controllers when the loader loaded them
 }
 
 /**
@@ -112,6 +108,8 @@ export interface UpdatePieElementOptions {
 	session: any[];
 	env?: Env;
 	invokeControllerForModel?: boolean;
+	/** The delivering player's bundle type, see `findPieController`. */
+	bundleType?: BundleType;
 	eventListeners?: EventListeners;
 	container?: Element | Document; // Optional container to scope querySelector (defaults to document)
 	/**

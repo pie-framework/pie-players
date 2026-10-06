@@ -15,6 +15,7 @@
 		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-assessment-player": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-event-debugger": "workspace:*",
@@ -22,22 +23,21 @@
 		"@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
-		"@pie-players/pie-tool-text-to-speech": "workspace:*",
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.70.3",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/vite": "^4.3.3",
-		"@types/node": "^26.5.1",
-		"daisyui": "^5.7.22",
-		"svelte": "^5.57.0",
+		"@types/node": "^26.6.4",
+		"daisyui": "^5.7.46",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2"
+		"vite": "^8.3.2"
 	},
 	"license": "MIT"
 }

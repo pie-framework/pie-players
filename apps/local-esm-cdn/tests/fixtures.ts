@@ -50,6 +50,15 @@ function packageBaseDir(
 	name: string,
 ): string {
 	if (scope === "@pie-element") {
+		if (name.startsWith("shared-")) {
+			return path.join(
+				pieElementsNgRoot,
+				"packages",
+				"shared",
+				name.slice("shared-".length),
+				"dist",
+			);
+		}
 		return path.join(
 			pieElementsNgRoot,
 			"packages",
@@ -70,7 +79,7 @@ export async function writePackageFile(params: {
 	scope: PackageScope;
 	name: string;
 	relativePath: string;
-	content: string;
+	content: string | Uint8Array;
 }): Promise<string> {
 	const dir = packageBaseDir(
 		params.pieElementsNgRoot,

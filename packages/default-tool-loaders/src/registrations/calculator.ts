@@ -15,17 +15,17 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolCoordinatorApi } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { CortexToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { GeoGebraToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
+import { CortexToolProvider } from "../calculator-providers/CortexToolProvider.js";
+import { DesmosToolProvider } from "../calculator-providers/DesmosToolProvider.js";
+import { GeoGebraToolProvider } from "../calculator-providers/GeoGebraToolProvider.js";
+import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 type CalculatorType = "basic" | "scientific" | "graphing";
 export type CalculatorProviderId =
@@ -81,48 +81,6 @@ function getCalculatorInstanceConfig(
 				? theme
 				: undefined,
 	};
-}
-
-// The toolbar parent re-derives `renderedTools` whenever item state changes
-// (e.g. the learner answers a question and `effectiveItem`/`renderContext`
-// recompute). Calculator initialization is expensive (Desmos boot, container
-// mount), so we cache the overlay element by coordinator + scoped tool id.
-// Reusing the same element keeps `mountContent` a no-op and avoids tearing
-// down and re-initializing the calculator on every re-render.
-const overlayElementCache = new WeakMap<
-	ToolCoordinatorApi,
-	Map<string, HTMLElement>
->();
-
-function getCachedOverlay(
-	coordinator: ToolCoordinatorApi | null,
-	fullToolId: string,
-): HTMLElement | null {
-	if (!coordinator) return null;
-	const scoped = overlayElementCache.get(coordinator);
-	const element = scoped?.get(fullToolId);
-	if (!element) return null;
-	// Svelte custom elements destroy their component when disconnected.
-	// A detached cached element is a dead instance — drop it and recreate.
-	if (!element.isConnected) {
-		scoped?.delete(fullToolId);
-		return null;
-	}
-	return element;
-}
-
-function setCachedOverlay(
-	coordinator: ToolCoordinatorApi | null,
-	fullToolId: string,
-	element: HTMLElement,
-): void {
-	if (!coordinator) return;
-	let scoped = overlayElementCache.get(coordinator);
-	if (!scoped) {
-		scoped = new Map();
-		overlayElementCache.set(coordinator, scoped);
-	}
-	scoped.set(fullToolId, element);
 }
 
 function normalizeCalculatorType(value: unknown): CalculatorType | null {
@@ -263,7 +221,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 		const { calculatorType, availableTypes, displayName } =
 			getCalculatorRenderParams(toolbarContext);
 		const calculatorToolConfig =
-			toolbarContext.toolkitCoordinator?.config.tools?.providers?.calculator;
+			toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
+			undefined;
 		const providerId = resolveCalculatorProviderId(calculatorToolConfig);
 		const calculatorConfig = getCalculatorInstanceConfig(calculatorToolConfig);
 		const fullToolId = createScopedToolId(
@@ -272,24 +231,23 @@ export const calculatorToolRegistration: ToolRegistration = {
 			toolbarContext.scope.scopeId,
 		);
 		const componentOverrides = toolbarContext.componentOverrides;
-		const cachedOverlay = getCachedOverlay(
-			toolbarContext.toolCoordinator,
+		// Reused across renders: besides keeping state, this spares a Desmos boot
+		// and container mount on every re-render.
+		const overlay = resolveOverlayElement(
+			toolbarContext,
 			fullToolId,
+			() =>
+				createToolElement(
+					this.toolId,
+					context,
+					toolbarContext,
+					componentOverrides,
+				) as HTMLElement & {
+					visible?: boolean;
+					toolId?: string;
+					toolkitCoordinator?: unknown;
+				},
 		);
-		const overlay = (cachedOverlay ??
-			createToolElement(
-				this.toolId,
-				context,
-				toolbarContext,
-				componentOverrides,
-			)) as HTMLElement & {
-			visible?: boolean;
-			toolId?: string;
-			toolkitCoordinator?: unknown;
-		};
-		if (!cachedOverlay) {
-			setCachedOverlay(toolbarContext.toolCoordinator, fullToolId, overlay);
-		}
 		overlay.setAttribute("tool-id", fullToolId);
 		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		applyCalculatorParamsToElement(

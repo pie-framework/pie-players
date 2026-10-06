@@ -89,6 +89,78 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"resource monitor: the DOM events a host gates item display on (names, bubbling, `detail.url`, `detail.duration`), and the page actions the implicit instrumentation default sends",
+		match: (file) =>
+			file === "packages/players-shared/src/pie/resource-monitor.ts" ||
+			file === "packages/players-shared/src/pie/use-resource-monitor.svelte.ts",
+	},
+	{
+		reason:
+			"what the implicit instrumentation default sends into Host P's observability account, in volume or attribute names: New Relic readiness and agent calls, the base provider's filtering, sampling and attribute shaping, and when resolution falls back to the default",
+		match: (file) =>
+			[
+				"packages/players-shared/src/instrumentation/providers/NewRelicInstrumentationProvider.ts",
+				"packages/players-shared/src/instrumentation/new-relic-agent.ts",
+				"packages/players-shared/src/instrumentation/providers/BaseInstrumentationProvider.ts",
+				"packages/players-shared/src/pie/instrumentation-provider-resolution.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"generated `@pie-players/pie-preloaded-player` package: the `dist/` entry name and layout a host copies and loads by path, or the `pie` block of its package.json a host lists builds from",
+		match: (file) =>
+			[
+				"tools/cli/src/utils/pie-packages/preloaded-static.ts",
+				"tools/cli/src/utils/pie-packages/preloaded-elements-build.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"the item player's attributes and props, or its bubbles+composed re-dispatch of element events, which carries `session-changed` to a host's own listener",
+		match: (file) =>
+			file === "packages/item-player/src/PieItemPlayer.svelte" ||
+			file === "packages/item-player/src/pie-item-player.ts",
+	},
+	{
+		reason:
+			"the tag the section player renders items in, and how `runtime.player`, `hosted` included, reaches that item player",
+		match: (file) =>
+			[
+				"packages/section-player/src/component-definitions.ts",
+				"packages/section-player/src/components/shared/section-player-host-runtime.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"when `toolkit-ready` fires relative to the section controller, which a host's unguarded event subscriptions depend on",
+		match: (file) =>
+			file ===
+			"packages/assessment-toolkit/src/components/PieAssessmentToolkit.svelte",
+	},
+	{
+		reason:
+			'`<pie-theme>`: which entry registers it, its attributes, or how `scope="document"` writes `--pie-*` values onto the root element',
+		match: (file) =>
+			file === "packages/theme/src/theme-element.ts" ||
+			file === "packages/theme/src/index.ts",
+	},
+	{
+		reason:
+			"a debugger or settings panel's props, or the `close` event a host hides it on",
+		match: (file) =>
+			/^packages\/section-player-tools-[^/]+\/[A-Za-z]+Panel\.svelte$/.test(
+				file,
+			),
+	},
+	{
+		reason:
+			"the `pie-image-scroll` wrapper's class, or whether it reaches element sessions, which a host strips before scoring",
+		match: (file) =>
+			file === "packages/players-shared/src/security/wrap-overwide.ts" ||
+			file === "packages/players-shared/src/security/wrap-overwide-images.ts",
+	},
+	{
+		reason:
 			"published type surface of a contract package or a tool export barrel: a name added to or removed from what consumers can import",
 		match: (file) =>
 			/^packages\/(calculator|tts)\/src\/(index|provider-interface)\.ts$/.test(
@@ -104,6 +176,52 @@ const TRIGGERS = [
 		match: (file) =>
 			/^packages\/tool-[^/]+\/(index|lookup)\.ts$/.test(file) ||
 			/^packages\/tool-[^/]+\/vite\.config\.ts$/.test(file),
+	},
+	{
+		reason:
+			"what Host A's single-file build inlines or cannot load: the packaged tool loaders' imports, the Cortex engine's one import site, or the default loading strategy",
+		match: (file) =>
+			[
+				"packages/default-tool-loaders/src/packaged-capability-composition.ts",
+				"packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts",
+				"packages/assessment-toolkit/src/runtime/core/engine-resolver.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"preloaded registration a host calls as its bundle evaluates: the entry fields, the module-namespace form of `element` and `controller`, and the alignment of authored versions to the registered one",
+		match: (file) =>
+			[
+				"packages/item-player/src/preloaded.ts",
+				"packages/players-shared/src/loaders/preloaded-registration.ts",
+				"packages/players-shared/src/loaders/preloaded-alignment.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"the pie-theme provider adapter a host implements: `registerPieThemeProvider`, the adapter shape, named-provider resolution, the page-wide registry, or the normalization that drops a provider's empty values",
+		match: (file) =>
+			file === "packages/theme/src/providers.ts" ||
+			file === "packages/theme/src/theme-types.ts",
+	},
+	{
+		reason:
+			"the `player-error` codes and `load-complete` a host classifies failures and readiness by, or the in-place projection of responses onto the host's `session`",
+		match: (file) =>
+			[
+				"packages/players-shared/src/components/PieItemPlayer.svelte",
+				"packages/players-shared/src/pie/updates.ts",
+				"packages/players-shared/src/pie/item-session-contract.ts",
+			].includes(file),
+	},
+	{
+		reason:
+			"when the bundled MathJax 3 setup evaluates, which a host inlining the player's dynamic imports on a page running MathJax 4 depends on",
+		match: (file) =>
+			[
+				"packages/players-shared/src/pie/math-rendering.ts",
+				"packages/players-shared/math-rendering-module-deferral.mjs",
+			].includes(file),
 	},
 	{
 		reason:

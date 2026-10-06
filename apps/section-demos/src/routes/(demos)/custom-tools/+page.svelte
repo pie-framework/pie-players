@@ -9,9 +9,6 @@
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 	import "@pie-players/pie-section-player/components/section-player-vertical-element";
-	import "@pie-players/pie-tool-calculator-desmos";
-	import "@pie-players/pie-tool-text-to-speech";
-	import "@pie-players/pie-tool-theme";
 	import DemoRuntimeChrome from "$lib/demo-runtime/components/DemoRuntimeChrome.svelte";
 	import {
 		applyDaisyTheme,
@@ -29,6 +26,8 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS,
 	} from "$lib/demo-runtime/demo-page-helpers";
+	import { withDemoLoaderOptions } from "$lib/demo-runtime/demo-player-config";
+	import { preloadSectionElements } from "$lib/demo-runtime/preload-utils";
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from "$lib/demo-runtime/section-demos-default-tts";
 	import { createDemoCustomToolsIntegration } from "$lib/demo-runtime/custom-tools";
 	import type { PageData } from "./$types";
@@ -75,6 +74,8 @@
 	});
 
 	let selectedPlayerType = $state(getUrlEnumParam("player", PLAYER_OPTIONS, "iife"));
+	let preloadedReady = $state(false);
+	let preloadedError = $state<string | null>(null);
 	let roleType = $state<"candidate" | "scorer">(
 		getUrlEnumParam("mode", MODE_OPTIONS, "candidate"),
 	);
@@ -87,7 +88,6 @@
 	afterNavigate(() => {
 		routerReady = true;
 	});
-	let playerHostElement: HTMLElement | null = $state(null);
 
 	// Host integration pattern: register callbacks under section-player `hooks`
 	// as a JS property on the custom element. This keeps callback wiring in a
@@ -118,11 +118,11 @@
 	let pnpDebuggerElement: any = $state(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	const sectionPlayerConfig = {
+	const sectionPlayerConfig = withDemoLoaderOptions({
 		loaderConfig: {
 			trackPageActions: false,
 		},
-	};
+	});
 
 	const resolvedSectionForPlayer = $derived.by(() => {
 		const section = data.section as any;
@@ -141,6 +141,15 @@
 	// payload alone is invisible to `decideFeaturePolicy`.
 	$effect(() => {
 		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
+	});
+	$effect(() => {
+		preloadedReady = selectedPlayerType !== "preloaded";
+		preloadedError = null;
+		if (selectedPlayerType !== "preloaded") return;
+		return preloadSectionElements(resolvedSectionForPlayer, {
+			ready: () => (preloadedReady = true),
+			failed: (error) => (preloadedError = error.message),
+		});
 	});
 	const sessionPanelSectionId = $derived(
 		String(
@@ -279,9 +288,12 @@
 	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 >
-	{#if layoutType === "vertical"}
+	{#if preloadedError}
+		<div class="preload-status error">Preloading elements failed: {preloadedError}</div>
+	{:else if selectedPlayerType === "preloaded" && !preloadedReady}
+		<div class="preload-status">Preloading section item bundles...</div>
+	{:else if layoutType === "vertical"}
 		<pie-section-player-vertical
-			bind:this={playerHostElement}
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
@@ -304,7 +316,6 @@
 		></pie-section-player-vertical>
 	{:else}
 		<pie-section-player-splitpane
-			bind:this={playerHostElement}
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
@@ -337,5 +348,16 @@
 		min-height: 0;
 		overflow: hidden;
 		background: var(--pie-background-dark, #ecedf1);
+	}
+
+	.preload-status {
+		padding: 0.75rem 1rem;
+		color: var(--color-base-content);
+		opacity: 0.8;
+	}
+
+	.preload-status.error {
+		color: var(--color-error);
+		opacity: 1;
 	}
 </style>

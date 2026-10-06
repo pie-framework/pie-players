@@ -93,16 +93,12 @@ consistent monorepo startup behavior.
 - **Framework:** SvelteKit with static adapter
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
 - **Player:** PIE Section Player (QTI 3.0)
-- **Elements:** Loaded from jsDelivr CDN (`https://cdn.jsdelivr.net/npm`)
+- **Elements:** PITS bundles under `iife`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`, the installed pie-elements-ng packages under `preloaded`
 
 ### Element Loading
-The demos use the ESM-based PIE player that loads elements dynamically from jsDelivr CDN. This approach:
-- Requires no local element bundles
-- Works out of the box
-- Uses the latest published element versions
-- Supports version resolution via CDN
+`?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos rewrite content to the pie-elements-ng versions [`demo-ui`](../demo-ui/package.json) installs. demo-ui depends on each package at the `next` dist-tag, where pie-elements-ng publishes; `bun.lock` pins the versions, and `bun update` in `apps/demo-ui` moves them together to the newest release. `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [demo workspace resolution](../../docs/development/demo-workspace-resolution.md).
 
-**Note:** For local development with unpublished elements, you would need to configure `bundleHost` to point to a local element server. This feature is planned for future implementation.
+`?player=preloaded` is the ESM builds as a host bundles them: before the player mounts, the page imports each element's `./browser/delivery` and `./browser/controller` from those installed packages and registers them through `registerPreloadedElements`, and the players load no element code. The players align each authored version to the installed one. The `preloaded-npm-elements` demo does the same with static imports of its own dependencies, as a host's page is written.
 
 ### Content Standards
 All content is:
@@ -134,22 +130,14 @@ apps/section-demos/
 │   │   ├── +page.svelte           # Landing page
 │   │   ├── +layout.svelte         # Shared layout
 │   │   ├── (demos)/+layout.svelte # Shared demo route-group layout
-│   │   ├── (demos)/_shared/       # Shared demo loaders/host wrappers
-│   │   ├── (demos)/single-question/[[id]]/
-│   │   ├── (demos)/question-passage/[[id]]/
-│   │   ├── (demos)/three-questions/[[id]]/
-│   │   ├── (demos)/tts-ssml/[[id]]/
-│   │   ├── (demos)/tts-generated-ssml/[[id]]/
-│   │   ├── (demos)/session-persistence/[[id]]/
-│   │   └── (demos)/session-hydrate-db/[[id]]/
-│   │       ├── +page.ts           # Load fixed demo data with shared helper
-│   │       └── +page.svelte       # Demo host
-│   │   └── demo/[[id]]/           # Shared demo host internals reused by routes
+│   │   ├── (demos)/<demo-id>/     # One route per demo
+│   │   │   ├── +page.ts           # loadDemoRouteDataById("<demo-id>", url)
+│   │   │   └── +page.svelte       # Demo host
+│   │   └── api/                   # Local server routes (see api/README.md)
 │   ├── lib/
-│   │   └── content/               # Demo content data
-│   │       ├── demo1-single-question.ts
-│   │       ├── demo2-question-passage.ts
-│   │       └── demo3-three-questions.ts
+│   │   ├── content/               # Demo sections and the demo registry
+│   │   ├── demo-runtime/          # Shared demo host helpers and components
+│   │   └── components/            # Site header, element version selector
 │   ├── app.html                   # HTML template
 │   └── app.css                    # Tailwind + DaisyUI styles
 ├── package.json
@@ -165,7 +153,7 @@ Each demo has a TypeScript file defining the QTI 3.0 assessment section:
 - `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
 - `demo4-tts-ssml.ts` - TTS + SSML coverage with multi-level catalogs
 - `demo10-tts-generated-ssml.ts` - Same content as `demo4-tts-ssml.ts`, minus the authored SSML/catalogs, so the toolkit generates math SSML on the fly
-- `sections.ts` - Includes multi-page `session-persistence` and `session-hydrate-db` demo wiring
+- `sections.ts` - The demo registry (`sectionDemos`), plus the two section pages the `session-hydrate-db` demo switches between
 
 ### Customizing Demos
 To modify content, edit the files in `src/lib/content/`. Each file exports an `AssessmentSection` object with:
@@ -181,7 +169,7 @@ The per-demo routes (`/single-question`, `/session-hydrate-db`, etc.) render the
 - `?player=esm`
 - `?player=preloaded`
 
-Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The host translates these to item-compatible env values (`{ mode, role }`) and passes `env` to `pie-section-player-splitpane`.
+Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The host translates these to item-compatible env values (`{ mode, role }`) and sets them as `runtime.env` on the layout element.
 
 **Supported CDNs:**
 - **jsDelivr:** `https://cdn.jsdelivr.net/npm` (recommended, used in demos)
@@ -192,7 +180,7 @@ The ESM player defaults to jsDelivr and URL-based module resolution (`moduleReso
 ### Item-level observability in demos/hosts
 
 To configure item-level resource observability for section-player hosts, pass `loaderConfig` through
-`runtime.player` (or top-level `player`) as a JS property object:
+`runtime.player` as a JS property object:
 
 ```ts
 host.runtime = {
@@ -242,7 +230,8 @@ Positioning notes:
 ### Adding New Demos
 1. Create content file in `src/lib/content/demoX-*.ts`
 2. Register the demo in `src/lib/content/sections.ts`
-3. Confirm it appears on the landing page (`src/routes/+page.svelte`)
+3. Add its route at `src/routes/(demos)/<demo-id>/`: a `+page.ts` that returns `loadDemoRouteDataById("<demo-id>", url)` and a `+page.svelte` host
+4. Confirm it appears on the landing page (`src/routes/+page.svelte`), which links each registered demo to `/<demo-id>`
 
 ### Session Hydration Demo Notes
 - Route id: `session-hydrate-db`

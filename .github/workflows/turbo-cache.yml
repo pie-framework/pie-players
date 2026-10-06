@@ -1,0 +1,49 @@
+name: Turbo Cache
+
+# Saves the Turbo cache that ci.yml's jobs restore. A cache saved on develop is
+# readable by every pull request into it, and ci.yml does not run on pushes to
+# develop. Each run builds from scratch, so the saved cache holds exactly one
+# build's entries and does not grow.
+on:
+  push:
+    branches:
+      - develop
+    # A documentation-only push leaves every build input unchanged, so the cache saved
+    # by the previous push still serves it. A coarser copy of the definition in
+    # scripts/lib/change-scope.mjs; where they differ, a pull request only misses cache.
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".claude/**"
+
+concurrency:
+  group: turbo-cache
+  cancel-in-progress: true
+
+env:
+  TURBO_CACHE_DIR: .turbo/cache
+
+jobs:
+  save:
+    name: Save Turbo Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build All Packages
+        run: bun run build
+
+      - name: Save Turbo Cache
+        uses: actions/cache/save@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}

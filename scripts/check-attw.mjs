@@ -7,11 +7,12 @@ import {
 	mkdtempSync,
 	openSync,
 	readFileSync,
-	readdirSync,
 	rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+
+import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
@@ -34,22 +35,6 @@ const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
 const WORKSPACE_ROOTS = Array.isArray(policy.workspaceRoots)
 	? policy.workspaceRoots
 	: ["packages"];
-
-const getWorkspaceDirs = () => {
-	const dirs = new Set();
-
-	for (const rootDir of WORKSPACE_ROOTS) {
-		const absRoot = path.join(ROOT, rootDir);
-		if (!existsSync(absRoot)) continue;
-		for (const entry of readdirSync(absRoot, { withFileTypes: true })) {
-			if (entry.isDirectory()) {
-				dirs.add(path.join(absRoot, entry.name));
-			}
-		}
-	}
-
-	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
-};
 
 const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 	const text = typeof value === "string" ? value : String(value || "");
@@ -162,34 +147,24 @@ const shouldSuppressProblem = (problem) => {
 		typeof problem.entrypoint === "string" ? problem.entrypoint : "";
 	const resolutionKind =
 		typeof problem.resolutionKind === "string" ? problem.resolutionKind : "";
-	const moduleSpecifier =
-		typeof problem.moduleSpecifier === "string" ? problem.moduleSpecifier : "";
 
 	// CJS resolver warning is already intentionally ignored in existing policy.
 	if (problem.kind === "CJSResolvesToESM") return true;
 
 	if (problem.kind === "NoResolution") {
-		// Node10 is out of support for this repo (engines >=18 in publish policy checks).
+		// TypeScript's node10 resolution is not a supported mode: it ignores
+		// `exports`, which publishes every subpath. Unrelated to the Node.js
+		// version. See docs/setup/library-packaging-strategy.md.
 		if (resolutionKind === "node10") return true;
 		// ATTW cannot reliably model CSS-only entrypoints.
 		if (entrypoint.endsWith(".css")) return true;
-	}
-
-	// Declarations that re-export Svelte components keep the `.svelte` specifier.
-	// It resolves for consumers through Svelte's ambient `*.svelte` module
-	// declaration, which ATTW's isolated program never loads.
-	if (
-		problem.kind === "InternalResolutionError" &&
-		moduleSpecifier.endsWith(".svelte")
-	) {
-		return true;
 	}
 
 	return false;
 };
 
 const run = () => {
-	const packageDirs = getWorkspaceDirs();
+	const packageDirs = getWorkspaceDirs({ workspaceRoots: WORKSPACE_ROOTS });
 	const failures = [];
 	let checked = 0;
 	const suppressedCounts = new Map();

@@ -2,7 +2,10 @@
 	import { goto } from "$app/navigation";
 	import { page } from "$app/stores";
 	import { onMount, tick } from "svelte";
-	import { pieElementContextsWithin } from "@pie-players/pie-players-shared";
+	import {
+		DEFAULT_BUNDLE_HOST,
+		pieElementContextsWithin,
+	} from "@pie-players/pie-players-shared";
 	import "@pie-players/pie-item-player";
 	import BackendStatePanel from "$lib/components/BackendStatePanel.svelte";
 	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
@@ -57,9 +60,6 @@
 	let infoCloseButtonEl = $state<HTMLButtonElement | null>(null);
 	let lastInfoFocusTarget = $state<HTMLElement | null>(null);
 	const availableItems = $derived(demoState.items || []);
-	const selectedItem = $derived(
-		availableItems.find((item) => item.id === selectedItemId) || null,
-	);
 
 	function defaultSessionIdForItem(itemId: string): string {
 		return `${itemId}-session-1`;
@@ -573,7 +573,7 @@
 		playerEl.strategy = "iife";
 		playerEl.hosted = true;
 		playerEl.loaderOptions = {
-			bundleHost: "https://proxy.pie-api.com/bundles/",
+			bundleHost: DEFAULT_BUNDLE_HOST,
 			runtimeSupportCheck: "on",
 		};
 		playerEl.backend = backendConfig();

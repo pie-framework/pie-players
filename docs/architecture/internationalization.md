@@ -401,9 +401,10 @@ but it means the package cannot split or fingerprint locale assets itself, and
 every JSON import has to carry an explicit `with { type: "json" }` attribute to
 stay loadable under Node.
 
-Every player and tool `vite.config.ts` sets `external: []`, so a locale bundle
-imported from `players-shared` inlines into each of roughly twenty bundle graphs
-unless made external or fetched at runtime.
+Most tool bundles import `players-shared` from the host, but the item player,
+the print player and the dictionary tools set `external: []`, so a locale bundle
+imported from `players-shared` inlines into each of those bundle graphs unless
+made external or fetched at runtime.
 
 Tool display names are the hard case. `ToolRegistration.name` and `description`
 are required plain strings forming part of the contract a host implements, while

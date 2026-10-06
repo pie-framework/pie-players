@@ -35,27 +35,24 @@
 		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check ."
+		"lint": "biome lint ."
 	},
 	"license": "MIT",
 	"unpkg": "./dist/pie-tool-calculator.js",
 	"jsdelivr": "./dist/pie-tool-calculator.js",
 	"dependencies": {
-		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-calculator": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tool-calculator-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.13",
+		"@biomejs/biome": "^2.5.15",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"svelte": "^5.57.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite": "^8.3.2",
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator-desmos#readme",
 	"bugs": {

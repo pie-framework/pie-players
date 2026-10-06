@@ -17,6 +17,9 @@
  *   element, and it does not reach `document`. An SPA host that unmounts the
  *   player is served by `commitPendingSessions()` on the player element, called
  *   before the unmount.
+ * - Ahead of all three, `flushPendingSessionNotifications` runs when focus
+ *   leaves a player, so the event lands before the host acts on the click or
+ *   key that moved it, and carries no reason.
  *
  * Two paths, per element:
  *
@@ -286,16 +289,22 @@ export function commitPendingSessions(
 		skipped: 0,
 	};
 	if (!root) return result;
-	return markCommitsDuring(root, options.reason ?? "teardown", () =>
-		sweepPendingSessions(root, options, result),
+	const reason = options.reason ?? "teardown";
+	return markCommitsDuring(root, reason, () =>
+		sweepPendingSessions(root, reason, options.logger, result),
 	);
 }
 
+/**
+ * `reason` is null for a flush, whose events are ordinary announcements.
+ */
 function sweepPendingSessions(
 	root: ParentNode,
-	options: CommitPendingSessionsOptions,
+	reason: SessionCommitReason | null,
+	logger: PieLogger | undefined,
 	result: CommitPendingSessionsResult,
 ): CommitPendingSessionsResult {
+	const caller = reason ? "commitPendingSessions" : "flushPendingSessionNotifications";
 	for (const element of candidatesIn(root)) {
 		const session = readSession(element);
 		if (!isRecord(session)) {
@@ -349,8 +358,8 @@ function sweepPendingSessions(
 				(commit as () => void).call(element);
 			} catch (error) {
 				failed = true;
-				options.logger?.warn(
-					`[commitPendingSessions] ${element.tagName.toLowerCase()} failed to commit its pending session`,
+				logger?.warn(
+					`[${caller}] ${element.tagName.toLowerCase()} failed to commit its pending session`,
 					error,
 				);
 			} finally {
@@ -377,15 +386,15 @@ function sweepPendingSessions(
 					detail: {
 						component: element.tagName.toLowerCase(),
 						session: JSON.parse(signature),
-						sessionCommitReason: options.reason ?? "teardown",
+						...(reason ? { sessionCommitReason: reason } : {}),
 					},
 				}),
 			);
 			writeObservedSignature(element, signature);
 			result.synthesized += 1;
 		} catch (error) {
-			options.logger?.warn(
-				`[commitPendingSessions] ${element.tagName.toLowerCase()} session commit dispatch failed`,
+			logger?.warn(
+				`[${caller}] ${element.tagName.toLowerCase()} session commit dispatch failed`,
 				error,
 			);
 			result.skipped += 1;
@@ -393,6 +402,29 @@ function sweepPendingSessions(
 	}
 
 	return result;
+}
+
+/**
+ * Deliver every pending `session-changed` now, as an ordinary announcement.
+ *
+ * The flush a player runs when focus leaves it, ahead of whatever the learner
+ * is moving to, so the host hears the response while the item it belongs to is
+ * still current. Same two paths and the same discriminant as the commit, with
+ * no `sessionCommitReason`: an adopted element's event is exactly what its
+ * debounce would have delivered, only earlier, and the next seam finds nothing
+ * pending.
+ */
+export function flushPendingSessionNotifications(
+	root: ParentNode | null | undefined,
+	options: { logger?: PieLogger } = {},
+): CommitPendingSessionsResult {
+	const result: CommitPendingSessionsResult = {
+		committed: 0,
+		synthesized: 0,
+		skipped: 0,
+	};
+	if (!root) return result;
+	return sweepPendingSessions(root, null, options.logger, result);
 }
 
 export interface BindPageLifecycleCommitOptions {

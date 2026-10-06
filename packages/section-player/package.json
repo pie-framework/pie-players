@@ -21,6 +21,10 @@
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
+		"./browser": {
+			"types": "./dist/browser.d.ts",
+			"import": "./dist/browser/pie-section-player.js"
+		},
 		"./components/section-player-splitpane-element": {
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
@@ -58,61 +62,62 @@
 			"import": "./dist/pie-section-player.js"
 		},
 		"./contracts/layout-contract": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/layout-contract.d.ts",
+			"import": "./dist/contracts/layout-contract.js"
 		},
 		"./contracts/public-events": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/public-events.d.ts",
+			"import": "./dist/contracts/public-events.js"
 		},
 		"./contracts/runtime-host-contract": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/runtime-host-contract.d.ts",
+			"import": "./dist/contracts/runtime-host-contract.js"
 		},
 		"./contracts/layout-parity-metadata": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/layout-parity-metadata.d.ts",
+			"import": "./dist/contracts/layout-parity-metadata.js"
 		},
 		"./contracts/host-hooks": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/contracts/host-hooks.d.ts",
+			"import": "./dist/contracts/host-hooks.js"
 		},
 		"./policies": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"types": "./dist/policies/index.d.ts",
+			"import": "./dist/policies/index.js"
 		}
 	},
 	"files": [
 		"dist"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && vite build --config vite.config.browser.ts",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome check .",
+		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*",
+		"speech-rule-engine": "5.0.0-rc.4"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
-		"@biomejs/biome": "^2.5.13",
-		"@happy-dom/global-registrator": "^20.11.15",
+		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
-		"@playwright/test": "^1.62.1",
-		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"@types/node": "^26.5.1",
-		"svelte": "^5.57.0",
+		"@playwright/test": "^1.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/node": "^26.6.4",
+		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.2.2",
-		"vite-plugin-dts": "^5.0.3"
+		"vite": "^8.3.2",
+		"vite-plugin-dts": "^5.1.1"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player#readme",
 	"bugs": {

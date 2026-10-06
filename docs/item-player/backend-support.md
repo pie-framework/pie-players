@@ -83,6 +83,10 @@ When `backend.delivery` has a load signature, `<pie-item-player>` also
 auto-loads on configuration changes. Hosts can still call
 `loadFromBackend("delivery")` explicitly for imperative flows.
 
+An enabled `backend.delivery` makes the player hosted unless the host sets
+`hosted`: it renders the backend's models, refreshed through the `model`
+endpoint when `env` changes, and runs no element controller in the browser.
+
 Backend session persistence is explicit:
 
 ```ts
@@ -99,9 +103,12 @@ const serverScore = await player.score();
 const localOutcomes = await player.provideScore();
 ```
 
-Do not treat these as interchangeable. `provideScore()` calls loaded controllers
-in the browser and returns per-model outcomes. `score()` delegates to the
-configured backend and returns whatever the backend's scoring contract returns.
+Do not treat these as interchangeable. `provideScore()` calls the element
+controllers loaded in the browser and returns per-model outcomes. A hosted
+player runs no controllers, so its `provideScore()` returns an `undefined` slot
+per model; that includes a player with `backend.delivery` enabled and `hosted`
+unset. `score()` delegates to the configured backend and returns whatever the
+backend's scoring contract returns.
 
 ## Why Model And Score Belong On The Backend
 

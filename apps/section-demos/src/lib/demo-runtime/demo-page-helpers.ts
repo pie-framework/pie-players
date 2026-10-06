@@ -143,3 +143,17 @@ export function bindDemoAssessment(
 			section.personalNeedsProfile ?? section.settings?.personalNeedsProfile,
 	});
 }
+
+/**
+ * Call `onChange` once per section session change. The layout element bubbles
+ * one `session-changed` per change, after the section controller has applied
+ * it. Returns the unsubscribe, so an `$effect` returns it as its teardown.
+ */
+export function onSectionSessionChanged(
+	layout: EventTarget | null | undefined,
+	onChange: () => void,
+): (() => void) | undefined {
+	if (!layout) return undefined;
+	layout.addEventListener("session-changed", onChange);
+	return () => layout.removeEventListener("session-changed", onChange);
+}

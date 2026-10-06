@@ -1,6 +1,6 @@
 # Using PIE web components from an npm CDN
 
-The player and tool packages in this repo compile to **custom elements** and can be loaded directly in the browser via an npm CDN such as **jsDelivr** or **unpkg**.
+`@pie-players/pie-item-player` loads directly in the browser from an npm CDN such as **jsDelivr** or **unpkg**, because its root entry imports no bare specifier. The section player publishes a separate self-contained build for the same purpose (see [Section player](#section-player-browser-build)). The assessment player, the toolkit's custom elements and the `pie-tool-*` packages import other packages by bare specifier, so a host loads them through a bundler, or an import map that resolves every one of those specifiers (see [library packaging strategy](./library-packaging-strategy.md#consumer-guidance-current-scope)).
 
 ## Item player (recommended)
 
@@ -8,7 +8,7 @@ The player and tool packages in this repo compile to **custom elements** and can
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@0.1.0/dist/pie-item-player.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js';
 </script>
 
 <pie-item-player strategy="esm"></pie-item-player>
@@ -18,49 +18,58 @@ The player and tool packages in this repo compile to **custom elements** and can
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@0.1.0/dist/pie-item-player.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js';
 </script>
 
 <pie-item-player strategy="iife"></pie-item-player>
 ```
 
-## Tools
+## Section player (browser build)
 
-Example:
+`@pie-players/pie-section-player` publishes `dist/browser/pie-section-player.js`, exported as `./browser`, next to its npm build. It bundles the section player, the assessment toolkit and the default tools, imports nothing by bare specifier, and needs no import map or bundler. Tools load as chunks on first use. Hosts that bundle keep using the npm entry; it is byte-identical with and without the browser build.
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/components/item-toolbar-element.js';
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/components/section-toolbar-element.js';
-  import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/index.js';
-
-  // `pie-item-toolbar` renders buttons without a coordinator, but the buttons won't do anything.
-  // Wire a ToolCoordinator so tools can actually open/close.
-  const coordinator = new ToolCoordinator();
-
-  window.addEventListener('DOMContentLoaded', () => {
-    const toolbar = document.querySelector('pie-item-toolbar');
-    toolbar.toolCoordinator = coordinator; // JS property (NOT an attribute)
-  });
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player@x.y.z/dist/browser/pie-section-player.js';
 </script>
 
-<pie-item-toolbar tools="protractor,ruler,graph"></pie-item-toolbar>
+<pie-section-player-splitpane show-toolbar="true"></pie-section-player-splitpane>
 ```
+
+- **Full file path.** jsDelivr serves the entry file at the short package URL without a redirect, so its relative chunk imports 404. A copy taken from `node_modules` needs all of `dist/browser/`, not the entry alone.
+- **One version per page.** Tags are page-global and the first registration wins. A second copy, another version or a CDN `pie-item-player` loaded first, leaves the registered definitions in place and throws nothing, so the page runs the first version that loaded. Switching versions takes a reload; side-by-side comparison needs separate iframes.
+- **One directory per version when self-hosting.** Chunk names hash source paths, not contents, so two versions in one directory overwrite each other's chunks.
+- **Toolkit.** The toolkit has no build of its own. The section player's `toolkit-ready` event carries the `ToolkitCoordinator` it creates. A host that builds its own coordinator imports the toolkit from `https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/+esm`, at the same version as the section player; the section player does not re-export the class, which would give npm hosts a second copy.
+- **Custom tools.** The build alone also exports `createPackagedToolRegistry` and `DEFAULT_TOOL_MODULE_LOADERS`. A host that adds its own registration builds the packaged set with them, registers on it and passes the result as `toolRegistry`; the packaged tools still load from the build's chunks.
+
+### Content Security Policy
+
+A host under a CSP allows, beyond its own origin:
+
+| Directive | Source | Why |
+| --- | --- | --- |
+| `script-src` | the CDN origin, e.g. `https://cdn.jsdelivr.net` | The entry, its chunks, and the Cortex calculator's worker file, which the worker's `blob:` module imports |
+| `worker-src` | `blob:` | A browser refuses a worker script from another origin, so the Cortex calculator starts its worker from a same-origin `blob:` module that imports the file. A self-hosted copy on the page's own origin starts the worker directly |
+| `connect-src` | `https://cdn.jsdelivr.net` | The speech-rule-engine inside the `iife` strategy's MathJax 3 fetches its locale maps when the player loads its first `iife` item, and throws an uncaught error when the request is blocked |
+
+The following load from third-party origins in every install, npm or CDN, and are not specific to this build: under `iife`, MathJax 3's CHTML fonts from unpkg (`@pie-lib/math-rendering-module` sets `fontURL` with no override); under `esm`, MathJax 4's fonts from jsDelivr; the `ndsIcons` toolbar path's FontAwesome from jsDelivr and its Roboto from Google Fonts and ui.renaissance.com. The toolkit's math speech also fetches SRE 5 locale tables from jsDelivr unless `mathSpeech.engineOptions.json` is set.
+
+## Tools
+
+Outside the section player's browser build, tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
 
 ## Notes
 
-- CDN imports require the package to publish its built file under `dist/` and register the custom element tag (this repo’s player/tool packages do).
-- Tool coordination is done via **JS properties** (e.g. `toolbar.toolCoordinator = new ToolCoordinator()`), not HTML attributes.
+- A package loads raw from a CDN when it publishes its built file under `dist/`, registers its custom element tag and imports no bare specifier. Of the players, `pie-item-player` meets all three, and `pie-section-player` does through `dist/browser/`.
+- Object values such as `config`, `runtime` or a `toolRegistry` are JS properties; HTML attributes carry strings.
 - Pin versions in production (`@x.y.z`) to avoid breaking changes.
 - For the full list of publishable packages, see `docs/setup/publishable_packages.md`.
 
 ## Local ESM CDN (development, no publishing)
 
-When developing ESM-loading flows without publishing PIE element packages, you can run a local "ESM CDN" server from a sibling `pie-elements-ng` checkout and point the ESM player to it via `esm-cdn-url`.
+`bun run local-esm-cdn` serves a pie-elements-ng checkout (`PIE_ELEMENTS_NG_PATH`, else the sibling `../pie-elements-ng`) as an ESM CDN on port 5179, or `LOCAL_ESM_CDN_PORT`. It builds the checkout's React element and lib packages first; `LOCAL_ESM_CDN_SKIP_BUILD=1` skips the build. Point the ESM player at it with `loaderOptions.esmCdnUrl`.
 
-See the repo root README for the full workflow and the `bun run local-esm-cdn` convenience script.
-
-Tip: if you run the local server on a different port, set `LOCAL_ESM_CDN_PORT=...` and update your app to use that base URL (for the example app: `?localEsmCdnUrl=http://localhost:PORT`).
+`bun run dev:section:cdn` serves the same checkout, built, from the section demos' dev server, and their `?player=esm` loads from it.
 
 ## Automatic HMR File Watching
 

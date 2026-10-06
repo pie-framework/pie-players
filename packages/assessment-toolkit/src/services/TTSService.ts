@@ -22,12 +22,14 @@ import type {
 	TTSConfig,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import {
+	applyMediaFragment,
+	enforceMediaFragment,
+} from "@pie-players/pie-players-shared/media";
 import type {
 	AccessibilityCatalogResolver,
 	CatalogLookupContext,
-	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
-import { applyMediaFragment, enforceMediaFragment } from "./catalog-media.js";
 import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import {
 	resolveSpokenAudioMedia,
@@ -244,7 +246,6 @@ export class TTSService {
 		cancel: () => void;
 	} | null = null;
 	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
-	private currentSeekSegmentIndex = 0;
 	private activeSentenceStartOffset: number | null = null;
 	private playbackStartDeferredRunId: number | null = null;
 	private pendingPlaybackStartHighlights: Array<() => void> = [];
@@ -962,15 +963,28 @@ export class TTSService {
 		};
 	}
 
+	/**
+	 * `textOffset` is where `normalizedText` starts in the element's visible text:
+	 * boundaries are collected over the whole element, and a selection speaks only
+	 * part of it.
+	 */
 	private createSpeechPlan(
 		contentElement: Element,
 		normalizedText: string,
+		textOffset = 0,
 	): TTSSpeechSegment[] {
 		const boundaries = this.collectSpeechPlanBoundaries(
 			contentElement,
 			normalizedText,
 		);
-		return this.createSpeechPlanSegments(normalizedText, boundaries);
+		if (textOffset === 0) {
+			return this.createSpeechPlanSegments(normalizedText, boundaries);
+		}
+		const shifted = new Map<number, number>();
+		for (const [point, units] of boundaries) {
+			shifted.set(point - textOffset, units);
+		}
+		return this.createSpeechPlanSegments(normalizedText, shifted);
 	}
 
 	private collectSpeechPlanBoundaries(
@@ -1213,7 +1227,6 @@ export class TTSService {
 				originalOnWordBoundary?.(word, position, length);
 				if (Number.isFinite(position)) {
 					this.currentBoundaryOffset = position;
-					this.currentSeekSegmentIndex = this.getCurrentSeekSegmentIndex();
 				}
 			};
 			try {
@@ -1231,12 +1244,6 @@ export class TTSService {
 		});
 		for (const segment of segments) {
 			if (runId !== this.speakRunId) return;
-			const seekIndex = this.seekSegments.findIndex(
-				(candidate) => candidate.startOffset === segment.startOffset,
-			);
-			if (seekIndex >= 0) {
-				this.currentSeekSegmentIndex = seekIndex;
-			}
 			this.currentBoundaryOffset = segment.startOffset;
 			if (shouldTrackSentenceProgress) {
 				this.runWhenPlaybackStarts(runId, () => {
@@ -1251,12 +1258,18 @@ export class TTSService {
 		}
 	}
 
+	/**
+	 * `startOffset` indexes the spoken text; the position map indexes the whole
+	 * content element, which for a selection starts `activeWordBoundaryOffset`
+	 * characters earlier.
+	 */
 	private highlightSentenceSegment(startOffset: number, text: string): void {
 		if (!this.highlightCoordinator || typeof document === "undefined") return;
 		const length = text.trimEnd().length;
 		if (length <= 0) return;
-		const start = this.normalizedToDOM.get(startOffset);
-		const end = this.normalizedToDOM.get(startOffset + length - 1);
+		const mapStart = startOffset + this.activeWordBoundaryOffset;
+		const start = this.normalizedToDOM.get(mapStart);
+		const end = this.normalizedToDOM.get(mapStart + length - 1);
 		if (!start || !end) return;
 		const range = document.createRange();
 		range.setStart(start.node, start.offset);
@@ -1407,7 +1420,11 @@ export class TTSService {
 				: hasExplicitBreaks || !speechMatchesVisibleText
 					? []
 					: shouldUsePlan && this.currentContentElement
-						? this.createSpeechPlan(this.currentContentElement, normalizedText)
+						? this.createSpeechPlan(
+								this.currentContentElement,
+								normalizedText,
+								options?.wordBoundaryOffset || 0,
+							)
 						: this.createSeekSegmentsFromText(highlightText);
 			this.sentenceHighlightSegments = hasExplicitBreaks
 				? []
@@ -2009,7 +2026,6 @@ export class TTSService {
 		this.lastError = null;
 		this.currentBoundaryOffset = 0;
 		this.playbackChunks = [];
-		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
 	}
 
@@ -2070,9 +2086,9 @@ export class TTSService {
 			length?: number,
 		) => {
 			const wordLength = length || word.length;
-			const globalIndex =
-				charIndex + this.currentBoundaryOffset + args.wordBoundaryOffset;
-			this.highlightSentenceForOffset(globalIndex);
+			const spokenIndex = charIndex + this.currentBoundaryOffset;
+			const globalIndex = spokenIndex + args.wordBoundaryOffset;
+			this.highlightSentenceForOffset(spokenIndex);
 			const highlightRange = this.findHighlightRange(globalIndex, wordLength);
 			if (highlightRange && this.highlightCoordinator) {
 				const highlightText =
@@ -2492,7 +2508,6 @@ export class TTSService {
 		if (args.speechChunks?.length && this.provider) {
 			for (let index = 0; index < args.speechChunks.length; index++) {
 				if (args.runId !== this.speakRunId) return;
-				this.currentSeekSegmentIndex = index;
 				const segment = this.seekSegments[index];
 				if (segment) {
 					this.currentBoundaryOffset = segment.startOffset;
@@ -2532,7 +2547,6 @@ export class TTSService {
 		this.seekSegments = [];
 		this.playbackChunks = [];
 		this.sentenceHighlightSegments = [];
-		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
 	}
 
@@ -2544,6 +2558,42 @@ export class TTSService {
 	 *
 	 * @param range DOM Range to speak
 	 */
+	/**
+	 * The selected part of `root`'s normalized visible text and where it starts, or
+	 * null when the map is unavailable or holds no selected character.
+	 */
+	private selectMappedRangeText(
+		range: Range,
+		root: Element,
+	): { text: string; offset: number } | null {
+		if (typeof range.comparePoint !== "function") return null;
+		const { text: rootText, map } = collectVisibleTextAndMap(
+			root,
+			this.getTextProcessingOptions(),
+		);
+		let start = -1;
+		let end = -1;
+		for (const [index, { node, offset }] of map) {
+			if (index >= rootText.length) continue;
+			let inside = false;
+			try {
+				inside =
+					range.comparePoint(node, offset) === 0 &&
+					range.comparePoint(node, Math.min(offset + 1, node.length)) === 0;
+			} catch {
+				inside = false;
+			}
+			if (!inside) continue;
+			if (start === -1 || index < start) start = index;
+			if (index > end) end = index;
+		}
+		if (start === -1) return null;
+		const raw = rootText.slice(start, end + 1);
+		const leading = raw.length - raw.trimStart().length;
+		const text = raw.trim();
+		return text ? { text, offset: start + leading } : null;
+	}
+
 	async speakRange(
 		range: Range,
 		options?: { contentRoot?: Element | null },
@@ -2576,8 +2626,8 @@ export class TTSService {
 		if (!root) return;
 
 		const selected = collectRangeTextForSpeech(range, root);
-		const text = selected.text.trim();
-		if (!text) {
+		const selectedText = selected.text.trim();
+		if (!selectedText) {
 			if (selected.filtered) {
 				console.warn(
 					"[tts] every part of the selection is either hidden or marked not-to-be-spoken; nothing was spoken.",
@@ -2586,23 +2636,31 @@ export class TTSService {
 			return;
 		}
 
-		// Calculate the offset of the range start within the root element. Filtered
-		// the same way as the speech itself: the offset indexes into the highlight
-		// text, which comes from the exclusion-aware collectors, so counting
-		// characters here that never reach that text would shift every highlight
-		// after the excluded node.
-		const beforeRange = document.createRange();
-		beforeRange.selectNodeContents(root);
-		beforeRange.setEnd(range.startContainer, range.startOffset);
-		const textBeforeRange = collectRangeTextForSpeech(beforeRange, root).text;
-		const normalizedTextBeforeRange = normalizeTextForSpeech(textBeforeRange);
-		const offset =
-			normalizedTextBeforeRange.length +
-			(/\s$/.test(textBeforeRange) && normalizedTextBeforeRange ? 1 : 0);
+		// The spoken text and its offset come from the root's visible-text map, which
+		// the highlight position map and the structural speech plan index too. Joined
+		// from raw text nodes instead, a selection loses the space the map inserts
+		// between blocks, and every offset after that boundary drifts.
+		const mapped = this.selectMappedRangeText(range, root);
+		let text = selectedText;
+		let offset = mapped?.offset ?? 0;
+		if (mapped) {
+			text = mapped.text;
+		} else {
+			// Filtered the same way as the speech itself: the offset indexes into the
+			// highlight text, which comes from the exclusion-aware collectors.
+			const beforeRange = document.createRange();
+			beforeRange.selectNodeContents(root);
+			beforeRange.setEnd(range.startContainer, range.startOffset);
+			const textBeforeRange = collectRangeTextForSpeech(beforeRange, root).text;
+			const normalizedTextBeforeRange = normalizeTextForSpeech(textBeforeRange);
+			offset =
+				normalizedTextBeforeRange.length +
+				(/\s$/.test(textBeforeRange) && normalizedTextBeforeRange ? 1 : 0);
+		}
 
 		this.debugLog("[TTSService] speakRange offset calculation:", {
 			selectedText: text,
-			textBeforeRange: textBeforeRange.substring(0, 100),
+			mapped: !!mapped,
 			offset,
 			rootTag: root.tagName,
 		});
@@ -2662,7 +2720,6 @@ export class TTSService {
 		this.cancelRecordedAudio();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
-		this.currentSeekSegmentIndex = safeTargetIndex;
 		const runId = ++this.speakRunId;
 		const restartSegments = this.seekSegments.slice(safeTargetIndex);
 		this.highlightCoordinator?.clearTTS();
@@ -2688,7 +2745,6 @@ export class TTSService {
 				for (let index = 0; index < restartChunks.length; index++) {
 					if (runId !== this.speakRunId) return;
 					const absoluteIndex = safeTargetIndex + index;
-					this.currentSeekSegmentIndex = absoluteIndex;
 					const segment = this.seekSegments[absoluteIndex];
 					if (segment) {
 						this.currentBoundaryOffset = segment.startOffset;
@@ -2846,7 +2902,6 @@ export class TTSService {
 		this.seekSegments = [];
 		this.playbackChunks = [];
 		this.sentenceHighlightSegments = [];
-		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
 		this.activePlaybackRate = null;
 	}

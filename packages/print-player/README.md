@@ -52,7 +52,9 @@ document, at import time, before any instance renders. It is prepended to
 Installation is idempotent, so a page that loads both this player and
 `@pie-players/pie-item-player` ends up with a single copy.
 
-This applies to CDN hosts too: no extra `<link>` is needed.
+This applies to CDN hosts too: no extra `<link>` is needed. Its rules apply
+inside the `[data-pie-content]` root `<pie-print>` renders into; see
+[content styles](../item-player/README.md#content-styles).
 
 Without it, printed output regresses in two ways: authored passage titles and
 `kds-*` markup render unstyled, and content the author marked `.noprint` is
@@ -60,24 +62,23 @@ printed rather than hidden.
 
 ### Taking ownership of the stylesheet
 
-To load it yourself instead — to control its position in your cascade, or to ship
-a patched copy — declare that on the root element **before** the player script
-runs:
+A host that loads `components.css` itself — to control its position in the
+cascade, to ship a patched copy, or to confine it to the player's subtree with
+`@scope (…) { … }` — owns it. The player recognises the copy by
+`--pie-content-styles`, a sentinel the stylesheet declares, and installs nothing;
+when the host's copy lands after the player's, the player removes its own. A copy
+served from another origin cannot be read, so such a host declares ownership on
+the root element before the player script runs:
 
 ```html
 <html data-pie-content-styles="host"></html>
 ```
 
-```ts
-import "@pie-players/pie-theme/components.css"; // now your responsibility
-```
-
-The player then installs nothing. If no content stylesheet turns out to be
-present, it logs a one-time `console.warn` naming the missing import, rather than
-silently printing unstyled content. Declare `@pie-players/pie-theme` in your own
-`package.json` if you go this route: it is a dependency of this package, so the
-file is already on disk, but importing a subpath from a transitive dependency
-breaks on a dedupe change or a move to pnpm / Yarn PnP.
+With the attribute set, the player installs nothing, and if no content stylesheet
+turns out to be present it logs a one-time `console.warn` naming the missing
+import, rather than silently printing unstyled content. Declare `@pie-players/pie-theme` in your own
+`package.json` if you go this route: the player inlines its copy of the
+stylesheet at build time and does not install the package.
 
 This stylesheet is only the shared content styles. See
 [`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the

@@ -111,13 +111,14 @@ registered under its own distinct tag.
 - If a failure may be stale-artifact related, rebuild and rerun once before
   deeper debugging.
 - For split-panel scrolling behavior, mirror
-  `packages/section-player/src/components/layouts/SplitPanelLayout.svelte`
+  `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
   unless intentionally redesigning: constrained parent layout, constrained split
   grid, scrollable panes with `min-height: 0`, `min-width: 0`, and contained
   vertical overflow.
 - Before finalizing CE-related changes, run:
   `bun run check:source-exports`, `bun run check:consumer-boundaries`, and
-  `bun run check:custom-elements`.
+  `bun run check:custom-elements`, then `bun run check:custom-elements:dist`
+  after a build.
 
 ### Decision Records
 
@@ -126,7 +127,7 @@ without its context. `docs/adr/README.md` sets the bar and the numbering; record
 are append-only, so a superseded one keeps its number and gains a `Superseded by`
 line rather than being edited into agreement.
 
-Two rules from those records bind new code directly, both from ADR 0002:
+Rules from those records bind new code directly. From ADR 0002:
 
 - A public interface takes no type parameter that appears only in argument
   position. TypeScript compares method parameters bivariantly, so such a parameter
@@ -140,6 +141,21 @@ Two rules from those records bind new code directly, both from ADR 0002:
   peer required for any consumer type-checking without `skipLibCheck`. Type the
   public surface with the contract package's own interface and confine the peer to
   a method body.
+
+From ADR 0003, for every host and element:
+
+- An element learns the student's accessibility settings only from the
+  `Symbol.for("pie.accessibility")` context, whose key and type live in
+  `@pie-players/pie-context`, and never imports `@pie-players/pie-assessment-toolkit`.
+  A setting that changes rendering travels through that context; `env` keeps the
+  settings that change the model.
+- The mapping from a profile to support ids lives in the host, which resolves it
+  through the toolkit's policy precedence. An element maps a fixed support id to a
+  fixed behaviour, because item configs pin element versions and a rule inside an
+  element is frozen into each of them.
+- The context value only grows: fields are added, never removed or redefined.
+  Consumers ignore support ids they do not recognize, and an unanswered request
+  means defaults, never a wait for a provider.
 
 ### Domain Language
 
@@ -299,6 +315,22 @@ version. The source of truth is the `fixed` block in `.changeset/config.json`.
 - Because release verification can trigger Playwright, invoke local publish with
   `required_permissions: ["all"]`.
 
+### Documentation-Only Changes
+
+A change made only of documentation gets no Jira ticket and no branch or pull
+request of its own. `scripts/lib/change-scope.mjs` defines documentation:
+Markdown and images under `docs/`, Markdown at the root, and `.claude/`. Package
+READMEs and changesets are not documentation.
+
+- Commit it to `develop` and push. The pre-push gate runs only `check:docs` for
+  such a push. `develop` requires status checks, so a direct push needs a
+  maintainer who can bypass them; anyone else uses the next option.
+- When a pull request is wanted — review, or no bypass — collect the pending
+  documentation in one `docs/` branch and merge it as one pull request. CI runs
+  only `Docs` for it and reports the other required checks as skipped.
+- A documentation edit that belongs to a code change stays in that change's
+  branch.
+
 ### Playwright And Sandboxed Execution
 
 Playwright cannot reliably install browsers, spawn dev servers, or launch
@@ -343,27 +375,61 @@ belong to `playwright.backend.config.ts`, so the main config ignores them.
 
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
+The item-player and section-player configs run the esm strategy's specs in
+Firefox as well as Chromium, so a local run needs both:
+`bunx playwright install chromium firefox`.
 
 It reaches that gate through `scripts/pre-push-gate.mjs`, which skips it when the
 push carries no new commits — creating a branch at a commit already on the remote,
-or deleting a ref, transfers nothing for the gate to validate. Every uncertain
-case still runs the gate, so this only ever removes provably wasted work. Do not
+or deleting a ref, transfers nothing for the gate to validate. A push whose new
+commits change documentation only runs `check:docs` instead (see
+Documentation-Only Changes). Every uncertain case still runs the gate, so this
+only ever removes provably wasted work. Do not
 reach for `--no-verify` when a push feels like it should have been skipped: report
 the case instead, because a skip the wrapper misses is a bug in
 `scripts/lib/push-scope.mjs`.
 
-Note that lefthook's own `push_files` filtering is not a substitute: it is derived
-from the current branch against its upstream, not from the refs actually being
-pushed, so it runs the gate for a `git push origin <sha>:refs/heads/other` that
-introduces nothing.
+The gate is a lefthook script job, which lefthook runs without its own push-file
+check. That check is derived from the current branch rather than the refs being
+pushed, and keeps only files that still exist, so as a `run:` command the gate was
+skipped for a push whose commits only deleted files or were empty.
+`bun run check:local-pr-gate` rejects the gate as a command, and
+`scripts/tests/pre-push-hook.test.mjs` pushes both cases through lefthook.
 
 ### Git Worktrees
 
-A fresh worktree needs `bun install` **and** `bun run build` before any gate
-passes. Nothing hoists from the main checkout: without `node_modules` every gate
-fails on a missing binary, and without build artifacts `bun run check` fails with
-`TS2307: Cannot find module '@pie-players/pie-players-shared'` from packages that
-resolve a workspace sibling through its published `exports`.
+A fresh worktree needs `bun install` **and** `bun run build` before the gates
+pass. Without build artifacts `bun run check` fails with `TS2307: Cannot find
+module '@pie-players/pie-players-shared'` from packages that resolve a workspace
+sibling through its published `exports`.
+
+A worktree under `.claude/worktrees/` sits inside the main checkout, so whatever
+it does not install itself comes from the main checkout's install. Bun, Node and
+TypeScript look a bare specifier up in every ancestor `node_modules`, and `bun
+run` puts every ancestor's `node_modules/.bin` on `PATH`. Before its own `bun
+install` a worktree runs the main checkout's binaries against the main
+checkout's packages, and a gate can pass that way: `bun run lint:biome` does,
+with the main checkout's biome. After it, a package the worktree does not
+install, whether an undeclared import or a dependency its branch removed, still
+resolves from the main checkout's root `node_modules`; a workspace package found
+there is the main checkout's `packages/*/dist`, built from whichever branch it
+has checked out. A worktree test, build or typecheck can then pass where CI's
+fresh checkout fails. `bun run check:deps` reads manifests and imports without
+resolving them, so it is the evidence for a dependency change.
+
+The main checkout's root `node_modules` also keeps packages its manifest no
+longer declares. Bun's isolated linker leaves a root link in place when a
+dependency leaves the root manifest, `bun install --force` included (bun
+1.3.14): links for root dependencies added and removed on 2026-05-04 still
+resolved from worktrees on 2026-09-25. Removing those entries from the main
+checkout's `node_modules` clears them; every session shares that directory, so
+ask before touching it.
+
+`bun run check:resolution-boundary`, in both local gates, fails while a
+`node_modules` above the checkout holds entries its own manifest does not
+declare, or while the checkout has no install of its own. Dependencies the main
+checkout declares and the worktree does not install are listed without failing,
+because two branches can declare different root dependencies.
 
 A worktree path must not contain a path segment named `node_modules`, `build`,
 `dist`, `.turbo`, `.svelte-kit`, `playwright-report`, or `test-results`. Those
@@ -436,6 +502,7 @@ For custom-element packaging or consumer-boundary changes, run:
 bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements
+bun run check:custom-elements:dist
 ```
 
 For changes to the toolkit core, the policy engine or a player, also run:

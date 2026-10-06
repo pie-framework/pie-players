@@ -6,6 +6,7 @@ import type {
 	ImageHandler,
 	ItemConfig,
 	ItemSession,
+	PieItemPlayerErrorDetail,
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
@@ -21,7 +22,7 @@ import type {
 	ElementPackagePolicy,
 } from "@pie-players/pie-players-shared";
 
-export type { DeleteDone, ImageHandler, SoundHandler };
+export type { DeleteDone, ImageHandler, PieItemPlayerErrorDetail, SoundHandler };
 export type * from "./backend/types.js";
 
 /**
@@ -83,10 +84,11 @@ export interface PieItemPlayerElement extends HTMLElement {
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {
-	itemName?: string;
 	itemId?: string;
 	config?: unknown;
 	session?: unknown;
 	env?: unknown;
 	score?: unknown;
+	/** The player's `hosted`: the panel runs no controller over a hosted player's models. */
+	hosted?: boolean;
 }

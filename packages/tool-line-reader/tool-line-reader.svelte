@@ -5,14 +5,17 @@
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' }
-		}
+		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	
 	import {
 		connectToolRuntimeContext,
+		createToolCoordinatorRegistration,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
@@ -22,6 +25,7 @@
 import {
 	clampPointWithinBlock,
 	createPointerDragController,
+	createPointerGesture,
 	DEFAULT_CONTAINMENT_GUTTER,
 	resolveContainingBlockRect
 } from '@pie-players/pie-players-shared';
@@ -75,12 +79,7 @@ import { onMount, untrack } from 'svelte';
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
 
-	// The coordinator a registration was made against, and the id it used. Plain
-	// `let` rather than `$state`: this is bookkeeping the registration effect both
-	// reads and writes, and a reactive write inside a tracked effect body is what
-	// AGENTS.md's Svelte Subscription Safety rules out.
-	let registeredCoordinator: ToolCoordinatorApi | null = null;
-	let registeredToolId: string | null = null;
+	const registration = createToolCoordinatorRegistration('Line Reader', ZIndexLayer.TOOL);
 
 	// Geometry constants
 	const FRAME_SIDE_WIDTH = 12; // pixels of obscuring frame left and right of the pane
@@ -241,30 +240,36 @@ import { onMount, untrack } from 'svelte';
 		startDragging(e);
 	}
 
-	function startDragging(e: PointerEvent) {
-		if (!containerEl) return;
+	// Drags and resizes share one gesture, which ends on a cancelled touch as well
+	// as on release, so one iPadOS takes over for a system gesture does not stay
+	// stuck to the next touch.
+	const gesture = createPointerGesture({
+		onMove: handlePointerMove,
+		onEnd: () => {
+			dragController.endDragging();
+			resizeTarget = null;
+		}
+	});
 
-		// `preventDefault` below suppresses the press's default focus, so claim it
+	function startDragging(e: PointerEvent) {
+		if (!containerEl || !gesture.begin(e, containerEl)) return;
+
+		// The claim's `preventDefault` suppresses the press's default focus, so claim it
 		// explicitly: without this, clicking the frame leaves focus wherever it was
 		// and the arrow-key move shortcuts never reach the tool.
 		containerEl.focus({ preventScroll: true });
 
 		dragController.startDragging(e, containerEl);
-
-		// Add pointer move/up handlers to element (not window!)
-		containerEl.addEventListener('pointermove', handlePointerMove);
-		containerEl.addEventListener('pointerup', handlePointerUp);
-
-		e.preventDefault();
 	}
 
 	function startResizing(e: PointerEvent, target: ResizeTarget, handle: HTMLElement) {
-		if (!containerEl) return;
+		e.stopPropagation();
+		if (!containerEl || !gesture.begin(e, containerEl)) return;
 
 		// Capture pointer for isolated event handling
 		containerEl.setPointerCapture(e.pointerId);
 
-		// `preventDefault` below suppresses the press's default focus, so move focus
+		// The claim's `preventDefault` suppresses the press's default focus, so move focus
 		// explicitly: the arrow-key resize alternative acts on the focused handle,
 		// and it should be the one just dragged.
 		handle.focus({ preventScroll: true });
@@ -279,13 +284,6 @@ import { onMount, untrack } from 'svelte';
 		};
 
 		coordinator?.bringToFront(containerEl);
-
-		// Add pointer move/up handlers to element (not window!)
-		containerEl.addEventListener('pointermove', handlePointerMove);
-		containerEl.addEventListener('pointerup', handlePointerUp);
-
-		e.preventDefault();
-		e.stopPropagation();
 	}
 
 	function handlePointerMove(e: PointerEvent) {
@@ -312,20 +310,6 @@ import { onMount, untrack } from 'svelte';
 		frameBandHeight = clampFrameBandHeight(resizeStart.frameBandHeight + deltaY);
 		width = clampWidth(resizeStart.width + (e.clientX - resizeStart.mouseX) * 2);
 		reclampPosition();
-	}
-
-	function handlePointerUp(e: PointerEvent) {
-		if (!containerEl) return;
-
-		// Release pointer capture
-		containerEl.releasePointerCapture(e.pointerId);
-
-		// Clean up event listeners
-		containerEl.removeEventListener('pointermove', handlePointerMove);
-		containerEl.removeEventListener('pointerup', handlePointerUp);
-
-		dragController.endDragging();
-		resizeTarget = null;
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -458,37 +442,13 @@ import { onMount, untrack } from 'svelte';
 		}
 	}
 
-	// Re-register whenever the coordinator identity or the tool id changes. The
-	// coordinator arrives through a republished runtime context, so a new instance
-	// replaces the old one mid-session; a one-shot registration would leave
-	// z-index, `bringToFront` and visibility-restore bound to the dead coordinator.
-	$effect(() => {
-		if (!coordinator || !toolId) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredCoordinator) {
-			coordinator.registerTool(toolId, 'Line Reader', undefined, ZIndexLayer.TOOL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
+	// Re-registers when a republished context brings a new coordinator.
+	$effect(() => registration.sync(coordinator, toolId));
 
 	onMount(() => {
 		return () => {
-			// Unregister from the coordinator the registration was actually made
-			// against, which is not necessarily the one currently in context.
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
+			gesture.release();
+			registration.release();
 		};
 	});
 
@@ -512,6 +472,12 @@ import { onMount, untrack } from 'svelte';
 		width = clampWidth(width);
 		position = clampToContainingBlock(centre);
 	}
+
+	// A panel hidden mid-drag takes its element with it; free the gesture so the
+	// next reveal can start one. `untrack`: ending it writes `resizeTarget`.
+	$effect(() => {
+		if (!visible) untrack(() => gesture.release());
+	});
 
 	// Position, then focus, when the tool becomes visible. Seeded synchronously so
 	// the panel is never painted at an unseeded coordinate, and focused with

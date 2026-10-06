@@ -21,11 +21,25 @@ import { findOrAddSession } from "./utils.js";
 const logger = createPieLogger("pie-scoring", () => isGlobalDebugEnabled());
 
 /**
- * Find the controller for a PIE element
+ * Find the controller for a PIE element.
+ *
+ * `deliveryBundleType` is the bundle type of the player asking. A `player.js`
+ * delivery, which is what a hosted player is, resolves no controller: its
+ * models and scores come from the server, and the registry is shared with
+ * every other loader on the page, so a registered controller is no evidence
+ * that this player may run one.
  */
 export const findPieController = (
 	elementName: string,
+	deliveryBundleType?: BundleType,
 ): PieController | undefined => {
+	if (deliveryBundleType === BundleType.player) {
+		logger.debug(
+			`[findPieController] ℹ️ ${elementName} delivered as player.js; using server-processed models`,
+		);
+		return undefined;
+	}
+
 	const registry = pieRegistry();
 
 	logger.debug(
@@ -57,27 +71,14 @@ export const findPieController = (
 		bundleType: entry.bundleType,
 	});
 
-	const controller = entry.controller;
+	// Registration writes `null` for a package without a controller.
+	const controller = entry.controller ?? undefined;
 	if (!controller) {
-		// Check if missing controller is expected based on bundle type
-		if (entry.bundleType === BundleType.clientPlayer) {
-			// client-player.js MUST have controllers
-			logger.error(
-				`[findPieController] ❌ CRITICAL: Registry entry exists for ${elementName} but controller is missing!`,
-			);
-			logger.error(
-				`[findPieController] Bundle type: ${entry.bundleType} (controllers required)`,
-			);
-			logger.error(`[findPieController] Entry:`, entry);
-			throw new Error(
-				`No controller found for ${elementName}. client-player.js bundles MUST include controllers. Check bundle loading and registration.`,
-			);
-		} else {
-			// player.js doesn't have controllers - this is expected
-			logger.debug(
-				`[findPieController] ℹ️ No controller for ${elementName} - using server-processed models (player.js bundle)`,
-			);
-		}
+		// A package without one, such as a legacy `@pie-element/protractor`,
+		// renders the model it is given, as `<pie-player>` passed it through.
+		logger.debug(
+			`[findPieController] ℹ️ No controller for ${elementName}; its model is used as given`,
+		);
 	} else {
 		logger.debug(
 			`[findPieController] ✅ Controller found for ${elementName} with functions:`,
@@ -103,6 +104,8 @@ export type ScorePieItemOptions = {
 	 * Existing scorePieItem callers keep the filtered result shape by default.
 	 */
 	includeMissingResults?: boolean;
+	/** The scoring player's bundle type; `player.js` scores nothing locally. */
+	bundleType?: BundleType;
 };
 
 const escapeAttributeSelectorValue = (value: string): string =>
@@ -175,7 +178,10 @@ export async function scorePieItem(
 			logger.debug("found pieEl %O for model id %s", pieEl, model.id);
 			const session = findOrAddSession(sessionData, model.id, model.element);
 			if (pieEl) {
-				const controller = findPieController(pieEl.localName);
+				const controller = findPieController(
+					pieEl.localName,
+					options.bundleType,
+				);
 				if (controller?.outcome) {
 					return {
 						...session,

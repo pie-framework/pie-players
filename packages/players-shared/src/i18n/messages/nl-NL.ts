@@ -60,6 +60,7 @@ const nlNL = {
 		items: "Vragen",
 		section: "Onderdeel",
 		loadingSection: "Onderdeel wordt geladen…",
+		sectionLoadError: "Het onderdeel kon niet worden geladen.",
 		loadingPassage: "Tekst wordt geladen…",
 		configurationError: "Configuratiefout",
 		playerError: "Fout in de speler",
@@ -137,6 +138,12 @@ const nlNL = {
 			closeA11y: "Hulpmiddel sluiten",
 		},
 
+		placement: {
+			controlsA11y: "Verplaatsen en draaien",
+			rotateClockwiseA11y: "{degrees}° rechtsom draaien",
+			rotateCounterclockwiseA11y: "{degrees}° linksom draaien",
+		},
+
 		announce: {
 			movedUp: "Omhoog verplaatst naar {position}",
 			movedDown: "Omlaag verplaatst naar {position}",
@@ -165,8 +172,8 @@ const nlNL = {
 		},
 		graph: {
 			name: "Grafiek",
-			description: "Grafische rekenmachine en assenstelsel",
-			buttonA11y: "Grafiek, grafische rekenmachine",
+			description: "Assenstelsel",
+			buttonA11y: "Grafiek, assenstelsel",
 			tooltip: "Grafiek",
 			toolA11y:
 				"Grafiekhulpmiddel — punten en lijnen tekenen in een assenstelsel",

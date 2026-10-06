@@ -81,7 +81,7 @@ describe("resolvePlayerRuntime", () => {
 		});
 
 		expect((runtime.resolvedPlayerProps as any).loaderOptions.bundleHost).toBe(
-			"https://proxy.pie-api.com/bundles",
+			"https://proxy.pie-api.com/bundles/",
 		);
 		expect(
 			(runtime.resolvedPlayerProps as any).loaderOptions.moduleResolution,

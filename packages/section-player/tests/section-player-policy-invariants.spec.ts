@@ -3,6 +3,7 @@ import {
 	DEFAULT_SECTION_PLAYER_POLICIES,
 	isPreloadEnabled,
 	isTelemetryEnabled,
+	resolveSectionPlayerPolicies,
 } from "../src/policies/index.js";
 import type { SectionPlayerPolicies } from "../src/policies/types.js";
 
@@ -64,5 +65,30 @@ test.describe("section player policy invariants", () => {
 				telemetry: { enabled: false },
 			}),
 		).toBe(false);
+	});
+
+	test("resolveSectionPlayerPolicies fills every unset field from the defaults", async () => {
+		const partial = (value: unknown) => value as SectionPlayerPolicies;
+		expect(resolveSectionPlayerPolicies(undefined)).toEqual(
+			DEFAULT_SECTION_PLAYER_POLICIES,
+		);
+		expect(resolveSectionPlayerPolicies(null)).toEqual(
+			DEFAULT_SECTION_PLAYER_POLICIES,
+		);
+		expect(
+			resolveSectionPlayerPolicies(partial({ preload: { enabled: false } })),
+		).toEqual({
+			...DEFAULT_SECTION_PLAYER_POLICIES,
+			preload: { enabled: false },
+		});
+		expect(
+			resolveSectionPlayerPolicies(partial({ readiness: { mode: "strict" } })),
+		).toEqual({
+			...DEFAULT_SECTION_PLAYER_POLICIES,
+			readiness: { mode: "strict" },
+		});
+		expect(resolveSectionPlayerPolicies(partial({ readiness: {} }))).toEqual(
+			DEFAULT_SECTION_PLAYER_POLICIES,
+		);
 	});
 });

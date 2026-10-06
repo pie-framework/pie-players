@@ -128,26 +128,6 @@ export async function loadSessionDemoActivity(args: {
 	return (await response.json()) as SessionDemoActivityLoadResponse;
 }
 
-export async function clearSessionDemoDb(
-	assessmentId: string,
-	attemptId: string,
-): Promise<void> {
-	const response = await fetch("/api/session-demo/bootstrap", {
-		method: "POST",
-		headers: {
-			"content-type": "application/json",
-		},
-		body: JSON.stringify({
-			assessmentId,
-			attemptId,
-			clearOnly: true,
-		}),
-	});
-	if (!response.ok) {
-		throw new Error(`Failed to clear session demo DB (${response.status})`);
-	}
-}
-
 export async function loadSnapshotFromSessionDb(args: {
 	assessmentId: string;
 	sectionId: string;

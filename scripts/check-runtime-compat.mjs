@@ -4,8 +4,10 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+	getImportTarget,
 	getNodeConsumerImportTargets,
 	readPublishPolicy,
+	splitPackageSpecifier,
 } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
@@ -38,17 +40,6 @@ const workspacePackageMap = () => {
 	return map;
 };
 
-const getImportTarget = (pkg) => {
-	const exp = pkg.exports?.["."] ?? pkg.exports;
-	if (typeof exp === "string") return exp;
-	if (exp && typeof exp === "object") {
-		if (typeof exp.import === "string") return exp.import;
-		if (typeof exp.default === "string") return exp.default;
-	}
-	if (typeof pkg.main === "string") return pkg.main;
-	return null;
-};
-
 const isLikelyBrowserGlobalError = (error) => {
 	const message = String(error?.message || "");
 	return /(customElements|window|document|HTMLElement|navigator|Class extends value undefined|superclass is not a constructor)/i.test(
@@ -60,14 +51,15 @@ const packageMap = workspacePackageMap();
 const failures = [];
 
 for (const name of NODE_SAFE_PACKAGES) {
-	const entry = packageMap.get(name);
+	const specifier = splitPackageSpecifier(name);
+	const entry = packageMap.get(specifier.name);
 	if (!entry) {
-		failures.push(`[node-safe] missing workspace package: ${name}`);
+		failures.push(`[node-safe] missing workspace package: ${specifier.name}`);
 		continue;
 	}
-	const target = getImportTarget(entry.pkg);
+	const target = getImportTarget(entry.pkg, specifier.subpath);
 	if (!target) {
-		failures.push(`[node-safe] ${name} has no importable root entry`);
+		failures.push(`[node-safe] ${name} has no importable entry`);
 		continue;
 	}
 	const absTarget = path.join(entry.dir, target);
@@ -85,14 +77,17 @@ for (const name of NODE_SAFE_PACKAGES) {
 }
 
 for (const name of BROWSER_ONLY_PACKAGES) {
-	const entry = packageMap.get(name);
+	const specifier = splitPackageSpecifier(name);
+	const entry = packageMap.get(specifier.name);
 	if (!entry) {
-		failures.push(`[browser-only] missing workspace package: ${name}`);
+		failures.push(
+			`[browser-only] missing workspace package: ${specifier.name}`,
+		);
 		continue;
 	}
-	const target = getImportTarget(entry.pkg);
+	const target = getImportTarget(entry.pkg, specifier.subpath);
 	if (!target) {
-		failures.push(`[browser-only] ${name} has no importable root entry`);
+		failures.push(`[browser-only] ${name} has no importable entry`);
 		continue;
 	}
 	const absTarget = path.join(entry.dir, target);

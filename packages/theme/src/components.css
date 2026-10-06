@@ -610,34 +610,60 @@ table.KdsTable02 > tbody > tr > td {
 	padding: 2px;
 }
 
-/* The grid rules below are mixed from the ink instead of taken from
+/* Bootstrap 4 / Learnosity table classes, as content migrated from Learnosity
+   carries them: `.table`, `.table-bordered`, `.table-striped`,
+   `.table-no-border`, `.lrn_width_auto`. Hosts once imported these rules from
+   pie-player-components to give data tables visible borders (PD-876).
+
+   A layout table gets none of them. Authors mark one with `.table-no-border`,
+   `role="presentation"` or both, and the grid, 100% width and cell padding
+   pushed its letter tiles and images apart, where hosts that never imported
+   the rules render it bare. The class carries the exclusion on its own,
+   because one exported markup spells the role into the class list
+   (`class="table … role= table-no-border"`) and has no role attribute.
+   Elements leave presentation tables unstyled for the same reason (PIE-440).
+   The exclusion sits in `:where()` so every selector keeps the specificity of
+   its plain `.table` form.
+
+   The grid rules are mixed from the ink instead of taken from
    --pie-border-light, which the DaisyUI mapping fills from base-200 — a surface,
    so a border set from it disappears into the page. The 15% mix keeps the
    near-invisible weight #dee2e6 had on white and inverts to a faint light rule
    on a dark surface. Mixed inline, not hoisted to a custom property: a custom
    property substitutes var(--pie-text) where it is declared, so a scoped
    <pie-theme scope="self"> below :root would not reach it. */
-:where([data-pie-content]) .table {
+:where([data-pie-content])
+.table:where(:not(.table-no-border, [role="presentation"])) {
 	width: 100%;
 	margin-bottom: 1em;
 	background-color: transparent;
 	border-collapse: collapse;
 }
 
-:where([data-pie-content]) .table th,
-:where([data-pie-content]) .table td {
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	th,
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	td {
 	padding: 0.75em;
 	vertical-align: top;
 	border-top: 1px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-:where([data-pie-content]) .table tbody + tbody {
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	tbody
+	+ tbody {
 	border-top: 2px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-:where([data-pie-content]) .table thead th {
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	thead
+	th {
 	vertical-align: bottom;
 	border-bottom: 2px solid
 		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
@@ -647,18 +673,32 @@ table.KdsTable02 > tbody > tr > td {
 	text-align: inherit;
 }
 
-:where([data-pie-content]) .table-bordered,
-:where([data-pie-content]) .table-bordered th,
-:where([data-pie-content]) .table-bordered td {
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"])),
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	th,
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	td {
 	border: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
 }
 
-:where([data-pie-content]) .table-bordered thead td,
-:where([data-pie-content]) .table-bordered thead th {
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	thead
+	td,
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	thead
+	th {
 	border-bottom-width: 2px;
 }
 
-:where([data-pie-content]) .table-striped tbody tr:nth-of-type(odd) {
+:where([data-pie-content])
+	.table-striped:where(:not(.table-no-border, [role="presentation"]))
+	tbody
+	tr:nth-of-type(odd) {
 	background-color: color-mix(in srgb, var(--pie-text, #000) 5%, transparent);
 }
 

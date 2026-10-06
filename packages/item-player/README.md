@@ -43,12 +43,18 @@ loading several player packages, or several copies of one, yields a single copy.
 
 This applies to CDN hosts too: no extra `<link>` is needed.
 
-Every rule applies inside a `[data-pie-content]` element only. The player sets
+Content rules apply inside a `[data-pie-content]` element only. The player sets
 the attribute on the root it renders into, so the stylesheet's bare `h1`–`h6`,
 `table`, `th`, `.table` and `.center` selectors no longer restyle the page around
 it. Each selector is wrapped in `:where()`, which keeps its specificity. A host
 that renders authored markup itself, outside a player, puts `data-pie-content` on
 that container to give it the same styles.
+
+Rules whose selector requires a KDS class (`kds-*`, `Kds*`), MathJax output
+(`mjx-*`, `TEX-*`) or a legacy content class such as `.frac` or `.noprint` are
+the exception and stay document-wide. Elements portal menus and popovers holding
+authored markup to `<body>`, outside the player: an inline-dropdown's choices
+keep their KDS fractions and MathJax glyph fixes there.
 
 ### Upgrading from a manual import
 

@@ -44,7 +44,7 @@
 		"lint": "biome lint EventPanel.svelte index.ts vite.config.ts package.json"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.14",
+		"@biomejs/biome": "^2.5.15",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",

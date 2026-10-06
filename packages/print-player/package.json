@@ -33,7 +33,7 @@
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
 		"@playwright/test": "^1.63.0",
-		"@types/node": "^26.6.3",
+		"@types/node": "^26.6.4",
 		"esbuild": "^0.28.2",
 		"svelte": "^5.57.1",
 		"typescript": "^5.9.3",

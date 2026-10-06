@@ -1,5 +1,12 @@
 # @pie-players/pie-context
 
+## 0.3.74
+
+### Patch Changes
+
+- fe5557f: Adds `connectContextWithRetry`, which subscribes a host to a context whose
+  provider may connect after it.
+
 ## 0.3.73
 
 No changes in this release.

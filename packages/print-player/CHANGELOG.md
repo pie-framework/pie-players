@@ -1,5 +1,130 @@
 # @pie-players/pie-print-player
 
+## 0.3.74
+
+### Patch Changes
+
+- 8b24361: The players install no global content stylesheet when the host already loads
+  its own copy, scoped or not, and remove theirs when a host copy arrives after
+  them. `<html data-pie-content-styles="host">` still opts out explicitly.
+- 2127eaa: `components.css` rules keyed on KDS classes, MathJax output or legacy content
+  classes such as `.frac` and `.noprint` apply document-wide again, so authored
+  markup an element portals to `<body>`, such as an inline-dropdown's choices,
+  keeps its KDS fractions and MathJax glyph fixes. Bare tag and framework-class
+  rules stay inside `[data-pie-content]`.
+- 549de08: `components.css` styles authored content inside a `[data-pie-content]` element
+  only, which `pie-item-player` and `pie-print` set on the root they render into.
+  Its bare `h1`–`h6`, `table`, `th`, `.table` and `.center` rules no longer
+  restyle the host page. A host that renders authored markup outside a player
+  adds `data-pie-content` to that container to keep the styles there. A host
+  copy confined with `@scope (…)` keeps working when its scope root contains the
+  player.
+- 3ccab31: The `esm` strategy loads in Firefox on pages where it rejects the player's
+  import map: after the page's first module load, or when the page already has
+  one. The player detects the rejected map and loads the elements through a
+  bundled es-module-shims in shim mode; browsers that apply the map load natively
+  as before. A page that runs its own es-module-shims must run it in shim mode.
+- b072a44: `strategy="esm"` works in a webpack-built host. Webpack compiled the runtime
+  `import()` of each element, controller, runtime-support and print-element URL
+  into an empty module context, so every load failed with
+  `ITEM_PLAYER_LOAD_ERROR` and the build warned "Critical dependency: the request
+  of a dependency is an expression". Those imports now carry
+  `/* webpackIgnore: true */` beside `/* @vite-ignore */`.
+- 0e8e8df: Under esm URL resolution, an element that declares `pie.browserEditorRuntime`
+  loads its editor-runtime variant, and the page's editors share one Tiptap and
+  ProseMirror from `@pie-element/shared-editor-runtime`, mapped once per page. An
+  element that runtime cannot serve, or whose variant fails to load, loads
+  `./browser/*` and is reported as a shared-dependency conflict. A package that
+  does not publish the requested view, such as match-list's `./browser/author`,
+  now fails alone with that missing export, and the other elements in the load
+  still register.
+- fa3ade0: The vendored module shim no longer breaks webpack builds that run source-map-loader over node_modules, such as Angular development builds.
+- b2476be: These packages no longer declare dependencies that their builds inline or never
+  import, so installing them installs fewer packages. A host that imports one of
+  those packages itself, such as `@pie-players/pie-theme`'s stylesheets, declares
+  it in its own `package.json`.
+- Updated dependencies [7361295]
+- Updated dependencies [040299f]
+- Updated dependencies [30a037f]
+- Updated dependencies [8b24361]
+- Updated dependencies [498f937]
+- Updated dependencies [2825bf5]
+- Updated dependencies [8b24361]
+- Updated dependencies [377146f]
+- Updated dependencies [3e88cac]
+- Updated dependencies [17afe85]
+- Updated dependencies [5fb7902]
+- Updated dependencies [3cb91c5]
+- Updated dependencies [3ccab31]
+- Updated dependencies [b072a44]
+- Updated dependencies [0e8e8df]
+- Updated dependencies [223f00a]
+- Updated dependencies [a3e721c]
+- Updated dependencies [05845a3]
+- Updated dependencies [adc3da6]
+- Updated dependencies [e40a2a6]
+- Updated dependencies [39b2c16]
+- Updated dependencies [dba059f]
+- Updated dependencies [7d99003]
+- Updated dependencies [580cc7b]
+- Updated dependencies [0d36cde]
+- Updated dependencies [a4f73f6]
+- Updated dependencies [aa58883]
+- Updated dependencies [6859fb7]
+- Updated dependencies [435bb29]
+- Updated dependencies [fa3ade0]
+- Updated dependencies [a0408d4]
+- Updated dependencies [f5d1b01]
+- Updated dependencies [63b75e6]
+- Updated dependencies [549de08]
+- Updated dependencies [d860667]
+- Updated dependencies [3841938]
+- Updated dependencies [9d51813]
+- Updated dependencies [2bbda17]
+- Updated dependencies [05b698f]
+- Updated dependencies [cadfcf9]
+- Updated dependencies [a2a97eb]
+- Updated dependencies [2be7868]
+- Updated dependencies [2084d88]
+- Updated dependencies [cd183fa]
+- Updated dependencies [a38056b]
+- Updated dependencies [140d39b]
+- Updated dependencies [da9e2f7]
+- Updated dependencies [fbb61b6]
+- Updated dependencies [da37ba4]
+- Updated dependencies [771def2]
+- Updated dependencies [8a8b932]
+- Updated dependencies [7bc44f3]
+- Updated dependencies [ec632eb]
+- Updated dependencies [7c4b13d]
+- Updated dependencies [3ddbe89]
+- Updated dependencies [a8c0d7f]
+- Updated dependencies [8f4b1da]
+- Updated dependencies [8b24361]
+- Updated dependencies [ff7c2bc]
+- Updated dependencies [5a0bcb1]
+- Updated dependencies [0bd34af]
+- Updated dependencies [8e13d3d]
+- Updated dependencies [799b592]
+- Updated dependencies [976c4d3]
+- Updated dependencies [45bec78]
+- Updated dependencies [6e6f883]
+- Updated dependencies [6cc239a]
+- Updated dependencies [05845a3]
+- Updated dependencies [2cd3d03]
+- Updated dependencies [3be570a]
+- Updated dependencies [b7c9382]
+- Updated dependencies [a0e15b9]
+- Updated dependencies [60077c2]
+- Updated dependencies [22bcd83]
+- Updated dependencies [326f382]
+- Updated dependencies [4369286]
+- Updated dependencies [3d8bb9a]
+- Updated dependencies [e25ebc5]
+- Updated dependencies [3a01d9b]
+  - @pie-players/pie-assessment-toolkit@0.3.74
+  - @pie-players/pie-players-shared@0.3.74
+
 ## 0.3.73
 
 ### Patch Changes

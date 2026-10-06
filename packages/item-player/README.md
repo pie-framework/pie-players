@@ -391,8 +391,11 @@ The canonical producer-side contract for `@pie-element/*` packages lives in the
 - `strategy="preloaded"` means the host installs pie-elements-ng packages as
   npm dependencies and registers their ESM builds with
   `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
-  before the player renders. Generated `@pie-players/pie-preloaded-player`
-  builds register the same way and remain for hosts that have not moved. See
+  before the player renders, passing the
+  [MathJax asset root](../../docs/item-player/loading-strategies.md#mathjax-assets)
+  the elements' bundled MathJax loads its fonts and speech from. Generated
+  `@pie-players/pie-preloaded-player` builds register the same way, listing the
+  URL of each MathJax file they ship, and remain for hosts that have not moved. See
   [Loading strategies](../../docs/item-player/loading-strategies.md#strategypreloaded).
 
 ## Authoring configuration

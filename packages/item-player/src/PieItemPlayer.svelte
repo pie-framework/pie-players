@@ -133,6 +133,7 @@
 		ensureHostSessionEntries,
 		ensureRegistered,
 		flushPendingSessionNotifications,
+		forwardMathjaxEvents,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -144,6 +145,7 @@
 		parsePackageName,
 		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
+		resolveEsmAssetRoot,
 		resolveEsmRuntimeSupportUrl,
 		resolveLoadControllers,
 		attachInstrumentationEventBridge,
@@ -270,6 +272,17 @@
 	);
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
+	);
+	// The root the player's own MathJax, for math in the item's markup, loads its
+	// fonts and speech from when the page sets none: under `esm`, the CDN the
+	// elements come from. A host-bundled player finds no root in its module URL.
+	const markupMathAssetRoot = $derived(
+		normalizedStrategy === "esm"
+			? resolveEsmAssetRoot({
+					cdnBaseUrl: resolvedEsmCdnUrl,
+					cdnProvider: loaderOptions?.esmCdnProvider,
+				})
+			: undefined,
 	);
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
@@ -1329,6 +1342,17 @@
 		});
 	});
 
+	// The ESM loader forwards the MathJax adapter's page events; under
+	// `preloaded` no loader runs, so the player does, on the same terms.
+	$effect(() => {
+		if (normalizedStrategy !== "preloaded" || !loaderConfig?.trackPageActions) return;
+		if (typeof window === "undefined") return;
+		const provider = resolvedInstrumentationProvider;
+		return forwardMathjaxEvents(window, () =>
+			provider?.isReady() ? provider : undefined,
+		);
+	});
+
 	$effect(() => {
 		const cfg = itemConfig;
 		if (showBottomBorder && env.mode === "evaluate" && cfg?.elements) {
@@ -1850,6 +1874,7 @@
 					i18n={interfaceMessages}
 					bundleType={resolveBundleType()}
 					{loaderConfig}
+					{markupMathAssetRoot}
 					mode={resolvedMode}
 					authoringBackend={authoringBackend}
 					{trustMarkup}

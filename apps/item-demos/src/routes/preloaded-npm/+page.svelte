@@ -5,6 +5,7 @@
 	import MultipleChoice from '@pie-element/multiple-choice/browser/delivery';
 	import * as multipleChoiceController from '@pie-element/multiple-choice/browser/controller';
 	import multipleChoiceManifest from '@pie-element/multiple-choice/package.json';
+	import { DEMO_PRELOADED_OPTIONS } from '@pie-players/demo-ui/preloaded';
 	import '@pie-players/pie-item-player';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
@@ -43,7 +44,7 @@
 				element: McPopulatedBlank,
 				controller: mcPopulatedBlankController
 			}
-		]);
+		], DEMO_PRELOADED_OPTIONS);
 	} catch (error) {
 		registrationError = error instanceof Error ? error.message : String(error);
 	}

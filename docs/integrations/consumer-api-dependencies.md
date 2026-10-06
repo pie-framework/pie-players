@@ -66,6 +66,23 @@ outside the sheet. Hosts V and M are unchanged: their copies sit inside `@scope`
 which still bounds every rule to the scope root. Row verification dates are
 unchanged.
 
+On 2026-10-06 MathJax's fonts and speech, from
+`@pie-element/shared-math-rendering-mathjax` 0.1.3, load from the file URLs or the
+asset root `registerPreloadedElements` takes as `math.assetUrls` and
+`math.assetRoot`, checked against the recorded rows and every host's checkout,
+none of which reads `mathjax/load.js`, `startMathRendering` or the asset options.
+Hosts V and A run the `iife` strategy, where the legacy renderer typesets and the
+item player's own MathJax never loads. Host P and Host R's preloaded-package view
+load a generated package whose `index.js` lists every file under its
+`mathjax/npm/` in `math.assetUrls`. The generator no longer ships `mathjax/load.js`
+or the page MathJax it started, and refuses elements on an adapter before 0.1.3,
+so a set config pinning such elements stops building until it moves; packages
+already published are unchanged. Host R's `esm` branch gives the player's MathJax
+the element CDN's npm root. Host M registers neither, so the player's own markup
+math renders without web fonts or speech once it takes the release; its element
+is on an earlier adapter and keeps loading from jsDelivr. Row verification dates
+are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -588,6 +605,16 @@ Registration validates synchronously and throws, and Host M calls it as its
 bundle evaluates, so renaming an entry field or no longer accepting a module
 namespace for `element` or `controller` stops the remote loading. Skipping
 alignment for a registered package fails that item's load.
+
+Host M passes no second argument, so it sets no MathJax asset root. From
+`@pie-element/shared-math-rendering-mathjax` 0.1.3, the adapter version the
+item player imports, the player's own MathJax and the copy in any element built
+on that version load fonts and speech only from the URLs in `math.assetUrls`,
+the root in `math.assetRoot` or the page options, or the npm root of their own
+module URL, which a bundle does not have. Without one they render without web
+fonts or speech and warn once.
+Its element is on an adapter from before 0.1.3, which keeps loading from
+jsDelivr.
 
 ### `pie-section-player-splitpane` and `-vertical` (Hosts A, R)
 
@@ -1240,7 +1267,8 @@ string the host's launch configuration supplies. That makes three things API
 there: `dist/index.js` as the entry name; `dist/` as a self-contained tree whose
 runtime imports are all relative — `preloaded.js`, `elements/` with its
 chunks, `mathjax/`, `pie-item-player.js`, and the `chunks/` both player modules
-import;
+import, with `index.js` naming each file under `mathjax/npm/` beside it by
+`new URL(…, import.meta.url)` in `math.assetUrls`;
 and a `version` string usable as a directory name. The generated package has no
 `exports` map, so none of this passes through one. A break shows up only in the
 browser, as a failed import before any player exists, and ends in the host's load
@@ -1337,7 +1365,9 @@ The item player's own MathJax 4, the browser build of
 page with no math renderer, is a dynamic import as well, so in Host M it
 evaluates at startup with its font chunks, about 2.9 MB. Like the copies in the
 `browser/delivery` element builds Host M bundles (checked 2026-10-05), it neither
-reads nor writes `window.MathJax`, and the shell's MathJax 4 is left alone.
+reads nor writes `window.MathJax`, and the shell's MathJax 4 is left alone. From
+adapter 0.1.3 it takes its files' location from the registration, and the
+bundle URL gives it none (see the item-player section).
 
 ## Content stylesheet delivery
 

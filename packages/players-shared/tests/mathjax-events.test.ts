@@ -4,12 +4,16 @@ import type {
 	InstrumentationProvider,
 } from "../src/instrumentation/types";
 import {
-	forwardMathjaxVersionConflicts,
+	forwardMathjaxEvents,
+	MATHJAX_NO_ASSET_ROOT_EVENT,
 	MATHJAX_VERSION_CONFLICT_EVENT,
-} from "../src/loaders/mathjax-version-conflict";
+} from "../src/loaders/mathjax-events";
 
 const DOCS_URL =
 	"https://github.com/pie-framework/pie-players/blob/develop/docs/item-player/loading-strategies.md#one-mathjax-version-per-page";
+
+const ASSETS_DOCS_URL =
+	"https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#assets";
 
 class FakeInstrumentationProvider implements InstrumentationProvider {
 	readonly providerId = "fake";
@@ -41,11 +45,11 @@ function conflictEvent(condition: string): CustomEvent {
 	});
 }
 
-describe("forwardMathjaxVersionConflicts", () => {
+describe("forwardMathjaxEvents", () => {
 	test("tracks the condition and docs link of each conflict", () => {
 		const provider = new FakeInstrumentationProvider();
 		const view = new EventTarget();
-		forwardMathjaxVersionConflicts(view, () => provider);
+		forwardMathjaxEvents(view, () => provider);
 
 		view.dispatchEvent(conflictEvent("foreign-output-stylesheet"));
 		view.dispatchEvent(conflictEvent("mathjax-3-global"));
@@ -65,11 +69,44 @@ describe("forwardMathjaxVersionConflicts", () => {
 		]);
 	});
 
+	test("tracks the effect and docs link of a copy with no asset root", () => {
+		const provider = new FakeInstrumentationProvider();
+		const view = new EventTarget();
+		forwardMathjaxEvents(view, () => provider);
+
+		view.dispatchEvent(
+			new CustomEvent(MATHJAX_NO_ASSET_ROOT_EVENT, {
+				detail: {
+					effect: "no-web-fonts-or-speech",
+					message: "[math-rendering] No asset root for MathJax: ...",
+					docsUrl: ASSETS_DOCS_URL,
+				},
+			}),
+		);
+
+		expect(provider.trackedEvents).toEqual([
+			{
+				name: "pie-mathjax-no-asset-root",
+				attributes: { effect: "no-web-fonts-or-speech", docsUrl: ASSETS_DOCS_URL },
+			},
+		]);
+	});
+
+	test("stops forwarding once the returned function is called", () => {
+		const provider = new FakeInstrumentationProvider();
+		const view = new EventTarget();
+		forwardMathjaxEvents(view, () => provider)();
+
+		view.dispatchEvent(conflictEvent("mathjax-3-global"));
+
+		expect(provider.trackedEvents).toEqual([]);
+	});
+
 	test("reads the provider when the event fires", () => {
 		const provider = new FakeInstrumentationProvider();
 		let current: InstrumentationProvider | undefined;
 		const view = new EventTarget();
-		forwardMathjaxVersionConflicts(view, () => current);
+		forwardMathjaxEvents(view, () => current);
 
 		view.dispatchEvent(conflictEvent("mathjax-3-global"));
 		current = provider;
@@ -84,9 +121,9 @@ describe("forwardMathjaxVersionConflicts", () => {
 		const shared = new FakeInstrumentationProvider();
 		const other = new FakeInstrumentationProvider();
 		const view = new EventTarget();
-		forwardMathjaxVersionConflicts(view, () => shared);
-		forwardMathjaxVersionConflicts(view, () => shared);
-		forwardMathjaxVersionConflicts(view, () => other);
+		forwardMathjaxEvents(view, () => shared);
+		forwardMathjaxEvents(view, () => shared);
+		forwardMathjaxEvents(view, () => other);
 
 		view.dispatchEvent(conflictEvent("mathjax-3-global"));
 
@@ -100,7 +137,7 @@ describe("forwardMathjaxVersionConflicts", () => {
 			throw new Error("provider down");
 		};
 		const view = new EventTarget();
-		forwardMathjaxVersionConflicts(view, () => provider);
+		forwardMathjaxEvents(view, () => provider);
 
 		expect(() =>
 			view.dispatchEvent(conflictEvent("mathjax-3-global")),

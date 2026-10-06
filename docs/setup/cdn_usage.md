@@ -49,10 +49,10 @@ A host under a CSP allows, beyond its own origin:
 | Directive | Source | Why |
 | --- | --- | --- |
 | `script-src` | the CDN origin, e.g. `https://cdn.jsdelivr.net` | The entry, its chunks, and the Cortex calculator's worker file, which the worker's `blob:` module imports |
-| `worker-src` | `blob:` | A browser refuses a worker script from another origin, so the Cortex calculator starts its worker from a same-origin `blob:` module that imports the file. A self-hosted copy on the page's own origin starts the worker directly |
+| `worker-src` | `blob:` | A browser refuses a worker script from another origin, so the Cortex calculator starts its worker from a same-origin `blob:` module that imports the file. A self-hosted copy on the page's own origin starts the worker directly. MathJax 4 starts its speech worker from a `blob:` script the same way |
 | `connect-src` | `https://cdn.jsdelivr.net` | The speech-rule-engine inside the `iife` strategy's MathJax 3 fetches its locale maps when the player loads its first `iife` item, and throws an uncaught error when the request is blocked |
 
-The following load from third-party origins in every install, npm or CDN, and are not specific to this build: under `iife`, MathJax 3's CHTML fonts from unpkg (`@pie-lib/math-rendering-module` sets `fontURL` with no override); under `esm`, MathJax 4's fonts from jsDelivr; the `ndsIcons` toolbar path's FontAwesome from jsDelivr and its Roboto from Google Fonts and ui.renaissance.com. The toolkit's math speech also fetches SRE 5 locale tables from jsDelivr unless `mathSpeech.engineOptions.json` is set.
+The following load from third-party origins in every install, npm or CDN, and are not specific to this build: under `iife`, MathJax 3's CHTML fonts from unpkg (`@pie-lib/math-rendering-module` sets `fontURL` with no override); under `esm`, MathJax 4's fonts and speech data from the element CDN, the [asset root](../item-player/loading-strategies.md#mathjax-assets) of adapter 0.1.3 and later, and from jsDelivr for earlier adapters; the `ndsIcons` toolbar path's FontAwesome from jsDelivr and its Roboto from Google Fonts and ui.renaissance.com. The toolkit's math speech also fetches SRE 5 locale tables from jsDelivr unless `mathSpeech.engineOptions.json` is set.
 
 ## Tools
 

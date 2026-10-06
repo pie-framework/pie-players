@@ -125,7 +125,7 @@ The ESM player supports loading different views/variants of elements through ESM
 
 **Architecture**:
 - The host installs pie-elements-ng packages as npm dependencies, all from one release, and its build bundles their ESM builds. Each inlines every library except React. Elements whose builds typeset on `window.MathJax` share the MathJax the first of them loads, so a set from one release typesets with the MathJax its elements were built for; elements that bundle their own MathJax share none ([One MathJax version per page](../item-player/loading-strategies.md#one-mathjax-version-per-page))
-- The host registers them with `registerPreloadedElements` before the player renders, and the player asserts they are registered
+- The host registers them with `registerPreloadedElements` before the player renders, with the [asset root](../item-player/loading-strategies.md#mathjax-assets) MathJax loads its fonts and speech from, and the player asserts they are registered
 - ESM only: runtime-loaded IIFE bundles are the `iife` strategy
 
 **Use Cases**:

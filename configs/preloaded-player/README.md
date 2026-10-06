@@ -27,6 +27,12 @@ An element's optional `tag` is the base tag to register, for example
 adds the canonical version suffix. Content can author another base tag for the
 same package; the player defines that versioned tag from the registered element.
 
+An optional `speechLocales`, in the object form, lists the math speech locales
+the build ships, by SRE locale id, such as `["en", "es"]`; unset, it ships
+English. Each must be one SRE ships: af, ca, da, de, en, es, fr, hi, it, ko,
+nb, nn or sv. The speech language menu lists only these. `--speechLocales en,es`
+overrides the config for one build.
+
 ## Local build
 
 ```bash

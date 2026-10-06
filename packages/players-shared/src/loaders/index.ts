@@ -71,12 +71,18 @@ export {
 	BUILT_IN_VIEWS,
 	createEsmBackend,
 	mapEsmViewElements,
+	resolveEsmAssetRoot,
 	resolveEsmRuntimeSupportUrl,
 } from "./esm-adapter.js";
 export type {
 	IifeBackend,
 	IifeBundleRetryStatus,
 } from "./iife-adapter.js";
+export {
+	forwardMathjaxEvents,
+	MATHJAX_NO_ASSET_ROOT_EVENT,
+	MATHJAX_VERSION_CONFLICT_EVENT,
+} from "./mathjax-events.js";
 export { DEFAULT_BUNDLE_HOST, DEFAULT_ESM_CDN_URL } from "./defaults.js";
 export { createIifeBackend } from "./iife-adapter.js";
 
@@ -87,7 +93,9 @@ export { resolveLoadControllers } from "./controller-loading.js";
 export type {
 	PreloadedController,
 	PreloadedElement,
+	PreloadedRegistrationOptions,
 } from "./preloaded-registration.js";
+export type { MathAssetOptions } from "../pie/math-assets.js";
 export { registerPreloadedElements } from "./preloaded-registration.js";
 export type { PreloadedElementSpecs } from "./preloaded-alignment.js";
 export { alignPreloadedElementVersions } from "./preloaded-alignment.js";

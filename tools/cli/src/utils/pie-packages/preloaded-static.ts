@@ -8,7 +8,14 @@ import { assertElementPackagesAllowed } from "@pie-players/pie-players-shared/lo
 import { parsePackageName } from "@pie-players/pie-players-shared/pie";
 import { transform } from "esbuild";
 
-import { buildElementModules, type ElementModulesBuild, MATHJAX_LOADER_FILE } from "./preloaded-elements-build.js";
+import {
+	adapterAssetPackages,
+	assertSpeechLocales,
+	assetPackages,
+	buildElementModules,
+	type ElementModulesBuild,
+	MATHJAX_NPM_DIR,
+} from "./preloaded-elements-build.js";
 import type { ElementSpec } from "./types.js";
 
 export interface BuildStaticConfig {
@@ -20,6 +27,8 @@ export interface BuildStaticConfig {
 	outputDir?: string;
 	publish?: boolean;
 	monorepoDir: string;
+	/** The speech locales to ship, by SRE locale id; English alone when unset. */
+	speechLocales?: string[];
 }
 
 /** A published element set: the config it comes from, and the dist-tag it publishes under. */
@@ -46,6 +55,30 @@ export async function readElementSet(elementsFile: string): Promise<ElementSet> 
 	}
 	const parsed = JSON.parse(await readFile(elementsFile, "utf-8"));
 	return { name, distTag: parsed?.latest === true ? "latest" : name };
+}
+
+/**
+ * The speech locales a build ships: `flag`, comma-separated, then the config
+ * file's `speechLocales`. `undefined` leaves the build's default.
+ */
+export async function readSpeechLocales(
+	elementsFile?: string,
+	flag?: string,
+): Promise<string[] | undefined> {
+	if (flag !== undefined) {
+		return flag
+			.split(",")
+			.map((locale) => locale.trim())
+			.filter(Boolean);
+	}
+	if (!elementsFile) return undefined;
+	const parsed = JSON.parse(await readFile(elementsFile, "utf-8"));
+	const locales = Array.isArray(parsed) ? undefined : parsed?.speechLocales;
+	if (locales === undefined) return undefined;
+	if (!Array.isArray(locales) || locales.some((locale) => typeof locale !== "string")) {
+		throw new Error(`"speechLocales" in ${elementsFile} must be an array of locale ids`);
+	}
+	return locales;
 }
 
 const STATIC_PACKAGE_NAME = "@pie-players/pie-preloaded-player";
@@ -220,26 +253,38 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 }
 
 /**
- * The build's browser entry. It loads the bundled element modules, starts the
- * page's MathJax load from the copy beside it, registers the elements through
- * the item player's `registerPreloadedElements`, and loads the item player. The
- * top-level await makes `await import()` of the entry resolve once every
- * element is registered.
+ * The build's browser entry. It loads the bundled element modules, registers
+ * the elements through the item player's `registerPreloadedElements`, giving
+ * the adapter copies the URL of each MathJax file the build ships, and loads the
+ * item player. Each import is a literal `import()` and each file URL a literal
+ * `new URL(…, import.meta.url)`, so a bundler that processes the entry follows
+ * both. The top-level await makes `await import()` of the entry resolve once
+ * every element is registered.
  */
 export function generateIndex(
 	elements: string[],
 	elementTags: Record<string, string> = {},
-	{ mathjax = false }: { mathjax?: boolean } = {},
+	{ mathjaxFiles = [], speechLocales }: Partial<ElementModulesBuild> = {},
 ): string {
 	const entries = JSON.stringify(preloadedEntries(elements, elementTags), null, 2).replace(
 		/\n/g,
 		"\n  ",
 	);
-	const startMath = mathjax
-		? `
-    // Before any element renders: the first adapter copy to render starts the
-    // page's one MathJax load, and this one loads it from the build.
-    startMathRendering(new URL('./mathjax/${MATHJAX_LOADER_FILE}', import.meta.url).href);`
+	const assetUrls = mathjaxFiles
+		.map(
+			(file) =>
+				`\n          ${JSON.stringify(file)}: new URL(${JSON.stringify(`./mathjax/${MATHJAX_NPM_DIR}/${file}`)}, import.meta.url).href,`,
+		)
+		.join("");
+	const registration = mathjaxFiles.length
+		? `, {
+      // MathJax's files, each by its URL, with speech for these locales alone.
+      math: {
+        assetUrls: {${assetUrls}
+        },
+        speechLocales: ${JSON.stringify(speechLocales ?? [])},
+      },
+    }`
 		: "";
 
 	return `// Auto-generated entry point for pie-preloaded-player
@@ -261,7 +306,6 @@ await (async function initializePieItemPlayerStatic() {
     }
     throw lastError;
   };
-  const importWithRetry = (specifier) => withRetry(() => import(specifier));
 
   // Parity with @pie-framework/pie-fixed-player-static, whose load signal Star
   // and Quiz Engine listen for: the same event name on \`document\`, the same
@@ -283,9 +327,8 @@ await (async function initializePieItemPlayerStatic() {
   };
 
   try {
-    const { registerPreloadedElements } = await importWithRetry('./preloaded.js');
-    const { elements: elementClasses, startMathRendering } =
-      await importWithRetry('./elements/index.js');${startMath}
+    const { registerPreloadedElements } = await withRetry(() => import('./preloaded.js'));
+    const { elements: elementClasses } = await withRetry(() => import('./elements/index.js'));
     // Registered without controllers, for hosted players.
     registerPreloadedElements(elements.map((entry) => {
       const element = elementClasses[entry.package];
@@ -293,12 +336,12 @@ await (async function initializePieItemPlayerStatic() {
         throw new Error('[pie-preloaded-player] No element class found in build for ' + entry.package);
       }
       return { ...entry, element };
-    }));
+    })${registration});
     // A page that already registered \`pie-item-player\` — anything importing
     // @pie-players/pie-section-player — renders these elements through that
     // copy. This one would only find the tag taken, so it is not fetched.
     if (!customElements.get('pie-item-player')) {
-      await importWithRetry('./pie-item-player.js');
+      await withRetry(() => import('./pie-item-player.js'));
     }
     announceLoadState('PIE-Fixed-Player-Load-Complete');
   } catch (error) {
@@ -333,18 +376,18 @@ function generateTypes(): string {
 }
 
 /** What `dist/mathjax/` holds, for the README. */
-function describeMath(mathjaxVersion: string | undefined, bundledMathjaxAssets: string[]): string {
-	const page = mathjaxVersion && `MathJax ${mathjaxVersion} with its fonts and speech data under \`dist/mathjax/\``;
-	if (!bundledMathjaxAssets.length) return page || "no MathJax, since nothing in it renders math";
-	const bundled = `the font and speech files for the MathJax bundled into the item player and ${page ? "the other elements" : "each element that renders math"}, under \`dist/mathjax/npm/\` (${bundledMathjaxAssets.map((asset) => `\`${asset}\``).join(", ")})`;
-	return page ? `${page} for elements that render on the page's MathJax, and ${bundled}` : bundled;
+function describeMath({ mathjaxFiles, speechLocales }: ElementModulesBuild): string {
+	if (!mathjaxFiles.length) return "no MathJax files, since nothing in it renders math";
+	const packages = [...assetPackages(mathjaxFiles).keys()].map((pkg) => `\`${pkg}\``).join(", ");
+	const speech = (speechLocales ?? []).map((locale) => `\`${locale}\``).join(", ");
+	return `the fonts and speech worker MathJax loads, with speech in ${speech}, under \`dist/mathjax/${MATHJAX_NPM_DIR}/\` (${packages})`;
 }
 
 function generateReadme(
 	config: BuildStaticConfig,
 	version: string,
 	hash: string,
-	{ mathjaxVersion, bundledMathjaxAssets }: ElementModulesBuild,
+	math: ElementModulesBuild,
 ): string {
 	const parsedElements = parseElements(config.elements);
 	const sortedElements = Object.entries(parsedElements).sort(([a], [b]) =>
@@ -372,7 +415,7 @@ Pre-bundled PIE item-player package with static element versions for production 
 
 **Note:** This package registers a predefined set of PIE elements for the preloaded strategy. Required tags must be registered before mounting the player. Missing registrations produce a readiness error.
 
-\`dist/\` is one ES module tree with every dependency included: the item player, the elements' ESM browser builds with one shared React, and ${describeMath(mathjaxVersion, bundledMathjaxAssets)}. A page loads nothing from outside \`dist/\`, and every import in it is relative, so the tree can be served from any path.
+\`dist/\` is one ES module tree with every dependency included: the item player, the elements' ESM browser builds with one shared React, and ${describeMath(math)}. A page loads nothing from outside \`dist/\`, and every import in it is relative, so the tree can be served from any path. The entry imports the rest with literal \`import()\` and names each MathJax file with a literal \`new URL(…, import.meta.url)\`, so a host bundler that follows both, such as Vite or webpack 5, bundles the tree and emits the files.
 
 ## Included PIE elements
 
@@ -544,6 +587,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	}
 
 	assertBuildElements(config.elements, config.elementTags);
+	if (config.speechLocales) assertSpeechLocales(config.speechLocales);
 	const version = generateVersion(config);
 	const hash = generateHash(config.elements);
 
@@ -578,7 +622,11 @@ export async function buildPreloadedPlayerStaticPackage(
 	await cp(itemPlayerDistSrc, outputDistDir, { recursive: true });
 	await minifyPlayerModules(outputDistDir);
 
-	const math = await buildElementModules(config.elements, outputDistDir);
+	const math = await buildElementModules(config.elements, outputDistDir, {
+		// The adapter the item player bundles is the one players-shared resolves.
+		playerAssetPackages: adapterAssetPackages(join(config.monorepoDir, "packages", "players-shared")),
+		speechLocales: config.speechLocales,
+	});
 
 	const packageJson = generatePackageJson(config, version);
 	await writeFile(
@@ -587,7 +635,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(config.elements, config.elementTags, { mathjax: !!math.mathjaxVersion }),
+		generateIndex(config.elements, config.elementTags, math),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(

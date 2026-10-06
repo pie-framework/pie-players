@@ -24,6 +24,7 @@
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
+	import { DEMO_PRELOADED_OPTIONS } from '@pie-players/demo-ui/preloaded';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
@@ -94,7 +95,7 @@
 			{ ...mcPopulatedBlank, element: McPopulatedBlank, controller: mcPopulatedBlankController },
 			{ ...multipleChoice, element: MultipleChoice, controller: multipleChoiceController },
 			{ ...passage, element: Passage, controller: passageController }
-		]);
+		], DEMO_PRELOADED_OPTIONS);
 	} catch (error) {
 		registrationError = error instanceof Error ? error.message : String(error);
 	}

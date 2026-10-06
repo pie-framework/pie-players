@@ -66,6 +66,15 @@ outside the sheet. Hosts V and M are unchanged: their copies sit inside `@scope`
 which still bounds every rule to the scope root. Row verification dates are
 unchanged.
 
+On 2026-10-06 the `.table` family stopped applying to layout tables, those
+carrying `.table-no-border` or `role="presentation"`. Host P renders migrated
+content whose layout tables it showed bare under the legacy player; it now shows
+them bare again, with no rule above the first row and no cell padding pushing
+tiles apart. Bordered data tables keep the grid. Hosts V and M see the same once
+their copies come from a release carrying the change; Host A gets it through the
+player's copy. A host whose content carries none of these classes sees no
+difference. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

@@ -81,7 +81,12 @@ const selectors = (() => {
 			const text = prelude.trim();
 			if (text.startsWith("@keyframes")) keyframesDepth = depth;
 			else if (!text.startsWith("@") && keyframesDepth < 0) {
-				found.push(...text.split(",").map((part) => part.trim()));
+				// A comma inside `:not(a, b)` separates arguments, not selectors.
+				found.push(
+					...text
+						.split(/,(?![^(]*\))/)
+						.map((part) => part.replace(/\s+/g, " ").trim()),
+				);
 			}
 			depth += 1;
 			prelude = "";
@@ -131,8 +136,8 @@ describe("components.css confinement", () => {
 				(selector) => selector.match(/(?<=\.)-?[_a-zA-Z][\w-]*/g) ?? [],
 			),
 		);
-		expect([...LEGACY_CONTENT_CLASSES].filter((name) => !styled.has(name))).toEqual(
-			[],
-		);
+		expect(
+			[...LEGACY_CONTENT_CLASSES].filter((name) => !styled.has(name)),
+		).toEqual([]);
 	});
 });

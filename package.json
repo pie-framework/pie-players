@@ -152,7 +152,7 @@
 		"glob": "^13.0.6",
 		"lefthook": "2.1.15",
 		"playwright": "^1.63.0",
-		"publint": "^0.3.24",
+		"publint": "^0.3.25",
 		"turbo": "^2.11.7",
 		"typescript": "^5.9.3"
 	},

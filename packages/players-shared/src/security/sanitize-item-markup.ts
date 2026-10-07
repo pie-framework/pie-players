@@ -58,6 +58,43 @@ const BASE_ALLOWED_ATTRS = [
 	"dir",
 ];
 
+// MathML authored content uses that DOMPurify drops: elementary math, which
+// `@pie-element/shared-math-rendering-mathjax` rewrites as a table before
+// MathJax reads it, and `semantics`, `annotation`, `mprescripts` and `none`.
+// `annotation-xml` stays out because it is an HTML integration point.
+const MATHML_TAGS = new Set([
+	"mstack",
+	"mlongdiv",
+	"msgroup",
+	"msrow",
+	"msline",
+	"mscarries",
+	"mscarry",
+	"semantics",
+	"annotation",
+	"mprescripts",
+	"none",
+]);
+
+const MATHML_ATTRS = [
+	"stackalign",
+	"charalign",
+	"charspacing",
+	"longdivstyle",
+	"position",
+	"shift",
+	"location",
+	"crossout",
+	"leftoverhang",
+	"rightoverhang",
+	"mslinethickness",
+	"linebreak",
+];
+
+// Prefixed MathML such as `<m:math>`, which the HTML parser reads as unknown
+// HTML elements and the math adapter re-creates as MathML.
+const PREFIXED_TAG = /^[a-z_][\w.-]*:[a-z][\w.-]*$/;
+
 const BASE_URI_SAFE_ATTRS = ["pie-id"];
 
 const FORBIDDEN_TAGS = SANITIZER_FORBIDDEN_TAGS;
@@ -133,8 +170,12 @@ export function sanitizeItemMarkup(
 	const explicitCustomElementSet = new Set(allowedCustomElements);
 
 	const result = purifier.sanitize(markup, {
-		ADD_TAGS: allowedCustomElements,
-		ADD_ATTR: BASE_ALLOWED_ATTRS,
+		// DOMPurify still removes a tag in FORBID_TAGS that this accepts.
+		ADD_TAGS: (tagName: string) =>
+			explicitCustomElementSet.has(tagName) ||
+			MATHML_TAGS.has(tagName) ||
+			PREFIXED_TAG.test(tagName),
+		ADD_ATTR: [...BASE_ALLOWED_ATTRS, ...MATHML_ATTRS],
 		ADD_URI_SAFE_ATTR: BASE_URI_SAFE_ATTRS,
 		FORBID_TAGS: FORBIDDEN_TAGS,
 		FORBID_ATTR: FORBIDDEN_ATTRS,

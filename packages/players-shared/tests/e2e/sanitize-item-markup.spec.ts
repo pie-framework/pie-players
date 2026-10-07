@@ -229,6 +229,51 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 		expect(out).not.toContain("<script");
 	});
 
+	test("an allowedCustomElements entry cannot admit a forbidden tag", async ({
+		page,
+	}) => {
+		const out = await sanitizeInPage(page, "<script>bad()</script><p>ok</p>", {
+			allowedCustomElements: ["script"],
+		});
+		expect(out).toBe("<p>ok</p>");
+	});
+
+	test.describe("MathML", () => {
+		const unchanged = {
+			stack:
+				'<math><mstack stackalign="right" charalign="center" charspacing="loose"><mscarries location="n" crossout="updiagonalstrike" position="1"><mscarry location="nw" crossout="none"><mn>1</mn></mscarry><none/></mscarries><mn>19</mn><msgroup position="0" shift="1"><msrow position="0"><mo>+</mo><mn>3</mn></msrow></msgroup><msline position="0" length="2" leftoverhang="1" rightoverhang="1" mslinethickness="thin"></msline><mn>22</mn></mstack></math>',
+			longDivision:
+				'<math><mlongdiv longdivstyle="lefttop"><mn>4</mn><mn>12</mn><mn>48</mn><msline length="1"></msline><mn>8</mn></mlongdiv></math>',
+			lineBreak:
+				'<math><mi>a</mi><mspace linebreak="newline"></mspace><mi>b</mi></math>',
+			annotation:
+				'<math><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>',
+			prescripts:
+				"<math><mmultiscripts><mi>C</mi><none/><none/><mprescripts/><mn>14</mn><none/></mmultiscripts></math>",
+			prefixed:
+				"<mml:math><mml:mfrac><mml:mn>1</mml:mn><mml:mn>2</mml:mn></mml:mfrac></mml:math>",
+		};
+
+		for (const [name, markup] of Object.entries(unchanged)) {
+			test(`keeps ${name} markup`, async ({ page }) => {
+				const out = await sanitizeInPage(page, markup);
+				// Serialization closes void MathML elements explicitly.
+				expect(out).toBe(
+					markup.replace(/<(none|mprescripts)\/>/g, "<$1></$1>"),
+				);
+			});
+		}
+
+		test("drops annotation-xml with its HTML", async ({ page }) => {
+			const out = await sanitizeInPage(
+				page,
+				'<math><semantics><mi>x</mi><annotation-xml encoding="text/html"><img src="x" onerror="bad()"></annotation-xml></semantics></math>',
+			);
+			expect(out).not.toContain("annotation-xml");
+			expect(out).not.toContain("onerror");
+		});
+	});
+
 	test.describe("<style> elements", () => {
 		// A <style> element is a document-global stylesheet and the item player
 		// renders in light DOM, so authored CSS that survives here restyles the

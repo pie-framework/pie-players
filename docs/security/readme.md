@@ -91,6 +91,11 @@ What survives by design:
 - **`pie-*` custom elements**, via `CUSTOM_ELEMENT_HANDLING.tagNameCheck`.
   Versioned tags (`pie-*--version-*`) are authored content contracts and a
   generic allow-list that dropped unknown tags would break them.
+- **MathML DOMPurify drops** — elementary math (`mstack`, `mlongdiv` and their
+  groups, rows, lines and carries, with their attributes), `mspace`'s
+  `linebreak`, `semantics`, `annotation`, `mprescripts`, `none` and prefixed
+  MathML such as `<mml:math>`, which the math adapter typesets. `annotation-xml`
+  stays out: it is an HTML integration point.
 - **The PIE attribute contract** — `id`, `class`, `style`, `slot`, `role`,
   `tabindex`, `data-*`, `aria-*`, `pie-*`, `model-*`, `session-*`, `config-*`,
   `context-*` — via `CUSTOM_ELEMENT_ATTR_REGEX`.

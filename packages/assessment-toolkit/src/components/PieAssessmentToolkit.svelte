@@ -144,6 +144,7 @@
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
+	import { observeMathControlNames } from "../services/tts/math-control-names.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
 		connectSectionRuntimeEngineHostContext,
@@ -324,6 +325,7 @@ const DEFAULT_ENV = {
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();
 	const catalogRegistrationCleanups = new WeakMap<HTMLElement, Array<() => void>>();
+	const mathNameObservers = new Map<HTMLElement, () => void>();
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
 	// M6 canonical stage tracker. Post-retro the toolkit applies the
@@ -1376,6 +1378,23 @@ const DEFAULT_ENV = {
 		}
 	}
 
+	function stopNamingMath(element?: HTMLElement | null): void {
+		if (!element) return;
+		mathNameObservers.get(element)?.();
+		mathNameObservers.delete(element);
+	}
+
+	function nameMathInControls(element: HTMLElement): void {
+		stopNamingMath(element);
+		mathNameObservers.set(
+			element,
+			observeMathControlNames(element, {
+				getMathSpeech: () =>
+					effectiveCoordinator?.getServiceBundle().ttsService.getMathSpeechOptions(),
+			}),
+		);
+	}
+
 	function emitNormalizedSessionChanged(args: {
 		itemId: string;
 		canonicalItemId?: string;
@@ -1818,6 +1837,7 @@ const DEFAULT_ENV = {
 					const changed = sectionEngine.register(detail);
 					runtimeRegistrationDetails.set(detail.element, detail);
 					registerCatalogsForDetail(detail);
+					nameMathInControls(detail.element);
 					sectionEngine.handleContentRegistered(detail);
 					if (changed) emitCompositionChanged();
 				},
@@ -1832,6 +1852,7 @@ const DEFAULT_ENV = {
 						? sectionEngine.unregister(detail.element)
 						: false;
 					unregisterCatalogsForElement(detail.element);
+					stopNamingMath(detail.element);
 					if (detail.element) {
 						runtimeRegistrationDetails.delete(detail.element);
 					}
@@ -1920,7 +1941,11 @@ const DEFAULT_ENV = {
 				},
 			},
 		];
-		return registerHostRuntimeListeners(localHost, bindings);
+		const unregisterListeners = registerHostRuntimeListeners(localHost, bindings);
+		return () => {
+			unregisterListeners();
+			for (const element of [...mathNameObservers.keys()]) stopNamingMath(element);
+		};
 	});
 
 	export async function waitUntilReady(): Promise<void> {

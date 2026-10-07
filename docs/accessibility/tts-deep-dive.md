@@ -326,6 +326,27 @@ chunks. That lets SRE preserve useful speech markup, such as character-level
 pronunciation. The aggregate speech plan remains plain for seeking and structural
 pause logic; SSML is applied per playback chunk.
 
+### Math In Control Names
+
+Browsers leave MathML out of a name computed from content, so a choice labelled
+with 4/12 is named "4 12". The toolkit labels each `mjx-container` inside a
+control (a `label`, `button`, `summary` or link, or an element with a control
+role such as `radio` or `option`) with SRE's speech, and the browser puts that
+`aria-label` in the control's name. `PieAssessmentToolkit` observes each
+registered item and passage shell, so a container MathJax replaces, as a menu
+rerender does, is labelled again. The label replaces the elements' own English
+one and stays when SRE cannot speak the math. Math outside controls stays
+unlabelled, so screen readers keep navigating its MathML.
+
+Names read ClearSpeak in English and MathSpeak elsewhere, in the language of
+the nearest `lang` attribute, English without one. ClearSpeak reads fractions
+"over", so a name keeps the numerals as written: "4 over 4", where read-aloud
+says "four fourths". An expression holding a fraction with longer parts reads
+every fraction by numerator and denominator, which "over" would leave
+ambiguous. Of the host's `mathSpeech`, names take only `engineOptions`, which
+sets where SRE's locale tables load. The standalone item and print players have
+no toolkit and keep the elements' labels.
+
 ## Comparison Of The Three Scenarios
 
 | Scenario | Trigger | Spoken Source | Provider Payload | Highlighting |
@@ -375,5 +396,7 @@ pause logic; SSML is applied per playback chunk.
   [`packages/assessment-toolkit/src/services/tts/generated-speech/`](../../packages/assessment-toolkit/src/services/tts/generated-speech/)
 - SRE integration:
   [`packages/assessment-toolkit/src/services/tts/math-speech.ts`](../../packages/assessment-toolkit/src/services/tts/math-speech.ts)
+- Math control names:
+  [`packages/assessment-toolkit/src/services/tts/math-control-names.ts`](../../packages/assessment-toolkit/src/services/tts/math-control-names.ts)
 - Server TTS client:
   [`packages/tts-client-server/src/ServerTTSProvider.ts`](../../packages/tts-client-server/src/ServerTTSProvider.ts)

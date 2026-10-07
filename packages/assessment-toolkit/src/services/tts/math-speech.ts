@@ -117,9 +117,9 @@ const setupSre = async (
 		...engineOptions,
 		locale,
 		domain: normalizedMathSpeech?.domain || domainForLocale(locale),
-		...(normalizedMathSpeech?.style
-			? { style: normalizedMathSpeech.style }
-			: {}),
+		// SRE keeps a style it was given until it is given another, so a call
+		// without one resets it: math control names set ClearSpeak preferences.
+		style: normalizedMathSpeech?.style || "default",
 		modality: "speech",
 		markup,
 	});

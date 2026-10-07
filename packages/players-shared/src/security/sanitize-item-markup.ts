@@ -60,7 +60,7 @@ const BASE_ALLOWED_ATTRS = [
 
 // MathML authored content uses that DOMPurify drops: elementary math, which
 // `@pie-element/shared-math-rendering-mathjax` rewrites as a table before
-// MathJax reads it, and `semantics`, `annotation`, `mprescripts` and `none`.
+// MathJax reads it, and `semantics`, `annotation` and `none`.
 // `annotation-xml` stays out because it is an HTML integration point.
 const MATHML_TAGS = new Set([
 	"mstack",
@@ -72,7 +72,6 @@ const MATHML_TAGS = new Set([
 	"mscarry",
 	"semantics",
 	"annotation",
-	"mprescripts",
 	"none",
 ]);
 

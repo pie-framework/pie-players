@@ -93,7 +93,7 @@ What survives by design:
   generic allow-list that dropped unknown tags would break them.
 - **MathML DOMPurify drops** — elementary math (`mstack`, `mlongdiv` and their
   groups, rows, lines and carries, with their attributes), `mspace`'s
-  `linebreak`, `semantics`, `annotation`, `mprescripts`, `none` and prefixed
+  `linebreak`, `semantics`, `annotation`, `none` and prefixed
   MathML such as `<mml:math>`, which the math adapter typesets. `annotation-xml`
   stays out: it is an HTML integration point.
 - **The PIE attribute contract** — `id`, `class`, `style`, `slot`, `role`,

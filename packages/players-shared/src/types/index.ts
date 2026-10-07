@@ -125,6 +125,36 @@ export interface ItemEntity
 }
 
 /**
+ * `baseId` and `version` are optional on an entity a section references. They
+ * identify a stored version, which a host building a section from an item
+ * config does not have, and no player reads either.
+ */
+type WithOptionalVersion<T extends VersionEntity> = Omit<
+	T,
+	"baseId" | "version"
+> &
+	Partial<Pick<VersionEntity, "baseId" | "version">>;
+
+/**
+ * A passage as a section's item references it. `name` is optional on the same
+ * ground: the section player reads it only as a fallback for a missing `id`.
+ */
+export type ReferencedPassageEntity = Omit<
+	WithOptionalVersion<PassageEntity>,
+	"name"
+> & {
+	name?: string;
+};
+
+/** An item as `AssessmentItemRef.item` references it. */
+export type ReferencedItemEntity = Omit<
+	WithOptionalVersion<ItemEntity>,
+	"passage"
+> & {
+	passage?: string | ReferencedPassageEntity | null;
+};
+
+/**
  * Metadata specifically for interpretation by clients, typically containing
  * options that are relevant for the user interface. This is not indexed for search.
  */
@@ -197,7 +227,7 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 	 * Resolved item entity with PIE config.
 	 * This is populated by the client before passing to the player.
 	 */
-	item?: ItemEntity;
+	item?: ReferencedItemEntity;
 
 	/** Item-level settings for tool requirements and customization */
 	settings?: ItemSettings;

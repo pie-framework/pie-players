@@ -16,6 +16,9 @@
 			// from the authored content language, which travels on `env`.
 			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
+			// The section's session, applied by the controller created for
+			// `section` in place of hydrating from the persistence strategy.
+			session: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -98,7 +101,10 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import type {
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
 	import type {
 		RuntimeConfig,
 		StageChangeHandler,
@@ -125,6 +131,7 @@
 		ndsIcons = undefined as boolean | undefined,
 		locale = "",
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -265,6 +272,7 @@
 	{assessmentId}
 	runtime={kernelRuntime}
 	{section}
+	{session}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}

@@ -80,7 +80,22 @@ snapshot).
 
 ### Session lifecycle
 
-A typical host flow:
+Set `session` with `section` to restore a section. The controller created for
+that section applies it in replace mode in place of hydrating from the
+persistence strategy, before the controller is published, so the first
+composition, `engine-ready` and every reader see it. The strategy still receives
+every `persist()`.
+
+A later assignment applies through `applySession(value, { mode: "replace" })`
+under the rules `<pie-item-player>` applies to its `session`: a value equal to
+the current session is a no-op, so echoing `session-changed` back is safe, and an
+item session with neither a response value nor a response field leaves one that
+holds responses in place. `null` after creation is a no-op. A `section` change
+without a `session` assignment hydrates the new controller from the strategy.
+Reading `session` returns the assigned value until the controller is published,
+and a fresh `getSession()` snapshot after.
+
+Driving the controller directly:
 
 ```ts
 controller?.configureSessionPersistence?.({ context, strategy });
@@ -319,7 +334,7 @@ Render in HTML/Svelte/JSX:
 <pie-section-player-splitpane></pie-section-player-splitpane>
 ```
 
-Set complex values (`runtime`, `section`) as JS properties. `env` is a
+Set complex values (`runtime`, `section`, `session`) as JS properties. `env` is a
 `runtime` field (`runtime.env`); the layout elements have no `env` property.
 
 Set `runtime` no later than `section`. When the player builds its own
@@ -340,6 +355,7 @@ The layout elements (`pie-section-player-splitpane`,
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
+- `session` (object, JS property only): the section's session, a `SectionControllerSessionState`; see [Session lifecycle](#session-lifecycle)
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
@@ -1025,8 +1041,33 @@ await controller?.updateItemSession?.("q1", {
 });
 ```
 
-The same controller snapshot is what the persistence strategy saves/loads.
+The same controller snapshot is what the persistence strategy saves/loads, and
+what the layout's `session` property takes.
 When a controller is reused for the same `sectionId`/`attemptId`, `updateInput()` refreshes composition input while preserving in-memory section session data.
+
+### One item as a section
+
+`sectionFromItem` wraps one item config, in the shape `<pie-item-player config>`
+takes, and optionally its session, in the `section` and `session` the layouts
+take. It is exported from the package root and from
+`@pie-players/pie-section-player/item-section`, which defines no custom element
+and imports in Node.
+
+```ts
+import { sectionFromItem } from "@pie-players/pie-section-player/item-section";
+
+const { section, session } = sectionFromItem(itemConfig, { session: itemSession });
+player.setAttribute("section-id", section.identifier);
+player.section = section;
+player.session = session;
+```
+
+The item ref's `identifier` and the item's `id` are the config's `id`, so every
+`itemId` the section reports is the id the host already holds. An advanced
+config's `passage` becomes the item's passage, and its `instructorResources` and
+`defaultExtraModels` stay on the item's config. The section carries no `baseId`
+or `version`; `options.sectionId` names the section, which defaults to the
+config's `id`.
 
 ### Commit at a section boundary
 
@@ -1112,6 +1153,7 @@ Published exports are intentionally minimal:
 - `@pie-players/pie-section-player/contracts/layout-parity-metadata`
 - `@pie-players/pie-section-player/contracts/host-hooks`
 - `@pie-players/pie-section-player/policies`
+- `@pie-players/pie-section-player/item-section`
 
 ## Development
 

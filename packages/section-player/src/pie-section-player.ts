@@ -45,6 +45,8 @@ export {
 	isPreloadEnabled,
 	isTelemetryEnabled,
 } from "./policies/index.js";
+export { sectionFromItem } from "./item-section/index.js";
+export type { ItemSection, ItemSectionOptions } from "./item-section/index.js";
 export type {
 	SectionPlayerCardTitleContext,
 	SectionPlayerCardTitleFormatter,

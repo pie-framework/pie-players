@@ -3,6 +3,7 @@ import {
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "@pie-players/pie-assessment-toolkit";
+import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import type {
 	AssessmentDefinition,
 	AssessmentDeliveryPlan,
@@ -275,6 +276,8 @@ export class AssessmentController implements AssessmentControllerHandle {
 	private disposalPromise?: Promise<void>;
 	private disposed = false;
 	private readonly storageContext;
+	/** Taken by the first hydrate; a later `hydrate()` loads from the strategy. */
+	private initialSession: AssessmentSession | null;
 
 	constructor(
 		private readonly args: {
@@ -282,12 +285,21 @@ export class AssessmentController implements AssessmentControllerHandle {
 			attemptId?: string;
 			assessment: AssessmentDefinition | null;
 			hooks?: AssessmentPlayerHooks;
+			/**
+			 * A host-supplied session, applied by the first hydrate in place of the
+			 * persistence strategy's `loadSession` result. The controller keeps a
+			 * copy, so later updates never write into the host's object.
+			 */
+			initialSession?: AssessmentSession | null;
 		},
 	) {
 		this.storageContext = {
 			assessmentId: args.assessmentId,
 			attemptId: args.attemptId,
 		};
+		this.initialSession = args.initialSession
+			? cloneDeep(args.initialSession)
+			: null;
 	}
 
 	private emit(event: AssessmentControllerEvent): void {
@@ -430,7 +442,10 @@ export class AssessmentController implements AssessmentControllerHandle {
 			this.assertActive();
 			const strategy = await this.getPersistenceStrategy();
 			this.assertActive();
-			const loaded = await strategy.loadSession(this.storageContext);
+			const initialSession = this.initialSession;
+			this.initialSession = null;
+			const loaded =
+				initialSession ?? (await strategy.loadSession(this.storageContext));
 			this.assertActive();
 			if (loaded) {
 				this.session = loaded;

@@ -101,7 +101,7 @@ live per-slice record is `Active`.
   host-called flush; the legacy players are in scope because that is where hosts
   are losing responses today.
 - [`section-and-assessment-session-property.md`](./section-and-assessment-session-property.md) -
-  draft contract for a `session` property on the section player layouts and the
+  accepted contract for a `session` property on the section player layouts and the
   default assessment player, applied inside controller creation before the first
   composition, plus `sectionFromItem` for hosts that deliver one item at a time.
 

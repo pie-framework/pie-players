@@ -1,6 +1,6 @@
 # Session Property For The Section And Assessment Players
 
-Status: Draft
+Status: Accepted, 2026-10-06
 
 Owner: PIE Players maintainers
 
@@ -30,11 +30,10 @@ The coordinator creates a section controller and runs `configureSessionPersisten
 publishing schedules the first composition
 (`packages/assessment-toolkit/src/runtime/SectionRuntimeEngine.ts:376`). A host's
 `applySession` at `toolkit-ready` or `engine-ready` races that schedule's flush
-(`composition-emit-scheduler.ts`). Both in-repo restorers guard it by hand: the
-assessment player keeps the section `inert` and `aria-busy` until its
-post-`engine-ready` `applySession` resolves
-(`packages/assessment-player/src/components/AssessmentPlayerDefaultElement.ts:706-792`),
-and the backend demo holds backend delivery until its restore finishes
+(`composition-emit-scheduler.ts`). Both in-repo restorers guarded it by hand: the
+assessment player kept the section `inert` and `aria-busy` until its
+post-`engine-ready` `applySession` resolved, and the backend demo holds backend
+delivery until its restore finishes
 (`apps/backend-demos/src/routes/section/[sectionId]/+page.svelte:493-505`). The
 default section strategy is a `localStorage` key per cohort
 (`ToolkitCoordinator.ts:1063-1096`), so a nested section in the assessment player
@@ -86,7 +85,8 @@ itself. The section demos write it by hand, with an invented `version`
 - Owning package for the section property: `@pie-players/pie-section-player`, on
   `pie-section-player-splitpane`, `pie-section-player-vertical`,
   `pie-section-player-tabbed` and `pie-section-player-kernel-host`.
-  `pie-section-player-base` carries it to the toolkit as transport.
+  `pie-section-player-base` and `pie-assessment-toolkit` carry it to the
+  coordinator as transport.
 - Owning package for creation-time application:
   `@pie-players/pie-assessment-toolkit`, through an `initialSession` argument on
   `ToolkitCoordinator.getOrCreateSectionController`.
@@ -100,7 +100,8 @@ itself. The section demos write it by hand, with an invented `version`
 - Types stay canonical in `@pie-players/pie-players-shared/types`:
   `AssessmentSection`, `ItemConfig`, `SectionControllerSessionState`,
   `AssessmentSession`. A referenced item, `AssessmentItemRef.item`, and its
-  `passage` may omit `baseId` and `version`.
+  `passage` may omit `baseId` and `version`, and the passage its `name`
+  (`ReferencedItemEntity`, `ReferencedPassageEntity`).
 - Runtime environment: custom element for both properties; browser and Node for
   `sectionFromItem`.
 
@@ -122,7 +123,8 @@ and calls `initialize(input)` as today, then calls
 `applySession(initialSession, { mode: "replace" })` in place of `hydrate()`. The
 strategy still receives every `persist()`. When the coordinator already holds a
 controller for the cohort, as a shared `runtime.coordinator` can, it calls
-`updateInput` and then the same `applySession`. The property takes precedence
+`updateInput` and then applies the value under the after-publication rules below.
+The property takes precedence
 over the strategy's stored snapshot because the host that supplies a session is
 its authority, and the default strategy's key holds whatever a previous run of
 the same cohort wrote.
@@ -135,6 +137,10 @@ That ordering puts the apply in the coordinator. The engine could apply after
 alone, but by then the controller is published. Given an initial session, a
 controller from `hooks.createSectionController` that lacks `applySession` fails
 creation with a framework error rather than dropping the session.
+
+The apply is part of creation, so disposal of an in-flight controller waits for
+it, and a remount of the same cohort waits for that disposal, as a held `hydrate`
+makes it wait today.
 
 **After publication.** A new value is applied through
 `applySession(value, { mode: "replace" })` under the two rules
@@ -202,6 +208,11 @@ current section. A deliberate trade: replacing a whole assessment session
 mid-attempt is a resume, which remounts anyway, so the element needs no second
 replace path into the controller.
 
+The element passes the value to one controller: once a controller initializes
+from it, a rebuild for another reason, such as an `assessment` change, hydrates
+from the strategy, because the learner has since moved past that value. `null`
+once the controller is ready is a no-op.
+
 **Read.** Before the controller exists the getter returns the assigned value.
 After it, the getter returns a copy of `controller.getSession()`, which hands out
 the controller's internal object by reference
@@ -215,9 +226,10 @@ and accepts `session-changed` syncs only after it, as today. When the assessment
 session holds none, the nested section is created through `hydrate()` as today.
 A section that fails to become ready shows `player.assessment.restoreFailed` when
 the element supplied a saved section session and `player.assessment.loadFailed`
-otherwise, the rule it applies today
-(`AssessmentPlayerDefaultElement.ts:765`); a failed creation-time apply is one
-such failure.
+otherwise. A section whose controller cannot be created, a failed creation-time
+apply among them, never reaches `engine-ready` and reports a non-recoverable
+`framework-error`; the element treats that error as the failure, ahead of its
+readiness timeout.
 
 ### `sectionFromItem`
 
@@ -373,18 +385,21 @@ them.
   - a cohort change without a `session` assignment hydrates;
   - the getter returns the assigned value before publication and a current
     snapshot after it.
-- Backend delivery: a section created with an initial session issues one backend
-  load per item.
+
+  `section-player-session-property.spec.ts` runs the creation-time cases on all
+  four layouts and the rest on splitpane.
 - Parity and mirror rules: `section-player-contract-parity.spec.ts` with
   `session` among the basic props of all three layouts; `m5-mirror-rule.test.ts`
   passes unchanged.
 - Assessment controller: `initialSession` skips `loadSession`, runs
   `onBeforeAssessmentHydrate` and emits `assessment-session-applied`.
-- Assessment element: a different `session` rebuilds the controller and an equal
-  one does not; the getter returns a copy; a nested section receives its section
-  session through `session`, and no `applySession` follows `engine-ready`. Extend
-  `assessment-session-slice-round-trip`, `assessment-answer-restoration`,
-  `assessment-persistence-lab` and `assessment-controller-lifecycle`.
+- Assessment element: a supplied `session` resumes without a `loadSession`, and
+  an equal one is a no-op (`assessment-player-lifecycle.spec.ts`); a nested
+  section receives its section session through `session`, and a held or failed
+  creation-time apply keeps the section busy or shows `restoreFailed`
+  (`assessment-answer-restoration.spec.ts`).
+  `assessment-session-slice-round-trip` and `assessment-persistence-lab` pass
+  unchanged.
 - `sectionFromItem`: fixtures for `PieContent` with and without a session and
   for `AdvancedItemConfig` with a passage, instructor resources and default extra
   models; the result type-checks as an `AssessmentSection` without `baseId` or
@@ -411,26 +426,19 @@ Playwright-backed tests run outside the sandbox.
 ## Rollout And Release Notes
 
 - Changeset required: yes, patch under lockstep versioning.
-- Sequencing: the toolkit and section player `session` ship first, as their own
-  change with the consumer-pad rationale and Host A's resume coverage.
-  `sectionFromItem` is an independent subpath and may ship with or before it.
-  The assessment player moves its nested-section restore onto the property in a
-  later change.
 - Migration notes: none required. A host that restores with
   `waitForSectionController` and `applySession` can bind `session` instead.
 - Documentation updates:
   - `packages/section-player/README.md`: Session lifecycle, Usage, Item session
     management, Exports.
-  - `docs/section-player/client-architecture-tutorial.md` §7 and §8. Its
-    hydration sequence places persistence resolution and `hydrate` after
-    `engine-ready`, where the code runs them before publication; the rewrite
-    corrects that.
+  - `docs/section-player/client-architecture-tutorial.md` §8, whose hydration
+    sequence now runs persistence resolution and the apply before publication,
+    as the code does.
   - `packages/assessment-player/README.md`: the reload list and Lifecycle.
-  - `docs/assessment-player/client-architecture-tutorial.md` §4 props table and
-    §10. Its hydration sequence describes a `waitForSectionController` wait and a
-    replay at `section-loading-complete`, where the code applies at
-    `engine-ready`; the rewrite corrects that.
-  - `docs/item-player/overview.md`: cross-link from session management.
+  - `docs/assessment-player/client-architecture-tutorial.md` §4 props table, §10
+    and §13.
+  - `docs/item-player/overview.md`: cross-link from session management;
+    `packages/item-player/README.md`: the `session` assignment rule.
   - `packages/section-player/ARCHITECTURE.md`: identity exceptions.
   - `docs/integrations/consumer-api-dependencies.md`, through its maintenance
     procedure.

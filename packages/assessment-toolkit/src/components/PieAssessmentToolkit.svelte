@@ -58,6 +58,12 @@
 			// surface (`<pie-assessment-toolkit isolation="force">`)
 			// is no longer observed.
 			isolation: { type: "Object", reflect: false },
+			// JS-only prop. Section-player layouts forward their `session`
+			// through this property. The controller created for `section`
+			// applies it in place of hydrating from the persistence strategy;
+			// a later value is applied to the live controller unless it equals
+			// the current session.
+			session: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -93,6 +99,7 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import { resolveSectionSessionAssignment } from "../services/section-session-assignment.js";
 	import {
 		bindTtsAudioHandoff,
 		pauseTtsForMediaAudio,
@@ -101,6 +108,7 @@
 	import type {
 		AssessmentEntity,
 		AssessmentItemRef,
+		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
 	import {
 		timedMediaProjectionSignature,
@@ -260,6 +268,7 @@ const DEFAULT_ENV = {
 		currentItemRef = null as AssessmentItemRef | null,
 		pnpEnforcement = null as PnpEnforcementMode | null,
 		isolation = "inherit",
+		session = null as SectionControllerSessionState | null,
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -297,6 +306,13 @@ const DEFAULT_ENV = {
 	// initialized with it. Plain `let` for the same reason as the latches above.
 	let ownedCoordinatorInputs: OwnedCoordinatorInputs | null = null;
 	let ownedCoordinatorBound = false;
+	// The last `session` value handed to a controller, by identity, and whether
+	// the current section's controller has resolved. A creation takes a value it
+	// has not seen; a later value goes to the resolved controller. A section
+	// change that comes without a new value hydrates as before. Plain `let` for
+	// the same reason as the latches above.
+	let consumedSession: SectionControllerSessionState | null = null;
+	let sessionControllerResolved = false;
 	let reportedLateOwnedCoordinatorInputs = false;
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
@@ -838,6 +854,45 @@ const DEFAULT_ENV = {
 		if (resolvedEnv.mode === "author") return "author";
 		if (resolvedEnv.role === "instructor") return "scorer";
 		return "candidate";
+	}
+
+	function takeUnconsumedSession(): SectionControllerSessionState | null {
+		if (!session || session === consumedSession) return null;
+		consumedSession = session;
+		return session;
+	}
+
+	function assignSessionToController(): void {
+		const next = takeUnconsumedSession();
+		const coordinator = effectiveCoordinator;
+		if (!next || !coordinator) return;
+		const controller = coordinator.getSectionController({
+			sectionId: effectiveSectionId,
+			attemptId: attemptId || undefined,
+		});
+		if (!controller) return;
+		const resolved = resolveSectionSessionAssignment(
+			controller.getSession?.() ?? null,
+			next,
+		);
+		if (!resolved) return;
+		void Promise.resolve()
+			.then(() => {
+				if (!controller.applySession) {
+					throw new Error(
+						"Section controller cannot apply the assigned session: it has no applySession.",
+					);
+				}
+				return controller.applySession(resolved, { mode: "replace" });
+			})
+			.catch((error) => {
+				reportFrameworkError({
+					kind: "unknown",
+					source: "pie-assessment-toolkit",
+					error,
+					recoverable: true,
+				});
+			});
 	}
 
 	async function createDefaultSectionController() {
@@ -1645,6 +1700,9 @@ const DEFAULT_ENV = {
 			ownedCoordinatorBound = true;
 		}
 
+		sessionControllerResolved = false;
+		const initialSession = untrack(() => takeUnconsumedSession());
+
 		void sectionEngine
 			.initialize({
 				coordinator: effectiveCoordinator,
@@ -1653,6 +1711,7 @@ const DEFAULT_ENV = {
 				assessmentId: effectiveAssessmentId,
 				attemptId: attemptId || undefined,
 				view: effectiveSectionView,
+				initialSession,
 				createDefaultController: createDefaultSectionController,
 				onCompositionChanged: (nextComposition) => {
 					if (cancelled) return;
@@ -1666,6 +1725,9 @@ const DEFAULT_ENV = {
 			})
 			.then(() => {
 				if (cancelled) return;
+				sessionControllerResolved = true;
+				// A value assigned while the controller was being created.
+				untrack(() => assignSessionToController());
 				emit("toolkit-ready", {
 					runtimeId,
 					assessmentId: effectiveAssessmentId,
@@ -1721,6 +1783,13 @@ const DEFAULT_ENV = {
 		return () => {
 			cancelled = true;
 		};
+	});
+
+	$effect(() => {
+		void session;
+		untrack(() => {
+			if (sessionControllerResolved) assignSessionToController();
+		});
 	});
 
 	$effect(() => {

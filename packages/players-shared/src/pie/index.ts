@@ -99,6 +99,7 @@ export type {
 export {
 	ensureHostSessionEntries,
 	hasLearnerResponse,
+	hasResponseField,
 	hasResponseValue,
 	normalizeItemSessionChange,
 	projectSessionIntoHostContainer,

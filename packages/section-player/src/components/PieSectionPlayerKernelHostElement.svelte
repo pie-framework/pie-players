@@ -7,6 +7,9 @@
 			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
 			section: { type: "Object", reflect: false },
+			// The section's session, applied by the controller created for
+			// `section` in place of hydrating from the persistence strategy.
+			session: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -82,6 +85,7 @@
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
 		section = null,
+		session = null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -202,6 +206,7 @@
 	{assessmentId}
 	{runtime}
 	{section}
+	{session}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}

@@ -44,6 +44,7 @@ import type { FrameworkErrorReporter } from "../services/framework-error-bus.js"
 import type {
 	SectionControllerEvent,
 	SectionControllerHandle,
+	SectionControllerSessionState,
 } from "../services/section-controller-types.js";
 import {
 	SectionEngineAdapter,
@@ -156,6 +157,12 @@ interface EngineInitArgs {
 	assessmentId: string;
 	view: string;
 	attemptId?: string;
+	/**
+	 * A host-supplied session for this section, applied by the coordinator in
+	 * place of `hydrate()` when it creates the controller. Absent, creation
+	 * hydrates from the persistence strategy as before.
+	 */
+	initialSession?: SectionControllerSessionState | null;
 	createDefaultController: () => Promise<RuntimeController> | RuntimeController;
 	onCompositionChanged?: (composition: unknown) => void;
 	/**
@@ -339,6 +346,7 @@ export class SectionRuntimeEngine {
 				view: args.view,
 			},
 			updateExisting: true,
+			initialSession: args.initialSession,
 			createDefaultController: args.createDefaultController,
 		})) as RuntimeController;
 

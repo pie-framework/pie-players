@@ -35,6 +35,8 @@ export type {
 	PieItemElement,
 	PieModel,
 	PieUpdateSession,
+	ReferencedItemEntity,
+	ReferencedPassageEntity,
 	RubricBlock,
 	TestPart,
 } from "./types/index.js";

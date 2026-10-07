@@ -84,6 +84,10 @@
 		"./policies": {
 			"types": "./dist/policies/index.d.ts",
 			"import": "./dist/policies/index.js"
+		},
+		"./item-section": {
+			"types": "./dist/item-section/index.d.ts",
+			"import": "./dist/item-section/index.js"
 		}
 	},
 	"files": [

@@ -15,10 +15,19 @@
  * player that is not hosted runs the controller's `model()` in the browser, so
  * it needs the `controller` an entry registers; the item player warns about
  * each tag it renders without one.
+ *
+ * Bundled by the host, the elements' copies of the MathJax adapter find no npm
+ * root in their module URLs, so the registration also takes where they load
+ * MathJax's fonts and speech from (`options.math`): a root, or each file's URL.
  */
 
 import type { PieController } from "../types/index.js";
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
+import {
+	type MathAssetOptions,
+	mathAssetOptionsError,
+	setMathAssetOptions,
+} from "../pie/math-assets.js";
 import { writeRegistryEntry } from "../pie/registry.js";
 import { BundleType, isCustomElementConstructor, Status } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
@@ -51,6 +60,16 @@ export interface PreloadedElement {
 	controller?: PreloadedController | { readonly default: PreloadedController };
 }
 
+export interface PreloadedRegistrationOptions {
+	/**
+	 * Where the elements' MathJax loads its fonts, its speech worker and, on the
+	 * adapter's npm build, MathJax itself from, written to
+	 * `window['@pie-lib/math-rendering@2'].opts`. With neither an `assetRoot`
+	 * nor the fonts in `assetUrls`, math renders without web fonts and speech.
+	 */
+	math?: MathAssetOptions;
+}
+
 type ResolvedElement = {
 	packageName: string;
 	spec: string;
@@ -67,10 +86,12 @@ type ResolvedElement = {
  * registry entry, which only gains a controller it lacked. Every entry is
  * validated before any is registered. A package registers at one version per
  * page, because the players align every authored version of a package to the
- * registered one.
+ * registered one. `options.math` replaces the page's math asset options it
+ * sets, and keeps the others.
  */
 export function registerPreloadedElements(
 	elements: readonly PreloadedElement[],
+	options: PreloadedRegistrationOptions = {},
 ): void {
 	if (typeof window === "undefined" || typeof customElements === "undefined") {
 		throw new Error(
@@ -81,6 +102,12 @@ export function registerPreloadedElements(
 	const preloaded = preloadedPackageSpecs();
 	const resolved = elements.map(resolveElement);
 	assertOneVersionPerPackage(resolved, preloaded);
+	const mathError =
+		options.math === undefined ? undefined : mathAssetOptionsError(options.math);
+	if (mathError) {
+		throw new Error(`[registerPreloadedElements] options.math: ${mathError}`);
+	}
+	if (options.math) setMathAssetOptions(options.math);
 
 	for (const { packageName, spec, tagName, elementClass, controller } of resolved) {
 		defineCustomElementSafely(

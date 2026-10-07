@@ -128,7 +128,9 @@ jsDelivr is the default npm CDN provider. Hosts can opt into `esm.sh` with
 Provider names are open-ended: custom/internal providers can pass their own name
 when they follow the jsDelivr-compatible package-file URL layout, or pass a
 provider object when package artifacts and shared dependencies need different
-route builders.
+route builders. Under `esm` the item player's own MathJax takes the provider's
+package-file root as its asset root when the page sets none; see
+[MathJax assets](../../docs/item-player/loading-strategies.md#mathjax-assets).
 
 `dependencies` and `peerDependencies` are not used as fallback runtime contracts.
 If multiple elements request different minor or patch versions of a shared

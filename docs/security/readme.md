@@ -91,6 +91,11 @@ What survives by design:
 - **`pie-*` custom elements**, via `CUSTOM_ELEMENT_HANDLING.tagNameCheck`.
   Versioned tags (`pie-*--version-*`) are authored content contracts and a
   generic allow-list that dropped unknown tags would break them.
+- **MathML DOMPurify drops** — elementary math (`mstack`, `mlongdiv` and their
+  groups, rows, lines and carries, with their attributes), `mspace`'s
+  `linebreak`, `semantics`, `annotation`, `mprescripts`, `none` and prefixed
+  MathML such as `<mml:math>`, which the math adapter typesets. `annotation-xml`
+  stays out: it is an HTML integration point.
 - **The PIE attribute contract** — `id`, `class`, `style`, `slot`, `role`,
   `tabindex`, `data-*`, `aria-*`, `pie-*`, `model-*`, `session-*`, `config-*`,
   `context-*` — via `CUSTOM_ELEMENT_ATTR_REGEX`.
@@ -287,8 +292,8 @@ The element bundles render with MathJax 3, which loads its fonts from
 `unpkg.com` and the speech rule engine's mathmaps from `cdn.jsdelivr.net`.
 `iife` bundles arrive from the bundle host by `<script src>`, which
 `'strict-dynamic'` admits. Builds from the current generator bundle ESM elements
-and serve MathJax, its fonts and its speech data from their own `dist/mathjax/`,
-so their math adds no origin.
+with MathJax inside their chunks and serve its fonts and speech data from their
+own `dist/mathjax/npm/`, so their math adds no origin.
 
 ```
 connect-src 'self' https://cdn.jsdelivr.net;
@@ -299,11 +304,15 @@ font-src 'self' data: https://unpkg.com;
 host's own bundle. Under `esm`, element modules and their dependencies load from
 `cdn.jsdelivr.net`, or from `loaderOptions.esmCdnUrl`, and the loader fetches
 package metadata from the same origin, so `connect-src` lists the `esmCdnUrl`
-origin when one is set. Whatever `esmCdnUrl` names, elements that typeset on
-`window.MathJax` load MathJax 4 and its fonts from `cdn.jsdelivr.net`, so a page
-that cannot reach that origin renders no math with them. Elements that bundle
-their own MathJax, and the player's renderer for item markup math, load fonts
-and speech data from the same origin.
+origin when one is set. Element builds on `@pie-element/shared-math-rendering-mathjax`
+0.1.3 or later, and the player's renderer for item markup math, load MathJax's
+fonts and speech data from the locations
+[MathJax assets](../item-player/loading-strategies.md#mathjax-assets) sets out:
+under `esm` the element CDN, under `preloaded` the origin a generated package
+or the host's build output is served from, or the root or URLs the host
+registers. Builds on
+earlier adapters load them, and the page-global builds MathJax 4 itself, from
+`cdn.jsdelivr.net` whatever `esmCdnUrl` names. With jsDelivr as both:
 
 ```
 connect-src 'self' https://cdn.jsdelivr.net;
@@ -311,9 +320,15 @@ font-src 'self' data: https://cdn.jsdelivr.net;
 ```
 
 Without `'strict-dynamic'`, each injected `<script src>` needs its origin in
-`script-src`: the bundle host for `iife`, and `cdn.jsdelivr.net` for the
-MathJax 4 that page-global element builds inject under `esm` and `preloaded`.
-Elements that bundle MathJax inject none.
+`script-src`: the bundle host for `iife`, and for the MathJax 4 that page-global
+element builds inject under `esm` and `preloaded`, `cdn.jsdelivr.net` up to
+adapter 0.1.2 and the asset root's origin from adapter 0.1.3. Elements that
+bundle MathJax inject none.
+
+Speech loads only once a student turns on Semantic Enrichment, and these
+measurements leave it off. MathJax runs it in a `blob:` worker that imports
+`speech-worker.js` from its URL or the asset root with `importScripts` and
+fetches the speech rules from beside it.
 
 The tools add their own. `data:` in `font-src` carries the Cortex calculator's
 bundled MathLive fonts. Its evaluation worker is a script the host's bundler

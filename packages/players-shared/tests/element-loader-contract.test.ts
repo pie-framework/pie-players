@@ -40,6 +40,7 @@ import {
 import {
 	createEsmBackend,
 	mapEsmViewElements,
+	resolveEsmAssetRoot,
 	resolveEsmRuntimeSupportUrl,
 	type EsmBackendConfig,
 	type EsmBackendTestSeams,
@@ -4365,6 +4366,38 @@ describe("resolveEsmRuntimeSupportUrl", () => {
 				cdnProvider: customProvider({
 					packageJsonUrl: (pv) => `https://cdn.test/meta?package=${pv}`,
 				}),
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe("resolveEsmAssetRoot", () => {
+	const provider = (packageJsonUrl: (pv: string) => string): EsmCdnProvider => ({
+		name: "local",
+		packageJsonUrl,
+		browserViewUrl: (pv, view) => `https://cdn.test/${pv}/dist/browser/${view}/index.js`,
+		browserControllerUrl: (pv) => `https://cdn.test/${pv}/dist/browser/controller/index.js`,
+		sharedDependencyUrl: (dep, version) => `https://cdn.test/${dep}@${version}`,
+	});
+
+	test("is the npm root jsDelivr and esm.sh serve raw package files under", () => {
+		expect(resolveEsmAssetRoot({ cdnBaseUrl: "https://cdn.jsdelivr.net/npm/" })).toBe(
+			"https://cdn.jsdelivr.net/npm",
+		);
+		expect(resolveEsmAssetRoot({ cdnBaseUrl: "https://esm.sh" })).toBe("https://raw.esm.sh");
+	});
+
+	test("is what a custom provider puts before the package, if anything", () => {
+		expect(
+			resolveEsmAssetRoot({
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: provider((pv) => `https://mirror.test/npm/${pv}/package.json`),
+			}),
+		).toBe("https://mirror.test/npm");
+		expect(
+			resolveEsmAssetRoot({
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: provider((pv) => `https://cdn.test/meta?package=${pv}`),
 			}),
 		).toBeUndefined();
 	});

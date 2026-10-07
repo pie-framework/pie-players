@@ -36,47 +36,39 @@ imports are all relative, with every dependency included:
   `@pie-players/pie-item-player/preloaded`.
 - `dist/elements/index.js` and its chunks and assets — every element in the
   config at its pinned version, bundled by Vite from a scratch install of the
-  packages. It exports the element classes by package and
-  `startMathRendering`. React is the one dependency the elements' browser builds
+  packages. It exports the element classes by package. React is the one
+  dependency the elements' browser builds
   leave to the page (`pie.browserSharedDependencies`); the bundle holds a single
   copy, and the generator refuses elements that share different versions of it.
-- `dist/mathjax/` — what the elements render math with. An element's copy of
-  the math adapter either renders on the page's MathJax or bundles a private
-  MathJax that never reads `window.MathJax`; the generator tells them apart by
-  the bundled copy's `@pie-element/shared-math-rendering-mathjax/bundled` marker.
-  - For elements on the page's MathJax: the MathJax 4 their adapter expects,
-    with its extensions, speech data, and the New Computer Modern font and the
-    mhchem font extension for both output renderers, plus `load.js`, which
-    points MathJax's `mathjax` and `fonts` paths at this directory. The
-    generator refuses a build whose adapter copies expect another MathJax
-    version, or one that predates the shared page-wide load.
-  - For elements that bundle MathJax: `npm/<package>@<version>/`, holding the
-    font files and speech worker each bundled MathJax loads. The bundled copy
-    names them by jsDelivr URL; the generator rewrites each such string literal
-    in the output to the build's copy, resolved from the chunk's own URL, and
-    refuses a build in which a jsDelivr `@mathjax/` URL survives.
-
-  A set whose elements render no math ships neither.
+- `dist/mathjax/npm/` — the files MathJax loads as it renders, for the MathJax 4
+  bundled into the elements' chunks and the item player's. Under
+  `<package>@<version>/`, for each package the math adapter lists in
+  `pie.assetPackages`, it holds the fonts' `chtml/woff2`, `sre/speech-worker.js`
+  and the speech rules of `base`, the Nemeth and Euro braille codes and the
+  config's `speechLocales`, English by default, with each package's
+  `package.json` and licence. The build takes elements on
+  `@pie-element/shared-math-rendering-mathjax` 0.1.3 or later: the generator
+  refuses an element whose adapter copy lacks the `/bundled` and `/no-assets`
+  markers or names a jsDelivr MathJax URL, a locale SRE does not ship, and an
+  adapter that lists no `pie.assetPackages`.
 - `dist/index.js` — the entry point actually imported by consumers (see below).
 - `package.json` with a `pie` metadata block (`set` on a published build,
   `bundleHash`, `iteration`, `loaderVersion`, resolved `elements` map) and `dist/index.d.ts` declaring
   `Window.PIE_PRELOADED_ELEMENTS`.
 
 Importing `dist/index.js` is a side-effecting module load, not an API call. It
-runs four steps in order, each import with retry/backoff:
+runs three steps in order, each import with retry/backoff:
 
 1. It imports `preloaded.js`, then `elements/index.js`.
-2. When an element renders on the page's MathJax, it starts that load from
-   `dist/mathjax/load.js`. Each such element's copy of the adapter finds the
-   load in flight and waits on it, so no MathJax, font or speech file comes from
-   a CDN. A page that installed its own `window["@pie-lib/math-rendering"]`
-   renderer keeps it, and nothing loads. Elements that bundle MathJax start
-   their own, which loads fonts and speech from `dist/mathjax/npm/`.
-3. It registers the element classes, without controllers, under the configured
+2. It registers the element classes, without controllers, under the configured
    versioned tags through `registerPreloadedElements`, which records each
    package's spec in `window.PIE_PRELOADED_ELEMENTS`
    (`{"@pie-element/multiple-choice": "@pie-element/multiple-choice@14.0.0", ...}`).
-4. It imports `pie-item-player.js` unless the page already registered
+   The call passes `math.assetUrls`, each shipped file's npm path mapped to its
+   `new URL("./mathjax/npm/…", import.meta.url)`, and the shipped locales as
+   `math.speechLocales`, so the speech menu lists only those
+   ([MathJax assets](../item-player/loading-strategies.md#mathjax-assets)).
+3. It imports `pie-item-player.js` unless the page already registered
    `pie-item-player` ([below](#the-builds-own-item-player)).
    `pie-item-player.js` runs its readiness assertion (below) against whatever
    is already registered, so it loads last.
@@ -323,13 +315,15 @@ over HTTP.
 It verifies chunk delivery, full package specs, authored tags with a stale
 version, an authored base tag other than the build's in hosted and client
 players, import readiness, repeated registration, unchanged authored content,
-actual answer updates, and math rendered by the shipped MathJax with its
-fonts, mhchem's `\ce` included. A missing-element fault verifies import
-rejection. `item-player-generated-preloaded-bundled-mathjax.spec.ts` builds a
-multiple-choice version that bundles MathJax and verifies it renders with no
-page MathJax, loading its fonts, mhchem's font extension and the speech worker
-from the build. Every request must reach that server. Workspace imports and runtime
-bundle fetching cannot conceal an incomplete package.
+and actual answer updates. A missing-element fault verifies import rejection.
+`item-player-generated-preloaded-bundled-mathjax.spec.ts` builds a multiple-choice version on adapter 0.1.3 and verifies that the entry lists each
+MathJax file the build ships, that math renders with no page MathJax, loading
+its fonts, mhchem's font extension and the speech worker from the build, and
+that the item player's own MathJax speaks the item's markup in English alone.
+It then bundles a host page that imports the package with Vite and verifies the
+page renders and speaks math from the files Vite emitted. Every request must
+reach that server. Workspace imports and runtime bundle fetching cannot conceal
+an incomplete package.
 
 ```bash
 bun run build:e2e:item-player

@@ -218,15 +218,18 @@ import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
 import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
-registerPreloadedElements([
-  {
-    tag: "pie-element-multiple-choice",
-    package: "@pie-element/multiple-choice",
-    version: manifest.dependencies["@pie-element/multiple-choice"],
-    element: delivery,
-    controller,
-  },
-]);
+registerPreloadedElements(
+  [
+    {
+      tag: "pie-element-multiple-choice",
+      package: "@pie-element/multiple-choice",
+      version: manifest.dependencies["@pie-element/multiple-choice"],
+      element: delivery,
+      controller,
+    },
+  ],
+  { math: { assetRoot: "https://assets.example.com/npm" } },
+);
 ```
 
 - A tag missing at pre-warm leaves the section's items unmounted and raises a
@@ -242,6 +245,10 @@ registerPreloadedElements([
   an element can typeset with a MathJax it was not built for. Elements that
   bundle their own MathJax share none
   ([One MathJax version per page](../../docs/item-player/loading-strategies.md#one-mathjax-version-per-page)).
+- Pass `math.assetRoot`, an npm root serving the fonts and speech the elements'
+  bundled MathJax loads, or `math.assetUrls`, each file's URL; without either,
+  elements on adapter 0.1.3 or later render without web fonts and speech
+  ([MathJax assets](../../docs/item-player/loading-strategies.md#mathjax-assets)).
 - Register one version per package; registering a second version throws.
 - Register each package's `controller` unless the item players are hosted
   (`sectionPlayerRuntime.player.hosted`, or an enabled

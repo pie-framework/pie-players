@@ -39,7 +39,7 @@ import {
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
 import { isExactSemver } from "./element-package-policy.js";
-import { forwardMathjaxVersionConflicts } from "./mathjax-version-conflict.js";
+import { forwardMathjaxEvents } from "./mathjax-events.js";
 
 /** View configuration: how a PIE package's subpath maps to a tag suffix. */
 export type ViewConfig = {
@@ -172,8 +172,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	const editorRuntimeVariants = new Map<string, EditorRuntimeVariant>();
 	/** Packages that do not publish the browser ESM exports this backend loads. */
 	const unpublishedPackages = new Map<string, string>();
-	/** Windows whose MathJax version conflicts this backend forwards. */
-	const mathjaxConflictViews = new WeakSet<Window>();
+	/** Windows whose MathJax events this backend forwards. */
+	const mathjaxEventViews = new WeakSet<Window>();
 	let sharedDependencyVersions: Record<string, string> = {};
 	let importer: EsmModuleImporter = defaultImporter;
 	let packageMetadataLoader: EsmPackageMetadataLoader =
@@ -218,7 +218,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		if (moduleResolution === "import-map") {
 			assertImportMapSupported();
 		}
-		forwardMathjaxVersionConflictsOf(context.doc);
+		forwardMathjaxEventsOf(context.doc);
 
 		const newEntries: ElementMap = {};
 		for (const [tag, pkg] of Object.entries(elements)) {
@@ -744,11 +744,11 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		return provider;
 	}
 
-	function forwardMathjaxVersionConflictsOf(doc: Document): void {
+	function forwardMathjaxEventsOf(doc: Document): void {
 		const view = doc.defaultView;
-		if (!view || mathjaxConflictViews.has(view)) return;
-		mathjaxConflictViews.add(view);
-		forwardMathjaxVersionConflicts(view, getInstrumentationProvider);
+		if (!view || mathjaxEventViews.has(view)) return;
+		mathjaxEventViews.add(view);
+		forwardMathjaxEvents(view, getInstrumentationProvider);
 	}
 
 	function reportSharedDependencyConflict(
@@ -905,6 +905,29 @@ export function resolveEsmRuntimeSupportUrl(
 	const packageJsonUrl = provider.packageJsonUrl(packageVersion);
 	return packageJsonUrl.endsWith("/package.json")
 		? `${packageJsonUrl.slice(0, -"package.json".length)}${RUNTIME_SUPPORT_PATH}`
+		: undefined;
+}
+
+/** A package the probe below names, so a provider URL ends in its `<package>@<version>` path. */
+const ROOT_PROBE_PACKAGE = "@pie-element/shared-math-rendering-mathjax@0.0.0";
+
+/**
+ * The npm root the ESM CDN the players load elements from serves raw package
+ * files under, `<root>/<package>@<version>/<path>`: the base URL for jsDelivr,
+ * raw.esm.sh for esm.sh, and for a custom provider whatever its
+ * `packageJsonUrl` puts before the package. `undefined` when that URL names
+ * no such root.
+ */
+export function resolveEsmAssetRoot(options: {
+	cdnBaseUrl: string;
+	cdnProvider?: EsmCdnProviderOption;
+}): string | undefined {
+	const cdnBaseUrl = options.cdnBaseUrl.replace(/\/+$/, "");
+	const provider = resolveCdnProvider(options.cdnProvider, cdnBaseUrl);
+	const suffix = `/${ROOT_PROBE_PACKAGE}/package.json`;
+	const packageJsonUrl = provider.packageJsonUrl(ROOT_PROBE_PACKAGE);
+	return packageJsonUrl.endsWith(suffix)
+		? packageJsonUrl.slice(0, -suffix.length) || undefined
 		: undefined;
 }
 

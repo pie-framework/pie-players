@@ -87,6 +87,7 @@
     containerClass = "",
     bundleType = BundleType.player, // Default to player.js (server-processed models)
     loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
+    markupMathAssetRoot = undefined,
     // Authoring mode props
     mode = "view" as "view" | "author",
     configuration = {} as Record<string, any>,
@@ -141,6 +142,11 @@
     containerClass?: string;
     bundleType?: BundleType;
     loaderConfig?: LoaderConfig;
+    /**
+     * The npm root the player's own MathJax, for math in the item's markup,
+     * loads its fonts and speech from when the page options set none.
+     */
+    markupMathAssetRoot?: string;
     // Authoring mode props
     mode?: "view" | "author";
     configuration?: Record<string, any>;
@@ -1255,7 +1261,7 @@
           pieTags,
           typeof renderer?.renderMath === "function"
             ? (root) => renderer.renderMath(root)
-            : renderPrivateMath
+            : (root) => renderPrivateMath(root, markupMathAssetRoot)
         );
       })
       .catch((error: unknown) => {

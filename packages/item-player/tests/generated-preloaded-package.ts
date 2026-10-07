@@ -1,11 +1,18 @@
 import type { Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join, resolve, sep } from "node:path";
 
 export const workspace = resolve(import.meta.dirname, "../../..");
+
+/**
+ * The published multiple-choice the generated-package specs build with. A
+ * preloaded build takes elements on `@pie-element/shared-math-rendering-mathjax`
+ * 0.1.3 or later.
+ */
+export const MULTIPLE_CHOICE_VERSION = "14.0.2";
 
 export interface ServedPackage {
   origin: string;
@@ -43,33 +50,90 @@ export async function serveGeneratedPackage(
   execFileSync("bun", ["pm", "pack", "--filename", packed], { cwd: generated });
   await mkdir(served);
   execFileSync("tar", ["-xzf", packed, "-C", served]);
+  const server = await serveDirectory(served, (pathname) =>
+    pathname.startsWith("/host-copy/") ? `/package/dist/${pathname.slice("/host-copy/".length)}` : pathname,
+  );
+  return {
+    ...server,
+    served,
+    async close() {
+      await server.close();
+      await rm(scratch, { recursive: true, force: true });
+    },
+  };
+}
+
+/**
+ * Bundles a host page that imports the package extracted at `served` with Vite,
+ * as a host's own build would, and serves the output alone. The page sets
+ * `window.hostReady` once the import resolves.
+ */
+export async function serveHostBundle(served: string): Promise<{ origin: string; close(): Promise<void> }> {
+  const scratch = await mkdtemp(join(tmpdir(), "pie-host-bundle-"));
+  const root = join(scratch, "host");
+  const outDir = join(scratch, "dist");
+  await mkdir(join(root, "node_modules", "@pie-players"), { recursive: true });
+  await symlink(join(served, "package"), join(root, "node_modules", "@pie-players", "pie-preloaded-player"));
+  await writeFile(join(root, "index.html"), `<!doctype html><html lang="en"><meta charset="utf-8">
+    <title>Host bundle</title><link rel="icon" href="data:,">
+    <script type="module" src="./main.js"></script><h1>Host bundle</h1></html>`);
+  await writeFile(join(root, "main.js"), `import "@pie-players/pie-preloaded-player";
+window.hostReady = true;
+`);
+  execFileSync("bun", ["-e", `
+    import { build } from "vite";
+    await build(${JSON.stringify({
+      root,
+      configFile: false,
+      logLevel: "error",
+      build: { outDir, emptyOutDir: true, target: "es2022" },
+    })});
+  `], { cwd: workspace, timeout: 150_000, maxBuffer: 32 * 1024 * 1024 });
+  const server = await serveDirectory(outDir, (pathname) => (pathname === "/" ? "/index.html" : pathname));
+  return {
+    origin: server.origin,
+    async close() {
+      await server.close();
+      await rm(scratch, { recursive: true, force: true });
+    },
+  };
+}
+
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".woff2": "font/woff2",
+};
+
+/**
+ * Serves the files under `root`, each request's path mapped by `toFile`, and a
+ * blank page at `/` unless `toFile` maps it.
+ */
+async function serveDirectory(
+  root: string,
+  toFile: (pathname: string) => string,
+): Promise<{ origin: string; close(): Promise<void> }> {
   const server: Server = createServer((request, response) => {
     void (async () => {
       const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
-      if (pathname === "/") {
+      const filePath = toFile(pathname);
+      if (filePath === "/") {
         response.writeHead(200, { "content-type": "text/html" });
         response.end(`<!doctype html><html lang="en"><meta charset="utf-8">
           <title>Generated preloaded package</title><link rel="icon" href="data:,">
           <h1>Generated preloaded package</h1></html>`);
         return;
       }
-      const servedPath = pathname.startsWith("/host-copy/")
-        ? `/package/dist/${pathname.slice("/host-copy/".length)}`
-        : pathname;
-      const filename = resolve(served, `.${decodeURIComponent(servedPath)}`);
-      if (!filename.startsWith(`${served}${sep}`)) {
+      const filename = resolve(root, `.${decodeURIComponent(filePath)}`);
+      if (!filename.startsWith(`${root}${sep}`)) {
         response.writeHead(404).end();
         return;
       }
       try {
         const data = await readFile(filename);
-        const mime: Record<string, string> = {
-          ".js": "text/javascript",
-          ".css": "text/css",
-          ".json": "application/json",
-          ".woff2": "font/woff2",
-        };
-        response.writeHead(200, { "content-type": mime[extname(filename)] ?? "application/octet-stream" });
+        response.writeHead(200, { "content-type": MIME_TYPES[extname(filename)] ?? "application/octet-stream" });
         response.end(data);
       } catch {
         response.writeHead(404).end();
@@ -81,11 +145,7 @@ export async function serveGeneratedPackage(
   if (!address || typeof address === "string") throw new Error("Static server did not bind");
   return {
     origin: `http://127.0.0.1:${address.port}`,
-    served,
-    async close() {
-      await new Promise<void>((done) => server.close(() => done()));
-      await rm(scratch, { recursive: true, force: true });
-    },
+    close: () => new Promise<void>((done) => server.close(() => done())),
   };
 }
 

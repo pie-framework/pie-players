@@ -1,6 +1,7 @@
 import {
 	type PreloadedController,
 	type PreloadedElement,
+	type PreloadedRegistrationOptions,
 	registerPreloadedElements,
 } from "@pie-players/pie-item-player/preloaded";
 import { parsePackageName } from "@pie-players/pie-players-shared/pie";
@@ -17,6 +18,15 @@ import { ESM_DEMO_ELEMENT_VERSIONS } from "./element-versions";
  * each authored version to the registered one. A package demo-ui does not
  * install cannot be preloaded.
  */
+
+/**
+ * The registration options of every demo that preloads pie-elements-ng. The
+ * bundler leaves the copies of the MathJax adapter in the elements no npm root
+ * of their own, so they load MathJax's fonts and speech from jsDelivr's.
+ */
+export const DEMO_PRELOADED_OPTIONS: PreloadedRegistrationOptions = {
+	math: { assetRoot: "https://cdn.jsdelivr.net/npm" },
+};
 
 type BrowserBuild = {
 	delivery: () => Promise<unknown>;
@@ -200,5 +210,6 @@ export async function preloadDemoElements(
 				controller: controller as PreloadedController,
 			};
 		}),
+		DEMO_PRELOADED_OPTIONS,
 	);
 }

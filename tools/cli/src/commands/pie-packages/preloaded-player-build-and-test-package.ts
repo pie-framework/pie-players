@@ -8,6 +8,7 @@ import {
 	type ElementSet,
 	parseElementsInput,
 	readElementSet,
+	readSpeechLocales,
 } from "../../utils/pie-packages/preloaded-static.js";
 import { createNpmAuthEnvironment } from "@pie-players/pie-players-cli/npm-auth-env";
 import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
@@ -54,6 +55,10 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 			description:
 				"npm dist-tag for publish. Defaults to the config file's set name, or 'latest' for the config that sets \"latest\": true.",
 		}),
+		speechLocales: Flags.string({
+			description:
+				"Comma-separated speech locales to ship, by SRE locale id. Defaults to the config file's \"speechLocales\", or en.",
+		}),
 
 		generateTestProject: Flags.boolean({
 			char: "g",
@@ -91,6 +96,13 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 
 	protected async resolveElementSet(elementsFile: string): Promise<ElementSet> {
 		return readElementSet(elementsFile);
+	}
+
+	protected async resolveSpeechLocales(
+		elementsFile?: string,
+		flag?: string,
+	): Promise<string[] | undefined> {
+		return readSpeechLocales(elementsFile, flag);
 	}
 
 	protected async buildPackage(
@@ -165,6 +177,7 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 			setName: elementSet?.name,
 			monorepoDir,
 			publish: flags.publish,
+			speechLocales: await this.resolveSpeechLocales(flags.elementsFile, flags.speechLocales),
 		});
 
 		this.log(`\n✅ Built: @pie-players/pie-preloaded-player@${version}`);

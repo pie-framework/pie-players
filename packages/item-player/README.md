@@ -151,7 +151,9 @@ does: the section and assessment players are bundler-only.
   clears here too. A frozen container is left untouched, and a section player
   hands each item a per-render copy, so `detail.session` on the event is the
   authoritative payload; `ItemController` owns the session and never reads this
-  object back after the first load.
+  object back after the first load. Assigning a new value applies it, except
+  that a value with neither a response value nor a response field does not
+  replace a session that holds responses.
 - `env`: `Object`, default `{ mode: "gather", role: "student" }`.
   Environment mode and role.
 - `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`,

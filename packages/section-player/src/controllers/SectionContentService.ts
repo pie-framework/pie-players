@@ -1,6 +1,8 @@
 import type {
 	AssessmentSection,
+	ItemEntity,
 	PassageEntity,
+	ReferencedPassageEntity,
 } from "@pie-players/pie-players-shared";
 import type { FormativeItemPolicy } from "@pie-players/pie-players-shared/formative";
 import type {
@@ -28,7 +30,7 @@ export class SectionContentService {
 	}
 
 	private resolvePassageBaseId(
-		passage: PassageEntity | null | undefined,
+		passage: ReferencedPassageEntity | null | undefined,
 		fallbackPrefix: string,
 	): string {
 		const raw =
@@ -42,7 +44,7 @@ export class SectionContentService {
 	}
 
 	private normalizePassageEntity(
-		passage: PassageEntity,
+		passage: ReferencedPassageEntity,
 		usedPassageIds: Set<string>,
 		fallbackPrefix: string,
 	): PassageWithId {
@@ -115,7 +117,9 @@ export class SectionContentService {
 			}
 		}
 
-		const items = [];
+		// A referenced item or passage may omit `baseId` and `version`. The content
+		// model keeps the entity types, as no player reads either field.
+		const items: ItemEntity[] = [];
 		const adapterItemRefs: Array<{
 			identifier: string;
 			item: { id: string; identifier: string };
@@ -156,7 +160,7 @@ export class SectionContentService {
 				...itemRef.item,
 				id: resolvedItemId,
 				passage: normalizedPassage || itemRef.item.passage,
-			} as typeof itemRef.item;
+			} as ItemEntity;
 			items.push(normalizedItem);
 			const identifier =
 				itemRef.identifier || resolvedItemId || itemRef.item.name || "";

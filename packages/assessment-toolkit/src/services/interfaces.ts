@@ -9,7 +9,10 @@
  */
 
 import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
-import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import type {
+	AccessibilityCatalog,
+	SectionControllerSessionState,
+} from "@pie-players/pie-players-shared/types";
 import type {
 	AccessibilityCatalogResolver,
 	CatalogChangeListener,
@@ -747,12 +750,18 @@ export interface ToolkitCoordinatorApi {
 
 	/**
 	 * Create or reuse a section controller with single-flight deduplication.
+	 *
+	 * `initialSession` is a host-supplied session. A new controller applies it in
+	 * replace mode in place of `hydrate()`, before it is published; an existing
+	 * one applies it unless it equals the current session, keeping recorded
+	 * responses that a response-free item session would replace.
 	 */
 	getOrCreateSectionController(args: {
 		sectionId: string;
 		attemptId?: string;
 		input?: unknown;
 		updateExisting?: boolean;
+		initialSession?: SectionControllerSessionState | null;
 		createDefaultController: () =>
 			| SectionControllerHandle
 			| Promise<SectionControllerHandle>;

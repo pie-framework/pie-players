@@ -89,9 +89,11 @@ import type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
+	SectionControllerSessionState,
 	SectionSessionPersistenceStrategy,
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
+import { resolveSectionSessionAssignment } from "./section-session-assignment.js";
 export type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -1779,6 +1781,7 @@ export class ToolkitCoordinator {
 		attemptId?: string;
 		input?: unknown;
 		updateExisting?: boolean;
+		initialSession?: SectionControllerSessionState | null;
 		createDefaultController: () =>
 			| SectionControllerHandle
 			| Promise<SectionControllerHandle>;
@@ -1804,6 +1807,12 @@ export class ToolkitCoordinator {
 			if (this.disposePromise !== null) {
 				throw new ToolkitCoordinatorDisposedError();
 			}
+			if (args.initialSession) {
+				await this.assignSessionToPublishedController(
+					existingController,
+					args.initialSession,
+				);
+			}
 			return existingController;
 		}
 		const pendingDisposal = this.sectionControllerDisposePromises.get(mapKey);
@@ -1819,7 +1828,15 @@ export class ToolkitCoordinator {
 		}
 
 		const existingEntry = this.sectionControllerInitEntries.get(mapKey);
-		if (existingEntry) return existingEntry.promise;
+		if (existingEntry) {
+			if (!args.initialSession) return existingEntry.promise;
+			const pendingController = await existingEntry.promise;
+			await this.assignSessionToPublishedController(
+				pendingController,
+				args.initialSession,
+			);
+			return pendingController;
+		}
 
 		const token: SectionControllerInitToken = {
 			retired: false,
@@ -1896,6 +1913,7 @@ export class ToolkitCoordinator {
 			sectionId: string;
 			attemptId?: string;
 			input?: unknown;
+			initialSession?: SectionControllerSessionState | null;
 			createDefaultController: () =>
 				| SectionControllerHandle
 				| Promise<SectionControllerHandle>;
@@ -1937,7 +1955,21 @@ export class ToolkitCoordinator {
 			await this.retireUnpublishedSectionControllerIfNeeded(candidate);
 			await controller.initialize?.(args.args.input);
 			await this.retireUnpublishedSectionControllerIfNeeded(candidate);
-			await controller.hydrate?.();
+			// A session the host supplied takes the place of the strategy's stored
+			// snapshot, and is applied before publication so the ready lifecycle
+			// event and every reader after it see it. The strategy still receives
+			// every `persist()`.
+			const initialSession = args.args.initialSession;
+			if (initialSession) {
+				if (!controller.applySession) {
+					throw new Error(
+						"Section controller cannot apply the session it was created with: it has no applySession.",
+					);
+				}
+				await controller.applySession(initialSession, { mode: "replace" });
+			} else {
+				await controller.hydrate?.();
+			}
 			await this.finalizeSectionControllerReady({
 				...candidate,
 				context,
@@ -1947,6 +1979,29 @@ export class ToolkitCoordinator {
 			await this.cleanupUnpublishedSectionController(candidate);
 			throw error;
 		}
+	}
+
+	/**
+	 * Apply a host-supplied session to a controller that is already published,
+	 * under the rules `resolveSectionSessionAssignment` sets: an equal session is a
+	 * no-op and recorded responses are not replaced by response-free ones.
+	 */
+	private async assignSessionToPublishedController(
+		controller: SectionControllerHandle,
+		session: SectionControllerSessionState | null | undefined,
+	): Promise<void> {
+		if (!session) return;
+		if (!controller.applySession) {
+			throw new Error(
+				"Section controller cannot apply the assigned session: it has no applySession.",
+			);
+		}
+		const resolved = resolveSectionSessionAssignment(
+			controller.getSession?.() ?? null,
+			session,
+		);
+		if (!resolved) return;
+		await controller.applySession(resolved, { mode: "replace" });
 	}
 
 	private createSectionControllerRetirementError(): Error {

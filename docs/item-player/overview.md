@@ -125,7 +125,9 @@ The player manages session state through `ItemController`:
 
 Hosts receive a single `session-changed` event on the `<pie-item-player>` element with the full updated session container.
 
-The `session` property stays a live view of that container, the contract `<pie-player>` had. The player writes an entry per model into the host's object at `load-complete` and each change into that entry before it dispatches, so a host that reads `player.session.data` — or holds a reference into it — keeps working. The projection is one-directional: `ItemController` owns the session and does not read the property back after the first load, and entries the player did not produce stay, so a section-level container spanning several items is safe to pass.
+The `session` property stays a live view of that container, the contract `<pie-player>` had. The player writes an entry per model into the host's object at `load-complete` and each change into that entry before it dispatches, so a host that reads `player.session.data` — or holds a reference into it — keeps working. The projection is one-directional: `ItemController` owns the session and does not observe in-place changes to the host's object, and entries the player did not produce stay, so a section-level container spanning several items is safe to pass. Assigning a new value to `session` applies it through `ItemController.setSession`, except that a value with neither a response value nor a response field does not replace a session that holds responses.
+
+The section player's layouts take a `session` property under the same rules. A host that delivers one item through a layout builds its `section` and `session` from the item's `config` and `session` with `sectionFromItem` ([section player README](../../packages/section-player/README.md#one-item-as-a-section)).
 
 ### Session commit
 

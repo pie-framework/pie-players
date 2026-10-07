@@ -5,7 +5,10 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import type {
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
 	import {
 		createSectionPlayerCardRenderContextProvider,
 		getHostElementFromAnchor,
@@ -18,6 +21,7 @@
 	let {
 		runtime = null as Record<string, unknown> | null,
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
 		sectionId = "",
 		attemptId = "",
 		showToolbar = "false" as boolean | string | null | undefined,
@@ -33,6 +37,7 @@
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
 		section?: AssessmentSection | null;
+		session?: SectionControllerSessionState | null;
 		sectionId?: string;
 		attemptId?: string;
 		showToolbar?: boolean | string | null | undefined;
@@ -195,6 +200,7 @@
 	bind:this={baseElement}
 	{runtime}
 	{section}
+	{session}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	{toolRegistry}

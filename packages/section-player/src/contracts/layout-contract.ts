@@ -14,6 +14,7 @@ export type SectionPlayerLayoutCapability =
 export type SectionPlayerBasicPropName =
 	| "assessmentId"
 	| "section"
+	| "session"
 	| "sectionId"
 	| "attemptId"
 	| "debug"

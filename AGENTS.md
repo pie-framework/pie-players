@@ -376,8 +376,22 @@ belong to `playwright.backend.config.ts`, so the main config ignores them.
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
 The item-player and section-player configs run the esm strategy's specs in
-Firefox as well as Chromium, so a local run needs both:
-`bunx playwright install chromium firefox`.
+Firefox as well as Chromium, and item-player runs its focus-order spec in
+WebKit, so a local run needs all three:
+`bunx playwright install chromium firefox webkit`.
+
+`verify:local-pr` runs the suites through `test:e2e:local-gate`
+(`scripts/run-local-e2e.mjs`): each suite's `build:e2e:*` script once, in turn,
+then every suite's `:prebuilt` run concurrently, with each suite's output printed
+as one block when it finishes. The builds go first because concurrent turbo runs
+race on restoring the same `dist`, and section-demos reloads the page when a
+workspace `dist` changes under a running test. `PIE_E2E_CONCURRENCY` caps how many
+suites run at once (default: half the cores, at most one per suite);
+`PIE_E2E_CONCURRENCY=1` runs them serially, which separates a failure that only
+appears under load. A suite joins the gate in `scripts/lib/local-e2e-suites.mjs`,
+and its `test:e2e:<suite>` script, which CI runs, stays
+`bun run build:e2e:<name> && bun run test:e2e:<suite>:prebuilt`;
+`check:local-pr-gate` enforces both.
 
 It reaches that gate through `scripts/pre-push-gate.mjs`, which skips it when the
 push carries no new commits — creating a branch at a commit already on the remote,
@@ -399,9 +413,12 @@ skipped for a push whose commits only deleted files or were empty.
 ### Git Worktrees
 
 A fresh worktree needs `bun install` **and** `bun run build` before the gates
-pass. Without build artifacts `bun run check` fails with `TS2307: Cannot find
-module '@pie-players/pie-players-shared'` from packages that resolve a workspace
-sibling through its published `exports`.
+pass. Without build artifacts `bun run check:cli` fails with `Cannot find module
+'@pie-players/pie-players-shared/loaders'`, because tests resolve a workspace
+sibling through its published `exports`. `bun run check` and `bun run typecheck`
+build the packages they resolve first (`dependsOn: ["^build"]` in `turbo.json`),
+and turbo caches both against those builds, so a commit or push that leaves a
+package and its dependencies unchanged replays that package's result.
 
 A worktree under `.claude/worktrees/` sits inside the main checkout, so whatever
 it does not install itself comes from the main checkout's install. Bun, Node and

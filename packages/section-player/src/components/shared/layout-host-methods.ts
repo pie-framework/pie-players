@@ -10,9 +10,16 @@
  * the element returns while its kernel is still binding, a navigation returns
  * `false`, and `waitForSectionController` polls until the controller exists or
  * the timeout passes.
+ *
+ * It also wraps the `session` property: a read returns the assigned value until
+ * the section's controller is published, and the controller's current session
+ * after it.
  */
 
-import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
+import type {
+	SectionControllerHandle,
+	SectionControllerSessionState,
+} from "@pie-players/pie-assessment-toolkit";
 import type {
 	SectionPlayerNavigationSnapshot,
 	SectionPlayerRuntimeHostContract,
@@ -123,6 +130,26 @@ export function withHostMethods(unmounted: UnmountedReads) {
 			getSectionController(): SectionControllerHandle | null {
 				const method = mountedMethod(this, "getSectionController");
 				return (method?.() as SectionControllerHandle | null) ?? null;
+			}
+
+			/**
+			 * A fresh snapshot on each read once the controller is published. The
+			 * item player instead returns the host's own object, kept current by
+			 * projection; no host reads a section session by reference.
+			 */
+			get session(): SectionControllerSessionState | null {
+				const published = this.getSectionController()?.getSession?.();
+				if (published) return published;
+				return (
+					(Reflect.get(ElementClass.prototype, "session", this) as
+						| SectionControllerSessionState
+						| null
+						| undefined) ?? null
+				);
+			}
+
+			set session(value: SectionControllerSessionState | null) {
+				Reflect.set(ElementClass.prototype, "session", value, this);
 			}
 
 			async waitForSectionController(
